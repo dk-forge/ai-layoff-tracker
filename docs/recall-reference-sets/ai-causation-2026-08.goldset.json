@@ -1,0 +1,3969 @@
+{
+ "candidate": "google/gemini-2.5-flash-lite",
+ "counts": {
+  "awaiting_human_optional": 9,
+  "awaiting_human_required": 25,
+  "gold_by_agreement": 175,
+  "gold_by_human": 0,
+  "items": 200,
+  "unknown_unreadable": 0
+ },
+ "labellers": [
+  "deepseek/deepseek-chat",
+  "openai/gpt-4.1-mini"
+ ],
+ "labels": {
+  "104969": false,
+  "104973": false,
+  "104975": false,
+  "107347": false,
+  "107357": false,
+  "107359": false,
+  "107369": false,
+  "107429": false,
+  "107433": false,
+  "107435": false,
+  "107437": true,
+  "107441": false,
+  "107443": false,
+  "107445": false,
+  "107447": false,
+  "107451": false,
+  "107453": false,
+  "107455": false,
+  "107457": false,
+  "107461": false,
+  "107463": false,
+  "107467": true,
+  "107473": false,
+  "107483": false,
+  "107485": false,
+  "107487": false,
+  "107489": false,
+  "107491": true,
+  "107493": false,
+  "107495": false,
+  "107497": false,
+  "107499": false,
+  "107505": false,
+  "107507": false,
+  "107511": false,
+  "107513": false,
+  "107515": false,
+  "107517": false,
+  "107525": false,
+  "107527": false,
+  "107529": false,
+  "107589": false,
+  "107595": false,
+  "107601": false,
+  "132815": true,
+  "132829": false,
+  "175789": false,
+  "175795": false,
+  "176353": false,
+  "176374": false,
+  "176414": false,
+  "176604": false,
+  "176659": false,
+  "176681": false,
+  "176687": true,
+  "176728": false,
+  "176750": false,
+  "176883": false,
+  "176884": true,
+  "176906": false,
+  "176915": true,
+  "177022": false,
+  "177067": false,
+  "177078": false,
+  "177129": false,
+  "177162": false,
+  "177171": false,
+  "177181": false,
+  "177224": false,
+  "177320": false,
+  "177425": false,
+  "211": false,
+  "23081": false,
+  "23085": false,
+  "23088": false,
+  "23092": false,
+  "23101": false,
+  "23102": true,
+  "23104": false,
+  "23107": true,
+  "239": false,
+  "242": false,
+  "256": true,
+  "258": false,
+  "26454": false,
+  "26462": false,
+  "26465": true,
+  "266": false,
+  "268": false,
+  "269": false,
+  "276": false,
+  "278": false,
+  "279": true,
+  "281": false,
+  "285": true,
+  "288": false,
+  "289": false,
+  "290": false,
+  "292": false,
+  "293": false,
+  "294": true,
+  "296": false,
+  "297": false,
+  "299": false,
+  "302": false,
+  "310": false,
+  "31078": true,
+  "311": false,
+  "316": true,
+  "318": false,
+  "319": false,
+  "322": false,
+  "323": true,
+  "334": false,
+  "363": false,
+  "36785": false,
+  "397": false,
+  "48817": false,
+  "48842": false,
+  "48887": false,
+  "48941": false,
+  "48943": false,
+  "49007": false,
+  "49034": false,
+  "49053": false,
+  "49074": false,
+  "49075": true,
+  "49078": true,
+  "49083": true,
+  "49084": true,
+  "49092": false,
+  "49122": false,
+  "49129": false,
+  "49137": false,
+  "54968": false,
+  "54977": false,
+  "54982": false,
+  "54986": false,
+  "60572": false,
+  "60591": false,
+  "60600": false,
+  "60696": false,
+  "60710": false,
+  "60754": false,
+  "60756": false,
+  "60820": false,
+  "60848": false,
+  "60854": false,
+  "60870": false,
+  "60876": false,
+  "60890": false,
+  "60906": false,
+  "61004": false,
+  "68412": false,
+  "68464": false,
+  "70059": true,
+  "70107": false,
+  "70113": false,
+  "70131": false,
+  "70257": true,
+  "70295": false,
+  "70297": false,
+  "70303": true,
+  "70307": false,
+  "70323": false,
+  "70327": false,
+  "70377": false,
+  "70383": false,
+  "70387": false,
+  "70447": false,
+  "70469": true,
+  "70475": false,
+  "70517": false,
+  "70855": false,
+  "70872": false
+ },
+ "name": "ai-causation-2026-08",
+ "raw": {
+  "deepseek/deepseek-chat": {
+   "104969": {
+    "ai_causation": "context_only",
+    "ai_language": "investing in infrastructure to scale its platform for increased traffic from AI workflows",
+    "confidence": 30
+   },
+   "104973": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not AI-attributed",
+    "confidence": 100
+   },
+   "104975": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107347": {
+    "ai_causation": "context_only",
+    "ai_language": "it moves to 'aggressively adopt AI' in development and operations",
+    "confidence": 70
+   },
+   "107357": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "107359": {
+    "ai_causation": "context_only",
+    "ai_language": "press coverage tied the restructuring to aligning teams around AI",
+    "confidence": 85
+   },
+   "107369": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not attributed to AI",
+    "confidence": 100
+   },
+   "107375": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "laid off hundreds of IT workers to hire those with stronger AI skills",
+    "confidence": 90
+   },
+   "107429": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "CEO Henry Schuck cited an upmarket enterprise shift and consumption pricing, not AI, as the cause",
+    "confidence": 100
+   },
+   "107433": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "these changes are not driven by the external environment or an effort to replace people with AI",
+    "confidence": 100
+   },
+   "107435": {
+    "ai_causation": "context_only",
+    "ai_language": "a new utility",
+    "confidence": 75
+   },
+   "107437": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI systems had automated workflows previously handled by teams and directly linked the cuts to the AI-native transition",
+    "confidence": 100
+   },
+   "107441": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107443": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107445": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107447": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107451": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 75
+   },
+   "107453": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107455": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "\"This is not an AI-driven downsizing exercise.\"",
+    "confidence": 100
+   },
+   "107457": {
+    "ai_causation": "context_only",
+    "ai_language": "that same technology that's going to put tremendous pressure on our industry in the short term, it will become an enabler",
+    "confidence": 95
+   },
+   "107459": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven transformation",
+    "confidence": 90
+   },
+   "107461": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-powered infrastructure",
+    "confidence": 90
+   },
+   "107463": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 80
+   },
+   "107465": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI means smaller, differently resourced teams in product and engineering can make a bigger impact than ever",
+    "confidence": 90
+   },
+   "107467": {
+    "ai_causation": "primary_cause",
+    "ai_language": "'advancing AI adoption across products and operations'",
+    "confidence": 90
+   },
+   "107469": {
+    "ai_causation": "context_only",
+    "ai_language": "accelerating AI productivity and time-to-market gains",
+    "confidence": 80
+   },
+   "107473": {
+    "ai_causation": "context_only",
+    "ai_language": "changes in technology driven by AI",
+    "confidence": 95
+   },
+   "107477": {
+    "ai_causation": "primary_cause",
+    "ai_language": "explicitly framed the cuts as a reset for an AI era in which, alongside humans, AI agents build and navigate websites",
+    "confidence": 95
+   },
+   "107479": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI now handles much of the execution layer of the work at scale and that AI is fundamentally changing the economics of hospitality",
+    "confidence": 95
+   },
+   "107481": {
+    "ai_causation": "context_only",
+    "ai_language": "The layoffs were part of the startup's AI push as it seeks to automate more of its operations",
+    "confidence": 80
+   },
+   "107483": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107485": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107487": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107489": {
+    "ai_causation": "context_only",
+    "ai_language": "reduce operational costs to ensure we can invest further in product, marketing and AI",
+    "confidence": 95
+   },
+   "107491": {
+    "ai_causation": "primary_cause",
+    "ai_language": "work absorbed by AI 'Project SnowWork'",
+    "confidence": 95
+   },
+   "107493": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 80
+   },
+   "107495": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "107497": {
+    "ai_causation": "context_only",
+    "ai_language": "artificial intelligence expansion efforts",
+    "confidence": 90
+   },
+   "107499": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107505": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "107507": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107511": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 95
+   },
+   "107513": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 85
+   },
+   "107515": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "107517": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107519": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107525": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "107527": {
+    "ai_causation": "context_only",
+    "ai_language": "the continued advancement of AI",
+    "confidence": 90
+   },
+   "107529": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 95
+   },
+   "107589": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107595": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107601": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 50
+   },
+   "132815": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "increased automation",
+    "confidence": 95
+   },
+   "132829": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "175789": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "175795": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176353": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 75
+   },
+   "176374": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176414": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "176604": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176659": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "176681": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "176687": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "Due to AI and Digitalization",
+    "confidence": 95
+   },
+   "176728": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176750": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176883": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176884": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven efficiency improvements",
+    "confidence": 90
+   },
+   "176906": {
+    "ai_causation": "context_only",
+    "ai_language": "optimize the Company's operations for the AI era",
+    "confidence": 95
+   },
+   "176915": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI-driven automation across each of our operations, finance, headcount efficiency, support functions, and technology teams \u2014 including in relation to cybersecurity and code quality workflows \u2014 enabled a reduction in our headcount",
+    "confidence": 95
+   },
+   "176954": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven data automation strategy",
+    "confidence": 90
+   },
+   "177022": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177067": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177078": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "177129": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177162": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177171": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177181": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177188": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "boost automation",
+    "confidence": 80
+   },
+   "177224": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177320": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177401": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI \u4e0d\u8a72\u662f\u8b8a\u76f8\u780d\u4eba\u85c9\u53e3",
+    "confidence": 90
+   },
+   "177425": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "211": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23081": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "23085": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "23088": {
+    "ai_causation": "context_only",
+    "ai_language": "the group improves its technology and automation capabilities",
+    "confidence": 80
+   },
+   "23092": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 90
+   },
+   "23101": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "23102": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Perplexity and AI make jobs redundant",
+    "confidence": 95
+   },
+   "23104": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "23107": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "automates more hubs",
+    "confidence": 85
+   },
+   "239": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "242": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "256": {
+    "ai_causation": "primary_cause",
+    "ai_language": "building automated distribution centres that could do the work of humans",
+    "confidence": 95
+   },
+   "258": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "26454": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "26455": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "adoption of generative AI tools would trigger a workforce reduction",
+    "confidence": 90
+   },
+   "26462": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 50
+   },
+   "26465": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "due to the AI boom",
+    "confidence": 95
+   },
+   "266": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "268": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "269": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "276": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "278": {
+    "ai_causation": "context_only",
+    "ai_language": "artificial intelligence-linked job reductions",
+    "confidence": 95
+   },
+   "279": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI cuts 4,000 jobs",
+    "confidence": 95
+   },
+   "281": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "285": {
+    "ai_causation": "primary_cause",
+    "ai_language": "rapid artificial intelligence (AI) adoption, coupled with slowing corporate demand, is the reason for the layoffs",
+    "confidence": 95
+   },
+   "286": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "banks replace them with offshoring and automation",
+    "confidence": 90
+   },
+   "288": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "289": {
+    "ai_causation": "context_only",
+    "ai_language": "shift focus to artificial intelligence",
+    "confidence": 95
+   },
+   "290": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "292": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "293": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "294": {
+    "ai_causation": "primary_cause",
+    "ai_language": "being replaced by new artificial intelligence (AI) technology",
+    "confidence": 90
+   },
+   "296": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 95
+   },
+   "297": {
+    "ai_causation": "context_only",
+    "ai_language": "to allocate more resources towards AI investments",
+    "confidence": 95
+   },
+   "299": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "302": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "306": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI is among several drivers",
+    "confidence": 90
+   },
+   "310": {
+    "ai_causation": "context_only",
+    "ai_language": "restructuring its operations to meet the growing demand for generative artificial intelligence (GenAI)",
+    "confidence": 90
+   },
+   "31078": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "integration of artificial intelligence",
+    "confidence": 80
+   },
+   "311": {
+    "ai_causation": "context_only",
+    "ai_language": "redirected to focus on Apple's generative artificial intelligence division",
+    "confidence": 95
+   },
+   "316": {
+    "ai_causation": "primary_cause",
+    "ai_language": "students shifted to ChatGPT and AI search summaries",
+    "confidence": 95
+   },
+   "318": {
+    "ai_causation": "context_only",
+    "ai_language": "AI as a force multiplier that flattens the company's hiring curve",
+    "confidence": 95
+   },
+   "319": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 95
+   },
+   "322": {
+    "ai_causation": "context_only",
+    "ai_language": "refocus on Business AI",
+    "confidence": 90
+   },
+   "323": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Agentforce AI agents took over about half of support interactions",
+    "confidence": 95
+   },
+   "334": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "363": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "36785": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 85
+   },
+   "397": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "48817": {
+    "ai_causation": "context_only",
+    "ai_language": "the string of AI-related layoffs",
+    "confidence": 75
+   },
+   "48830": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Driverless technology is only just starting to cause layoffs.",
+    "confidence": 95
+   },
+   "48842": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "48844": {
+    "ai_causation": "context_only",
+    "ai_language": "deploying machines to warehouses to automate the process of packing customer orders",
+    "confidence": 80
+   },
+   "48887": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "48941": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "48943": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49007": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49034": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "49053": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49074": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49075": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "Automation poses big threat in IT",
+    "confidence": 90
+   },
+   "49078": {
+    "ai_causation": "primary_cause",
+    "ai_language": "replacing some of its human portfolio managers with artificially intelligent, computerized stock-trading algorithms",
+    "confidence": 95
+   },
+   "49083": {
+    "ai_causation": "primary_cause",
+    "ai_language": "now that machine learning can help repackage Whisper\u2019s user content for distribution by other media outlets",
+    "confidence": 95
+   },
+   "49084": {
+    "ai_causation": "primary_cause",
+    "ai_language": "more than 11,000 jobs have been released due to automation",
+    "confidence": 95
+   },
+   "49090": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "QuickFoto Claim feature",
+    "confidence": 80
+   },
+   "49092": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "49122": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "49129": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "49137": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "51765": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI-driven layoff picks",
+    "confidence": 90
+   },
+   "54968": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "because we have a lot of automation",
+    "confidence": 90
+   },
+   "54973": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "The layoffs are part of a bigger push by Microsoft to rely on artificial intelligence to pick news and content",
+    "confidence": 90
+   },
+   "54977": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "54982": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "54986": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60572": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60591": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60600": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60696": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60710": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60754": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60756": {
+    "ai_causation": "context_only",
+    "ai_language": "its ongoing investments in AI-powered social intelligence",
+    "confidence": 80
+   },
+   "60800": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "60820": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "60848": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60854": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "60870": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "60876": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60890": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60906": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "61004": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "68412": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "68464": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "69997": {
+    "ai_causation": "context_only",
+    "ai_language": "null",
+    "confidence": 90
+   },
+   "70059": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "driven by artificial intelligence adoption",
+    "confidence": 90
+   },
+   "70107": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "70113": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "70131": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "70257": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "'have resulted, and may continue to result, in reductions to our workforce.'",
+    "confidence": 95
+   },
+   "70293": {
+    "ai_causation": "context_only",
+    "ai_language": "AI push leads to 1,000 job cuts",
+    "confidence": 95
+   },
+   "70295": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "70297": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "70303": {
+    "ai_causation": "primary_cause",
+    "ai_language": "using AI to target 8,000 layoffs",
+    "confidence": 95
+   },
+   "70307": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "70323": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "70327": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "70377": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70383": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70387": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70447": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "'nothing to do with AI'",
+    "confidence": 100
+   },
+   "70469": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "roles may be displaced by automation",
+    "confidence": 80
+   },
+   "70475": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "70517": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 70
+   },
+   "70653": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "artificial intelligence-driven systems",
+    "confidence": 100
+   },
+   "70681": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "improve AI-driven content moderation",
+    "confidence": 85
+   },
+   "70683": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 85
+   },
+   "70855": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "70872": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-powered 'voice bot'",
+    "confidence": 85
+   }
+  },
+  "google/gemini-2.5-flash-lite": {
+   "104969": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "104973": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not AI-attributed",
+    "confidence": 100
+   },
+   "104975": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107347": {
+    "ai_causation": "context_only",
+    "ai_language": "aggressively adopt AI",
+    "confidence": 95
+   },
+   "107357": {
+    "ai_causation": "context_only",
+    "ai_language": "AI infrastructure",
+    "confidence": 75
+   },
+   "107359": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107369": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not attributed to AI",
+    "confidence": 100
+   },
+   "107375": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "stronger AI skills",
+    "confidence": 80
+   },
+   "107429": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "not AI",
+    "confidence": 100
+   },
+   "107433": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "AI",
+    "confidence": 100
+   },
+   "107435": {
+    "ai_causation": "context_only",
+    "ai_language": "calling AI 'a new utility' that 'changes how consumers buy, how organizations function'",
+    "confidence": 75
+   },
+   "107437": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI systems had automated workflows previously handled by teams and directly linked the cuts to the AI-native transition",
+    "confidence": 100
+   },
+   "107441": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-native",
+    "confidence": 85
+   },
+   "107443": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107445": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107447": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "107451": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "107453": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "No AI attribution by company or press",
+    "confidence": 100
+   },
+   "107455": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "This is not an AI-driven downsizing exercise.",
+    "confidence": 100
+   },
+   "107457": {
+    "ai_causation": "context_only",
+    "ai_language": "that same technology that's going to put tremendous pressure on our industry in the short term, it will become an enabler",
+    "confidence": 70
+   },
+   "107459": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI-driven transformation",
+    "confidence": 95
+   },
+   "107461": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107463": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107465": {
+    "ai_causation": "context_only",
+    "ai_language": "AI means smaller, differently resourced teams in product and engineering can make a bigger impact than ever.",
+    "confidence": 95
+   },
+   "107467": {
+    "ai_causation": "primary_cause",
+    "ai_language": "advancing AI adoption across products and operations",
+    "confidence": 100
+   },
+   "107469": {
+    "ai_causation": "context_only",
+    "ai_language": "accelerating AI productivity and time-to-market gains",
+    "confidence": 85
+   },
+   "107473": {
+    "ai_causation": "context_only",
+    "ai_language": "changes in technology driven by AI",
+    "confidence": 90
+   },
+   "107477": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI agents are becoming key builders, users, and navigators",
+    "confidence": 95
+   },
+   "107479": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI now handles much of the execution layer of the work at scale and that AI is fundamentally changing the economics of hospitality",
+    "confidence": 100
+   },
+   "107481": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "107483": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107485": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107487": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107489": {
+    "ai_causation": "context_only",
+    "ai_language": "AI",
+    "confidence": 85
+   },
+   "107491": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "AI 'Project SnowWork'",
+    "confidence": 95
+   },
+   "107493": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107495": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107497": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "artificial intelligence expansion efforts",
+    "confidence": 95
+   },
+   "107499": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107505": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107507": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107511": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107513": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107515": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107517": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107519": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "with AI cited as partial cause",
+    "confidence": 95
+   },
+   "107525": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107527": {
+    "ai_causation": "context_only",
+    "ai_language": "continued advancement of AI",
+    "confidence": 95
+   },
+   "107529": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-led restructuring",
+    "confidence": 95
+   },
+   "107589": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107595": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107601": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "132815": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "increased automation",
+    "confidence": 95
+   },
+   "132829": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "175789": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "175795": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176353": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176374": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176414": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176604": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176659": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176681": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176687": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "176728": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176750": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176883": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "176884": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven efficiency improvements",
+    "confidence": 95
+   },
+   "176906": {
+    "ai_causation": "context_only",
+    "ai_language": "AI era",
+    "confidence": 95
+   },
+   "176915": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI-driven automation",
+    "confidence": 100
+   },
+   "176954": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI-driven data automation strategy",
+    "confidence": 100
+   },
+   "177022": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177067": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177078": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177129": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177162": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177171": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177181": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177188": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "boost automation",
+    "confidence": 95
+   },
+   "177224": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "177320": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177401": {
+    "ai_causation": "context_only",
+    "ai_language": "AI",
+    "confidence": 95
+   },
+   "177425": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "211": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23081": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "23085": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23088": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "automation",
+    "confidence": 95
+   },
+   "23092": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 70
+   },
+   "23101": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23102": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Perplexity and AI make jobs redundant",
+    "confidence": 100
+   },
+   "23104": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23107": {
+    "ai_causation": "primary_cause",
+    "ai_language": "automates more hubs",
+    "confidence": 95
+   },
+   "239": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "242": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "256": {
+    "ai_causation": "primary_cause",
+    "ai_language": "building automated distribution centres that could do the work of humans",
+    "confidence": 100
+   },
+   "258": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "26454": {
+    "ai_causation": "context_only",
+    "ai_language": "AI transformation",
+    "confidence": 95
+   },
+   "26455": {
+    "ai_causation": "context_only",
+    "ai_language": "generative AI tools would trigger a workforce reduction",
+    "confidence": 95
+   },
+   "26462": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "26465": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "266": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 10
+   },
+   "268": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "269": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "276": {
+    "ai_causation": "context_only",
+    "ai_language": "Agentforce AI",
+    "confidence": 90
+   },
+   "278": {
+    "ai_causation": "primary_cause",
+    "ai_language": "artificial intelligence-linked job reductions",
+    "confidence": 95
+   },
+   "279": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI cuts 4,000 jobs",
+    "confidence": 100
+   },
+   "281": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "285": {
+    "ai_causation": "primary_cause",
+    "ai_language": "rapid artificial intelligence (AI) adoption",
+    "confidence": 100
+   },
+   "286": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "288": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "289": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 80
+   },
+   "290": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "292": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "293": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI 'voice-bot'",
+    "confidence": 95
+   },
+   "294": {
+    "ai_causation": "primary_cause",
+    "ai_language": "artificial intelligence (AI) technology",
+    "confidence": 95
+   },
+   "296": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "297": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "299": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 75
+   },
+   "302": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "306": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI is among several drivers",
+    "confidence": 95
+   },
+   "310": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "31078": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "integration of artificial intelligence",
+    "confidence": 90
+   },
+   "311": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "316": {
+    "ai_causation": "primary_cause",
+    "ai_language": "students shifted to ChatGPT and AI search summaries",
+    "confidence": 95
+   },
+   "318": {
+    "ai_causation": "context_only",
+    "ai_language": "AI as a force multiplier that flattens the company's hiring curve",
+    "confidence": 95
+   },
+   "319": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "AI assistant handles two-thirds of customer-service chats and does the work equivalent to 700 full-time agents",
+    "confidence": 90
+   },
+   "322": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "323": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Agentforce AI agents took over about half of support interactions",
+    "confidence": 95
+   },
+   "334": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "363": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "36785": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "397": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "48817": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "48830": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Driverless technology is only just starting to cause layoffs.",
+    "confidence": 95
+   },
+   "48842": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 70
+   },
+   "48844": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "48887": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "48941": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "48943": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49007": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49034": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "49053": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "49074": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49075": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Automation poses big threat in IT",
+    "confidence": 100
+   },
+   "49078": {
+    "ai_causation": "primary_cause",
+    "ai_language": "replacing some of its human portfolio managers with artificially intelligent, computerized stock-trading algorithms",
+    "confidence": 100
+   },
+   "49083": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "machine learning can help repackage Whisper\u2019s user content for distribution by other media outlets",
+    "confidence": 90
+   },
+   "49084": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "49090": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "QuickFoto Claim feature",
+    "confidence": 95
+   },
+   "49092": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "49122": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "49129": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49137": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "51765": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI-driven layoff picks",
+    "confidence": 95
+   },
+   "54968": {
+    "ai_causation": "primary_cause",
+    "ai_language": "we have a lot of automation",
+    "confidence": 100
+   },
+   "54973": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "rely on artificial intelligence to pick news and content",
+    "confidence": 95
+   },
+   "54977": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "54982": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "54986": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 50
+   },
+   "60572": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60591": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 10
+   },
+   "60600": {
+    "ai_causation": "context_only",
+    "ai_language": "automation",
+    "confidence": 75
+   },
+   "60696": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60710": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60754": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60756": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-powered social intelligence",
+    "confidence": 100
+   },
+   "60800": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "60820": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60848": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60854": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60870": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "60876": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60890": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60906": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "61004": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "68412": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "68464": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "69997": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "automation ops",
+    "confidence": 90
+   },
+   "70059": {
+    "ai_causation": "primary_cause",
+    "ai_language": "artificial intelligence adoption",
+    "confidence": 100
+   },
+   "70107": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 0
+   },
+   "70113": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "robotics unit",
+    "confidence": 85
+   },
+   "70131": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "70257": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "the adoption and deployment of AI technologies across its operations 'have resulted, and may continue to result, in reductions to our workforce.'",
+    "confidence": 95
+   },
+   "70293": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI push leads to 1,000 job cuts",
+    "confidence": 95
+   },
+   "70295": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 20
+   },
+   "70297": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70303": {
+    "ai_causation": "primary_cause",
+    "ai_language": "using AI to target 8,000 layoffs against workers on medical, parental or family leave",
+    "confidence": 100
+   },
+   "70307": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70323": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "70327": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "70377": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70383": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70387": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 10
+   },
+   "70447": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "nothing to do with AI",
+    "confidence": 100
+   },
+   "70469": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "roles may be displaced by automation",
+    "confidence": 95
+   },
+   "70475": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70517": {
+    "ai_causation": "context_only",
+    "ai_language": "AI",
+    "confidence": 75
+   },
+   "70653": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "artificial intelligence-driven systems",
+    "confidence": 95
+   },
+   "70681": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven content moderation",
+    "confidence": 95
+   },
+   "70683": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI content moderation",
+    "confidence": 95
+   },
+   "70855": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70872": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "AI-powered \u201cvoice bot\u201d",
+    "confidence": 95
+   }
+  },
+  "openai/gpt-4.1-mini": {
+   "104969": {
+    "ai_causation": "context_only",
+    "ai_language": "investing in infrastructure to scale its platform for increased traffic from AI workflows",
+    "confidence": 90
+   },
+   "104973": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not AI-attributed.",
+    "confidence": 100
+   },
+   "104975": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not AI-attributed.",
+    "confidence": 100
+   },
+   "107347": {
+    "ai_causation": "context_only",
+    "ai_language": "aggressively adopt AI",
+    "confidence": 90
+   },
+   "107357": {
+    "ai_causation": "context_only",
+    "ai_language": "realignment toward silicon, optics, security and AI infrastructure",
+    "confidence": 90
+   },
+   "107359": {
+    "ai_causation": "context_only",
+    "ai_language": "aligning teams around AI",
+    "confidence": 90
+   },
+   "107369": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Not attributed to AI.",
+    "confidence": 100
+   },
+   "107375": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "GM just laid off hundreds of IT workers to hire those with stronger AI skills",
+    "confidence": 90
+   },
+   "107429": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "not AI, as the cause",
+    "confidence": 95
+   },
+   "107433": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "these changes are not driven by the external environment or an effort to replace people with AI",
+    "confidence": 100
+   },
+   "107435": {
+    "ai_causation": "context_only",
+    "ai_language": "'a new utility' ... 'changes how consumers buy, how organizations function'",
+    "confidence": 90
+   },
+   "107437": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI systems had automated workflows previously handled by teams and directly linked the cuts to the AI-native transition.",
+    "confidence": 95
+   },
+   "107441": {
+    "ai_causation": "context_only",
+    "ai_language": "\"the large majority senior and AI-native.\"",
+    "confidence": 90
+   },
+   "107443": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "it does not comment on rumors or speculation",
+    "confidence": 95
+   },
+   "107445": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107447": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107451": {
+    "ai_causation": "context_only",
+    "ai_language": "latest technological innovations",
+    "confidence": 80
+   },
+   "107453": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107455": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "\"This is not an AI-driven downsizing exercise. This shift began years before the current AI wave.\"",
+    "confidence": 100
+   },
+   "107457": {
+    "ai_causation": "context_only",
+    "ai_language": "\"that same technology that's going to put tremendous pressure on our industry in the short term, it will become an enabler\"",
+    "confidence": 95
+   },
+   "107459": {
+    "ai_causation": "context_only",
+    "ai_language": "\"made several changes to the way work is conducted in light of new technologies, with an emphasis on artificial intelligence\"",
+    "confidence": 90
+   },
+   "107461": {
+    "ai_causation": "context_only",
+    "ai_language": "\"AI-powered infrastructure\"",
+    "confidence": 90
+   },
+   "107463": {
+    "ai_causation": "context_only",
+    "ai_language": "the SEC filing says the restructuring will 'concentrate investments across high-yielding growth areas including AI",
+    "confidence": 90
+   },
+   "107465": {
+    "ai_causation": "context_only",
+    "ai_language": "\"AI means smaller, differently resourced teams in product and engineering can make a bigger impact than ever.\"",
+    "confidence": 90
+   },
+   "107467": {
+    "ai_causation": "primary_cause",
+    "ai_language": "'advancing AI adoption across products and operations'",
+    "confidence": 90
+   },
+   "107469": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "accelerating AI productivity and time-to-market gains",
+    "confidence": 85
+   },
+   "107473": {
+    "ai_causation": "context_only",
+    "ai_language": "changes in technology driven by AI",
+    "confidence": 90
+   },
+   "107477": {
+    "ai_causation": "context_only",
+    "ai_language": "\"AI agents are becoming key builders, users, and navigators\"",
+    "confidence": 90
+   },
+   "107479": {
+    "ai_causation": "context_only",
+    "ai_language": "\"the hospitality operating system of the future is an AI-native one\"",
+    "confidence": 90
+   },
+   "107481": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "The layoffs were part of the startup's AI push as it seeks to automate more of its operations",
+    "confidence": 90
+   },
+   "107483": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107485": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107487": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107489": {
+    "ai_causation": "context_only",
+    "ai_language": "invest further in product, marketing and AI",
+    "confidence": 90
+   },
+   "107491": {
+    "ai_causation": "primary_cause",
+    "ai_language": "work absorbed by AI 'Project SnowWork'",
+    "confidence": 90
+   },
+   "107493": {
+    "ai_causation": "context_only",
+    "ai_language": "\"This move comes as software vendors for HR continue to modify their companies by heavily focusing on AI innovation.\"",
+    "confidence": 90
+   },
+   "107495": {
+    "ai_causation": "context_only",
+    "ai_language": "\"the AI modeling activity requires a different kind of talent, AI experts who have actually built models\"",
+    "confidence": 90
+   },
+   "107497": {
+    "ai_causation": "context_only",
+    "ai_language": "as part of its artificial intelligence expansion efforts",
+    "confidence": 90
+   },
+   "107499": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107505": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 95
+   },
+   "107507": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107511": {
+    "ai_causation": "context_only",
+    "ai_language": "\"Strategic reorganization process in which the company will move to work in an operating model built for AI (AI-Native)\"",
+    "confidence": 90
+   },
+   "107513": {
+    "ai_causation": "context_only",
+    "ai_language": "cuts are not financially motivated but aim to adapt the company to AI development",
+    "confidence": 90
+   },
+   "107515": {
+    "ai_causation": "context_only",
+    "ai_language": "\"AI is fundamentally transforming the travel industry and influencing both customers' search and booking behavior and the way companies are organized.\"; 'At the heart of the realignment is the introduction of AI into the company's core processes.'; 'reorganizing into an AI-powered travel company.'",
+    "confidence": 90
+   },
+   "107517": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "Companies are looking for ways to create genuine productivity improvements from their AI investments... revenue per employee is up 37%",
+    "confidence": 90
+   },
+   "107519": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "Shopifreaks (May 4): 'with AI cited as partial cause'",
+    "confidence": 90
+   },
+   "107525": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-first organisation",
+    "confidence": 90
+   },
+   "107527": {
+    "ai_causation": "context_only",
+    "ai_language": "\"the continued advancement of AI\"",
+    "confidence": 90
+   },
+   "107529": {
+    "ai_causation": "context_only",
+    "ai_language": "\"It is a structural realignment where the organisation is resetting the way it operates internally in a new environment centred around AI.\"",
+    "confidence": 90
+   },
+   "107589": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107595": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "107601": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "132815": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "increased automation",
+    "confidence": 90
+   },
+   "132829": {
+    "ai_causation": "context_only",
+    "ai_language": "artificial intelligence-powered",
+    "confidence": 90
+   },
+   "175789": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "175795": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176353": {
+    "ai_causation": "context_only",
+    "ai_language": "restructures around an AI Work Platform",
+    "confidence": 90
+   },
+   "176374": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176414": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176604": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176659": {
+    "ai_causation": "context_only",
+    "ai_language": "Amazon closes S.F. AI lab",
+    "confidence": 90
+   },
+   "176681": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176687": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Due to AI and Digitalization",
+    "confidence": 90
+   },
+   "176728": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176750": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176883": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "176884": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven efficiency improvements",
+    "confidence": 90
+   },
+   "176906": {
+    "ai_causation": "context_only",
+    "ai_language": "optimize the Company\u2019s operations for the AI era",
+    "confidence": 95
+   },
+   "176915": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "AI-driven automation across each of our operations, finance, headcount efficiency, support functions, and technology teams \u2014 including in relation to cybersecurity and code quality workflows \u2014 enabled a reduction in our headcount",
+    "confidence": 95
+   },
+   "176954": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-driven data automation strategy",
+    "confidence": 80
+   },
+   "177022": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177067": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177078": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "177129": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177162": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177171": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177181": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177188": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "boost automation",
+    "confidence": 90
+   },
+   "177224": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177320": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "177401": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "AI \u4e0d\u8a72\u662f\u8b8a\u76f8\u780d\u4eba\u85c9\u53e3",
+    "confidence": 95
+   },
+   "177425": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "211": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23081": {
+    "ai_causation": "context_only",
+    "ai_language": "investing heavily in AI",
+    "confidence": 80
+   },
+   "23085": {
+    "ai_causation": "context_only",
+    "ai_language": "The company is reallocating resources to focus on generative AI.",
+    "confidence": 90
+   },
+   "23088": {
+    "ai_causation": "context_only",
+    "ai_language": "\"management layers are reduced and the group improves its technology and automation capabilities\"",
+    "confidence": 90
+   },
+   "23092": {
+    "ai_causation": "context_only",
+    "ai_language": "focuses on AI",
+    "confidence": 90
+   },
+   "23101": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "23102": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI make jobs redundant",
+    "confidence": 95
+   },
+   "23104": {
+    "ai_causation": "context_only",
+    "ai_language": "focus on the growing AI chip market",
+    "confidence": 90
+   },
+   "23107": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "as it automates more hubs",
+    "confidence": 80
+   },
+   "239": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "242": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "256": {
+    "ai_causation": "primary_cause",
+    "ai_language": "building automated distribution centres that could do the work of humans",
+    "confidence": 90
+   },
+   "258": {
+    "ai_causation": "context_only",
+    "ai_language": "world's most valuable AI startup",
+    "confidence": 90
+   },
+   "26454": {
+    "ai_causation": "context_only",
+    "ai_language": "necessity for the company's AI transformation",
+    "confidence": 80
+   },
+   "26455": {
+    "ai_causation": "context_only",
+    "ai_language": "adoption of generative AI tools would trigger a workforce reduction",
+    "confidence": 90
+   },
+   "26462": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "26465": {
+    "ai_causation": "primary_cause",
+    "ai_language": "due to the AI boom",
+    "confidence": 95
+   },
+   "266": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "268": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "269": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "276": {
+    "ai_causation": "context_only",
+    "ai_language": "Agentforce AI product",
+    "confidence": 90
+   },
+   "278": {
+    "ai_causation": "context_only",
+    "ai_language": "AI overhaul tware firm WiseTech Global will axe about 2,000 jobs",
+    "confidence": 90
+   },
+   "279": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI cuts 4,000 jobs",
+    "confidence": 95
+   },
+   "281": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "285": {
+    "ai_causation": "primary_cause",
+    "ai_language": "rapid artificial intelligence (AI) adoption, coupled with slowing corporate demand, is the reason for the layoffs",
+    "confidence": 90
+   },
+   "286": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "288": {
+    "ai_causation": "context_only",
+    "ai_language": "AI push ting the technology into the company's platform",
+    "confidence": 80
+   },
+   "289": {
+    "ai_causation": "context_only",
+    "ai_language": "shift focus to artificial intelligence",
+    "confidence": 90
+   },
+   "290": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "292": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "293": {
+    "ai_causation": "context_only",
+    "ai_language": "'introduced an AI \\'voice-bot\\''",
+    "confidence": 90
+   },
+   "294": {
+    "ai_causation": "primary_cause",
+    "ai_language": "being replaced by new artificial intelligence (AI) technology",
+    "confidence": 95
+   },
+   "296": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "297": {
+    "ai_causation": "context_only",
+    "ai_language": "AI investments",
+    "confidence": 90
+   },
+   "299": {
+    "ai_causation": "context_only",
+    "ai_language": "AI shift pdate",
+    "confidence": 80
+   },
+   "302": {
+    "ai_causation": "context_only",
+    "ai_language": "shift focus towards cybersecurity, cloud systems, and AI products",
+    "confidence": 90
+   },
+   "306": {
+    "ai_causation": "context_only",
+    "ai_language": "AI is among several drivers",
+    "confidence": 90
+   },
+   "310": {
+    "ai_causation": "context_only",
+    "ai_language": "growing demand for generative artificial intelligence (GenAI)",
+    "confidence": 90
+   },
+   "31078": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "integration of artificial intelligence",
+    "confidence": 90
+   },
+   "311": {
+    "ai_causation": "context_only",
+    "ai_language": "Apple's generative artificial intelligence division",
+    "confidence": 90
+   },
+   "316": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "citing collapsing demand as students shifted to ChatGPT and AI search summaries",
+    "confidence": 90
+   },
+   "318": {
+    "ai_causation": "context_only",
+    "ai_language": "AI as a force multiplier that flattens the company's hiring curve",
+    "confidence": 90
+   },
+   "319": {
+    "ai_causation": "context_only",
+    "ai_language": "Klarna said its AI assistant handles two-thirds of customer-service chats and does the work equivalent to 700 full-time agents",
+    "confidence": 90
+   },
+   "322": {
+    "ai_causation": "context_only",
+    "ai_language": "refocus on Business AI",
+    "confidence": 90
+   },
+   "323": {
+    "ai_causation": "primary_cause",
+    "ai_language": "Agentforce AI agents took over about half of support interactions",
+    "confidence": 95
+   },
+   "334": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "363": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "36785": {
+    "ai_causation": "context_only",
+    "ai_language": "as the focus shifts to artificial intelligence",
+    "confidence": 90
+   },
+   "397": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "48817": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-related layoffs",
+    "confidence": 90
+   },
+   "48830": {
+    "ai_causation": "context_only",
+    "ai_language": "Driverless technology is only just starting to cause layoffs.",
+    "confidence": 90
+   },
+   "48842": {
+    "ai_causation": "context_only",
+    "ai_language": "'a push into the electronic trading 'arms race.' In a bid to better compete in quant and AI-led trading, a staple on Wall Street'",
+    "confidence": 90
+   },
+   "48844": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "The tech giant is deploying machines to warehouses to automate the process of packing customer orders",
+    "confidence": 90
+   },
+   "48887": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "48941": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "48943": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49007": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49034": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49053": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49074": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49075": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "Automation poses big threat in IT",
+    "confidence": 90
+   },
+   "49078": {
+    "ai_causation": "primary_cause",
+    "ai_language": "replacing some of its human portfolio managers with artificially intelligent, computerized stock-trading algorithms",
+    "confidence": 95
+   },
+   "49083": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "machine learning can help repackage Whisper\u2019s user content for distribution by other media outlets",
+    "confidence": 95
+   },
+   "49084": {
+    "ai_causation": "primary_cause",
+    "ai_language": "more than 11,000 jobs have been released due to automation",
+    "confidence": 95
+   },
+   "49090": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "49092": {
+    "ai_causation": "context_only",
+    "ai_language": "focus on the demands for services anchored to cloud computing and artificial intelligence",
+    "confidence": 90
+   },
+   "49122": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "49129": {
+    "ai_causation": "context_only",
+    "ai_language": "world's most valuable AI startup",
+    "confidence": 90
+   },
+   "49137": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "51765": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 90
+   },
+   "54968": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "We let go of about four in engineering and product, a few in the customer care team \u2013 about 20-30 \u2013 because we have a lot of automation.",
+    "confidence": 100
+   },
+   "54973": {
+    "ai_causation": "context_only",
+    "ai_language": "Microsoft to rely on artificial intelligence to pick news and content",
+    "confidence": 90
+   },
+   "54977": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "54982": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "54986": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60572": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60591": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60600": {
+    "ai_causation": "context_only",
+    "ai_language": "automation",
+    "confidence": 80
+   },
+   "60696": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60710": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60754": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60756": {
+    "ai_causation": "context_only",
+    "ai_language": "ongoing investments in AI-powered social intelligence",
+    "confidence": 85
+   },
+   "60800": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "benefits of automation",
+    "confidence": 90
+   },
+   "60820": {
+    "ai_causation": "context_only",
+    "ai_language": "push towards AI",
+    "confidence": 90
+   },
+   "60848": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60854": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "The Office of Automation Safety, which develops regulations for autonomous vehicles",
+    "confidence": 90
+   },
+   "60870": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60876": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60890": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "60906": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "61004": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "68412": {
+    "ai_causation": "context_only",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "68464": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "69997": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "slow China automation ops",
+    "confidence": 90
+   },
+   "70059": {
+    "ai_causation": "primary_cause",
+    "ai_language": "internal reorganisation driven by artificial intelligence adoption",
+    "confidence": 90
+   },
+   "70107": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70113": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70131": {
+    "ai_causation": "context_only",
+    "ai_language": "'AI era'",
+    "confidence": 80
+   },
+   "70257": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "adoption and deployment of AI technologies across its operations 'have resulted, and may continue to result, in reductions to our workforce.'",
+    "confidence": 95
+   },
+   "70293": {
+    "ai_causation": "primary_cause",
+    "ai_language": "AI push leads to 1,000 job cuts",
+    "confidence": 90
+   },
+   "70295": {
+    "ai_causation": "context_only",
+    "ai_language": "digital transformation",
+    "confidence": 90
+   },
+   "70297": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70303": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "using AI to target 8,000 layoffs",
+    "confidence": 90
+   },
+   "70307": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70323": {
+    "ai_causation": "context_only",
+    "ai_language": "AI tools from Anthropic and others have emerged as potential existential threats to traditional software makers",
+    "confidence": 90
+   },
+   "70327": {
+    "ai_causation": "context_only",
+    "ai_language": "for its AI models",
+    "confidence": 90
+   },
+   "70377": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70383": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70387": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70447": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "'nothing to do with AI'",
+    "confidence": 100
+   },
+   "70469": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "whose roles may be displaced by automation",
+    "confidence": 90
+   },
+   "70475": {
+    "ai_causation": "unknown",
+    "ai_language": "",
+    "confidence": 100
+   },
+   "70517": {
+    "ai_causation": "context_only",
+    "ai_language": "accelerate AI use",
+    "confidence": 90
+   },
+   "70653": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "looking to replace the moderators with artificial intelligence-driven systems",
+    "confidence": 90
+   },
+   "70681": {
+    "ai_causation": "selection_or_operations",
+    "ai_language": "improve AI-driven content moderation",
+    "confidence": 90
+   },
+   "70683": {
+    "ai_causation": "contributing_cause",
+    "ai_language": "shift towards AI content moderation",
+    "confidence": 90
+   },
+   "70855": {
+    "ai_causation": "context_only",
+    "ai_language": "AI-driven workplace",
+    "confidence": 90
+   },
+   "70872": {
+    "ai_causation": "explicitly_denied",
+    "ai_language": "\"AI-powered \u201cvoice bot\u201d it introduced led to a spike in workload.\"",
+    "confidence": 90
+   }
+  }
+ },
+ "rescored_at": "2026-08-19T00:02:37Z",
+ "rule": "gold = the two labellers agreeing, or the owner's adjudication where they did not. No third model vote breaks a tie.",
+ "run_at": "2026-08-18T23:59:08Z",
+ "sample": "ai-causation-2026-08.sample.json",
+ "score": {
+  "deepseek/deepseek-chat": {
+   "per_stratum": {
+    "A_positive": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 55,
+     "tn": 35,
+     "tp": 20
+    },
+    "B_hard_negative": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 70,
+     "tn": 65,
+     "tp": 5
+    },
+    "C_plain_negative": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 50,
+     "tn": 50,
+     "tp": 0
+    }
+   },
+   "precision": [
+    1.0,
+    0.7906468769256556,
+    1.0
+   ],
+   "recall": [
+    1.0,
+    0.7906468769256556,
+    1.0
+   ],
+   "totals": {
+    "fn": 0,
+    "fp": 0,
+    "judged": 175,
+    "tn": 150,
+    "tp": 25
+   },
+   "weights": {
+    "A_positive": 1.3714285714285714,
+    "B_hard_negative": 1.175,
+    "C_plain_negative": 34.84
+   }
+  },
+  "google/gemini-2.5-flash-lite": {
+   "per_stratum": {
+    "A_positive": {
+     "fn": 3,
+     "fp": 1,
+     "judged": 55,
+     "tn": 34,
+     "tp": 17
+    },
+    "B_hard_negative": {
+     "fn": 2,
+     "fp": 3,
+     "judged": 70,
+     "tn": 62,
+     "tp": 3
+    },
+    "C_plain_negative": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 50,
+     "tn": 50,
+     "tp": 0
+    }
+   },
+   "precision": [
+    0.8457123565158676,
+    0.6191726939573118,
+    0.9506410941612894
+   ],
+   "recall": [
+    0.8058981233243968,
+    0.5674513003830245,
+    0.9361215407500375
+   ],
+   "totals": {
+    "fn": 5,
+    "fp": 4,
+    "judged": 175,
+    "tn": 146,
+    "tp": 20
+   },
+   "weights": {
+    "A_positive": 1.3714285714285714,
+    "B_hard_negative": 1.175,
+    "C_plain_negative": 34.84
+   }
+  },
+  "openai/gpt-4.1-mini": {
+   "per_stratum": {
+    "A_positive": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 55,
+     "tn": 35,
+     "tp": 20
+    },
+    "B_hard_negative": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 70,
+     "tn": 65,
+     "tp": 5
+    },
+    "C_plain_negative": {
+     "fn": 0,
+     "fp": 0,
+     "judged": 50,
+     "tn": 50,
+     "tp": 0
+    }
+   },
+   "precision": [
+    1.0,
+    0.7906468769256556,
+    1.0
+   ],
+   "recall": [
+    1.0,
+    0.7906468769256556,
+    1.0
+   ],
+   "totals": {
+    "fn": 0,
+    "fp": 0,
+    "judged": 175,
+    "tn": 150,
+    "tp": 25
+   },
+   "weights": {
+    "A_positive": 1.3714285714285714,
+    "B_hard_negative": 1.175,
+    "C_plain_negative": 34.84
+   }
+  }
+ },
+ "spend_usd": 0.052689,
+ "strata_drawn": {
+  "A_positive": 70,
+  "B_hard_negative": 80,
+  "C_plain_negative": 50
+ },
+ "strata_population": {
+  "A_positive": 96,
+  "B_hard_negative": 94,
+  "C_plain_negative": 1742
+ },
+ "truncated": null,
+ "verdicts": {
+  "deepseek/deepseek-chat": {
+   "104969": false,
+   "104973": false,
+   "104975": false,
+   "107347": false,
+   "107357": false,
+   "107359": false,
+   "107369": false,
+   "107375": true,
+   "107429": false,
+   "107433": false,
+   "107435": false,
+   "107437": true,
+   "107441": false,
+   "107443": false,
+   "107445": false,
+   "107447": false,
+   "107451": false,
+   "107453": false,
+   "107455": false,
+   "107457": false,
+   "107459": true,
+   "107461": false,
+   "107463": false,
+   "107465": true,
+   "107467": true,
+   "107469": false,
+   "107473": false,
+   "107477": true,
+   "107479": true,
+   "107481": false,
+   "107483": false,
+   "107485": false,
+   "107487": false,
+   "107489": false,
+   "107491": true,
+   "107493": false,
+   "107495": false,
+   "107497": false,
+   "107499": false,
+   "107505": false,
+   "107507": false,
+   "107511": false,
+   "107513": false,
+   "107515": false,
+   "107517": false,
+   "107519": false,
+   "107525": false,
+   "107527": false,
+   "107529": false,
+   "107589": false,
+   "107595": false,
+   "107601": false,
+   "132815": true,
+   "132829": false,
+   "175789": false,
+   "175795": false,
+   "176353": false,
+   "176374": false,
+   "176414": false,
+   "176604": false,
+   "176659": false,
+   "176681": false,
+   "176687": true,
+   "176728": false,
+   "176750": false,
+   "176883": false,
+   "176884": true,
+   "176906": false,
+   "176915": true,
+   "176954": true,
+   "177022": false,
+   "177067": false,
+   "177078": false,
+   "177129": false,
+   "177162": false,
+   "177171": false,
+   "177181": false,
+   "177188": false,
+   "177224": false,
+   "177320": false,
+   "177401": true,
+   "177425": false,
+   "211": false,
+   "23081": false,
+   "23085": false,
+   "23088": false,
+   "23092": false,
+   "23101": false,
+   "23102": true,
+   "23104": false,
+   "23107": true,
+   "239": false,
+   "242": false,
+   "256": true,
+   "258": false,
+   "26454": false,
+   "26455": true,
+   "26462": false,
+   "26465": true,
+   "266": false,
+   "268": false,
+   "269": false,
+   "276": false,
+   "278": false,
+   "279": true,
+   "281": false,
+   "285": true,
+   "286": true,
+   "288": false,
+   "289": false,
+   "290": false,
+   "292": false,
+   "293": false,
+   "294": true,
+   "296": false,
+   "297": false,
+   "299": false,
+   "302": false,
+   "306": true,
+   "310": false,
+   "31078": true,
+   "311": false,
+   "316": true,
+   "318": false,
+   "319": false,
+   "322": false,
+   "323": true,
+   "334": false,
+   "363": false,
+   "36785": false,
+   "397": false,
+   "48817": false,
+   "48830": true,
+   "48842": false,
+   "48844": false,
+   "48887": false,
+   "48941": false,
+   "48943": false,
+   "49007": false,
+   "49034": false,
+   "49053": false,
+   "49074": false,
+   "49075": true,
+   "49078": true,
+   "49083": true,
+   "49084": true,
+   "49090": true,
+   "49092": false,
+   "49122": false,
+   "49129": false,
+   "49137": false,
+   "51765": true,
+   "54968": false,
+   "54973": true,
+   "54977": false,
+   "54982": false,
+   "54986": false,
+   "60572": false,
+   "60591": false,
+   "60600": false,
+   "60696": false,
+   "60710": false,
+   "60754": false,
+   "60756": false,
+   "60800": false,
+   "60820": false,
+   "60848": false,
+   "60854": false,
+   "60870": false,
+   "60876": false,
+   "60890": false,
+   "60906": false,
+   "61004": false,
+   "68412": false,
+   "68464": false,
+   "69997": false,
+   "70059": true,
+   "70107": false,
+   "70113": false,
+   "70131": false,
+   "70257": true,
+   "70293": false,
+   "70295": false,
+   "70297": false,
+   "70303": true,
+   "70307": false,
+   "70323": false,
+   "70327": false,
+   "70377": false,
+   "70383": false,
+   "70387": false,
+   "70447": false,
+   "70469": true,
+   "70475": false,
+   "70517": false,
+   "70653": false,
+   "70681": true,
+   "70683": false,
+   "70855": false,
+   "70872": false
+  },
+  "google/gemini-2.5-flash-lite": {
+   "104969": false,
+   "104973": false,
+   "104975": false,
+   "107347": false,
+   "107357": false,
+   "107359": false,
+   "107369": false,
+   "107375": false,
+   "107429": false,
+   "107433": false,
+   "107435": false,
+   "107437": true,
+   "107441": false,
+   "107443": false,
+   "107445": false,
+   "107447": false,
+   "107451": false,
+   "107453": false,
+   "107455": false,
+   "107457": false,
+   "107459": true,
+   "107461": false,
+   "107463": false,
+   "107465": false,
+   "107467": true,
+   "107469": false,
+   "107473": false,
+   "107477": true,
+   "107479": true,
+   "107481": false,
+   "107483": false,
+   "107485": false,
+   "107487": false,
+   "107489": false,
+   "107491": false,
+   "107493": false,
+   "107495": false,
+   "107497": true,
+   "107499": false,
+   "107505": false,
+   "107507": false,
+   "107511": false,
+   "107513": false,
+   "107515": false,
+   "107517": false,
+   "107519": true,
+   "107525": false,
+   "107527": false,
+   "107529": false,
+   "107589": false,
+   "107595": false,
+   "107601": false,
+   "132815": true,
+   "132829": false,
+   "175789": false,
+   "175795": false,
+   "176353": false,
+   "176374": false,
+   "176414": false,
+   "176604": false,
+   "176659": false,
+   "176681": false,
+   "176687": false,
+   "176728": false,
+   "176750": false,
+   "176883": false,
+   "176884": true,
+   "176906": false,
+   "176915": true,
+   "176954": true,
+   "177022": false,
+   "177067": false,
+   "177078": false,
+   "177129": false,
+   "177162": false,
+   "177171": false,
+   "177181": false,
+   "177188": false,
+   "177224": false,
+   "177320": false,
+   "177401": false,
+   "177425": false,
+   "211": false,
+   "23081": false,
+   "23085": false,
+   "23088": false,
+   "23092": false,
+   "23101": false,
+   "23102": true,
+   "23104": false,
+   "23107": true,
+   "239": false,
+   "242": false,
+   "256": true,
+   "258": false,
+   "26454": false,
+   "26455": false,
+   "26462": false,
+   "26465": false,
+   "266": false,
+   "268": false,
+   "269": false,
+   "276": false,
+   "278": true,
+   "279": true,
+   "281": false,
+   "285": true,
+   "286": false,
+   "288": false,
+   "289": false,
+   "290": false,
+   "292": false,
+   "293": true,
+   "294": true,
+   "296": false,
+   "297": false,
+   "299": false,
+   "302": false,
+   "306": true,
+   "310": false,
+   "31078": true,
+   "311": false,
+   "316": true,
+   "318": false,
+   "319": false,
+   "322": false,
+   "323": true,
+   "334": false,
+   "363": false,
+   "36785": false,
+   "397": false,
+   "48817": false,
+   "48830": true,
+   "48842": false,
+   "48844": false,
+   "48887": false,
+   "48941": false,
+   "48943": false,
+   "49007": false,
+   "49034": false,
+   "49053": false,
+   "49074": false,
+   "49075": true,
+   "49078": true,
+   "49083": true,
+   "49084": false,
+   "49090": false,
+   "49092": false,
+   "49122": false,
+   "49129": false,
+   "49137": false,
+   "51765": true,
+   "54968": true,
+   "54973": false,
+   "54977": false,
+   "54982": false,
+   "54986": false,
+   "60572": false,
+   "60591": false,
+   "60600": false,
+   "60696": false,
+   "60710": false,
+   "60754": false,
+   "60756": false,
+   "60800": false,
+   "60820": false,
+   "60848": false,
+   "60854": false,
+   "60870": false,
+   "60876": false,
+   "60890": false,
+   "60906": false,
+   "61004": false,
+   "68412": false,
+   "68464": false,
+   "69997": false,
+   "70059": true,
+   "70107": false,
+   "70113": false,
+   "70131": false,
+   "70257": true,
+   "70293": true,
+   "70295": false,
+   "70297": false,
+   "70303": true,
+   "70307": false,
+   "70323": false,
+   "70327": false,
+   "70377": false,
+   "70383": false,
+   "70387": false,
+   "70447": false,
+   "70469": false,
+   "70475": false,
+   "70517": false,
+   "70653": false,
+   "70681": true,
+   "70683": true,
+   "70855": false,
+   "70872": false
+  },
+  "openai/gpt-4.1-mini": {
+   "104969": false,
+   "104973": false,
+   "104975": false,
+   "107347": false,
+   "107357": false,
+   "107359": false,
+   "107369": false,
+   "107375": false,
+   "107429": false,
+   "107433": false,
+   "107435": false,
+   "107437": true,
+   "107441": false,
+   "107443": false,
+   "107445": false,
+   "107447": false,
+   "107451": false,
+   "107453": false,
+   "107455": false,
+   "107457": false,
+   "107459": false,
+   "107461": false,
+   "107463": false,
+   "107465": false,
+   "107467": true,
+   "107469": true,
+   "107473": false,
+   "107477": false,
+   "107479": false,
+   "107481": true,
+   "107483": false,
+   "107485": false,
+   "107487": false,
+   "107489": false,
+   "107491": true,
+   "107493": false,
+   "107495": false,
+   "107497": false,
+   "107499": false,
+   "107505": false,
+   "107507": false,
+   "107511": false,
+   "107513": false,
+   "107515": false,
+   "107517": false,
+   "107519": true,
+   "107525": false,
+   "107527": false,
+   "107529": false,
+   "107589": false,
+   "107595": false,
+   "107601": false,
+   "132815": true,
+   "132829": false,
+   "175789": false,
+   "175795": false,
+   "176353": false,
+   "176374": false,
+   "176414": false,
+   "176604": false,
+   "176659": false,
+   "176681": false,
+   "176687": true,
+   "176728": false,
+   "176750": false,
+   "176883": false,
+   "176884": true,
+   "176906": false,
+   "176915": true,
+   "176954": false,
+   "177022": false,
+   "177067": false,
+   "177078": false,
+   "177129": false,
+   "177162": false,
+   "177171": false,
+   "177181": false,
+   "177188": true,
+   "177224": false,
+   "177320": false,
+   "177401": false,
+   "177425": false,
+   "211": false,
+   "23081": false,
+   "23085": false,
+   "23088": false,
+   "23092": false,
+   "23101": false,
+   "23102": true,
+   "23104": false,
+   "23107": true,
+   "239": false,
+   "242": false,
+   "256": true,
+   "258": false,
+   "26454": false,
+   "26455": false,
+   "26462": false,
+   "26465": true,
+   "266": false,
+   "268": false,
+   "269": false,
+   "276": false,
+   "278": false,
+   "279": true,
+   "281": false,
+   "285": true,
+   "286": false,
+   "288": false,
+   "289": false,
+   "290": false,
+   "292": false,
+   "293": false,
+   "294": true,
+   "296": false,
+   "297": false,
+   "299": false,
+   "302": false,
+   "306": false,
+   "310": false,
+   "31078": true,
+   "311": false,
+   "316": true,
+   "318": false,
+   "319": false,
+   "322": false,
+   "323": true,
+   "334": false,
+   "363": false,
+   "36785": false,
+   "397": false,
+   "48817": false,
+   "48830": false,
+   "48842": false,
+   "48844": true,
+   "48887": false,
+   "48941": false,
+   "48943": false,
+   "49007": false,
+   "49034": false,
+   "49053": false,
+   "49074": false,
+   "49075": true,
+   "49078": true,
+   "49083": true,
+   "49084": true,
+   "49090": false,
+   "49092": false,
+   "49122": false,
+   "49129": false,
+   "49137": false,
+   "51765": false,
+   "54968": false,
+   "54973": false,
+   "54977": false,
+   "54982": false,
+   "54986": false,
+   "60572": false,
+   "60591": false,
+   "60600": false,
+   "60696": false,
+   "60710": false,
+   "60754": false,
+   "60756": false,
+   "60800": true,
+   "60820": false,
+   "60848": false,
+   "60854": false,
+   "60870": false,
+   "60876": false,
+   "60890": false,
+   "60906": false,
+   "61004": false,
+   "68412": false,
+   "68464": false,
+   "69997": true,
+   "70059": true,
+   "70107": false,
+   "70113": false,
+   "70131": false,
+   "70257": true,
+   "70293": true,
+   "70295": false,
+   "70297": false,
+   "70303": true,
+   "70307": false,
+   "70323": false,
+   "70327": false,
+   "70377": false,
+   "70383": false,
+   "70387": false,
+   "70447": false,
+   "70469": true,
+   "70475": false,
+   "70517": false,
+   "70653": true,
+   "70681": false,
+   "70683": true,
+   "70855": false,
+   "70872": false
+  }
+ },
+ "version": 1
+}

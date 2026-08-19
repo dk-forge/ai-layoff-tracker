@@ -93,8 +93,20 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
    comment "AI-causation is correctness-critical". The consequence is real: the
    2026-08-07 swap to flash-lite was validated on a news-EXTRACTION gold set and
    moved the AI-causation classifier with it. The env var is also set in no
-   workflow, so it runs on its default everywhere. Decide which behaviour is
-   intended before trusting either. WARN notices skip the LLM: `warn_import.py` scrapes
+   workflow, so it runs on its default everywhere. **That coupling is now
+   MEASURED and the answer is UNKNOWN, leaning benign** (2026-08-18,
+   `railway/ab_ai_causation.py`, $0.0527): against an independent referee the
+   candidate and the pre-swap incumbent are indistinguishable (88.0% vs 87.5%,
+   overlapping intervals) and flash-lite does NOT over-call AI -- it flags 35 of
+   200 against the incumbent's 40, and none of the 50 plain negatives. But 25
+   rows have no label because the two labellers disagreed, and 9 more are
+   labelled only by two models agreeing against the candidate's objection. Until
+   somebody reads `docs/recall-reference-sets/ai-causation-2026-08.review.md`
+   (34 rows, ~20 min) every figure above is a reading of the easy 87.5% of the
+   corpus. **Do not quote a precision or recall number for `ai_explicit` from
+   that run, and do not move a production model on it.**
+   `python3 railway/ab_ai_causation.py --rescore` folds the rulings in and
+   spends nothing. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 9AM ET GitHub cron, `0 13 * * *`).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental
