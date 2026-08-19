@@ -225,6 +225,76 @@ def _render(triple):
 
 
 # ---------------------------------------------------------------------------
+# Reading the hand-edited answer key
+# ---------------------------------------------------------------------------
+
+#: A recommendation is PARKED under this prefix until a human confirms it.
+#:
+#: On 2026-08-19 a session applied the written rubric to the 34 open rows and
+#: produced 33 rulings. Good work, and not an answer key: a rubric APPLIED BY A
+#: MODEL is still a model's reading, and this gold set exists precisely because
+#: model consensus cannot stand in for truth. The first draft wrote them as
+#: live `id: bool` entries with a `_status: RECOMMENDATION` field next to them
+#: — but `_status` is a sentence a human reads, and `--rescore` is free, calls
+#: nothing and prints a confident-looking score. Any later session running it
+#: for an unrelated reason would have folded 33 unconfirmed model rulings into
+#: the one measurement in this repo that is supposed to be human-anchored, and
+#: nothing in the output would have said so.
+#:
+#: So the guard is structural, not advisory. `rec:70293` cannot reach the
+#: score, because the parser does not read it as a ruling. Confirming is still
+#: one edit — strip the prefix — and until someone does, every run SAYS how
+#: many are parked. A parked ruling nobody can see is its own trap: the next
+#: session must learn there is pending work, not find an empty file. UNKNOWN is
+#: a state to report, not a silence.
+PARKED_PREFIX = "rec:"
+
+
+def read_adjudications(path):
+    """Split the hand-edited adjudications file three ways.
+
+    Returns ``(rulings, parked, skipped)``:
+
+    * ``rulings``  — ``{row_id: bool}``, the calls a human has confirmed. These
+      and only these become gold labels.
+    * ``parked``   — ``[row_id]`` carried under `PARKED_PREFIX`: a recommendation
+      awaiting confirmation. Scored NOWHERE, reported LOUDLY.
+    * ``skipped``  — keys that are neither: the readme, a comment, a typo, a
+      ruling whose value is not a bool. Named rather than swallowed, so one
+      stray line cannot silently discard the file around it.
+
+    Parsed per KEY, never as one comprehension over the file. It is hand-edited.
+    """
+    if not path.exists():
+        return {}, [], []
+    try:
+        raw = json.loads(path.read_text())
+    except ValueError as exc:
+        print(f"::warning::could not read {path}: {exc}")
+        return {}, [], []
+    rulings, parked, skipped = {}, [], []
+    for key, value in (raw or {}).items():
+        name = key if isinstance(key, str) else str(key)
+        if name.startswith(PARKED_PREFIX):
+            body = name[len(PARKED_PREFIX):].strip()
+            if isinstance(value, bool) and body.lstrip("-").isdigit():
+                parked.append(int(body))
+            else:
+                skipped.append(name)
+            continue
+        try:
+            row_id = int(name)
+        except (TypeError, ValueError):
+            skipped.append(name)
+            continue
+        if isinstance(value, bool):
+            rulings[row_id] = value
+        else:
+            skipped.append(name)
+    return rulings, sorted(parked), skipped
+
+
+# ---------------------------------------------------------------------------
 # The review file — the only thing that asks for a human
 # ---------------------------------------------------------------------------
 
@@ -411,35 +481,26 @@ def main(argv=None):
         else:
             disagree.append(dict(item, votes={a: va, b: vb}))
 
-    adjudications = {}
-    if ADJUDICATION_PATH.exists():
-        try:
-            raw_adj = json.loads(ADJUDICATION_PATH.read_text())
-        except ValueError as exc:
-            print(f"::warning::could not read {ADJUDICATION_PATH}: {exc}")
-            raw_adj = {}
-        skipped = []
-        for key, value in (raw_adj or {}).items():
-            # Per KEY, not one comprehension over the file: this is hand-edited,
-            # and one stray line must not silently discard every ruling in it.
-            # Keys that are not row ids (the note the stub ships with, a comment
-            # somebody typed) are skipped and NAMED.
-            try:
-                row_id = int(key)
-            except (TypeError, ValueError):
-                skipped.append(key)
-                continue
-            if isinstance(value, bool):
-                adjudications[row_id] = value
-            else:
-                skipped.append(key)
-        if skipped:
-            print(f"::notice::{ADJUDICATION_PATH.name}: ignored "
-                  f"{len(skipped)} non-ruling key(s) "
-                  f"({', '.join(map(str, skipped[:6]))}). A ruling is a row id "
-                  f"mapped to true or false; anything else is not read, and "
-                  f"the rows it meant stay UNADJUDICATED rather than "
-                  f"defaulting.")
+    adjudications, parked, skipped = read_adjudications(ADJUDICATION_PATH)
+    if skipped:
+        print(f"::notice::{ADJUDICATION_PATH.name}: ignored "
+              f"{len(skipped)} non-ruling key(s) "
+              f"({', '.join(map(str, skipped[:6]))}). A ruling is a row id "
+              f"mapped to true or false; anything else is not read, and "
+              f"the rows it meant stay UNADJUDICATED rather than "
+              f"defaulting.")
+    if parked:
+        # Loud on purpose, and printed BEFORE any score. A run that quietly
+        # ignored these would teach the next session that the queue is empty.
+        print(f"\n::notice::{ADJUDICATION_PATH.name}: {len(parked)} PARKED "
+              f"RECOMMENDATION(S), CONFIRMED BY NOBODY, SCORED NOWHERE. Rows "
+              f"{', '.join(map(str, parked[:8]))}"
+              f"{' ...' if len(parked) > 8 else ''}. They are a model's "
+              f"reading of the written rubric, not a human's call, so they "
+              f"contribute ZERO gold labels to everything below. Read "
+              f"docs/recall-reference-sets/"
+              f"ai-causation-2026-08.recommendations.md; to confirm, strip the "
+              f"'{PARKED_PREFIX}' prefix from the rows you agree with.")
     human_ids = set()
     for item in items:
         if item["id"] in adjudications:
@@ -462,7 +523,9 @@ def main(argv=None):
           f"({len(gold) - len(human_ids)} by labeller agreement, "
           f"{len(human_ids)} adjudicated by the owner)")
     print(f"awaiting the owner: {len(still_open)} disagreement(s) "
-          f"+ {len(candidate_objections)} optional candidate objection(s)")
+          f"+ {len(candidate_objections)} optional candidate objection(s)"
+          + (f" + {len(parked)} parked recommendation(s) awaiting confirmation"
+             if parked else ""))
     if unread:
         print(f"UNKNOWN (a labeller could not be read): {len(unread)} item(s) — "
               f"no gold label, scored nowhere")
@@ -547,6 +610,9 @@ def main(argv=None):
                    f"{len(still_open)} row(s) have no label at all and "
                    f"{len(candidate_objections)} model-agreed label(s) the "
                    f"candidate disputes are unread by a human")
+        if parked:
+            verdict += (f" ({len(parked)} of them have a PARKED recommendation "
+                        f"waiting for confirmation, which is not a label)")
     print(f"\nVERDICT ON THE 2026-08-07 SWAP: {verdict}")
     print("Nothing here changes a production model. That is the owner's call.")
 
@@ -573,6 +639,10 @@ def main(argv=None):
             "gold_by_human": len(human_ids),
             "awaiting_human_required": len(still_open),
             "awaiting_human_optional": len(candidate_objections),
+            # Recommendations a model wrote against the rubric and no human has
+            # confirmed. Recorded so the artifact carries the pending work
+            # rather than only its absence from the labels.
+            "parked_recommendations": len(parked),
             "unknown_unreadable": len(unread),
         },
         # A re-score makes no call, so THIS process spent nothing. Reporting

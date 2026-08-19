@@ -6,6 +6,7 @@
   "gold_by_agreement": 175,
   "gold_by_human": 0,
   "items": 200,
+  "parked_recommendations": 33,
   "unknown_unreadable": 0
  },
  "labellers": [
@@ -3198,7 +3199,7 @@
    }
   }
  },
- "rescored_at": "2026-08-19T00:02:37Z",
+ "rescored_at": "2026-08-19T01:48:20Z",
  "rule": "gold = the two labellers agreeing, or the owner's adjudication where they did not. No third model vote breaks a tie.",
  "run_at": "2026-08-18T23:59:08Z",
  "sample": "ai-causation-2026-08.sample.json",

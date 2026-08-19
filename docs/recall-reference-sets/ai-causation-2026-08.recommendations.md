@@ -6,10 +6,22 @@ and nothing else. No model was asked to break a tie, no labeller vote was
 consulted, no paid call was made. Your job here is *read and confirm*, not read
 and decide.
 
-Rulings live in `ai-causation-2026-08.adjudications.json`, marked
-`_status: RECOMMENDATION`. Confirm by setting `_status`/`_confirmed_by`; flip
-any row by changing its `true`/`false`; send a row back to UNADJUDICATED by
-deleting its line. Then `python3 railway/ab_ai_causation.py --rescore`.
+Rulings live in `ai-causation-2026-08.adjudications.json`, **parked** under a
+`rec:` prefix. The prefix is a guard, not a label: `read_adjudications()` does
+not see a `rec:` key as a ruling, so **a `--rescore` run today folds in zero of
+them** — coverage stays 175 of 200 and the verdict stays UNKNOWN. Every run
+prints how many are parked, so the next session finds pending work rather than
+an empty file. `railway/tests/test_adjudication_parking.py` pins it.
+
+**To confirm a row**, strip its prefix — `"rec:70293": true` becomes
+`"70293": true`. **To disagree**, flip its `true`/`false` first. **To send it
+back to unadjudicated**, delete the line. **To confirm the lot in one edit:**
+
+```bash
+sed -i '' 's/"rec:/"/' docs/recall-reference-sets/ai-causation-2026-08.adjudications.json
+# then set "_confirmed_by" to your name, and:
+python3 railway/ab_ai_causation.py --rescore
+```
 
 ---
 
@@ -135,6 +147,17 @@ press-attributed-without-company is the normal shape of an AI layoff story.
 
 **Rule it once, in `#m-ai`, and this stops being a judgement call.**
 
+**Either answer is one edit here.** If you rule *the employer must say it*: flip
+`rec:107481` (GoKwik) and `rec:107491` (Snowflake) to `false`, and 107375 (GM)
+stays out — it was press-only too. If you rule *the source text suffices*:
+confirm those two as they stand, and GM still needs its own separate answer,
+because its question survives yours. Either way it is two characters and the
+class is settled.
+
+The 13 rulings that disagree with a stored live value (below) **also wait on
+this**, since it may change several of them. Nothing has been queued for
+correction.
+
 ## A caveat on what was judged
 
 The gold set judges the **stored snippet**, not the underlying article. For a few
@@ -147,8 +170,11 @@ it, not an adjudication.
 
 ## Live rows this exercise says are worth a separate look
 
-**Change nothing on the live site from this file.** `/edit` sets `edited=1`,
-rewrites the dedup hash and publishes to the public corrections log.
+**Change nothing on the live site from this file, and nothing is queued.**
+`/edit` sets `edited=1`, rewrites the dedup hash and publishes to the public
+corrections log, so a wrong write there is expensive and public. Seven of the
+thirteen below would flip a row **into** the AI count — the number this product
+is named after. They wait for the speaker ruling first.
 
 - **id 292 — Tata Consultancy Services, `ai_explicit=1`, `contributing_cause`.** Not one
   of the 34 (all three models agreed it is not AI). Its stored text is *"Tata
@@ -168,11 +194,12 @@ rewrites the dedup hash and publishes to the public corrections log.
 
 ## Provisional scores — what `--rescore` returns IF these stand
 
-Run with the recommendations in place, then the scored artifacts
-(`goldset.json`, `review.md`) were **reverted**, so nothing on disk yet claims a
-human adjudicated anything. These numbers are provisional in the strict sense:
-they describe a gold set that does not exist until you confirm it. No model was
-called; `$0.00` was spent.
+These were measured once, by hand, with the rulings temporarily un-parked, and
+then the artifacts were reverted. **Nothing on disk can reproduce them
+automatically** — that is deliberate. `goldset.json` carries `labels` for 175
+rows and `parked_recommendations: 33`, and a `--rescore` today prints the 175-row
+score, not this one. These numbers describe a gold set that does not exist until
+you confirm it. No model was called; `$0.00` was spent.
 
 Gold coverage would go from **175 rows (all by two models agreeing, 0 human)** to
 **199 of 200** — 166 by agreement, 33 by adjudication, 1 (GM) still open.
