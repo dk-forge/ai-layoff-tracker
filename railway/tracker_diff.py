@@ -725,6 +725,13 @@ LEARN_QUIET_RUNS = max(2, int(os.environ.get("TRACKER_LEARN_QUIET_RUNS", "3")))
 # The measurement method is versioned so a trend line can never silently splice
 # two different definitions of the same percentage.
 LEARN_METHOD = "m4"
+# Every method tag this file has ever emitted. A version bump does not rewrite
+# history — that's the whole point, so a splice can never hide as more data on
+# one definition — so old rows sit in the committed state forever with their
+# original tag. The nameless allowlist has to recognize all of them, not just
+# the current one, or the very first run after a bump fails to write its own
+# state because a row from BEFORE the bump no longer validates.
+_LEARN_METHOD_VERSIONS = frozenset({"m2", "m4", LEARN_METHOD})
 
 RULE_KINDS = ("vocabulary", "outlet", "country_edition", "language")
 # Minimum unmatched articles before a rule is worth the owner's attention. An
@@ -749,9 +756,9 @@ class LeakGuard(RuntimeError):
 
 # Every string any public sink is allowed to contain. Not a filter over free
 # text — an allowlist of the whole vocabulary. A name cannot be spelled with it.
-_PUBLIC_WORDS = frozenset(RULE_KINDS) | frozenset({
+_PUBLIC_WORDS = frozenset(RULE_KINDS) | _LEARN_METHOD_VERSIONS | frozenset({
     "learn", "ok", "degraded", "unknown", "pass", "fail",
-    "daily", "weekly", "quiet", "skipped", "ran", LEARN_METHOD,
+    "daily", "weekly", "quiet", "skipped", "ran",
 })
 _PUBLIC_KEYS = frozenset(RULE_KINDS) | frozenset({
     "date", "method", "mode", "cadence", "window_hours", "corpus", "candidates",

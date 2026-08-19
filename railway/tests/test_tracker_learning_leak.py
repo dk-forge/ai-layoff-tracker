@@ -393,6 +393,23 @@ class PoisonedRunTests(unittest.TestCase):
         self.assertNotIn("rules", point)
         self.assertTrue(td.learn_today([point] * 5, date(2026, 8, 18)))
 
+    def test_a_row_written_under_a_retired_method_tag_still_writes(self):
+        # A method bump does not rewrite history (that's the point: a rename
+        # must never look like more data on the same definition), so a row
+        # committed under a PRIOR LEARN_METHOD sits in the file forever. The
+        # nameless allowlist must still recognize that old tag, or the very
+        # first run after a bump can never write its own state again — it
+        # always carries the old row forward and assert_nameless rejects it.
+        with open(td.LEARN_STATE_PATH, "w") as fh:
+            json.dump({"history": [{"date": "2026-08-17", "method": "m2",
+                                    "state": "unknown"}]}, fh)
+        gdelt._query_window = lambda *a, **k: (None, True, "HTTP 429")
+        facts, _ = self._run()          # must not raise LeakGuard
+        self.assertEqual(facts["state"], "unknown")
+        with open(td.LEARN_STATE_PATH) as fh:
+            history = json.load(fh)["history"]
+        self.assertEqual([h["method"] for h in history], ["m2", td.LEARN_METHOD])
+
     def test_only_the_anchor_slice_is_measured_but_both_teach(self):
         """The rotating slice must not enter the recall denominator, or the
         number swings on which words came up rather than on our coverage."""
