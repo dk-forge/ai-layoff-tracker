@@ -94,6 +94,136 @@ while they do: a reader filtering by country now finds the Google row under the
 United States as an American company's cut, with its job-location column still
 honestly empty, rather than not finding it at all.
 
+## 2026-08-19 - the digest said "in 17 to 18 August 2026", and printed the place as "KY"
+
+### What the owner sent back
+
+Four complaints, and three of them had already been worked on by earlier
+sessions. Re-reading the render rather than the diff is what found the rest.
+
+1. **"On the title put the date it's going out."** Already done, and verified
+   here rather than assumed. `alt_digest_send()` composes the window as
+   `from = today - N days`, `to = gmdate('Y-m-d')`, so the `to` the subject
+   carries IS the send date. Both senders agree on it, which
+   `test_digest_subject_agreement.py` holds.
+2. **"2026 so far should be YTD 2026."** Already done. The heading is
+   `YTD 2026`, in both tracker sections, and no "so far" string survives
+   anywhere in `subscribe.php`.
+3. **"This doesn't make sense how it is - dates, locations, countries."** Not
+   done, and this was the real work. See below.
+4. **"Cite this - broken."** The markup had been repaired; the CONTENT had
+   not. See below.
+
+### The dates
+
+`alt_digest_date_range()` returns a LABEL: "17 to 18 August 2026". In front of
+a caption that is right. Dropped after a preposition it is not English, and it
+went out five times in one send:
+
+    All 8 entries in 17 to 18 August 2026 are verified
+    No verified job cuts worldwide in 17 to 18 August 2026 carry ...
+    1 of the 5 companies listed for 17 to 18 August 2026 links ...
+    These lines cover 386 of the 675 verified job cuts in 17 to 18 August 2026.
+    ... we classified by industry in 17 to 18 August 2026.
+
+`alt_digest_span_phrase()` is the other form and carries its own preposition:
+`on 18 August 2026`, `on 17 and 18 August 2026`, `between 11 and 18 August
+2026`. The two-day case is not a flourish - a daily digest covers exactly two
+dates, so it is the shape most subscribers see, and nothing lies *between* two
+consecutive days.
+
+There was also a SECOND date format. `alt_digest_short_date()` printed
+"18 Aug 2026" inside the biggest-cuts table, two lines under a caption reading
+"17 to 18 August 2026". That function is deleted, not merely unused: every date
+a reader meets now comes from `alt_digest_date_range`.
+
+### The locations and the countries
+
+The delivered row read:
+
+    RNDC of Kentucky, LLC (KY, takes effect 17 Aug 2026)
+
+`leaders[]` carries `state`, `country` AND `location`, and the composer printed
+`location`, which for a WARN notice is the postal code and nothing else. So the
+biggest-cuts table said "KY" while the country table two blocks below said
+"United States": one email, one place, two vocabularies, one of them readable
+only to an American.
+
+`alt_digest_place()` expands the code through `alt_us_state_names()`, api.php's
+single definition and the source of the state page slugs, then names the
+country. Three cases the live data really contains:
+
+| stored | printed |
+|---|---|
+| state `KY`, country `United States` | Kentucky, United States |
+| state `CA`, country `Multiple countries` | California, plus other countries |
+| nothing at all | location not recorded |
+
+"Multiple countries" is a bucket, not a country, and appended to a state it
+produced "California, Multiple countries", which is not a place anybody lives.
+The empty case is STATED. Around a third of verified job cuts sit on entries
+with no country recorded, the headline already says so, and a silent row let a
+reader assume the place was obvious.
+
+The qualifiers also moved OUT of the anchor. The whole label used to be the
+link text, so a phone showed three underlined lines of blue and a screen reader
+announced the parenthesis as the destination's name.
+
+### The citation
+
+The markup was fixed on 2026-08-18 (a real `h3`, the URL on its own line). The
+content was still wrong in two ways, both only visible in a render.
+
+The last-modified stamp arrived from `alt_data_last_updated_label()` as
+"Aug 18, 2026 · 2:22 PM EDT". That is right for a web page and it was a THIRD
+date format inside this email, in the one block whose whole job is to be pasted
+into somebody else's article. `alt_digest_data_cut_label()` reads the same
+option and renders "18 August 2026 at 18:22 UTC". It also carries the api.php
+label as its fallback, in ONE place, so the sentence under the headline and the
+citation at the foot can never disagree about whether we have a stamp.
+
+The stamp is now IN the reference string rather than in a sentence after it,
+which is what Chicago and APA actually ask for, and the access date carries a
+clock. Ingest finishes near 22:00 UTC and the send runs at 13:10 UTC, so the
+figures are about fifteen hours old when they land, and a bare date implied
+otherwise. The same two facts are also stated directly under the headline,
+because the citation is the block a general reader never reaches:
+
+    The database last changed 18 August 2026 at 18:22 UTC. This digest was
+    composed 19 August 2026 at 00:00 UTC, and every figure in it is the
+    snapshot taken then.
+
+The talent section now carries a citation of its own, with NO as-of stamp,
+because the talent endpoints publish no last-write and borrowing the layoff
+tracker's would be a lie about a separate database.
+
+### One more agreement error, found in the same render
+
+    From 185 companies, 17 to 18 August 2026. 1 of the 186 are verified
+    against primary documents.
+
+The verb agreed with the TOTAL rather than with the count in front of it. The
+verified count is one on most days, so this was the sentence a sceptical reader
+met most often.
+
+### The harness was kinder than production, twice
+
+`digest_compose_harness.php` keyed talent fixtures on the window alone, so the
+`/query` call got the `/aggregate` payload and the ranked list could never be
+rendered at all. Its `get_posts()` ignored the `date_query`, so a render could
+print "12 posts we published on 17 and 18 August 2026" over a list spanning two
+months. Both now behave like the functions they stand in for. It also lifts
+`alt_us_state_names()` out of api.php at load rather than copying the array,
+because a list whose whole point is that there is one of it must not acquire a
+second copy in a fixture.
+
+### Verified
+
+Rendered against LIVE `/aggregate`, `/talent/v1/*` and `/wp/v2/posts` for both
+tiers, and read at 375px and at desktop width. No horizontal overflow, no
+clipped figure, one date format throughout. Every URL the email prints was
+fetched: the tracker page, the talent tracker page and an entry permalink all
+return 200 with a browser user agent.
 ## 2026-08-18 - a correctly labelled feed that still collects nothing (2.20.92)
 
 Earlier the same day, `economynext_lk` was reclassified from `broke` to
