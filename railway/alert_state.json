@@ -16,8 +16,13 @@
       "first": 1787153537,
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
+    },
+    "tests:main:7ba8f6d0b4896be7": {
+      "first": 1787160285,
+      "last": 1787160285,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-08-19T15:41:15+00:00",
+  "updated_at": "2026-08-19T17:24:46+00:00",
   "version": 1
 }
