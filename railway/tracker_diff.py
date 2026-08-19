@@ -663,9 +663,6 @@ def main(argv=None):
         raise
 
 
-if __name__ == "__main__":
-    sys.exit(main())
-
 
 # ===========================================================================
 # LEARNING MODE — the competitor-free half of this machine
@@ -1226,3 +1223,13 @@ def learn_run(today=None):
     print("tracker-learn:", line)
     report_source_health("tracker_diff", "ok", 0, "learning run: " + line)
     return facts
+
+
+# The entry point lives at the END of the module, not in the middle of it.
+# It sat above the learning block for one run and `python tracker_diff.py
+# --learn` died with `NameError: learn_run is not defined`: the guard executes
+# during module import, so everything it can call has to be defined above it.
+# Nothing local caught this because a test imports the module and never runs
+# the guard.
+if __name__ == "__main__":
+    sys.exit(main())

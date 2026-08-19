@@ -103,6 +103,22 @@ class NamelessGuardTests(unittest.TestCase):
         self.assertIn("matched 3", td.public_render({"matched": 3, "rules": 0}))
 
 
+class EntryPointTests(unittest.TestCase):
+    """The guard that a test which only IMPORTS the module cannot give you."""
+
+    def test_the_main_guard_is_the_last_thing_in_the_file(self):
+        # `--learn` shipped once with `if __name__ == "__main__"` sitting above
+        # the learning block, and the first run on a runner died with
+        # `NameError: learn_run is not defined` — the guard executes during
+        # import, so everything callable from it must be defined above it.
+        # Every test here imports the module and never runs the guard, which is
+        # exactly why none of them caught it.
+        src = (Path(__file__).resolve().parents[1] / "tracker_diff.py").read_text()
+        self.assertEqual(src.count('if __name__ == "__main__":'), 1)
+        for name in ("def run(", "def main(", "def learn_run("):
+            self.assertLess(src.index(name), src.index('if __name__ =='), name)
+
+
 class HeadlineReadingTests(unittest.TestCase):
     def test_headcount_forms(self):
         self.assertEqual(td.headline_jobs("Acme to cut 1,200 jobs"), 1200)
