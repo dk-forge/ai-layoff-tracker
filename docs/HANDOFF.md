@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.104.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change writes the owner's **AI-skills-swap
+  ruling** into the one place a reader can check it: cuts made in order to hire
+  people with stronger AI skills do not earn the strict tag, because the test is
+  whether the work went away or the required skill changed. Row 107375 (General
+  Motors) is `false`. Plugin files touched: `templates/page-methodology.php` (four
+  sentences added to `#m-ai`, beside the speaker rule from 2.20.102) and
+  `ai-layoff-tracker.php` (version only). Rest is the `ai-causation-2026-08`
+  adjudications/goldset/review/recommendations and TECHLOG. **No live row was
+  edited and nothing is queued**, though GM is stored live as `ai_explicit=1`, so
+  the stored-value disagreement list is now eleven rows rather than ten. **The six
+  parked speaker rows stay parked; the harness verdict on the 2026-08-07 swap is
+  still UNKNOWN.** **Next plugin release is 2.20.105.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.102.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. The change writes the owner's **speaker

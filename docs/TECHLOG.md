@@ -1,5 +1,66 @@
 # Tech Log
 
+## 2026-08-19 - the "AI skills swap" is restructuring, not an AI layoff (2.20.104)
+
+**The open question.** The speaker ruling earlier the same day settled who has
+to say AI. It could not settle 107375 (General Motors), because GM's own words
+name AI: GM cut hundreds of IT workers in order to hire people with stronger AI
+skills. Nobody was replaced by a machine. The rubric's inclusion test
+("explicitly says AI caused the cuts") arguably caught it and its exclusion list
+("a general AI strategy is not causal") arguably did not exclude it, so two
+honest readings of the same written words disagreed and the row was held out of
+the gold set entirely, scored nowhere.
+
+**The ruling (the owner's, 2026-08-19): NO. 107375 is `false`.** The test he
+accepted, and the reason it is written down rather than recorded as a verdict:
+**did the work go away, or did the required skill change?** If a system now does
+the work, that is an AI layoff. If the same work still needs doing by different
+people, that is restructuring. GM is the second. The IT work continued; only the
+skill profile demanded of the people doing it changed.
+
+**Where it is written.** Methodology `#m-ai`, beside the speaker rule that
+landed at 2.20.102, in four short sentences a journalist can check. Leaving it
+in a JSON comment would have repeated exactly the defect the speaker question
+exposed: a rule derived across three files and stated in none. The reasoning is
+also on the entry itself, in `_the_ruling_skill_swap` in
+`ai-causation-2026-08.adjudications.json`, so the ruling and its ground travel
+together.
+
+**What it did to the measurement.** Gold coverage goes 193 -> 194 of 200.
+Production `google/gemini-2.5-flash-lite` reads precision 78.5%
+(CI 57.2-91.6%) and recall 78.1% (CI 56.3-91.5%), both unchanged: the candidate
+already read GM as not AI. The pre-swap incumbent read it as AI, so its
+precision falls 75.8% -> 73.7% (CI 53.9-87.9%) on that one row. The fair
+head-to-head on adjudicated rows becomes referee 17/28, incumbent 14/28,
+candidate 14/28. One row is not evidence about a model.
+
+**THE VERDICT ON THE 2026-08-07 SWAP IS STILL UNKNOWN, and GM did not settle
+it.** Six rows carry no label at all: 70293 Snap, 70653 TikTok, 54973
+Microsoft/MSN, 48830 Suncor, 70683 ByteDance/TikTok, 70681 TikTok. All six are
+labeller disagreements, so nothing scores them, and all six are parked under
+`rec:` rather than confirmed, because five are stored live as `ai_explicit=1`
+and confirming them puts five rows on the corrections worklist for the number
+this product is named after. That is a separate decision the owner has not made.
+Six unlabelled rows is a legitimate UNKNOWN and must not be rounded to a pass.
+
+**One live row moved onto the disagreement list, and nothing was written.** GM
+is stored live as `ai_explicit=1`, so the stored-value disagreement list goes
+from ten rows to eleven, on the "out of the AI count" side. Nothing is queued.
+No `/edit` was called. `/edit` sets `edited=1`, rewrites the dedup hash and
+publishes to the public corrections log, so a wrong write there is expensive and
+public.
+
+**The parking guard was verified, not assumed.**
+`test_a_parked_recommendation_is_reported_not_swallowed` hard-codes row 70293
+and is not gated on `_confirmed_by`, unlike its two siblings, so it passes only
+while 70293 happens to still be parked. This change keeps it parked and the test
+still passes, checked rather than reasoned about. The known defect is unchanged
+and still recorded in `_the_guard`: whoever confirms the last six must gate that
+test like its siblings rather than re-park a row to satisfy it.
+
+**Cost: $0.00.** `--rescore` folds rulings into verdicts a previous run already
+committed. No model was called.
+
 ## 2026-08-19 - `ai_explicit` never said whose statement counts, and three files pointed three ways (2.20.102)
 
 **The defect.** `ai_explicit` is the field this product is named after, and in

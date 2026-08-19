@@ -1,6 +1,6 @@
 # AI causation — rows that need the owner's eye
 
-Built 2026-08-19T04:33:53Z by `railway/ab_ai_causation.py` over `docs/recall-reference-sets/ai-causation-2026-08.sample.json`.
+Built 2026-08-19T05:26:09Z by `railway/ab_ai_causation.py` over `docs/recall-reference-sets/ai-causation-2026-08.sample.json`.
 
 ## How to use this file
 
@@ -8,11 +8,11 @@ Read the TEXT. The only question is: **does this text explicitly say AI, automat
 
 Write your call into `docs/recall-reference-sets/ai-causation-2026-08.adjudications.json` as `{"<id>": true|false}` — `true` means the text supports `ai_explicit`. Anything you leave out stays UNADJUDICATED and is scored nowhere; it is never quietly defaulted.
 
-**Section 1 is the one that must be filled in** (7 rows): the two independent labellers disagreed, so there is no label at all. **Section 2** (0 rows) is optional and is where the candidate model disagrees with a label the two labellers agreed on. Filling it in removes the one bias left in the score — a two-model agreement standing in for truth exactly where the candidate objects.
+**Section 1 is the one that must be filled in** (6 rows): the two independent labellers disagreed, so there is no label at all. **Section 2** (0 rows) is optional and is where the candidate model disagrees with a label the two labellers agreed on. Filling it in removes the one bias left in the score — a two-model agreement standing in for truth exactly where the candidate objects.
 
 ---
 
-## Section 1 — the labellers disagree (7 rows, REQUIRED)
+## Section 1 — the labellers disagree (6 rows, REQUIRED)
 
 ### id 70293 — Snap  
 `A_positive` · news · economictimes.indiatimes.com · 2026-04-23 · 1000 jobs  
@@ -33,16 +33,6 @@ source: https://www.theguardian.com/technology/2025/oct/13/uk-mps-tiktok-plans-c
 votes: **deepseek/deepseek-chat**: not AI | **openai/gpt-4.1-mini**: AI  
 currently stored: `ai_explicit=True` `contributing_cause` quote='TikTok is looking to replace the moderators with artificial intelligence-driven systems'  
 **owner's call (70653): [ ] AI    [ ] not AI**
-
-### id 107375 — General Motors  
-`A_positive` · news · TechCrunch · 2026-05-11 · 600 jobs  
-source: https://techcrunch.com/2026/05/11/gm-just-laid-off-hundreds-of-it-workers-to-hire-those-with-stronger-ai-skills/
-
-> TechCrunch headline: "GM just laid off hundreds of IT workers to hire those with stronger AI skills" — press explicitly attributed the cuts to an AI skills swap; GM's own statement was only "GM is transforming its Information Technology organization to better position the company for the future" (no AI mention by the company; loose/press attribution).
-
-votes: **deepseek/deepseek-chat**: AI | **openai/gpt-4.1-mini**: not AI  
-currently stored: `ai_explicit=True` `contributing_cause` quote='General Motors cut about 600 roles in May 2026; TechCrunch lists GM among 2026 employers that explicitly cited AI in the announcement (TechCrunch running list, July 6, 2026)'  
-**owner's call (107375): [ ] AI    [ ] not AI**
 
 ### id 54973 — Microsoft  
 `A_positive` · news · theverge.com · 2020-05-30 · 50 jobs  

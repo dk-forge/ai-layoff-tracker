@@ -2,6 +2,9 @@
 
 > ## RULED AND CONFIRMED IN PART, 2026-08-19
 >
+> **Updated 2026-08-19, second ruling.** The GM row is now decided; the six
+> parked rows are not. See the two blocks marked UPDATED below.
+>
 > **The speaker question is answered: `ai_explicit` requires THE EMPLOYER to have
 > attributed the cuts to AI.** A report counts when it quotes or reports the
 > employer saying it. A journalist's own characterisation, with no such statement
@@ -21,10 +24,20 @@
 > written; **107481 (GoKwik)** and **107491 (Snowflake)** were flipped to `false` by
 > the ruling, as this file said they would be.
 >
-> **107375 (General Motors) stays out of the JSON and stays the owner's.** The
-> speaker ruling does not settle it: GM cut IT staff in order to re-hire people with
-> stronger AI skills, so nobody was replaced by a machine and the open question is
-> whether an "AI skills swap" is AI causing the cuts at all.
+> ### UPDATED: 107375 (General Motors) is RULED, and the answer is `false`
+>
+> The speaker ruling did not settle it, because GM's own words do name AI. The
+> owner ruled the second question instead, and the test he accepted is this:
+> **did the work go away, or did the required skill change?** If a system now does
+> the work, that is an AI layoff. If the same work still needs doing by different
+> people, that is restructuring. GM is the second, so `107375` is `false` and it is
+> now a live ruling in the JSON rather than a row held out of it. That makes **28**
+> live rulings. The test is written into methodology `#m-ai` beside the speaker
+> rule, so the next "AI skills swap" row does not have to be re-argued.
+>
+> **GM is stored LIVE as `ai_explicit=1`, so this ruling adds an eleventh row to the
+> stored-value disagreement list, on the "out of the AI count" side.** Nothing is
+> queued and no live value was touched.
 >
 > ### The ruling reaches SIX more rows than this file said it did
 >
@@ -50,33 +63,39 @@
 > 107491 and 107469 as `ai_linked`, the broad tier. The live classifier was applying
 > the speaker rule before anybody wrote it down.
 >
-> ### What `--rescore` actually returns now (193 gold labels, $0.00)
+> ### UPDATED: what `--rescore` returns after the GM ruling (194 gold labels, $0.00)
 >
 > | model | precision (pop-weighted) | recall (pop-weighted) |
 > |---|---|---|
-> | `deepseek/deepseek-chat` (incumbent, a labeller) | 75.8% (CI 56.0–89.4%) | 88.1% (CI 68.8–96.2%) |
+> | `deepseek/deepseek-chat` (incumbent, a labeller) | 73.7% (CI 53.9–87.9%) | 88.1% (CI 68.8–96.2%) |
 > | `openai/gpt-4.1-mini` (referee, a labeller) | 82.6% (CI 62.1–92.8%) | 83.8% (CI 61.1–94.1%) |
 > | `google/gemini-2.5-flash-lite` (**production**) | **78.5%** (CI 57.2–91.6%) | **78.1%** (CI 56.3–91.5%) |
 >
-> Fair head-to-head on the 27 adjudicated rows: referee 16/27 = 59.3%, incumbent
-> 14/27 = 51.9%, candidate 13/27 = 48.1%. All three intervals overlap heavily.
+> Fair head-to-head on the 28 adjudicated rows: referee 17/28 = 60.7%, incumbent
+> 14/28 = 50.0%, candidate 14/28 = 50.0%. All three intervals overlap heavily. GM is
+> the one row that moved: the candidate and the referee both read it `not AI`, the
+> incumbent read it `AI`, so the ruling cost the incumbent a false positive and cost
+> the candidate nothing. That is one row and it settles nothing on its own.
 >
-> **VERDICT ON THE 2026-08-07 SWAP: still UNKNOWN.** Seven rows carry no label —
-> GM plus the six parked. That is a legitimate UNKNOWN and must not be read as a pass.
+> **VERDICT ON THE 2026-08-07 SWAP: still UNKNOWN.** Six rows carry no label at all,
+> and all six are labeller disagreements, so nothing scores them. That is a
+> legitimate UNKNOWN and must not be read as a pass. Only confirming or rejecting
+> the six parked rows can move it, and that is the owner's call.
 >
 > **The provisional numbers below this banner did not reproduce.** This file
 > projected prec 80.9% / rec 72.6% for the candidate at 199 rows; the harness run at
 > 199 rows returns **69.5% / 78.1%**. The file warned that nothing on disk could
 > reproduce them, and it was right to. Quote the harness, never the projection.
 >
-> ### The stored-value disagreement list is now TEN, not thirteen
+> ### UPDATED: the stored-value disagreement list is now ELEVEN
 >
-> The ruling removed three of the seven flips that would have moved a row **into**
-> the AI count, which was the riskiest half of the list. Still unqueued, still for a
-> separate reviewed pass:
+> The speaker ruling removed three of the seven flips that would have moved a row
+> **into** the AI count, which was the riskiest half of the list. The GM ruling then
+> added one to the **out of** side. Still unqueued, still for a separate reviewed
+> pass:
 >
 > - **into** the AI count (stored `false`, ruled AI): `60800`, `107469`, `54968`, `49084`
-> - **out of** the AI count (stored `true`, ruled not AI): `49090`, `26455`, `306`, `176954`, `70469`, `293`
+> - **out of** the AI count (stored `true`, ruled not AI): `107375`, `49090`, `26455`, `306`, `176954`, `70469`, `293`
 > - `70681`, `107481`, `107491` have **left** the list: all three are ruled `false` and stored `false`, so there is nothing to correct.
 > - If the six parked rows are later confirmed, five more join the **out of** side: `70293`, `70653`, `54973`, `48830`, `70683`.
 >
@@ -171,7 +190,7 @@ Reduced to a test, applied identically to all 34 rows:
 | 107469 | InvestCloud | "Yabuki cited '**accelerating AI productivity and time-to-market gains**' **among three drivers**" | **AI** | CEO's memo names AI productivity as a driver of the reduction. Contributing cause is enough. *(Flips a stored `false`.)* |
 | 107481 | GoKwik | "**The layoffs were part of** the startup's **AI push as it seeks to automate more of its operations**" | **AI** | Explicit: the cuts belong to an operations-automation programme. **Turns on the speaker question — see below.** *(Flips a stored `false`.)* |
 | 51765 | Meta | "alleging **AI-driven layoff picks**" | **not AI** | AI used to select *who* goes. Named exclusion, verbatim. |
-| **107375** | **General Motors** | "GM just laid off hundreds of IT workers **to hire those with stronger AI skills**" | **LEFT TO YOU** | See below. |
+| **107375** | **General Motors** | "GM just laid off hundreds of IT workers **to hire those with stronger AI skills**" | **not AI** (RULED) | The work did not go away, the required skill changed. Restructuring, not an AI layoff. Ruled by the owner 2026-08-19; see below. |
 
 ## Section 2 — the 9 the candidate disputes (all 9 ruled)
 
@@ -189,7 +208,14 @@ Reduced to a test, applied identically to all 34 rows:
 
 ---
 
-## The one row the rubric does not answer: 107375, General Motors
+## RULED 2026-08-19: 107375, General Motors, is `false`
+
+The section below is kept as written, because it states the question fairly and the
+ruling is only readable against it. **The answer: the required skill changed, the work
+did not go away, so this is restructuring and not an AI layoff.** That test now lives on
+the methodology page in `#m-ai`, beside the speaker rule.
+
+### The question, as it stood
 
 > "GM just laid off hundreds of IT workers **to hire those with stronger AI skills**" — press
 > attribution; GM's own statement named no AI.
