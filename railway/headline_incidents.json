@@ -62,64 +62,27 @@
       },
       "reviewed_by": "Dakotta",
       "slice": "ai_all_time"
-    },
-    {
-      "affected_row_ids": [
-        "60834",
-        "60872",
-        "176541",
-        "176544",
-        "176546",
-        "176607",
-        "176684",
-        "176688",
-        "176733",
-        "176736",
-        "176770",
-        "176863",
-        "176883",
-        "176903",
-        "176909",
-        "176911",
-        "177067",
-        "177158",
-        "177159",
-        "177181",
-        "177187",
-        "177191",
-        "177194",
-        "177216",
-        "177221",
-        "177222",
-        "177340",
-        "177401"
-      ],
+    }
+  ],
+  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
+  "open": {
+    "us_all_time": {
       "baseline_at_open": {
         "captured_at": "2026-08-18T18:27:00Z",
         "entries": 43529,
         "jobs": 6958685,
         "recorded_in": "2026-08-18T18:27:14Z"
       },
-      "closed_at": "2026-08-19T02:35:40Z",
       "detail": "Worldwide jobs, all time minus United States jobs, all time moved -34,303 jobs on +1,155 entries. A row can only arrive with its jobs or leave with its jobs, so nothing that arrived or left moved these 34,303 jobs into United States jobs, all time: rows that were ALREADY PUBLISHED were re-scored across the boundary between these two slices. This is true however many entries arrived, which is why the movement guard's allowance cannot see it. Check the last reconcile-supersets run, any country/AI relabel job, and the corrections log",
       "label": "United States jobs, all time",
       "observed_at_open": {
-        "captured_at": "2026-08-19T02:34:40Z",
+        "captured_at": "2026-08-19T02:40:43Z",
         "entries": 43570,
         "jobs": 7038434
       },
-      "opened_at": "2026-08-19T02:34:56Z",
-      "reason": "Correct behaviour, not bad data, and explained to the job and to the row with zero residual. Between the 2026-08-18T18:27:14Z baseline and the 2026-08-19T02:05Z reading, GitHub Actions run 32200656641 (Employer-domicile curated backfill, from PR #112) wrote employer_country on 47 rows and set 28 of them to United States. Those 28 carry 75,893 jobs, measured back off the live site: the 27 blank-country rows total 71,393 and id 176883 Dow Inc. adds 4,500 on a Multiple countries row. country_basis=any matches country OR employer_country, so all 28 entered us_all_time, while none of them changed worldwide_all_time, because a blank country and Multiple countries never excluded a row from the worldwide slice. That asymmetry is the whole negative term. Arithmetic: us moved +79,749 jobs on +41 entries = 75,893 fill plus 3,856 arriving jobs on 13 rows; worldwide moved +45,446 on +1,196, all arrivals, of which 41,590 jobs on 1,183 rows are non-US; the complement is 41,590 minus 75,893 = -34,303 jobs and 1,183 minus 28 = +1,155 entries, which is the finding exactly. The fill is the only independently measured term, and subtracting it leaves a residual that is non-negative on all four axes, so no second re-scoring can be hiding here: it would have to appear as a negative arrival count. The 1,183 non-US arrivals are the Quebec and Mazovia register work of the same evening plus routine WARN and news, and an arrival can only push the complement positive, so they cannot cause this FAIL. The fill is the documented purpose of country_basis=any: a US-headquartered employer unplaced global cut becomes findable under a US filter. No row is mis-scored and no correction is required, so the replacement baseline is the published figure itself.",
-      "replacement_baseline": {
-        "captured_at": "2026-08-19T02:35:40Z",
-        "entries": 43570,
-        "jobs": 7038434
-      },
-      "reviewed_by": "dak (adjudicated; findings independently re-verified in a Claude Code session 2026-08-19)",
+      "opened_at": "2026-08-19T02:40:57Z",
       "slice": "us_all_time"
     }
-  ],
-  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {},
-  "written_at": "2026-08-19T02:35:40Z"
+  },
+  "written_at": "2026-08-19T02:40:57Z"
 }

@@ -35,7 +35,15 @@ holder, so the start-of-session ritual surfaces it automatically.
   `templates/page-press.php`, `includes/db.php`, `ai-layoff-tracker.php`
   (version only). Rest is `railway/published_figures.py`,
   `railway/tests/test_published_figure_guards.py`, TECHLOG.
-  **Next plugin release is 2.20.100.**
+  **A SECOND RELEASE FOLLOWED IN THE SAME SESSION, AND THE VERSION MOVED
+  TWICE.** The stamp shipped at 2.20.99 as an inline `<script>`; this host
+  rewrites those into a base64 `data:` URI, so it was on the page, correct, and
+  unreadable, and an element carrier was added beside it (same shape as the
+  build stamp at 2.20.38). That follow-up claimed **2.20.100** and a sibling
+  session landed a different 2.20.100 on main inside the same twenty minutes -
+  caught by re-reading main immediately before merging, which is the step this
+  file asks for and the only reason it did not collide. Rebased to
+  **2.20.101**. **Next plugin release is 2.20.102.**
 
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.97.** The baton was
   read as HELD and is NOT claimed here; only the version number is, which is
