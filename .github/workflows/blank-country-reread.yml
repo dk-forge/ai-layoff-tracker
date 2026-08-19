@@ -1,0 +1,58 @@
+name: Blank-country source re-read
+
+# Manual and bounded. Re-reads the source BODY of every row that carries no
+# job-location country, and fills `country` only where the body states where
+# the cut jobs were, with an exact quote. A source that does not say leaves the
+# row blank, which is the correct outcome for most of this backlog.
+#
+# DRY RUN IS THE DEFAULT, and deliberately so: a write goes through /edit,
+# which sets edited=1, rewrites the dedup hash and publishes the change in the
+# public corrections log. Read the quotes in the run summary before applying.
+on:
+  workflow_dispatch:
+    inputs:
+      max_rows:
+        description: 'Blank-country rows to examine'
+        required: false
+        default: '200'
+      apply:
+        description: 'Set to 1 to WRITE the recovered countries via /edit'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  reread:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # Spend guard (railway/spend.py). Past the month's allowance it sets
+      # ALT_PAID_READS=off, and extract_job_location_evidence then returns the
+      # "retry later" value per row. A budget stop is UNDECIDED, never a
+      # verdict, and never a red run. Stdlib only, so it needs no install.
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+      # The full lock: this imports enrich_context for its fetch + Wayback
+      # fallback, which reaches google-cloud-bigquery for the alternate-source
+      # finder.
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: Re-read blank-country sources
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          cd railway
+          python blank_country_reread.py \
+            --max "${{ github.event.inputs.max_rows || '200' }}" \
+            ${{ github.event.inputs.apply == '1' && '--apply' || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash -eo pipefail {0}
