@@ -1,5 +1,90 @@
 # AI causation — recommended rulings, for confirmation
 
+> ## RULED AND CONFIRMED IN PART, 2026-08-19
+>
+> **The speaker question is answered: `ai_explicit` requires THE EMPLOYER to have
+> attributed the cuts to AI.** A report counts when it quotes or reports the
+> employer saying it. A journalist's own characterisation, with no such statement
+> from the employer, is the BROAD tier (`ai_linked`), not this one. The rule is now
+> written where a reader can check it (methodology `#m-ai`), asked for in
+> `extractor.ai_causation_prompt()` and `SYSTEM_PROMPT` rule 2, and described in
+> `alt_allowed_ai_causation()`. It is no longer derived across three files and
+> stated in none.
+>
+> **The reason for that answer, on the record.** The product already answers the
+> other question separately. It runs two tiers: a strict one that is the employer's
+> own words with a quote on file, and a broad one that is employer words PLUS press
+> framing. Ruling "source" would collapse the two and delete the distinction. The
+> broad tier exists precisely to hold press-attributed cuts.
+>
+> **27 of the 33 recommendations are now live rulings.** 25 were accepted as
+> written; **107481 (GoKwik)** and **107491 (Snowflake)** were flipped to `false` by
+> the ruling, as this file said they would be.
+>
+> **107375 (General Motors) stays out of the JSON and stays the owner's.** The
+> speaker ruling does not settle it: GM cut IT staff in order to re-hire people with
+> stronger AI skills, so nobody was replaced by a machine and the open question is
+> whether an "AI skills swap" is AI causing the cuts at all.
+>
+> ### The ruling reaches SIX more rows than this file said it did
+>
+> This file named three rows as turning on the speaker question. Re-reading every
+> recommended-AI row against the ruled test finds six more whose stored text carries
+> **no employer attribution at all**. They are recommended `false` under the ruling
+> and remain **PARKED**, because five of them are stored LIVE as `ai_explicit=1`:
+>
+> | id | company | who actually said AI |
+> |---|---|---|
+> | 70293 | Snap | "AI **push leads to** 1,000 job cuts" is the headline. No employer statement in the text. |
+> | 70653 | TikTok | "**It also claims that** TikTok is looking to replace the moderators…" — a third party's claim. |
+> | 54973 | Microsoft / MSN | "The layoffs are part of a bigger push **by Microsoft** to rely on AI" — the reporter's framing. |
+> | 48830 | Suncor | "Driverless technology is only just starting to cause layoffs" — the reporter's, and generic. |
+> | 70683 | ByteDance / TikTok | "cuts hundreds of jobs **in shift towards** AI content moderation" — headline framing. |
+> | 70681 | TikTok | The company confirmed the layoffs, **not the reason**. Press purpose clause. |
+>
+> Confirming those five would add five rows to the corrections worklist for the
+> number this product is named after, so a session does not get to make that call.
+> Strip the six `rec:` prefixes to accept, or flip a value first to disagree.
+>
+> **Corroboration the ruling is the right one:** production already stores 107481,
+> 107491 and 107469 as `ai_linked`, the broad tier. The live classifier was applying
+> the speaker rule before anybody wrote it down.
+>
+> ### What `--rescore` actually returns now (193 gold labels, $0.00)
+>
+> | model | precision (pop-weighted) | recall (pop-weighted) |
+> |---|---|---|
+> | `deepseek/deepseek-chat` (incumbent, a labeller) | 75.8% (CI 56.0–89.4%) | 88.1% (CI 68.8–96.2%) |
+> | `openai/gpt-4.1-mini` (referee, a labeller) | 82.6% (CI 62.1–92.8%) | 83.8% (CI 61.1–94.1%) |
+> | `google/gemini-2.5-flash-lite` (**production**) | **78.5%** (CI 57.2–91.6%) | **78.1%** (CI 56.3–91.5%) |
+>
+> Fair head-to-head on the 27 adjudicated rows: referee 16/27 = 59.3%, incumbent
+> 14/27 = 51.9%, candidate 13/27 = 48.1%. All three intervals overlap heavily.
+>
+> **VERDICT ON THE 2026-08-07 SWAP: still UNKNOWN.** Seven rows carry no label —
+> GM plus the six parked. That is a legitimate UNKNOWN and must not be read as a pass.
+>
+> **The provisional numbers below this banner did not reproduce.** This file
+> projected prec 80.9% / rec 72.6% for the candidate at 199 rows; the harness run at
+> 199 rows returns **69.5% / 78.1%**. The file warned that nothing on disk could
+> reproduce them, and it was right to. Quote the harness, never the projection.
+>
+> ### The stored-value disagreement list is now TEN, not thirteen
+>
+> The ruling removed three of the seven flips that would have moved a row **into**
+> the AI count, which was the riskiest half of the list. Still unqueued, still for a
+> separate reviewed pass:
+>
+> - **into** the AI count (stored `false`, ruled AI): `60800`, `107469`, `54968`, `49084`
+> - **out of** the AI count (stored `true`, ruled not AI): `49090`, `26455`, `306`, `176954`, `70469`, `293`
+> - `70681`, `107481`, `107491` have **left** the list: all three are ruled `false` and stored `false`, so there is nothing to correct.
+> - If the six parked rows are later confirmed, five more join the **out of** side: `70293`, `70653`, `54973`, `48830`, `70683`.
+>
+> Nothing is queued. `/edit` sets `edited=1`, rewrites the dedup hash and publishes
+> to the public corrections log.
+
+---
+
 **Status: RECOMMENDATION. Nothing here is decided.** Produced 2026-08-19 by a
 Claude session that read each row's stored text against the **written** rubric
 and nothing else. No model was asked to break a tie, no labeller vote was

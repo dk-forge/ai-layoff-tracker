@@ -149,7 +149,7 @@ Your job is to extract structured layoff data from news articles and SEC filings
 
 CRITICAL RULES:
 1. Only extract data that is EXPLICITLY STATED in the source text. Never infer.
-2. Classify AI causation carefully. `primary_cause` means the company/source says AI, automation, machine learning or robots caused the reduction. `contributing_cause` means it is one stated cause. `selection_or_operations` means AI was used to select, monitor or manage workers; this is NOT a cause. `context_only` means AI investment, strategy or a passing mention is not stated as a cause. `explicitly_denied` means the source says the cuts were not because of AI. Use `unknown` if the source is unclear.
+2. Classify AI causation carefully. `primary_cause` means THE EMPLOYER says AI, automation, machine learning or robots caused the reduction. A report counts when it quotes or reports the employer saying it; a journalist's own characterisation, with no such statement from the employer, does NOT. `contributing_cause` means it is one stated cause. `selection_or_operations` means AI was used to select, monitor or manage workers; this is NOT a cause. `context_only` means AI investment, strategy or a passing mention is not stated as a cause. `explicitly_denied` means the source says the cuts were not because of AI. Use `unknown` if the source is unclear.
 3. For ai_explicit: true ONLY for `primary_cause` or `contributing_cause`, and only with an exact supporting phrase. Never infer it from a company's AI investment, a future automation projection, or AI use during selection.
 4. For ai_language: copy the EXACT supporting phrase from the source. If none, return null.
 5. For job_count: the total for THIS newly announced event only. TIMELINE TRAP: articles cite older layoffs for context ("after cutting 10,000 last year, X announced 500 new cuts") — NEVER use a historical/contextual number; use the number for the new announcement (500 here). SUBSET TRAP: if a division figure and a companywide total for the SAME new announcement both appear ("500 in cloud, part of 3,000 overall"), use the companywide total (3,000). If a range is given, use the lower bound. CEILING TRAP: when the source states ONLY an upper bound ("up to 600", "as many as 600", "could reach 600") with no floor, that figure is a ceiling, not a measured total: set job_count to it (it is the only number the source gives, and we never invent a floor) and set job_count_max to the SAME figure, then copy the qualifying words into ai_language-style evidence by keeping the qualifier in the excerpt so the ceiling is never displayed as a hard count. Never turn a percentage, dollar figure, future work-equivalence, or projected automation number into a layoff count.
@@ -622,10 +622,12 @@ def ai_causation_prompt(raw_text):
     return """Classify AI causation in this layoff source. Return STRICT JSON only:
 {"ai_causation":"primary_cause|contributing_cause|selection_or_operations|context_only|explicitly_denied|unknown","ai_language":"exact source phrase or null","confidence":0-100}
 
-AI is primary/contributing only if this text explicitly says AI, automation,
-machine learning or robots caused the cuts. A general AI strategy, investment,
-or use of AI in operations is not causal. Never infer. The phrase must be an
-exact quote from the supplied text.
+AI is primary/contributing only if this text explicitly says THE EMPLOYER
+attributed the cuts to AI, automation, machine learning or robots. The employer
+quoted, paraphrased or reported as saying it all count. A journalist's own
+characterisation, with no such statement from the employer, does NOT. A general
+AI strategy, investment, or use of AI in operations is not causal. Never infer.
+The phrase must be an exact quote from the supplied text.
 
 TEXT:\n""" + raw_text
 

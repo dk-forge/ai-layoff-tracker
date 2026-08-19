@@ -53,11 +53,22 @@ function alt_allowed_reason_tags() {
 }
 
 function alt_allowed_ai_causation() {
-    // 'ai_linked' is the Survey/sector trackers-style BROAD bucket: cuts the
-    // company or press tied to AI loosely (funding an AI pivot, AI-driven
-    // market disruption, press AI framing). It never sets ai_explicit, so the
-    // strict verified-AI totals stay quote-gated; it only feeds the labeled
-    // broad comparison measure.
+    // 'ai_linked' is the BROAD tier, and it is the ONLY tier a non-employer
+    // speaker can reach. Two different things land here. (a) The employer tied
+    // AI to the cuts loosely: funding an AI pivot, AI-driven market
+    // disruption. (b) The PRESS tied AI to the cuts at any strength, however
+    // explicitly, without the employer saying it.
+    //
+    // (b) is the speaker rule, ruled by the owner on 2026-08-19 and stated for
+    // readers in the methodology page's #m-ai: ai_explicit requires THE
+    // EMPLOYER to have attributed the cuts to AI. This comment used to read
+    // "cuts the company or press tied to AI loosely", which put the press on
+    // the loose side only, and so read as if a sufficiently explicit press
+    // attribution could earn the strict tag. It cannot. The strict tier is
+    // employer-attributed and quote-gated; everything else AI-related is here.
+    //
+    // 'ai_linked' never sets ai_explicit, so the strict verified-AI totals
+    // stay quote-gated; it only feeds the labeled broad comparison measure.
     return array('primary_cause', 'contributing_cause', 'ai_linked', 'selection_or_operations',
         'context_only', 'explicitly_denied', 'unknown');
 }
