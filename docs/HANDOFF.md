@@ -25,6 +25,55 @@ holder, so the start-of-session ritual surfaces it automatically.
   table, `wp_alt_digest_editions`, self-installing. Weekly editions are
   indexable and daily ones are `noindex`, from one setting. **Next plugin
   release is 2.20.110.**
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.110.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. **TWO COLLISIONS: this was staged as
+  2.20.106, main was at 2.20.107 by the first re-read, and at 2.20.109 by the
+  second** - both caught by re-reading main immediately before pushing, which is
+  the step this file asks for and the only reason neither collided. Rebased to
+  2.20.110. The first re-read also showed a
+  sibling session had already removed the "in order to" from
+  `page-methodology.php`, so that edit was dropped rather than reapplied.
+
+  The change is the **employer browse index**, and it exists because of a
+  measurement rather than a hunch. Measured live this session: the company
+  sitemap offers 7,500 indexable employer pages; crawling all 103 facet pages
+  and collecting every `/company-layoffs/` link they carry found 3,575 distinct
+  employer pages linked, of which only **1,539** are pages the sitemap offers.
+  So **5,961 of the 7,500 (79.5%) were reachable from a sitemap and from
+  nothing else on this site**, and the tracker page, where readers actually
+  land, linked to **zero** of them. The facet mesh got this exact fix at
+  2.19.243 and the employer set never did.
+
+  New files: `includes/company-index.php` (hub at `/company-layoffs/`, A-Z
+  letter pages at `/company-layoffs/browse/<letter>/`) and
+  `templates/page-company-index.php`. Plugin files touched:
+  `templates/page-tracker.php` (an A-Z block inside the existing "Browse the
+  record" section), `templates/page-facet.php` and
+  `templates/page-company-directory.php` (a link to the hub),
+  `includes/company-directory.php` (one `alt_company_sitemap_urls` filter, so
+  the hub joins the company sitemap without entering the published
+  `pages_indexable` coverage figure), `assets/layoffs.css`,
+  `ai-layoff-tracker.php` (version + a **guarded** `is_readable` require, since
+  a hard require of a brand-new include fatals the whole plugin mid-FTPS).
+  Rest is TECHLOG.
+
+  **Only the hub is indexable; the 27 letter pages are `noindex, follow`** on
+  the same reasoning that keeps weekly report pulses and sub-floor company
+  pages out. **No row was edited, no data changed, and no page was removed.**
+  The goal is NOT more indexed pages: GSC shows 2,782 already indexed producing
+  ~34 clicks in ten weeks, so this is a reader and crawler path to pages that
+  already exist.
+
+  **KNOWN GAP left for the owner:** `templates/page-company-index.php` is
+  reader-facing copy the style gate does not score, because `LAYOFF_TARGETS`
+  lives in the SHA-pinned `railway/style_check.py` that must stay byte-identical
+  with the sibling repo. It was measured by hand once with the target
+  temporarily added (grade 9.6, zero findings) but is not continuously
+  enforced. Closing it needs the cross-repo ritual.
+  **Next plugin release is 2.20.111.**
+  Written here before the push, and main re-read immediately before merging,
+  per the 2.20.92 collision note below.
 
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.107.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
@@ -47,7 +96,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   2026-08-16. RUNBOOK "Open and click tracking" holds the flip procedure, the
   evidence and the consent design note. **Next plugin release is 2.20.108.**
 
-- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.108.** The baton was
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.110.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. The change makes the 404 log and the
   redirect table READABLE from outside wp-admin, because a session asked to
@@ -59,7 +108,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   than an empty list) and `ai-layoff-tracker.php` (the guarded require plus the
   version). Rest is `.github/workflows/seo-diagnostics.yml`, manual dispatch
   only. **No live row was edited, no redirect was created and no log was
-  cleared.** **Next plugin release is 2.20.109.**
+  cleared.** **Next plugin release is 2.20.111.**
 
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.106.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,

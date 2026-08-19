@@ -235,6 +235,14 @@ $alt_bd_titles = array(
         </ul>
     <?php endif; ?>
 
+    <?php // The employer index. These pages already link to the handful of
+          // employers they can show; this is the way to the rest of them.
+          // function_exists is the FTP-deploy race guard.
+          if (function_exists('alt_company_index_url')) : ?>
+        <p class="alt-company-index-link"><a href="<?php echo esc_url(alt_company_index_url()); ?>">Browse
+        all employers with layoff records</a></p>
+    <?php endif; ?>
+
     <?php if ($alt_f['dim'] === 'state') : ?>
         <p><a href="<?php echo esc_url(alt_facet_url('country', 'United States')); ?>">All United States layoff records</a></p>
     <?php endif; ?>

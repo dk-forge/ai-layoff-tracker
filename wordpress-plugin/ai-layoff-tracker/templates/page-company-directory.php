@@ -161,6 +161,17 @@ $alt_verif = array(
     notice was filed at that source; older notices roll into the state archive.</p>
     <?php endif; ?>
 
+    <?php // The way back OUT to every other employer page. Measured 2026-08-19:
+          // 5,961 of the 7,500 indexable company pages were linked from no page
+          // on this site at all, only from the sitemap, so a reader who landed
+          // on one had nowhere to go and a crawler had no path to the rest.
+          // function_exists is the FTP-deploy race guard every optional call in
+          // this plugin uses.
+          if (function_exists('alt_company_index_url')) : ?>
+        <p class="alt-company-index-link"><a href="<?php echo esc_url(alt_company_index_url()); ?>">Browse
+        all employers with layoff records</a></p>
+    <?php endif; ?>
+
     <?php if (!empty($alt_dir['facet_links'])) : ?>
         <p class="alt-company-facet-links">Browse the wider record:
         <?php $alt_parts = array();

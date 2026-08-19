@@ -1630,6 +1630,35 @@ $alt_hero_basis  = 'counted by filing date';
                 </ul>
             </div>
         <?php endforeach; ?>
+        <?php
+        // THE SAME GAP THIS SECTION WAS BUILT TO CLOSE, one dimension over.
+        // 2.19.243 shipped 103 facet pages reachable only from a sitemap and
+        // the note above fixed it. Measured on the live site 2026-08-19, the
+        // employer set had the identical defect and never got the identical
+        // fix: of the 7,500 indexable company pages, 5,961 were linked from no
+        // page on this site, and this page linked to none of them at all.
+        //
+        // A-Z rather than a list of employers: 7,500 will not render, and any
+        // shortlist would be an editorial pick of whose page gets the link.
+        // The letters are the whole set, evenly, in 27 links. Counts are the
+        // real per-letter counts, from the same transient the index renders.
+        $alt_emp_counts = function_exists('alt_company_index_counts') ? alt_company_index_counts() : array();
+        if (array_sum($alt_emp_counts) > 0) : ?>
+            <div class="alt-browse-group">
+                <h3 class="alt-browse-heading">By employer</h3>
+                <ul class="alt-browse-list alt-browse-letters">
+                <?php foreach (alt_company_index_buckets() as $alt_b) :
+                    $alt_bn = (int) ($alt_emp_counts[$alt_b] ?? 0);
+                    if ($alt_bn === 0) continue; ?>
+                    <li><a href="<?php echo esc_url(alt_company_index_url($alt_b)); ?>"><?php
+                        echo esc_html($alt_b === '0-9' ? '0-9' : strtoupper($alt_b)); ?><span class="alt-browse-n"><?php
+                        echo esc_html(number_format($alt_bn)); ?></span></a></li>
+                <?php endforeach; ?>
+                </ul>
+                <p class="alt-browse-note"><a href="<?php echo esc_url(alt_company_index_url()); ?>">All
+                <?php echo esc_html(number_format(array_sum($alt_emp_counts))); ?> employers, A to Z</a></p>
+            </div>
+        <?php endif; ?>
     </section>
     <?php endif; ?>
 

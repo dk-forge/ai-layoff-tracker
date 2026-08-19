@@ -2993,6 +2993,61 @@ figure.alt-soundbite figcaption.alt-sb-actions,
   border-color: var(--alt-ink-2); background: var(--alt-bg-2, rgba(0,0,0,.03));
 }
 .alt-browse-n { color: var(--alt-ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.alt-browse-note { margin: 8px 0 0; font-size: 13px; }
+/* The A-Z chips are one or two characters, so they read as a dense strip
+   rather than the country chips' variable-width run. min-width keeps a "J"
+   the same size as a "0-9" and holds the 44px tap floor on a phone. */
+.alt-browse-letters a { min-width: 44px; justify-content: center; }
+
+/* ---- Employer browse index (/company-layoffs/ and its A-Z pages) ---- */
+.alt-company-index { max-width: 900px; }
+.alt-company-index h1 { margin: 0 0 12px; }
+.alt-company-index-lede { color: var(--alt-ink-2); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+.alt-company-index-note { color: var(--alt-ink-2); font-size: 13.5px; line-height: 1.55; margin: 22px 0 0; }
+.alt-company-index-link { margin: 18px 0 0; font-size: 14px; }
+
+.alt-company-index-strip {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px;
+}
+.alt-company-index-letter {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 34px; padding: 4px 8px;
+  border: 1px solid var(--alt-grid); border-radius: 8px;
+  font-size: 13px; text-decoration: none; color: var(--alt-ink);
+}
+.alt-company-index-letter:hover, .alt-company-index-letter:focus-visible {
+  border-color: var(--alt-ink-2); background: var(--alt-bg-2, rgba(0,0,0,.03));
+}
+.alt-company-index-letter.is-current { background: var(--alt-ink); color: var(--alt-page); border-color: var(--alt-ink); }
+.alt-company-index-letter.is-empty { color: var(--alt-muted); opacity: .5; }
+
+.alt-company-index-buckets {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.alt-company-index-buckets > li {
+  display: flex; align-items: baseline; gap: 8px; margin: 0;
+  padding: 8px 10px; border: 1px solid var(--alt-grid); border-radius: 8px;
+}
+.alt-company-index-buckets a { font-weight: 600; text-decoration: none; color: var(--alt-ink); }
+.alt-company-index-count { color: var(--alt-ink-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* A letter can hold several hundred employers. Columns rather than one long
+   run, and a company name may be 90 characters, so each item wraps inside its
+   own column instead of forcing the page wide (the 2.20.98 lesson). */
+.alt-company-index-list {
+  list-style: none; margin: 0; padding: 0;
+  columns: 3 220px; column-gap: 24px;
+}
+.alt-company-index-list > li {
+  margin: 0 0 6px; break-inside: avoid;
+  font-size: 14px; line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .alt-company-index-list { columns: 1; }
+}
 
 /* First-screen cite line (Eurostat pattern: headline + dateline + next
    release together). Sits directly under the floor banner; the long-form

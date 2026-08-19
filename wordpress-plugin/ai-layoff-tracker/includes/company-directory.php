@@ -581,7 +581,11 @@ function alt_company_directory_sitemap_query_vars($vars) { $vars[] = 'alt_compan
 add_filter('query_vars', 'alt_company_directory_sitemap_query_vars');
 function alt_company_directory_render_sitemap() {
     if ((string) get_query_var('alt_company_sitemap') === '') return;
-    $urls = alt_company_directory_indexable_urls();
+    // Filtered HERE and not inside alt_company_directory_indexable_urls(),
+    // which is also the source of the published `pages_indexable` coverage
+    // figure: the browse hub is a way IN to the employer pages, not one of
+    // them, and folding it into that count would overstate coverage by one.
+    $urls = apply_filters('alt_company_sitemap_urls', alt_company_directory_indexable_urls());
     if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
     status_header(200);
     header('Content-Type: application/xml; charset=UTF-8');

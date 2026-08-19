@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.109
+ * Version: 2.20.110
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.109');
+define('ALT_VERSION', '2.20.110');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -52,6 +52,19 @@ require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
 $alt_digest_archive = ALT_PLUGIN_DIR . 'includes/digest-archive.php';
 if (is_readable($alt_digest_archive)) {
     require_once $alt_digest_archive;
+}
+// The employer browse index (/company-layoffs/ and its A-Z letter pages), which
+// gives the 7,500 indexable company pages a path a reader and a crawler can
+// both follow. GUARDED with is_readable for the reason spelled out below this
+// block: this file is NEW, so the deploy that introduces it can land this main
+// file first, and a hard require of a not-yet-uploaded include fatals the
+// ENTIRE plugin on every request until it arrives (2.19.20). Its absence must
+// degrade to "the browse index 404s and the company pages are as reachable as
+// they were yesterday", never to a white screen. The templates that link to it
+// call alt_company_index_url() behind function_exists for the same reason.
+$alt_company_index = ALT_PLUGIN_DIR . 'includes/company-index.php';
+if (is_readable($alt_company_index)) {
+    require_once $alt_company_index;
 }
 // Where the signup renders beyond the two tracker pages (blog posts, company
 // profiles, the facet pages, entry permalinks). GUARDED with is_readable for

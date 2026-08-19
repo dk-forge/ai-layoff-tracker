@@ -51,6 +51,98 @@ fails on any statement that would `SET` the sections column.
 Schema: ONE new table, `wp_alt_digest_editions`, self-installing in
 digest-archive.php the way `blog-claps.php` does it. The sends table is
 untouched, and so are the per-tier send guards and `digest_transport`.
+## 2026-08-19 - 5,961 of 7,500 employer pages were linked from nothing (2.20.110)
+
+**The brief was an indexing question and the data said it is not one.** Search
+Console reported ~6,500 URLs "Discovered, currently not indexed", crawl date
+N/A on every example, and the first framing was "improve the thin pages so they
+are worth scanning". Then the real numbers arrived: **2,782 pages ARE indexed
+and they produced 34 clicks in ten weeks.** Indexing the other 6,725 would
+change close to nothing. So nothing here is aimed at getting more pages indexed,
+and no page was added whose purpose is to exist.
+
+**What the query data actually says.** `stepan layoffs` converts at 33% (4
+clicks / 12 impressions) and `athenahealth layoff` at 33% (1/3). Generic career
+queries convert at **zero across ~500 impressions** (`thank you email after
+interview` 0/104, `how to answer tell me about yourself` 0/97, `cover letter
+examples` 0/89). The company pages are not dead weight to prune. They are the
+only thing on this domain that wins, and it wins decisively, because for
+"does company X have layoffs" this site holds the primary filing.
+
+**THE MEASUREMENT.** Taken live 2026-08-19 against the deployed site:
+
+| | count |
+|---|---:|
+| indexable employer pages (company-layoffs-sitemap.xml) | 7,500 |
+| distinct employer pages linked from all 103 facet pages | 3,575 |
+| of those, pages the sitemap actually offers | **1,539** |
+| **indexable employer pages linked from NO page on this site** | **5,961 (79.5%)** |
+| facet employer links pointing at sub-floor `noindex` pages | 2,036 |
+| employer pages linked from the tracker page | **0** |
+
+Method: fetch the sitemap, fetch all 103 facet URLs with a browser UA, collect
+every `/company-layoffs/<slug>/` href, dedupe, and intersect with the sitemap
+set. The two winning pages sit on opposite sides of that split and are the
+cleanest evidence in the set: `stepan-co` is linked from a facet page and drew
+27 impressions; `athenahealth` is an orphan and drew 3. **Same 33% CTR.** So the
+link is not what makes the page good, it is what makes the page seen. n=2, so
+that is a direction to act on, not a coefficient to quote.
+
+**The fix is the one the facet pages already got and the employers never did.**
+2.19.243 shipped 103 facet pages reachable only from a sitemap, and
+`page-tracker.php` already carries the note about why that was fixed: "most of
+an internal-linking structure missing the part that makes it one - links from
+the page that has the authority." The employer set had the identical defect,
+two orders of magnitude larger, and did not render whole, which is why it was
+never given the same treatment.
+
+`includes/company-index.php` + `templates/page-company-index.php`: a hub at
+`/company-layoffs/` and 27 A-Z letter pages at `/company-layoffs/browse/<x>/`.
+Linked from the tracker's existing "Browse the record" section (A-Z, so no
+editorial pick of whose page gets the link), from every facet page and from
+every company page. Routing collides with nothing: the employer rule is
+`^company-layoffs/([^/]+)/?$`, which cannot match a bare path or a two-segment
+one.
+
+**Only the hub is indexable. The 27 letter pages are `noindex, follow`**, on the
+same reasoning that keeps weekly report pulses (report-seo.php) and sub-floor
+company pages out: a pure navigation list carries nothing of its own, and the
+links out of it are the entire point. The hub joins the company sitemap through
+a new `alt_company_sitemap_urls` filter applied at RENDER time, not inside
+`alt_company_directory_indexable_urls()`, because that function is also the
+source of the published `pages_indexable` coverage figure and the hub is a way
+in to the employer pages rather than one of them.
+
+**Performance.** `alt_company_index_counts()` now runs on the tracker page, the
+hottest path on the site, and the query under it is a GROUP BY across the
+layoffs, events and source-report tables. Six-hour transient plus a static memo,
+matching `alt_facet_counts()` rather than the sitemap's fifteen minutes. The
+figure only moves when an employer crosses the two-entry floor, and
+`alt_data_ver` in the key still retires it the moment the data version moves.
+
+**Two things deliberately NOT done.** The 2,036 facet links into `noindex`
+employer pages were left alone: those pages are real records and the link is
+right for a reader, which outranks a crawl-budget argument. And no company page
+gained a word of content. Every row on them already renders the WARN notice, the
+effective date, the state, the count, a link to the source document, the Wayback
+copy and the entry permalink. **The pages were never the problem.**
+
+**The editorial cluster is not a defect either.**
+`/blog/biggest-interview-mistakes-hiring-managers-notice/` was checked directly:
+`index, follow`, self-canonical, present in `post-sitemap1.xml`. Technically
+perfect and still not ranking, which is the same low-authority story as
+everything else here and not something a template change reaches.
+
+**KNOWN GAP, needs the owner.** `templates/page-company-index.php` is
+reader-facing copy that the style gate does NOT score, because `LAYOFF_TARGETS`
+lives in `railway/style_check.py`, which is SHA-pinned and must stay
+byte-identical with the sibling repo. Adding the target here alone fails
+`test_style_checker_matches_its_digest`. The copy was measured against the
+standard once by hand with the target temporarily added (grade 9.6, passive 17%,
+zero findings after one 33-word sentence was split), but it is not continuously
+enforced. Closing it needs the cross-repo ritual: copy the file across, update
+`STYLE_CHECK_SHA256` in both, record the digest in both TECHLOGs.
+
 ## 2026-08-19 - the tracking disclosure becomes one constant, and Brevo turns out to have no opens-off lever (2.20.107)
 
 **The decision.** The owner decided to turn open tracking off and keep click
