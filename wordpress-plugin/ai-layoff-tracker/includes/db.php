@@ -911,9 +911,34 @@ function alt_filter_param_names() {
  * $wpdb->prepare(). It names bare columns, so it binds under an alias too.
  */
 function alt_db_date_col(WP_REST_Request $r) {
-    $db_basis = (string) $r->get_param('date_basis');
-    if ($db_basis === 'announcement') return 'announcement_date';
-    if ($db_basis === 'notice') return 'COALESCE(announcement_date, layoff_date)';
+    return alt_db_date_expr((string) $r->get_param('date_basis'));
+}
+
+/**
+ * THE SAME EXPRESSION, WITHOUT NEEDING A REQUEST TO ASK IT FOR.
+ *
+ * alt_db_date_col() takes a WP_REST_Request because every caller inside the
+ * API has one. The surfaces that do NOT — a page template building one figure
+ * on a basis that is not its own, so it can name the other surface's number
+ * honestly — had no way to reach this and were writing
+ * `COALESCE(announcement_date, layoff_date)` out by hand instead.
+ *
+ * A hand-typed copy of a date basis is the exact defect 2.20.11 and 2.20.12
+ * were both about, and 2.20.99 is a third one: the press page's period table
+ * asserted that its calendar-year figure was "the figure the tracker home page
+ * headlines", which was true until the home default moved to the filing basis
+ * on 2026-08-10 (2.20.4) and was wrong by 33,348 jobs when it was found. The
+ * fix is that the press page READS the other basis rather than remembering
+ * what it produced, and reading it has to go through one owner or it is the
+ * same defect with a longer fuse.
+ *
+ * @param string $basis 'announcement' | 'notice' | anything else (effective)
+ * @return string SQL date expression, no `%`, safe to inline before prepare()
+ */
+function alt_db_date_expr($basis) {
+    $basis = (string) $basis;
+    if ($basis === 'announcement') return 'announcement_date';
+    if ($basis === 'notice') return 'COALESCE(announcement_date, layoff_date)';
     return 'layoff_date';
 }
 
@@ -3072,6 +3097,42 @@ function alt_period_split_short($to_date, $calendar, $period) {
     return number_format($to_date) . ' have taken effect. The other ' . number_format($later)
         . ' are filed for effective dates later in ' . $period
         . '. Together, ' . number_format($calendar) . '.';
+}
+
+/**
+ * THE OTHER SURFACE'S HEADLINE, IN THIS PAGE'S OWN WORDS.
+ *
+ * alt_period_split_sentence() above reconciles two PERIODS on one basis. This
+ * reconciles two BASES, and it exists because the two are not the same problem
+ * and one of them was being answered with the other's sentence.
+ *
+ * Since 2.20.4 the tracker home page counts by the FILING date and the press
+ * page, the report page and the FAQ structured data count by the EFFECTIVE
+ * date (see the long note in alt_live_numbers()). Both are deliberate, both
+ * are correct, and on 2026-08-19 they published 524,905 and 522,255 for what
+ * a journalist reads as one claim. Nothing was cached and neither number was
+ * wrong; the press page simply asserted that ITS calendar figure, 558,253, was
+ * "the figure the tracker home page headlines". That sentence was written when
+ * both surfaces shared a basis and nothing noticed when one of them moved.
+ *
+ * So the rule here matches the period rule directly above it: two figures may
+ * answer two questions, and then the page has to SAY SO, name the other
+ * figure, and be checkable. railway/published_figures.py reads this sentence
+ * off the served page and asserts the number in it equals the home page's live
+ * hero, so a stale cross-reference reddens an invariant instead of ageing
+ * quietly into a false claim for nine days.
+ *
+ * @param int    $home_total  verified jobs the home page headlines (filing basis)
+ * @param int    $this_total  verified jobs THIS page publishes for the same window
+ * @param string $period      label for the window, e.g. "2026"
+ * @return string plain text, no markup, safe to esc_html() at the call site
+ */
+function alt_basis_cross_sentence($home_total, $this_total, $period) {
+    return 'The tracker home page headlines ' . number_format(max(0, (int) $home_total))
+        . ' for ' . $period . ', counted by the date each cut was filed. This page counts '
+        . 'by the date each cut takes effect, which is '
+        . number_format(max(0, (int) $this_total)) . ' for ' . $period
+        . '. Neither is a correction of the other, and both are reproducible from the public API.';
 }
 
 /**

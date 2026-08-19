@@ -1122,19 +1122,54 @@ class CrossSurfaceAgreementInvariant:
     (483,707). The press page leads with the first because it is being quoted into
     a "so far" sentence; the home page headlines the second.
 
+    AND THE TWO SURFACES DO NOT SHARE A BASIS ANY MORE, which this check did not
+    know until 2.20.99 and which is why it spent 2026-08-19 reporting the wrong
+    cause for a real defect. On 2026-08-10 the home page's default date basis
+    moved from the effective date to the FILING date (2.20.4). The press page,
+    the report page and the FAQ structured data stayed on the effective date on
+    purpose — that is a written owner decision, recorded in alt_live_numbers() —
+    so the two surfaces now answer with two different date bases AND two
+    different periods. Measured live: home 524,905 (calendar year, filing basis),
+    press 522,255 (to date, effective basis), a 2,650 gap that is the residue of
+    a +33,348 basis difference and a -35,998 period difference nearly cancelling.
+
+    This check read the home page's stamp and then applied that basis to the
+    PRESS figure too, so it compared 522,255 against 488,714 — the filing-basis
+    to-date total, a number no surface publishes — and reported "neither is a
+    stated period of the other" about two figures that were each exactly right.
+    A checker that measures one surface with another surface's basis is the
+    defect _home_stamp() exists to prevent, one page further along.
+
+    So each surface is now measured against the API on ITS OWN stamped basis. The
+    press page states its basis the same way the home page does, in
+    `window.ALT_PRESS_STAMP`, and nothing in that stamp is believed: every value
+    in it is re-derived from /aggregate or from the other page's rendered HTML.
+
     Prose alone must not buy an exemption — "these measure different things" is
     what a genuinely broken pair of numbers would also say. So the escape hatch
-    here is ARITHMETIC, and all four conditions have to hold:
+    here is ARITHMETIC, and all of these have to hold:
 
-      1. the home figure equals the API's calendar-year verified total,
-      2. the press figure equals the API's to-date verified total,
-      3. both pages print the SAME reconciling sentence, and
-      4. the residual that sentence names equals home minus press, exactly.
+      1. the home figure equals the API's calendar-year verified total ON THE
+         HOME PAGE'S OWN STAMPED BASIS,
+      2. the press figure equals the API's to-date verified total ON THE PRESS
+         PAGE'S OWN STAMPED BASIS,
+      3. each page prints a reconciling sentence whose subtraction closes on its
+         own basis's two periods — and when the two pages DO share a basis, the
+         original rule still applies and the sentence must be the same one,
+      4. and when the bases differ, the press page names the home page's headline
+         figure and its basis, in prose a reader sees, with the number equal to
+         the hero the home page is serving RIGHT NOW.
 
-    Any drift in any of those four and this fails, which is the point: the pair is
-    allowed to differ only while it can still be added up. Two unexplained totals,
-    or an explanation whose subtraction does not check out, is the original defect
-    and still reads FAIL.
+    Condition 4 is the one that was actually broken on the live site. The press
+    page's period table said its 558,253 was "the figure the tracker home page
+    headlines". It was, until the home default moved; then it was wrong by 33,348
+    and nothing could notice, because the claim was a sentence somebody typed
+    rather than a number somebody read. It is read now, and this asserts it.
+
+    Any drift in any of those and this fails, which is the point: the pair is
+    allowed to differ only while it can still be added up and while both pages
+    say so. Two unexplained totals, or an explanation whose subtraction does not
+    check out, is the original defect and still reads FAIL.
 
     It also holds the two ops surfaces to the same standard: /source-health and
     /quality-status answer the same question about the same collector, and a
@@ -1186,9 +1221,20 @@ class CrossSurfaceAgreementInvariant:
                             "checked")))
             else:
                 gap = abs(hero - press)
-                if gap <= max(1, hero * self.TOLERANCE):
+                # EQUAL NUMBERS FROM TWO DIFFERENT QUESTIONS IS A COINCIDENCE,
+                # NOT AGREEMENT. The tolerance below is for the seconds between
+                # two fetches while a collector writes, and it is only meaningful
+                # while both surfaces are counting the same way. On 2026-08-19
+                # the live gap was 2,650 against a tolerance of 2,624 — twenty-six
+                # jobs from a shortcut that would have reported two figures on two
+                # different date bases as one agreed number. So the shortcut now
+                # requires the two pages to have STATED the same basis; anything
+                # else goes the long way and is judged on arithmetic.
+                if (gap <= max(1, hero * self.TOLERANCE)
+                        and self._same_stated_basis(ctx, home_html, press_html)):
                     per.append((sl, di._out(di.PASS,
-                                f"home {hero:,} and press {press:,} agree")))
+                                f"home {hero:,} and press {press:,} agree, and both "
+                                f"pages state the same counting basis")))
                 else:
                     per.append((sl, self._reconciled(ctx, di, hero, press,
                                                      home_html, press_html)))
@@ -1234,12 +1280,80 @@ class CrossSurfaceAgreementInvariant:
         r"already filed for effective dates later in (\d{4})\. Together they make the "
         r"([\d,]+) total for \3\.", re.I)
 
-    def _reconciled(self, ctx, di, hero, press, home_html, press_html):
-        """FAIL, unless the two figures are two correct periods that ADD UP.
+    # THE SAME RECONCILIATION, COMPRESSED, which is what the home page actually
+    # prints. alt_period_split_short() in db.php and periodSplitShort() in
+    # layoffs.js drop the as-of date because the cite line below the hero already
+    # stamps it. Reading only the long form meant the home page was scored as
+    # printing NO reconciling sentence at all while it was printing one, so the
+    # check would have failed the page for a defect it did not have the moment
+    # the basis question stopped failing first.
+    SPLIT_SHORT = re.compile(
+        r"([\d,]+) have taken effect\. The other ([\d,]+) are filed for effective "
+        r"dates later in (\d{4})\. Together, ([\d,]+)\.", re.I)
 
-        Every branch below that is not the last one is a FAIL, and they are
-        written out separately so the alert says which condition broke rather
-        than "the pages disagree".
+    # alt_basis_cross_sentence() in db.php: the press page naming the home page's
+    # headline and the basis behind it. This is the claim that went stale, so it
+    # is captured as numbers and checked against the live hero, never matched as
+    # prose. The basis words are inside the pattern deliberately — a sentence
+    # that names a figure without naming which date produced it is the state the
+    # site was already in.
+    CROSS = re.compile(
+        r"The tracker home page headlines ([\d,]+) for (\d{4}), counted by the date "
+        r"each cut was filed\. This page counts by the date each cut takes effect, "
+        r"which is ([\d,]+) for \2\.", re.I)
+
+    _PRESS_STAMP = re.compile(
+        r"window\.ALT_PRESS_STAMP\s*=\s*(\{.*?\})\s*;", re.S)
+
+    @staticmethod
+    def _n(s):
+        return int(str(s).replace(",", ""))
+
+    def _press_stamp(self, ctx, press_html):
+        """The query the PRESS page says produced its own figures.
+
+        Same contract as `_home_stamp`, and the same refusal to be talked into
+        anything: the stamp may pick a BASIS, it may not pick a scope, and every
+        number it carries is re-derived rather than read. Returns
+        `(stamp, problem)`; `stamp` is None whenever the page did not state one,
+        and then `problem` is the sentence the check will print.
+        """
+        m = self._PRESS_STAMP.search(press_html or "")
+        if not m:
+            return None, ("the press page states no window.ALT_PRESS_STAMP, so it "
+                          "does not say which date basis its headline is counted "
+                          "on and a reader cannot tell whether it answers the same "
+                          "question as the home page")
+        try:
+            blob = json.loads(m.group(1))
+        except ValueError:
+            return None, "the press page's window.ALT_PRESS_STAMP is not readable JSON"
+        params = blob.get("aggregate_params")
+        if not isinstance(params, dict) or not params:
+            return None, ("window.ALT_PRESS_STAMP carries no aggregate_params, so "
+                          "the query behind the press figures is unstated")
+        params = {str(k): str(v) for k, v in params.items()}
+        extra = sorted(k for k in params if k not in _STAMP_ALLOWED)
+        if extra:
+            return None, (f"the press page's figures were computed on a NARROWED "
+                          f"query {params} — {', '.join(extra)} scopes the population "
+                          f"under a figure published as a worldwide year total")
+        if params.get("years") != _year(ctx):
+            return None, (f"the press page's figures were computed for years="
+                          f"{params.get('years')!r} but it publishes them as "
+                          f"{_year(ctx)}")
+        home = blob.get("home") if isinstance(blob.get("home"), dict) else {}
+        return {"params": params,
+                "basis": {k: v for k, v in params.items() if k in _STAMP_BASIS_KEYS},
+                "home_basis": str(home.get("date_basis") or ""),
+                "home_calendar": home.get("calendar")}, None
+
+    def _reconciled(self, ctx, di, hero, press, home_html, press_html):
+        """FAIL, unless the two figures are two correct claims that ADD UP.
+
+        Every branch below that is not the last one is a FAIL or an UNKNOWN, and
+        they are written out separately so the alert says which condition broke
+        rather than "the pages disagree".
         """
         gap = hero - press
         unexplained = (
@@ -1247,64 +1361,184 @@ class CrossSurfaceAgreementInvariant:
             f"the press page publishes {press:,} for the same claim — a gap of "
             f"{abs(gap):,}. A journalist reading both gets two answers")
 
-        # (1)+(2) both figures must be periods the API actually produces.
+        # --- what each surface says it counted, and what the API says it is ---
         stamp, problem, _defect, terr = _home_stamp(ctx)
         if stamp is None:
             if terr is not None:
                 ctx.errors["home_vs_press"] = terr
             return di._out(di.UNKNOWN, problem
                            + " — whether the gap reconciles is NOT checked")
-        payload, err = _get_json(ctx, "aggregate", stamp)
-        if payload is None:
+        home_t, err = self._periods(ctx, stamp)
+        if home_t is None:
+            if isinstance(err, str):
+                return di._out(di.UNKNOWN, err)
             ctx.errors["home_vs_press"] = err
             return di._out(di.UNKNOWN, _why_unreachable(err)
                            + " — whether the gap reconciles is NOT checked")
-        t = payload.get("totals") or {}
-        if "jobs" not in t or t.get("to_date_jobs") is None:
-            return di._out(di.UNKNOWN,
-                           "the API returned no to-date totals, so whether the gap "
-                           "reconciles is NOT checked")
-        calendar = _verified(t)
-        to_date = _i(t.get("to_date_jobs")) - _i(t.get("to_date_announced_jobs"))
+        calendar, to_date = home_t
+        home_basis = {k: v for k, v in stamp.items() if k in _STAMP_BASIS_KEYS}
 
-        if hero != calendar or press != to_date:
+        pstamp, pproblem = self._press_stamp(ctx, press_html)
+        if pstamp is None:
+            # NOT an UNKNOWN. A published figure whose basis is unstated is the
+            # thing this module exists to fail, and the press page is the surface
+            # built to be quoted.
+            return di._out(di.FAIL, unexplained + ". " + pproblem, observed=hero)
+
+        same_basis = pstamp["basis"] == home_basis
+        if same_basis:
+            p_calendar, p_to_date = calendar, to_date
+        else:
+            p_t, perr = self._periods(ctx, pstamp["params"])
+            if p_t is None:
+                if isinstance(perr, str):
+                    return di._out(di.UNKNOWN, perr)
+                ctx.errors["home_vs_press"] = perr
+                return di._out(di.UNKNOWN, _why_unreachable(perr)
+                               + " — the press page's own basis was NOT checked")
+            p_calendar, p_to_date = p_t
+
+        basis_note = (f" The home page counts on {home_basis or 'the API defaults'} "
+                      f"and the press page on {pstamp['basis'] or 'the API defaults'}.")
+
+        # (1) the home figure must be the calendar total ITS OWN stamp produces.
+        if hero != calendar:
             return di._out(di.FAIL, unexplained + (
-                f". Neither is a stated period of the other: the API's calendar-year "
-                f"verified total is {calendar:,} and its to-date verified total is "
-                f"{to_date:,}"), observed=hero)
+                f". The home figure is not the calendar-year verified total its own "
+                f"stamped query returns: the API answers {calendar:,} for "
+                f"{home_basis or 'the API defaults'}"), observed=hero)
 
-        # (3) the same sentence on both surfaces, or one page has an explanation
-        # the other reader never sees.
-        hm = self.SPLIT.search(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", home_html)))
-        pm = self.SPLIT.search(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", press_html)))
+        # (2) and the press figure must be the to-date total ITS OWN stamp does.
+        if press != p_to_date:
+            return di._out(di.FAIL, unexplained + (
+                f". The press figure is not the to-date verified total its own "
+                f"stamped query returns: the API answers {p_to_date:,} for "
+                f"{pstamp['basis'] or 'the API defaults'}"), observed=hero)
+
+        # (3) each page's own reconciling sentence has to close on its own basis.
+        hm = self._split_of(home_html)
+        pm = self._split_of(press_html)
         if not hm or not pm:
             missing = "home page" if not hm else "press page"
             return di._out(di.FAIL, unexplained + (
-                f". The {missing} does not print the sentence reconciling the two, so "
-                f"a reader on it has no way to reach the other figure"), observed=hero)
-        if hm.group(0) != pm.group(0):
-            return di._out(di.FAIL, unexplained + (
-                ". The two pages print DIFFERENT reconciling sentences, so at least "
-                "one of them is stating a relationship that does not hold"),
-                observed=hero)
+                f". The {missing} does not print the sentence reconciling what has "
+                f"taken effect against what is on file for later, so a reader on it "
+                f"cannot reach the other figure"), observed=hero)
+        for who, m, td, cal in (("home page", hm, to_date, calendar),
+                                ("press page", pm, p_to_date, p_calendar)):
+            said_td, said_later, said_total = m[0], m[1], m[2]
+            if (said_td != td or said_total != cal
+                    or said_td + said_later != said_total):
+                return di._out(di.FAIL, unexplained + (
+                    f". The {who}'s reconciling sentence does not add up on its own "
+                    f"basis: it says {said_td:,} + {said_later:,} = {said_total:,}, "
+                    f"against an API to-date of {td:,} and calendar of {cal:,}"),
+                    observed=hero)
 
-        # (4) and the subtraction on the page has to be the real one.
-        said_to_date = int(hm.group(1).replace(",", ""))
-        said_later = int(hm.group(2).replace(",", ""))
-        said_total = int(hm.group(4).replace(",", ""))
-        if (said_to_date != press or said_total != hero
-                or said_later != gap or said_to_date + said_later != said_total):
+        if same_basis:
+            # THE ORIGINAL RULE, unchanged, for the case it was written for. One
+            # basis means one reconciliation, and two spellings of it means at
+            # least one page is stating a relationship that does not hold.
+            if hm != pm:
+                return di._out(di.FAIL, unexplained + (
+                    ". Both pages count on the same basis and print DIFFERENT "
+                    "reconciling sentences, so at least one of them is stating a "
+                    "relationship that does not hold"), observed=hero)
+            return di._out(di.PASS,
+                           f"home {hero:,} and press {press:,} are two correct periods "
+                           f"on one basis and both pages print the same reconciliation, "
+                           f"verified against the API: {press:,} taken effect + "
+                           f"{hm[1]:,} filed for later effective dates = {hero:,} for "
+                           f"the calendar year")
+
+        # (4) DIFFERENT BASES. Then the press page must name the home page's
+        #     headline, and the number it names must be the one being served.
+        cm = self.CROSS.search(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", press_html)))
+        if not cm:
             return di._out(di.FAIL, unexplained + (
-                f". The reconciling sentence does not add up: it says {said_to_date:,} "
-                f"+ {said_later:,} = {said_total:,}, against a press figure of "
-                f"{press:,}, a home figure of {hero:,} and a real gap of {gap:,}"),
-                observed=hero)
+                ". The two surfaces count on two different date bases and the press "
+                "page — the one built to be quoted — does not name the home page's "
+                "headline figure or the basis behind it, so a journalist who opens "
+                "both meets two totals with nothing tying them together"
+                + basis_note), observed=hero)
+        said_home, said_this = self._n(cm.group(1)), self._n(cm.group(3))
+        if said_home != hero:
+            return di._out(di.FAIL, unexplained + (
+                f". The press page tells its reader the tracker home page headlines "
+                f"{said_home:,}. It is serving {hero:,}. A cross-reference to another "
+                f"surface's number has to be read, not remembered"
+                + basis_note), observed=hero)
+        if said_this != p_calendar:
+            return di._out(di.FAIL, unexplained + (
+                f". The press page states its own calendar-year figure as "
+                f"{said_this:,} beside the home figure, but its own basis returns "
+                f"{p_calendar:,}" + basis_note), observed=hero)
+        if pstamp["home_basis"] != (home_basis.get("date_basis") or "layoff_date"):
+            return di._out(di.FAIL, unexplained + (
+                f". The press page says the home figure is counted on "
+                f"{pstamp['home_basis']!r}; the home page's own stamp says "
+                f"{home_basis.get('date_basis') or 'layoff_date'!r}"), observed=hero)
 
         return di._out(di.PASS,
-                       f"home {hero:,} and press {press:,} are two correct periods and "
-                       f"both pages print the same reconciliation, verified against the "
-                       f"API: {press:,} taken effect + {said_later:,} filed for later "
-                       f"effective dates = {hero:,} for the calendar year")
+                       f"home {hero:,} and press {press:,} answer two different "
+                       f"questions and both pages say so: the home page publishes the "
+                       f"calendar year on {home_basis.get('date_basis')}, the press "
+                       f"page the to-date total on {pstamp['basis'].get('date_basis')}, "
+                       f"each reconciles against the API on its own basis "
+                       f"({press:,} + {pm[1]:,} = {p_calendar:,}; {to_date:,} + "
+                       f"{hm[1]:,} = {hero:,}), and the press page names the live home "
+                       f"hero {said_home:,} in prose")
+
+    def _same_stated_basis(self, ctx, home_html, press_html):
+        """Do both surfaces SAY they counted the same way?
+
+        Parsed out of the HTML already in hand rather than refetched, and False
+        whenever either page fails to state a basis at all — an unstated basis
+        must never buy the equality shortcut, because "unstated" is the state
+        that let one page's basis be used to measure the other's figure.
+        """
+        m = _BOOT_RE.search(home_html or "")
+        if not m:
+            return False
+        try:
+            boot = json.loads(m.group(1))
+        except ValueError:
+            return False
+        hp = boot.get("aggregate_params")
+        if not isinstance(hp, dict) or not hp:
+            return False
+        home_basis = {str(k): str(v) for k, v in hp.items()
+                      if k in _STAMP_BASIS_KEYS}
+        pstamp, _problem = self._press_stamp(ctx, press_html)
+        if pstamp is None:
+            return False
+        return pstamp["basis"] == home_basis
+
+    def _periods(self, ctx, params):
+        """(calendar, to_date) verified totals for one stamped query.
+
+        Returns `(None, problem_or_exception)` rather than guessing. A string is
+        a decided problem, an exception is transport and is filed as such."""
+        payload, err = _get_json(ctx, "aggregate", params)
+        if payload is None:
+            return None, err
+        t = payload.get("totals") or {}
+        if "jobs" not in t or t.get("to_date_jobs") is None:
+            return None, (f"the API returned no to-date totals for {params}, so "
+                          f"whether the gap reconciles is NOT checked")
+        return (_verified(t),
+                _i(t.get("to_date_jobs")) - _i(t.get("to_date_announced_jobs"))), None
+
+    def _split_of(self, html):
+        """(to_date, later, total) from whichever reconciling sentence a page
+        prints — the long press form or the compressed home one — or None."""
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html or ""))
+        for pat in (self.SPLIT, self.SPLIT_SHORT):
+            m = pat.search(text)
+            if m:
+                return (self._n(m.group(1)), self._n(m.group(2)),
+                        self._n(m.group(4)))
+        return None
 
     @staticmethod
     def _status_map(blob):

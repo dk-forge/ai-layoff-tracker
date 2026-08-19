@@ -162,9 +162,29 @@ def home_html(hero="484,468", label="verified job cuts, 2026 YTD", extra=""):
         hero=hero, label=label, extra=(extra or OPEN_EXPLAINER) + SCRIPT_TAG)
 
 
-def press_html(total="484,468", split=""):
+# The press page states the query behind its own figures, exactly as the tracker
+# page does — see the note on BOOT_SCRIPT above and the docstring of
+# CrossSurfaceAgreementInvariant. It has to, because the two surfaces have
+# counted on two different date bases since 2.20.4 and a checker that applies
+# one page's basis to the other reports a wrong cause for a real defect.
+PRESS_BASIS_HOME = {"years": "2026", "date_basis": "notice"}
+PRESS_BASIS_EFFECTIVE = {"years": "2026", "date_basis": "effective"}
+
+
+def press_stamp(params=None, to_date=0, calendar=0, home_basis="notice",
+                home_calendar=0):
+    return ('<script>window.ALT_PRESS_STAMP='
+            + json.dumps({"aggregate_params": params or PRESS_BASIS_HOME,
+                          "to_date": to_date, "calendar": calendar,
+                          "home": {"date_basis": home_basis,
+                                   "calendar": home_calendar}})
+            + ';</script>')
+
+
+def press_html(total="484,468", split="", stamp=None, extra=""):
     return (f"<p>The AI Layoff Tracker verified {total} job cuts worldwide in "
-            f"2026 so far.</p>{split}")
+            f"2026 so far.</p>{split}{extra}"
+            + (press_stamp() if stamp is None else stamp))
 
 
 def split_sentence(to_date, later, total, year=2026):
@@ -172,6 +192,21 @@ def split_sentence(to_date, later, total, year=2026):
     return (f"<p>{to_date:,} have taken effect as of Aug 4, 2026. The other "
             f"{later:,} are on notices already filed for effective dates later in "
             f"{year}. Together they make the {total:,} total for {year}.</p>")
+
+
+def split_short(to_date, later, total, year=2026):
+    """alt_period_split_short() — the compressed form the HOME page prints."""
+    return (f"<p>{to_date:,} have taken effect. The other {later:,} are filed for "
+            f"effective dates later in {year}. Together, {total:,}.</p>")
+
+
+def cross_sentence(home_total, this_total, year=2026):
+    """alt_basis_cross_sentence() — the press page naming the home headline."""
+    return (f"<p>The tracker home page headlines {home_total:,} for {year}, counted "
+            f"by the date each cut was filed. This page counts by the date each cut "
+            f"takes effect, which is {this_total:,} for {year}. Neither is a "
+            f"correction of the other, and both are reproducible from the public "
+            f"API.</p>")
 
 
 def _router(routes, default=None):
@@ -647,12 +682,15 @@ class CrossSurfaceTest(unittest.TestCase):
 
     def test_a_gap_neither_figure_explains_still_fails(self):
         # Both pages carry a well-formed sentence, but the press figure is not
-        # the API's to-date total — so the pair is simply two different answers
-        # with an explanation draped over it.
-        split = split_sentence(450_529, 33_939, 484_468)
-        r = self._run("484,468", "450,529", home_split=split, press_split=split)
+        # the API's to-date total on the basis the press page itself stamped —
+        # so the pair is simply two different answers with an explanation draped
+        # over it. The home figure is the API's calendar total here on purpose,
+        # so the branch under test is the PRESS one and not the home one.
+        split = split_sentence(450_529, 33_178, 483_707)
+        r = self._run(f"{self.CALENDAR:,}", "450,529",
+                      home_split=split, press_split=split)
         self.assertEqual(r.state, di.FAIL)
-        self.assertIn("Neither is a stated period of the other", r.detail)
+        self.assertIn("not the to-date verified total its own stamped query", r.detail)
 
     def test_an_explanation_on_only_one_page_still_fails(self):
         # A reader on the press page who never sees the home page's sentence has
@@ -668,6 +706,137 @@ class CrossSurfaceTest(unittest.TestCase):
         r = self._reconciled(totals=_totals(jobs=956_008, announced=472_301))
         self.assertEqual(r.state, di.UNKNOWN)
         self.assertNotEqual(r.state, di.PASS)
+
+    # -- TWO BASES, which is what the live site actually publishes -----------
+    #
+    # Measured 2026-08-19. The home page counts calendar-year 2026 on the FILING
+    # basis; the press page counts to-date on the EFFECTIVE basis, by a written
+    # owner decision. Both figures are right. The 2,650 gap between them is the
+    # residue of a +33,348 basis difference and a -35,998 period difference
+    # nearly cancelling, which is why "it is probably cache" was the tempting
+    # answer and was wrong.
+    NOTICE_API = _totals(jobs=990_873, announced=465_968,
+                         to_date_jobs=954_572, to_date_announced_jobs=465_858)
+    EFFECTIVE_API = _totals(jobs=1_024_221, announced=465_968,
+                            to_date_jobs=988_113, to_date_announced_jobs=465_858)
+    N_CAL, N_TD = 524_905, 488_714        # filing basis: home's two periods
+    E_CAL, E_TD = 558_253, 522_255        # effective basis: press's two periods
+
+    def _two_bases(self, cross=None, press_stamp_kw=None, hero=None):
+        """The live shape: home on the filing basis, press on the effective one.
+
+        `cross` is the sentence the press page prints naming the home figure;
+        pass "" to model the page that prints none, which is what the live site
+        did until 2.20.99.
+        """
+        if cross is None:
+            cross = cross_sentence(self.N_CAL, self.E_CAL)
+        kw = {"params": PRESS_BASIS_EFFECTIVE, "to_date": self.E_TD,
+              "calendar": self.E_CAL, "home_basis": "notice",
+              "home_calendar": self.N_CAL}
+        kw.update(press_stamp_kw or {})
+        return pf.CrossSurfaceAgreementInvariant().run(_ctx(_router({
+            "press/": press_html(f"{self.E_TD:,}",
+                                 split=split_sentence(self.E_TD,
+                                                      self.E_CAL - self.E_TD,
+                                                      self.E_CAL),
+                                 stamp=press_stamp(**kw), extra=cross),
+            "layoffs.js": JS_VERIFIED_BASIS,
+            "ai-layoff-tracker/": home_html(
+                hero=f"{hero if hero is not None else self.N_CAL:,}",
+                extra=OPEN_EXPLAINER + split_short(self.N_TD,
+                                                   self.N_CAL - self.N_TD,
+                                                   self.N_CAL)),
+            "source-health": {"newsapi": {"status": "retired"}},
+            "quality-status": {"source_health": {"newsapi": {"status": "retired"}}},
+            # ORDER MATTERS: _router answers on the first substring that hits,
+            # so the basis-qualified route has to precede the bare one. Two
+            # bases mean two different answers from one endpoint, and a fixture
+            # that returns one of them for both is the defect under test.
+            "date_basis=effective": _agg(self.EFFECTIVE_API),
+            "aggregate": _agg(self.NOTICE_API),
+        })))
+
+    def test_two_bases_that_each_reconcile_and_are_named_pass(self):
+        # The fixed shape. Nothing here is equal to anything else: the pass is
+        # earned by four separate subtractions and one cross-reference.
+        r = self._two_bases()
+        self.assertEqual(r.state, di.PASS, r.detail)
+        self.assertIn("answer two different questions and both pages say so",
+                      r.detail)
+        self.assertIn(f"{self.N_CAL:,}", r.detail)
+
+    def test_a_stale_cross_reference_to_the_other_surface_fails(self):
+        # THE LIVE DEFECT, pinned. The press page said its own 558,253 was "the
+        # figure the tracker home page headlines". That was true until the home
+        # default moved to the filing basis on 2026-08-10 and was wrong by
+        # 33,348 when it was found. Nothing could notice, because the claim was
+        # a sentence somebody typed rather than a number somebody read.
+        r = self._two_bases(cross=cross_sentence(self.E_CAL, self.E_CAL))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("read, not remembered", r.detail)
+        self.assertIn(f"{self.E_CAL:,}", r.detail)
+
+    def test_two_bases_with_nothing_tying_them_together_fails(self):
+        # Two correct figures, each reconciling on its own basis, and a reader
+        # who opens both still gets two answers. That is the whole defect and
+        # arithmetic alone does not close it.
+        r = self._two_bases(cross="")
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("does not name the home page's headline figure", r.detail)
+
+    def test_a_press_page_that_states_no_basis_fails(self):
+        # NOT unknown. A quotable figure whose basis is unstated is exactly what
+        # this module exists to fail, and it is how the check came to measure
+        # the press page with the home page's basis in the first place.
+        r = self._two_bases(press_stamp_kw=None, cross=None)
+        self.assertEqual(r.state, di.PASS)      # control
+        r = pf.CrossSurfaceAgreementInvariant().run(_ctx(_router({
+            "press/": press_html(f"{self.E_TD:,}", stamp=""),
+            "layoffs.js": JS_VERIFIED_BASIS,
+            "ai-layoff-tracker/": home_html(hero=f"{self.N_CAL:,}"),
+            "source-health": {"newsapi": {"status": "retired"}},
+            "quality-status": {"source_health": {"newsapi": {"status": "retired"}}},
+            "date_basis=effective": _agg(self.EFFECTIVE_API),
+            "aggregate": _agg(self.NOTICE_API),
+        })))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("states no window.ALT_PRESS_STAMP", r.detail)
+
+    def test_the_press_stamp_cannot_narrow_its_way_to_agreement(self):
+        # The stamp picks a BASIS, never a scope. A press page that quietly
+        # scoped its own population would otherwise be able to define any
+        # figure into agreement with the API.
+        r = self._two_bases(press_stamp_kw={
+            "params": {"years": "2026", "date_basis": "effective",
+                       "country": "United States"}})
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("NARROWED query", r.detail)
+
+    def test_the_home_pages_compressed_sentence_counts_as_a_reconciliation(self):
+        # alt_period_split_short() is what the home page actually prints; the
+        # long form is the press page's. Reading only the long one would score
+        # the home page as printing no reconciliation while it prints one.
+        self.assertIsNotNone(
+            pf.CrossSurfaceAgreementInvariant()._split_of(
+                split_short(self.N_TD, self.N_CAL - self.N_TD, self.N_CAL)))
+
+    def test_equal_numbers_on_two_different_bases_are_not_agreement(self):
+        # The tolerance is for two fetches taken seconds apart while a collector
+        # writes. It is not a licence for two questions to arrive at one number.
+        # Same figure on both surfaces, two stated bases: this must go the long
+        # way and be judged on arithmetic, not waved through as "they agree".
+        r = pf.CrossSurfaceAgreementInvariant().run(_ctx(_router({
+            "press/": press_html(f"{self.N_CAL:,}",
+                                 stamp=press_stamp(params=PRESS_BASIS_EFFECTIVE)),
+            "layoffs.js": JS_VERIFIED_BASIS,
+            "ai-layoff-tracker/": home_html(hero=f"{self.N_CAL:,}"),
+            "source-health": {"newsapi": {"status": "retired"}},
+            "quality-status": {"source_health": {"newsapi": {"status": "retired"}}},
+            "date_basis=effective": _agg(self.EFFECTIVE_API),
+            "aggregate": _agg(self.NOTICE_API),
+        })))
+        self.assertNotEqual(r.state, di.PASS, r.detail)
 
     def test_fails_when_a_retired_collector_is_published_as_live(self):
         # THE LIVE DEFECT: /source-health masks four retired collectors and

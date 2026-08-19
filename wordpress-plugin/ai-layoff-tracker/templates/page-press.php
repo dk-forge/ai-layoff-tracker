@@ -228,6 +228,23 @@ if (!is_array($alt_ps)) {
                     COUNT(DISTINCT CASE WHEN announced=0 THEN company_key END) co
              FROM $alt_pt WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s", $from, $to));
     };
+    // THE SAME WINDOW, COUNTED THE WAY THE OTHER SURFACE COUNTS IT.
+    //
+    // Every figure on this page comes from $alt_pstats, which is
+    // `layoff_date BETWEEN` — the EFFECTIVE basis, deliberately, and every
+    // receipt link off this page says so. The tracker home page has counted by
+    // the FILING basis since 2.20.4. This function is the ONLY thing here that
+    // leaves this page's basis, and it exists for exactly one purpose: so the
+    // period block below can name the home page's headline figure by READING
+    // it rather than by remembering what it used to be. The basis expression
+    // comes from alt_db_date_expr() in db.php, the one owner, because a
+    // hand-typed date basis is the defect this release is about.
+    $alt_pstats_filed = function ($from, $to) use ($wpdb, $alt_pt) {
+        $col = function_exists('alt_db_date_expr') ? alt_db_date_expr('notice') : 'layoff_date';
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT COALESCE(SUM(CASE WHEN announced=0 THEN job_count END),0) v
+             FROM $alt_pt WHERE superset_of=0 AND $col BETWEEN %s AND %s", $from, $to));
+    };
     $alt_ptopcol = function ($col, $from, $to, $ai_only) use ($wpdb, $alt_pt) {
         $extra = $ai_only ? " AND ai_explicit=1" : "";
         return $wpdb->get_row($wpdb->prepare(
@@ -405,12 +422,22 @@ if (!is_array($alt_ps)) {
     // their own after quoting one of them.
     $alt_cy = $alt_pstats(sprintf('%04d-01-01', $alt_y2), sprintf('%04d-12-31', $alt_y2));
     $alt_td = $alt_pstats(sprintf('%04d-01-01', $alt_y2), gmdate('Y-m-d'));
+    // AND THE SAME CALENDAR YEAR ON THE HOME PAGE'S BASIS, so the block below
+    // can state the other surface's figure instead of claiming one of ours is
+    // it. This is the read that replaces the sentence that went stale.
+    $alt_fy = $alt_pstats_filed(sprintf('%04d-01-01', $alt_y2), sprintf('%04d-12-31', $alt_y2));
     $alt_ps['split'] = array(
         'year'     => $alt_y2,
         'as_of'    => gmdate('M j, Y'),
         'to_date'  => (int) ($alt_td->v ?? 0),
         'calendar' => (int) ($alt_cy->v ?? 0),
         'later'    => max(0, (int) ($alt_cy->v ?? 0) - (int) ($alt_td->v ?? 0)),
+        // The home page's headline, counted the home page's way. Named
+        // 'home_*' rather than 'filed_*' because what makes it worth a query
+        // is whose number it is, not which basis produced it.
+        'home_calendar' => (int) ($alt_fy->v ?? 0),
+        'home_basis'    => 'notice',
+        'basis'         => 'effective',
     );
     set_transient('alt_press_statements_' . ALT_VERSION, $alt_ps, HOUR_IN_SECONDS);
 }
@@ -473,7 +500,7 @@ if (!is_array($alt_ps)) {
   ?>
   <?php if ($alt_sp && $alt_sp['later'] > 0) : ?>
   <h2 id="alt-press-period">Before you quote a number: which period</h2>
-  <p>We date every cut by the day it <b>takes effect</b>, and WARN notices are filed weeks ahead by law. So <?php echo (int) $alt_sp['year']; ?> has two correct totals, and they are not in conflict. Quote the one that matches your sentence, and say which.</p>
+  <p>We date every cut on this page by the day it <b>takes effect</b>, and WARN notices are filed weeks ahead by law. So <?php echo (int) $alt_sp['year']; ?> has two correct totals on that basis, and they are not in conflict. Quote the one that matches your sentence, and say which. The tracker home page counts on a <a href="#alt-press-which-date">different date basis again</a>, and that figure is named below too.</p>
   <div class="alt-health-table-wrap">
   <table class="alt-basis-table">
     <thead><tr><th>Counting period</th><th>Verified job cuts</th><th>What it counts, and where we publish it</th></tr></thead>
@@ -486,12 +513,41 @@ if (!is_array($alt_ps)) {
           <td>Notices already on file, each with a stated effective date still ahead. Documented, but they have not happened yet.</td></tr>
       <tr><th>Calendar year <?php echo (int) $alt_sp['year']; ?> <span class="alt-muted">(the two rows above, added)</span></th>
           <td><b><?php echo number_format($alt_sp['calendar']); ?></b></td>
-          <td>The whole year as filed to date. This is the figure the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">tracker home page</a> headlines, above the same reconciling sentence printed below.</td></tr>
+          <td>The whole year on this page's basis: the two rows above added, so cuts that have happened plus notices on file for effective dates still ahead.</td></tr>
     </tbody>
   </table>
   </div>
   <p class="alt-press-split"><?php echo esc_html(function_exists('alt_period_split_sentence') ? alt_period_split_sentence($alt_sp['to_date'], $alt_sp['calendar'], $alt_sp['as_of'], (string) $alt_sp['year']) : ''); ?></p>
   <p class="alt-muted">Both figures come from the same query. Only the end date changes, so you can reproduce either one from the public API. For the first row, use <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html(gmdate('Y-m-d')); ?></code>. For the third row, use <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code>. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>.</p>
+
+  <?php /* WHICH DATE, the third block, and the one this page was missing.
+           The two rows above reconcile two PERIODS on one basis. They do not
+           reconcile this page against the tracker's own front page, which has
+           counted by the FILING date since 2.20.4 while everything here counts
+           by the EFFECTIVE date. Until 2.20.99 the calendar row claimed its
+           own figure WAS the home page's headline; that was true when the
+           sentence was written and wrong by 33,348 jobs by the time anyone
+           checked. The figure is now read live, on the home page's basis, and
+           printed. A journalist who lands here and then opens the tracker sees
+           the number they are about to meet, before they meet it. */ ?>
+  <h3 id="alt-press-which-date">Before you quote a number: which date</h3>
+  <p class="alt-press-basis-cross"><?php echo esc_html(function_exists('alt_basis_cross_sentence') ? alt_basis_cross_sentence($alt_sp['home_calendar'], $alt_sp['calendar'], (string) $alt_sp['year']) : ''); ?></p>
+  <p class="alt-muted">Filing date is when the notice was lodged; effective date is when the cut lands. The same records, sorted into years by two different dates, so the two totals are not a discrepancy and neither is a revision of the other. Reproduce the home page's figure with <code>aggregate?years=<?php echo (int) $alt_sp['year']; ?>&amp;date_basis=notice</code> and this page's with <code>date_basis=effective</code>. <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'notice'), home_url('/ai-layoff-tracker/'))); ?>">Open the tracker on the filing basis</a> &middot; <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>">on the effective basis</a>.</p>
+
+  <?php /* THE STAMP. Same contract as window.ALT_BOOTSTRAP on the tracker
+           page: the surface states the query behind its own figures, and
+           railway/published_figures.py verifies every value in here against
+           /aggregate and against the home page's live hero rather than
+           believing any of it. A page that can define its way to green is not
+           a page worth checking, so nothing below is taken on trust - it is
+           only what tells the checker which question to ask. */ ?>
+  <script>window.ALT_PRESS_STAMP=<?php echo wp_json_encode(array(
+      'aggregate_params' => array('years' => (string) $alt_sp['year'], 'date_basis' => 'effective'),
+      'to_date'          => (int) $alt_sp['to_date'],
+      'calendar'         => (int) $alt_sp['calendar'],
+      'home'             => array('date_basis' => 'notice',
+                                  'calendar'   => (int) $alt_sp['home_calendar']),
+  )); ?>;</script>
   <?php endif; ?>
 
   <?php

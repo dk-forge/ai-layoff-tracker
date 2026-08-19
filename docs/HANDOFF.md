@@ -6,6 +6,25 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.99.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change closes the FAILING
+  `figures_agree_across_surfaces` invariant. **Neither published figure was
+  wrong and nothing was cached**: the home hero (524,905) is the calendar year
+  on the FILING basis, which it has headlined since 2.20.4, and the press
+  headline (522,255) is the to-date figure on the EFFECTIVE basis, which that
+  page counts on by design. What was wrong was one sentence: the press page's
+  period table asserted that its 558,253 was "the figure the tracker home page
+  headlines", and that stopped being true on 2026-08-10 and was off by 33,348.
+  The press page now READS the home figure rather than remembering it, states
+  both bases side by side, and stamps them machine-readably; the invariant now
+  verifies each surface against the API on ITS OWN stamped basis instead of
+  applying the home page's basis to both. Plugin files touched:
+  `templates/page-press.php`, `includes/db.php`, `ai-layoff-tracker.php`
+  (version only). Rest is `railway/published_figures.py`,
+  `railway/tests/test_published_figure_guards.py`, TECHLOG.
+  **Next plugin release is 2.20.100.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.97.** The baton was
   read as HELD and is NOT claimed here; only the version number is, which is
   what this file asks for. The change is the **citation affordance a machine can

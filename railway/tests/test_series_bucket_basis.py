@@ -134,7 +134,34 @@ foreach (array('', 'notice', 'announcement', 'effective', 'nonsense') as $b) {
 """
 
 
+def _BASIS_FNS():
+    """Both halves of the accessor, because it is TWO functions now.
+
+    alt_db_date_col() takes a WP_REST_Request; alt_db_date_expr() is the same
+    answer for callers that have no request to ask - a page template that needs
+    one figure on a basis that is not its own, so it can name another surface's
+    number honestly rather than remembering it (2.20.99). The harness runs the
+    real source of both, so a split that broke the delegation would fail here
+    rather than at render time.
+    """
+    return _php_fn("alt_db_date_col") + "\n" + _php_fn("alt_db_date_expr")
+
+
 class TheBasisHasOneDefinition(unittest.TestCase):
+
+    def test_the_request_free_accessor_delegates_rather_than_copying(self):
+        """alt_db_date_col must not keep its own copy of the expression.
+
+        The whole point of alt_db_date_expr existing is that there is ONE owner
+        of the basis SQL. Two functions each holding the branch is the defect
+        the accessor was extracted to end, wearing a second name."""
+        col = strip_php_comments(_php_fn("alt_db_date_col"))
+        self.assertIn("alt_db_date_expr(", col,
+                      "alt_db_date_col re-derives the expression instead of "
+                      "delegating to the request-free owner")
+        self.assertNotIn("COALESCE(announcement_date", col,
+                         "alt_db_date_col still holds its own copy of the basis "
+                         "expression")
 
     def test_the_date_expression_is_a_named_function(self):
         """It was a local inside alt_db_where(), which is why the series could
@@ -162,7 +189,7 @@ class TheBasisHasOneDefinition(unittest.TestCase):
         worse than the inline copy it replaced, because now everything is
         wrong in the same direction and nothing disagrees."""
         out = subprocess.run(
-            [PHP, "-r", PHP_BASIS_HARNESS % _php_fn("alt_db_date_col")],
+            [PHP, "-r", PHP_BASIS_HARNESS % _BASIS_FNS()],
             capture_output=True, text=True)
         self.assertEqual(out.returncode, 0, out.stderr)
         got = dict(line.split("\t", 1) for line in out.stdout.splitlines() if "\t" in line)
@@ -183,7 +210,7 @@ class TheBasisHasOneDefinition(unittest.TestCase):
         which eats a bare '%'. It also has to bind under a table alias, so no
         expression may name the table."""
         out = subprocess.run(
-            [PHP, "-r", PHP_BASIS_HARNESS % _php_fn("alt_db_date_col")],
+            [PHP, "-r", PHP_BASIS_HARNESS % _BASIS_FNS()],
             capture_output=True, text=True)
         self.assertEqual(out.returncode, 0, out.stderr)
         for line in out.stdout.splitlines():

@@ -1,5 +1,92 @@
 # Tech Log
 
+## 2026-08-19 - two figures, two questions, one false sentence (2.20.99)
+
+`figures_agree_across_surfaces` had been FAILING: the home hero published
+**524,905** verified job cuts for 2026 and the press page published **522,255**
+for what a journalist reads as the same claim, a gap of 2,650.
+
+**It was not a cache, and it was not two surfaces computing the same thing
+differently.** That was worth proving rather than assuming, because 2,650
+happened to be exactly where a residual from an earlier cache-flush fix had
+landed. Both pages were read at the origin with a cache buster AND bare:
+
+| surface | bare | cache-busted | cf-cache-status |
+|---|---|---|---|
+| home | 524,905 | 524,905 | HIT, age 83 |
+| press | 522,255 | 522,255 | EXPIRED (page is `no-store`) |
+
+Identical either way, both on ver 2.20.98 / build `55a03621c739bc88`. Nothing
+stale was being served. The API then explained the whole thing in one table:
+
+| `date_basis` | calendar-year verified | to-date verified |
+|---|---|---|
+| `notice` (filing) | **524,905** | 488,714 |
+| `effective` | 558,253 | **522,255** |
+
+So the home hero is the **calendar year on the FILING basis** and the press
+headline is the **to-date figure on the EFFECTIVE basis**. Both are exactly
+right. The 2,650 is the residue of a **+33,348 basis difference** and a
+**-35,998 period difference** nearly cancelling, which is precisely why it
+looked like the cache residual and was not.
+
+Neither surface is at fault for its own basis: the home default moved to the
+filing date on 2026-08-10 (2.20.4), and the press page, the report page and the
+FAQ structured data stayed on the effective date by a written owner decision
+recorded in `alt_live_numbers()`.
+
+**What WAS wrong was one sentence.** The press page's period table said of its
+own 558,253:
+
+> The whole year as filed to date. This is the figure the tracker home page
+> headlines, above the same reconciling sentence printed below.
+
+True when it was written, when both surfaces shared a basis. False from
+2026-08-10, by 33,348 jobs, on the page that exists to be quoted - and the two
+pages were by then printing two different reconciling sentences, not the same
+one. Nothing could notice, because the claim was **a sentence somebody typed
+rather than a number somebody read**.
+
+Fixed on both sides:
+
+* **The press page reads it.** A new `Before you quote a number: which date`
+  block prints `alt_basis_cross_sentence()` - the home page's live headline on
+  the home page's basis, beside this page's own, with both bases named and both
+  reproducible from the API. The figure comes from a query on
+  `alt_db_date_expr('notice')`, a new request-free companion to
+  `alt_db_date_col()` so the basis expression keeps exactly one owner; a
+  hand-typed date basis is the defect 2.20.11 and 2.20.12 were already about.
+  The calendar row's copy no longer claims to be another surface's headline.
+* **The check learned about bases.** `CrossSurfaceAgreementInvariant` was
+  reading the home page's stamp and then applying that basis to the PRESS
+  figure too, so it compared 522,255 against 488,714 - a filing-basis to-date
+  total that no surface publishes - and reported "neither is a stated period of
+  the other" about two figures that were each correct. A checker measuring one
+  surface with another surface's basis is the defect `_home_stamp()` exists to
+  prevent, one page further along. Each surface is now measured against
+  `/aggregate` on ITS OWN stamped basis; the press page states its query in
+  `window.ALT_PRESS_STAMP` exactly as the tracker page states its own, and
+  nothing in that stamp is believed - every value is re-derived from the API or
+  from the other page's rendered HTML, and a stamp that NARROWS its population
+  is refused the same way the home one is.
+* **When the bases differ, the press page must name the home figure**, and the
+  number it names must equal the hero being served right now. That is condition
+  4, and it is the one the live site was failing.
+* **Equal numbers from two different questions is no longer agreement.** The
+  0.5% TOLERANCE exists for the seconds between two fetches while a collector
+  writes. The live gap was 2,650 against a tolerance of 2,624 - twenty-six jobs
+  from a shortcut that would have reported two bases as one agreed number. The
+  shortcut now also requires both pages to have STATED the same basis.
+* The check also only read the LONG reconciling sentence, which is the press
+  page's form; the home page prints `alt_period_split_short()`. It now accepts
+  either, and requires each page's subtraction to close on its own basis.
+
+Eight new tests in `test_published_figure_guards.py`, including the live shape
+(pass) and the live defect (a stale cross-reference, fail). The digest is
+unaffected and was already correct: `alt_digest_compose_layoff()` asks for
+`date_basis=layoff_date` and labels it, so the 522,255 it mails is the to-date
+effective figure it says it is.
+
 ## 2026-08-18 - the citation was JavaScript, so nothing that cites us could read it
 
 A discoverability and citability audit, fetching the live site with a crawler
