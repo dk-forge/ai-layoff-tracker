@@ -5,9 +5,13 @@ name: Blank-country source re-read
 # the cut jobs were, with an exact quote. A source that does not say leaves the
 # row blank, which is the correct outcome for most of this backlog.
 #
-# DRY RUN IS THE DEFAULT, and deliberately so: a write goes through /edit,
-# which sets edited=1, rewrites the dedup hash and publishes the change in the
-# public corrections log. Read the quotes in the run summary before applying.
+# DRY RUN IS THE DEFAULT, and a write needs the ROW IDS spelled out. On
+# 2026-08-19 an apply-everything run wrote three rows and two were wrong -
+# Zepz placed in Kenya from a Kenya-and-Poland closure, Cineverse placed in
+# India from a total-headcount breakdown - and both passed every automatic
+# check that existed at the time. A write goes through /edit, which sets
+# edited=1, rewrites the dedup hash and publishes the claim. So: dry-run,
+# read each quote in the summary, then name the ids you accept.
 on:
   workflow_dispatch:
     inputs:
@@ -15,8 +19,8 @@ on:
         description: 'Blank-country rows to examine'
         required: false
         default: '200'
-      apply:
-        description: 'Set to 1 to WRITE the recovered countries via /edit'
+      apply_ids:
+        description: 'Comma-separated row ids to WRITE, after reading each quote in a dry run. Empty = dry run.'
         required: false
         default: ''
 
@@ -53,6 +57,6 @@ jobs:
           cd railway
           python blank_country_reread.py \
             --max "${{ github.event.inputs.max_rows || '200' }}" \
-            ${{ github.event.inputs.apply == '1' && '--apply' || '' }} \
+            ${{ github.event.inputs.apply_ids != '' && format('--apply --ids {0}', github.event.inputs.apply_ids) || '' }} \
             | tee -a "$GITHUB_STEP_SUMMARY"
         shell: bash -eo pipefail {0}

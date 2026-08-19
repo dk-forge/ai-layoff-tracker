@@ -229,10 +229,48 @@ the United States. It rejects the first three and keeps the fourth, and
 `tests/test_job_location_evidence.py` pins it on those four verbatim, so a later
 relaxation has to argue with the run that produced them.
 
-**Written: one row.** Stellantis 70499 -> United States, 2,450 jobs. That is
-0.04% of the US all-time headline against a movement floor of 8,000, so no
-headline guard moves; nothing else was written, and three candidates that a
-looser reading would have called recoveries are still blank.
+### The rule shipped, and then two wrong rows went live anyway
+
+The applying run wrote THREE rows, and two of them were wrong. Recorded here
+because it is the most useful thing in this entry.
+
+**Zepz 68454 -> Kenya.** Same sentence as the dry run. The model simply
+returned the quote without its last two words: "proposed the closure of
+business units in Kenya", dropping "and Poland". Verbatim, single-country, past
+the new rule, and wrong. The source sentence is "Zepz also proposed the closure
+of business units in Kenya and Poland", and the layoff itself is 200 IT roles
+at a London-based company.
+
+**Cineverse 177396 -> India**, quoting "155 based in India" out of "There are
+145 employees based in the U.S. and 155 based in India." That is a
+total-headcount breakdown, not the location of a cut.
+
+Both were reverted to blank within minutes through the reviewed-corrections
+path, with the reason stated in the public trail. Only **Stellantis 70499 ->
+United States** stands, and its article says so outright: "lay off up to 2,450
+U.S. plant workers in Warren, Michigan". At 2,450 against a 6,958,685-job US
+all-time headline and a movement floor of 8,000, no headline guard moves.
+
+Two changes came out of it, and the second matters more than the first.
+
+**The country check now reads the quote's SENTENCE, not the quote.** A model
+can trim the disqualifying half out of a quote. It cannot trim the sentence the
+quote came from. Both wrong rows sit in sentences naming two countries, so one
+rule rejects both. (Two smaller bugs fell out of writing it: a full stop after
+a capital letter is an abbreviation, so "the U.S. and 155 based in India" must
+not split inside "U.S."; and a token's trailing full stop must be stripped, or
+"...Kenya and Poland." reads as naming only Kenya.)
+
+**`--apply` now requires the row ids spelled out.** The gate narrows what may
+be written; it does not decide. Three automatic checks in a row - verbatim
+quote, canonical country, single named country - all passed on two rows a
+person reading the sentence would have refused in seconds. So the writer asks
+for `--ids`, a human reads each quote in the dry-run summary and names the rows
+they accept, and an unnamed recovery is printed and skipped. `/edit` pins the
+row and publishes the claim; that asymmetry is the entire argument.
+
+**Net: one row written of 109.** The other 108 keep their blank `country`, and
+42 of them are now findable anyway through `employer_country`.
 
 ### What stays blank, and why that is the answer
 
