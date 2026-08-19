@@ -10,7 +10,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the two non-US
-  collective-dismissal registers, landing as **2.20.94**
+  collective-dismissal registers, landing as **2.20.94**, with a page-cache flush as **2.20.95**
   (`railway/sources/wup_mazowieckie.py`, `railway/sources/quebec.py`,
   `railway/warn_import.py`, `.github/workflows/warn-import.yml`,
   `templates/page-methodology.php`, `templates/page-sources.php`,
@@ -85,6 +85,18 @@ holder, so the start-of-session ritual surfaces it automatically.
   non-English and they carry 74% of the jobs named, two of the top five. They
   are not labelled with a guessed language either; each row now names its
   stored `source_name` and the caption says the headline is a quotation.
+  **Backfill RAN** (workflow 32201927849, quebec_months=40): 1,318 Quebec
+  notices parsed from 36 monthly PDFs, 1,318/1,357 of what those documents
+  declare, and Canada went 195 -> 1,372 live rows back to 2022-06. Mazovia went
+  2 -> 10. It left ONE thing behind: the press page kept a pre-backfill render
+  while the home hero moved on, because the write path flushes the PHP
+  transients and only a version bump flushes WP Super Cache's rendered page.
+  2.20.95 is that flush; it cut the gap from 8,025 to 2,650 against a 2,624
+  bound, and the residual is two renders taken seconds apart while collectors
+  write. **The open `headline_containment` FAIL is NOT this work** - it is PR
+  #112's `employer_country` stamping re-scoring published rows into the US
+  slice (+79,749 jobs on +41 entries), and only a human can close it.
+
 - **PREVIOUSLY WORKING ON (2026-08-18, later):** the within-WARN revision dedup
   that never once ran for the pair in its own comment, landed as **2.20.86**
   (`includes/db.php`, `railway/tests/test_warn_revision_dedup.py`, ARCHITECTURE,
