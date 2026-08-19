@@ -918,6 +918,137 @@ function alt_db_date_col(WP_REST_Request $r) {
 }
 
 /**
+ * WORD-BOUNDARY SEARCH. A two-letter employer name is not a substring.
+ *
+ * `q=EY` used to be `LIKE '%EY%'` and returned 1,968 layoff rows / 13,934
+ * talent rows: "money", "survey", "Monterrey", "key",
+ * "Key West", "attorney". The public search box was handing a reader most of
+ * the database back and calling it a result. It bites hardest on exactly
+ * the names this domain is made of - EY, PwC, IBM, SAP, BT, GE, HP, KPMG, UBS,
+ * ING - and not at all on "Workday", which is why it survived every spot check.
+ *
+ * This is the SAME defect the ingest gate had when `layoff` matched `playoff`
+ * (railway/sources/regional_feeds.py, TECHLOG 2026-08-17), and it takes the
+ * same answer: assert a word boundary, do not impose a minimum length. A
+ * length floor would return an honest-looking zero for a real two-letter
+ * employer, which is a worse failure than the noise because nothing about it
+ * looks wrong.
+ *
+ * Three things this deliberately does NOT do:
+ *
+ * 1. It does not make search case-sensitive. `workday` must still find
+ *    `Workday`. MySQL's REGEXP follows the column collation, which is _ci, so
+ *    the token is matched and the case is not.
+ * 2. It does not apply to non-Latin scripts. A boundary assertion needs a
+ *    non-word character on the far side of the term, and Japanese and Chinese
+ *    are written without one, so `\b退任\b` matches nothing in a real headline.
+ *    Korean has the spaces but glues particles on ("삼성이"), so a boundary
+ *    there silently loses rows too. Any term carrying a non-Latin letter stays
+ *    a plain substring search - unchanged behaviour, no regression possible,
+ *    and the defect being fixed is a Latin-acronym defect.
+ * 3. It does not replace the LIKE. The regex is ANDed BEHIND it. Neither can
+ *    use an index (no B-tree serves a leading wildcard and this table has no
+ *    FULLTEXT), so the LIKE stays as the cheap first pass and REGEXP only runs
+ *    on the rows it already admitted. The scan is the one we were already
+ *    paying for; the precision is new.
+ */
+
+/**
+ * Which word-boundary syntax THIS server's MySQL actually understands.
+ *
+ * There is no single answer and guessing wrong is silent: MySQL 8 runs ICU and
+ * takes `\b` while REJECTING the POSIX `[[:<:]]` it used to require; MySQL 5.7
+ * and its Spencer engine take `[[:<:]]` and read `\b` as a literal `b`, which
+ * matches nothing and would empty the search box. So probe, and probe with
+ * BOTH a positive and a negative - a dialect that merely fails to error is not
+ * a dialect that works. Neither passing means no boundary support, and the
+ * caller falls back to the substring behaviour rather than to a wrong answer.
+ * Cached for a day; the answer changes only when the host moves.
+ */
+function alt_regexp_boundary_syntax() {
+    static $memo = null;
+    if ($memo !== null) return $memo;
+    $stored = get_transient('alt_rx_boundary_syntax');
+    if (is_string($stored) && $stored !== '') {
+        $memo = ($stored === 'none') ? '' : $stored;
+        return $memo;
+    }
+    global $wpdb;
+    $memo = '';
+    $previous = $wpdb->suppress_errors(true);
+    foreach (alt_regexp_boundary_candidates() as $name => $wrap) {
+        $pattern = $wrap[0] . 'EY' . $wrap[1];
+        // MUST hit a standalone token and MUST miss the words that caused this.
+        $hit  = $wpdb->get_var($wpdb->prepare('SELECT %s REGEXP %s', 'EY LLP', $pattern));
+        $miss = $wpdb->get_var($wpdb->prepare('SELECT %s REGEXP %s', 'money survey key', $pattern));
+        if ($hit === '1' && $miss === '0') { $memo = $name; break; }
+    }
+    $wpdb->suppress_errors($previous);
+    set_transient('alt_rx_boundary_syntax', ($memo === '' ? 'none' : $memo), DAY_IN_SECONDS);
+    return $memo;
+}
+
+/** The two dialects, as (open, close). Order is preference order. */
+function alt_regexp_boundary_candidates() {
+    return array(
+        // ICU (MySQL 8, MariaDB 10.0.5+ via PCRE).
+        'icu'   => array('\\b', '\\b'),
+        // Henry Spencer POSIX (MySQL 5.6/5.7). Errors outright on MySQL 8.
+        'posix' => array('[[:<:]]', '[[:>:]]'),
+    );
+}
+
+/** Escape every character that means something to ICU and to POSIX ERE alike. */
+function alt_regexp_quote($term) {
+    return preg_replace('/[.\\\\+*?\\[\\]^$(){}|\\-\\/]/u', '\\\\$0', (string) $term);
+}
+
+/**
+ * The boundary-matched pattern for a search term, or '' when this term must
+ * stay a substring search. `$syntax` is injected so the pattern builder is a
+ * pure function with no database in it; callers pass
+ * alt_regexp_boundary_syntax().
+ */
+function alt_boundary_pattern($term, $syntax = null) {
+    if ($syntax === null) $syntax = alt_regexp_boundary_syntax();
+    $candidates = alt_regexp_boundary_candidates();
+    if (!isset($candidates[$syntax])) return '';
+    $term = trim((string) $term);
+    if ($term === '') return '';
+    // Latin letters, digits, punctuation and spaces only. Anything else - Han,
+    // Kana, Hangul, Cyrillic, Arabic, Thai - keeps today's substring search.
+    if (!preg_match('/^[\p{Latin}\p{Nd}\p{P}\p{S}\p{Zs}\s]+$/u', $term)) return '';
+    // A term must contain something a boundary can sit against at all.
+    if (!preg_match('/[\p{L}\p{Nd}]/u', $term)) return '';
+    $wrap = $candidates[$syntax];
+    $pattern = alt_regexp_quote($term);
+    // Anchor only the ends that ARE word characters: "AT&T" gets both, "(EY)"
+    // gets neither, and a boundary asserted against a bracket never matches.
+    if (preg_match('/^[\p{L}\p{Nd}_]/u', $term)) $pattern = $wrap[0] . $pattern;
+    if (preg_match('/[\p{L}\p{Nd}_]$/u', $term)) $pattern = $pattern . $wrap[1];
+    return $pattern;
+}
+
+/**
+ * One free-text clause: the LIKE we already ran, plus the boundary regex when
+ * the term supports one. Appends to $params by reference and returns SQL.
+ */
+function alt_freetext_clause(array $columns, $term, array &$params) {
+    global $wpdb;
+    $like = '%' . $wpdb->esc_like($term) . '%';
+    $ors = array();
+    foreach ($columns as $c) { $ors[] = "$c LIKE %s"; $params[] = $like; }
+    $sql = '(' . implode(' OR ', $ors) . ')';
+    $pattern = alt_boundary_pattern($term);
+    if ($pattern !== '') {
+        $ors = array();
+        foreach ($columns as $c) { $ors[] = "$c REGEXP %s"; $params[] = $pattern; }
+        $sql .= ' AND (' . implode(' OR ', $ors) . ')';
+    }
+    return $sql;
+}
+
+/**
  * Build a parameterized WHERE clause from request filters. `$except` drops one
  * dimension (for slicer charts). Returns array($sql, $params).
  *
@@ -1078,7 +1209,7 @@ function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
     $stage = (string) $r->get_param('stage');
     if ($stage === 'announced') { $where[] = "announced = 1"; }
     elseif ($stage === 'verified') { $where[] = "announced = 0"; }
-    if (($v = $r->get_param('company'))) { $where[] = "company LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
+    if (($v = $r->get_param('company'))) { $where[] = alt_freetext_clause(array('company'), $v, $params); }
     // `company_key` is the EXACT normalized employer identity; `company` above is
     // a LIKE substring match. A per-employer PAGE must use this one: `company`
     // would publish Metabolix's and Metaswitch's cuts on the page titled "Meta
@@ -1114,12 +1245,17 @@ function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
     if ($r->get_param('exclude_supersets') === '1' || $r->get_param('exclude_supersets') === 'true') {
         $where[] = "superset_of = 0";
     }
-    if (($v = $r->get_param('keyword'))) { $where[] = "excerpt LIKE %s"; $params[] = '%' . $wpdb->esc_like($v) . '%'; }
+    // Word-boundary matched like `q`. This is the endpoint TECHLOG 2026-08-05
+    // recorded as returning 5,322 rows for `keyword=AI` because "maintenance",
+    // "Air" and "retail" contain the letters; the gold-set sampler answered it
+    // with a word-boundary regex of its own in Python. That workaround stays
+    // (it also knows "artificial intelligence", "chatbot" and the rest), but
+    // the substring is no longer the thing it is working around.
+    if (($v = $r->get_param('keyword'))) { $where[] = alt_freetext_clause(array('excerpt'), $v, $params); }
     // Unified search box: company OR industry OR excerpt OR state OR country.
     if (($v = $r->get_param('q'))) {
-        $like = '%' . $wpdb->esc_like($v) . '%';
-        $where[] = "(company LIKE %s OR industry LIKE %s OR excerpt LIKE %s OR state LIKE %s OR country LIKE %s)";
-        array_push($params, $like, $like, $like, $like, $like);
+        $where[] = alt_freetext_clause(
+            array('company', 'industry', 'excerpt', 'state', 'country'), $v, $params);
     }
     if (($v = $r->get_param('min_jobs')) && (int) $v > 0) { $where[] = "job_count >= %d"; $params[] = (int) $v; }
 
