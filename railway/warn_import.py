@@ -706,7 +706,7 @@ def main():
     # disable if the post format ever drifts. Fail-isolated like Quebec.
     if os.environ.get("WARN_SKIP_WUP_MAZOWIECKIE") != "1":
         try:
-            from sources.wup_mazowieckie import pull_wup_mazowieckie
+            from sources.wup_mazowieckie import pull_wup_mazowieckie, health_detail as _pl_detail
             pl = pull_wup_mazowieckie(max_posts=int(os.environ.get("WUP_MAZ_POSTS", "4")))
             print(f"Mazowieckie PL (custom): {len(pl)} notices kept")
             if start:
@@ -714,9 +714,11 @@ def main():
             if min_emp:
                 pl = [e for e in pl if e["job_count"] >= min_emp]
             entries.extend(pl)
-            report_source_health("warn_mazowieckie", "ok", len(pl),
-                                 "Mazowieckie collective-dismissal register (WUP Warszawa)"
-                                 + ("" if pl else " — no notices in the recent monthly posts"))
+            # The detail now carries the run's OWN completeness audit — our jobs
+            # against the total each post declares for itself. "ok, ran fine"
+            # was true and useless for as long as the parser was reading three
+            # of eleven notices.
+            report_source_health("warn_mazowieckie", "ok", len(pl), _pl_detail())
         except Exception as exc:
             print(f"Mazowieckie importer failed: {exc}")
             report_source_health("warn_mazowieckie", "degraded", 0,

@@ -175,7 +175,22 @@ def _valid_emp(e):
     return True
 
 
-def _entry(company, jobs, date, region="", reason=""):
+# THE MINISTRY'S OWN CAVEATS, on the row, because they change what the number
+# means. MESS states them on every monthly list: the list holds notices RECEIVED
+# in the period (a dismissal may fall outside it); a notice is an INTENTION to
+# dismiss; a cancelled layoff is never removed; and the monthly list is a
+# snapshot that is not retroactively corrected. A Quebec-derived figure
+# therefore runs structurally HIGH against dismissals actually carried out, and
+# a reader who is not told that will read it as executed cuts. Kept short
+# because it renders in the public table's excerpt; the fuller statement is on
+# the methodology page.
+_NOTICE_CAVEAT = ("This is an employer's notice of INTENDED dismissal. The "
+                  "ministry's monthly list is a snapshot that is not corrected "
+                  "afterwards, so a layoff later cancelled or reduced stays on "
+                  "it.")
+
+
+def _entry(company, jobs, date, region="", reason="", source_url=None):
     company = (company or "").strip()
     if not company or jobs <= 0 or jobs > 100000 or not date:
         return None
@@ -185,7 +200,8 @@ def _entry(company, jobs, date, region="", reason=""):
     is_closure = "fermeture" in (reason or "").lower()
     excerpt = (f"{'Closure' if is_closure else 'Collective dismissal'} at "
                f"{company}{loc}, Quebec. {jobs:,} employees affected, effective "
-               f"{date}. Filed under Quebec's collective-dismissal notice rules (MESS).")
+               f"{date}. Filed under Quebec's collective-dismissal notice rules "
+               f"(MESS). {_NOTICE_CAVEAT}")
     hash_input = f"warnqc{company.lower().strip()}{date}{jobs}"
     return {
         "source_type": "warn",
@@ -203,7 +219,13 @@ def _entry(company, jobs, date, region="", reason=""):
         "reason_tags": (["closure"] if is_closure else []),
         "ai_explicit": False,
         "ai_language": None,
-        "source_url": PUBLICATIONS_URL,
+        # The MONTHLY PDF this notice was read out of, not the publications
+        # index. Every row cited the index until 2026-08-18, which meant a
+        # reader who wanted to check one landed on a page listing every
+        # ministry publication and had to work out which month to open. A
+        # source link that does not reach the document is a citation in
+        # appearance only. Falls back to the index if a caller has no URL.
+        "source_url": source_url or PUBLICATIONS_URL,
         "dedup_hash": hashlib.md5(hash_input.encode("utf-8")).hexdigest(),
         "is_layoff_event": True,
     }
@@ -342,7 +364,7 @@ def pull_quebec(months_back=4):
             if key in seen:
                 continue
             seen.add(key)
-            e = _entry(emp, cnt, eff, region=region)
+            e = _entry(emp, cnt, eff, region=region, source_url=url)
             if e:
                 out.append(e)
     _LAST_REPORT["parsed"] = len(out)
