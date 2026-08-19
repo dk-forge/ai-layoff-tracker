@@ -134,6 +134,79 @@ TAG_STYLES = {
 # still line up, because the alignment is done by the table.
 # ---------------------------------------------------------------------------
 VARIANT_STYLES = {
+    # ------------------------------------------------------------------
+    # The edition furniture, added 2026-08-19 when the weekly digest was
+    # rebuilt as an edition. The owner read a live send and said the whole
+    # thing was confusing, and the fault was that it had no editorial spine:
+    # it opened on a figure, not on a story, and nothing told a reader what had
+    # happened before it started qualifying it.
+    #
+    # DATELINE, LEAD, WHY. A newspaper's grammar, and each has a different job,
+    # so each gets a different weight. The dateline is small print that says
+    # which edition this is. The lead is the biggest body text in the message,
+    # because it is the two lines a reader is allowed to stop after. The "why
+    # it matters" line is Axios's, and it is set in ink rather than grey with a
+    # rule above it so a skimmer's eye stops on it.
+    # ------------------------------------------------------------------
+    ("p", "dateline"): (f"margin:0 0 14px;font-family:{FONT};font-size:12px;"
+                        f"line-height:1.5;letter-spacing:0.04em;"
+                        f"text-transform:uppercase;color:{MUTED};"),
+    ("p", "lead"): (f"margin:0 0 10px;font-family:{FONT};font-size:18px;"
+                    f"line-height:1.45;color:{INK};"),
+    # A section's own opening line, below the lead's weight. It frames a block
+    # rather than opening the edition.
+    ("p", "standfirst"): (f"margin:0 0 10px;font-family:{FONT};font-size:15px;"
+                          f"line-height:1.5;color:{INK};"),
+    ("p", "why"): (f"margin:0 0 20px;padding:10px 0 0;font-family:{FONT};"
+                   f"font-size:14px;line-height:1.55;color:{INK};"
+                   f"border-top:1px solid {RULE};"),
+    # A single derived observation that earns its own line rather than a clause
+    # at the end of another sentence. "Technology is ninth, at 1%" was set as
+    # grey small print inside the composition note; the owner picked it out of
+    # the delivered email as the most striking thing in it.
+    ("p", "finding"): (f"margin:0 0 14px;font-family:{FONT};font-size:15px;"
+                       f"line-height:1.5;font-weight:700;color:{INK};"),
+    # ------------------------------------------------------------------
+    # TWO HEADLINE FIGURES SIDE BY SIDE. The owner asked for the United States
+    # and worldwide together rather than one of them, so they are two cells of
+    # one presentational table at 50% each: equals, not a total and a subtotal.
+    #
+    # 28px AND NOT THE 34px OF A LONE STAT. At 375px the card is about 295px
+    # wide inside its padding, so each cell is roughly 147px, and a seven
+    # character figure at 34px does not fit that. This is measured against the
+    # widest figure the tracker has ever published rather than against the
+    # current week.
+    # ------------------------------------------------------------------
+    ("td", "pair-left"): (f"padding:6px 12px 10px 0;font-family:{FONT};"
+                          f"vertical-align:top;width:50%;"),
+    ("td", "pair-right"): (f"padding:6px 0 10px 12px;font-family:{FONT};"
+                           f"vertical-align:top;width:50%;"),
+    ("p", "stat-pair"): (f"margin:0 0 4px;font-family:{FONT};font-size:28px;"
+                         f"line-height:1.1;font-weight:700;"
+                         f"letter-spacing:-0.02em;color:{INK};"
+                         f"font-variant-numeric:tabular-nums;"),
+    # The change on the previous week. The glyph is U+25B2 or U+25BC, geometric
+    # characters every client draws as text; an emoji here would be a coloured
+    # picture in half of them and a box in the other half. The DIRECTION IS ALSO
+    # IN THE WORD beside it, so nothing is lost when the glyph does not render
+    # and a screen reader still says which way it went.
+    # What the paired figure COUNTS, on the cell, under the number. The scope
+    # sentence below the pair says it too, at length; this is the half that
+    # survives a screenshot of the block.
+    # THE SIGNATURE METRIC. One line, always present, always the same shape:
+    # the period's value and the cumulative one, adjacent. It is set at 20px
+    # rather than the 28px of a headline figure because it is deliberately NOT
+    # a headline: half the complete weeks of 2026 recorded zero, so a series
+    # that is mostly zero cannot carry the top of an edition. Big enough to be
+    # unmissable, small enough not to claim the week.
+    ("p", "signature"): (f"margin:0 0 8px;font-family:{FONT};font-size:20px;"
+                         f"line-height:1.3;font-weight:700;"
+                         f"letter-spacing:-0.01em;color:{INK};"
+                         f"font-variant-numeric:tabular-nums;"),
+    ("p", "unit"): (f"margin:0 0 6px;font-family:{FONT};font-size:13px;"
+                    f"line-height:1.4;color:{MUTED};"),
+    ("p", "change"): (f"margin:0;font-family:{FONT};font-size:13px;"
+                      f"line-height:1.4;font-weight:700;color:{MUTED};"),
     # The eyebrow over a headline figure. Uppercase and letterspaced is how a
     # newspaper marks a label without a rule, a weight change or an image.
     ("p", "kicker"): (f"margin:0 0 4px;font-family:{FONT};font-size:11px;"
@@ -297,6 +370,15 @@ def part_text(part) -> str:
     return part[2] if len(part) > 2 else ""
 
 
+def part_subject(part) -> str:
+    """The metric-first subject the SITE composed for this section.
+
+    Empty when the plugin predates it, which is a real state and not an error:
+    subject_line falls back to the edition label deliberately.
+    """
+    return (part[4] if len(part) > 4 else "") or ""
+
+
 def part_preheader(part) -> str:
     """The one-line inbox snippet the SITE composed for this section.
 
@@ -322,51 +404,132 @@ def leading_part(parts):
     return None
 
 
+def _stamp(day: datetime.date) -> str:
+    return f"{MONTHS[day.month - 1]} {day.day}, {day.year}"
+
+
+def date_range(start: datetime.date, end: datetime.date) -> str:
+    """The site's alt_digest_date_range, ported. One date shape in one email.
+
+    MONTH FIRST. The owner read a live send and said "10 to 16 August 2026" is
+    hard to read. Month first fixes the unit before the numerals arrive, which
+    is why it is the US convention and why every US statistical release uses
+    it. Four shapes, each the shortest form that stays unambiguous:
+
+        one day               August 16, 2026
+        inside one month      August 10-16, 2026
+        across two months     August 31 - September 6, 2026
+        across two years      December 28, 2026 - January 3, 2027
+
+    The hyphen is tight between two numerals and spaced between two multi-word
+    dates. It is a plain hyphen and never an em-dash, which is banned in copy
+    here, and never an en-dash, which is one more character to be mangled.
+    """
+    if start == end:
+        return _stamp(end)
+    if start.year != end.year:
+        return f"{_stamp(start)} - {_stamp(end)}"
+    if start.month != end.month:
+        return (f"{MONTHS[start.month - 1]} {start.day} - "
+                f"{MONTHS[end.month - 1]} {end.day}, {end.year}")
+    return f"{MONTHS[start.month - 1]} {start.day}-{end.day}, {end.year}"
+
+
+def week_label(day: datetime.date) -> str:
+    """"Week 33", on ISO-8601, which is the only numbering that checks out.
+
+    THE ISO YEAR IS NOT THE CALENDAR YEAR and that is the whole trap. ISO week
+    1 holds the first Thursday of January, so 1 January 2027 is week 53 of ISO
+    year 2026 and 31 December 2029 is week 1 of ISO year 2030.
+    `date.isocalendar()` returns (iso_year, iso_week, iso_weekday) and this
+    reads member 1, never `day.year`. The site computes the same number with
+    PHP's `W`, and tests/test_digest_week_numbering.py drives both over real
+    boundary dates and fails on any disagreement.
+    """
+    return f"Week {day.isocalendar()[1]}"
+
+
 def period_phrase(payload: dict) -> str:
     """A reader facing date for the window the site already chose.
+
+    Weekly is an EDITION LABEL: the ISO week number and the dates it covers,
+    together, always. A bare "Week 33" is a label a reader has to look up, and
+    two readers on two conventions look it up differently; the dates make it
+    self-checking. Daily is the send date, because a day is not a week.
 
     Returns an empty string when the payload carries a date this cannot read,
     and every caller treats that as "fall back", never as "guess".
     """
-    raw = str((payload or {}).get("to") or "").strip()[:10]
+    raw_to = str((payload or {}).get("to") or "").strip()[:10]
+    raw_from = str((payload or {}).get("from") or "").strip()[:10]
     try:
-        day = datetime.date.fromisoformat(raw)
+        end = datetime.date.fromisoformat(raw_to)
     except ValueError:
         return ""
-    stamp = f"{day.day} {MONTHS[day.month - 1]} {day.year}"
     freq = str((payload or {}).get("freq") or "").strip().lower()
-    if freq == "weekly":
-        return f"the week to {stamp}"
-    return stamp
+    if freq != "weekly":
+        return _stamp(end)
+    try:
+        start = datetime.date.fromisoformat(raw_from)
+    except ValueError:
+        return ""
+    # A MIDDLE DOT AND NOT A COMMA: an ISO week is identified, not described by
+    # an endpoint, and the date already carries a comma of its own.
+    return f"{week_label(start)} \u00b7 {date_range(start, end)}"
 
 
 def subject_line(payload: dict, parts) -> str:
-    """A subject that says what changed, not that something did.
+    """A subject that reads like an edition, not like an inventory.
 
-    "Your digest" tells a reader nothing they cannot see from the sender, and
-    in a crowded inbox it is the reason a good email goes unopened. This names
-    the trackers that actually have a section in THIS message, using the
-    site's own headings, and dates the window. It carries no figure: a number
-    in a subject line is a number nobody can correct once it is sent.
+    WHAT WENT OUT, AND WHAT THE OWNER SAID ABOUT IT. "AI Layoff Tracker and 2
+    more: the week to 19 August 2026". Two faults in one line. "and 2 more" is
+    machine output: this joined every section heading with commas and fell back
+    to counting them once the join ran past 78 characters, which on a
+    three-section send is every time, so the fallback WAS the normal case. And
+    "the week to 19 August" is not a week anybody recognises: it was a rolling
+    seven days ending on the send day.
+
+    Both are fixed. The window is now a real ISO week (see period_phrase and
+    the site's alt_digest_window), and the subject names the section a reader
+    meets FIRST and then dates the edition. A masthead does not list its own
+    contents, and the From line already carries the brand.
+
+    NO FIGURE, unchanged: a number in a subject line is a number nobody can
+    correct once it is sent. The preheader carries the figure.
+
+    THIS IS A LINE FOR LINE PORT of alt_digest_subject_line in
+    includes/subscribe.php, and tests/test_digest_subject_agreement.py drives
+    both over the same inputs and fails on any difference. Change one, change
+    the other, in the same commit.
 
     Falls back to the subject the site sent whenever it cannot do better.
     """
     fallback = str((payload or {}).get("subject") or "Tracker digest").strip()
+
+    # THE SECTION'S OWN METRIC-FIRST SUBJECT WINS. The owner asked for the
+    # figure in the subject and it is the right call for a data product: the
+    # statistic IS the news. This module may not produce a figure, so the SITE
+    # composes the whole line and this only chooses. It is the LEADING
+    # section's, the same one preheader_text describes, so the two lines a
+    # recipient sees before opening cannot name different trackers.
+    lead = leading_part(parts)
+    composed = part_subject(lead).strip() if lead is not None else ""
+    if composed and len(composed) <= 78:
+        return composed
+
     names = [section_heading(part_text(part)) for part in (parts or [])]
     names = [name for name in names if name]
     phrase = period_phrase(payload)
+    # No section could name itself, so there is nothing to lead with and a bare
+    # date is not a subject. The site's own dated fallback goes out.
     if not names or not phrase:
         return fallback
 
-    if len(names) == 1:
-        joined = names[0]
-    else:
-        joined = ", ".join(names[:-1]) + " and " + names[-1]
-    subject = f"{joined}: {phrase}"
+    subject = f"{names[0]}, {phrase}"
     if len(subject) > 78:
-        # Too long to read in a list. Lead with the first and count the rest,
-        # which is honest and stays short however many sections there are.
-        subject = f"{names[0]} and {len(names) - 1} more: {phrase}"
+        # The edition alone. Still an edition, still dated, still checkable,
+        # and it never names a section this message might not carry.
+        subject = phrase
     return subject if len(subject) <= 78 else fallback
 
 
@@ -483,27 +646,66 @@ TRACKING_SENTENCES = (
 )
 
 
-def _footer(unsub_url: str, manage_url: str) -> str:
+# HOW A WEEK IS NUMBERED, SAID ONCE, IN THE EDITION THAT USES ONE.
+#
+# The point of putting a number on a week is that a reader can tell which week
+# they are holding, and that only works if they can tell which convention it
+# is. Two exist in common use and they disagree for part of every week. ISO is
+# the international standard, the number is correct by definition rather than
+# by convention, and this is a worldwide tracker whose readers are mostly not
+# on the US calendar.
+#
+# It is not composed from data and carries no figure, which is why this module
+# is allowed to hold it. It is passed in as a note rather than written into the
+# footer unconditionally, because a DAILY edition has no week number and a
+# sentence explaining one it never printed is noise.
+WEEK_CONVENTION = ("Weeks are ISO-8601: Monday to Sunday, numbered from the "
+                   "week holding the year's first Thursday.")
+
+
+def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
+    """The two things a reader may need, then the small print, in that order.
+
+    THE MEASUREMENT DISCLOSURE MOVED DOWN A LEVEL, and that is the whole change
+    here. It is honest, it is required, and it was set at the same size and the
+    same weight as the sentence telling a reader how to leave, which put a
+    paragraph about analytics at the same rank as the content of the email. It
+    is now under its own rule, at 11px, which is where small print belongs.
+    NOTHING IS DELETED and nothing is softened: a reader who was told we could
+    not measure them is owed the correction, and every word of
+    TRACKING_SENTENCES still ships.
+    """
     small = (f'margin:0 0 8px;font-family:{FONT};font-size:12px;'
              f'line-height:1.6;color:{MUTED};')
+    fine = (f'margin:0 0 6px;font-family:{FONT};font-size:11px;'
+            f'line-height:1.6;color:{MUTED};')
     link = f'color:{LINK};text-decoration:underline;'
     manage = ""
     if manage_url:
         manage = (f' You can also <a href="{manage_url}" style="{link}">'
                   f'Manage your subscriptions</a> to change which of these '
                   f'you get.')
+    note = f'<p style="{fine}">{escape(edition_note)}</p>' if edition_note else ""
     return (f'<p style="{small}">You get this because you confirmed a digest '
             f'subscription at asktherecruiter.com.</p>'
             f'<p style="{small}"><a href="{unsub_url}" style="{link}">'
             f'Unsubscribe with one click</a>, which stops everything at once.'
             f'{manage}</p>'
-            f'<p style="margin:0;font-family:{FONT};font-size:12px;'
+            f'<table role="presentation" width="100%" cellpadding="0" '
+            f'cellspacing="0" border="0" style="width:100%;'
+            f'border-collapse:collapse;margin:14px 0 0;">'
+            f'<tr><td style="padding:12px 0 0;border-top:1px solid {RULE};'
+            f'background-color:{CARD_BG};color:{MUTED};">'
+            f'{note}'
+            f'<p style="margin:0;font-family:{FONT};font-size:11px;'
             f'line-height:1.6;color:{MUTED};">'
-            + escape(" ".join(TRACKING_SENTENCES)) + '</p>')
+            + escape(" ".join(TRACKING_SENTENCES)) +
+            '</p></td></tr></table>')
 
 
 def render_html(parts, *, subject: str, preheader: str, kicker: str,
-                unsub_url: str, manage_url: str) -> str:
+                unsub_url: str, manage_url: str,
+                edition_note: str = "") -> str:
     """The whole message. Inline styles only, tables only, no style block."""
     rows = []
     for index, part in enumerate(parts):
@@ -511,7 +713,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         padding = "22px 28px 8px" if index else "24px 28px 8px"
         rows.append(_cell(restyle(section_html), padding=padding,
                           top_rule=bool(index)))
-    rows.append(_cell(_footer(unsub_url, manage_url),
+    rows.append(_cell(_footer(unsub_url, manage_url, edition_note),
                       padding="18px 28px 26px", top_rule=True))
 
     # Hidden, and first, so it is the snippet the client picks up. The colour
@@ -580,7 +782,8 @@ def _reflow(block: str) -> str:
     return "\n".join(out)
 
 
-def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str) -> str:
+def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
+                edition_note: str = "") -> str:
     """A real alternative, not a stripped tag byproduct.
 
     Every figure, every entry and both ways out are here, because for a text
@@ -608,5 +811,8 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str) -> str:
                       "you get:")
         footer.append(manage_url)
     footer.append("")
+    if edition_note:
+        footer.append(_reflow(edition_note))
+        footer.append("")
     footer.append(_reflow(" ".join(TRACKING_SENTENCES)))
     return "\n".join(head + [rule, ""] + body + [""] + footer) + "\n"

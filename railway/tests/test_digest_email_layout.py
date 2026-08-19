@@ -54,13 +54,13 @@ LAYOFF_HTML = (
     '<h2>AI Layoff Tracker</h2>'
     '<p data-alt="kicker">Verified job cuts</p>'
     '<p data-alt="stat">48,910</p>'
-    '<p data-alt="scope">7 to 14 August 2026, counted by the date the cuts '
+    '<p data-alt="scope">August 7-14, 2026, counted by the date the cuts '
     'take effect.</p>'
     '<p data-alt="note">312 entries are verified. Including announced '
-    'estimates, 7 to 14 August 2026 holds 374 entries and 61,000 job cuts '
+    'estimates, August 7-14, 2026 holds 374 entries and 61,000 job cuts '
     'across 274 companies.</p>'
     '<h3>Biggest cuts</h3>'
-    '<p data-alt="caption">7 to 14 August 2026, verified and announced '
+    '<p data-alt="caption">August 7-14, 2026, verified and announced '
     'together, ranked by job count.</p>'
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
     '<tr><td data-alt="label"><a href="https://asktherecruiter.com/blog/r/9">'
@@ -72,13 +72,13 @@ LAYOFF_HTML = (
     '<p><a href="https://asktherecruiter.com/blog/r/1">'
     'Open the AI Layoff Tracker</a></p>')
 LAYOFF_TEXT = ("AI Layoff Tracker\n"
-               "48,910 verified job cuts, 7 to 14 August 2026, counted by the "
+               "48,910 verified job cuts, August 7-14, 2026, counted by the "
                "date the cuts take effect.\n"
                "312 entries are verified. Including announced estimates, 7 to "
-               "14 August 2026 holds 374 entries and 61,000 job cuts across "
+               "August 14, 2026 holds 374 entries and 61,000 job cuts across "
                "274 companies.\n"
                "\nBiggest cuts\n"
-               "7 to 14 August 2026, verified and announced together, ranked "
+               "August 7-14, 2026, verified and announced together, ranked "
                "by job count.\n"
                "  Acme Robotics (Austin, TX, takes effect 9 Aug 2026): 1,200 jobs\n"
                "    https://asktherecruiter.com/blog/layoff/acme-robotics-2026-08-09/\n"
@@ -89,9 +89,9 @@ TALENT_HTML = (
     '<h2>Talent Intelligence Tracker</h2>'
     '<p data-alt="kicker">New hiring signals</p>'
     '<p data-alt="stat">88</p>'
-    '<p data-alt="scope">7 to 14 August 2026, counted by the date the source '
+    '<p data-alt="scope">August 7-14, 2026, counted by the date the source '
     'published.</p>'
-    '<p data-alt="note">From 61 companies, 7 to 14 August 2026. 54 of the 88 '
+    '<p data-alt="note">From 61 companies, August 7-14, 2026. 54 of the 88 '
     'are verified against primary documents.</p>'
     '<ul>'
     '<li>Fabrikam: opens a 400 seat engineering hub in Warsaw (9 Aug 2026)</li>'
@@ -99,9 +99,9 @@ TALENT_HTML = (
     '<p><a href="https://asktherecruiter.com/blog/r/2">'
     'Open the Talent Intelligence Tracker</a></p>')
 TALENT_TEXT = ("Talent Intelligence Tracker\n"
-               "88 new hiring signals, 7 to 14 August 2026, counted by the "
+               "88 new hiring signals, August 7-14, 2026, counted by the "
                "date the source published.\n"
-               "From 61 companies, 7 to 14 August 2026. 54 of the 88 are "
+               "From 61 companies, August 7-14, 2026. 54 of the 88 are "
                "verified against primary documents.\n"
                "  - Fabrikam: opens a 400 seat engineering hub in Warsaw "
                "(9 Aug 2026)\n"
@@ -321,7 +321,8 @@ class ThePreheader(unittest.TestCase):
         talent = "Talent Intelligence Tracker\n1,332 new hiring signals, this week.\n"
         parts = [("layoff", LAYOFF_HTML, over), ("talent", LAYOFF_HTML, talent)]
 
-        subject = layout.subject_line({"to": "2026-08-17", "freq": "weekly"}, parts)
+        subject = layout.subject_line(
+            {"from": "2026-08-10", "to": "2026-08-16", "freq": "weekly"}, parts)
         snippet = layout.preheader_text(parts)
 
         self.assertTrue(subject.startswith("AI Layoff Tracker"), subject)
@@ -351,7 +352,7 @@ class ThePreheader(unittest.TestCase):
         """A preheader has one purpose and one hard ceiling, so the site
         composes one for that ceiling. The body sentence is then free to be as
         long as it needs to be where there is room for it."""
-        composed = "48,910 verified job cuts, 10 to 17 August 2026, worldwide."
+        composed = "48,910 verified job cuts, August 10-17, 2026, worldwide."
         over = "AI Layoff Tracker\n" + "48,910 verified job cuts, " + "y" * 140 + "\n"
         snippet = layout.preheader_text([("layoff", LAYOFF_HTML, over, composed)])
         self.assertEqual(snippet, composed)
@@ -398,7 +399,9 @@ class TheSubjectSaysWhatChanged(unittest.TestCase):
     def test_it_names_the_tracker_and_the_period(self):
         subject = message().subject
         self.assertIn("AI Layoff Tracker", subject)
-        self.assertIn("14 August 2026", subject)
+        # The window, not the send date: a weekly subject carries the ISO
+        # week and the dates it covers. See digest_layout.period_phrase.
+        self.assertIn("August 7-14, 2026", subject)
         self.assertNotIn("Your digest", subject)
 
     def test_it_stays_short_enough_to_read_in_a_list(self):
@@ -407,10 +410,26 @@ class TheSubjectSaysWhatChanged(unittest.TestCase):
             subject = message(names).subject
             self.assertLessEqual(len(subject), 78, subject)
 
-    def test_three_sections_are_summarised_rather_than_listed_out(self):
+    def test_three_sections_are_never_listed_out_or_counted(self):
+        """WHAT THIS USED TO ASSERT, AND WHY IT WAS THE DEFECT.
+
+        It required the subject to contain "2 more". That is what the old rule
+        produced for a subscriber to all three lists, which is to say for the
+        normal case, and the owner read a delivered send and called it out:
+        "AI Layoff Tracker and 2 more" is machine output, not an edition.
+
+        A masthead does not list its own contents. The subject names the
+        section a reader meets first and then dates the edition; the other
+        sections are in the body. So the assertion is inverted: the count must
+        NOT be there, and the edition must be.
+        """
         subject = message(("layoff", "talent", "articles")).subject
         self.assertIn("AI Layoff Tracker", subject)
-        self.assertIn("2 more", subject)
+        self.assertNotIn("more", subject)
+        self.assertNotIn("Talent", subject)
+        # The window, not the send date: a weekly subject carries the ISO
+        # week and the dates it covers. See digest_layout.period_phrase.
+        self.assertIn("August 7-14, 2026", subject)
 
     def test_a_period_it_cannot_read_falls_back_to_the_sites_subject(self):
         built = message(to="not-a-date")

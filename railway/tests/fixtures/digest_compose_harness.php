@@ -161,7 +161,23 @@ function rest_do_request($req) {
         if (empty($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
         return new WP_REST_Response_Stub($FIXTURE[$key]);
     }
-    $key = ($req->get_param('from') === $FIXTURE['from']) ? 'layoff' : 'ytd';
+    /*
+      THREE WINDOWS NOW, NOT TWO. The layoff composer asks for the period, the
+      PRIOR period (the week-on-week comparison added 2026-08-19) and the year
+      to date, and keying on "is this the period, else it is the year" handed
+      the prior-week call the year-to-date payload. That would have made the
+      comparison silently enormous and the test would have passed.
+
+      A fixture with no `prior` key answers the prior-week call with an ERROR,
+      which is the real behaviour when the endpoint cannot serve that window,
+      and the composer's documented response to it is to print no comparison at
+      all. So the existing fixtures keep exercising the no-comparison branch
+      rather than acquiring an invented one.
+    */
+    $from = $req->get_param('from');
+    if ($from === $FIXTURE['from']) $key = 'layoff';
+    elseif (isset($FIXTURE['prior_from']) && $from === $FIXTURE['prior_from']) $key = 'prior';
+    else $key = 'ytd';
     if (empty($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
     return new WP_REST_Response_Stub($FIXTURE[$key]);
 }

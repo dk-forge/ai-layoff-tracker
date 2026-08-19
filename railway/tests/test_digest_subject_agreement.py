@@ -4,7 +4,7 @@ WHAT WENT OUT ON 2026-08-18.
 
     [AskTheRecruiter] Daily tracker digest
 
-No date in it at all, over a body that said 17 to 18 August 2026. A digest
+No date in it at all, over a body that said August 17-18, 2026. A digest
 whose entire doctrine is that every figure names its own window shipped the
 one line a reader sees first with no window on it, and a mailbox holding a
 month of them cannot tell one from another. It is also the line that decides
@@ -55,6 +55,8 @@ PHP = shutil.which("php")
 # whole plugin being booted. Extracting by name keeps this honest: if somebody
 # renames one, this fails loudly rather than testing a stale copy.
 _WANTED = ("alt_digest_date_range", "alt_digest_period_phrase",
+           "alt_digest_iso_week", "alt_digest_week_label",
+           "alt_digest_edition_label",
            "alt_digest_chars", "alt_digest_subject_line",
            "alt_digest_section_heading", "alt_digest_fallback_subject")
 
@@ -70,7 +72,7 @@ foreach (explode(',', $argv[2]) as $name) {
 }
 $in = json_decode($argv[3], true);
 echo json_encode(array(
-    'subject'  => alt_digest_subject_line($in['freq'], $in['to'],
+    'subject'  => alt_digest_subject_line($in['freq'], $in['from'], $in['to'],
                                           $in['headings'], $in['fallback']),
     'fallback' => alt_digest_fallback_subject($in['freq'], $in['to']),
     'heading'  => alt_digest_section_heading($in['section_text']),
@@ -78,14 +80,14 @@ echo json_encode(array(
 """
 
 
-def php_subject(freq, to, headings, fallback, section_text=""):
+def php_subject(freq, to, headings, fallback, section_text="", frm=""):
     handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
                                          encoding="utf-8")
     try:
         handle.write("<?php\n" + _RUNNER)
         handle.close()
-        payload = json.dumps({"freq": freq, "to": to, "headings": headings,
-                              "fallback": fallback,
+        payload = json.dumps({"freq": freq, "from": frm or to, "to": to,
+                              "headings": headings, "fallback": fallback,
                               "section_text": section_text})
         run = subprocess.run([PHP, handle.name, SUBSCRIBE, ",".join(_WANTED),
                               payload],
@@ -97,9 +99,9 @@ def php_subject(freq, to, headings, fallback, section_text=""):
     return json.loads(run.stdout)
 
 
-def python_subject(freq, to, headings, fallback):
+def python_subject(freq, to, headings, fallback, frm=""):
     """digest_layout.subject_line, driven through the shape it really takes."""
-    payload = {"to": to, "freq": freq, "subject": fallback}
+    payload = {"from": frm or to, "to": to, "freq": freq, "subject": fallback}
     # A section that cannot name itself has an EMPTY text part, which is the
     # real shape: the composers return nothing rather than a nameless section.
     parts = [(name, "<p>x</p>", (name + "\nsomething\n") if name else "", "")
@@ -111,33 +113,47 @@ def python_subject(freq, to, headings, fallback):
 # realistic: one section, three sections, a weekly window, a window this cannot
 # read at all, a section that cannot name itself, and a set of names long
 # enough to blow the 78-character ceiling twice over.
+# The cases, chosen to cover every branch on both sides rather than to be
+# realistic: one section, three sections, a real ISO week, a window this cannot
+# read at all, a section that cannot name itself, and a set of names long
+# enough to blow the 78-character ceiling twice over. Each is (freq, from, to,
+# headings): the window needs BOTH ends now, because a weekly subject carries
+# the ISO week number of its first day and the dates it covers.
+#
+# THE LAST TWO ARE ISO YEAR BOUNDARIES and they are the reason this file has to
+# carry them. December 28, 2026 - January 3, 2027 is week 53 of ISO year 2026,
+# and December 31, 2029 falls in week 1 of ISO year 2030. A implementation that
+# reads the calendar year beside the ISO week is wrong for a few days a year,
+# ships silently, and is found the following January.
 CASES = (
-    ("daily",  "2026-08-18", ["AI Layoff Tracker"]),
-    ("daily",  "2026-08-18", ["AI Layoff Tracker", "Talent Intelligence Tracker"]),
-    ("daily",  "2026-08-18", ["AI Layoff Tracker", "Talent Intelligence Tracker",
-                              "From the blog"]),
-    ("weekly", "2026-08-17", ["AI Layoff Tracker", "From the blog"]),
-    ("weekly", "2026-08-17", ["AI Layoff Tracker"]),
-    ("daily",  "2026-08-18", []),
-    ("daily",  "2026-08-18", ["", "From the blog"]),
-    ("daily",  "not-a-date", ["AI Layoff Tracker"]),
-    ("daily",  "2026-01-01", ["A tracker with a very long name indeed",
-                              "Another tracker with an equally long name",
-                              "And a third one for good measure"]),
-    ("weekly", "2026-12-31", ["From the blog"]),
+    ("daily",  "2026-08-17", "2026-08-18", ["AI Layoff Tracker"]),
+    ("daily",  "2026-08-17", "2026-08-18", ["AI Layoff Tracker", "Talent Intelligence Tracker"]),
+    ("daily",  "2026-08-17", "2026-08-18", ["AI Layoff Tracker", "Talent Intelligence Tracker",
+                                            "From the blog"]),
+    ("weekly", "2026-08-10", "2026-08-16", ["AI Layoff Tracker", "From the blog"]),
+    ("weekly", "2026-08-10", "2026-08-16", ["AI Layoff Tracker"]),
+    ("daily",  "2026-08-17", "2026-08-18", []),
+    ("daily",  "2026-08-17", "2026-08-18", ["", "From the blog"]),
+    ("daily",  "not-a-date", "not-a-date", ["AI Layoff Tracker"]),
+    ("weekly", "2026-08-10", "not-a-date", ["AI Layoff Tracker"]),
+    ("daily",  "2026-01-01", "2026-01-01", ["A tracker with a very long name indeed",
+                                            "Another tracker with an equally long name",
+                                            "And a third one for good measure"]),
+    ("weekly", "2026-12-28", "2027-01-03", ["From the blog"]),
+    ("weekly", "2029-12-31", "2030-01-06", ["AI Layoff Tracker"]),
 )
 
-FALLBACK = "[AskTheRecruiter] Daily tracker digest, 18 August 2026"
+FALLBACK = "[AskTheRecruiter] Daily tracker digest, August 18, 2026"
 
 
 @unittest.skipUnless(PHP, "php is not on PATH")
 class TheTwoSendersComposeTheSameSubject(unittest.TestCase):
 
     def test_every_case_agrees(self):
-        for freq, to, headings in CASES:
-            with self.subTest(freq=freq, to=to, headings=headings):
-                php = php_subject(freq, to, headings, FALLBACK)["subject"]
-                py = python_subject(freq, to, headings, FALLBACK)
+        for freq, frm, to, headings in CASES:
+            with self.subTest(freq=freq, frm=frm, to=to, headings=headings):
+                php = php_subject(freq, to, headings, FALLBACK, frm=frm)["subject"]
+                py = python_subject(freq, to, headings, FALLBACK, frm=frm)
                 self.assertEqual(php, py,
                                  "the wp_mail sender and the relay would put "
                                  "different subjects on the same digest")
@@ -154,18 +170,35 @@ class TheSubjectCarriesTheDateOnEveryPath(unittest.TestCase):
     """Including the fallback, which is still a subject somebody receives."""
 
     def test_the_composed_subject_dates_the_window(self):
-        out = php_subject("daily", "2026-08-18", ["AI Layoff Tracker"], FALLBACK)
-        self.assertEqual(out["subject"], "AI Layoff Tracker: 18 August 2026")
+        out = php_subject("daily", "2026-08-18", ["AI Layoff Tracker"], FALLBACK,
+                          frm="2026-08-17")
+        self.assertEqual(out["subject"], "AI Layoff Tracker, August 18, 2026")
 
-    def test_weekly_says_which_week(self):
-        out = php_subject("weekly", "2026-08-17", ["AI Layoff Tracker"], FALLBACK)
+    def test_weekly_says_which_week_by_number_and_by_date(self):
+        """"the week to August 17, 2026" was a rolling seven days ending on the
+        send day, which is a window that belongs to no week anybody
+        recognises. It is an ISO week now, and the number never travels
+        without the dates that let a reader check it."""
+        out = php_subject("weekly", "2026-08-16", ["AI Layoff Tracker"], FALLBACK,
+                          frm="2026-08-10")
         self.assertEqual(out["subject"],
-                         "AI Layoff Tracker: the week to 17 August 2026")
+                         "AI Layoff Tracker, Week 33 · August 10-16, 2026")
+
+    def test_the_iso_year_is_not_the_calendar_year(self):
+        """January 1, 2027 sits in week 53 of ISO year 2026, and this is the
+        defect that ships silently and is found the following January."""
+        out = php_subject("weekly", "2027-01-03", ["AI Layoff Tracker"], FALLBACK,
+                          frm="2026-12-28")
+        self.assertEqual(out["subject"],
+                         "AI Layoff Tracker, Week 53 · December 28, 2026 - January 3, 2027")
+        out = php_subject("weekly", "2030-01-06", ["AI Layoff Tracker"], FALLBACK,
+                          frm="2029-12-31")
+        self.assertIn("Week 1 \u00b7", out["subject"])
 
     def test_the_fallback_is_dated_too(self):
         out = php_subject("daily", "2026-08-18", [], FALLBACK)
         self.assertEqual(out["fallback"],
-                         "[AskTheRecruiter] Daily tracker digest, 18 August 2026")
+                         "[AskTheRecruiter] Daily tracker digest, August 18, 2026")
         self.assertEqual(out["subject"], out["fallback"],
                          "no section could name itself, so the dated fallback "
                          "is what goes out")
@@ -205,7 +238,7 @@ class TheRelayStillFallsBackToWhatTheSiteSent(unittest.TestCase):
     def test_a_section_that_cannot_name_itself_is_skipped(self):
         self.assertEqual(
             python_subject("daily", "2026-08-18", ["", "From the blog"], FALLBACK),
-            "From the blog: 18 August 2026")
+            "From the blog, August 18, 2026")
 
 
 if __name__ == "__main__":

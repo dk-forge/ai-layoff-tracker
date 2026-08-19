@@ -498,6 +498,10 @@ $out['send_row_matches_mails'] = ((int) $send['recipients']) === (count($mails) 
 
 $links = $wpdb->get_results('SELECT * FROM wp_alt_digest_links ORDER BY id', ARRAY_A);
 $out['links_stored'] = count($links);
+// EVERY stored destination, not only the first. The digest linked one thing
+// per send until 2026-08-19; it now links every ranked row, and a test that
+// reads $links[0] would stop noticing the other twenty.
+$out['link_urls'] = array_map(function ($l) { return $l['url']; }, $links);
 $out['link_url'] = $links ? $links[0]['url'] : null;
 $out['link_starts_at_zero'] = $links && ((int) $links[0]['clicks']) === 0;
 // The email carries the first-party counter URL, not the bare destination.
@@ -586,8 +590,11 @@ $wpdb->pdo->exec('DELETE FROM wp_alt_digest_links');
 $GLOBALS['__transients'] = array();
 $GLOBALS['__posts'] = array();
 
-$art_from = gmdate('Y-m-d', time() - 7 * DAY_IN_SECONDS);
-$art_to = gmdate('Y-m-d');
+// THE WINDOW THE WEEKLY TIER REALLY REPORTS, asked for rather than rebuilt:
+// alt_digest_send('weekly') below composes on this same window, and a fixture
+// that composed on a different one would exercise a section no subscriber
+// receives.
+list($art_from, $art_to) = alt_digest_window('weekly');
 
 // A real send row, so the composed links go through the counter exactly as
 // they do in a live run.
@@ -605,11 +612,29 @@ $before_quiet = count($mails);
 list($sent_quiet, ) = alt_digest_send('weekly');
 $out['articles_only_mails_with_no_posts'] = count($mails) - $before_quiet;
 
-$mk = function ($id, $title, $slug, $excerpt, $age_days, $extra = array()) {
+/*
+  DATED FROM THE REPORTED WINDOW, NOT FROM THE CLOCK.
+
+  $age_days counted back from NOW, which worked while the weekly window was a
+  rolling seven days ending today: age 2 was always inside it. The weekly tier
+  now reports the previous COMPLETE ISO week, so "two days ago" is inside the
+  CURRENT week and outside the reported one, and it lands there or not
+  depending on which weekday the suite happens to run. A fixture whose meaning
+  changes with the day is a fixture that proves nothing on six days out of
+  seven.
+
+  So age 1 is the last day of the reported window and every other age counts
+  back from there. The relative ordering the assertions rely on is unchanged,
+  and the two deliberately-out-of-window posts (40 days, and a draft) stay out.
+*/
+$mk = function ($id, $title, $slug, $excerpt, $age_days, $extra = array())
+        use ($art_to) {
+    $anchor = strtotime($art_to . ' 00:00:00 UTC');
     return (object) array_merge(array(
         'ID' => $id, 'post_title' => $title, 'post_name' => $slug,
         'post_excerpt' => $excerpt, 'post_type' => 'post', 'post_status' => 'publish',
-        'post_date_gmt' => gmdate('Y-m-d H:i:s', time() - $age_days * DAY_IN_SECONDS),
+        'post_date_gmt' => gmdate('Y-m-d H:i:s',
+                                  $anchor - ($age_days - 1) * DAY_IN_SECONDS),
     ), $extra);
 };
 $GLOBALS['__posts'] = array(
@@ -901,12 +926,35 @@ $wpdb->pdo->exec('DELETE FROM wp_alt_digest_links');
 unset($GLOBALS['__options']['alt_digest_external_claim']);
 $monday = array();
 
-// Posts inside both windows, so the articles section composes for either tier.
+/*
+  ONE POST IN EACH WINDOW, WHICH IS TWO POSTS NOW AND USED TO BE ONE.
+
+  This carried a single post dated an hour ago, and the comment claimed it was
+  inside both windows. That was true while the weekly window was a rolling
+  seven days ENDING TODAY. It stopped being true on 2026-08-19, when the weekly
+  tier moved to the previous COMPLETE ISO week: a post from today is in this
+  week, and this week is not what a weekly edition reports.
+
+  It is not a fixture bug, it is the change itself, and the weekly half of the
+  both-tiers subscriber going silent is exactly the symptom a reader would
+  have. So the fixture holds one post in each window and the assertion stands
+  unchanged.
+*/
+// The previous complete ISO week, computed here rather than borrowed from
+// alt_digest_weekly_window(): this line runs before subscribe.php is loaded,
+// and a fixture that cannot build its own dates is a fixture that skips.
+$__monday_this_week = strtotime(gmdate('Y-m-d') . ' 00:00:00 UTC')
+                    - ((int) gmdate('N') - 1) * 86400;
+$__weekly_window = array(gmdate('Y-m-d', $__monday_this_week - 7 * 86400));
 $GLOBALS['__posts'] = array(
     (object) array('ID' => 91, 'post_title' => 'A post from today',
                    'post_name' => 'today-post', 'post_excerpt' => 'A standfirst.',
                    'post_type' => 'post', 'post_status' => 'publish',
                    'post_date_gmt' => gmdate('Y-m-d H:i:s', time() - 3600)),
+    (object) array('ID' => 92, 'post_title' => 'A post from the reported week',
+                   'post_name' => 'last-week-post', 'post_excerpt' => 'A standfirst.',
+                   'post_type' => 'post', 'post_status' => 'publish',
+                   'post_date_gmt' => $__weekly_window[0] . ' 09:00:00'),
 );
 
 $confirm_signup('daily-only@example.com', array('layoff'), 'daily');

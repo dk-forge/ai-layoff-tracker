@@ -96,7 +96,7 @@ NOT_PLURAL = {
 
 # The verb agreements the owner named by hand, asserted by phrase as well as by
 # sweep. The sweep catches nouns; a verb after a clause ("1 of the 5 companies
-# listed for 17 to 18 August 2026 link to ...") is far enough from the digit
+# listed for August 17-18, 2026 link to ...") is far enough from the digit
 # that no regex on "1 " will ever see it.
 BAD_PHRASES = (
     " link to an entry page",
@@ -175,6 +175,19 @@ def layoff_with_singular_remainders():
         _tuple("Canada", 1, 1), _tuple("France", 1, 1),
         _tuple("Japan", 1, 1), _tuple("Kenya", 1, 1),
     ]
+    # THE REMAINDER LINE MOVED TO THE INDUSTRY BLOCK, so the fixture has to
+    # produce one there. The country block became a regional grouping on
+    # 2026-08-19 and carries an explicit "No country recorded" residual, so its
+    # column sums to the headline exactly and it correctly prints no remainder
+    # at all. Six industries carrying 8 between them: the sixth falls below the
+    # printed five and leaves a remainder of exactly one, and one job carries no
+    # industry. Both halves of the note therefore say "1", which is the line the
+    # owner quoted back.
+    data["layoff"]["top_industries"] = [
+        _tuple("Retail & E-commerce", 3, 3), _tuple("Healthcare & Pharma", 1, 1),
+        _tuple("Logistics & Transport", 1, 1), _tuple("Manufacturing", 1, 1),
+        _tuple("Media & Entertainment", 1, 1), _tuple("Technology", 1, 1),
+    ]
     return data
 
 
@@ -214,8 +227,15 @@ class ACountOfOneNeverGovernsAPlural(unittest.TestCase):
         out = compose(layoff_with_singular_remainders())
         assert_agrees(self, out["text"], "layoff text part")
         assert_agrees(self, out["html"], "layoff html part")
-        self.assertIn("1 more sits below the lines shown", out["text"])
-        self.assertIn("1 is on an entry with no country recorded", out["text"])
+        # THE COUNTRY BLOCK NO LONGER PRODUCES THIS LINE. It became a regional
+        # grouping carrying an explicit "No country recorded" residual on
+        # 2026-08-19, so its column sums to the headline exactly and the
+        # reconciliation note correctly says nothing. The industry block still
+        # ranks a top five out of a longer list, so it is where a remainder
+        # line is still produced and still has to agree with its own count.
+        industry = out["text"].split("Which industries")[1]
+        self.assertIn("1 more sits below the lines shown", industry)
+        self.assertIn("1 is on an entry with no industry recorded", industry)
         self.assertIn("links to an entry page", out["text"])
         self.assertIn("The other one arrived through a bulk filing import",
                       out["text"])
@@ -239,8 +259,14 @@ class ACountOfOneNeverGovernsAPlural(unittest.TestCase):
         whole file is about.
         """
         out = compose(layoff_of_one())
-        self.assertIn("Verified job cut<", out["html"])
-        self.assertIn("1 verified job cut, 17 to 18 August 2026", out["text"])
+        # THE LABEL MOVED WHEN THE HEADLINE BECAME A PAIR. It used to be the
+        # eyebrow over a single figure ("Verified job cut"); the eyebrow is now
+        # the geography, because there are two figures and a reader has to be
+        # able to tell which is which. The unit sits on its own line under each
+        # number, and it still has to agree with the number above it.
+        self.assertIn(">1</p><p data-alt=\"unit\">verified job cut<", out["html"])
+        self.assertIn("United States: 1 verified job cut", out["text"])
+        self.assertIn("Worldwide: 1 verified job cut", out["text"])
 
 
 @unittest.skipUnless(PHP, "php is not on PATH, so the composers cannot run")
@@ -251,8 +277,8 @@ class TheTrackerLinkSaysWhereItGoes(unittest.TestCase):
 
     def test_the_link_text_names_the_window(self):
         out = compose(layoff_of_one())
-        self.assertIn("Open the tracker for 17 to 18 August 2026", out["text"])
-        self.assertIn("Open the tracker for 17 to 18 August 2026", out["html"])
+        self.assertIn("Open the tracker for August 17-18, 2026", out["text"])
+        self.assertIn("Open the tracker for August 17-18, 2026", out["html"])
         self.assertNotIn("Open the tracker on this week", out["text"])
 
 

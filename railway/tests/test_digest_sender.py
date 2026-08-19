@@ -878,3 +878,68 @@ class HouseStyle(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheLogSaysWhatActuallyWentOut(unittest.TestCase):
+    """A log that cannot distinguish success from failure on the flag it is
+    reporting is worse than no log.
+
+    THE DEFECT. A test send with DIGEST_TEST_LISTS=talent printed "sections
+    composed: articles, layoff, talent" and delivered talent alone. The filter
+    worked; the log described COMPOSITION, which is upstream of the filter and
+    identical either way. The only evidence available for that input reported
+    the same string whether or not the input took effect, so it was read as
+    proof the input was ignored and a bug was filed against working code.
+
+    The run log is the whole verification surface for a workflow_dispatch, so
+    it has to name what was INCLUDED.
+    """
+
+    def _lists_for(self, wanted):
+        env = {"DIGEST_TEST_TO": "someone@example.com",
+               "DIGEST_TEST_LISTS": wanted}
+        return digest_send._test_lists(env, ["layoff", "talent", "articles"])
+
+    def test_the_filter_keeps_only_what_was_named(self):
+        self.assertEqual(self._lists_for("talent"), ["talent"])
+        self.assertEqual(self._lists_for("talent, articles"),
+                         ["talent", "articles"])
+
+    def test_a_blank_input_means_everything(self):
+        self.assertEqual(self._lists_for(""), ["layoff", "talent", "articles"])
+
+    def test_the_site_order_is_kept_whatever_order_was_typed(self):
+        """A test that reordered the sections would be showing a layout no
+        subscriber receives."""
+        self.assertEqual(self._lists_for("articles,layoff"),
+                         ["layoff", "articles"])
+
+    def test_the_message_carries_only_the_named_section(self):
+        payload = {
+            "from": "2026-08-10", "to": "2026-08-16", "freq": "weekly",
+            "subject": "fallback", "send_id": 0,
+            "sections": {
+                "layoff": {"html": "<h2>AI Layoff Tracker</h2>",
+                           "text": "AI Layoff Tracker\nx, August 10-16, 2026\n"},
+                "talent": {"html": "<h2>Talent Intelligence Tracker</h2>",
+                           "text": "Talent Intelligence Tracker\ny, August 10-16, 2026\n"},
+            },
+        }
+        recipient = {"email": "someone@example.com",
+                     "unsub_url": "https://asktherecruiter.com/blog/u/t/",
+                     "lists": ["talent"]}
+        message = digest_send.build_message(payload, recipient, "a@b.co", "a@b.co")
+        self.assertIsNotNone(message)
+        self.assertNotIn("AI Layoff Tracker", message.html)
+        self.assertIn("Talent Intelligence Tracker", message.html)
+
+    def test_the_log_line_names_what_is_included_and_not_only_what_composed(self):
+        """The assertion that would have stopped the misread."""
+        source = open(os.path.join(RAILWAY, "digest_send.py"),
+                      encoding="utf-8").read()
+        self.assertIn("sections included in what goes out", source,
+                      "the run log reports composition only, so it reads the "
+                      "same whether or not DIGEST_TEST_LISTS took effect")
+        self.assertIn('for name in (r.get("lists") or [])', source,
+                      "the included list must be read from the same field "
+                      "build_message reads, or it can drift from the message")
