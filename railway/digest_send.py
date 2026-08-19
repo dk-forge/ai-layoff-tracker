@@ -41,7 +41,15 @@ Env:
   DIGEST_FREQ                      daily | weekly | auto (default auto).
                                    auto sends daily every day and weekly as
                                    well on a Monday, as two passes in one run.
-                                   Naming a tier forces that one, on any day.
+                                   Naming a tier forces that one, on any day,
+                                   and overrides DIGEST_CRON below.
+  DIGEST_CRON                      the cron line that triggered this run
+                                   (github.event.schedule). Names the slot, so
+                                   the tier is read from the schedule rather
+                                   than chosen. Two UTC ticks are scheduled per
+                                   slot and this is how the one that is not
+                                   6:00 / 7:30 Eastern today exits 0 having
+                                   done nothing. See railway/digest_slot.py.
   DIGEST_VERIFY_ONLY=1             prove the credential and stop. Connects,
                                    authenticates and hangs up. Reads no
                                    recipient, builds no message, stamps
@@ -78,6 +86,7 @@ import urllib.parse
 import urllib.request
 
 import digest_layout
+import digest_slot
 import http_retry
 from digest_transport import (ABSENT, OK, REJECTED, UNKNOWN,  # noqa: F401
                               CredentialCheck, DigestPolicyError, Message,
@@ -153,6 +162,70 @@ def resolve_freqs(env=None, today=None) -> tuple:
         return (choice,)
     today = today or _today()
     return ("daily", "weekly") if today.isoweekday() == 1 else ("daily",)
+
+
+def slot_decision(env=None, today=None):
+    """(freqs, skip_reason) for this invocation. One of the two is always empty.
+
+    THE SCHEDULE IS NOW TWO SLOTS, AND THE COMMENT THIS REPLACES ARGUED AGAINST
+    THAT. It said: "two schedules is two things to watch, and the reason this
+    slot is ten minutes after the site's own is that there is exactly one of
+    them." That was written after the 2026-08-17 defect, in which this job ran
+    once a day and CHOSE which tier to send, choosing weekly on a Monday, so
+    every daily subscriber got nothing on a Monday and nothing said so.
+
+    Read the defect again and it is not about the number of schedules. It is
+    about a job SELECTING one of several tiers with no external record of what
+    it was supposed to do. A tick that carries its own identity - "I am the
+    6:00 Eastern daily slot" - cannot make that mistake, because there is
+    nothing left to choose. Two such ticks are two facts, not two guesses.
+
+    What splitting genuinely costs is a second thing that can fail silently:
+    the weekly slot could stop firing while the daily one carries on, and the
+    mailer's health row would be stamped fresh every day by the daily pass.
+    That is paid for, not waved away. Every weekly pass writes its OWN health
+    row (`digest_weekly`, see _record_weekly_liveness) whose ceiling is sized
+    to the weekly cadence, and ops_status reads it and raises an issue. Do not
+    remove that row and leave the split schedule standing.
+
+    THE ORDER OF PRECEDENCE, and each is deliberate:
+
+      1. An explicit DIGEST_FREQ wins, on any day, from any trigger. That is
+         what the workflow_dispatch input is for and a human asked for it.
+      2. DIGEST_CRON (github.event.schedule) names the slot. digest_slot
+         decides whether this tick is the one whose Eastern wall clock matches,
+         and a tick that is not ours sends nothing and exits 0.
+      3. No cron and no freq - a manual run, or a local one - falls back to
+         resolve_freqs, the pre-existing behaviour.
+
+    AN UNREADABLE CRON FALLS FORWARD, NEVER SILENT. If DIGEST_CRON is set to
+    something this cannot parse, the answer is resolve_freqs and a loud
+    warning, not a skip. The server side per period guard means a second
+    delivery attempt in the same period finds nobody due, so sending twice is
+    harmless and not sending at all is an edition nobody receives. The
+    fallback direction is always "the sender keeps working".
+    """
+    env = os.environ if env is None else env
+    if (env.get("DIGEST_FREQ") or "").strip().lower() in {"daily", "weekly"}:
+        return resolve_freqs(env=env, today=today), ""
+
+    cron = (env.get("DIGEST_CRON") or "").strip()
+    if not cron:
+        return resolve_freqs(env=env, today=today), ""
+
+    try:
+        tier, reason = digest_slot.tier_for_cron(cron, on_date=today or _today())
+    except digest_slot.UnreadableCron as exc:
+        print(f"::warning::DIGEST_CRON={cron!r} could not be read ({exc}), so "
+              f"the daylight-saving guard was skipped and this run falls back "
+              f"to the day-of-week rule. It may send a period that has already "
+              f"gone out, which the per-period guard on the site absorbs. An "
+              f"unreadable schedule must never turn into a missed edition.")
+        return resolve_freqs(env=env, today=today), ""
+    if tier is None:
+        return (), reason
+    print(f"digest: {reason}")
+    return (tier,), ""
 
 
 # ---------------------------------------------------------------------------
@@ -515,6 +588,60 @@ def _record_health(status: str, entries: int, detail: str) -> None:
         report_source_health("digest_mailer", status, entries, detail[:240])
     except Exception as exc:  # noqa: BLE001
         print(f"(digest health post skipped: {exc})")
+
+
+# The weekly tier's OWN liveness row, separate from `digest_mailer` on purpose.
+#
+# `digest_mailer` is stamped by whichever pass ran, so once the daily tier has
+# its own 6:00 Eastern slot that row is refreshed every single morning and says
+# nothing whatsoever about the weekly. A weekly slot that stopped firing would
+# sit behind a permanently green row. This row is written ONLY by a weekly
+# pass, and its ceiling is sized to the weekly cadence (7 days + 2 of slack;
+# see health_digest.MAX_AGE_DAYS and ops_status.weekly_digest_lines), so a
+# missed Monday is visible by the following Wednesday.
+#
+# THE IN-WORDPRESS FALLBACK SENDER DELIBERATELY DOES NOT WRITE THIS ROW. Its
+# subject is "did the EXTERNAL weekly sender complete a pass", which is exactly
+# the thing splitting the cron put at risk. If this job stops and the WP-Cron
+# fallback quietly covers the send, readers are fine and this repo still has a
+# broken schedule, and that is worth an issue rather than a silence.
+WEEKLY_LIVENESS_ROW = "digest_weekly"
+
+
+def _record_weekly_liveness(outcome: dict) -> None:
+    """Stamp the weekly tier's own row. Only a real pass counts as one.
+
+    A preview and a nominated test send are excluded for the same reason they
+    are excluded from the mailer's row: neither is an edition anybody received,
+    and a row they refreshed would let a manual run hide a schedule that had
+    stopped. `_run_tier` already leaves `detail` empty for both, so the test is
+    simply "did this pass produce a ledger entry".
+    """
+    if outcome.get("preview") or outcome.get("test"):
+        print("digest: the weekly liveness row was NOT stamped - a preview or "
+              "a nominated test send is not an edition that went out.")
+        return
+    not_sent = outcome.get("not_sent") or ""
+    detail = outcome.get("detail") or ""
+    if not (not_sent or detail):
+        # No pass happened at all (no route, no subscriber table). Recording
+        # `ok` here would claim a weekly edition that was never attempted.
+        return
+    healthy = not not_sent and outcome.get("code") == 0
+    try:
+        from source_health import report_source_health
+        # The id is written as a LITERAL and not as WEEKLY_LIVENESS_ROW on
+        # purpose: tests/test_source_registry_parity.py sweeps this repo for
+        # literal report_source_health("...") call sites and makes every id it
+        # finds account for itself on the public health page. A variable here
+        # would pass that test by being invisible to it, which is not passing.
+        assert WEEKLY_LIVENESS_ROW == "digest_weekly"
+        report_source_health(
+            "digest_weekly", "ok" if healthy else "degraded",
+            int(outcome.get("sent") or 0),
+            (not_sent or detail)[:240])
+    except Exception as exc:  # noqa: BLE001
+        print(f"(weekly liveness health post skipped: {exc})")
 
 
 def health_reading(credential, transport, details, failed_rows, not_sent=()):
@@ -888,11 +1015,25 @@ def _worst(codes) -> int:
 
 
 def main() -> int:
+    # THE DAYLIGHT-SAVING GUARD RUNS BEFORE EVERYTHING, AND THAT ORDERING IS
+    # THE FEATURE. Both candidate UTC ticks for each slot are scheduled and one
+    # of them is a no-op, so the no-op has to be genuinely free: it returns
+    # before the credential is proved, before a recipient is read, before a
+    # message is built and above all before anything is stamped. A skipped tick
+    # that wrote the mailer's health row would refresh `checked_at` every day
+    # and hide a sender that had stopped - the one failure this whole file is
+    # built to make visible.
+    #
+    # A SKIPPED TICK EXITS 0. It is not a failure; it is the schedule working.
+    freqs, skip = slot_decision()
+    if skip:
+        print(f"digest: {skip}")
+        return 0
+
     if not (_site() and _key()):
         print("WP_SITE_URL and WP_API_KEY are required; nothing attempted")
         return 1
 
-    freqs = resolve_freqs()
     transport, notice = resolve_transport()
     from_addr, reply_to = sender_identity()
     print(f"digest: tiers={', '.join(freqs)}")
@@ -948,6 +1089,8 @@ def main() -> int:
                   f"for. Re-run without a limit to send it.")
             break
         outcome = _run_tier(freq, transport, from_addr, reply_to, remaining)
+        if freq == "weekly":
+            _record_weekly_liveness(outcome)
         codes.append(outcome["code"])
         sent_rows += outcome["sent"]
         failed_rows += outcome["failed"]

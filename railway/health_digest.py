@@ -51,6 +51,14 @@ MAX_AGE_DAYS = {
     "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
     "press_releases": 3, "warn_hi_ocr": 3, "warn_mazowieckie": 3,
     "data_integrity": 2, "warn_quebec": 3, "federal_rif": 35, "digest_mailer": 3,
+    # digest_weekly: the WEEKLY digest slot, which got its own cron on
+    # 2026-08-19 (7:30 AM ET Mondays). DERIVATION: 7 days between two healthy
+    # runs + 2 days of slack, so ONE missed Monday is reported on the Wednesday
+    # rather than a healthy 6-day-old row reading STALE for most of every week.
+    # `digest_mailer` cannot stand in for this: the daily slot stamps that row
+    # every morning, so it is green whatever the weekly tier does. Mirrored by
+    # ops_status.WEEKLY_DIGEST_MAX_AGE_DAYS, which reads the same row.
+    "digest_weekly": 9,
     # source_audit: MONTHLY (source-verification-audit.yml, `0 13 1 * *`), and
     # nothing else posts under that id. 31 (longest month) + 4 days of slack, so
     # one missed run is reported on day 35 instead of a healthy 31-day-old run
