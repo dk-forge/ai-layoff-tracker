@@ -54,6 +54,11 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import reader_freshness  # noqa: E402  - sibling module, stdlib only
 import benchmark_freshness  # noqa: E402  - sibling module, stdlib only
+import stash_watch  # noqa: E402  - sibling module, stdlib only
+
+# The repo this script lives in — [8] reads its stash stack. Derived from the
+# file, never from the cwd: ops_status.py is run from anywhere.
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 BASE = "https://asktherecruiter.com/blog"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
@@ -1281,6 +1286,29 @@ def main():
     print("[7] RENDERED CONTRAST  python3 railway/contrast_audit.py")
     print("      -> what the page RENDERS AS in both themes, not which version")
     print("         it is. Runs daily (Rendered contrast audit) and on deploy.")
+
+    # [8] The stash stack is per-REPOSITORY and every worktree shares it, so a
+    # stash made in one agent's worktree is a stash another agent can pop. This
+    # repo's own stash@{0} is labelled "popped by accident from a sibling
+    # worktree", so that is measured, not hypothetical. CLAUDE.md forbids `git
+    # stash`, and `git rebase/pull --autostash` breaks the rule silently — the
+    # sibling talent repo collected four that way. It cannot be enforced:
+    # rebase.autoStash=false is set locally here, but an explicit --autostash
+    # overrides config and no hook can refuse a stash push safely. So it is
+    # watched instead, and the verdict names what is IN each entry rather than
+    # counting them, because a count gets skimmed.
+    print("\n[8] STASH STACK  (shared by every worktree of this repo)")
+    try:
+        verdict, why, lines = stash_watch.check(str(REPO_ROOT))
+        print(f"    verdict: {verdict} — {why}")
+        for line in lines:
+            print(f"    {line}")
+        if verdict in (stash_watch.FAIL, stash_watch.UNKNOWN):
+            issues.append("the shared stash stack needs adjudicating")
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        print(f"    UNKNOWN — could not read the stash stack ({exc}).")
+        print("    THIS IS NOT A PASS.")
+        issues.append("the shared stash stack could not be read")
 
     print("\n" + "-" * 64)
     if issues:
