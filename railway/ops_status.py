@@ -57,6 +57,7 @@ import reader_freshness  # noqa: E402  - sibling module, stdlib only
 import benchmark_freshness  # noqa: E402  - sibling module, stdlib only
 import stash_watch  # noqa: E402  - sibling module, stdlib only
 import subscriber_routes  # noqa: E402  - sibling module, stdlib only
+import alert_state  # noqa: E402  - sibling module, stdlib only
 
 # The repo this script lives in — [8] reads its stash stack. Derived from the
 # file, never from the cwd: ops_status.py is run from anywhere.
@@ -353,7 +354,11 @@ def _report_held_alerts():
 #: The committed open/resolved ledger, read straight off disk like the outbox
 #: above and for the same reason: this file promises no dependencies and no
 #: side effects.
-_ALERT_STATE = Path(__file__).resolve().parent / "alert_state.json"
+#: Resolved by `alert_state.state_path()` AT CALL TIME, not bound to a constant
+#: here. `classify_open` below reads that same path, and two paths that agree
+#: everywhere except under ALERT_STATE_PATH is a discrepancy only a test would
+#: ever meet — which is exactly the kind that survives. Binding it at import
+#: would reintroduce the split for anything that sets the variable after import.
 
 
 def _report_open_alarms():
@@ -364,24 +369,65 @@ def _report_open_alarms():
     could read it, so "why have I heard nothing about this?" had no answer short
     of the database. A suppressed alarm is a deliberate silence, and a
     deliberate silence should be legible.
+
+    AND SOME OF THEM ARE NOT WAITING FOR ANYTHING. A cause raised on a feature
+    branch is scoped `<workflow>:<branch>:<fingerprint>` and clears only when a
+    green run of THAT scope posts its resolve. `tests.yml` fires on
+    `pull_request` and on pushes to `main`, so once that branch's PR has landed
+    no such run can ever happen: the entry is unclearable, and it earns one
+    `STILL FAILING` reminder a fortnight for a branch nobody will touch again.
+
+    Those are named here rather than counted as ordinary open alarms, because
+    "quiet until a green run clears it" is FALSE for them and the only thing
+    that will ever clear one is a reviewed close. Two words, because they are
+    proved differently: ORPHANED is the branch gone from origin, MERGED is the
+    branch still present but an ancestor of main. The one sitting in the ledger
+    on 2026-08-19 was the second kind — `ops/resend-ua`, PR #143 merged, ref
+    never deleted — which a plain does-the-branch-exist test reads as healthy.
+
+    -> (lines, unclearable_count). The remote is asked ONCE, and a remote that
+    does not answer is UNKNOWN — never orphaned, and never a clean read.
     """
     import json
 
     try:
-        doc = json.loads(_ALERT_STATE.read_text())
+        doc = json.loads(alert_state.state_path().read_text())
         entries = doc.get("open") or {}
     except Exception as exc:  # noqa: BLE001
-        return [f"UNKNOWN: could not read alert_state.json ({exc})"]
+        return [f"UNKNOWN: could not read alert_state.json ({exc})"], 0
     if not entries:
-        return ["none — nothing is being suppressed, so a red run will mail"]
-    rows = sorted(entries.items(), key=lambda kv: int(kv[1].get("first", 0)))
-    lines = [f"{len(rows)} open; a repeat of the same cause stays quiet until a "
-             f"green run clears it"]
-    for key, meta in rows[:4]:
-        lines.append(f"  {key}\n        {str(meta.get('subject') or '')[:66]}")
-    if len(rows) > 4:
-        lines.append(f"  ... and {len(rows) - 4} more")
-    return lines
+        return ["none — nothing is being suppressed, so a red run will mail"], 0
+
+    # ONE definition of "which branch is this keyed to", imported rather than
+    # re-spelled here: a second copy of that regex is a second thing to get
+    # wrong, and getting it wrong declares a live alarm unclearable.
+    rows = alert_state.classify_open(remote=True)
+    statuses = {k: st for k, _f, _l, _sub, st in rows}
+
+    ordered = sorted(entries.items(), key=lambda kv: int(kv[1].get("first", 0)))
+    stuck = [k for k, _ in ordered if statuses.get(k) in alert_state.UNCLEARABLE]
+    unknown = [k for k, _ in ordered if statuses.get(k) == alert_state.UNKNOWN]
+    live = len(ordered) - len(stuck)
+    lines = [f"{len(ordered)} open ({live} live, {len(stuck)} unclearable); a live "
+             f"cause stays quiet until a green run clears it"]
+    for key, meta in ordered[:4]:
+        tag = {alert_state.ORPHANED: "  ORPHANED (branch gone from origin)",
+               alert_state.MERGED: "  MERGED (branch parked, PR landed)",
+               alert_state.UNKNOWN: "  branch?"}.get(statuses.get(key), "")
+        lines.append(f"  {key}{tag}\n        {str(meta.get('subject') or '')[:66]}")
+    if len(ordered) > 4:
+        lines.append(f"  ... and {len(ordered) - 4} more")
+    if unknown:
+        lines.append("  `branch?` means origin did not answer, so it is not known "
+                     "whether those branches still exist. That is UNKNOWN, not a pass.")
+    if stuck:
+        lines.append("  No green run of those scopes can ever fire, so nothing will clear "
+                     "them, and")
+        lines.append("  each costs a false STILL FAILING email every 14 days until a human "
+                     "closes it:")
+        lines.append(f"    {alert_state.CLOSE_HELP}")
+        lines.append("  See docs/RUNBOOK.md 'an open alarm cannot clear itself'.")
+    return lines, len(stuck)
 
 
 #: Read straight off disk for the same reason as the outbox above: this file
@@ -1346,8 +1392,14 @@ def main():
     # said. Operational mail moved off the host on 2026-08-19 and the ledger
     # came with it, so this is readable from a checkout for the first time.
     print("\n[4b2] OPEN ALARMS  (railway/alert_state.json; what is being suppressed)")
-    for line in _report_open_alarms():
+    _alarm_lines, _orphaned = _report_open_alarms()
+    for line in _alarm_lines:
         print(f"    {line}")
+    if _orphaned:
+        # A stale record nothing can clear is exactly the shape of thing this
+        # report exists to hand to a human. It is cheap to close and it costs a
+        # false STILL FAILING email every fortnight until someone does.
+        issues.append(f"{_orphaned} unclearable alarm(s) need a reviewed close")
 
     # 4c. The audience. Counts only, never an address.
     print("\n[4c] DIGEST SUBSCRIBERS  (keyed /subscriber-stats; counts only, no addresses)")

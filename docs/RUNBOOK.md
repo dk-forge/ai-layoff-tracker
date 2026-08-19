@@ -250,7 +250,59 @@ of the same scope clears it, with one `STILL FAILING` reminder at 14 days.
 **Never clear it by hand-editing `railway/alert_state.json`.** Push a green run
 of that workflow instead. Editing the ledger to force an email is how the
 fourteen-day window and the RECOVERED-once guarantee get quietly broken, and
-neither failure announces itself.
+neither failure announces itself. If no green run of that scope can ever happen,
+read the next playbook — there is a sanctioned command, and it is not an editor.
+
+**AN OPEN ALARM CANNOT CLEAR ITSELF** (`ORPHANED` or `MERGED` in `[4b2]`)
+
+`ops_status.py [4b2]` and `python3 railway/alert_state.py --check-branches` both
+name these. They are open alarms that **no green run will ever clear**, because
+the branch they are keyed to is finished.
+
+A cause raised by `ci_alert` is scoped `<workflow>:<branch>:<fingerprint>` and
+clears only when a green run of **that** scope posts its resolve.
+`.github/workflows/tests.yml` fires on `pull_request` and on pushes to `main`.
+So once a feature branch's PR lands, nothing will run under that scope again.
+The entry sits open forever and earns one **false `STILL FAILING` email every 14
+days** about work that shipped. Two spellings, proved differently:
+
+| Status | What was proved | Can it come back? |
+|---|---|---|
+| `ORPHANED` | The branch is **gone from origin**. There is no ref left to push to. | No. Permanent. |
+| `MERGED` | The branch is still on origin but is an **ancestor of main** — its PR landed and it is parked. | Only if someone pushes to it again, which is why it is a weaker word. |
+| `branch?` | Origin was asked and did not answer. **UNKNOWN, not a pass** and not an accusation. | Re-run where `git ls-remote origin` works. |
+
+This is not new behaviour. The endpoint-backed design had the identical gap and
+`railway/alert_outbox.json` is full of `resolve:tests:<feature-branch>` entries
+that had nothing to clear. What changed on 2026-08-19 is that the ledger is a
+committed file, so the residue is finally **visible**.
+
+**Close it the way an incident is closed, never with an editor.** Same rule as
+`data_integrity --close-incident`: a human, a finding, and evidence.
+
+```bash
+python3 railway/alert_state.py --close <key> --reviewed-by <name> --reason "<40+ chars of what you actually found>" --fixed-in <commit|version|PR>
+```
+
+`--fixed-in` is the load-bearing argument and the one to resist skipping. **A
+parked branch is evidence about a branch, not about a defect.** Go and confirm
+the cause is gone from main before you close — for a test assertion, that means
+running that test on main:
+
+```bash
+git log --oneline -S "<the guarded symbol>" origin/main -- <path>
+```
+
+If nobody can name where the cause was fixed, it may still be live, and closing
+the alarm suppresses the **next genuine raise of it**. The command refuses a
+missing reviewer, a one-word reason or a missing `--fixed-in`, and writes
+nothing when it refuses.
+
+Then **commit `railway/alert_state.json`**. The close removes the entry exactly
+the way a `resolve` does, so nothing about dedup moves: if the cause ever
+recurs it alarms again, once. What a close adds is an audit record —
+`python3 railway/alert_state.py --closed` prints who decided, why, and where the
+fix landed. `railway/tests/test_alert_state_close.py` holds all of it.
 
 **A collector is RETURNING NOTHING** (digest subject `SOURCE RETURNING NOTHING`)
 The digest exits 2 and the email leads with what the source is worth, plus the
