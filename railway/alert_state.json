@@ -5,17 +5,12 @@
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
     },
-    "deploy-wordpress-plugin:main:ece0625172387f85": {
-      "first": 1787152771,
-      "last": 1787152771,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 could not install lftp after 3 attempts"
-    },
     "tests:ops-resend-ua:8f32a6ddbcaac88e": {
       "first": 1787125267,
       "last": 1787125267,
       "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
     }
   },
-  "updated_at": "2026-08-19T15:32:18+00:00",
+  "updated_at": "2026-08-19T15:37:22+00:00",
   "version": 1
 }
