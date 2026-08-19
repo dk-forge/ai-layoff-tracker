@@ -411,19 +411,33 @@ regex only runs on the rows it already admitted. The scan is the one we were
 already paying for; the precision is new. A test asserts the absence of the
 FULLTEXT index, so the day one is added is the day this choice is revisited.
 
-### Measured, live, before and after (2.20.96)
+### Measured, live, before (2.20.94) and after (2.20.96)
 
-| q= | before | after |
-|---|---|---|
-| EY | 1,968 | see the deploy note below |
-| GE | 8,612 | |
-| IBM | 58 | |
-| SAP | 94 | |
-| BT | 78 | |
-| Workday | 7 | 7 |
-| Stripe | 2 | 2 |
-| Expedia | 10 | 10 |
-| 退任 (JP) | 1 | 1 |
+| q= | before | after | what the "after" rows are |
+|---|---:|---:|---|
+| EY | 1,968 | **2** | both the BBC story on EY's 3,000 US cuts |
+| GE | 8,612 | **66** | GE Vernova, GE Aerospace, GE Vingmed |
+| SAP | 94 | **20** | |
+| BT | 78 | **10** | |
+| HP | - | 24 | |
+| IBM | 58 | 58 | unchanged: no English word contains it |
+| Workday | 7 | **7** | unchanged |
+| Stripe | 2 | **2** | unchanged |
+| Expedia | 10 | **10** | unchanged |
+| 退任 (JP) | 1 | **1** | unchanged - substring, no boundary applied |
+| 사임 (KR) | 0 | **0** | unchanged |
+
+The sibling talent tracker, same fix, same day (1.83.5): EY **13,934 to 0**,
+GE 22,854 to 14, BT 71 to 4, SAP 27 to 2, Workday 4 to 4, and the Korean and
+Japanese searches identical to the byte (49, 41, 2).
+
+**EY going to ZERO over there is the honest answer and it exposed a second,
+separate gap.** That corpus stores the firm as "Ernst & Young" and never as the
+bare token, so `q=Ernst` finds 15 rows and `q=EY` finds none. Before the fix
+`q=EY` returned 13,934 rows of which not one was the firm. **A company-alias
+map is a real follow-up and it is not this fix**: matching two letters against
+every word in the corpus was never a way of finding EY, it was a way of not
+noticing that we could not.
 
 ## 2026-08-19 - a fourth place on earth names the employer, and 16 of the 31 declared-outstanding countries close
 
