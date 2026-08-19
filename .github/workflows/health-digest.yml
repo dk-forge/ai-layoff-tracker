@@ -30,5 +30,13 @@ jobs:
           PYTHONUNBUFFERED: '1'
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # The digest still READS the health ledger from the host and still
+          # posts its own row back. What moved is the EMAIL: an operational
+          # report should not need the relay the readers are queued on, and a
+          # weekly note about whether the machine is healthy should not depend
+          # on that machine being healthy.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
           HEALTH_DIGEST_DRY: ${{ github.event.inputs.dry_run }}
         run: python health_digest.py

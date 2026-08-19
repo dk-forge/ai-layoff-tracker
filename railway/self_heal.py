@@ -153,6 +153,13 @@ FORBIDDEN = (
     "railway/alert_outbox.json",
     ".github/workflows/ci-alert.yml",
     ".github/workflows/alert-drain.yml",
+    # The same channel after 2026-08-19, when operational mail moved off the
+    # WordPress host onto Resend. `alert_state.py` and `alert_state.json` ARE
+    # the dedup guarantee now: an unattended edit to either could turn one
+    # cause back into eight emails, or silence a real one.
+    "railway/opsmail.py",
+    "railway/alert_state.py",
+    "railway/alert_state.json",
     # Supply chain: nobody unattended refreshes a hash-pinned lock.
     "railway/requirements.lock",
     "railway/requirements-min.lock",

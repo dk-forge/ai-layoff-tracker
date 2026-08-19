@@ -45,15 +45,41 @@ seven hours; the numbers were never the cause and widening the normaliser would
 have bought nothing (TECHLOG 2026-08-11). Do not broaden this to non-live
 failures, and do not collapse two slices or two invariants into one key.
 
-**`/alert` is a route on the host it reports about, so the alert has to survive
-that host.** On 2026-07-31 Bluehost 504'd under `/blog/` twice (~6 min in the
-afternoon, ~7 min at night) and in the sibling tracker the alerter failed four
-times saying "HTTP 504 from /alert" — mute at exactly the moment it was needed,
-and exiting non-zero so the outage manufactured extra red runs. Three rules now:
+**OPERATIONAL MAIL LEFT THE HOST ON 2026-08-19. It goes through Resend now.**
+`/alert` was a route on the host it reports about. On 2026-07-31 Bluehost 504'd
+under `/blog/` twice (~6 min in the afternoon, ~7 min at night), in the sibling
+tracker the alerter failed four times saying "HTTP 504 from /alert" — mute at
+exactly the moment it was needed — and the host went down twice more on
+2026-08-19. `railway/opsmail.py` (stdlib, Resend, `RESEND_API_KEY`) now carries
+CI alerts, the RECOVERED notices, the weekly `health_digest.py` and
+`ci_noise_report.py`. **The alarm no longer depends on the thing it monitors.**
+It also splits the budget: the reader digest keeps Brevo's 300/day and
+`digest_transport.py` is untouched, because a bad afternoon of red CI must not
+be able to eat the allowance the readers depend on. Sender identity is
+deliberately operational (`OPS_MAIL_FROM`), never the digest's From name.
+
+**The open/resolved ledger moved with it, into `railway/alert_state.json`, and
+THE CLAIM IS COMMITTED BEFORE THE SEND.** That ordering is the whole reason this
+is not a downgrade. A server-side option's read-modify-write window was
+milliseconds; a committed file read at checkout and pushed 30 seconds later is
+not, and two runners that both read "nothing is open" would both mail. `git push`
+to main is the compare-and-swap: the loser re-derives, finds the cause open and
+goes quiet. Resend's `Idempotency-Key` is a second guard on the same transition.
+Everything dedup promised still holds and is pinned by
+`tests/test_ops_mail_split.py`: one cause is one email, RECOVERED fires once, a
+live-data incident is one alarm across branches, two slices stay two alarms, and
+the 14-day STILL FAILING window is unchanged. `ops_status.py [4b2]` prints what
+is currently being SUPPRESSED, which no session could read while it lived in a
+WordPress option. Do not "simplify" this by writing the ledger after the send,
+and do not let the drain re-rule a held alert (it calls `ci_alert.deliver`, never
+`post_alert`, or the ledger would swallow the alert as a duplicate of itself).
+
+The outbox survives all of it, because a relay can be down too. Three rules
+still:
 - **An undeliverable alert is HELD, not lost.** `railway/ci_alert.py` retries
   transient failures in-run, then writes it to `railway/alert_outbox.json`
   (committed). `alert-drain.yml` delivers it every 30 minutes — and an empty
-  outbox makes **no request to the host at all**, which is why that tick is free.
+  outbox makes **no request at all**, which is why that tick is free.
 - **A delivery failure is NOT a red run.** Holding exits 0. The only non-zero
   left is "could neither deliver NOR hold". **Do not restore the old `exit 1` on
   a failed POST**: that is what let one outage manufacture red runs which
@@ -123,8 +149,9 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental
    news, distress/bankruptcy, foreign filings) funnels into the SAME `extract_layoff_data`
    → `post_to_wordpress` pipeline, so all guards apply once. `report_source_health(...)`
-   feeds a ledger; the weekly **`health_digest.py`** emails info@asktherecruiter.com (via the
-   keyed `/alert` endpoint) when a scraper breaks, with a **paste-ready fix instruction**.
+   feeds a ledger; the weekly **`health_digest.py`** emails info@asktherecruiter.com (via
+   Resend since 2026-08-19, not the host it reports on) when a scraper breaks, with a
+   **paste-ready fix instruction**.
    So the human loop is: get email → paste one line here → fix the one scraper. Full
    "add a source / tune it / fix a breakage" guide is in **docs/RUNBOOK.md**.
 

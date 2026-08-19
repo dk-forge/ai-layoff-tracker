@@ -217,6 +217,41 @@ Skip, do not cancel, and do not start. In order of what it saves:
 
 ## "X is broken" playbooks
 
+**NO OPERATIONAL EMAIL IS ARRIVING** (no CI alert, no RECOVERED, no health digest)
+
+Operational mail goes through Resend since 2026-08-19, not through the
+WordPress host. The reader digest is a separate relay and a separate budget;
+nothing here applies to it.
+
+1. **Prove the relay, not the code.** Actions -> "Ops mail selftest" ->
+   `Run workflow`. Leave `send` unchecked first: it lists the sending domains
+   the Resend account has verified and sends nothing. Then run it again with
+   `send` checked and read the inbox. The key is never printed by either run.
+2. **`(none)` in the domain list, or `HTTP 403`/`422` on the send.** The From
+   address is not on a domain this account has verified. That is the owner's
+   job in the Resend dashboard, and it is DNS, not code. Until then set the
+   `OPS_MAIL_FROM` repository variable to an address on a domain that IS
+   verified. Do not "fix" it by pointing alerts back at the WordPress host.
+3. **`HTTP 401`.** `RESEND_API_KEY` is wrong or revoked. Only the owner can
+   rotate it. Never print it, never echo it, never paste it into a log.
+4. **Alerts are HELD.** `python3 railway/ops_status.py` section `[4b]` lists
+   them, and `alert-drain.yml` retries every 30 minutes. A held alert is a kept
+   promise, not a failure, and the drain run stays GREEN while the relay is
+   away. Do not restore an `exit 1` on a failed send: that is what let one
+   outage manufacture red runs which manufacture alerts which also fail.
+
+**A RED RUN PRODUCED NO EMAIL AND NOTHING IS HELD**
+
+The cause is probably already open, which is the design working. Run
+`python3 railway/alert_state.py` (or `ops_status.py [4b2]`) to see exactly what
+is being suppressed and since when. An open alarm stays quiet until a green run
+of the same scope clears it, with one `STILL FAILING` reminder at 14 days.
+
+**Never clear it by hand-editing `railway/alert_state.json`.** Push a green run
+of that workflow instead. Editing the ledger to force an email is how the
+fourteen-day window and the RECOVERED-once guarantee get quietly broken, and
+neither failure announces itself.
+
 **A collector is RETURNING NOTHING** (digest subject `SOURCE RETURNING NOTHING`)
 The digest exits 2 and the email leads with what the source is worth, plus the
 candidate routes for it. That listing comes from `railway/source_value.py`,

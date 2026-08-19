@@ -312,10 +312,11 @@ class OneLiveIncidentIsOneAlarm(unittest.TestCase):
 class Behaviour(unittest.TestCase):
     def _run(self, argv, **env):
         import os
-        old = {k: os.environ.get(k)
-               for k in ("WP_SITE_URL", "WP_API_KEY", "ALERT_ENVELOPE")}
+        keys = ("WP_SITE_URL", "WP_API_KEY", "RESEND_API_KEY",
+                "ALERT_ENVELOPE", "ALERT_STATE_PATH")
+        old = {k: os.environ.get(k) for k in keys}
         os.environ.update({k: v for k, v in env.items()})
-        for k in ("WP_SITE_URL", "WP_API_KEY", "ALERT_ENVELOPE"):
+        for k in keys:
             if k not in env:
                 os.environ.pop(k, None)
         buf = io.StringIO()
@@ -443,7 +444,7 @@ class Behaviour(unittest.TestCase):
                 code, out = self._run(
                     ["--run-id", "1", "--workflow", "Tests",
                      "--conclusion", "failure", "--envelope", envelope],
-                    WP_SITE_URL="https://example.invalid", WP_API_KEY="k")
+                    RESEND_API_KEY="k")
             finally:
                 ci_alert.post_alert = orig
             self.assertEqual(code, 0,
@@ -465,7 +466,7 @@ class Behaviour(unittest.TestCase):
         try:
             code, out = self._run(["--run-id", "1", "--workflow", "Tests",
                                    "--conclusion", "failure"],
-                                  WP_SITE_URL="https://example.invalid", WP_API_KEY="k")
+                                  RESEND_API_KEY="k")
         finally:
             ci_alert.post_alert = orig
         self.assertEqual(code, 1)
@@ -514,8 +515,7 @@ class Behaviour(unittest.TestCase):
                                    lambda *a: True):
                 code, _ = self._run(["--run-id", "1", "--workflow", "Tests",
                                      "--conclusion", "success", "--branch", "main"],
-                                    WP_SITE_URL="https://example.invalid",
-                                    WP_API_KEY="k")
+                                    RESEND_API_KEY="k")
         finally:
             ci_alert.post_alert = orig
         self.assertEqual(code, 0)
@@ -552,9 +552,8 @@ class ASkippedCheckIsNotARecovery(unittest.TestCase):
             return True, "emailed the owner", False
 
         import os
-        old = {k: os.environ.get(k) for k in ("WP_SITE_URL", "WP_API_KEY")}
-        os.environ.update({"WP_SITE_URL": "https://example.invalid",
-                           "WP_API_KEY": "k"})
+        old = {k: os.environ.get(k) for k in ("RESEND_API_KEY",)}
+        os.environ.update({"RESEND_API_KEY": "k"})
         orig, ci_alert.post_alert = ci_alert.post_alert, capture
         try:
             with mock.patch.object(ci_alert, "live_data_was_evaluated",

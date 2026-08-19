@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 import requests
 
+import opsmail
 from source_value import (escalation_line, repair_brief, routes_for,
                           zero_is_outage)
 
@@ -116,10 +117,18 @@ def subscriber_line():
 
 
 def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribers=""):
-    """POST an actionable breakage email to the owner via the site's /alert."""
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key):
+    """Mail the owner an actionable breakage report, through Resend.
+
+    THIS USED TO GO THROUGH `/alert` ON THE WORDPRESS HOST, which is the host
+    the digest is reporting about, and it shared the subscriber relay's 300 a
+    day free tier with the reader digest. Both were wrong for the same reason
+    in two different ways: a weekly report on whether the machine is healthy
+    should not need the machine to be healthy, and a bad afternoon of alarms
+    should not be able to eat the allowance the readers depend on. Operational
+    mail is Resend now; the subscriber digest keeps Brevo and is untouched.
+    """
+    if not opsmail.configured():
+        print("RESEND_API_KEY is not set, so the health digest email was NOT sent")
         return
     names = [s for s, _, _ in stale] + [s for s, _ in degraded]
     zero_outage = list(zero_outage)
@@ -192,14 +201,8 @@ def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribe
     if subscribers:
         lines.append("\n" + subscribers)
     body = "\n".join(lines)
-    try:
-        requests.post(f"{site}/wp-json/layoffs/v1/alert",
-                      json={"subject": subject, "body": body},
-                      headers={"X-Layoff-API-Key": key, "User-Agent": UA["User-Agent"]},
-                      timeout=25)
-        print("alert email sent to owner")
-    except Exception as exc:
-        print(f"alert email failed: {exc}")
+    ok, note, _transient = opsmail.send(subject, body)
+    print(f"health digest email: {note}")
 
 
 def _age_days(checked_at, now):

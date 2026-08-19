@@ -83,6 +83,10 @@ import time
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import alert_state
+import opsmail
+
 # ModSecurity on the WP host blocks python-requests outright; every request to
 # asktherecruiter.com must look like a real client. (Iron rule, see CLAUDE.md.)
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
@@ -608,60 +612,76 @@ def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause,
     return subject, "\n".join(lines), dedupe_key
 
 
-#: A shared host under load answers 5xx, and a proxy in front of a dead origin
-#: answers 502/503/504. Those are worth asking about again in a few seconds.
-#: 401/403 (wrong key) and 404 (route not deployed) are not: retrying a settled
-#: "no" only makes the run longer, and both are held for a human either way.
+#: Retained for readers of the outbox history, where every held entry still
+#: carries the "HTTP 504 from /alert" that put it there. Nothing raises it now.
 _TRANSIENT_STATUS = {408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
 
 #: Seconds between in-run retries. Three attempts over ~15 seconds catches the
-#: single bad response and the brief wobble, which is most of what this host
-#: produces. It deliberately does NOT try to outlast an outage: the 2026-07-31
-#: window was seven minutes and a job has ten. Outlasting is the outbox's job.
+#: single bad response and the brief wobble. It deliberately does NOT try to
+#: outlast an outage: a job has ten minutes. Outlasting is the outbox's job.
 _BACKOFF = (3, 12)
 
 
-def _post_once(site, key, payload):
-    """One POST. Returns (ok, description, transient)."""
-    req = urllib.request.Request(
-        f"{site.rstrip('/')}/wp-json/layoffs/v1/alert",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json",
-                 "X-Layoff-API-Key": key,
-                 "User-Agent": UA},
-        method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = json.loads(resp.read().decode("utf-8", "replace") or "{}")
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", "replace")[:300] if exc.fp else ""
-        return False, f"HTTP {exc.code} from /alert: {detail}", exc.code in _TRANSIENT_STATUS
-    except urllib.error.URLError as exc:
-        # DNS, TCP, TLS, timeout: the host is not answering at all. Always
-        # transient — there is nothing here for a human to fix in this repo.
-        return False, f"could not reach /alert: {exc.reason}", True
-    except Exception as exc:
-        return False, f"could not reach /alert: {exc}", True
-    if body.get("sent"):
-        return True, "emailed the owner", False
-    return True, f"not emailed: {body.get('reason', 'the endpoint reported no send')}", False
+def _post_once(site, key, payload, idem=""):
+    """One send. Returns (ok, description, transient).
 
+    THE COUPLING THIS BROKE. Until 2026-08-19 this POSTed to
+    `/wp-json/layoffs/v1/alert`, a route on the WordPress host the alerts are
+    ABOUT. On 2026-07-31 Bluehost 504'd and the sibling tracker's alerter failed
+    four times saying "HTTP 504 from /alert", mute at the exact moment it was
+    needed, and the host went down twice more on 2026-08-19. The held outbox
+    made delivery durable, which was the right fix for delivery and no fix at
+    all for the dependency. Operational mail now leaves through Resend, so the
+    alarm no longer depends on the thing it monitors.
 
-def post_alert(site, key, payload, sleep=time.sleep):
-    """POST to the plugin's keyed /alert, retrying transient failures.
-
-    Returns (ok, description, transient). `transient` tells the caller whether
-    this looked like a host outage (hold it quietly, do not go red) or a settled
-    refusal like a bad key (hold it, and be loud about it).
+    `site` and `key` are still accepted and still ignored. Four callers pass
+    them and the outbox's held payloads predate the change; a signature break
+    here would be a second edit in every one of those places for no gain.
     """
-    ok, note, transient = _post_once(site, key, payload)
+    return opsmail.send_once(payload.get("subject", ""),
+                             payload.get("body", ""), idem)
+
+
+def deliver(payload, sleep=time.sleep, idem=""):
+    """Send a message the ledger has ALREADY ruled on, retrying transient
+    failures in-run.
+
+    This is the drain's entry point, and it is separate from `post_alert` on
+    purpose: an alert held in the outbox has already been decided and already
+    claimed, so re-running it through the ledger would either suppress it as a
+    duplicate of itself or clear a scope twice.
+    """
+    ok, note, transient = _post_once(None, None, payload, idem)
     for delay in _BACKOFF:
         if ok or not transient:
             break
-        print(f"  /alert did not answer ({note}): retrying in {delay}s")
+        print(f"  Resend did not answer ({note}): retrying in {delay}s")
         sleep(delay)
-        ok, note, transient = _post_once(site, key, payload)
+        ok, note, transient = _post_once(None, None, payload, idem)
     return ok, note, transient
+
+
+def post_alert(site, key, payload, sleep=time.sleep):
+    """Rule on a message against the committed ledger, then send it.
+
+    Returns (ok, description, transient). `transient` tells the caller whether
+    this looked like an outage (hold it quietly, do not go red) or a settled
+    refusal like a missing key (hold it, and be loud about it).
+
+    The ledger claim is COMMITTED BEFORE THE SEND, and that ordering is the
+    whole reason moving the state off the endpoint does not weaken dedup. See
+    railway/alert_state.py. `payload` is updated in place with the subject and
+    body the ledger decided on, so a caller that goes on to HOLD it holds the
+    message that was actually meant, not the one before the ruling.
+    """
+    decision, recorded = alert_state.claim(payload, sleep=sleep)
+    if not decision.sends:
+        return True, f"not emailed: {decision.note}", False
+    payload["subject"] = decision.subject
+    payload["body"] = decision.body
+    if not recorded:
+        print("::warning::sending an alert whose claim could not be recorded")
+    return deliver(payload, sleep=sleep, idem=decision.idempotency_key())
 
 
 def write_envelope(path, *, key, kind, scope, payload, reason, run_url):
@@ -705,17 +725,19 @@ def hold(*, envelope, key, kind, scope, payload, note, transient, run_url):
     # Loud, but not red. A session reading this log must be able to tell "the
     # host was down and we kept the alert" from "the alerter is broken".
     if transient:
-        print(f"::warning::/alert is unreachable ({note}). The alert is HELD in "
+        print(f"::warning::the mail relay is unreachable ({note}). The alert "
+              "is HELD in "
               "railway/alert_outbox.json and will be delivered by the next "
               "alert-drain run that reaches the host. This run is NOT failing: "
               "an outage must not manufacture red runs on top of the ones it "
               "caused.")
     else:
-        print(f"::error::/alert refused this alert and it is not a transient "
-              f"failure: {note}. It is HELD in railway/alert_outbox.json, but a "
-              "settled refusal will not fix itself: check WP_API_KEY and that "
-              "the plugin carrying /alert is deployed. ops_status.py escalates "
-              "a held alert that keeps failing.")
+        print(f"::error::the mail relay refused this alert and it is not a "
+              f"transient failure: {note}. It is HELD in "
+              "railway/alert_outbox.json, but a settled refusal will not fix "
+              "itself: check RESEND_API_KEY, and check that OPS_MAIL_FROM uses "
+              "a domain this Resend account has verified. ops_status.py "
+              "escalates a held alert that keeps failing.")
     return 0
 
 
@@ -738,8 +760,9 @@ def main(argv=None):
     conclusion = (args.conclusion or "").lower()
     scope = f"{_slug(args.workflow)}:{_slug(args.branch, 32)}"
 
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
+    # The credential is RESEND_API_KEY now. WP_SITE_URL / WP_API_KEY are no
+    # longer read here at all: this path has stopped touching the host.
+    site = key = ""
 
     if conclusion == "success":
         # Recovery. The endpoint mails exactly once IF something was open for
@@ -768,7 +791,7 @@ def main(argv=None):
                   f"green run is UNKNOWN about the live numbers, not a pass. The "
                   f"next run that evaluates them clears it.")
             scopes = [scope]
-        if args.dry_run or not (site and key):
+        if args.dry_run or not opsmail.configured():
             print(f"[dry-run] resolve scopes={scopes}")
             return 0
         for sc in scopes:
@@ -846,10 +869,10 @@ def main(argv=None):
         print(body)
         return 0
 
-    if not (site and key):
+    if not opsmail.configured():
         # Loud, and non-zero. A silent "no credentials so I did nothing" is the
         # same class of lie as a green run over destroyed work.
-        print("::error::WP_SITE_URL / WP_API_KEY are not set. The CI alert was NOT sent.")
+        print("::error::RESEND_API_KEY is not set. The CI alert was NOT sent.")
         return 1
 
     payload = {"subject": subject, "body": body, "dedupe_key": dedupe_key}

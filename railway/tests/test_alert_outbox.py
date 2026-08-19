@@ -44,24 +44,24 @@ def _held(key="tests:main:abc", scope="tests:main"):
 class HeldAlertsSurviveAndArrive(unittest.TestCase):
     def test_an_alert_held_during_an_outage_is_delivered_afterwards(self):
         doc = _held()
-        orig = ci_alert.post_alert
-        ci_alert.post_alert = lambda *a, **k: (True, "emailed the owner", False)
+        orig = ci_alert.deliver
+        ci_alert.deliver = lambda *a, **k: (True, "emailed the owner", False)
         try:
             delivered, remaining, _note, down = alert_drain.drain(
                 doc, "https://x.invalid", "k")
         finally:
-            ci_alert.post_alert = orig
+            ci_alert.deliver = orig
         self.assertEqual((delivered, remaining, down), (1, 0, False))
 
     def test_a_drain_against_a_still_down_host_keeps_everything(self):
         doc = _held()
-        orig = ci_alert.post_alert
-        ci_alert.post_alert = lambda *a, **k: (False, "HTTP 504", True)
+        orig = ci_alert.deliver
+        ci_alert.deliver = lambda *a, **k: (False, "HTTP 504", True)
         try:
             delivered, remaining, note, down = alert_drain.drain(
                 doc, "https://x.invalid", "k")
         finally:
-            ci_alert.post_alert = orig
+            ci_alert.deliver = orig
         self.assertEqual((delivered, remaining, down), (0, 1, True))
         self.assertIn("504", note)
         self.assertEqual(alert_outbox.pending(doc)[0]["attempts"], 2,
@@ -78,11 +78,11 @@ class HeldAlertsSurviveAndArrive(unittest.TestCase):
             tries.append(1)
             return False, "HTTP 504", True
 
-        orig, ci_alert.post_alert = ci_alert.post_alert, boom
+        orig, ci_alert.deliver = ci_alert.deliver, boom
         try:
             alert_drain.drain(doc, "https://x.invalid", "k")
         finally:
-            ci_alert.post_alert = orig
+            ci_alert.deliver = orig
         self.assertEqual(len(tries), 1,
                          "a down host learns nothing from the second POST")
 
@@ -104,11 +104,12 @@ class HeldAlertsSurviveAndArrive(unittest.TestCase):
             def never(*a, **k):
                 raise AssertionError("an empty outbox must not touch the host")
 
-            orig, ci_alert.post_alert = ci_alert.post_alert, never
+            orig, ci_alert.deliver = ci_alert.deliver, never
             try:
+                os.environ.setdefault("RESEND_API_KEY", "k")
                 self.assertEqual(alert_drain.main(["--outbox", str(path)]), 0)
             finally:
-                ci_alert.post_alert = orig
+                ci_alert.deliver = orig
 
 
 class TheQueueDoesNotBecomeItsOwnProblem(unittest.TestCase):
@@ -205,8 +206,8 @@ class TheLogSaysWhatTheRunDoes(unittest.TestCase):
                                      reason="HTTP 504 from /alert")
             alert_outbox.save(doc, path)
             buf = io.StringIO()
-            orig_post, orig_open = ci_alert.post_alert, gh_fallback.open_or_update
-            ci_alert.post_alert = lambda *a, **k: (False, "HTTP 504", True)
+            orig_post, orig_open = ci_alert.deliver, gh_fallback.open_or_update
+            ci_alert.deliver = lambda *a, **k: (False, "HTTP 504", True)
             gh_fallback.open_or_update = lambda *a, **k: (
                 fallback_ok, "issue #1 updated" if fallback_ok else "no GH_TOKEN")
             try:
@@ -214,19 +215,21 @@ class TheLogSaysWhatTheRunDoes(unittest.TestCase):
                     out = alert_drain.main(["--outbox", str(path),
                                             "--site", "https://x.invalid"])
             finally:
-                ci_alert.post_alert = orig_post
+                ci_alert.deliver = orig_post
                 gh_fallback.open_or_update = orig_open
             return out, buf.getvalue()
 
     def setUp(self):
-        self._key = os.environ.get("WP_API_KEY")
-        os.environ["WP_API_KEY"] = "k"
+        # The credential is Resend's now: the drain stopped needing the host it
+        # exists to survive.
+        self._key = os.environ.get("RESEND_API_KEY")
+        os.environ["RESEND_API_KEY"] = "k"
 
     def tearDown(self):
         if self._key is None:
-            os.environ.pop("WP_API_KEY", None)
+            os.environ.pop("RESEND_API_KEY", None)
         else:
-            os.environ["WP_API_KEY"] = self._key
+            os.environ["RESEND_API_KEY"] = self._key
 
     def test_a_held_queue_is_green_and_says_so(self):
         code, log = self._drain(fallback_ok=True)
