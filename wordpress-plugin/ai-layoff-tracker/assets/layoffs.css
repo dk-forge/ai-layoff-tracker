@@ -2447,7 +2447,13 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 }
 .alt-cite-box .alt-detail-h { flex-basis: 100%; }
 .alt-cite-box code {
+    /* The citation now carries the page's full canonical URL, and a company
+       slug can run to 90 characters. A flex item defaults to min-width:auto and
+       a URL has no break opportunity, so without these two the block bled
+       horizontally at 375px, which is a hard bar on this project. */
     flex: 1 1 320px;
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: 12.5px;
     color: var(--alt-ink);
     background: none;
@@ -2466,7 +2472,7 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-single-meta b { color: var(--alt-ink); font-weight: 600; }
 .alt-single-block { margin: 0 0 18px; }
 .alt-single-block p { margin: 0; font-size: 15px; line-height: 1.6; color: var(--alt-ink); }
-.alt-cite code { display: block; background: var(--alt-surface-2); border: 1px solid var(--alt-grid); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink); margin-top: 4px; }
+.alt-cite code { display: block; overflow-wrap: anywhere; background: var(--alt-surface-2); border: 1px solid var(--alt-grid); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink); margin-top: 4px; }
 
 .alt-error { color: var(--alt-red); }
 

@@ -15,7 +15,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   industry) carried no citation affordance whatsoever. Plugin files touched:
   `ai-layoff-tracker.php` (new `alt_cite_line`/`alt_cite_box_html`),
   `templates/page-tracker.php`, `templates/page-facet.php`,
-  `templates/page-company-directory.php`. **Next plugin release is 2.20.98.**
+  `templates/page-company-directory.php`. The 375px wrap fix for the new citation block followed as **2.20.98** (`assets/layoffs.css`): a company slug can run to 90 characters and a flex item defaults to `min-width:auto`, so the URL bled horizontally. **Next plugin release is 2.20.99.**
   Written here and pushed within minutes, per the 2.20.92 collision note below.
 
 - **STATUS:** HELD
