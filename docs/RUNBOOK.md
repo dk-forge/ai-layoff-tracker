@@ -1477,6 +1477,40 @@ So label it `share of the official total`, never `recall`, and **never print it
 beside the Item 2.05 band** — `rolling_recall` already refuses to ship a sampled
 number next to an exact one and this is that refusal in a different unit.
 
+### The OTHER question, and it is the more valuable one
+
+"Does a countable total exist" makes coverage **measurable**. "Does a public
+register exist that **names the employer**" makes layoffs **findable**, which is
+what the tracker is for. They are different questions and the register keeps
+them apart: `PER_EMPLOYER_REGISTERS` in `railway/country_coverage.py`, printed
+by `ops_status [3d]` every session.
+
+As of 2026-08-19 the answer is **four jurisdictions on earth**: US states,
+Quebec, Poland's Mazowieckie voivodeship, and the **Illes Balears** (found and
+verified by download on 2026-08-19 — `EMPRESA` + `NIF` + date + headcount, of
+which only the 359 `EXTINCIÓ` rows are dismissals and the named rows stop at
+2022). Every one except the US is sub-national, and the US is itself fifty
+separate registers.
+
+So when you record a `no_regime` or a "nobody names employers" for a country
+that **devolves labour administration**, a national answer is not an answer:
+
+- **sample the sub-national level first.** Switzerland notifies 26 *cantonal*
+  offices, Spain 17 autonomous communities, Canada 13 provinces, Poland 16
+  voivodeships, Japan 47 prefectural bureaus, India and Pakistan the states and
+  provinces. Mazovia was found because somebody checked all 16 Polish offices
+  and exactly one named employers; Balears the same way among 17.
+- **record which units you actually checked, by name.** `PER_EMPLOYER_SWEPT`
+  holds them. "We checked Switzerland" is not a claim anybody can audit; "14
+  named cantons, and Ticino disallows ClaudeBot so it is UNKNOWN" is.
+- **a masked column is a near-miss, not an absence.** Euskadi publishes exactly
+  the right rows, current, with the company CIF redacted; Podlaskie the same.
+  Those are decisions somebody made and could unmake — worth recording, and
+  worth asking about, in a way that "nothing published" never is.
+- **narrative naming is not a register.** Belgium and Czechia name the firms
+  that drew press attention. A coverage figure built on that measures press
+  attention.
+
 ### To classify or re-check a country
 
 1. **Find the statute first, not the data.** Name the instrument, the article,

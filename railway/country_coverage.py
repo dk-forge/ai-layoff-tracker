@@ -68,6 +68,25 @@ situations and only the first is a recall problem:
   UNASSESSED              Nobody has looked. UNKNOWN, never a pass, and it makes
                           the whole report UNKNOWN — see `judge`.
 
+THERE ARE TWO QUESTIONS HERE AND THEY ARE NOT THE SAME ONE
+-----------------------------------------------------------
+Everything above answers "does a countable TOTAL exist", which is what makes
+coverage MEASURABLE. There is a second and better question — "does a public
+REGISTER exist that NAMES the employer" — which is what makes layoffs
+FINDABLE, and it is the one the tracker is actually for. Conflating them is
+the error to avoid: Spain publishes an excellent monthly total AND, in exactly
+one of its 17 autonomous communities, a file with the company name in it, and
+those are two different facts about Spain.
+
+The second question lives in PER_EMPLOYER_REGISTERS, kept apart from the
+coverage classification on purpose. As of 2026-08-19 the answer is FOUR
+jurisdictions on earth: US states, Quebec, Poland's Mazowieckie voivodeship,
+and the Illes Balears. Every one of them is SUB-NATIONAL except the US, which
+is itself fifty separate registers. That is the shape of the finding: naming is
+devolved almost everywhere it happens, so a national "no" is not an answer in a
+country that devolves labour administration, and the register must say which of
+the two questions any given "no" answers.
+
 NAMING THE REGIME IS THE POINT
 ------------------------------
 Every classification here carries the statute, the article, the authority that
@@ -492,7 +511,207 @@ REFUSAL_LEDGER = (
                "reported real/decoy dataset pair would live and it could not be "
                "enumerated",
      "alternative": "none without a key", "verified_here": False},
+    # --- added 2026-08-19, closing the backlog. The first four were read by
+    # this pass directly; the rest are as reported by the sweeps that hit them.
+    {"host": "www.althingi.is", "country": "Iceland",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /' (also Amazonbot, "
+               "Applebot-Extended, Bytespider, CCBot, CloudflareBrowserRenderingCrawler, "
+               "Google-Extended, GPTBot, meta-externalagent). The parliament publishes "
+               "the consolidated text of log nr. 63/2000 um hopuppsagnir, so Iceland's "
+               "statute cannot be read from primary source by us",
+     "alternative": "island.is, which serves Vinnumalastofnun's own pages and its monthly "
+                    "hopuppsagnir posts and has no robots.txt at all",
+     "verified_here": True},
+    {"host": "wetten.overheid.nl", "country": "Netherlands",
+     "nature": "robots.txt carries an explicit 'AI / LLM crawlers' section naming "
+               "ClaudeBot, Claude-Web and anthropic-ai with 'Disallow: /', alongside "
+               "GPTBot, PerplexityBot and dozens more. The WMCO text lives here",
+     "alternative": "www.uwv.nl, the receiving authority, whose robots.txt disallows only "
+                    "/nl/webpublicaties — its /nl/ontslag and /nl/persberichten paths "
+                    "carry both the duty and the annual figure",
+     "verified_here": True},
+    {"host": "codulmuncii.ro", "country": "Romania",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /' (also Amazonbot, "
+               "Applebot-Extended, Bytespider, CCBot, "
+               "CloudflareBrowserRenderingCrawler, Google-Extended, GPTBot, "
+               "meta-externalagent), so Codul muncii art. 68 could not be read here",
+     "alternative": "none for the statute; www.anofm.ro is fully open and carries the "
+                    "data", "verified_here": True},
+    {"host": "lege5.ro", "country": "Romania",
+     "nature": "robots.txt ends with 'User-agent: * / Disallow: /', excepting only "
+               "Googlebot, Mediapartners-Google and the Semrush crawlers. A block on "
+               "everything that is not a search engine",
+     "alternative": "none found", "verified_here": True},
+    {"host": "heol.hu", "country": "Hungary",
+     "nature": "HTTP 403 to our identifying agent. It carries county-level "
+               "collective-redundancy counts that appear nowhere in the national "
+               "statistics catalogue, so this is a real loss rather than a duplicate",
+     "alternative": "the 20 varmegye kormanyhivatal sites, untried",
+     "verified_here": False},
+    {"host": "www.nzlii.org", "country": "New Zealand",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /'. With legislation.govt.nz "
+               "behind an AWS WAF, this was the last permitted route to the Employment "
+               "Relations Act 2000 and it is closed",
+     "alternative": "www.employment.govt.nz (Crawl-delay 5) — guidance, not statute",
+     "verified_here": False},
+    {"host": "www.oecd.org, eplex.ilo.org, webapps.ilo.org/dyn/eplex", "country": "international",
+     "nature": "the two comparative databases that answer 'does this country require "
+               "notification of a public authority' for the whole world, and both are "
+               "shut to us: oecd.org robots excludes /content/dam/ where the EPL country "
+               "notes live, the EPL dataset page returns HTTP 403, and both ILO EPLex "
+               "hosts return 403 despite robots permitting them. This is why New Zealand "
+               "and the Isle of Man could not be closed — the single cheapest source for "
+               "a NO_REGIME finding anywhere is unavailable",
+     "alternative": "none found", "verified_here": False},
+    # --- NOT refusals: environment or design blocks, recorded so nobody mistakes
+    # them for a publisher saying no. Worth RETRYING from a different network.
+    {"host": "legislatie.just.ro", "country": "Romania",
+     "nature": "NOT A REFUSAL — the socket hangs up on every request, robots.txt "
+               "included, so no directive could even be read. Romania's official "
+               "legislative portal, and the only permitted-looking route to Codul muncii "
+               "art. 68 primary text",
+     "alternative": "none — the two commercial mirrors both refuse (see above)",
+     "verified_here": True},
+    {"host": "www.fedlex.admin.ch", "country": "Switzerland",
+     "nature": "NOT A REFUSAL — robots.txt says 'Allow: /', but the host serves a "
+               "JavaScript-only shell whose body is an 'enable JavaScript' notice, so "
+               "art. 335d-335g CO was never read at source",
+     "alternative": "www.arbeit.swiss (SECO/ALV), fully permissive, which states the "
+                    "duty and the thresholds", "verified_here": False},
+    {"host": "www.riigiteataja.ee", "country": "Estonia",
+     "nature": "NOT A REFUSAL — robots.txt disallows only court-decision paths and a "
+               "list of individual act ids, but the acts render client-side and a plain "
+               "fetch receives the 'Laeb...' loading shell, so the Employment Contracts "
+               "Act text was never read",
+     "alternative": "www.tootukassa.ee, the authority that receives the notification, "
+                    "describing its own duty (Crawl-delay 10)", "verified_here": True},
+    # --- from the 2026-08-19 sub-national sweep for per-employer registers.
+    # These matter more than most: each one is a jurisdiction whose ANSWER we do
+    # not have, in the exact search where a national "no" hides a regional "yes".
+    {"host": "www.ti.ch", "country": "Switzerland (Ticino)",
+     "nature": "robots.txt: 'User-agent: ClaudeBot / Disallow: /'. Zero content requests "
+               "were made. Ticino is therefore UNKNOWN in the cantonal register sweep, "
+               "not a no",
+     "alternative": "none found", "verified_here": False},
+    {"host": "www.saskatchewan.ca", "country": "Canada (Saskatchewan)",
+     "nature": "robots.txt: 'User-agent: ClaudeBot / Disallow: /'. Zero content requests "
+               "were made. Saskatchewan is UNKNOWN in the provincial register sweep, not "
+               "a no",
+     "alternative": "none found", "verified_here": False},
+    {"host": "datos.comunidad.madrid", "country": "Spain (Madrid)",
+     "nature": "blanket 'Disallow: /' — and it holds Madrid's ERE dataset, so whether "
+               "Madrid names employers the way Balears does is UNVERIFIED. Of the "
+               "Spanish communities this is the single most valuable unread file",
+     "alternative": "datos.gob.es aggregates the catalogue but not the file",
+     "verified_here": False},
+    {"host": "opendata.swiss, www.canada.ca, yukon.ca, regione.toscana.it, "
+             "princeedwardisland.ca", "country": "Switzerland, Canada, Italy",
+     "nature": "HTTP 403 to our identifying agent (PEI behind a Radware WAF). Not "
+               "retried under another identity. Yukon, PEI and Toscana are UNKNOWN in "
+               "the sub-national sweep rather than negative",
+     "alternative": "none found", "verified_here": False},
+    {"host": "www.govdata.de, canlii.org", "country": "Germany, Canada",
+     "nature": "robots-refused. canlii.org matters least (case law, not notices); "
+               "govdata.de is the German federal open-data catalogue and would have been "
+               "the one place a Land-level Massenentlassung dataset surfaced",
+     "alternative": "the Lander portals, which were swept directly",
+     "verified_here": False},
+    {"host": "zentralplus.ch", "country": "Switzerland",
+     "nature": "HTTP 402, a hard paywall. Not circumvented. Recorded only because a "
+               "paywalled local outlet is not a public register and must never be "
+               "treated as one",
+     "alternative": "none needed", "verified_here": False},
+    # --- from the 2026-08-19 Africa / Middle East sweep
+    {"host": "pmg.org.za", "country": "South Africa",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /' — twice, plus "
+               "'Content-Signal: ai-train=no'. The Parliamentary Monitoring Group is the "
+               "obvious archive of committee presentations carrying CCMA retrenchment "
+               "figures, and it is closed to us",
+     "alternative": "www.gov.za and labour.gov.za, both open — the Budget Vote speeches "
+                    "carry the same indicator", "verified_here": False},
+    {"host": "beoe.gov.pk", "country": "Pakistan",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /'",
+     "alternative": "web.archive.org", "verified_here": False},
+    {"host": "nationalgovernment.co.za", "country": "South Africa",
+     "nature": "HTTP 403 on robots.txt ITSELF, so permission could not even be "
+               "established and nothing was fetched. It mirrors the CCMA Annual Report, "
+               "which is why South Africa's FY2023/24 figure stays unverified",
+     "alternative": "labour.gov.za, which permits everything except /_layouts/, "
+                    "/_vti_bin/ and /_catalogs/", "verified_here": False},
+    {"host": "www.loc.gov, leseco.ma, tamimi.com", "country": "United States, Morocco, "
+             "Gulf",
+     "nature": "403 to our identifying agent (loc.gov, leseco.ma) and a 307 redirect loop "
+               "acting as a bot wall (tamimi.com). None defeated",
+     "alternative": "lematin.ma for Moroccan coverage; none for the others",
+     "verified_here": False},
+    {"host": "kuwaitcalculator.com", "country": "Kuwait",
+     "nature": "robots.txt is SELF-CONTRADICTORY — a Cloudflare-inserted ClaudeBot block "
+               "followed by an explicit ClaudeBot allow. Recorded because the rule for "
+               "this case is worth fixing once: an ambiguous directive is treated as the "
+               "restrictive one and the host is NOT fetched",
+     "alternative": "not needed — a calculator site, no primary material",
+     "verified_here": False},
+    {"host": "manpower.gov.kw, miepeec.gov.ma, gulfmigration.eu",
+     "country": "Kuwait, Morocco",
+     "nature": "NOT REFUSALS — ECONNREFUSED / timeout from this environment, robots.txt "
+               "included. miepeec.gov.ma is the reason Morocco's publication question is "
+               "UNKNOWN rather than answered, and it is the last plausible home of a "
+               "per-employer register in the region. Worth retrying from another network",
+     "alternative": "web.archive.org served the Kuwaiti labour law's own official PDF; "
+                    "nothing substitutes for the Moroccan ministry",
+     "verified_here": False},
+    # --- from the 2026-08-19 Asia sweep
+    {"host": "peraturan.bpk.go.id, learning.hukumonline.com", "country": "Indonesia",
+     "nature": "both name ClaudeBot with 'Disallow: /' (hukumonline also carries "
+               "'Content-Signal: ai-train=no'). peraturan.bpk.go.id is Indonesia's "
+               "OFFICIAL legal database, so PP 35/2021 and UU 13/2003 cannot be read "
+               "there — which is why Indonesia's regime is recorded as in doubt rather "
+               "than as absent",
+     "alternative": "jdih.setneg.go.id, which serves 'User-agent: * / Disallow:' — fully "
+                    "permitted, and NOT YET MINED. This is the single cheapest "
+                    "outstanding action in the whole register",
+     "verified_here": False},
+    {"host": "www.samuiforsale.com", "country": "Thailand",
+     "nature": "robots.txt: 'User-agent: ClaudeBot  # Anthropic / Disallow: /'",
+     "alternative": "thailandlawonline.com, which does the OPPOSITE and names ClaudeBot "
+                    "in order to ALLOW it ('User-agent: ClaudeBot / Allow: /') — the "
+                    "second host found anywhere in this exercise that permits us by name, "
+                    "after the Swedish riksdag", "verified_here": False},
+    {"host": "www.commonlii.org", "country": "Pakistan and Commonwealth",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /', so the Punjab 1968 "
+               "Ordinance's SO 11-A could not be read at primary source",
+     "alternative": "clr.org.pk (Crawl-delay 30), which served the Sindh Act verbatim",
+     "verified_here": False},
+    {"host": "www.ilo.org, natlex.ilo.org (/dyn/*)", "country": "international",
+     "nature": "both disallow /dyn/*, which is where every NATLEX statute PDF lives. "
+               "Recorded alongside the existing natlex bot-wall entry because the "
+               "DIRECTIVE is a second, independent reason not to fetch it",
+     "alternative": "clr.org.pk for Pakistan, casainvest.ma for Morocco, "
+                    "botswanalmo.org.bw for Botswana — national mirrors carried what "
+                    "NATLEX would have", "verified_here": False},
+    {"host": "satudata.kemnaker.go.id, gso.gov.vn, nso.gov.vn, labour.go.th, "
+             "legal.labour.go.th, punjablaws.gov.pk, kpcode.kp.gov.pk, vbpl.vn",
+     "country": "Indonesia, Vietnam, Thailand, Pakistan",
+     "nature": "NOT REFUSALS — ECONNREFUSED, timeout or 502 from this environment, "
+               "robots.txt included. Every publication verdict in the Asian backlog is "
+               "UNKNOWN for this reason and not for a publisher's decision. Worth "
+               "retrying from another network before anyone concludes anything about "
+               "these four countries",
+     "alternative": "none from here", "verified_here": False},
     # --- path-level disallows a production collector must honour
+    {"host": "www.moel.go.kr /info/defaulter/", "country": "South Korea",
+     "nature": "path-level disallow over the ONE genuine per-employer public naming "
+               "register found in Korea — habitual wage-arrears employers, published "
+               "under a statutory disclosure scheme. It is not a layoff register and was "
+               "not fetched, but it is recorded because it proves the naming barrier for "
+               "layoff filings in Korea is policy rather than statute",
+     "alternative": "none needed — wrong subject", "verified_here": False},
+    {"host": "www.paragraf.ba /propisi/", "country": "Bosnia and Herzegovina",
+     "nature": "NOT A REFUSAL in the usual sense, recorded because it reads like one: "
+               "robots disallows /propisi/ but carries an explicit 'Allow: *.html$' "
+               "exception, and the consolidated labour laws are .html. A future pass "
+               "must read the exception rather than stopping at the Disallow",
+     "alternative": "the same paths, which are permitted", "verified_here": False},
     {"host": "donneesquebec.ca/recherche/api/, data.ontario.ca/api/, "
              "datos.gob.ar/api/, datos.gob.cl/api/, data.gov.il/api/, "
              "catalogodatos.gub.uy/api/", "country": "Canada, Argentina, Chile, "
@@ -510,6 +729,148 @@ REFUSAL_LEDGER = (
      "alternative": "the HTML pages on the same hosts", "verified_here": False},
 )
 
+
+
+# ---------------------------------------------------------------------------
+# THE PER-EMPLOYER REGISTERS — the far more valuable question, asked separately
+# ---------------------------------------------------------------------------
+# EVERYTHING ABOVE ANSWERS "DOES A COUNTABLE TOTAL EXIST". This answers a
+# different and much better question: does a public authority anywhere publish
+# a list that NAMES THE EMPLOYER filing a collective-dismissal notice? A total
+# makes coverage MEASURABLE. A register makes layoffs FINDABLE, which is the
+# thing the tracker is actually for, and the two must never be conflated — the
+# error that has bitten this project twice.
+#
+# The owner's question was "in most countries there is no register to search;
+# do we have them all, or are there more to register with?" This is where that
+# is answered, and the answer is kept apart from the coverage register on
+# purpose so nobody reads "publishes a total" as "names employers".
+#
+# THE SHAPE OF THE WORLD, as established on 2026-08-19: at national level,
+# essentially nowhere. Sweden's Arbetsformedlingen states that a varselanmalan
+# is ALWAYS covered by secrecy; Canada's ESDC states that group termination
+# notices are confidential and records that one bank's details "were published
+# in error and have since been removed"; the canton of Aargau handles
+# notifications "mit hochster Diskretion". Naming is the exception and it is
+# devolved almost everywhere it happens — which is why a national NO is not an
+# answer in a country that devolves labour administration, and why the search
+# below went to cantons, provinces, voivodeships and autonomous communities.
+#
+# 165+ sub-national units were checked by name to produce this list. The
+# NEAR-MISSES are recorded with it because they are what stops the next pass
+# re-walking the same ground: a jurisdiction that publishes the row and omits
+# the name is a decision that could change, and it is a different thing from a
+# jurisdiction that publishes nothing.
+PER_EMPLOYER_REGISTERS = (
+    {"jurisdiction": "United States (state WARN units)", "country": "United States",
+     "names_employers": True,
+     "what": ("one row per WARN notice with employer, site, date and headcount. The "
+              "type specimen, and the only one at national-scale coverage — because it "
+              "is 50-odd separate state registers, not one"),
+     "since": "varies by state", "in_tracker": True,
+     "cite": "https://www.dol.gov/agencies/eta/layoffs/warn"},
+    {"jurisdiction": "Quebec", "country": "Canada", "names_employers": True,
+     "what": ("avis de licenciement collectif, published monthly by the ministry with "
+              "employer, region and headcount. Re-verified 2026-08-19: a scrapeable "
+              "monthly PDF URL pattern. THE MINISTRY'S OWN CAVEAT MATTERS — a notice is "
+              "an INTENTION, and the list is NOT revised when an amendment arrives, so "
+              "it is an upper bound on that employer's cut"),
+     "since": "the only Canadian province of 13 that names", "in_tracker": True,
+     "cite": "https://www.quebec.ca/emploi/aide-employeurs/licenciement-collectif"},
+    {"jurisdiction": "Mazowieckie voivodeship", "country": "Poland",
+     "names_employers": True,
+     "what": ("zwolnienia grupowe listing naming the employer. Found only because "
+              "somebody surveyed all 16 Polish voivodeship labour offices and exactly "
+              "one named employers — the warning this whole exercise is built on"),
+     "since": "one of 16 voivodeships", "in_tracker": True,
+     "cite": "https://wupwarszawa.praca.gov.pl/"},
+    {"jurisdiction": "Illes Balears", "country": "Spain", "names_employers": True,
+     "what": ("THE FOURTH PLACE ON EARTH, found 2026-08-19 and verified by downloading "
+              "the file rather than by reading a catalogue page. 'Expedients Regulacio "
+              "Ocupacio (ERO i ERTO) Illes Balears', CC-BY, 49 columns, 3,817 rows: "
+              "EMPRESA (populated on every row), NIF, DATA PRESENTACIO, MUNICIPI, ILLA, "
+              "NUM. TOTAL TREBALLADORS, TREBALLADORS AFECTATS INICIAL, CODI CNAE 09, "
+              "CAUSES and MESURA. THE CAVEAT THAT SIZES IT HONESTLY, and it is a large "
+              "one: MESURA splits SUSPENSIO 1,747 / RED. JOR. 971 / blank 740 / "
+              "EXTINCIO 359, and only those 359 are collective DISMISSALS — the rest is "
+              "short-time work, the same near-miss that ERTE is everywhere in Spain. The "
+              "companion 2023-2025 file is ERTO-only, so NAMED DISMISSAL ROWS EFFECTIVELY "
+              "STOP AT 2022 and the catalogue marks the dataset 'No s'actualitza'. It "
+              "settles the existence question. It is not a WARN-scale feed. "
+              "CORROBORATION: ASEDIE's 2026 infomediary report finds 11 Spanish "
+              "communities publish ERE/ERTE datasets and that ONLY Baleares includes the "
+              "NIF or razon social"),
+     "since": "2008-2022 for dismissals", "in_tracker": False,
+     "cite": ("https://intranet.caib.es/opendatacataleg/dataset/"
+              "expedients-regulacio-ocupacio-ero-erto-illes-balears")},
+    # --- NEAR-MISSES. Recorded because each is a decision rather than an
+    # absence, and a decision can be revisited by whoever made it.
+    {"jurisdiction": "Euskadi", "country": "Spain", "names_employers": False,
+     "what": ("THE BEST NEAR-MISS ON EARTH and the cheapest thing on this page to act "
+              "on. Identical row-per-notice shape to Balears and CURRENT — 216 rows from "
+              "2021-11-08 to 2026-06-18, split Extincion 79 / Suspension 101 / Reduccion "
+              "36 — with the company CIF DELIBERATELY MASKED ('***0071**'). One redacted "
+              "column from being a fifth register, at exactly the cadence Balears lacks"),
+     "since": "2021", "in_tracker": False,
+     "cite": "https://opendata.euskadi.eus/"},
+    {"jurisdiction": "Podlaskie voivodeship", "country": "Poland",
+     "names_employers": False,
+     "what": ("the same shape as Euskadi: one row per notice with powiat, sector, "
+              "headcount and date, name omitted. Two of 16 voivodeships therefore "
+              "publish per-notice rows and only one names"),
+     "since": None, "in_tracker": False,
+     "cite": "https://wupbialystok.praca.gov.pl/"},
+    {"jurisdiction": "federal (SPF Emploi / FOD WASO)", "country": "Belgium",
+     "names_employers": False,
+     "names_selectively": True,
+     "what": ("PARTIAL AND SELECTIVE, which is why it is a near-miss rather than a "
+              "register. The quarterly and annual collective-dismissal reports name "
+              "individual firms with headcount and municipality, but in NARRATIVE prose "
+              "and explicitly only the ones that drew media attention — roughly 40 named "
+              "of 112 units in 2025. Useful as a named-entity target, never as a feed, "
+              "and a coverage figure built on it would measure Belgian press interest"),
+     "since": None, "in_tracker": False,
+     "cite": ("https://emploi.belgique.be/fr/themes/restructuration/licenciement-collectif/"
+              "statistiques-relatives-aux-restructurations")},
+    {"jurisdiction": "14 krajske pobocky", "country": "Czechia", "names_employers": False,
+     "names_selectively": True,
+     "what": ("REPORTED, NOT VERIFIED. Each regional labour office's annual "
+              "'Zprava o situaci na krajskem trhu prace' PDF is reported to carry "
+              "hromadne propousteni counts AND to name the largest filing employers, "
+              "2013-2025. Same narrative-selection objection as Belgium. Verification "
+              "failed here: the PDFs are font-subset encoded and a hand-rolled text "
+              "extraction silently drops every diacritic word"),
+     "since": "2013", "in_tracker": False,
+     "cite": "https://up.gov.cz/tiskove-zpravy"},
+)
+
+# The units swept to produce the list above, recorded so the next pass does not
+# re-walk them. Named rather than counted, because "we checked Switzerland" is
+# not a claim anybody can check and "we checked 14 named cantons" is.
+PER_EMPLOYER_SWEPT = {
+    "Switzerland": ("14 of 26 cantons by name: ZH BS AG SO ZG TG GE VD BE LU SG FR NE "
+                    "JU. No cantonal naming list found. Ticino (www.ti.ch) names "
+                    "ClaudeBot and disallows all, so TI is UNKNOWN, not no"),
+    "Canada": ("all 13 jurisdictions plus the federal ESDC regime. ESDC states group "
+               "termination notices are CONFIDENTIAL. Only Quebec names. Saskatchewan "
+               "names ClaudeBot and disallows all; Yukon and PEI blocked; those three "
+               "are UNKNOWN, not no"),
+    "Poland": "all 16 voivodeships. Mazowieckie names; Podlaskie publishes rows without "
+              "names; the BIP sites of the WUPs are the one surface not swept",
+    "Spain": ("13 of 17 autonomous communities. Balears names; Euskadi masks. "
+              "datos.comunidad.madrid is 'Disallow: /' and holds Madrid's ERE CSV, "
+              "whose fields are therefore UNVERIFIED"),
+    "Germany": "Bund, the Regionaldirektionen and the Lander open-data portals. Nothing "
+               "per-employer, and the BA Fachstatistiken catalogue carries no "
+               "Massenentlassung product at all",
+    "Japan": "4 of 47 prefectural labour bureaus (Hokkaido, Aichi, Osaka, Tottori). "
+             "Procedure pages only, no lists. The other 43 are UNKNOWN",
+    "South Korea": "the regional employment and labour offices publish awareness notices "
+                   "about the duty to file, never lists of filers",
+    "Italy": ("not swept below national level, and it should be: Regione Lombardia's own "
+              "page routes art. 4 filings AWAY from itself to the PROVINCES, so Italian "
+              "per-employer data sits one tier below where anyone has looked"),
+}
 
 # ---------------------------------------------------------------------------
 # THE ACKNOWLEDGED BACKLOG — the one concession, and why it is not an exemption
@@ -541,64 +902,131 @@ BACKLOG_DECLARED = "2026-08-18"
 
 ACKNOWLEDGED_BACKLOG = {
     'Bosnia and Herzegovina': ("2026-08-18",
-      "not yet researched, and harder than most: the Federation, Republika "
-      "Srpska and Brcko District each have their own labour law, so there may "
-      "be three regimes and no national aggregate even in principle."
-      ),
-    'Botswana': ("2026-08-18",
-      "not yet researched. The Employment Act redundancy provisions are the "
-      "likely instrument; whether a notification duty to the Commissioner of "
-      "Labour exists, and whether anything is published, is unresolved."
-      ),
-    'Bulgaria': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched."
+      "ONE ENTITY OF THREE IS NOW READ. Federation of BiH: Zakon o radu FBiH "
+      "(Sl. novine FBiH 26/16, 89/18, 44/22) cl. 109 — an employer of more than "
+      "30 workers intending to dismiss at least 5 for economic, technical or "
+      "organisational reasons over the next three months must CONSULT the works "
+      "council and the union; cl. 110 sets a 30-day consultation lead and the "
+      "content of the written notice; cl. 111 is severance. Every addressee in "
+      "109-111 is INTERNAL — no submission to the sluzba za zaposljavanje or "
+      "any public body was found, which points to no disclosure regime in FBiH. "
+      "Not recorded, for two reasons: it rests on one host (paragraf.ba, whose "
+      "robots disallows /propisi/ but carries an explicit 'Allow: *.html$' "
+      "exception that this path meets), and the duty could still sit in the "
+      "Zakon o posredovanju u zaposljavanju, which was not read. Republika "
+      "Srpska: a duty is REPORTED at Zakon o radu RS cl. 163 — the draft "
+      "redundancy programme goes to the union AND the Zavod within 8 days, with "
+      "cl. 164(2) obliging the Zavod to reply in 15 days — so RS and FBiH may "
+      "genuinely differ and neither may be inferred from the other. Brcko "
+      "District: unchecked. Publication in all three: unchecked. METHOD WARNING "
+      "FOR WHOEVER PICKS THIS UP: a hand-rolled zlib/PDF-operator text "
+      "extraction of the consolidated FBiH law SILENTLY DROPPED every word "
+      "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
+      "or a real PDF library."
       ),
     'Cambodia': ("2026-08-18",
-      "Labour Law 1997 art. 95 and 130 require informing the labour "
-      "inspectorate and MLVT of a mass layoff; no numeric threshold was "
-      "identified and no aggregate was located, but the search was not "
-      "exhaustive."
+      "REGIME ESTABLISHED FROM PRIMARY TEXT, AND THIS FILE'S OWN CITATION WAS "
+      "WRONG. Labour Law (Kram of 13 March 1997) ARTICLE 95 ALONE carries the "
+      "mass-layoff duty — read verbatim, it defines mass layoff as any layoff "
+      "resulting from a reduction in an establishment's activity or a foreseen "
+      "internal re-organization, sets selection criteria and last-in-first-out "
+      "with family weighting, a two-year re-hire priority, and the sentence "
+      "that matters: 'The Labour Inspector is kept informed of the procedure "
+      "covered in this article.' On a worker-representative request the "
+      "Inspector may convene the parties and the Minister may issue a Prakas "
+      "SUSPENDING the layoff for up to 30 days, repeatable once. ARTICLE 371 "
+      "makes it mandatory rather than hortatory: dismissal under art. 95 "
+      "without informing the Labour Inspector draws a fine of 61-90 days' base "
+      "wage or 6 days to a month's imprisonment. CORRECTION RECORDED: the "
+      "previous note paired art. 95 with art. 130. Article 130 is the WAGE "
+      "GARNISHMENT ceiling and art. 131 its food-creditor exception — nothing "
+      "to do with layoffs. There is NO numeric threshold and NO stated notice "
+      "period; the duty is procedural. PUBLICATION UNKNOWN: no periodic count "
+      "from MLVT or NIS was located, and the search was not exhaustive in "
+      "Khmer, so this is UNKNOWN rather than a negative."
       ),
     'China': ("2026-08-18",
-      "Labour Contract Law art. 41 requires reporting economic layoffs of 20+ "
-      "or 10% of the workforce to the local labour administration. Publication "
-      "UNRESOLVED and likely to stay so: mohrss.gov.cn — the ministry that would "
-      "receive those reports — serves an obfuscated JavaScript anti-bot "
-      "challenge in place of a robots.txt, and it was not routed around. "
-      "stats.gov.cn returns no robots file and was not queried."
+      "ART. 41 IS NOW VERIFIED AND CHARACTERISED; PUBLICATION REMAINS "
+      "UNRESOLVED. Labour Contract Law art. 41: where an employer cuts 20+ "
+      "workers, or fewer than 20 but more than 10% of the workforce, it must "
+      "explain to the union or all employees 30 days in advance, hear their "
+      "opinions, and REPORT the reduction plan to the labour administration "
+      "department before implementing it. THE DISTINCTION THAT MATTERS: this is "
+      "报告, a report, NOT 审批, an authorisation — so unlike India and Morocco "
+      "China is a notification regime, and a count of filings would be a count "
+      "of layoffs rather than of applications. Attested consistently across the "
+      "Supreme People's Procuratorate commentary and provincial portals; the "
+      "consolidated text was NOT read on a .gov.cn host, which is recorded as a "
+      "gap rather than a doubt. PUBLICATION IS UNKNOWN AND SHOULD BE STATED AS "
+      "UNKNOWN: mohrss.gov.cn — the ministry that receives these reports — "
+      "serves an obfuscated JavaScript anti-bot challenge and was never "
+      "attempted; stats.gov.cn returns HTTP 404 for robots.txt (so it is "
+      "unrestricted) and carried nothing, but was not exhaustively searched. "
+      "REJECTED NEAR-MISS: MOHRSS unemployment-insurance FUND OUTLAYS are money, "
+      "not layoffs, and must never be used as a layoff series."
       ),
     'Czechia': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched."
-      ),
-    'Estonia': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched; host is open, so this is cheap to close."
+      "STATUTE VERIFIED, PUBLICATION STILL OPEN, and the reason it is still "
+      "open is recorded so the next pass does not repeat the same dead end. "
+      "Zakonik prace (262/2006 Sb.) s.62 with s.62(5) — the duty to notify the "
+      "krajska pobocka Uradu prace. TWO PUBLICATION LEADS, NEITHER CLOSED: (1) "
+      "UP CR ran a DEDICATED national release carrying employers-filing and "
+      "employees-covered (Dec 2013: 15 employers / 901 workers; Dec 2014: 26 / "
+      "877) but the last one found is from January 2016, and recent figures "
+      "reach the public through statements to CTK rather than a series. (2) "
+      "each of the 14 krajske pobocky publishes an annual 'Zprava o situaci na "
+      "krajskem trhu prace' PDF, 2013 through 2025, and those are REPORTED to "
+      "carry counts AND to name the largest filing employers — which would make "
+      "Czechia the closest thing to a per-employer source outside the three "
+      "known registers, at narrative rather than per-notice granularity. "
+      "VERIFICATION FAILED HERE FOR A REASON WORTH KEEPING: Rocni_OLK_2024.pdf "
+      "was fetched (up.gov.cz permits us; HTTP 200, 1.2 MB) and its text "
+      "extracted by decompressing the content streams, and EVERY WORD "
+      "CONTAINING A CZECH DIACRITIC IS SILENTLY MISSING from that extraction — "
+      "'hromadne propousteni' cannot be found because the accented glyphs live "
+      "in a separate font subset. A hand-rolled PDF parser does not fail loudly "
+      "here, it fails by omission, which is how it would have produced a "
+      "confident wrong quote. TO CLOSE: read ONE regional report with a real "
+      "PDF library."
       ),
     'Hong Kong': ("2026-08-18",
-      "STRONGLY INDICATED NO_REGIME, DELIBERATELY NOT RECORDED AS ONE. The "
-      "Labour Department's own Concise Guide covers the whole Employment "
-      "Ordinance in 13 chapters — termination, employment protection, severance "
-      "and long service payment — and has NO chapter on collective or mass "
-      "redundancy at all; chapter 11 was read in full and carries no "
-      "notification duty. But Cap. 57 itself is robots-refused: "
-      "elegislation.gov.hk disallows everyone except Googlebot and Bingbot, so "
-      "the Ordinance was never read. Same rule as New Zealand — the statute "
-      "carries this claim or nothing does."
+      "STRONGLY INDICATED NO_REGIME, STILL NOT RECORDED, AND NOW BETTER "
+      "EVIDENCED THAN BEFORE. The Labour Department's own Concise Guide to the "
+      "Employment Ordinance — on labour.gov.hk, which returns 404 for "
+      "robots.txt and is therefore unrestricted — covers the whole Ordinance in "
+      "13 chapters (application, contract, wages, rest days and leave, sickness "
+      "allowance, maternity, paternity, end-of-year payment, termination, "
+      "employment protection, severance and long service payment, anti-union "
+      "discrimination, employers' criminal liability) plus three appendices, "
+      "with NO collective-redundancy chapter and NO notification provision "
+      "anywhere; redundancy appears only as a trigger for severance. Two "
+      "independent practitioner sources state positively that Hong Kong has no "
+      "concept of collective dismissal and no duty to inform or consult. Also "
+      "worth recording: the Employee's Rights to Representation, Consultation "
+      "and Collective Bargaining Ordinance 1997 was repealed and never revived. "
+      "STILL NOT RECORDED because the guide is an authoritative DESCRIPTION of "
+      "Cap. 57 rather than Cap. 57 itself: elegislation.gov.hk allows only "
+      "Googlebot and Bingbot, and ILO EPLex — the one instrument note that "
+      "would have settled it — returns HTTP 403 to our agent on every country "
+      "page. Same rule as New Zealand."
       ),
     'Hungary': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched."
-      ),
-    'Iceland': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "EEA member, Vinnumalastofnun is the likely notified authority."
+      "notification regime exists; ONLY the publication question is open. The "
+      "instrument is Mt. 2012. evi I. tv. ss.71-76, with s.74 the notification "
+      "duty, filed through the ESTAT portal to the county kormanyhivatal. "
+      "NARROWED, NOT CLOSED: the COMPLETE NFSZ statistics catalogue (11 series) "
+      "was enumerated and none covers collective redundancies; KSH returns only "
+      "OSAP methodology guides. But county-level counts demonstrably exist and "
+      "are released to local press (142 notifications in Heves varmegye "
+      "2024-10 to 2025-02; a Vas varmegye release in 2025-09), and whether they "
+      "are PUBLISHED or answered on request could not be established — one "
+      "carrier, heol.hu, returned HTTP 403 to our agent and was not retried "
+      "under another identity. So this is UNKNOWN, not 'nothing is published'. "
+      "TO CLOSE: the 20 varmegye kormanyhivatal sites plus Budapest. "
+      "NEAR-MISSES ALREADY REJECTED: nfsz.munka.hu/cikk/1595 is a wage subsidy "
+      "to AVOID redundancy, and stat_negyedeves_felmeres is a quarterly "
+      "employer SURVEY of expected headcount change."
       ),
     'India': ("2026-08-18",
       "A PERMISSION REGIME, NOT A NOTIFICATION ONE, and the distinction is "
@@ -615,163 +1043,196 @@ ACKNOWLEDGED_BACKLOG = {
       "permitted route."
       ),
     'Indonesia': ("2026-08-18",
-      "PHK under UU 13/2003 as amended by UU 6/2023 and PP 35/2021; the "
-      "notification article was NOT verified and must not be quoted. "
-      "Kemnaker's Satudata publishes PHK counts, but the source is MIXED "
-      "— compiled from regional office reports, partly classified by "
-      "unemployment-benefit participation, and acknowledged incomplete. "
-      "That mixture is why this is not classified as a published "
-      "aggregate."
+      "THE REGIME ITSELF IS NOW IN DOUBT, WHICH IS A STRONGER STATEMENT THAN "
+      "THE PREVIOUS NOTE MADE. The notification article under UU 13/2003 as "
+      "amended by UU 6/2023 with PP 35/2021 appears to be PP 35/2021 Pasal 37, "
+      "and ITS ADDRESSEE IS NOT THE GOVERNMENT: the purpose and reasons of a "
+      "PHK are notified by the employer TO THE WORKER AND/OR THE UNION, by "
+      "surat pemberitahuan at least 14 working days ahead (7 in probation). No "
+      "general duty to notify a public authority of a collective PHK was found; "
+      "the state enters at the DISPUTE stage through bipartite negotiation and "
+      "Disnaker mediation under UU 2/2004, and the pre-Cipta-Kerja penetapan "
+      "requirement was removed. DO NOT PUBLISH NO_REGIME ON THIS: both official "
+      "primary hosts REFUSED us — peraturan.bpk.go.id, the official legal "
+      "database, names ClaudeBot with 'Disallow: /', and so does "
+      "learning.hukumonline.com — so Pasal 37 is secondary. THE PERMITTED "
+      "ALTERNATIVE IS IDENTIFIED AND NOT YET MINED: jdih.setneg.go.id serves "
+      "'User-agent: * / Disallow:' (fully permitted). TO CLOSE: read PP 35/2021 "
+      "arts. 37-40 and UU 13/2003 art. 151 there. SEPARATELY, a count IS "
+      "published and it is exactly as mixed as suspected — Kemnaker's Satu Data "
+      "publishes monthly WORKER counts by province (Jan-Jun 2026: 32,389; 2024: "
+      "77,965), classified by JKP unemployment-insurance participation and "
+      "excluding resignation, retirement, disability and death per PP 6/2025 "
+      "and Permenaker 2/2025, compiled from regional office reports and "
+      "acknowledged incomplete. THE CONSEQUENCE IS THE INTERESTING PART: a "
+      "count exists that is NOT the by-product of a notification duty, so "
+      "Indonesia cannot be classified as REGIME_WITH_AGGREGATE without settling "
+      "the Pasal 37 addressee question first. REJECTED: BPS publishes no PHK "
+      "count — its 'PHK' indicator is the percentage of HOUSEHOLDS receiving "
+      "severance pay, from a household survey."
       ),
     'Isle of Man': ("2026-08-18",
-      "LEANS NO_REGIME AT MEDIUM CONFIDENCE, NOT RECORDED. Converging "
-      "independent legal sources state Manx employers are not caught by a "
-      "UK-style 20+ collective consultation requirement, and no notification "
-      "duty to any department was found. But every Isle of Man government host "
-      "(gov.im, legislation.gov.im) returns a WAF 'Request Rejected' page to "
-      "automated fetching, so no statute was read. The small-jurisdiction "
-      "hypothesis — that a complete published list might exist where the numbers "
-      "are tiny — was tested here and in Jersey and held in neither."
-      ),
-    'Japan': ("2026-08-18",
-      "the large-scale employment change notification to Hello Work under the "
-      "Employment Measures Act exists (30+ workers leaving in a month). Whether "
-      "MHLW publishes counts is UNRESOLVED — the sweep assigned to it never "
-      "reached e-Stat. GOOD NEWS FOR WHOEVER PICKS IT UP: e-stat.go.jp's "
-      "robots.txt disallows only /core/, /profiles/ and similar, so the "
-      "statistics paths are open and this is cheap to close. NEAR-MISS to "
-      "reject: the employment adjustment subsidy is short-time work support, "
-      "not dismissal."
-      ),
-    'Kuwait': ("2026-08-18",
-      "not yet researched. Labour Law in the Private Sector No. 6 of 2010 is "
-      "the likely instrument; whether a collective termination notification "
-      "duty exists, and whether anything is published, is unresolved."
-      ),
-    'Latvia': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched; host is open, so this is cheap to close."
+      "LEANS NO_REGIME, NOW ON TWO POSITIVE SECONDARY STATEMENTS RATHER THAN "
+      "ON SILENCE, AND STILL NOT RECORDED. Two independent practitioner sources "
+      "(CIPD HR-inform and a Mondaq Isle of Man country chapter) state that no "
+      "collective consultation rights are in force, that there is no equivalent "
+      "of TULRCA's 20-employee threshold, and that the Employment Act 2006 "
+      "imposes no duty to inform or consult — coherent with the Island being "
+      "outside the EU and never transposing Directive 98/59/EC. BOTH ARE "
+      "SECONDARY. Every Isle of Man government host (gov.im, "
+      "legislation.gov.im) returns a WAF 'Request Rejected' page to automated "
+      "fetching and was NOT retried, so the Act itself is unread. This register "
+      "records NO_REGIME only on the instrument, so it stays outstanding."
       ),
     'Morocco': ("2026-08-18",
-      "Code du Travail art. 66-71 requires the governor's authorisation "
-      "for economic dismissal — an approval regime. Publication "
-      "unresolved."
-      ),
-    'Netherlands': ("2026-08-18",
-      "EU, so the WMCO regime certainly exists. BLOCKED SO FAR, and the "
-      "obstacle is specific: UWV's 'Dashboard Ontslag' is JavaScript-only "
-      "and serves no figures in its HTML, and UWV's robots.txt disallows "
-      "exactly /nl/webpublicaties, which is where a WMCO series would "
-      "live. Until that is resolved we cannot tell a collective-dismissal "
-      "NOTIFICATION count from an ontslagaanvragen count, which would be "
-      "a near-miss. Do not classify it on the dashboard's existence "
-      "alone."
+      "THE STATUTE IS NOW READ IN FULL AND PUBLICATION IS UNKNOWN — those are "
+      "two separate states and the entry must not collapse them. Code du "
+      "Travail (Loi 65-99) art. 66: an employer habitually employing TEN OR "
+      "MORE workers who plans to dismiss all or some for technological, "
+      "structural or economic reasons must inform the workers' delegates and "
+      "union representatives at least one month ahead, and a signed "
+      "proces-verbal of those consultations goes to the delegue provincial "
+      "charge du travail. Art. 67: the dismissal is SUBORDINATE TO AN "
+      "AUTHORISATION issued by the gouverneur of the prefecture or province "
+      "within two months, on the conclusions of a provincial commission the "
+      "gouverneur chairs; an economic file additionally needs a grounds "
+      "report, the firm's financial position and a chartered accountant's "
+      "report. Art. 69 extends it to closures, art. 70 keeps notice and "
+      "severance owed whether or not the authorisation was obtained. THIS IS "
+      "EX-ANTE APPROVAL, NOT NOTIFICATION, and the consequence is the same as "
+      "India's: the countable state event is an APPLICATION, permission can be "
+      "refused, and any aggregate must say 'granted'. PUBLICATION UNKNOWN FOR "
+      "AN ENVIRONMENT REASON, NOT A REFUSAL: miepeec.gov.ma — the ministry "
+      "running the Observatoire National du Marche du Travail and its annual "
+      "labour-market report, the one plausible publisher — answers ECONNREFUSED "
+      "from here, robots.txt included. That is also the only remaining place in "
+      "this region a per-employer register could exist unseen, since the "
+      "provincial commissions hold named files. REJECTED: a lawyer's newspaper "
+      "assertion that no economic-dismissal authorisation was issued between "
+      "2004 and 2020 is colour, never a figure. TO CLOSE: reach miepeec.gov.ma "
+      "from an environment with Moroccan egress."
       ),
     'New Zealand': ("2026-08-18",
-      "STRONGLY INDICATED NO_REGIME, DELIBERATELY NOT RECORDED AS ONE. "
-      "Employment New Zealand's own redundancy guidance frames every obligation "
-      "as employer-to-employee — fair process, notice, redeployment, final pay — "
-      "with zero occurrences of any notification-to-authority duty and no "
-      "numeric threshold anywhere. That is good evidence of absence. But "
-      "legislation.govt.nz serves an AWS WAF bot challenge that was not "
-      "bypassed, so the Employment Relations Act 2000 was never read. "
-      "'No regime exists' is the strongest claim this register can make about a "
-      "country and it is the one claim that must rest on the statute itself. TO "
-      "CLOSE: one human reading of the Act."
-      ),
-    'Nigeria': ("2026-08-18",
-      "Labour Act s.20 covers redundancy with notification to the trade "
-      "union and the Ministry. Publication unresolved."
+      "STRONGLY INDICATED NO_REGIME, STILL DELIBERATELY NOT RECORDED AS ONE, "
+      "and the evidence is now stronger than it was. MBIE's own complete "
+      "redundancy process page (employment.govt.nz, which permits us with "
+      "Crawl-delay 5) was read end to end: it lays out the entire process and "
+      "contains NO notification duty to any agency, NO collective threshold and "
+      "NO reporting step; the only agency named is MSD, explicitly as optional "
+      "employer support. That is proof by silence on the government's own "
+      "complete page. THE TWO SOURCES THAT WOULD HAVE MADE IT POSITIVE BOTH "
+      "REFUSED: the OECD EPL country note sits under oecd.org/content/dam/, "
+      "which robots excludes, the OECD EPL dataset page returns HTTP 403, and "
+      "ILO EPLex returns 403 on both of its hosts. nzlii.org names ClaudeBot "
+      "with 'Disallow: /'. legislation.govt.nz's AWS WAF was never attempted. "
+      "So the Employment Relations Act 2000 is STILL unread, and 'no regime "
+      "exists' is the one claim this register makes only on the instrument. TO "
+      "CLOSE: one human reading of the Act. REJECTED NEAR-MISS: ERA s.69O lets "
+      "the Employment Relations Authority determine redundancy entitlements — a "
+      "dispute-resolution power, not a disclosure duty."
       ),
     'Pakistan': ("2026-08-18",
-      "Standing Orders Ordinance 1968 SO 12/13 covers termination and "
-      "retrenchment, and NO duty to notify a public authority was found "
-      "at federal level — but retrenchment devolved to the provinces "
-      "after the 18th Amendment and the Punjab, Sindh, KP and Balochistan "
-      "variants were NOT checked. Deliberately NOT recorded as 'no "
-      "regime' on this evidence."
-      ),
-    'Poland': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "zwolnienia grupowe is a live lead — the labour ministry has "
-      "historically reported group-dismissal figures in labour market "
-      "monitoring."
-      ),
-    'Romania': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched."
-      ),
-    'Slovakia': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. "
-      "not yet researched."
-      ),
-    'South Africa': ("2026-08-18",
-      "THE STATUTE IS VERIFIED AND THE AGGREGATE IS NOT, so it is not "
-      "classified. Labour Relations Act 66 of 1995 s.189/s.189A applies to "
-      "employers over 50 employees, banding from 10 dismissals (up to 200 staff) "
-      "to 50 (501+), with a CCMA facilitation route. The CCMA Annual Report is "
-      "reported to carry s.189A employees-facing-retrenchment and jobs-saved as "
-      "a performance indicator, annually on an April-March year at a 6-7 month "
-      "lag. THE FIGURES CAME FROM SEARCH-RESULT SUMMARIES, NOT A READ OF THE "
-      "SOURCE: ccma.org.za is WAF-403 and the parliamentary mirror's PDF has no "
-      "text layer. TO CLOSE: a human verifies one year. NOTE even then it would "
-      "be a FLOOR, not a complete count — it covers matters referred to the "
-      "CCMA, not all employer notifications. saflii.org names ClaudeBot and "
-      "disallows it."
+      "PAKISTAN IS NOT NO_REGIME, AND THE PREVIOUS NOTE'S WORKING HYPOTHESIS IS "
+      "OVERTURNED AT THE PROVINCIAL LEVEL — where it had to be answered. What "
+      "exists is not a notification duty but a PRIOR-APPROVAL duty with a "
+      "numeric threshold. SINDH, READ VERBATIM: Sindh Terms of Employment "
+      "(Standing Orders) Act 2015, Standing Order 15 — no employer shall "
+      "terminate the employment of MORE THAN FIFTY PERCENT OF THE WORKERS or "
+      "close down the whole establishment WITHOUT PRIOR PERMISSION OF THE "
+      "GOVERNMENT, except for fire, catastrophe, power stoppage, epidemic or "
+      "civil commotion; an undecided application is DEEMED GRANTED after 15 "
+      "days; appeal to the Labour Court within 30 days; and the explanation "
+      "extends 'close down' to a lay-off beyond fourteen days that results in "
+      "closure. The negative half was read too: SO 16 notice runs to the "
+      "WORKER, SO 18 'Procedure for retrenchment' is last-in-first-out and "
+      "nothing else, SO 19 re-employment preference goes to the workers by "
+      "registered post — so ORDINARY retrenchment in Sindh has no authority "
+      "duty at all. PUNJAB, SECONDARY: the 1968 Ordinance's SO 11-A, inserted "
+      "in 1973, is the parent clause with ONE MATERIAL DIFFERENCE — permission "
+      "runs to the LABOUR COURT, not the Government. KP (its own 2013 Act) and "
+      "BALOCHISTAN (its own 2021 Act) are UNKNOWN: kpcode.kp.gov.pk timed out "
+      "and the Balochistan PDF has no extractable text layer and needs OCR. All "
+      "four apply to establishments of 20+ workers. PUBLICATION UNKNOWN. "
+      "STRUCTURAL LEAD WORTH KEEPING: a >50%-or-closure event generates a "
+      "per-employer APPLICATION FILE held by the provincial Government (Sindh) "
+      "or by the Labour Court (Punjab), and Labour Court orders are adjudicative "
+      "records. Whether any of it is published is untested."
       ),
     'South Korea': ("2026-08-18",
-      "dismissal for managerial reasons under the Labor Standards Act "
-      "carries a reporting duty to the Minister of Employment and Labor above a "
-      "threshold. Publication UNRESOLVED — never reached. Both candidate hosts "
-      "are open to a non-Googlebot fetcher (kosis.kr is 'User-agent:* / Allow: "
-      "/' with search paths restricted for Googlebot only; laborstat.moel.go.kr "
-      "restricts only Googlebot), so this is cheap to close. NEAR-MISS to "
-      "reject: employment insurance separation records count ALL separations, "
-      "not mass-dismissal reports."
-      ),
-    'Switzerland': ("2026-08-18",
-      "outside the EU/EEA for this purpose — Art. 335d-335g Code of "
-      "Obligations, cantonal notification. Not yet researched."
-      ),
-    'Taiwan': ("2026-08-18",
-      "TWO SWEEPS DISAGREE AND NEITHER IS RECORDED AS FACT. One reported "
-      "PUBLISHES_AGGREGATE via an open CSV/JSON endpoint back to 2005, plus a "
-      "DECOY dataset (mass-redundancy EARLY WARNING, triggered by wage arrears) "
-      "running roughly 43x the real series. A second sweep could not reach the "
-      "dataset layer at all and verified the opposite-facing fact: 大量解僱 "
-      "appears ZERO times in the TOCs of both MOL flagship publications (the "
-      "monthly 勞動統計月報 and the annual 勞動統計年報). What IS verified is the "
-      "regime: the 解僱計畫書 is filed with the local labour authority 60 days "
-      "ahead, size-banded (<30 employees: >10 in 60 days; 30-199: >1/3 or >20 in "
-      "a day; 200-499: >1/4 or >50; >=500: >1/5 or >80; firm-wide >200 in 60 "
-      "days). TO CLOSE: reach statdb.mol.gov.tw (403/timeout from here, an "
-      "environment block rather than a robots refusal) or enumerate data.gov.tw, "
-      "which is client-rendered and needs an API key. If the decoy is real, BOTH "
-      "identifiers must be recorded, because naming only the correct one will not "
-      "stop somebody picking the wrong one."
+      "THE STATUTE IS NOW VERIFIED FROM PRIMARY TEXT and the publication "
+      "question is still open. Korea has TWO parallel duties, and this register "
+      "previously named only the first: (1) Labor Standards Act art. 24(4) with "
+      "Enforcement Decree art. 10 — file a dismissal plan with the Minister of "
+      "Employment and Labor 30 days ahead where dismissals within one month "
+      "reach 10+ (firm under 100 staff), 10% (100-999) or 100+ (1,000+); (2) "
+      "Framework Act on Employment Policy art. 33 with Enforcement Decree art. "
+      "31 — notify the head of the employment security agency of a large "
+      "employment change, 30+ separations in a month (firm under 300) or 10% "
+      "(300+), with an EXPLICIT CARVE-OUT where an art. 24(4) filing was "
+      "already made, so the two do not double-count. Both read on law.go.kr, "
+      "which permits us ('User-agent:* / Allow: /'). Korea's per-firm trigger "
+      "is materially LOWER than Japan's flat 30. PUBLICATION UNKNOWN, and "
+      "UNKNOWN is the verdict rather than a negative: no table for either "
+      "filing was found in KOSIS, laborstat.moel.go.kr renders its statistics "
+      "tree in JavaScript and served navigation chrome only, and "
+      "eis.work24.go.kr is an empty SPA to a fetcher. TO CLOSE, cheapest first: "
+      "the Employment and Labor Statistics Yearbook PDFs (bbsId=LSS113), "
+      "chapter 고용안정, which is exactly where such a count would sit. "
+      "NEAR-MISS WORTH NAMING BECAUSE IT LOOKS LIKE A PER-EMPLOYER REGISTER AND "
+      "IS NOT: MOEL does run a genuine statutory public NAMING register of "
+      "employers — but for habitual WAGE ARREARS, not layoffs. Its path "
+      "/info/defaulter/ is robots-disallowed and was not fetched. It proves the "
+      "naming barrier in Korea is policy rather than statute."
       ),
     'Thailand': ("2026-08-18",
-      "Labour Protection Act B.E. 2541 s.121 requires 60 days' notice to "
-      "the Labour Inspector — but it is NARROW, covering machinery and "
-      "technology reorganisation only, not general economic redundancy, "
-      "so it would systematically undercount even if published. "
-      "Publication unresolved. NEAR-MISS: social security job-loss counts "
-      "are claims."
-      ),
-    'Uruguay': ("2026-08-18",
-      "LEANS NO REGIME, UNRESOLVED. Whether a collective dismissal "
-      "notification duty to the Ministerio de Trabajo y Seguridad Social exists "
-      "was not settled. NOTE for whoever picks it up: catalogodatos.gub.uy "
-      "disallows /api/, so use the permitted HTML path."
+      "THE NARROW READING IS CONFIRMED AND s.75 IS RULED OUT. Labour Protection "
+      "Act B.E. 2541 s.121 bites ONLY on termination by reason of reorganising "
+      "work units, production process, distribution or services arising from "
+      "the use of machinery, a change in machinery, or changes in TECHNOLOGY — "
+      "60 days' written notice to the Labour Inspector and to the affected "
+      "employees, stating date, reason and A LIST OF THE AFFECTED EMPLOYEES, "
+      "with 60 days' wages in lieu for failure, and NO numeric threshold. "
+      "s.75 was checked as the obvious candidate for a general economic duty "
+      "and it is NOT one: it covers TEMPORARY SUSPENSION of business (3 working "
+      "days' notice to the employee and the Labour Inspector, 75% of wages "
+      "during suspension) and the Supreme Court confines it to genuine "
+      "temporary necessity. So ordinary economic redundancy in Thailand carries "
+      "NO notification to any authority, and the one duty that exists is "
+      "technology-scoped — the closest statutory analogue anywhere on earth to "
+      "an AI-caused-layoff filing, which is worth knowing for this tracker "
+      "specifically. s.121's exact wording is SECONDARY (law-firm briefings); "
+      "the Thai official hosts were unreachable. PUBLICATION UNKNOWN: "
+      "labour.go.th and legal.labour.go.th answer ECONNREFUSED, and mol.go.th "
+      "serves an EMPTY robots.txt (no restriction) but no statistics page was "
+      "reached. NEAR-MISSES REJECTED: SSO unemployment-benefit claim counts are "
+      "claimants, and s.75 suspension notices are not dismissals."
       ),
     'Vietnam': ("2026-08-18",
-      "Labour Code 2019 requires a labour utilisation plan and 30 days' "
-      "notice to the provincial People's Committee. Whether MOLISA or GSO "
-      "publishes counts was never checked."
+      "REGIME ESTABLISHED, PUBLICATION UNKNOWN FOR AN ENVIRONMENT REASON. "
+      "Labour Code 45/2019/QH14 art. 42 (obligations on structural, "
+      "technological or economic change) and art. 44 (the labour utilisation "
+      "plan): 30 days' prior notice to the PROVINCIAL PEOPLE'S COMMITTEE, in "
+      "practice received by the provincial So LDTBXH. THERE IS NO NUMERIC "
+      "THRESHOLD — art. 42 triggers on affecting 'a large number of employees' "
+      "and no 10/20/50 cut-off exists in the Code, which is a real finding "
+      "rather than a gap in the reading. Art. 44 read in full: the plan must "
+      "list the NAMES and number of employees retained, retrained, moved to "
+      "part-time, retiring and terminated. Art. 42(6)'s text layer truncates "
+      "mid-sentence in the official English PDF and the two hosts that could "
+      "close it were down (vbpl.vn 502, MOLISA's portal on an expired "
+      "certificate), so the 30-day wording is secondary-corroborated rather "
+      "than primary-read. PUBLICATION: gso.gov.vn and nso.gov.vn were "
+      "unreachable (ECONNREFUSED — not refusals). GSO does publish a QUARTERLY "
+      "job-loss figure compiled from 'bao cao cua cac dia phuong', and the "
+      "classification trap is that this is a labour-force statistic built from "
+      "local administrative reports, NOT a count of art. 42 filings; do not "
+      "classify Vietnam as publishing an aggregate on it. BEST PER-EMPLOYER "
+      "LEAD IN ASIA: HCMC's DoLISA runs a documented intake for art. 42 "
+      "notifications and instructs EPZ and industrial-park management boards to "
+      "COMPILE LISTS OF THE ENTERPRISES THAT FILED and return them to the "
+      "Department. A named-employer list provably exists inside at least one "
+      "provincial DoLISA; no public publication was found. Worth a dedicated "
+      "look at HCMC, Binh Duong, Dong Nai and Bac Ninh."
       ),
 }
 
@@ -906,6 +1367,13 @@ REGISTER = {
         "denominator_basis": "national_notification_aggregate",
         "assessed": "2026-08-18",
         "cite": "https://www.mites.gob.es/estadisticas/reg/reg26may/reg_05_2026.xlsx",
+        "per_employer_register": ("SEPARATELY, AND MORE VALUABLE THAN THE TOTAL: one of "
+                                  "the 17 autonomous communities publishes the "
+                                  "underlying notices WITH THE EMPLOYER NAMED. See "
+                                  "PER_EMPLOYER_REGISTERS — Illes Balears, verified "
+                                  "2026-08-19, and Euskadi publishing the same rows with "
+                                  "the CIF masked. Only Balears names, of the 11 "
+                                  "communities that publish an ERE/ERTE dataset at all"),
     },
 
     "Portugal": {
@@ -969,9 +1437,389 @@ REGISTER = {
         "cite": "https://www.hzz.hr/statistika/",
     },
 
+    # --- closed 2026-08-19 out of the module's own outstanding work. Six of the
+    # seven below were ALREADY ESTABLISHED inside railway/national_denominators.py
+    # — that module went and looked at the series while this register still
+    # carried the country as unresearched backlog. Two files disagreeing about
+    # the same country is the defect this closes; the evidence was never
+    # missing, it was only in the other file.
+
+    "Estonia": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Kollektiivne ulesutlemine — Toolepingu seadus (Employment Contracts "
+                   "Act) ss.89-90 with the notification duty at s.101-102, transposing "
+                   "Directive 98/59/EC. THE STATUTE ITSELF WAS NOT READ: "
+                   "riigiteataja.ee renders its acts client-side and served only its "
+                   "'Laeb...' loading shell to a plain fetch, so the text below comes "
+                   "from Tootukassa — the authority that RECEIVES the notification, "
+                   "describing its own duty — and is recorded as that rather than as a "
+                   "read of the Act"),
+        "authority": "Eesti Tootukassa (Unemployment Insurance Fund)",
+        "threshold": ("within 30 calendar days: 5 workers where the employer averages up "
+                      "to 19 employees; 10 where 20-99; 10% where 100-299; 30 where 300+. "
+                      "NOTE the 5-worker floor, which like Sweden's sits BELOW the "
+                      "Directive minimum, so the Estonian count covers a wider population "
+                      "than Croatia's at 20 and the two must never be summed"),
+        "aggregate": ("PUBLISHED, and already being read: avaandmed.eesti.ee carries "
+                      "koondamisteated (recipients of collective redundancy notices) as "
+                      "an open dataset, monthly, by county, and "
+                      "railway/national_denominators.py's estonia_series() has been "
+                      "collecting it since 2026-08-18. Licence CC BY-NC 3.0, so it "
+                      "MEASURES and is never republished to a reader-facing surface. The "
+                      "series is revised back to the start of the previous calendar year "
+                      "at every release"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://www.tootukassa.ee/et/teenused/tooandjatele/kollektiivne-koondamine",
+        "data_url": ("https://avaandmed.eesti.ee/api/datasets?search=koondamised&limit=10"),
+    },
+
+    "Latvia": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Kolektiva atlaisana — Darba likums s.105 (definition) with s.107 "
+                   "(notification to the State Employment Agency), transposing Directive "
+                   "98/59/EC. Read from NVA's own English service page, the authority "
+                   "that receives the notice; likumi.lv serves the whole Labour Law as "
+                   "one document that truncated before s.105 on fetch, so the primary "
+                   "text was NOT read end to end"),
+        "authority": "Nodarbinatibas valsts agentura (NVA, State Employment Agency)",
+        "threshold": ("within 30 days: at least 5 workers where the employer normally "
+                      "employs more than 20 and fewer than 50; at least 10 where more "
+                      "than 50 and fewer than 100; at least 10% where 100-299; at least "
+                      "30 where 300+. s.107(1): collective redundancy may not begin "
+                      "earlier than 30 days after the notification is filed"),
+        "aggregate": ("PUBLISHED. NVA reports the count of employer notifications and the "
+                      "workers covered — 42 notifications covering 2,279 workers in 2024; "
+                      "79 in 2020, 40 in 2019, 32 in 2018 and 32 in 2021 — through its "
+                      "own news and annual labour-market reporting. NOT BUILDABLE as a "
+                      "series: railway/national_denominators.py records it as prose "
+                      "inside an annual PDF roughly six months behind, which would cost a "
+                      "PDF dependency in a hash-pinned lock for one country and parse "
+                      "brittle prose to boot. Published is not the same as buildable and "
+                      "this register records the first"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://www.nva.gov.lv/en/services-case-collective-redundancies",
+    },
+
+    "Poland": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Zwolnienia grupowe — ustawa z 13 marca 2003 r. o szczegolnych zasadach "
+                   "rozwiazywania z pracownikami stosunkow pracy z przyczyn niedotyczacych "
+                   "pracownikow, transposing Directive 98/59/EC; notification runs to the "
+                   "powiatowy urzad pracy. STATUTE NOT READ HERE — the register carried "
+                   "Poland as EU-therefore-a-regime-exists and this pass closed the "
+                   "PUBLICATION question only"),
+        "authority": "powiatowy urzad pracy (district labour office); GUS compiles the count",
+        "threshold": ("banded, within 30 days, in employers of 20+: 10 workers where "
+                      "under 100 employed; 10% where 100-299; 30 where 300+. Recorded as "
+                      "the Directive-standard banding the Act transposes, NOT as a read "
+                      "of the Polish text"),
+        "aggregate": ("PUBLISHED, and verified live on 2026-08-19 rather than inferred: "
+                      "GUS's Sytuacja spoleczno-gospodarcza kraju labour-market bulletin "
+                      "carries the count of establishments that notified an intent to "
+                      "dismiss and the workers covered — 'W koncu czerwca br. 198 zakladow "
+                      "zglosilo zamiar zwolnienia 20,7 tys. pracownikow (w tym 2,5 tys. "
+                      "osob z sektora publicznego) w ramach zwolnien grupowych'. "
+                      "railway/national_denominators.py holds it NOT BUILDABLE because "
+                      "the figures are Polish prose rounded to 0,1 tys. and the page "
+                      "carries the current period, so a history would be OUR accumulation "
+                      "and not the publisher's. NOTE FOR WHOEVER REVISITS: the page as "
+                      "fetched on 2026-08-19 also carried comparison tables reaching back "
+                      "to June 2024. That is a lead, not a correction — nobody has "
+                      "established that those tables carry the group-layoff line rather "
+                      "than the unemployment series around it"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://ssgk.stat.gov.pl/Rynek_pracy.html",
+        "caveat_partial_refusal": ("psz.praca.gov.pl names ClaudeBot and disallows "
+                                   "everything, and is never fetched. stat.gov.pl is "
+                                   "'User-agent: * / Allow: /*' and ssgk.stat.gov.pl "
+                                   "serves no robots.txt at all"),
+    },
+
+    "Iceland": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Hopuppsagnir — log nr. 63/2000 um hopuppsagnir (as amended by log nr. "
+                   "51/2019), transposing Directive 98/59/EC through the EEA agreement. "
+                   "THE ACT WAS NOT READ AND CANNOT BE FROM HERE: www.althingi.is, which "
+                   "publishes the consolidated text, names ClaudeBot with 'Disallow: /'. "
+                   "The thresholds below come from Vinnumalastofnun's own service page "
+                   "and the ASI/SA labour-law references, and are recorded as secondary"),
+        "authority": "Vinnumalastofnun (Directorate of Labour)",
+        "threshold": ("within 30 days: at least 10 workers where the employer normally "
+                      "has more than 20 and fewer than 100; 10% where 100-299; 30 where "
+                      "300+. Dismissals take effect no earlier than 30 days after the "
+                      "notification reaches Vinnumalastofnun"),
+        "aggregate": ("PUBLISHED, monthly, as a news post 1-3 days after month end. "
+                      "railway/national_denominators.py holds it NOT BUILDABLE, and ONE "
+                      "LEG OF THAT REASONING IS NOW WRONG AND IS CORRECTED HERE: it "
+                      "states that a month with no collective redundancies gets no post "
+                      "at all, so absence could never be told from zero. Verified on "
+                      "2026-08-19, the post 'Hopuppsagnir i juli 2026' exists and says "
+                      "'Engin tilkynning um hopuppsogn barst Vinnumalastofnun i juli' — "
+                      "a zero month IS posted. The other leg stands and is enough on its "
+                      "own: the figure is unarchived prose in a news feed, so a series "
+                      "would be our accumulation rather than the publisher's. Corrected "
+                      "rather than quietly fixed, per RUNBOOK"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://island.is/s/vinnumalastofnun/frett/hopuppsagnir-i-juli-2026",
+    },
+
+    "Romania": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Concediere colectiva — Codul muncii (Legea 53/2003) art. 68 "
+                   "(definition), art. 69-70 (information and consultation) and art. 72 "
+                   "(written notification to the territorial labour inspectorate and the "
+                   "territorial employment agency at least 30 calendar days before the "
+                   "dismissal decisions), transposing Directive 98/59/EC. PRIMARY TEXT "
+                   "NOT READ, and the reason is recorded because all three routes failed "
+                   "for different reasons: codulmuncii.ro names ClaudeBot with "
+                   "'Disallow: /', lege5.ro ends with 'User-agent: * / Disallow: /' "
+                   "excepting search engines, and legislatie.just.ro hangs up the socket "
+                   "on every request (an environment block, not a refusal)"),
+        "authority": ("Inspectoratul Teritorial de Munca (ITM) and the Agentia Judeteana "
+                      "pentru Ocuparea Fortei de Munca, under ANOFM"),
+        "threshold": ("within 30 days, in employers of 20+: at least 10 workers where "
+                      "under 100 employed; at least 10% where 100-299; at least 30 where "
+                      "300+. REPORTED, from secondary summaries of art. 68 — see the "
+                      "regime field for why no permitted primary source could be read"),
+        "aggregate": ("PUBLISHED, and read directly out of the source on 2026-08-19 "
+                      "rather than taken from a search summary: ANOFM's Raport de "
+                      "activitate pentru anul 2024 reports collective dismissals "
+                      "ESTIMATED by employers at 16,007 persons for 2024 against 9,600 "
+                      "actually dismissed (59.97% of the estimate), and states the "
+                      "comparison runs over 2009-2024. THE GAP BETWEEN THE TWO NUMBERS IS "
+                      "THE POINT: a notified intention is not a dismissal, and Romania "
+                      "publishes both, which most countries do not. "
+                      "railway/national_denominators.py holds it NOT BUILDABLE — annual, "
+                      "PDF only, and the month-by-month detail sits inside the report, so "
+                      "it would cost a PDF dependency in a hash-pinned lock for one "
+                      "country"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": ("https://www.anofm.ro/wp-content/uploads/2025/05/"
+                 "Raport-de-activitate-al-ANOFM-pentru-anul-2024.pdf"),
+    },
+
+    "Netherlands": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Wet melding collectief ontslag (WMCO) — notification to UWV before a "
+                   "collective dismissal for business-economic reasons. THE ACT WAS NOT "
+                   "READ: wetten.overheid.nl, which publishes it, carries an explicit "
+                   "'AI / LLM crawlers' block naming ClaudeBot, Claude-Web and "
+                   "anthropic-ai with 'Disallow: /'. What is recorded below is UWV's own "
+                   "statement of the duty on a permitted page — the receiving authority "
+                   "describing what it receives"),
+        "authority": ("UWV, plus the trade unions with members in the firm and the works "
+                      "council. UWV is the one that counts"),
+        "threshold": ("20 or more proposed dismissals within one of UWV's six werkgebieden "
+                      "(Friesland/Groningen/Drenthe, Overijssel/Gelderland, "
+                      "Noord-Brabant/Limburg, Zuid-Holland/Zeeland, Flevoland/Utrecht, "
+                      "Noord-Holland). The three-month window usually quoted alongside it "
+                      "is from secondary sources and is NOT verified here"),
+        "aggregate": ("PUBLISHED ANNUALLY AS PROSE, and this OVERTURNS the register's "
+                      "previous position that the Netherlands was blocked outright. UWV's "
+                      "own press release — on uwv.nl/nl/persberichten, which its "
+                      "robots.txt permits — states '355 bedrijven deden een melding, het "
+                      "hoogste aantal in 10 jaar', 42% more notifications than 2024, "
+                      "'bijna 25.000 werknemers' and 36% more workers. Verified on "
+                      "2026-08-19. What IS refused is the SERIES, not the figure: UWV's "
+                      "robots.txt disallows exactly one path, /nl/webpublicaties, which is "
+                      "where a WMCO series would live, and the current reports on "
+                      "cao.minszw.nl sit behind an Anubis proof-of-work interstitial. So "
+                      "the Netherlands publishes a countable total that we may read and "
+                      "may not automate — recorded as published, with the block named"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": ("https://www.uwv.nl/nl/persberichten/"
+                 "aantal-ww-uitkeringen-voor-het-derde-jaar-gestegen-forse-toename-"
+                 "reorganisaties"),
+        "caveat_partial_refusal": ("uwv.nl robots.txt: 'User-agent: * / Disallow: "
+                                   "/nl/webpublicaties' — one path, and the one a series "
+                                   "would live on. cao.minszw.nl serves an Anubis "
+                                   "proof-of-work wall. wetten.overheid.nl names ClaudeBot. "
+                                   "The press-release path and /nl/ontslag are permitted "
+                                   "and are where both facts above came from"),
+    },
+
+    "Taiwan": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Da liang jie gu — Act for Worker Protection of Mass Dismissal "
+                   "(大量解僱勞工保護法) art. 2 (what counts) and art. 4 (the 解僱計畫書 "
+                   "dismissal plan, filed with the competent authority and publicly "
+                   "announced 60 days ahead, waived for natural disaster or sudden "
+                   "event). Read on 2026-08-19 from laws.mol.gov.tw, the labour "
+                   "ministry's own law database, which is permitted ('User-agent: * / "
+                   "Disallow: /results.aspx'). law.moj.gov.tw is blanket-disallowed and "
+                   "was not used"),
+        "authority": ("the local competent labour authority (municipality or county), "
+                      "under 勞動部 (Ministry of Labor)"),
+        "threshold": ("art. 2, size-banded over 60 days: workplace under 30 employees, "
+                      "more than 10 dismissed; 30-199, more than one third or more than "
+                      "20 in a single day; 200-499, more than one quarter or more than 50 "
+                      "in a day; 500+, more than one fifth or more than 80 in a day; or "
+                      "the business unit dismisses more than 200 in 60 days or more than "
+                      "100 in a single day"),
+        "aggregate": ("PUBLISHED, and being read. THIS CLOSES A DISAGREEMENT rather than "
+                      "adding a finding: one earlier sweep reported an open dataset back "
+                      "to 2005, a second could not reach the dataset layer at all and "
+                      "verified that 大量解僱 appears zero times in the TOCs of both MOL "
+                      "flagship publications. BOTH were right — the series is not in the "
+                      "printed statistical yearbooks and IS on the open-data API. "
+                      "railway/national_denominators.py's taiwan_series() has been "
+                      "reading apiservice.mol.gov.tw under the Open Government Data "
+                      "License since 2026-08-18. COUNTING UNIT TRAP, kept: 家數 counts "
+                      "廠場 (plants), so one company filing for four sites counts four "
+                      "times, and that column is NOT an employer count. Annual, ROC "
+                      "years, roughly a six-month lag"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://laws.mol.gov.tw/FLAW/FLAWDAT0202.aspx?id=FL023225",
+        "data_url": ("https://apiservice.mol.gov.tw/OdService/rest/datastore/"
+                     "A17000000J-020115-aUA"),
+    },
+
+    "Bulgaria": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Masovi uvolneniya — Kodeks na truda chl. 130a, the duty to inform the "
+                   "employment authority of projected collective dismissals, transposing "
+                   "Directive 98/59/EC"),
+        "authority": "Agenciya po zaetostta (Employment Agency)",
+        "threshold": ("the Directive banding as transposed in chl. 328a / chl. 130a — "
+                      "recorded as transposition, NOT as a read of the Bulgarian text, "
+                      "which was not obtained"),
+        "aggregate": ("PUBLISHED, and read verbatim out of a bulletin rather than "
+                      "summarised: the Employment Agency's Periodichni byuletini carry "
+                      "EMPLOYERS FILING and WORKERS COVERED — '68 rabotodateli sa podali "
+                      "uvedomleniya za masovi uvolneniya na 5336 litsa' for January-June "
+                      "2011, with a May 2011 peak of 18 employers / 2,097 workers. "
+                      "Quarterly cumulative (Jan-Mar / Jan-Jun / Jan-Sep) plus monthly "
+                      "bulletins and annual reviews, 2008 through 2026, one to two months "
+                      "behind. Sector breakdown only — no employer names. THE READABLE "
+                      "PART IS THE OLD PART: bulletins up to roughly 2012 render inline "
+                      "as HTML and were read; recent ones are file-link pages whose PDFs "
+                      "sit under /web/, which robots disallows"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://www.az.government.bg/bg/stats/3/",
+        "caveat_partial_refusal": ("az.government.bg robots.txt disallows /web/, and every "
+                                   "current bulletin PDF lives at /web/files/StatsFile/. "
+                                   "Not fetched. The permitted /bg/stats/view/ wrapper "
+                                   "carries period labels and a file inventory — enough to "
+                                   "detect that a new bulletin exists, never the numbers "
+                                   "in it. nsi.bg disallows only /admin/ and is the best "
+                                   "untried route to the same figures"),
+    },
+
+    "Slovakia": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Hromadne prepustanie — Zakonnik prace (311/2001 Z. z.) s.73, with "
+                   "s.73(3) the notification duty, transposing Directive 98/59/EC"),
+        "authority": "Urad prace, socialnych veci a rodiny (UPSVR)",
+        "threshold": ("the Directive banding as transposed in s.73 — recorded as "
+                      "transposition, NOT as a read of the Slovak text"),
+        "aggregate": ("PUBLISHED, IN A WEAK FORM, and the weakness is the finding. "
+                      "Ustredie PSVR reports THREE units in its own media releases — "
+                      "notifications filed, jobs THREATENED, and workers ACTUALLY "
+                      "dismissed (1 Jan-15 May 2024: 36 / 3,596 / 2,766; same window "
+                      "2025: 22 / 2,635). Holding the threatened and the realised figure "
+                      "apart is unusual and valuable — most countries publish only the "
+                      "first. But the cadence is irregular, the form is HTML prose with "
+                      "no table, and there is no dataset and no archive series, so it is "
+                      "published without being buildable. CHECKED AND NEGATIVE, so nobody "
+                      "re-searches: the full UPSVR statistics index (11 sections), the "
+                      "open-data endpoints (jobseekers and vacancies only, 2019-2026), "
+                      "datasety.html (404), and the annual vykazy V05/V10/V11/V13, which "
+                      "are social-services and child-protection forms. The working "
+                      "hypothesis that UPSVR publishes a named collective-redundancy "
+                      "statistic is NOT supported. data.slovensko.sk rendered as an empty "
+                      "SPA shell and is UNKNOWN rather than negative"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": "https://www.upsvr.gov.sk/statistiky.html?page_id=1247",
+    },
+
+    "Uruguay": {
+        "class": NO_REGIME,
+        "regime": ("NO mass-dismissal disclosure regime exists, and this is the SECOND "
+                   "country in the register where that has been established rather than "
+                   "assumed. MTSS's own statement of Uruguayan dismissal law — 'despido "
+                   "regimen comun' on gub.uy, the ministry's institutional pages — sets "
+                   "out the whole regime as indemnity-only, differentiated between "
+                   "mensuales, jornaleros and destajistas, and contains NO duty to notify "
+                   "the ministry or any authority, before or after, individually or "
+                   "collectively, and NO collective threshold or procedure of any kind. "
+                   "THE DECISIVE CORROBORATION IS LEGISLATIVE: MTSS is currently "
+                   "promoting a BILL to create exactly this duty — advance notification "
+                   "to the State and to unions before mass dismissals and closures. A "
+                   "government drafting a law to impose a duty is direct evidence the "
+                   "duty does not yet exist. WATCH ITEM: if that bill passes, Uruguay "
+                   "flips to REGIME_NO_AGGREGATE or better, and this entry expires "
+                   "within 183 days anyway. REJECTED as a near-miss: the only ministry "
+                   "notification found anywhere in the material is judges reporting their "
+                   "own judgments to MTSS under Ley 16.713 art. 91, which is unrelated"),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE, and nothing exists for one to be derived from. NEAR-MISS "
+                      "excluded with its shape stated: BPS subsidio por desempleo is a "
+                      "WORKER BENEFIT CLAIM count — no employer identity, no collective "
+                      "event, no threshold — and MTSS's open data covers employment "
+                      "promotion contracts, not dismissals. NOTE for whoever revisits: "
+                      "catalogodatos.gub.uy disallows /api/, so use the permitted HTML "
+                      "path"),
+        "denominator_basis": None,
+        "assessed": "2026-08-19",
+        "cite": ("https://www.gub.uy/ministerio-trabajo-seguridad-social/institucional/"
+                 "derecho-laboral-uruguayo/despido-regimen-comun"),
+    },
+
     # -----------------------------------------------------------------------
     # A REGIME EXISTS AND NOTHING COUNTABLE IS PUBLISHED
     # -----------------------------------------------------------------------
+
+    "Japan": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("TWO instruments under the Act on Comprehensively Advancing Labour "
+                   "Measures (労働施策総合推進法, formerly the Employment Measures Act). "
+                   "Art. 27, 大量雇用変動の届出 / 大量離職届: where 30 or more workers "
+                   "separate from one establishment within a month for reasons not "
+                   "attributable to themselves, the employer notifies the head of the "
+                   "Public Employment Security Office (Hello Work), by one month before "
+                   "the last separation; public bodies file a 大量離職通知書 instead. "
+                   "Art. 24, 再就職援助計画: where the same 30-in-a-month arises from "
+                   "downsizing, a re-employment assistance plan is submitted to Hello "
+                   "Work and certified at least one month before the first separation. "
+                   "Both article numbers come from MHLW's own page; the consolidated text "
+                   "on laws.e-gov.go.jp is a JavaScript application that serves no law "
+                   "body to a fetcher, so e-Gov confirmation is UNKNOWN and the ministry "
+                   "page is what carries this"),
+        "authority": "公共職業安定所長 (the head of the Hello Work office), under MHLW",
+        "threshold": "30 or more separations from one establishment within one month",
+        "aggregate": ("NONE TODAY — and this is a 'had a count and lost it', which is a "
+                      "different fact from Germany's 'never had one' and is recorded as "
+                      "such. MHLW ran a MONTHLY national release carrying establishments "
+                      "filing and workers separating: April 2011, 184 establishments / "
+                      "8,811 workers; June 2012, 103 / 6,813; September 2012, 175 / "
+                      "13,425. The series runs roughly 2009 to late 2012, no instance "
+                      "from 2013 or later was found, and the 2012 pages now return 404 — "
+                      "it is retired and being deleted. e-Stat was queried directly and "
+                      "returns ZERO results for 大量雇用変動, so the figure is not inside "
+                      "職業安定業務統計 either, and the 労働市場年報 that might have "
+                      "carried it was abolished after FY2018. Whether MHLW still compiles "
+                      "the count internally and simply does not publish it is UNKNOWN. "
+                      "NEAR-MISSES REJECTED, each named: 雇用調整助成金 subsidises "
+                      "RETAINING workers through short-time work, so counting it inverts "
+                      "the sign; 労働経済動向調査 and 雇用動向調査 are employer SURVEYS; "
+                      "雇用保険事業年報 counts all separations from all causes; and the "
+                      "COVID-era 雇用への影響 series (weekly from 2020 to early 2023) was "
+                      "a labour-bureau soft count of EXPECTED dismissals gathered by "
+                      "interview, not the art. 27 register"),
+        "assessed": "2026-08-19",
+        "cite": ("https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/koyou/"
+                 "kyufukin/other36/index.html"),
+    },
 
     "United Kingdom": {
         "class": REGIME_WITH_AGGREGATE,
@@ -1078,6 +1926,188 @@ REGISTER = {
                    "https://portal.stf.jus.br/jurisprudenciaRepercussao/tema.asp?num=638"),
         "assessed": "2026-08-18",
     },
+    "South Africa": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Labour Relations Act 66 of 1995 s.189 and s.189A — operational "
+                   "requirements dismissals, with s.189A adding a CCMA facilitation route "
+                   "for larger employers"),
+        "authority": ("no ex-ante filing to a ministry: the CCMA (Commission for "
+                      "Conciliation, Mediation and Arbitration) receives s.189A referrals "
+                      "and is what makes the population countable"),
+        "threshold": ("employers of more than 50 employees, banded by workforce size: 10 "
+                      "dismissals up to 200 staff, rising to 50 at 501+"),
+        "aggregate": ("PUBLISHED, AND ONE YEAR IS NOW VERIFIED FROM A PERMITTED SOURCE, "
+                      "which is what this entry was waiting for. The Deputy Minister of "
+                      "Employment and Labour's Budget Vote speech of 2025-07-03, on "
+                      "gov.za: 'the CCMA facilitated the saving of 30 581 jobs out of "
+                      "64 919 facing retrenchment' for FY2024/25 (April-March). A 2015 "
+                      "CCMA statement on the same host gives 103,949 jobs saved over "
+                      "2010-2015, so the series runs back at least that far. TWO "
+                      "CORRECTIONS TO THE EARLIER ASSESSMENT: the lag is roughly THREE "
+                      "months, not six or seven — the Budget Vote speech on gov.za is the "
+                      "fastest permitted route to each year's figure and beats the annual "
+                      "report — and the figures no longer rest on search-result "
+                      "summaries. THE LIMIT THAT MUST TRAVEL WITH IT: the unit is "
+                      "employees in s.189A matters REFERRED TO THE CCMA, not all South "
+                      "African retrenchments and not all s.189 processes. Facilitation is "
+                      "compulsory only on request, so an unknown share never enters the "
+                      "denominator. It is a FLOOR. FY2023/24 (38,428 facing / 14,887 "
+                      "saved) is still UNVERIFIED — ccma.org.za is WAF-403 and the "
+                      "nationalgovernment.co.za mirror returns 403 on its own robots.txt, "
+                      "so permission could not even be established"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": ("https://www.gov.za/news/speeches/deputy-minister-jomo-sibiya-employment-"
+                 "and-labour-dept-budget-vote-202526-03-jul-2025"),
+        "caveat_partial_refusal": ("ccma.org.za (the publisher) is WAF-403, saflii.org "
+                                   "names ClaudeBot and disallows it, and pmg.org.za — "
+                                   "the parliamentary monitoring archive, the obvious "
+                                   "route to committee presentations of these figures — "
+                                   "names ClaudeBot with 'Disallow: /' TWICE. gov.za and "
+                                   "labour.gov.za are open and are the permitted route"),
+    },
+
+    "Nigeria": {
+        "class": NO_REGIME,
+        "regime": ("NO disclosure duty to any public authority exists, and this CORRECTS "
+                   "the register's own earlier note, which said s.20 involved the "
+                   "Ministry. Labour Act Cap L1 LFN 2004 s.20 was read verbatim: on "
+                   "redundancy the employer shall inform THE TRADE UNION OR WORKERS' "
+                   "REPRESENTATIVE of the reasons and extent, apply last-in-first-out "
+                   "subject to merit, and use best endeavours to negotiate redundancy "
+                   "payments. The Minister appears in s.20(2) ONLY as a regulation-making "
+                   "power. There is no filing, no form, no authority and NO THRESHOLD OF "
+                   "ANY KIND. The information duty is real but private, running to the "
+                   "union where workers are represented — worth stating, because 'no "
+                   "regime' here means no PUBLIC disclosure, not no obligation. Read on a "
+                   "secondary host: the Federal Ministry's own copy at nelex.gov.ng is "
+                   "robots-permitted but a scanned image with no text layer"),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE, and there is no notification stream for one to be derived "
+                      "from. THE SUB-NATIONAL QUESTION IS CLOSED RATHER THAN UNSAMPLED, "
+                      "which is rare and worth the words: labour is item 34 of the "
+                      "EXCLUSIVE Legislative List, Second Schedule Part I of the 1999 "
+                      "Constitution, and under s.4(2)-(3) the National Assembly legislates "
+                      "on Exclusive List items to the exclusion of the State Houses of "
+                      "Assembly. No Nigerian state CAN create a WARN-style duty, so the "
+                      "36 states and the FCT need not be swept. NEAR-MISS REJECTED: the "
+                      "NBS Nigeria Labour Force Survey is a household survey"),
+        "denominator_basis": None,
+        "assessed": "2026-08-19",
+        "cite": "https://jurist.ng/labour_act/sec-20",
+    },
+
+    "Kuwait": {
+        "class": NO_REGIME,
+        "regime": ("NO collective-dismissal notification duty exists anywhere in Law No. 6 "
+                   "of 2010 on Labour in the Private Sector, established by reading the "
+                   "whole instrument — the Public Authority for Manpower's own English "
+                   "translation, 76,226 characters, searched for collective, closure, "
+                   "liquidation, reduction, redundancy, suspension, cessation, notify the "
+                   "ministry, competent authority and approval, with every hit read. Art. "
+                   "44 is individual notice from employer to employee; art. 45-47 are "
+                   "unfair-dismissal restrictions; art. 50 expires the contract on "
+                   "bankruptcy or final closure WITHOUT any filing; art. 61 covers wages "
+                   "during a closure. THE FALSE POSITIVE THIS ENTRY EXISTS TO KILL: the "
+                   "widely quoted 'inform the competent Ministry three months in advance' "
+                   "clause concerns non-renewal of a COLLECTIVE (group) EMPLOYMENT "
+                   "CONTRACT — a collective bargaining agreement — and has nothing to do "
+                   "with collective dismissal. TWO RESIDUAL RISKS, stated rather than "
+                   "buried: the ARABIC original governs and was not read, and art. 8's "
+                   "returns are prescribed by ministerial decision, so a filing duty could "
+                   "live outside the statute. Both are cheap to check from an environment "
+                   "with Gulf egress. NOTE ON PROVENANCE: manpower.gov.kw is unreachable "
+                   "from here (ECONNREFUSED, not a refusal), so the official PDF was read "
+                   "through a web.archive.org snapshot of that same file"),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE. NEAR-MISSES REJECTED: art. 8's annual headcount return is a "
+                      "STOCK of employees, not separations; and Kuwait's labour figures "
+                      "reach ILOSTAT through a Labour Force Sample Survey"),
+        "denominator_basis": None,
+        "assessed": "2026-08-19",
+        "cite": ("https://web.archive.org/web/20220723102143/"
+                 "https://www.manpower.gov.kw/docs/LaborLaw/Labor_Law_Eng.pdf"),
+    },
+
+    "Botswana": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Employment Act Cap 47:01 s.25 (Redundancy), read verbatim: 'when an "
+                   "employer forms an intention to terminate contracts of employment for "
+                   "the purpose of reducing the size of his work force, he shall "
+                   "forthwith give written notice of that intention to the Commissioner "
+                   "and to every employee to be or likely to be directly affected'. "
+                   "s.25(1) is first-in-last-out subject to operational need, s.25(3) a "
+                   "six-month re-engagement priority, s.25(4) makes contravention an "
+                   "offence under s.151(b)"),
+        "authority": "the Commissioner of Labour, Ministry of Labour and Home Affairs",
+        "threshold": ("NONE — AND THAT IS THE FINDING. The duty attaches to the INTENTION "
+                      "to reduce, with no minimum number of dismissals and no minimum "
+                      "employer size, which is a broader trigger than US WARN, than "
+                      "Directive 98/59/EC, and than South Africa's s.189A. Botswana's "
+                      "Commissioner therefore holds a thresholdless national dataset"),
+        "aggregate": ("NO PERIODIC PUBLICATION, but the count demonstrably EXISTS and is "
+                      "disclosed ad hoc, which is a different and more hopeful state than "
+                      "Germany's. Answering a parliamentary question in February 2023 the "
+                      "Minister of Labour and Home Affairs stated that 1,170 companies had "
+                      "submitted notifications of intention to retrench between January "
+                      "2019 and January 2023, with 3,680 workers losing jobs — reported by "
+                      "the government's own Daily News, and naming NO companies. A later "
+                      "PQ reportedly gives 700 companies / 5,392 employees for January "
+                      "2024 to May 2026 and is UNVERIFIED. There is no cadence, no stable "
+                      "unit and no format, so this is not a published series. It is the "
+                      "best 'one request away from an aggregate' candidate found "
+                      "anywhere: the realistic route is a direct ministry request or a "
+                      "Hansard trawl of the recurring question, not a scrape. NEAR-MISSES "
+                      "REJECTED: Statistics Botswana's Quarterly Labour Force Module and "
+                      "Formal Employment Stats Brief are survey and stock series"),
+        "assessed": "2026-08-19",
+        "cite": ("https://www.botswanalmo.org.bw/system/files/"
+                 "Legislation_Employment_Act.pdf"),
+    },
+
+    "Switzerland": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("TWO duties, and the second is the one a collector would otherwise "
+                   "miss. (1) Massenentlassung — Code des obligations / "
+                   "Obligationenrecht art. 335d (what counts), 335f (inform and consult) "
+                   "and 335g (WRITTEN NOTIFICATION to the cantonal labour office, with "
+                   "the employment ending no earlier than 30 days after it). (2) art. 29 "
+                   "AVG with art. 53 AVV — a separate, LOWER duty to report the dismissal "
+                   "of a larger number of employees or a plant closure to the competent "
+                   "cantonal office as early as possible, where 'larger number' means 10 "
+                   "and A CANTON MAY LOWER IT TO 6. SECO's own portal foregrounds the "
+                   "second, not the first, so anything keyed only on OR 335d is keyed on "
+                   "the wrong threshold. Read from arbeit.swiss (SECO/ALV), fully "
+                   "permissive; fedlex.admin.ch permits us in robots but serves a "
+                   "JavaScript shell with no law body, so the OR text was NOT read at "
+                   "source"),
+        "authority": ("the competent CANTONAL labour office — there is no federal "
+                      "recipient, which is why there is no federal count"),
+        "threshold": ("OR 335d, within 30 days: at least 10 dismissals in an "
+                      "establishment of more than 20 and fewer than 100; at least 10% in "
+                      "100-299; at least 30 in 300+. Coverage includes part-timers, "
+                      "apprentices, interns, probationers and fixed-terms over 3 months. "
+                      "AVG 29 / AVV 53 sits lower at 10, or 6 where a canton so provides"),
+        "aggregate": ("NONE NATIONALLY. SECO's statistics pages carry no series of "
+                      "Massenentlassung notifications, and its 'Die Lage auf dem "
+                      "Arbeitsmarkt' is unemployment and Kurzarbeit only — Kurzarbeit "
+                      "being SHORT-TIME WORK, the standard near-miss, rejected. RESIDUAL "
+                      "STATED RATHER THAN SMOOTHED: BFS/OFS's catalogue was NOT "
+                      "enumerated the way Germany's BA publication calendar was, so this "
+                      "is 'no series found on the receiving side and none at SECO', not "
+                      "the exhaustive negative Germany's entry carries. ONE CANTON DOES "
+                      "PUBLISH A COUNT: St. Gallen's AWA-Barometer reports a quarterly "
+                      "cantonal figure, with no names. 14 of 26 cantons were checked by "
+                      "name for a per-employer list and none publishes one; Aargau "
+                      "states it handles notifications 'mit hochster Diskretion'; Ticino "
+                      "names ClaudeBot and disallows everything, so TI is UNKNOWN"),
+        "assessed": "2026-08-19",
+        "cite": ("https://www.arbeit.swiss/secoalv/en/home/menue/unternehmen/"
+                 "massenentlassungen/meldepflicht.html"),
+    },
+
     "Germany": {
         "class": REGIME_NO_AGGREGATE,
         "regime": "Massenentlassungsanzeige — s.17(1) and (3) Kundigungsschutzgesetz (KSchG)",
@@ -1859,6 +2889,13 @@ def classify_all(today=None, fetch=None):
         # writing a collector.
         refusal_ledger=[dict(r) for r in REFUSAL_LEDGER],
         refusal_hosts=len(REFUSAL_LEDGER),
+        # A DIFFERENT QUESTION FROM EVERYTHING ELSE IN THIS REPORT, carried
+        # here so it is in front of a human every session: not "can coverage be
+        # measured" but "does anybody publish a list that names employers".
+        per_employer_registers=[dict(r) for r in PER_EMPLOYER_REGISTERS],
+        per_employer_naming=sorted(r["jurisdiction"] for r in PER_EMPLOYER_REGISTERS
+                                   if r.get("names_employers")),
+        per_employer_swept=dict(PER_EMPLOYER_SWEPT),
     )
     return report
 
@@ -2005,6 +3042,16 @@ def _render(report):
             alt = r.get("alternative") or "none found"
             lines.append(f"      {r['host']}  [{r.get('country')}]")
             lines.append(f"          alternative: {alt}")
+    regs = report.get("per_employer_registers") or []
+    naming = [r for r in regs if r.get("names_employers")]
+    if regs:
+        lines.append(f"  PER-EMPLOYER REGISTERS — authorities that NAME the employer "
+                     f"filing a notice  ({len(naming)} found)")
+        for r in regs:
+            mark = "NAMES" if r.get("names_employers") else "near-miss"
+            held = "in tracker" if r.get("in_tracker") else "NOT ingested"
+            lines.append(f"      [{mark}] {r['jurisdiction']} ({r['country']}) — {held}")
+            lines.append(f"          {r['what']}")
     for dup in report.get("vocabulary_duplicates") or []:
         lines.append(f"  VOCABULARY  '{dup['stored']}' is stored alongside "
                      f"'{dup['canonical']}' — one country, two spellings "

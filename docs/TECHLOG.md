@@ -165,6 +165,185 @@ FULLTEXT index, so the day one is added is the day this choice is revisited.
 | Expedia | 10 | 10 |
 | 退任 (JP) | 1 | 1 |
 
+## 2026-08-19 - a fourth place on earth names the employer, and 16 of the 31 declared-outstanding countries close
+
+The disclosure-regime survey left **31 countries declared outstanding on a
+dated backlog**, against the owner's question: *"in most countries there's no
+register to search. Do we have them all, or are there more to register with?"*
+That question is two questions, and conflating them is the error this entry
+exists to prevent:
+
+1. **does a countable TOTAL exist** - makes coverage *measurable*;
+2. **does a public REGISTER exist that NAMES the employer** - makes layoffs
+   *findable*, which is what the tracker is actually for.
+
+Question 2 had been surveyed far less systematically, and the Polish finding was
+the warning: a national "no" hid a regional "yes" in exactly one of 16
+voivodeships.
+
+### The headline: Illes Balears
+
+**There is a fourth.** The Govern de les Illes Balears publishes *"Expedients
+Regulació Ocupació (ERO i ERTO) Illes Balears"* under CC-BY: 49 columns, 3,817
+rows, `EMPRESA` populated on every row, plus `NIF`, `DATA PRESENTACIO`,
+`MUNICIPI`, `TREBALLADORS AFECTATS` and `CNAE`. **Verified by downloading the
+file and counting it here**, not by reading a catalogue page - the same
+discipline that keeps a search-result summary out of the register.
+
+Sized honestly, because the caveat is large: `MESURA` splits SUSPENSIÓ 1,747 /
+RED. JOR. 971 / blank 740 / **EXTINCIÓ 359**, and only those 359 are collective
+*dismissals* - the rest is short-time work, the ERTE near-miss that this project
+already rejects at national level in Spain. The 2023-2025 companion file is
+ERTO-only and the catalogue marks the dataset *"No s'actualitza"*, so **named
+dismissal rows effectively stop at 2022**. It settles the existence question. It
+is not a WARN-scale feed. Corroborated independently: ASEDIE's 2026 infomediary
+report finds 11 Spanish communities publish an ERE/ERTE dataset and **only
+Baleares includes the NIF or razón social**.
+
+The near-misses are recorded with it because each is a *decision* rather than an
+absence, and a decision can be unmade by whoever made it. **Euskadi** publishes
+the identical row-per-notice shape, **current to June 2026**, with the company
+CIF masked (`***0071**`) - one redacted column from being a fifth register, at
+the cadence Balears lacks. **Podlaskie** does the same in Poland. **Belgium** and
+**Czechia** name firms in narrative prose and only the ones that drew media
+attention (~40 of 112 Belgian units in 2025), which is not a register: a coverage
+figure built on it would measure press interest. `names_selectively` is a third
+state, so `ops_status` prints *four*, not six.
+
+`PER_EMPLOYER_SWEPT` records the units actually checked **by name** - 14 Swiss
+cantons, 13 Canadian jurisdictions, 16/16 Polish voivodeships, 13 Spanish
+communities, Germany at three tiers, 4 of 47 Japanese prefectural bureaus -
+because "we checked Switzerland" is not a claim anybody can audit.
+
+Three jurisdictions state the negative *positively*, which is worth more than
+silence: Canada's ESDC says group termination notices are **confidential** and
+records that one bank's details *"were published in error and have since been
+removed"*; Sweden's Arbetsförmedlingen says a varselanmälan **is always covered
+by secrecy**; Aargau handles notifications *"mit höchster Diskretion"*.
+
+### 16 closed, 15 left
+
+Backlog **31 -> 15**. Six of the sixteen closed on evidence **this repo already
+had**: `national_denominators.py` had gone and looked at Estonia, Taiwan, the
+Netherlands, Romania, Latvia, Poland and Iceland while `country_coverage.py`
+still carried all seven as unresearched. Two files disagreeing about the same
+country is the defect; the evidence was never missing, it was in the other file.
+
+- **REGIME_WITH_AGGREGATE:** Estonia, Latvia, Poland, Iceland, Romania,
+  Netherlands, Taiwan, Bulgaria, Slovakia, South Africa.
+- **REGIME_NO_AGGREGATE:** Japan, Switzerland, Botswana.
+- **NO_REGIME:** Uruguay, Nigeria, Kuwait - the strongest claim this register
+  makes, and each rests on the instrument or on the authority's own complete
+  statement of it.
+
+Findings worth carrying out of it:
+
+- **Taiwan's two sweeps were BOTH right.** 大量解僱 appears zero times in the
+  TOCs of MOL's flagship publications *and* the series is on the open-data API.
+  Not in the yearbooks, and published.
+- **Japan had a count and lost it.** MHLW published a monthly 大量雇用変動届
+  release (Apr 2011: 184 establishments / 8,811 workers) from ~2009 to late
+  2012; the 2012 pages now 404 and e-Stat returns **zero results** for the
+  filing. That is a different fact from Germany's "never had one".
+- **Switzerland has a SECOND and LOWER duty** - art. 29 AVG / art. 53 AVV, ten
+  workers, **or six where a canton so provides** - and it is the one SECO's own
+  portal foregrounds. Anything keyed only on OR 335d is keyed on the wrong
+  threshold.
+- **Botswana's threshold is NONE.** Employment Act s.25 attaches to the
+  *intention* to reduce, with no minimum dismissals and no minimum employer
+  size, so the Commissioner holds a thresholdless national dataset. It surfaces
+  only through parliamentary answers (1,170 companies / 3,680 workers, Jan
+  2019-Jan 2023). One request away from an aggregate, and the request is not a
+  scrape.
+- **Nigeria's sub-national question is CLOSED, not unsampled.** Labour is item
+  34 of the **Exclusive** Legislative List, so no Nigerian state *can* create a
+  WARN-style duty. 36 states and the FCT need not be swept.
+- **Thailand's LPA s.121 bites only on machinery and TECHNOLOGY reorganisation**
+  - the closest statutory analogue on earth to an AI-caused-layoff filing.
+
+### Five corrections, recorded rather than quietly fixed
+
+1. **Iceland's zero months ARE posted.** `national_denominators` holds the
+   series NOT_BUILDABLE partly because "a month with no collective redundancies
+   gets no post at all, so absence cannot be told from zero". The post
+   *Hópuppsagnir í júlí 2026* exists and says *"Engin tilkynning um hópuppsögn
+   barst Vinnumálastofnun í júlí"*. The unarchived-prose leg stands and carries
+   the finding on its own.
+2. **The Netherlands was held as blocked outright.** UWV's own press release, on
+   a robots-permitted path, carries **355 notifications covering nearly 25,000
+   workers for 2025**. What is refused is the *series* (robots disallows exactly
+   `/nl/webpublicaties`; cao.minszw.nl is an Anubis wall), not the figure.
+3. **Nigeria's s.20 informs the trade union, not the Ministry.** This file said
+   the Ministry.
+4. **Cambodia's duty is art. 95 alone**, backed by the art. 371 penalty. Art.
+   130, which this file cited, is the wage-garnishment ceiling.
+5. **Pakistan is not no-regime.** Sindh Standing Order 15, read verbatim,
+   requires **prior permission of the Government** to terminate more than fifty
+   percent of the workers or close an establishment, deemed granted after 15
+   days; Punjab routes the same application to the **Labour Court**. Ordinary
+   retrenchment carries no authority duty, which is the other half of the
+   finding.
+
+Also killed, so nobody re-finds it as a regime: **Kuwait's "inform the Ministry
+three months in advance"** clause is about non-renewal of a collective
+*bargaining* agreement, not a collective dismissal. Law No. 6 of 2010 was
+searched end to end and contains no mass-dismissal duty.
+
+### 29 hosts added to the refusal ledger (42 -> 71)
+
+Nothing was bypassed and no browser identity was presented anywhere. Four were
+read here directly: **althingi.is** and **wetten.overheid.nl** name ClaudeBot, so
+Iceland's and the Netherlands' statutes cannot be read at primary source;
+**codulmuncii.ro** names it and **lege5.ro** blocks everything that is not a
+search engine, so Romania's art. 68 thresholds are recorded as *reported* rather
+than read.
+
+The most consequential entries are the ones that cost an answer:
+
+- **`peraturan.bpk.go.id`**, Indonesia's official legal database, names
+  ClaudeBot - which is why Indonesia's *regime* is recorded as in doubt rather
+  than absent. The permitted alternative `jdih.setneg.go.id` is identified and
+  **not yet mined**; it is the cheapest outstanding action in the register.
+- **OECD EPL and ILO EPLex** are both shut to us (robots exclusion on
+  `/content/dam/`, and HTTP 403 on every EPLex country page). They are the
+  single cheapest source for a `no_regime` finding anywhere, and their absence
+  is why **New Zealand**, **Hong Kong** and the **Isle of Man** stay open on
+  strong evidence.
+- **`www.ti.ch`** and **`www.saskatchewan.ca`** name ClaudeBot outright, so
+  Ticino and Saskatchewan are **UNKNOWN in the register sweep, not "no"**. Same
+  for Yukon, PEI, Toscana, and Madrid's ERE field list behind
+  `datos.comunidad.madrid`'s blanket disallow.
+- A new rule, worth stating once: **`kuwaitcalculator.com`'s robots.txt is
+  self-contradictory** (a Cloudflare ClaudeBot block followed by an explicit
+  ClaudeBot allow). An ambiguous directive is read as the **restrictive** one and
+  the host is not fetched.
+- In the opposite direction, and rare enough to be worth logging:
+  **thailandlawonline.com names ClaudeBot in order to ALLOW it**, the second
+  host in this whole exercise to do so after the Swedish riksdag.
+
+Recorded separately from refusals, because they are worth retrying and a refusal
+never is: `legislatie.just.ro` hangs up the socket, `fedlex.admin.ch` and
+`riigiteataja.ee` serve JavaScript shells with no law body, and
+`miepeec.gov.ma`, `manpower.gov.kw`, `satudata.kemnaker.go.id`, `gso.gov.vn`,
+`labour.go.th` and `punjablaws.gov.pk` answer ECONNREFUSED. **Every publication
+verdict in the Asian and Moroccan backlog is UNKNOWN for that reason and not for
+a publisher's decision.**
+
+### So: do we have them all?
+
+**No, and the shape of what is left is now known rather than open-ended.** Four
+per-employer registers, all sub-national bar the US. Two masked near-misses one
+column away. 15 countries still outstanding, and for eleven of them the specific
+next step is written into the entry. The honest sentence is that the three known
+registers were **not** all of them, that the fourth was found by sampling below
+the national level, and that the two cheapest remaining moves are Euskadi's
+identity column and Indonesia's permitted legal database.
+
+Changed: `railway/country_coverage.py` (register + `PER_EMPLOYER_REGISTERS` +
+`PER_EMPLOYER_SWEPT` + ledger), `railway/country_coverage_measurement.json`,
+`railway/ops_status.py` (one line in `[3d]`), `docs/RUNBOOK.md`.
+
+
 ## 2026-08-18 - one metered_call was making two requests, and neither the gate nor the ledger could see the second
 
 `ops_status.py [2a]` reports two jobs past their per-run ceiling. Both were
