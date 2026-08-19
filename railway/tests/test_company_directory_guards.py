@@ -34,6 +34,20 @@ class CompanyDirectoryGuardTests(unittest.TestCase):
         self.assertIn("function alt_company_directory_indexable_floor() { return 2; }", MODULE)
         self.assertIn("noindex,follow", MODULE)
 
+    def test_company_url_does_not_double_encode_an_existing_escape(self):
+        # sanitize_title() percent-escapes any character it cannot fold, so a
+        # slug can legitimately arrive already encoded. rawurlencode() over
+        # that output escapes the "%" again, and %25e2%2580%25a0 matches no
+        # rewrite rule: the company page 404s while the same page answers 200
+        # at its singly-encoded URL. Measured on two live rows, 2026-08-19,
+        # both linked from their country facet page and both dead.
+        self.assertNotIn("rawurlencode((string) $slug)", MODULE)
+        self.assertIn("'/%(?![0-9A-Fa-f]{2})|[^A-Za-z0-9._~%-]/'", MODULE)
+        # The encoder must still run. A builder that interpolates the slug raw
+        # would let a stray slash or query character out of its path segment.
+        self.assertIn("preg_replace_callback(", MODULE)
+        self.assertIn("home_url('/company-layoffs/' . $safe . '/')", MODULE)
+
     def test_unknown_or_unreviewed_slugs_are_not_rendered(self):
         self.assertIn("$wp_query->set_404()", MODULE)
 

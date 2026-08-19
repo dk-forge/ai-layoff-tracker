@@ -7,7 +7,36 @@ function alt_company_directory_source_url($url) {
     $url = esc_url_raw((string) $url);
     return preg_match('#^https?://#i', $url) ? $url : '';
 }
-function alt_company_directory_url($slug) { return home_url('/company-layoffs/' . rawurlencode((string) $slug) . '/'); }
+/**
+ * The public URL for a company slug.
+ *
+ * DO NOT reintroduce a bare rawurlencode() here. Slugs are produced by
+ * sanitize_title(), which returns a path-safe token: lowercase ASCII and
+ * dashes, plus percent-escapes for any character it could not transliterate.
+ * Running rawurlencode() over that output escapes the "%" a SECOND time, so a
+ * slug holding one escape shipped as %25e2%2580%25a0. That matches no rewrite
+ * rule, so the company page 404s while the same page answers 200 at its
+ * singly-encoded URL.
+ *
+ * It was measured on 2026-08-19, on the only two companies whose names carry a
+ * character sanitize_title() could not fold: both were linked from their
+ * country facet page and both were dead, and every all-ASCII slug was
+ * unaffected because it holds no "%" to double-encode. The failure is silent
+ * and it grows with international coverage, and it would have reached the
+ * sitemap the moment either company crossed the indexable floor.
+ *
+ * So encode only what is not already a valid escape: a "%" that does not begin
+ * one, and any character with no business in a path segment. A slug that is
+ * already clean passes through untouched.
+ */
+function alt_company_directory_url($slug) {
+    $safe = preg_replace_callback(
+        '/%(?![0-9A-Fa-f]{2})|[^A-Za-z0-9._~%-]/',
+        function ($m) { return rawurlencode($m[0]); },
+        (string) $slug
+    );
+    return home_url('/company-layoffs/' . $safe . '/');
+}
 
 /**
  * The ONE canonical directory row for a company_key.
