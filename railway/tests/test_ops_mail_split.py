@@ -354,9 +354,19 @@ class TheClaimIsCommittedBeforeTheSend(unittest.TestCase):
                 redirect_stdout(io.StringIO()):
             ci_alert.post_alert("", "", {"subject": "s", "body": "b",
                                          "dedupe_key": "tests:main:aaaa"})
-        self.assertEqual(sends[0]["idem"], "alt-raise-tests:main:aaaa",
-                         "two runners that both got past the ledger would send "
-                         "two emails without this")
+        # The key names the TRANSITION, not the cause. It was
+        # `alt-raise-{cause}` until 2026-08-19, which reused one key across
+        # every open/close cycle of a cause and answered a genuine re-raise
+        # with HTTP 409 invalid_idempotent_request — five times in one day.
+        # See AnIdempotencyKeyNamesATransitionNotACause below.
+        idem = sends[0]["idem"]
+        self.assertTrue(idem, "two runners that both got past the ledger would "
+                              "send two emails without this")
+        self.assertTrue(idem.startswith("alt-raise-tests:main:aaaa-"),
+                        f"{idem} no longer identifies the cause it is about")
+        self.assertNotEqual(idem, "alt-raise-tests:main:aaaa",
+                            "a key that is only the cause cannot tell this "
+                            "raise from the same cause reopening tomorrow")
 
     def test_the_commit_is_off_everywhere_except_the_workflows_that_set_it(self):
         with mock.patch.dict(os.environ, {}, clear=False):
@@ -520,3 +530,154 @@ class TheOperationalWorkflowsCarryTheKey(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnIdempotencyKeyNamesATransitionNotACause(unittest.TestCase):
+    """HTTP 409 `invalid_idempotent_request`, five times on 2026-08-19.
+
+    The key was `alt-raise-{cause}`, and a cause is not a transition. Measured
+    from the committed ledger's own history that day:
+
+        09:19 RAISE deploy-wordpress-plugin:main:973999a049809e5c
+        09:24 CLEAR   "
+        18:41 RAISE   "     same key, new run, new body  ->  HTTP 409
+
+    The 18:41 raise was a genuine alarm about a genuine new red run and the
+    ledger was right to send it. Resend refused it because the key had been
+    spent at 09:19 on a different body. Resolves had the same shape: the key
+    varied only by HOW MANY alerts were cleared, so clearing one alert twice in
+    a day was one key and two bodies.
+
+    Both obvious repairs are worse. Folding the body into the key means every
+    run is a distinct key and Resend dedupes nothing. Making the body identical
+    per cause means the key and payload AGREE — so Resend answers 200 with the
+    original email's id, having sent nothing, and the 18:41 alarm disappears in
+    silence instead of failing loudly.
+    """
+
+    def _decide(self, state, payload, now):
+        return alert_state.decide(state, payload, now)
+
+    def test_a_cause_that_reopens_is_a_new_key(self):
+        payload = {"subject": "CI RED", "body": "run 1",
+                   "dedupe_key": "deploy:main:973999a0"}
+        state = {"open": {}}
+        first = self._decide(state, payload, 1787119140)      # 09:19
+        alert_state.apply(state, first, 1787119140)
+        self.assertTrue(first.sends)
+
+        clear = self._decide(state, {"subject": "RECOVERED", "body": "",
+                                     "resolve_scope": "deploy:main"},
+                             1787119440)                       # 09:24
+        alert_state.apply(state, clear, 1787119440)
+
+        payload2 = dict(payload, body="run 2")
+        again = self._decide(state, payload2, 1787152860)      # 18:41
+        self.assertTrue(again.sends, "the cause reopened; this is a real alarm")
+        self.assertNotEqual(
+            first.idempotency_key(), again.idempotency_key(),
+            "a reopened cause reusing its old key is the 409 that held five "
+            "alerts on 2026-08-19")
+
+    def test_the_same_transition_keeps_one_key(self):
+        """The guard has to still guard. A retry or a re-drain of the SAME
+        decision must collapse at Resend rather than mail the owner twice."""
+        state = {"open": {}}
+        payload = {"subject": "CI RED", "body": "b", "dedupe_key": "tests:main:aa"}
+        d = self._decide(state, payload, 1787119140)
+        alert_state.apply(state, d, 1787119140)
+        # Re-derived later from the ledger, as the STILL FAILING reminder is.
+        later = self._decide(state, payload,
+                             1787119140 + alert_state.REMIND_AFTER_SECONDS + 60)
+        self.assertTrue(later.sends)
+        self.assertEqual(d.idempotency_key(), later.idempotency_key(),
+                         "one open alarm is one transition, however often it "
+                         "is repeated")
+
+    def test_clearing_the_same_scope_twice_in_a_day_is_two_keys(self):
+        state = {"open": {"deploy:main:aa": {"first": 100, "last": 100,
+                                             "subject": "s"}}}
+        one = self._decide(state, {"subject": "RECOVERED", "body": "",
+                                   "resolve_scope": "deploy:main"}, 200)
+        alert_state.apply(state, one, 200)
+        state["open"]["deploy:main:bb"] = {"first": 300, "last": 300,
+                                           "subject": "s"}
+        two = self._decide(state, {"subject": "RECOVERED", "body": "",
+                                   "resolve_scope": "deploy:main"}, 400)
+        self.assertTrue(one.sends and two.sends)
+        self.assertEqual(len(one.cleared), len(two.cleared),
+                         "the old key varied only by this count")
+        self.assertNotEqual(one.idempotency_key(), two.idempotency_key(),
+                            "two clears of one scope in a day is two emails, "
+                            "and the old key made the second a 409")
+
+    def test_an_undeduped_alert_carries_no_key_at_all(self):
+        """The legacy shape has no cause, so there is nothing to dedup. A
+        shared `alt-raise-` prefix would have collided every undeduped alert
+        with every other one inside the same 24 hours — and where the bodies
+        happened to match, Resend would have silently sent only the first."""
+        d = alert_state.decide({"open": {}}, {"subject": "s", "body": "b"}, 1)
+        self.assertTrue(d.sends)
+        self.assertEqual(d.idempotency_key(), "")
+
+
+class TheDrainCarriesTheGuardItUsedToDrop(unittest.TestCase):
+    """`alert_drain.drain()` calls `ci_alert.deliver(payload)` with no `idem`.
+
+    So every alert that had ever been HELD was re-sent to Resend with no
+    idempotency key on it — on the one path where the same decision genuinely
+    is sent more than once. alert-drain.yml says so in its own failure text:
+    "alerts delivered this run may be re-sent on the next tick" when it cannot
+    commit the drained outbox. The key now travels inside the held payload, so
+    the drain reproduces it months later.
+    """
+
+    def test_post_alert_stamps_the_key_into_the_payload_it_may_have_to_hold(self):
+        payload = {"subject": "CI RED", "body": "b", "dedupe_key": "tests:main:aa"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            with mock.patch.dict(os.environ, {"ALERT_STATE_PATH": str(path)},
+                                 clear=False), \
+                    mock.patch.object(ci_alert, "deliver",
+                                      lambda *a, **k: (False, "HTTP 504", True)):
+                ci_alert.post_alert("", "", payload)
+        self.assertTrue(payload.get("idempotency_key"),
+                        "a held payload without its key is a held payload the "
+                        "drain will send unguarded")
+
+    def test_deliver_uses_the_key_the_held_payload_carries(self):
+        seen = {}
+
+        def _once(_site, _key, payload, idem):
+            seen["idem"] = idem
+            return True, "emailed the owner", False
+
+        with mock.patch.object(ci_alert, "_post_once", _once):
+            ci_alert.deliver({"subject": "s", "body": "b",
+                              "idempotency_key": "alt-raise-tests:main:aa-99"})
+        self.assertEqual(seen["idem"], "alt-raise-tests:main:aa-99")
+
+    def test_an_explicit_key_still_wins_over_the_payload(self):
+        seen = {}
+
+        def _once(_site, _key, payload, idem):
+            seen["idem"] = idem
+            return True, "ok", False
+
+        with mock.patch.object(ci_alert, "_post_once", _once):
+            ci_alert.deliver({"idempotency_key": "from-payload"}, idem="explicit")
+        self.assertEqual(seen["idem"], "explicit")
+
+    def test_a_pre_migration_held_payload_still_delivers(self):
+        """Everything currently in the committed outbox was held before this
+        change and carries no key. It must still drain, not crash."""
+        seen = {}
+
+        def _once(_site, _key, payload, idem):
+            seen["idem"] = idem
+            return True, "ok", False
+
+        with mock.patch.object(ci_alert, "_post_once", _once):
+            ok, _note, _t = ci_alert.deliver({"subject": "s", "body": "b"})
+        self.assertTrue(ok)
+        self.assertEqual(seen["idem"], "")

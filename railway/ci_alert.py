@@ -650,7 +650,21 @@ def deliver(payload, sleep=time.sleep, idem=""):
     purpose: an alert held in the outbox has already been decided and already
     claimed, so re-running it through the ledger would either suppress it as a
     duplicate of itself or clear a scope twice.
+
+    THE IDEMPOTENCY KEY TRAVELS WITH THE MESSAGE, and until 2026-08-19 it did
+    not. `alert_drain.drain()` calls this with no `idem` at all, so every alert
+    that had ever been HELD was re-sent to Resend with no guard on it. That is
+    the one path where the same decision is genuinely sent twice — alert-drain.yml
+    says so in its own failure text ("alerts delivered this run may be re-sent on
+    the next tick" when it cannot commit the drained outbox) — and it was the one
+    path with nothing protecting it. `post_alert` now stamps the key it used into
+    the payload, the payload is what gets held, so the drain reproduces the same
+    key months later and Resend collapses the repeat instead of mailing twice.
+
+    An explicit `idem` still wins, so a caller that knows better is not
+    overridden; the payload is only the fallback.
     """
+    idem = idem or str((payload or {}).get("idempotency_key") or "")
     ok, note, transient = _post_once(None, None, payload, idem)
     for delay in _BACKOFF:
         if ok or not transient:
@@ -679,9 +693,16 @@ def post_alert(site, key, payload, sleep=time.sleep):
         return True, f"not emailed: {decision.note}", False
     payload["subject"] = decision.subject
     payload["body"] = decision.body
+    # Stamped in place for the same reason the subject and body are: a caller
+    # that goes on to HOLD this payload must hold everything the ruling decided,
+    # and the idempotency key is part of the ruling. Without it the drain sends
+    # the held copy unguarded. See deliver().
+    idem = decision.idempotency_key()
+    if idem:
+        payload["idempotency_key"] = idem
     if not recorded:
         print("::warning::sending an alert whose claim could not be recorded")
-    return deliver(payload, sleep=sleep, idem=decision.idempotency_key())
+    return deliver(payload, sleep=sleep, idem=idem)
 
 
 def write_envelope(path, *, key, kind, scope, payload, reason, run_url):
