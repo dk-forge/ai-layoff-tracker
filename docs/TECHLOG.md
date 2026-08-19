@@ -1,5 +1,93 @@
 # Tech Log
 
+## 2026-08-19 - the digest moved to 6:00 Eastern, and the clock it keeps is now the reader's
+
+**The owner asked for the two daily digests at 6:00 AM Eastern and the weekly
+look-back "Sunday 6 AM Eastern or whats the best?".** The answer shipped is
+**daily 6:00 AM ET seven days a week, weekly 7:30 AM ET on Mondays.** Monday
+rather than Sunday because the week the look-back covers runs Monday to Sunday,
+so Monday morning is the first moment that week is complete; a Sunday send
+reviews a week still in progress. 7:30 rather than 6:00 so a subscriber who
+takes both tiers does not get two emails in the same minute. Daily stays seven
+days a week: a quiet day still earns its send, because the digest prints
+`AI-attributed cuts: 0` and that is a reading, not a silence.
+
+**The hard part was not the time, it was the calendar.** GitHub cron is UTC and
+has no notion of daylight saving. 6:00 Eastern is 10:00 UTC under EDT and 11:00
+UTC under EST, so a single fixed `0 10 * * *` line becomes a 5:00 AM email on
+2026-11-01 and nothing anywhere reports it. The run is green, the email goes
+out, it is simply an hour earlier than the person who asked for it wanted. That
+is the same class of defect as a health check that resolves to a silent pass.
+
+So both candidate UTC ticks are scheduled for each slot - four cron lines for
+two slots - and `railway/digest_slot.py` decides which one is real today.
+
+**It judges the SCHEDULED time, not the clock, and that is the whole design.**
+The obvious implementation reads `datetime.now()` in New York and skips unless
+the hour is 6. It is wrong in the direction that loses an edition: GitHub delays
+scheduled runs, so a 10:00 UTC tick starting at 11:05 UTC would fail a
+now()-based test, the 11:00 UTC tick would fail it too, and the day's digest
+would silently not go out behind two green runs. The input is instead
+`github.event.schedule` - the cron LINE that triggered the run - converted to
+New York time for today's date via stdlib `zoneinfo`. A run delayed by an hour
+still knows which slot it is. `tests/test_digest_dst_slot.py` pins both sides of
+both transitions on real dates (2026-10-31 / 2026-11-02, and the 2027 spring
+boundary) and sweeps 400 consecutive days asserting **exactly one** tick fires
+per slot per day - because "the right one fires" is half a test, and a guard
+that let both fire would pass it and mail everybody twice.
+
+**A skipped tick exits 0 and costs nothing.** It returns before the credential
+is proved, before a recipient is read, before a message is built, and above all
+before anything is stamped. A no-op that wrote the mailer's health row would
+refresh `checked_at` every morning and hide a sender that had stopped.
+
+**This adds a second schedule, which the comment it replaced argued against.**
+That comment - "two schedules is two things to watch" - was written after the
+2026-08-17 defect, when this job ran once a day and CHOSE a tier, choosing
+weekly on a Monday, so every daily subscriber received nothing on a Monday,
+silently. Read again, that defect is auto-SELECTION with no external record of
+the intent, not the existence of two schedules. A tick that carries its own
+identity has nothing left to choose.
+
+**What splitting genuinely costs is paid for, not waved away.** The weekly slot
+could stop firing while the daily one carries on, and `digest_mailer` would be
+stamped fresh every morning by the daily pass - a permanently green row over a
+tier nobody had sent in a month. Every weekly pass now writes its OWN row,
+`digest_weekly`, written only by the external sender and only by a real pass (a
+preview and a nominated test send stamp nothing). Its ceiling is **9 days = the
+7-day cadence + 2 of slack**, the federal_rif arithmetic, so one missed Monday
+is reported on the Wednesday rather than a healthy 6-day-old row reading STALE
+for most of every week. `ops_status.weekly_digest_lines` reads it and **raises
+an issue**, and `health_digest.MAX_AGE_DAYS` carries the same number.
+PASS / FAIL / UNKNOWN: an unreadable endpoint and an absent row are UNKNOWN, and
+absence of a signal is never a pass. **If that row is ever removed, put the
+single schedule back** - it is the whole justification for the split.
+
+A stale `digest_weekly` has two readings and the message names both: readers
+missed an edition, or this repo's schedule broke and the in-WordPress fallback
+sender quietly carried it. The fallback deliberately does not stamp this row,
+because the second case is still a defect worth a human.
+
+**Ordering against the site's own sender improved by accident and is worth
+stating.** The old slot was 13:10 UTC, ten minutes AFTER the WP-Cron slot at
+13:00. The daily now runs at 10:00/11:00 UTC, comfortably before it, so this
+job claims the tier first and the built-in wp_mail sender stands down. The
+claim ages out after `ALT_DIGEST_CLAIM_HOURS`, so if this workflow stops the
+fallback resumes by itself.
+
+**Owed and deliberately not taken: `digest_weekly` has no health-page label
+yet.** The baton in docs/HANDOFF.md read HELD by `local`, so no plugin file was
+touched and no ALT_VERSION was consumed. The id is classified in
+`tests/test_source_registry_parity.py` `KNOWN_UNLABELLED` with that reason; the
+next session holding the baton should give it a `meta{}` entry in
+`assets/health.js` and delete the classification. Four comments in
+`includes/subscribe.php` still say the send runs at 13:10 UTC and that the
+figures are "about fifteen hours old" (they are now about twelve); they are
+comments only, no reader-facing copy states a time, and the two cadence
+sentences a subscriber actually sees already read "each morning" and "Monday
+mornings", which are true of the new schedule.
+
+
 ## 2026-08-19 - an idempotency key that named a cause, not a transition
 
 **The report was that 35 alerts were stuck. Two were, and both had already

@@ -962,6 +962,66 @@ def digest_credential_lines(health):
              "          Not a pass. The next run settles it."], False)
 
 
+# The weekly digest slot has its own schedule since 2026-08-19, so it needs its
+# own liveness ceiling. 7 days between two legitimate runs, plus 2 days of
+# slack, so ONE missed Monday is reported on the Wednesday rather than a healthy
+# 6-day-old row reading STALE for most of every week. Identical arithmetic to
+# federal_rif and source_audit: the real cadence, then slack.
+WEEKLY_DIGEST_MAX_AGE_DAYS = 9
+
+
+def weekly_digest_lines(health):
+    """Has the weekly digest slot actually run? (lines, raises_an_issue).
+
+    WHY THIS IS NOT LEFT TO THE `digest_mailer` CEILING IN [2]. Until
+    2026-08-19 both tiers went out from one daily run, so one row and one
+    3-day ceiling covered both. The daily digest now has its own 6:00 Eastern
+    slot and the weekly its own 7:30 Monday slot, and `digest_mailer` is
+    stamped by whichever pass ran - which is every single morning. A weekly
+    slot that stopped firing would sit behind a permanently green row and
+    nothing would say a word. Splitting the schedule is only defensible
+    because this check exists; if this is ever removed, put the schedule back.
+
+    WHAT THE ROW MEANS, precisely: the EXTERNAL weekly sender completed a pass.
+    The in-WordPress fallback sender does not write it. So a stale row can mean
+    readers missed an edition, or it can mean this repo's schedule broke and
+    the fallback quietly carried it. Both are worth a human, and the message
+    says so rather than guessing which one happened.
+
+    PASS / FAIL / UNKNOWN, and only FAIL raises. An unreadable health endpoint
+    and an absent row are UNKNOWN: absence of a signal is never a pass, and it
+    is never a fault either. A row that exists and is older than the weekly
+    cadence plus its slack is a settled FAIL.
+    """
+    if not isinstance(health, dict):
+        return ["weekly slot UNKNOWN - the health endpoint could not be read, so",
+                "          whether the weekly digest ran is not established here."], False
+    row = health.get("digest_weekly")
+    if not isinstance(row, dict):
+        return (["weekly slot UNKNOWN - no digest_weekly health row yet. The first",
+                 "          weekly pass after 2026-08-19 writes it; until then this",
+                 "          says 'not established', which is not a pass."], False)
+    try:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(
+            str(row.get("checked_at")).replace("Z", "+00:00"))).days
+    except Exception:
+        return (["weekly slot UNKNOWN - the digest_weekly row carries no readable",
+                 "          timestamp, so its age could not be established."], False)
+    detail = str(row.get("detail") or "")[:110]
+    if age > WEEKLY_DIGEST_MAX_AGE_DAYS:
+        return ([f"weekly slot STALE - the weekly digest has not completed a pass in",
+                 f"          {age}d (ceiling {WEEKLY_DIGEST_MAX_AGE_DAYS}d = its 7-day cadence + 2 of slack).",
+                 f"          Either Monday's 7:30 ET slot stopped firing, or it ran and",
+                 f"          failed. Check the 'Send email digest' Monday runs and the",
+                 f"          send log; the in-WordPress fallback may have covered the",
+                 f"          send, which would leave readers fine and the schedule broken.",
+                 f"          last: {detail}"], True)
+    if str(row.get("status")) == "degraded":
+        return ([f"weekly slot DEGRADED - last pass {age}d ago did not send cleanly:",
+                 f"          {detail}"], False)
+    return [f"weekly slot OK - last weekly pass {age}d ago: {detail}"], False
+
+
 def _print_wrapped(text, width=86, indent="        "):
     """One slice per line, wrapped, so a multi-slice verdict stays readable."""
     import textwrap
@@ -1452,6 +1512,14 @@ def main():
         print(f"    {line}")
     if _cred_bad:
         issues.append("the digest relay is refusing our credential")
+    # The weekly tier has its own cron since 2026-08-19, so it needs its own
+    # liveness answer: the shared digest_mailer row is refreshed by the daily
+    # pass every morning and cannot report a weekly slot that stopped.
+    _wk_lines, _wk_bad = weekly_digest_lines(health)
+    for line in _wk_lines:
+        print(f"    {line}")
+    if _wk_bad:
+        issues.append("the weekly digest slot has not run within its cadence")
 
     # 4d. Did anything decline to run at all because the host was unreachable?
     #

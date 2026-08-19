@@ -30,21 +30,58 @@ name: Send email digest
 # every scheduled run had an empty list. The mailer's health row now carries
 # `credential=<STATE>` beside the send counts, and ops_status reads it.
 #
-# 13:10 UTC daily, ten minutes after the site's own WP-Cron slot, so if this
-# job is armed it claims the tier and the built in wp_mail sender stands down
-# for that day rather than both sending.
+# TWO SLOTS, FOUR CRON LINES, AND EXACTLY ONE SEND PER SLOT PER DAY.
 #
-# ONE SCHEDULE, AND ON A MONDAY TWO PASSES INSIDE IT. digest_send.py sends the
-# daily tier every day and the weekly tier additionally on Mondays, as two
-# independent passes in this same run. Do not add a second cron line for the
-# weekly tier: two schedules is two things to watch, and the reason this slot
-# is ten minutes after the site's own is that there is exactly one of them.
-# Until 2026-08-17 the job picked ONE tier and picked weekly on a Monday, so
-# every daily subscriber got nothing on a Monday. See docs/TECHLOG.md.
+#   daily   6:00 AM Eastern, seven days a week
+#   weekly  7:30 AM Eastern, Mondays
+#
+# The owner asked for those two wall-clock times (2026-08-19). The week runs
+# Monday to Sunday, so Monday morning is the first moment the week it looks
+# back over is complete; a Sunday send would review a week still in progress.
+# 7:30 rather than 6:00 so a subscriber who takes both tiers does not get two
+# emails in the same minute. Daily stays SEVEN DAYS A WEEK: a quiet day still
+# earns its send, because the digest prints `AI-attributed cuts: 0` and that
+# is a reading, not a silence.
+#
+# WHY FOUR CRON LINES FOR TWO SLOTS: DAYLIGHT SAVING.
+# GitHub cron is UTC and has no notion of DST. 6:00 Eastern is 10:00 UTC under
+# EDT and 11:00 UTC under EST; 7:30 Eastern is 11:30 UTC and 12:30 UTC. Both
+# candidates are scheduled and railway/digest_slot.py decides which one is the
+# real slot today, from `github.event.schedule` (below) rather than from the
+# wall clock, so a run GitHub delays by an hour still knows which slot it is.
+# The other tick exits 0 having read nothing, built nothing, sent nothing and
+# stamped nothing. A single fixed cron would have become a 5:00 AM email on
+# 2026-11-01 with nothing anywhere saying so.
+#
+# THIS ADDS A SECOND SCHEDULE, AND THE COMMENT THAT USED TO STAND HERE ARGUED
+# AGAINST THAT. It read: "Do not add a second cron line for the weekly tier:
+# two schedules is two things to watch." It was written after the 2026-08-17
+# defect, when this job ran once a day and CHOSE a tier, choosing weekly on a
+# Monday, so every daily subscriber received nothing on a Monday, silently.
+#
+# That defect was auto-SELECTION with no external record of the intent, not
+# the existence of two schedules. A tick that carries its own identity has
+# nothing left to choose. What splitting really costs is a second thing that
+# can fail quietly - the weekly slot stopping while the daily one carries on -
+# and that is paid for rather than waved away: every weekly pass writes its own
+# `digest_weekly` health row, sized to a 7-day cadence plus 2 days of slack,
+# and ops_status raises an issue when it goes stale. Do not delete that row and
+# leave this schedule standing.
+#
+# The 6:00 Eastern daily now runs BEFORE the site's own WP-Cron slot (13:00
+# UTC) rather than ten minutes after it, which is the same ordering it always
+# wanted: this job claims the tier first and the built-in wp_mail sender stands
+# down for the day. The claim ages out after ALT_DIGEST_CLAIM_HOURS, so if this
+# workflow stops the fallback resumes by itself.
 
 on:
   schedule:
-    - cron: '10 13 * * *'
+    # 6:00 AM Eastern - the daily digest. One of these two is a no-op each day.
+    - cron: '0 10 * * *'    # 06:00 EDT (Mar-Nov)
+    - cron: '0 11 * * *'    # 06:00 EST (Nov-Mar)
+    # 7:30 AM Eastern Monday - the weekly look-back. Same pairing.
+    - cron: '30 11 * * 1'   # 07:30 EDT (Mar-Nov)
+    - cron: '30 12 * * 1'   # 07:30 EST (Nov-Mar)
   workflow_dispatch:
     inputs:
       dry_run:
@@ -109,6 +146,10 @@ jobs:
           DIGEST_VERIFY_ONLY: ${{ github.event.inputs.verify_only }}
           DIGEST_DRY_RUN: ${{ github.event.inputs.dry_run }}
           DIGEST_FREQ: ${{ github.event.inputs.freq }}
+          # WHICH SLOT THIS RUN IS, from GitHub rather than from the clock.
+          # Empty on a workflow_dispatch, which is how a manual run keeps the
+          # old day-of-week behaviour and is never skipped by the DST guard.
+          DIGEST_CRON: ${{ github.event.schedule }}
           DIGEST_LIMIT: ${{ github.event.inputs.limit }}
           # Reads the rendered email when the list has nobody due. It is
           # ignored by any transport that sends, so it cannot mail a
