@@ -47,7 +47,8 @@ SUBSCRIBE = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker",
 PHP = shutil.which("php")
 
 _WANTED = ("alt_digest_date_range", "alt_digest_iso_week",
-           "alt_digest_week_label", "alt_digest_edition_label",
+           "alt_digest_week_label", "alt_digest_week_id",
+           "alt_digest_edition_label",
            "alt_digest_weekly_window", "alt_digest_valid_freq",
            "alt_digest_window")
 
@@ -99,19 +100,19 @@ def php(payload):
 # (first day of the window, last day, the label both sides must produce).
 # Every one of these was worked out from the calendar, not from the code.
 EDITIONS = (
-    ("2026-08-10", "2026-08-16", "Week 33 \u00b7 August 10-16, 2026"),
-    ("2026-08-03", "2026-08-09", "Week 32 \u00b7 August 3-9, 2026"),
+    ("2026-08-10", "2026-08-16", "2026 Week 33 \u00b7 August 10-16"),
+    ("2026-08-03", "2026-08-09", "2026 Week 32 \u00b7 August 3-9"),
     # A window that straddles a month, so the range shape changes too.
-    ("2026-08-31", "2026-09-06", "Week 36 \u00b7 August 31 - September 6, 2026"),
+    ("2026-08-31", "2026-09-06", "2026 Week 36 \u00b7 August 31 - September 6"),
     # THE BOUNDARY, FORWARD. January 1, 2027 is a Friday, so this Monday to
     # Sunday week is week 53 of ISO YEAR 2026 while three of its days are in
     # calendar 2027.
-    ("2026-12-28", "2027-01-03", "Week 53 \u00b7 December 28, 2026 - January 3, 2027"),
+    ("2026-12-28", "2027-01-03", "2026 Week 53 \u00b7 December 28, 2026 - January 3, 2027"),
     # THE BOUNDARY, BACKWARD. December 31, 2029 is a Monday and opens week 1 of
     # ISO year 2030, while the calendar year is still 2029.
-    ("2029-12-31", "2030-01-06", "Week 1 \u00b7 December 31, 2029 - January 6, 2030"),
+    ("2029-12-31", "2030-01-06", "2030 Week 1 \u00b7 December 31, 2029 - January 6, 2030"),
     # A 53-week ISO year, read at its end.
-    ("2020-12-28", "2021-01-03", "Week 53 \u00b7 December 28, 2020 - January 3, 2021"),
+    ("2020-12-28", "2021-01-03", "2020 Week 53 \u00b7 December 28, 2020 - January 3, 2021"),
 )
 
 # (a UTC instant a run could start at, the window a WEEKLY edition reports).
@@ -136,14 +137,12 @@ class ThePythonSideIsISO(unittest.TestCase):
             with self.subTest(first=first):
                 start = datetime.date.fromisoformat(first)
                 end = datetime.date.fromisoformat(last)
-                self.assertEqual(
-                    f"{layout.week_label(start)} \u00b7 {layout.date_range(start, end)}",
-                    label)
+                self.assertEqual(layout.edition_label(start, end), label)
 
     def test_the_edition_phrase_is_the_label(self):
         payload = {"from": "2026-12-28", "to": "2027-01-03", "freq": "weekly"}
         self.assertEqual(layout.period_phrase(payload),
-                         "Week 53 \u00b7 December 28, 2026 - January 3, 2027")
+                         "2026 Week 53 \u00b7 December 28, 2026 - January 3, 2027")
 
     def test_a_daily_edition_carries_no_week_number(self):
         """A day is not a week, and numbering one would be a label a reader
@@ -156,7 +155,9 @@ class ThePythonSideIsISO(unittest.TestCase):
         """A bare "Week 33" is a label a reader has to look up, and two
         readers on two conventions look it up differently."""
         for first, last, label in EDITIONS:
-            self.assertRegex(label, r"^Week \d+ \u00b7 .*\d{4}$")
+            # The ISO YEAR leads, so the label carries a year even when the
+            # range's own trailing year is dropped as a repeat.
+            self.assertRegex(label, r"^\d{4} Week \d+ \u00b7 ")
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")

@@ -16052,3 +16052,58 @@ leads with the second metric, then the AI figure, then the United States split,
 none of which the subject carries. The wp_mail fallback sender had no hidden
 preheader at all, which is where "View this email in your browser" came from;
 it has one now, matching the relay.
+
+## 2026-08-19 - the brand came out of the subject, after a real-inbox test (2.20.114)
+
+The owner read the shipped subject on Gmail mobile and said: "Lets drop
+asktherecruiter.com from the subject, on gmail mobile all you see is
+asktherecruiter.com." That is the ~45-character truncation concern, measured in
+his own inbox rather than argued about. The prefix cost about twenty characters
+that the From display name already carries, so the part a phone showed was the
+sender's name and the figure fell off the end.
+
+**The scheme is now `<period>: <figure> <unit>`**, everywhere a subject is
+composed:
+
+    2026 Week 33: 16,842 verified job cuts
+    2026 Week 33: 1,376 hiring signals
+    2026 Week 33: 16,842 verified job cuts · 1,376 hiring signals
+    August 19, 2026: 1,101 verified job cuts
+    August 19, 2026: 150 hiring signals
+
+Measured truncation on the longest form, the combined edition at 61 characters:
+the first 40 are `2026 Week 33: 16,842 verified job cuts ·`, so the cut lands on
+the separator and the first metric survives whole with its unit. That is the
+intended win.
+
+**The AI-inflation property survived the change and is why it is a property.**
+No tracker brand appears in a subject at all now, so nothing juxtaposes a brand
+with a raw count. `test_digest_subject_never_inflates_ai.py` still holds it.
+
+**One period vocabulary, so the inbox and the archive agree.** The subject's
+period token is now a literal PREFIX of the archived edition's title:
+
+    inbox    2026 Week 33: 16,842 verified job cuts
+    archive  2026 Week 33 · August 10-16
+
+`alt_digest_edition_label()` leads with the ISO week identifier and drops the
+range's trailing year when the ISO year already leads and they agree, so the
+line does not say 2026 twice. It keeps both whenever they can disagree, which
+is the only time a reader needs both (2026 Week 53 straddles into January 2027;
+31 December 2029 is 2030 Week 1). A DAILY edition is named by its date in both
+places rather than by its two-day window, which is the masthead convention and
+keeps the match on the tier that sends most often. Four new tests pin it.
+
+**Talent composer copy, outstanding since the first pass.** The headline was an
+eyebrow reading "New hiring signals" above the number while the layoff section
+prints the number then "verified job cuts", so the two headline figures in one
+message were built in opposite orders. Both now put the unit under the figure.
+"Biggest signals" is "Biggest hiring signals". "then the tracker's own order"
+gestured at an internal detail no reader can check and is now "then newest
+first". The verified sentence says what the rest are: published indications we
+have not confirmed. "YTD 2026" is "2026 YTD", matching the layoff section.
+
+**Still open and not ours:** the From display name is now the only place the
+brand appears. It reads `AskTheRecruiter.com`, a bare domain, and it is doing
+real work alone. Whether it should carry something more specific is the owner's
+call and he has not made it.

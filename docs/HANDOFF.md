@@ -327,7 +327,13 @@ holder, so the start-of-session ritual surfaces it automatically.
   quoted surface. Every subject now leads with the SITE
   (`AskTheRecruiter.com · 2026 Week 33: ...`), so no brand is juxtaposed with a
   raw count, and `railway/tests/test_digest_subject_never_inflates_ai.py` holds
-  the property. **A SECOND COLLISION: main was already at 2.20.104 when this was staged, caught by re-reading main immediately before merging. Rebased to 2.20.105. Next plugin release is 2.20.106.** Written here before the push, and main re-read immediately before
+  the property. **A SECOND COLLISION: main was already at 2.20.104 when this was staged, caught by re-reading main immediately before merging. Rebased to 2.20.105. Next plugin release is 2.20.115.**
+  **A THIRD FOLLOW-UP, 2.20.114**: the owner tested the subject on Gmail mobile
+  and had the brand prefix removed ("all you see is asktherecruiter.com"). Every
+  subject is now `<period>: <figure> <unit>`, the subject's period token is a
+  literal prefix of the archived edition's title so the inbox and the archive
+  name an edition identically, and the outstanding talent composer copy landed
+  with it. Written here before the push, and main re-read immediately before
   merging, per the 2.20.92 collision note below.
 
 - **STATUS:** HELD

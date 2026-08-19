@@ -184,7 +184,24 @@ function alt_edition_url($freq, $slug) {
     return alt_edition_index_url() . rawurlencode((string) $freq) . '/' . rawurlencode((string) $slug) . '/';
 }
 
-/** "Week 33, August 10-16, 2026" / "18 August 2026", from the shared helpers. */
+/**
+ * "2026 Week 33 \xc2\xb7 August 10-16" / "August 19, 2026", from the shared helpers.
+ *
+ * IT MUST OPEN WITH THE SAME STRING THE SUBJECT LINE OPENS WITH. A subscriber
+ * reads "2026 Week 33: 16,842 verified job cuts" in the inbox and follows a
+ * link here; if the page called the same edition something else, the two
+ * surfaces would read as two things that happen to be about one week. The
+ * subject's period token is a literal PREFIX of the weekly label, which is why
+ * alt_digest_edition_label() leads with the ISO week identifier.
+ *
+ * A DAILY EDITION IS NAMED BY ITS DATE AND NOT BY ITS WINDOW, for the same
+ * reason. The daily window is two days (yesterday and today) and the subject
+ * names the day it went out, which is the masthead convention: a newspaper's
+ * front page carries the publication date and the stories inside state their
+ * own spans. Printing "August 18-19, 2026" here while the subject said "August
+ * 19, 2026" would break the match on the tier that sends most often.
+ * The edition's own dateline still states the full window it covers.
+ */
 function alt_edition_label($row) {
     $from = (string) $row['window_from'];
     $to = (string) $row['window_to'];
@@ -193,10 +210,13 @@ function alt_edition_label($row) {
         if ($label !== '') return $label;
     }
     if (function_exists('alt_digest_date_range')) {
-        $range = alt_digest_date_range($from, $to);
+        // $to twice, not the window: see the docblock. The weekly branch above
+        // has already returned, so this is the daily one and any tier that
+        // cannot name a week.
+        $range = alt_digest_date_range($to, $to);
         if ($range !== '') return $range;
     }
-    return $from === $to ? $from : $from . ' to ' . $to;
+    return $to;
 }
 
 /* ------------------------------------------------------------------ */
