@@ -81,6 +81,61 @@ def _code_only(path):
     return proc.stdout
 
 
+def _php_relay_tracking(src):
+    """The value of ALT_RELAY_TRACKING, read out of the PHP source.
+
+    Parsed rather than executed because these assertions run with or without a
+    PHP binary on the box, and a constant is the one thing a regex can read
+    without lying about it. It is a `define(..., true|false)` on one line by
+    construction; anything else here should fail loudly rather than default.
+    """
+    m = re.search(r"define\(\s*'ALT_RELAY_TRACKING'\s*,\s*(true|false)\s*\)", src)
+    assert m, ("ALT_RELAY_TRACKING is not a one-line define in subscribe.php; "
+               "the constant is the mirror of the provider dashboard and every "
+               "reader-facing string is derived from it, so it must stay "
+               "trivially readable")
+    return m.group(1) == "true"
+
+
+def _tracking_line_branch(src, relay_tracking_on):
+    """The always-visible disclosure for one state of ALT_RELAY_TRACKING.
+
+    The template now prints alt_digest_tracking_line() instead of literal
+    prose, so a test that slices the template sees a function call. This slices
+    the FUNCTION instead and returns the branch the constant selects.
+
+    Split on the STRUCTURE (the close of the if block), never on a phrase from
+    the copy. A literal split key is a copy of the copy, and it went stale the
+    first time the wording changed: the helper then returned an empty string
+    and the assertions below failed for a reason that had nothing to do with
+    what the page says.
+    """
+    body = src[src.index("function alt_digest_tracking_line()"):]
+    body = body[:body.index("\n}")]
+    on_branch, sep, off_branch = body.partition("\n    }\n")
+    assert sep, ("alt_digest_tracking_line() is no longer an if block followed "
+                 "by a fallback return, so this helper cannot tell the two "
+                 "branches apart")
+    return on_branch if relay_tracking_on else off_branch
+
+
+def _privacy_note_branch(src, relay_tracking_on):
+    """The privacy note as a READER sees it, for one state of the constant.
+
+    BOTH variants live in the file, inside an if/else, so slicing the whole
+    <details> returns copy that is not on the page. That is not a nitpick: the
+    opens-off assertions include a NOT-in, and a NOT-in against a slice holding
+    the other branch can never fail. Drop the branch PHP will not run.
+    """
+    note = src[src.index('<details class="alt-digest-privacy"'):src.index("</details>")]
+    head, sep, rest = note.partition("<?php if (ALT_RELAY_TRACKING) : ?>")
+    if not sep:
+        return note
+    on_branch, _, rest2 = rest.partition("<?php else : ?>")
+    off_branch, _, tail = rest2.partition("<?php endif; ?>")
+    return head + (on_branch if relay_tracking_on else off_branch) + tail
+
+
 def _load_ops_status():
     if RAILWAY not in sys.path:
         sys.path.insert(0, RAILWAY)
@@ -324,28 +379,64 @@ class StatsRouteShape(unittest.TestCase):
         that happens to "an email" leaves a reader to assume it starts once
         they have agreed. Nothing in the repo can catch this drift on its own:
         our message embeds no image and assert_message_is_clean still passes,
-        because the pixel is added after we hand the message over."""
+        because the pixel is added after we hand the message over.
+
+        CONDITIONAL ON ALT_RELAY_TRACKING SINCE 2.20.107, in both directions.
+        The warning is required while opens are recorded, and it is FORBIDDEN
+        once they are not: an unconfirmed address that never follows a link is
+        then never measured at all, so the same paragraph would be scaring
+        people about something that has stopped happening. A disclosure that
+        outlives the thing it discloses is its own kind of false.
+        """
         src = open(SUBSCRIBE, encoding="utf-8").read()
-        # From the <details> TAG, not from the first "alt-digest-privacy" in
-        # the file: that one is a CSS rule several hundred lines earlier, and
-        # slicing from it swallows the always-visible tracking paragraph too,
-        # so this test would pass on a note that says nothing.
-        note = src[src.index('<details class="alt-digest-privacy"'):src.index("</details>")]
-        self.assertIn("confirmation email", note.lower(),
-                      "the privacy note describes tracking without ever naming "
-                      "the one message sent before consent exists")
-        self.assertIn("before you have agreed to anything", note,
-                      "the note must say WHEN the measuring starts, not just "
-                      "that it happens")
-        # The always-visible tracking line carries the same warning, because a
-        # reader who never opens the <details> is the one who most needs it.
-        # It lives below the Subscribe button (.alt-digest-tracking) rather
-        # than in the intro, which is inside the phone-fold budget.
-        line = src[src.index('class="alt-digest-tracking"'):]
-        line = line[:line.index("</p>")]
-        self.assertIn("confirmation email", line.lower(),
-                      "the disclosure a reader sees without opening anything "
-                      "says 'an email', which reads as the digest")
+        on = _php_relay_tracking(src)
+        # Both variants live in the file inside an if/else, so slice down to
+        # the branch PHP will actually run. A NOT-in against the whole block
+        # would match the other branch and could never fail.
+        note = _privacy_note_branch(src, on)
+        line = _tracking_line_branch(src, on)
+
+        if on:
+            self.assertIn("confirmation email", note.lower(),
+                          "the privacy note describes tracking without ever naming "
+                          "the one message sent before consent exists")
+            self.assertIn("before you have agreed to anything", note,
+                          "the note must say WHEN the measuring starts, not just "
+                          "that it happens")
+            self.assertIn("confirmation email", line.lower(),
+                          "the disclosure a reader sees without opening anything "
+                          "says 'an email', which reads as the digest")
+        else:
+            self.assertIn("do not record whether you open", note.lower(),
+                          "with the relay off the note must say so plainly, not "
+                          "go quiet: a reader told otherwise last month is owed "
+                          "the correction")
+            self.assertNotIn("before you have agreed to anything", note,
+                             "the pre-consent warning describes a pixel that is "
+                             "no longer sent, so it is now false")
+            self.assertIn("records nothing about how you read", line.lower(),
+                          "the always-visible line must carry the negative too")
+            # The first-party counter survives the relay going off, and the
+            # note has to keep saying so. Going quiet about it would turn a
+            # true "we stopped measuring opens" into a false "nothing is
+            # counted", which is the easier mistake and the worse one.
+            self.assertIn("counter", note.lower() + line.lower(),
+                          "the note stopped naming the click counter, which "
+                          "still runs and still counts")
+
+    def test_the_two_tracking_constants_agree(self):
+        """One dashboard setting, mirrored in two languages, and nothing can
+        read the dashboard. So the ONLY thing a test can enforce is that the
+        two mirrors agree with each other, which is what makes the flip a
+        one-line change instead of a hunt. See docs/RUNBOOK.md "Open and click
+        tracking"."""
+        from digest_layout import RELAY_TRACKING_ON
+        php = _php_relay_tracking(open(SUBSCRIBE, encoding="utf-8").read())
+        self.assertEqual(
+            RELAY_TRACKING_ON, php,
+            "digest_layout.RELAY_TRACKING_ON and subscribe.php "
+            "ALT_RELAY_TRACKING disagree, so the email footer and the signup "
+            "form are telling readers different things about the same pixel")
 
 
 @unittest.skipUnless(_php(), "php not installed")
@@ -788,7 +879,15 @@ class ClickCountingAndStats(unittest.TestCase):
         self.assertEqual(s["confirm_rate"], 0.6667)
         self.assertEqual(s["confirmed_last_7_days"], 2)
         self.assertEqual(s["frequency"], {"daily": 1, "weekly": 1})
-        self.assertEqual(s["open_tracking"], "none")
+        # Was a hardcoded "none" on both sides, and was FALSE from 2026-08-16
+        # until 2.20.107: the field is named open_tracking in a payload about
+        # the mailing list, so it reads as a claim about the emails a
+        # subscriber receives, and the relay had been measuring those for
+        # three days. It now derives from ALT_RELAY_TRACKING, so the operator
+        # payload cannot disagree with the note published to readers.
+        src = open(SUBSCRIBE, encoding="utf-8").read()
+        self.assertEqual(s["open_tracking"],
+                         "provider" if _php_relay_tracking(src) else "none")
 
     def test_the_frequency_split_adds_up_to_the_confirmed_total(self):
         s = self.o["stats"]

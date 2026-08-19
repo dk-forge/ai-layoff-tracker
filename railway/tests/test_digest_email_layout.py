@@ -458,7 +458,12 @@ class ThePlainTextAlternative(unittest.TestCase):
         text = message().text
         self.assertIn(UNSUB, text)
         self.assertIn(MANAGE, text)
-        self.assertIn("records whether you open this email", text)
+        # The measurement disclosure, read from the one place that composes it
+        # rather than quoted. Quoting made this a second definition of the
+        # sentence, so it reddened on a wording change that broke nothing.
+        # What matters here is that the disclosure reaches the plain text part
+        # at all, whatever the relay state has it currently saying.
+        self.assertIn(layout.TRACKING_SENTENCES[0], " ".join(text.split()))
 
     def test_it_is_not_a_stripped_tag_byproduct(self):
         text = message(("layoff", "talent")).text
@@ -683,13 +688,31 @@ class TheTrackingSentenceIsTrue(unittest.TestCase):
         crosses a line break. Compare on the words, not on the line endings."""
         return " ".join(part.split())
 
-    def test_both_parts_say_plainly_that_opens_and_clicks_are_measured(self):
+    def test_both_parts_say_plainly_what_is_measured(self):
+        """Whatever the relay state, both parts must name what is recorded and
+        say that unsubscribing stops it. The two states make DIFFERENT promises
+        and each has to be checked against its own, because the failure this
+        guards against is a footer describing the other one."""
         built = message(("layoff", "talent"))
         for part in (built.html, built.text):
             flat = self._flat(part)
-            self.assertIn("records whether you open this email", flat)
-            self.assertIn("which links you follow", flat)
-            self.assertIn("Unsubscribing stops the email and the measuring", flat)
+            if layout.RELAY_TRACKING_ON:
+                self.assertIn("records whether you open this email", flat)
+                self.assertIn("which links you follow", flat)
+                self.assertIn("Unsubscribing stops the email and the measuring",
+                              flat)
+            else:
+                # The negative is the whole promise, so it is pinned rather
+                # than left to the absence of the positive.
+                self.assertIn("records nothing about how you read this email",
+                              flat)
+                self.assertIn("adds no invisible image", flat)
+                # And the counter that survives is named, so the footer does
+                # not read as "nothing is counted", which is not true.
+                self.assertIn("counter on our own site", flat)
+                self.assertIn("Unsubscribing stops the email and the counting",
+                              flat)
+            self.assertNotIn("no tracking pixels", flat)
 
     def test_the_two_parts_cannot_disagree(self):
         """One source of the words, so a fix to one is a fix to both."""
