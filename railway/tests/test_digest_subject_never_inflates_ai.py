@@ -307,46 +307,14 @@ class ThePreviewAddsAndNeverRepeats(unittest.TestCase):
         self.assertNotIn("...", snippet)
 
 
-class EveryFigureIsFormattedTheSameWayOnEverySurface(unittest.TestCase):
-    """A figure rendered two ways in one message, side by side in a list.
-
-    The owner's inbox screenshot showed `1,376` in a subject beside `1376` in
-    its own preview, and `16,842` beside `10132`. Both strings are composed by
-    the site through number_format_i18n, and this session could NOT reproduce
-    the unformatted rendering from the code: nothing between composition and
-    the wire strips a separator. The cause is therefore UNKNOWN and may be the
-    client's own snippet extraction.
-
-    What is checkable is the property, so the property is pinned here: a figure
-    appearing in more than one composed string is spelled identically in all of
-    them. If a future edit ever formats one surface differently, this fails
-    rather than shipping two spellings of one number.
-    """
-
-    def test_a_figure_in_two_composed_strings_is_spelled_once(self):
-        parts = [
-            ("layoff", "<p>x</p>", "AI Layoff Tracker\nx 2026\n",
-             "411 of 1,376 verified against a primary document.",
-             ("1,376 hiring signals", False)),
-        ]
-        payload = {"from": "2026-08-10", "to": "2026-08-16", "freq": "weekly",
-                   "subject": "fallback"}
-        subject = layout.subject_line(payload, parts)
-        snippet = layout.preheader_text(parts)
-        # 1376 appears in both. It must wear its separator in both.
-        self.assertIn("1,376", subject)
-        self.assertIn("1,376", snippet)
-        for line in (subject, snippet):
-            self.assertNotRegex(
-                line, r"(?<![\d,])\d{4,}(?![\d,])",
-                f"a four-digit-or-longer figure is missing its thousands "
-                f"separator: {line!r}")
-
-    def test_the_layout_module_never_reformats_a_site_figure(self):
-        """It joins strings the site composed and computes nothing, which is
-        why the two surfaces cannot disagree about a separator."""
-        source = open(os.path.join(RAILWAY, "digest_layout.py"),
-                      encoding="utf-8").read()
-        self.assertNotIn("{:,}", source)
-        self.assertNotIn("format(", source.split("def subject_line")[1]
-                         .split("def preheader_text")[0])
+# THE FORMATTING GUARD THAT USED TO LIVE HERE HAS MOVED AND BEEN REPLACED.
+#
+# It asserted "a figure appearing in more than one composed string is spelled
+# identically in all of them", which is true and useless: the figures that
+# actually shipped unformatted - 10132, 1376, 1324 - each appear ONCE, so there
+# was nothing to compare them against and the assertion passed vacuously on
+# exactly the case it existed for. Most numbers appear once.
+#
+# tests/test_digest_figures_are_formatted.py holds the absolute property
+# instead: every integer of four digits or more, in every composed string,
+# carries separators. Unconditionally, not "if it also appears elsewhere".

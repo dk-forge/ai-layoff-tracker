@@ -1902,6 +1902,42 @@ function alt_digest_week_label($date) {
 }
 
 /**
+ * A FIGURE, WITH ITS THOUSANDS SEPARATORS, FROM ONE DEFINITION WE CONTROL.
+ *
+ * WHAT WENT OUT, AND IT TOOK TWO SCREENSHOTS TO BELIEVE. The owner's Gmail
+ * inbox showed, in the SAME message:
+ *
+ *     subject   16,842 verified job cuts \xc2\xb7 1,376 hiring signals \xc2\xb7 Aug 10-16
+ *     preview   582 of 1376 verified against a primary document, from 1324 companies.
+ *
+ * 1376 formatted in the subject and unformatted in the preview, on both Gmail
+ * iOS and Gmail desktop. This session first reported it as UNKNOWN and
+ * probably the client's snippet extraction, which was wrong and was lazy: a
+ * client that stripped separators would have stripped them from the subject in
+ * the same message, and it did not.
+ *
+ * WHY THIS IS A FUNCTION RATHER THAN A HUNT FOR THE CALL SITE.
+ * number_format_i18n() reads $wp_locale->number_format['thousands_sep'] when a
+ * $wp_locale exists and falls back to PHP's number_format() when one does not,
+ * and it passes the result through a filter any plugin or theme may hook. So
+ * its output depends on a locale object and a filter chain that this file does
+ * not own and cannot see from a test. For prose that is fine. For a FIGURE a
+ * reporter may quote it is not: a separator is not decoration, it is what makes
+ * a five-digit number readable at a glance, and the one line where that matters
+ * most is the one a reader sees before deciding to open.
+ *
+ * So the digest formats its own numbers. ASCII comma, always, no locale, no
+ * filter. That is a deliberate narrowing: this product publishes in English and
+ * every other surface of it already spells figures this way.
+ *
+ * tests/test_digest_figures_are_formatted.py scans every composed string for
+ * an integer of four digits or more carrying no separator and fails on one.
+ */
+function alt_digest_number($n) {
+    return number_format((float) $n, 0, '.', ',');
+}
+
+/**
  * "Aug 10-16", "Aug 31 - Sep 6", "Aug 19". A window as an inbox reads it.
  *
  * WHY THE ISO WEEK CAME OUT OF THE SUBJECT. The owner read "2026 Week 33:
@@ -2712,18 +2748,18 @@ function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing,
     $shown = (int) $shown; $covered = (int) $covered; $headline = (int) $headline;
     if ($shown === $headline) return '';
     $parts = array();
-    $parts[] = 'These lines cover ' . number_format_i18n($shown) . ' of the '
+    $parts[] = 'These lines cover ' . alt_digest_number($shown) . ' of the '
              . alt_digest_count($headline, 'verified ' . $unit) . ' '
              . $span . '.';
     $ranked = $covered - $shown;
     if ($ranked > 0) {
-        $parts[] = number_format_i18n($ranked)
+        $parts[] = alt_digest_number($ranked)
                  . alt_digest_verb($ranked, ' more sits', ' more sit')
                  . ' below the lines shown.';
     }
     $unclassified = $headline - $covered;
     if ($unclassified > 0) {
-        $parts[] = number_format_i18n($unclassified)
+        $parts[] = alt_digest_number($unclassified)
                  . alt_digest_verb($unclassified, ' is on an entry with ',
                                                   ' are on entries with ')
                  . $missing . '.';
@@ -2763,7 +2799,7 @@ function alt_digest_jobs_phrase($n) {
 function alt_digest_count($n, $singular, $plural = null) {
     $n = (int) $n;
     if ($plural === null) $plural = $singular . 's';
-    return number_format_i18n($n) . ' ' . ($n === 1 ? $singular : $plural);
+    return alt_digest_number($n) . ' ' . ($n === 1 ? $singular : $plural);
 }
 
 /** The verb (or any word) a count governs. `alt_digest_verb(1,'sits','sit')`. */
@@ -2806,7 +2842,11 @@ function alt_digest_fit_preheader($required, $optional, $max = 130) {
     $len = function ($s) {
         return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen($s);
     };
-    $optional = array_values(is_array($optional) ? $optional : array());
+    // AN EMPTY OPTIONAL CLAUSE IS NOT A CLAUSE. A caller that computes one
+    // conditionally passes '' rather than branching at the call site, and
+    // joining that produced a stray ", ." at the end of the snippet.
+    $optional = array_values(array_filter(
+        array_map('trim', is_array($optional) ? $optional : array()), 'strlen'));
     for ($keep = count($optional); $keep >= 0; $keep--) {
         $line = $required;
         for ($i = 0; $i < $keep; $i++) $line .= ', ' . $optional[$i];
@@ -3207,7 +3247,7 @@ function alt_digest_composition_note($block, $headline, $span) {
 
     $line = $top3[0] . ', ' . $top3[1] . ' and ' . $top3[2]
           . ' are the three largest, ' . round(100 * $top3_jobs / $covered)
-          . '% of the ' . number_format_i18n($covered)
+          . '% of the ' . alt_digest_number($covered)
           . ' verified job cuts we classified by industry ' . $span . '.';
     $tech = '';
 
@@ -3660,7 +3700,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
              . ' of ' . (($iso) ? $iso[0] : substr((string) $to, 0, 4))
              . ', employers verified ';
     if ($us_change !== '' && $us_jobs > 0) {
-        $lead[] = $opening . number_format_i18n($us_jobs) . ' US job cuts, '
+        $lead[] = $opening . alt_digest_number($us_jobs) . ' US job cuts, '
                 . $us_change . '.';
         /*
           THE WORLDWIDE DIRECTION IS ITS OWN SENTENCE, AND IT HAS TO BE.
@@ -3675,16 +3715,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         */
         if ($all_change !== '') {
             $lead[] = 'Worldwide, verified job cuts totalled '
-                    . number_format_i18n($ver_jobs) . ', '
+                    . alt_digest_number($ver_jobs) . ', '
                     . $all_change . '.';
         } else {
             $lead[] = 'Worldwide, verified job cuts totalled '
-                    . number_format_i18n($ver_jobs) . '.';
+                    . alt_digest_number($ver_jobs) . '.';
         }
     } else {
-        $lead[] = $opening . number_format_i18n($us_jobs) . ' US job cuts.';
+        $lead[] = $opening . alt_digest_number($us_jobs) . ' US job cuts.';
         $lead[] = 'Worldwide, verified job cuts totalled '
-                . number_format_i18n($ver_jobs) . '.';
+                . alt_digest_number($ver_jobs) . '.';
     }
     $ai_jobs_lead = (int) ($totals['ai_verified_jobs'] ?? 0);
     /*
@@ -3707,7 +3747,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $lead[] = ($ai_jobs_lead > 0)
         ? 'Employers explicitly named AI on '
-          . number_format_i18n($ai_jobs_lead) . ' of the worldwide total.'
+          . alt_digest_number($ai_jobs_lead) . ' of the worldwide total.'
         : 'No employer explicitly named AI as a reason.';
 
     $html = '<h2>AI Layoff Tracker</h2>'
@@ -3746,13 +3786,13 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     list($pair_html, $pair_text) = alt_digest_stat_pair(array(
         array('label' => 'United States',
-              'figure' => number_format_i18n($us_jobs),
+              'figure' => alt_digest_number($us_jobs),
               'unit' => alt_digest_verb($us_jobs, 'verified job cut', 'verified job cuts'),
               'foot' => $change_phrase($us_jobs, $prior_us),
               'url' => alt_digest_track_link($send_id, alt_digest_tracker_url(
                            $from, $to, array('country' => 'United States')))),
         array('label' => 'Worldwide',
-              'figure' => number_format_i18n($ver_jobs),
+              'figure' => alt_digest_number($ver_jobs),
               'unit' => alt_digest_verb($ver_jobs, 'verified job cut', 'verified job cuts'),
               'foot' => $change_phrase($ver_jobs, $prior_all),
               'url' => alt_digest_track_link($send_id,
@@ -3765,7 +3805,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
            . ', counted where the jobs were and by the date the cuts take effect.';
     $unplaced = max(0, $ver_jobs - $covered);
     if ($unplaced > 0) {
-        $reconcile = number_format_i18n($unplaced) . ' of the '
+        $reconcile = alt_digest_number($unplaced) . ' of the '
                    . alt_digest_count($ver_jobs, 'verified job cut')
                    . alt_digest_verb($unplaced, ' sits', ' sit')
                    . ' on entries with no country recorded. The United States figure '
@@ -3970,9 +4010,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         if (($tt2 - $ft2) === 6 * DAY_IN_SECONDS) $wname = 'this week';
         elseif (($tt2 - $ft2) === DAY_IN_SECONDS) $wname = 'today';
     }
-    $ai_signature = number_format_i18n($ai_jobs) . ' ' . $wname;
+    $ai_signature = alt_digest_number($ai_jobs) . ' ' . $wname;
     if ($ytd['ok']) {
-        $ai_signature .= " \xc2\xb7 " . number_format_i18n($ytd['ai'])
+        $ai_signature .= " \xc2\xb7 " . alt_digest_number($ytd['ai'])
                        . ' in ' . $ytd['year'] . ' so far';
     }
     $html .= '<h3>AI-attributed cuts</h3>'
@@ -3989,7 +4029,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $ai_lines = array();
     $ai_lines[] = 'We reviewed ' . alt_digest_count($all_entries, 'entry', 'entries')
-                . ' dated ' . $range . ', ' . number_format_i18n($ver_jobs)
+                . ' dated ' . $range . ', ' . alt_digest_number($ver_jobs)
                 . ' verified job cuts between them.';
     $ai_lines[] = ($ai_jobs > 0)
         ? 'Employers explicitly named AI as a reason on '
@@ -4088,20 +4128,28 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $provenance = '';
     $sources = array(); $src_shown = 0;
+    $top_source = ''; $top_source_jobs = 0;
     foreach ((is_array($data['source_types'] ?? null) ? $data['source_types'] : array()) as $row) {
         $row = array_values((array) $row);
         $key = trim((string) ($row[0] ?? ''));
         $value = (int) ($row[4] ?? 0);
         if ($key === '' || $value <= 0) continue;
         $label = isset($source_names[$key]) ? $source_names[$key] : $key;
-        $sources[] = number_format_i18n($value) . ' from ' . $label;
+        $sources[] = alt_digest_number($value) . ' from ' . $label;
+        // The LARGEST collector, for the preview line. The full split is far
+        // too long for a snippet and the fitter was dropping it whole; one
+        // collector is the fact a reporter checks first and it fits.
+        if ($value > $top_source_jobs) {
+            $top_source_jobs = $value;
+            $top_source = alt_digest_number($value) . ' of them from ' . $label;
+        }
         $src_shown += $value;
     }
     if ($sources) {
         $src_line = 'Where these came from, ' . $range . ', verified only: '
                   . implode(', ', $sources) . '.';
         if ($src_shown !== $ver_jobs) {
-            $src_line .= ' That covers ' . number_format_i18n($src_shown) . ' of the '
+            $src_line .= ' That covers ' . alt_digest_number($src_shown) . ' of the '
                        . alt_digest_count($ver_jobs, 'verified job cut') . ' in '
                        . $range . '.';
         }
@@ -4153,7 +4201,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     if ($has_announced) {
         $tier = 'There ' . alt_digest_verb($all_entries, 'is', 'are') . ' '
               . alt_digest_count($all_entries, 'entry', 'entries') . ' '
-              . $span . ', ' . number_format_i18n($ver_entries)
+              . $span . ', ' . alt_digest_number($ver_entries)
               . ' of them verified. '
               . 'Including announced estimates, the same window holds '
               . alt_digest_count($all_jobs, 'job cut') . ' across '
@@ -4161,7 +4209,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     } else {
         $tier = ($all_entries === 1
                     ? 'The one entry ' . $span . ' is verified'
-                    : 'All ' . number_format_i18n($all_entries) . ' entries '
+                    : 'All ' . alt_digest_number($all_entries) . ' entries '
                       . $span . ' are verified')
               . ', across ' . alt_digest_count($companies_n, 'company', 'companies')
               . '. The window holds no announced estimates.';
@@ -4651,7 +4699,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         */
         $ytd_scope = $ytd['range'] . ', worldwide, counted by the date the cuts take effect.';
         $html .= '<h3>' . esc_html($ytd['year']) . ' YTD</h3>'
-               . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd['jobs'])) . '</p>'
+               . '<p data-alt="stat">' . esc_html(alt_digest_number($ytd['jobs'])) . '</p>'
                . '<p data-alt="unit">'
                . esc_html(alt_digest_verb($ytd['jobs'], 'verified job cut',
                                           'verified job cuts')) . '</p>'
@@ -4660,7 +4708,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                . alt_digest_count($ytd['jobs'], 'verified job cut') . ', '
                . $ytd_scope . "\n";
         if ($ytd['ai'] > 0) {
-            $ytd_ai_line = 'Of those, ' . number_format_i18n($ytd['ai'])
+            $ytd_ai_line = 'Of those, ' . alt_digest_number($ytd['ai'])
                          . alt_digest_verb($ytd['ai'], ' was', ' were')
                          . ' attributed to AI by the employer, '
                          . $ytd['range'] . ', worldwide.';
@@ -4672,7 +4720,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             // below the AI line, so "those" pointed at the AI subset rather
             // than at the year. Two lines beginning "Of those" in one block is
             // one line too many.
-            $ytd_note = number_format_i18n($ytd['unplaced']) . ' of the '
+            $ytd_note = alt_digest_number($ytd['unplaced']) . ' of the '
                       . alt_digest_count($ytd['jobs'], 'verified job cut')
                       . alt_digest_verb($ytd['unplaced'], ' sits', ' sit')
                       . ' on entries with no country recorded, ' . $ytd['range'] . '.';
@@ -4817,7 +4865,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       published indication that is mostly unverified, and calling verified cuts
       "signals" would give away the product's whole differentiator.
     */
-    $metric = number_format_i18n($ver_jobs) . ' verified job cuts';
+    $metric = alt_digest_number($ver_jobs) . ' verified job cuts';
 
     /*
       THE PREHEADER COMPLETES A TRUNCATED SUBJECT RATHER THAN RESTATING IT.
@@ -4850,8 +4898,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $preheader = alt_digest_fit_preheader(
         alt_digest_count($ai_jobs, 'cut') . ' attributed to AI',
-        array(number_format_i18n($us_jobs) . ' in the United States',
-              'across ' . alt_digest_count($companies_n, 'company', 'companies')));
+        array(alt_digest_number($us_jobs) . ' in the United States',
+              'across ' . alt_digest_count($companies_n, 'company', 'companies'),
+              // A FOURTH CLAUSE, because the desktop client shows about 140
+              // characters and this line ran out at 75. What follows a preview
+              // that runs out is the body, and the body starts with the
+              // masthead, so the owner's desktop inbox read "... across 73
+              // companies. AskTheRecruiter.c...". The provenance is the right
+              // thing to spend the room on: it is the fact a reporter checks
+              // first and it is nowhere in the subject.
+              $top_source));
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
                  'metric' => $metric);
 }
@@ -4884,8 +4940,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $url = home_url('/talent-intelligence-tracker/');
     $companies_n = (int) ($data['companies'] ?? 0);
     $verified_n = (int) ($data['verified'] ?? 0);
-    $verified = number_format_i18n($verified_n);
-    $totalf = number_format_i18n($total);
+    $verified = alt_digest_number($verified_n);
+    $totalf = alt_digest_number($total);
     /*
       WHERE, AND WHY THIS ONE SAYS LESS THAN THE LAYOFF SECTION'S.
 
@@ -5132,7 +5188,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 // abbreviation, which is the same principle the month-first
                 // date format follows.
                 $html .= '<h3>' . esc_html($year) . ' YTD</h3>'
-                       . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_total)) . '</p>'
+                       . '<p data-alt="stat">' . esc_html(alt_digest_number($ytd_total)) . '</p>'
                        . '<p data-alt="unit">'
                        . esc_html(alt_digest_verb($ytd_total, 'hiring signal',
                                                   'hiring signals')) . '</p>'

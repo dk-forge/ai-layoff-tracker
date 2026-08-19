@@ -83,10 +83,16 @@ BRAND = _brand()
 MONTHS = ("January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December")
 
-# The longest preheader a phone shows. A snippet longer than this is REPLACED
+# The longest preheader a client shows. A snippet longer than this is REPLACED
 # rather than cut, because cutting one mid figure publishes a wrong number in
 # the one line of the message most people ever read.
-PREHEADER_MAX = 130
+#
+# 140 AND NOT 130, measured rather than assumed. The owner's Gmail DESKTOP
+# screenshot showed roughly 140 characters of snippet, against the ~100 this
+# was written for, so both truncated rows ran past the end of our preview and
+# into the body: "... across 73 companies. AskTheRecruiter.c..." is the
+# masthead, scraped because there was nothing left of ours to show.
+PREHEADER_MAX = 140
 
 # ---------------------------------------------------------------------------
 # Typography for the parts the site composed
@@ -970,9 +976,28 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
 
     # Hidden, and first, so it is the snippet the client picks up. The colour
     # matches the page for the clients that ignore display:none.
+    # THE SNIPPET, AND THEN PADDING SO NOTHING ELSE CAN GET IN.
+    #
+    # A client shows a fixed number of characters and takes them from wherever
+    # it can: our hidden div first, then the body. The owner's Gmail desktop
+    # screenshot caught the handover, with the masthead appearing behind a
+    # preview that had run out. Lengthening the preview shrinks the gap and
+    # cannot close it, because every client draws a different number.
+    #
+    # So the div is padded to well past any client's window with an invisible
+    # run. `&zwnj;` is a zero-width non-joiner and `&nbsp;` a non-breaking
+    # space: the pair is the standard preheader padding, it renders as nothing
+    # in every client, and it occupies the snippet slots a client would
+    # otherwise fill from the body. It carries no text, so a screen reader
+    # announces the snippet and then silence rather than the masthead.
+    #
+    # It is inside the SAME hidden div, so a client that ignores display:none
+    # hides it for the same reason it hides the snippet, and nothing new
+    # becomes visible.
+    padding = "&zwnj;&nbsp;" * 60
     hidden = (f'<div style="display:none;max-height:0;max-width:0;'
               f'overflow:hidden;opacity:0;font-size:1px;line-height:1px;'
-              f'color:{PAGE_BG};mso-hide:all;">{escape(preheader)}</div>')
+              f'color:{PAGE_BG};mso-hide:all;">{escape(preheader)}{padding}</div>')
 
     return (
         "<!doctype html>"
