@@ -126,6 +126,23 @@ defect.
   READ from this network" on the health page; 404/410 and a 200 that is not RSS
   stay `broke`, because those are ours to fix. **Status stays `degraded` in
   both cases** - an unreadable source is never reported as working.
+* **And a correct label is not a fixed source.** `economynext_lk` was dropped
+  from `national_feeds` on 2026-08-18, because the measurement said the direct
+  feed was a SECOND route to a publisher we already read: the live Sri Lanka
+  market sweep returns economynext.com items under its own committed queries
+  (4 of 241 across the en/si/ta editions), and the direct feed had stored zero
+  rows in 14 days. The publisher is now catalogue status `researched`, watched
+  through its market sweep, and no coverage was lost.
+  **When a feed answers a wall, this is the order to work through:** (1) other
+  paths on the same host - probe, do not assume, and note that a path probed
+  from a laptop proves nothing about the runner's range; (2) **is the content
+  already arriving through a path we run?** Check GDELT's domain list and the
+  country's Google News edition; if it is, the honest fix is `researched` and
+  the direct feed goes; (3) another publisher in the same country; (4) only
+  then, moving the job to a different address range, and say plainly that that
+  is address-shopping around a soft block. **Never spoof a user agent to get
+  past an access control aimed at automated clients**, and always read
+  robots.txt before the first content request on a new host.
 * Every failing feed is now named. `last_error` used to be one slot, so three
   blocked feeds reported one, and you could not tell an instance from a class.
 
@@ -1301,6 +1318,73 @@ because parliaments amend statutes and ministries start and stop publishing
 series; a standing finding nobody revisits is a stale claim wearing a permanent
 exemption, which is the defect `benchmark_freshness.py` exists to catch one
 floor down.
+## Coverage outside the US is UNKNOWN (ops_status `[3e]`)
+
+`[3e] COVERAGE OUTSIDE THE US` prints one line per declared country, measured
+against the collective-redundancy total published by the authority that receives
+the notifications (`railway/national_denominators.py`). Three states, never two:
+MEASURED with a band, NOT MEASURABLE with a dated reason, UNKNOWN.
+
+An UNKNOWN there is UNVERIFIED, not a coverage regression and not a pass. The
+slice's own detail line names which it is.
+
+| what the detail says | what happened | what to do |
+|---|---|---|
+| `TLS chain verification failed from THIS environment` | the publisher serves a chain the local OpenSSL rejects (Taiwan's intermediate carries no Subject Key Identifier, fatal in OpenSSL 3.5+, fine in 3.0). It is an environment fact | Check the workflow run before calling it a breakage: `gh run list --workflow="National denominators measurement" -L 5`. **Never** clear it by passing an unverified SSL context |
+| `could not read the denominator` | the ministry moved the file, renamed a column, or was down | Open the `source_url` in the measurement. Every collector resolves its filename through the publisher's own index rather than templating it, so a rename should be absorbed; a **column** rename is a real break and the parser refuses rather than guessing a position |
+| `months with no usable total in the window` | a month in the 12-month window is suppressed (`[c]`) or missing | Nothing to fix by hand. A partial sum shrinks the denominator and INFLATES coverage, so it refuses. If the publisher has genuinely stopped populating a month, the series needs re-assessing, not patching |
+| `the newest settled period ends N days ago` | the publisher has probably stopped | Confirm on their page, then either fix the collector or move the entry to `NOT_BUILDABLE` with a dated reason |
+| `REFUSED the fetched dataset` | Taiwan's endpoint returned the **wage-arrears early-warning** series (dataset 27508) rather than the art. 4 notifications (27505) | Do not "fix" by converting the years. 27508 is a different statute and ~43x larger; a denominator of half a million would make our coverage a rounding error |
+| `our own /aggregate could not be` | the WP host was unreachable | The 2026-07-31 rule: a Bluehost 504 must not manufacture a coverage regression. Re-run once `ops_status [1]` says the host is healthy |
+
+**Never hand-edit `railway/national_denominators_measurement.json`.** Re-run
+`python3 railway/national_denominators.py --write`.
+
+### Before quoting any of these numbers
+
+1. Each is a **band**. The low end filters on strict job location and misses
+   every global cut that hit the country; the high end unions employer domicile
+   and counts a global cut whole. Quote both ends or quote neither.
+2. The honest sentence names the population: *of the N workers whose redundancy
+   was notified to <authority> in <period>, we hold M*. It is **not** "we cover
+   X% of layoffs in <country>" — everything under the notification threshold is
+   invisible to the series and to any figure built on it.
+3. The Wilson interval printed beside it bounds **sampling** only. The
+   definitional mismatch between what the authority counts and what we store is
+   much larger. Never quote it as the error bar on coverage.
+4. **Never add two countries together.** `combine()` raises unless the unit and
+   the period match, and it exists to be refused: Directive 98/59/EC lets each
+   member state pick its own threshold, Sweden's floor is five workers and
+   Croatia's twenty, and Taiwan counts plants rather than employers.
+
+## Is a national denominator buildable yet? (the NOT_BUILDABLE list expires)
+
+`national_denominators.NOT_BUILDABLE` holds countries that DO publish a total we
+still cannot use, each with a reason and the date it was checked. After
+`MAX_ASSESSMENT_AGE_DAYS` (183) the entry reports UNKNOWN and lands here. To
+re-check:
+
+- **Read `robots.txt` first, every time, before the first content request.** A
+  refusal is recorded as a refusal and stays refused. A proof-of-work or CAPTCHA
+  interstitial is not a robots directive and is equally not ours to solve — that
+  is what keeps the Netherlands out.
+- The bar is narrow, and two of the five current entries fail it on the same
+  point: **a series we assemble ourselves is not an independent denominator.**
+  Poland and Iceland publish a figure for the current period only and keep no
+  archive, so any history would live in our file rather than the publisher's.
+  Iceland has a second, fatal property: a month with no collective redundancies
+  gets no post at all, so absence is not zero.
+- Romania and Latvia are PDF-only. That is a lock question, not a parsing one —
+  adding a PDF dependency to a hash-pinned lock for one country is not worth it,
+  and the lock exists because twenty workflows once installed unverified
+  packages next to two API keys. Revisit if two become buildable at once.
+- If one qualifies, move it into `SERIES` with a collector, `unit`, `cadence`,
+  `licence`, `robots` and `caveats`, and update `ASSESSED`. Do not extend the
+  expiry without re-checking — the clock is the point.
+- **A denominator with no matching numerator is NOT MEASURABLE, not a
+  measurement.** Northern Ireland is the worked example: the series is real and
+  read live every run, and our country vocabulary has no NI split, so the only
+  numerator available covers the whole UK and the ratio came out at 177%.
 
 ## Adjudicating the SEC Item 2.05 gold set (the only way recall moves)
 

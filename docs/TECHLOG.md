@@ -93,6 +93,61 @@ The rows whose sources genuinely never state a job location keep their blank
 while they do: a reader filtering by country now finds the Google row under the
 United States as an American company's cut, with its job-location column still
 honestly empty, rather than not finding it at all.
+## 2026-08-18 - a correctly labelled feed that still collects nothing (2.20.92)
+
+Earlier the same day, `economynext_lk` was reclassified from `broke` to
+`unreachable`: it answers HTTP 202 to the collector's datacentre and HTTP 200
+to a laptop, so it is a bot wall keyed on an address range and there is no
+parser fault to fix. That was right, and it left the feed armed, degraded and
+collecting **zero rows**, with the arm-vs-retire question escalated. A correct
+label is not a fixed source, and neither retiring the publisher (Sri Lanka's
+only one in the catalogue) nor skipping it was an acceptable answer.
+
+### What was measured, in the order it was tried
+
+1. **Other paths on the same host.** `/feed/atom/` answers 200 with a body that
+   does not parse as a feed; the `wp-json/wp/v2/posts` endpoint the same;
+   `/category/economy/feed/` 404s. `robots.txt` was read first and permits
+   `/feed/`. No alternative path exists, and a path probed from a laptop proves
+   nothing about the runner's range anyway - the wall is on the address, not
+   the URL.
+2. **Is the content already arriving through a path we run?** It is. Asking the
+   Sri Lanka market's own committed queries against its own Google News
+   editions (`en-LK`, `si-LK`, `ta-LK`, exactly as `local_news` asks them)
+   returned **241 items, 4 of them from economynext.com** - alongside
+   dailymirror.lk 9, sundaytimes.lk 6, island.lk 4, themorning.lk 4, ft.lk 3.
+   economynext.com is also already a listed domain in `sources/gdelt.py`. So
+   the direct feed was a SECOND route to a publisher two collectors already
+   reach.
+
+The direct feed's own contribution, measured: **0 stored rows over the 14 days
+to 2026-08-18** (`ops_status [2a]`, `national_feeds`: 8 calls, 6 items, 0
+stored), and the single item that passed the relevance filter on a laptop probe
+was a false positive - an SLT-Mobitel fiber/5G/AI investment story with no
+headcount in it.
+
+### The fix
+
+`economynext_lk` is gone from `national_feeds.FEEDS`. EconomyNext moves to
+catalogue status `researched` - "Researched, watched through its market sweep",
+the status that already existed for exactly this - with the measurement above as
+its evidence. Sri Lanka keeps its coverage through the route that actually
+reaches it, and the sources page, the catalogue partial, `assets/health.js`
+`meta{}` and the arming arithmetic (14 feeds, $2.12/month worst case) all move
+in the same commit. One stale line went with it: the Daily FT refusal row said
+"EconomyNext is wired for Sri Lanka instead", which stopped being true here.
+
+**What was NOT done, deliberately.** No user agent was spoofed. A 202 aimed at
+automated clients is an access control, and the standard browser-ish UA we send
+to our own WP host is a different thing entirely. Moving the job to GitHub
+Actions - a different address range - was available and was not taken, because
+it is address-shopping around a soft block and it was not needed once the
+content turned out to arrive anyway.
+
+`classify_failure` and `UNREACHABLE_STATUSES` stay exactly as they are. They are
+general: the next feed to hit an address-range wall still has to be told apart
+from one whose URL we broke. What changed is that "unreachable" is now the
+beginning of a procedure, written down in RUNBOOK, rather than a place to stop.
 
 ## 2026-08-18 - the healer was not slow, it was blind: its own concurrency group was eating the failures
 
@@ -227,6 +282,103 @@ path deleted from FORBIDDEN still fails a test instead of quietly becoming
 healable.
 
 
+## 2026-08-18 - two countries can now be measured exactly, and the useful half of the answer is which cannot
+
+### The claim that had no number
+
+`rolling_recall` measures one slice exactly: US SEC 8-K Item 2.05, where EDGAR
+enumerates the universe for a period. Everything else in the corpus was an
+opinion, and the stated goal is worldwide coverage that can be DEFENDED per
+country. A parallel pass built the per-country REGISTRY (which countries publish
+a countable total at all). This is the collectors for the ones that do.
+
+`railway/national_denominators.py` fetches the collective-redundancy totals
+published by the authority that RECEIVES the notifications, divides our own
+holdings for the same country and window by them, and reports the result the way
+`rolling_recall` reports its own: MEASURED / NOT MEASURABLE / UNKNOWN, a band
+rather than a point, an assessment that carries a date and expires, and a
+declared slice that says why it could not be computed instead of dropping out.
+Every state constant, the Wilson interval and the settle lag are IMPORTED from
+that module - nothing here is a second copy of a rule that lives there.
+
+### What is now measured, live, 2026-08-18
+
+| country | notified | we hold | coverage band |
+|---|---|---|---|
+| Great Britain (HR1, TULRCA 1992 s.193, 2025-07..2026-06) | 303,097 workers | 47,834..48,318 | **15.8% - 15.9%** |
+| Estonia (koondamisteated, Töötukassa, 2025-07..2026-06) | 2,941 workers | 695 | **23.6%** |
+
+Both denominators are the publisher's own universe rather than a sample, so
+anyone can download the same file and check the arithmetic. The band's ends are
+`country=X` (strict job location, misses global cuts that hit X) and
+`country_basis=any` (unions employer domicile, counts a global cut whole).
+
+Taiwan's series (大量解僱通報, ~11,752 workers over 337 plants in 2025) parses and
+was read by hand today; the module reports it UNKNOWN from this machine because
+OpenSSL 3.6 rejects the ministry's intermediate for carrying no Subject Key
+Identifier. That is an environment fact and it is reported as one - it is never
+to be cleared by disabling verification.
+
+### Four things this measurement refuses to do
+
+**It will not add two countries together.** Directive 98/59/EC lets each member
+state pick between two threshold formulations and go lower still; Sweden's floor
+is five workers, Croatia's twenty; Taiwan counts 廠場, so one company filing for
+four plants counts four times. `combine()` raises `IncomparableSeries` unless the
+unit AND the period match, and the test asserts the refusal. There is no
+worldwide percentage in the module and there must not be one.
+
+**It will not read the Taiwanese twin.** Dataset 27508 (大量解僱預警通報) sits
+beside 27505 with a near-identical title, is the wage-arrears early-warning
+tripwire under a different statute, and is keyed on Western years instead of ROC
+years. Its 2025 figures are 6,579 / 503,386 against 337 / 11,752 - a factor of
+43. The parser refuses a Western-year column rather than converting it, and the
+test fixture carries 27508's exact shape.
+
+**It will not sum a partial window.** ONS writes `[c]` for a confidential
+suppression; summed as zero it shrinks the denominator, which INFLATES our
+coverage - the direction a broken measurement must never fail in. A window
+missing any of its twelve months raises.
+
+**It will not report a ratio above 1.0 as coverage.** Our rows are not a subset
+of the notified population, so a ratio over 1 means the numerator left the
+denominator's universe. Northern Ireland proved it on the first run: the series
+is NI-only, our country vocabulary spells every NI row "United Kingdom", and the
+ratio came out at 177%. NI is therefore NOT MEASURABLE with the denominator
+still read and freshness-checked every run - a denominator with no matching
+numerator is not a measurement.
+
+### The negative findings, which are worth more than estimates
+
+Five countries publish a real total this project still cannot use, each recorded
+with its reason and an expiry:
+
+- **Netherlands** - current reports behind an Anubis proof-of-work wall. Not a
+  robots directive, and equally not ours to solve.
+- **Romania, Latvia** - annual PDF only. That is a lock question rather than a
+  parsing one: a PDF dependency in a hash-pinned lock for one country is not
+  worth it, and the lock exists because twenty workflows once installed
+  unverified packages next to two API keys.
+- **Poland, Iceland** - the publisher's page carries only the current period and
+  keeps no archive, so any history would be OURS. A denominator this project
+  assembles is not an independent denominator. Iceland is worse still: a month
+  with no collective redundancies gets no post at all, so absence is not zero.
+
+So the honest ceiling, stated plainly: **of every country surveyed, only a
+handful can ever be measured exactly, and today two of them are.** That is a
+more useful sentence than a table of estimates would have been.
+
+### Cost, robots, and what is not published
+
+$0.00. Seven file or API requests and eight `/aggregate` reads, all free and
+keyless; no model is called on any path. The .xlsx reader is a zip and some XML
+rather than openpyxl, so the measurement cannot break when the lock is
+refreshed. robots.txt was read before the first content request on every host;
+`apiservice.mol.gov.tw` rejects its own robots.txt through a WAF and serves the
+data to our identifying agent under an open licence, which is recorded as
+"permitted with the robots file unreadable" rather than as either a pass or a
+refusal. Nothing here reaches a reader-facing surface: the figures land in the
+repo and in `ops_status [3e]`, and what to claim publicly is the owner's call.
 ## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
 
 ### What was asked, and what the measurement said instead
@@ -651,9 +803,15 @@ a source is working when the collector cannot read it; only the wording moved,
 and it had to, because "feed broke" sends a session to audit a parser that is
 returning valid RSS to every other network.
 
-What is left for the owner: the feed stays armed and stays degraded, which is a
+What was left for the owner: the feed stays armed and stays degraded, which is a
 true statement about a real gap. Dropping it would remove the only Sri Lankan
 publisher in the catalogue, so that is a coverage decision, not a repair.
+
+**RESOLVED the same day (2.20.92, entry at the top of this log).** It was not a
+coverage decision in the end, because the coverage was already there: the Sri
+Lanka market sweep returns economynext.com items under its own live queries, so
+the direct feed was redundant rather than load bearing. The feed is dropped and
+the publisher is `researched`, watched through its market sweep.
 
 ### 3. `zero snapshots taken - Wayback unreachable?` - the question mark was the defect
 
