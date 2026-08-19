@@ -181,6 +181,31 @@ the end check.
   Never "improve" this by logging a subject for debugging; that test will fail,
   and it is supposed to. The earned cadence steps down to Mondays after three
   runs with no rule — do not answer a quiet loop by lowering `RULE_FLOOR`.
+- **A curated digest is a recall probe and a worklist, never a source.**
+  `railway/curated_probe.py` is the hand-fed sibling of the learning loop: the
+  owner drops pasted items into `scratchpad/recall-worklist.txt` (gitignored)
+  and runs it. Same machine, different reference universe — GDELT can only
+  surface outlets GDELT indexes, and a domain expert's roundup is where the
+  OUTLET class of miss actually shows up. Judgement is IMPORTED from
+  `tracker_diff`, never copied, so "did we hold this?" has one definition.
+  $0.00/run: our own `/query` plus, for inaccessible items only, one Google News
+  RSS query. **"Paywalled" is NOT "unreachable"** — the source stays unread and
+  goes to the refusal ledger, then the EVENT is chased in the open press, which
+  resolves to `recoverable` (wire the ACCESSIBLE outlet — the common case),
+  `vocabulary_gap`, or `unreachable`, the only closed finding. Recovery reads the
+  news INDEX and takes outlet identity from its `<source>` element, so **no
+  content request reaches any outlet** and no robots.txt, paywall or bot wall is
+  engaged; a test pins that no request is built from an item's URL. **There is no
+  workflow and there must not be** — a runner that can read the worklist is the
+  leak. stdout and `railway/curated_probe_state.json` are nameless by
+  construction (`assert_nameless`, an allowlist); every name goes to the
+  gitignored local report and the owner's inbox, and unlike the learning loop the
+  named half never touches stdout. Watch TWO numbers: `curated_recall_pct`
+  should climb, `taught_pct` (dependence) should fall. Do not widen the recall
+  denominator to make it look better — it admits only items with a parseable
+  headcount and employer, and folding the rest in is what made the first version
+  read 73.3% on rows we demonstrably held. → RUNBOOK "you have items from a
+  curated digest".
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
 - **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
 - **A headline FAIL is closed by a human, never by the calendar.** A failing

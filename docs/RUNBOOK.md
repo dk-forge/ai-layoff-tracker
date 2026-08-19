@@ -1274,6 +1274,83 @@ list is the owner's and stays on his machine.
 attention: it wants a reference company list that only ever arrived in a secret
 the owner decided against on 2026-07-28. Do not ask for those secrets.
 
+## You have items from a curated digest (the curated recall probe)
+
+The owner pastes items from a curated industry roundup and asks whether we hold
+them. That is a RECALL PROBE and a DISCOVERY WORKLIST, and it is never a source.
+`railway/curated_probe.py` is the automated half of it: the ten seconds of
+pasting stays manual, and everything after those ten seconds does not.
+
+**It is deliberately the same machine as the learning loop above, fed a
+different reference universe.** `--learn` reads GDELT, which is broad but can
+only ever surface outlets GDELT already indexes. A domain expert's roundup is a
+different distribution — trade press, regional editions, native-language
+outlets, newsletters — which is exactly why the outlet class of miss shows up
+there. The judgement functions are IMPORTED from `tracker_diff`, not copied, so
+"did we hold this?" has one definition.
+
+**How to feed it (ten seconds):**
+
+```bash
+$EDITOR scratchpad/recall-worklist.txt     # gitignored, local only
+python3 railway/curated_probe.py
+```
+
+One item per line, any order. A URL anywhere on the line is the origin, the rest
+is the headline. Mark anything you could not read as `[paywall]`, `[botwall]` or
+`[captcha]`. A `#` line is a comment — and a `# from:` line naming the digest
+SUPPRESSES that domain from every outlet suggestion, so writing down where the
+list came from is the same keystroke as guaranteeing it can never be proposed as
+a source.
+
+**It costs nothing.** Reads of our own `/query` (one per distinct employer,
+memoised) plus, for inaccessible items only, one Google News RSS query each.
+No model is called on any path and none may be added.
+
+**Where the output goes, and this is the whole privacy design.** stdout and the
+committed trend (`railway/curated_probe_state.json`) carry counts, ages and
+frozen label words — `assert_nameless` is an allowlist, so they cannot SPELL a
+name. Every name goes to `scratchpad/recall-lessons.md` (gitignored) and, if
+keys are present, the owner's inbox. Unlike the learning loop, the named half
+never touches stdout: this runs on a laptop where the terminal gets pasted into
+chat windows and PRs. **There is no workflow for it and there must not be** — a
+runner that can read the worklist IS the leak, and a test pins that.
+
+**"Paywalled" is not "unreachable", and the difference is the point.**
+
+| tier | what it means | the change |
+|---|---|---|
+| `recoverable` | the source was inaccessible, but accessible press covered the same event from an outlet we do not read | review that ACCESSIBLE outlet for `TRUSTED_DOMAINS`. The valuable case, and the common one |
+| `not_in_feed_set` | the originating outlet is accessible and unwired | review it for `TRUSTED_DOMAINS` |
+| `vocabulary_gap` | we already read the outlets that carried it, so the miss is our query terms | add the wording to `source_registry.GLOBAL_TERMS` |
+| `should_have_held` | wired outlet, wording we search — neither lesson applies | worth a look by hand; the loop cannot say why |
+| `unreachable` | NO accessible outlet reported it at all | the only closed finding, and it is rare |
+| `recovery_unknown` | the search could not be made | UNKNOWN, not a pass, and never "unreachable" |
+
+We never bypass a paywall, a bot wall or a CAPTCHA, and the recovery step does
+not: it reads the Google News RSS INDEX and takes the outlet's identity from the
+index's own `<source>` element, so **no content request is made to any outlet**
+and no robots.txt is engaged. The inaccessible outlet goes to
+`scratchpad/recall-refusals.json` with its reason and is NEVER proposed as a
+source, however the recovery turns out. Searching for a known event in the open
+press is discovery; walking a comparator's list is reconstructing their database
+— `RECOVER_MAX` bounds the first so it cannot become the second.
+
+**Two numbers, and you need both.** `curated_recall_pct` is of the items we
+could SCORE, the share we already held unaided — it should climb. `taught_pct`
+is of the items we EXAMINED, the share that taught us something we did not
+already know — it should FALL, and it is the honest measure of dependence on the
+curated source. Recall alone cannot tell you that, because recall also rises
+when the digest gets easier. "Already known" is remembered in
+`scratchpad/recall-known.json` (local, because the subjects are names); only its
+counts reach the repo.
+
+**Do not "fix" a recall figure by widening the denominator.** The first version
+scored 73.3% on a probe built entirely from rows we demonstrably hold, because
+lines below the headcount floor were being counted as coverage misses. The
+denominator admits only items with a parseable headcount and employer; the
+lesson histogram is deliberately wider.
+
 ## The coverage figure is UNKNOWN (ops_status `[3c]`)
 
 `[3c] MEASURED COVERAGE` prints a band per slice. If a slice says **UNKNOWN**,

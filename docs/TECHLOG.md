@@ -215,6 +215,130 @@ by anybody writing a loop, which is exactly why the backstop is source-level.
 
 Nothing was spent proving any of this: the diagnosis is the committed ledger
 plus two GitHub run logs, and the tests use a fake transport.
+## 2026-08-18 - a curated digest as a recall probe, and why "paywalled" is not "unreachable"
+
+The owner pasted four items from a curated industry digest as an ad-hoc recall
+probe. We held one. Every miss had a diagnosable cause and two of them were the
+most actionable class there is: the originating outlet is not in our feed set.
+Then he asked the right question - how do these grow automatically instead of
+being something he does by hand?
+
+**Most of the answer already existed, and the honest finding is that the ingest
+did not need building.** `tracker_diff.py --learn` had landed hours earlier and
+is the same machine: match a reference universe against our own rows, and turn
+what is left into rules. Its reference universe is the GDELT corpus before our
+trusted-domain gate - free, keyless, nameless. What it cannot do is surface an
+outlet GDELT does not index, and a domain expert's roundup is precisely where
+that class lives: trade press, regional editions, native-language outlets,
+newsletters. So this is not a second machine. `curated_probe.py` IMPORTS
+`headline_jobs`, `headline_employer_token`, `rows_verdict`, `vocab_hit`,
+`vocab_phrase` and `_covered_by_allowlist` from `tracker_diff` rather than
+copying them, so "did we hold this?" keeps one definition and a rename upstream
+breaks loudly in CI instead of drifting quietly.
+
+**The ingest path chosen is a gitignored local file, and the reasoning is worth
+recording because two better-sounding options are worse.** Harvesting digest RSS
+means a scheduled job holding a comparator's feed URL, which is the leak the
+standing rule exists to prevent, and it engages robots and terms on hosts we
+have no relationship with. A mail-forwarding path is a real security surface and
+was not authorised. The file costs the owner ten seconds - the same ten seconds
+he already spends - and adds no attack surface at all, because `scratchpad/` is
+already gitignored in its entirety for exactly this reason and already holds the
+private benchmark. **There is no workflow for this module and there must not
+be:** a runner that can read the worklist IS the leak, and
+`test_curated_probe_leak` fails on any workflow that names it.
+
+**"Paywalled" is not "unreachable", and the first design got that wrong.**
+
+The brief said a paywalled miss was a closed finding. It is not, and the owner
+caught it: "can we find them in legit press?" Two different claims had been
+collapsed into one. The SOURCE being inaccessible is true and stays true - we
+never bypass a paywall, a bot wall or a CAPTCHA. The EVENT being unreachable is
+usually false, because a major exclusive is picked up within hours by wires,
+trade press and foreign-language outlets covering the same deal, and that
+coverage is public. Filing the first as the second would have written off the
+most learnable class of miss in the loop, which is the opposite of its purpose.
+
+So the branch now records the outlet in a local refusal ledger with its reason,
+and then chases the EVENT in the open press. Three outcomes, only one closed:
+`recoverable` (accessible coverage from an outlet we could wire - the valuable
+case), `vocabulary_gap` (we already read the outlets that carried it, so the
+miss is our terms), `unreachable` (nobody accessible reported it - the rare one).
+A fourth, `recovery_unknown`, exists because a search that could not be made is
+UNKNOWN and must never resolve to "unreachable".
+
+Measured on the day: two inaccessible items, one invented and one real. The
+invented one correctly resolved to `unreachable`; the real one resolved to
+`recoverable` and yielded five accessible outlets. Under the original
+instruction both would have been closed and the run would have learned nothing.
+
+**The recovery step fetches no outlet page.** It reads the Google News RSS index
+- the repo's existing free discovery source - and takes each outlet's identity
+from that index's own `<source>` element. So the question "who else covered
+this?" is answered without a single content request to any outlet, which is why
+no robots.txt is engaged by it and why the paywalled article genuinely stays
+unread. `test_no_request_is_ever_built_from_an_item` reads the parse tree and
+fails if any `requests` call builds its URL from an item's url, link or domain.
+That is the guard that stops a later edit turning discovery into a workaround.
+The paywalled outlet is never proposed as a source however the recovery turns
+out; the accessible one is.
+
+**Leak safety is by shape, following `benchmark_freshness.py`.** Some curated
+digests are published BY a comparator, so the module reads a file that may carry
+a name, a domain and a figure, on a machine where a reviewer is not present.
+`assert_nameless` is an allowlist - numbers, ISO dates, frozen label words - so
+the public vocabulary cannot SPELL a name, and the committed trend is guarded
+BEFORE the write rather than after. One difference from `tracker_diff` is
+deliberate: that loop runs on a runner where stdout is an Actions log, so its
+named half leaves by email. This one runs on a laptop where stdout gets pasted
+into chat windows and PRs, so the named half never reaches stdout at all - it
+goes to a gitignored report and the owner's inbox. `test_curated_probe_leak`
+poisons a whole run and proves the markers reach the private report and nothing
+else; the non-vacuity assertion exists because a module that silently did
+nothing would pass every other leak test in the file.
+
+**The digest that taught us can never become a source.** A `# from:` provenance
+comment suppresses every domain it names, so the natural way to write down where
+a list came from is the same keystroke that guarantees it cannot be suggested.
+A local denylist is honoured on top. And nothing here can wire anything at all -
+every outlet lesson is a REVIEW instruction for a human, which is the structural
+version of "never store an aggregator or a competing tracker as a source".
+
+**Two bugs found by running it, both of the same family: a number measuring the
+wrong thing, in the believable direction.**
+
+The first live run was a self-probe built entirely from rows we demonstrably
+hold, so it should have scored ~100%. It scored **73.3%**, because every WARN
+line whose headcount sat below the parser's floor had been folded into the
+recall denominator as a coverage miss. That is our parser being reported as our
+pipeline's blind spot, and it fails downward, so nobody would have queried it.
+The denominator now admits only items with a parseable headcount and employer;
+the lesson histogram is deliberately wider, because an item we cannot score can
+still name an outlet we do not read. After the fix the same probe scored 100.0%.
+
+The second: `taught_pct` reported **200%**. It was counting lesson SUBJECTS over
+ITEMS, and one item naming an unwired outlet in unfamiliar wording yields two
+lessons. It is now the share of examined items that produced at least one NEW
+lesson, which is a proportion and cannot exceed 100.
+
+**The growth mechanism is two numbers, not one.** `curated_recall_pct` should
+climb as lessons are adopted. `taught_pct` - dependence - should fall, and it is
+the half recall cannot tell you, because recall also rises when the digest gets
+easier. "New" has to mean new ACROSS runs or the number can never fall, so a
+digest naming the same unwired outlet weekly stops counting as teaching after
+the first time. The subjects are names, so that ledger lives beside the worklist
+under `scratchpad/` and only its counts cross into the repo. Verified end to
+end: the same worklist twice gave taught 100.0% then 0.0% while recall held at
+100.0%.
+
+$0.00 a run, measured: 22 distinct employer lookups against our own `/query` in
+about 5 seconds warm, plus one RSS query per inaccessible item. No model on any
+path, no OpenRouter key in scope, and `test_the_environment_it_reads_contains_no_model_key`
+states the module's whole environment surface as an allowlist rather than
+denying three key names somebody happened to think of.
+
+51 tests, all offline.
+
 
 ## 2026-08-18 - the extraction swap moved the AI-causation classifier, and eleven days later something finally measured it
 
