@@ -75,6 +75,124 @@ Every dormant source ships DORMANT and exits clean when its key is absent, so
 adding a key is the only step to activate it. First run each in `dry_run=1` and
 read the diagnostics (they log the raw API status) before trusting live output.
 
+## Runner minutes: caching, cancelling, and the arithmetic (the sandbox pattern)
+
+**Both tracker repos are PUBLIC, so their Actions minutes are free and always
+will be.** This section exists for `asktherecruiter-sandbox`, which is PRIVATE:
+there every minute comes out of a 3,000/month allowance and bills at
+$0.008/min past it. Copy the shape from here; the numbers below are measured on
+this repo's runners, not estimated.
+
+### How a minute is actually billed
+GitHub bills **per job, rounded UP to the whole minute**, on the wall clock
+between the job starting and finishing. Three consequences that decide almost
+everything:
+- A 12-second job costs **1 minute**. Making a fast job faster buys nothing.
+- A 5-way matrix costs **5 jobs**, so it costs at least 5 minutes even if every
+  shard is trivial. Sharding trades wall clock for minutes; that is a real
+  trade, not a free win.
+- A `skipped` job costs **0**. A `cancelled` job costs the minutes it already
+  burned. **Prefer a condition that skips over a group that cancels.**
+
+Scheduled cost is just multiplication. Runs per month, per cron:
+
+| cron | runs/month | at 1 billed min | at 6 billed min |
+|---|---|---|---|
+| `*/15 * * * *` (every 15 min) | 2,880 | 2,880 min | 17,280 min |
+| `0 */6 * * *` (every 6 h) | 120 | 120 min | 720 min |
+| daily | 30 | 30 min | 180 min |
+| weekly | 4.3 | 4 min | 26 min |
+
+A quarter-hourly cron eats the whole private allowance on its own. Before
+adding one, ask whether hourly answers the same question.
+
+### What to cache, and how to key it
+Cache the dependency install, keyed on **the lock file's own hash**:
+
+```yaml
+- uses: actions/setup-python@v6
+  with:
+    python-version: '3.12'
+    cache: 'pip'
+    cache-dependency-path: railway/requirements-min.lock
+```
+
+Rules:
+- **Key on the lock, never on a floor file.** The key is the hash of the file
+  you name, so a lock change invalidates the cache automatically and a cache
+  entry can never outlive the lock that vouched for it.
+- **`--require-hashes` stays.** Caching wheels the lock already vouches for is
+  safe; a cache that lets pip resolve something the lock did not vouch for is
+  not. The install line is unchanged by caching, and
+  `railway/tests/test_dependency_pinning.py` fails if it ever is not.
+- **Key the two locks separately.** `requirements-min.lock` is openai +
+  requests; `requirements.lock` carries pdfplumber and BigQuery. Name the exact
+  lock the job installs — a glob like `requirements*.lock` makes a health job's
+  key churn on a change to a heavy lock it never installs. (This repo's
+  `tests.yml` had exactly that glob until 2026-08-19.)
+
+**Measured, and read this before assuming caching is the lever.** On this
+repo's runners the cache hits reliably (130 MB, restored in ~1.4 s), and the
+full-lock install takes **20-21 s cached against 20-23 s uncached**. Most of
+that install is unpacking wheels, not downloading them, so pip caching here is
+worth **seconds, not minutes** — and against per-minute-rounded billing it
+often rounds away to zero. It is still worth having (it is free, safe, and it
+is the correct shape to copy), but if a private repo's bill needs to come down,
+the lever is the **number of jobs and the cron frequency**, not the installer.
+Node is a different story: `npm ci` is minutes, and `cache: 'npm'` keyed on
+`package-lock.json` genuinely pays.
+
+### Where `cancel-in-progress` is safe, and where it is forbidden
+It belongs **only** where a newer commit makes an older run pointless: test,
+lint and build gates on `pull_request`. In this repo that is `tests.yml`,
+`card-contract.yml` and `style-standard.yml` — three files, not a sweep.
+
+Use this shape:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: true
+```
+
+The `github.run_id` fallback is the load-bearing half: for a push, a schedule
+or a dispatch the group is unique to that one run, so nothing ever queues
+behind anything and `cancel-in-progress` is structurally unreachable. Only PR
+runs of the same head ref supersede each other.
+
+**Never put it on:**
+- **Anything that writes or posts rows.** A half-finished ingest cancelled
+  mid-write is a corruption risk, and this repo's corrections need
+  `/bulk-purge` + full re-import rather than a plain upsert.
+- **Anything that sends** — `digest-send`, `alert-drain`, `ci-alert`. A muted
+  alarm is worse than a slow one.
+- **Deploys.** A cancelled FTPS upload is exactly the defect that left
+  `ai-layoff-tracker.php` newer than `page-tracker.php` and served readers a
+  mismatched build for 25 minutes. `deploy-plugin.yml` keeps
+  `cancel-in-progress: false` deliberately.
+- **Scheduled data jobs generally.** They do not have a "newer commit"; they
+  have work to do.
+
+**And be careful with the concurrency GROUP itself, not just the flag.** A
+group shared across runs cancels runs that have not started a single job. On
+2026-08-18 that made the self-healer blind: **57 of its last 100 runs concluded
+`cancelled` with ZERO jobs**, including the one healable failure of that
+evening. The fix was to key the group to the triggering run. `cancelled` is
+also a conclusion this repo's alerter and healer then have to interpret, so
+manufacturing one out of ordinary contention is noise on the exact channel that
+reports real failures. Do not touch `self-heal.yml`'s concurrency.
+
+### The cheapest thing you can do
+Skip, do not cancel, and do not start. In order of what it saves:
+1. **`paths:` filters on push/PR gates** — a docs-only commit should start no
+   job at all.
+2. **`if:` conditions that skip** — a skipped job bills nothing. The Self-heal
+   workflow's 84 no-op runs in the sandbox last month cost **0 minutes**
+   because they skip rather than start.
+3. **Lower cron frequency** — see the table above.
+4. **Fewer matrix legs** — each leg is a job, and each job rounds up.
+5. **Dependency caching** — real, but seconds.
+
 ## "X is broken" playbooks
 
 **A collector is RETURNING NOTHING** (digest subject `SOURCE RETURNING NOTHING`)
