@@ -1,5 +1,158 @@
 # Tech Log
 
+## 2026-08-18 - the extraction swap moved the AI-causation classifier, and eleven days later something finally measured it
+
+`OPENROUTER_MODEL` went to `google/gemini-2.5-flash-lite` on 2026-08-07: 30/30
+counts on the corroborated news gold set, 16/16 on the SEC set, 0.388x the
+incumbent's cost. Sound, on the thing it measured. `MODEL` also governs AI
+CAUSATION -- `extract_layoff_data` derives `ai_explicit` from the causation
+label it returns, `classify_ai_evidence()` re-derives it on the daily sweep, and
+both use `MODEL` rather than `CLASSIFY_MODEL` on purpose, with the comment
+"AI-causation is correctness-critical". `CLASSIFY_MODEL` was deliberately pinned
+that day so an extraction benchmark could not silently move industry, roles,
+reason tags and context. The field the product is NAMED after was not given the
+same protection, because it is supposed to ride the extraction model. It rode it
+into an unvalidated one, and nothing in the repo could have said whether that was
+fine.
+
+**It is not decided yet, and this entry does not decide it.** What exists now is
+the measurement, the corpus it runs on, and 34 rows waiting for the owner.
+
+### The corpus, and the two things that would have made it worthless
+
+`railway/ai_causation_sample_build.py` freezes 200 rows to
+`docs/recall-reference-sets/ai-causation-2026-08.sample.json`.
+
+- **The frame is the rows a model actually read.** 64,245 rows are stored;
+  62,307 are WARN notices and Eurofound ERM records, bulk-upserted by
+  `warn_import.py` with no LLM anywhere in the path, so `ai_explicit` is 0 on
+  them by construction. A uniform sample of the whole table would have scored
+  the classifier at roughly 99.7% accuracy while telling you nothing, because
+  97% of the denominator was decided by a CSV parser. The frame is the free-text
+  paths only: news, SEC 8-K, press release. 1,938 rows, 96 of them
+  `ai_explicit = 1`.
+- **Three strata, and the middle one is the point.** 70 of the 96 positives
+  (precision), 80 of the 94 HARD NEGATIVES -- flag 0, text says AI anyway --
+  and 50 of the 1,742 plain negatives. The hard negatives are where classifier
+  error lives: "says yes whenever the article says AI" fails there and nowhere
+  else, and a uniform draw of 200 would have held about five of them. Population
+  sizes are frozen beside the draw so the score is reweighted; 50 sampled plain
+  negatives must never speak for 1,742 unchallenged.
+- **A substring is not a mention.** `/query?keyword=AI` is a SQL
+  `LIKE '%AI%'` and returns 5,322 rows, most of them the word "maintenance".
+  Drawing the hard-negative stratum from that endpoint would have filled the one
+  stratum that exists to catch over-calling with rows that never mentioned AI.
+  The test is a word-boundary regex, applied here, over the same stored text the
+  labellers read.
+
+### The answer key, and why the candidate is not allowed to help write it
+
+`railway/ab_ai_causation.py` labels every row twice, with the PRE-SWAP INCUMBENT
+(`deepseek/deepseek-chat`) and one model from a third family
+(`openai/gpt-4.1-mini`). Agreement is the label. Disagreement writes the row to
+one review file and it is UNADJUDICATED -- scored nowhere, defaulted to nothing
+-- until a human rules.
+
+The candidate is deliberately NOT one of the two. A gold set the scored model
+helped write is right by construction wherever the labellers agreed, which is
+most of it, and only the disagreements could ever count against it. And no third
+model breaks a tie: a set labelled only by models proves nothing about models,
+and the disagreements are exactly where that circularity bites hardest.
+
+The decision rule is IMPORTED, not restated. `finalize_ai_causation()` and
+`ai_explicit_from_causation()` were lifted out of `classify_ai_evidence()`, which
+now calls them, so the harness scores the verbatim-quote guard production runs --
+a causal label with no receipt is downgraded to `unknown` -- rather than a copy
+of it that can drift.
+
+**Priced before it ran, and it ran under its price.** 200 items x 3 models = 600
+calls; estimated $0.073 at the live `/models` rates; billed **$0.0527**, 133,357
+prompt and 18,942 completion tokens, zero errors, zero deferred, inside the
+$0.150 named ceiling now in `JOB_RUN_CEILINGS_USD`. `ab-ai-causation` is
+DISCRETIONARY and dispatch-only, so it claims nothing in the ladder.
+
+### What it found, in the order it has to be read
+
+Against the frozen gold set (175 rows labelled by agreement, 25 unlabelled):
+
+| model | tp | fp | fn | tn | precision | recall |
+|---|---|---|---|---|---|---|
+| deepseek/deepseek-chat *(labeller)* | 25 | 0 | 0 | 150 | 100% | 100% |
+| openai/gpt-4.1-mini *(labeller)* | 25 | 0 | 0 | 150 | 100% | 100% |
+| **google/gemini-2.5-flash-lite** | 20 | 4 | 5 | 146 | **84.6% [61.9, 95.1]** | **80.6% [56.7, 93.6]** |
+
+Population-weighted, Wilson 95%. **The two 100% rows are not results.** Those
+models wrote the key; they are right by definition on every row in it. Printing
+them next to the candidate's 84.6% and reading a 15-point regression is the
+single easiest way to misuse this table, which is why the run labels them
+INFLATED BY CONSTRUCTION in its own output.
+
+**The unrigged comparison needs no human and says the opposite.** The second
+labeller is a referee from a third family, and both the incumbent and the
+candidate answered the same 200 questions. How often does each agree with that
+same referee:
+
+| model | agreement with the independent referee |
+|---|---|
+| deepseek/deepseek-chat (incumbent) | 175/200 = 87.5% (95% CI [82.2%, 91.4%]) |
+| google/gemini-2.5-flash-lite (candidate) | 176/200 = 88.0% (95% CI [82.8%, 91.8%]) |
+
+Symmetric, nobody's own vote in the denominator, intervals almost entirely
+overlapping. On this corpus the candidate is **indistinguishable from the
+incumbent**, and nominally one row ahead. Nor is it trigger-happy, which was the
+specific fear: it calls AI on 35 of 200, the referee on 35, and the INCUMBENT on
+40. It flagged not one of the 50 plain negatives -- the stratum carrying a x34.84
+population weight, where a single hallucinated attribution would have crushed
+precision.
+
+**That is still not a verdict.** Two things stop it being one, and both are
+written into the run's own output rather than left for a reader to notice:
+
+1. **25 rows have no label at all** -- the labellers disagreed, and they
+   disagreed on the genuinely hard cases (Snap "AI push leads to 1,000 job
+   cuts"; GM, where the PRESS attributed the cuts to AI and the company's own
+   statement did not; TikTok "looking to replace the moderators with
+   artificial-intelligence-driven systems"). Those 25 are excluded from every
+   number above, which makes all of them a reading of the EASY 87.5% of the
+   corpus.
+2. **Nine of the labelled rows are ones the candidate disputes**, and their
+   label is two models agreeing rather than a person reading. That is the one
+   remaining bias, and it points AGAINST the candidate.
+
+So: `docs/recall-reference-sets/ai-causation-2026-08.review.md`, 34 rows, id +
+text + both verdicts + the currently stored label + a blank. About twenty
+minutes. `python3 railway/ab_ai_causation.py --rescore` folds the rulings in and
+calls no model, so acting on the file costs nothing -- a review that cost $0.05
+every time it was read would be reviewed once.
+
+**VERDICT: UNKNOWN, pending those 34 rows.** The evidence available today leans
+toward "the swap did not degrade AI causation", and leaning is not knowing. What
+IS established without any adjudication is narrower and worth stating on its
+own: the candidate does not over-call AI, which was the specific risk a cheaper
+model carried here.
+
+### The finding nobody asked for
+
+Row 292, Tata Consultancy Services, is stored `ai_explicit = 1` and its entire
+stored text is "Tata Consultancy Services (TCS) laid off 12,000 jobs in July."
+No AI language of any kind. All three models call it not-AI on that text and are
+right to. It is a legacy row from the keyword era, not a flash-lite decision --
+but it is a published AI attribution whose own stored evidence does not support
+it, and the corpus surfaced it as a side effect of being built. It is out of
+scope here and it is not alone; `reclassify_legacy_ai.py` is the worker that
+exists for it.
+
+### Guards
+
+`railway/tests/test_ai_causation_goldset.py`, 22 assertions, pinning the five
+ways this measurement could quietly lie: scoring the candidate against a key it
+helped write, calling a substring a mention, letting two disagreeing labellers
+resolve to a label anyway, reading a stratified sample's raw rate as the
+population's, and putting more than one charged request behind one spend-gate
+read.
+
+**Nothing here changed a production model.** The swap is the owner's call, and
+it should be made on the review file, not on this entry.
 ## 2026-08-18 - the learning half of tracker_diff is armed, and it needed no secret (railway only)
 
 ### What was asked
