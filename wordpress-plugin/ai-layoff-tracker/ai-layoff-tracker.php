@@ -44,6 +44,15 @@ require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
+// The public archive of every digest that goes out. GUARDED with is_readable
+// for the same reason as the file below: this one is NEW, so the deploy that
+// introduces it can land this main file first, and its absence must degrade to
+// "there is no archive yet" rather than to a white screen. Both senders reach
+// it through function_exists, so a half-landed deploy simply archives nothing.
+$alt_digest_archive = ALT_PLUGIN_DIR . 'includes/digest-archive.php';
+if (is_readable($alt_digest_archive)) {
+    require_once $alt_digest_archive;
+}
 // Where the signup renders beyond the two tracker pages (blog posts, company
 // profiles, the facet pages, entry permalinks). GUARDED with is_readable for
 // the reason spelled out below: this file is NEW, so the deploy that

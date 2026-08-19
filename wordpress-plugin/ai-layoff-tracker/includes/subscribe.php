@@ -326,6 +326,10 @@ function alt_digest_context_lead($context) {
         'company' => 'This employer is one part of a layoff record we keep and check.',
         'facet'   => 'This page is one slice of a layoff record we keep and check.',
         'entry'   => 'This entry is one row in a layoff record we keep and check.',
+        // The archive is where somebody reads an edition before deciding
+        // whether to take it. The lead says what subscribing adds to what
+        // they are already looking at, which is delivery and nothing else.
+        'editions' => 'Every edition here is public. Subscribing puts the next one in your inbox.',
     );
     return isset($leads[$context]) ? $leads[$context] : '';
 }
@@ -913,6 +917,19 @@ function alt_digest_subscribe_form($context = '') {
                  off, because an unmeasured confirmation email needs no
                  warning. */ ?>
         <p class="alt-digest-tracking"><?php echo esc_html(alt_digest_tracking_line()); ?></p>
+
+        <?php /* READ IT BEFORE YOU GIVE US AN ADDRESS, and cite it afterwards.
+                 Every edition is kept at a permanent public URL, so a reader
+                 can see exactly what arrives before subscribing, and anybody
+                 quoting a figure has something to point at. This is also the
+                 archive's main internal link: the form renders on the tracker
+                 pages, blog posts, company profiles and facet pages, and a
+                 page reachable only from a sitemap gets a weak signal. The
+                 link renders only once something is actually archived. */ ?>
+        <?php if (function_exists('alt_edition_any') && alt_edition_any()) : ?>
+        <p class="alt-digest-tracking">You can <a href="<?php echo esc_url(alt_edition_index_url()); ?>">read every
+            past edition</a> first. Each one is kept permanently, exactly as it was sent.</p>
+        <?php endif; ?>
 
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>
@@ -5390,6 +5407,15 @@ function alt_digest_send($freq) {
         'articles' => alt_digest_compose_articles($from_date, $to_date, $send_id),
     );
 
+    // The public archive's copy, taken at COMPOSE time and not from any
+    // message: it re-composes at send_id 0, so it cannot carry a click URL,
+    // and it never sees a recipient. It is stored unpublished and becomes
+    // visible only when this run records a delivery below. See
+    // includes/digest-archive.php.
+    if (function_exists('alt_edition_capture')) {
+        alt_edition_capture($freq, $from_date, $to_date, $send_id);
+    }
+
     $rows = alt_digest_due_rows($freq);
 
     $fallback_subject = alt_digest_fallback_subject($freq, $to_date);
@@ -5480,6 +5506,11 @@ function alt_digest_send($freq) {
                 'last_sent_at' => $now,
             ), array('id' => $row['id']));
         }
+    }
+    // The edition goes public only once a message actually went out. A run
+    // that sent nothing leaves its captured row unpublished and invisible.
+    if ($sent > 0 && function_exists('alt_edition_publish')) {
+        alt_edition_publish($send_id, $freq);
     }
     if ($send_id > 0) {
         // A run with no eligible recipient is not a send. Drop the row rather
