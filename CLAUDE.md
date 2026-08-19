@@ -176,7 +176,7 @@ the end check.
 - WARN entries are EXEMPT from fuzzy/cross-outlet dedup (companies legally file several notices close together).
 - Changing an entry's job count changes its dedup hash → corrections need `/bulk-purge` + full re-import, not plain upsert.
 - Data-changing jobs must FAIL LOUDLY (non-zero exit on any failed batch; `curl --fail-with-body` in workflows).
-- Bump the plugin `Version:` + `ALT_VERSION` on EVERY deploy — it cache-busts assets and triggers the flush.
+- Bump the plugin `Version:` + `ALT_VERSION` on EVERY deploy — it cache-busts assets and triggers the flush. **Two sessions can bump to the SAME number and git will merge both cleanly**, which happened twice on 2026-08-19; `.github/workflows/version-collision.yml` now fails the second merge and prints the number to use (RUNBOOK "two merges claimed one plugin version").
 - **Never make a paid model call outside `spend.metered_call()`.** It is the gate
   AND the meter: it reads the per-run brake immediately before the request and
   meters immediately after, so a caller cannot spend without checking and cannot
