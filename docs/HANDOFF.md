@@ -844,8 +844,12 @@ still pass, provided the copy moves with it.
   ruling ("normal people dont care about week 33"). Subjects now read
   `Aug 10-16: 16,842 verified job cuts` and `Aug 19: 150 hiring signals`; a
   weekly names its window and a daily names its day, deliberately. 2026-W33
-  keeps the archive URL, the dateline and the cite block. **Next plugin release
-  is 2.20.116.**
+  keeps the archive URL, the dateline and the cite block. **A FIFTH FOLLOW-UP, 2.20.116**: the owner's Gmail iOS screenshot, the first
+  real mail client in this loop, found four defects. The metric now leads and the
+  period trails (all four subjects had been identical up to the colon), previews
+  add instead of repeating, truncation is nearer 35 than 45, and unformatted
+  figures in preview text are pinned by a property test though the cause is
+  UNKNOWN. No emoji, reason recorded. **Next plugin release is 2.20.117.**
 
 Deploy green on the commit SHA; `reader_freshness.py` PASS on 2.20.12; the
 labels confirmed live in both the rendered FAQ and the JSON-LD.

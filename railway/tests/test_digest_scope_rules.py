@@ -1175,7 +1175,13 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         snippet = compose(layoff_fixture())["preheader"]
         self.assertTrue(snippet.startswith("0 cuts attributed to AI"), snippet)
         self.assertIn("United States", snippet)
-        self.assertIn("2026", snippet, "the snippet states no window")
+        # NO WINDOW. The subject now trails the period ("... · Aug 10-16") and
+        # the inbox stamps the date, so a window here would be the third copy
+        # of the same fact in two lines. The rule is that a preview ADDS.
+        self.assertNotIn("2026", snippet,
+                         "the snippet repeats a window the subject already "
+                         "carries, spending the one recovery slot a reader gets")
+        self.assertIn("companies", snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
 
     def test_it_does_not_restate_the_figure_the_subject_already_leads_with(self):
@@ -1203,8 +1209,11 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         snippet = compose(talent_fixture())["preheader"]
         self.assertTrue(snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
-        self.assertIn("1,332 new hiring signals", snippet)
-        self.assertIn("August 9-16", snippet)
+        self.assertIn("1,332 verified against a primary document", snippet)
+        # NO WINDOW: the subject trails the period and the inbox stamps the
+        # date. A preview ADDS. See the layoff snippet test above.
+        self.assertNotIn("August 9-16", snippet)
+        self.assertIn("verified against a primary document", snippet)
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")

@@ -2371,61 +2371,72 @@ function alt_digest_chars($s) {
 function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
                                  $parts = array()) {
     /*
-      ONE PATTERN FOR ALL THREE STREAMS, chosen by the owner:
+      ONE PATTERN FOR ALL THREE STREAMS:
 
-          <period>: <figure> <unit>
+          <figure> <unit> \xc2\xb7 <period>
 
-          Aug 10-16: 16,842 verified job cuts
-          Aug 10-16: 1,376 hiring signals
-          Aug 10-16: 16,842 verified job cuts \xc2\xb7 1,376 hiring signals
-          Aug 19: 1,101 verified job cuts
-          Aug 19: 150 hiring signals
+          16,842 verified job cuts \xc2\xb7 Aug 10-16
+          1,376 hiring signals \xc2\xb7 Aug 10-16
+          2 new posts \xc2\xb7 Aug 10-16
+          16,842 verified job cuts \xc2\xb7 1,376 hiring signals \xc2\xb7 Aug 10-16
+          1,101 verified job cuts \xc2\xb7 Aug 19
+          150 hiring signals \xc2\xb7 Aug 19
 
-      TWO THINGS CAME OUT OF THIS LINE, BOTH ON MEASUREMENT.
+      THIS LINE HAS BEEN REWRITTEN FOUR TIMES AND EVERY CHANGE CAME FROM AN
+      INBOX RATHER THAN FROM REASONING. Worth recording, because the pattern in
+      the mistakes is the lesson.
 
-      The brand went first. The owner read the shipped subject on Gmail mobile:
-      "on gmail mobile all you see is asktherecruiter.com." The prefix cost
-      about twenty characters the From display name already carries, so the
-      part a phone showed was the sender's name and the figure fell off.
+      1. "AI Layoff Tracker: 16,842 verified cuts this week" made a reader who
+         never opened it take away sixteen thousand AI-attributed cuts from a
+         week whose AI figure was zero. A brand beside a raw count reads as a
+         count of that brand's metric.
+      2. Leading with the site name meant Gmail on mobile showed the sender's
+         name and nothing else: "all you see is asktherecruiter.com."
+      3. Leading with the ISO week was honest and opaque: "normal people dont
+         care about week 33."
+      4. Leading with the DATE made every edition honest and made the SET
+         unusable. The owner's own inbox screenshot showed four messages all
+         beginning "Aug 10-16:", indistinguishable in a list, with the word
+         that told them apart arriving after the part that was identical on
+         every one.
 
-      Then the ISO week: "normal people dont care about week 33." The week
-      number is not wrong and is not deleted; it is PRECISE FOR CITATION and
-      OPAQUE FOR SKIMMING. 2026-W33 is still the archive URL, the edition's own
-      dateline and the cite-this block. A subject is the one place a reader is
-      skimming rather than quoting, so it names days.
+      SO THE METRIC LEADS AND THE PERIOD TRAILS. The first word now differs on
+      every edition, the period is still present and still honest, and
+      truncation eats the DATE rather than the news, which is the correct thing
+      to lose because the inbox stamps the date already.
 
-      The year went with it: the inbox stamps every message already, and six
-      characters buy more as part of the metric. Same division of labour, and
-      the year is still on every surface where a figure is quoted.
+      A WEEKLY NAMES ITS WINDOW AND A DAILY NAMES ITS DAY, unchanged. See
+      alt_digest_subject_period for why that asymmetry must survive a
+      consistency pass.
 
-      A WEEKLY NAMES ITS WINDOW AND A DAILY NAMES ITS DAY. See
-      alt_digest_subject_period for why that asymmetry is deliberate and must
-      survive a consistency pass.
+      NO EMOJI, AND THE REASON IS RECORDED SO IT IS NOT REVISITED. The owner
+      asked. This product is cited as a primary source and its register is
+      measured and factual, which is the register that makes the numbers
+      trusted; a glyph in the subject trades that for a moment's attention.
+      Once the metric leads, the figures differentiate the editions better than
+      any icon could, which was the only real argument for one. A screen reader
+      also has to make sense of the line, and "chart increasing" read aloud in
+      front of a job-cut figure is worse than nothing.
 
-      THE ACCURACY PROPERTY IS UNCHANGED THROUGH ALL OF IT, which is the
-      argument for having written it as a property rather than a string.
-      2.20.103 shipped "AI Layoff Tracker: 16,842 verified cuts this week" on a
-      week whose AI figure was ZERO, so a reader who never opened it took away
-      sixteen thousand AI-attributed cuts. No tracker brand appears in this
-      line at all now, so nothing juxtaposes a brand with a raw count.
-      tests/test_digest_subject_never_inflates_ai.py holds it:
+      THE ACCURACY PROPERTY IS UNCHANGED THROUGH ALL FOUR REWRITES, which is
+      the argument for having written it as a property rather than a string. No
+      tracker brand appears in this line, so nothing juxtaposes a brand with a
+      raw count. tests/test_digest_subject_never_inflates_ai.py holds it:
 
           A READER WHO SEES ONLY THE SUBJECT MUST NOT COME AWAY WITH A LARGER
           AI FIGURE THAN THE EMAIL REPORTS.
 
-      THE PERIOD IS THE SAME STRING THE ARCHIVE OPENS WITH. A subject reads
-      "Aug 10-16: 16,842 verified job cuts" and the archived edition is titled
-      "Aug 10-16, 2026", so a reader following the link meets the same words
-      before anything else. The archive adds the year because that page is
-      cited; the subject drops it because that line is skimmed. See
-      alt_edition_label in includes/digest-archive.php.
+      THE PERIOD IS THE SAME STRING THE ARCHIVE OPENS WITH. It is a SUFFIX of
+      the subject and a PREFIX of the archived edition's title, so a reader
+      moving from the inbox to the archive meets the same words. The archive
+      adds the year because that page is cited; the subject drops it because
+      that line is skimmed and the inbox stamps it.
 
       THE TWO UNITS READ DIFFERENTLY BECAUSE THEY ARE DIFFERENT, and a future
       consistency pass must not flatten them. The layoff tracker counts
       VERIFIED JOB CUTS, each with a filing or a named report behind it. The
       talent tracker counts HIRING SIGNALS, which deliberately means something
-      weaker: a published indication, mostly unverified. Calling verified cuts
-      "signals" would give away the product's whole differentiator.
+      weaker: a published indication, mostly unverified.
 
       $parts is a list of array('metric' => ..., 'minor' => bool) in the site's
       own section order. The blog's metric is MINOR: it is the least important
@@ -2447,7 +2458,8 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
         $dot = "\xc2\xb7";
         // Two at most. A third metric would run the line past any client's
         // display width and buys nothing a reader can see.
-        $line = $period . ': ' . implode(' ' . $dot . ' ', array_slice($metrics, 0, 2));
+        $line = implode(' ' . $dot . ' ', array_slice($metrics, 0, 2))
+              . ' ' . $dot . ' ' . $period;
         /*
           THE CEILING IS 100 AND NOT 78, DELIBERATELY. The combined line runs
           to about 83 characters and the owner chose it knowing Gmail on mobile
@@ -2458,7 +2470,7 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
         if (alt_digest_chars($line) <= 100) return $line;
         // One metric rather than a truncated two. A subject cut mid-figure
         // publishes a wrong number in the line most people only ever see.
-        $line = $period . ': ' . $metrics[0];
+        $line = $metrics[0] . ' ' . $dot . ' ' . $period;
         if (alt_digest_chars($line) <= 100) return $line;
     }
 
@@ -4032,11 +4044,6 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       worldwide total is the first optional clause, so a long window drops the
       basis before it drops the second headline.
     */
-    $preheader = alt_digest_fit_preheader(
-        alt_digest_count($us_jobs, 'verified job cut') . ' in the United States, ' . $range,
-        array(number_format_i18n($ver_jobs) . ' worldwide',
-              'counted by the date the cuts take effect'));
-
 
     $snapshot = '';
     /*
@@ -4827,10 +4834,24 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       subject alone, and the United States split, which is the owner's stated
       first priority and appears nowhere in the subject.
     */
+    /*
+      THE PREVIEW ADDS, IT NEVER REPEATS. That is the only rule this line has.
+
+      The subject now carries the worldwide figure and the window, so a preview
+      restating either spends the one recovery slot a reader gets on something
+      already on screen. The owner's inbox screenshot showed exactly that
+      failure on two of three streams.
+
+      So this carries the three facts the subject cannot: the AI figure, which
+      is the number a reader is most likely to get wrong from a subject alone
+      and the one this product is named after; the United States split, which
+      is the stated first priority; and the company count, which says how
+      concentrated the week was. The window is NOT here any more.
+    */
     $preheader = alt_digest_fit_preheader(
         alt_digest_count($ai_jobs, 'cut') . ' attributed to AI',
-        array(number_format_i18n($us_jobs) . ' of the cuts in the United States',
-              $range));
+        array(number_format_i18n($us_jobs) . ' in the United States',
+              'across ' . alt_digest_count($companies_n, 'company', 'companies')));
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
                  'metric' => $metric);
 }
@@ -4907,9 +4928,21 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     // fit today; composing the snippet anyway means it keeps fitting when
     // somebody adds a clause to the body, which is exactly how the other one
     // broke. See alt_digest_fit_preheader.
+    /*
+      THE PREVIEW ADDS, IT NEVER REPEATS. This read "1,376 new hiring signals,
+      August 10-16" beside a subject reading "1,376 hiring signals · Aug 10-16",
+      which is the same sentence twice, and the owner saw it in his own inbox.
+
+      THE VERIFIED SPLIT IS THE SECOND-MOST-USEFUL FACT ABOUT THIS TRACKER and
+      it is the one a sceptical reader wants first. A hiring signal is a
+      published indication, mostly unverified; how many carry a primary
+      document behind them is exactly what the headline figure does not say.
+      The company count follows, because a thousand signals from thirty
+      companies is a different week from a thousand from six hundred.
+    */
     $preheader = alt_digest_fit_preheader(
-        alt_digest_count($total, 'new hiring signal') . ', ' . $range,
-        array('worldwide', 'counted by the date the source published'));
+        $verified . ' of ' . $totalf . ' verified against a primary document',
+        array('from ' . alt_digest_count($companies_n, 'company', 'companies')));
     $text = "Talent Intelligence Tracker\n{$lede}\n";
     $detail = 'From ' . alt_digest_count($companies_n, 'company', 'companies') . ', '
             . $range . '. ' . $verified . ' of the ' . $totalf . ' '
@@ -5418,7 +5451,30 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       still passed through the fitter: a caption is written for a body and
       this is the one place a ceiling applies.
     */
-    $preheader = $range === '' ? '' : alt_digest_fit_preheader(rtrim($caption, '.'), array());
+    /*
+      THE PREVIEW ADDS, IT NEVER REPEATS. This reused the caption, so a subject
+      reading "2 new posts \xc2\xb7 Aug 10-16" sat beside a preview reading "2 posts
+      published between August 10 and 16, 2026", which is the same sentence
+      twice. The owner saw it in his own inbox.
+
+      A COUNT OF POSTS IS NOT A REASON TO OPEN ONE. The newest post's own title
+      is, and it is the single thing the subject's figure cannot carry. It is
+      the author's words, not ours, and a second title is added only when it
+      fits, because a snippet is never truncated mid-title.
+    */
+    $preheader = '';
+    if ($items) {
+        $titles = array();
+        foreach ($items as $item) $titles[] = $item['title'];
+        $lead_title = array_shift($titles);
+        $rest = array();
+        if ($titles) {
+            $rest[] = (count($titles) === 1)
+                ? 'and ' . $titles[0]
+                : 'and ' . alt_digest_count(count($titles), 'more post');
+        }
+        $preheader = alt_digest_fit_preheader($lead_title, $rest);
+    }
     /*
       THE BREAKUP THE OWNER ASKED FOR, AND WHY IT IS A TABLE.
 

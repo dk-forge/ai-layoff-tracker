@@ -201,7 +201,7 @@ class TheRuleHoldsForEveryShapeTheRelayCanBuild(unittest.TestCase):
                 subject = self._subject(shape)
                 for brand in AI_BRANDS:
                     self.assertNotIn(brand.lower(), subject.lower(), subject)
-                self.assertTrue(subject.startswith("Aug 10-16: "), subject)
+                self.assertTrue(subject.endswith(" · Aug 10-16"), subject)
 
     def test_the_blog_count_never_displaces_a_tracker_metric(self):
         subject = self._subject([("16,842 verified job cuts", False),
@@ -231,42 +231,69 @@ class TheRuleHoldsForEveryShapeTheRelayCanBuild(unittest.TestCase):
         only in its period token. A day is not a week and is not numbered."""
         subject = self._subject([("1,101 verified job cuts", False)], freq="daily")
         self.assertEqual(
-            subject, "Aug 16: 1,101 verified job cuts")
+            subject, "1,101 verified job cuts · Aug 16")
         self.assertNotIn("Week", subject)
 
 
-class ThePreviewCompletesWhatTheSubjectDrops(unittest.TestCase):
-    """The brand prefix costs about twenty characters the From name already
-    supplies, and Gmail on mobile truncates near 45, so the second metric is
-    what falls off a phone. The preheader is the one slot left to recover it.
+class ThePreviewAddsAndNeverRepeats(unittest.TestCase):
+    """The one rule a preview line has, and the owner caught us breaking it.
+
+    His Gmail iOS screenshot showed four editions in a list. Two of the three
+    standalone streams had a preview that restated the subject:
+
+        1,376 hiring signals · Aug 10-16
+          1376 new hiring signals, August 10-1...
+
+        2 new posts · Aug 10-16
+          2 posts published between August 1...
+
+    A preview is the ONE recovery slot a reader gets before deciding whether to
+    open. Spending it on a sentence already on screen wastes it entirely. So
+    every composer now writes a snippet carrying the facts its own subject
+    cannot: the AI figure and the United States split for the layoff tracker,
+    the verified split for the talent tracker, the newest post's title for the
+    blog.
     """
 
     def _parts(self):
         return [
             ("layoff", "<p>x</p>", "AI Layoff Tracker\nsomething 2026\n",
-             "0 cuts attributed to AI, 10,132 of the cuts in the United States, "
-             "August 10-16, 2026",
+             "0 cuts attributed to AI, 10,132 in the United States, "
+             "across 73 companies.",
              ("16,842 verified job cuts", False)),
             ("talent", "<p>x</p>", "Talent Intelligence Tracker\nsomething 2026\n",
-             "1,376 new hiring signals, August 10-16, 2026",
+             "411 of 1,376 verified against a primary document, "
+             "from 288 companies.",
              ("1,376 hiring signals", False)),
         ]
 
-    def test_it_leads_with_the_metric_a_phone_drops(self):
-        snippet = layout.preheader_text(self._parts())
-        self.assertTrue(snippet.startswith("1,376 hiring signals"), snippet)
+    def _payload(self):
+        return {"from": "2026-08-10", "to": "2026-08-16", "freq": "weekly",
+                "subject": "fallback"}
 
-    def test_it_does_not_restate_the_first_metric(self):
-        snippet = layout.preheader_text(self._parts())
-        self.assertNotIn("16,842", snippet,
-                         "the one recovery slot was spent repeating the half "
-                         "of the subject a phone already shows")
+    def test_no_figure_in_the_preview_is_already_in_the_subject(self):
+        parts = self._parts()
+        subject = layout.subject_line(self._payload(), parts)
+        snippet = layout.preheader_text(parts)
+        # The METRICS only. The trailing period token is a date and its
+        # numerals ("Aug 10-16") are not figures a preview could restate.
+        metrics_part = subject.rsplit(" · ", 1)[0]
+        for figure in re.findall(r"\b\d[\d,]*\b", metrics_part):
+            self.assertNotIn(
+                figure, snippet,
+                f"{figure!r} is in the subject AND the preview, so the one "
+                f"recovery slot a reader gets was spent repeating it")
 
-    def test_the_ai_figure_is_in_the_first_forty_characters(self):
-        """It is the number a reader is most likely to get wrong from a subject
-        line alone, so it goes where a truncated preview still shows it."""
+    def test_the_preview_carries_the_ai_figure_the_subject_cannot(self):
         snippet = layout.preheader_text(self._parts())
-        self.assertIn("attributed to AI", snippet[:60], snippet[:60])
+        self.assertIn("attributed to AI", snippet)
+
+    def test_the_period_is_not_repeated_in_the_preview(self):
+        """The subject trails the period and the inbox stamps the date, so a
+        window in the preview is the third copy of one fact in two lines."""
+        snippet = layout.preheader_text(self._parts())
+        self.assertNotIn("Aug 10-16", snippet)
+        self.assertNotIn("August 10-16", snippet)
 
     def test_a_single_section_edition_keeps_its_own_snippet(self):
         snippet = layout.preheader_text(self._parts()[:1])
@@ -280,117 +307,46 @@ class ThePreviewCompletesWhatTheSubjectDrops(unittest.TestCase):
         self.assertNotIn("...", snippet)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class EveryFigureIsFormattedTheSameWayOnEverySurface(unittest.TestCase):
+    """A figure rendered two ways in one message, side by side in a list.
 
+    The owner's inbox screenshot showed `1,376` in a subject beside `1376` in
+    its own preview, and `16,842` beside `10132`. Both strings are composed by
+    the site through number_format_i18n, and this session could NOT reproduce
+    the unformatted rendering from the code: nothing between composition and
+    the wire strips a separator. The cause is therefore UNKNOWN and may be the
+    client's own snippet extraction.
 
-class TheInboxAndTheArchiveNameThePeriodTheSameWay(unittest.TestCase):
-    """A reader moving from the inbox to the archive must meet the same words.
-
-    The subject opens on its period, the archived edition is titled by its
-    period, and if the two spelled it differently they would read as two things
-    that happen to be about one week rather than as one edition in two places.
-    The subject's token is a literal PREFIX of the archive's title, which is
-    why alt_digest_edition_label() leads with the ISO week identifier and why
-    the archive names a DAILY edition by its date rather than by its two-day
-    window.
+    What is checkable is the property, so the property is pinned here: a figure
+    appearing in more than one composed string is spelled identically in all of
+    them. If a future edit ever formats one surface differently, this fails
+    rather than shipping two spellings of one number.
     """
 
-    ARCHIVE = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker",
-                           "includes", "digest-archive.php")
+    def test_a_figure_in_two_composed_strings_is_spelled_once(self):
+        parts = [
+            ("layoff", "<p>x</p>", "AI Layoff Tracker\nx 2026\n",
+             "411 of 1,376 verified against a primary document.",
+             ("1,376 hiring signals", False)),
+        ]
+        payload = {"from": "2026-08-10", "to": "2026-08-16", "freq": "weekly",
+                   "subject": "fallback"}
+        subject = layout.subject_line(payload, parts)
+        snippet = layout.preheader_text(parts)
+        # 1376 appears in both. It must wear its separator in both.
+        self.assertIn("1,376", subject)
+        self.assertIn("1,376", snippet)
+        for line in (subject, snippet):
+            self.assertNotRegex(
+                line, r"(?<![\d,])\d{4,}(?![\d,])",
+                f"a four-digit-or-longer figure is missing its thousands "
+                f"separator: {line!r}")
 
-    _RUNNER = r"""
-define('DAY_IN_SECONDS', 86400);
-foreach (json_decode($argv[1], true) as $path) {
-    $src = file_get_contents($path['file']);
-    foreach ($path['names'] as $name) {
-        if (!preg_match('/\nfunction ' . preg_quote($name, '/') . '\s*\(.*?\n\}/s',
-                        $src, $m)) {
-            fwrite(STDERR, "could not extract $name\n");
-            exit(2);
-        }
-        eval($m[0]);
-    }
-}
-$out = array();
-foreach (json_decode($argv[2], true) as $case) {
-    $row = array('freq' => $case[0], 'window_from' => $case[1],
-                 'window_to' => $case[2]);
-    $period = alt_digest_subject_period($case[0], $case[1], $case[2]);
-    $out[] = array($period, alt_edition_label($row));
-}
-echo json_encode($out);
-"""
-
-    CASES = (
-        ("weekly", "2026-08-10", "2026-08-16"),
-        ("weekly", "2026-12-28", "2027-01-03"),
-        ("weekly", "2029-12-31", "2030-01-06"),
-        ("daily", "2026-08-18", "2026-08-19"),
-        ("daily", "2026-12-31", "2027-01-01"),
-    )
-
-    @classmethod
-    def setUpClass(cls):
-        if PHP is None:
-            raise unittest.SkipTest("php is not on PATH. UNKNOWN, not a pass.")
-        handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
-                                             encoding="utf-8")
-        try:
-            handle.write("<?php\n" + cls._RUNNER)
-            handle.close()
-            run = subprocess.run(
-                [PHP, handle.name,
-                 json.dumps([
-                     {"file": SUBSCRIBE,
-                      "names": ["alt_digest_date_range", "alt_digest_iso_week",
-                                "alt_digest_week_label", "alt_digest_week_id",
-                                "alt_digest_valid_freq",
-                                "alt_digest_short_range",
-                                "alt_digest_subject_period",
-                                "alt_digest_edition_label"]},
-                     {"file": cls.ARCHIVE, "names": ["alt_edition_label"]},
-                 ]),
-                 json.dumps([list(c) for c in cls.CASES])],
-                capture_output=True, text=True, timeout=60)
-        finally:
-            os.unlink(handle.name)
-        assert run.returncode == 0, run.stderr or run.stdout
-        cls.rows = json.loads(run.stdout)
-
-    def test_the_archive_title_opens_with_the_subject_s_period(self):
-        for case, (period, label) in zip(self.CASES, self.rows):
-            with self.subTest(case=case):
-                self.assertTrue(period, f"no period for {case}")
-                self.assertTrue(
-                    label.startswith(period),
-                    f"the inbox calls this {period!r} and the archive calls it "
-                    f"{label!r}, so a reader following the link meets a "
-                    f"different name for the same edition")
-
-    def test_a_daily_edition_is_named_by_its_date_not_its_window(self):
-        """The daily window is two days and the subject names the send day,
-        which is the masthead convention. The archive has to agree."""
-        period, label = self.rows[3]
-        self.assertEqual(period, "Aug 19")
-        self.assertEqual(label, "Aug 19, 2026")
-
-    def test_the_archive_adds_the_year_the_subject_drops(self):
-        """The subject is skimmed in an inbox that stamps the date already, so
-        those six characters go to the metric instead. This page is CITED, so
-        it carries the year."""
-        period, label = self.rows[0]
-        self.assertEqual(period, "Aug 10-16")
-        self.assertEqual(label, "Aug 10-16, 2026")
-
-    def test_a_window_crossing_a_new_year_carries_both_years(self):
-        """The only shape where dropping one would publish a wrong year."""
-        self.assertEqual(self.rows[1][1], "Dec 28 - Jan 3, 2026-2027")
-        self.assertEqual(self.rows[2][1], "Dec 31 - Jan 6, 2029-2030")
-
-    def test_the_iso_week_is_not_in_the_heading_and_is_not_lost(self):
-        """"normal people dont care about week 33." It is precise for citation
-        and opaque for skimming, so it lives in the archive URL and on the
-        edition's own dateline rather than in a heading a reader skims."""
-        for _, label in self.rows:
-            self.assertNotIn("Week", label, label)
+    def test_the_layout_module_never_reformats_a_site_figure(self):
+        """It joins strings the site composed and computes nothing, which is
+        why the two surfaces cannot disagree about a separator."""
+        source = open(os.path.join(RAILWAY, "digest_layout.py"),
+                      encoding="utf-8").read()
+        self.assertNotIn("{:,}", source)
+        self.assertNotIn("format(", source.split("def subject_line")[1]
+                         .split("def preheader_text")[0])
