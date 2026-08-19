@@ -53,6 +53,16 @@ its date and its URL and lets `layoffs.js` overwrite the date with the reader's
 own, so JS makes it more accurate for a human and its absence no longer makes
 it wrong for anybody else.
 
+### The follow-up the fix itself created (2.20.98)
+
+The citation carries the page's **full canonical URL**, and a company slug runs
+to 90 characters (`/company-layoffs/1401-unitek-learning-education-group-corp/`).
+`.alt-cite-box code` is a flex item, a flex item defaults to `min-width: auto`,
+and a URL offers no break opportunity, so at 375px the new block bled
+horizontally on exactly the pages it was added for. `min-width: 0` plus
+`overflow-wrap: anywhere` on both cite blocks. The old box never showed this
+because it had no URL in it - the field whose absence was the defect.
+
 ### What was deliberately NOT done
 
 **No `dateModified` on the facet and company `Dataset` nodes.** It was the
