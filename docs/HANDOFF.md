@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.112.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change fixes **two dead company pages**,
+  found by crawling all 794 pages and probing all 4,208 distinct internal link
+  targets. `alt_company_directory_url()` ran `rawurlencode()` over a slug
+  `sanitize_title()` had already percent-escaped, so a non-Latin-1 company
+  shipped as `%25e2%2580%25a0` and 404'd while the same page answered 200 at
+  its singly-encoded URL. All-ASCII slugs were never affected, which is why it
+  stayed invisible; the sitemap builder calls the same helper, so either page
+  crossing the indexable floor would have published a dead URL. Plugin files
+  touched: `includes/company-directory.php`, `ai-layoff-tracker.php` (version
+  only). Rest is `railway/tests/test_company_directory_guards.py`. **No live
+  row was edited and no redirect was created.** **Next plugin release is
+  2.20.113.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.111.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is.
   Main was RED and this is the fix: `page-company-index.php` (new at 2.20.110)
