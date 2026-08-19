@@ -56,7 +56,7 @@ if (!defined('ABSPATH')) exit;
  * them. Read by the tests, so the list cannot drift from what ships.
  */
 function alt_digest_placement_contexts() {
-    return array('post', 'company', 'facet', 'entry');
+    return array('post', 'company', 'facet', 'entry', 'editions');
 }
 
 /**

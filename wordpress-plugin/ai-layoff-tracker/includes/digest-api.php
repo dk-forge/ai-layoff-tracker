@@ -194,6 +194,15 @@ function alt_api_digest_recipients($request) {
         }
     }
 
+    // The public archive's copy, taken at COMPOSE time and not from anything
+    // the relay renders: it re-composes at send_id 0, so it cannot carry a
+    // click URL, and it never sees a recipient. Stored unpublished; it becomes
+    // visible when /digest-complete records a real delivery below. See
+    // includes/digest-archive.php.
+    if (function_exists('alt_edition_capture')) {
+        alt_edition_capture($freq, $from_date, $to_date, $send_id);
+    }
+
     $recipients = array();
     foreach (alt_digest_due_rows($freq) as $row) {
         $lists = array();
@@ -301,6 +310,13 @@ function alt_api_digest_complete($request) {
             array('id' => $send_id));
     }
     alt_digest_record_claim($freq);
+
+    // The edition goes public only once messages really went out. A dry run, a
+    // preview and a nominated test send all arrive here with no ids, or never
+    // arrive at all, so none of them can put a page on the archive.
+    if ($ids && function_exists('alt_edition_publish')) {
+        alt_edition_publish($send_id, $freq);
+    }
 
     // Health, stamped here because this is the moment the run is known to have
     // finished. Counts only, as everywhere that touches this list.

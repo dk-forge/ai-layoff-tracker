@@ -6,19 +6,25 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.108.** The baton was
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.109.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
-  which is what this file asks for. The change makes the 404 log and the
-  redirect table READABLE from outside wp-admin, because a session asked to
-  find the leak in 417 dead hits and 2,000 redirect hits could see neither and
-  was guessing against a screenshot. Claimed 2.20.107, found a sibling
-  session had landed that same number on main, and rebased to 2.20.108. Plugin files touched:
-  `includes/seo-diagnostics.php` (new, two keyed GET routes, read-only, no
-  visitor IP returned, a missing table reports TABLE_MISSING at HTTP 503 rather
-  than an empty list) and `ai-layoff-tracker.php` (the guarded require plus the
-  version). Rest is `.github/workflows/seo-diagnostics.yml`, manual dispatch
-  only. **No live row was edited, no redirect was created and no log was
-  cleared.** **Next plugin release is 2.20.109.**
+  which is what this file asks for. **TWO COLLISIONS: main took 2.20.107 and then
+  2.20.108 while this was staged, both caught by re-reading main immediately
+  before merging. Merged onto it each time, so the sibling sessions'
+  tracking-disclosure constant and SEO diagnostics are untouched.** The change adds the **public edition
+  archive**: every digest that goes out is kept forever at
+  `/ai-layoff-tracker/editions/<tier>/<slug>/`, so a figure that used to exist
+  only in an inbox can be cited. NEW files: `includes/digest-archive.php`,
+  `templates/page-editions.php`, plus the test and its harness. Touched, and
+  deliberately by four lines only because several sessions are live in them:
+  `includes/subscribe.php` (capture + publish call sites, one lead sentence, one
+  archive link in the signup form), `includes/digest-api.php` (capture + publish
+  call sites), `includes/subscribe-placements.php` (one context name),
+  `ai-layoff-tracker.php` (guarded require + version). **The per-tier send
+  guards, the send-state columns and `digest_transport` are untouched.** ONE new
+  table, `wp_alt_digest_editions`, self-installing. Weekly editions are
+  indexable and daily ones are `noindex`, from one setting. **Next plugin
+  release is 2.20.110.**
 
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.107.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
@@ -40,6 +46,20 @@ holder, so the start-of-session ritual surfaces it automatically.
   the way: `/subscriber-stats` had reported `open_tracking=none` since
   2026-08-16. RUNBOOK "Open and click tracking" holds the flip procedure, the
   evidence and the consent design note. **Next plugin release is 2.20.108.**
+
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.108.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change makes the 404 log and the
+  redirect table READABLE from outside wp-admin, because a session asked to
+  find the leak in 417 dead hits and 2,000 redirect hits could see neither and
+  was guessing against a screenshot. Claimed 2.20.107, found a sibling
+  session had landed that same number on main, and rebased to 2.20.108. Plugin files touched:
+  `includes/seo-diagnostics.php` (new, two keyed GET routes, read-only, no
+  visitor IP returned, a missing table reports TABLE_MISSING at HTTP 503 rather
+  than an empty list) and `ai-layoff-tracker.php` (the guarded require plus the
+  version). Rest is `.github/workflows/seo-diagnostics.yml`, manual dispatch
+  only. **No live row was edited, no redirect was created and no log was
+  cleared.** **Next plugin release is 2.20.109.**
 
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.106.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,

@@ -1,5 +1,56 @@
 # Tech Log
 
+## 2026-08-19 - every digest that goes out now has a permanent, citable URL (2.20.109)
+
+A digest with no permanent URL cannot be cited. This product's whole
+differentiator is that every number is traceable, and the one surface where a
+figure existed nowhere but an inbox was the email: read once at compose time,
+frozen, and unreachable. `includes/digest-archive.php` is the answer. Every
+edition is kept forever at `/ai-layoff-tracker/editions/<tier>/<slug>/`, a
+clean path and not a query parameter, because both URL clusters Search Console
+is currently sitting on (6,500 "Discovered, currently not indexed", crawl date
+N/A on every example) are parameterised.
+
+**It archives the COMPOSED CONTENT and never a rendered message**, and the
+mechanism is a property rather than a promise. A message is per recipient: it
+carries that person's unsubscribe token, their manage link, their address and
+the recipient-context footer. So capture re-runs the three composers at
+`send_id = 0`, and `alt_digest_track_link()` returns the plain destination when
+the send id is zero, which means an archived section cannot contain a
+click-counter URL and never sees a recipient at all. It is checked anyway, by
+shape, on the way in AND on the way out: `alt_edition_public_safe()` is an
+ALLOWLIST of URL path shapes and query keys in the spirit of `assert_nameless`,
+so `t`, `s` and `l` are refused by being absent rather than by being named,
+plus two shape bans for things that can appear outside a URL (an address, and a
+run of 32+ hex characters). `railway/tests/test_edition_archive_privacy.py`
+builds every poisoned case from the REAL composed section, so a passing run
+proves the gate rejects the poison rather than that it rejects everything.
+
+**COMPOSE TIME, NOT LATER.** Reconstructing an edition from live data next
+month would produce a page that disagrees with the email people were sent,
+which is worse than no archive: filings and WARN notices arrive for weeks and a
+window keeps growing. The row is stored UNPUBLISHED and becomes visible only
+when a send is recorded, so a preview, a dry run, a `DIGEST_TEST_TO` send and a
+run that finds nobody due all leave nothing behind.
+
+**THE INDEXING SPLIT IS ONE SETTING**, `alt_edition_tier_indexable()`. Weekly
+is indexable (about 52 a year, each substantial and genuinely different); daily
+is archived at a permanent URL and kept out of the index, because ~365
+near-identical pages a year is exactly the profile Google is already declining
+to crawl on this site. The robots filters, the canonical, the sitemap and the
+reader-facing note all read that one function. Links never break; crawl budget
+is not diluted.
+
+**IMMUTABLE, WITH CORRECTIONS ATTACHED RATHER THAN APPLIED.** Nothing updates a
+stored section: capture refuses to touch a published row, publishing writes one
+timestamp, and a revision arrives through the keyed
+`POST /edition-correction` as a dated note rendered ABOVE the unchanged text.
+Silently rewriting history is the opposite of what this product sells. A test
+fails on any statement that would `SET` the sections column.
+
+Schema: ONE new table, `wp_alt_digest_editions`, self-installing in
+digest-archive.php the way `blog-claps.php` does it. The sends table is
+untouched, and so are the per-tier send guards and `digest_transport`.
 ## 2026-08-19 - the tracking disclosure becomes one constant, and Brevo turns out to have no opens-off lever (2.20.107)
 
 **The decision.** The owner decided to turn open tracking off and keep click

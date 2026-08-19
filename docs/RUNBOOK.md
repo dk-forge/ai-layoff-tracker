@@ -2409,6 +2409,46 @@ who is due** (`alt_digest_due_rows`), which excludes anyone already sent to
 inside the current period. So even two senders racing in the same minute cannot
 put two copies in one inbox. Do not add a recipient query anywhere else.
 
+### The public edition archive
+
+Every edition that goes out is kept forever at
+`/ai-layoff-tracker/editions/<tier>/<slug>/` (`weekly/2026-W33`,
+`daily/2026-08-18`), listed at `/ai-layoff-tracker/editions/` in three
+sections, one per stream. `includes/digest-archive.php` owns all of it.
+
+**It archives the COMPOSED CONTENT, never a rendered message.** Capture re-runs
+the three composers at `send_id = 0`, so the stored copy cannot carry a click
+URL and never sees a recipient; `alt_edition_public_safe()` then checks it
+against an allowlist of URL path shapes and query keys, on the way in and again
+on the way out. A section that fails is not archived and not rendered, and the
+log names the RULE, never the value. Never archive anything `build_message()`
+assembled: that is where the unsubscribe token lives.
+
+**It is populated at COMPOSE time and published at SEND time.** Both senders
+call `alt_edition_capture()` where they compose and `alt_edition_publish()`
+where they record the send, so a preview, a dry run, a `DIGEST_TEST_TO` send
+and a run with nobody due all leave nothing public.
+
+**Weekly is indexed, daily is not.** One setting,
+`alt_edition_tier_indexable()`. Do not hard-code that decision anywhere else:
+the robots filters, the canonical and `/layoff-editions-sitemap.xml` all read
+it. Daily editions keep their permanent URLs and are linked from the index, so
+nothing breaks; they are simply not offered to the crawler, because ~365
+near-identical pages a year is the profile Search Console is already refusing
+on this site.
+
+**A published edition is IMMUTABLE.** If a figure in a sent edition is later
+revised, do NOT edit the archive. Attach a dated correction:
+
+```bash
+curl -s -X POST "$WP_SITE_URL/wp-json/layoffs/v1/edition-correction" \
+  -H "X-Layoff-API-Key: $WP_API_KEY" -H "Content-Type: application/json" \
+  -H "User-Agent: AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+  --fail-with-body -d '{"freq":"weekly","slug":"2026-W33","note":"The US figure of 5,000 was revised to 7,240 on 2026-09-02 after three late WARN notices."}'
+```
+
+The note renders above the edition; the edition's own text never changes.
+
 ### The digest is sending nothing, or the wrong thing
 
 - **`credential=REJECTED`, or nothing is arriving at all**: the relay is
