@@ -1,5 +1,11 @@
 {
-  "open": {},
-  "updated_at": "2026-08-19T00:00:00+00:00",
+  "open": {
+    "tests:main:2a5932334ebbf087": {
+      "first": 1787124899,
+      "last": 1787124899,
+      "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
+    }
+  },
+  "updated_at": "2026-08-19T07:34:59+00:00",
   "version": 1
 }
