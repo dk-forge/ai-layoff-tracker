@@ -58,6 +58,16 @@ import urllib.request
 
 API = "https://api.resend.com"
 
+#: EVERY request needs a real-looking User-Agent, and this was learned the same
+#: way twice. The WP host's ModSecurity blocks `python-requests` outright, which
+#: is an iron rule in CLAUDE.md. Resend's API sits behind Cloudflare, which
+#: answered the very first selftest with `403 Error 1010: Access denied, the
+#: site owner has banned your browser signature` to urllib's default
+#: `Python-urllib/3.12`. Every alert would have read as a SETTLED refusal, been
+#: held, and never arrived. `digest_transport.py` sets the same string on its
+#: own Resend calls, which is why the reader path never hit this.
+UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+
 #: Who operational mail comes from. Deliberately not the digest sender: an
 #: alarm that arrives looking like a newsletter is one the owner filters with
 #: the newsletter. Overridable so the sending domain can change without a code
@@ -109,7 +119,8 @@ def _request(method: str, path: str, body=None, extra_headers=None):
     """One request. Returns (status, parsed_body_or_text)."""
     headers = {"Authorization": f"Bearer {_key()}",
                "Content-Type": "application/json",
-               "Accept": "application/json"}
+               "Accept": "application/json",
+               "User-Agent": UA}
     headers.update(extra_headers or {})
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(f"{API}{path}", data=data, headers=headers,

@@ -133,6 +133,42 @@ class TheAlarmNoLongerDependsOnTheThingItMonitors(unittest.TestCase):
                 self.assertNotIn("WP_API_KEY", literal,
                                  f"{mod} still reads the host's credential")
 
+    def test_every_request_carries_a_real_user_agent(self):
+        """Learned the hard way, twice.
+
+        The WP host's ModSecurity blocks `python-requests`, which is an iron
+        rule in CLAUDE.md. Resend's API sits behind Cloudflare, and the very
+        first selftest run got `403 Error 1010: the site owner has banned your
+        browser signature` for urllib's default `Python-urllib/3.12`. A 403 is a
+        SETTLED refusal, so every alert would have been held and none would ever
+        have arrived. Nothing else in this repo would have noticed.
+        """
+        seen = {}
+
+        class _Resp:
+            status = 200
+
+            def read(self):
+                return b'{"id":"re_1"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def urlopen(req, timeout=None):
+            seen.update(req.headers)
+            return _Resp()
+
+        with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+                mock.patch("urllib.request.urlopen", urlopen):
+            opsmail.send_once("s", "b")
+        agent = seen.get("User-agent") or seen.get("User-Agent") or ""
+        self.assertTrue(agent, "no User-Agent: Cloudflare answers 403 to this")
+        self.assertNotIn("urllib", agent.lower())
+        self.assertNotIn("python", agent.lower())
+
     def test_the_key_is_never_printed_even_when_the_api_echoes_it(self):
         with mock.patch.dict(os.environ, {"RESEND_API_KEY": "re_supersecret"}), \
                 mock.patch.object(opsmail, "_request",
