@@ -1934,16 +1934,41 @@ function alt_digest_week_id($date) {
 function alt_digest_edition_label($from, $to) {
     $range = alt_digest_date_range($from, $to);
     if ($range === '') return '';
-    $week = alt_digest_week_label($from);
+    $id = alt_digest_week_id($from);
+    if ($id === '') return $range;
     /*
-      A MIDDLE DOT AND NOT A COMMA. An ISO week is IDENTIFIED, not described by
-      an endpoint, so "Week 33 \xc2\xb7 August 10-16, 2026" reads as a label and
-      then a period rather than as a list of two things. The comma form also
-      collided with the comma already inside the date: "Week 33, August 10-16,
-      2026" carries three commas and no hierarchy. U+00B7 is a geometric
-      character every client renders as text; an emoji here would be furniture.
+      THE SUBJECT'S PERIOD TOKEN IS A LITERAL PREFIX OF THIS LABEL, and that is
+      the whole point of the shape.
+
+      A subject reads "2026 Week 33: 16,842 verified job cuts". The edition's
+      dateline, the masthead and the archived copy read "2026 Week 33 · August
+      10-16". A reader moving from the inbox to the archive meets the same
+      words in the same order, so the two surfaces are visibly the same
+      edition rather than two things that happen to be about one week.
+
+      THE TRAILING YEAR IS DROPPED WHEN THE ISO YEAR ALREADY LEADS AND THEY
+      AGREE, because "2026 Week 33 · August 10-16, 2026" says 2026 twice on one
+      line. It is KEPT whenever they can disagree, which is the only time a
+      reader needs both: the week of 28 December 2026 renders "2026 Week 53 ·
+      December 28, 2026 - January 3, 2027", and 31 December 2029 renders "2030
+      Week 1 · December 31, 2029 - January 6, 2030". Those are the two shapes
+      where dropping a year would publish a wrong one.
+
+      A MIDDLE DOT AND NOT A COMMA. U+00B7 is a geometric character every
+      client renders as text; an emoji here would be furniture. The date
+      already carries commas of its own, so a comma here gives no hierarchy.
     */
-    return $week === '' ? $range : $week . " \xc2\xb7 " . $range;
+    $iso = alt_digest_iso_week($from);
+    $fy = (int) substr((string) $from, 0, 4);
+    $ty = (int) substr((string) $to, 0, 4);
+    if ($iso !== null && $iso[0] === $fy && $iso[0] === $ty) {
+        // The same range with its trailing ", YYYY" removed. Built by trimming
+        // the shared formatter rather than by a second date formatter, so
+        // there is still exactly one place that spells a month.
+        $trimmed = preg_replace('/,\s*\d{4}$/', '', $range);
+        if ($trimmed !== null && $trimmed !== '') $range = $trimmed;
+    }
+    return $id . " \xc2\xb7 " . $range;
 }
 
 /**
@@ -2275,29 +2300,45 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
     /*
       ONE PATTERN FOR ALL THREE STREAMS, chosen by the owner:
 
-          AskTheRecruiter.com \xc2\xb7 <period>: <figure> <unit>
+          <period>: <figure> <unit>
 
-          AskTheRecruiter.com \xc2\xb7 2026 Week 33: 16,842 verified job cuts
-          AskTheRecruiter.com \xc2\xb7 2026 Week 33: 1,376 hiring signals
-          AskTheRecruiter.com \xc2\xb7 2026 Week 33: 16,842 verified job cuts \xc2\xb7 1,376 hiring signals
+          2026 Week 33: 16,842 verified job cuts
+          2026 Week 33: 1,376 hiring signals
+          2026 Week 33: 16,842 verified job cuts \xc2\xb7 1,376 hiring signals
+          August 19, 2026: 1,101 verified job cuts
+          August 19, 2026: 150 hiring signals
 
-      His reasoning: the brand up front lets a subscriber identify sender and
-      topic in a crowded inbox, the middle dot gives a cleaner hierarchy than a
-      space, and the three read as one weekly series.
+      THE BRAND WAS IN FRONT OF THIS AND THE OWNER TOOK IT OUT AFTER TESTING IT
+      IN A REAL INBOX: "on gmail mobile all you see is asktherecruiter.com."
+      The prefix cost about twenty characters and Gmail truncates near 45, so
+      the part a phone showed was the sender's name, which the From line
+      already carries, and the figure fell off the end. The brand is not lost;
+      it moved to the slot that was always carrying it.
 
-      AND IT FIXES THE ACCURACY DEFECT STRUCTURALLY. What shipped on
-      2026-08-19 was "AI Layoff Tracker: 16,842 verified cuts this week", and a
-      reader who never opened it took away sixteen thousand AI-attributed cuts
-      from a week whose AI figure was ZERO. That is the exact overclaim this
-      product exists to avoid, on its most quoted surface, on the metric it is
-      named after. Leading with the SITE rather than the tracker means nothing
-      juxtaposes "AI Layoff Tracker" with a raw cut count, so the line cannot
-      be read as an AI figure at all. The rule it produced still binds every
-      future subject and is enforced by
-      tests/test_digest_subject_never_inflates_ai.py:
+      So every subject now opens on its period and its figure, which is exactly
+      the part a phone shows. The longest form is the combined edition and it
+      truncates after the first metric's unit, not inside a number.
+
+      AND THE ACCURACY PROPERTY SURVIVED THE CHANGE, which is why it is a
+      property and not a string. 2.20.103 shipped "AI Layoff Tracker: 16,842
+      verified cuts this week" on a week whose AI figure was ZERO, so a reader
+      who never opened it took away sixteen thousand AI-attributed cuts. No
+      tracker brand appears in this line at all now, so nothing juxtaposes a
+      brand with a raw count and no subject can be read as an AI figure.
+      tests/test_digest_subject_never_inflates_ai.py holds it:
 
           A READER WHO SEES ONLY THE SUBJECT MUST NOT COME AWAY WITH A LARGER
           AI FIGURE THAN THE EMAIL REPORTS.
+
+      THE PERIOD IS THE SAME STRING THE ARCHIVE PRINTS. A weekly subject opens
+      "2026 Week 33" and the archived edition is titled "2026 Week 33 · August
+      10-16", so a reader moving from the inbox to the archive meets the same
+      words in the same order. See alt_digest_edition_label. A daily subject
+      opens "August 19, 2026", which is what the archive prints for a daily
+      row, verbatim.
+
+      A DAY IS NOT A WEEK and is not numbered as one, but the shape is kept so
+      the editions read as one series.
 
       THE TWO UNITS READ DIFFERENTLY BECAUSE THEY ARE DIFFERENT, and a future
       consistency pass must not flatten them. The layoff tracker counts
@@ -2305,10 +2346,6 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
       talent tracker counts HIRING SIGNALS, which deliberately means something
       weaker: a published indication, mostly unverified. Calling verified cuts
       "signals" would give away the product's whole differentiator.
-
-      THE PERIOD IS THE ISO WEEK WITH ITS ISO YEAR, or the send date on a daily
-      edition. A day is not a week and must not be numbered as one; the shape
-      is kept so the three still read as one series.
 
       $parts is a list of array('metric' => ..., 'minor' => bool) in the site's
       own section order. The blog's metric is MINOR: it is the least important
@@ -2332,8 +2369,7 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
         $dot = "\xc2\xb7";
         // Two at most. A third metric would run the line past any client's
         // display width and buys nothing a reader can see.
-        $line = 'AskTheRecruiter.com ' . $dot . ' ' . $period . ': '
-              . implode(' ' . $dot . ' ', array_slice($metrics, 0, 2));
+        $line = $period . ': ' . implode(' ' . $dot . ' ', array_slice($metrics, 0, 2));
         /*
           THE CEILING IS 100 AND NOT 78, DELIBERATELY. The combined line runs
           to about 83 characters and the owner chose it knowing Gmail on mobile
@@ -2344,7 +2380,7 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
         if (alt_digest_chars($line) <= 100) return $line;
         // One metric rather than a truncated two. A subject cut mid-figure
         // publishes a wrong number in the line most people only ever see.
-        $line = 'AskTheRecruiter.com ' . $dot . ' ' . $period . ': ' . $metrics[0];
+        $line = $period . ': ' . $metrics[0];
         if (alt_digest_chars($line) <= 100) return $line;
     }
 
@@ -4766,11 +4802,27 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
       placed/unplaced split, use alt_digest_geo_scope() here too.
     */
     $scope = $range . ', worldwide, counted by the date the source published.';
+    /*
+      THE UNIT SITS UNDER THE FIGURE, NOT ABOVE IT, and this is not cosmetic.
+
+      This printed an eyebrow reading "New hiring signals", then the number.
+      In the same message the layoff section prints a number and then "verified
+      job cuts", so the two headline figures were built in opposite orders, and
+      a reader comparing them had to notice that "1,376" and "16,842" count
+      completely different things from labels sitting on opposite sides.
+
+      A HIRING SIGNAL IS NOT A JOB AND IS NOT A CUT. It is a published
+      indication that a company is hiring, mostly unverified, and one signal
+      may name hundreds of jobs or none. The layoff tracker's unit has a filing
+      or a named report behind every row. Setting the two side by side without
+      binding each number to its own unit is the single most misleading thing
+      this email can do, and it is why the subject line carries the units too.
+    */
     $html = '<h2>Talent Intelligence Tracker</h2>'
-          . '<p data-alt="kicker">'
-          . esc_html(alt_digest_verb($total, 'New hiring signal', 'New hiring signals'))
-          . '</p>'
           . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
+          . '<p data-alt="unit">'
+          . esc_html(alt_digest_verb($total, 'new hiring signal', 'new hiring signals'))
+          . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
     $lede = alt_digest_count($total, 'new hiring signal') . ', ' . $scope;
     // The same rule as the layoff section, same reason. This lede happens to
@@ -4791,7 +4843,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
               the sentence a sceptical reader met most often.
             */
             . alt_digest_verb($verified_n, 'is', 'are')
-            . ' verified against primary documents.';
+            . ' verified against a primary document. The rest are published '
+            . 'indications we have not confirmed.';
     $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
     $text .= $detail . "\n";
 
@@ -4859,13 +4912,19 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
               go and check it. `source_name` is present on 100% of the week's
               rows; a row missing it prints nothing rather than a placeholder.
             */
-            $caption = $range . ', the signals naming the most jobs first, then the '
-                     . 'tracker\'s own order. Each headline is quoted as its source '
+            /*
+              "THE TRACKER'S OWN ORDER" MEANT NOTHING TO A READER. It is the
+              order the endpoint returned, which is newest first, and saying so
+              costs three words and stops the caption gesturing at an internal
+              detail nobody outside this repo can check.
+            */
+            $caption = $range . ', the signals naming the most jobs first, then '
+                     . 'newest first. Each headline is quoted as its source '
                      . 'published it, in that source\'s own language.';
-            $html .= '<h3>Biggest signals</h3>'
+            $html .= '<h3>Biggest hiring signals</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>'
                    . '<ul>';
-            $text .= "\nBiggest signals\n" . $caption . "\n";
+            $text .= "\nBiggest hiring signals\n" . $caption . "\n";
             $undated = 0;
             foreach ($rows as $row) {
                 $row = (array) $row;
@@ -4957,13 +5016,17 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
             if ($ytd_total > 0) {
                 $ytd_scope = $ytd_range
                            . ', worldwide, counted by the date the source published.';
-                $html .= '<h3>YTD ' . esc_html($year) . '</h3>'
-                       . '<p data-alt="kicker">'
-                       . esc_html(alt_digest_verb($ytd_total, 'Hiring signal',
-                                                  'Hiring signals')) . '</p>'
+                // "2026 YTD", the year first, matching the layoff section. A
+                // reader scanning headings meets the year before the
+                // abbreviation, which is the same principle the month-first
+                // date format follows.
+                $html .= '<h3>' . esc_html($year) . ' YTD</h3>'
                        . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_total)) . '</p>'
+                       . '<p data-alt="unit">'
+                       . esc_html(alt_digest_verb($ytd_total, 'hiring signal',
+                                                  'hiring signals')) . '</p>'
                        . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
-                $text .= "\nYTD {$year}\n"
+                $text .= "\n{$year} YTD\n"
                        . alt_digest_count($ytd_total, 'hiring signal') . ', '
                        . $ytd_scope . "\n";
             }

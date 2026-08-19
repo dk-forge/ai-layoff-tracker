@@ -447,7 +447,7 @@ class EveryFigureNamesItsWindow(unittest.TestCase):
     def test_the_period_and_the_year_are_never_two_bare_totals(self):
         """The exact confusion the owner hit: a period figure and a year
         figure with nothing between them saying which is which."""
-        self.assertIn("August 9-16, 2026", self.text)
+        self.assertIn("August 9-16", self.text)
         self.assertIn("January 1 - August 16, 2026", self.text)
 
     def test_the_year_to_date_block_comes_last(self):
@@ -461,7 +461,7 @@ class EveryFigureNamesItsWindow(unittest.TestCase):
     def test_the_basis_and_the_tier_travel_with_the_headline(self):
         lede = self.text.splitlines()[1]
         self.assertIn("verified job cuts", lede)
-        self.assertIn("August 9-16, 2026", lede)
+        self.assertIn("August 9-16", lede)
         self.assertIn("counted by the date the cuts take effect", lede)
 
     def test_the_geography_basis_is_attached_to_the_geography_block(self):
@@ -772,7 +772,7 @@ class AFigureCarriesItsOwnSourcing(unittest.TestCase):
         """It is now a headline-level line, so it stands alone like one."""
         line = [l for l in compose(layoff_fixture())["text"].splitlines()
                 if l.startswith("Where these came from")][0]
-        self.assertIn("August 9-16, 2026", line)
+        self.assertIn("August 9-16", line)
         self.assertIn("verified only", line)
         self.assertNotIn("above", line,
                          "the shortfall clause still points at a figure that "
@@ -1113,9 +1113,11 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
         self.assertIn("Sudamericana de Lácteos", self.text)
 
     def test_the_caption_says_how_the_list_is_ordered(self):
-        self.assertIn("the signals naming the most jobs first, then the "
-                      "tracker's own order", self.text)
-        self.assertNotIn("newest first", self.text)
+        """"the tracker's own order" gestured at an internal detail no reader
+        outside this repo can check. It is newest first, and saying so costs
+        three words."""
+        self.assertIn("the signals naming the most jobs first, then newest "
+                      "first", self.text)
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
@@ -1158,7 +1160,7 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         It required the snippet to repeat the headline figure, its tier and its
         window, because the subject at the time carried no figure at all. The
         subject now leads with a figure and its unit
-        (`AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts`), and
+        (`2026 Week 33: 16,842 verified job cuts`), and
         the brand prefix costs about twenty characters the From name already
         supplies, so Gmail on mobile truncates near 45 and the tail of the
         subject is what a phone drops.
@@ -1202,7 +1204,7 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         self.assertTrue(snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
         self.assertIn("1,332 new hiring signals", snippet)
-        self.assertIn("August 9-16, 2026", snippet)
+        self.assertIn("August 9-16", snippet)
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")

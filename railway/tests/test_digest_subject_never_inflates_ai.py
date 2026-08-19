@@ -23,7 +23,7 @@ titled the AI Layoff Tracker.
 
 THE FIX IS STRUCTURAL. Every subject now leads with the SITE:
 
-    AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts
+    2026 Week 33: 16,842 verified job cuts
 
 There is no tracker brand for a count to attach to, so the line cannot be read
 as an AI figure at all.
@@ -201,8 +201,7 @@ class TheRuleHoldsForEveryShapeTheRelayCanBuild(unittest.TestCase):
                 subject = self._subject(shape)
                 for brand in AI_BRANDS:
                     self.assertNotIn(brand.lower(), subject.lower(), subject)
-                self.assertTrue(subject.startswith("AskTheRecruiter.com · "),
-                                subject)
+                self.assertTrue(subject.startswith("2026 Week 33: "), subject)
 
     def test_the_blog_count_never_displaces_a_tracker_metric(self):
         subject = self._subject([("16,842 verified job cuts", False),
@@ -225,14 +224,14 @@ class TheRuleHoldsForEveryShapeTheRelayCanBuild(unittest.TestCase):
                          "shortened, so it can only be there in part")
 
     def test_no_metric_at_all_falls_back_and_invents_nothing(self):
-        self.assertEqual(self._subject([("", False)]), "Section 0, Week 33 · August 10-16, 2026")
+        self.assertEqual(self._subject([("", False)]), "Section 0, 2026 Week 33 · August 10-16")
 
     def test_the_daily_keeps_the_shape_and_swaps_the_period(self):
         """The three editions have to read as one series, so the daily differs
         only in its period token. A day is not a week and is not numbered."""
         subject = self._subject([("1,101 verified job cuts", False)], freq="daily")
         self.assertEqual(
-            subject, "AskTheRecruiter.com · August 16, 2026: 1,101 verified job cuts")
+            subject, "August 16, 2026: 1,101 verified job cuts")
         self.assertNotIn("Week", subject)
 
 
@@ -283,3 +282,105 @@ class ThePreviewCompletesWhatTheSubjectDrops(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheInboxAndTheArchiveNameThePeriodTheSameWay(unittest.TestCase):
+    """A reader moving from the inbox to the archive must meet the same words.
+
+    The subject opens on its period, the archived edition is titled by its
+    period, and if the two spelled it differently they would read as two things
+    that happen to be about one week rather than as one edition in two places.
+    The subject's token is a literal PREFIX of the archive's title, which is
+    why alt_digest_edition_label() leads with the ISO week identifier and why
+    the archive names a DAILY edition by its date rather than by its two-day
+    window.
+    """
+
+    ARCHIVE = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker",
+                           "includes", "digest-archive.php")
+
+    _RUNNER = r"""
+define('DAY_IN_SECONDS', 86400);
+foreach (json_decode($argv[1], true) as $path) {
+    $src = file_get_contents($path['file']);
+    foreach ($path['names'] as $name) {
+        if (!preg_match('/\nfunction ' . preg_quote($name, '/') . '\s*\(.*?\n\}/s',
+                        $src, $m)) {
+            fwrite(STDERR, "could not extract $name\n");
+            exit(2);
+        }
+        eval($m[0]);
+    }
+}
+$out = array();
+foreach (json_decode($argv[2], true) as $case) {
+    $row = array('freq' => $case[0], 'window_from' => $case[1],
+                 'window_to' => $case[2]);
+    $period = ($case[0] === 'weekly')
+        ? alt_digest_week_id($case[1])
+        : alt_digest_date_range($case[2], $case[2]);
+    $out[] = array($period, alt_edition_label($row));
+}
+echo json_encode($out);
+"""
+
+    CASES = (
+        ("weekly", "2026-08-10", "2026-08-16"),
+        ("weekly", "2026-12-28", "2027-01-03"),
+        ("weekly", "2029-12-31", "2030-01-06"),
+        ("daily", "2026-08-18", "2026-08-19"),
+        ("daily", "2026-12-31", "2027-01-01"),
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        if PHP is None:
+            raise unittest.SkipTest("php is not on PATH. UNKNOWN, not a pass.")
+        handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
+                                             encoding="utf-8")
+        try:
+            handle.write("<?php\n" + cls._RUNNER)
+            handle.close()
+            run = subprocess.run(
+                [PHP, handle.name,
+                 json.dumps([
+                     {"file": SUBSCRIBE,
+                      "names": ["alt_digest_date_range", "alt_digest_iso_week",
+                                "alt_digest_week_label", "alt_digest_week_id",
+                                "alt_digest_edition_label"]},
+                     {"file": cls.ARCHIVE, "names": ["alt_edition_label"]},
+                 ]),
+                 json.dumps([list(c) for c in cls.CASES])],
+                capture_output=True, text=True, timeout=60)
+        finally:
+            os.unlink(handle.name)
+        assert run.returncode == 0, run.stderr or run.stdout
+        cls.rows = json.loads(run.stdout)
+
+    def test_the_archive_title_opens_with_the_subject_s_period(self):
+        for case, (period, label) in zip(self.CASES, self.rows):
+            with self.subTest(case=case):
+                self.assertTrue(period, f"no period for {case}")
+                self.assertTrue(
+                    label.startswith(period),
+                    f"the inbox calls this {period!r} and the archive calls it "
+                    f"{label!r}, so a reader following the link meets a "
+                    f"different name for the same edition")
+
+    def test_a_daily_edition_is_named_by_its_date_not_its_window(self):
+        """The daily window is two days and the subject names the send day,
+        which is the masthead convention. The archive has to agree."""
+        period, label = self.rows[3]
+        self.assertEqual(period, "August 19, 2026")
+        self.assertEqual(label, "August 19, 2026")
+
+    def test_the_weekly_title_adds_the_dates_and_nothing_else(self):
+        period, label = self.rows[0]
+        self.assertEqual(period, "2026 Week 33")
+        self.assertEqual(label, "2026 Week 33 · August 10-16")
+
+    def test_the_iso_year_leads_so_a_boundary_week_is_unambiguous(self):
+        self.assertEqual(self.rows[1][1],
+                         "2026 Week 53 · December 28, 2026 - January 3, 2027")
+        self.assertEqual(self.rows[2][1],
+                         "2030 Week 1 · December 31, 2029 - January 6, 2030")

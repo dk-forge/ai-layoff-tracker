@@ -200,7 +200,7 @@ class TheSubjectCarriesTheDateOnEveryPath(unittest.TestCase):
         out = php_subject("weekly", "2026-08-16", ["AI Layoff Tracker"], FALLBACK,
                           frm="2026-08-10")
         self.assertEqual(out["subject"],
-                         "AI Layoff Tracker, Week 33 · August 10-16, 2026")
+                         "AI Layoff Tracker, 2026 Week 33 · August 10-16")
 
     def test_the_iso_year_is_not_the_calendar_year(self):
         """January 1, 2027 sits in week 53 of ISO year 2026, and this is the
@@ -208,10 +208,10 @@ class TheSubjectCarriesTheDateOnEveryPath(unittest.TestCase):
         out = php_subject("weekly", "2027-01-03", ["AI Layoff Tracker"], FALLBACK,
                           frm="2026-12-28")
         self.assertEqual(out["subject"],
-                         "AI Layoff Tracker, Week 53 · December 28, 2026 - January 3, 2027")
+                         "AI Layoff Tracker, 2026 Week 53 · December 28, 2026 - January 3, 2027")
         out = php_subject("weekly", "2030-01-06", ["AI Layoff Tracker"], FALLBACK,
                           frm="2029-12-31")
-        self.assertIn("Week 1 \u00b7", out["subject"])
+        self.assertIn("2030 Week 1 \u00b7", out["subject"])
 
     def test_the_fallback_is_dated_too(self):
         out = php_subject("daily", "2026-08-18", [], FALLBACK)

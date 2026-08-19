@@ -466,6 +466,29 @@ def week_label(day: datetime.date) -> str:
     return f"Week {day.isocalendar()[1]}"
 
 
+def edition_label(start: datetime.date, end: datetime.date) -> str:
+    """"2026 Week 33 · August 10-16". The site's alt_digest_edition_label.
+
+    THE SUBJECT'S PERIOD TOKEN IS A LITERAL PREFIX OF THIS, which is the point
+    of the shape: a subject reads "2026 Week 33: 16,842 verified job cuts" and
+    the archived edition is titled "2026 Week 33 · August 10-16", so a reader
+    moving from the inbox to the archive meets the same words in the same
+    order.
+
+    The trailing year is dropped when the ISO year already leads and they
+    agree, because "2026 Week 33 · August 10-16, 2026" says 2026 twice. It is
+    kept whenever they can disagree, which is the only time a reader needs
+    both: 28 December 2026 is 2026 Week 53 and 31 December 2029 is 2030 Week 1.
+    """
+    iso_year = start.isocalendar()[0]
+    text = date_range(start, end)
+    if iso_year == start.year == end.year:
+        trimmed = re.sub(r",\s*\d{4}$", "", text)
+        if trimmed:
+            text = trimmed
+    return f"{week_id(start)} \u00b7 {text}"
+
+
 def period_phrase(payload: dict) -> str:
     """A reader facing date for the window the site already chose.
 
@@ -492,28 +515,41 @@ def period_phrase(payload: dict) -> str:
         return ""
     # A MIDDLE DOT AND NOT A COMMA: an ISO week is identified, not described by
     # an endpoint, and the date already carries a comma of its own.
-    return f"{week_label(start)} \u00b7 {date_range(start, end)}"
+    return edition_label(start, end)
 
 
 def subject_line(payload: dict, parts) -> str:
     """One pattern for all three streams, chosen by the owner.
 
-        AskTheRecruiter.com · <period>: <figure> <unit>
+        <period>: <figure> <unit>
 
-        AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts
-        AskTheRecruiter.com · 2026 Week 33: 1,376 hiring signals
-        AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts · 1,376 hiring signals
+        2026 Week 33: 16,842 verified job cuts
+        2026 Week 33: 1,376 hiring signals
+        2026 Week 33: 16,842 verified job cuts · 1,376 hiring signals
+        August 19, 2026: 1,101 verified job cuts
+        August 19, 2026: 150 hiring signals
 
-    The brand up front lets a subscriber identify sender and topic in a crowded
-    inbox, the middle dot gives a cleaner hierarchy than a space, and the three
-    read as one weekly series.
+    THE BRAND WAS IN FRONT OF THIS AND THE OWNER TOOK IT OUT AFTER TESTING IT
+    IN A REAL INBOX: "on gmail mobile all you see is asktherecruiter.com." The
+    prefix cost about twenty characters and Gmail truncates near 45, so the
+    part a phone showed was the sender's name, which the From line already
+    carries, and the figure fell off the end. The brand is not lost; it moved
+    to the slot that was always carrying it.
 
-    AND IT FIXES AN ACCURACY DEFECT STRUCTURALLY. What shipped on 2026-08-19
-    was "AI Layoff Tracker: 16,842 verified cuts this week", and a reader who
-    never opened it took away sixteen thousand AI-attributed cuts from a week
-    whose AI figure was ZERO. Leading with the SITE rather than a tracker means
-    nothing juxtaposes "AI Layoff Tracker" with a raw cut count, so the line
-    cannot be read as an AI figure at all. The standing rule, enforced by
+    Every subject now opens on its period and its figure, which is exactly the
+    part a phone shows.
+
+    THE PERIOD IS THE SAME STRING THE ARCHIVE PRINTS, so a reader moving from
+    the inbox to the archive meets the same words in the same order. A weekly
+    subject opens "2026 Week 33" and the archived edition is titled "2026 Week
+    33 · August 10-16".
+
+    AND THE ACCURACY PROPERTY SURVIVED THE CHANGE, which is why it is a
+    property and not a string. 2.20.103 shipped "AI Layoff Tracker: 16,842
+    verified cuts this week" on a week whose AI figure was ZERO, so a reader
+    who never opened it took away sixteen thousand AI-attributed cuts. No
+    tracker brand appears in this line at all now, so nothing juxtaposes a
+    brand with a raw count. Enforced by
     tests/test_digest_subject_never_inflates_ai.py:
 
         A READER WHO SEES ONLY THE SUBJECT MUST NOT COME AWAY WITH A LARGER AI
@@ -559,15 +595,15 @@ def subject_line(payload: dict, parts) -> str:
     if metrics and period:
         # Two at most. A third runs past any client's display width and buys
         # nothing a reader can see.
-        line = f"{BRAND} · {period}: " + " · ".join(metrics[:2])
-        # THE CEILING IS 100 AND NOT 78. The combined line runs to about 83 and
-        # the owner chose it knowing Gmail on mobile truncates near 45. It is
-        # meant to be read from the left and completed by the preheader.
+        line = f"{period}: " + " · ".join(metrics[:2])
+        # THE CEILING IS 100 AND NOT 78. The combined line runs to about 62 now
+        # that the brand prefix is gone, and it is meant to be read from the
+        # left and completed by the preheader rather than read whole.
         if len(line) <= 100:
             return line
         # One metric rather than a truncated two: a subject cut mid-figure
         # publishes a wrong number in the line most people only ever see.
-        line = f"{BRAND} · {period}: {metrics[0]}"
+        line = f"{period}: {metrics[0]}"
         if len(line) <= 100:
             return line
 

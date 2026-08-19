@@ -401,7 +401,7 @@ class TheSubjectSaysWhatChanged(unittest.TestCase):
         self.assertIn("AI Layoff Tracker", subject)
         # The window, not the send date: a weekly subject carries the ISO
         # week and the dates it covers. See digest_layout.period_phrase.
-        self.assertIn("August 7-14, 2026", subject)
+        self.assertIn("August 7-14", subject)
         self.assertNotIn("Your digest", subject)
 
     def test_it_stays_short_enough_to_read_in_a_list(self):
@@ -429,7 +429,7 @@ class TheSubjectSaysWhatChanged(unittest.TestCase):
         self.assertNotIn("Talent", subject)
         # The window, not the send date: a weekly subject carries the ISO
         # week and the dates it covers. See digest_layout.period_phrase.
-        self.assertIn("August 7-14, 2026", subject)
+        self.assertIn("August 7-14", subject)
 
     def test_a_period_it_cannot_read_falls_back_to_the_sites_subject(self):
         built = message(to="not-a-date")
