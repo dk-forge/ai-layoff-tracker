@@ -93,7 +93,13 @@ class TheParkedRulingsCannotScore(unittest.TestCase):
         self.assertEqual(rulings, {},
                          "read_adjudications() would hand these to the gold "
                          "set as the owner's calls")
-        self.assertEqual(len(parked), 33)
+        # Derived, not typed: a hard-coded count here is the same defect that
+        # reddened the sibling below on the day confirmation happened. It is
+        # behind the `_confirmed_by` gate so it cannot bite today, but a number
+        # that only happens to be right is not a guard.
+        self.assertEqual(
+            len(parked),
+            sum(1 for k in raw if isinstance(k, str) and k.startswith(PARKED_PREFIX)))
 
     def test_a_parked_recommendation_is_reported_not_swallowed(self):
         """UNKNOWN is a state to report, not a silence.
@@ -101,11 +107,36 @@ class TheParkedRulingsCannotScore(unittest.TestCase):
         `skipped` keys are noise (the readme, a comment). A parked ruling is
         PENDING WORK and must come back under its own name, so the caller can
         print how many are waiting.
+
+        THIS TEST USED TO HARD-CODE ROW 70293 AND WAS NOT GATED ON
+        `_confirmed_by`, unlike its two siblings above. That made it a test of
+        today's file contents wearing the costume of a property: it passed only
+        while 70293 happened to be one of the parked rows, so the day the owner
+        confirmed the last six -- 2026-08-19, which is what this guard exists to
+        survive -- it went red with `70293 not found in []`, having found
+        nothing wrong. Re-parking a row to satisfy it would have been the tail
+        wagging the dog, and deleting it would have thrown away the real
+        invariant. So it is gated like its siblings AND the row is read out of
+        the file rather than typed: whatever is parked must come back parked.
+        An empty queue is the confirmed state, not a silence, and the gate is
+        what distinguishes them.
         """
         aic = _load_harness()
+        raw = json.loads(ADJ.read_text())
+        if raw.get("_confirmed_by"):
+            self.skipTest(f"confirmed by {raw['_confirmed_by']!r}")
+        expected = sorted(int(k[len(PARKED_PREFIX):]) for k, v in raw.items()
+                          if isinstance(k, str) and k.startswith(PARKED_PREFIX)
+                          and isinstance(v, bool)
+                          and k[len(PARKED_PREFIX):].lstrip("-").isdigit())
         _rulings, parked, skipped = aic.read_adjudications(ADJ)
-        self.assertNotIn("rec:70293", skipped)
-        self.assertIn(70293, parked)
+        self.assertEqual(
+            [k for k in skipped if k.startswith(PARKED_PREFIX)], [],
+            "a parked ruling was swallowed into `skipped`, where the caller "
+            "cannot report it as pending work")
+        self.assertEqual(
+            parked, expected,
+            "every row parked in the file must come back under its own name")
 
     def test_stripping_the_prefix_is_what_confirms_a_row(self):
         """Confirming must stay ONE edit, or nobody will do it."""

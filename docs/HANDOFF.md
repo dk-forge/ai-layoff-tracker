@@ -6,6 +6,39 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the six speaker rows are
+  confirmed and five live rows were corrected.** The baton was read as HELD by
+  `local` and is NOT claimed here. **No plugin file was touched and no version was
+  consumed** - the change is the `ai-causation-2026-08` adjudications/goldset/
+  recommendations/review, `railway/tests/test_adjudication_parking.py` and TECHLOG.
+  **No version claimed. Main was at 2.20.105 when this was staged (a sibling
+  session landed the digest subject fix while this ran), so the next plugin
+  release is 2.20.106 and this change does not move it.**
+  The owner deferred one narrow ruling: the mechanical application of his own
+  speaker rule (2.20.102) to the six rows he had already seen. All six re-read
+  against `#m-ai` before confirming, all six hold, no disagreement with the prior
+  session. Gold coverage 194 -> **200 of 200, nothing parked**.
+  **THE VERDICT ON THE 2026-08-07 SWAP IS STILL UNKNOWN**, but it is now a SETTLED
+  unknown rather than a blocked one: adjudication is complete, and the incumbent and
+  the candidate are level on the only unrigged measure (87.5% vs 88.0% referee
+  agreement) with every interval wide and overlapping. Do not round it to a pass and
+  do not move a production model on it.
+  **THIS PUBLISHED.** Five rows corrected via `apply-correction.yml` (dry run, then
+  apply) to `ai_explicit=0` / `ai_causation=ai_linked`: 70653 TikTok 439, 54973
+  Microsoft 50, 48830 Suncor 400, 70683 ByteDance 500, 107375 General Motors 600.
+  Strict AI **203,858 -> 201,869 jobs, 96 -> 91 entries**; `ai_broad_jobs` unchanged
+  at 232,573. `headline_movement` PASSED (-1,989 against a floor of 8,000), so **no
+  sticky incident opened and no closure package is needed**.
+  **TWO THINGS LEFT FOR THE OWNER.** (1) **70293 Snap was NOT corrected**, on
+  purpose: its gold label is right on the stored snippet, but the live row's
+  `ai_language` is an Evan Spiegel memo quote, so an employer DID speak and the
+  speaker rule does not mechanically condemn it. Its real defect is a missing
+  receipt (quote absent from its own source text), which resolves to `unknown`, not
+  `false`. (2) The five corrected rows still carry the `ai_automation` reason tag,
+  which `#m-ai` defines on the same speaker line as the strict tile, so tag and tile
+  now disagree; `possible_ai` is the press-linked tag. Probably a sweep, not five
+  rows. Neither was authorised, so neither was done.
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.104.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. The change writes the owner's **AI-skills-swap

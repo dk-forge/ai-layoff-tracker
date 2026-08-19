@@ -2,11 +2,11 @@
  "candidate": "google/gemini-2.5-flash-lite",
  "counts": {
   "awaiting_human_optional": 0,
-  "awaiting_human_required": 6,
+  "awaiting_human_required": 0,
   "gold_by_agreement": 166,
-  "gold_by_human": 28,
+  "gold_by_human": 34,
   "items": 200,
-  "parked_recommendations": 6,
+  "parked_recommendations": 0,
   "unknown_unreadable": 0
  },
  "labellers": [
@@ -146,6 +146,7 @@
   "36785": false,
   "397": false,
   "48817": false,
+  "48830": false,
   "48842": false,
   "48844": false,
   "48887": false,
@@ -166,6 +167,7 @@
   "49137": false,
   "51765": false,
   "54968": true,
+  "54973": false,
   "54977": false,
   "54982": false,
   "54986": false,
@@ -193,6 +195,7 @@
   "70113": false,
   "70131": false,
   "70257": true,
+  "70293": false,
   "70295": false,
   "70297": false,
   "70303": true,
@@ -206,6 +209,9 @@
   "70469": false,
   "70475": false,
   "70517": false,
+  "70653": false,
+  "70681": false,
+  "70683": false,
   "70855": false,
   "70872": false
  },
@@ -3218,7 +3224,7 @@
    }
   }
  },
- "rescored_at": "2026-08-19T05:26:09Z",
+ "rescored_at": "2026-08-19T06:07:06Z",
  "rule": "gold = the two labellers agreeing, or the owner's adjudication where they did not. No third model vote breaks a tie.",
  "run_at": "2026-08-18T23:59:08Z",
  "sample": "ai-causation-2026-08.sample.json",
@@ -3227,15 +3233,15 @@
    "per_stratum": {
     "A_positive": {
      "fn": 1,
-     "fp": 6,
-     "judged": 65,
-     "tn": 35,
+     "fp": 8,
+     "judged": 70,
+     "tn": 38,
      "tp": 23
     },
     "B_hard_negative": {
      "fn": 3,
-     "fp": 4,
-     "judged": 79,
+     "fp": 5,
+     "judged": 80,
      "tn": 68,
      "tp": 4
     },
@@ -3248,9 +3254,9 @@
     }
    },
    "precision": [
-    0.7370714700755375,
-    0.539459561033291,
-    0.8792211751178459
+    0.6826774302051799,
+    0.4920890661870925,
+    0.8371628283091122
    ],
    "recall": [
     0.880979251671152,
@@ -3259,9 +3265,9 @@
    ],
    "totals": {
     "fn": 4,
-    "fp": 10,
-    "judged": 194,
-    "tn": 153,
+    "fp": 13,
+    "judged": 200,
+    "tn": 156,
     "tp": 27
    },
    "weights": {
@@ -3274,15 +3280,15 @@
    "per_stratum": {
     "A_positive": {
      "fn": 4,
-     "fp": 3,
-     "judged": 65,
-     "tn": 38,
+     "fp": 6,
+     "judged": 70,
+     "tn": 40,
      "tp": 20
     },
     "B_hard_negative": {
      "fn": 3,
-     "fp": 4,
-     "judged": 79,
+     "fp": 5,
+     "judged": 80,
      "tn": 68,
      "tp": 4
     },
@@ -3295,9 +3301,9 @@
     }
    },
    "precision": [
-    0.7847173761339847,
-    0.5723049041891978,
-    0.9156317054824796
+    0.6949401313248359,
+    0.4901119953334084,
+    0.8539090485000886
    ],
    "recall": [
     0.7809705703620106,
@@ -3306,9 +3312,9 @@
    ],
    "totals": {
     "fn": 7,
-    "fp": 7,
-    "judged": 194,
-    "tn": 156,
+    "fp": 11,
+    "judged": 200,
+    "tn": 158,
     "tp": 24
    },
    "weights": {
@@ -3321,16 +3327,16 @@
    "per_stratum": {
     "A_positive": {
      "fn": 4,
-     "fp": 1,
-     "judged": 65,
-     "tn": 40,
+     "fp": 4,
+     "judged": 70,
+     "tn": 42,
      "tp": 20
     },
     "B_hard_negative": {
      "fn": 1,
      "fp": 5,
-     "judged": 79,
-     "tn": 67,
+     "judged": 80,
+     "tn": 68,
      "tp": 6
     },
     "C_plain_negative": {
@@ -3342,9 +3348,9 @@
     }
    },
    "precision": [
-    0.8263288538902679,
-    0.6205207205621877,
-    0.9282732792486075
+    0.7521620568757305,
+    0.5395700628668502,
+    0.8920691250125358
    ],
    "recall": [
     0.8380935845125445,
@@ -3353,9 +3359,9 @@
    ],
    "totals": {
     "fn": 5,
-    "fp": 6,
-    "judged": 194,
-    "tn": 157,
+    "fp": 9,
+    "judged": 200,
+    "tn": 160,
     "tp": 26
    },
    "weights": {
