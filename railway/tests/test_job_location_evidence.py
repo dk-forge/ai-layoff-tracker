@@ -21,8 +21,59 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from extractor import (  # noqa: E402
-    _canonical_country, _countries_named_in, _quote_names_exactly,
+    _canonical_country, _countries_named_in, _enclosing_sentence,
+    _quote_names_exactly,
 )
+
+#: The two sentences that put a wrong country on the live site on 2026-08-19,
+#: copied verbatim from the sources. Both name two countries; the model quoted
+#: a single-country slice of each, and a quote-only check let both through.
+ZEPZ_BODY = (
+    "As part of the cost-cutting exercise, Zepz also proposed the closure of "
+    "business units in Kenya and Poland. Mark Lenhard, CEO of U.K.-based "
+    "remittances platform Zepz."
+)
+CINEVERSE_BODY = (
+    "There are 145 employees based in the U.S. and 155 based in India. Watch "
+    "on Deadline During the quarter, total revenue nearly tripled."
+)
+STELLANTIS_BODY = (
+    "Stellantis will indefinitely lay off up to 2,450 U.S. plant workers in "
+    "Warren, Michigan, later this year as it discontinues production of an "
+    "older version of its Ram 1500 pickup."
+)
+
+
+class TheTruncationEscape(unittest.TestCase):
+    """A model can trim the disqualifying half out of a quote. It cannot trim
+    the sentence the quote came from."""
+
+    def test_the_zepz_truncation_is_refused_by_its_own_sentence(self):
+        trimmed = "proposed the closure of business units in Kenya"
+        # Quote-only: single country, passes. This is the defect.
+        self.assertEqual(_countries_named_in(trimmed), {"Kenya"})
+        # Sentence: two countries, refused.
+        self.assertFalse(_quote_names_exactly("Kenya", trimmed, ZEPZ_BODY))
+        self.assertFalse(_quote_names_exactly("Poland", trimmed, ZEPZ_BODY))
+
+    def test_a_headcount_breakdown_is_refused_by_its_own_sentence(self):
+        trimmed = "155 based in India"
+        self.assertEqual(_countries_named_in(trimmed), {"India"})
+        self.assertFalse(_quote_names_exactly("India", trimmed, CINEVERSE_BODY))
+
+    def test_the_one_correct_row_still_passes_on_its_sentence(self):
+        self.assertTrue(_quote_names_exactly(
+            "United States", "U.S. plant workers", STELLANTIS_BODY))
+
+    def test_the_sentence_is_the_one_the_quote_sits_in(self):
+        sentence = _enclosing_sentence("155 based in India", CINEVERSE_BODY)
+        self.assertIn("145 employees based in the U.S.", sentence)
+        self.assertNotIn("Watch on Deadline", sentence)
+
+    def test_a_quote_absent_from_the_body_falls_back_to_the_quote(self):
+        # Never silently widen to the whole document: an unlocatable quote is
+        # judged on itself, and _quote_is_supported has already refused it.
+        self.assertEqual(_enclosing_sentence("not in here", ZEPZ_BODY), "not in here")
 
 #: (label, model's country, the exact quote it returned, may this be written)
 LIVE_RUN = [
@@ -64,6 +115,13 @@ class CountriesNamedInAQuote(unittest.TestCase):
 
     def test_an_abbreviation_counts_as_naming_the_country(self):
         self.assertEqual(_countries_named_in("U.S. plant workers"), {"United States"})
+
+    def test_a_country_ending_a_sentence_still_counts(self):
+        # "Poland." must not read as no country because of the full stop; that
+        # is how the Kenya-and-Poland sentence would have passed anyway.
+        self.assertEqual(_countries_named_in("units in Kenya and Poland."),
+                         {"Kenya", "Poland"})
+        self.assertEqual(_countries_named_in("cuts in Japan."), {"Japan"})
 
 
 class TheGate(unittest.TestCase):

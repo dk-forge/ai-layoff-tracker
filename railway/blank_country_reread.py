@@ -113,8 +113,12 @@ def post_edits(recovered):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--ids", default="",
+                        help="comma-separated row ids a human has read the quote for; "
+                             "required by --apply and the only rows it can write")
     parser.add_argument("--max", type=int, default=200)
     args = parser.parse_args()
+    named_ids = {int(part) for part in args.ids.replace(",", " ").split() if part.strip()}
     if not SITE:
         print("WP_SITE_URL is required")
         return 1
@@ -130,16 +134,35 @@ def main():
     print(f"spend this run    : ${spend.logical_run_cost_usd():.4f}")
 
     if not args.apply:
-        print("\nDRY RUN. Re-run with --apply to write. /edit pins each row and "
-              "publishes the change, so read the quotes above first.")
+        print("\nDRY RUN. To write, re-run with --apply --ids <the ids above you have "
+              "read the quotes for>. /edit pins each row and publishes the change.")
         return 0
     if not KEY:
         print("WP_API_KEY is required to apply")
         return 1
-    if not recovered:
-        print("Nothing to write.")
+    # A HUMAN NAMES THE ROWS, and the gate only narrows what may be named.
+    # On 2026-08-19 an --apply with no id list wrote three rows and two were
+    # wrong: Zepz placed in Kenya from a Kenya-and-Poland closure, and
+    # Cineverse placed in India from a total-headcount breakdown. Both passed
+    # every automatic check that existed at the time. The sentence rule added
+    # afterwards rejects both, and it is still not a licence to write
+    # unattended - it is one more filter in front of a human who reads the
+    # quote. /edit pins the row and publishes the claim; that asymmetry is why.
+    if not named_ids:
+        print("\n--apply needs --ids. Read each quote above and name the rows to write.")
+        return 1
+    writable = [item for item in recovered if item["id"] in named_ids]
+    unnamed = sorted(named_ids - {item["id"] for item in writable})
+    if unnamed:
+        print(f"::error::ids named but not recovered this run: {unnamed}")
+        return 1
+    skipped = [item["id"] for item in recovered if item["id"] not in named_ids]
+    if skipped:
+        print(f"recovered but NOT named, so not written: {skipped}")
+    if not writable:
+        print("Nothing named to write.")
         return 0
-    edited, missed = post_edits(recovered)
+    edited, missed = post_edits(writable)
     if edited is None:
         return 1
     print(f"\nedited {len(edited)} row(s); not applied: {missed}")

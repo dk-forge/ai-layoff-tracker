@@ -706,8 +706,11 @@ def _countries_named_in(quote):
     """
     from generate_country_table import COUNTRIES        # the one list
 
-    words = re.findall(r"[a-z.&']+", str(quote or "").lower())
-    text = " " + " ".join(words) + " "
+    # Tokens keep their INTERNAL dots, so "u.s." survives as an abbreviation,
+    # but lose the trailing one, so a country ending a sentence is still that
+    # country: "...Kenya and Poland." must not read as naming only Kenya.
+    words = [w.strip(".'&") or w for w in re.findall(r"[a-z.&']+", str(quote or "").lower())]
+    text = " " + " ".join(w for w in words if w) + " "
     named = set()
     for country in COUNTRIES:
         for alias in _COUNTRY_ALIASES.get(country, (country.lower(),)):
@@ -743,8 +746,36 @@ def _canonical_country(value):
     return ""
 
 
-def _quote_names_exactly(country, quote):
-    """True when the quote names `country` and no other country.
+def _enclosing_sentence(quote, raw_text):
+    """The sentence of `raw_text` containing `quote`, or the quote itself.
+
+    The country check runs on THIS, not on the model's chosen substring, and
+    the reason is a wrong row that reached the live site on 2026-08-19. The
+    first version of the rule read the quote alone, so a model that wanted
+    "Poland" out of "closure of business units in Kenya and Poland" simply
+    returned the quote without the last two words: still verbatim, still
+    single-country, still wrong. A model cannot truncate its way past the
+    sentence it came from.
+    """
+    text = re.sub(r"\s+", " ", str(raw_text or ""))
+    needle = re.sub(r"\s+", " ", str(quote or "")).strip()
+    if not needle:
+        return ""
+    index = text.lower().find(needle.lower())
+    if index < 0:
+        return needle
+    # A full stop after a capital letter is an abbreviation, not a sentence
+    # end. Without that guard "the U.S. and 155 based in India" splits inside
+    # "U.S." and the sentence loses the very country that disqualifies it -
+    # which is the whole failure this function exists to stop.
+    boundaries = [m.end() for m in re.finditer(r"(?<![A-Z])[.!?]\s", text)]
+    start = max((b for b in boundaries if b <= index), default=0)
+    end = min((b for b in boundaries if b >= index + len(needle)), default=len(text))
+    return text[start:end].strip()
+
+
+def _quote_names_exactly(country, quote, raw_text=""):
+    """True when the quote's own SENTENCE names `country` and no other country.
 
     Measured on the 2026-08-18 blank-country backlog, this is the difference
     between a supported quote and an ANSWERING one, and the quote gate alone
@@ -758,10 +789,21 @@ def _quote_names_exactly(country, quote):
         not say, and Cambridge is in two countries.
       * Stellantis -> United States, quoting "U.S. plant workers". The only
         one where the quote states the answer.
-    One rule rejects the first three and keeps the fourth.
+
+    The check runs on the quote's SENTENCE, and that is not a refinement, it
+    is the whole rule. Applied to the quote alone it let two wrong rows onto
+    the live site on 2026-08-19:
+      * Zepz -> Kenya, on the SAME sentence, re-quoted as "proposed the
+        closure of business units in Kenya" with the words "and Poland" simply
+        left off. Verbatim, single-country, and wrong.
+      * Cineverse -> India, quoting "155 based in India" out of "There are 145
+        employees based in the U.S. and 155 based in India" - a total-headcount
+        breakdown, not the location of a cut.
+    Both sentences name two countries. Reading the sentence rejects both, and
+    a model cannot truncate its way past the sentence its quote came from.
     """
     try:
-        named = _countries_named_in(quote)
+        named = _countries_named_in(_enclosing_sentence(quote, raw_text) or quote)
     except Exception as exc:                     # unreadable list, not a pass
         print(f"country-name check unavailable ({exc}); treating quote as unverified")
         return False
@@ -837,7 +879,7 @@ If the text names a city, region or state, return the country it is in.
     if not _quote_is_supported(quote, raw_text):
         # An unquotable location is an invented one. Blank is the right answer.
         return None
-    if not _quote_names_exactly(country, quote):
+    if not _quote_names_exactly(country, quote, raw_text):
         # SUPPORTED IS NOT ANSWERING. See _quote_names_exactly: three of the
         # first four "recoveries" passed the quote gate and still could not
         # place a row, one of them by naming two countries and returning one.
