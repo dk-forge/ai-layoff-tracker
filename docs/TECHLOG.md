@@ -1,5 +1,37 @@
 # Tech Log
 
+## 2026-08-19 - 2.20.115 was issued twice, and git could not see it
+
+**What happened.** Two PRs stamped the same plugin version and both merged
+about eight minutes apart: #154 (the digest subject line) and #153 (the
+company page next-step block). Neither conflicted. Two branches writing the
+SAME string to the same line is a clean auto-merge, so every automatic check
+passed and the collision was visible only by reading the version number on
+main after the fact.
+
+**Why it matters, and it is not bookkeeping.** The bump is not a label, it is
+three mechanisms:
+
+  * `?ver=` cache-busts `layoffs.css` and the JS. 2.20.115 deployed at 17:14
+    with #154's bytes only, so caches and browsers hold a `ver=2.20.115` copy
+    of the stylesheet WITHOUT the new rules. The 17:21 deploy shipped the new
+    CSS under a version string that already has an older answer in front of it.
+  * `alt_flush_caches_on_deploy()` fires on a version CHANGE. The second deploy
+    changed nothing, so it flushed nothing.
+  * `includes/build-stamp.php` hashes the plugin's own files at render time.
+    One version now has two build hashes, and `reader_freshness.py` reads
+    "same version, different build" as a FAULT rather than a pass. It is right
+    to. That is exactly the 2.20.21 raced-render signature.
+
+**The fix.** 2.20.116, version only, no other change, so the flush runs and
+every asset URL moves. The next release is 2.20.117.
+
+**The standing lesson.** Re-reading main before pushing is necessary and is
+not sufficient: both sessions did read main, and both read 2.20.114. The gap
+is the window between reading and merging, and it closes only by re-reading
+immediately before the merge rather than before the push.
+
+
 ## 2026-08-19 - an alarm keyed to a branch that will never build again
 
 **The gap.** A cause raised by `ci_alert` is keyed

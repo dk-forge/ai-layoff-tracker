@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.116, because 2.20.115
+  WAS ISSUED TWICE.** #154 (digest subject line) and #153 (company page
+  next-step block) both stamped 2.20.115 and both merged, ~8 minutes apart.
+  Nothing conflicted, because two files setting the SAME string is a clean
+  auto-merge: git had no way to see it. 2.20.115 therefore deployed once at
+  17:14 with #154's bytes only, and again at 17:21 with both. **That is the
+  stale-asset hazard the version bump exists to prevent**: `layoffs.css` is
+  cache-busted by `?ver=`, so the CSS the second deploy shipped is served under
+  a version string the CDN and every reader's browser already hold an older
+  copy of. `includes/build-stamp.php` also hashes the plugin's own files, so
+  the same version now answers with two different build hashes, which
+  `reader_freshness.py` reads as a FAULT rather than a pass, and correctly.
+  This release is the fix: version only, no other change. **Next plugin release
+  is 2.20.117. Re-read main immediately before claiming it.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.115.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is.
   **The company pages now offer a next step to the person the 33% click-through
