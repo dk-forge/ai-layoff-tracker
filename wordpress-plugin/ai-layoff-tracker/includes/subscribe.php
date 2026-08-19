@@ -1079,6 +1079,60 @@ function alt_digest_prefs_from_post($post) {
 }
 
 /**
+ * WHAT A RESUBMISSION ACTUALLY DOES TO A CONFIRMED SUBSCRIBER, ITEMISED.
+ *
+ * alt_digest_prefs_from_post() above builds the WHOLE preference set from the
+ * boxes that were ticked, and every box on the form starts unticked, always
+ * (pre-ticked consent is not consent). The same form is the only way to change
+ * a subscription, and the digest footer sends readers to it. So a subscriber on
+ * all three lists who arrives wanting to ADD one, ticks that one box and
+ * confirms, LOSES the other two. Nothing read their current lists, so nothing
+ * could warn them, and from their side a digest they still want simply stops.
+ * The intro copy has said "the boxes replace what you had" since 2.20.119; a
+ * sentence on a page is a warning, not a guard.
+ *
+ * This is the guard, and it is a DIFFERENCE rather than a state readout, which
+ * is the only reason it can exist at all. THE PAGE MAY NOT KNOW ANY OF THIS.
+ * It has no session, the address may never travel in a URL (a guard in
+ * railway/tests/test_digest_subscription.py), and the manage link in the digest
+ * footer carries ONE URL for the whole send (digest-api.php, read at
+ * railway/digest_send.py), so it cannot be per-recipient without moving that
+ * payload contract. Prefilling the form from a link would also hand a
+ * link-holder the answer to "which digests does this person take", which the
+ * unsubscribe token in the same footer does not: the worst that one can do is
+ * stop mail. See alt_digest_manage_url().
+ *
+ * The confirmation email has no such problem. It goes to the one mailbox that
+ * owns the record, it is already on the mandatory path of every change (the
+ * pending_prefs branch of alt_digest_signup() applies nothing until the link in
+ * it is clicked), and it costs the signup form's phone-fold budget nothing.
+ * So the loss is spelled out there, list by list, before it can happen.
+ *
+ * Keys are alt_digest_lists() keys. `stopping` is the consequential one and is
+ * printed first. Frequency is read from freq_layoff, the same representative
+ * alt_digest_make_receipt() uses, because the form sets one value for all three.
+ */
+function alt_digest_change_delta($row, array $prefs) {
+    $delta = array('stopping' => array(), 'starting' => array(), 'keeping' => array(),
+                   'freq_from' => '', 'freq_to' => '');
+    if (!is_array($row)) return $delta;
+    foreach (alt_digest_lists() as $key => $cols) {
+        $had   = !empty($row[$cols['consent']]);
+        $wants = !empty($prefs[$cols['consent']]);
+        if ($had && !$wants)     $delta['stopping'][] = $key;
+        elseif (!$had && $wants) $delta['starting'][] = $key;
+        elseif ($had && $wants)  $delta['keeping'][] = $key;
+    }
+    $from = alt_digest_valid_freq(isset($row['freq_layoff']) ? $row['freq_layoff'] : 'weekly');
+    $to   = alt_digest_valid_freq(isset($prefs['freq_layoff']) ? $prefs['freq_layoff'] : 'weekly');
+    if ($from !== $to) {
+        $delta['freq_from'] = $from;
+        $delta['freq_to']   = $to;
+    }
+    return $delta;
+}
+
+/**
  * Store a signup and send THE ONE email a pending address may receive: the
  * confirmation. Three cases:
  *
@@ -1090,6 +1144,22 @@ function alt_digest_prefs_from_post($post) {
  *                               only when THIS confirm link is clicked, so a
  *                               stranger typing your address cannot silently
  *                               alter (or kill) what you receive.
+ *
+ * ON THAT THIRD PATH THE CONFIRMATION EMAIL ITEMISES THE CHANGE, and that is
+ * the guard against the silent loss written up on alt_digest_change_delta():
+ * the boxes replace the stored set, so a subscriber adding one list drops the
+ * rest. The email names what stops before it can stop. It is the right place
+ * for it because it is the only surface here that knows both halves and is
+ * proven to reach the person who owns the row.
+ *
+ * KNOWN GAP, DELIBERATELY NOT PAPERED OVER. The per-address resend throttle
+ * below returns before the mail is built, so a SECOND change submitted within
+ * fifteen minutes parks its prefs and mints a fresh token with no email to
+ * describe them. Nothing un-itemised can be applied by it, because minting
+ * that token invalidated the link in the first email, so the worst case is a
+ * reader with no working link for fifteen minutes rather than a change they
+ * were not shown. Fixing that means a distinct notice code on the form, which
+ * is a new message in a fold-measured block; it is not this change.
  */
 function alt_digest_signup($email, array $prefs) {
     global $wpdb;
@@ -1098,6 +1168,10 @@ function alt_digest_signup($email, array $prefs) {
     $now = gmdate('Y-m-d H:i:s');
     $row = alt_digest_get_by_email($email);
     $confirm = alt_digest_new_token();
+    // Null for every path where nothing can be lost: a new address, or a
+    // pending/unsubscribed row being rebuilt from scratch. Non-null only on the
+    // confirmed branch below, where the submitted boxes REPLACE a stored set.
+    $delta = null;
 
     if (!$row) {
         $wpdb->insert($table, array_merge($prefs, array(
@@ -1108,6 +1182,10 @@ function alt_digest_signup($email, array $prefs) {
             'created_at'    => $now,
         )));
     } elseif ($row['status'] === 'confirmed') {
+        // Computed BEFORE the update, from the row as it stands, because after
+        // it the only record of what this person had is the parked JSON's
+        // complement and nothing reads it that way.
+        $delta = alt_digest_change_delta($row, $prefs);
         $wpdb->update($table, array(
             'pending_prefs' => wp_json_encode($prefs),
             'confirm_token' => $confirm,
@@ -1127,7 +1205,7 @@ function alt_digest_signup($email, array $prefs) {
     set_transient($throttle, 1, 15 * MINUTE_IN_SECONDS);
 
     $fresh = alt_digest_get_by_email($email);
-    return alt_digest_send_confirm_email($email, $confirm, $fresh ? $fresh['unsub_token'] : '');
+    return alt_digest_send_confirm_email($email, $confirm, $fresh ? $fresh['unsub_token'] : '', $delta);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1518,6 +1596,98 @@ function alt_digest_confirm_subject() {
 }
 
 /**
+ * THE SUBJECT WHEN THE ROW ALREADY EXISTS AND THIS IS A CHANGE.
+ *
+ * Two literals, not one with a variable in it, and each in its own function
+ * for the same reason alt_digest_confirm_subject() is one: the tests read
+ * THESE rather than a copy of the words.
+ *
+ * The second one exists because "confirm your change" and "confirm a change
+ * that stops a digest" are different messages to the person scanning an inbox,
+ * and the second is the one somebody has to open. A reader who ticked one box
+ * meaning to ADD a list is about to lose the others, and the subject is the
+ * first and cheapest place to say so. The body says which ones.
+ */
+function alt_digest_change_subject() {
+    return 'AskTheRecruiter.com: confirm your digest change';
+}
+
+function alt_digest_change_stops_subject() {
+    return 'AskTheRecruiter.com: confirm a change that stops a digest';
+}
+
+/**
+ * The three sections of the change email, in consequence order.
+ *
+ * Stopping first, deliberately. It is the only part a reader can be harmed by
+ * missing, and the reader this exists for believes they are ADDING something,
+ * so a message that opens with what they are gaining confirms what they
+ * already think and gets skimmed.
+ *
+ * Names come from alt_digest_list_names(), which is also what the confirmation
+ * panel reads back, so the email and the page cannot call one list two things.
+ */
+function alt_digest_change_lines($delta) {
+    $names = alt_digest_list_names();
+    $out = '';
+    $sections = array('Stopping' => 'stopping', 'Starting' => 'starting',
+                      'Still sending' => 'keeping');
+    foreach ($sections as $label => $key) {
+        if (empty($delta[$key])) continue;
+        $out .= '  ' . $label . ":\n";
+        foreach ($delta[$key] as $list) {
+            $out .= '    - ' . (isset($names[$list]) ? $names[$list] : $list) . "\n";
+        }
+    }
+    if (!empty($delta['freq_to'])) {
+        $out .= '  How often: ' . $delta['freq_to']
+              . ' (was ' . $delta['freq_from'] . ")\n";
+    }
+    return $out;
+}
+
+/**
+ * The body of the one email that authorises a change, and the guard against
+ * the silent loss described on alt_digest_change_delta().
+ *
+ * $delta is null for a signup (new address, or a pending / unsubscribed row
+ * being rebuilt), where nothing can be lost because nothing is stored yet.
+ * That body is unchanged.
+ *
+ * ONE LINK, STILL. It is tempting to offer a second one here ("add these
+ * without removing anything"), and it would be as mailbox-proof as the first.
+ * It is wrong for the reason the unsubscribe link left this message on
+ * 2026-08-17: Brevo rewrites every link at the relay and corporate scanners
+ * follow them, so two links means a machine decides which of two outcomes the
+ * subscriber gets, with nobody present. One link, and the reader's other
+ * option is to not click it.
+ */
+function alt_digest_confirm_body($confirm_url, $delta = null) {
+    if (!is_array($delta)) {
+        return "You (or someone typing your address) asked for the email digest at asktherecruiter.com.\n\n"
+             . "Confirm by clicking this link:\n\n"
+             . $confirm_url . "\n\n"
+             . "Nothing is sent until you confirm. If you did not request this, ignore this email: "
+             . "the signup is deleted automatically after " . ALT_DIGEST_RETENTION_DAYS . " days.\n";
+    }
+    $body = "You (or someone typing your address) asked to change what asktherecruiter.com sends you.\n\n"
+          . "Nothing has changed yet. Clicking the link below applies exactly this:\n\n"
+          . alt_digest_change_lines($delta) . "\n";
+    if (!empty($delta['stopping'])) {
+        $body .= "The signup form replaces your choices rather than adding to them, so every list "
+               . "you did not tick is in the stopping section above.\n\n"
+               . "If that is not what you meant, do not click this link. Nothing changes, and you "
+               . "can fill the form in again with every list you want ticked, including the ones "
+               . "you already have.\n\n";
+    }
+    $body .= "Apply the change by clicking this link:\n\n"
+           . $confirm_url . "\n\n"
+           . "If you did not ask for this, ignore this email. Nothing changes without that click, "
+           . "and everything you get today keeps arriving.\n";
+    return $body;
+}
+
+/**
  * The ONLY email a pending address ever receives.
  *
  * AND THE ONE WE CANNOT KEEP UNMEASURED. wp_mail here is the Brevo WordPress
@@ -1530,13 +1700,18 @@ function alt_digest_confirm_subject() {
  * that is what keeps the tracking removable by changing provider. See the file
  * docblock and docs/RUNBOOK.md "Open and click tracking".
  */
-function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token) {
+function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token, $delta = null) {
     $confirm_url = alt_digest_confirm_url($confirm_token);
-    $body = "You (or someone typing your address) asked for the email digest at asktherecruiter.com.\n\n"
-          . "Confirm by clicking this link:\n\n"
-          . $confirm_url . "\n\n"
-          . "Nothing is sent until you confirm. If you did not request this, ignore this email: "
-          . "the signup is deleted automatically after " . ALT_DIGEST_RETENTION_DAYS . " days.\n";
+    $body = alt_digest_confirm_body($confirm_url, $delta);
+    // A change that takes something away is a different message from one that
+    // only adds, and both are different from a first signup. See the three
+    // subject functions above.
+    if (is_array($delta)) {
+        $subject = empty($delta['stopping'])
+            ? alt_digest_change_subject() : alt_digest_change_stops_subject();
+    } else {
+        $subject = alt_digest_confirm_subject();
+    }
     $headers = alt_digest_from_header();
     /*
       NO UNSUBSCRIBE LINK IN THIS BODY, REMOVED 2026-08-17. It used to sit one
@@ -1556,7 +1731,7 @@ function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token) {
     if ($unsub_token !== '') {
         $headers = array_merge($headers, alt_digest_list_unsub_headers($unsub_token));
     }
-    return wp_mail($email, alt_digest_confirm_subject(), $body, $headers);
+    return wp_mail($email, $subject, $body, $headers);
 }
 
 function alt_digest_list_unsub_headers($unsub_token) {

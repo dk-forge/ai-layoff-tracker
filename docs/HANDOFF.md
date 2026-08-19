@@ -60,6 +60,35 @@ re-runs `python3 railway/signup_fold.py`, reads the pixels, then `--record`.
 `tests/test_signup_fold_stamp.py` is the cheapest test in the suite and will go
 red first; do not answer it by editing the stamp by hand.
 
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.120, read off main
+  (2.20.119) immediately before merging.** The baton was read as HELD by
+  `local`; only the version number is claimed here. **THIS SESSION OPENED
+  `includes/subscribe.php`, which the note above says a live session has been
+  in tonight.** It edits `alt_digest_prefs_from_post()`'s neighbourhood, the
+  confirm-subject block and `alt_digest_signup()`'s confirmed branch. PR #164
+  touched the signup intro copy, the `alt_digest_manage_url()` docblock and the
+  footer inside `alt_digest_send()`; none of those lines move here, but check
+  rather than assume.
+
+  **The signup form's replace semantics were silent data loss and now they are
+  not.** The boxes build the WHOLE preference set, every box starts unticked,
+  and the same form is the only way to change a subscription, so a subscriber
+  adding one list dropped the rest. The confirmation email that already
+  authorises every change to a confirmed row now ITEMISES it, stopping first,
+  above the link that applies it. The page could not guard it: no session, no
+  address in a URL, and the digest footer carries one manage URL for the whole
+  send, so prefill needs a payload-contract change AND tells a link-holder which
+  digests someone takes. **Nothing above the Subscribe button moved**:
+  `signup_fold.py` reads the same 95.2px on blog@375x812 and the stamp was NOT
+  re-recorded. No box is pre-ticked, RFC 8058 and the `List-Unsubscribe` headers
+  are untouched, no address is logged, and the stored-prefs mechanism did not
+  move. Plugin files touched: `includes/subscribe.php`,
+  `ai-layoff-tracker.php` (version only). Rest is
+  `railway/tests/test_digest_subscription.py`,
+  `railway/tests/fixtures/digest_harness.php`, TECHLOG and this file.
+  **Next plugin release is 2.20.121. Re-read main immediately before claiming
+  it.**
+
 - **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the version collision is
   now CHECKED, and it fails the second merge.** The baton was read as HELD by
   `local` and is NOT claimed here. **No plugin file was touched and no version
