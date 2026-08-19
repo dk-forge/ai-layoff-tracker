@@ -532,7 +532,7 @@ if (!is_array($alt_ps)) {
            the number they are about to meet, before they meet it. */ ?>
   <h3 id="alt-press-which-date">Before you quote a number: which date</h3>
   <p class="alt-press-basis-cross"><?php echo esc_html(function_exists('alt_basis_cross_sentence') ? alt_basis_cross_sentence($alt_sp['home_calendar'], $alt_sp['calendar'], (string) $alt_sp['year']) : ''); ?></p>
-  <p class="alt-muted">Filing date is when the notice was lodged; effective date is when the cut lands. The same records, sorted into years by two different dates, so the two totals are not a discrepancy and neither is a revision of the other. Reproduce the home page's figure with <code>aggregate?years=<?php echo (int) $alt_sp['year']; ?>&amp;date_basis=notice</code> and this page's with <code>date_basis=effective</code>. <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'notice'), home_url('/ai-layoff-tracker/'))); ?>">Open the tracker on the filing basis</a> &middot; <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>">on the effective basis</a>.</p>
+  <p class="alt-muted">Filing date is when the notice was lodged; effective date is when the cut lands. The same records, sorted into years by two different dates, so the two totals are not a discrepancy and neither is a revision of the other. Reproduce the home page's figure with <code>aggregate?years=<?php echo (int) $alt_sp['year']; ?>&amp;date_basis=notice</code> and this page's with <code>date_basis=effective</code>. <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'notice'), home_url('/ai-layoff-tracker/'))); ?>">Open the tracker on the filing basis</a> &middot; <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => $alt_sp['basis']), home_url('/ai-layoff-tracker/'))); ?>">on the effective basis</a>.</p>
 
   <?php /* THE STAMP. Same contract as window.ALT_BOOTSTRAP on the tracker
            page: the surface states the query behind its own figures, and
@@ -542,7 +542,7 @@ if (!is_array($alt_ps)) {
            a page worth checking, so nothing below is taken on trust - it is
            only what tells the checker which question to ask. */ ?>
   <script>window.ALT_PRESS_STAMP=<?php echo wp_json_encode(array(
-      'aggregate_params' => array('years' => (string) $alt_sp['year'], 'date_basis' => 'effective'),
+      'aggregate_params' => array('years' => (string) $alt_sp['year'], 'date_basis' => $alt_sp['basis']),
       'to_date'          => (int) $alt_sp['to_date'],
       'calendar'         => (int) $alt_sp['calendar'],
       'home'             => array('date_basis' => 'notice',
