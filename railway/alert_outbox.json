@@ -1,22 +1,6 @@
 {
   "entries": [
     {
-      "attempts": 1,
-      "key": "deploy-wordpress-plugin:main:973999a049809e5c",
-      "kind": "alert",
-      "last_attempt_at": "2026-08-19T18:41:37+00:00",
-      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
-      "payload": {
-        "body": "The workflow 'Deploy WordPress plugin' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Deploy WordPress plugin\n  branch:   main\n  trigger:  push\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32288390567\n\nWHAT FAILED:\n  The action 'Install lftp' has timed out after 3 minutes.\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Deploy WordPress plugin' is failing on main with: The action 'Install lftp' has timed out after 3 minutes.. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32288390567. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
-        "dedupe_key": "deploy-wordpress-plugin:main:973999a049809e5c",
-        "subject": "CI RED: Deploy WordPress plugin \u2014 The action 'Install lftp' has timed out after 3 minutes."
-      },
-      "raised_at": "2026-08-19T18:41:37+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32288390567",
-      "scope": "deploy-wordpress-plugin:main",
-      "state": "pending"
-    },
-    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -462,8 +446,21 @@
       "settled_at": "2026-08-19T17:32:59+00:00",
       "settled_because": "recovered before this was ever delivered, so there was nothing to tell the owner and nothing to clear",
       "state": "cancelled"
+    },
+    {
+      "attempts": 1,
+      "key": "deploy-wordpress-plugin:main:973999a049809e5c",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-19T18:41:37+00:00",
+      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
+      "raised_at": "2026-08-19T18:41:37+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32288390567",
+      "scope": "deploy-wordpress-plugin:main",
+      "settled_at": "2026-08-19T18:49:47+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-19T18:41:37+00:00",
+  "updated_at": "2026-08-19T18:49:47+00:00",
   "version": 1
 }
