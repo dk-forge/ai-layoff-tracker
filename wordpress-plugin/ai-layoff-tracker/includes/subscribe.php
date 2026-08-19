@@ -5824,6 +5824,95 @@ function alt_digest_manage_url() {
 }
 
 /**
+ * THE FOOTER'S PROMISES, IN ONE DEFINITION, BECAUSE THERE ARE THREE FOOTERS.
+ *
+ * A digest footer is composed three times: twice by the relay's renderer
+ * (railway/digest_layout.py, once for HTML and once for plain text) and once
+ * here, by the wp_mail fallback below. Which one a reader gets depends on
+ * whether an external relay has claimed the tier, which is infrastructure
+ * state a reader cannot see. So the sentences have to be identical.
+ *
+ * They were not, the first time they were edited. "Manage your subscriptions"
+ * was withdrawn on 2026-08-19 because it named a preference centre that does
+ * not exist; the relay copy was corrected and this one went on making the
+ * withdrawn promise until a grep found it. Its test asserted the fallback
+ * "offers it too", which is a presence check, so it stayed green while the
+ * two senders told readers different things.
+ *
+ * Same reasoning as ALT_RELAY_TRACKING and alt_digest_window(): a claim that
+ * exists once can only be wrong ONCE. This function is the authority, because
+ * the manage URL and the signup form it points at live in this file.
+ * FOOTER_BLOCKS in railway/digest_layout.py is its mirror, and
+ * railway/tests/test_digest_sender.py extracts both sets and fails on any
+ * difference. Add a sentence in one place and CI is red before a reader ever
+ * sees two versions of it.
+ *
+ * The anchor is the substring the HTML turns into a link, and the relay's
+ * text part follows the same sentence with a bare URL. Writing the wording
+ * once is what stops the two renderings naming different destinations.
+ */
+function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
+    $blocks = array(
+        array(
+            'url' => '',
+            'anchor' => '',
+            'sentences' => array(
+                'You get this because you confirmed a digest subscription at asktherecruiter.com.',
+            ),
+        ),
+        array(
+            'url' => $unsub_url,
+            'anchor' => 'Unsubscribe with one click',
+            'sentences' => array(
+                'Unsubscribe with one click, which stops everything at once.',
+            ),
+        ),
+    );
+    // OMITTED RATHER THAN RENDERED WITHOUT A LINK. A promise with nowhere to
+    // go is worse than silence, and the relay drops it the same way when a
+    // payload carries no manage URL.
+    if ($manage_url) {
+        $blocks[] = array(
+            'url' => $manage_url,
+            'anchor' => 're-enter your address on the signup form',
+            'sentences' => array(
+                'To change what you get, re-enter your address on the signup form and tick the lists you want.',
+                'The change applies when you confirm by email.',
+            ),
+        );
+    }
+    return $blocks;
+}
+
+/**
+ * The fallback sender's footer, built from the blocks above and from nothing
+ * else. No reader-facing sentence is typed in alt_digest_send(), which is the
+ * property the test checks: prose that is not here cannot reach an inbox.
+ */
+function alt_digest_footer_html($unsub_url, $manage_url = '') {
+    $out = array();
+    foreach (alt_digest_footer_blocks($unsub_url, $manage_url) as $block) {
+        $text = esc_html(implode(' ', $block['sentences']));
+        if ($block['url'] && $block['anchor']) {
+            // The anchor is escaped the same way before it is looked for, so a
+            // sentence is never linked against a string the reader will not
+            // see. A wording change that loses the anchor ships the sentence
+            // unlinked rather than a half rendered tag.
+            $needle = esc_html($block['anchor']);
+            $pos = strpos($text, $needle);
+            if ($pos !== false) {
+                $text = substr_replace(
+                    $text,
+                    '<a href="' . esc_url($block['url']) . '">' . $needle . '</a>',
+                    $pos, strlen($needle));
+            }
+        }
+        $out[] = $text;
+    }
+    return '<p style="font-size:12px;color:#555;">' . implode(' ', $out) . '</p>';
+}
+
+/**
  * Send one frequency tier's digests. HARD RULE, tested: recipients are rows
  * with status='confirmed' AND the list's consent flag AND that flag's
  * frequency matching $freq. A pending or unsubscribed row can never match.
@@ -5954,19 +6043,13 @@ function alt_digest_send($freq) {
               . '<div style="font-family:sans-serif;max-width:600px;color:#1a1a1a;">'
               . implode('', $parts_html)
               . '<hr style="border:none;border-top:1px solid #ddd;margin:24px 0 12px;">'
-              . '<p style="font-size:12px;color:#555;">You get this because you confirmed a digest '
-              . 'subscription at asktherecruiter.com. '
-              . '<a href="' . esc_url($unsub) . '">Unsubscribe with one click</a> (stops everything at once). '
-              // THE SAME SENTENCE THE RELAY SENDS, and it has to stay that way.
-              // This is the wp_mail fallback and it composes its own footer, so
-              // it is a SECOND copy of the promise in railway/digest_layout.py
-              // _footer(). It was still making the withdrawn preference
-              // centre promise for the length of one grep after the relay's
-              // copy was corrected, which is how a reader ends up told two
-              // different things about one link depending on which sender ran.
-              . 'To change what you get, '
-              . '<a href="' . esc_url(alt_digest_manage_url()) . '">re-enter your address on the signup form</a> '
-              . 'and tick the lists you want. The change applies when you confirm by email.</p>'
+              // NOT ONE READER-FACING WORD IS TYPED HERE ANY MORE. This is the
+              // wp_mail fallback and it used to compose its own footer, which
+              // made it a second copy of a promise the relay also makes, in a
+              // different language, with nothing keeping the two in step. It
+              // now renders alt_digest_footer_blocks(), the single definition
+              // the relay's FOOTER_BLOCKS mirrors and a test compares.
+              . alt_digest_footer_html($unsub, alt_digest_manage_url())
               . '</div>';
         $headers = array_merge(
             array('Content-Type: text/html; charset=UTF-8'),

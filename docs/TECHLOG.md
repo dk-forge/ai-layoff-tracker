@@ -1,5 +1,63 @@
 # Tech Log
 
+## 2026-08-19 - the footer had three authors and no editor
+
+**Yesterday's fix closed one instance of a bug and left the class open.** The
+"Manage your subscriptions" wording was withdrawn from the digest footer
+because it named a preference centre that does not exist. The relay's copy was
+corrected. The wp_mail fallback in `alt_digest_send()` kept the old wording,
+because it composed its own footer, in another language, with nothing keeping
+the two in step. A grep found it. Its test asserted the fallback "offers it
+too", which checks for the PRESENCE of a link, so it stayed green the whole
+time the two senders were telling readers different things.
+
+**There were three footers, not two.** `digest_layout._footer()` renders the
+HTML part, `digest_layout.render_text()` renders the plain text part, and
+`alt_digest_send()` renders a third in PHP. Which one a reader gets depends on
+whether an external relay has claimed the tier
+(`alt_digest_external_active()`), which is infrastructure state a reader cannot
+see and no session thinks about while editing copy.
+
+**The fallback is NOT dead code and was not deleted.** The claim ages out after
+`ALT_DIGEST_CLAIM_HOURS` (36), so a relay that stops running hands sending back
+to wp_mail by itself rather than leaving the list silent. It is the safety net,
+which is exactly why it may not carry a stale promise.
+
+**One definition, three renderers.** `alt_digest_footer_blocks()` in
+subscribe.php is the authority, because the manage URL and the signup form it
+points at live in that file. Each block is a URL, an anchor and its sentences,
+so the wording is written once and the two renderings cannot name different
+destinations. `FOOTER_BLOCKS` in `railway/digest_layout.py` is its mirror, the
+way `RELAY_TRACKING_ON` mirrors `ALT_RELAY_TRACKING`. `alt_digest_send()` now
+renders `alt_digest_footer_html()` and types no reader-facing word at all.
+
+**The guard is set equality, not a list of remembered sentences.** Asserting
+today's wording in both places closes today's instance and leaves the next one
+open. `TheTwoFootersAreOneDefinition` in `railway/tests/test_digest_sender.py`
+compares the two definitions to each other, compares each rendering to its own
+definition, and where php is on PATH runs the plugin's own renderer and
+compares the words a reader would see. It also fails if `alt_digest_send()`
+grows footer prose of its own, which is how the last one arrived. Proven by
+injection, three ways: a sentence reworded in PHP only, a sentence added in
+Python only, and a sentence typed back into the sender all go red.
+
+**The relay's output is byte for byte what it was**, checked against the
+previous `digest_layout.py` for both the HTML and the text part, with and
+without a manage URL. The fallback changed by one clause: "(stops everything at
+once)" is now ", which stops everything at once", which is what the relay has
+always said. The RFC 8058 headers, the one-click unsubscribe URL and the
+no-address assertions are untouched, and the URL still goes into the href raw
+rather than escaped, because an `&` rewritten to `&amp;` would leave the
+unsubscribe link failing its own guard.
+
+**One asymmetry is left open on purpose and is not a drift.** The relay's
+footer carries `TRACKING_SENTENCES`; the wp_mail footer carries no measurement
+disclosure at all. That is a transport question, not a copy question: the
+sentences name what the RELAY records, and wp_mail is not the relay. The site's
+own privacy note covers both and is the durable home of the promise. Closing it
+means deciding what the wp_mail path should say about our own link counter, and
+that is the owner's call rather than a dedup. 2.20.121.
+
 ## 2026-08-19 - the boxes replaced your subscription and only the copy said so
 
 **Reader-visible data loss, live, with a warning where a guard belonged.**

@@ -921,16 +921,115 @@ WEEK_CONVENTION = ("Weeks are ISO-8601: Monday to Sunday, numbered from the "
                    "week holding the year's first Thursday.")
 
 
+# ---------------------------------------------------------------------------
+# THE FOOTER'S PROMISES, IN ONE DEFINITION, BECAUSE THERE ARE THREE RENDERERS
+#
+# The digest footer is composed three times: the HTML part below, the plain
+# text part in render_text(), and a THIRD time in a different language, by the
+# in-WordPress wp_mail fallback (alt_digest_send() in includes/subscribe.php).
+# Which one a reader gets depends on whether an external relay has claimed the
+# tier, which is infrastructure state a reader cannot see. So the sentences
+# have to be identical, and until 2026-08-19 nothing made them so.
+#
+# They drifted the first time they were edited. "Manage your subscriptions"
+# was withdrawn because it named a preference centre that does not exist, the
+# relay copy was corrected, and the fallback went on making the withdrawn
+# promise until a grep found it. Its test asserted the fallback "offers it
+# too", which is a presence check, so it stayed green while the two senders
+# told readers different things.
+#
+# The same reasoning as ALT_RELAY_TRACKING and alt_digest_window(): a claim
+# that exists once can only be wrong once. The authority is the PLUGIN, which
+# is where the manage URL and the signup form it points at live, and this is
+# its mirror. tests/test_digest_sender.py extracts both sets and fails on any
+# difference, so adding a sentence to one is red without anyone remembering to
+# update an assertion.
+#
+# A block is (link_key, sentences, anchor). The anchor is the substring the
+# HTML part turns into a link and the text part follows with a bare URL, so
+# the wording is written once and the two renderings cannot describe different
+# destinations.
+# ---------------------------------------------------------------------------
+FOOTER_BLOCKS = (
+    ("", ("You get this because you confirmed a digest subscription at "
+          "asktherecruiter.com.",), ""),
+    ("unsub", ("Unsubscribe with one click, which stops everything at once.",),
+     "Unsubscribe with one click"),
+    # SAYS WHAT ACTUALLY HAPPENS, WHICH IS NOT WHAT IT USED TO SAY.
+    #
+    # The link goes to the signup form's own anchor, because a change is made
+    # by re-submitting that form and applying it through the same double opt
+    # in that created the subscription (alt_digest_manage_url() in
+    # includes/subscribe.php holds the reasoning, and the pending_prefs branch
+    # of alt_digest_signup() is the part that makes it safe).
+    #
+    # The mechanism was never the defect. The promise was: the owner followed
+    # his own footer on 2026-08-19 and reported "I can't really manage",
+    # because a reader told they are going to a preference centre and handed a
+    # Subscribe button has been told a false thing about a working feature. So
+    # the sentences name the form, name the three steps, and warn that
+    # confirmation is required before anything changes. A reader who reads
+    # them is never surprised by the page.
+    ("manage", ("To change what you get, re-enter your address on the signup "
+                "form and tick the lists you want.",
+                "The change applies when you confirm by email."),
+     "re-enter your address on the signup form"),
+)
+
+
+def footer_blocks(manage: bool = True) -> tuple:
+    """The footer's blocks for one message, in reading order.
+
+    `manage` is False when the payload carried no manage URL, which an older
+    plugin build does not send. The block is OMITTED rather than rendered
+    without a link: a promise with nowhere to go is worse than silence.
+    """
+    return tuple(b for b in FOOTER_BLOCKS if manage or b[0] != "manage")
+
+
+def footer_sentences(manage: bool = True) -> tuple:
+    """Every reader-facing sentence in the footer, flat, for comparison."""
+    return tuple(s for _, sentences, _ in footer_blocks(manage)
+                 for s in sentences)
+
+
+def _link_anchor(text: str, anchor: str, url: str, style: str) -> str:
+    """Escape a sentence, then turn its anchor substring into a link.
+
+    The anchor is escaped the same way before it is looked for, so a sentence
+    is never linked against a string the reader will not see.
+    """
+    body = escape(text)
+    if not (anchor and url):
+        return body
+    needle = escape(anchor)
+    if needle not in body:
+        # The wording moved and the anchor did not. Ship the sentence rather
+        # than a half rendered link, and let the test say so.
+        return body
+    # The URL goes in RAW, which is what shipped before this was factored out
+    # and is what the unsubscribe guard reads. digest_send validates every URL
+    # against our own site before it gets here, and an `&` rewritten to `&amp;`
+    # here would leave the one-click unsubscribe link failing its own check.
+    return body.replace(
+        needle, f'<a href="{url}" style="{style}">{needle}</a>', 1)
+
+
 def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
     """The two things a reader may need, then the small print, in that order.
 
-    THE MEASUREMENT DISCLOSURE MOVED DOWN A LEVEL, and that is the whole change
-    here. It is honest, it is required, and it was set at the same size and the
-    same weight as the sentence telling a reader how to leave, which put a
-    paragraph about analytics at the same rank as the content of the email. It
-    is now under its own rule, at 11px, which is where small print belongs.
-    NOTHING IS DELETED and nothing is softened: a reader who was told we could
-    not measure them is owed the correction, and every word of
+    EVERY SENTENCE COMES FROM FOOTER_BLOCKS. Nothing reader-facing is typed
+    here, because this is one of three footers and the other two are elsewhere
+    (render_text below, and alt_digest_send() in the plugin). See the block's
+    own comment for the drift this prevents.
+
+    THE MEASUREMENT DISCLOSURE SITS A LEVEL DOWN, and that was the previous
+    change here. It is honest, it is required, and it was set at the same size
+    and the same weight as the sentence telling a reader how to leave, which
+    put a paragraph about analytics at the same rank as the content of the
+    email. It is now under its own rule, at 11px, which is where small print
+    belongs. NOTHING IS DELETED and nothing is softened: a reader who was told
+    we could not measure them is owed the correction, and every word of
     TRACKING_SENTENCES still ships.
     """
     small = (f'margin:0 0 8px;font-family:{FONT};font-size:12px;'
@@ -938,35 +1037,21 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
     fine = (f'margin:0 0 6px;font-family:{FONT};font-size:11px;'
             f'line-height:1.6;color:{MUTED};')
     link = f'color:{LINK};text-decoration:underline;'
-    manage = ""
-    if manage_url:
-        # SAYS WHAT ACTUALLY HAPPENS, WHICH IS NOT WHAT IT USED TO SAY.
-        #
-        # It read "Manage your subscriptions", which is the name of a
-        # preference centre, and there is no preference centre. The link goes
-        # to the signup form's own anchor, because a change is made by
-        # re-submitting that form and applying it through the same double opt
-        # in that created the subscription (alt_digest_manage_url() in
-        # includes/subscribe.php holds the reasoning, and the pending_prefs
-        # branch of alt_digest_signup() is the part that makes it safe).
-        #
-        # The mechanism was never the defect. The promise was: the owner
-        # followed his own footer on 2026-08-19 and reported "I can't really
-        # manage", because a reader told they are going to a preference centre
-        # and handed a Subscribe button has been told a false thing about a
-        # working feature. So the sentence now names the form, names the three
-        # steps, and warns that confirmation is required before anything
-        # changes. A reader who reads it is never surprised by the page.
-        manage = (f' To change what you get, <a href="{manage_url}" '
-                  f'style="{link}">re-enter your address on the signup '
-                  f'form</a> and tick the lists you want. The change applies '
-                  f'when you confirm by email.')
+    urls = {"unsub": unsub_url, "manage": manage_url}
+    rendered = []
+    for key, sentences, anchor in footer_blocks(bool(manage_url)):
+        # The anchor belongs to the block's FIRST sentence, which is the one
+        # that names the destination. A later sentence qualifies it.
+        rendered.append(" ".join(
+            _link_anchor(s, anchor if i == 0 else "", urls.get(key, ""), link)
+            for i, s in enumerate(sentences)))
+    # The first block stands alone, the rest share one paragraph: the ways out
+    # belong together, and the reason the message arrived is not one of them.
+    paragraphs = [rendered[:1], rendered[1:]]
+    body = "".join(f'<p style="{small}">{" ".join(group)}</p>'
+                   for group in paragraphs if group)
     note = f'<p style="{fine}">{escape(edition_note)}</p>' if edition_note else ""
-    return (f'<p style="{small}">You get this because you confirmed a digest '
-            f'subscription at asktherecruiter.com.</p>'
-            f'<p style="{small}"><a href="{unsub_url}" style="{link}">'
-            f'Unsubscribe with one click</a>, which stops everything at once.'
-            f'{manage}</p>'
+    return (body +
             f'<table role="presentation" width="100%" cellpadding="0" '
             f'cellspacing="0" border="0" style="width:100%;'
             f'border-collapse:collapse;margin:14px 0 0;">'
@@ -1094,21 +1179,24 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
         if index:
             body.append(thin)
         body.append(_reflow(part_text(part)))
+    # THE SAME SENTENCES AS THE HTML PART, FROM THE SAME PLACE. For a text
+    # only client and for every screen reader fallback this IS the message, so
+    # it may not be a shorter or older version of what everyone else was told.
+    # A block that carries a link ends on a colon and the bare URL follows,
+    # which is what a link looks like when there is no anchor to put it in.
+    urls = {"unsub": unsub_url, "manage": manage_url}
     footer = [rule]
-    footer.append(_reflow("You get this because you confirmed a digest "
-                          "subscription at asktherecruiter.com."))
-    footer.append("")
-    footer.append("Unsubscribe with one click, which stops everything at once:")
-    footer.append(unsub_url)
-    if manage_url:
-        footer.append("")
-        # The same three steps as the HTML part, for the readers for whom this
-        # IS the message. See _footer() for why the old wording was withdrawn.
-        footer.append(_reflow(
-            "To change what you get, re-enter your address on the signup "
-            "form and tick the lists you want. The change applies when you "
-            "confirm by email:"))
-        footer.append(manage_url)
+    for index, (key, sentences, _anchor) in enumerate(
+            footer_blocks(bool(manage_url))):
+        if index:
+            footer.append("")
+        url = urls.get(key, "")
+        text = " ".join(sentences)
+        if url:
+            text = text.rstrip(".") + ":"
+        footer.append(_reflow(text))
+        if url:
+            footer.append(url)
     footer.append("")
     if edition_note:
         footer.append(_reflow(edition_note))
