@@ -6,6 +6,18 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.113.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is.
+  **A follow-up to 2.20.110, which shipped the employer browse index with no
+  stylesheet.** `alt_page_needs_assets()` is an allowlist of the routes that get
+  `layoffs.css`, the browse index is a custom rewrite route so it matched
+  nothing in it, and the A-Z strip rendered as a bulleted list of underlined
+  links. Caught by looking at the deployed page. One guarded line in
+  `ai-layoff-tracker.php`, plus TECHLOG. **No other plugin file touched, no data
+  changed.** Post-deploy verification: 7,500 of 7,500 employer pages now
+  reachable from the index, and no horizontal overflow at 375px, 697px or
+  1280px. **Next plugin release is 2.20.114.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.112.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. The change fixes **two dead company pages**,

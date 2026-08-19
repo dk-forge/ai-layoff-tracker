@@ -1,5 +1,33 @@
 # Tech Log
 
+## 2026-08-19 - the browse index shipped unstyled, because a new route has to ask for the stylesheet (2.20.113)
+
+2.20.110 added `/company-layoffs/` and its A-Z letter pages and they rendered
+**with no stylesheet at all**: the letter strip came out as a bulleted list of
+underlined links. Caught by looking at the deployed page rather than by any
+check in the repo, which is the point of the "verify live" bar.
+
+`alt_page_needs_assets()` is an allowlist. It returns true for a company-directory
+request, a facet request, `is_singular('layoffs')`, or a page carrying one of
+fifteen shortcodes. The browse index is a custom rewrite route, so it is not
+`is_singular()` and it carries no shortcode, and nothing in it matched. One line
+fixes it, guarded with `function_exists` like its two neighbours.
+
+**The general lesson, and it is not the first time:** every custom route this
+plugin serves has to be named in `alt_page_needs_assets()` or it ships unstyled,
+and nothing fails when you forget. The company-directory and facet routes are
+both already listed there for exactly this reason.
+
+Verified after deploy: no horizontal overflow on the hub or on `/browse/a/`
+(663 links, longest name 54 characters) at 375px, 697px and 1280px.
+
+**Post-deploy coverage measurement.** Crawling all 27 letter pages found
+**7,500 of 7,500** indexable employer pages reachable, up from 1,539 before
+2.20.110. The one page that first read as missing,
+`andre_boudin-bakeries-inc-dba-boudin`, was an artifact of the measurement's own
+`[a-z0-9-]` slug pattern excluding underscores; it is exactly one slug in 7,500,
+so the pre-fix orphan figure of 5,961 carries an error bound of one page.
+
 ## 2026-08-19 - operational mail moved to Resend, and the ledger came with it
 
 **The ask, and the bigger prize inside it.** The owner's Brevo free tier is 300
