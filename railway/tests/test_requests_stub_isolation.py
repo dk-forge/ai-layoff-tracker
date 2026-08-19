@@ -72,8 +72,12 @@ class TheStubIsComplete(unittest.TestCase):
         self.assertEqual(got, "True")
 
     def test_the_verbs_refuse_the_network_rather_than_returning_none(self):
-        # a stub verb that returns None makes an unpatched call look like a pass
+        # a stub verb that returns None makes an unpatched call look like a pass.
+        # Seed an empty stub so this exercises the stub even where the real
+        # `requests` is installed (CI installs it from the lock, and install()
+        # rightly prefers it).
         got = self._run(
+            "sys.modules['requests'] = types.ModuleType('requests')\n"
             "import _requests_stub; _requests_stub.install()\n"
             "import requests\n"
             "try:\n"
