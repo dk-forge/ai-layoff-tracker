@@ -1,0 +1,71 @@
+name: Plugin version collision
+
+# THE CHECK THAT FAILS THE SECOND MERGE.
+#
+# On 2026-08-19 two PRs stamped 2.20.115 and both merged, then two more did the
+# same with 2.20.116. Nothing conflicted: two branches writing the SAME string
+# to the same line auto-merges cleanly, so every check passed on both sides.
+# The full record is in docs/TECHLOG.md; the mechanics are in
+# railway/version_collision.py.
+#
+# WHY IT RUNS ON THE PUSH AND NOT ONLY ON THE PR. Each branch is CORRECT
+# against the main it was written from, so a PR-only check passes for both.
+# The collision does not exist until the second merge, which is where this
+# compares the new main tip against the previous one.
+#
+# WHY IT DOES NOT GATE THE DEPLOY. By the time this is true the code is merged,
+# and the fix is a fresh bump rather than a held release. Blocking the deploy
+# would put a release path behind a check, which this repo has been burned by
+# (one stalled step held every deploy for an hour on this same day). The red
+# run is enough: ci-alert.yml watches EVERY workflow and mails the owner with
+# the failing assertion, so no second alerting path is built here.
+#
+# COST. One checkout and one Python script, no network beyond git, no secrets.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # Same shape as tests.yml: supersede a PR's older run, and give every other
+  # event a group nothing can share, so nothing is ever cancelled on main.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # fetch-depth 0 on purpose. The reuse guard reads every ALT_VERSION the
+      # history ever introduced, and a shallow checkout cannot answer that. The
+      # script reports UNKNOWN rather than passing if this is ever removed.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compare the new main tip against the previous one
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          before='${{ github.event.before }}'
+          # A new branch or a force push reports all-zeros. Fall back to this
+          # commit's first parent, which is the same question asked locally.
+          if ! git rev-parse --verify --quiet "${before}^{commit}" >/dev/null; then
+            before="$(git rev-parse '${{ github.sha }}^1')"
+            echo "push reported no usable previous tip, using first parent $before"
+          fi
+          python3 railway/version_collision.py \
+            --mode main --base "$before" --head '${{ github.sha }}'
+
+      # The same property, one step earlier, as a courtesy rather than a gate.
+      # It cannot be the whole answer: nothing re-runs it when main moves under
+      # an open PR, which is exactly how both of tonight's collisions merged.
+      - name: Tell a stale pull request before it merges
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          python3 railway/version_collision.py \
+            --mode pr --base origin/main --head HEAD

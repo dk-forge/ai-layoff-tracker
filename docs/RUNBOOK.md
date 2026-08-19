@@ -14,11 +14,20 @@ public tracker API response after FTPS completes. A failed live verification is
 an actionable deployment alert; do not assume an FTP success alone means the
 plugin loaded.
 Rollback = `git revert` + push (there is no other rollback path; FTP is the only door).
+A revert that retypes a version already published is caught by
+`version-collision.yml`; give the rollback a NEW number instead.
+
+**The bump is checked on the merge, not only on the PR.** Two branches writing
+the same version string to the same line auto-merge cleanly, so nothing
+conflicts and both PRs go green. `.github/workflows/version-collision.yml` runs
+`railway/version_collision.py` on every push to main and fails the second
+merge. Read "two merges claimed one plugin version" below before answering one.
 
 ## GitHub workflows (Actions tab)
 | Workflow | Trigger | Purpose / inputs |
 |---|---|---|
 | deploy-plugin | push to main | FTPS deploy of the plugin |
+| version-collision | push to main + every PR | Fails the SECOND merge that claims a plugin version. See "two merges claimed one plugin version" |
 | warn-import | daily 15:00 UTC + manual | WARN sweep. Inputs: states (`all` or `CA,NY`), min_employees, start, limit, **purge** (needs states=all, refuses if scrape <5K) |
 | gdelt-backfill | manual | Worldwide news for a date range (costs OpenRouter credits) |
 | backfill | manual | EDGAR 8-K historical range |
@@ -216,6 +225,34 @@ Skip, do not cancel, and do not start. In order of what it saves:
    for pip.
 
 ## "X is broken" playbooks
+
+**TWO MERGES CLAIMED ONE PLUGIN VERSION** (`Plugin version collision` is red)
+
+The failing run names the cause, the files and the number to use. Read it
+first; everything below is the reasoning behind it.
+
+1. **You are stale, not wrong.** Your branch was correct against the main it
+   was written from, and another merge took the number while you were in
+   checks. Rebase onto main, set BOTH `Version:` and `ALT_VERSION` in
+   `ai-layoff-tracker.php` to the number the run prints, and push.
+2. **Never answer it by reverting the other session's merge.** Both changes are
+   wanted. Only the number is contested.
+3. **Check what actually shipped before moving on.** One version with two
+   builds is the state `reader_freshness.py` reads as a FAULT, and it is right
+   to. Run `python3 railway/reader_freshness.py` and confirm one version
+   answers with one build stamp.
+4. **`LANDED_NOOP` means your merge shipped nothing.** Your branch changed
+   plugin files, the merge changed none, so main already had those bytes from
+   the session that beat you. Confirm the two edits really are identical
+   before assuming yours is safely gone.
+5. **`REUSED` means the number is spent.** A version string is published once.
+   Caches and readers already hold an answer under it, so take a new one.
+6. **Record the number in `docs/HANDOFF.md` as you take it.** Writing the claim
+   down is necessary and is not sufficient, which is why the check exists, but
+   it still stops the cheap half of the races.
+7. **Do not silence the check by widening it.** A workflow-only or Python-only
+   change touches no plugin file and is skipped already; if it fired, plugin
+   bytes really did move.
 
 **NO OPERATIONAL EMAIL IS ARRIVING** (no CI alert, no RECOVERED, no health digest)
 

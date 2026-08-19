@@ -6,6 +6,25 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the version collision is
+  now CHECKED, and it fails the second merge.** The baton was read as HELD by
+  `local` and is NOT claimed here. **No plugin file was touched and no version
+  was consumed** - the change is `railway/version_collision.py`,
+  `railway/tests/test_version_collision.py`,
+  `.github/workflows/version-collision.yml`, RUNBOOK, TECHLOG and this file, so
+  `reader_freshness.py` has nothing to verify. **Writing the claim down here is
+  still necessary and is still not sufficient**: both sessions that collided on
+  2.20.115 read main correctly, and the gap is the window between reading and
+  merging. On every push to main, a commit that changes a plugin file must now
+  carry an `ALT_VERSION` strictly above the previous main tip's, must not reuse
+  a number the history already spent, and must not land as a no-op after losing
+  a race. A workflow-only or Python-only change is SKIPPED and never owes a
+  bump. The failure names the files and prints the number to use. Replayed
+  against the night that caused it: `1b3ce80` (PR #153) FAILS, `2c2f28f`
+  (PR #155) FAILS, and the merge that was correct (`5be64e6`, PR #154) PASSES.
+  **The next plugin release is still whatever the newest claim above says; this
+  did not move it.**
+
 - **NO VERSION CLAIMED BY A SIDE SESSION (2026-08-19): a 503 no longer kills
   the digest send.** The baton was read as HELD by `local` and is NOT claimed
   here. **No plugin file was touched and no version was consumed**, so nothing

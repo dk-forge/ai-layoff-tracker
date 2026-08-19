@@ -1,5 +1,77 @@
 # Tech Log
 
+## 2026-08-19 - the version collision now fails the second merge
+
+**Detection, at the one moment the defect is true.** Two PRs stamped 2.20.115
+and both merged; two more did it to 2.20.116 an hour later (entry below). Every
+check passed on both sides of both races, because two branches writing the same
+string to the same line is a clean auto-merge. A PR-only check cannot see it:
+each branch is CORRECT against the main it was written from. The collision
+comes into existence at the second merge, so that is where this looks.
+
+**The property.** On main, a push that changes any plugin file must raise
+`ALT_VERSION` strictly above the version the PREVIOUS main tip carried.
+`railway/version_collision.py` compares the new tip with the old one, which is
+`github.event.before` on the push event, with the commit's first parent as the
+fallback. Three findings, three causes:
+
+  * `COLLIDED` - plugin bytes changed and the version did not move. The second
+    merge of a race, and a forgotten bump lands here too.
+  * `REUSED` - the number was already introduced somewhere in the history the
+    previous tip can reach. This is the rollback that retypes an old version,
+    and it is the only finding that can see a collision whose version still
+    rises.
+  * `LANDED_NOOP` - the merged branch changed plugin files against its own
+    merge base and the merge changed none. The branch lost the race while it
+    sat in checks: its bytes were already on main and nothing shipped under
+    the number it typed. PR #155 landed in exactly this shape.
+
+**What it must never do, and what pins that.** A workflow-only, Python-only or
+docs-only change owes no version, and demanding one would redden every CI edit.
+The condition is measured on the plugin folder alone, minus the two globs the
+FTPS deploy itself excludes, so the file set means "the bytes this deploy
+uploads" and there is no second list to drift. In PR mode the question "did
+this branch change a plugin file" is asked from the MERGE BASE, never from the
+main tip, or main's own plugin edits would demand a bump from a Python-only PR.
+`railway/tests/test_version_collision.py` holds all of that: 26 cases built in
+throwaway git repositories, plus the two real collisions replayed by SHA.
+
+**Three states here too.** A shallow checkout cannot answer the history
+question, and neither can a tree with no readable constant. Both are UNKNOWN
+and exit 3, never a pass. The workflow uses `fetch-depth: 0`; if that is ever
+removed the check says it cannot see rather than going quiet.
+
+**It does not gate the deploy.** By the time the finding is true the code is
+merged, and the answer is a fresh bump rather than a held release. Putting a
+release path behind a check is a shape this repo was bitten by on this same
+day, when one stalled apt step held every deploy for an hour. The red run is
+the channel: `ci-alert.yml` watches every workflow and mails the owner with the
+real failing assertion, so no second alerting path was built. `ops_status [4]`
+reports the latest run of every workflow on main, so a collision is also a
+session-start signal with no change to that file.
+
+**Verified against the night that caused it.** The 2.20.115 collision (merge
+`1b3ce80`, PR #153, against main at `78f26df`) fails with `COLLIDED`, names the
+four plugin files that shipped unversioned, and prints 2.20.116 as the number
+to use. The merge that was correct (`5be64e6`, PR #154, 2.20.114 to 2.20.115)
+passes. The 2.20.116 event (merge `2c2f28f`, PR #155) fails with `REUSED` and
+`LANDED_NOOP`: it changed no plugin bytes at all, which is why it did no harm
+and why only the branch-side reading can see it.
+
+**On deriving the version instead of typing it.** A number derived from the
+commit count or stamped by CI cannot be claimed twice, and the deploy already
+rewrites plugin files on the runner (it minifies them), so it is mechanically
+possible. It was not built, for one reason: the checkout would stop knowing
+which version it is. `reader_freshness.py`, `ops_status`, the build stamp's
+`ver=` half and every "next plugin release is X" line in `docs/HANDOFF.md`
+compare a live surface against the version in the tree. Committing the derived
+number back reintroduces the same race in a different file. Detection at the
+merge is the smaller change and it is where the truth is.
+
+**Python and workflows only.** No plugin file was touched and no version was
+consumed.
+
+
 ## 2026-08-19 - the digest went red because the site was deploying
 
 **What happened.** Run 32282266653: a scheduled send landed while an FTPS
