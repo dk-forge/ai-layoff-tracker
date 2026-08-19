@@ -1,5 +1,99 @@
 # Tech Log
 
+## 2026-08-18 - all 109 of them, not a third of them: the blank that hides a row is employer_country
+
+### The objection that was right
+
+The previous entry closed with the strict rule vindicated: "Google axes 12,000
+jobs" does not say where the jobs were, so `country` stays blank, and that is
+the rule working. True, and it stays true. The objection to the CONCLUSION is
+also true: a Google layoff that no reader can find under any country filter is
+a product failure whether or not the blank behind it is honest.
+
+Both are right because they are about different fields. `country` is where the
+jobs were - unknown for these rows, and it stays blank. `employer_country` is
+where the employer is domiciled, which for Google, ING, Klarna and Vasta is
+public record rather than an inference. `country_basis=any`, the front-end
+default, matches `country IN (...) OR employer_country IN (...)`, so filling
+the second makes a row findable while the first stays honestly empty.
+
+### Measured first: 109 of 109, not 82 of 109
+
+Confirmed live 2026-08-18 that `country_basis=any` still does what the docs say
+(`United States`: 43,799 rows strict, 43,927 inclusive), then counted the
+backlog against it:
+
+| | rows |
+|---|---|
+| blank `country` | 109 |
+| blank `country` AND blank `employer_country` | **109** |
+| blank `country` with a domicile recorded | 0 |
+
+So the invisible set is not the 82 verified rows, and it is not a filter or UI
+defect to chase instead. It is every one of them, and the field that would have
+saved them was empty on all 109. Nothing was findable.
+
+### Filled: 42 rows, on two deterministic bases, neither of them a guess
+
+`employer_domicile_backfill.py` already writes exactly this field through
+`/enrich-context` - blank-only, evidence-required, no dedup hash touched, no
+row pinned, logged in the public corrections trail. It could not reach these
+rows because it queries `country = 'Multiple countries'`, and a blank is not
+that. It now takes a third pass over the blank-country rows, which is where the
+15 registry matches came from: Google x2, Amazon, Sony, Novartis, Nokia,
+Nissan, Bosch, Xerox, Heineken, Continental, KTM, Nordea, Ubisoft x2.
+
+The other 27 are SEC filings, and they are the ones the previous entry showed
+`legacy_row_repair` would have stamped "United States" because `www.sec.gov`
+ends in `.gov`. The repair for that was a gate. The repair for the ROWS is to
+read the opposite direction: not the filing VENUE, but the filing ENTITY's own
+EDGAR company record, whose business address is the registrant's principal
+executive offices. All 27 resolve, and the five the old host rule would have
+got wrong come out foreign - Klarna Group plc United Kingdom, ING GROEP NV
+Netherlands, Vasta Platform Ltd Brazil, Brightstar Lottery PLC United Kingdom -
+while SLB LIMITED/NV, Houston-seated and Curacao-incorporated, correctly comes
+out United States. Vasta is the pair that settles the rule's shape: Cayman
+incorporation, Brazilian offices, and Brazil is the answer, so the business
+address leads and the state of incorporation is a fallback that refuses
+letterbox jurisdictions outright.
+
+`tests/test_edgar_domicile_inference.py` pins it on those filers' real records,
+copied verbatim, including a test that the four foreign issuers are never
+placed in the United States and a test that `country` is not among the fields
+the path can even write.
+
+**The EDGAR pass is scoped to blank-country rows on purpose.** Run over the
+whole 'Multiple countries' bucket it also places Schlumberger, Weatherford and
+Aon - and the registry's own policy note lists those as DELIBERATELY ABSENT
+because incorporation and operations disagree. A generic rule must not quietly
+reverse a curated human decision. In the blank-country set there is no decision
+to reverse; there is a row no filter can reach.
+
+### The re-read, and the ceiling nobody had measured
+
+The bounded job the previous entry priced at ~$0.02 and did not run is now
+`blank_country_reread.py`: fetch the row's own source body, ask one question -
+where were the cut jobs - through `extract_job_location_evidence`, and accept
+an answer only with an exact quote from that body. It writes `country` and
+nothing else, dry-run by default because `/edit` pins the row and publishes the
+claim.
+
+The price was not the constraint. **Only 31 of the 82 news rows have a fetchable
+body at all.** Fifty of them cite a `news.google.com/rss/articles/...` redirect
+that no longer resolves - every one returns an 11-byte page, and Wayback holds
+no snapshot of an RSS redirect, because an RSS redirect is not a page anyone
+archives. The remaining one is a 403. That is a hard ceiling on this job and no
+amount of spend moves it; the estimate was right about the rate and wrong about
+the denominator, which is the kind of error only fetching them finds.
+
+### What stays blank, and why that is the answer
+
+The rows whose sources genuinely never state a job location keep their blank
+`country` forever, and should. The change is that they are no longer invisible
+while they do: a reader filtering by country now finds the Google row under the
+United States as an American company's cut, with its job-location column still
+honestly empty, rather than not finding it at all.
+
 ## 2026-08-19 - the digest said "in 17 to 18 August 2026", and printed the place as "KY"
 
 ### What the owner sent back
