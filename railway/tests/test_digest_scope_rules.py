@@ -119,18 +119,27 @@ def layoff_fixture(**over):
                 "companies": 71,
             },
             "leaders": [
+                # NO PLACE AT ALL, which is the live shape of a news-path row:
+                # around a third of verified job cuts sit on entries with no
+                # country recorded. The row says so rather than showing a gap.
                 {"company_name": "Applied Aerospace", "job_count": 4320,
                  "layoff_date": "2026-08-12", "ai_explicit": False,
-                 "location": "",
+                 "location": "", "state": "", "country": "",
                  "permalink": "https://asktherecruiter.com/blog/layoff/applied-2026-08-12/",
                  "announced": False},
                 # ANNOUNCED, and the second biggest cut of the week. This is
                 # the live shape of 2026-08-17 and the reason the tier had to
                 # reach the row: 2,500 of these is not inside the verified
                 # headline the table sits under.
+                # THE THREE PLACE COLUMNS AS /aggregate REALLY RETURNS THEM.
+                # `location` on a WARN row is the postal code and nothing else,
+                # which is what the delivered digest printed: "(CA, takes
+                # effect 11 Aug 2026)". `state` and `country` were in the
+                # payload the whole time.
                 {"company_name": "Paramount Skydance", "job_count": 2500,
                  "layoff_date": "2026-08-11", "ai_explicit": True,
-                 "location": "CA", "permalink": "", "announced": True},
+                 "location": "CA", "state": "CA", "country": "United States",
+                 "permalink": "", "announced": True},
             ],
             # United States is NOT first by the verified column, on purpose.
             "top_countries": [
@@ -445,8 +454,11 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         checked". This is not the zero-filling the repo bans: the query
         succeeded and the number is real."""
         text = compose(layoff_fixture())["text"]
-        self.assertIn("No verified job cuts worldwide in 9 to 16 August 2026 "
-                      "carry an explicit AI attribution", text)
+        # "between 9 and 16 August 2026", not "in 9 to 16 August 2026". The
+        # window label goes in FRONT of a caption; inside a sentence it needs
+        # a preposition of its own. See alt_digest_span_phrase.
+        self.assertIn("No verified job cuts worldwide between 9 and 16 August "
+                      "2026 carry an explicit AI attribution", text)
 
     def test_a_real_ai_figure_replaces_that_sentence(self):
         fixture = layoff_fixture()
@@ -464,8 +476,69 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         # of 2026-08-18 read "1 of the 5 companies listed ... link to an entry
         # page" and the owner named it: a count driving a plural verb is the
         # cheapest way for a citable product to read as machine output.
-        self.assertIn("1 of the 2 companies listed for 9 to 16 August 2026 "
-                      "links to an entry page", text)
+        self.assertIn("1 of the 2 companies listed between 9 and 16 August "
+                      "2026 links to an entry page", text)
+
+    def test_a_us_state_code_is_expanded_and_the_country_named(self):
+        """WHAT THE OWNER READ: "RNDC of Kentucky, LLC (KY, takes effect 17 Aug
+        2026)". The row printed `location`, which for a WARN notice is the
+        two-letter postal code, so the biggest-cuts table said "KY" while the
+        country table below it said "United States". One email, one place, two
+        vocabularies, one of them readable only to an American.
+
+        The code is expanded through api.php's alt_us_state_names(), the same
+        single definition the state pages take their slugs from.
+        """
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("(California, United States, takes effect 11 August 2026",
+                      text)
+        self.assertNotIn("(CA,", text)
+
+    def test_the_multiple_countries_bucket_is_not_printed_as_a_country(self):
+        """"California, Multiple countries" is not a place anybody lives. The
+        bucket is the stored value for a global cut with no per-country split,
+        and it already has its own line in the country table below."""
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][1]["country"] = "Multiple countries"
+        text = compose(fixture)["text"]
+        self.assertIn("(California, plus other countries, takes effect", text)
+        self.assertNotIn("California, Multiple countries", text)
+
+    def test_the_bucket_alone_is_spoken_as_the_table_speaks_it(self):
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][1]["state"] = ""
+        fixture["layoff"]["leaders"][1]["location"] = ""
+        fixture["layoff"]["leaders"][1]["country"] = "Multiple countries"
+        self.assertIn("(Multiple countries, no split given, takes effect",
+                      compose(fixture)["text"])
+
+    def test_a_row_with_no_place_says_so_rather_than_showing_a_gap(self):
+        """Honest absence. A silent row let a reader assume the place was
+        obvious, on a tracker whose own headline says a third of the jobs sit
+        on entries with no country recorded."""
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("Applied Aerospace (location not recorded, takes effect "
+                      "12 August 2026)", text)
+
+    def test_the_email_uses_one_date_format_and_only_one(self):
+        """"18 Aug 2026" in a row, two lines under a caption reading "9 to 16
+        August 2026", was two spellings of the same month in one message.
+        alt_digest_short_date is gone and every date comes from
+        alt_digest_date_range."""
+        text = compose(layoff_fixture())["text"]
+        for short in (" Aug ", " Sep ", " Jan ", " Dec "):
+            self.assertNotIn(short, text,
+                             "an abbreviated month means a second date format "
+                             "is back in the email")
+
+    def test_the_company_is_the_link_and_the_qualifiers_are_not(self):
+        """Link text should say where the link goes. The whole label used to be
+        the anchor, so a phone showed three underlined lines of blue and a
+        screen reader read the parenthesis as the destination's name."""
+        html = compose(layoff_fixture())["html"]
+        anchor = html.split('layoff/applied-2026-08-12/')[1]
+        self.assertIn("Applied Aerospace</a>", anchor)
+        self.assertNotIn("location not recorded</a>", anchor)
 
     def test_a_window_it_cannot_date_composes_nothing_at_all(self):
         """A section that cannot say what it covers does not go out."""
@@ -613,8 +686,12 @@ class TheEmailCanBeCited(unittest.TestCase):
         # the figures COVER and this is the day they were pulled. Asserted by
         # shape plus the current UTC year rather than against a computed date,
         # because a run that straddles midnight UTC should not go red for it.
+        # The access date now carries a CLOCK. Ingest finishes near 22:00 UTC
+        # and the send runs at 13:10 UTC, so the figures are about fifteen
+        # hours old when they land, and a bare date implied otherwise.
         year = datetime.datetime.now(datetime.timezone.utc).year
-        self.assertRegex(line, rf"accessed \d{{1,2}} [A-Z][a-z]+ {year}\.")
+        self.assertRegex(
+            line, rf"accessed \d{{1,2}} [A-Z][a-z]+ {year} at \d\d:\d\d UTC\.")
         self.assertNotIn("accessed 16 August", line,
                          "the read date is the window's end, so it claims the "
                          "figures were read before the period closed")
@@ -641,11 +718,33 @@ class TheEmailCanBeCited(unittest.TestCase):
                       self.text.split("Cite this")[1])
 
     def test_the_last_changed_stamp_is_printed_when_the_site_has_one(self):
-        self.assertIn("Our database last changed Aug 17, 2026", self.text)
+        """IN the reference string, not in a sentence after it.
+
+        Chicago prefers a last-modified date and asks for an access date
+        alongside it, and both belong in the string somebody pastes. This
+        fixture supplies no `alt_last_write` option, so the composer falls
+        back to api.php's own label, which is the degraded path and spells
+        the date its own way.
+        """
+        self.assertIn("as of Aug 17, 2026", self.text)
+        line = [l for l in self.text.splitlines()
+                if l.startswith("AI Layoff Tracker, AskTheRecruiter.com")][0]
+        self.assertIn("as of Aug 17, 2026", line)
+
+    def test_the_stamp_is_also_stated_where_a_general_reader_will_see_it(self):
+        """The citation is the block a general reader never reaches, and the
+        email is a snapshot that reads like a live page. So the two clock
+        facts are also stated directly under the headline."""
+        self.assertIn("The database last changed Aug 17, 2026", self.text)
+        self.assertRegex(
+            self.text,
+            r"This digest was composed \d{1,2} [A-Z][a-z]+ \d{4} at "
+            r"\d\d:\d\d UTC, and every figure in it is the snapshot taken then\.")
 
     def test_no_stamp_prints_no_sentence_rather_than_a_guess(self):
         text = compose(layoff_fixture())["text"]
-        self.assertNotIn("Our database last changed", text)
+        self.assertNotIn("as of Aug", text)
+        self.assertNotIn("The database last changed", text)
         self.assertIn("a recent window is provisional", text,
                       "the provisional warning is true whether or not we can "
                       "date the last write, so it must survive the absence")
@@ -761,7 +860,7 @@ class ThePeriodIsAllowedToHaveAShape(unittest.TestCase):
                       "E-commerce are the three largest", text)
         self.assertRegex(text, r"are the three largest, \d+% of the [\d,]+ "
                                r"verified job cuts we classified by industry "
-                               r"in 9 to 16 August 2026\.")
+                               r"between 9 and 16 August 2026\.")
 
     def test_it_places_technology_when_technology_is_not_in_the_top_three(self):
         """The documented editorial rule: this is the AI Layoff Tracker, so
@@ -842,14 +941,14 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
     def test_the_number_that_did_the_ranking_is_shown(self):
         """A list claiming to lead with the biggest signals and printing no
         size is asking to be taken on trust."""
-        self.assertIn("(2,200 jobs, 14 Aug 2026)", self.text)
+        self.assertIn("(2,200 jobs, 14 August 2026)", self.text)
 
     def test_a_row_naming_no_jobs_prints_no_count_rather_than_a_zero(self):
         """Absent, null and zero all mean "the source stated no number", and
         none of them is a measured zero."""
         row = [r for r in self.rows if "Concentrix" in r][0]
         self.assertNotIn("0 jobs", row)
-        self.assertIn("16 Aug 2026", row)
+        self.assertIn("16 August 2026", row)
 
     def test_a_headline_that_is_mostly_not_latin_does_not_take_a_slot(self):
         """Script, not language: the schema has no language column, so
@@ -1082,12 +1181,12 @@ class TheRowSaysWhoPublishedIt(unittest.TestCase):
              "headline": "Banco do Brasil anuncia 680 novas vagas",
              "published_date": "2026-08-17", "headcount": 680,
              "source_name": "Ceisc"}]
-        self.assertIn("(680 jobs, Ceisc, 17 Aug 2026)", compose(fixture)["text"])
+        self.assertIn("(680 jobs, Ceisc, 17 August 2026)", compose(fixture)["text"])
 
     def test_a_row_carrying_no_source_prints_none(self):
         """Absent is absent. The shipped fixture rows carry no source_name, so
         this is the same assertion the ranking tests already make."""
-        self.assertIn("(2,200 jobs, 14 Aug 2026)", self.text)
+        self.assertIn("(2,200 jobs, 14 August 2026)", self.text)
 
 
 if __name__ == "__main__":

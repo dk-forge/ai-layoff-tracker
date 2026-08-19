@@ -43,7 +43,18 @@ function wp_json_encode($d) { return json_encode($d); }
 function home_url($p = '') { return 'https://asktherecruiter.com/blog' . $p; }
 function admin_url($p = '') { return 'https://asktherecruiter.com/blog/wp-admin/' . $p; }
 function rest_url($p = '') { return 'https://asktherecruiter.com/blog/wp-json/' . ltrim($p, '/'); }
-function get_option($k, $d = false) { return $d; }
+/*
+  Options the composer really reads. `alt_last_write` is the one that matters:
+  alt_digest_data_cut_label() renders it as the "as of" stamp, and a harness
+  that always returned the default would only ever exercise the branch where
+  the stamp is missing. The fixture supplies it as a unix timestamp, which is
+  what the real option holds.
+*/
+function get_option($k, $d = false) {
+    global $FIXTURE;
+    $opts = (array) ($FIXTURE['options'] ?? array());
+    return array_key_exists($k, $opts) ? $opts[$k] : $d;
+}
 function update_option($k, $v, $a = null) { return true; }
 function get_transient($k) { return false; }
 function set_transient($k, $v, $t = 0) { return true; }
@@ -89,6 +100,28 @@ function alt_data_last_updated_label() {
     return (string) ($FIXTURE['last_updated_label'] ?? '');
 }
 
+/*
+  api.php's US state map, LIFTED FROM api.php RATHER THAN COPIED.
+
+  alt_digest_place() expands "KY" to "Kentucky" through alt_us_state_names(),
+  which is api.php's single definition and also the source of the state page
+  slugs. Requiring the whole of api.php here would drag in the REST plumbing
+  this harness deliberately does not have, and pasting the array in would give
+  the project a second copy of a list whose whole point is that there is one.
+  So the function is read out of the real file at load time. When it cannot be
+  found the composer falls back to the stored code, which is the same thing
+  production does, so the test still runs and still means something.
+*/
+$alt_api_php = dirname($argv[1]) . '/api.php';
+if (is_readable($alt_api_php)) {
+    $alt_api_src = file_get_contents($alt_api_php);
+    if (preg_match('/function\s+alt_us_state_names\(\)\s*\{.*?\n\}/s',
+                   $alt_api_src, $alt_m)) {
+        eval('function alt_us_state_names() '
+             . substr($alt_m[0], strpos($alt_m[0], '{')));
+    }
+}
+
 class WP_REST_Request {
     public $method, $route, $params = array();
     public function __construct($method, $route) { $this->method = $method; $this->route = $route; }
@@ -113,6 +146,17 @@ $FIXTURE = json_decode(file_get_contents($argv[2]), true);
 function rest_do_request($req) {
     global $FIXTURE;
     if (strpos($req->route, '/talent/') === 0) {
+        /*
+          THE ROUTE, NOT ONLY THE WINDOW. The talent section reads TWO routes
+          over the same window: /aggregate for the headline and /query for the
+          ranked rows. Keying on `since` alone handed the query call the
+          aggregate payload, which carries no `rows`, so the ranked list could
+          never be rendered here at all. A fixture without `talent_q` keeps the
+          old behaviour, so existing cases are unaffected.
+        */
+        if (strpos($req->route, '/query') !== false && !empty($FIXTURE['talent_q'])) {
+            return new WP_REST_Response_Stub($FIXTURE['talent_q']);
+        }
         $key = ($req->get_param('since') === $FIXTURE['from']) ? 'talent' : 'talent_ytd';
         if (empty($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
         return new WP_REST_Response_Stub($FIXTURE[$key]);
@@ -129,10 +173,27 @@ function rest_do_request($req) {
  * nothing invents one. A fixture item with no `content` gets no read time,
  * which is the real behaviour for a post whose body cannot be counted.
  */
+/*
+  THE DATE WINDOW IS HONOURED, because the composer's whole caption is about
+  it. The real get_posts() is given a `date_query` on post_date_gmt and returns
+  only posts inside the window; this stub returned every fixture post, so a
+  render could print "12 posts we published on 17 and 18 August 2026" over a
+  list spanning two months. A stub that is more generous than the function it
+  stands in for makes the assertion about the wrong thing.
+*/
 function get_posts($args = array()) {
     global $FIXTURE;
+    $after = '';
+    $before = '';
+    foreach ((array) ($args['date_query'] ?? array()) as $clause) {
+        $after = substr((string) ($clause['after'] ?? ''), 0, 10);
+        $before = substr((string) ($clause['before'] ?? ''), 0, 10);
+    }
     $out = array();
     foreach (($FIXTURE['posts'] ?? array()) as $p) {
+        $day = substr((string) ($p['date'] ?? ''), 0, 10);
+        if ($after !== '' && $day !== '' && $day < $after) continue;
+        if ($before !== '' && $day !== '' && $day > $before) continue;
         $o = new stdClass();
         $o->post_title = (string) ($p['title'] ?? '');
         $o->post_excerpt = (string) ($p['excerpt'] ?? '');
