@@ -6,6 +6,16 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.111.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is.
+  Main was RED and this is the fix: `page-company-index.php` (new at 2.20.110)
+  declared `alt_company_index_strip()` unguarded, and a template renders more
+  than once per request, so a second `function` statement is a FATAL rather than
+  a warning. It is now wrapped in `if (!function_exists(...))`, which is what
+  `tests/test_no_unguarded_template_functions.py` has always required. Plugin
+  files touched: `templates/page-company-index.php`, `ai-layoff-tracker.php`
+  (version only). **No data was touched. Next plugin release is 2.20.112.**
+
 - **NO VERSION CLAIMED BY A SIDE SESSION (2026-08-19): operational mail moved to
   Resend.** The baton was read as HELD by `local` and is NOT claimed here.
   **No plugin file was touched and no version was consumed** - the change is

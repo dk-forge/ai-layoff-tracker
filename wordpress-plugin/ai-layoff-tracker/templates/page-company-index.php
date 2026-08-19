@@ -18,6 +18,10 @@ $alt_total = array_sum($alt_counts);
 alt_render_page_header();
 
 /** The A-Z strip, rendered on both views. A bucket with nothing in it is plain text, not a link to an empty page. */
+// Guarded because a template is not a library: this file renders more than
+// once per request on some paths, and a second `function` statement is a FATAL,
+// not a warning. tests/test_no_unguarded_template_functions.py holds the rule.
+if (!function_exists('alt_company_index_strip')) {
 function alt_company_index_strip($current, array $counts) {
     echo '<nav class="alt-company-index-strip" aria-label="Employers A to Z">';
     foreach (alt_company_index_buckets() as $b) {
@@ -32,6 +36,7 @@ function alt_company_index_strip($current, array $counts) {
         }
     }
     echo '</nav>';
+}
 }
 ?>
 <main class="alt-wrap alt-company-index">
