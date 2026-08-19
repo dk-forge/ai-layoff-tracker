@@ -315,11 +315,53 @@ class PressReceiptLinksReproduceTheirOwnFigure(unittest.TestCase):
                           f"one, under the label 'See the rows behind this number'")
 
     def test_the_basis_is_named_once_not_per_call_site(self):
-        """One definition. Sixteen copies is how the previous seven happened."""
-        self.assertEqual(self.src.count("'date_basis' => 'effective'"), 4,
-                         "expected exactly the two link builders plus the two "
-                         "pre-existing evidence-tier links; more than that means "
-                         "the basis is being re-typed per call site")
+        """One definition. Sixteen copies is how the previous seven happened.
+
+        SIX, and every one of them is named. Four are the original set: the two
+        link builders and the two evidence-tier links. Two arrived with 2.20.99
+        and are NOT receipt links, which is the thing this count exists to
+        bound:
+
+          * the "which date" block links the SAME year on BOTH bases on
+            purpose, side by side, because its whole subject is that the two
+            surfaces count differently. It cannot go through $alt_plk for two
+            reasons - $alt_plk hardcodes `effective`, so it cannot express the
+            filing half; and $alt_plk only exists on a cache MISS, so the
+            render path cannot call it at all without fatalling on every cached
+            load.
+          * the ALT_PRESS_STAMP declares which basis this page's own figures
+            were computed on, for railway/published_figures.py to verify
+            against /aggregate. It is a statement of fact about the page, not a
+            link out of it.
+
+        A seventh would mean a receipt link re-typing the basis again, which is
+        exactly the defect. Raise this number only with the site named here.
+        """
+        self.assertEqual(self.src.count("'date_basis' => 'effective'"), 6,
+                         "expected the two link builders, the two evidence-tier "
+                         "links, the which-date block's effective half and the "
+                         "press stamp; more than that means the basis is being "
+                         "re-typed per call site")
+
+    def test_the_which_date_block_links_both_bases_and_only_there(self):
+        """The one place that names the FILING basis, and it names both.
+
+        A press page that links the filing basis anywhere else would be sending
+        a reader from an effective-basis figure to a filing-basis view - the
+        original defect, inverted. The cross-basis block is allowed to do it
+        because it is about the difference and prints both."""
+        cut = self.src.find("alt-press-which-date")
+        self.assertNotEqual(cut, -1, "the which-date block is gone")
+        self.assertNotIn("'date_basis' => 'notice'", self.src[:cut],
+                         "the press page names the filing basis BEFORE the "
+                         "which-date block, so a receipt link is sending readers "
+                         "to a view its figure was not computed on")
+        block = self.src[cut:]
+        # Exactly two, and they are the pair that block is about: the link that
+        # opens the tracker on the filing basis, and the stamp declaring which
+        # basis the home figure beside it was read on.
+        self.assertEqual(block.count("'date_basis' => 'notice'"), 2)
+        self.assertIn("'date_basis' => 'effective'", block)
 
     def test_a_so_far_figure_is_not_linked_to_the_whole_calendar_year(self):
         """The other half. Fixing the basis alone made this link WORSE.
