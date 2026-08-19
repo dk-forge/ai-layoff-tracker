@@ -6,27 +6,59 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-**2.20.119 CONSUMED 2026-08-19 BY THE DIGEST MANAGE-LINK FIX. THE 2.20.118
-CLAIM BELOW IS NOT STOLEN, IT IS OVERTAKEN, AND THE HOLDER MUST RE-BUMP.**
+**DO NOT TAKE A VERSION NUMBER OUT OF A CLAIM. READ MAIN.**
 
-The claim below reserves 2.20.118 for the plugin-side half of #163 and had not
-merged when this landed. This change took 2.20.119 rather than 2.20.118 so it
-could not take a number somebody else was standing on. The consequence is
-mechanical and is the reason this note exists: `version_collision.py` requires
-an `ALT_VERSION` strictly above the PREVIOUS MAIN TIP, so once this is on main
-the tip is 2.20.119 and a merge carrying 2.20.118 FAILS. **The holder of the
-claim below re-reads main and takes 2.20.120.** That is a one line edit, not a
-rebase, and the guard will name the number for them.
+A number written in a claim is a number that was true when somebody typed it.
+Tonight proves the difference twice: 2.20.115 was claimed by two sessions that
+had both read main correctly, and 2.20.118 was claimed below and then died
+without ever being merged. The only durable rule is mechanical, and it is the
+one `railway/version_collision.py` actually enforces:
 
-**Both sessions touched `includes/subscribe.php`, in different places.** This
-change edited the signup intro copy, the `alt_digest_manage_url()` docblock and
-the footer inside `alt_digest_send()`. The claim below edits four comments
-about the retired 13:10 UTC slot. Neither touches the other's lines, but a
-rebase is still required rather than assumed. **The signup fold stamp
-(`railway/signup_fold_stamp.json`) is now recorded against the NEW intro copy**:
-anyone who changes copy above the Subscribe button re-runs
-`python3 railway/signup_fold.py --record`, and the cheapest test in the suite
-will say so first.
+```
+git fetch origin
+git show origin/main:wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep ALT_VERSION
+```
+
+Take the NEXT patch number after what that prints, immediately before you
+merge, and re-read it if you lose a race. A merge whose `ALT_VERSION` is not
+strictly above the previous main tip FAILS, and the failure message names the
+number to use. Do not reconstruct history to work it out.
+
+**WHAT COUNTS AS A PLUGIN FILE IS WIDER THAN "A .php FILE".**
+`version_collision.py` keys on the path prefix `wordpress-plugin/ai-layoff-tracker/`,
+so **`assets/health.js` and any CSS under there owe a bump exactly like PHP
+does**. A change confined to `railway/`, `.github/` or `docs/` owes nothing and
+is skipped. If you are adding the `digest_weekly` label to `assets/health.js`
+`meta{}`, that is a plugin change and it owes a version.
+
+**TONIGHT'S LEDGER, so nobody has to reconstruct it (2026-08-19):**
+
+| number | state |
+|---|---|
+| 2.20.117 | the tip when the evening started |
+| 2.20.118 | CLAIMED below for the plugin half of #163, **never merged, now DEAD** |
+| 2.20.119 | **CONSUMED and ON MAIN** - the digest manage-link fix (PR #164) |
+
+So 2.20.118 is not available and not owed to anyone: once 2.20.119 was on
+main, a merge carrying 2.20.118 fails the guard. Anyone merging a plugin change
+next reads main per the block at the top and takes what follows 2.20.119. **Two
+plugin changes are queued behind this and they cannot both have the same
+number** - the plugin half of #163, and the `digest_weekly` health label. First
+one to merge reads main, second one re-reads it after losing the race.
+
+**`includes/subscribe.php` HAS TWO SESSIONS IN IT TONIGHT, IN DIFFERENT PLACES.**
+PR #164 edited the signup intro copy, the `alt_digest_manage_url()` docblock and
+the footer inside `alt_digest_send()`. The claim below edits four comments about
+the retired 13:10 UTC slot. Neither touches the other's lines, so a rebase
+should be clean, but check rather than assume.
+
+**THE SIGNUP FOLD STAMP IS NOW RECORDED AGAINST THE NEW INTRO COPY.** The intro
+gained a sentence and `railway/signup_fold_stamp.json` was re-measured with it:
+95.2px of headroom on the tightest surface against the 80px required, so there
+is less room than there was. Anyone changing copy ABOVE the Subscribe button
+re-runs `python3 railway/signup_fold.py`, reads the pixels, then `--record`.
+`tests/test_signup_fold_stamp.py` is the cheapest test in the suite and will go
+red first; do not answer it by editing the stamp by hand.
 
 - **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the version collision is
   now CHECKED, and it fails the second merge.** The baton was read as HELD by
