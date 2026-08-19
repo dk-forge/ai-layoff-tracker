@@ -88,8 +88,18 @@ three mechanisms:
     "same version, different build" as a FAULT rather than a pass. It is right
     to. That is exactly the 2.20.21 raced-render signature.
 
-**The fix.** 2.20.116, version only, no other change, so the flush runs and
-every asset URL moves. The next release is 2.20.117.
+**The fix, and it happened TWICE in one hour.** #155 bumped to 2.20.116 for
+exactly the reason above. While it was in checks, #156 did the same thing and
+merged first, so 2.20.116 was itself claimed by two PRs and #155 landed as a
+no-op on the plugin tree. That is not a second defect, it is the same one
+recurring, and it is why the number below is stated rather than assumed.
+
+**Where it actually settled.** The 17:32 deploy (#156) shipped 2.20.116
+carrying BOTH #156's digest change and #153's next-step block, so the version
+number did move for the new CSS and the flush did run. Verified after the fact
+rather than assumed: `reader_freshness.py` reads PASS at 2.20.116 with build
+00650a8edf905a0d, one version answering with one build. **The next release is
+2.20.117.**
 
 **The standing lesson.** Re-reading main before pushing is necessary and is
 not sufficient: both sessions did read main, and both read 2.20.114. The gap
