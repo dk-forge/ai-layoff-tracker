@@ -1,5 +1,85 @@
 # Tech Log
 
+## 2026-08-19 - the us_all_time containment incident is CLOSED, and the fill was re-measured before it was
+
+The forensics were done the evening before (see the entry below, commit 7bad6f8)
+and left as a closure package rather than a closure, because a headline FAIL is
+closed by a human. This is that close. Nothing was widened, no bound was touched
+and neither JSON was hand-edited: `railway/close_us_all_time_2026-08-19.sh` ran
+`--close-incident`, which is the only path that writes both files.
+
+**The package was not taken on trust.** Every load-bearing term was re-measured
+from scratch in this session before the command ran:
+
+- The 28 row IDs were re-derived from the Actions log of run 32200656641 rather
+  than read off the package: 47 `setting id=<n>` lines, 28 of them United
+  States, and the set is IDENTICAL to the 28 the package names. A row list is
+  the one field `close_incident` exists to force, so it is the one field a
+  second reader should not inherit.
+- Their job counts were re-read live off `/query`, in two passes because the
+  employer-basis slice is 43,959 rows deep: 20 rows by pagination (59,487 jobs)
+  and the remaining 8 by company filter (16,406 jobs). **59,487 + 16,406 =
+  75,893**, the package's figure to the job. 27 carry a blank `country` and one
+  (176883 Dow Inc., 4,500) carries "Multiple countries"; all 28 now carry
+  `employer_country = United States`.
+- The live headline readings were re-taken immediately before closing and had
+  not moved from the package's 02:05Z reading: us 7,038,434 / 43,570,
+  worldwide 20,476,335 / 65,036. So the replacement baseline is the package's
+  proposed figure with no substitution needed.
+- The arithmetic closes on both axes with zero residual, as recorded below:
+  complement jobs 41,590 - 75,893 = -34,303, complement entries 1,183 - 28 =
+  +1,155. Subtracting the fill leaves +3,856 / +13 US and +41,590 / +1,183
+  non-US, non-negative on all four axes, so no second re-scoring can be hiding
+  inside it.
+
+**The verdict is that the re-scored US total is CORRECT and needs no
+correction.** `country_basis=any` matches `country IN (...) OR employer_country
+IN (...)` by documented design, so stamping a US domicile on an unplaced global
+cut makes it findable under a US filter -- which is the entire point of PR #112.
+The worldwide slice did not move because a blank country and "Multiple
+countries" never excluded a row from it. The asymmetry is the finding, and the
+asymmetry is the feature.
+
+**The +1,155 non-US entries are NOT the cause and were checked for their own
+sake.** They are the Quebec archive backfill (run 32201927849, 1,318 notices
+back to 2023-08) plus Mazovia and routine WARN/news. Canada rows cannot enter
+the US slice under either basis, and structurally an arrival can only push the
+complement POSITIVE, so a record arrival count cannot manufacture a negative
+finding. They share the observation window and nothing else.
+
+**Expected follow-on, so nobody files it as a new failure:** the pair now reads
+UNKNOWN, not PASS -- "the two baselines come from DIFFERENT recorder runs
+(us_all_time from close:us_all_time:2026-08-19T02:35:40Z, worldwide from
+2026-08-18T18:27:14Z)". A close installs a replacement baseline for ONE slice
+and gives it its own epoch, so the pair is unjudged until the next
+`data-integrity.yml` run advances the whole containment group together. This is
+the same note the 2026-08-15 ai_all_time close left, it is by design, and the
+answer is to do nothing.
+
+The recorder had to run first: a containment FAIL opens its incident only when
+`record_baseline` runs, and `headline_incidents.json` read `"open": {}` until
+`python3 data_integrity.py --report --record-baseline` was run in this session.
+That run held all three slices (`CONTAINMENT FAILED`, and `ai_all_time` HELD
+WITH ITS PAIR) and advanced nothing, which is what it is supposed to do.
+
+**Closed twice, recorded once, and the second one is the real one.** The
+recorder was run locally in this session (02:34:56Z) and the incident was closed
+against that (02:35:40Z) — and `data-integrity.yml` then ran on main at
+02:40:57Z and opened the SAME finding again, with identical numbers, because it
+had not seen the close yet. The merge conflicted on both JSONs. It was resolved
+by taking MAIN's ledger — the genuinely-open incident — and running
+`--close-incident` again against it (02:46:37Z), rather than by picking the
+branch's already-closed file. Resolving that conflict in the editor would have
+been a hand-edit of the ledger wearing a merge's clothes: the closure would
+reference an incident record that no longer existed anywhere. The ledger now
+holds exactly one closed record for this finding, written by the tool, and the
+live figures were re-read unchanged (7,038,434 / 43,570) before each close.
+
+Two other checks are red and are NOT this incident: `archive_recheck_cadence`
+(diagnosed as two reading artifacts in the entry below, no throughput problem)
+and `figures_agree_across_surfaces` (owned by the 2.20.99 side session, see
+docs/HANDOFF.md).
+
 ## 2026-08-19 - the two best near-misses on earth, settled by downloading the file
 
 The worldwide survey (#123) had found a fourth employer-naming register (Illes
