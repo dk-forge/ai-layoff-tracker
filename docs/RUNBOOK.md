@@ -2264,6 +2264,10 @@ put two copies in one inbox. Do not add a recipient query anywhere else.
 
 ### The digest is sending nothing, or the wrong thing
 
+- **`credential=REJECTED`, or nothing is arriving at all**: the relay is
+  refusing us. See "The digest cannot authenticate" immediately below. Note
+  that this is NOT the same as a stale row: a rejected credential now reports
+  itself on the very next run, whether or not anybody was due.
 - **`digest_mailer` is STALE in `ops_status.py [2]`** (3-day ceiling): the
   sender stopped completing. Check `digest-send.yml`'s last run, then the WP
   cron, and remember the health row is stamped on COMPLETION so a fatal
@@ -2298,6 +2302,64 @@ put two copies in one inbox. Do not add a recipient query anywhere else.
   `last_sent_weekly` each keep their own clock. A single `last_sent_at` lets
   whichever pass runs first hide every subscriber from the second, which is
   the same silence in a different shape.
+
+### The digest cannot authenticate (`credential=REJECTED`)
+
+**What you are looking at.** The relay refused `DIGEST_SMTP_USER` /
+`DIGEST_SMTP_PASSWORD` (or `RESEND_API_KEY`). It is a settled fact, not a bad
+minute: it fails identically on the next run, and **only the owner can clear
+it**, because clearing it means rotating a secret. Nothing in this repo touches
+a credential.
+
+**Where it shows up**, in the order a person meets it:
+
+1. `ops_status.py [4c]` prints `credential REJECTED` with the relay's own reply
+   and sends you here. That is the session-start signal.
+2. `digest-send.yml` exits 2, which reddens the run, which mails the owner
+   through the ordinary `ci_alert.py` path.
+3. The `digest_mailer` health row reads `degraded` with `credential=REJECTED`
+   in the detail, so the health page shows it too.
+
+**Do this:**
+
+1. Rotate the credential at the provider (Brevo: SMTP & API -> SMTP keys) and
+   paste the new value into the `DIGEST_SMTP_PASSWORD` repository secret.
+   Paste the key ONLY, with no surrounding whitespace and no `smtp-relay`
+   prefix. A bad paste is the most common cause and looks identical to a
+   revoked key from here.
+2. Prove it **without emailing anybody**: run `digest-send.yml` by hand with
+   `verify_only` set to `1`. That connects, authenticates, hangs up, and stops.
+   It reads no recipient, builds no message, stamps no `last_sent` column and
+   writes no health row. A green run means the credential is good.
+3. Let the next scheduled run send normally. Do not force a catch-up send: the
+   per-tier guard in `alt_digest_last_sent_column()` is what stops a second
+   copy reaching somebody, and reaching around it is how a list gets mailed
+   twice.
+
+**Do NOT** answer this by widening what counts as a pass. The four states are
+distinct on purpose and the distinctions are the whole guard:
+
+| State | Means | Run |
+|---|---|---|
+| `OK` | the relay accepted us | green |
+| `REJECTED` | the relay refused us. A human must rotate a secret | **red, exit 2** |
+| `ABSENT` | nothing is armed. Dormant by design | green |
+| `UNKNOWN` | could not be established: relay unreachable, no user set, a provider with no check | green, and **not a pass** |
+
+In particular: a missing key must never become a red run (that is how red runs
+stop meaning anything), an unreachable relay must never be read as REJECTED (it
+would send the owner to rotate a secret that was never broken), and UNKNOWN
+must never be recorded as `ok`.
+
+**Why the check exists at all.** Between 2026-08-17 and 2026-08-19 the armed
+Brevo credential was answering `535 5.7.8` and every scheduled run was green.
+The credential path was only walked when there was a message in hand, the list
+had nobody due, and `0 sent of 0 eligible` is a true and complete description
+of such a run. The mailer's health row recorded `ok` each day. The only runs
+that touched the relay were manual test sends, which stay out of the health
+ledger on purpose. So every automatic signal was green and the fault was three
+days old before anybody looked. Every run now logs in before it reads a single
+recipient, and the health row carries the credential state beside the counts.
 
 ### Changing any copy in the signup (READ THIS FIRST, it has broken four times)
 

@@ -42,6 +42,11 @@ Env:
                                    auto sends daily every day and weekly as
                                    well on a Monday, as two passes in one run.
                                    Naming a tier forces that one, on any day.
+  DIGEST_VERIFY_ONLY=1             prove the credential and stop. Connects,
+                                   authenticates and hangs up. Reads no
+                                   recipient, builds no message, stamps
+                                   nothing. Exit 2 only if the relay
+                                   REFUSES the credential.
   DIGEST_DRY_RUN=1                 render everything, send nothing
   DIGEST_LIMIT                     stop after N recipients for the whole run,
                                    both tiers together (a first live send)
@@ -72,8 +77,10 @@ import urllib.parse
 import urllib.request
 
 import digest_layout
-from digest_transport import (DigestPolicyError, Message, TransportError,
-                              resolve_transport, sender_identity)
+from digest_transport import (ABSENT, OK, REJECTED, UNKNOWN,  # noqa: F401
+                              CredentialCheck, DigestPolicyError, Message,
+                              TransportError, resolve_transport,
+                              sender_identity)
 
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
@@ -104,6 +111,11 @@ def _call(path: str, params=None, payload=None, timeout: int = 45):
         method="POST" if data is not None else "GET")
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8", "replace"))
+
+
+def _flag(name: str) -> bool:
+    """One reading of a yes/no environment variable."""
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes"}
 
 
 def _today():
@@ -324,6 +336,41 @@ def _record_health(status: str, entries: int, detail: str) -> None:
         report_source_health("digest_mailer", status, entries, detail[:240])
     except Exception as exc:  # noqa: BLE001
         print(f"(digest health post skipped: {exc})")
+
+
+def health_reading(credential, transport, details, failed_rows):
+    """(status, detail) for the mailer's own health row. Never a silent pass.
+
+    THE DEFECT THIS ANSWERS, 2026-08-19. The armed Brevo credential was being
+    rejected with 535 and the mailer's health row read `ok, 0 entries` every
+    day, because the row described the SEND and there was nothing to send: the
+    list had nobody due, so `0 sent of 0 eligible` was true, complete and
+    green. It is a real reading of a run that never touched the relay, and it
+    is exactly as green as a run that sent to everybody. Two runs did touch the
+    relay and both were manual test sends, which stay out of this ledger on
+    purpose, so the one signal that existed was a red dispatch nobody watches.
+
+    So the row now carries the credential state as well as the send counts, and
+    the two facts are kept apart. `0 sent of 0 eligible` says nothing about
+    whether this job COULD send, and it must never again read as if it did.
+    """
+    prefix = f"credential={credential.state.upper()}"
+    body = "; ".join(details) if details else "no tier recorded a pass"
+
+    if credential.state == REJECTED:
+        return "degraded", f"{prefix} - {credential.detail}. {body}"
+    if failed_rows:
+        return "degraded", f"{prefix}; {body}"
+    if credential.state == UNKNOWN and transport.sends:
+        # NOT a pass. The relay could not be asked, so nothing is established,
+        # and a green row here would be the same lie in a quieter voice. It is
+        # equally not a fault: the run exits 0 and tomorrow settles it.
+        return "degraded", f"{prefix} - {credential.detail}. {body}"
+    if credential.state == ABSENT:
+        # Dormant by design. Green, and the detail says why it is green so the
+        # health page never reads it as a sender that is working.
+        return "ok", f"{prefix} (dormant, nothing armed); {body}"
+    return "ok", f"{prefix}; {body}"
 
 
 PREVIEW_ADDRESS = "preview@example.invalid"
@@ -620,6 +667,39 @@ def main() -> int:
     from_addr, reply_to = sender_identity()
     print(f"digest: tiers={', '.join(freqs)}")
     print(f"digest: {notice}")
+
+    # PROVE THE CREDENTIAL BEFORE READING THE LIST, and prove it whether or not
+    # anybody is due. This is one connection, one LOGIN and a QUIT: no message
+    # is built, no recipient is read and nothing is stamped. It exists because
+    # for three days the only code that ever touched the relay was code that
+    # had a message in its hand, so a rejected password and an empty list were
+    # the same green run.
+    credential = transport.verify()
+    print(f"digest: credential {credential.line()}")
+
+    if _flag("DIGEST_VERIFY_ONLY"):
+        # Deliberately stamps nothing. This is the "did my rotation work?"
+        # button, and a manual run that wrote the mailer's health row would let
+        # a human hide a scheduled job that had stopped.
+        print("DIGEST_VERIFY_ONLY: the credential was checked and nothing else "
+              "was done. No recipient was read, no message was built, no "
+              "health row was written.")
+        return 2 if credential.is_fault else 0
+
+    if credential.is_fault:
+        # A refusal is settled: every message this run would build is a message
+        # the relay is going to bounce, so the list is not read and no send row
+        # is opened for a send that cannot happen. This IS recorded even on a
+        # manual run - the guard that keeps test sends out of the ledger is
+        # about deliveries, and a rejected credential is a fact about the
+        # mailer no matter who pressed the button.
+        print("::error::the relay REFUSED our credential, so nothing was "
+              "attempted. This is a fault a human has to clear by rotating the "
+              "secret: see RUNBOOK 'the digest cannot authenticate'.")
+        status, detail = health_reading(credential, transport, [], 0)
+        _record_health(status, 0, detail)
+        return 2
+
     if len(freqs) > 1:
         print("digest: it is a Monday, so both tiers go out from this one "
               "run, as two separate passes. One cron, one job, two sends.")
@@ -651,11 +731,23 @@ def main() -> int:
         if outcome["halt"]:
             break
 
+    # A DELIVERY IS A STRONGER PROOF THAN A LOGIN. If the relay was unreachable
+    # at check time but then carried real messages, the question the check could
+    # not settle has been settled by the run itself, and the row should say so.
+    if sent_rows and not credential.is_pass:
+        credential = CredentialCheck(
+            OK, transport.name,
+            f"proved by delivery: {sent_rows} message(s) were accepted by the "
+            f"relay during this run")
+
     # ONE health row for the run, naming every tier it covers. Two rows would
-    # overwrite each other and the survivor would describe half the job.
+    # overwrite each other and the survivor would describe half the job. It is
+    # written whenever a tier completed a pass, and it now carries the
+    # credential state as well as the counts, so `0 sent of 0 eligible` can no
+    # longer be the whole story.
     if details:
-        _record_health("degraded" if failed_rows else "ok",
-                       sent_rows, "; ".join(details))
+        status, detail = health_reading(credential, transport, details, failed_rows)
+        _record_health(status, sent_rows, detail)
     return max(codes) if codes else 0
 
 

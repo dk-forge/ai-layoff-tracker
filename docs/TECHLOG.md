@@ -1,5 +1,96 @@
 # Tech Log
 
+## 2026-08-19 - the digest could not authenticate, and every scheduled run was green
+
+**The fault.** Brevo had been answering `535 5.7.8 Authentication failed` to
+`DIGEST_SMTP_USER` / `DIGEST_SMTP_PASSWORD` since roughly 2026-08-17. The
+password secret was last written `2026-08-17T05:52Z`, after the other four
+`DIGEST_SMTP_*` secrets (`2026-08-16T23:2xZ`), so a bad paste on the 17th is the
+likely cause. Rotating it is the owner's action and nothing here touches it.
+
+**The engineering fault, which is the one this commit is about: it was
+invisible, and not because a signal was ignored.** No signal was produced.
+
+| run | event | list | conclusion | health row |
+|---|---|---|---|---|
+| 32036855542 (08-17) | schedule | 0 eligible | success | `digest_mailer ok`, 0 entries |
+| 32145028316 (08-18) | schedule | 0 eligible | success | `digest_mailer ok`, 0 entries |
+| 32205638753 (08-19) | workflow_dispatch | test send | failure | none written |
+| 32205750941 (08-19) | workflow_dispatch | test send | failure | none written |
+
+Two things had to be true together, and both were:
+
+1. **The credential path is only walked when there is a message in hand.**
+   `SmtpTransport` authenticates inside `_deliver`, per message. With nobody
+   due there is no message, no LOGIN, and no way to tell a working relay from
+   a refusing one. `0 sent of 0 eligible` was a true, complete and green
+   description of both scheduled runs.
+2. **The two runs that DID touch the relay were `DIGEST_TEST_TO` sends**, which
+   are deliberately kept out of the health ledger (`result["test"]` leaves
+   `detail` empty, so `_record_health` is never reached). They reddened a
+   manual dispatch nobody watches and recorded nothing.
+
+So the health row was not stale and it was not degraded. It actively read
+**ok**, every day, which is worse: a staleness ceiling would eventually have
+said something on day 3, and a green row says nothing forever.
+
+**The fix, in two parts that are deliberately separate.**
+
+*Prove the credential without sending mail.* `Transport.verify()` is a new
+method behind the existing seam, so there is no second SMTP implementation:
+`SmtpTransport.verify` connects through the same `_connect()` the send uses,
+issues LOGIN, and hangs up. No `EmailMessage` is built and no recipient is
+read. `ResendTransport.verify` does one authenticated GET against
+`api.resend.com/domains`, which is not the send endpoint. `main()` calls it
+**before** it reads the recipient list, on every run.
+
+*Make a quiet run report something honest.* The mailer's health row now carries
+`credential=<STATE>` beside the send counts, so "nobody was due" and "the relay
+accepts us" can no longer be recorded in the same words.
+
+**Four states, not two, and the distinctions are the guard:**
+
+| state | means | run | health |
+|---|---|---|---|
+| `OK` | the relay accepted us | 0 | `ok` |
+| `REJECTED` | the relay refused us; a human must rotate a secret | **2** | `degraded` |
+| `ABSENT` | nothing armed, dormant by design | 0 | `ok` (says "dormant") |
+| `UNKNOWN` | not established: relay unreachable, no user set, provider with no check | 0 | `degraded` |
+
+A missing key stays a state and never a red run - that rule is older than this
+change and is not weakened by it. Only a **refusal** is a fault. `UNKNOWN` is
+narrow on purpose: the auth codes that count as a refusal are
+`{530, 534, 535, 538}`, so a 4xx temporary auth failure, a dropped connection
+or a DNS failure reports UNKNOWN rather than sending the owner to rotate a
+secret that was never broken. `Transport.verify()`'s base returns UNKNOWN, so a
+provider added in five years cannot inherit a pass it never earned. And a run
+that actually delivered upgrades UNKNOWN to OK: a delivery is a stronger proof
+than a LOGIN.
+
+A `REJECTED` credential skips the tier passes entirely, so no send row is
+opened for a send that cannot happen. It IS recorded in the health ledger even
+on a manual run - the guard that keeps test sends out of that ledger is about
+deliveries, and a refused credential is a fact about the mailer whoever pressed
+the button.
+
+**Surfaced at session start.** `ops_status.py [4c]` reads `credential=` out of
+the mailer's health row and prints PASS / REJECTED / DORMANT / UNKNOWN, adding
+an issue only for `REJECTED`. A row written before this change carries no
+marker and reads UNKNOWN, not a pass.
+
+**And a way to check a rotation without emailing anyone.** `DIGEST_VERIFY_ONLY=1`
+(workflow input `verify_only`) runs the check and stops: no recipient read, no
+message built, no `last_sent` column stamped, no health row written. Exit 2
+only on a refusal.
+
+The per-tier guard (`alt_digest_last_sent_column` in `includes/subscribe.php`)
+is untouched.
+
+Files: `railway/digest_transport.py`, `railway/digest_send.py`,
+`railway/ops_status.py`, `.github/workflows/digest-send.yml`,
+`railway/tests/test_digest_credential_check.py` (30 tests), RUNBOOK
+"The digest cannot authenticate". No plugin change, so no version bump.
+
 ## 2026-08-19 - the us_all_time containment incident is CLOSED, and the fill was re-measured before it was
 
 The forensics were done the evening before (see the entry below, commit 7bad6f8)
