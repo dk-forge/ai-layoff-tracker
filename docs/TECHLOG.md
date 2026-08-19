@@ -62,6 +62,19 @@ The recorder had to run first: a containment FAIL opens its incident only when
 That run held all three slices (`CONTAINMENT FAILED`, and `ai_all_time` HELD
 WITH ITS PAIR) and advanced nothing, which is what it is supposed to do.
 
+**Closed twice, recorded once, and the second one is the real one.** The
+recorder was run locally in this session (02:34:56Z) and the incident was closed
+against that (02:35:40Z) — and `data-integrity.yml` then ran on main at
+02:40:57Z and opened the SAME finding again, with identical numbers, because it
+had not seen the close yet. The merge conflicted on both JSONs. It was resolved
+by taking MAIN's ledger — the genuinely-open incident — and running
+`--close-incident` again against it (02:46:37Z), rather than by picking the
+branch's already-closed file. Resolving that conflict in the editor would have
+been a hand-edit of the ledger wearing a merge's clothes: the closure would
+reference an incident record that no longer existed anywhere. The ledger now
+holds exactly one closed record for this finding, written by the tool, and the
+live figures were re-read unchanged (7,038,434 / 43,570) before each close.
+
 Two other checks are red and are NOT this incident: `archive_recheck_cadence`
 (diagnosed as two reading artifacts in the entry below, no throughput problem)
 and `figures_agree_across_surfaces` (owned by the 2.20.99 side session, see
