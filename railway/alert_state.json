@@ -1,16 +1,23 @@
 {
+  "closed": [
+    {
+      "closed_at": "2026-08-19T15:41:15+00:00",
+      "first": 1787125267,
+      "fixed_in": "1de4aa1",
+      "key": "tests:ops-resend-ua:8f32a6ddbcaac88e",
+      "last": 1787125267,
+      "reason": "The unguarded alt_company_index_strip() in templates/page-company-index.php was fixed on main by 1de4aa1 (2.20.111), which wrapped it in if (!function_exists(...)). tests/test_no_unguarded_template_functions.py passes on main. The raise came from branch ops/resend-ua, whose PR #143 has merged; the ref survives on origin but is an ancestor of main, so tests.yml (pull_request + push to main) will never run under that scope again and no green run can ever fire the resolve.",
+      "reviewed_by": "dak",
+      "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
+    }
+  ],
   "open": {
     "data-quality-report-anomaly-flags:main:0833cf25d1880164": {
       "first": 1787153537,
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
-    },
-    "tests:ops-resend-ua:8f32a6ddbcaac88e": {
-      "first": 1787125267,
-      "last": 1787125267,
-      "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
     }
   },
-  "updated_at": "2026-08-19T15:37:22+00:00",
+  "updated_at": "2026-08-19T15:41:15+00:00",
   "version": 1
 }
