@@ -67,6 +67,70 @@ Two other checks are red and are NOT this incident: `archive_recheck_cadence`
 and `figures_agree_across_surfaces` (owned by the 2.20.99 side session, see
 docs/HANDOFF.md).
 
+## 2026-08-19 - the two best near-misses on earth, settled by downloading the file
+
+The worldwide survey (#123) had found a fourth employer-naming register (Illes
+Balears) and named two jurisdictions as "one decision away": **Euskadi** and
+**Podlaskie**. Both were recorded from catalogue descriptions. Both are now
+recorded from the files, and **the file changed one of the two answers**.
+
+**Neither names employers. There is no fifth register. The count on earth stays
+at four** — US state WARN units, Quebec, Mazowieckie, Illes Balears.
+
+**Euskadi. The survey's note was "the company CIF masked", and that is a
+statement about the IDENTIFIER, not about the name column.** The entry it
+produced read "one redacted column from being a fifth register", which implies
+a name sitting behind a mask. `eres_cae.csv` (CC-BY 4.0, weekly, downloaded
+2026-08-19) has **sixteen columns and not one of them is an employer name**:
+TERRITORIO, EXPEDIENTE, AUTORIDAD, TIPO REGULACION, CAUSA, MUNICIPIO, FECHA,
+FIN REGULACION, CIF, CNAE and six headcount columns. Every one of the 216 CIFs
+is masked, zero unmasked. So Euskadi is not one un-redaction away; **the name is
+not in the publication at all**, and adding it would be a new column rather than
+a lifted mask. That is a materially worse prospect than "one decision away", and
+it is the difference between a thing worth asking the Basque government for and
+a thing worth forgetting. The XLSX distribution was checked too — one sheet,
+same sixteen columns — so this is not a CSV-export artefact. Everything else was
+as good as advertised: 216 rows 2021-11-08 to 2026-06-18, current where Balears
+stops in 2022.
+
+**Podlaskie is weaker still, and "the same shape as Euskadi" was wrong.** WUP
+Bialystok publishes one PDF per year, 2013-2026, of monthly per-notice rows
+under five headings: Miesiace, Powiat/Miejscowosc, **Branza zakladu pracy**,
+Liczba pracownikow zgloszonych do zwolnienia, Planowany termin. There is no
+employer column **and no identifier of any kind, not even a masked one** — where
+the employer would go it prints the SECTOR ("produkcja bielizny"), which is a
+category, not an entity. Verified across 2025 and 2026 so it is structural. It
+is also tiny: all of 2026 to 07.07.2026 is three notices and 89 people.
+
+**Nothing was wired, because there is nothing to wire.** A source that cannot
+name the employer cannot produce a row this tracker publishes.
+
+**What was built instead is the thing that stops the next pass re-walking this
+ground.** `railway/tests/test_per_employer_registers.py` pins the register of
+registers: a `names_employers: False` entry that was file-verified must carry
+the columns it DOES publish, and none of them may match an employer-name
+pattern; a naming entry must say which column carries the name; the count of
+naming jurisdictions is asserted as those four by name.
+
+**And it pins the tenfold trap even though nothing is wired**, because the
+moment somebody does wire a Spanish ERE file the measure vocabulary is what
+they will reach for. Balears is 359 EXTINCIO rows inside 3,817; Euskadi is 79
+Extincion inside 216. The rest is SUSPENSIO / RED. JOR. / Suspension /
+Reduccion — short-time work, not dismissals. `dismissal_measures` must be a
+**proper** subset of `measure_values`, so a filter that quietly passes the whole
+file fails rather than reporting roughly ten times the layoffs that happened.
+The two Spanish vocabularies are also asserted by name so a rename cannot widen
+either one. Four mutations were run against the new tests and all four redden.
+
+Robots read before the first content request on both new hosts and honoured:
+`opendata.euskadi.eus` (899 disallow rules, one `User-agent: *` group, none
+matching the data path — checked with a wildcard matcher, not by eye) and
+`wupbialystok.praca.gov.pl` (`Allow: /`, language-pair and `backUrl` disallows
+only). `datos.gob.es` disallows `/api/`, so its catalogue was read as HTML and
+its API was not touched. Nothing added to the refusal ledger: nobody refused us.
+Licences: Euskadi CC-BY 4.0, cited. Podlaskie carries no licence statement, and
+since nothing is stored from it that stays a note rather than a blocker.
+
 ## 2026-08-19 - two figures, two questions, one false sentence (2.20.99)
 
 `figures_agree_across_surfaces` had been FAILING: the home hero published
@@ -153,6 +217,7 @@ Eight new tests in `test_published_figure_guards.py`, including the live shape
 unaffected and was already correct: `alt_digest_compose_layoff()` asks for
 `date_basis=layoff_date` and labels it, so the 522,255 it mails is the to-date
 effective figure it says it is.
+
 
 ## 2026-08-19 - two orphaned reds: one promise being kept, one movement fully explained
 
@@ -413,19 +478,33 @@ regex only runs on the rows it already admitted. The scan is the one we were
 already paying for; the precision is new. A test asserts the absence of the
 FULLTEXT index, so the day one is added is the day this choice is revisited.
 
-### Measured, live, before and after (2.20.96)
+### Measured, live, before (2.20.94) and after (2.20.96)
 
-| q= | before | after |
-|---|---|---|
-| EY | 1,968 | see the deploy note below |
-| GE | 8,612 | |
-| IBM | 58 | |
-| SAP | 94 | |
-| BT | 78 | |
-| Workday | 7 | 7 |
-| Stripe | 2 | 2 |
-| Expedia | 10 | 10 |
-| 退任 (JP) | 1 | 1 |
+| q= | before | after | what the "after" rows are |
+|---|---:|---:|---|
+| EY | 1,968 | **2** | both the BBC story on EY's 3,000 US cuts |
+| GE | 8,612 | **66** | GE Vernova, GE Aerospace, GE Vingmed |
+| SAP | 94 | **20** | |
+| BT | 78 | **10** | |
+| HP | - | 24 | |
+| IBM | 58 | 58 | unchanged: no English word contains it |
+| Workday | 7 | **7** | unchanged |
+| Stripe | 2 | **2** | unchanged |
+| Expedia | 10 | **10** | unchanged |
+| 退任 (JP) | 1 | **1** | unchanged - substring, no boundary applied |
+| 사임 (KR) | 0 | **0** | unchanged |
+
+The sibling talent tracker, same fix, same day (1.83.5): EY **13,934 to 0**,
+GE 22,854 to 14, BT 71 to 4, SAP 27 to 2, Workday 4 to 4, and the Korean and
+Japanese searches identical to the byte (49, 41, 2).
+
+**EY going to ZERO over there is the honest answer and it exposed a second,
+separate gap.** That corpus stores the firm as "Ernst & Young" and never as the
+bare token, so `q=Ernst` finds 15 rows and `q=EY` finds none. Before the fix
+`q=EY` returned 13,934 rows of which not one was the firm. **A company-alias
+map is a real follow-up and it is not this fix**: matching two letters against
+every word in the corpus was never a way of finding EY, it was a way of not
+noticing that we could not.
 
 ## 2026-08-19 - a fourth place on earth names the employer, and 16 of the 31 declared-outstanding countries close
 

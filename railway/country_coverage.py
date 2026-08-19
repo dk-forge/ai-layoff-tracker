@@ -801,24 +801,85 @@ PER_EMPLOYER_REGISTERS = (
               "communities publish ERE/ERTE datasets and that ONLY Baleares includes the "
               "NIF or razon social"),
      "since": "2008-2022 for dismissals", "in_tracker": False,
+     "verified_from_file": "2026-08-19",
+     "name_column": "EMPRESA",
+     "measure_column": "MESURA",
+     "measure_values": ("EXTINCIO", "SUSPENSIO", "RED. JOR.", ""),
+     "dismissal_measures": ("EXTINCIO",),
+     "licence": "CC-BY 4.0",
      "cite": ("https://intranet.caib.es/opendatacataleg/dataset/"
               "expedients-regulacio-ocupacio-ero-erto-illes-balears")},
     # --- NEAR-MISSES. Recorded because each is a decision rather than an
     # absence, and a decision can be revisited by whoever made it.
     {"jurisdiction": "Euskadi", "country": "Spain", "names_employers": False,
-     "what": ("THE BEST NEAR-MISS ON EARTH and the cheapest thing on this page to act "
-              "on. Identical row-per-notice shape to Balears and CURRENT — 216 rows from "
-              "2021-11-08 to 2026-06-18, split Extincion 79 / Suspension 101 / Reduccion "
-              "36 — with the company CIF DELIBERATELY MASKED ('***0071**'). One redacted "
-              "column from being a fifth register, at exactly the cadence Balears lacks"),
+     "what": ("THE BEST NEAR-MISS ON EARTH, and SETTLED 2026-08-19 BY DOWNLOADING THE "
+              "FILE — which changed the answer. The survey had recorded 'the company CIF "
+              "masked', a statement about the IDENTIFIER, and that left open whether a "
+              "name column sat beside it. It does not. eres_cae.csv carries SIXTEEN "
+              "columns and NOT ONE OF THEM IS AN EMPLOYER NAME: the employer appears "
+              "only as a masked CIF, on all 216 of 216 rows, zero unmasked. So Euskadi "
+              "is not one un-redaction away from being a register; the name is not in "
+              "the publication at all, and restoring it would be a new column rather "
+              "than a lifted mask. Everything else IS as good as it looked — CC-BY, "
+              "weekly refresh, 216 rows 2021-11-08 to 2026-06-18, current where Balears "
+              "stops in 2022, split Extincion 79 / Suspension 101 / Reduccion 36. The "
+              "XLSX distribution was checked too and is the same single sheet with the "
+              "same sixteen columns, so this is not a CSV-export artefact. SAMPLE ROW "
+              "(most recent Extincion): BIZKAIA;48/2026/000013J;Territ.;Extincion;"
+              "Ec:Perdidas actuales;Abadino;15/06/2026;;***7485**;2553;11;10;1;11;10;1"),
      "since": "2021", "in_tracker": False,
+     "verified_from_file": "2026-08-19",
+     "name_column": None,
+     "verified_columns": (
+         "TERRITORIO / LURRALDEA", "EXPEDIENTE / ESPEDIENTEA",
+         "AUTORIDAD / AUTORITATEA", "TIPO REGULACION / ERREGULAZIO MOTA",
+         "CAUSA / KAUSA", "MUNICIPIO / UDALERRIA", "FECHA / DATA",
+         "FIN REGULACION / ERREGULAZIOAREN AMAIERA-DATA", "CIF / IFK",
+         "CNAE / EJSN", "AFECTADOS / UKITUAK", "AFECTADOS HOMBRES / UKITU GIZONEZKOAK",
+         "AFECTADAS MUJERES / UKITU EMAKUMEZKOAK",
+         "TOTAL TRABAJADORES / LANGILEAK GUZTIRA",
+         "TRABAJADORES HOMBRES / LANGILE GIZONEZKOAK",
+         "TRABAJADORAS MUJERES / LANGILE EMAKUMEZKOAK"),
+     # The tenfold trap, recorded even though nothing is wired: 79 of 216 rows
+     # are dismissals and the other 137 are short-time work. Anything ever built
+     # on this file filters on the measure column FIRST.
+     "measure_column": "TIPO REGULACION / ERREGULAZIO MOTA",
+     "measure_values": ("Extincion", "Suspension", "Reduccion"),
+     "dismissal_measures": ("Extincion",),
+     "licence": "CC-BY 4.0",
+     "data_url": ("https://opendata.euskadi.eus/contenidos/ds_procedimientos_otros/"
+                  "ertes_covid_2020/opendata/eres_cae.csv"),
      "cite": "https://opendata.euskadi.eus/"},
     {"jurisdiction": "Podlaskie voivodeship", "country": "Poland",
      "names_employers": False,
-     "what": ("the same shape as Euskadi: one row per notice with powiat, sector, "
-              "headcount and date, name omitted. Two of 16 voivodeships therefore "
-              "publish per-notice rows and only one names"),
-     "since": None, "in_tracker": False,
+     "what": ("SETTLED 2026-08-19 from the documents themselves, and it is a WEAKER "
+              "near-miss than the survey's 'same shape as Euskadi' implied. WUP "
+              "Bialystok publishes one PDF PER YEAR, 2013-2026, of monthly per-notice "
+              "rows under FIVE headings — Miesiace, Powiat/Miejscowosc, Branza zakladu "
+              "pracy, Liczba pracownikow zgloszonych do zwolnienia, Planowany termin — "
+              "and there is no employer column AND no employer identifier of any kind, "
+              "not even a masked one. Euskadi at least prints a redacted CIF; Podlaskie "
+              "prints the SECTOR where the employer would go, which is a category and "
+              "not an entity. Verified across two years so it is structural rather than "
+              "one year's choice. SAMPLE ROW (2026): 'Luty 2026 r. | augustowski | "
+              "produkcja bielizny | 24 | 2 os. zwoln. w III, 11 os. zwoln. w IV'. The "
+              "register is also tiny — the whole of 2026 to 07.07.2026 is three notices "
+              "and 89 people — so even named it would be a rounding error beside "
+              "Mazowieckie. All rows are dismissals (zwolnienia grupowe); Poland has no "
+              "short-time-work measure mixed into this document, so the Spanish "
+              "EXTINCIO/SUSPENSIO trap does not arise here"),
+     "since": "2013", "in_tracker": False,
+     "verified_from_file": "2026-08-19",
+     "name_column": None,
+     "verified_columns": ("Miesiace", "Powiat/Miejscowosc", "Branza zakladu pracy",
+                          "Liczba pracownikow zgloszonych do zwolnienia",
+                          "Planowany termin dokonania zwolnien/osoby zwolnione"),
+     "measure_column": None,
+     "measure_values": (),
+     "dismissal_measures": (),
+     "licence": ("no licence statement found on the page or in the PDFs; Polish public "
+                 "information, but NOT citable terms, so nothing here is stored"),
+     "data_url": "https://wupbialystok.praca.gov.pl/zgloszenia-zwolnien-grupowych",
      "cite": "https://wupbialystok.praca.gov.pl/"},
     {"jurisdiction": "federal (SPF Emploi / FOD WASO)", "country": "Belgium",
      "names_employers": False,
@@ -855,9 +916,11 @@ PER_EMPLOYER_SWEPT = {
                "termination notices are CONFIDENTIAL. Only Quebec names. Saskatchewan "
                "names ClaudeBot and disallows all; Yukon and PEI blocked; those three "
                "are UNKNOWN, not no"),
-    "Poland": "all 16 voivodeships. Mazowieckie names; Podlaskie publishes rows without "
-              "names; the BIP sites of the WUPs are the one surface not swept",
-    "Spain": ("13 of 17 autonomous communities. Balears names; Euskadi masks. "
+    "Poland": "all 16 voivodeships. Mazowieckie names; Podlaskie publishes rows with "
+              "no employer column and no identifier at all (file-verified 2026-08-19); "
+              "the BIP sites of the WUPs are the one surface not swept",
+    "Spain": ("13 of 17 autonomous communities. Balears names; Euskadi publishes no "
+              "name column at all (file-verified 2026-08-19, not merely masked). "
               "datos.comunidad.madrid is 'Disallow: /' and holds Madrid's ERE CSV, "
               "whose fields are therefore UNVERIFIED"),
     "Germany": "Bund, the Regionaldirektionen and the Lander open-data portals. Nothing "

@@ -356,6 +356,18 @@ function alt_normalize_country($name) {
         'uk' => 'United Kingdom', 'united kingdom' => 'United Kingdom', 'britain' => 'United Kingdom',
         'great britain' => 'United Kingdom', 'england' => 'United Kingdom',
         'uae' => 'UAE', 'united arab emirates' => 'UAE', 'deutschland' => 'Germany',
+        // TWO SPELLINGS OF ONE COUNTRY SPLIT ITS COUNT IN HALF. Measured live
+        // 2026-08-19: China 11 + "People's Republic of China" 1, South Korea 9
+        // + "Korea" 2 - four labels for two countries, each understating itself
+        // in every per-country figure and in the digest's country table. The
+        // fallback below returns an unmapped name unchanged, which never loses
+        // data but does let every new spelling become its own country.
+        // 'republic of china' is DELIBERATELY ABSENT: that is Taiwan, and it is
+        // one word from the PRC key beside it.
+        'china' => 'China', 'peoples republic of china' => 'China',
+        'prc' => 'China', 'mainland china' => 'China',
+        'korea' => 'South Korea', 'south korea' => 'South Korea',
+        'republic of korea' => 'South Korea',
         // Regions / multi-country phrases: one honest bucket, no double counting
         'global' => 'Multiple countries', 'worldwide' => 'Multiple countries',
         'international' => 'Multiple countries', 'europe' => 'Multiple countries',

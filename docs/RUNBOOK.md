@@ -114,7 +114,7 @@ Cache the dependency install, keyed on **the lock file's own hash**:
   with:
     python-version: '3.12'
     cache: 'pip'
-    cache-dependency-path: railway/requirements-min.lock
+    cache-dependency-path: railway/requirements.lock
 ```
 
 Rules:
@@ -125,22 +125,42 @@ Rules:
   safe; a cache that lets pip resolve something the lock did not vouch for is
   not. The install line is unchanged by caching, and
   `railway/tests/test_dependency_pinning.py` fails if it ever is not.
-- **Key the two locks separately.** `requirements-min.lock` is openai +
-  requests; `requirements.lock` carries pdfplumber and BigQuery. Name the exact
-  lock the job installs — a glob like `requirements*.lock` makes a health job's
-  key churn on a change to a heavy lock it never installs. (This repo's
-  `tests.yml` had exactly that glob until 2026-08-19.)
+- **Key on the exact lock the job installs, never a glob.** `tests.yml` named
+  `requirements*.lock` until 2026-08-19, so a change to a lock it never
+  installed churned its key.
+- **You CANNOT separate a light install from a heavy one this way, and this is
+  the trap.** `setup-python` computes its key as
+  `setup-python-<os>-<arch>-python-<exact patch version>-pip-<hash>` and falls
+  back on a **prefix restore-key**. So a job keyed on `requirements-min.lock`
+  restores whatever cache exists under that prefix — including the 130 MB
+  full-lock one — any time its exact key misses. And the exact key misses
+  routinely, because the hosted image's Python patch version is IN the key:
+  measured on 2026-08-19, two runs eleven minutes apart got 3.12.14 and 3.12.13
+  and both fell through to a heavy cache. **The fix is not a better key. It is
+  not caching the light job at all.**
 
-**Measured, and read this before assuming caching is the lever.** On this
-repo's runners the cache hits reliably (130 MB, restored in ~1.4 s), and the
-full-lock install takes **20-21 s cached against 20-23 s uncached**. Most of
-that install is unpacking wheels, not downloading them, so pip caching here is
-worth **seconds, not minutes** — and against per-minute-rounded billing it
-often rounds away to zero. It is still worth having (it is free, safe, and it
-is the correct shape to copy), but if a private repo's bill needs to come down,
-the lever is the **number of jobs and the cron frequency**, not the installer.
-Node is a different story: `npm ci` is minutes, and `cache: 'npm'` keyed on
-`package-lock.json` genuinely pays.
+**MEASURED 2026-08-19, and the numbers decided the design.**
+
+| job | install | setup-python | post (save) | total dep overhead |
+|---|---|---|---|---|
+| full lock, uncached | 20-23s | 0-1s | 0s | **20-24s** |
+| full lock, cached (exact hit) | 20-21s | 1s | 0s | **21-22s** |
+| min lock, uncached | 4-6s | 0-1s | 0-1s | **4-7s** |
+| min lock, cached | 4-5s | 4-6s | 2-3s | **10-14s** |
+
+Caching the **full** lock is a wash — most of a pip install is unpacking
+wheels, not fetching them, so a 130 MB cache restore buys back about what it
+costs. Caching the **min** lock made it roughly **5 seconds slower**: a 4-second
+install cannot repay a 130 MB transfer. So this repo caches the full lock only,
+on 29 workflows, and the 22 health/min-lock workflows deliberately have no
+cache at all. Do not "finish the job" by adding it back.
+
+Node is the opposite story and worth caching without hesitation: `npm ci` runs
+24-35s and `cache: 'npm'` keyed on `package-lock.json` genuinely pays.
+
+**The conclusion to carry into the sandbox: dependency caching is not the
+lever.** Against per-job minute rounding a 3-second saving is exactly zero
+minutes. Job count and cron frequency are the lever.
 
 ### Where `cancel-in-progress` is safe, and where it is forbidden
 It belongs **only** where a newer commit makes an older run pointless: test,
@@ -191,7 +211,9 @@ Skip, do not cancel, and do not start. In order of what it saves:
    because they skip rather than start.
 3. **Lower cron frequency** — see the table above.
 4. **Fewer matrix legs** — each leg is a job, and each job rounds up.
-5. **Dependency caching** — real, but seconds.
+5. **Dependency caching** — measured here as a wash on the heavy lock
+   and a small LOSS on the light one. Do it for `npm ci`; do not assume it
+   for pip.
 
 ## "X is broken" playbooks
 

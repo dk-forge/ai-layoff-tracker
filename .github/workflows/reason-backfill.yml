@@ -65,13 +65,6 @@ jobs:
       # it stopped. Discovery collectors are deliberately NOT eligible - running
       # one less often is a coverage decision, and spend.earned_skip refuses to
       # make it. Always exits 0; a job must not go red for being thrifty.
-          # Restore pip's wheel cache, keyed on THIS lock's own hash. A lock
-          # change changes the key, so a cache entry can never outlive the lock
-          # that vouched for it, and the hash-verified install below still
-          # checks every artifact it uses. The two locks are keyed separately
-          # on purpose: a health job must not pull the heavy cache.
-          cache: 'pip'
-          cache-dependency-path: railway/requirements-min.lock
       - name: Earned cadence
         id: cadence
         run: python railway/spend.py --cadence
