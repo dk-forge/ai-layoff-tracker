@@ -1,5 +1,74 @@
 # Tech Log
 
+## 2026-08-19 - an alarm keyed to a branch that will never build again
+
+**The gap.** A cause raised by `ci_alert` is keyed
+`<workflow>:<branch>:<fingerprint>` and clears only when a green run of THAT
+scope posts its resolve. `.github/workflows/tests.yml` fires on `pull_request`
+and on pushes to `main`. So the moment a feature branch's PR lands, no run of
+that scope can ever happen again: the entry is unclearable, and it earns one
+false `STILL FAILING` reminder every fourteen days about work that shipped.
+
+**Not new, newly visible.** The endpoint-backed design had the identical gap and
+`railway/alert_outbox.json` is full of `resolve:tests:<feature-branch>` entries
+that had nothing to clear. What changed when the ledger moved to
+`railway/alert_state.json` is that the residue is now a committed file printed by
+`ops_status.py [4b2]`. A visible stale record nobody is allowed to touch is an
+invitation to hand-edit the JSON, and the RUNBOOK section that said "never
+hand-edit the ledger" offered no alternative.
+
+**What the ledger actually held, and why the obvious check would have missed it.**
+One entry: `tests:ops-resend-ua:8f32a6ddbcaac88e`, an unguarded
+`alt_company_index_strip()` in `templates/page-company-index.php`, fixed on main
+by `1de4aa1` (2.20.111). The branch it was raised on was **still on origin**.
+PR #143 had merged and the ref was simply never deleted. A does-the-branch-exist
+test reads that as healthy and would have reported the stale entry as a live
+suppression forever - the defect wearing the fix's clothes.
+
+So `classify_open` reports two words, proved differently and deliberately not
+collapsed into one:
+
+* `ORPHANED` - the branch is gone from origin. Permanent: no ref left to push to.
+* `MERGED` - the branch is on origin but is an ancestor of main. Its PR landed
+  and it is parked. Someone COULD push to it tomorrow, which is why it is the
+  weaker word rather than a second spelling of the first.
+
+Comparing branch NAMES would also have missed it: the ref is `ops/resend-ua` and
+the key carries `ops-resend-ua`, because `ci_alert` bakes `_slug(branch, 32)`
+into the scope. The comparison is slug-to-slug, and
+`tests/test_alert_state_close.py` pins `alert_state._slug` byte-identical to
+`ci_alert._slug` (the dependency runs one way, so it cannot be imported back)
+and round-trips a key built by the real `build_alert`.
+
+**Every uncertainty lands on `open`.** Missing an orphan costs one stale line in
+a report; inventing one sends a reviewer to close a LIVE alarm. A silent remote
+is `UNKNOWN` and never orphaned - reading `remote_branches() -> None` as an empty
+remote would orphan the whole ledger at once. A shallow checkout that does not
+hold the branch tip cannot prove `MERGED`, and `git merge-base --is-ancestor`
+reports that with the same non-zero exit it uses for "no", so the object is
+checked for first and a missing one answers `None`. Not asking at all is a third
+state and is not `UNKNOWN`. Other senders' key shapes (`ci-noise:2026-w33`,
+`relabel-hold:<ids>`) and the branch-free `live.data` scope are never
+branch-judged.
+
+**The close is the `close_incident` pattern, not an editor.**
+`python3 railway/alert_state.py --close <key> --reviewed-by ... --reason ...
+--fixed-in ...`, refusing a missing reviewer, a reason under 40 characters or a
+missing `--fixed-in`, and writing nothing when it refuses. `--fixed-in` is the
+load-bearing one: **a parked branch is evidence about a branch, not about a
+defect**, and closing an alarm whose cause is still live suppresses the next
+genuine raise of it. The CLI uses `.get` for its status tags and exits 0 on
+success - `close_incident`'s own scar, where every successful close wrote the
+ledger and then crashed printing the summary.
+
+**Dedup did not pay for any of it.** A close removes one entry exactly the way a
+`resolve` does, so the same cause raises again, once, if it recurs;
+`test_ops_mail_split.py` still passes unchanged. What a close adds is an audit
+record (`--closed` prints who, why and where the fix landed).
+
+The one entry was closed under review: reviewer `dak`, `--fixed-in 1de4aa1`.
+`[4b2]` now reads "none - nothing is being suppressed".
+
 ## 2026-08-19 - the two links inside an email were watched by nothing
 
 **What was reported.** The live 404 log carried both subscriber-facing paths,

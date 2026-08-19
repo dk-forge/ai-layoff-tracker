@@ -336,15 +336,338 @@ def open_alarms(path: Path | str | None = None):
              str(v.get("subject") or "")) for k, v in rows]
 
 
+# ---------------------------------------------------------------------------
+# The orphan, and the human who closes it
+# ---------------------------------------------------------------------------
+#
+# THE GAP. A cause key raised by `ci_alert.build_alert` is scoped
+# `<workflow>:<branch>:<fingerprint>`, and it clears when a GREEN RUN OF THAT
+# SAME SCOPE posts its resolve. `.github/workflows/tests.yml` fires on
+# `pull_request` and on pushes to `main`. So the moment a feature branch is
+# merged and deleted, no run of that scope can ever happen again, and the entry
+# it left behind is unclearable. It sits open forever and earns one
+# `STILL FAILING` reminder every fourteen days about a branch that does not
+# exist, for a cause that was very likely fixed by the merge itself.
+#
+# This is not new. The endpoint-backed design had the identical gap and
+# `alert_outbox.json` is full of `resolve:tests:<feature-branch>` entries that
+# had nothing to clear. What changed on 2026-08-19 is that the ledger is a
+# committed file printed by `ops_status.py [4b2]`, so the residue is finally
+# VISIBLE — and a visible stale record that no one is allowed to touch is an
+# invitation to hand-edit the JSON, which is how the fourteen-day window and the
+# RECOVERED-once guarantee get broken without either failure announcing itself.
+#
+# THE RULE, taken from `data_integrity.close_incident` because this repo already
+# settled the question there: a record a machine cannot clear is closed by a
+# HUMAN, never by the calendar and never by an editor. `close_alarm` demands the
+# three things a real resolution produces:
+#
+#   a reviewer, a reason, and WHERE THE CAUSE WAS ACTUALLY FIXED — the commit,
+#   the version or the PR. That last field is this file's equivalent of
+#   `--rows`: it is the difference between "the branch is gone" and "the defect
+#   is gone". A branch being deleted is not evidence about a defect. If nobody
+#   can name where it was fixed, the cause may still be live on main and closing
+#   the alarm would suppress the next genuine raise of it.
+#
+# NOTHING ABOUT DEDUP MOVES. A close removes one entry exactly the way a
+# `resolve` does, so the same cause raises again the next time it happens, one
+# email, RECOVERED once, fourteen-day window untouched. What a close does that a
+# resolve does not is leave an audit record saying who decided and why.
+
+#: A closing reason has to be a finding, not a shrug. Mirrors
+#: data_integrity.MIN_CLOSE_REASON_CHARS on purpose — a reviewer closing either
+#: ledger is doing the same job and should meet the same bar.
+MIN_CLOSE_REASON_CHARS = 40
+
+#: Closed records are an audit trail, not an archive. Same reasoning as
+#: MAX_OPEN: a caller looping on a mutating key must not grow the file forever.
+MAX_CLOSED = 100
+
+#: Duplicated from `ci_alert`, which imports THIS module — the dependency only
+#: runs one way and must keep doing so. `tests/test_alert_state_close.py` pins
+#: the two spellings together, so a rename over there fails here rather than
+#: quietly turning every live-data alarm into an orphan candidate.
+LIVE_DATA_SEGMENT = "live.data"
+
+#: Statuses `classify_open` reports.
+#:
+#: ORPHANED and MERGED are two ways of being unclearable, and they are kept
+#: apart because they are proved differently and one is stronger.
+#:
+#:   ORPHANED  the branch is GONE from origin. Permanent and unarguable: there
+#:             is no ref left to push to, so no run of that scope can ever
+#:             exist.
+#:   MERGED    the branch is still on origin but is an ancestor of main — its
+#:             work has landed and it is parked. This is the case that was
+#:             actually sitting in the ledger on 2026-08-19: `ops/resend-ua`,
+#:             PR #143 merged, zero commits ahead of main, ref never deleted.
+#:             `tests.yml` fires on `pull_request` and on pushes to `main`, and
+#:             a parked branch will see neither, so nothing will clear it either
+#:             — but someone COULD push to it tomorrow, which is why this is a
+#:             separate, weaker word rather than a second spelling of ORPHANED.
+#:
+#: UNKNOWN is never a pass and never an accusation: the remote was asked and did
+#: not answer, so nothing about the branch was established.
+OPEN = "open"
+ORPHANED = "orphaned"
+MERGED = "merged"
+UNKNOWN = "unknown"
+
+#: Both of the above need a human. Neither is going to resolve itself.
+UNCLEARABLE = (ORPHANED, MERGED)
+
+#: `<workflow>:<branch>:<md5[:16]>`, the shape `ci_alert.build_alert` mints and
+#: the ONLY shape a branch can be read out of. Deliberately strict: other
+#: senders put their own keys in this ledger (`ci-noise:<iso-week>`,
+#: `relabel-hold:<ids>`) and a loose pattern would read a week number as a
+#: deleted branch and declare a live alarm unclearable.
+_BRANCH_KEY = re.compile(r"^([a-z0-9][a-z0-9._-]*):([a-z0-9][a-z0-9._-]*):([0-9a-f]{16})$")
+
+
+def _slug(text, limit=48):
+    """Duplicated from `ci_alert._slug` for the import-direction reason above.
+    Must stay byte-identical: this is how a remote branch name is compared
+    against the slug baked into a key."""
+    s = re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+    return (s[:limit] or "unknown")
+
+
+def branch_slug(key: str) -> str | None:
+    """-> the branch fragment of a ci_alert cause key, or None.
+
+    None for every key whose branch cannot be read with certainty: a live-data
+    key (branch-free by design, and cleared by any branch's green run) and every
+    non-ci_alert shape.
+    """
+    m = _BRANCH_KEY.match(key or "")
+    if not m or m.group(2) == LIVE_DATA_SEGMENT:
+        return None
+    return m.group(2)
+
+
+def remote_branches(timeout: int = 20):
+    """-> {branch slug: tip sha} for every branch on `origin`, or None.
+
+    None is the honest answer for a checkout with no remote, no network or an
+    egress block, and it must never be confused with an empty dict — an empty
+    dict would orphan every alarm in the ledger at once.
+
+    Keyed by SLUG rather than by name because that is what a cause key carries:
+    `ci_alert` bakes `_slug(branch, 32)` into the scope, so the ref
+    `refs/heads/ops/resend-ua` is what the key `tests:ops-resend-ua:...` is
+    talking about. Comparing names would have missed it.
+    """
+    try:
+        proc = subprocess.run(["git", "ls-remote", "--heads", "origin"],
+                              capture_output=True, text=True, timeout=timeout,
+                              cwd=str(ROOT.parent))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    out = {}
+    for line in proc.stdout.splitlines():
+        sha, _tab, ref = line.partition("\t")
+        if ref.startswith("refs/heads/") and sha.strip():
+            out[_slug(ref[len("refs/heads/"):], 32)] = sha.strip()
+    return out or None
+
+
+def _is_ancestor(sha: str, other: str, timeout: int = 20):
+    """-> True / False / None, and None means LOCALLY UNANSWERABLE.
+
+    A shallow or partial checkout does not hold the branch tip's object, and
+    `git merge-base` says so with a non-zero exit that is indistinguishable from
+    "no". Conflating the two would read every branch as live on a CI runner
+    (harmless) or, with the test inverted, as merged (not harmless). So the
+    object is checked for first and a missing one answers None, which
+    `classify_open` reads as "nothing established" and leaves OPEN.
+    """
+    if not sha or not other:
+        return None
+    try:
+        for obj in (sha, other):
+            probe = subprocess.run(["git", "cat-file", "-e", f"{obj}^{{commit}}"],
+                                   capture_output=True, text=True, timeout=timeout,
+                                   cwd=str(ROOT.parent))
+            if probe.returncode != 0:
+                return None
+        proc = subprocess.run(["git", "merge-base", "--is-ancestor", sha, other],
+                              capture_output=True, text=True, timeout=timeout,
+                              cwd=str(ROOT.parent))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode in (0, 1):
+        return proc.returncode == 0
+    return None
+
+
+def classify_open(path: Path | str | None = None, remote=False, *,
+                  main_branch: str = "main", is_ancestor=None):
+    """-> [(key, first_iso, last_iso, subject, status)], oldest first.
+
+    `remote` is opt-in because asking costs a network round trip and this is
+    read on the failure path. Pass True to have the remote asked, or a
+    {slug: sha} mapping to supply the answer (which is how the tests drive it,
+    with `is_ancestor` for the merged half).
+
+    NOT ASKING and ASKING AND GETTING NO ANSWER are different facts, and only
+    the second is UNKNOWN. A checkout with no network must not report every
+    branch-scoped alarm as doubtful, and it must never report one as ORPHANED —
+    `remote_branches` returning None means the remote was silent, not empty.
+
+    Every fallback in here lands on OPEN, which is the conservative direction:
+    the cost of missing an orphan is one stale line in a report, and the cost of
+    inventing one is sending a reviewer to close a live alarm.
+    """
+    rows = open_alarms(path)
+    asked = remote is not False
+    known = remote_branches() if remote is True else (
+        None if remote is False else dict(remote))
+    ancestor = is_ancestor or _is_ancestor
+    main_sha = (known or {}).get(_slug(main_branch, 32))
+    out = []
+    for key, first, last, subject in rows:
+        slug = branch_slug(key)
+        if slug is None or not asked:
+            # Not a branch-scoped raise, or nobody looked. Either way there is
+            # nothing to say beyond "open".
+            status = OPEN
+        elif known is None:
+            # We asked and origin did not answer. Never a pass, never a verdict.
+            status = UNKNOWN
+        elif slug not in known:
+            status = ORPHANED
+        elif slug == _slug(main_branch, 32):
+            # main is never parked and never deleted.
+            status = OPEN
+        else:
+            status = MERGED if ancestor(known[slug], main_sha) is True else OPEN
+        out.append((key, first, last, subject, status))
+    return out
+
+
+def close_alarm(key: str, reviewed_by: str, reason: str, fixed_in: str,
+                path: Path | str | None = None) -> dict:
+    """Close one open alarm on a human's finding. Returns the closed record.
+
+    Raises ValueError on any missing argument, and writes NOTHING when it
+    raises. `fixed_in` is required for the reason given in the section comment:
+    a deleted branch is evidence about a branch, not about a defect.
+    """
+    p = state_path(path)
+    state = load(p)
+    entries = state.get("open") or {}
+    rec = entries.get(key)
+    if not rec:
+        raise ValueError(f"no open alarm with key {key!r} "
+                         f"(open: {sorted(entries) or 'nothing'})")
+    reviewed_by = (reviewed_by or "").strip()
+    reason = (reason or "").strip()
+    fixed_in = (fixed_in or "").strip()
+    if not reviewed_by:
+        raise ValueError("--reviewed-by is required: a closed alarm names who closed it")
+    if len(reason) < MIN_CLOSE_REASON_CHARS:
+        raise ValueError(f"--reason must be at least {MIN_CLOSE_REASON_CHARS} characters "
+                         f"of actual finding (got {len(reason)})")
+    if not fixed_in:
+        raise ValueError(
+            "--fixed-in is required: name the commit, version or PR where the CAUSE "
+            "was fixed. A deleted branch is not evidence that a defect is gone, and "
+            "closing an alarm whose cause is still live suppresses the next real raise")
+
+    now = _now()
+    closed = {"key": key,
+              "first": int(rec.get("first", now)),
+              "last": int(rec.get("last", now)),
+              "subject": str(rec.get("subject") or ""),
+              "closed_at": _stamp(now),
+              "reviewed_by": reviewed_by,
+              "reason": reason,
+              "fixed_in": fixed_in}
+    entries.pop(key, None)
+    history = list(state.get("closed") or [])
+    history.append(closed)
+    state["closed"] = history[-MAX_CLOSED:]
+    save(state, p)
+    return closed
+
+
+def _arg(argv, flag, default=None):
+    return argv[argv.index(flag) + 1] if flag in argv and argv.index(flag) + 1 < len(argv) \
+        else default
+
+
+CLOSE_HELP = (
+    "python3 railway/alert_state.py --close <key> --reviewed-by <name> "
+    "--reason <what you found, 40+ chars> --fixed-in <commit|version|PR>")
+
+
 def main(argv=None) -> int:
-    rows = open_alarms()
+    import sys
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    if "--close" in argv:
+        # Local, key-free and offline on purpose. Closing an alarm is a human
+        # act on a committed ledger, never a re-read of anything.
+        try:
+            closed = close_alarm(_arg(argv, "--close"),
+                                 reviewed_by=_arg(argv, "--reviewed-by"),
+                                 reason=_arg(argv, "--reason"),
+                                 fixed_in=_arg(argv, "--fixed-in"))
+        except ValueError as exc:
+            print(f"REFUSED: {exc}")
+            print("Nothing was written. An alarm closes on a finding, not on a flag.")
+            print(f"  {CLOSE_HELP}")
+            return 2
+        print(f"CLOSED {closed['key']} — reviewed by {closed['reviewed_by']}")
+        print(f"  raised:   {_stamp(closed['first'])}")
+        print(f"  fixed in: {closed['fixed_in']}")
+        print(f"  reason:   {closed['reason']}")
+        print(f"  COMMIT {STATE.name}. The cause raises again, one email, if it recurs.")
+        return 0
+
+    if "--closed" in argv:
+        history = list(load(state_path()).get("closed") or [])
+        if not history:
+            print("No alarm has been closed by review.")
+            return 0
+        print(f"{len(history)} alarm(s) closed by review (newest last):")
+        for rec in history:
+            print(f"  {rec.get('closed_at')}  {rec.get('key')}")
+            print(f"      by {rec.get('reviewed_by')}, fixed in {rec.get('fixed_in')}")
+            print(f"      {rec.get('reason')}")
+        return 0
+
+    # `--check-branches` asks the remote whether each raise's branch still
+    # exists. Off by default so the plain listing stays offline and instant.
+    rows = classify_open(remote="--check-branches" in argv)
     if not rows:
         print("No alarm is open. Nothing is being suppressed.")
         return 0
     print(f"{len(rows)} alarm(s) open (a repeat of the same cause stays quiet "
           f"until a green run clears it):")
-    for key, first, _last, subject in rows:
-        print(f"  {first}  {key}\n      {subject[:110]}")
+    stuck = [r for r in rows if r[4] in UNCLEARABLE]
+    for key, first, _last, subject, status in rows:
+        # `.get`, not `[]`. The one command a human is required to run must not
+        # crash on a status it has not been taught to spell — that is the
+        # `close_incident` CLI's own scar, where every successful close printed
+        # a traceback and read as "it failed, run it again".
+        mark = {ORPHANED: "  ORPHANED", MERGED: "  MERGED",
+                UNKNOWN: "  branch?"}.get(status, "")
+        print(f"  {first}  {key}{mark}\n      {subject[:110]}")
+    if stuck:
+        print(f"\n{len(stuck)} of these cannot clear themselves:")
+        print("  ORPHANED  the branch is gone from origin — no run of that scope can")
+        print("            ever exist again.")
+        print("  MERGED    the branch is still on origin but is an ancestor of main:")
+        print("            its PR landed and it is parked. tests.yml fires on")
+        print("            `pull_request` and on pushes to `main`, and a parked branch")
+        print("            sees neither.")
+        print("  Either way nothing will clear them but a review, and each one costs a")
+        print("  false STILL FAILING email every 14 days until it is closed. See")
+        print("  docs/RUNBOOK.md 'an open alarm cannot clear itself':")
+        print(f"    {CLOSE_HELP}")
     return 0
 
 
