@@ -1,5 +1,77 @@
 # Tech Log
 
+## 2026-08-19 - the two links inside an email were watched by nothing
+
+**What was reported.** The live 404 log carried both subscriber-facing paths,
+two hits each:
+
+    /blog/ai-layoff-tracker/confirm/<token>
+    /blog/ai-layoff-tracker/unsubscribe/<token>
+
+Small numbers, and the most serious finding of the night. Those are the only
+two links a reader is ever given. The first one IS the funnel, because nobody
+is sent a digest until it is clicked. The second one is promised to Gmail and
+Yahoo in the `List-Unsubscribe-Post` header of every message we send.
+
+**The route is live, and a 404 there is decidable.** Probed on 2.20.113 from
+outside, over the network, with a token that matches no row:
+
+    GET  /ai-layoff-tracker/confirm/<probe>/        302 -> ?alt_dg=expired
+    GET  /ai-layoff-tracker/unsubscribe/<probe>/    302 -> ?alt_dg=expired
+    POST /ai-layoff-tracker/unsubscribe/<probe>/    200 (RFC 8058 one-click)
+    GET  admin-post.php?action=alt_digest_confirm   302 (pre-2.20.77 links)
+    GET  admin-post.php?action=alt_digest_unsub     302 (pre-2.20.77 links)
+
+No handler in `subscribe.php` answers a bad token with a 404. An unknown,
+expired or already used token redirects, and a one-click POST for a token that
+matches nothing answers a bare 200. So a 404 on these paths means the ROUTE
+did not resolve. It never means the token was rejected. A negative control
+proves the probe can see the difference: the same probe against a base that
+does not exist returns 404 and reads FAIL.
+
+`alt_digest_public_route_dispatch()` has been hooked on `parse_request` since
+2.20.77, which deployed successfully at 2026-08-17T05:48Z, and the function has
+not been edited since. Before that deploy nothing served these paths and
+nothing minted them either, so the logged hits sit after it. Dating them
+exactly needs the keyed `/seo-404s` route and there is no `WP_API_KEY` in this
+environment, so **the window is not established and is recorded as UNKNOWN**.
+The remaining candidates are all "the route did not resolve at that instant":
+a request landing while the FTPS mirror had `subscribe.php` half written, which
+registers no hook and 404s rather than fataling, or a build that had not landed
+yet.
+
+**What actually changed, because the diagnosis is not the fix.** Nothing in
+this product would ever have said so. The send reports success, the relay
+credential verifies, the health row is green, and a confirmation nobody
+completes reads as `0 sent of 0 eligible`, which is true, complete and says
+nothing. That is the same four-state lesson as the digest credential, on a
+fourth surface.
+
+  * `railway/subscriber_routes.py` probes both routes, both methods and both
+    URL shapes from outside. Stdlib, no key. PASS / FAIL / UNKNOWN, and a
+    probe that never reached the host is UNKNOWN rather than a pass.
+  * it is `ops_status.py [1c]`, next to the reader-freshness check. `[1b]`
+    watches the page a reader browses to; `[1c]` watches the only two URLs a
+    reader is ever SENT.
+  * the deploy runs it. Exit 2 (a route is 404ing now) fails the deploy; exit
+    3 (could not be probed) warns, the same asymmetry the contrast step uses,
+    so a host outage cannot manufacture red runs.
+  * `tests/test_subscriber_routes_live.py` pins the classifier (404 is FAIL, a
+    redirect on the one-click POST is FAIL, a GET that writes is FAIL, an
+    unreachable host is UNKNOWN), pins that the probe token can never collide
+    with a minted one, and probes the live routes.
+
+**The probe token belongs to nobody by construction.** Real tokens are
+`bin2hex(random_bytes(32))`, so 64 lowercase hex characters. The probe draws 64
+characters from an alphabet with no hex digits in it, so the one-click POST can
+be fired at production and reach the handler without writing to anybody's row.
+A fresh one per run, so no shared cache can answer a later probe from an
+earlier verdict.
+
+**Not changed, deliberately:** `subscribe.php` was not touched, no plugin
+version was consumed, and no subscriber record was read or repaired. The
+per-tier guards and the RFC 8058 headers are untouched.
+
 ## 2026-08-19 - the browse index shipped unstyled, because a new route has to ask for the stylesheet (2.20.113)
 
 2.20.110 added `/company-layoffs/` and its A-Z letter pages and they rendered

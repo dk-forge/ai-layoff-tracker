@@ -56,6 +56,7 @@ sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import reader_freshness  # noqa: E402  - sibling module, stdlib only
 import benchmark_freshness  # noqa: E402  - sibling module, stdlib only
 import stash_watch  # noqa: E402  - sibling module, stdlib only
+import subscriber_routes  # noqa: E402  - sibling module, stdlib only
 
 # The repo this script lives in — [8] reads its stash stack. Derived from the
 # file, never from the cwd: ops_status.py is run from anywhere.
@@ -942,6 +943,30 @@ def main():
     except Exception as exc:                      # noqa: BLE001
         print(f"    UNKNOWN: {exc}")
         (egress_blocked if _is_egress_block(exc) else unverified).append("what readers are served")
+
+    # 1c. The two links inside an email. [1b] watches the page a reader browses
+    #     to; this watches the only two URLs a reader is ever SENT. Both turned
+    #     up in the live 404 log on 2026-08-19, and nothing in this product
+    #     could have said so: the send reports success, the credential
+    #     verifies, and a confirmation nobody completes reads as "0 of 0
+    #     eligible". A dead unsubscribe is a compliance failure rather than a
+    #     bug, because the List-Unsubscribe-Post header promises Gmail and
+    #     Yahoo a working POST endpoint.
+    print("\n[1c] SUBSCRIBER ROUTES  (confirm + unsubscribe, probed from outside)")
+    try:
+        routes = subscriber_routes.check()
+        for probe in routes.probes:
+            print(f"    {probe.verdict:<7} {probe.label}: {probe.detail}")
+        if routes.verdict == subscriber_routes.FAIL:
+            print("    -> docs/RUNBOOK.md 'a subscriber route is 404ing'.")
+            issues.append("a subscriber-facing email route is not answering")
+        elif routes.verdict == subscriber_routes.UNKNOWN:
+            print("    THIS IS NOT A PASS.")
+            unverified.append("whether the confirm and unsubscribe links work")
+    except Exception as exc:                      # noqa: BLE001
+        print(f"    UNKNOWN: {exc}")
+        (egress_blocked if _is_egress_block(exc) else unverified).append(
+            "whether the confirm and unsubscribe links work")
 
     # 2. Health triage
     print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")
