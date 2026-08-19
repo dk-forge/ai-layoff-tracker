@@ -49,6 +49,16 @@ Env:
                                    once against a placeholder address so the
                                    email can be read. Ignored by any transport
                                    that sends.
+  DIGEST_TEST_TO                   one nominated address. Renders the LIVE
+                                   payload for this tier and sends it there
+                                   and nowhere else. Reads no subscriber row,
+                                   writes none, stamps no last_sent column and
+                                   closes no send row.
+  DIGEST_TEST_LISTS                which composed sections that one test
+                                   message carries, comma separated
+                                   (layoff, talent, articles). Default: all of
+                                   them, which is what a subscriber to all
+                                   three receives.
 """
 from __future__ import annotations
 
@@ -369,6 +379,110 @@ def _preview_payload(payload: dict, transport):
     return preview
 
 
+# A token that belongs to nobody, and cannot be made to belong to anybody.
+# The unsubscribe handler looks this up in the subscriber table, finds no row,
+# and answers a POST with a bare 200 (includes/subscribe.php,
+# alt_digest_unsubscribe). So the RFC 8058 header a test message carries is
+# structurally real - one https URL, One-Click POST, our own host - and acts on
+# nobody. A test send MUST NOT mint a real token: a token minted for a
+# non-subscriber is a live unsubscribe link for somebody else's row the moment
+# the minting logic is ever wrong.
+TEST_UNSUB_TOKEN = "test-send-belongs-to-no-subscriber"
+TEST_UNSUB_PATH = "ai-layoff-tracker/unsubscribe"
+
+
+def _test_lists(env, sections):
+    """Which composed sections the one test message carries.
+
+    Named order is ignored: the SITE's order is kept, because that order is
+    what decides the subject and the inbox snippet, and a test that reordered
+    them would be showing a layout no subscriber receives.
+    """
+    raw = (env.get("DIGEST_TEST_LISTS") or "").strip()
+    if not raw:
+        return list(sections)
+    wanted = {p.strip().lower() for p in raw.replace(",", " ").split() if p.strip()}
+    return [name for name in sections if name.lower() in wanted]
+
+
+def _test_payload(payload: dict, freq: str, env=None):
+    """Send the LIVE digest to one nominated address and nowhere else.
+
+    WHY THIS EXISTS. "Show me the email" had no answer that put an email in an
+    inbox. The dry run prints to a run log, the preview needs nobody to be due
+    AND a transport that does not send, and a real send is governed - correctly
+    - by the per tier guard, so the day the digest has already gone out is
+    exactly the day a demonstration is impossible. Three requests to see it
+    went unanswered for that reason.
+
+    WHAT IT DOES NOT TOUCH, and each of these is deliberate:
+
+      the per tier guard. Untouched, unread and unweakened. A test run stamps
+      no `last_sent_daily` and no `last_sent_weekly`, because it never calls
+      /digest-complete: send_id is forced to 0 and that is the sole condition
+      the completion call is made under. Nobody is hidden from tomorrow's run.
+
+      the subscriber table. The one address is the one handed in by the
+      operator. No row is read for it, and none is written.
+
+      the unsubscribe path. The link is a token that matches no row, so the
+      one-click POST answers 200 and unsubscribes nobody. The header shape is
+      the real one, so what the operator sees is what a subscriber gets.
+
+    IT REFUSES rather than competes. If real recipients ARE due for this tier,
+    a test run would replace them in this pass. It stops instead and says so:
+    a demonstration must never be the reason a subscriber missed a digest.
+
+    Returns (payload, halt_code). `halt_code` is None to carry on, or an exit
+    code to stop this tier with.
+    """
+    env = os.environ if env is None else env
+    address = (env.get("DIGEST_TEST_TO") or "").strip()
+    if not address:
+        return None, None
+    if "@" not in address or address.count("@") != 1:
+        print(f"::error::DIGEST_TEST_TO is not an address; nothing sent")
+        return None, 1
+
+    due = payload.get("recipients") or []
+    if due:
+        print(f"::error::DIGEST_TEST_TO is set and {len(due)} real recipient(s) "
+              f"are due for the {freq} tier right now. A test send would take "
+              f"this pass and they would wait for the next one, so nothing was "
+              f"sent at all. Run the test when the tier has already gone out, "
+              f"which is when the per period guard leaves nobody due.")
+        return None, 1
+
+    sections = list((payload.get("sections") or {}).keys())
+    if not sections:
+        print(f"DIGEST_TEST_TO: the site composed no section for the {freq} "
+              f"window, so there is nothing true to send. That is the live "
+              f"state, not a failure.")
+        return None, 0
+
+    lists = _test_lists(env, sections)
+    if not lists:
+        print(f"::error::DIGEST_TEST_LISTS names no section the site composed "
+              f"for this window. Composed: {', '.join(sections)}. Nothing sent.")
+        return None, 1
+
+    print(f"DIGEST_TEST_TO: sending the LIVE {freq} payload to ONE nominated "
+          f"address, carrying {', '.join(lists)}. No subscriber row is read or "
+          f"written, no last-sent column is stamped, no send row is closed, "
+          f"and the unsubscribe link is a token that belongs to nobody.")
+    test = dict(payload)
+    # The single condition under which /digest-complete is called. Zero here is
+    # what makes a test send unable to claim a period.
+    test["send_id"] = 0
+    test["recipients"] = [{
+        "id": 0,
+        "email": address,
+        "unsub_url": f"{_site()}/{TEST_UNSUB_PATH}/{TEST_UNSUB_TOKEN}/",
+        "lists": lists,
+    }]
+    return test, None
+
+
 def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
               limit: int | None) -> dict:
     """One tier's whole pass: ask, render, send, record what went out.
@@ -384,7 +498,7 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
     rather than try the next tier, because the fault is not about this tier.
     """
     result = {"code": 0, "sent": 0, "failed": 0, "eligible": 0, "detail": "",
-              "preview": False, "halt": False}
+              "preview": False, "test": False, "halt": False}
     print(f"digest: freq={freq} transport={transport.describe()}")
 
     try:
@@ -416,10 +530,22 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
         result["halt"] = True
         return result
 
-    preview = _preview_payload(payload, transport)
-    result["preview"] = preview is not None
-    if preview is not None:
-        payload = preview
+    # A nominated test address takes precedence over the preview: it is the
+    # explicit instruction, and the preview only ever substitutes when nobody
+    # asked for anything else.
+    test, halt = _test_payload(payload, freq)
+    if halt is not None:
+        result["halt"] = True
+        result["code"] = halt
+        return result
+    if test is not None:
+        payload = test
+        result["test"] = True
+    else:
+        preview = _preview_payload(payload, transport)
+        result["preview"] = preview is not None
+        if preview is not None:
+            payload = preview
 
     send_id = int(payload.get("send_id") or 0)
     eligible = len(payload.get("recipients") or [])
@@ -462,6 +588,13 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
     if result["preview"]:
         print("DIGEST_PREVIEW: nothing recorded, because a placeholder is not "
               "a recipient.")
+    elif result["test"]:
+        # A test send stays out of the ledger for the same reason a preview
+        # does. One nominated address is not the list, and a health row
+        # counting it would read as a digest that went out.
+        print("DIGEST_TEST_TO: nothing recorded in the mailer's health row, "
+              "and no last-sent column stamped. The scheduled run is "
+              "unaffected.")
     else:
         result["detail"] = (f"{freq}: {len(sent_ids)} sent of {eligible} "
                             f"eligible via {transport.describe()}, "

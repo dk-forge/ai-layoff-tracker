@@ -54,6 +54,14 @@ on:
         description: 'Set to 1 to render the live sections when nobody is due. Never sends.'
         required: false
         default: ''
+      test_to:
+        description: 'Send the LIVE digest to this ONE address and nowhere else. Stamps nobody, closes no send row, refuses if real recipients are due.'
+        required: false
+        default: ''
+      test_lists:
+        description: 'Which sections that test message carries: layoff, talent, articles. Blank means all of them.'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -89,4 +97,10 @@ jobs:
           # ignored by any transport that sends, so it cannot mail a
           # placeholder.
           DIGEST_PREVIEW: ${{ github.event.inputs.preview }}
+          # A nominated single address, for "show me the email". It cannot
+          # reach the list: the tier guard, the subscriber table and the
+          # last-sent columns are all untouched by it, and it refuses to run
+          # at all when real recipients are due. See digest_send._test_payload.
+          DIGEST_TEST_TO: ${{ github.event.inputs.test_to }}
+          DIGEST_TEST_LISTS: ${{ github.event.inputs.test_lists }}
         run: python digest_send.py
