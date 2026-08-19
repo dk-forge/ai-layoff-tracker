@@ -102,7 +102,13 @@ holder, so the start-of-session ritual surfaces it automatically.
   `railway/digest_send.py`, digest tests, TECHLOG. **A SIBLING SESSION TOOK 2.20.102 while
   this one was working**, caught by re-reading main immediately before merging,
   which is the step this file asks for and the only reason it did not collide.
-  Rebased to **2.20.103**. **Next plugin release is 2.20.104.** Written here before the push, and main re-read immediately before
+  Rebased to **2.20.103**. **A FOLLOW-UP SHIPPED IN THE SAME SESSION AS 2.20.105**: the subject line of
+  2.20.103 read "AI Layoff Tracker: 16,842 verified cuts this week" on a week
+  whose AI figure was zero, which inflated the product's own metric on its most
+  quoted surface. Every subject now leads with the SITE
+  (`AskTheRecruiter.com · 2026 Week 33: ...`), so no brand is juxtaposed with a
+  raw count, and `railway/tests/test_digest_subject_never_inflates_ai.py` holds
+  the property. **A SECOND COLLISION: main was already at 2.20.104 when this was staged, caught by re-reading main immediately before merging. Rebased to 2.20.105. Next plugin release is 2.20.106.** Written here before the push, and main re-read immediately before
   merging, per the 2.20.92 collision note below.
 
 - **STATUS:** HELD

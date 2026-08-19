@@ -1152,44 +1152,46 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
                            "that broke the preheader, so it proves nothing")
         self.assertLessEqual(len(section["preheader"]), self.PREHEADER_MAX)
 
-    def test_the_snippet_carries_the_figure_its_tier_and_its_window(self):
-        """A figure with no scope is not an acceptable snippet at any length.
-        These three are the part the fitter may never drop.
+    def test_the_snippet_carries_what_the_subject_cannot(self):
+        """WHAT THIS USED TO ASSERT, AND WHY IT CHANGED.
 
-        THE FIGURE IS THE UNITED STATES ONE NOW. It leads the snippet for the
-        same reason it leads the headline pair: it is the stated first
-        priority, and the subject line beside it carries the edition rather
-        than a number. The worldwide total is the first OPTIONAL clause.
+        It required the snippet to repeat the headline figure, its tier and its
+        window, because the subject at the time carried no figure at all. The
+        subject now leads with a figure and its unit
+        (`AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts`), and
+        the brand prefix costs about twenty characters the From name already
+        supplies, so Gmail on mobile truncates near 45 and the tail of the
+        subject is what a phone drops.
+
+        The snippet is therefore the one slot left to COMPLETE the subject
+        rather than restate it, and repeating the worldwide figure would spend
+        it on the half a phone already shows. It leads with the AI figure,
+        which is the number a reader is most likely to get wrong from a subject
+        line alone, then the United States split, which is the owner's stated
+        first priority and appears nowhere in the subject.
         """
         snippet = compose(layoff_fixture())["preheader"]
-        self.assertIn("7,862", snippet)
-        self.assertIn("verified job cuts in the United States", snippet)
-        self.assertIn("August 9-16, 2026", snippet)
+        self.assertTrue(snippet.startswith("0 cuts attributed to AI"), snippet)
+        self.assertIn("United States", snippet)
+        self.assertIn("2026", snippet, "the snippet states no window")
+        self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
 
-    def test_the_second_headline_outranks_the_date_basis_when_only_one_fits(self):
-        """WHAT THIS USED TO ASSERT. That the geography clause "worldwide
-        including entries with no country recorded" beat the basis clause into
-        the snippet. That clause is gone from the snippet: the owner read it
-        three times in one email, in three phrasings, and called it heavy. The
-        body says it once, in its own sentence, with the measured number in it.
+    def test_it_does_not_restate_the_figure_the_subject_already_leads_with(self):
+        section = compose(layoff_fixture())
+        self.assertIn("13,710", section["metric"],
+                      "the subject fragment lost the worldwide figure")
+        self.assertNotIn("13,710", section["preheader"],
+                         "the one recovery slot was spent repeating the half "
+                         "of the subject a phone already shows")
 
-        The ordering rule is unchanged and the clause it protects is now the
-        WORLDWIDE FIGURE. A snippet naming only the US number beside a subject
-        naming the edition is a snippet a reader cannot tell from last week's;
-        the second headline is what makes it this week's.
-        """
-        snippet = compose(layoff_fixture())["preheader"]
-        self.assertIn("13,710 worldwide", snippet)
-        self.assertNotIn("no country recorded", snippet)
-
-    def test_both_clauses_survive_when_there_is_room(self):
-        """A short window label leaves room for the basis clause too."""
+    def test_the_united_states_split_survives_a_long_window(self):
+        """The optional clauses drop from the TAIL, so a long window eats the
+        window label before it eats the geography split."""
         fixture = layoff_fixture()
         fixture["from"] = "2026-08-16"
         fixture["to"] = "2026-08-16"
         snippet = compose(fixture)["preheader"]
-        self.assertIn("13,710 worldwide", snippet)
-        self.assertIn("counted by the date the cuts take effect", snippet)
+        self.assertIn("United States", snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
 
     def test_the_talent_section_composes_one_too(self):

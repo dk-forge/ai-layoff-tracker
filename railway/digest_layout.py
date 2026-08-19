@@ -370,13 +370,30 @@ def part_text(part) -> str:
     return part[2] if len(part) > 2 else ""
 
 
-def part_subject(part) -> str:
-    """The metric-first subject the SITE composed for this section.
+def part_metric(part):
+    """The figure-and-unit fragment the SITE composed for the subject line.
 
-    Empty when the plugin predates it, which is a real state and not an error:
-    subject_line falls back to the edition label deliberately.
+    Returns (metric, minor). Empty when the plugin predates it, which is a real
+    state and not an error: subject_line falls back to the edition label.
+
+    NO FIGURE IS PRODUCED HERE, which is this module's standing rule. The site
+    computes the number and wears the unit on it; this joins strings.
     """
-    return (part[4] if len(part) > 4 else "") or ""
+    if len(part) > 4 and isinstance(part[4], (tuple, list)):
+        metric, minor = (list(part[4]) + ["", False])[:2]
+        return (str(metric or "").strip(), bool(minor))
+    return (str(part[4]).strip() if len(part) > 4 and part[4] else "", False)
+
+
+def week_id(day: datetime.date) -> str:
+    """"2026 Week 33". The week identified without its dates, for a subject.
+
+    THE ISO YEAR, not the calendar year: the week of 28 December 2026 is 2026
+    Week 53 and the week of 31 December 2029 is 2030 Week 1. Year first, so a
+    mailbox sorted by subject sorts by edition.
+    """
+    iso = day.isocalendar()
+    return f"{iso[0]} Week {iso[1]}"
 
 
 def part_preheader(part) -> str:
@@ -479,58 +496,90 @@ def period_phrase(payload: dict) -> str:
 
 
 def subject_line(payload: dict, parts) -> str:
-    """A subject that reads like an edition, not like an inventory.
+    """One pattern for all three streams, chosen by the owner.
 
-    WHAT WENT OUT, AND WHAT THE OWNER SAID ABOUT IT. "AI Layoff Tracker and 2
-    more: the week to 19 August 2026". Two faults in one line. "and 2 more" is
-    machine output: this joined every section heading with commas and fell back
-    to counting them once the join ran past 78 characters, which on a
-    three-section send is every time, so the fallback WAS the normal case. And
-    "the week to 19 August" is not a week anybody recognises: it was a rolling
-    seven days ending on the send day.
+        AskTheRecruiter.com · <period>: <figure> <unit>
 
-    Both are fixed. The window is now a real ISO week (see period_phrase and
-    the site's alt_digest_window), and the subject names the section a reader
-    meets FIRST and then dates the edition. A masthead does not list its own
-    contents, and the From line already carries the brand.
+        AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts
+        AskTheRecruiter.com · 2026 Week 33: 1,376 hiring signals
+        AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts · 1,376 hiring signals
 
-    NO FIGURE, unchanged: a number in a subject line is a number nobody can
-    correct once it is sent. The preheader carries the figure.
+    The brand up front lets a subscriber identify sender and topic in a crowded
+    inbox, the middle dot gives a cleaner hierarchy than a space, and the three
+    read as one weekly series.
+
+    AND IT FIXES AN ACCURACY DEFECT STRUCTURALLY. What shipped on 2026-08-19
+    was "AI Layoff Tracker: 16,842 verified cuts this week", and a reader who
+    never opened it took away sixteen thousand AI-attributed cuts from a week
+    whose AI figure was ZERO. Leading with the SITE rather than a tracker means
+    nothing juxtaposes "AI Layoff Tracker" with a raw cut count, so the line
+    cannot be read as an AI figure at all. The standing rule, enforced by
+    tests/test_digest_subject_never_inflates_ai.py:
+
+        A READER WHO SEES ONLY THE SUBJECT MUST NOT COME AWAY WITH A LARGER AI
+        FIGURE THAN THE EMAIL REPORTS.
+
+    THE TWO UNITS READ DIFFERENTLY BECAUSE THEY ARE DIFFERENT. Verified job
+    cuts each have a filing or a named report behind them; hiring signals are
+    deliberately weaker, a published indication that is mostly unverified. A
+    consistency pass must not flatten one into the other.
+
+    NO FIGURE IS COMPOSED HERE. Every fragment is a string the site built from
+    the same query as the body.
 
     THIS IS A LINE FOR LINE PORT of alt_digest_subject_line in
     includes/subscribe.php, and tests/test_digest_subject_agreement.py drives
-    both over the same inputs and fails on any difference. Change one, change
-    the other, in the same commit.
-
-    Falls back to the subject the site sent whenever it cannot do better.
+    both over the same inputs and fails on any difference.
     """
     fallback = str((payload or {}).get("subject") or "Tracker digest").strip()
 
-    # THE SECTION'S OWN METRIC-FIRST SUBJECT WINS. The owner asked for the
-    # figure in the subject and it is the right call for a data product: the
-    # statistic IS the news. This module may not produce a figure, so the SITE
-    # composes the whole line and this only chooses. It is the LEADING
-    # section's, the same one preheader_text describes, so the two lines a
-    # recipient sees before opening cannot name different trackers.
-    lead = leading_part(parts)
-    composed = part_subject(lead).strip() if lead is not None else ""
-    if composed and len(composed) <= 78:
-        return composed
+    major, minor = [], []
+    for part in (parts or []):
+        metric, is_minor = part_metric(part)
+        if not metric:
+            continue
+        (minor if is_minor else major).append(metric)
+    metrics = major or minor
+
+    freq = str((payload or {}).get("freq") or "").strip().lower()
+    period = ""
+    if freq == "weekly":
+        try:
+            period = week_id(datetime.date.fromisoformat(
+                str((payload or {}).get("from") or "").strip()[:10]))
+        except ValueError:
+            period = ""
+    else:
+        try:
+            period = _stamp(datetime.date.fromisoformat(
+                str((payload or {}).get("to") or "").strip()[:10]))
+        except ValueError:
+            period = ""
+
+    if metrics and period:
+        # Two at most. A third runs past any client's display width and buys
+        # nothing a reader can see.
+        line = f"{BRAND} · {period}: " + " · ".join(metrics[:2])
+        # THE CEILING IS 100 AND NOT 78. The combined line runs to about 83 and
+        # the owner chose it knowing Gmail on mobile truncates near 45. It is
+        # meant to be read from the left and completed by the preheader.
+        if len(line) <= 100:
+            return line
+        # One metric rather than a truncated two: a subject cut mid-figure
+        # publishes a wrong number in the line most people only ever see.
+        line = f"{BRAND} · {period}: {metrics[0]}"
+        if len(line) <= 100:
+            return line
 
     names = [section_heading(part_text(part)) for part in (parts or [])]
     names = [name for name in names if name]
     phrase = period_phrase(payload)
-    # No section could name itself, so there is nothing to lead with and a bare
-    # date is not a subject. The site's own dated fallback goes out.
     if not names or not phrase:
         return fallback
-
     subject = f"{names[0]}, {phrase}"
-    if len(subject) > 78:
-        # The edition alone. Still an edition, still dated, still checkable,
-        # and it never names a section this message might not carry.
+    if len(subject) > 100:
         subject = phrase
-    return subject if len(subject) <= 78 else fallback
+    return subject if len(subject) <= 100 else fallback
 
 
 def preheader_text(parts) -> str:
@@ -576,6 +625,32 @@ def preheader_text(parts) -> str:
         return "What changed on the trackers this period."
 
     composed = part_preheader(part).strip()
+
+    # ------------------------------------------------------------------
+    # WHAT THE TRUNCATED SUBJECT LEAVES HANGING, and never a restatement.
+    #
+    # The subject leads with the brand, which costs about twenty characters the
+    # From name already supplies, and Gmail on mobile truncates near 45. So on
+    # a phone the reader sees roughly "AskTheRecruiter.com · 2026 Week 33: 16,8"
+    # and the SECOND metric is what falls off the end. The preheader is the one
+    # slot left to recover it, so on a combined edition it leads with that
+    # second metric and then continues into the leading section's own snippet.
+    #
+    # It is a JOIN of strings the site composed, never a figure produced here.
+    # A line that will not fit is dropped whole rather than cut: a snippet
+    # truncated mid-figure publishes a wrong number in the one line of the
+    # message most people ever read.
+    # ------------------------------------------------------------------
+    metrics = []
+    for one in (parts or []):
+        metric, minor = part_metric(one)
+        if metric and not minor:
+            metrics.append(metric)
+    if len(metrics) >= 2 and composed:
+        completed = f"{metrics[1]}. {composed}"
+        if len(completed) <= PREHEADER_MAX:
+            return completed
+
     if composed and len(composed) <= PREHEADER_MAX:
         return composed
 

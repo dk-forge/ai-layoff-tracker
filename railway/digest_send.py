@@ -181,9 +181,15 @@ def usable_sections(payload: dict, wanted) -> list:
             # sends no such field, and '' is the honest value for that: it
             # means "fall back", and digest_layout falls back to a line that
             # still describes THIS section rather than walking to another one.
+            # The fourth member is the section's own inbox snippet; the fifth
+            # is its (metric, minor) fragment for the subject line. Both are
+            # composed by the SITE, because both carry a figure and
+            # digest_layout may not produce one. An older plugin build sends
+            # neither, and '' is the honest value for that.
             out.append((name, html, text,
                         (section.get("preheader") or "").strip(),
-                        (section.get("subject") or "").strip()))
+                        ((section.get("metric") or "").strip(),
+                         bool(section.get("minor")))))
     return out
 
 
