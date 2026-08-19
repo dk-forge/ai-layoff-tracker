@@ -1,0 +1,111 @@
+name: National denominators measurement
+
+# COVERAGE OUTSIDE THE US, against counts the tracker does not construct.
+#
+# `rolling-recall.yml` measures the one slice this project can enumerate
+# exactly: US SEC 8-K Item 2.05. Everything else was an opinion, and the owner's
+# goal is worldwide coverage he can DEFEND per country. A goal you cannot
+# measure is a hope.
+#
+# This job fetches the collective-redundancy notification totals published by
+# the authorities that RECEIVE the notifications — Taiwan's MOL, ONS for Great
+# Britain's HR1 forms, Töötukassa for Estonia, NISRA for Northern Ireland — and
+# divides our own holdings for the same country over the same window by them.
+# The denominator is the publisher's own universe, so the figure is falsifiable
+# by anyone who downloads the same file.
+#
+# IT PRINTS NO TOTAL AND NO AVERAGE, and the module refuses to compute one.
+# Directive 98/59/EC lets every member state pick its own threshold, Sweden's
+# floor is five workers and Croatia's twenty, and Taiwan counts plants rather
+# than employers. `national_denominators.combine()` raises rather than adding
+# two series that count different things. Do not "improve" this into a single
+# worldwide coverage percentage.
+#
+# EVERY FIGURE IS A BAND. The low end filters on strict job location and so
+# misses every global cut that hit the country; the high end unions employer
+# domicile and so counts a global cut whole. The truth is inside, and reporting
+# a midpoint would be inventing a number nobody could re-derive.
+#
+# COST: $0.00. Every source is a free public file or a keyless API, and the
+# numerator is our own public /aggregate. No model is called on any path and
+# none should ever be added.
+#
+# WHY IT COMMITS. Both sides of every ratio change with no commit here, so a
+# result that lives only in the runner resets every night and its age can never
+# be read. ops_status [3e] reads the committed file and treats one older than
+# national_denominators.MAX_MEASUREMENT_AGE_DAYS as UNKNOWN, never as a pass.
+#
+# IT PUBLISHES TO NO READER-FACING PAGE, deliberately, exactly as
+# rolling-recall.yml does not. A coverage figure on a public page is a promise
+# and the owner makes it on purpose, not as a side effect of a cron.
+
+on:
+  schedule:
+    # Fridays 12:20 PM ET — a day clear of Thursday's rolling-recall run, which
+    # also pages the live /aggregate.
+    - cron: '20 16 * * 5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: national-denominators
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    # Measured 2026-08-18 from a laptop: four denominator sources, seven file
+    # or API requests in total, plus eight /aggregate reads. Under a minute
+    # cold. 15 leaves room for a slow statistics office without letting a hung
+    # run sit all afternoon.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # No pip install and no lock: stdlib only, on purpose. The .xlsx reader in
+      # the module is a zip and some XML rather than openpyxl precisely so that
+      # a measurement cannot break when the hash-pinned lock is refreshed, and
+      # so that a health job never installs a spreadsheet stack.
+      - name: Measure national denominators
+        id: measure
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+        # The exit code is captured rather than ending the job, so the
+        # measurement is committed before the run is failed below. A result that
+        # leaves no committed evidence is the worst of both.
+        run: |
+          set +e
+          python3 railway/national_denominators.py --write
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit the measurement
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add railway/national_denominators_measurement.json
+          # A quiet week legitimately produces no delta but the timestamp, and
+          # that is committed on purpose: a measurement whose age cannot be read
+          # resolves to UNKNOWN, not to a pass.
+          git diff --cached --quiet && { echo "no change to commit"; exit 0; }
+          git commit -m "coverage: national denominators $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1
+      - name: Report the verdict
+        run: |
+          rc="${{ steps.measure.outputs.rc }}"
+          case "$rc" in
+            0) echo "every declared country reported: measured, or not measurable with a reason" ;;
+            # UNKNOWN is the honest state when a ministry moved a file, changed a
+            # layout, served a chain the runner's TLS stack rejects, or our own
+            # host was unreachable. None of those is a coverage regression and
+            # none must be read as one — but none is a pass either, so the run
+            # goes red and ci_alert.py mails the cause.
+            3) echo "::error::a declared country could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."; exit 3 ;;
+            *) echo "::error::national denominators reported a fault (exit $rc) - see the step above"; exit "$rc" ;;
+          esac
