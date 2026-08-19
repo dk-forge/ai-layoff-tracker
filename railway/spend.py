@@ -920,7 +920,13 @@ def metered_call(model: str, make_call, *, what: str | None = None,
             response = make_call()
         except PaidReadsOff:
             raise
-        except Exception:
+        except Exception as exc:
+            # A budget stop raised from INSIDE the callable is still a budget
+            # stop, not a transport failure. extractor._get_client() re-checks
+            # the brake and raises its own PaidReadsDisabled; retrying that
+            # would be asking a question the answer to which is already "no".
+            if type(exc).__name__ in ("PaidReadsDisabled", "PaidReadsOff"):
+                raise
             # The request may or may not have been charged; we cannot know, and
             # a meter must not invent a number. What we can guarantee is that
             # the NEXT attempt reads the brake again.

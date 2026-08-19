@@ -169,6 +169,25 @@ class ARetryIsAFullCycle(_MeterCase):
         with self.assertRaises(TimeoutError):
             spend.metered_call("test/model", always_fails, attempts=2)
 
+    def test_a_budget_stop_from_inside_the_callable_is_not_retried(self):
+        """`extractor._get_client()` re-reads the brake and raises its OWN
+        PaidReadsDisabled. Retrying that is asking a question whose answer is
+        already no — and, worse, would bury a budget stop under a transport
+        error's handling."""
+        os.environ["ALT_RUN_CEILING_USD"] = "1.00"
+        sent = []
+
+        class PaidReadsDisabled(RuntimeError):
+            pass
+
+        def refused():
+            sent.append(1)
+            raise PaidReadsDisabled("paid reads are OFF")
+
+        with self.assertRaises(PaidReadsDisabled):
+            spend.metered_call("test/model", refused, attempts=4)
+        self.assertEqual(len(sent), 1)
+
     def test_one_attempt_is_still_the_default(self):
         """No caller gets extra spend by upgrading spend.py."""
         sent = []
