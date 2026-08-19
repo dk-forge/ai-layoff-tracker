@@ -1,5 +1,92 @@
 # Tech Log
 
+## 2026-08-19 - the boxes replaced your subscription and only the copy said so
+
+**Reader-visible data loss, live, with a warning where a guard belonged.**
+`alt_digest_prefs_from_post()` builds the WHOLE preference set from whichever
+boxes were ticked. Every box on the signup form starts unticked, always, by
+consent-hygiene design, and that same form is the ONLY way a subscriber changes
+what they receive: `alt_digest_manage_url()` returns its anchor and every digest
+footer now sends readers to it by name. So a subscriber confirmed on all three
+lists, arriving to ADD "articles", ticks that one box, confirms, and loses the
+layoff and talent digests. Nothing in the flow read their current lists, so
+nothing could warn them, and nothing logged it. From the reader's side a digest
+they still want simply stops arriving.
+
+2.20.119 added the honest sentence ("The boxes replace what you had"). That was
+right and it was not enough: a sentence on a page is a warning, and the person
+who needs it is the person who believes they already know what the form does.
+
+**THE PAGE CANNOT GUARD THIS, AND THAT IS A MECHANISM FACT, NOT A PREFERENCE.**
+Prefilling the boxes from the subscriber's current lists was the obvious answer
+and it does not reach the defect. The signup page has no session and the address
+may never travel in a URL (`railway/tests/test_digest_subscription.py`), so
+prefill needs a token; the arrival path that produces this loss is the digest
+footer, and that payload carries ONE manage URL for the whole send
+(`digest-api.php:262`, read at `railway/digest_send.py:415`), so it cannot be
+per-recipient without moving the payload contract. A tokenised prefill would
+also hand a link-holder the answer to "which digests does this person take",
+which the unsubscribe token sitting in the same footer does not: the worst that
+one can do is stop mail.
+
+**THE CONFIRMATION EMAIL HAS NEITHER PROBLEM, AND IT WAS ALREADY ON THE PATH.**
+The `pending_prefs` branch of `alt_digest_signup()` applies nothing to a
+confirmed row until the link in that email is clicked. So the email knows both
+halves, it reaches only the mailbox that owns the record, and it costs the
+signup form's phone-fold budget nothing. The change is now itemised there:
+
+    Stopping:
+      - AI Layoff Tracker digest
+    Starting:
+      - Talent Intelligence Tracker digest
+    How often: daily (was weekly)
+
+**Stopping is printed FIRST, and that ordering is the guard rather than a
+layout choice.** The reader this exists for believes they are adding a list, so
+a message that opens with what they gain confirms what they already think and
+gets skimmed. `test_the_loss_is_listed_above_the_gain` and
+`test_what_stops_is_read_before_the_link_that_stops_it` hold both facts: the
+confirm URL cannot appear above the list of what it stops.
+
+The subject moved too, into its own literal: a change that takes a digest away
+arrives as "confirm a change that stops a digest", a change that only adds as
+"confirm your digest change", and a first signup keeps the subject it had. An
+inbox that gives the reader no reason to open the one message that could prevent
+the loss is a guard nobody reads.
+
+**ONE LINK, STILL.** A second link ("add these without removing anything")
+would be as mailbox-proof as the first and is still wrong, for the reason the
+unsubscribe link left this message on 2026-08-17: Brevo rewrites every link at
+the relay and corporate scanners follow them, so two links means a machine
+chooses between two outcomes with nobody present. The reader's other option is
+to not click.
+
+**WHY NOT ADDITIVE-ONLY**, the other candidate. It prevents the accident
+outright, needs no state, and has no disclosure question at all. It also removes
+the only way a subscriber can drop ONE list without unsubscribing from
+everything, and restoring that needs a mode control above the Subscribe button,
+where there were 95.2px of headroom against the 80px required. It stays
+available and this does not block it; nothing here assumes replace semantics
+beyond reporting them.
+
+**Known gap, written down rather than papered over.** The per-address resend
+throttle returns before the mail is built, so a second change submitted within
+fifteen minutes parks its prefs with no email describing them. Nothing
+un-itemised can be applied by it, because minting that token invalidates the
+link in the first email, so the worst case is a reader with no working link for
+fifteen minutes rather than a change they were not shown. Closing it means a new
+notice code on a fold-measured block.
+
+Nothing above the Subscribe button moved: `railway/signup_fold.py` reads the
+same 95.2px on the tightest surface and the stamp did not need re-recording.
+Consent hygiene is untouched (no box is pre-ticked for anyone), the RFC 8058
+one-click unsubscribe and the `List-Unsubscribe` headers are untouched, no
+address is logged or rendered, and the stored-prefs mechanism did not move: this
+is what the authorising email says. New tests:
+`test_digest_subscription.py::TheChangeEmailNamesWhatStops`, nine assertions
+against the real handlers, five of which fail when the delta is disconnected.
+2.20.120.
+
 ## 2026-08-19 - the manage link named a preference centre that does not exist
 
 **The complaint, about all three digests: "when i click this: You can also

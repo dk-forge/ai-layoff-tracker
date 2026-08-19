@@ -60,6 +60,34 @@ def confirm_subject():
     return m.group(1)
 
 
+def single_literal(fn):
+    """The one string a `function <fn>() { return '...'; }` returns.
+
+    Same reasoning as confirm_subject() above: a test that writes the words out
+    again is a second definition of a reader-facing string and goes green while
+    the two disagree.
+    """
+    src = open(SUBSCRIBE, encoding="utf-8").read()
+    m = re.search(r"function %s\(\)\s*\{\s*return\s*'([^']*)';" % re.escape(fn), src)
+    assert m, ("includes/subscribe.php has no %s() returning a single literal" % fn)
+    return m.group(1)
+
+
+def list_names():
+    """alt_digest_list_names(), read out of the shipped source.
+
+    The change email and the confirmation panel both render these, so the test
+    has to fail when a list is renamed in one place only.
+    """
+    src = open(SUBSCRIBE, encoding="utf-8").read()
+    body = re.search(r"function alt_digest_list_names\(\)\s*\{(.+?)\n\}",
+                     src, re.S)
+    assert body, "includes/subscribe.php has no alt_digest_list_names()"
+    pairs = re.findall(r"'(\w+)'\s*=>\s*'([^']*)'", body.group(1))
+    assert len(pairs) == 3, "expected three lists, read %r" % (pairs,)
+    return dict(pairs)
+
+
 # Strip PHP comments with PHP's OWN tokenizer before matching source facts.
 # A test that greps raw source proves nothing about behaviour: a sentence in a
 # docblock saying a route is key gated matches exactly as well as the route
@@ -545,6 +573,127 @@ class BehaviouralGuards(unittest.TestCase):
         self.assertEqual(self.o["prefs_unchanged_until_reconfirm"], [1, 0, "confirmed"])
         self.assertEqual(self.o["change_confirm_redirect"], "updated")
         self.assertEqual(self.o["prefs_after_reconfirm"], [0, 1, "daily", "confirmed"])
+
+
+@unittest.skipUnless(_php(), "php not installed")
+class TheChangeEmailNamesWhatStops(unittest.TestCase):
+    """THE GUARD AGAINST A SUBSCRIPTION DISAPPEARING WITHOUT ANYONE SAYING SO.
+
+    alt_digest_prefs_from_post() builds the WHOLE preference set from the ticked
+    boxes, every box on the form starts unticked by consent-hygiene design, and
+    that form is the only way to change a subscription. So a reader on all three
+    lists who ticks one box meaning to ADD it loses the other two. The intro copy
+    has warned about it since 2.20.119, and copy is a warning, not a guard.
+
+    The page cannot guard it: no session, the address may never travel in a URL,
+    and the manage link in the digest footer is ONE URL for the whole send. The
+    confirmation email can, because it goes to the mailbox that owns the row and
+    it is already on the mandatory path of every change. So these tests are about
+    what that email says, and they run against the real handlers.
+
+    The harness case is exactly the defect: confirmed on `layoff`, resubmitted
+    with `talent` alone.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        proc = subprocess.run([_php(), HARNESS, SUBSCRIBE, DIGEST_API],
+                              capture_output=True, text=True, timeout=60)
+        assert proc.returncode == 0, proc.stderr or proc.stdout
+        cls.o = json.loads(proc.stdout)
+
+    def test_the_loss_this_guards_is_still_what_the_code_does(self):
+        # Not a tautology: if a later session makes the form additive, this
+        # fails and the whole class below has to be re-reasoned rather than
+        # quietly guarding a scenario that can no longer happen.
+        self.assertEqual(
+            self.o["prefs_after_reconfirm"][:2], [0, 1],
+            "ticking `talent` alone no longer drops `layoff`. The mechanism "
+            "these tests describe has changed; re-read alt_digest_change_delta()")
+
+    def test_the_email_names_the_digest_that_will_stop(self):
+        body = self.o["change_mail_body"]
+        self.assertIn(
+            list_names()["layoff"], body,
+            "the change confirmation does not name the digest this click "
+            "stops, so the reader is told nothing they were not told before: "
+            "%r" % body)
+
+    def test_what_stops_is_read_before_the_link_that_stops_it(self):
+        body = self.o["change_mail_body"]
+        stop = body.find(list_names()["layoff"])
+        link = body.find("/confirm/")
+        self.assertGreater(stop, -1)
+        self.assertGreater(link, -1)
+        self.assertLess(
+            stop, link,
+            "the confirm link comes before the list of what stops, so a reader "
+            "can click it without passing the only warning they get")
+
+    def test_the_loss_is_listed_above_the_gain(self):
+        body = self.o["change_mail_body"]
+        self.assertLess(
+            body.find("Stopping:"), body.find("Starting:"),
+            "the email opens with what the reader gains. The reader this "
+            "exists for believes they are adding a list, so a message that "
+            "confirms what they already think gets skimmed")
+
+    def test_the_subject_says_something_stops(self):
+        want = single_literal("alt_digest_change_stops_subject")
+        self.assertEqual(self.o["change_mail_subject"], want)
+        self.assertNotEqual(
+            want, confirm_subject(),
+            "a change that takes a digest away arrives under the same subject "
+            "as a first signup, so the inbox gives the reader no reason to "
+            "open the one message that could stop the loss")
+        self.assertTrue(want.lower().startswith("asktherecruiter.com:"),
+                        "the brand leads on every message this system sends")
+
+    def test_a_change_that_only_adds_raises_no_alarm(self):
+        body = self.o["add_mail_body"]
+        self.assertNotIn(
+            "Stopping:", body,
+            "a subscriber who ticked everything they want is told something "
+            "is stopping. A warning that fires when nothing is wrong is a "
+            "warning readers learn to skip")
+        self.assertEqual(self.o["add_mail_subject"],
+                         single_literal("alt_digest_change_subject"))
+        self.assertIn(list_names()["articles"], body)
+        self.assertIn(list_names()["layoff"], body,
+                      "the email does not say what keeps arriving, so a reader "
+                      "cannot check the whole set from it")
+        self.assertEqual(self.o["prefs_after_add"], [1, 1],
+                         "ticking both did not keep both")
+
+    def test_a_first_signup_is_not_dressed_up_as_a_change(self):
+        body = self.o["confirm_mail_body_new"]
+        for phrase in ("Stopping:", "Nothing has changed yet"):
+            self.assertNotIn(
+                phrase, body,
+                "a brand new address is being told about a change to "
+                "preferences it does not have: %r" % body)
+        self.assertEqual(self.o["confirm_mail_subject"], confirm_subject())
+
+    def test_the_change_email_still_carries_exactly_one_link(self):
+        # The unsubscribe link left this message on 2026-08-17 because Brevo
+        # rewrites links at the relay and corporate scanners follow them, so a
+        # second link means a machine chooses between two outcomes with nobody
+        # present. An "add without removing" link would be as mailbox-proof as
+        # the confirm link and would reintroduce exactly that.
+        urls = re.findall(r"https?://\S+", self.o["change_mail_body"])
+        self.assertEqual(
+            len(urls), 1,
+            "the change email carries %d links. Two links is a scanner "
+            "deciding what the subscriber gets: %r" % (len(urls), urls))
+
+    def test_the_change_email_never_carries_the_address(self):
+        # The itemised body is new prose next to a token, which is exactly the
+        # shape that grows an address in it ("what you get, reader@..."). The
+        # signup path already has this guard; the change path now has its own.
+        self.assertNotIn(
+            "@example.com", self.o["change_mail_body"],
+            "the change email carries the subscriber's address. The address "
+            "never travels in a URL and it has no business in the body either")
 
 
 @unittest.skipUnless(_php(), "php not installed")

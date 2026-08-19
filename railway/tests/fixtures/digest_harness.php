@@ -349,6 +349,7 @@ $out['unsub_token'] = $r['unsub_token'];
 $out['mails_after_signup'] = count($mails);
 $out['confirm_mail_to'] = $mails[0]['to'] ?? '';
 $out['confirm_mail_subject'] = $mails[0]['subject'] ?? '';
+$out['confirm_mail_body_new'] = $mails[0]['body'] ?? '';
 $out['confirm_mail_has_token'] = strpos($mails[0]['body'] ?? '', $r['confirm_token']) !== false;
 $out['confirm_mail_has_email_in_url'] = (bool) preg_match('/https?:\S*reader(%40|@)/', $mails[0]['body'] ?? '');
 
@@ -453,13 +454,42 @@ $c = row('careful@example.com');
 $_REQUEST = array('t' => $c['confirm_token']);
 drive('alt_digest_confirm');
 $GLOBALS['__transients'] = array();
+$mails = array();
 post_signup('careful@example.com', array('talent'), 'daily');   // "someone" re-submits
 $c2 = row('careful@example.com');
 $out['prefs_unchanged_until_reconfirm'] = array((int) $c2['consent_layoff'], (int) $c2['consent_talent'], $c2['status']);
+// The email that authorises this change. It is the only place the reader is
+// ever told that ticking `talent` alone takes `layoff` away.
+$change_mail = end($mails);
+$out['change_mail_subject'] = $change_mail['subject'] ?? '';
+$out['change_mail_body'] = $change_mail['body'] ?? '';
+$out['change_mail_count'] = count($mails);
 $_REQUEST = array('t' => $c2['confirm_token']);
 $out['change_confirm_redirect'] = drive('alt_digest_confirm');
 $c3 = row('careful@example.com');
 $out['prefs_after_reconfirm'] = array((int) $c3['consent_layoff'], (int) $c3['consent_talent'], $c3['freq_talent'], $c3['status']);
+
+// 10b. The same form used the way a reader who wants to ADD would use it if
+//      they had read the warning: every list they want, ticked. Nothing stops,
+//      so the email must not manufacture an alarm.
+$wpdb->pdo->exec('DELETE FROM wp_alt_subscribers');
+$GLOBALS['__transients'] = array();
+$mails = array();
+post_signup('adder@example.com', array('layoff'));
+$a = row('adder@example.com');
+$_REQUEST = array('t' => $a['confirm_token']);
+drive('alt_digest_confirm');
+$GLOBALS['__transients'] = array();
+$mails = array();
+post_signup('adder@example.com', array('layoff', 'articles'));
+$add_mail = end($mails);
+$out['add_mail_subject'] = $add_mail['subject'] ?? '';
+$out['add_mail_body'] = $add_mail['body'] ?? '';
+$a2 = row('adder@example.com');
+$_REQUEST = array('t' => $a2['confirm_token']);
+drive('alt_digest_confirm');
+$a3 = row('adder@example.com');
+$out['prefs_after_add'] = array((int) $a3['consent_layoff'], (int) $a3['consent_articles']);
 
 /* ------------------------------------------------------------------ */
 /* 11. Send log, aggregate click counting, and the stats payload.       */
