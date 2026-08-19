@@ -1,38 +1,6 @@
 {
   "entries": [
     {
-      "attempts": 1,
-      "key": "resolve:deploy-wordpress-plugin:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-19T09:24:20+00:00",
-      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
-      "payload": {
-        "body": "'Deploy WordPress plugin' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32237088328\n\nWhatever was failing is no longer failing. Nothing to do.\n\nThis clears 1 open alert(s):\n  - CI RED: Deploy WordPress plugin \u2014 The action 'Install lftp' has timed out after 3 minutes.\n",
-        "resolve_scope": "deploy-wordpress-plugin:main",
-        "subject": "RECOVERED: Deploy WordPress plugin is green again"
-      },
-      "raised_at": "2026-08-19T09:24:20+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32237088328",
-      "scope": "deploy-wordpress-plugin:main",
-      "state": "pending"
-    },
-    {
-      "attempts": 1,
-      "key": "resolve:tests:main",
-      "kind": "resolve",
-      "last_attempt_at": "2026-08-19T09:29:57+00:00",
-      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
-      "payload": {
-        "body": "'Tests' on main passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32237088235\n\nWhatever was failing is no longer failing. Nothing to do.\n\nThis clears 1 open alert(s):\n  - CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'\n",
-        "resolve_scope": "tests:main",
-        "subject": "RECOVERED: Tests is green again"
-      },
-      "raised_at": "2026-08-19T09:29:57+00:00",
-      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32237088235",
-      "scope": "tests:main",
-      "state": "pending"
-    },
-    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -421,8 +389,34 @@
       "settled_at": "2026-08-19T07:43:38+00:00",
       "settled_because": "delivered late: emailed the owner",
       "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:deploy-wordpress-plugin:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-19T09:24:20+00:00",
+      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
+      "raised_at": "2026-08-19T09:24:20+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32237088328",
+      "scope": "deploy-wordpress-plugin:main",
+      "settled_at": "2026-08-19T09:45:05+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
+    },
+    {
+      "attempts": 1,
+      "key": "resolve:tests:main",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-19T09:29:57+00:00",
+      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
+      "raised_at": "2026-08-19T09:29:57+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32237088235",
+      "scope": "tests:main",
+      "settled_at": "2026-08-19T09:45:05+00:00",
+      "settled_because": "delivered late: emailed the owner",
+      "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-19T09:29:57+00:00",
+  "updated_at": "2026-08-19T09:45:05+00:00",
   "version": 1
 }
