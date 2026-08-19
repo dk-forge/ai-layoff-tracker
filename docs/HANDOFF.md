@@ -6,6 +6,19 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CLAIMED BY A SIDE SESSION (2026-08-19): a 503 no longer kills
+  the digest send.** The baton was read as HELD by `local` and is NOT claimed
+  here. **No plugin file was touched and no version was consumed**, so nothing
+  waits on a deploy. `railway/digest_send.py` treated the site's deploy
+  maintenance 503 as a hard failure (run 32282266653): nobody was mailed, the
+  run went red and raised a CI alert for an unactionable condition, and the
+  missed edition left no health row. It now retries five bounded attempts and,
+  failing that, reports UNKNOWN (exit 3, green run) with the skipped tier named
+  in the `digest_mailer` health row. `includes/subscribe.php` was NOT opened
+  and the digest composers were not touched; the per-tier send guards, the RFC
+  8058 headers and the unsubscribe path are untouched. New tests:
+  `railway/tests/test_digest_sender.py::TheDeployMaintenanceWindow`.
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.116, because 2.20.115
   WAS ISSUED TWICE.** #154 (digest subject line) and #153 (company page
   next-step block) both stamped 2.20.115 and both merged, ~8 minutes apart.

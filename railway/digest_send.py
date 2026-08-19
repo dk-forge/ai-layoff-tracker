@@ -70,6 +70,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import socket
 import sys
 import time
 import urllib.error
@@ -77,6 +78,7 @@ import urllib.parse
 import urllib.request
 
 import digest_layout
+import http_retry
 from digest_transport import (ABSENT, OK, REJECTED, UNKNOWN,  # noqa: F401
                               CredentialCheck, DigestPolicyError, Message,
                               TransportError, resolve_transport,
@@ -151,6 +153,166 @@ def resolve_freqs(env=None, today=None) -> tuple:
         return (choice,)
     today = today or _today()
     return ("daily", "weekly") if today.isoweekday() == 1 else ("daily",)
+
+
+# ---------------------------------------------------------------------------
+# Reading the list through a host that is having a moment
+# ---------------------------------------------------------------------------
+#
+# THE DEFECT THIS ANSWERS, 2026-08-19 (run 32282266653). A scheduled send landed
+# while an FTPS deploy was mid-flight, the recipient route answered the 503 that
+# WordPress deliberately returns in its maintenance window, and this job printed
+#
+#     ::error::could not read the recipient list: HTTP 503
+#
+# and exited 1. Three things were wrong with that at once. The send was skipped
+# and nobody was mailed for the day. The run went red, and a red run mails the
+# owner a CI alert, for a condition that is neither a defect nor actionable -
+# the exact "an outage manufactures red runs which manufacture alerts" shape
+# CLAUDE.md warns about. And the skip looked like an infrastructure blip, so
+# nothing anywhere recorded that a digest had not gone out.
+#
+# 503 IS UNKNOWN, NEVER FAIL, matching every other live check against this host
+# (subscriber_routes.py, data_integrity.py, published_figures.py). The site
+# answered, and answered with the status it returns while a deploy is landing.
+#
+# But UNKNOWN is a third state, not a quiet pass. A send that did not happen
+# because the host was mid-deploy has to be visibly distinguishable from a send
+# that had nobody due - `0 sent of 0 eligible` was true, complete and said
+# nothing for three days while the credential was dead. So a skipped send names
+# itself in the mailer's health row, where ops_status and the weekly digest read
+# it, and the run exits 3 (could not tell), never 0 and never 1.
+#
+# RETRYING BEATS SKIPPING. A deploy window is seconds to a couple of minutes, so
+# four more attempts over roughly three minutes usually turn this into a
+# non-event and nobody is skipped at all.
+
+# WHAT IS WORTH TRYING AGAIN: the repo's ONE definition, imported rather than
+# re-derived. http_retry exists because a retry that lived in one file was
+# re-derived by the next scan and drifted, and tests/test_job_deferrals.py
+# holds that line.
+RETRY_STATUSES = http_retry.TRANSIENT
+
+# WHAT IS NOT OUR DEFECT: the same set minus 500. The two questions are
+# genuinely different and collapsing them loses one of them.
+#
+#   "retry it?"  - yes for a 500 too. The host emits them under load and one
+#                  more attempt is free.
+#   "excuse it?" - no for a 500. That is PHP erroring INSIDE our own route, on
+#                  exactly the path this job exists to read, and a 500 that
+#                  survives five attempts is a defect. Excusing it is the F27
+#                  failure: a guard that stays green forever.
+#
+# Everything else in the set is the host's front door rather than our code:
+# 503 is WordPress's own maintenance response, 502/504 are the gateway giving
+# up, 408/429 are it asking us to wait, 52x are Cloudflare.
+EXCUSABLE_STATUSES = frozenset(RETRY_STATUSES) - {500}
+
+# BOUND EVERY ATTEMPT, NOT ONLY THE LOOP. A hung socket with an unbounded read
+# is the same defect one layer up: the outer retry never gets its second turn
+# and the job burns its whole timeout waiting on one dead connection. So each
+# attempt carries its own timeout, and the worst case is arithmetic:
+# 5 * 30s of request + 15+30+60+90s of waiting = under 6 minutes, against a
+# workflow timeout of 20. A transient halt stops the run, so a Monday's two
+# tiers cannot both spend it.
+RECIPIENT_ATTEMPTS = 5
+RECIPIENT_TIMEOUT_S = 30
+RECIPIENT_BACKOFF_S = (15, 30, 60, 90)
+
+
+def transient_reason(exc):
+    """Why this failure is the host having a moment, or None if it is a defect.
+
+    Ordering matters: HTTPError is a URLError is an OSError, so the most
+    specific class is read first and an HTTP status we do NOT excuse falls
+    through to None rather than being caught by a broader arm below.
+    """
+    if isinstance(exc, urllib.error.HTTPError):
+        if exc.code == 503:
+            return "HTTP 503: the site is in its deploy maintenance window"
+        if exc.code in EXCUSABLE_STATUSES:
+            return f"HTTP {exc.code}: the shared host did not answer"
+        return None
+    if isinstance(exc, urllib.error.URLError):
+        return f"the host could not be reached ({exc.reason})"
+    if isinstance(exc, (socket.timeout, TimeoutError, ConnectionError, OSError)):
+        return f"the connection to the host failed ({exc})"
+    if isinstance(exc, ValueError):
+        # A 200 carrying an error page rather than JSON. The route did not
+        # answer us; it did not answer us WRONGLY either.
+        return "the host answered with a body that was not JSON"
+    return None
+
+
+# What a recipient read produced. `kind` is the only thing the caller branches
+# on, so a new outcome cannot be silently read as one of the old ones.
+OK_READ, NO_ROUTE, TRANSIENT, FAULT = "ok", "no_route", "transient", "fault"
+
+
+def read_recipients(freq, attempts=RECIPIENT_ATTEMPTS, sleep=None):
+    """(payload, kind, detail). Never raises.
+
+    WHAT A FAILED ATTEMPT CAN LEAVE BEHIND, and why retrying is safe.
+
+    /digest-recipients is not a pure read: it opens a row in the sends table
+    before composing, captures an unpublished edition against that id, and
+    stamps the tier's external claim (includes/digest-api.php). So an attempt
+    whose RESPONSE was lost can leave residue on the server. Each piece was
+    checked:
+
+      no address is mailed twice. A message is only ever built from a payload
+      we received, so an attempt that produced no payload sent nothing, and the
+      next attempt reads the due rows afresh.
+
+      no `last_sent_daily` / `last_sent_weekly` is stamped. Only
+      /digest-complete writes those, and it is called once, at the end, under
+      `send_id > 0`. The retry cannot hide anybody from tomorrow.
+
+      the claim is idempotent. It is one timestamp per tier, overwritten, and
+      its only effect is that the in-WordPress wp_mail sender stands down -
+      which is what we want while this job is the one handling the tier.
+
+      the send row is the one piece of residue: a lost response leaves an open
+      row reading 0 of 0, and the retry opens a fresh one. That is a log row,
+      not a delivery, and it is why the attempt count is 5 rather than 50.
+
+    A 503 in particular leaves nothing at all: WordPress serves its maintenance
+    response before any REST handler runs, so the route's body never executed.
+    """
+    # Looked up at CALL time, not bound as a default. A default of `time.sleep`
+    # captures the function object at import and no later patch of it can be
+    # seen - which made the suite sleep for real, three and a quarter minutes a
+    # test, exactly as production would.
+    sleep = time.sleep if sleep is None else sleep
+    last, verdict = "", TRANSIENT
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            return _call("digest-recipients", {"freq": freq},
+                         timeout=RECIPIENT_TIMEOUT_S), OK_READ, ""
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None, NO_ROUTE, "the site has no /digest-recipients route"
+            if exc.code not in RETRY_STATUSES:
+                return None, FAULT, f"the recipient route returned HTTP {exc.code}"
+            fault = f"the recipient route returned HTTP {exc.code}"
+            last = transient_reason(exc)
+            if last is None:
+                # Retried because it might be a blip; NOT excused if it is not.
+                # A 500 is our own route erroring, and five of them is a defect.
+                last, verdict = fault, FAULT
+            else:
+                verdict = TRANSIENT
+        except Exception as exc:                          # noqa: BLE001
+            last = transient_reason(exc)
+            if last is None:
+                return None, FAULT, f"the recipient route could not be read: {exc}"
+            verdict = TRANSIENT
+        if attempt < max(1, attempts):
+            pause = RECIPIENT_BACKOFF_S[min(attempt, len(RECIPIENT_BACKOFF_S)) - 1]
+            print(f"::warning::recipient list not readable ({last}); "
+                  f"attempt {attempt} of {attempts}, retrying in {pause}s")
+            sleep(pause)
+    return None, verdict, f"{last}; still there after {attempts} attempt(s)"
 
 
 # ---------------------------------------------------------------------------
@@ -355,7 +517,7 @@ def _record_health(status: str, entries: int, detail: str) -> None:
         print(f"(digest health post skipped: {exc})")
 
 
-def health_reading(credential, transport, details, failed_rows):
+def health_reading(credential, transport, details, failed_rows, not_sent=()):
     """(status, detail) for the mailer's own health row. Never a silent pass.
 
     THE DEFECT THIS ANSWERS, 2026-08-19. The armed Brevo credential was being
@@ -370,12 +532,27 @@ def health_reading(credential, transport, details, failed_rows):
     So the row now carries the credential state as well as the send counts, and
     the two facts are kept apart. `0 sent of 0 eligible` says nothing about
     whether this job COULD send, and it must never again read as if it did.
+
+    THE SAME LESSON A THIRD TIME, 2026-08-19. A tier the host could not be
+    asked about is a digest that did not go out, and until now it left no row
+    at all - so the last green row stood, aged, and said a send had happened.
+    A skip is named FIRST in the detail, ahead of the counts, because it is the
+    thing a reader of the health page needs to see; and it is `degraded`, the
+    same not-a-pass-not-a-fault reading an unestablished credential gets.
+    `credential=` stays the prefix so ops_status can still parse the state.
     """
     prefix = f"credential={credential.state.upper()}"
     body = "; ".join(details) if details else "no tier recorded a pass"
+    if not_sent:
+        body = "; ".join(list(not_sent) + [body])
 
     if credential.state == REJECTED:
         return "degraded", f"{prefix} - {credential.detail}. {body}"
+    if not_sent:
+        # NOT a pass: an edition this tier's readers never received. NOT a
+        # fault either: the host was mid-deploy, nothing is broken here, and
+        # the next run repeats the period.
+        return "degraded", f"{prefix}; {body}"
     if failed_rows:
         return "degraded", f"{prefix}; {body}"
     if credential.state == UNKNOWN and transport.sends:
@@ -562,29 +739,35 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
     rather than try the next tier, because the fault is not about this tier.
     """
     result = {"code": 0, "sent": 0, "failed": 0, "eligible": 0, "detail": "",
-              "preview": False, "test": False, "halt": False}
+              "preview": False, "test": False, "halt": False, "not_sent": ""}
     print(f"digest: freq={freq} transport={transport.describe()}")
 
-    try:
-        payload = _call("digest-recipients", {"freq": freq})
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            print("::warning::the site has no /digest-recipients route yet, so "
-                  "this build of the plugin is older than this job. Nothing "
-                  "sent and nothing claimed.")
-            result["halt"] = True
-            return result
-        print(f"::error::could not read the recipient list: HTTP {exc.code}")
-        _record_health("degraded", 0, f"recipient route returned HTTP {exc.code}")
-        result["code"] = 1
+    payload, kind, why = read_recipients(freq)
+    if kind == NO_ROUTE:
+        print("::warning::the site has no /digest-recipients route yet, so "
+              "this build of the plugin is older than this job. Nothing "
+              "sent and nothing claimed.")
         result["halt"] = True
         return result
-    except Exception as exc:  # noqa: BLE001
-        # The host is shared and 504s now and then. A call that never landed
-        # claimed no send, so tomorrow's run repeats it cleanly. The other
-        # tier is not attempted either: the same host answers both.
-        print(f"::warning::could not reach the recipient route ({exc}); "
-              f"nothing was claimed, so the next run repeats this period")
+    if kind == FAULT:
+        # The site answered, and answered wrongly, on the one route this job
+        # exists to read. That is a defect and it is loud.
+        print(f"::error::could not read the recipient list: {why}")
+        result["not_sent"] = f"{freq}: NOT SENT, {why}"
+        result["code"] = 2
+        result["halt"] = True
+        return result
+    if kind == TRANSIENT:
+        # UNKNOWN, not FAIL. Nothing was claimed and nothing was stamped, so
+        # the next run repeats this period cleanly - but it is NOT a pass
+        # either: this tier's readers did not get today's edition, and the
+        # health row below is what stops that being invisible. The other tier
+        # is not attempted; the same host answers both.
+        print(f"::warning::the {freq} digest was NOT sent: {why}. Nothing was "
+              f"claimed or stamped, so the next run repeats this period. This "
+              f"is UNKNOWN, not a failure and not a pass.")
+        result["not_sent"] = f"{freq}: NOT SENT, {why}"
+        result["code"] = 3
         result["halt"] = True
         return result
 
@@ -692,6 +875,18 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
     return result
 
 
+# A FAULT OUTRANKS A "COULD NOT TELL", so `max()` is the wrong operator: 3 is
+# the weakest of these codes and the largest integer. Same ordering the live
+# checks use - FAIL beats UNKNOWN beats PASS - written once here because two
+# tiers can disagree and the run needs one exit code.
+_CODE_RANK = {0: 0, 3: 1, 1: 2, 2: 3}
+
+
+def _worst(codes) -> int:
+    """The run's exit code: a genuine fault first, then unknown, then clean."""
+    return max(codes, key=lambda c: _CODE_RANK.get(c, 3)) if codes else 0
+
+
 def main() -> int:
     if not (_site() and _key()):
         print("WP_SITE_URL and WP_API_KEY are required; nothing attempted")
@@ -742,7 +937,7 @@ def main() -> int:
     raw = os.environ.get("DIGEST_LIMIT", "").strip()
     remaining = int(raw) if raw.isdigit() else None
 
-    codes, details = [], []
+    codes, details, not_sent = [], [], []
     sent_rows = 0
     failed_rows = 0
     for freq in freqs:
@@ -758,6 +953,8 @@ def main() -> int:
         failed_rows += outcome["failed"]
         if outcome["detail"]:
             details.append(outcome["detail"])
+        if outcome["not_sent"]:
+            not_sent.append(outcome["not_sent"])
         if remaining is not None:
             # ONE ceiling for the whole run, not one per tier. DIGEST_LIMIT
             # exists for a first live send, and a Monday that quietly doubled
@@ -780,10 +977,16 @@ def main() -> int:
     # written whenever a tier completed a pass, and it now carries the
     # credential state as well as the counts, so `0 sent of 0 eligible` can no
     # longer be the whole story.
-    if details:
-        status, detail = health_reading(credential, transport, details, failed_rows)
+    #
+    # A SKIPPED TIER WRITES IT TOO, and that is the second half of the 503 fix.
+    # A run that could not read the list recorded nothing at all, so the last
+    # green row stood and aged: the one visible consequence of a missed send
+    # was a red run, which was itself the thing being removed.
+    if details or not_sent:
+        status, detail = health_reading(credential, transport, details,
+                                        failed_rows, not_sent)
         _record_health(status, sent_rows, detail)
-    return max(codes) if codes else 0
+    return _worst(codes)
 
 
 if __name__ == "__main__":
