@@ -660,6 +660,44 @@ REFUSAL_LEDGER = (
      "alternative": "web.archive.org served the Kuwaiti labour law's own official PDF; "
                     "nothing substitutes for the Moroccan ministry",
      "verified_here": False},
+    # --- from the 2026-08-19 Asia sweep
+    {"host": "peraturan.bpk.go.id, learning.hukumonline.com", "country": "Indonesia",
+     "nature": "both name ClaudeBot with 'Disallow: /' (hukumonline also carries "
+               "'Content-Signal: ai-train=no'). peraturan.bpk.go.id is Indonesia's "
+               "OFFICIAL legal database, so PP 35/2021 and UU 13/2003 cannot be read "
+               "there — which is why Indonesia's regime is recorded as in doubt rather "
+               "than as absent",
+     "alternative": "jdih.setneg.go.id, which serves 'User-agent: * / Disallow:' — fully "
+                    "permitted, and NOT YET MINED. This is the single cheapest "
+                    "outstanding action in the whole register",
+     "verified_here": False},
+    {"host": "www.samuiforsale.com", "country": "Thailand",
+     "nature": "robots.txt: 'User-agent: ClaudeBot  # Anthropic / Disallow: /'",
+     "alternative": "thailandlawonline.com, which does the OPPOSITE and names ClaudeBot "
+                    "in order to ALLOW it ('User-agent: ClaudeBot / Allow: /') — the "
+                    "second host found anywhere in this exercise that permits us by name, "
+                    "after the Swedish riksdag", "verified_here": False},
+    {"host": "www.commonlii.org", "country": "Pakistan and Commonwealth",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /', so the Punjab 1968 "
+               "Ordinance's SO 11-A could not be read at primary source",
+     "alternative": "clr.org.pk (Crawl-delay 30), which served the Sindh Act verbatim",
+     "verified_here": False},
+    {"host": "www.ilo.org, natlex.ilo.org (/dyn/*)", "country": "international",
+     "nature": "both disallow /dyn/*, which is where every NATLEX statute PDF lives. "
+               "Recorded alongside the existing natlex bot-wall entry because the "
+               "DIRECTIVE is a second, independent reason not to fetch it",
+     "alternative": "clr.org.pk for Pakistan, casainvest.ma for Morocco, "
+                    "botswanalmo.org.bw for Botswana — national mirrors carried what "
+                    "NATLEX would have", "verified_here": False},
+    {"host": "satudata.kemnaker.go.id, gso.gov.vn, nso.gov.vn, labour.go.th, "
+             "legal.labour.go.th, punjablaws.gov.pk, kpcode.kp.gov.pk, vbpl.vn",
+     "country": "Indonesia, Vietnam, Thailand, Pakistan",
+     "nature": "NOT REFUSALS — ECONNREFUSED, timeout or 502 from this environment, "
+               "robots.txt included. Every publication verdict in the Asian backlog is "
+               "UNKNOWN for this reason and not for a publisher's decision. Worth "
+               "retrying from another network before anyone concludes anything about "
+               "these four countries",
+     "alternative": "none from here", "verified_here": False},
     # --- path-level disallows a production collector must honour
     {"host": "www.moel.go.kr /info/defaulter/", "country": "South Korea",
      "nature": "path-level disallow over the ONE genuine per-employer public naming "
@@ -887,10 +925,25 @@ ACKNOWLEDGED_BACKLOG = {
       "or a real PDF library."
       ),
     'Cambodia': ("2026-08-18",
-      "Labour Law 1997 art. 95 and 130 require informing the labour "
-      "inspectorate and MLVT of a mass layoff; no numeric threshold was "
-      "identified and no aggregate was located, but the search was not "
-      "exhaustive."
+      "REGIME ESTABLISHED FROM PRIMARY TEXT, AND THIS FILE'S OWN CITATION WAS "
+      "WRONG. Labour Law (Kram of 13 March 1997) ARTICLE 95 ALONE carries the "
+      "mass-layoff duty — read verbatim, it defines mass layoff as any layoff "
+      "resulting from a reduction in an establishment's activity or a foreseen "
+      "internal re-organization, sets selection criteria and last-in-first-out "
+      "with family weighting, a two-year re-hire priority, and the sentence "
+      "that matters: 'The Labour Inspector is kept informed of the procedure "
+      "covered in this article.' On a worker-representative request the "
+      "Inspector may convene the parties and the Minister may issue a Prakas "
+      "SUSPENDING the layoff for up to 30 days, repeatable once. ARTICLE 371 "
+      "makes it mandatory rather than hortatory: dismissal under art. 95 "
+      "without informing the Labour Inspector draws a fine of 61-90 days' base "
+      "wage or 6 days to a month's imprisonment. CORRECTION RECORDED: the "
+      "previous note paired art. 95 with art. 130. Article 130 is the WAGE "
+      "GARNISHMENT ceiling and art. 131 its food-creditor exception — nothing "
+      "to do with layoffs. There is NO numeric threshold and NO stated notice "
+      "period; the duty is procedural. PUBLICATION UNKNOWN: no periodic count "
+      "from MLVT or NIS was located, and the search was not exhaustive in "
+      "Khmer, so this is UNKNOWN rather than a negative."
       ),
     'China': ("2026-08-18",
       "ART. 41 IS NOW VERIFIED AND CHARACTERISED; PUBLICATION REMAINS "
@@ -937,15 +990,25 @@ ACKNOWLEDGED_BACKLOG = {
       "PDF library."
       ),
     'Hong Kong': ("2026-08-18",
-      "STRONGLY INDICATED NO_REGIME, DELIBERATELY NOT RECORDED AS ONE. The "
-      "Labour Department's own Concise Guide covers the whole Employment "
-      "Ordinance in 13 chapters — termination, employment protection, severance "
-      "and long service payment — and has NO chapter on collective or mass "
-      "redundancy at all; chapter 11 was read in full and carries no "
-      "notification duty. But Cap. 57 itself is robots-refused: "
-      "elegislation.gov.hk disallows everyone except Googlebot and Bingbot, so "
-      "the Ordinance was never read. Same rule as New Zealand — the statute "
-      "carries this claim or nothing does."
+      "STRONGLY INDICATED NO_REGIME, STILL NOT RECORDED, AND NOW BETTER "
+      "EVIDENCED THAN BEFORE. The Labour Department's own Concise Guide to the "
+      "Employment Ordinance — on labour.gov.hk, which returns 404 for "
+      "robots.txt and is therefore unrestricted — covers the whole Ordinance in "
+      "13 chapters (application, contract, wages, rest days and leave, sickness "
+      "allowance, maternity, paternity, end-of-year payment, termination, "
+      "employment protection, severance and long service payment, anti-union "
+      "discrimination, employers' criminal liability) plus three appendices, "
+      "with NO collective-redundancy chapter and NO notification provision "
+      "anywhere; redundancy appears only as a trigger for severance. Two "
+      "independent practitioner sources state positively that Hong Kong has no "
+      "concept of collective dismissal and no duty to inform or consult. Also "
+      "worth recording: the Employee's Rights to Representation, Consultation "
+      "and Collective Bargaining Ordinance 1997 was repealed and never revived. "
+      "STILL NOT RECORDED because the guide is an authoritative DESCRIPTION of "
+      "Cap. 57 rather than Cap. 57 itself: elegislation.gov.hk allows only "
+      "Googlebot and Bingbot, and ILO EPLex — the one instrument note that "
+      "would have settled it — returns HTTP 403 to our agent on every country "
+      "page. Same rule as New Zealand."
       ),
     'Hungary': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
@@ -980,13 +1043,33 @@ ACKNOWLEDGED_BACKLOG = {
       "permitted route."
       ),
     'Indonesia': ("2026-08-18",
-      "PHK under UU 13/2003 as amended by UU 6/2023 and PP 35/2021; the "
-      "notification article was NOT verified and must not be quoted. "
-      "Kemnaker's Satudata publishes PHK counts, but the source is MIXED "
-      "— compiled from regional office reports, partly classified by "
-      "unemployment-benefit participation, and acknowledged incomplete. "
-      "That mixture is why this is not classified as a published "
-      "aggregate."
+      "THE REGIME ITSELF IS NOW IN DOUBT, WHICH IS A STRONGER STATEMENT THAN "
+      "THE PREVIOUS NOTE MADE. The notification article under UU 13/2003 as "
+      "amended by UU 6/2023 with PP 35/2021 appears to be PP 35/2021 Pasal 37, "
+      "and ITS ADDRESSEE IS NOT THE GOVERNMENT: the purpose and reasons of a "
+      "PHK are notified by the employer TO THE WORKER AND/OR THE UNION, by "
+      "surat pemberitahuan at least 14 working days ahead (7 in probation). No "
+      "general duty to notify a public authority of a collective PHK was found; "
+      "the state enters at the DISPUTE stage through bipartite negotiation and "
+      "Disnaker mediation under UU 2/2004, and the pre-Cipta-Kerja penetapan "
+      "requirement was removed. DO NOT PUBLISH NO_REGIME ON THIS: both official "
+      "primary hosts REFUSED us — peraturan.bpk.go.id, the official legal "
+      "database, names ClaudeBot with 'Disallow: /', and so does "
+      "learning.hukumonline.com — so Pasal 37 is secondary. THE PERMITTED "
+      "ALTERNATIVE IS IDENTIFIED AND NOT YET MINED: jdih.setneg.go.id serves "
+      "'User-agent: * / Disallow:' (fully permitted). TO CLOSE: read PP 35/2021 "
+      "arts. 37-40 and UU 13/2003 art. 151 there. SEPARATELY, a count IS "
+      "published and it is exactly as mixed as suspected — Kemnaker's Satu Data "
+      "publishes monthly WORKER counts by province (Jan-Jun 2026: 32,389; 2024: "
+      "77,965), classified by JKP unemployment-insurance participation and "
+      "excluding resignation, retirement, disability and death per PP 6/2025 "
+      "and Permenaker 2/2025, compiled from regional office reports and "
+      "acknowledged incomplete. THE CONSEQUENCE IS THE INTERESTING PART: a "
+      "count exists that is NOT the by-product of a notification duty, so "
+      "Indonesia cannot be classified as REGIME_WITH_AGGREGATE without settling "
+      "the Pasal 37 addressee question first. REJECTED: BPS publishes no PHK "
+      "count — its 'PHK' indicator is the percentage of HOUSEHOLDS receiving "
+      "severance pay, from a household survey."
       ),
     'Isle of Man': ("2026-08-18",
       "LEANS NO_REGIME, NOW ON TWO POSITIVE SECONDARY STATEMENTS RATHER THAN "
@@ -1049,12 +1132,31 @@ ACKNOWLEDGED_BACKLOG = {
       "dispute-resolution power, not a disclosure duty."
       ),
     'Pakistan': ("2026-08-18",
-      "Standing Orders Ordinance 1968 SO 12/13 covers termination and "
-      "retrenchment, and NO duty to notify a public authority was found "
-      "at federal level — but retrenchment devolved to the provinces "
-      "after the 18th Amendment and the Punjab, Sindh, KP and Balochistan "
-      "variants were NOT checked. Deliberately NOT recorded as 'no "
-      "regime' on this evidence."
+      "PAKISTAN IS NOT NO_REGIME, AND THE PREVIOUS NOTE'S WORKING HYPOTHESIS IS "
+      "OVERTURNED AT THE PROVINCIAL LEVEL — where it had to be answered. What "
+      "exists is not a notification duty but a PRIOR-APPROVAL duty with a "
+      "numeric threshold. SINDH, READ VERBATIM: Sindh Terms of Employment "
+      "(Standing Orders) Act 2015, Standing Order 15 — no employer shall "
+      "terminate the employment of MORE THAN FIFTY PERCENT OF THE WORKERS or "
+      "close down the whole establishment WITHOUT PRIOR PERMISSION OF THE "
+      "GOVERNMENT, except for fire, catastrophe, power stoppage, epidemic or "
+      "civil commotion; an undecided application is DEEMED GRANTED after 15 "
+      "days; appeal to the Labour Court within 30 days; and the explanation "
+      "extends 'close down' to a lay-off beyond fourteen days that results in "
+      "closure. The negative half was read too: SO 16 notice runs to the "
+      "WORKER, SO 18 'Procedure for retrenchment' is last-in-first-out and "
+      "nothing else, SO 19 re-employment preference goes to the workers by "
+      "registered post — so ORDINARY retrenchment in Sindh has no authority "
+      "duty at all. PUNJAB, SECONDARY: the 1968 Ordinance's SO 11-A, inserted "
+      "in 1973, is the parent clause with ONE MATERIAL DIFFERENCE — permission "
+      "runs to the LABOUR COURT, not the Government. KP (its own 2013 Act) and "
+      "BALOCHISTAN (its own 2021 Act) are UNKNOWN: kpcode.kp.gov.pk timed out "
+      "and the Balochistan PDF has no extractable text layer and needs OCR. All "
+      "four apply to establishments of 20+ workers. PUBLICATION UNKNOWN. "
+      "STRUCTURAL LEAD WORTH KEEPING: a >50%-or-closure event generates a "
+      "per-employer APPLICATION FILE held by the provincial Government (Sindh) "
+      "or by the Labour Court (Punjab), and Labour Court orders are adjudicative "
+      "records. Whether any of it is published is untested."
       ),
     'South Korea': ("2026-08-18",
       "THE STATUTE IS NOW VERIFIED FROM PRIMARY TEXT and the publication "
@@ -1083,17 +1185,54 @@ ACKNOWLEDGED_BACKLOG = {
       "naming barrier in Korea is policy rather than statute."
       ),
     'Thailand': ("2026-08-18",
-      "Labour Protection Act B.E. 2541 s.121 requires 60 days' notice to "
-      "the Labour Inspector — but it is NARROW, covering machinery and "
-      "technology reorganisation only, not general economic redundancy, "
-      "so it would systematically undercount even if published. "
-      "Publication unresolved. NEAR-MISS: social security job-loss counts "
-      "are claims."
+      "THE NARROW READING IS CONFIRMED AND s.75 IS RULED OUT. Labour Protection "
+      "Act B.E. 2541 s.121 bites ONLY on termination by reason of reorganising "
+      "work units, production process, distribution or services arising from "
+      "the use of machinery, a change in machinery, or changes in TECHNOLOGY — "
+      "60 days' written notice to the Labour Inspector and to the affected "
+      "employees, stating date, reason and A LIST OF THE AFFECTED EMPLOYEES, "
+      "with 60 days' wages in lieu for failure, and NO numeric threshold. "
+      "s.75 was checked as the obvious candidate for a general economic duty "
+      "and it is NOT one: it covers TEMPORARY SUSPENSION of business (3 working "
+      "days' notice to the employee and the Labour Inspector, 75% of wages "
+      "during suspension) and the Supreme Court confines it to genuine "
+      "temporary necessity. So ordinary economic redundancy in Thailand carries "
+      "NO notification to any authority, and the one duty that exists is "
+      "technology-scoped — the closest statutory analogue anywhere on earth to "
+      "an AI-caused-layoff filing, which is worth knowing for this tracker "
+      "specifically. s.121's exact wording is SECONDARY (law-firm briefings); "
+      "the Thai official hosts were unreachable. PUBLICATION UNKNOWN: "
+      "labour.go.th and legal.labour.go.th answer ECONNREFUSED, and mol.go.th "
+      "serves an EMPTY robots.txt (no restriction) but no statistics page was "
+      "reached. NEAR-MISSES REJECTED: SSO unemployment-benefit claim counts are "
+      "claimants, and s.75 suspension notices are not dismissals."
       ),
     'Vietnam': ("2026-08-18",
-      "Labour Code 2019 requires a labour utilisation plan and 30 days' "
-      "notice to the provincial People's Committee. Whether MOLISA or GSO "
-      "publishes counts was never checked."
+      "REGIME ESTABLISHED, PUBLICATION UNKNOWN FOR AN ENVIRONMENT REASON. "
+      "Labour Code 45/2019/QH14 art. 42 (obligations on structural, "
+      "technological or economic change) and art. 44 (the labour utilisation "
+      "plan): 30 days' prior notice to the PROVINCIAL PEOPLE'S COMMITTEE, in "
+      "practice received by the provincial So LDTBXH. THERE IS NO NUMERIC "
+      "THRESHOLD — art. 42 triggers on affecting 'a large number of employees' "
+      "and no 10/20/50 cut-off exists in the Code, which is a real finding "
+      "rather than a gap in the reading. Art. 44 read in full: the plan must "
+      "list the NAMES and number of employees retained, retrained, moved to "
+      "part-time, retiring and terminated. Art. 42(6)'s text layer truncates "
+      "mid-sentence in the official English PDF and the two hosts that could "
+      "close it were down (vbpl.vn 502, MOLISA's portal on an expired "
+      "certificate), so the 30-day wording is secondary-corroborated rather "
+      "than primary-read. PUBLICATION: gso.gov.vn and nso.gov.vn were "
+      "unreachable (ECONNREFUSED — not refusals). GSO does publish a QUARTERLY "
+      "job-loss figure compiled from 'bao cao cua cac dia phuong', and the "
+      "classification trap is that this is a labour-force statistic built from "
+      "local administrative reports, NOT a count of art. 42 filings; do not "
+      "classify Vietnam as publishing an aggregate on it. BEST PER-EMPLOYER "
+      "LEAD IN ASIA: HCMC's DoLISA runs a documented intake for art. 42 "
+      "notifications and instructs EPZ and industrial-park management boards to "
+      "COMPILE LISTS OF THE ENTERPRISES THAT FILED and return them to the "
+      "Department. A named-employer list provably exists inside at least one "
+      "provincial DoLISA; no public publication was found. Worth a dedicated "
+      "look at HCMC, Binh Duong, Dong Nai and Bac Ninh."
       ),
 }
 

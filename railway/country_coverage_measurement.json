@@ -1,7 +1,6 @@
 {
   "backlog": [
     "Bosnia and Herzegovina",
-    "Botswana",
     "Cambodia",
     "China",
     "Czechia",
@@ -10,12 +9,9 @@
     "India",
     "Indonesia",
     "Isle of Man",
-    "Kuwait",
     "Morocco",
     "New Zealand",
-    "Nigeria",
     "Pakistan",
-    "South Africa",
     "South Korea",
     "Thailand",
     "Vietnam"
@@ -102,12 +98,18 @@
       "stored_name": "Bosnia and Herzegovina"
     },
     "Botswana": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "NO PERIODIC PUBLICATION, but the count demonstrably EXISTS and is disclosed ad hoc, which is a different and more hopeful state than Germany's. Answering a parliamentary question in February 2023 the Minister of Labour and Home Affairs stated that 1,170 companies had submitted notifications of intention to retrench between January 2019 and January 2023, with 3,680 workers losing jobs \u2014 reported by the government's own Daily News, and naming NO companies. A later PQ reportedly gives 700 companies / 5,392 employees for January 2024 to May 2026 and is UNVERIFIED. There is no cadence, no stable unit and no format, so this is not a published series. It is the best 'one request away from an aggregate' candidate found anywhere: the realistic route is a direct ministry request or a Hansard trawl of the recurring question, not a scrape. NEAR-MISSES REJECTED: Statistics Botswana's Quarterly Labour Force Module and Formal Employment Stats Brief are survey and stock series",
+      "assessed": "2026-08-19",
+      "authority": "the Commissioner of Labour, Ministry of Labour and Home Affairs",
+      "cite": "https://www.botswanalmo.org.bw/system/files/Legislation_Employment_Act.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 4000,
-      "state": "unknown",
-      "stored_name": "Botswana"
+      "regime": "Employment Act Cap 47:01 s.25 (Redundancy), read verbatim: 'when an employer forms an intention to terminate contracts of employment for the purpose of reducing the size of his work force, he shall forthwith give written notice of that intention to the Commissioner and to every employee to be or likely to be directly affected'. s.25(1) is first-in-last-out subject to operational need, s.25(3) a six-month re-engagement priority, s.25(4) makes contravention an offence under s.151(b)",
+      "state": "not_measurable",
+      "stored_name": "Botswana",
+      "threshold": "NONE \u2014 AND THAT IS THE FINDING. The duty attaches to the INTENTION to reduce, with no minimum number of dismissals and no minimum employer size, which is a broader trigger than US WARN, than Directive 98/59/EC, and than South Africa's s.189A. Botswana's Commissioner therefore holds a thresholdless national dataset"
     },
     "Brazil": {
       "age_days": 0,
@@ -474,12 +476,19 @@
       "threshold": "NONE. The duty bites on a single redundancy, so it would not yield an event count comparable with any threshold-gated regime here even if published"
     },
     "Kuwait": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "NONE. NEAR-MISSES REJECTED: art. 8's annual headcount return is a STOCK of employees, not separations; and Kuwait's labour figures reach ILOSTAT through a Labour Force Sample Survey",
+      "assessed": "2026-08-19",
+      "authority": null,
+      "cite": "https://web.archive.org/web/20220723102143/https://www.manpower.gov.kw/docs/LaborLaw/Labor_Law_Eng.pdf",
+      "class": "no_regime",
+      "denominator_basis": null,
       "entries": 0,
       "jobs": 1500,
-      "state": "unknown",
-      "stored_name": "Kuwait"
+      "regime": "NO collective-dismissal notification duty exists anywhere in Law No. 6 of 2010 on Labour in the Private Sector, established by reading the whole instrument \u2014 the Public Authority for Manpower's own English translation, 76,226 characters, searched for collective, closure, liquidation, reduction, redundancy, suspension, cessation, notify the ministry, competent authority and approval, with every hit read. Art. 44 is individual notice from employer to employee; art. 45-47 are unfair-dismissal restrictions; art. 50 expires the contract on bankruptcy or final closure WITHOUT any filing; art. 61 covers wages during a closure. THE FALSE POSITIVE THIS ENTRY EXISTS TO KILL: the widely quoted 'inform the competent Ministry three months in advance' clause concerns non-renewal of a COLLECTIVE (group) EMPLOYMENT CONTRACT \u2014 a collective bargaining agreement \u2014 and has nothing to do with collective dismissal. TWO RESIDUAL RISKS, stated rather than buried: the ARABIC original governs and was not read, and art. 8's returns are prescribed by ministerial decision, so a filing duty could live outside the statute. Both are cheap to check from an environment with Gulf egress. NOTE ON PROVENANCE: manpower.gov.kw is unreachable from here (ECONNREFUSED, not a refusal), so the official PDF was read through a web.archive.org snapshot of that same file",
+      "state": "not_measurable",
+      "stored_name": "Kuwait",
+      "threshold": null
     },
     "Latvia": {
       "age_days": -1,
@@ -601,12 +610,19 @@
       "stored_name": "New Zealand"
     },
     "Nigeria": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "NONE, and there is no notification stream for one to be derived from. THE SUB-NATIONAL QUESTION IS CLOSED RATHER THAN UNSAMPLED, which is rare and worth the words: labour is item 34 of the EXCLUSIVE Legislative List, Second Schedule Part I of the 1999 Constitution, and under s.4(2)-(3) the National Assembly legislates on Exclusive List items to the exclusion of the State Houses of Assembly. No Nigerian state CAN create a WARN-style duty, so the 36 states and the FCT need not be swept. NEAR-MISS REJECTED: the NBS Nigeria Labour Force Survey is a household survey",
+      "assessed": "2026-08-19",
+      "authority": null,
+      "cite": "https://jurist.ng/labour_act/sec-20",
+      "class": "no_regime",
+      "denominator_basis": null,
       "entries": 0,
       "jobs": 32,
-      "state": "unknown",
-      "stored_name": "Nigeria"
+      "regime": "NO disclosure duty to any public authority exists, and this CORRECTS the register's own earlier note, which said s.20 involved the Ministry. Labour Act Cap L1 LFN 2004 s.20 was read verbatim: on redundancy the employer shall inform THE TRADE UNION OR WORKERS' REPRESENTATIVE of the reasons and extent, apply last-in-first-out subject to merit, and use best endeavours to negotiate redundancy payments. The Minister appears in s.20(2) ONLY as a regulation-making power. There is no filing, no form, no authority and NO THRESHOLD OF ANY KIND. The information duty is real but private, running to the union where workers are represented \u2014 worth stating, because 'no regime' here means no PUBLIC disclosure, not no obligation. Read on a secondary host: the Federal Ministry's own copy at nelex.gov.ng is robots-permitted but a scanned image with no text layer",
+      "state": "not_measurable",
+      "stored_name": "Nigeria",
+      "threshold": null
     },
     "Norway": {
       "age_days": 0,
@@ -766,12 +782,20 @@
       "threshold": "banded from 10 workers depending on establishment size, over 30 days"
     },
     "South Africa": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "PUBLISHED, AND ONE YEAR IS NOW VERIFIED FROM A PERMITTED SOURCE, which is what this entry was waiting for. The Deputy Minister of Employment and Labour's Budget Vote speech of 2025-07-03, on gov.za: 'the CCMA facilitated the saving of 30 581 jobs out of 64 919 facing retrenchment' for FY2024/25 (April-March). A 2015 CCMA statement on the same host gives 103,949 jobs saved over 2010-2015, so the series runs back at least that far. TWO CORRECTIONS TO THE EARLIER ASSESSMENT: the lag is roughly THREE months, not six or seven \u2014 the Budget Vote speech on gov.za is the fastest permitted route to each year's figure and beats the annual report \u2014 and the figures no longer rest on search-result summaries. THE LIMIT THAT MUST TRAVEL WITH IT: the unit is employees in s.189A matters REFERRED TO THE CCMA, not all South African retrenchments and not all s.189 processes. Facilitation is compulsory only on request, so an unknown share never enters the denominator. It is a FLOOR. FY2023/24 (38,428 facing / 14,887 saved) is still UNVERIFIED \u2014 ccma.org.za is WAF-403 and the nationalgovernment.co.za mirror returns 403 on its own robots.txt, so permission could not even be established",
+      "assessed": "2026-08-19",
+      "authority": "no ex-ante filing to a ministry: the CCMA (Commission for Conciliation, Mediation and Arbitration) receives s.189A referrals and is what makes the population countable",
+      "caveat_partial_refusal": "ccma.org.za (the publisher) is WAF-403, saflii.org names ClaudeBot and disallows it, and pmg.org.za \u2014 the parliamentary monitoring archive, the obvious route to committee presentations of these figures \u2014 names ClaudeBot with 'Disallow: /' TWICE. gov.za and labour.gov.za are open and are the permitted route",
+      "cite": "https://www.gov.za/news/speeches/deputy-minister-jomo-sibiya-employment-and-labour-dept-budget-vote-202526-03-jul-2025",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
       "entries": 0,
       "jobs": 1671,
-      "state": "unknown",
-      "stored_name": "South Africa"
+      "regime": "Labour Relations Act 66 of 1995 s.189 and s.189A \u2014 operational requirements dismissals, with s.189A adding a CCMA facilitation route for larger employers",
+      "state": "measured",
+      "stored_name": "South Africa",
+      "threshold": "employers of more than 50 employees, banded by workforce size: 10 dismissals up to 200 staff, rising to 50 at 501+"
     },
     "South Korea": {
       "also_stored_as": [
@@ -953,6 +977,7 @@
     "Portugal",
     "Romania",
     "Slovakia",
+    "South Africa",
     "Spain",
     "Sweden",
     "Taiwan",
@@ -969,7 +994,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-08-19T01:46:25Z",
+  "measured_at": "2026-08-19T01:50:26Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1063,7 +1088,7 @@
     "Spain": "13 of 17 autonomous communities. Balears names; Euskadi masks. datos.comunidad.madrid is 'Disallow: /' and holds Madrid's ERE CSV, whose fields are therefore UNVERIFIED",
     "Switzerland": "14 of 26 cantons by name: ZH BS AG SO ZG TG GE VD BE LU SG FR NE JU. No cantonal naming list found. Ticino (www.ti.ch) names ClaudeBot and disallows all, so TI is UNKNOWN, not no"
   },
-  "refusal_hosts": 60,
+  "refusal_hosts": 71,
   "refusal_ledger": [
     {
       "alternative": "none \u2014 data.gouv.fr carries no PSE dataset and the POEM portal 500s",
@@ -1458,6 +1483,83 @@
       "verified_here": false
     },
     {
+      "alternative": "www.gov.za and labour.gov.za, both open \u2014 the Budget Vote speeches carry the same indicator",
+      "country": "South Africa",
+      "host": "pmg.org.za",
+      "nature": "robots.txt names ClaudeBot with 'Disallow: /' \u2014 twice, plus 'Content-Signal: ai-train=no'. The Parliamentary Monitoring Group is the obvious archive of committee presentations carrying CCMA retrenchment figures, and it is closed to us",
+      "verified_here": false
+    },
+    {
+      "alternative": "web.archive.org",
+      "country": "Pakistan",
+      "host": "beoe.gov.pk",
+      "nature": "robots.txt names ClaudeBot with 'Disallow: /'",
+      "verified_here": false
+    },
+    {
+      "alternative": "labour.gov.za, which permits everything except /_layouts/, /_vti_bin/ and /_catalogs/",
+      "country": "South Africa",
+      "host": "nationalgovernment.co.za",
+      "nature": "HTTP 403 on robots.txt ITSELF, so permission could not even be established and nothing was fetched. It mirrors the CCMA Annual Report, which is why South Africa's FY2023/24 figure stays unverified",
+      "verified_here": false
+    },
+    {
+      "alternative": "lematin.ma for Moroccan coverage; none for the others",
+      "country": "United States, Morocco, Gulf",
+      "host": "www.loc.gov, leseco.ma, tamimi.com",
+      "nature": "403 to our identifying agent (loc.gov, leseco.ma) and a 307 redirect loop acting as a bot wall (tamimi.com). None defeated",
+      "verified_here": false
+    },
+    {
+      "alternative": "not needed \u2014 a calculator site, no primary material",
+      "country": "Kuwait",
+      "host": "kuwaitcalculator.com",
+      "nature": "robots.txt is SELF-CONTRADICTORY \u2014 a Cloudflare-inserted ClaudeBot block followed by an explicit ClaudeBot allow. Recorded because the rule for this case is worth fixing once: an ambiguous directive is treated as the restrictive one and the host is NOT fetched",
+      "verified_here": false
+    },
+    {
+      "alternative": "web.archive.org served the Kuwaiti labour law's own official PDF; nothing substitutes for the Moroccan ministry",
+      "country": "Kuwait, Morocco",
+      "host": "manpower.gov.kw, miepeec.gov.ma, gulfmigration.eu",
+      "nature": "NOT REFUSALS \u2014 ECONNREFUSED / timeout from this environment, robots.txt included. miepeec.gov.ma is the reason Morocco's publication question is UNKNOWN rather than answered, and it is the last plausible home of a per-employer register in the region. Worth retrying from another network",
+      "verified_here": false
+    },
+    {
+      "alternative": "jdih.setneg.go.id, which serves 'User-agent: * / Disallow:' \u2014 fully permitted, and NOT YET MINED. This is the single cheapest outstanding action in the whole register",
+      "country": "Indonesia",
+      "host": "peraturan.bpk.go.id, learning.hukumonline.com",
+      "nature": "both name ClaudeBot with 'Disallow: /' (hukumonline also carries 'Content-Signal: ai-train=no'). peraturan.bpk.go.id is Indonesia's OFFICIAL legal database, so PP 35/2021 and UU 13/2003 cannot be read there \u2014 which is why Indonesia's regime is recorded as in doubt rather than as absent",
+      "verified_here": false
+    },
+    {
+      "alternative": "thailandlawonline.com, which does the OPPOSITE and names ClaudeBot in order to ALLOW it ('User-agent: ClaudeBot / Allow: /') \u2014 the second host found anywhere in this exercise that permits us by name, after the Swedish riksdag",
+      "country": "Thailand",
+      "host": "www.samuiforsale.com",
+      "nature": "robots.txt: 'User-agent: ClaudeBot  # Anthropic / Disallow: /'",
+      "verified_here": false
+    },
+    {
+      "alternative": "clr.org.pk (Crawl-delay 30), which served the Sindh Act verbatim",
+      "country": "Pakistan and Commonwealth",
+      "host": "www.commonlii.org",
+      "nature": "robots.txt names ClaudeBot with 'Disallow: /', so the Punjab 1968 Ordinance's SO 11-A could not be read at primary source",
+      "verified_here": false
+    },
+    {
+      "alternative": "clr.org.pk for Pakistan, casainvest.ma for Morocco, botswanalmo.org.bw for Botswana \u2014 national mirrors carried what NATLEX would have",
+      "country": "international",
+      "host": "www.ilo.org, natlex.ilo.org (/dyn/*)",
+      "nature": "both disallow /dyn/*, which is where every NATLEX statute PDF lives. Recorded alongside the existing natlex bot-wall entry because the DIRECTIVE is a second, independent reason not to fetch it",
+      "verified_here": false
+    },
+    {
+      "alternative": "none from here",
+      "country": "Indonesia, Vietnam, Thailand, Pakistan",
+      "host": "satudata.kemnaker.go.id, gso.gov.vn, nso.gov.vn, labour.go.th, legal.labour.go.th, punjablaws.gov.pk, kpcode.kp.gov.pk, vbpl.vn",
+      "nature": "NOT REFUSALS \u2014 ECONNREFUSED, timeout or 502 from this environment, robots.txt included. Every publication verdict in the Asian backlog is UNKNOWN for this reason and not for a publisher's decision. Worth retrying from another network before anyone concludes anything about these four countries",
+      "verified_here": false
+    },
+    {
       "alternative": "none needed \u2014 wrong subject",
       "country": "South Korea",
       "host": "www.moel.go.kr /info/defaulter/",
@@ -1497,15 +1599,14 @@
   "scope_basis": "countries the tracker holds rows for, read live from /aggregate",
   "scope_state": "measured",
   "tallies": {
-    "no_regime": 2,
+    "no_regime": 4,
     "refused": 6,
-    "regime_no_aggregate": 24,
-    "regime_with_aggregate": 19,
-    "unassessed": 19
+    "regime_no_aggregate": 25,
+    "regime_with_aggregate": 20,
+    "unassessed": 15
   },
   "unassessed": [
     "Bosnia and Herzegovina",
-    "Botswana",
     "Cambodia",
     "China",
     "Czechia",
@@ -1514,12 +1615,9 @@
     "India",
     "Indonesia",
     "Isle of Man",
-    "Kuwait",
     "Morocco",
     "New Zealand",
-    "Nigeria",
     "Pakistan",
-    "South Africa",
     "South Korea",
     "Thailand",
     "Vietnam"
