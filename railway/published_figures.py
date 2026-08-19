@@ -89,10 +89,12 @@ ops_status.py, the test suite and the weekly digest through that one door. There
 is deliberately no second entry point, no second registry and no second notion
 of what "failing" means.
 """
+import base64
 import json
 import re
 import urllib.error
 import urllib.parse
+from html import unescape
 
 BASE = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
 SITE = "https://asktherecruiter.com/blog/"
@@ -1302,12 +1304,44 @@ class CrossSurfaceAgreementInvariant:
         r"each cut was filed\. This page counts by the date each cut takes effect, "
         r"which is ([\d,]+) for \2\.", re.I)
 
+    # TWO CARRIERS, and the ELEMENT is the one that reaches a reader on this
+    # host. 2.20.99 shipped only the script form and it was on the page,
+    # correct, and unreadable: something in front of the body rewrites an
+    # inline <script> into `<script defer src="data:text/javascript;base64,…">`,
+    # so a checker reading for `window.ALT_PRESS_STAMP` in the served HTML found
+    # nothing and correctly failed the page for stating no basis. Same shape as
+    # the build stamp at 2.20.38, where the comment carrier was stripped
+    # outright and an element had to be added beside it. Read all three forms
+    # rather than choosing one, because "the carrier survived last time" is not
+    # a property of this host that anything here controls.
     _PRESS_STAMP = re.compile(
         r"window\.ALT_PRESS_STAMP\s*=\s*(\{.*?\})\s*;", re.S)
+    _PRESS_STAMP_EL = re.compile(
+        r'data-alt-press-stamp=["\'](.*?)["\']', re.S)
+    _PRESS_STAMP_B64 = re.compile(
+        r'src=["\']data:text/javascript;base64,([A-Za-z0-9+/=]+)["\']')
 
     @staticmethod
     def _n(s):
         return int(str(s).replace(",", ""))
+
+    def _press_stamp_raw(self, html):
+        """The stamp's JSON text from whichever carrier survived, or None."""
+        m = self._PRESS_STAMP_EL.search(html)
+        if m:
+            return unescape(m.group(1))
+        m = self._PRESS_STAMP.search(html)
+        if m:
+            return m.group(1)
+        for enc in self._PRESS_STAMP_B64.findall(html):
+            try:
+                text = base64.b64decode(enc).decode("utf-8", "replace")
+            except Exception:                                # noqa: BLE001
+                continue
+            m = self._PRESS_STAMP.search(text)
+            if m:
+                return m.group(1)
+        return None
 
     def _press_stamp(self, ctx, press_html):
         """The query the PRESS page says produced its own figures.
@@ -1318,16 +1352,16 @@ class CrossSurfaceAgreementInvariant:
         `(stamp, problem)`; `stamp` is None whenever the page did not state one,
         and then `problem` is the sentence the check will print.
         """
-        m = self._PRESS_STAMP.search(press_html or "")
-        if not m:
-            return None, ("the press page states no window.ALT_PRESS_STAMP, so it "
-                          "does not say which date basis its headline is counted "
-                          "on and a reader cannot tell whether it answers the same "
-                          "question as the home page")
+        raw = self._press_stamp_raw(press_html or "")
+        if raw is None:
+            return None, ("the press page states no ALT_PRESS_STAMP, so it does not "
+                          "say which date basis its headline is counted on and a "
+                          "reader cannot tell whether it answers the same question "
+                          "as the home page")
         try:
-            blob = json.loads(m.group(1))
+            blob = json.loads(raw)
         except ValueError:
-            return None, "the press page's window.ALT_PRESS_STAMP is not readable JSON"
+            return None, "the press page's ALT_PRESS_STAMP is not readable JSON"
         params = blob.get("aggregate_params")
         if not isinstance(params, dict) or not params:
             return None, ("window.ALT_PRESS_STAMP carries no aggregate_params, so "

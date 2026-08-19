@@ -534,20 +534,35 @@ if (!is_array($alt_ps)) {
   <p class="alt-press-basis-cross"><?php echo esc_html(function_exists('alt_basis_cross_sentence') ? alt_basis_cross_sentence($alt_sp['home_calendar'], $alt_sp['calendar'], (string) $alt_sp['year']) : ''); ?></p>
   <p class="alt-muted">Filing date is when the notice was lodged; effective date is when the cut lands. The same records, sorted into years by two different dates, so the two totals are not a discrepancy and neither is a revision of the other. Reproduce the home page's figure with <code>aggregate?years=<?php echo (int) $alt_sp['year']; ?>&amp;date_basis=notice</code> and this page's with <code>date_basis=effective</code>. <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'notice'), home_url('/ai-layoff-tracker/'))); ?>">Open the tracker on the filing basis</a> &middot; <a href="<?php echo esc_url(add_query_arg(array('years' => (int) $alt_sp['year'], 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>">on the effective basis</a>.</p>
 
-  <?php /* THE STAMP. Same contract as window.ALT_BOOTSTRAP on the tracker
-           page: the surface states the query behind its own figures, and
-           railway/published_figures.py verifies every value in here against
-           /aggregate and against the home page's live hero rather than
-           believing any of it. A page that can define its way to green is not
-           a page worth checking, so nothing below is taken on trust - it is
-           only what tells the checker which question to ask. */ ?>
-  <script>window.ALT_PRESS_STAMP=<?php echo wp_json_encode(array(
+  <?php
+  /* THE STAMP. Same contract as window.ALT_BOOTSTRAP on the tracker page: the
+     surface states the query behind its own figures, and
+     railway/published_figures.py verifies every value in here against
+     /aggregate and against the home page's live hero rather than believing any
+     of it. A page that can define its way to green is not a page worth
+     checking, so nothing below is taken on trust - it is only what tells the
+     checker which question to ask.
+
+     TWO CARRIERS, and the element is the one that matters. 2.20.99 shipped the
+     script tag alone and it did not survive to a reader: something on this host
+     rewrites an inline <script> into
+     `<script defer src="data:text/javascript;base64,...">`, so the stamp was on
+     the page, correct, and invisible to a checker reading for
+     `window.ALT_PRESS_STAMP`. This is the same lesson the build stamp learned
+     at 2.20.38, where an HTML comment was stripped outright: an element with an
+     attribute is not droppable or rewritable that way. The script stays because
+     it is the readable form in a view-source and because a page that carries
+     the fact twice cannot lose it once. */
+  $alt_stamp_json = wp_json_encode(array(
       'aggregate_params' => array('years' => (string) $alt_sp['year'], 'date_basis' => 'effective'),
       'to_date'          => (int) $alt_sp['to_date'],
       'calendar'         => (int) $alt_sp['calendar'],
       'home'             => array('date_basis' => 'notice',
                                   'calendar'   => (int) $alt_sp['home_calendar']),
-  )); ?>;</script>
+  ));
+  ?>
+  <span class="alt-press-stamp" hidden data-alt-press-stamp="<?php echo esc_attr($alt_stamp_json); ?>"></span>
+  <script>window.ALT_PRESS_STAMP=<?php echo $alt_stamp_json; ?>;</script>
   <?php endif; ?>
 
   <?php

@@ -172,13 +172,27 @@ PRESS_BASIS_EFFECTIVE = {"years": "2026", "date_basis": "effective"}
 
 
 def press_stamp(params=None, to_date=0, calendar=0, home_basis="notice",
-                home_calendar=0):
-    return ('<script>window.ALT_PRESS_STAMP='
-            + json.dumps({"aggregate_params": params or PRESS_BASIS_HOME,
-                          "to_date": to_date, "calendar": calendar,
-                          "home": {"date_basis": home_basis,
-                                   "calendar": home_calendar}})
-            + ';</script>')
+                home_calendar=0, carrier="element"):
+    """The press page's stamp, in one of the three carriers it can arrive in.
+
+    `element` is what the page emits and the only one that reliably reaches a
+    reader on this host; `script` is the readable view-source form; `base64` is
+    what the host's optimiser rewrites the script into, which is exactly how
+    2.20.99 shipped a correct stamp that the checker could not see.
+    """
+    blob = json.dumps({"aggregate_params": params or PRESS_BASIS_HOME,
+                       "to_date": to_date, "calendar": calendar,
+                       "home": {"date_basis": home_basis,
+                                "calendar": home_calendar}})
+    if carrier == "element":
+        return ('<span class="alt-press-stamp" hidden data-alt-press-stamp="'
+                + blob.replace('"', "&quot;") + '"></span>')
+    script = "window.ALT_PRESS_STAMP=" + blob + ";"
+    if carrier == "base64":
+        import base64 as _b64
+        return ('<script defer src="data:text/javascript;base64,'
+                + _b64.b64encode(script.encode()).decode() + '"></script>')
+    return "<script>" + script + "</script>"
 
 
 def press_html(total="484,468", split="", stamp=None, extra=""):
@@ -801,7 +815,20 @@ class CrossSurfaceTest(unittest.TestCase):
             "aggregate": _agg(self.NOTICE_API),
         })))
         self.assertEqual(r.state, di.FAIL)
-        self.assertIn("states no window.ALT_PRESS_STAMP", r.detail)
+        self.assertIn("states no ALT_PRESS_STAMP", r.detail)
+
+    def test_the_stamp_is_read_from_whichever_carrier_survived(self):
+        # 2.20.99 shipped the stamp as an inline <script> alone. This host
+        # rewrites those into a base64 data: URI, so the stamp was on the page,
+        # correct, and invisible - and the check correctly failed the page for
+        # stating no basis it was in fact stating. All three forms are read now.
+        inv = pf.CrossSurfaceAgreementInvariant()
+        for carrier in ("element", "script", "base64"):
+            raw = inv._press_stamp_raw(press_stamp(params=PRESS_BASIS_EFFECTIVE,
+                                                   carrier=carrier))
+            self.assertIsNotNone(raw, carrier)
+            self.assertEqual(json.loads(raw)["aggregate_params"],
+                             PRESS_BASIS_EFFECTIVE, carrier)
 
     def test_the_press_stamp_cannot_narrow_its_way_to_agreement(self):
         # The stamp picks a BASIS, never a scope. A press page that quietly

@@ -151,6 +151,17 @@ unaffected and was already correct: `alt_digest_compose_layoff()` asks for
 `date_basis=layoff_date` and labels it, so the 522,255 it mails is the to-date
 effective figure it says it is.
 
+**2.20.101, twenty minutes later, because the stamp did not reach the reader.**
+It shipped as an inline `<script>`, and something on this host rewrites those
+into `<script defer src="data:text/javascript;base64,...">`. The stamp was on
+the page and correct; a checker reading the served HTML for
+`window.ALT_PRESS_STAMP` found nothing and failed the page for stating no basis
+it was in fact stating. This is the 2.20.38 lesson again - an HTML comment was
+stripped outright then and an element had to be added beside it - so the stamp
+now also rides a `data-alt-press-stamp` attribute, and the check reads all
+three forms including the base64 one. **The carrier is not a detail. A fact
+published in a form the reader's pipeline can rewrite is not published.**
+
 
 ## 2026-08-19 - two orphaned reds: one promise being kept, one movement fully explained
 
