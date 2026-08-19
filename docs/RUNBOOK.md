@@ -1957,9 +1957,29 @@ schedule take over.
 
 ### Open and click tracking
 
-**State as of 2026-08-16: ON, in Brevo, by the owner's decision.** Brevo
-injects its open pixel and rewrites every link at the relay, after
-`digest_send.py` has handed the message over.
+**State as of 2026-08-19: still ON in Brevo, and the owner has decided to turn
+it off.** Brevo injects its open pixel and rewrites every link at the relay,
+after `digest_send.py` has handed the message over. The product is prepared
+for the change and the copy flips with one constant, but **the dashboard has
+not moved yet, so the constants still say ON and the published copy is still
+true.** See "The flip procedure" below; the order is dashboard first.
+
+**Why it is going off.** Two reasons, and the second settles it. The legal
+position moved in 2026: France's CNIL recommendation (adopted 2026-03-12,
+published 2026-04-14, transition ended 2026-07-14) and Italy's Garante
+provvedimento 284 (2026-04-17, compliance by late October 2026) both treat an
+open pixel as consent-gated access to a reader's terminal equipment, following
+EDPB Guidelines 2/2023, and the UK ICO's April 2026 guidance routes it the same
+way. **Disclosure is not consent**, so the honest disclosure we shipped in
+2.20.75 does not cure the exposure. And the metric was mostly fiction anyway:
+Apple Mail Privacy Protection pre-fetches remote images on delivery, Apple is
+roughly 62% of tracked opens, and over 65% of recorded opens are machine
+generated. An open rate no longer measures reading.
+
+CNIL exempts individual open measurement used strictly for deliverability, and
+Italy exempts genuinely aggregate and anonymous open rates. Neither exemption
+describes what we were doing, and CNIL recommends disclosing even exempt pixels
+in the privacy policy as good practice.
 
 Our own message still embeds no image, no pixel, no `url()` and no remote
 fetch of any kind. `digest_transport.assert_message_is_clean` enforces that
@@ -1968,17 +1988,128 @@ what makes this reversible: because the tracking is entirely the provider's,
 changing provider removes it, instead of sending somebody back through our
 templates unpicking pixels we baked in.
 
-**This copy is coupled to a setting nobody in this repo can read.** If the
-owner ever turns tracking back off, these have to change back together, and a
-half-done change leaves the email honest and the signup form lying:
+**This copy is coupled to a setting nobody in this repo can read, so since
+2.20.107 it is DERIVED FROM ONE CONSTANT rather than typed in four places.**
+It used to be four independent hand-written claims, and that is exactly how it
+drifted: the 2026-08-16 change left `/subscriber-stats` reporting
+`open_tracking=none` for three days while the relay measured every send,
+because a human had to remember every site and did not.
 
-| Where | What it says now |
+| Mirror | Where |
 |---|---|
-| `railway/digest_layout.py`, `TRACKING_SENTENCES` | "Our mail provider records whether you open this email and which links you follow. We read it to see which sections are worth keeping. Unsubscribing stops the email and the measuring together." |
-| `railway/digest_transport.py`, `tracking_note()` | the run-log line naming what is believed to be on |
-| `includes/subscribe.php`, `p.alt-digest-tracking` under the form | **corrected 2.20.75, moved 2.20.76.** "Our mail provider records whether you open an email and which links you follow. Unsubscribing stops the sending and the recording together." **2.20.78 added "including the confirmation email, which is measured before you have agreed to anything"** - see the subsection below. It is a paragraph in the flow, not inside the `<details>`: a reader learns it without opening anything |
-| `includes/subscribe.php`, the privacy note under the form | **corrected 2.20.75.** "What our mail provider records" names Brevo, the pixel and the link rewriting. **2.20.78 added "The confirmation email is measured too"** |
-| `includes/subscribe.php`, the file's own docblock | **corrected 2.20.75** |
+| `RELAY_TRACKING_ON` | `railway/digest_layout.py` |
+| `ALT_RELAY_TRACKING` | `wordpress-plugin/ai-layoff-tracker/includes/subscribe.php` |
+
+Everything below reads one of those two and must never restate the fact
+itself: `TRACKING_SENTENCES` (the email footer, both parts),
+`tracking_note()` (the run log), `alt_digest_tracking_line()` (the
+always-visible line under the Subscribe button), the `<details>` privacy note,
+and the `open_tracking` field in the `/subscriber-stats` payload.
+
+`test_digest_subscription.test_the_two_tracking_constants_agree` fails if the
+two mirrors disagree, which is the only thing a test can enforce here. **It
+cannot tell you whether either one matches the dashboard.** That is still a
+stated belief and not a passing check, and it is unverifiable from inside this
+repo by construction. The constant does not fix that; it makes it fixable in
+one place instead of five.
+
+#### There is no opens-off, clicks-on setting in Brevo. Checked, not assumed.
+
+**Researched 2026-08-19** against Brevo's help centre, its OpenAPI spec and the
+WordPress plugin source. The conclusion is flat: **no setting, no plan, and no
+SMTP header disables the open pixel while leaving click tracking on.**
+
+| Asked | Answer |
+|---|---|
+| A per-message SMTP header (`X-Sib-Track-Opens` or similar) | **Does not exist.** No such header in any Brevo documentation. `X-Mailin-Tag` is a log label with no tracking semantics, and the plugin source confirms it. A search-engine summary claiming otherwise has no official source behind it. |
+| Any tracking field in the API | **One, and it is not splittable.** The whole OpenAPI spec contains no `trackOpens`, `openTracking`, `clickTracking` or `disableTracking`. The single control is `contactPixelTrackingConsent`, documented as consent "for open (pixel) **and** click tracking". |
+| Reachable from our send paths | **No.** `contactPixelTrackingConsent` is a JSON field on `POST /v3/smtp/email`. The digest goes over the SMTP relay, whose envelope has nowhere to put it; the confirmation goes through the WP plugin, which drops every header except `Content-Type`, `X-Mailin-Tag`, `From`, `Cc`, `Bcc` and `Reply-To`. |
+| "Disabling tracking is Enterprise-only" | **Substantially true, weakly sourced.** It appears only in Brevo staff forum posts, never in official documentation. Anonymisation and per-contact consent need no Enterprise plan. |
+
+**So putting the setting in version control is not available for the relay, and
+that is a real limitation, not an oversight.** What IS in version control is
+our own first-party counter, which is where every click figure actually comes
+from. See below.
+
+#### Turning the relay's tracking off costs no data. That was checked too.
+
+**Nothing in this product has ever consumed a Brevo engagement event.**
+`alt_digest_brevo_action()` in `includes/digest-api.php` maps `opened`,
+`unique_opened`, `proxy_open`, `unique_proxy_open` and `click` to no action at
+all, deliberately, with a comment saying so. Only `hard_bounce`,
+`invalid_email`, `spam` and `unsubscribed` do anything, and those are delivery
+and consent events, not engagement. **They are unaffected by any tracking
+setting**, so bounce and complaint handling survives the change intact.
+
+Every click figure the product reports comes from `alt_digest_track_link()` in
+`includes/subscribe.php`: a **first-party** counter applied at composition
+time, one integer per `(send_id, link)`, no subscriber id, no IP, no user
+agent. It is our code, in this repo, covered by tests, and **no provider
+setting can reach it**.
+
+That is what makes "opens off, clicks kept" reachable after all. It is not
+reached by a split Brevo does not offer. It is reached by turning the **relay**
+off entirely and leaving our own counter alone.
+
+#### The flip procedure
+
+**Order matters, and it is dashboard first.** Between the two steps the copy
+over-discloses, saying we measure something we no longer measure. That is the
+safe direction. Doing it the other way round publishes "we do not record
+opens" while the pixel is still firing, which is the exact failure of
+2026-08-16 and the one with legal exposure behind it.
+
+1. **The owner changes it in Brevo.** Only he can; do not look for credentials
+   to do it. Account dropdown, top right, then **Settings > Contacts >
+   Per-contact pixel tracking consent**: set it to **Yes**, and set **Track
+   contacts whose consent is unknown** to **No**. Leave the SMTP keys page and
+   the WordPress plugin settings alone; neither has a tracking control.
+   *If that path does not resolve, have him search the dashboard for
+   "per-contact pixel tracking consent" rather than guessing. Brevo has been
+   renaming this area and the doc was last edited 2026-07-17.*
+2. **Flip both constants in one commit**, run `python3 -m unittest` over the
+   four digest test modules, bump `Version:` and `ALT_VERSION`, merge, then
+   verify with `python3 railway/reader_freshness.py`.
+
+**One thing to confirm with Brevo support before relying on step 1.** Two
+official Brevo sources disagree about what consent `false` actually does. The
+help article says Brevo "does not track opens or clicks". The OpenAPI spec says
+it "anonymise[s] the open and click events (counted in aggregate statistics
+only)", which would mean the pixel still loads and links are still wrapped.
+**Those are different outcomes and the difference is the whole point**: under
+EDPB Guidelines 2/2023 the consent-gated act is the ACCESS to the reader's
+device, so anonymising the result does not cure it. If the pixel still fires,
+the copy must not say we send none.
+
+#### If opens are ever wanted back, this is what consent would have to look like
+
+**A design note, not a build.** Do not implement any of this without an
+explicit owner decision.
+
+- **Captured when the address is collected**, at the signup form, not asserted
+  later. CNIL is explicit that consent must be collected at collection time,
+  and that disclosure is not consent.
+- **Per purpose, not bundled.** A separate, unticked box for open measurement,
+  distinct from the subscription itself. Consent to receive is not consent to
+  be measured, and a single box covering both is not freely given.
+- **Revocable without unsubscribing.** Withdrawal has to be as easy as giving
+  it, and today the only lever a reader has is unsubscribe, which stops the
+  thing they asked for. That means a real preference on the manage page,
+  writing a per-subscriber column.
+- **Never collected by a link inside a tracked email.** This is the trap. Apple
+  Mail Privacy Protection and corporate scanners pre-fetch links and images on
+  delivery, so a consent link in a tracked message would be "clicked" by
+  machines and would manufacture consent from people who never saw it. The
+  confirmation email already had a live version of this problem: a scanner
+  following its links confirmed and instantly unsubscribed an address with
+  nobody present, which is why that body carries no unsubscribe link since
+  2026-08-17.
+- **A stored record of what was consented to and when**, per subscriber, since
+  the controller carries the burden of proof.
+- **And it would still not be free.** Because Brevo cannot separate opens from
+  clicks, consent `false` costs the relay's click tracking as well. Our own
+  counter would carry the clicks regardless, which is an argument for leaving
+  the relay off permanently and never asking.
 
 **Where the disclosure lives is now load-bearing, so do not move it back into
 the intro.** It was a clause inside `p.alt-digest-intro` for one version and it
@@ -1991,16 +2122,32 @@ and unsubscribing stops both - and `railway/signup_fold.py` is how you find out
 what any rewrite costs. The confirmation clause added in 2.20.78 sits in that
 same below-the-button paragraph for exactly this reason.
 
-The footer is covered by `tests/test_digest_email_layout.py`,
-`TheTrackingSentenceIsTrue`, which asserts the old promise is gone from both
-body parts, that both say plainly what is measured, and that our message still
-carries nothing that fetches. The FORM copy is covered since 2.20.78 by
-`tests/test_digest_subscription.py`,
-`test_the_privacy_note_singles_out_the_confirmation_email`, which pins the
-confirmation-email disclosure in both the always-visible line and the note.
-It does NOT pin the rest of the rows above: those are verified by reading, and
-if the owner turns tracking off in Brevo they have to be changed by hand,
-together.
+**Every one of these tests now runs in BOTH states**, and that was proved by
+flipping the constants and running them, not by reading. That is the property
+worth keeping: the flip must not redden CI, because a red run on a correct
+change teaches somebody to widen an assertion.
+
+- `tests/test_digest_email_layout.py`, `TheTrackingSentenceIsTrue`, asserts the
+  old "no tracking pixels" promise is gone in both states, that each state's
+  own promise is present in both body parts, and that our message still carries
+  nothing that fetches.
+- `tests/test_digest_subscription.py`,
+  `test_the_privacy_note_singles_out_the_confirmation_email`, pins the
+  confirmation-email warning while the relay measures and **forbids it once the
+  relay stops**. A disclosure that outlives the thing it discloses is its own
+  kind of false.
+- `test_the_two_tracking_constants_agree` pins the two mirrors to each other.
+
+Two habits these tests are written to avoid, both of which bit during
+2.20.107. **Do not quote copy in an assertion** when the module that composes
+it can be imported: a quoted sentence is a second definition, and it reddens on
+a rewording that broke nothing. **Do not slice a template on a phrase from the
+copy** for the same reason; slice on structure, or the helper silently returns
+an empty string and the failure names the wrong cause.
+
+**One thing no test here can do:** confirm either constant matches the Brevo
+dashboard. That is unverifiable from inside this repo, permanently, and the
+constants say so in their own comments.
 
 #### The confirmation email cannot be exempted, and that was checked
 

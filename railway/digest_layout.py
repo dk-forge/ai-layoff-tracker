@@ -708,17 +708,94 @@ def _masthead(kicker: str) -> str:
 # provider removes it, rather than sending us back through our own templates
 # unpicking pixels we baked in.
 #
-# THIS COPY IS COUPLED TO A SETTING NOBODY IN THIS REPO CAN READ. If the owner
-# turns tracking off again in the Brevo dashboard, these strings become false
-# in the other direction. The places that have to change together are listed
-# in docs/RUNBOOK.md under "Open and click tracking".
+# THIS COPY IS COUPLED TO A SETTING NOBODY IN THIS REPO CAN READ, SO IT IS
+# DRIVEN BY ONE CONSTANT INSTEAD OF BEING TYPED IN FOUR PLACES. Until
+# 2.20.107 the variants were prose, retyped wherever they appeared, and a
+# dashboard change meant hand-editing every copy of them in step. That is the
+# shape of drift: the 2026-08-16 flip left /subscriber-stats reporting
+# open_tracking=none for three days while the relay measured every send,
+# because a human had to remember every site and did not. Now
+# RELAY_TRACKING_ON is the single mirror, every reader-facing string is
+# derived from it, and changing the state is one line here plus its PHP twin.
+#
+# WHY ONE CONSTANT COVERS OPENS AND CLICKS TOGETHER, WHICH LOOKS WRONG AND IS
+# NOT. Brevo cannot separate them. Researched against Brevo's own help centre,
+# its OpenAPI spec and the WordPress plugin source on 2026-08-19: there is no
+# setting, no plan and no SMTP header that disables the open pixel while
+# leaving click tracking on. The spec contains no trackOpens, no
+# openTracking and no clickTracking field at all; the single tracking control
+# in the whole API is `contactPixelTrackingConsent`, documented as consent
+# "for open (pixel) and click tracking". So the relay measures both or
+# neither, and a constant per mechanism would model a state that cannot exist.
+#
+# THE MIRROR IS STILL A STATED BELIEF AND NOT A PASSING CHECK. Nothing here
+# can read the Brevo dashboard, so this constant can be wrong. What it buys is
+# that it can only be wrong in ONE place, and that changing it moves every
+# surface together. docs/RUNBOOK.md "Open and click tracking" holds the
+# procedure; test_digest_subscription.test_the_two_tracking_constants_agree
+# fails if the two mirrors disagree.
+#
+# WHY THE RELAY IS BEING TURNED OFF, AND WHY NO CLICK DATA IS LOST WITH IT
+# (owner's decision, 2026-08-19). The legal position moved in 2026: France's
+# CNIL recommendation (adopted 2026-03-12, transition ended 2026-07-14) and
+# Italy's Garante provvedimento 284 (2026-04-17) both treat an open pixel as
+# consent-gated access to a reader's device, following EDPB Guidelines 2/2023,
+# and the UK ICO's April 2026 guidance routes it the same way. Disclosure is
+# not consent. The number was also mostly fiction: Apple Mail Privacy
+# Protection pre-fetches remote images on delivery, so the pixel fires whether
+# or not a person read anything.
+#
+# Turning the relay's measuring off costs the product NOTHING, and that was
+# checked rather than assumed. Nothing here has ever consumed a Brevo open or
+# click event: `alt_digest_brevo_action` maps opened, unique_opened,
+# proxy_open, unique_proxy_open and click to no action at all, deliberately
+# and with a comment saying so. Every click figure the product reports comes
+# from our OWN first-party counter, applied at composition time by
+# `alt_digest_track_link` in includes/subscribe.php, which stores one integer
+# per (send_id, link) with no subscriber id, no IP and no user agent. That
+# counter is unaffected by any provider setting. So "opens off, clicks kept"
+# is reachable after all. It is just reached by turning the RELAY off and
+# leaving our own counter alone, not by a split that Brevo does not offer.
 # ---------------------------------------------------------------------------
-TRACKING_SENTENCES = (
-    "Our mail provider records whether you open this email and which links "
-    "you follow.",
-    "We read it to see which sections are worth keeping.",
-    "Unsubscribing stops the email and the measuring together.",
-)
+
+# The mirror. True while the relay is believed to be measuring opens and
+# clicks. Its PHP twin is ALT_RELAY_TRACKING in includes/subscribe.php, and a
+# test fails if the two disagree.
+RELAY_TRACKING_ON = True
+
+
+def tracking_sentences(relay_tracking_on: bool = None) -> tuple:
+    """What the footer tells a reader we measure, for one relay state.
+
+    Link counting is described in BOTH states, because our own counter runs in
+    both and a footer that went quiet about it would be false by omission. The
+    difference is who does the counting and what it can attribute: the relay
+    ties both to an address, our counter ties nothing to anybody.
+
+    The off variant says out loud that opens are not recorded. A reader told
+    the opposite in an earlier edition is owed the correction, and a promise
+    that is never restated is the one that quietly stops being true.
+    """
+    if relay_tracking_on is None:
+        relay_tracking_on = RELAY_TRACKING_ON
+    if relay_tracking_on:
+        return (
+            "Our mail provider records whether you open this email and which "
+            "links you follow.",
+            "We read it to see which sections are worth keeping.",
+            "Unsubscribing stops the email and the measuring together.",
+        )
+    return (
+        "Our mail provider records nothing about how you read this email, and "
+        "it adds no invisible image.",
+        "Links in it pass through a counter on our own site, which adds 1 to "
+        "a total for that link.",
+        "It stores no identifier, so it can never say who followed one.",
+        "Unsubscribing stops the email and the counting together.",
+    )
+
+
+TRACKING_SENTENCES = tracking_sentences()
 
 
 # HOW A WEEK IS NUMBERED, SAID ONCE, IN THE EDITION THAT USES ONE.

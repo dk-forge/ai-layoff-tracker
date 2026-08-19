@@ -153,7 +153,18 @@ class Dormancy(unittest.TestCase):
         # says it is a belief. It used to state a requirement ("must be OFF")
         # that stopped being the policy on 2026-08-16, and a stale requirement
         # in a run log reads like a passing check to whoever scans the output.
-        self.assertIn("tracking is ON", notice)
+        # Asserted against the CONSTANT rather than against one spelling, so
+        # changing the relay state does not redden this on wording alone. What
+        # is actually pinned is that the log states the relay state and still
+        # calls itself a belief. The off variant must ALSO say the click
+        # totals survive, because "tracking is off" read alone would send the
+        # next reader hunting for a regression that is not there.
+        from digest_layout import RELAY_TRACKING_ON
+        if RELAY_TRACKING_ON:
+            self.assertIn("Relay tracking is ON", notice)
+        else:
+            self.assertIn("Relay tracking is OFF", notice)
+            self.assertIn("first-party counter", notice)
         self.assertIn("not a passing check", notice)
 
     def test_a_dormant_run_exits_zero_and_puts_nothing_on_the_wire(self):
@@ -226,13 +237,18 @@ class ThePrivacyPromise(unittest.TestCase):
         self.assertNotIn("<img", message.html.lower())
         self.assertNotIn("url(", message.html.lower())
         # OUR message embeds nothing that fetches, and that is what the two
-        # lines above check. The footer no longer claims the reader is
-        # unmeasured, because Brevo adds open and click tracking at the relay
-        # after we hand the message over (2026-08-16). Both facts are true at
-        # once and the copy now says the second one.
+        # lines above check. What the FOOTER says about the relay is a separate
+        # fact, and it is read from the module that composes it rather than
+        # quoted here. Quoting it made this test a second definition of the
+        # sentence, which is how it reddened on a rewording that broke nothing.
+        # The old promise stays banned in every state: it was false from
+        # 2026-08-16, and it would be false again the moment a provider is
+        # swapped for one that measures.
         flat = " ".join(message.text.split())
         self.assertNotIn("no tracking pixels", flat)
-        self.assertIn("records whether you open this email", flat)
+        from digest_layout import TRACKING_SENTENCES
+        for sentence in TRACKING_SENTENCES:
+            self.assertIn(sentence, flat)
 
     def test_the_address_may_not_appear_in_the_body(self):
         leaky = _message(text=_message().text + "sent to reader@example.com\n")

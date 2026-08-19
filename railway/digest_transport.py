@@ -273,13 +273,25 @@ def tracking_note() -> str:
     This used to read "tracking must be OFF", which was the policy until the
     owner turned it on. A stale requirement in a run log is worse than none:
     it reads like a passing check to the next person scanning the output.
+
+    It reads the same constant the reader-facing copy does, so the run log and
+    the footer cannot describe different states. Still a belief, still not a
+    check, and it says so in both states.
     """
-    return ("Open and click tracking is ON in the provider's dashboard by the "
-            "owner's decision (2026-08-16), so the relay adds a pixel and "
-            "rewrites links after we hand the message over. Our own message "
-            "still embeds neither. Nothing here can read that setting, so this "
-            "is a stated belief and not a passing check. If it is ever turned "
-            "off, RUNBOOK 'Open and click tracking' lists the copy to change.")
+    from digest_layout import RELAY_TRACKING_ON
+
+    if RELAY_TRACKING_ON:
+        state = ("Relay tracking is ON, so the provider adds a pixel and "
+                 "rewrites links after we hand the message over, and both are "
+                 "tied to an address.")
+    else:
+        state = ("Relay tracking is OFF, so the provider adds no pixel and "
+                 "rewrites no links. Click totals still come from our own "
+                 "first-party counter, which no provider setting can reach.")
+    return (state + " Our own message embeds neither, in both states. Nothing "
+            "here can read that dashboard, so this is a stated belief and not "
+            "a passing check. RUNBOOK 'Open and click tracking' holds the "
+            "procedure and every string driven by it.")
 
 
 # ---------------------------------------------------------------------------

@@ -25,11 +25,22 @@
  *     mail provider, and Brevo injects its own pixel and rewrites links at
  *     the relay. So the provider CAN tell whether an email was opened, and we
  *     can read that. Every reader-facing string that used to promise
- *     otherwise has been corrected; docs/RUNBOOK.md "Open and click tracking"
- *     lists them, because they are coupled to a dashboard setting no code
- *     here can read. Keep our own message clean anyway: it is what makes the
- *     tracking removable by changing provider rather than by unpicking
- *     templates, and assert_message_is_clean enforces it.
+ *     otherwise has been corrected. Since 2.20.107 they are all DERIVED from
+ *     ALT_RELAY_TRACKING below rather than typed, because they are coupled to
+ *     a dashboard setting no code here can read, and four independent copies
+ *     of an unverifiable claim is four chances to drift. Keep our own message
+ *     clean anyway: it is what makes the tracking removable by changing
+ *     provider rather than by unpicking templates, and
+ *     assert_message_is_clean enforces it.
+ *   - THE OWNER HAS DECIDED TO TURN THE RELAY'S TRACKING OFF (2026-08-19),
+ *     for the open pixel's 2026 legal position in France and Italy and
+ *     because Apple Mail Privacy Protection made the number meaningless. It
+ *     cannot be done by halves: Brevo has no setting, no plan and no header
+ *     that stops opens while keeping clicks, and that was researched rather
+ *     than assumed. It costs no click data anyway, because every click figure
+ *     here comes from alt_digest_track_link() below and never from Brevo.
+ *     docs/RUNBOOK.md "Open and click tracking" holds the flip procedure, the
+ *     evidence, and the design note for a future consent flow.
  *   - THE CONFIRMATION EMAIL IS MEASURED TOO, and that is the sharpest edge
  *     of the above. Measured 2026-08-17 on a real send: the received message
  *     carried Brevo's open pixel twice, injected at the relay. A digest goes
@@ -81,6 +92,72 @@ function alt_subscribers_table() {
 
 /** Retention window for unsubscribed + never-confirmed rows, in days. */
 if (!defined('ALT_DIGEST_RETENTION_DAYS')) define('ALT_DIGEST_RETENTION_DAYS', 30);
+
+/**
+ * WHETHER THE MAIL RELAY MEASURES ANYTHING. The PHP twin of
+ * railway/digest_layout.py RELAY_TRACKING_ON, and the ONLY place this side
+ * says so. Every reader-facing string about measurement is derived from it,
+ * as is the open_tracking field in the /subscriber-stats payload.
+ *
+ * ONE CONSTANT FOR OPENS AND CLICKS TOGETHER, WHICH LOOKS WRONG AND IS NOT.
+ * Brevo cannot separate them. Researched against Brevo's help centre, its
+ * OpenAPI spec and the WordPress plugin source on 2026-08-19: no setting, no
+ * plan and no SMTP header disables the open pixel while leaving click
+ * tracking on. The spec has no trackOpens and no clickTracking field at all;
+ * the one tracking control in the whole API is `contactPixelTrackingConsent`,
+ * documented as consent "for open (pixel) and click tracking". The relay
+ * measures both or neither, so a constant per mechanism would model a state
+ * that cannot exist.
+ *
+ * TURNING IT OFF COSTS NO CLICK DATA, and that was checked rather than
+ * assumed. Nothing in this product has ever consumed a Brevo engagement
+ * event: alt_digest_brevo_action() in digest-api.php maps opened,
+ * unique_opened, proxy_open, unique_proxy_open and click to no action at all.
+ * Every click figure we report comes from alt_digest_track_link() below,
+ * a first-party counter applied at composition time, one integer per
+ * (send_id, link), no subscriber id, no IP, no user agent. No provider
+ * setting can reach it.
+ *
+ * IT IS A STATED BELIEF AND NOT A PASSING CHECK, exactly like its twin.
+ * Nothing here can read the Brevo dashboard, so this can be wrong. What the
+ * constant buys is that it can only be wrong ONCE. Before 2.20.107 the form
+ * copy, the privacy note and the stats payload were three independent
+ * hand-typed claims, and the 2026-08-16 change left the last of them
+ * reporting open_tracking=none for three days while every send was measured.
+ *
+ * To change it: docs/RUNBOOK.md "Open and click tracking" holds the
+ * procedure. The dashboard moves FIRST, this constant second, because
+ * over-disclosing for an hour is safe and under-disclosing is the violation.
+ */
+if (!defined('ALT_RELAY_TRACKING')) define('ALT_RELAY_TRACKING', true);
+
+/**
+ * The always-visible sentence under the Subscribe button.
+ *
+ * The two facts that must survive any rewrite: what is recorded about a
+ * reader, and that unsubscribing stops it. While the relay measures, a third
+ * fact is owed, that the confirmation email is measured before the reader has
+ * agreed to anything, because that message goes to a status=pending row. Once
+ * the relay stops, that clause has nothing left to describe and must go: an
+ * unconfirmed address is then never measured at all, and a warning about a
+ * pixel nobody sends any more is its own kind of false.
+ *
+ * Keep it short. It sits below the Subscribe button precisely so it costs
+ * the phone fold nothing, and railway/signup_fold.py is how you find out
+ * what a rewrite costs. See docs/RUNBOOK.md "Open and click tracking".
+ */
+function alt_digest_tracking_line() {
+    if (ALT_RELAY_TRACKING) {
+        return 'Our mail provider records whether you open an email and which links '
+             . 'you follow, including the confirmation email, which is measured before '
+             . 'you have agreed to anything. Unsubscribing stops the sending and the '
+             . 'recording together.';
+    }
+    return 'Our mail provider records nothing about how you read our emails, and adds '
+         . 'no invisible image. Links pass through a counter on this site that stores '
+         . 'no identifier and can never say who followed one. Unsubscribing stops the '
+         . 'sending and the counting together.';
+}
 
 /**
  * Same self-heal guard as alt_source_runs_table_ready(): an FTP deploy can
@@ -829,15 +906,33 @@ function alt_digest_subscribe_form($context = '') {
                  pending row that has consented to nothing (file docblock).
                  This paragraph is below the Subscribe button, so the added
                  clause costs the phone fold nothing; check with
-                 python3 railway/signup_fold.py before moving it up. */ ?>
-        <p class="alt-digest-tracking">Our mail provider records whether you open an email and which links
-            you follow, including the confirmation email, which is measured before you have agreed to
-            anything. Unsubscribing stops the sending and the recording together.</p>
+                 python3 railway/signup_fold.py before moving it up.
+                 The sentence itself is DERIVED from ALT_RELAY_TRACKING since
+                 2.20.107, so it cannot disagree with the privacy note or the
+                 stats payload; the clause drops out on its own when opens go
+                 off, because an unmeasured confirmation email needs no
+                 warning. */ ?>
+        <p class="alt-digest-tracking"><?php echo esc_html(alt_digest_tracking_line()); ?></p>
 
         <details class="alt-digest-privacy" id="alt-digest-privacy">
             <summary>Privacy note: what we store and how to erase it</summary>
             <p><strong>What we store:</strong> your email address, the choices above, and timestamps
                 (signed up, confirmed, last sent). Nothing else about you.</p>
+            <?php /* THE DURABLE HOME OF THE PROMISE, and the reason it is written here rather
+                     than only in an email footer. A footer is true for one message and then it
+                     is gone; a reader who wants to check what we do six months from now has
+                     nowhere to look. There is a well-known outlet that promised no open
+                     tracking in a 2019 launch letter and whose current privacy policy no longer
+                     repeats it, so the promise survives only in the memory of people who read
+                     the letter. That is the failure this block exists to avoid.
+                     CNIL's 2026 recommendation also asks that pixels be disclosed in the
+                     privacy policy even when they are exempt, as good practice.
+                     NOTE: this site has no separate privacy policy page. The theme footer links
+                     /privacy on the root domain, which is a SEPARATE Railway app currently
+                     serving a "coming soon" placeholder with no privacy content at all. So this
+                     note IS the site's privacy disclosure for the digest, and it is the only
+                     one this repo can edit. See docs/RUNBOOK.md "Open and click tracking". */ ?>
+            <?php if (ALT_RELAY_TRACKING) : ?>
             <p><strong>What our mail provider records:</strong> whether you opened an email and which
                 links you followed, tied to your address. That is Brevo, the service that delivers these
                 emails, and it works by adding a small invisible image and by routing links through its
@@ -851,6 +946,20 @@ function alt_digest_subscribe_form($context = '') {
                 send or none of them. If you would rather not be measured at all, do not open it. Nothing
                 else is ever sent to an unconfirmed address, and the signup is deleted from our side after
                 <?php echo (int) ALT_DIGEST_RETENTION_DAYS; ?> days.</p>
+            <?php else : ?>
+            <p><strong>We do not record whether you open an email.</strong> There is no invisible image
+                in anything we send you, and our mail provider is set not to add one. That covers every
+                message, including the one that asks you to confirm. So opening an email from us, or
+                leaving it unread, records nothing anywhere.</p>
+            <p><strong>Our mail provider records nothing about you at all.</strong> That is Brevo, the
+                service that delivers these emails. It is set not to measure opens and not to measure
+                link follows, so it holds no record of what you did with a message. It still reports
+                whether a message could be delivered, which is how a dead address stops being mailed.</p>
+            <p><strong>Why we stopped measuring opens:</strong> it was never a good measurement. Apple
+                Mail loads remote images for you before you have read anything, so an open was recorded
+                whether or not a person opened the message. A number that cannot tell a reader from a
+                mail server is not worth taking from you.</p>
+            <?php endif; ?>
             <p><strong>About the links:</strong> links in the digest pass through a counter on this
                 site that adds 1 to a total for that link and sends you straight on. It records no
                 identifier, no IP address and no browser details, so it counts how many times a link
@@ -5499,7 +5608,17 @@ function alt_digest_stats() {
         'confirmed_last_7_days' => null,
         'frequency'  => null,
         'last_send'  => null,
-        'open_tracking' => 'none',
+        // WAS A HARDCODED 'none' AND WAS FALSE FROM 2026-08-16 TO 2.20.107.
+        // It was written in 2.19.274 to mean "this plugin embeds no open
+        // pixel", which is still true and is still enforced. But the field is
+        // named open_tracking in a payload about the mailing list, so it reads
+        // as a claim about the emails a subscriber receives, and those HAVE
+        // been measured at the relay since the owner turned it on. It now
+        // reports the state we believe the provider is in, from the same
+        // constant the reader-facing copy uses, so the operator payload cannot
+        // disagree with the published note. 'provider' means the relay adds a
+        // pixel we did not put there; 'none' means nobody measures opens.
+        'open_tracking' => ALT_RELAY_TRACKING ? 'provider' : 'none',
         'basis'      => 'counts over retained rows; unsubscribed and never confirmed rows are '
                       . 'hard deleted after ' . (int) ALT_DIGEST_RETENTION_DAYS . ' days',
     );

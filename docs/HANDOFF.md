@@ -6,6 +6,27 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.107.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. Branched from `origin/main` at 2.20.106 and
+  rebased onto it before pushing, so the sibling session's
+  `alt_digest_subject_line` work is untouched. The change makes the **tracking
+  disclosure derive from one constant** instead of four hand-typed claims:
+  `RELAY_TRACKING_ON` (`railway/digest_layout.py`) and its PHP twin
+  `ALT_RELAY_TRACKING` (`includes/subscribe.php`), with a test pinning the two
+  together. **Both still say ON and no published claim changed**, because the
+  owner has not flipped the Brevo dashboard yet and the copy must not lead the
+  setting. Plugin files touched: `includes/subscribe.php`,
+  `ai-layoff-tracker.php` (version only). Rest is `railway/digest_layout.py`,
+  `railway/digest_transport.py`, three digest test modules, RUNBOOK and this
+  file. **The headline finding is that Brevo has no opens-off, clicks-on lever
+  at all** (no setting, no plan, no SMTP header), and that turning its tracking
+  off entirely costs zero click data, because every click figure comes from our
+  own first-party counter and never from Brevo. One live falsehood was fixed on
+  the way: `/subscriber-stats` had reported `open_tracking=none` since
+  2026-08-16. RUNBOOK "Open and click tracking" holds the flip procedure, the
+  evidence and the consent design note. **Next plugin release is 2.20.108.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.106.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. The change is one banned-jargon fix that

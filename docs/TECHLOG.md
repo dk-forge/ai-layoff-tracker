@@ -1,5 +1,109 @@
 # Tech Log
 
+## 2026-08-19 - the tracking disclosure becomes one constant, and Brevo turns out to have no opens-off lever (2.20.107)
+
+**The decision.** The owner decided to turn open tracking off and keep click
+tracking, for two reasons. The legal position moved in 2026: CNIL's
+recommendation (adopted 2026-03-12, transition ended 2026-07-14) and Italy's
+Garante provvedimento 284 (2026-04-17) both treat an open pixel as
+consent-gated access to terminal equipment under EDPB Guidelines 2/2023, and
+the UK ICO's April 2026 guidance agrees. Disclosure is not consent, so the
+honest disclosure shipped in 2.20.75 does not cure it. And the number was
+mostly fiction: Apple Mail Privacy Protection pre-fetches images on delivery,
+Apple is roughly 62% of tracked opens, and over 65% of recorded opens are
+machine generated.
+
+**The finding that changed the shape of the job. Brevo cannot do it.** The
+brief assumed a dashboard toggle, and a follow-up asked whether an SMTP header
+could do it better, since a header would put the setting in version control
+where a test could see it. Researched against Brevo's help centre, its OpenAPI
+spec and the WordPress plugin source: **there is no setting, no plan and no
+header that disables opens while leaving clicks on.** The spec contains no
+`trackOpens`, no `openTracking` and no `clickTracking` field at all. The single
+tracking control in the entire API is `contactPixelTrackingConsent`, documented
+as consent "for open (pixel) **and** click tracking", and it is a JSON field on
+`POST /v3/smtp/email` that neither of our send paths can reach: the digest goes
+over the SMTP relay, and the confirmation goes through the WP plugin, which
+drops every header but six. No `X-Sib-Track-Opens` exists; the one claim
+otherwise traced to a search summary with no source behind it.
+
+**So the prize was not available, and a better one was.** The reason a header
+was wanted is that the copy currently depends on a setting nothing here can
+read. That defect cannot be removed for the relay. But the question "what do we
+lose by turning the relay off entirely?" turned out to have the answer
+**nothing**, and that was checked rather than assumed:
+
+- `alt_digest_brevo_action()` maps `opened`, `unique_opened`, `proxy_open`,
+  `unique_proxy_open` and `click` to no action at all. **No Brevo engagement
+  event has ever been consumed by this product.** Bounces and complaints are
+  delivery and consent events and are unaffected by any tracking setting.
+- Every click figure comes from `alt_digest_track_link()`, a first-party
+  counter applied at composition time, one integer per `(send_id, link)`, no
+  subscriber id, no IP, no user agent. It is our code, in this repo, and no
+  provider setting can reach it.
+
+"Opens off, clicks kept" is therefore reachable, just not by a split Brevo
+offers. It is reached by turning the relay off and leaving our own counter
+alone, and the surviving click measurement is more privacy-preserving than the
+one being removed.
+
+**What shipped.** The four independent hand-typed claims about tracking became
+one constant with two mirrors, `RELAY_TRACKING_ON` and `ALT_RELAY_TRACKING`,
+with `test_the_two_tracking_constants_agree` pinning them to each other. The
+footer, the run log, the always-visible signup line, the `<details>` privacy
+note and the `/subscriber-stats` payload all derive from it. **No published
+claim changed**: both mirrors still say ON, because the dashboard has not moved
+and the copy must not lead the setting. Over-disclosing for an hour after the
+flip is safe; under-disclosing before it is the violation, and is exactly what
+happened on 2026-08-16.
+
+**One live falsehood was fixed on the way.** `/subscriber-stats` reported
+`open_tracking: 'none'` as a hardcoded literal, written in 2.19.274 to mean
+"this plugin embeds no pixel". That reading was defensible until 2026-08-16 and
+false afterwards, because the field is named `open_tracking` in a payload about
+the mailing list, so it reads as a claim about the emails a subscriber
+receives. It now derives from the constant and reports `provider` while the
+relay measures. A test pinned the old value, which is how a false claim stayed
+green for three days.
+
+**Both states were proved, not reasoned about.** The constants were flipped and
+the four digest test modules run again, which surfaced three tests that pinned
+the ON-state literal and would have reddened CI on a correct change. Two habits
+came out of it and are written into the RUNBOOK: do not quote copy in an
+assertion when the composing module can be imported, and do not slice a
+template on a phrase from the copy. The second bit during this change, when a
+literal split key went stale on a rewording and the helper silently returned an
+empty string, failing with a message that named the wrong cause.
+
+**What is still unverifiable, permanently.** Neither constant can be checked
+against the Brevo dashboard from inside this repo. That is stated in both
+constants' comments and in the RUNBOOK rather than papered over. The constant
+does not fix it; it makes it wrong in one place instead of five.
+
+**One thing to settle before the flip.** Two official Brevo sources disagree
+about what consent `false` does. The help article says Brevo "does not track
+opens or clicks"; the OpenAPI spec says it "anonymise[s] the open and click
+events (counted in aggregate statistics only)", which would mean the pixel
+still loads. Under EDPB 2/2023 the consent-gated act is the ACCESS to the
+device, so anonymising the result does not cure it. If the pixel still fires,
+the off-state copy must not say we send none.
+
+**Not built, by instruction:** a consent mechanism. The RUNBOOK holds the
+design note for one, including the trap that rules out the obvious
+implementation: a consent link inside a tracked email would be pre-fetched by
+Apple MPP and corporate scanners and would manufacture consent from people who
+never saw it. The confirmation email already had a live version of that
+problem, which is why its body has carried no unsubscribe link since
+2026-08-17.
+
+**Also found, not fixed:** the site has **no privacy policy page**. The theme
+footer links `/privacy` on the root domain, which is a separate Railway app
+currently serving a "coming soon" placeholder with no privacy content. So the
+`<details>` note on the signup form is the site's only privacy disclosure for
+the digest, and it is the only one this repo can edit. The standing claim was
+put there for that reason, with a comment recording why a footer alone is not
+enough.
+
 ## 2026-08-19 - methodology said "in order to" where the style gate says "to" (2.20.106)
 
 `railway/style_check.py` exited 1 on origin/main with one finding unrelated to
