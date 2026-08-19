@@ -16,13 +16,8 @@
       "first": 1787153537,
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
-    },
-    "send-email-digest:main:68657103893043be": {
-      "first": 1787160847,
-      "last": 1787160847,
-      "subject": "CI RED: Send email digest \u2014 could not read the recipient list: HTTP 503"
     }
   },
-  "updated_at": "2026-08-19T17:34:07+00:00",
+  "updated_at": "2026-08-19T17:34:35+00:00",
   "version": 1
 }
