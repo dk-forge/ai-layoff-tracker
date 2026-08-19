@@ -72,6 +72,24 @@ holder, so the start-of-session ritual surfaces it automatically.
   `templates/page-company-directory.php`. The 375px wrap fix for the new citation block followed as **2.20.98** (`assets/layoffs.css`): a company slug can run to 90 characters and a flex item defaults to `min-width:auto`, so the URL bled horizontally. **Next plugin release is 2.20.99.**
   Written here and pushed within minutes, per the 2.20.92 collision note below.
 
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.103.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change is the **weekly digest rebuilt
+  as an edition**: the owner read a live send and said the whole newsletter was
+  confusing. ISO-8601 weeks (Monday to Sunday, `%G-W%V`), the weekly window
+  moved from a rolling seven days ending today to the PREVIOUS COMPLETE ISO
+  week, two labelled headline figures (United States and worldwide, both strict
+  job-location), a derived lead with a week-on-week direction, the AI figure
+  promoted with a detection-power line, regional grouping, and every ranked row
+  linked to a tracker view carrying `date_basis` explicitly. Plugin files
+  touched: `includes/subscribe.php`, `includes/digest-api.php`,
+  `ai-layoff-tracker.php` (version only). Rest is `railway/digest_layout.py`,
+  `railway/digest_send.py`, digest tests, TECHLOG. **A SIBLING SESSION TOOK 2.20.102 while
+  this one was working**, caught by re-reading main immediately before merging,
+  which is the step this file asks for and the only reason it did not collide.
+  Rebased to **2.20.103**. **Next plugin release is 2.20.104.** Written here before the push, and main re-read immediately before
+  merging, per the 2.20.92 collision note below.
+
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12

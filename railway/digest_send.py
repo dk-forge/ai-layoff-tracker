@@ -181,7 +181,9 @@ def usable_sections(payload: dict, wanted) -> list:
             # sends no such field, and '' is the honest value for that: it
             # means "fall back", and digest_layout falls back to a line that
             # still describes THIS section rather than walking to another one.
-            out.append((name, html, text, (section.get("preheader") or "").strip()))
+            out.append((name, html, text,
+                        (section.get("preheader") or "").strip(),
+                        (section.get("subject") or "").strip()))
     return out
 
 
@@ -213,7 +215,10 @@ def _kicker(payload: dict) -> str:
     if not phrase:
         return ""
     freq = str(payload.get("freq") or "").strip().lower()
-    tier = {"weekly": "Weekly digest", "daily": "Daily digest"}.get(freq, "Digest")
+    # "Edition" rather than "digest", because the word a masthead uses is the
+    # word a reader takes for what this is. The phrase already carries the ISO
+    # week number and the dates it covers for a weekly send.
+    tier = {"weekly": "Weekly edition", "daily": "Daily edition"}.get(freq, "Edition")
     return f"{tier}, {phrase}"
 
 
@@ -247,11 +252,17 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # head and every style block with it. No figure is composed there either.
     subject = digest_layout.subject_line(payload, parts)
     kicker = _kicker(payload)
+    # The week-numbering convention, and only on the tier that prints a week
+    # number. See digest_layout.WEEK_CONVENTION for why it is stated at all.
+    edition_note = (digest_layout.WEEK_CONVENTION
+                    if str(payload.get("freq") or "").strip().lower() == "weekly"
+                    else "")
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
-        kicker=kicker, unsub_url=unsub, manage_url=manage)
+        kicker=kicker, unsub_url=unsub, manage_url=manage,
+        edition_note=edition_note)
     text = digest_layout.render_text(parts, kicker=kicker, unsub_url=unsub,
-                                     manage_url=manage)
+                                     manage_url=manage, edition_note=edition_note)
 
     return Message(
         to=str(recipient.get("email") or ""),
@@ -598,9 +609,27 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
     eligible = len(payload.get("recipients") or [])
     result["eligible"] = eligible
     composed = sorted((payload.get("sections") or {}).keys())
+    # WHAT WAS COMPOSED AND WHAT IS ACTUALLY GOING OUT, because they are not
+    # the same thing and the log used to print only the first.
+    #
+    # THE DEFECT. A test send with DIGEST_TEST_LISTS=talent logged "sections
+    # composed: articles, layoff, talent" and delivered talent alone, which is
+    # correct behaviour and an unreadable log: the line reports identically
+    # whether the filter took effect or not, so it cannot be used to verify the
+    # input that it is the only evidence for. Somebody read it as proof the
+    # flag was ignored and filed a bug against working code.
+    #
+    # `included` is the union of what the recipients in this payload will
+    # actually receive, taken from the same `lists` field build_message reads,
+    # so it cannot drift from the message.
+    included = sorted({name for r in (payload.get("recipients") or [])
+                       for name in (r.get("lists") or [])
+                       if name in (payload.get("sections") or {})})
     print(f"digest: send_id={send_id} period {payload.get('from')} to "
           f"{payload.get('to')}, {eligible} eligible, sections composed: "
-          f"{', '.join(composed) if composed else 'NONE'}")
+          f"{', '.join(composed) if composed else 'NONE'}; "
+          f"sections included in what goes out: "
+          f"{', '.join(included) if included else 'NONE'}")
     if not composed:
         print("no section could be composed from the live endpoints, so there "
               "is nothing true to say. Sending nothing rather than an empty "

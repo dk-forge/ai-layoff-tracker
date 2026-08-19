@@ -120,9 +120,19 @@ function alt_api_digest_recipients($request) {
         ), 200);
     }
 
-    $days = $freq === 'daily' ? 1 : 7;
-    $to_date = gmdate('Y-m-d');
-    $from_date = gmdate('Y-m-d', time() - $days * DAY_IN_SECONDS);
+    /*
+      THE WINDOW, FROM alt_digest_window() AND NOT FROM A COPY OF IT.
+
+      This read `$days = 1 or 7` back from today, so the weekly edition covered
+      a rolling seven days ending on the send day. That is a real window and it
+      is not a WEEK: it starts on whatever day the cron happens to run, its last
+      two days are still filling up while the email describes them, and it can
+      never carry a week number anybody can check. The weekly tier now reports
+      the previous COMPLETE ISO week. Daily is unchanged. Both definitions live
+      in one function so this route and the in-WordPress fallback sender cannot
+      describe different windows under the same subject line.
+    */
+    list($from_date, $to_date) = alt_digest_window($freq);
 
     // The send row is opened BEFORE composition because the counted links
     // carry its id, exactly as the wp_mail sender does it.
@@ -156,6 +166,19 @@ function alt_api_digest_recipients($request) {
                   alt_digest_fit_preheader and digest_layout.preheader_text.
                 */
                 'preheader' => isset($part['preheader']) ? (string) $part['preheader'] : '',
+                /*
+                  THE SECTION'S OWN SUBJECT LINE, and the reason it is composed
+                  by the SITE and not by the relay: it carries a FIGURE, and
+                  digest_layout may not produce a figure. The owner asked for
+                  metric-first subjects ("AI Layoff Tracker: 15,531 verified
+                  cuts this week") and every number in one has to come from the
+                  same query that built the body, or the subject and the body
+                  can disagree about the week's own headline.
+
+                  Absent on an older plugin build, which digest_layout treats
+                  as "fall back to the edition label", never as "no subject".
+                */
+                'subject' => isset($part['subject']) ? (string) $part['subject'] : '',
             );
         }
     }

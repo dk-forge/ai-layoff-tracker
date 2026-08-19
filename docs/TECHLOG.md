@@ -15320,3 +15320,65 @@ All 2026-07-14 → 07-15 unless noted. One intense build day + hardening day.
 ## Infrastructure changes by the owner (outside this repo)
 - 2026-07-14: Cloudflare Bot Fight Mode OFF (was blocking the pipeline)
 - 2026-07-15: Cloudflare Cache Rule added for `/blog/wp-json/layoffs/v1/*` GETs. ⚠ Set **Browser TTL = Respect origin** (a 5-day browser TTL was initially observed) and Edge TTL ≈ 5 min.
+
+## 2026-08-19 - the weekly digest rebuilt as an edition (2.20.102)
+
+The owner read a delivered weekly and said the whole newsletter was confusing.
+Six complaints, and they were symptoms of a layout that never had an editorial
+spine: it opened on a figure, then a provenance sentence, then a tier sentence,
+then a buried AI line, then three tables, and nothing told him what happened.
+
+**Research drawn on**, and what was taken from each. NYT (Jodi Rudoren, Press
+Gazette): modular, scannable, completable, short subject lines, puns rejected.
+Axios Smart Brevity: a "why it matters" line as navigation. Our World in Data's
+Data Insights template: takeaway title, one figure, short text, link to explore.
+Statista: the headline is a claim, the source line is separate, and the
+aggregator is never the source. The Open Notebook on covering null results:
+absence of evidence is not evidence of absence, so a null needs the instrument's
+power printed with it. OECD DAC: an explicit unallocated line so components sum
+to the total. UN M49: APAC and MEA are business groupings, not statistical
+regions, so the caption says the grouping is ours.
+
+**What changed.**
+
+- **ISO-8601 weeks.** The weekly window was a rolling seven days ending on the
+  send day, which belongs to no week and whose last two days were still filling
+  while the email described them. It is now the previous COMPLETE ISO week,
+  Monday to Sunday, labelled `Week 33 · August 10-16, 2026`. The number never
+  travels without its dates. `alt_digest_window()` is the single definition both
+  senders read. The ISO year is not the calendar year and
+  `test_digest_week_numbering.py` pins real boundary dates in both directions.
+  The YTD block stays a CALENDAR year.
+- **Month-first dates**, `August 10-16, 2026`, on the owner's ruling. Four
+  shapes, tight hyphen between numerals, spaced hyphen between multi-word
+  dates, no em-dash and no en-dash.
+- **Two headline figures**, United States and worldwide, from ONE /aggregate
+  response so they are the same tier, window and basis by construction. Both
+  are links now. The unplaced share is stated ONCE, next to them, instead of
+  three times in three phrasings.
+- **A derived lead and a week-on-week direction.** This reverses the file's own
+  "do not add a delta" rule, deliberately: the window is now a complete week so
+  both sides have settled by a known and equal difference, and the asymmetry is
+  printed in days beside the figures.
+- **The AI metric is the signature line and cannot carry a delta.** Half the
+  complete ISO weeks of 2026 recorded zero and one week is 49% of the year, so
+  it is reported cumulatively with the period's value beside it, with the
+  reviewed-entry count, the dated base rate and the year's share. It says what
+  was detected, never what happened.
+- **Fixed hierarchy**: number, AI attribution, source quality, biggest cuts,
+  geography, industries, year to date, about this snapshot, cite this.
+- **Regional grouping** with two honest non-regions as rows, so the column sums
+  to the worldwide headline exactly.
+- **Every ranked row links** to a tracker view carrying `date_basis` explicitly;
+  `test_digest_link_basis.py` fails on any that does not.
+- **Metric-first subject**, composed by the site because only the site may
+  produce a figure: `AI Layoff Tracker: 16,842 verified cuts this week`.
+- The measurement disclosure is demoted under its own rule at 11px. Its WORDING
+  is untouched: whether open tracking stays on at all is an open owner decision.
+
+**A process failure worth recording.** A `git stash` run to check a baseline
+silently succeeded and wiped the whole working tree. It was recovered from
+`stash@{0}` intact, but roughly twenty minutes of work was done against a
+reverted tree before it was noticed. The repo's standing instruction not to use
+`git stash` exists for exactly this. `git status` before and after any
+tree-level command, or do not run it.

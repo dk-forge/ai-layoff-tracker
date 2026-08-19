@@ -685,7 +685,22 @@ class ClickCountingAndStats(unittest.TestCase):
         self.assertTrue(self.o["digest_uses_click_url"])
         self.assertFalse(self.o["digest_html_has_bare_tracker_link"],
                          "the counted link is the one in the HTML, or nothing is counted")
-        self.assertEqual(self.o["links_stored"], 1)
+        # ONE LINK PER DESTINATION, AND THERE ARE MANY DESTINATIONS NOW. This
+        # asserted exactly one, which was true while the section's only link
+        # was the tracker link at its foot. The owner's fourth complaint was
+        # that nothing else was linked: the biggest-cuts rows, the geography
+        # lines and the industry lines were all plain text. Every one of them
+        # is a counted link now, so the assertion that means something is that
+        # they are all first-party and all carry the date basis.
+        self.assertGreater(self.o["links_stored"], 1)
+        for url in self.o["link_urls"]:
+            self.assertTrue(url.startswith("https://example.test/blog/"),
+                            f"the counter would forward off-site: {url}")
+            if "/ai-layoff-tracker/?" in url:
+                self.assertIn("date_basis=effective", url,
+                              f"a digest link that does not name its date "
+                              f"basis lands on the page's default filing "
+                              f"basis, which is a different number: {url}")
         # The counted destination is the tracker page carrying THIS window and
         # THIS date basis, not the bare page. The email used to ship a caveat
         # saying the page counts on a different basis and would show a

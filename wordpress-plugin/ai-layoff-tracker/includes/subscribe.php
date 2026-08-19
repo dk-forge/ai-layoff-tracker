@@ -1614,15 +1614,45 @@ function alt_digest_date_range($from, $to) {
     $by = (int) $mb[1]; $bm = (int) $mb[2]; $bd = (int) $mb[3];
     if ($am < 1 || $am > 12 || $bm < 1 || $bm > 12) return '';
     if ($ad < 1 || $ad > 31 || $bd < 1 || $bd > 31) return '';
-    if ($a === $b) return $ad . ' ' . $names[$am - 1] . ' ' . $ay;
+    /*
+      MONTH FIRST, AND THE OWNER ASKED FOR IT IN THOSE WORDS.
+
+      This rendered "10 to 16 August 2026" and he read a live send and said it
+      is hard to read: "Should be Weekly edition, Week 33, August 10 - 16 2026.
+      So it's easier to read." He is right and the reason is structural rather
+      than a preference. In the old shape the reader meets two bare numerals
+      before anything tells them what unit they are, and the month arrives
+      after the range has already been parsed. Month first fixes the unit
+      before the numbers arrive, which is why it is the US convention and why
+      every US statistical release uses it.
+
+      THE FOUR SHAPES, and each is the shortest form that stays unambiguous:
+
+        one day               August 16, 2026
+        inside one month      August 10-16, 2026
+        across two months     August 31 - September 6, 2026
+        across two years      December 28, 2026 - January 3, 2027
+
+      The hyphen is TIGHT between two numerals and SPACED between two
+      multi-word dates, which is the standard typographic rule for a range and
+      also the only way "August 31 - September 6" does not read as one date.
+      It is a plain hyphen and never an em-dash: em-dashes are banned in UI
+      copy here, and an en-dash is one more character a mail client can mangle.
+
+      A COMMA BEFORE THE YEAR, always, because the month-day-year form takes
+      one and dropping it is the single most common way this format is got
+      wrong.
+    */
+    if ($a === $b) return $names[$am - 1] . ' ' . $ad . ', ' . $ay;
     if ($ay !== $by) {
-        return $ad . ' ' . $names[$am - 1] . ' ' . $ay . ' to '
-             . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+        return $names[$am - 1] . ' ' . $ad . ', ' . $ay . ' - '
+             . $names[$bm - 1] . ' ' . $bd . ', ' . $by;
     }
     if ($am !== $bm) {
-        return $ad . ' ' . $names[$am - 1] . ' to ' . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+        return $names[$am - 1] . ' ' . $ad . ' - '
+             . $names[$bm - 1] . ' ' . $bd . ', ' . $by;
     }
-    return $ad . ' to ' . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+    return $names[$am - 1] . ' ' . $ad . '-' . $bd . ', ' . $by;
 }
 
 /**
@@ -1661,15 +1691,302 @@ function alt_digest_span_phrase($from, $to) {
     $range = alt_digest_date_range($a, $b);
     if ($range === '') return '';
     if ($a === $b) return 'on ' . $range;
-    // " to " cannot occur inside a month name or a year, so this is a safe
-    // swap and not a guess about the string's shape.
-    $joined = str_replace(' to ', ' and ', $range);
+    $names = array('January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December');
+    preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $a, $ma);
+    preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $b, $mb);
+    $ay = (int) $ma[1]; $am = (int) $ma[2]; $ad = (int) $ma[3];
+    $by = (int) $mb[1]; $bm = (int) $mb[2]; $bd = (int) $mb[3];
+    /*
+      THE SENTENCE FORM OF THE SAME WINDOW, rebuilt for the month-first label.
+
+      A range LABEL and a range inside a sentence are two grammars, which is
+      why there are two functions; the label is "August 10-16, 2026" and a
+      caller writing "posts we published " . $span needs "between August 10 and
+      16, 2026". Swapping a hyphen for the word "and" is not enough once the
+      month leads, because "August 10 and 16, 2026" needs the month spoken once
+      and a cross-month range needs it spoken twice.
+
+      The two-day case is not a flourish. A daily edition covers exactly two
+      dates, so it is the shape most subscribers see, and "between August 17
+      and 18" is wrong about it: nothing lies between two consecutive days.
+    */
+    if ($ay === $by && $am === $bm) {
+        $pair = $names[$am - 1] . ' ' . $ad . ' and ' . $bd . ', ' . $by;
+    } elseif ($ay === $by) {
+        $pair = $names[$am - 1] . ' ' . $ad . ' and '
+              . $names[$bm - 1] . ' ' . $bd . ', ' . $by;
+    } else {
+        $pair = $names[$am - 1] . ' ' . $ad . ', ' . $ay . ' and '
+              . $names[$bm - 1] . ' ' . $bd . ', ' . $by;
+    }
     $ta = strtotime($a . ' 00:00:00 UTC');
     $tb = strtotime($b . ' 00:00:00 UTC');
     if ($ta !== false && $tb !== false && ($tb - $ta) === DAY_IN_SECONDS) {
-        return 'on ' . $joined;
+        return 'on ' . $pair;
     }
-    return 'between ' . $joined;
+    return 'between ' . $pair;
+}
+
+/**
+ * THE WEEK, NUMBERED THE ONLY WAY A NUMBER CAN BE CHECKED: ISO-8601.
+ *
+ * WHAT THE OWNER READ. "the week to 19 August 2026", off a rolling seven days
+ * ending on the send day. That is a Wednesday-to-Wednesday window, it belongs
+ * to no week anybody recognises, and its last two days were still filling up
+ * while the email described them.
+ *
+ * WHY ISO AND NOT A SUNDAY START. The first ask was Sunday to Saturday, and
+ * the owner settled on ISO once the collision was put in front of him: ISO
+ * week numbers start on MONDAY, so a Sunday-start week would have needed a
+ * second, US-specific numbering rule (the CDC's MMWR convention is the only
+ * published one) that disagrees with ISO for a day of every week. This is a
+ * worldwide tracker. ISO is the international standard, the number is correct
+ * by definition rather than by convention, and one reader in Frankfurt and
+ * one in Denver hold the same "week 33".
+ *
+ * THE YEAR IS THE ISO YEAR AND NOT THE CALENDAR YEAR, which is the defect
+ * that ships silently and surfaces once a year. ISO week 1 is the week holding
+ * the first Thursday of January, so 1 January 2027 is a Friday and sits in
+ * week 53 of ISO year 2026, and 31 December 2029 is a Monday and sits in week
+ * 1 of ISO year 2030. PHP spells them `W` and `o`; `Y` beside `W` is the bug.
+ * tests/test_digest_week_numbering.py pins real boundary dates in both
+ * directions, and pins the PHP and the Python against each other.
+ *
+ * The YTD block is deliberately NOT touched by any of this. "YTD 2026" is the
+ * calendar year, 1 January onward, because that is what every other surface we
+ * publish means by a year, and an annual total that quietly became an ISO year
+ * would disagree with all of them.
+ */
+function alt_digest_iso_week($date) {
+    $d = substr(trim((string) $date), 0, 10);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return null;
+    $ts = strtotime($d . ' 00:00:00 UTC');
+    if ($ts === false) return null;
+    return array((int) gmdate('o', $ts), (int) gmdate('W', $ts));
+}
+
+/** "Week 33". The bare number, for the one place that pairs it with the dates
+ *  itself. Nothing prints this alone: see alt_digest_edition_label. */
+function alt_digest_week_label($date) {
+    $iso = alt_digest_iso_week($date);
+    return $iso === null ? '' : 'Week ' . $iso[1];
+}
+
+/**
+ * "Week 33, 10 to 16 August 2026". THE NUMBER NEVER TRAVELS WITHOUT ITS DATES.
+ *
+ * A bare "Week 33" is a label a reader has to look up, and two readers on two
+ * conventions look it up differently. The dates make it self-checking, and
+ * they are the same alt_digest_date_range() shape as every other date in this
+ * email rather than a second format. This is the line at the top of the
+ * edition, in the masthead, and in the subject, so all three agree by
+ * construction.
+ */
+function alt_digest_edition_label($from, $to) {
+    $range = alt_digest_date_range($from, $to);
+    if ($range === '') return '';
+    $week = alt_digest_week_label($from);
+    /*
+      A MIDDLE DOT AND NOT A COMMA. An ISO week is IDENTIFIED, not described by
+      an endpoint, so "Week 33 \xc2\xb7 August 10-16, 2026" reads as a label and
+      then a period rather than as a list of two things. The comma form also
+      collided with the comma already inside the date: "Week 33, August 10-16,
+      2026" carries three commas and no hierarchy. U+00B7 is a geometric
+      character every client renders as text; an emoji here would be furniture.
+    */
+    return $week === '' ? $range : $week . " \xc2\xb7 " . $range;
+}
+
+/**
+ * THE PREVIOUS COMPLETE ISO WEEK, which is what a weekly edition may report.
+ *
+ * The weekly tier fires on Mondays and an ISO week ends on Sunday, so the week
+ * that closed yesterday is complete, is never provisional at its edges, and
+ * its number is settled. Any other send day still gets the last week that
+ * actually finished, because a tier forced with DIGEST_FREQ on a Thursday must
+ * not invent a Thursday-to-Thursday window.
+ *
+ * THE COST, STATED. Figures are up to two days older than the rolling window
+ * they replace. That is the trade: this data revises upward for weeks as
+ * filings and WARN notices arrive, so the last two days of the old window were
+ * always the emptiest part of it, and reporting them as a week was reporting
+ * a collection lag as a fall.
+ *
+ * Returns array($from, $to) as Y-m-d, both inclusive.
+ */
+function alt_digest_weekly_window($now = null) {
+    $now = ($now === null) ? time() : (int) $now;
+    // gmdate('N') is 1 for Monday through 7 for Sunday, so this lands on the
+    // Monday of the week we are currently IN, and one week back from there is
+    // the Monday of the last week that finished.
+    $monday_this_week = strtotime(gmdate('Y-m-d', $now) . ' 00:00:00 UTC')
+                      - ((int) gmdate('N', $now) - 1) * DAY_IN_SECONDS;
+    $from = $monday_this_week - 7 * DAY_IN_SECONDS;
+    return array(gmdate('Y-m-d', $from), gmdate('Y-m-d', $from + 6 * DAY_IN_SECONDS));
+}
+
+/**
+ * The window a tier reports, in ONE place, because three callers had it.
+ *
+ * includes/digest-api.php (the relay's payload), alt_digest_send() (the
+ * in-WordPress sender) and the tests each computed `$days = 1 or 7` off the
+ * clock. Three copies of a window definition is three chances for the relay
+ * and the fallback sender to describe different weeks in the same subject
+ * line, which is precisely the class of drift alt_digest_subject_line already
+ * exists to close.
+ *
+ * DAILY IS UNCHANGED, deliberately. A daily edition covers yesterday and
+ * today, it is provisional and says so, and moving it to "the previous
+ * complete day" would make the morning email describe the day before
+ * yesterday. The two tiers answer different questions and only the weekly one
+ * had a week to be wrong about.
+ */
+function alt_digest_window($freq, $now = null) {
+    $now = ($now === null) ? time() : (int) $now;
+    if (alt_digest_valid_freq($freq) === 'weekly') return alt_digest_weekly_window($now);
+    return array(gmdate('Y-m-d', $now - DAY_IN_SECONDS), gmdate('Y-m-d', $now));
+}
+
+/**
+ * WHICH REGION A COUNTRY SITS IN, or nothing at all.
+ *
+ * THE OWNER'S QUESTION was whether the geography block should be worldwide,
+ * the United States, or both, and whether there should be a regional
+ * breakdown. The answer to the first is both, as two headline figures. This
+ * answers the second.
+ *
+ * IT IS AN ALLOWLIST AND THE FALLBACK IS NOT A GUESS. alt_normalize_country()
+ * returns an unknown single country UNCHANGED rather than dropping it, which
+ * is the right call for the database and means this map can never be complete
+ * by construction. A country this does not know returns '', the caller puts it
+ * in a stated "Elsewhere" line, and nothing is silently filed under a
+ * continent it may not be on. tests/test_digest_regions.py walks the live
+ * facet vocabulary and fails on an unmapped name, so the list is maintained by
+ * a failing test rather than by memory.
+ *
+ * THESE ARE BUSINESS GROUPINGS AND THE EMAIL SAYS SO. "Asia Pacific" and
+ * "Middle East and Africa" are not UN M49 regions; M49 has Asia, Oceania and
+ * Africa as separate top-level groups and no APAC at all. A reader
+ * reconciling against a UN table would find us "wrong", so the caption names
+ * the grouping as ours. The United States and the United Kingdom are pulled
+ * out as their own lines because the owner asked for them by name, not
+ * because they are regions.
+ *
+ * "MULTIPLE COUNTRIES" IS REFUSED HERE, LOUDLY. It is the stored bucket for a
+ * cross-border cut announced with no per-country split. It has no job
+ * location, so folding it into any region would invent one and double-count
+ * the jobs against the region that really holds them. It returns '' and the
+ * caller gives it a line of its own outside the regional table.
+ */
+function alt_digest_region_of($country) {
+    $c = trim((string) $country);
+    if ($c === '') return '';
+    if (strcasecmp($c, 'Multiple countries') === 0) return '';
+    static $map = null;
+    if ($map === null) {
+        $map = array();
+        $regions = array(
+            'United States' => array('United States'),
+            'Canada' => array('Canada'),
+            // THE UNITED KINGDOM LINE MEANS THE UNITED KINGDOM. Jersey, Guernsey
+            // and the Isle of Man are Crown Dependencies and not part of it, and
+            // the first render of this block printed a line labelled "United
+            // Kingdom" whose only member was Jersey. They sit in Europe, which is
+            // where they are, and the UK line now means what it says.
+            'United Kingdom' => array('United Kingdom'),
+            'Europe' => array(
+                'Guernsey', 'Isle of Man', 'Jersey',
+                'Austria', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia',
+                'Cyprus', 'Czechia', 'Denmark', 'Estonia', 'Finland', 'France',
+                'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Italy',
+                'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta',
+                'Moldova', 'Monaco', 'Montenegro', 'Netherlands', 'North Macedonia',
+                'Norway', 'Poland', 'Portugal', 'Romania', 'Serbia', 'Slovakia',
+                'Slovenia', 'Spain', 'Sweden', 'Switzerland', 'Ukraine',
+            ),
+            'Asia Pacific' => array(
+                'Australia', 'Bangladesh', 'Cambodia', 'China', 'Hong Kong', 'India',
+                'Indonesia', 'Japan', 'Korea', 'Laos', 'Macau', 'Malaysia', 'Mongolia',
+                'Myanmar', 'Nepal', 'New Zealand', 'Pakistan', "People's Republic of China",
+                'Philippines', 'Singapore', 'South Korea', 'Sri Lanka', 'Taiwan',
+                'Thailand', 'Vietnam',
+            ),
+            'Latin America' => array(
+                'Argentina', 'Bolivia', 'Brazil', 'Chile', 'Colombia', 'Costa Rica',
+                'Dominican Republic', 'Ecuador', 'El Salvador', 'Guatemala', 'Honduras',
+                'Mexico', 'Nicaragua', 'Panama', 'Paraguay', 'Peru', 'Puerto Rico',
+                'Uruguay', 'Venezuela',
+            ),
+            'Middle East and Africa' => array(
+                'Algeria', 'Bahrain', 'Botswana', 'Egypt', 'Ethiopia', 'Ghana', 'Israel',
+                'Jordan', 'Kenya', 'Kuwait', 'Lebanon', 'Morocco', 'Nigeria', 'Oman',
+                'Qatar', 'Saudi Arabia', 'South Africa', 'Tanzania', 'Tunisia',
+                'Türkiye', 'Turkey', 'Uganda', 'United Arab Emirates', 'Zambia',
+                'Zimbabwe',
+            ),
+        );
+        foreach ($regions as $region => $countries) {
+            foreach ($countries as $one) $map[alt_digest_lower($one)] = $region;
+        }
+    }
+    $key = alt_digest_lower($c);
+    return isset($map[$key]) ? $map[$key] : '';
+}
+
+/** The order regions are printed in, US first because the US is the priority
+ *  audience and its figure is already a headline. A region with no jobs in the
+ *  window is not printed at all. */
+function alt_digest_region_order() {
+    return array('United States', 'Canada', 'United Kingdom', 'Europe',
+                 'Asia Pacific', 'Latin America', 'Middle East and Africa');
+}
+
+/**
+ * A DIRECTION IN WORDS AND IN A GLYPH, or nothing when there is no comparison.
+ *
+ * WHY THIS EXISTS AT ALL, AND IT OVERRIDES A RULE THIS FILE USED TO HOLD. The
+ * year-to-date block used to carry a comment ending "Do not add a delta here
+ * later", on the grounds that this data revises upward for weeks and a
+ * week-on-week line would turn a reporting lag into a fall that never
+ * happened. That reasoning is still true and the conclusion no longer follows,
+ * for two reasons.
+ *
+ * First, the window changed. The old weekly window ended on the send day, so a
+ * delta compared a window with zero days of settling against one with seven.
+ * The window is now the previous COMPLETE ISO week, so it compares two days of
+ * settling against nine. The asymmetry is smaller and, more importantly, it is
+ * the same asymmetry every week, so the series is comparable with itself.
+ *
+ * Second, the owner asked for it, and it is the standard shape for a
+ * periodic labour-market release: the count, the change on the prior period
+ * and the dominant reason, in that order, in the headline.
+ *
+ * WHAT MAKES IT HONEST is not the arithmetic, it is the sentence that follows
+ * it in the composer: the newer week is the less complete one and usually
+ * rises. That is stated once, next to the comparison, and it is why this
+ * returns the pieces rather than a finished sentence.
+ *
+ * A zero prior figure returns no percentage, because a change from nothing has
+ * no scale. It still returns the direction, which is a real fact.
+ *
+ * Returns array('word', 'glyph', 'pct') or null. The glyph is a GEOMETRIC
+ * character and never an emoji: an emoji in an email is furniture that half
+ * the clients render as a coloured picture and the other half as a box.
+ */
+function alt_digest_change($now, $before) {
+    $now = (int) $now; $before = (int) $before;
+    if ($before <= 0 && $now <= 0) return null;
+    if ($now === $before) return array('level with', '=', '');
+    $up = $now > $before;
+    $pct = '';
+    if ($before > 0) {
+        $share = 100 * abs($now - $before) / $before;
+        // Below one per cent a rounded figure reads as no change at all, which
+        // is not what happened. One decimal, and only there.
+        $pct = ($share < 1 ? number_format($share, 1) : (string) round($share)) . '%';
+    }
+    return array($up ? 'up' : 'down', $up ? "\xe2\x96\xb2" : "\xe2\x96\xbc", $pct);
 }
 
 /**
@@ -1790,11 +2107,13 @@ function alt_digest_data_cut_label() {
  * $fallback is what the site would have said anyway, used unchanged whenever
  * this cannot do better, so a failure here is never a subject-less email.
  */
-function alt_digest_period_phrase($to, $freq) {
-    $stamp = alt_digest_date_range($to, $to);
-    if ($stamp === '') return '';
-    return (strtolower(trim((string) $freq)) === 'weekly')
-        ? 'the week to ' . $stamp : $stamp;
+function alt_digest_period_phrase($from, $to, $freq) {
+    if (strtolower(trim((string) $freq)) === 'weekly') {
+        // "Week 33, 10 to 16 August 2026". The number never travels without
+        // its dates. See alt_digest_edition_label.
+        return alt_digest_edition_label($from, $to);
+    }
+    return alt_digest_date_range($to, $to);
 }
 
 /** Characters, not bytes: the 78 ceiling is a reading limit and the tracker
@@ -1803,27 +2122,43 @@ function alt_digest_chars($s) {
     return function_exists('mb_strlen') ? mb_strlen((string) $s, 'UTF-8') : strlen((string) $s);
 }
 
-function alt_digest_subject_line($freq, $to, $headings, $fallback) {
+function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
+                                 $composed = '') {
     $names = array();
     foreach ((array) $headings as $h) {
         $h = trim((string) $h);
         if ($h !== '') $names[] = $h;
     }
-    $phrase = alt_digest_period_phrase($to, $freq);
+    /*
+      THE SECTION'S OWN METRIC-FIRST SUBJECT WINS, when it composed one.
+
+      The owner asked for the figure in the subject and he is right for this
+      product: for a data tracker the statistic IS the news. The composer is
+      the only place that may produce a figure, so it composes the whole line
+      and this chooses between it and the dated fallback. There is deliberately
+      no arithmetic here.
+
+      It is the LEADING section's subject, the same section preheader_text
+      describes, so the two lines a recipient sees before opening cannot name
+      different trackers. That was a live defect once.
+    */
+    $composed = trim((string) $composed);
+    if ($composed !== '' && alt_digest_chars($composed) <= 78) return $composed;
+
+    $phrase = alt_digest_period_phrase($from, $to, $freq);
+    // No section could name itself, so there is nothing to lead with and a
+    // bare date is not a subject. The site's own dated fallback goes out.
     if (!$names || $phrase === '') return $fallback;
 
-    if (count($names) === 1) {
-        $joined = $names[0];
-    } else {
-        $last = $names[count($names) - 1];
-        $joined = implode(', ', array_slice($names, 0, -1)) . ' and ' . $last;
-    }
-    $subject = $joined . ': ' . $phrase;
-    if (alt_digest_chars($subject) > 78) {
-        // Too long to read in a list. Lead with the first and count the rest,
-        // which is honest and stays short however many sections there are.
-        $subject = $names[0] . ' and ' . (count($names) - 1) . ' more: ' . $phrase;
-    }
+    /*
+      THE EDITION FORM, which is what an older plugin build and any section
+      that cannot compose a figure fall back to. It names the section a reader
+      meets FIRST and then dates the edition; it never lists the others. A
+      masthead does not list its own contents, and "AI Layoff Tracker and 2
+      more" is what the owner rejected.
+    */
+    $subject = $names[0] . ', ' . $phrase;
+    if (alt_digest_chars($subject) > 78) $subject = $phrase;
     return alt_digest_chars($subject) <= 78 ? $subject : $fallback;
 }
 
@@ -1870,6 +2205,79 @@ function alt_digest_fallback_subject($freq, $to) {
  * loses its rule, so a block does not end on a line that looks like the start
  * of the next one.
  */
+/**
+ * TWO HEADLINE FIGURES SIDE BY SIDE, WHICH IS THE OWNER'S "LETS DO BOTH".
+ *
+ * THE QUESTION. Should the headline be worldwide, or the United States, or
+ * both? The United States is the stated first priority, and the geography
+ * block answered it with a flat top-five country list in which one line was
+ * the US and the other four were small. That buries the number the reader came
+ * for and it makes the world look like a rounding error on it.
+ *
+ * BOTH, AS TWO HEADLINES. They sit in one two-cell table so a reader meets
+ * them together and can see which is which without scrolling, and so the
+ * comparison a reader is going to make anyway is one we made explicitly and
+ * labelled, rather than one they assembled out of a list.
+ *
+ * THE PROPERTY THAT MAKES THAT SAFE, and it is the caller's job to keep it:
+ * BOTH CELLS MUST BE THE SAME QUANTITY ON THE SAME BASIS. Two figures printed
+ * side by side are read as comparable whether or not they are. Both come out
+ * of the SAME /aggregate response, both are the verified tier, both are strict
+ * job location, and the scope line under the pair says all of that once for
+ * both. There is deliberately no way to hand this function two cells from two
+ * queries.
+ *
+ * WHY A TABLE AND NOT TWO STACKED BLOCKS. Stacked, the second figure reads as
+ * a subtotal of the first, which is exactly the adjacency fault this file has
+ * logged three times. Two cells at 50% are equals. It is a presentational
+ * table with `role="presentation"`, it is fluid, and it needs no media query,
+ * so it survives a forward that deletes the head.
+ *
+ * $cells is a list of array('label', 'figure', 'foot'), two of them. The foot
+ * is the change line and may be empty. No style is written here: each cell
+ * carries a `data-alt` role and railway/digest_layout.py decides how it looks.
+ */
+function alt_digest_stat_pair($cells) {
+    $cells = array_values(array_filter((array) $cells));
+    if (count($cells) !== 2) return array('', '');
+    $html = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+          . '<tr>';
+    $text = '';
+    foreach ($cells as $i => $cell) {
+        $label = (string) ($cell['label'] ?? '');
+        $figure = (string) ($cell['figure'] ?? '');
+        $unit = (string) ($cell['unit'] ?? '');
+        $foot = (string) ($cell['foot'] ?? '');
+        $role = ($i === 0) ? 'pair-left' : 'pair-right';
+        /*
+          THE UNIT SITS ON THE CELL, UNDER THE FIGURE, AND THAT IS NOT
+          DECORATION. The first render of this block put the geography in the
+          eyebrow and the number under it, and the words "verified job cuts"
+          only in the scope sentence below both cells. So a screenshot of the
+          pair, which is the thing a reporter takes, carried two numbers and no
+          unit. The single-stat block this replaced never had that problem
+          because its eyebrow WAS the unit. Both facts are needed here, so the
+          cell carries three lines: what geography, what number, what it counts.
+        */
+        $url = trim((string) ($cell['url'] ?? ''));
+        // THE NUMBER IS THE LINK, because the number is what a reader points
+        // at. The label above it stays plain text: two anchors in one cell
+        // give a screen reader two destinations for one fact.
+        $shown = esc_html($figure);
+        if ($url !== '') $shown = '<a href="' . esc_url($url) . '">' . $shown . '</a>';
+        $html .= '<td width="50%" data-alt="' . $role . '">'
+               . '<p data-alt="kicker">' . esc_html($label) . '</p>'
+               . '<p data-alt="stat-pair">' . $shown . '</p>'
+               . ($unit !== '' ? '<p data-alt="unit">' . esc_html($unit) . '</p>' : '')
+               . ($foot !== '' ? '<p data-alt="change">' . esc_html($foot) . '</p>' : '')
+               . '</td>';
+        $text .= '  ' . $label . ': ' . $figure
+               . ($unit !== '' ? ' ' . $unit : '')
+               . ($foot !== '' ? ' (' . $foot . ')' : '') . "\n";
+    }
+    return array($html . '</tr></table>', $text);
+}
+
 function alt_digest_rank_table($rows) {
     $rows = array_values($rows);
     if (!$rows) return array('', '');
@@ -2337,7 +2745,7 @@ function alt_digest_talent_rank($rows, $limit) {
  * therefore drops the false caveat and makes no claim of reconciliation in
  * its place: a silent correct link beats a promise with an exception.
  */
-function alt_digest_tracker_url($from, $to) {
+function alt_digest_tracker_url($from, $to, $filters = array()) {
     $from = substr(trim((string) $from), 0, 10);
     $to = substr(trim((string) $to), 0, 10);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) return home_url('/ai-layoff-tracker/');
@@ -2346,6 +2754,13 @@ function alt_digest_tracker_url($from, $to) {
         'from=' . rawurlencode($from),
         'to=' . rawurlencode($to),
         // The page's spelling of the composer's `layoff_date`. See above.
+        // NEVER OMITTED, on any link this function builds, including the
+        // filtered ones added on 2026-08-19. The page defaults to the FILING
+        // basis, so a link built from an effective-basis figure and carrying no
+        // basis lands on a page showing a different number under a label
+        // promising the same one. That defect has been fixed twice on the press
+        // page and once here; tests/test_digest_link_basis.py now fails on any
+        // digest link that does not name it.
         'date_basis=effective',
     );
     /*
@@ -2362,10 +2777,35 @@ function alt_digest_tracker_url($from, $to) {
       whose job is to reproduce a published figure. Built as a string so the
       bytes are the bytes.
     */
+    /*
+      A FILTER IS SET OR IT IS CLEARED, and either way the key is written.
+
+      $filters carries the one or two controls a particular link is about: a
+      country list for a regional line, an industry for an industry line. Every
+      OTHER control is still written empty, because "present and empty" is what
+      clears a returning reader's saved filter and "absent" is what leaves it
+      ANDed into the number we just published. A link whose whole job is to
+      reproduce a figure cannot leave a stale filter in the sum.
+
+      WHAT THE HEADLINE ON THAT PAGE WILL SAY. The tracker's headline stats run
+      on the STRICT job-location basis (assets/layoffs.js, currentParams), which
+      is the same basis every figure in this section counts on, so a country
+      link reproduces the figure beside it exactly. The results TABLE below that
+      headline uses `country_basis=any`, which unions employer domicile, so it
+      lists more rows than the headline counts. That is the page's documented
+      and intentional behaviour, it is labelled there, and it is why these links
+      promise a VIEW and a headline rather than a row count.
+    */
+    $set = array();
+    foreach ((array) $filters as $key => $value) {
+        $value = is_array($value) ? implode(',', $value) : (string) $value;
+        if (trim($value) === '') continue;
+        $set[$key] = $value;
+    }
     foreach (array('years', 'quarters', 'months', 'country', 'industry', 'state',
                    'sources', 'reasons', 'roles', 'company', 'keyword',
                    'min_jobs', 'q') as $blank) {
-        $pairs[] = $blank . '=';
+        $pairs[] = $blank . '=' . (isset($set[$blank]) ? rawurlencode($set[$blank]) : '');
     }
     return home_url('/ai-layoff-tracker/') . '?' . implode('&', $pairs);
 }
@@ -2425,22 +2865,23 @@ function alt_digest_composition_note($block, $headline, $span) {
         $all[$name] = $value;
     }
     arsort($all, SORT_NUMERIC);
-    if (count($all) < $MIN_RANKED) return '';
+    if (count($all) < $MIN_RANKED) return array('', '');
 
     $covered = array_sum($all);
     $headline = (int) $headline;
-    if ($headline <= 0 || $covered < $COVER_FLOOR * $headline) return '';
+    if ($headline <= 0 || $covered < $COVER_FLOOR * $headline) return array('', '');
 
     $names = array_keys($all);
     $top3 = array_slice($names, 0, 3);
     $top3_jobs = 0;
     foreach ($top3 as $n) $top3_jobs += $all[$n];
-    if ($top3_jobs < $CONCENTRATION * $covered) return '';
+    if ($top3_jobs < $CONCENTRATION * $covered) return array('', '');
 
     $line = $top3[0] . ', ' . $top3[1] . ' and ' . $top3[2]
           . ' are the three largest, ' . round(100 * $top3_jobs / $covered)
           . '% of the ' . number_format_i18n($covered)
           . ' verified job cuts we classified by industry ' . $span . '.';
+    $tech = '';
 
     // Rank is 1-based and read off the FULL list, which is why this function
     // takes the raw block rather than the five rows the caller printed.
@@ -2460,9 +2901,26 @@ function alt_digest_composition_note($block, $headline, $span) {
         // A share that rounds to 0% would read as "technology is absent", and
         // it is not: it is present and small. One decimal below 1%.
         $shown = $share < 1 ? number_format($share, 1) : (string) round($share);
-        $line .= ' Technology is ' . $place . ', at ' . $shown . '%.';
+        /*
+          RETURNED SEPARATELY, AND THAT IS THE WHOLE CHANGE HERE.
+
+          "Technology is ninth, at 1%" was appended to the sentence above and
+          rendered with it, in grey, at note size. The owner read the delivered
+          email and picked that clause out as the most striking thing in it,
+          thrown away. He is right: on a tracker named for AI, the sector every
+          reader assumes is being cut ranking ninth is a finding, and it was
+          set as the tail of another finding.
+
+          It comes back as its own string so the composer can give it its own
+          weight. Nothing about how it LOOKS is decided here; the composer
+          marks it and railway/digest_layout.py styles it, as everywhere else
+          in this file. The two floors are unchanged: it fires only when
+          technology is present in the data AND ranked outside the top three,
+          and it asserts nothing about what anybody expected.
+        */
+        $tech = 'Technology is ' . $place . ', at ' . $shown . '%.';
     }
-    return $line;
+    return array($line, $tech);
 }
 
 /**
@@ -2685,39 +3143,567 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             $all[$name] = $value;
         }
         arsort($all, SORT_NUMERIC);
-        return array(array_slice($all, 0, 5, true), $multi, $covered);
+        /*
+          THE WHOLE MAP, NOT THE TOP FIVE. It used to slice here, and the
+          regional grouping added on 2026-08-19 cannot be built from five rows:
+          a region is the sum of every country in it, and Europe read off the
+          top five would be Germany alone. The callers that want a top five
+          slice it themselves, one line later, which is also where a reader can
+          see that they do.
+        */
+        return array($all, $multi, $covered);
     };
-    list($named, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
-    $geo = alt_digest_geo_scope($ver_jobs, $covered);
+    list($countries_all, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
+    $named = array_slice($countries_all, 0, 5, true);
 
     /*
-      THE HEADLINE, BUILT SO ONE SCREENSHOT OF IT IS STILL TRUE.
+      THE UNITED STATES FIGURE, OUT OF THE SAME RESPONSE AS THE WORLDWIDE ONE.
 
-      Three lines that travel together: a label, the figure, and the scope.
-      The scope names all four dimensions in one sentence: the window, the
-      geography, the date basis, and, through the kicker above it, the tier.
-      It carried only three until 2026-08-17; see alt_digest_geo_scope().
+      THE OWNER'S DECISION, and it is not a toss-up any more: "Lets do both as
+      we need both showing." Two headline figures, the United States and
+      worldwide, side by side, both labelled.
 
-      A reporter who lifts the block into a slide takes the window and the
-      basis with it, which is the property the owner named Statista for. It is also
-      the fastest thing in the email to read, and the research says that
-      matters more than it looks: an opened newsletter gets tens of seconds,
-      not minutes (Nielsen Norman Group, 51s average, 19% read in full), and
-      the first two words of a heading do most of the work.
+      WHY IT IS READ OFF top_countries AND NOT FETCHED. A second /aggregate
+      call with country=United States would be a second query, at a second
+      moment, and nothing would hold it to the same tier or the same basis as
+      the figure beside it. Two numbers printed side by side are read as
+      comparable whether or not they are, so they are taken from ONE response:
+      column [4] of the country row is SUM(job_count) WHERE announced = 0, the
+      identical quantity the worldwide headline counts, and the country column
+      is the strict job location rather than the employer's domicile. They are
+      the same tier, the same window, the same basis and the same read, by
+      construction rather than by care.
 
-      The site says WHAT each line is with data-alt. digest_layout.py decides
-      how it looks. No size, no colour and no weight is chosen here.
+      Column [5] is the same row's ai_verified_jobs, which is where the US half
+      of the AI pair comes from, for the same reason and with the same
+      guarantee.
     */
-    $scope = $range . ', ' . $geo . ', counted by the date the cuts take effect.';
+    $us_jobs = 0; $us_ai = 0;
+    foreach ((is_array($data['top_countries'] ?? null) ? $data['top_countries'] : array()) as $row) {
+        $row = array_values((array) $row);
+        if (strcasecmp(trim((string) ($row[0] ?? '')), 'United States') !== 0) continue;
+        $us_jobs = (int) ($row[4] ?? 0);
+        $us_ai = (int) ($row[5] ?? 0);
+        break;
+    }
+
+    /*
+      THE WEEK BEFORE, AND THIS REVERSES A RULE THIS FILE USED TO HOLD.
+
+      The year-to-date block still carries the comment that argued against a
+      period-over-period delta: this data revises upward for weeks, so a
+      week-on-week line risks turning a collection lag into a fall that never
+      happened. See alt_digest_change() for why that conclusion no longer
+      follows and what makes the comparison honest instead. The short version
+      is that the window is now a COMPLETE week rather than one ending on the
+      send day, so both sides of the comparison have settled for a known and
+      equal-by-construction difference of seven days, and the sentence under
+      the pair says which side is the less complete one.
+
+      ONLY ON A SEVEN DAY WINDOW. The daily tier covers two days, is
+      provisional by design and says so, and a day-on-day delta on it would be
+      noise dressed as a finding. The window's own length is the gate, so the
+      composer does not need to be told which tier it is composing for.
+
+      A FAILED CALL PRINTS NO COMPARISON. It does not print a zero, it does not
+      carry the previous week forward, and it does not fall back to a different
+      window. An absent comparison is an absent line.
+    */
+    $prior_us = null; $prior_all = null; $prior_label = '';
+    $ft = strtotime($from . ' 00:00:00 UTC');
+    $tt = strtotime($to . ' 00:00:00 UTC');
+    if ($ft !== false && $tt !== false && ($tt - $ft) === 6 * DAY_IN_SECONDS) {
+        $p_from = gmdate('Y-m-d', $ft - 7 * DAY_IN_SECONDS);
+        $p_to = gmdate('Y-m-d', $tt - 7 * DAY_IN_SECONDS);
+        $p_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
+        $p_req->set_param('from', $p_from);
+        $p_req->set_param('to', $p_to);
+        $p_req->set_param('date_basis', 'layoff_date');
+        $p_req->set_param('include', 'top_countries');
+        $p_res = rest_do_request($p_req);
+        if ($p_res && !$p_res->is_error()) {
+            $p_data = $p_res->get_data();
+            $p_tot = is_array($p_data) ? ($p_data['totals'] ?? null) : null;
+            if (!is_array($p_tot) && is_object($p_tot)) $p_tot = (array) $p_tot;
+            if (is_array($p_tot)) {
+                $prior_all = max(0, (int) ($p_tot['jobs'] ?? 0) - (int) ($p_tot['announced_jobs'] ?? 0));
+                $prior_us = 0;
+                foreach ((is_array($p_data['top_countries'] ?? null) ? $p_data['top_countries'] : array()) as $row) {
+                    $row = array_values((array) $row);
+                    if (strcasecmp(trim((string) ($row[0] ?? '')), 'United States') !== 0) continue;
+                    $prior_us = (int) ($row[4] ?? 0);
+                    break;
+                }
+                $prior_label = alt_digest_week_label($p_from);
+            }
+        }
+    }
+    /*
+      THE DIRECTION IN WORDS AND IN A GLYPH, and the words work without it.
+
+      $with_glyph is false for the LEAD, because a triangle inside a sentence
+      is read aloud by a screen reader as "black down pointing triangle" and is
+      silent in a plain-text part that has no room for it. The figure block
+      carries the glyph, where it is a mark beside a number rather than a word
+      inside a clause. Both halves say the same thing, which is the point: the
+      glyph is redundant on purpose, so nothing is lost when a client, a
+      reader or a text part drops it.
+    */
+    $change_phrase = function ($now, $before, $with_glyph = true) use ($prior_label) {
+        if ($before === null) return '';
+        $c = alt_digest_change($now, $before);
+        if ($c === null) return '';
+        list($word, $glyph, $pct) = $c;
+        // "from Week 32", matching the lead word for word. The lead and the
+        // figure block state the same comparison and must not spell it two ways.
+        $on = ($prior_label === '') ? 'the week before' : ('from ' . $prior_label);
+        $words = ($word === 'level with')
+            ? 'level with ' . $on
+            : $word . ($pct === '' ? '' : ' ' . $pct) . ' ' . $on;
+        return $with_glyph ? ($glyph . ' ' . $words) : $words;
+    };
+
+    /*
+      THE EDITION LINE, AND THE LEAD UNDER IT.
+
+      WHAT THE OWNER READ AND WHAT HE SAID. "The whole weekly newsletter is
+      confusing." He is right, and the complaints he listed are symptoms rather
+      than the fault: the message opened on a figure, then a provenance
+      sentence, then a tier sentence, then a buried AI line, then three tables.
+      Nothing told him what had happened. A reader has to be able to learn the
+      story in two lines and stop there.
+
+      So the section now opens the way a data edition opens. A DATELINE naming
+      the week, the tier and the basis. A LEAD of at most three short sentences,
+      every word of which is DERIVED from the same response the tables below
+      print. Then a WHY IT MATTERS line, which is Axios's, and which is
+      deliberately a statement about the METRIC rather than about this week: a
+      sentence that explains what an explicit AI attribution is cannot become
+      false when the data moves, and a sentence that characterised the week
+      would be the fixed-prose-around-variable-data fault this file has now
+      logged five times.
+
+      THE LEAD IS BUILT FROM CLAUSES THAT CAN EACH BE ABSENT. No comparison, no
+      comparison clause. The floors that govern the composition sentence are
+      unchanged and it is still allowed to say nothing.
+    */
+    // A MIDDLE DOT AND NOT AN EMOJI. U+00B7 is a geometric character every
+    // client and every terminal already renders; an emoji used as furniture is
+    // a coloured picture in half of them and a box in the other half.
+    $sep = " \xc2\xb7 ";
+    $dateline = alt_digest_edition_label($from, $to) . $sep . 'verified job cuts'
+              . $sep . 'counted by the date the cuts take effect';
+
+    $lead = array();
+    $us_change = $change_phrase($us_jobs, $prior_us, false);
+    $all_change = $change_phrase($ver_jobs, $prior_all, false);
+    /*
+      THE LEAD OPENS ON ITS WINDOW, and that is a rule and not a style choice.
+      A line of this email lifted out on its own has to still be true and still
+      say what it covers, which is the property this whole section is built to
+      hold; the first render of the lead stated two figures and no window at
+      all. It is the edition label, so the lead, the dateline above it, the
+      masthead and the subject all name the same week in the same words.
+    */
+    /*
+      SHORT SENTENCES, ONE FACT EACH, AND THE DATE OUT OF THE WAY.
+
+      WHAT HE READ AND WHAT HE SAID ABOUT IT. "In Week 33, 10 to 16 August
+      2026, employers verified 10,132 job cuts in the United States, up 53% on
+      Week 32." He flagged it as not easy to read, and the fault is structural:
+      three facts and two comparisons in one breath, with an eight-word date
+      range wedged between the preposition and the subject, so a reader has
+      parsed a date before they know what the sentence is about.
+
+      The full range moves out. The dateline directly above already carries it,
+      the masthead carries it, and the subject carries it, so a third copy in
+      the lead is the reader's tax for our tidiness. What stays is the week and
+      its YEAR: "Week 33" alone is ambiguous across years, and this line has to
+      remain true when somebody quotes it on its own, which is the property
+      every line of this section is built to hold.
+
+      THE TWO GEOGRAPHIES SPLIT INTO TWO SENTENCES, because they are two facts
+      and because they can point in opposite directions. On the live week of
+      10 to 16 August the United States was up 53% while the world was down
+      51%, and a single sentence carrying both reads as an error the reader has
+      caught rather than a summary.
+    */
+    $opening = 'In Week ' . (($iso = alt_digest_iso_week($from)) ? $iso[1] : '')
+             . ' of ' . (($iso) ? $iso[0] : substr((string) $to, 0, 4))
+             . ', employers verified ';
+    if ($us_change !== '' && $us_jobs > 0) {
+        $lead[] = $opening . number_format_i18n($us_jobs) . ' US job cuts, '
+                . $us_change . '.';
+        /*
+          THE WORLDWIDE DIRECTION IS ITS OWN SENTENCE, AND IT HAS TO BE.
+
+          The first render of this lead named only the United States and its
+          direction, and the pair of figures underneath read "up 53%" beside
+          "down 51%" in the same week. Both were correct: the prior week held a
+          very large non-US cut. A lead that states one direction over a block
+          showing two opposite ones does not read as a summary, it reads as an
+          error the reader has caught. The two figures were made equals on
+          purpose, so the lead treats them as equals.
+        */
+        if ($all_change !== '') {
+            $lead[] = 'Worldwide, verified job cuts totalled '
+                    . number_format_i18n($ver_jobs) . ', '
+                    . $all_change . '.';
+        } else {
+            $lead[] = 'Worldwide, verified job cuts totalled '
+                    . number_format_i18n($ver_jobs) . '.';
+        }
+    } else {
+        $lead[] = $opening . number_format_i18n($us_jobs) . ' US job cuts.';
+        $lead[] = 'Worldwide, verified job cuts totalled '
+                . number_format_i18n($ver_jobs) . '.';
+    }
+    $ai_jobs_lead = (int) ($totals['ai_verified_jobs'] ?? 0);
+    /*
+      THE THIRD SENTENCE IS THE SIGNATURE METRIC, AND IT STAYS IN THE LEAD.
+
+      The editorial standard is explicit that a zero week is not skipped, not
+      moved below the fold and not softened. What it may NOT do is read as
+      this week's news, because half the complete weeks of 2026 recorded zero,
+      so it is stated as a measurement and its base rate lives with the figure
+      in its own block below.
+
+      "No employer explicitly named AI" and never "AI caused no layoffs": a
+      null has two possible causes, a real absence and an instrument too weak
+      to see it, and this product's AI-causation classifier has a precision
+      that is currently UNKNOWN pending human review.
+
+      THE "WHY IT MATTERS" LINE THAT USED TO BE HERE HAS MOVED to sit under the
+      AI figure, which is where the owner put it in his own draft and where it
+      belongs: it explains that figure, not the two above it.
+    */
+    $lead[] = ($ai_jobs_lead > 0)
+        ? 'Employers explicitly named AI on '
+          . number_format_i18n($ai_jobs_lead) . ' of the worldwide total.'
+        : 'No employer explicitly named AI as a reason.';
+
     $html = '<h2>AI Layoff Tracker</h2>'
-          . '<p data-alt="kicker">'
-          . esc_html(alt_digest_verb($ver_jobs, 'Verified job cut', 'Verified job cuts'))
-          . '</p>'
-          . '<p data-alt="stat">' . esc_html(number_format_i18n($ver_jobs)) . '</p>'
-          . '<p data-alt="scope">' . esc_html($scope) . '</p>';
-    // The text part leads with the same three facts as ONE sentence, because
-    // that line is also the inbox preheader and a snippet has to stand alone.
-    $lede = alt_digest_count($ver_jobs, 'verified job cut') . ', ' . $scope;
+          . '<p data-alt="dateline">' . esc_html($dateline) . '</p>'
+          . '<p data-alt="lead">' . esc_html(implode(' ', $lead)) . '</p>';
+    // The dateline is in BOTH parts. A plain-text reader is not owed a shorter
+    // email, only an unstyled one.
+    $text = "AI Layoff Tracker\n" . $dateline . "\n"
+          . implode(' ', $lead) . "\n";
+
+    /*
+      THE TWO HEADLINES. See alt_digest_stat_pair for why they are one table
+      and for the property the caller has to keep. The scope line under them
+      states, ONCE and for both, the four things a figure has to carry: the
+      tier, the window, the geography basis and the date basis.
+
+      THIS IS WHERE "worldwide including entries with no country recorded"
+      STOPPED BEING SAID THREE TIMES. It appeared in the headline scope, in the
+      snippet, and again in the year block, in three phrasings, and the fact it
+      carried is a real and important one: about a third of verified cuts sit
+      on entries we cannot place. It is now said ONCE, here, in its own
+      sentence, immediately under the two figures it actually qualifies, which
+      is also the only place a reader is doing the subtraction that makes it
+      matter.
+    */
+    /*
+      THE TWO MOST IMPORTANT NUMBERS IN THE EDITION WERE THE ONLY ONES A
+      READER COULD NOT CLICK. Every ranked row below them links to a tracker
+      view that reproduces it; these did not, which is precisely backwards.
+
+      The United States figure carries a country filter, the worldwide one
+      carries none, and both carry this window and `date_basis=effective`. The
+      page's headline stat runs on the strict job-location basis, the same
+      basis these count on, so each link lands on a page whose headline is the
+      number that was clicked. See alt_digest_tracker_url.
+    */
+    list($pair_html, $pair_text) = alt_digest_stat_pair(array(
+        array('label' => 'United States',
+              'figure' => number_format_i18n($us_jobs),
+              'unit' => alt_digest_verb($us_jobs, 'verified job cut', 'verified job cuts'),
+              'foot' => $change_phrase($us_jobs, $prior_us),
+              'url' => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                           $from, $to, array('country' => 'United States')))),
+        array('label' => 'Worldwide',
+              'figure' => number_format_i18n($ver_jobs),
+              'unit' => alt_digest_verb($ver_jobs, 'verified job cut', 'verified job cuts'),
+              'foot' => $change_phrase($ver_jobs, $prior_all),
+              'url' => alt_digest_track_link($send_id,
+                           alt_digest_tracker_url($from, $to))),
+    ));
+    // THE PREPOSITIONAL FORM. "in August 10-16, 2026" is a label dropped after
+    // a preposition, which is the machine-output reading the owner sent back
+    // once already. See alt_digest_span_phrase.
+    $scope = 'Both figures are verified job cuts ' . $span
+           . ', counted where the jobs were and by the date the cuts take effect.';
+    $unplaced = max(0, $ver_jobs - $covered);
+    if ($unplaced > 0) {
+        $reconcile = number_format_i18n($unplaced) . ' of the '
+                   . alt_digest_count($ver_jobs, 'verified job cut')
+                   . alt_digest_verb($unplaced, ' sits', ' sit')
+                   . ' on entries with no country recorded. The United States figure '
+                   . 'and the regions below therefore do not sum to the worldwide one.';
+    } else {
+        $reconcile = 'Every verified cut in this window carries a country, so the '
+                   . 'regions below sum to the worldwide figure.';
+    }
+    /*
+      WHAT MAKES THE COMPARISON HONEST, AND IT IS NOT THE ARITHMETIC.
+
+      This file used to refuse a period-over-period delta outright, because the
+      data revises upward for weeks and a fall can be a collection lag rather
+      than a fall. The refusal is lifted (see alt_digest_change) and the reason
+      for it is not, so the reason is PRINTED, next to the two figures that
+      carry the direction, and only when a direction was actually printed.
+
+      The two numbers are not invented and not rounded prose: they are the days
+      each window has had to settle, computed from this window's own end date
+      against the day the digest composes. On the intended Monday send they are
+      two and nine. A run forced on another day says whatever is true that day.
+    */
+    $maturity = 'Filings and notices keep arriving, so this window is '
+              . 'provisional: it usually rises, and a correction can lower it.';
+    if ($prior_all !== null) {
+        $settled = (int) floor((strtotime(gmdate('Y-m-d') . ' 00:00:00 UTC')
+                                - strtotime($to . ' 00:00:00 UTC')) / DAY_IN_SECONDS);
+        if ($settled >= 0) {
+            // THE ASYMMETRY MADE CONCRETE, which is stronger than a generic
+            // provisional note because it gives the reader the actual gap.
+            $maturity = 'Filings and notices keep arriving, so the newer week is the '
+                      . 'less complete one: it has had '
+                      . alt_digest_count($settled, 'day') . ' to settle against '
+                      . alt_digest_count($settled + 7, 'day') . ' for the week before it.';
+        }
+    }
+    /*
+      ONE PARAGRAPH, NOT TWO. Both sentences qualify the same pair of figures,
+      and the first render put five consecutive grey paragraphs between the
+      headline and the next heading. Five stacked qualifiers is the shape the
+      owner called heavy, whatever each one says.
+    */
+    $qualifier = trim($reconcile . ($maturity === '' ? '' : ' ' . $maturity));
+    $html .= $pair_html
+           . '<p data-alt="scope">' . esc_html($scope) . '</p>'
+           . '<p data-alt="note">' . esc_html($qualifier) . '</p>';
+    $text .= "\n" . $pair_text . $scope . "\n" . $qualifier . "\n";
+
+    /*
+      THE YEAR TO DATE, FETCHED HERE AND RENDERED AT THE FOOT.
+
+      WHY IT MOVED UP, AND ONLY THE FETCH MOVED. The AI block below has to
+      print the cumulative figure beside the week's own, and it sits near the
+      top of the edition while the year block sits at the bottom. One call,
+      read twice, is the only way those two numbers cannot disagree; a second
+      query would be a second moment and a second chance to differ.
+
+      THE YEAR IS THE CALENDAR YEAR AND IS NOT TOUCHED BY THE ISO WEEK WORK.
+      "2026" here means 1 January onward, because that is what every other
+      surface we publish means by a year, and an annual total that quietly
+      became an ISO year would disagree with all of them. The ISO year and the
+      calendar year differ for a few days each January; when a window straddles
+      that, the edition names both rather than picking one.
+
+      The year comes from the period's own end date, not from the clock, so a
+      run that composes a window is never labelled with a different year.
+    */
+    $ytd = array('ok' => false, 'jobs' => 0, 'ai' => 0, 'range' => '',
+                 'unplaced' => 0, 'year' => '');
+    $ytd_year = substr((string) $to, 0, 4);
+    if (preg_match('/^\d{4}$/', $ytd_year)) {
+        $ytd_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
+        $ytd_req->set_param('from', $ytd_year . '-01-01');
+        $ytd_req->set_param('to', $to);
+        $ytd_req->set_param('date_basis', 'layoff_date');
+        /*
+          `top_countries`, because this headline needs its OWN geography
+          measurement. Borrowing the period's would be the adjacency fault
+          again: a week where every cut is placed says nothing about a year
+          where tens of thousands are not. `include` is an opt-in allowlist,
+          so the block has to be named or it comes back empty.
+        */
+        $ytd_req->set_param('include', 'top_countries');
+        $ytd_res = rest_do_request($ytd_req);
+        $ytd_range = alt_digest_date_range($ytd_year . '-01-01', $to);
+        if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
+            $ytd_data = $ytd_res->get_data();
+            $ytd_totals = is_array($ytd_data) ? ($ytd_data['totals'] ?? null) : null;
+            if (!is_array($ytd_totals) && is_object($ytd_totals)) $ytd_totals = (array) $ytd_totals;
+            if (is_array($ytd_totals)) {
+                $ytd_jobs = max(0, (int) ($ytd_totals['jobs'] ?? 0)
+                                 - (int) ($ytd_totals['announced_jobs'] ?? 0));
+                list(, , $ytd_covered) = $verified_split($ytd_data['top_countries'] ?? null);
+                $ytd = array(
+                    'ok' => $ytd_jobs > 0,
+                    'jobs' => $ytd_jobs,
+                    'ai' => (int) ($ytd_totals['ai_verified_jobs'] ?? 0),
+                    'range' => $ytd_range,
+                    'unplaced' => max(0, $ytd_jobs - $ytd_covered),
+                    'year' => $ytd_year,
+                );
+            }
+        }
+    }
+
+    /*
+      THE FRIENDLY NAMES FOR THE COLLECTORS, DECLARED ONCE AND UP HERE.
+
+      Two blocks read it now: the AI block's detection-power line, which names
+      which collectors reported, and the provenance line below, which counts
+      what each produced. It lives above both so the two cannot name the same
+      collector two ways. "8K" is a form number and "warn" is lower case in the
+      column, and neither is a thing to print at a reader.
+    */
+    $source_names = array(
+        'warn' => 'state WARN filings',
+        '8K'   => 'SEC 8-K filings',
+        'news' => 'named news reports',
+    );
+
+
+    /*
+      THE SIGNATURE METRIC, WHICH IS ALSO THE HARDEST BLOCK IN THE EDITION.
+
+      WHAT THE OWNER READ, three paragraphs down, in the same grey small print
+      as a reconciliation note: "No verified job cuts worldwide between 12 and
+      19 August 2026 carry an explicit AI attribution from the employer." On a
+      product called the AI Layoff Tracker, the figure the product is named
+      after was set as a negative, in passing, below three qualifiers.
+
+      HIS INSTRUCTION: "I would also use 'AI-attributed cuts: 0' every day. It
+      gives the tracker a consistent signature metric and makes the purpose of
+      the product immediately obvious." So this block is present in every
+      edition, in the same place, whatever the value.
+
+      AND THE MEASUREMENT THAT SHAPES IT, from docs/EDITORIAL-STANDARD.md 5.1.
+      Across the 32 complete ISO weeks of 2026 to 16 August, exactly 16
+      recorded zero. When it is non-zero it is almost always a single entry,
+      and one week holds 49% of the whole year's total. A zero week is the
+      MODAL week. Three consequences, and all three are load bearing:
+
+        1. IT CANNOT CARRY A DELTA. "Down from last week" is meaningless on a
+           series that is mostly zero, and a three-week run of zeros has
+           already happened twice this year without meaning anything. So this
+           block reports CUMULATIVELY, with the period's own value as context
+           beside it, and never as a change.
+
+        2. A ZERO IS NEVER PRINTED ALONE. Three things travel with it: the
+           parent total it is zero OF, the year-to-date value and share which
+           shows the metric is normally non-zero, and the count of entries we
+           actually read. That last is the one that matters: a zero is only
+           informative if the instrument could have detected the thing, and on
+           a tracker named for AI a reader who suspects the detector is broken
+           is asking the right question. The answer has to be in the email.
+
+        3. IT SAYS WHAT WAS DETECTED, NEVER WHAT HAPPENED. "No employer
+           explicitly attributed a cut to AI" and never "AI caused no
+           layoffs". A null has two possible causes, a real absence and an
+           instrument too weak to see it, and conflating them is the standard
+           overclaim in every nothing-happened story. There is also a live
+           reason to take the weaker branch: the precision of the AI-causation
+           classifier is currently UNKNOWN pending a human review of the
+           contested rows, and this repository says so in terms.
+
+      THE BASE RATE IS A DATED MEASUREMENT AND NOT A LIVE CLAIM, which is why
+      it can be written down. "Of the 32 complete weeks of 2026 measured to 16
+      August, 16 recorded none" does not go stale; it only gets older. A live
+      claim in its place ("about half of all weeks") would be fixed prose
+      around variable data, which is the fault this file keeps logging. The
+      figures beside it, the year-to-date total and its share, ARE live and
+      come from the same response the year block prints. Re-measure the base
+      rate when the year turns; the constants are named below so it is one
+      edit.
+
+      IT IS NOT A HEADLINE PAIR. The two-cell shape is for two figures a
+      reader is meant to compare, and the United States AI figure against the
+      worldwide one is not that comparison: both are almost always zero and
+      setting them side by side at 28px would give the emptiest fact in the
+      edition the most space in it. One line, always the same shape, carrying
+      the period's value and the cumulative one.
+    */
+    $AI_BASE_WEEKS = 32;
+    $AI_BASE_ZERO = 16;
+    $AI_BASE_ASOF = 'August 16';
+
+    $ai_jobs = (int) ($totals['ai_verified_jobs'] ?? 0);
+    $ai_entries = (int) ($totals['ai_verified_entries'] ?? 0);
+
+    // THE SIGNATURE LINE. The period's value and the cumulative one, adjacent,
+    // because a line reading "0" on its own most weeks trains a reader to skip
+    // it, and a skipped line is a dead line. The middle dot is a geometric
+    // character, never an emoji.
+    /*
+      "this week" on a weekly edition and "today" on a daily one, off the
+      window's own length, so the composer does not have to be told which tier
+      it is composing for. A generic "this period" is the word nobody says.
+    */
+    $ft2 = strtotime($from . ' 00:00:00 UTC');
+    $tt2 = strtotime($to . ' 00:00:00 UTC');
+    $wname = 'this period';
+    if ($ft2 !== false && $tt2 !== false) {
+        if (($tt2 - $ft2) === 6 * DAY_IN_SECONDS) $wname = 'this week';
+        elseif (($tt2 - $ft2) === DAY_IN_SECONDS) $wname = 'today';
+    }
+    $ai_signature = number_format_i18n($ai_jobs) . ' ' . $wname;
+    if ($ytd['ok']) {
+        $ai_signature .= " \xc2\xb7 " . number_format_i18n($ytd['ai'])
+                       . ' in ' . $ytd['year'] . ' so far';
+    }
+    $html .= '<h3>AI-attributed cuts</h3>'
+           . '<p data-alt="signature">' . esc_html($ai_signature) . '</p>';
+    $text .= "\nAI-attributed cuts\n" . $ai_signature . "\n";
+
+    /*
+      THE DENOMINATOR AND THE DETECTION POWER, IN ONE SENTENCE EACH.
+
+      "We reviewed 76 entries dated August 10-16, 2026" is what turns a bare
+      zero into a measurement. It is the count of entries the window holds,
+      which is the count the classifier ran over, and it is stated before the
+      result rather than after it.
+    */
+    $ai_lines = array();
+    $ai_lines[] = 'We reviewed ' . alt_digest_count($all_entries, 'entry', 'entries')
+                . ' dated ' . $range . ', ' . number_format_i18n($ver_jobs)
+                . ' verified job cuts between them.';
+    $ai_lines[] = ($ai_jobs > 0)
+        ? 'Employers explicitly named AI as a reason on '
+          . alt_digest_count($ai_entries, 'entry', 'entries') . ', covering '
+          . alt_digest_count($ai_jobs, 'verified job cut') . '.'
+        : 'No employer explicitly named AI as a reason on any of them.';
+    // THE BASE RATE, IN THE SAME BREATH, so the lead never has to hedge. It is
+    // dated, so it is true whenever it is read.
+    $ai_lines[] = 'Explicit attribution is rare and arrives in bursts: of the '
+                . $AI_BASE_WEEKS . ' complete weeks of 2026 measured to '
+                . $AI_BASE_ASOF . ', ' . $AI_BASE_ZERO . ' recorded none.';
+    if ($ytd['ok'] && $ytd['jobs'] > 0) {
+        $ai_share = 100 * $ytd['ai'] / $ytd['jobs'];
+        $shown = $ai_share > 0 && $ai_share < 1
+            ? number_format($ai_share, 1) : (string) round($ai_share);
+        $ai_lines[] = 'So far in ' . $ytd['year'] . ' employers have attributed '
+                    . alt_digest_count($ytd['ai'], 'verified job cut')
+                    . ' to AI, ' . $shown . '% of the year\'s total.';
+    }
+    $html .= '<p data-alt="note">' . esc_html(implode(' ', $ai_lines)) . '</p>';
+    $text .= implode(' ', $ai_lines) . "\n";
+
+    /*
+      WHY THAT MATTERS. The owner's own wording, kept because it is better than
+      the defensive hedge it replaces, with the methodological limit stated in
+      the last clause rather than apologised for. Every sentence is about the
+      METRIC and not about this period, so none of it can become false when the
+      data moves. That is the same rule the composition finding follows.
+    */
+    $ai_why = 'Why that matters: zero AI-attributed cuts does not mean AI played '
+            . 'no role. It means no employer in these records explicitly cited AI '
+            . 'as a reason. This tracker measures employer disclosure, not the '
+            . 'effect of automation on employment.';
+    if ($ai_jobs > 0) {
+        $ai_why = 'Why that matters: this counts only cuts an employer explicitly '
+                . 'named AI for. It is the floor under any estimate of AI driven '
+                . 'job loss, never the ceiling. This tracker measures employer '
+                . 'disclosure, not the effect of automation on employment.';
+    }
+    $html .= '<p data-alt="why">' . esc_html($ai_why) . '</p>';
+    $text .= $ai_why . "\n";
+
     /*
       THE INBOX SNIPPET, composed for its own ceiling rather than borrowed
       from the line above. The lede is 143 characters once the geography
@@ -2725,19 +3711,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       up with this tracker's name in the subject and the talent tracker's
       figure in the snippet. See alt_digest_fit_preheader.
 
-      The geography clause is FIRST in the optional list, so the basis clause
-      is what gets dropped when the window is long. That ordering is not
-      arbitrary: "where" was the owner's own question about this figure, and a
-      snippet that says worldwide-including-unplaced is harder to misread than
-      one that says only which date it counts. The clause itself is $geo, the
-      measured string the body already uses, so there is no second geography
-      vocabulary here to drift from that one.
+      IT LEADS WITH THE UNITED STATES because that is the priority audience and
+      because the subject line carries the week rather than a figure. The
+      worldwide total is the first optional clause, so a long window drops the
+      basis before it drops the second headline.
     */
     $preheader = alt_digest_fit_preheader(
-        alt_digest_count($ver_jobs, 'verified job cut') . ', ' . $range,
-        array($geo, 'counted by the date the cuts take effect'));
-    $text = "AI Layoff Tracker\n{$lede}\n";
+        alt_digest_count($us_jobs, 'verified job cut') . ' in the United States, ' . $range,
+        array(number_format_i18n($ver_jobs) . ' worldwide',
+              'counted by the date the cuts take effect'));
 
+
+    $snapshot = '';
     /*
       WHERE THE ROWS BEHIND THAT FIGURE CAME FROM, DIRECTLY UNDER IT.
 
@@ -2765,18 +3750,20 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       tens of seconds. Attribution that is not terse does not get read, and
       an unread citation is worth nothing.
 
-      THE COLUMN IS [4], the verified tier, the same quantity as the headline
-      it now sits under, for the same reason the country and industry blocks
-      read it. Friendly names, because "8K" is a form number and "warn" is
+      IT IS ITS OWN SECTION NOW, "Source quality", because the owner set the
+      edition's hierarchy and named it as a step in it: number, AI
+      attribution, source quality, biggest cuts, geography, industries, year
+      to date, methodology. It is the block that tells a reader how much to
+      trust everything under it, and a clause hanging off the headline was the
+      wrong rank for that.
+
+      THE COLUMN IS [4], the verified tier, the same quantity as the headline,
+      for the same reason the country and industry blocks read it. Friendly names, because "8K" is a form number and "warn" is
       lower case in the column. The shortfall clause no longer says "above":
       it is above these lines now, so it names the window instead, which is
       what every other line in this section already does.
     */
-    $source_names = array(
-        'warn' => 'state WARN filings',
-        '8K'   => 'SEC 8-K filings',
-        'news' => 'named news reports',
-    );
+    $provenance = '';
     $sources = array(); $src_shown = 0;
     foreach ((is_array($data['source_types'] ?? null) ? $data['source_types'] : array()) as $row) {
         $row = array_values((array) $row);
@@ -2795,8 +3782,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                        . alt_digest_count($ver_jobs, 'verified job cut') . ' in '
                        . $range . '.';
         }
-        $html .= '<p data-alt="source">' . esc_html($src_line) . '</p>';
-        $text .= $src_line . "\n";
+        $provenance = $src_line;
     }
 
     /*
@@ -2820,8 +3806,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $asof = ($cut !== '' ? 'The database last changed ' . $cut . '. ' : '')
               . 'This digest was composed ' . $composed . ', and every figure '
               . 'in it is the snapshot taken then.';
-        $html .= '<p data-alt="source">' . esc_html($asof) . '</p>';
-        $text .= $asof . "\n";
+        // HELD FOR THE FOOT. "About this snapshot" is the last block before
+        // the citation, because when the figures were read is methodology and
+        // not provenance: it belongs with the provisional note and the
+        // citation rather than beside the source split.
+        $snapshot = $asof;
+    }
+    if ($provenance !== '') {
+        $html .= '<h3>Source quality</h3>'
+               . '<p data-alt="source">' . esc_html($provenance) . '</p>';
+        $text .= "\nSource quality\n" . $provenance . "\n";
     }
 
     /*
@@ -2855,41 +3849,6 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $html .= '<p data-alt="note">' . esc_html($tier) . '</p>';
     $text .= $tier . "\n";
 
-    /*
-      THE ONE FIGURE THIS TRACKER IS NAMED AFTER, WHICH THE DIGEST OMITTED.
-
-      Every send so far has gone out under the heading "AI Layoff Tracker"
-      without once saying how many of the cuts were attributed to AI. The
-      field was in the payload the whole time.
-
-      A MEASURED ZERO IS PRINTED, and that is not the zero-filling this repo
-      bans. Zero-filling is substituting a zero for a figure we do not have.
-      This is a figure we have, from a query that succeeded, and on an AI
-      tracker "none this week" is the answer a reader came for. Omitting it
-      would leave them unable to tell "none" from "not checked", which is the
-      exact confusion the omission rule exists to prevent.
-    */
-    $ai_jobs = (int) ($totals['ai_verified_jobs'] ?? 0);
-    $ai_entries = (int) ($totals['ai_verified_entries'] ?? 0);
-    /*
-      IT SAYS "WORLDWIDE" AND NOT THE LONGER CLAUSE, on purpose. The headline
-      above carries the measured no-country qualifier because $covered is a
-      measurement of the set that headline counts. No equivalent split ships
-      for the AI subset, so repeating the clause here would assert something
-      about these rows that nothing checked. The word that answers "where" is
-      the same word either way, and it is the one the owner asked for.
-    */
-    if ($ai_jobs > 0) {
-        $ai_line = 'Attributed to AI by the employer: ' . number_format_i18n($ai_jobs)
-                 . ' of those verified job cuts, across '
-                 . alt_digest_count($ai_entries, 'entry', 'entries')
-                 . ', ' . $range . ', worldwide.';
-    } else {
-        $ai_line = 'No verified job cuts worldwide ' . $span
-                 . ' carry an explicit AI attribution from the employer.';
-    }
-    $html .= '<p data-alt="note">' . esc_html($ai_line) . '</p>';
-    $text .= $ai_line . "\n";
 
     /*
       THE ENTRIES, EACH ONE LINKED TO ITS OWN PAGE.
@@ -2904,6 +3863,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     if ($leaders) {
         $rows = array();
         $linked = 0;
+        $filtered = 0;
         $announced_rows = 0;
         // Whether the payload can answer the tier question AT ALL. Absence of
         // the field is UNKNOWN and must never render as "none are announced":
@@ -2991,6 +3951,29 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                 $row['url'] = alt_digest_track_link($send_id, $permalink);
                 $row['plain_url'] = $permalink;
                 $linked++;
+            } else {
+                /*
+                  NO ENTRY PAGE, SO THE TRACKER VIEW INSTEAD, AND NOT NOTHING.
+
+                  A notice that arrived through the bulk import path has
+                  post_id => null by construction and will never acquire a
+                  permalink, so five rows used to ship with one link between
+                  them. An entry page is the better destination where one
+                  exists, because it names the filing behind the row; where
+                  none exists, the tracker filtered to this company on this
+                  window and this basis is still a real destination that
+                  reproduces the row, and it is strictly better than plain text.
+
+                  The company name is the filter value. It is the same string
+                  the row prints, it goes through the page's `company` control,
+                  and the link carries date_basis like every other link this
+                  file builds. It is counted separately from $linked, because
+                  the sentence below distinguishes the two destinations and
+                  must not start claiming entry pages that do not exist.
+                */
+                $row['url'] = alt_digest_track_link($send_id, alt_digest_tracker_url(
+                    $from, $to, array('company' => $label)));
+                $filtered++;
             }
             $rows[] = $row;
         }
@@ -3070,7 +4053,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                          . 'row. '
                          . alt_digest_verb($count - $linked, 'The other one arrived',
                                                              'The rest arrived')
-                         . ' through a bulk filing import, which builds no page.';
+                         . ' through a bulk filing import, which builds no page, so '
+                         . alt_digest_verb($count - $linked, 'it links', 'they link')
+                         . ' to the tracker filtered to that company instead.';
             }
             /*
               THE CAVEAT THAT USED TO BE HERE IS GONE, because it is no longer
@@ -3099,55 +4084,140 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     }
 
     /*
-      WHERE THE JOBS WERE, PLUS THE BUCKET THAT IS NOT A PLACE.
+      WHERE THE JOBS WERE, AS REGIONS, AND THE TWO LINES THAT ARE NOT REGIONS.
 
-      "Multiple countries" is a real stored value: a global cut announced with
-      no per-country split. Folding it into a region would invent a location
-      for jobs nobody located, and dropping it would quietly shrink the world,
-      so it sits on its own line outside the five and says what it is.
+      WHAT IT WAS. A flat top five countries. On the live week that read United
+      States, Multiple countries, Germany, Brazil, Canada: one line the reader
+      came for and four that are not a picture of the world. The owner asked
+      for a regional breakdown and named the buckets he wanted.
 
-      TWO FAULTS FIXED HERE ON 2026-08-17.
+      EVERY LINE IS LINKED, which is the fourth complaint. A region links to
+      the tracker filtered to exactly the countries that made up that line, on
+      this window and this date basis, so the page's headline reproduces the
+      figure beside it. The country list is the one this window actually holds
+      rather than the whole region, because a link that adds countries with no
+      rows would still be correct and would stop being a reproduction of THIS
+      line.
 
-      The first is the tier. This list read column [1] of each row, which is
-      verified PLUS announced, and printed it under a headline that counts
-      verified only. On 2026-08-16 over the live week that was the difference
-      between 2,501 and 1 on the "Multiple countries" line alone. Column [4]
-      is `SUM(job_count) WHERE announced = 0`, the same quantity as the
-      headline, so the two now agree by construction rather than by luck.
+      THE TWO LINES THAT ARE NOT REGIONS, and both are printed rather than
+      hidden, which is standard practice rather than an apology: the OECD's
+      development statistics carry an explicit unallocated line so that the
+      components sum to the total.
 
-      The second is the caption. It said "These are job locations only, so the
-      list does not add up to the total above" on every send, including the
-      one where the list added up exactly. alt_digest_reconcile_note() now
-      computes the shortfall and names it, or says nothing when there is none.
+        "Multiple countries" is the stored bucket for a cross-border cut
+        announced with no per-country split. It has no job location. Folding it
+        into Asia Pacific or Europe would invent one and double-count the jobs
+        against the region that really holds them, so it is refused by
+        alt_digest_region_of() and given a line of its own.
 
-      This composer sends no country_basis, so these are strict job locations,
-      the `country` column rather than the employer's domicile. The caption
-      says so, attached to this block, not floating above it.
+        "No country recorded" is the third of the headline that sits on entries
+        we cannot place. It carries NO LINK, because there is no filter for an
+        empty country and a link that quietly showed something else would be
+        worse than none. The sentence under the two headlines already said how
+        many; this line is where it lands in the arithmetic.
+
+      SO THE COLUMN SUMS TO THE WORLDWIDE HEADLINE, exactly, every week. That
+      is the property alt_digest_reconcile_note() used to have to apologise for
+      not having.
+
+      A COUNTRY THIS DOES NOT KNOW GOES TO "Elsewhere" AND IS NOT GUESSED.
+      alt_normalize_country() passes an unrecognised single country through
+      unchanged, so the region map cannot be complete by construction. See
+      alt_digest_region_of().
+
+      THE GROUPING IS OURS AND THE CAPTION SAYS SO. "Asia Pacific" and "Middle
+      East and Africa" are business groupings, not UN M49 statistical regions,
+      and a reader reconciling against a UN table would otherwise find us
+      wrong.
     */
-    // $verified_split, $named, $multi and $covered are built ABOVE the
-    // headline, because the headline's geography clause is computed from
-    // $covered. See the comment on the declaration.
-    if ($named) {
+    if ($countries_all || $multi > 0 || $covered < $ver_jobs) {
         $caption = $range . ', verified only, counted where the jobs were rather than '
-                 . 'where the employer is based.';
+                 . 'where the employer is based. Regions are our own grouping.';
         $html .= '<h3>Where the jobs were</h3>'
                . '<p data-alt="caption">' . esc_html($caption) . '</p>';
         $text .= "\nWhere the jobs were\n" . $caption . "\n";
+
+        $region_jobs = array();
+        $region_countries = array();
+        foreach ($countries_all as $name => $value) {
+            $region = alt_digest_region_of($name);
+            if ($region === '') $region = 'Elsewhere';
+            if (!isset($region_jobs[$region])) {
+                $region_jobs[$region] = 0;
+                $region_countries[$region] = array();
+            }
+            $region_jobs[$region] += $value;
+            $region_countries[$region][] = $name;
+        }
         $rows = array();
         $shown = 0;
-        foreach ($named as $name => $value) {
-            $rows[] = array('label' => $name, 'figure' => alt_digest_jobs_phrase($value));
-            $shown += $value;
+        /*
+          THE UNITED STATES IS PINNED FIRST AND THE REST IS RANKED.
+
+          A block headed "Where the jobs were" is read as a ranking, and the
+          first render printed a FIXED order in which Latin America at 476 sat
+          below Europe at 321. A table sorted by nothing a reader can see is a
+          table they have to re-sort in their head.
+
+          The US keeps the top line whatever its size, because it is the stated
+          priority audience and because it is already a headline above; a reader
+          looking for it should not have to hunt down a ranked list for it. It
+          is a pinned row and not a claim about magnitude, and the figure beside
+          it says which.
+
+          "Elsewhere" is last of the regions because it is a residual and not a
+          place, and the two non-regions follow it.
+        */
+        $order = array();
+        foreach (alt_digest_region_order() as $region) {
+            if (!empty($region_jobs[$region])) $order[] = $region;
+        }
+        $pinned = array_values(array_filter($order, function ($r) {
+            return $r === 'United States'; }));
+        $rest = array_values(array_filter($order, function ($r) {
+            return $r !== 'United States'; }));
+        usort($rest, function ($a, $b) use ($region_jobs) {
+            return $region_jobs[$b] <=> $region_jobs[$a];
+        });
+        $order = array_merge($pinned, $rest);
+        if (!empty($region_jobs['Elsewhere'])) $order[] = 'Elsewhere';
+        foreach ($order as $region) {
+            if (empty($region_jobs[$region])) continue;
+            $rows[] = array(
+                'label'  => $region,
+                'figure' => alt_digest_jobs_phrase($region_jobs[$region]),
+                'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                $from, $to,
+                                array('country' => $region_countries[$region]))),
+            );
+            $shown += $region_jobs[$region];
         }
         if ($multi > 0) {
-            $rows[] = array('label' => 'Multiple countries, no split given',
-                            'figure' => alt_digest_jobs_phrase($multi));
+            $rows[] = array(
+                'label'  => 'Multiple countries, no split given',
+                'figure' => alt_digest_jobs_phrase($multi),
+                'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                $from, $to, array('country' => 'Multiple countries'))),
+            );
             $shown += $multi;
+        }
+        $unplaced_rows = max(0, $ver_jobs - $covered);
+        if ($unplaced_rows > 0) {
+            // No url. See the docblock: there is no filter for an empty country.
+            $rows[] = array('label' => 'No country recorded',
+                            'figure' => alt_digest_jobs_phrase($unplaced_rows));
+            $shown += $unplaced_rows;
         }
         list($c_html, $c_text) = alt_digest_rank_table($rows);
         $html .= $c_html;
         $text .= $c_text;
-        $note = alt_digest_reconcile_note($shown, $covered, $ver_jobs, 'job cut',
+        /*
+          THE RECONCILIATION, WHICH ON THIS BLOCK IS NOW ALWAYS EXACT. It is
+          still computed rather than asserted: a line claiming the column adds
+          up would be fixed prose around variable data, and if a future change
+          ever breaks the property this says so instead of lying about it.
+        */
+        $note = alt_digest_reconcile_note($shown, $ver_jobs, $ver_jobs, 'job cut',
                                           'no country recorded', $span);
         if ($note !== '') {
             $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
@@ -3161,7 +4231,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       "Multiple countries" special case cannot occur on this dimension, and
       the closure simply returns nothing for it.
     */
-    list($industries, , $ind_covered) = $verified_split($data['top_industries'] ?? null);
+    list($industries_all, , $ind_covered) = $verified_split($data['top_industries'] ?? null);
+    $industries = array_slice($industries_all, 0, 5, true);
     if (count($industries) > 1) {
         $caption = $range . ', verified only, by the industry we classified the employer into.';
         $html .= '<h3>Which industries</h3>'
@@ -3169,7 +4240,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $text .= "\nWhich industries\n" . $caption . "\n";
         $rows = array(); $shown = 0;
         foreach ($industries as $name => $value) {
-            $rows[] = array('label' => $name, 'figure' => alt_digest_jobs_phrase($value));
+            // EVERY LINE LINKED, and to this window and this basis. The
+            // industry filter is a plain string match on the same normalised
+            // vocabulary the label is printed from, so the page's headline
+            // reproduces the figure beside it. See alt_digest_tracker_url.
+            $rows[] = array(
+                'label'  => $name,
+                'figure' => alt_digest_jobs_phrase($value),
+                'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                $from, $to, array('industry' => $name))),
+            );
             $shown += $value;
         }
         list($i_html, $i_text) = alt_digest_rank_table($rows);
@@ -3183,11 +4263,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
           nothing when the period has no shape worth naming. See
           alt_digest_composition_note for the three floors and why each exists.
         */
-        $shape = alt_digest_composition_note($data['top_industries'] ?? null,
-                                             $ver_jobs, $span);
+        list($shape, $tech) = alt_digest_composition_note($data['top_industries'] ?? null,
+                                                          $ver_jobs, $span);
         if ($shape !== '') {
             $html .= '<p data-alt="note">' . esc_html($shape) . '</p>';
             $text .= $shape . "\n";
+        }
+        // Its own line, at its own weight. See alt_digest_composition_note.
+        if ($tech !== '') {
+            $html .= '<p data-alt="finding">' . esc_html($tech) . '</p>';
+            $text .= $tech . "\n";
         }
         $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cut',
                                           'no industry recorded', $span);
@@ -3224,53 +4309,52 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       the tier matches the headline for the reason spelled out above. If
       either figure ever changes tier, change BOTH in the same edit.
     */
-    $year = substr((string) $to, 0, 4);
-    if (preg_match('/^\d{4}$/', $year)) {
-        $ytd_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
-        $ytd_req->set_param('from', $year . '-01-01');
-        $ytd_req->set_param('to', $to);
-        $ytd_req->set_param('date_basis', 'layoff_date');
+    if ($ytd['ok']) {
         /*
-          `top_countries`, because this headline needs its OWN geography
-          measurement. Borrowing the period's would be the adjacency fault
-          again: a week where every cut is placed says nothing about a year
-          where thousands are not. `include` is an opt-in allowlist, so the
-          block has to be named or it comes back empty.
+          RENDERED HERE, FETCHED ABOVE. The AI block quotes the same
+          `$ytd['ai']` from the same response, so the cumulative figure in the
+          signature line and the one in this block cannot disagree.
+
+          THE HEADING IS "2026 YTD" and not "YTD 2026". A reader scanning
+          headings meets the year first, which is the same month-first
+          principle the date format now follows: fix the unit before the
+          abbreviation arrives.
+
+          STILL DELIBERATELY NO DELTA ON THIS FIGURE. A year-to-date total only
+          grows, so a late arrival corrects it rather than inverting it, and a
+          year-on-year line would compare a complete year against a partial
+          one. The week-on-week comparison above is a different object and has
+          its own justification; see alt_digest_change.
         */
-        $ytd_req->set_param('include', 'top_countries');
-        $ytd_res = rest_do_request($ytd_req);
-        $ytd_range = alt_digest_date_range($year . '-01-01', $to);
-        if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
-            $ytd_data = $ytd_res->get_data();
-            $ytd_totals = is_array($ytd_data) ? ($ytd_data['totals'] ?? null) : null;
-            if (!is_array($ytd_totals) && is_object($ytd_totals)) $ytd_totals = (array) $ytd_totals;
-            $ytd_all = is_array($ytd_totals) ? (int) ($ytd_totals['jobs'] ?? 0) : 0;
-            $ytd_ann = is_array($ytd_totals) ? (int) ($ytd_totals['announced_jobs'] ?? 0) : 0;
-            $ytd_ai = is_array($ytd_totals) ? (int) ($ytd_totals['ai_verified_jobs'] ?? 0) : 0;
-            $ytd_jobs = max(0, $ytd_all - $ytd_ann);
-            if ($ytd_jobs > 0) {
-                list(, , $ytd_covered) = $verified_split($ytd_data['top_countries'] ?? null);
-                $ytd_geo = alt_digest_geo_scope($ytd_jobs, $ytd_covered);
-                $ytd_scope = $ytd_range . ', ' . $ytd_geo
-                           . ', counted by the date the cuts take effect.';
-                $html .= '<h3>YTD ' . esc_html($year) . '</h3>'
-                       . '<p data-alt="kicker">'
-                       . esc_html(alt_digest_verb($ytd_jobs, 'Verified job cut',
-                                                  'Verified job cuts')) . '</p>'
-                       . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd_jobs)) . '</p>'
-                       . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
-                $text .= "\nYTD {$year}\n"
-                       . alt_digest_count($ytd_jobs, 'verified job cut') . ', '
-                       . $ytd_scope . "\n";
-                if ($ytd_ai > 0) {
-                    $ytd_ai_line = 'Of those, ' . number_format_i18n($ytd_ai)
-                                 . alt_digest_verb($ytd_ai, ' was', ' were')
-                                 . ' attributed to AI by the employer, '
-                                 . $ytd_range . ', worldwide.';
-                    $html .= '<p data-alt="note">' . esc_html($ytd_ai_line) . '</p>';
-                    $text .= $ytd_ai_line . "\n";
-                }
-            }
+        $ytd_scope = $ytd['range'] . ', worldwide, counted by the date the cuts take effect.';
+        $html .= '<h3>' . esc_html($ytd['year']) . ' YTD</h3>'
+               . '<p data-alt="stat">' . esc_html(number_format_i18n($ytd['jobs'])) . '</p>'
+               . '<p data-alt="unit">'
+               . esc_html(alt_digest_verb($ytd['jobs'], 'verified job cut',
+                                          'verified job cuts')) . '</p>'
+               . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
+        $text .= "\n{$ytd['year']} YTD\n"
+               . alt_digest_count($ytd['jobs'], 'verified job cut') . ', '
+               . $ytd_scope . "\n";
+        if ($ytd['ai'] > 0) {
+            $ytd_ai_line = 'Of those, ' . number_format_i18n($ytd['ai'])
+                         . alt_digest_verb($ytd['ai'], ' was', ' were')
+                         . ' attributed to AI by the employer, '
+                         . $ytd['range'] . ', worldwide.';
+            $html .= '<p data-alt="note">' . esc_html($ytd_ai_line) . '</p>';
+            $text .= $ytd_ai_line . "\n";
+        }
+        if ($ytd['unplaced'] > 0) {
+            // NAMES ITS OWN SUBJECT. It used to read "Of those, ..." and sat
+            // below the AI line, so "those" pointed at the AI subset rather
+            // than at the year. Two lines beginning "Of those" in one block is
+            // one line too many.
+            $ytd_note = number_format_i18n($ytd['unplaced']) . ' of the '
+                      . alt_digest_count($ytd['jobs'], 'verified job cut')
+                      . alt_digest_verb($ytd['unplaced'], ' sits', ' sit')
+                      . ' on entries with no country recorded, ' . $ytd['range'] . '.';
+            $html .= '<p data-alt="note">' . esc_html($ytd_note) . '</p>';
+            $text .= $ytd_note . "\n";
         }
     }
 
@@ -3322,6 +4406,24 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $read_date = alt_digest_date_range(gmdate('Y-m-d'), gmdate('Y-m-d'));
     if ($read_date !== '') $read_date .= ' at ' . gmdate('H:i') . ' UTC';
+    /*
+      ABOUT THIS SNAPSHOT: the methodology block, last, exactly where the owner
+      put it when he set the edition's fixed hierarchy. Two facts a reader
+      needs before quoting anything and neither of which belongs beside a
+      figure: when the database last moved, and when we read it. The
+      provisional note is NOT here; it travels with the figures it qualifies,
+      which is where a reader is doing the arithmetic it warns about.
+
+      IT IS PRINTED EVEN WHEN IT HAS LITTLE TO SAY, because a fixed template is
+      the point: a section that disappears on a quiet day makes the edition
+      unskimmable, and the reader who learned where to look has to learn again.
+    */
+    if ($snapshot !== '') {
+        $html .= '<h3>About this snapshot</h3>'
+               . '<p data-alt="note">' . esc_html($snapshot) . '</p>';
+        $text .= "\nAbout this snapshot\n" . $snapshot . "\n";
+    }
+
     if ($read_date !== '') {
         list($cite, $cite_url, $cite_note) = alt_digest_cite_note(
             'AI Layoff Tracker', $range, $url, $read_date, $cite_label);
@@ -3352,14 +4454,49 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
           It is STILL plain text and still not an anchor. See the docblock on
           alt_digest_cite_note for why that is deliberate and must stay.
         */
+        /*
+          THE PROVISIONAL NOTE IS NOT PRINTED HERE ANY MORE. It moved to sit
+          beside the two headline figures, which is where a reader is doing the
+          arithmetic it warns about, and where the owner asked for it. Printing
+          it in both places said the same thing twice in one email, which is
+          the repetition he called heavy. `$cite_note` is still RETURNED by
+          alt_digest_cite_note and the talent composer still prints it; only
+          this call site stops.
+        */
         $html .= '<h3>Cite this</h3>'
                . '<p data-alt="note">' . esc_html($cite) . '</p>'
-               . '<p data-alt="note">' . esc_html($cite_url) . '</p>'
-               . '<p data-alt="note">' . esc_html($cite_note) . '</p>';
-        $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n\n"
-               . $cite_note . "\n";
+               . '<p data-alt="note">' . esc_html($cite_url) . '</p>';
+        $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n";
     }
-    return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
+    /*
+      THE SUBJECT THIS SECTION WOULD PUT ON AN EDITION IT LEADS.
+
+      METRIC FIRST, because the owner asked for it and because the research is
+      on his side: a data product's subject should carry the statistic, since
+      for a data product the statistic IS the news. A narrative newsletter puts
+      the hook in the subject and the figure in the preview line; we are the
+      other kind.
+
+      IT NAMES ITS OWN STREAM. "AI Layoff Tracker and Talent Intelligence
+      Tracker: August 19, 2026" is a list of products, and once there are three
+      streams a reader with two subscriptions cannot tell which arrived without
+      opening it. Each stream's subject identifies that stream and then says
+      what happened in it.
+
+      THE FIGURE IS THE WORLDWIDE VERIFIED TOTAL, which is the number the
+      edition's own second headline carries and the one a reader is most likely
+      to quote. The United States figure leads the PREHEADER instead, so the
+      two lines a recipient sees before opening carry both, and neither repeats
+      the other.
+
+      NO DATE. The inbox already stamps the send, the masthead carries the
+      week, and ~45 characters is the whole budget. "this week" and "today" are
+      the two words that make the figure's window unambiguous inside it.
+    */
+    $subject = 'AI Layoff Tracker: ' . number_format_i18n($ver_jobs)
+             . ' verified cuts ' . ($wname === 'today' ? 'today' : $wname);
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
+                 'subject' => $subject);
 }
 
 /**
@@ -3866,11 +5003,36 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
             : 'The ' . $shown . ' newest of ' . $found . ' posts we published '
               . $span . '.')
         : ($found === 1
-            ? 'The one post we published ' . $span . '.'
-            : 'All ' . $found . ' posts we published ' . $span . ', newest first.');
+            ? 'One post published ' . $span . '.'
+            // "All 2 posts we published" spends its first word on a claim
+            // nobody doubted. The count is the fact.
+            : $found . ' posts published ' . $span . ', newest first.');
 
-    $html = '<h2>From the blog</h2>';
-    $text = "From the blog\n";
+    /*
+      THE FRAMING THE OWNER ASKED FOR, WHICH IS ONE SENTENCE.
+
+      HIS COMPLAINT, VERBATIM IN SUBSTANCE: "Two blog posts appear with no
+      framing. They are just there." He is right. The section had a heading and
+      a count, and neither says what these are or why they follow three blocks
+      of layoff statistics. A reader who has just read a week of figures meets
+      two titles and has to work out the relationship themselves.
+
+      IT IS FIXED PROSE AND THAT IS ALLOWED HERE, because it makes no claim
+      about the items. It says what the section IS, which cannot stop being
+      true when the posts change; the count, the window and the ordering are
+      still measured and still live in the caption below it. Compare the "why
+      it matters" line in the layoff section, which is a statement about the
+      metric for exactly the same reason.
+    */
+    $standfirst = 'What we wrote around the numbers: analysis and explainers '
+                . 'from the tracker team.';
+    // `standfirst`, not `lead`. The lead variant is the 18px opening of the
+    // layoff edition, and at that size this line outweighed the article titles
+    // under it, which is the wrong hierarchy for a block whose job is to get a
+    // reader into one of those titles.
+    $html = '<h2>From the blog</h2>'
+          . '<p data-alt="standfirst">' . esc_html($standfirst) . '</p>';
+    $text = "From the blog\n" . $standfirst . "\n";
     if ($range !== '') {
         $html .= '<p data-alt="caption">' . esc_html($caption) . '</p>';
         $text .= $caption . "\n";
@@ -3932,7 +5094,13 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         $text .= '    ' . $item['link'] . "\n";
     }
     $html .= '</table>';
-    return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
+    // Its own stream, its own metric. Deliberately NOT called "AskTheRecruiter
+    // Weekly": that name belongs to the combined edition, which carries both
+    // trackers as well and does not exist yet. A subject naming a product the
+    // message is not would be worse than a dull one.
+    $subject = 'From the blog: ' . alt_digest_count($found, 'new post');
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
+                 'subject' => $subject);
 }
 
 /* ------------------------------------------------------------------ */
@@ -3973,9 +5141,19 @@ function alt_digest_send($freq) {
     if (!alt_subscribers_table_ready()) return array(0, 0);
     $table = alt_subscribers_table();
 
-    $days = $freq === 'daily' ? 1 : 7;
-    $to_date = gmdate('Y-m-d');
-    $from_date = gmdate('Y-m-d', time() - $days * DAY_IN_SECONDS);
+    /*
+      THE WINDOW, FROM alt_digest_window() AND NOT FROM A COPY OF IT.
+
+      This read `$days = 1 or 7` back from today, so the weekly edition covered
+      a rolling seven days ending on the send day. That is a real window and it
+      is not a WEEK: it starts on whatever day the cron happens to run, its last
+      two days are still filling up while the email describes them, and it can
+      never carry a week number anybody can check. The weekly tier now reports
+      the previous COMPLETE ISO week. Daily is unchanged. Both definitions live
+      in one function so this route and the in-WordPress fallback sender cannot
+      describe different windows under the same subject line.
+    */
+    list($from_date, $to_date) = alt_digest_window($freq);
 
     // Open the send row BEFORE composing, because the counted links carry its
     // id. recipients is written at the end, from what actually went out, so a
@@ -4009,16 +5187,23 @@ function alt_digest_send($freq) {
         // because the sections are: this list is what THIS person consented
         // to, so the subject names what is actually inside their message.
         $headings = array();
+        $composed_subject = '';
         foreach (array('layoff', 'talent', 'articles') as $list) {
             $cols = alt_digest_lists()[$list];
             if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq && $sections[$list]) {
                 $parts_html[] = $sections[$list]['html'];
                 $parts_text[] = $sections[$list]['text'];
                 $headings[] = alt_digest_section_heading($sections[$list]['text']);
+                // The FIRST section this person actually gets is the one whose
+                // subject goes on their message, matching the relay exactly.
+                if ($composed_subject === '') {
+                    $composed_subject = (string) ($sections[$list]['subject'] ?? '');
+                }
             }
         }
         if (!$parts_html) continue;   // nothing to say to this person today
-        $subject = alt_digest_subject_line($freq, $to_date, $headings, $fallback_subject);
+        $subject = alt_digest_subject_line($freq, $from_date, $to_date, $headings,
+                                           $fallback_subject, $composed_subject);
 
         $unsub = alt_digest_unsub_url($row['unsub_token']);
         // Text-first HTML: no images, no pixels, no external assets. See the

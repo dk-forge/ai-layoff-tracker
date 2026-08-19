@@ -2,7 +2,7 @@
 
 WHAT WENT WRONG, AND WHY A REVIEW WOULD NOT HAVE CAUGHT IT.
 
-The first live digest, 16 August 2026, printed a period total, then a
+The first live digest, August 16, 2026, printed a period total, then a
 year-to-date total, then a country breakdown scoped to the PERIOD directly
 underneath the YEAR figure. The arithmetic was right in every line. The email
 was still wrong, because the country block stated no window of its own and
@@ -44,7 +44,7 @@ reached the headline. The delivered email of 2026-08-16 read:
 
     Verified job cuts
     13,658
-    10 to 17 August 2026, counted by the date the cuts take effect.
+    August 10-17, 2026, counted by the date the cuts take effect.
 
 The owner's question was one word long: where. Nothing in that block answers
 it. The country table further down said "counted where the jobs were rather
@@ -83,7 +83,7 @@ HARNESS = os.path.join(HERE, "fixtures", "digest_compose_harness.php")
 PHP = shutil.which("php")
 
 # A four-digit year is the scope token. Every window this email can describe
-# is rendered with one, whether it is a range, a single day, or "YTD 2026".
+# is rendered with one, whether it is a range, a single day, or "2026 YTD".
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
 
 # A data figure: a number wearing the unit it counts. This is deliberately
@@ -259,28 +259,67 @@ GEO = "worldwide"
 class NoHeadlineFigureLeavesItsGeographyToBeInferred(unittest.TestCase):
     """The defect the owner found by reading the delivered email: the headline
     stated its window, its tier and its date basis, and not where on earth it
-    counted. "Where? USA or world or what" is the whole bug report."""
+    counted. "Where? USA or world or what" is the whole bug report.
 
-    def _headlines(self, section):
-        """Every headline figure's own scope sentence, from BOTH parts."""
-        html = [re.sub(r"<[^>]+>", "", m) for m in SCOPE_P.findall(section["html"])]
-        text = [m.group(1) for m in
-                (LEDE.match(l) for l in section["text"].splitlines()) if m]
-        self.assertTrue(html, "the section emitted no scope line at all")
-        self.assertEqual(len(html), len(text),
-                         "the two body parts carry different numbers of "
-                         "headline figures, so one of them is unscoped")
-        return html + text
+    HOW THE ANSWER CHANGED ON 2026-08-19, AND WHY THESE ASSERTIONS MOVED WITH
+    IT. The first answer was a clause on every headline scope sentence:
+    "worldwide including entries with no country recorded". It was correct and
+    it was in three places in three phrasings, and the owner read the next
+    delivered send and called that heavy. It was also answering the wrong
+    question: he did not want to know that the figure was worldwide, he wanted
+    the United States figure, and he has since said so outright ("Lets do both
+    as we need both showing").
+
+    So there are TWO headline figures now, each carrying its geography as its
+    own label, over one shared scope sentence that states the tier, the window
+    and both bases once. The property these tests hold is unchanged in
+    substance and stronger in form:
+
+      NO HEADLINE FIGURE LEAVES ITS GEOGRAPHY TO BE INFERRED, AND THE SHARE WE
+      CANNOT PLACE IS STATED EXACTLY ONCE.
+    """
+
+    def _pair_labels(self, section):
+        """The geography label on each headline cell, from BOTH parts."""
+        html = [re.sub(r"<[^>]+>", "", m) for m in
+                re.findall(r'<p data-alt="kicker">(.*?)</p>', section["html"], re.S)]
+        text = [l.strip().split(":")[0] for l in section["text"].splitlines()
+                if l.startswith("  ") and ":" in l
+                and l.strip().split(":")[0] in ("United States", "Worldwide")]
+        self.assertTrue(html, "the section emitted no headline label at all")
+        return html, text
 
     def test_the_layoff_headlines_say_where_they_count(self):
-        for scope in self._headlines(compose(layoff_fixture())):
-            self.assertIn(GEO, scope,
-                          f"this headline figure states its window and its "
-                          f"date basis and never says where on earth it "
-                          f"counts: {scope!r}")
+        html, text = self._pair_labels(compose(layoff_fixture()))
+        for part in (html, text):
+            self.assertIn("United States", part,
+                          "the United States is the stated first priority and "
+                          "is not a headline figure of its own")
+            self.assertIn("Worldwide", part,
+                          "the worldwide figure is not labelled as worldwide")
+
+    def test_the_headline_scope_states_both_bases_once(self):
+        """One sentence, under both cells, naming the tier, the window, the
+        geography basis and the date basis. Two figures printed side by side
+        are read as comparable, so the sentence that says they are has to be
+        one sentence covering both rather than two that could drift."""
+        section = compose(layoff_fixture())
+        scopes = [re.sub(r"<[^>]+>", "", m) for m in SCOPE_P.findall(section["html"])]
+        both = [s for s in scopes if s.startswith("Both figures are")]
+        self.assertEqual(len(both), 1, f"expected exactly one: {scopes!r}")
+        line = both[0]
+        self.assertIn("verified job cuts", line)
+        self.assertIn("2026", line)
+        self.assertIn("counted where the jobs were", line)
+        self.assertIn("date the cuts take effect", line)
 
     def test_the_talent_headlines_say_where_they_count(self):
-        for scope in self._headlines(compose(talent_fixture())):
+        """The talent composer is UNTOUCHED by the edition rebuild and still
+        uses alt_digest_geo_scope, so it keeps the original assertion."""
+        section = compose(talent_fixture())
+        scopes = [re.sub(r"<[^>]+>", "", m) for m in SCOPE_P.findall(section["html"])]
+        self.assertTrue(scopes, "the section emitted no scope line at all")
+        for scope in scopes:
             self.assertIn(GEO, scope,
                           f"this headline figure states its window and its "
                           f"date basis and never says where on earth it "
@@ -288,30 +327,62 @@ class NoHeadlineFigureLeavesItsGeographyToBeInferred(unittest.TestCase):
 
     def test_the_ai_figure_says_where_it_counts(self):
         """It is the one figure this tracker is named after, and it is a line
-        somebody quotes on its own more often than any other."""
-        text = compose(layoff_fixture())["text"]
-        ai = [l for l in text.splitlines() if "AI attribution" in l]
-        self.assertTrue(ai, "the measured-zero AI sentence went missing")
-        self.assertIn(GEO, ai[0], f"the AI figure names no geography: {ai[0]!r}")
+        somebody quotes on its own more often than any other. It is now a
+        headline pair of its own, for the same reason the job-cut figure is:
+        the United States AI number and the worldwide one are different
+        questions and the owner asked for both."""
+        section = compose(layoff_fixture())
+        text = section["text"]
+        block = text.split("AI-attributed cuts\n")[1]
+        # THE SIGNATURE LINE, not a headline pair. Half the complete weeks of
+        # 2026 recorded zero (docs/EDITORIAL-STANDARD.md 5.1), so a series that
+        # is mostly zero may not carry a headline and may not carry a delta. It
+        # is reported cumulatively with the period's own value beside it, in
+        # the same shape every edition.
+        self.assertRegex(block.splitlines()[0],
+                         r"^0 this (week|period|day)|^0 today")
+        self.assertIn("in 2026 so far", block.splitlines()[0],
+                      "a zero was printed without the cumulative figure that "
+                      "shows the metric is normally non-zero")
 
         fixture = layoff_fixture()
         fixture["layoff"]["totals"]["ai_verified_jobs"] = 900
         fixture["layoff"]["totals"]["ai_verified_entries"] = 3
-        text = compose(fixture)["text"]
-        ai = [l for l in text.splitlines() if "Attributed to AI" in l]
-        self.assertTrue(ai, "the real AI sentence went missing")
-        self.assertIn(GEO, ai[0], f"the AI figure names no geography: {ai[0]!r}")
+        block = compose(fixture)["text"].split("AI-attributed cuts\n")[1]
+        self.assertTrue(block.startswith("900 "), block.splitlines()[0])
 
-    def test_worldwide_is_not_allowed_to_do_quiet_work(self):
-        """The figure is worldwide only because no country filter is sent, and
-        on the live week 4,669 of 13,658 verified cuts sat on entries carrying
-        no country at all. A bare "worldwide" would imply a placed total."""
-        scopes = self._headlines(compose(layoff_fixture()))
-        self.assertTrue(
-            all("no country recorded" in s for s in scopes),
-            "the fixture's countries fall short of the headline, so every "
-            "headline has to say the total includes entries we cannot "
-            f"place: {scopes!r}")
+    def test_a_zero_is_never_printed_without_the_line_that_says_we_looked(self):
+        """ABSENCE OF EVIDENCE IS NOT EVIDENCE OF ABSENCE, and on a tracker a
+        bare zero is indistinguishable from a broken scraper. The rule in the
+        science-writing literature is that a null is only a finding if the
+        instrument could have detected the thing, so the zero ships with the
+        count of entries actually read."""
+        text = compose(layoff_fixture())["text"]
+        block = text.split("AI-attributed cuts\n")[1]
+        power = [l for l in block.splitlines() if l.startswith("We reviewed ")]
+        self.assertTrue(power, "a zero went out with no detection-power line")
+        self.assertRegex(power[0], r"We reviewed [\d,]+ entr(y|ies) dated ")
+        self.assertIn("No employer explicitly named AI", power[0])
+        # AND ITS BASE RATE, in the same paragraph, because a zero week is the
+        # MODAL week and printing it without that reads as news.
+        self.assertIn("recorded none", power[0])
+        self.assertIn("rare and arrives in bursts", power[0])
+
+    def test_the_unplaced_share_is_stated_once_and_only_once(self):
+        """THE OWNER'S COMPLAINT, MADE INTO AN ASSERTION. The share we cannot
+        place is a third of the headline and it must stay visible. It was
+        visible three times, in three phrasings, and that is what made the
+        email read as heavy. Once, well, next to the figures it qualifies."""
+        text = compose(layoff_fixture())["text"]
+        period = text.split("\n2026 YTD")[0]
+        said = [l for l in period.splitlines() if "no country recorded" in l
+                and not l.startswith("  ")]
+        self.assertEqual(len(said), 1,
+                         f"the unplaced share is stated {len(said)} times in "
+                         f"the period block: {said!r}")
+        self.assertRegex(said[0], r"^[\d,]+ of the [\d,]+ verified job cuts sits? on")
+        self.assertNotIn("worldwide including entries with no country recorded",
+                         text, "the heavy clause is back")
 
     def test_a_window_where_every_cut_is_placed_claims_nothing_more(self):
         """Fixed prose around variable data, one dimension over. If the
@@ -322,12 +393,15 @@ class NoHeadlineFigureLeavesItsGeographyToBeInferred(unittest.TestCase):
         fixture["layoff"]["top_countries"] = [
             _tuple("United States", verified, verified)]
         section = compose(fixture)
-        period = section["text"].split("\nYTD 2026")[0]
-        self.assertIn(GEO, period.splitlines()[1])
-        self.assertNotIn("no country recorded", period,
+        period = section["text"].split("\n2026 YTD")[0]
+        self.assertNotIn("sit on entries with no country recorded", period,
                          "every verified cut in this window carries a "
                          "country and the email still told the reader some "
                          "of them do not")
+        self.assertIn("Every verified cut in this window carries a country",
+                      period)
+        self.assertNotIn("No country recorded", period,
+                         "a residual row with nothing in it was printed")
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH, so the composers could not "
@@ -373,21 +447,21 @@ class EveryFigureNamesItsWindow(unittest.TestCase):
     def test_the_period_and_the_year_are_never_two_bare_totals(self):
         """The exact confusion the owner hit: a period figure and a year
         figure with nothing between them saying which is which."""
-        self.assertIn("9 to 16 August 2026", self.text)
-        self.assertIn("1 January to 16 August 2026", self.text)
+        self.assertIn("August 9-16, 2026", self.text)
+        self.assertIn("January 1 - August 16, 2026", self.text)
 
     def test_the_year_to_date_block_comes_last(self):
         """It used to sit above a period-scoped country list. Every figure
         names itself now, so this is belt and braces, but the belt is cheap."""
         self.assertLess(self.text.index("Where the jobs were"),
-                        self.text.index("YTD 2026"))
+                        self.text.index("2026 YTD"))
         self.assertLess(self.text.index("Which industries"),
-                        self.text.index("YTD 2026"))
+                        self.text.index("2026 YTD"))
 
     def test_the_basis_and_the_tier_travel_with_the_headline(self):
         lede = self.text.splitlines()[1]
         self.assertIn("verified job cuts", lede)
-        self.assertIn("9 to 16 August 2026", lede)
+        self.assertIn("August 9-16, 2026", lede)
         self.assertIn("counted by the date the cuts take effect", lede)
 
     def test_the_geography_basis_is_attached_to_the_geography_block(self):
@@ -425,10 +499,31 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
                       "shortfall must still be stated somewhere")
 
     def test_a_list_that_falls_short_says_by_exactly_how_much(self):
+        """THE COUNTRY BLOCK NO LONGER FALLS SHORT, BY CONSTRUCTION, so this
+        moved to the industry block, which still can and still does.
+
+        The geography block became a regional grouping on 2026-08-19, and it
+        carries the two lines that are not regions: the "Multiple countries"
+        bucket, and an explicit "No country recorded" residual. The OECD's
+        development statistics do the same thing for the same reason, so the
+        components sum to the total. The column therefore adds up to the
+        worldwide headline exactly, every week, and the reconciliation note
+        computes that and correctly says nothing.
+
+        The note itself is unchanged and is still computed rather than
+        asserted: if a future change ever breaks the property, the country
+        block starts printing a shortfall instead of lying about one.
+        """
         text = compose(layoff_fixture())["text"]
-        self.assertIn("These lines cover 8,339 of the 13,710 verified job cuts",
-                      text)
-        self.assertIn("5,371 are on entries with no country recorded", text)
+        country = text.split("Where the jobs were")[1].split("Which industries")[0]
+        self.assertIn("No country recorded: 5,371 jobs", country)
+        self.assertNotIn("These lines cover", country,
+                         "the regional column is supposed to sum to the "
+                         "worldwide headline exactly")
+        industry = text.split("Which industries")[1].split("2026 YTD")[0]
+        self.assertIn("These lines cover 10,519 of the 13,710 verified job cuts",
+                      industry)
+        self.assertIn("1,067 are on entries with no industry recorded", industry)
 
     def test_the_ranked_lists_are_sorted_by_the_column_they_print(self):
         """The endpoint sorts on the announced-inclusive column and this block
@@ -454,19 +549,30 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         checked". This is not the zero-filling the repo bans: the query
         succeeded and the number is real."""
         text = compose(layoff_fixture())["text"]
-        # "between 9 and 16 August 2026", not "in 9 to 16 August 2026". The
-        # window label goes in FRONT of a caption; inside a sentence it needs
-        # a preposition of its own. See alt_digest_span_phrase.
-        self.assertIn("No verified job cuts worldwide between 9 and 16 August "
-                      "2026 carry an explicit AI attribution", text)
+        # IT IS A HEADLINE PAIR NOW, not a sentence in the middle of the
+        # section. The zero was set as a negative, in grey, below three
+        # qualifiers, on a product named for the metric; the owner read the
+        # delivered send and said so. The word is "None" rather than "0"
+        # because it answers a question rather than measuring a quantity.
+        block = text.split("AI-attributed cuts\n")[1]
+        self.assertTrue(block.startswith("0 "), block.splitlines()[0])
+        # And it says so in the lead, which is the two lines a reader is
+        # allowed to stop after. "Explicitly named", never "AI caused no
+        # layoffs": a null has two possible causes and this instrument's
+        # precision is currently UNKNOWN pending human review.
+        self.assertIn("No employer explicitly named AI as a reason.", text)
 
     def test_a_real_ai_figure_replaces_that_sentence(self):
         fixture = layoff_fixture()
         fixture["layoff"]["totals"]["ai_verified_jobs"] = 900
         fixture["layoff"]["totals"]["ai_verified_entries"] = 3
         text = compose(fixture)["text"]
-        self.assertIn("Attributed to AI by the employer: 900", text)
-        self.assertNotIn("carry an explicit AI attribution", text)
+        block = text.split("AI-attributed cuts\n")[1]
+        self.assertTrue(block.startswith("900 "), block.splitlines()[0])
+        self.assertIn("Employers explicitly named AI on 900 of the worldwide total.",
+                      text)
+        self.assertNotIn("No employer explicitly named AI as a reason on any",
+                         text)
 
     def test_the_entry_page_claim_counts_the_rows_that_actually_link(self):
         """One of the two fixture leaders has no permalink, because a WARN row
@@ -476,7 +582,7 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         # of 2026-08-18 read "1 of the 5 companies listed ... link to an entry
         # page" and the owner named it: a count driving a plural verb is the
         # cheapest way for a citable product to read as machine output.
-        self.assertIn("1 of the 2 companies listed between 9 and 16 August "
+        self.assertIn("1 of the 2 companies listed between August 9 and 16, "
                       "2026 links to an entry page", text)
 
     def test_a_us_state_code_is_expanded_and_the_country_named(self):
@@ -490,7 +596,7 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         single definition the state pages take their slugs from.
         """
         text = compose(layoff_fixture())["text"]
-        self.assertIn("(California, United States, takes effect 11 August 2026",
+        self.assertIn("(California, United States, takes effect August 11, 2026",
                       text)
         self.assertNotIn("(CA,", text)
 
@@ -518,7 +624,7 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         on entries with no country recorded."""
         text = compose(layoff_fixture())["text"]
         self.assertIn("Applied Aerospace (location not recorded, takes effect "
-                      "12 August 2026)", text)
+                      "August 12, 2026)", text)
 
     def test_the_email_uses_one_date_format_and_only_one(self):
         """"18 Aug 2026" in a row, two lines under a caption reading "9 to 16
@@ -620,21 +726,53 @@ class AFigureCarriesItsOwnSourcing(unittest.TestCase):
     """
 
     def test_the_sourcing_sits_under_the_headline_and_not_at_the_foot(self):
+        """THE ADJACENCY THIS HOLDS, AND WHAT CHANGED ABOUT IT.
+
+        The provenance sentence used to sit at the FOOT of the section, three
+        tables below the figure it explains, so a reader who screenshotted the
+        headline or stopped after the first screen took the number and left its
+        sourcing behind. It was moved directly under the figure.
+
+        The edition rebuild put an editorial spine above that figure: a
+        dateline, a lead and a why-it-matters line. So "the line immediately
+        after the heading" is no longer the property; the property is that the
+        sourcing sits with the HEADLINE FIGURES, above every ranked table, and
+        that nothing between it and them is a table. It also now does double
+        duty as the detection-power evidence for the AI block directly below
+        it, which is why it comes before that block and not after.
+        """
         text = compose(layoff_fixture())["text"]
-        source = text.index("Where these came from")
-        self.assertLess(source, text.index("Biggest cuts"),
-                        "the provenance of the headline figure is printed "
-                        "below the tables that break it down, so anyone "
-                        "quoting the headline leaves the sourcing behind")
-        # Directly under it: nothing but the headline's own scope line between.
-        head = text[:source].strip().splitlines()
-        self.assertEqual(len(head), 2, f"unexpected lines above it: {head}")
+        lines = text.splitlines()
+        src = [i for i, l in enumerate(lines)
+               if l.startswith("Where these came from")]
+        self.assertEqual(len(src), 1, f"expected one sourcing line: {lines!r}")
+        at = src[0]
+
+        pair = [i for i, l in enumerate(lines) if l.startswith("  Worldwide:")]
+        self.assertTrue(pair and pair[0] < at,
+                        "the sourcing does not sit under the headline figures")
+
+        for heading in ("Biggest cuts", "Where the jobs were",
+                        "Which industries", "Cite this"):
+            self.assertGreater(lines.index(heading), at,
+                               f"{heading} sits above the sourcing, so the "
+                               f"sourcing is back at the foot of the section")
+
+        # IT SITS BELOW THE AI BLOCK NOW, and that is deliberate. The owner
+        # set the edition's hierarchy: number, AI attribution, source quality,
+        # then the tables. The AI block no longer leans on this line for its
+        # detection-power evidence, because it carries its own reviewed-entry
+        # count, so the two are independent and the order is his.
+        ai = lines.index("AI-attributed cuts")
+        self.assertLess(ai, at, "source quality must follow AI attribution")
+        self.assertEqual(lines[at - 1], "Source quality",
+                         "the source split lost its own heading")
 
     def test_the_sourcing_names_its_window_and_its_tier(self):
         """It is now a headline-level line, so it stands alone like one."""
         line = [l for l in compose(layoff_fixture())["text"].splitlines()
                 if l.startswith("Where these came from")][0]
-        self.assertIn("9 to 16 August 2026", line)
+        self.assertIn("August 9-16, 2026", line)
         self.assertIn("verified only", line)
         self.assertNotIn("above", line,
                          "the shortfall clause still points at a figure that "
@@ -681,7 +819,7 @@ class TheEmailCanBeCited(unittest.TestCase):
     def test_the_citation_names_the_tracker_the_window_and_a_read_date(self):
         line = [l for l in self.text.splitlines()
                 if l.startswith("AI Layoff Tracker, AskTheRecruiter.com")][0]
-        self.assertIn("Figures for 9 to 16 August 2026", line)
+        self.assertIn("Figures for August 9-16, 2026", line)
         # The read date is TODAY, not the window's end: `to` is the last day
         # the figures COVER and this is the day they were pulled. Asserted by
         # shape plus the current UTC year rather than against a computed date,
@@ -691,8 +829,8 @@ class TheEmailCanBeCited(unittest.TestCase):
         # hours old when they land, and a bare date implied otherwise.
         year = datetime.datetime.now(datetime.timezone.utc).year
         self.assertRegex(
-            line, rf"accessed \d{{1,2}} [A-Z][a-z]+ {year} at \d\d:\d\d UTC\.")
-        self.assertNotIn("accessed 16 August", line,
+            line, rf"accessed [A-Z][a-z]+ \d{{1,2}}, {year} at \d\d:\d\d UTC\.")
+        self.assertNotIn("accessed August 16", line,
                          "the read date is the window's end, so it claims the "
                          "figures were read before the period closed")
 
@@ -738,16 +876,23 @@ class TheEmailCanBeCited(unittest.TestCase):
         self.assertIn("The database last changed Aug 17, 2026", self.text)
         self.assertRegex(
             self.text,
-            r"This digest was composed \d{1,2} [A-Z][a-z]+ \d{4} at "
+            r"This digest was composed [A-Z][a-z]+ \d{1,2}, \d{4} at "
             r"\d\d:\d\d UTC, and every figure in it is the snapshot taken then\.")
 
     def test_no_stamp_prints_no_sentence_rather_than_a_guess(self):
         text = compose(layoff_fixture())["text"]
         self.assertNotIn("as of Aug", text)
         self.assertNotIn("The database last changed", text)
-        self.assertIn("a recent window is provisional", text,
+        # IT MOVED OUT OF THE CITATION AND UP BESIDE THE FIGURES, which is
+        # where a reader is doing the arithmetic it warns about and where the
+        # owner asked for it. The property is unchanged: it is true whether or
+        # not we can date the last write, so it survives the absence.
+        self.assertIn("Filings and notices keep arriving", text,
                       "the provisional warning is true whether or not we can "
                       "date the last write, so it must survive the absence")
+        period = text.split("\n2026 YTD")[0]
+        self.assertIn("Filings and notices keep arriving", period,
+                      "the provisional note is no longer beside the figures")
 
     def test_the_provisional_warning_does_not_promise_figures_only_rise(self):
         """Late filings grow a window, and corrections shrink it. The public
@@ -755,7 +900,7 @@ class TheEmailCanBeCited(unittest.TestCase):
         self.assertIn("a correction can lower it", self.text)
 
     def test_the_citation_block_is_the_last_thing_in_the_section(self):
-        self.assertLess(self.text.index("YTD 2026"),
+        self.assertLess(self.text.index("2026 YTD"),
                         self.text.index("Cite this"))
 
 
@@ -860,7 +1005,7 @@ class ThePeriodIsAllowedToHaveAShape(unittest.TestCase):
                       "E-commerce are the three largest", text)
         self.assertRegex(text, r"are the three largest, \d+% of the [\d,]+ "
                                r"verified job cuts we classified by industry "
-                               r"between 9 and 16 August 2026\.")
+                               r"between August 9 and 16, 2026\.")
 
     def test_it_places_technology_when_technology_is_not_in_the_top_three(self):
         """The documented editorial rule: this is the AI Layoff Tracker, so
@@ -941,14 +1086,14 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
     def test_the_number_that_did_the_ranking_is_shown(self):
         """A list claiming to lead with the biggest signals and printing no
         size is asking to be taken on trust."""
-        self.assertIn("(2,200 jobs, 14 August 2026)", self.text)
+        self.assertIn("(2,200 jobs, August 14, 2026)", self.text)
 
     def test_a_row_naming_no_jobs_prints_no_count_rather_than_a_zero(self):
         """Absent, null and zero all mean "the source stated no number", and
         none of them is a measured zero."""
         row = [r for r in self.rows if "Concentrix" in r][0]
         self.assertNotIn("0 jobs", row)
-        self.assertIn("16 August 2026", row)
+        self.assertIn("August 16, 2026", row)
 
     def test_a_headline_that_is_mostly_not_latin_does_not_take_a_slot(self):
         """Script, not language: the schema has no language column, so
@@ -993,42 +1138,57 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         self.assertTrue(snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
 
-    def test_the_body_lede_is_free_to_be_longer_than_the_snippet(self):
+    def test_the_body_lead_is_free_to_be_longer_than_the_snippet(self):
         """The point of the whole change: the clause stays in the body where
-        there is room, and the snippet is composed separately."""
+        there is room, and the snippet is composed separately.
+
+        The lead is line 3 now, not line 2: line 2 is the dateline, which the
+        edition rebuild put between the heading and the lead.
+        """
         section = compose(layoff_fixture())
-        lede = section["text"].splitlines()[1]
-        self.assertGreater(len(lede), self.PREHEADER_MAX,
+        lead = section["text"].splitlines()[2]
+        self.assertGreater(len(lead), self.PREHEADER_MAX,
                            "this fixture no longer reproduces the condition "
                            "that broke the preheader, so it proves nothing")
         self.assertLessEqual(len(section["preheader"]), self.PREHEADER_MAX)
 
     def test_the_snippet_carries_the_figure_its_tier_and_its_window(self):
         """A figure with no scope is not an acceptable snippet at any length.
-        These three are the part the fitter may never drop."""
-        snippet = compose(layoff_fixture())["preheader"]
-        self.assertIn("13,710", snippet)
-        self.assertIn("verified job cuts", snippet)
-        self.assertIn("9 to 16 August 2026", snippet)
+        These three are the part the fitter may never drop.
 
-    def test_geography_outranks_the_date_basis_when_only_one_fits(self):
-        """Both will not fit beside the full geography clause. "Where" was the
-        owner's own question about this figure, and a snippet naming only the
-        date basis is easier to misread than one naming only the geography."""
+        THE FIGURE IS THE UNITED STATES ONE NOW. It leads the snippet for the
+        same reason it leads the headline pair: it is the stated first
+        priority, and the subject line beside it carries the edition rather
+        than a number. The worldwide total is the first OPTIONAL clause.
+        """
         snippet = compose(layoff_fixture())["preheader"]
-        self.assertIn("worldwide", snippet)
-        self.assertNotIn("take effect", snippet)
+        self.assertIn("7,862", snippet)
+        self.assertIn("verified job cuts in the United States", snippet)
+        self.assertIn("August 9-16, 2026", snippet)
 
-    def test_both_clauses_survive_when_the_geography_is_short(self):
-        """A window where every verified cut carries a country says just
-        "worldwide", and then there is room for the basis too."""
+    def test_the_second_headline_outranks_the_date_basis_when_only_one_fits(self):
+        """WHAT THIS USED TO ASSERT. That the geography clause "worldwide
+        including entries with no country recorded" beat the basis clause into
+        the snippet. That clause is gone from the snippet: the owner read it
+        three times in one email, in three phrasings, and called it heavy. The
+        body says it once, in its own sentence, with the measured number in it.
+
+        The ordering rule is unchanged and the clause it protects is now the
+        WORLDWIDE FIGURE. A snippet naming only the US number beside a subject
+        naming the edition is a snippet a reader cannot tell from last week's;
+        the second headline is what makes it this week's.
+        """
+        snippet = compose(layoff_fixture())["preheader"]
+        self.assertIn("13,710 worldwide", snippet)
+        self.assertNotIn("no country recorded", snippet)
+
+    def test_both_clauses_survive_when_there_is_room(self):
+        """A short window label leaves room for the basis clause too."""
         fixture = layoff_fixture()
-        verified = (fixture["layoff"]["totals"]["jobs"]
-                    - fixture["layoff"]["totals"]["announced_jobs"])
-        fixture["layoff"]["top_countries"] = [
-            _tuple("United States", verified, verified)]
+        fixture["from"] = "2026-08-16"
+        fixture["to"] = "2026-08-16"
         snippet = compose(fixture)["preheader"]
-        self.assertIn("worldwide", snippet)
+        self.assertIn("13,710 worldwide", snippet)
         self.assertIn("counted by the date the cuts take effect", snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
 
@@ -1040,7 +1200,7 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         self.assertTrue(snippet)
         self.assertLessEqual(len(snippet), self.PREHEADER_MAX)
         self.assertIn("1,332 new hiring signals", snippet)
-        self.assertIn("9 to 16 August 2026", snippet)
+        self.assertIn("August 9-16, 2026", snippet)
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
@@ -1181,12 +1341,12 @@ class TheRowSaysWhoPublishedIt(unittest.TestCase):
              "headline": "Banco do Brasil anuncia 680 novas vagas",
              "published_date": "2026-08-17", "headcount": 680,
              "source_name": "Ceisc"}]
-        self.assertIn("(680 jobs, Ceisc, 17 August 2026)", compose(fixture)["text"])
+        self.assertIn("(680 jobs, Ceisc, August 17, 2026)", compose(fixture)["text"])
 
     def test_a_row_carrying_no_source_prints_none(self):
         """Absent is absent. The shipped fixture rows carry no source_name, so
         this is the same assertion the ranking tests already make."""
-        self.assertIn("(2,200 jobs, 14 August 2026)", self.text)
+        self.assertIn("(2,200 jobs, August 14, 2026)", self.text)
 
 
 if __name__ == "__main__":
