@@ -63,11 +63,22 @@ alerter is currently SUPPRESSING. While that state lived in a WordPress option,
 "why have I heard nothing about this?" had no answer short of the database. A
 deliberate silence should be legible.
 
-**Proof.** `.github/workflows/opsmail-selftest.yml` (manual only, nothing
-schedules it) lists the account's verified sending domains and sends one real
-email. Two things about a relay can only be learned by using it: whether the key
-works, and whether the From address is on a verified domain. Finding out during
-a real incident is finding out too late.
+**Proof, and what it caught.** `.github/workflows/opsmail-selftest.yml` (manual
+only, nothing schedules it) lists the account's verified sending domains and
+sends one real email. Two things about a relay can only be learned by using it:
+whether the key works, and whether the From address is on a verified domain.
+
+The very first run answered a third question nobody had asked. Resend's API sits
+behind Cloudflare, and it refused urllib's default `Python-urllib/3.12` with
+`403 Error 1010: the site owner has banned your browser signature`. A 403 is a
+SETTLED refusal, so every alert would have been held, none would ever have
+arrived, and the only symptom would have been a queue that quietly grew. This is
+the ModSecurity iron rule again, at a different host: **every request needs a
+real-looking User-Agent.** `digest_transport.py` had always set one on its own
+Resend calls, which is why the reader path never met this. `opsmail.py` now sets
+the same string and `tests/test_ops_mail_split.py` fails on a client without it.
+Reporting this on the strength of a code review would have shipped an alerting
+system that could not send a single email.
 ## 2026-08-19 - every digest that goes out now has a permanent, citable URL (2.20.109)
 
 A digest with no permanent URL cannot be cited. This product's whole
