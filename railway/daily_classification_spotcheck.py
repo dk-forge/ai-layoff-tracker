@@ -185,8 +185,15 @@ def ask_model(prompt):
 
     main() checks the brake once, before the sample is drawn, and this function
     is called TWICE per run (the flag pass and the confirm pass). One check
-    cannot bound two calls, and request_json retries inside itself, so the gate
-    goes through spend.metered_call where it is re-read per request.
+    cannot bound two calls, so the gate goes through spend.metered_call, where
+    it is re-read per REQUEST.
+
+    `attempts=1` INSIDE the lambda and `attempts=2` on metered_call is the
+    whole point of this edit (2026-08-18). It used to read `attempts=2` inside,
+    which put the second POST behind the first gate read and metered only
+    whichever attempt came back: a run at its ceiling bought a call it had not
+    checked for, and a timed-out-but-billed completion was charged to nobody.
+    Same resilience, one request per gate read, every request counted.
     """
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if not key:
@@ -199,8 +206,9 @@ def ask_model(prompt):
              "response_format": {"type": "json_object"}},
             # This is an advisory daily sample, not a batch job. Keep its outage
             # budget bounded so a slow provider cannot hold the whole report open.
-            {"Authorization": "Bearer " + key}, attempts=2, timeout=45,
+            {"Authorization": "Bearer " + key}, attempts=1, timeout=45,
         ),
+        attempts=2, retry_sleep=5.0,
         what="a classification spot-check question")
     try:
         content = response["choices"][0]["message"]["content"]

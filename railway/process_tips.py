@@ -157,7 +157,14 @@ def _second_pass_confirms(company, jobs, text):
     if not (OpenAI and api_key and text):
         return False
     try:
-        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key,
+                        # ZERO: the SDK retries by default (2), which
+                        # re-POSTs inside the callable handed to
+                        # metered_call — a charge with no gate read and
+                        # no meter entry. Retry via metered_call's own
+                        # `attempts=`, which re-reads the brake and
+                        # meters each try.
+                        max_retries=0)
         prompt = (
             "You verify layoff tips against a source. Answer ONLY 'yes' or 'no'.\n"
             f"Does the text below clearly report that {company} is cutting about "
