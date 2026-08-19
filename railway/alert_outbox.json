@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "attempts": 1,
+      "key": "tests:main:7ba8f6d0b4896be7",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-19T17:24:49+00:00",
+      "last_error": "HTTP 409 from Resend: {\"statusCode\":409,\"name\":\"invalid_idempotent_request\",\"message\":\"This idempotency key has been used with this HTTP method and endpoint within the last 24 hours, but the request body was modified and doesn't match the original request.\"}",
+      "payload": {
+        "body": "The workflow 'Tests' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Tests\n  branch:   main\n  trigger:  push\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32280473146\n\nWHAT FAILED:\n  AssertionError: 'PASS' != 'FAIL'\n\nContext from the failed step:\n  FAIL: test_live (test_subscriber_routes_live.TheLiveRoutesAnswer.test_live)\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Tests' is failing on main with: AssertionError: 'PASS' != 'FAIL'. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32280473146. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "tests:main:7ba8f6d0b4896be7",
+        "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
+      },
+      "raised_at": "2026-08-19T17:24:49+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32280473146",
+      "scope": "tests:main",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -430,6 +446,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-19T15:41:27+00:00",
+  "updated_at": "2026-08-19T17:24:49+00:00",
   "version": 1
 }
