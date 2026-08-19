@@ -41,6 +41,11 @@
       "rules": 2,
       "unknown": 0,
       "unmatched": 2
+    },
+    {
+      "date": "2026-08-19",
+      "method": "m4",
+      "state": "unknown"
     }
   ],
   "quiet_runs": 1
