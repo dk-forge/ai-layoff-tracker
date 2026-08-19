@@ -126,6 +126,23 @@ defect.
   READ from this network" on the health page; 404/410 and a 200 that is not RSS
   stay `broke`, because those are ours to fix. **Status stays `degraded` in
   both cases** - an unreadable source is never reported as working.
+* **And a correct label is not a fixed source.** `economynext_lk` was dropped
+  from `national_feeds` on 2026-08-18, because the measurement said the direct
+  feed was a SECOND route to a publisher we already read: the live Sri Lanka
+  market sweep returns economynext.com items under its own committed queries
+  (4 of 241 across the en/si/ta editions), and the direct feed had stored zero
+  rows in 14 days. The publisher is now catalogue status `researched`, watched
+  through its market sweep, and no coverage was lost.
+  **When a feed answers a wall, this is the order to work through:** (1) other
+  paths on the same host - probe, do not assume, and note that a path probed
+  from a laptop proves nothing about the runner's range; (2) **is the content
+  already arriving through a path we run?** Check GDELT's domain list and the
+  country's Google News edition; if it is, the honest fix is `researched` and
+  the direct feed goes; (3) another publisher in the same country; (4) only
+  then, moving the job to a different address range, and say plainly that that
+  is address-shopping around a soft block. **Never spoof a user agent to get
+  past an access control aimed at automated clients**, and always read
+  robots.txt before the first content request on a new host.
 * Every failing feed is now named. `last_error` used to be one slot, so three
   blocked feeds reported one, and you could not tell an instance from a class.
 

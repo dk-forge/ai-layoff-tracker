@@ -9,6 +9,15 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.92.** The baton was
+  read as HELD and is NOT claimed here; only the version number is, which is
+  what this file asks for so the 2.20.88 collision above does not repeat. The
+  change is `economynext_lk` leaving `national_feeds` after its stories were
+  measured arriving through the Sri Lanka market sweep; the plugin files it
+  touches are `templates/page-sources.php`, the generated
+  `partials/source-catalogue-table.php` and `assets/health.js`. **Next plugin
+  release is 2.20.93.**
+
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the methodology page's
   typed update cadence, landing as **2.20.89** (`templates/page-methodology.php`,
   `railway/tests/test_ingest_schedule.py`, CLAUDE.md, TECHLOG). `2.20.88` fixed
