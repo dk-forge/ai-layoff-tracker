@@ -60,6 +60,33 @@ re-runs `python3 railway/signup_fold.py`, reads the pixels, then `--record`.
 `tests/test_signup_fold_stamp.py` is the cheapest test in the suite and will go
 red first; do not answer it by editing the stamp by hand.
 
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.121.** 2.20.120 was
+  claimed here first and then LOST to PR #167, which merged while this was
+  being written; main was re-read at rebase time and this took the number after
+  it. That is the rule working rather than a mistake: a number in a claim is a
+  number that was true when somebody typed it. The baton was read as HELD by `local` and is NOT claimed here.
+  **THE DIGEST FOOTER NOW HAS ONE AUTHOR.** It was composed three times, twice
+  by the relay and once by the wp_mail fallback in `alt_digest_send()`, which
+  is how PR #164's corrected wording shipped beside the withdrawn wording for
+  the length of one grep. `alt_digest_footer_blocks()` in
+  `includes/subscribe.php` is now the single definition and
+  `alt_digest_footer_html()` renders it; the sender types no reader-facing word
+  at all. `FOOTER_BLOCKS` in `railway/digest_layout.py` is its mirror, the way
+  `RELAY_TRACKING_ON` mirrors `ALT_RELAY_TRACKING`, and
+  `TheTwoFootersAreOneDefinition` compares the two SETS rather than asserting
+  remembered sentences, so the next sentence to change is red without anyone
+  updating an assertion. **The relay's rendered output is byte identical** to
+  the previous build in both parts, so no reader on the relay path sees a
+  change; the fallback gained the relay's comma clause on the unsubscribe
+  sentence. **The RFC 8058 headers, the one-click unsubscribe URL and the
+  no-address assertions are untouched.** Plugin files touched:
+  `includes/subscribe.php` and `ai-layoff-tracker.php` (version only). **The
+  other plugin change queued tonight cannot also be 2.20.120**: whoever merges
+  second re-reads main and takes what follows.
+  **Note for whoever picks it up:** the wp_mail footer carries NO measurement
+  disclosure, while the relay's carries `TRACKING_SENTENCES`. That is left open
+  deliberately and written up in TECHLOG. It is a transport question, not a
+  copy one.
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.120, read off main
   (2.20.119) immediately before merging.** The baton was read as HELD by
   `local`; only the version number is claimed here. **THIS SESSION OPENED

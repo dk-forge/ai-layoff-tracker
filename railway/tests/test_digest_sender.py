@@ -23,8 +23,10 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 import urllib.error
+from html import unescape
 from unittest import mock
 
 HERE = os.path.dirname(__file__)
@@ -35,6 +37,7 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 if RAILWAY not in sys.path:
     sys.path.insert(0, RAILWAY)
 
+import digest_layout as layout          # noqa: E402
 import digest_send                      # noqa: E402
 import digest_transport as dt           # noqa: E402
 
@@ -1006,19 +1009,18 @@ class ManageYourSubscriptions(unittest.TestCase):
         self.assertNotIn("evil.example", msg.text)
 
     def test_the_server_side_sender_offers_it_too(self):
+        """The fallback offers the link, and offers it from the shared blocks.
+
+        The set-equality guard lives in TheTwoFootersAreOneDefinition below.
+        This one only checks the fallback still has a manage link at all.
+        """
         sub = open(os.path.join(PLUGIN, "includes", "subscribe.php"),
                    encoding="utf-8").read()
         self.assertIn("function alt_digest_manage_url", sub)
         self.assertIn("#alt-digest", sub)
-        sender = sub[sub.index("function alt_digest_send("):]
-        sender = sender[:sender.index("\n}")]
-        # THE SAME THREE PROMISES THE RELAY MAKES. This is a second,
-        # independently written footer, so "it offers it too" is not enough:
-        # it has to offer the reader the same thing, or which sender ran
-        # decides what the reader was told.
-        self.assertIn("re-enter your address on the signup form", sender)
-        self.assertIn("confirm by email", sender)
-        self.assertNotIn("Manage your subscriptions", sender)
+        sender = _php_function(sub, "alt_digest_send")
+        self.assertIn("alt_digest_manage_url()", sender)
+        self.assertIn("alt_digest_footer_html(", sender)
 
     def test_the_route_hands_the_relay_the_url_rather_than_the_relay_building_it(self):
         api = open(os.path.join(PLUGIN, "includes", "digest-api.php"),
@@ -1027,6 +1029,188 @@ class ManageYourSubscriptions(unittest.TestCase):
         send = open(os.path.join(RAILWAY, "digest_send.py"), encoding="utf-8").read()
         self.assertNotIn("asktherecruiter.com/blog/ai-layoff-tracker", send,
                          "the sender must not carry a hard coded site URL")
+
+
+# ---------------------------------------------------------------------------
+# Reading one function out of the plugin, and reading a rendered footer back
+# down to the words a person sees. Both sides of the comparison below have to
+# be reduced to sentences before they can be compared at all.
+# ---------------------------------------------------------------------------
+def _php_function(src, name):
+    """The body of one PHP function, from `function name(` to its closing brace."""
+    start = src.index(f"function {name}(")
+    return src[start:src.index("\n}", start)]
+
+
+def _php_sentences(src, name):
+    """Every sentence literal inside one PHP function, in source order.
+
+    A sentence is a single quoted literal ending in a full stop. The array
+    keys, the anchors and the styles are none of those, so the filter needs no
+    list of things to ignore and cannot go stale when one is added.
+    """
+    body = _php_function(src, name)
+    return tuple(m.group(1) for m in re.finditer(r"'([^']*\.)'", body)
+                 if " " in m.group(1))
+
+
+def _visible(html):
+    """The words a reader sees: tags dropped, entities resolved, space collapsed.
+
+    A tag is removed rather than replaced by a space, because a link ending
+    mid sentence would otherwise put one in front of the comma after it. Block
+    ends get the space instead, which is where a reader sees one.
+    """
+    text = html.replace("</p>", "</p> ").replace("</td>", "</td> ")
+    text = re.sub(r"<[^>]+>", "", text)
+    return re.sub(r"\s+", " ", unescape(text)).strip()
+
+
+def _sentences(text):
+    """Split visible text into sentences, keeping the full stop."""
+    return tuple(s.strip().rstrip(".") + "." for s in text.split(". ")
+                 if s.strip())
+
+
+class TheTwoFootersAreOneDefinition(unittest.TestCase):
+    """A class of bug that survives for months because nothing fails.
+
+    THE SHAPE. The digest footer is composed three times: the relay renders it
+    twice (HTML and plain text, railway/digest_layout.py) and the wp_mail
+    fallback renders it a third time in PHP. Which one a reader gets depends on
+    whether an external relay has claimed the tier, so the reader's experience
+    silently depends on infrastructure state.
+
+    WHAT HAPPENED. On 2026-08-19 "Manage your subscriptions" was withdrawn
+    because it named a preference centre that does not exist. The relay copy
+    was corrected; the fallback kept the old wording and was caught by a grep.
+    Its test asserted the fallback "offers it too", so it checked for the
+    PRESENCE of a link and stayed green while the two senders told readers
+    different things.
+
+    WHY THESE TESTS AND NOT MORE ASSERTED SENTENCES. Asserting the current
+    wording in both places closes one instance and leaves the class open: the
+    next sentence to change drifts the same way and the assertions have to be
+    hand-updated in two languages or they go stale. These compare the two
+    definitions to EACH OTHER and compare each rendering to its own definition,
+    so a sentence added to one side is red with nothing to remember.
+    """
+
+    UNSUB = "https://asktherecruiter.com/blog/digest-unsubscribe/?t=x"
+    MANAGE = "https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-digest"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.sub = open(os.path.join(PLUGIN, "includes", "subscribe.php"),
+                       encoding="utf-8").read()
+
+    def test_the_plugin_and_the_relay_define_the_same_sentences(self):
+        """The mirror, the way ALT_RELAY_TRACKING is mirrored.
+
+        The plugin is the authority: the manage URL and the signup form it
+        points at live there. This fails on a sentence added, removed or
+        reworded on either side.
+        """
+        php = _php_sentences(self.sub, "alt_digest_footer_blocks")
+        py = layout.footer_sentences(True)
+        self.assertEqual(php, py,
+                         "the wp_mail fallback and the relay would tell a "
+                         "reader different things about the same email")
+
+    def test_the_fallback_sender_types_no_reader_facing_prose(self):
+        """The structural half: prose that is not in the blocks cannot ship.
+
+        alt_digest_send() renders alt_digest_footer_html() and writes no
+        footer sentence of its own, so there is nowhere for a second wording
+        to live.
+        """
+        sender = _php_function(self.sub, "alt_digest_send")
+        for sentence in layout.footer_sentences(True):
+            head = " ".join(sentence.split()[:4])
+            self.assertNotIn(head, sender,
+                             f"alt_digest_send types its own footer prose: {head!r}")
+        # The withdrawn wording, checked where a reader could reach it. The
+        # file still explains it in a comment, and it has to: a rule with its
+        # reason deleted is a rule the next session talks itself out of.
+        for name in ("alt_digest_footer_blocks", "alt_digest_footer_html"):
+            self.assertNotIn("Manage your subscriptions",
+                             _php_function(self.sub, name),
+                             "the withdrawn preference centre wording is back")
+
+    def test_the_rendered_html_footer_says_exactly_those_sentences(self):
+        """No sentence reaches the HTML part that is not in the definition."""
+        html = layout._footer(self.UNSUB, self.MANAGE)
+        visible = _visible(html)
+        for sentence in layout.TRACKING_SENTENCES:
+            visible = visible.replace(sentence, "")
+        self.assertEqual(_sentences(re.sub(r"\s+", " ", visible).strip()),
+                         layout.footer_sentences(True))
+
+    def test_the_plain_text_footer_says_the_same_sentences(self):
+        """The text part is a real alternative, not an older version of one."""
+        text = layout.render_text([], kicker="", unsub_url=self.UNSUB,
+                                  manage_url=self.MANAGE)
+        for sentence in layout.footer_sentences(True):
+            flat = re.sub(r"\s+", " ", text)
+            # A block that carries a link ends on a colon and the URL follows,
+            # so the last sentence of one is compared without its full stop.
+            self.assertTrue(flat.find(sentence) >= 0
+                            or flat.find(sentence[:-1] + ":") >= 0,
+                            f"the text footer never says: {sentence!r}")
+
+    def test_a_missing_manage_url_drops_the_same_block_on_both_sides(self):
+        """An older plugin build sends no manage URL. Neither side guesses."""
+        html = layout._footer(self.UNSUB, "")
+        for sentence in layout.footer_sentences(True):
+            if sentence not in layout.footer_sentences(False):
+                self.assertNotIn(sentence, _visible(html))
+        blocks = _php_function(self.sub, "alt_digest_footer_blocks")
+        self.assertIn("if ($manage_url)", blocks,
+                      "the fallback would render a promise with nowhere to go")
+
+    @unittest.skipUnless(_php(), "php is not installed. UNKNOWN, not a pass.")
+    def test_the_two_renderings_read_identically_to_a_reader(self):
+        """The end of the chain: both footers, rendered, word for word.
+
+        The source-level mirror above cannot see a renderer that drops a
+        sentence or links the wrong words. This runs the plugin's own renderer
+        and compares what a person would read.
+        """
+        runner = (
+            "<?php\n"
+            "function esc_html($s){ return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }\n"
+            "function esc_url($s){ return $s; }\n"
+            "$src = file_get_contents($argv[1]);\n"
+            "foreach (array('alt_digest_footer_blocks', 'alt_digest_footer_html') as $n) {\n"
+            "  preg_match('/\\nfunction ' . $n . '\\s*\\(.*?\\n\\}/s', $src, $m);\n"
+            "  eval($m[0]);\n"
+            "}\n"
+            "echo alt_digest_footer_html($argv[2], $argv[3]);\n")
+        handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
+                                             encoding="utf-8")
+        try:
+            handle.write(runner)
+            handle.close()
+            run = subprocess.run(
+                [_php(), handle.name,
+                 os.path.join(PLUGIN, "includes", "subscribe.php"),
+                 self.UNSUB, self.MANAGE],
+                capture_output=True, text=True, timeout=60)
+        finally:
+            os.unlink(handle.name)
+        self.assertEqual(run.returncode, 0, run.stderr[:800])
+
+        relay = _visible(layout._footer(self.UNSUB, self.MANAGE))
+        for sentence in layout.TRACKING_SENTENCES:
+            relay = relay.replace(sentence, "")
+        relay = re.sub(r"\s+", " ", relay).strip()
+        self.assertEqual(_visible(run.stdout), relay)
+
+        # And the link is on the same words, pointing at the same place.
+        self.assertIn(f'<a href="{self.MANAGE}">re-enter your address on the '
+                      f'signup form</a>', run.stdout)
+        self.assertIn(f'<a href="{self.UNSUB}">Unsubscribe with one click</a>',
+                      run.stdout)
 
 
 class HouseStyle(unittest.TestCase):
