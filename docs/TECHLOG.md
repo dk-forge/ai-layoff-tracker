@@ -87,6 +87,114 @@ unaffected and was already correct: `alt_digest_compose_layoff()` asks for
 `date_basis=layoff_date` and labels it, so the 522,255 it mails is the to-date
 effective figure it says it is.
 
+## 2026-08-19 - two orphaned reds: one promise being kept, one movement fully explained
+
+Four sessions in one evening each reported these two failures and each correctly
+said "not mine". This is the session that owned them. Neither was fixed by
+changing a bound, and neither should be.
+
+### archive_recheck_cadence: the promise is kept, the reading is contaminated
+
+The assertion read "3,396 due at a measured 234/day = 14.5d cycle, 15.5d worst
+age, past the 8d projected bound" and told the reader to raise throughput in
+`archive-backfill.yml`. **Throughput is not the constraint and has not been the
+constraint on any of the last twelve runs.**
+
+Every run of that job prints `oldest_unarchived_checked_at` before each batch,
+so its own logs are a twelve-day measurement of the achieved cycle. Read at the
+END of each run: 4.0d (08-09), 3.0d (08-10), 4.0d (08-11), 3.0d (08-12), 5.0d
+(08-13), 3.7d and 4.0d (08-14), 5.0d (08-15), 5.0d (08-16), 3.2d (08-17), 4.0d
+(08-18). A full pass over the pool completes in **3 to 5 days against a 4-day
+eligibility gate**. The runs on 08-16, 08-17 and 08-18 each stopped on an EMPTY
+batch (`batch 4: 0 candidate URL(s)` against a 3,423-URL pool), not on
+`ARCHIVE_BACKFILL_LIMIT`, not on the deadline, not on `ARCHIVE_SPN_MAX`. More
+capacity would have been handed more zeroes. The 8-day projected bound is
+**achievable and is being achieved**, every day, with margin.
+
+Two artifacts stack to produce the red, and neither is throughput.
+
+**One: the 48h throughput sample lands in the convoy trough.** Re-checks are
+gated, so they arrive in convoys: 08-15 took 2,000, 08-16 1,056, 08-17 432,
+08-18 38. Sampling the last two days of that decay gives 234/day for a pool
+that really cycles at ~850/day. `data_integrity` already knows this and guards
+it with `measured_pass`: a projection may not overrule a direct reading that
+already shows the pool completing inside the same bound.
+
+**Two: that guard is defeated because the age reading jumps BACKWARDS.** The
+08-18 run left the oldest un-archived attempt at 2026-08-14 06:53. Twenty hours
+later, with no run in between, `/archive-coverage` read 2026-08-11 06:48, three
+days OLDER. The same reversal is in the run logs on 08-13 (08-09 07:09 ->
+08-08 06:11), 08-15 (08-10 07:36 -> 08-07 07:17) and 08-17 (08-11 06:47 ->
+08-09 07:09). No cron can do that.
+
+The mechanism: both the candidate query and `alt_archive_coverage_counts()`
+JOIN the archive index to the layoffs table, deliberately, so that an archive
+row whose layoff rows were purged or re-sourced is not counted against a
+promise no page is making. But that row keeps its `checked_at` frozen while it
+is out of the pool, and **re-enters carrying that frozen stamp** the moment a
+later import or `/edit` cites the URL again. The age then charges the promise
+for time during which the URL was not ours to check. The next daily run hands
+it out immediately (08-13 cleared 14, 08-17 cleared 431), which is why the
+reading snaps forward again. The nightly WARN import runs 00:37-01:15Z and
+re-cites 44,288 URLs; this job runs at 05:25Z; CI ran at 01:54Z, inside that
+window.
+
+There IS a real defect underneath, and it is small and one field over: for the
+hours between re-entry and the next run, those rows render a "next check by"
+date that is already in the past. **The fix is at re-entry** - a URL re-entering
+the cited pool should read as queued (`checked_at` NULL, "first check by <next
+run>") rather than as an ancient attempt. That is a server write-path change to
+`db.php` on a night with five version collisions already, so it is written down
+here and in the workflow rather than shipped by a session that was not asked
+for it. Nothing was widened: `MAX_AGE_DAYS`, `PROMISE_DAYS`,
+`RUN_GRANULARITY_DAYS`, `PROJECTED_MAX_AGE_DAYS`, the batch limit, the deadline
+and `ARCHIVE_SPN_MAX` are all untouched. The only change is the comment block
+in `archive-backfill.yml`, which had been telling every session that arrives
+here to do the one thing that cannot work. This is the second session it sent
+in that direction.
+
+### headline_containment: -34,303 into the US slice, explained to the job and to the row
+
+The pair is judgeable: `us_all_time` and `worldwide_all_time` both carry
+`recorded_in: 2026-08-18T18:27:14Z`, the same recorder run, so their difference
+is a complement and not a straddle.
+
+The only independently measured term is the `employer_country` fill. Actions run
+32200656641 (Employer-domicile curated backfill, from PR #112) printed 47
+`setting id=<n>: <country>` lines and 28 of them say United States. Read back
+off the live site, those 28 carry **75,893 jobs** (27 blank-country rows summing
+to 71,393, plus id 176883 Dow Inc. 4,500 on a "Multiple countries" row).
+`country_basis=any` matches `country OR employer_country`, so all 28 entered the
+US slice; none of them changed the worldwide slice, because a blank country and
+"Multiple countries" never excluded a row from it. That asymmetry is the whole
+negative term.
+
+    us         +79,749 jobs / +41 entries  = 75,893 fill + 3,856 on 13 arrivals
+    worldwide  +45,446 jobs / +1,196       = all arrivals
+    non-US arrivals                          41,590 jobs on 1,183 rows
+    complement  41,590 - 75,893 = -34,303 jobs   exact
+                 1,183 -     28 =  +1,155 entries exact
+
+**Entirely explained, not merely consistent with.** The fill is measured, not
+fitted; subtract it and the residual is non-negative on all four axes. A second
+re-scoring would have to appear as a negative arrival count, and there is no
+negative left to hide in. The 1,183 non-US arrivals (the Quebec and Mazovia
+register work of the same evening, plus routine WARN and news) are worth an eye
+at that volume in 7.6 hours, but an arrival can only push the complement
+POSITIVE, so they cannot manufacture this FAIL.
+
+This is correct behaviour: making a US-headquartered employer unplaced global
+cut findable under a US filter is the documented purpose of `country_basis=any`.
+No row is mis-scored and no correction is required.
+
+**Not closed here.** A failing headline slice is closed by a human, and the
+closure package is `railway/close_us_all_time_2026-08-19.sh`: the reason, the
+28 row IDs, the proposed replacement baseline and the one command that writes
+both the ledger and the baseline. It also records the precondition nobody
+should trip over - `headline_incidents.json` still reads `"open": {}`, because a
+containment FAIL only opens its incident when the recorder runs, so
+`data-integrity.yml` has to run before `--close-incident` has anything to target.
+
 ## 2026-08-18 - the citation was JavaScript, so nothing that cites us could read it
 
 A discoverability and citability audit, fetching the live site with a crawler
