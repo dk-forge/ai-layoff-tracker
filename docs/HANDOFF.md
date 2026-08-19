@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.102.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change writes the owner's **speaker
+  ruling** into the one place a reader can check it: `ai_explicit` requires THE
+  EMPLOYER to have attributed the cuts to AI, and a press characterisation
+  without the employer saying it is the broad tier. Plugin files touched:
+  `templates/page-methodology.php` (the `#m-ai` rule and the reason-tag
+  paragraph that said the tiers differ without saying how),
+  `includes/cpt.php` (the `alt_allowed_ai_causation()` comment, which read as
+  if a sufficiently explicit press attribution could earn the strict tag),
+  `ai-layoff-tracker.php` (version only). Rest is `railway/extractor.py` (both
+  prompt sites), the `ai-causation-2026-08` adjudications/goldset/review/
+  recommendations, and TECHLOG. **No live row was edited and nothing is
+  queued.** **Next plugin release is 2.20.103.**
+
 - **CLOSED BY A SIDE SESSION (2026-08-19): the `us_all_time` containment
   incident.** The baton was read as HELD by `local` and is NOT claimed here.
   **No plugin file was touched and no version was consumed** — the change is

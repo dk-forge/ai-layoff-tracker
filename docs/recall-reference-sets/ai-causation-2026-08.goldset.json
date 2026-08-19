@@ -1,12 +1,12 @@
 {
  "candidate": "google/gemini-2.5-flash-lite",
  "counts": {
-  "awaiting_human_optional": 9,
-  "awaiting_human_required": 25,
-  "gold_by_agreement": 175,
-  "gold_by_human": 0,
+  "awaiting_human_optional": 0,
+  "awaiting_human_required": 7,
+  "gold_by_agreement": 166,
+  "gold_by_human": 27,
   "items": 200,
-  "parked_recommendations": 33,
+  "parked_recommendations": 6,
   "unknown_unreadable": 0
  },
  "labellers": [
@@ -33,15 +33,21 @@
   "107453": false,
   "107455": false,
   "107457": false,
+  "107459": true,
   "107461": false,
   "107463": false,
+  "107465": true,
   "107467": true,
+  "107469": true,
   "107473": false,
+  "107477": true,
+  "107479": true,
+  "107481": false,
   "107483": false,
   "107485": false,
   "107487": false,
   "107489": false,
-  "107491": true,
+  "107491": false,
   "107493": false,
   "107495": false,
   "107497": false,
@@ -52,6 +58,7 @@
   "107513": false,
   "107515": false,
   "107517": false,
+  "107519": false,
   "107525": false,
   "107527": false,
   "107529": false,
@@ -75,6 +82,7 @@
   "176884": true,
   "176906": false,
   "176915": true,
+  "176954": false,
   "177022": false,
   "177067": false,
   "177078": false,
@@ -82,8 +90,10 @@
   "177162": false,
   "177171": false,
   "177181": false,
+  "177188": true,
   "177224": false,
   "177320": false,
+  "177401": false,
   "177425": false,
   "211": false,
   "23081": false,
@@ -99,6 +109,7 @@
   "256": true,
   "258": false,
   "26454": false,
+  "26455": false,
   "26462": false,
   "26465": true,
   "266": false,
@@ -109,6 +120,7 @@
   "279": true,
   "281": false,
   "285": true,
+  "286": false,
   "288": false,
   "289": false,
   "290": false,
@@ -119,6 +131,7 @@
   "297": false,
   "299": false,
   "302": false,
+  "306": false,
   "310": false,
   "31078": true,
   "311": false,
@@ -133,6 +146,7 @@
   "397": false,
   "48817": false,
   "48842": false,
+  "48844": false,
   "48887": false,
   "48941": false,
   "48943": false,
@@ -144,11 +158,13 @@
   "49078": true,
   "49083": true,
   "49084": true,
+  "49090": false,
   "49092": false,
   "49122": false,
   "49129": false,
   "49137": false,
-  "54968": false,
+  "51765": false,
+  "54968": true,
   "54977": false,
   "54982": false,
   "54986": false,
@@ -159,6 +175,7 @@
   "60710": false,
   "60754": false,
   "60756": false,
+  "60800": true,
   "60820": false,
   "60848": false,
   "60854": false,
@@ -169,6 +186,7 @@
   "61004": false,
   "68412": false,
   "68464": false,
+  "69997": false,
   "70059": true,
   "70107": false,
   "70113": false,
@@ -184,7 +202,7 @@
   "70383": false,
   "70387": false,
   "70447": false,
-  "70469": true,
+  "70469": false,
   "70475": false,
   "70517": false,
   "70855": false,
@@ -3199,7 +3217,7 @@
    }
   }
  },
- "rescored_at": "2026-08-19T01:48:20Z",
+ "rescored_at": "2026-08-19T04:33:53Z",
  "rule": "gold = the two labellers agreeing, or the owner's adjudication where they did not. No third model vote breaks a tie.",
  "run_at": "2026-08-18T23:59:08Z",
  "sample": "ai-causation-2026-08.sample.json",
@@ -3207,18 +3225,18 @@
   "deepseek/deepseek-chat": {
    "per_stratum": {
     "A_positive": {
-     "fn": 0,
-     "fp": 0,
-     "judged": 55,
+     "fn": 1,
+     "fp": 5,
+     "judged": 64,
      "tn": 35,
-     "tp": 20
+     "tp": 23
     },
     "B_hard_negative": {
-     "fn": 0,
-     "fp": 0,
-     "judged": 70,
-     "tn": 65,
-     "tp": 5
+     "fn": 3,
+     "fp": 4,
+     "judged": 79,
+     "tn": 68,
+     "tp": 4
     },
     "C_plain_negative": {
      "fn": 0,
@@ -3229,21 +3247,21 @@
     }
    },
    "precision": [
-    1.0,
-    0.7906468769256556,
-    1.0
+    0.7582187686790197,
+    0.5597437196127776,
+    0.8943870729989349
    ],
    "recall": [
-    1.0,
-    0.7906468769256556,
-    1.0
+    0.880979251671152,
+    0.6881910340774969,
+    0.9624524780379622
    ],
    "totals": {
-    "fn": 0,
-    "fp": 0,
-    "judged": 175,
-    "tn": 150,
-    "tp": 25
+    "fn": 4,
+    "fp": 9,
+    "judged": 193,
+    "tn": 153,
+    "tp": 27
    },
    "weights": {
     "A_positive": 1.3714285714285714,
@@ -3254,18 +3272,18 @@
   "google/gemini-2.5-flash-lite": {
    "per_stratum": {
     "A_positive": {
-     "fn": 3,
-     "fp": 1,
-     "judged": 55,
-     "tn": 34,
-     "tp": 17
+     "fn": 4,
+     "fp": 3,
+     "judged": 64,
+     "tn": 37,
+     "tp": 20
     },
     "B_hard_negative": {
-     "fn": 2,
-     "fp": 3,
-     "judged": 70,
-     "tn": 62,
-     "tp": 3
+     "fn": 3,
+     "fp": 4,
+     "judged": 79,
+     "tn": 68,
+     "tp": 4
     },
     "C_plain_negative": {
      "fn": 0,
@@ -3276,21 +3294,21 @@
     }
    },
    "precision": [
-    0.8457123565158676,
-    0.6191726939573118,
-    0.9506410941612894
+    0.7847173761339847,
+    0.5723049041891978,
+    0.9156317054824796
    ],
    "recall": [
-    0.8058981233243968,
-    0.5674513003830245,
-    0.9361215407500375
+    0.7809705703620106,
+    0.5632902388823631,
+    0.914934421484677
    ],
    "totals": {
-    "fn": 5,
-    "fp": 4,
-    "judged": 175,
-    "tn": 146,
-    "tp": 20
+    "fn": 7,
+    "fp": 7,
+    "judged": 193,
+    "tn": 155,
+    "tp": 24
    },
    "weights": {
     "A_positive": 1.3714285714285714,
@@ -3301,18 +3319,18 @@
   "openai/gpt-4.1-mini": {
    "per_stratum": {
     "A_positive": {
-     "fn": 0,
-     "fp": 0,
-     "judged": 55,
-     "tn": 35,
+     "fn": 4,
+     "fp": 1,
+     "judged": 64,
+     "tn": 39,
      "tp": 20
     },
     "B_hard_negative": {
-     "fn": 0,
-     "fp": 0,
-     "judged": 70,
-     "tn": 65,
-     "tp": 5
+     "fn": 1,
+     "fp": 5,
+     "judged": 79,
+     "tn": 67,
+     "tp": 6
     },
     "C_plain_negative": {
      "fn": 0,
@@ -3323,21 +3341,21 @@
     }
    },
    "precision": [
-    1.0,
-    0.7906468769256556,
-    1.0
+    0.8263288538902679,
+    0.6205207205621877,
+    0.9282732792486075
    ],
    "recall": [
-    1.0,
-    0.7906468769256556,
-    1.0
+    0.8380935845125445,
+    0.6105560732624558,
+    0.941432809922939
    ],
    "totals": {
-    "fn": 0,
-    "fp": 0,
-    "judged": 175,
-    "tn": 150,
-    "tp": 25
+    "fn": 5,
+    "fp": 6,
+    "judged": 193,
+    "tn": 156,
+    "tp": 26
    },
    "weights": {
     "A_positive": 1.3714285714285714,

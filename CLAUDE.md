@@ -98,15 +98,26 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
    `railway/ab_ai_causation.py`, $0.0527): against an independent referee the
    candidate and the pre-swap incumbent are indistinguishable (88.0% vs 87.5%,
    overlapping intervals) and flash-lite does NOT over-call AI -- it flags 35 of
-   200 against the incumbent's 40, and none of the 50 plain negatives. But 25
-   rows have no label because the two labellers disagreed, and 9 more are
-   labelled only by two models agreeing against the candidate's objection. Until
-   somebody reads `docs/recall-reference-sets/ai-causation-2026-08.review.md`
-   (34 rows, ~20 min) every figure above is a reading of the easy 87.5% of the
-   corpus. **Do not quote a precision or recall number for `ai_explicit` from
-   that run, and do not move a production model on it.**
-   `python3 railway/ab_ai_causation.py --rescore` folds the rulings in and
-   spends nothing. WARN notices skip the LLM: `warn_import.py` scrapes
+   200 against the incumbent's 40, and none of the 50 plain negatives.
+   **The owner adjudicated 27 of the 34 open rows on 2026-08-19, and the verdict
+   is STILL UNKNOWN.** Gold coverage is 193 of 200; production flash-lite reads
+   precision 78.5% (CI 57.2-91.6%) and recall 78.1% (CI 56.3-91.5%), the
+   pre-swap incumbent 75.8% / 88.1%, on intervals that overlap almost entirely.
+   Seven rows carry no label: 107375 (General Motors, the "AI skills swap" that
+   no rubric settles) and six the speaker ruling reached but nobody flagged, all
+   parked in `ai-causation-2026-08.adjudications.json` under `rec:` with the
+   reasons in `_still_parked`. Seven unlabelled rows is a legitimate UNKNOWN;
+   **do not round it to a pass and do not move a production model on it.** Quote
+   the harness, never a hand-measured projection: the recommendations file's
+   own 199-row estimate of 80.9% / 72.6% does not reproduce (69.5% / 78.1%).
+   `python3 railway/ab_ai_causation.py --rescore` folds new rulings in and
+   spends nothing.
+   **The speaker question is ruled and no longer derived:** `ai_explicit`
+   requires THE EMPLOYER to have attributed the cuts to AI, a report counts when
+   it quotes or reports the employer saying it, and a journalist's own
+   characterisation is the broad `ai_linked` tier. Stated for readers in
+   methodology `#m-ai`, asked for in `ai_causation_prompt()` and `SYSTEM_PROMPT`
+   rule 2, described in `alt_allowed_ai_causation()`. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 9AM ET GitHub cron, `0 13 * * *`).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental

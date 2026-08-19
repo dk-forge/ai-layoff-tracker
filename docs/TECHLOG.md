@@ -1,5 +1,83 @@
 # Tech Log
 
+## 2026-08-19 - `ai_explicit` never said whose statement counts, and three files pointed three ways (2.20.102)
+
+**The defect.** `ai_explicit` is the field this product is named after, and in
+three years nothing ever wrote down whether it means "the employer said AI" or
+"the source text says AI". The production prompt said "**this text** explicitly
+says", naming no speaker. `alt_allowed_ai_causation()` put "the company **or
+press**" on the loose side of `ai_linked`, which reads as if speaker cannot be
+the discriminator. The methodology page drew a speaker line for the reason tags
+("*AI or automation* means the employer names AI"; "*AI press-linked* means the
+press ties the cuts to AI without the employer saying it") and then said those
+tags are "a different measure from the AI headline tiles" **without saying how
+they differ**. Three statements, three readings, and the class recurs monthly,
+because press-attributed-without-the-company is the normal shape of an AI
+layoff story.
+
+**The ruling (the owner's, 2026-08-19): the EMPLOYER must have said it.** The
+reason is that the product already answers the other question separately. It
+runs two tiers: a strict one that is the employer's own words with a quote on
+file, and a broad one that is employer words PLUS press framing. Ruling
+"source" would collapse the two and delete the distinction between them. The
+broad tier exists precisely to hold press-attributed cuts.
+
+**Where it is now written.** Methodology `#m-ai` states it in one sentence a
+journalist can check, and says how the tiers differ instead of only that they
+do. `extractor.ai_causation_prompt()` and `SYSTEM_PROMPT` rule 2 now ask for
+the employer as the speaker; a report quoting or reporting the employer counts,
+a journalist's own characterisation does not. `alt_allowed_ai_causation()`'s
+comment now says the broad tier is the ONLY tier a non-employer speaker can
+reach.
+
+**Code and stated rule did NOT already agree, and this is a behaviour change.**
+Both prompt sites were speaker-blind ("this text explicitly says", "the
+company/source says"), so future extractions and the daily ai-evidence sweep
+will call some press-only rows differently. That is the point of the ruling and
+the only behaviour change made. Nothing else about the classifier moved.
+
+**Corroboration that the live system was already there.** 107481 (GoKwik),
+107491 (Snowflake) and 107469 (InvestCloud) are stored as `ai_linked`, the
+broad tier, on exactly the speaker grounds now written down. The classifier was
+applying the rule before anybody stated it.
+
+**The 33 parked recommendations: 27 confirmed, 6 still parked.** 25 accepted as
+written; 107481 and 107491 flipped to `false` by the ruling, as the
+recommendations file predicted. But that file named **three** rows as turning
+on the speaker question and the true class is **nine**: 70293 (Snap), 70653,
+70683, 70681 (TikTok), 54973 (Microsoft/MSN) and 48830 (Suncor) carry no
+employer attribution anywhere in their stored text. Their recommendations have
+been restated to `false` and left PARKED, because five of them are stored LIVE
+as `ai_explicit=1` and confirming them adds five rows to the corrections
+worklist for the headline number. A session does not get to make that call.
+107375 (General Motors) stays out entirely: the speaker ruling does not settle
+it, because GM cut IT staff in order to re-hire people with stronger AI skills,
+so nobody was replaced by a machine.
+
+**`--rescore` ($0.00, no model called): 193 gold labels, verdict still
+UNKNOWN.** Production `google/gemini-2.5-flash-lite` reads precision 78.5%
+(CI 57.2-91.6%) and recall 78.1% (CI 56.3-91.5%); the pre-swap incumbent 75.8%
+/ 88.1%; the referee 82.6% / 83.8%. Seven rows carry no label (GM plus the
+six parked), and seven unlabelled rows is a legitimate UNKNOWN, not a pass.
+The recommendations file's hand-measured projection of 80.9% / 72.6% at 199
+rows **did not reproduce** (the harness returns 69.5% / 78.1% there). It warned
+that nothing on disk could reproduce those figures; quote the harness.
+
+**The stored-disagreement list is now TEN, not thirteen**, and the ruling
+removed three of the seven flips that would have moved a row INTO the AI count,
+which was the expensive half. Nothing is queued. `/edit` sets `edited=1`,
+rewrites the dedup hash and publishes to the public corrections log.
+
+**One test is wrong about itself, and it is not being deleted.**
+`test_adjudication_parking.py :: test_a_parked_recommendation_is_reported_not_swallowed`
+hard-codes row 70293 and, unlike its two siblings, is NOT gated on
+`_confirmed_by`. Its module docstring claims the suite stays green after the
+owner confirms. Proven false: stripping all 33 prefixes reddens that one
+assertion (`70293 not found in []`). It passes today only because 70293 is one
+of the six still parked. Whoever confirms the last six must re-point it at a
+still-parked row or gate it like its siblings, and must not answer the red by
+deleting it. Noted in the adjudications file's `_the_guard`.
+
 ## 2026-08-19 - the digest could not authenticate, and every scheduled run was green
 
 **The fault.** Brevo had been answering `535 5.7.8 Authentication failed` to
