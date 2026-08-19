@@ -59,12 +59,19 @@ jobs:
             echo "lftp already present: $(lftp --version | head -1)"
             exit 0
           fi
+          # EACH ATTEMPT IS BOUNDED, because apt HANGS rather than failing.
+          # The first version of this retried on failure and never reached
+          # attempt 2: apt-get update sat on an unreachable mirror and ate the
+          # whole 3-minute step ceiling inside attempt 1. A retry loop only
+          # helps if an attempt can actually fail, so each call now gets its
+          # own timeout and three attempts fit inside the ceiling with room.
           for attempt in 1 2 3; do
-            if sudo apt-get update -qq && sudo apt-get install -y -qq lftp; then
+            if timeout 40 sudo apt-get update -qq \
+               && timeout 40 sudo apt-get install -y -qq lftp; then
               echo "lftp installed on attempt $attempt"
               exit 0
             fi
-            echo "attempt $attempt failed, retrying in 5s"
+            echo "attempt $attempt failed or timed out, retrying in 5s"
             sleep 5
           done
           echo "::error::could not install lftp after 3 attempts"
