@@ -2542,6 +2542,19 @@ The note renders above the edition; the edition's own text never changes.
   refusing us. See "The digest cannot authenticate" immediately below. Note
   that this is NOT the same as a stale row: a rejected credential now reports
   itself on the very next run, whether or not anybody was due.
+- **`digest_mailer` reads `degraded` with `<freq>: NOT SENT`**: that tier was
+  NOT delivered, because the site could not be read at all - five bounded
+  attempts over about three minutes, and the detail names what answered
+  (almost always `HTTP 503`, the deploy maintenance window). **Nothing was
+  claimed and nobody was stamped, so the next scheduled run repeats the
+  period**; one of these after a deploy is a non-event and the row goes green
+  again on the next run. What to do: nothing, unless it repeats. Two or three
+  in a row means the host is not merely deploying - check the site is up
+  (`ops_status.py [1]`), then the sibling repo's `host-watch` issues. The run
+  itself is GREEN on purpose (exit 3, mapped to a warning in `digest-send.yml`)
+  because an outage that manufactures red runs manufactures CI alerts nobody
+  can act on; this health row is the signal instead. Do NOT answer a repeat by
+  widening the retry count.
 - **`digest_mailer` is STALE in `ops_status.py [2]`** (3-day ceiling): the
   sender stopped completing. Check `digest-send.yml`'s last run, then the WP
   cron, and remember the health row is stamped on COMPLETION so a fatal

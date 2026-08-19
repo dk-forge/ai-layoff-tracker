@@ -120,4 +120,35 @@ jobs:
           # at all when real recipients are due. See digest_send._test_payload.
           DIGEST_TEST_TO: ${{ github.event.inputs.test_to }}
           DIGEST_TEST_LISTS: ${{ github.event.inputs.test_lists }}
-        run: python digest_send.py
+        # THREE STATES, AND ONLY ONE OF THEM IS RED.
+        #
+        #   0  the pass ran. Sent, or nobody was due, or dormant.
+        #   2  a fault. A refused credential, every delivery failing, or the
+        #      recipient route answering wrongly. Red, and it should be: a
+        #      human has something to do.
+        #   3  UNKNOWN. The host could not be read at all - almost always its
+        #      deploy maintenance window (HTTP 503) - after five bounded
+        #      attempts. Nothing was claimed or stamped and the next run
+        #      repeats the period.
+        #
+        # Exit 3 is NOT a red run, and that is deliberate. On 2026-08-19 (run
+        # 32282266653) a send landed mid-deploy, read HTTP 503, exited 1 and
+        # reddened - so a brief, self-clearing, unactionable host condition
+        # manufactured a CI alert. That is the pattern CLAUDE.md names: an
+        # outage manufacturing red runs which manufacture alerts.
+        #
+        # The skip is NOT silent for being green. digest_send.py records the
+        # missed tier by name in the `digest_mailer` health row, where
+        # ops_status [4c] and the weekly health digest read it, and the row's
+        # 3-day staleness ceiling still catches a sender that has stopped. The
+        # visibility lives in the health ledger, not in a red X.
+        run: |
+          set +e
+          python digest_send.py
+          code=$?
+          set -e
+          case "$code" in
+            0) exit 0 ;;
+            3) echo "::warning::the digest was NOT sent this run: the site could not be read (its deploy maintenance window, most likely). Nothing was claimed or stamped, the next run repeats the period, and the digest_mailer health row names the skipped tier. UNKNOWN is not a pass - if this repeats, read the health page." ; exit 0 ;;
+            *) exit "$code" ;;
+          esac

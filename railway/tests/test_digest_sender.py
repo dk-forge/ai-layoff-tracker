@@ -24,6 +24,7 @@ import re
 import subprocess
 import sys
 import unittest
+import urllib.error
 from unittest import mock
 
 HERE = os.path.dirname(__file__)
@@ -425,11 +426,171 @@ class FailureIsolation(unittest.TestCase):
         self.assertEqual(code, 2)
 
     def test_an_unreachable_site_claims_nothing_and_is_not_a_red_run(self):
+        """UNKNOWN (3), never FAIL (2). The workflow maps 3 to a green run.
+
+        A host that cannot be reached claimed nothing and stamped nobody, so
+        the next run repeats the period. What it must NOT do is redden: an
+        outage that manufactures red runs manufactures CI alerts for a
+        condition nobody can act on.
+        """
         env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k"}
         with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send.time, "sleep"), \
                 mock.patch.object(digest_send, "_call", side_effect=OSError("504")):
             code = digest_send.main()
+        self.assertEqual(code, 3)
+        self.assertNotEqual(code, 2, "a host we could not reach is not a fault")
+
+
+class TheDeployMaintenanceWindow(unittest.TestCase):
+    """A 503 from this host is its deploy maintenance window, not a defect.
+
+    THE DEFECT, run 32282266653 on 2026-08-19. A scheduled send landed while an
+    FTPS deploy was mid-flight, read HTTP 503 from /digest-recipients, printed
+    `::error::could not read the recipient list: HTTP 503` and exited 1. Nobody
+    was mailed that day, the run went red, and a red run mails a CI alert for a
+    condition that is brief, self-clearing and unactionable. Meanwhile nothing
+    recorded that a digest had not gone out.
+
+    503 is UNKNOWN, never FAIL, matching subscriber_routes.py,
+    data_integrity.py and published_figures.py. And UNKNOWN is a third state,
+    not a quiet pass: the skip names itself in the health row.
+    """
+
+    ENV = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k"}
+
+    @staticmethod
+    def _http(code):
+        return urllib.error.HTTPError("https://x.test", code, "boom", {}, None)
+
+    def _run(self, side_effect):
+        rows = []
+        buf = io.StringIO()
+        with mock.patch.dict(os.environ, dict(self.ENV), clear=True), \
+                mock.patch.object(digest_send, "_call", side_effect=side_effect), \
+                mock.patch.object(digest_send, "_record_health",
+                                  side_effect=lambda *a: rows.append(a)), \
+                mock.patch.object(digest_send.time, "sleep"), \
+                mock.patch("sys.stdout", buf):
+            code = digest_send.main()
+        return code, rows, buf.getvalue()
+
+    def test_a_503_is_unknown_and_never_a_fault(self):
+        code, _, out = self._run(self._http(503))
+        self.assertEqual(code, 3, "a deploy maintenance window is UNKNOWN, not FAIL")
+        self.assertNotIn("::error::", out, "a 503 must not redden the run")
+        self.assertIn("maintenance window", out)
+
+    def test_a_503_is_retried_before_anybody_is_skipped(self):
+        """A deploy window is seconds to a couple of minutes, so try again."""
+        calls = []
+        waited = []
+
+        def call(path, params=None, payload=None, timeout=45):
+            calls.append(timeout)
+            if len(calls) < 3:
+                raise self._http(503)
+            return _payload(recipients=[])
+
+        with mock.patch.dict(os.environ, dict(self.ENV), clear=True), \
+                mock.patch.object(digest_send, "_call", side_effect=call), \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send.time, "sleep",
+                                  side_effect=waited.append), \
+                mock.patch("sys.stdout", io.StringIO()):
+            code = digest_send.main()
+        self.assertEqual(code, 0, "the window closed, so nothing was skipped")
+        self.assertGreaterEqual(len(calls), 3)
+        self.assertTrue(waited, "the retries must be spaced, not hammered")
+
+    def test_every_attempt_is_bounded_not_only_the_loop(self):
+        """A hung socket must not eat the job. apt did exactly that tonight."""
+        seen = []
+
+        def call(path, params=None, payload=None, timeout=45):
+            seen.append(timeout)
+            raise self._http(503)
+
+        with mock.patch.dict(os.environ, dict(self.ENV), clear=True), \
+                mock.patch.object(digest_send, "_call", side_effect=call), \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send.time, "sleep"), \
+                mock.patch("sys.stdout", io.StringIO()):
+            digest_send.main()
+        self.assertTrue(seen)
+        for timeout in seen:
+            self.assertLessEqual(timeout, 60, "each attempt carries its own bound")
+        budget = (len(seen) * digest_send.RECIPIENT_TIMEOUT_S
+                  + sum(digest_send.RECIPIENT_BACKOFF_S))
+        self.assertLess(budget, 600, "one tier may not spend the workflow timeout")
+
+    def test_a_skipped_send_is_visible_and_never_silent(self):
+        """`0 sent of 0 eligible` said nothing for three days. Not again."""
+        code, rows, _ = self._run(self._http(503))
+        self.assertEqual(code, 3)
+        self.assertTrue(rows, "a skipped send must still write the health row")
+        status, entries, detail = rows[-1]
+        self.assertEqual(status, "degraded", "a missed edition is not a pass")
+        self.assertEqual(entries, 0)
+        self.assertIn("NOT SENT", detail)
+        self.assertIn("daily", detail)
+        self.assertIn("credential=", detail,
+                      "ops_status parses the credential state out of this row")
+
+    def test_a_skip_does_not_read_like_a_quiet_run(self):
+        skipped = self._run(self._http(503))[2]
+        quiet = self._run(lambda *a, **k: _payload(recipients=[]))[2]
+        self.assertNotEqual(skipped, quiet)
+        self.assertNotIn("NOT SENT", quiet)
+
+    def test_the_other_transient_host_conditions_go_the_same_way(self):
+        """503 was not the only one. A gateway timeout is not a defect either."""
+        for status in (408, 429, 502, 503, 504):
+            with self.subTest(status=status):
+                code, _, out = self._run(self._http(status))
+                self.assertEqual(code, 3)
+                self.assertNotIn("::error::", out)
+
+    def test_a_status_the_host_did_not_choose_is_still_a_fault(self):
+        """500 is PHP erroring inside our own route. Excusing it is the F27
+        failure: a guard that stays green forever."""
+        for status in (400, 401, 403, 500):
+            with self.subTest(status=status):
+                code, _, out = self._run(self._http(status))
+                self.assertEqual(code, 2, "the site answered, and answered wrongly")
+                self.assertIn("::error::", out)
+
+    def test_a_missing_route_is_still_neither(self):
+        code, rows, out = self._run(self._http(404))
         self.assertEqual(code, 0)
+        self.assertIn("older than this job", out)
+        self.assertEqual(rows, [], "an older plugin build is not a missed send")
+
+    def test_a_fault_outranks_an_unknown_in_the_run_s_exit_code(self):
+        self.assertEqual(digest_send._worst([3, 2]), 2)
+        self.assertEqual(digest_send._worst([0, 3]), 3)
+        self.assertEqual(digest_send._worst([0, 0]), 0)
+
+    def test_a_retry_cannot_stamp_a_tier_it_did_not_send(self):
+        """Attempt 1 leaves no last-sent stamp: only /digest-complete writes
+        one, and it is called once, at the end, under send_id > 0."""
+        calls = []
+
+        def call(path, params=None, payload=None, timeout=45):
+            calls.append(path)
+            if len(calls) == 1:
+                raise self._http(503)
+            return _payload(recipients=[])
+
+        with mock.patch.dict(os.environ, dict(self.ENV), clear=True), \
+                mock.patch.object(digest_send, "_call", side_effect=call), \
+                mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send.time, "sleep"), \
+                mock.patch("sys.stdout", io.StringIO()):
+            digest_send.main()
+        self.assertNotIn("digest-complete", calls,
+                         "nothing was delivered, so no period may be claimed")
 
 
 class RunWiring(unittest.TestCase):

@@ -1,5 +1,70 @@
 # Tech Log
 
+## 2026-08-19 - the digest went red because the site was deploying
+
+**What happened.** Run 32282266653: a scheduled send landed while an FTPS
+deploy was mid-flight, `/digest-recipients` answered the 503 that WordPress
+returns in its maintenance window, and `digest_send.py` printed
+`::error::could not read the recipient list: HTTP 503` and exited 1. The sends
+either side of it succeeded. Three separate faults in one line:
+
+1. **nobody was mailed that day.** The tier was abandoned on the first refusal,
+   with no retry, for a condition that clears itself in seconds to minutes.
+2. **a red run, therefore a CI alert**, for something that is neither a defect
+   nor actionable - the outage-manufactures-red-runs-manufactures-alerts shape
+   CLAUDE.md names. `ba4b927`/`212d973` on main are that alert raising and
+   resolving itself.
+3. **the skip was invisible.** No health row was written, so the previous green
+   row stood and aged. A missed edition looked exactly like an infrastructure
+   blip in a log nobody reads.
+
+**503 is UNKNOWN, never FAIL.** PR #148 taught `subscriber_routes.py` this an
+hour earlier; `data_integrity.py` and `published_figures.py` already knew it.
+The digest sender was the outlier and now follows the same shape.
+
+**Retry first, skip last.** `read_recipients()` makes up to five attempts, each
+with its OWN 30s bound (a hung socket must not eat the job - the outer loop
+never gets a second turn), spaced 15/30/60/90s. Worst case under six minutes
+against a 20-minute workflow timeout, and a transient halt stops the run so a
+Monday's two tiers cannot both spend it.
+
+**Retrying is safe.** `/digest-recipients` is not a pure read: it opens a sends
+row, captures an unpublished edition and stamps the tier claim. A lost response
+therefore leaves residue - but no address is mailed twice (a message is only
+built from a payload we received), no `last_sent_*` is stamped (only
+`/digest-complete` writes those, once, at the end, under `send_id > 0`), and
+the claim is one overwritten timestamp. The residue is one open sends row
+reading 0 of 0, which is why the count is 5 and not 50. A 503 leaves nothing at
+all: WordPress serves maintenance before any REST handler runs.
+
+**A skipped send is now loud in the right channel.** The tier names itself in
+the `digest_mailer` health row - `degraded`, detail `<freq>: NOT SENT, <why>` -
+which `ops_status [4c]`, the health page and the weekly health digest all read.
+The `credential=` prefix is preserved so ops_status still parses the state. The
+run exits **3**, and `digest-send.yml` maps 3 to a green run with a warning:
+the visibility lives in the health ledger, not in a red X.
+
+**Two questions, not one.** "Retry it?" uses the repo's shared
+`http_retry.TRANSIENT` (imported, never re-derived - `test_job_deferrals`
+holds that line), so a 500 is retried too. "Excuse it?" uses that set minus
+500, because a 500 is PHP erroring inside our own route and five of them is a
+defect, not weather. Exit codes are ranked rather than `max()`ed: a FAULT (2)
+outranks an UNKNOWN (3), which outranks clean (0).
+
+**Other transient conditions fixed in the same pass.** 502/504/408/429/52x took
+the identical exit-1 path as 503. Worse, a connection-level failure (timeout,
+reset, DNS) exited **0 with no health row at all** - the silent-skip half of
+the same defect, and the one that could hide a missed edition indefinitely.
+Both now retry and resolve to UNKNOWN with a named health row.
+
+**Python only.** No plugin file was touched, no `Version:`/`ALT_VERSION` was
+consumed, and nothing waits on a deploy. Tests:
+`railway/tests/test_digest_sender.py::TheDeployMaintenanceWindow`, ten cases
+pinning 503 (and the rest of the family) as UNKNOWN rather than FAIL, 500 as
+still a fault, the per-attempt bound, and the health row that makes a skip
+visible.
+
+
 ## 2026-08-19 - 2.20.115 was issued twice, and git could not see it
 
 **What happened.** Two PRs stamped the same plugin version and both merged
