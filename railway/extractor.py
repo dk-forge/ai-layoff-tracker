@@ -672,6 +672,102 @@ def classify_ai_evidence(raw_text):
     return finalize_ai_causation(result, raw_text)
 
 
+#: Country names as a reader writes them, mapped to the canonical label. Only
+#: the ones whose everyday form differs from the stored value need an entry; a
+#: country spelled the way it is stored matches on its own name.
+_COUNTRY_ALIASES = {
+    "United States": ("united states", "u.s.", "u.s", "us", "usa", "u.s.a.", "america", "american"),
+    "United Kingdom": ("united kingdom", "uk", "u.k.", "britain", "british", "england", "scotland", "wales"),
+    "Netherlands": ("netherlands", "dutch", "holland"),
+    "Germany": ("germany", "german"),
+    "France": ("france", "french"),
+    "Spain": ("spain", "spanish"),
+    "Italy": ("italy", "italian"),
+    "Sweden": ("sweden", "swedish"),
+    "Japan": ("japan", "japanese"),
+    "China": ("china", "chinese"),
+    "India": ("india", "indian"),
+    "Ireland": ("ireland", "irish"),
+    "Switzerland": ("switzerland", "swiss"),
+    "Canada": ("canada", "canadian"),
+    "Australia": ("australia", "australian"),
+    "Brazil": ("brazil", "brazilian"),
+    "Poland": ("poland", "polish"),
+    "South Korea": ("south korea", "korea", "korean"),
+}
+
+
+def _countries_named_in(quote):
+    """The canonical countries a quote actually NAMES, as a set.
+
+    The repo's one country list lives in generate_country_table; imported
+    lazily so this module keeps its import graph. If it cannot be read, the
+    caller must treat the quote as unverifiable rather than as clean.
+    """
+    from generate_country_table import COUNTRIES        # the one list
+
+    words = re.findall(r"[a-z.&']+", str(quote or "").lower())
+    text = " " + " ".join(words) + " "
+    named = set()
+    for country in COUNTRIES:
+        for alias in _COUNTRY_ALIASES.get(country, (country.lower(),)):
+            if f" {alias} " in text:
+                named.add(country)
+                break
+    return named
+
+
+def _canonical_country(value):
+    """A stored country label from whatever the model returned, or ''.
+
+    The server normalises again, but a value it would reject must not travel
+    this far pretending to be an answer: the model returned "US" for the one
+    row that survived every other gate.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        from generate_country_table import COUNTRIES
+    except Exception:
+        return ""
+    if raw in COUNTRIES:
+        return raw
+    lowered = raw.lower()
+    for country in COUNTRIES:
+        if lowered == country.lower():
+            return country
+    for country, aliases in _COUNTRY_ALIASES.items():
+        if lowered in aliases:
+            return country
+    return ""
+
+
+def _quote_names_exactly(country, quote):
+    """True when the quote names `country` and no other country.
+
+    Measured on the 2026-08-18 blank-country backlog, this is the difference
+    between a supported quote and an ANSWERING one, and the quote gate alone
+    could not tell them apart. Of the four rows a first pass "recovered":
+      * Zepz -> Poland, quoting "closure of business units in Kenya and
+        Poland". Two countries, one written. That is a wrong public number.
+      * Bosch -> Germany, quoting "Bundesweit gehen 25.000 Beschaeftigte auf
+        die Strasse" - a nationwide PROTEST, naming no country at all.
+      * Thermo Fisher -> United States, quoting "Cambridge and Plainville".
+        Correct only if you already know where Plainville is; the quote does
+        not say, and Cambridge is in two countries.
+      * Stellantis -> United States, quoting "U.S. plant workers". The only
+        one where the quote states the answer.
+    One rule rejects the first three and keeps the fourth.
+    """
+    try:
+        named = _countries_named_in(quote)
+    except Exception as exc:                     # unreadable list, not a pass
+        print(f"country-name check unavailable ({exc}); treating quote as unverified")
+        return False
+    return named == {country}
+
+
 def extract_job_location_evidence(raw_text, company=""):
     """Job-LOCATION country stated outright in a source, or None.
 
@@ -734,14 +830,19 @@ If the text names a city, region or state, return the country it is in.
         return None
     if not isinstance(result, dict):
         return None
-    country = result.get("country")
+    country = _canonical_country(result.get("country"))
     quote = result.get("country_evidence")
-    if not isinstance(country, str) or not country.strip():
+    if not country:
         return None
     if not _quote_is_supported(quote, raw_text):
         # An unquotable location is an invented one. Blank is the right answer.
         return None
-    return {"country": country.strip(), "country_evidence": quote.strip()}
+    if not _quote_names_exactly(country, quote):
+        # SUPPORTED IS NOT ANSWERING. See _quote_names_exactly: three of the
+        # first four "recoveries" passed the quote gate and still could not
+        # place a row, one of them by naming two countries and returning one.
+        return None
+    return {"country": country, "country_evidence": quote.strip()}
 
 
 def extract_context_evidence(raw_text):

@@ -303,13 +303,47 @@ an answer only with an exact quote from that body. It writes `country` and
 nothing else, dry-run by default because `/edit` pins the row and publishes the
 claim.
 
-The price was not the constraint. **Only 31 of the 82 news rows have a fetchable
-body at all.** Fifty of them cite a `news.google.com/rss/articles/...` redirect
+The price was not the constraint either. **Only 31 of the 82 news rows have a
+fetchable body at all.** Fifty of them cite a `news.google.com/rss/articles/...` redirect
 that no longer resolves - every one returns an 11-byte page, and Wayback holds
 no snapshot of an RSS redirect, because an RSS redirect is not a page anyone
 archives. The remaining one is a 403. That is a hard ceiling on this job and no
 amount of spend moves it; the estimate was right about the rate and wrong about
 the denominator, which is the kind of error only fetching them finds.
+
+### Run, and the finding is that a supported quote is not an answering quote
+
+Dry-run 2026-08-18: 31 bodies read, **$0.0093 spent against the $0.02 estimate**,
+four countries "recovered". Every one passed the verbatim quote gate that
+guards every other evidence path in `extractor.py`. Three of the four still
+could not place a row, and one of those three would have published a wrong
+country:
+
+| row | returned | the exact quote it returned |
+|---|---|---|
+| Zepz | Poland | "proposed the closure of business units in Kenya and Poland" |
+| Bosch | Germany | "Bundesweit gehen 25.000 Beschaeftigte auf die Strasse." |
+| Thermo Fisher | United States | "Cambridge and Plainville" |
+| Stellantis | US | "U.S. plant workers" |
+
+Zepz names two countries and one was written. Bosch's sentence is a nationwide
+PROTEST and names no country at all. Thermo Fisher's is two city names, correct
+only if you already know where Plainville is, and Cambridge is in two
+countries. Only the last states its answer, and its article says so outright:
+"Stellantis will indefinitely lay off up to 2,450 U.S. plant workers in Warren,
+Michigan".
+
+The gate proved the quote EXISTS. Nothing proved the quote ANSWERS. So one more
+rule now stands after it: the quote must name the returned country and no other
+country, canonically, matched on whole words so that "campus" does not contain
+the United States. It rejects the first three and keeps the fourth, and
+`tests/test_job_location_evidence.py` pins it on those four verbatim, so a later
+relaxation has to argue with the run that produced them.
+
+**Written: one row.** Stellantis 70499 -> United States, 2,450 jobs. That is
+0.04% of the US all-time headline against a movement floor of 8,000, so no
+headline guard moves; nothing else was written, and three candidates that a
+looser reading would have called recoveries are still blank.
 
 ### What stays blank, and why that is the answer
 
