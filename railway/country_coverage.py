@@ -68,6 +68,25 @@ situations and only the first is a recall problem:
   UNASSESSED              Nobody has looked. UNKNOWN, never a pass, and it makes
                           the whole report UNKNOWN — see `judge`.
 
+THERE ARE TWO QUESTIONS HERE AND THEY ARE NOT THE SAME ONE
+-----------------------------------------------------------
+Everything above answers "does a countable TOTAL exist", which is what makes
+coverage MEASURABLE. There is a second and better question — "does a public
+REGISTER exist that NAMES the employer" — which is what makes layoffs
+FINDABLE, and it is the one the tracker is actually for. Conflating them is
+the error to avoid: Spain publishes an excellent monthly total AND, in exactly
+one of its 17 autonomous communities, a file with the company name in it, and
+those are two different facts about Spain.
+
+The second question lives in PER_EMPLOYER_REGISTERS, kept apart from the
+coverage classification on purpose. As of 2026-08-19 the answer is FOUR
+jurisdictions on earth: US states, Quebec, Poland's Mazowieckie voivodeship,
+and the Illes Balears. Every one of them is SUB-NATIONAL except the US, which
+is itself fifty separate registers. That is the shape of the finding: naming is
+devolved almost everywhere it happens, so a national "no" is not an answer in a
+country that devolves labour administration, and the register must say which of
+the two questions any given "no" answers.
+
 NAMING THE REGIME IS THE POINT
 ------------------------------
 Every classification here carries the statute, the article, the authority that
@@ -725,7 +744,8 @@ PER_EMPLOYER_REGISTERS = (
      "since": None, "in_tracker": False,
      "cite": "https://wupbialystok.praca.gov.pl/"},
     {"jurisdiction": "federal (SPF Emploi / FOD WASO)", "country": "Belgium",
-     "names_employers": True,
+     "names_employers": False,
+     "names_selectively": True,
      "what": ("PARTIAL AND SELECTIVE, which is why it is a near-miss rather than a "
               "register. The quarterly and annual collective-dismissal reports name "
               "individual firms with headcount and municipality, but in NARRATIVE prose "
@@ -735,7 +755,8 @@ PER_EMPLOYER_REGISTERS = (
      "since": None, "in_tracker": False,
      "cite": ("https://emploi.belgique.be/fr/themes/restructuration/licenciement-collectif/"
               "statistiques-relatives-aux-restructurations")},
-    {"jurisdiction": "14 krajske pobocky", "country": "Czechia", "names_employers": True,
+    {"jurisdiction": "14 krajske pobocky", "country": "Czechia", "names_employers": False,
+     "names_selectively": True,
      "what": ("REPORTED, NOT VERIFIED. Each regional labour office's annual "
               "'Zprava o situaci na krajskem trhu prace' PDF is reported to carry "
               "hromadne propousteni counts AND to name the largest filing employers, "
