@@ -135,12 +135,35 @@ jobs:
           # The first version of this retried on failure and never reached
           # attempt 2: apt-get update sat on an unreachable mirror and ate the
           # whole 3-minute step ceiling inside attempt 1. A retry loop only
-          # helps if an attempt can actually fail, so each call now gets its
-          # own timeout and three attempts fit inside the ceiling with room.
+          # helps if an attempt can actually fail, so each call gets its own
+          # timeout and three attempts fit inside the ceiling with room.
+          #
+          # INSTALL IS TRIED BEFORE UPDATE, AND THAT IS THE FIX FOR 2026-08-19.
+          # Three deploys in a row died at exactly 40 seconds on `apt-get
+          # update`, which is the timeout and not an error: a mirror was
+          # stalling. The `&&` meant install was never even attempted, so a
+          # slow INDEX REFRESH blocked a package the runner can already resolve
+          # from the index its image shipped with. The refresh is an
+          # optimisation for a stale index; the install is the job. Try the job
+          # first, and fall back to refresh-then-install only when it is really
+          # needed.
+          #
+          # THE LAST ATTEMPT IS LOUD. `-qq` swallows apt's own diagnosis, so
+          # three silent timeouts told the next person nothing about the cause.
+          # The final attempt drops it and prints whatever apt has to say.
           for attempt in 1 2 3; do
-            if timeout 40 sudo apt-get update -qq \
-               && timeout 40 sudo apt-get install -y -qq lftp; then
-              echo "lftp installed on attempt $attempt"
+            if timeout 60 sudo apt-get install -y -qq lftp; then
+              echo "lftp installed on attempt $attempt (no index refresh needed)"
+              exit 0
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "index refresh and install, with apt's own output:"
+              timeout 60 sudo apt-get update || true
+              timeout 60 sudo apt-get install -y lftp && {
+                echo "lftp installed on attempt $attempt after a refresh"; exit 0; }
+            elif timeout 40 sudo apt-get update -qq \
+                 && timeout 60 sudo apt-get install -y -qq lftp; then
+              echo "lftp installed on attempt $attempt after a refresh"
               exit 0
             fi
             echo "attempt $attempt failed or timed out, retrying in 5s"
