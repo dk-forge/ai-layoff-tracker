@@ -45,6 +45,14 @@ holder, so the start-of-session ritual surfaces it automatically.
   is not sufficient: a session that needs a version should push the bump
   within minutes of writing the claim, or re-read main immediately before
   merging, which is what caught this one. Only digest files and their tests are touched.
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.96.** The baton was
+  read as HELD and is NOT claimed here; only the version number is. The change
+  is the public search box: `/query?q=EY` was a SQL `LIKE '%EY%'` and returned
+  1,968 of 65,441 rows on "money", "survey", "Monterrey" and "attorney" (`q=GE`
+  returned 8,612, mostly on "Germany"). The one plugin file touched is
+  `includes/db.php`; the rest is `railway/tests/test_search_word_boundary.py`,
+  its PHP harness and TECHLOG. **Next plugin release is 2.20.97.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.92.** The baton was
   read as HELD and is NOT claimed here; only the version number is, which is
   what this file asks for so the 2.20.88 collision above does not repeat. The
