@@ -35,7 +35,7 @@ alt_render_page_header();
 .alt-ed-correction{background:#fff6e5;border-left:3px solid #d99b1c;padding:12px 14px;font-size:.92rem;margin:0 0 1.4em}
 .alt-ed-correction p{margin:.3em 0}
 .alt-ed-section{border-top:1px solid #e3e5e9;padding-top:20px;margin-top:28px}
-.alt-ed-section table{width:100%;border-collapse:collapse;table-layout:fixed}
+.alt-ed-section table{width:100%;border-collapse:collapse}
 .alt-ed-section td{vertical-align:top;padding:0 10px 10px 0;word-break:break-word}
 .alt-ed-body{overflow-x:auto}
 .alt-ed-section p[data-alt="stat-pair"]{font-size:1.9rem;font-weight:700;margin:.1em 0;line-height:1.1}
@@ -52,7 +52,13 @@ alt_render_page_header();
 .alt-ed-days a{display:inline-block;min-width:2.2em;text-align:center;border:1px solid #dcdfe4;border-radius:4px;padding:1px 6px;margin:0 4px 4px 0;font-size:.85rem;text-decoration:none}
 .alt-ed-nav{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;margin:32px 0 8px;font-size:.92rem}
 .alt-ed-withheld{color:#8a1c1c;font-size:.9rem}
-@media (max-width:520px){.alt-ed-section p[data-alt="stat-pair"]{font-size:1.5rem}.alt-ed-section td{display:block;width:100%!important;padding-right:0}}
+.alt-ed-section td[data-alt^="figure"]{text-align:right;white-space:nowrap;padding-left:10px}
+/* ONLY the two headline cells stack on a phone. The ranked lists are a
+   label beside a figure, and stacking those puts every number on its own
+   left-aligned line, which reads as a list of unrelated items. */
+@media (max-width:520px){.alt-ed-section p[data-alt="stat-pair"]{font-size:1.5rem}
+.alt-ed-section td[data-alt="pair-left"],.alt-ed-section td[data-alt="pair-right"]{display:block;width:100%!important;padding-right:0}
+.alt-ed-wrap{padding:0 14px}}
 </style>
 <main class="alt-wrap alt-ed-wrap">
 <?php if ($alt_ed) :

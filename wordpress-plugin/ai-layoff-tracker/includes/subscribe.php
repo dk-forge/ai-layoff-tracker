@@ -326,10 +326,12 @@ function alt_digest_context_lead($context) {
         'company' => 'This employer is one part of a layoff record we keep and check.',
         'facet'   => 'This page is one slice of a layoff record we keep and check.',
         'entry'   => 'This entry is one row in a layoff record we keep and check.',
-        // The archive is where somebody reads an edition before deciding
-        // whether to take it. The lead says what subscribing adds to what
-        // they are already looking at, which is delivery and nothing else.
-        'editions' => 'Every edition here is public. Subscribing puts the next one in your inbox.',
+        // The archive page says at length what an edition is, directly
+        // above this form, exactly as the tracker pages do. A lead here
+        // would repeat it, and every lead is copy the phone-fold budget
+        // pays for on the OTHER surfaces too (railway/signup_fold.py
+        // hashes the longest one). So this list's entry is silence.
+        'editions' => '',
     );
     return isset($leads[$context]) ? $leads[$context] : '';
 }

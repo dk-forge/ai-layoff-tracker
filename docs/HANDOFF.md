@@ -6,8 +6,25 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.107.** The baton was
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.108.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. **A COLLISION: main was already at 2.20.107
+  when this was staged, caught by re-reading main immediately before merging.
+  Rebased onto it, so the sibling session's tracking-disclosure constant is
+  untouched.** The change adds the **public edition
+  archive**: every digest that goes out is kept forever at
+  `/ai-layoff-tracker/editions/<tier>/<slug>/`, so a figure that used to exist
+  only in an inbox can be cited. NEW files: `includes/digest-archive.php`,
+  `templates/page-editions.php`, plus the test and its harness. Touched, and
+  deliberately by four lines only because several sessions are live in them:
+  `includes/subscribe.php` (capture + publish call sites, one lead sentence, one
+  archive link in the signup form), `includes/digest-api.php` (capture + publish
+  call sites), `includes/subscribe-placements.php` (one context name),
+  `ai-layoff-tracker.php` (guarded require + version). **The per-tier send
+  guards, the send-state columns and `digest_transport` are untouched.** ONE new
+  table, `wp_alt_digest_editions`, self-installing. Weekly editions are
+  indexable and daily ones are `noindex`, from one setting. **Next plugin
+  release is 2.20.109.**
   which is what this file asks for. Branched from `origin/main` at 2.20.106 and
   rebased onto it before pushing, so the sibling session's
   `alt_digest_subject_line` work is untouched. The change makes the **tracking
