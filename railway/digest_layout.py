@@ -489,6 +489,62 @@ def edition_label(start: datetime.date, end: datetime.date) -> str:
     return f"{week_id(start)} \u00b7 {text}"
 
 
+SHORT_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def short_range(start: datetime.date, end: datetime.date) -> str:
+    """"Aug 10-16", "Aug 31 - Sep 6", "Aug 19". A window as an inbox reads it.
+
+    WHY THE ISO WEEK CAME OUT OF THE SUBJECT. The owner read "2026 Week 33:
+    16,842 verified job cuts" and said "normal people dont care about week 33."
+    The week number is not wrong and is not deleted: it is PRECISE FOR CITATION
+    and OPAQUE FOR SKIMMING. 2026-W33 is still the archive URL, the edition's
+    own dateline and the cite-this block. A subject is the one place a reader
+    is skimming rather than quoting, so it names days.
+
+    THE YEAR IS DROPPED because the inbox already stamps every message and six
+    characters buy more as part of the metric. Abbreviated months for the same
+    reason: this is the one string in the product written for a 45-character
+    truncation. Everywhere else spells the month in full.
+
+    Tight hyphen between two numerals, spaced between two month-and-day pairs,
+    which is the only way "Aug 31 - Sep 6" does not read as one date.
+    """
+    if start == end:
+        return f"{SHORT_MONTHS[end.month - 1]} {end.day}"
+    if start.month == end.month and start.year == end.year:
+        return f"{SHORT_MONTHS[start.month - 1]} {start.day}-{end.day}"
+    return (f"{SHORT_MONTHS[start.month - 1]} {start.day} - "
+            f"{SHORT_MONTHS[end.month - 1]} {end.day}")
+
+
+def subject_period(payload: dict) -> str:
+    """The period token a subject carries, and which window a tier names.
+
+    A WEEKLY NAMES ITS WINDOW: "Aug 10-16" for an edition that sends on the
+    19th, because the figures are from the 10th to the 16th and a single date
+    would claim otherwise. A DAILY NAMES ITS DAY: "Aug 19", not the two-day
+    collection window, which is the masthead convention.
+
+    DO NOT FLATTEN THESE INTO ONE RULE in a later consistency pass. They look
+    like an inconsistency and they are the point.
+    """
+    raw_to = str((payload or {}).get("to") or "").strip()[:10]
+    try:
+        end = datetime.date.fromisoformat(raw_to)
+    except ValueError:
+        return ""
+    if str((payload or {}).get("freq") or "").strip().lower() != "weekly":
+        return short_range(end, end)
+    try:
+        start = datetime.date.fromisoformat(
+            str((payload or {}).get("from") or "").strip()[:10])
+    except ValueError:
+        return ""
+    return short_range(start, end)
+
+
 def period_phrase(payload: dict) -> str:
     """A reader facing date for the window the site already chose.
 
@@ -523,11 +579,11 @@ def subject_line(payload: dict, parts) -> str:
 
         <period>: <figure> <unit>
 
-        2026 Week 33: 16,842 verified job cuts
-        2026 Week 33: 1,376 hiring signals
-        2026 Week 33: 16,842 verified job cuts · 1,376 hiring signals
-        August 19, 2026: 1,101 verified job cuts
-        August 19, 2026: 150 hiring signals
+        Aug 10-16: 16,842 verified job cuts
+        Aug 10-16: 1,376 hiring signals
+        Aug 10-16: 16,842 verified job cuts · 1,376 hiring signals
+        Aug 19: 1,101 verified job cuts
+        Aug 19: 150 hiring signals
 
     THE BRAND WAS IN FRONT OF THIS AND THE OWNER TOOK IT OUT AFTER TESTING IT
     IN A REAL INBOX: "on gmail mobile all you see is asktherecruiter.com." The
@@ -539,10 +595,16 @@ def subject_line(payload: dict, parts) -> str:
     Every subject now opens on its period and its figure, which is exactly the
     part a phone shows.
 
-    THE PERIOD IS THE SAME STRING THE ARCHIVE PRINTS, so a reader moving from
-    the inbox to the archive meets the same words in the same order. A weekly
-    subject opens "2026 Week 33" and the archived edition is titled "2026 Week
-    33 · August 10-16".
+    THE ISO WEEK CAME OUT OF THIS LINE TOO: "normal people dont care about week
+    33." It is precise for citation and opaque for skimming, so 2026-W33 stays
+    in the archive URL, the edition's dateline and the cite-this block, and the
+    subject names days. The year went with it, because the inbox stamps every
+    message already.
+
+    THE PERIOD IS THE SAME STRING THE ARCHIVE OPENS WITH, so a reader following
+    the link meets the same words before anything else. A weekly subject opens
+    "Aug 10-16" and the archived edition is titled "Aug 10-16, 2026"; the
+    archive adds the year because that page is cited.
 
     AND THE ACCURACY PROPERTY SURVIVED THE CHANGE, which is why it is a
     property and not a string. 2.20.103 shipped "AI Layoff Tracker: 16,842
@@ -577,20 +639,7 @@ def subject_line(payload: dict, parts) -> str:
         (minor if is_minor else major).append(metric)
     metrics = major or minor
 
-    freq = str((payload or {}).get("freq") or "").strip().lower()
-    period = ""
-    if freq == "weekly":
-        try:
-            period = week_id(datetime.date.fromisoformat(
-                str((payload or {}).get("from") or "").strip()[:10]))
-        except ValueError:
-            period = ""
-    else:
-        try:
-            period = _stamp(datetime.date.fromisoformat(
-                str((payload or {}).get("to") or "").strip()[:10]))
-        except ValueError:
-            period = ""
+    period = subject_period(payload)
 
     if metrics and period:
         # Two at most. A third runs past any client's display width and buys

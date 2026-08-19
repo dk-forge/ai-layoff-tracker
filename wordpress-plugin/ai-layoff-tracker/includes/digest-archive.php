@@ -185,34 +185,51 @@ function alt_edition_url($freq, $slug) {
 }
 
 /**
- * "2026 Week 33 \xc2\xb7 August 10-16" / "August 19, 2026", from the shared helpers.
+ * "Aug 10-16, 2026" / "Aug 19, 2026". The edition's title, from the shared
+ * helpers, and it OPENS WITH THE SAME STRING THE SUBJECT LINE OPENS WITH.
  *
- * IT MUST OPEN WITH THE SAME STRING THE SUBJECT LINE OPENS WITH. A subscriber
- * reads "2026 Week 33: 16,842 verified job cuts" in the inbox and follows a
- * link here; if the page called the same edition something else, the two
- * surfaces would read as two things that happen to be about one week. The
- * subject's period token is a literal PREFIX of the weekly label, which is why
- * alt_digest_edition_label() leads with the ISO week identifier.
+ * A subscriber reads "Aug 10-16: 16,842 verified job cuts" in the inbox and
+ * follows a link here. If the page called the same edition something else, the
+ * two surfaces would read as two things that happen to be about one week. So
+ * the subject's period token is a literal PREFIX of this title, and
+ * tests/test_digest_subject_never_inflates_ai.py fails if that ever drifts.
+ *
+ * THE YEAR IS HERE AND NOT IN THE SUBJECT, and the split is deliberate. A
+ * subject is skimmed in an inbox that already stamps the date, so six
+ * characters are better spent on the metric. This page is CITED, so it carries
+ * the year, and a window crossing a new year carries both ("Dec 28 - Jan 3,
+ * 2026-2027"), which is the only shape where dropping one would publish a
+ * wrong year.
+ *
+ * THE ISO WEEK IS NOT IN THIS HEADING AND HAS NOT BEEN LOST. 2026-W33 is the
+ * archive URL, which is what a researcher cites and what sorts, and it is on
+ * the edition's own dateline inside. The week number is precise for citation
+ * and opaque for skimming, so it lives where people cite.
  *
  * A DAILY EDITION IS NAMED BY ITS DATE AND NOT BY ITS WINDOW, for the same
- * reason. The daily window is two days (yesterday and today) and the subject
- * names the day it went out, which is the masthead convention: a newspaper's
- * front page carries the publication date and the stories inside state their
- * own spans. Printing "August 18-19, 2026" here while the subject said "August
- * 19, 2026" would break the match on the tier that sends most often.
- * The edition's own dateline still states the full window it covers.
+ * reason the subject is: the daily window is two days and the subject names
+ * the day it went out, which is the masthead convention. A newspaper's front
+ * page carries the publication date and the stories inside state their own
+ * spans. The edition's dateline still states the full window it covers.
  */
 function alt_edition_label($row) {
     $from = (string) $row['window_from'];
     $to = (string) $row['window_to'];
-    if ($row['freq'] === 'weekly' && function_exists('alt_digest_edition_label')) {
-        $label = alt_digest_edition_label($from, $to);
-        if ($label !== '') return $label;
+    // The SAME token the subject line uses, asked for rather than rebuilt, so
+    // the prefix relationship holds by construction instead of by care.
+    if (function_exists('alt_digest_subject_period')) {
+        $period = alt_digest_subject_period((string) $row['freq'], $from, $to);
+        if ($period !== '') {
+            $fy = substr($from, 0, 4);
+            $ty = substr($to, 0, 4);
+            // A weekly names its window, so a window that straddles a new year
+            // needs both. A daily names its day, so it takes that day's year.
+            $years = ((string) $row['freq'] === 'weekly' && $fy !== '' && $fy !== $ty)
+                ? $fy . '-' . $ty : $ty;
+            if ($years !== '') return $period . ', ' . $years;
+        }
     }
     if (function_exists('alt_digest_date_range')) {
-        // $to twice, not the window: see the docblock. The weekly branch above
-        // has already returned, so this is the daily one and any tier that
-        // cannot name a week.
         $range = alt_digest_date_range($to, $to);
         if ($range !== '') return $range;
     }

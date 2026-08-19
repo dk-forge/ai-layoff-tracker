@@ -1160,7 +1160,7 @@ class TheSectionComposesItsOwnInboxSnippet(unittest.TestCase):
         It required the snippet to repeat the headline figure, its tier and its
         window, because the subject at the time carried no figure at all. The
         subject now leads with a figure and its unit
-        (`2026 Week 33: 16,842 verified job cuts`), and
+        (`Aug 10-16: 16,842 verified job cuts`), and
         the brand prefix costs about twenty characters the From name already
         supplies, so Gmail on mobile truncates near 45 and the tail of the
         subject is what a phone drops.

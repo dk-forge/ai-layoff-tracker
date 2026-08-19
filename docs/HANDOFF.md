@@ -824,6 +824,12 @@ new test section derives its expected wording from the column the query
 actually windows on, so it pins the SQL-to-words agreement and NOT the
 decision: a later session may move the query onto the page basis and the tests
 still pass, provided the copy moves with it.
+  **A FOURTH FOLLOW-UP, 2.20.115**: the ISO week left the subject on the owner's
+  ruling ("normal people dont care about week 33"). Subjects now read
+  `Aug 10-16: 16,842 verified job cuts` and `Aug 19: 150 hiring signals`; a
+  weekly names its window and a daily names its day, deliberately. 2026-W33
+  keeps the archive URL, the dateline and the cite block. **Next plugin release
+  is 2.20.116.**
 
 Deploy green on the commit SHA; `reader_freshness.py` PASS on 2.20.12; the
 labels confirmed live in both the rendered FAQ and the JSON-LD.

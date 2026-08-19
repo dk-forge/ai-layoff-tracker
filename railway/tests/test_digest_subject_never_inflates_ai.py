@@ -23,7 +23,7 @@ titled the AI Layoff Tracker.
 
 THE FIX IS STRUCTURAL. Every subject now leads with the SITE:
 
-    2026 Week 33: 16,842 verified job cuts
+    Aug 10-16: 16,842 verified job cuts
 
 There is no tracker brand for a count to attach to, so the line cannot be read
 as an AI figure at all.
@@ -201,7 +201,7 @@ class TheRuleHoldsForEveryShapeTheRelayCanBuild(unittest.TestCase):
                 subject = self._subject(shape)
                 for brand in AI_BRANDS:
                     self.assertNotIn(brand.lower(), subject.lower(), subject)
-                self.assertTrue(subject.startswith("2026 Week 33: "), subject)
+                self.assertTrue(subject.startswith("Aug 10-16: "), subject)
 
     def test_the_blog_count_never_displaces_a_tracker_metric(self):
         subject = self._subject([("16,842 verified job cuts", False),
@@ -231,7 +231,7 @@ class TheRuleHoldsForEveryShapeTheRelayCanBuild(unittest.TestCase):
         only in its period token. A day is not a week and is not numbered."""
         subject = self._subject([("1,101 verified job cuts", False)], freq="daily")
         self.assertEqual(
-            subject, "August 16, 2026: 1,101 verified job cuts")
+            subject, "Aug 16: 1,101 verified job cuts")
         self.assertNotIn("Week", subject)
 
 
@@ -316,9 +316,7 @@ $out = array();
 foreach (json_decode($argv[2], true) as $case) {
     $row = array('freq' => $case[0], 'window_from' => $case[1],
                  'window_to' => $case[2]);
-    $period = ($case[0] === 'weekly')
-        ? alt_digest_week_id($case[1])
-        : alt_digest_date_range($case[2], $case[2]);
+    $period = alt_digest_subject_period($case[0], $case[1], $case[2]);
     $out[] = array($period, alt_edition_label($row));
 }
 echo json_encode($out);
@@ -347,6 +345,9 @@ echo json_encode($out);
                      {"file": SUBSCRIBE,
                       "names": ["alt_digest_date_range", "alt_digest_iso_week",
                                 "alt_digest_week_label", "alt_digest_week_id",
+                                "alt_digest_valid_freq",
+                                "alt_digest_short_range",
+                                "alt_digest_subject_period",
                                 "alt_digest_edition_label"]},
                      {"file": cls.ARCHIVE, "names": ["alt_edition_label"]},
                  ]),
@@ -371,16 +372,25 @@ echo json_encode($out);
         """The daily window is two days and the subject names the send day,
         which is the masthead convention. The archive has to agree."""
         period, label = self.rows[3]
-        self.assertEqual(period, "August 19, 2026")
-        self.assertEqual(label, "August 19, 2026")
+        self.assertEqual(period, "Aug 19")
+        self.assertEqual(label, "Aug 19, 2026")
 
-    def test_the_weekly_title_adds_the_dates_and_nothing_else(self):
+    def test_the_archive_adds_the_year_the_subject_drops(self):
+        """The subject is skimmed in an inbox that stamps the date already, so
+        those six characters go to the metric instead. This page is CITED, so
+        it carries the year."""
         period, label = self.rows[0]
-        self.assertEqual(period, "2026 Week 33")
-        self.assertEqual(label, "2026 Week 33 · August 10-16")
+        self.assertEqual(period, "Aug 10-16")
+        self.assertEqual(label, "Aug 10-16, 2026")
 
-    def test_the_iso_year_leads_so_a_boundary_week_is_unambiguous(self):
-        self.assertEqual(self.rows[1][1],
-                         "2026 Week 53 · December 28, 2026 - January 3, 2027")
-        self.assertEqual(self.rows[2][1],
-                         "2030 Week 1 · December 31, 2029 - January 6, 2030")
+    def test_a_window_crossing_a_new_year_carries_both_years(self):
+        """The only shape where dropping one would publish a wrong year."""
+        self.assertEqual(self.rows[1][1], "Dec 28 - Jan 3, 2026-2027")
+        self.assertEqual(self.rows[2][1], "Dec 31 - Jan 6, 2029-2030")
+
+    def test_the_iso_week_is_not_in_the_heading_and_is_not_lost(self):
+        """"normal people dont care about week 33." It is precise for citation
+        and opaque for skimming, so it lives in the archive URL and on the
+        edition's own dateline rather than in a heading a reader skims."""
+        for _, label in self.rows:
+            self.assertNotIn("Week", label, label)

@@ -16176,3 +16176,55 @@ have not confirmed. "YTD 2026" is "2026 YTD", matching the layoff section.
 brand appears. It reads `AskTheRecruiter.com`, a bare domain, and it is doing
 real work alone. Whether it should carry something more specific is the owner's
 call and he has not made it.
+
+## 2026-08-19 - the week number left the subject line (2.20.115)
+
+The owner read "2026 Week 33: 16,842 verified job cuts" and said: "normal
+people dont care about week 33." He is right, and the reason is worth writing
+down because the week number is not wrong and has not been deleted.
+
+**A week number is precise for citation and opaque for skimming.** A researcher
+quoting us wants 2026-W33: it sorts, it cannot be misread, and it is what an
+edition is. A person deciding whether to open an email wants to know which days
+it covers, and has to translate a week number to get there. Those are two
+audiences on two surfaces, and the subject line is the skimming one. So the
+week number moved to where people cite and the dates stayed where people skim.
+2026-W33 remains the archive URL, the edition's own dateline and the cite-this
+block.
+
+**The five subjects, final:**
+
+    Aug 10-16: 16,842 verified job cuts
+    Aug 10-16: 1,376 hiring signals
+    Aug 10-16: 16,842 verified job cuts · 1,376 hiring signals
+    Aug 19: 1,101 verified job cuts
+    Aug 19: 150 hiring signals
+
+**A weekly names its window and a daily names its day.** The owner first
+proposed the send date for the weekly and it was talked back: a weekly sends on
+the 19th about the 10th to the 16th, so a single date on it makes a false claim
+about when the figures are from, every week, in the line most people only ever
+see. That asymmetry looks like an inconsistency and is the point;
+`alt_digest_subject_period()` is the one place that decides it and the docblock
+says not to flatten it.
+
+**The year is dropped from the subject** because the inbox already stamps every
+message and six characters buy more as part of the metric. It is still on every
+surface where a figure is quoted rather than skimmed: inside the email, the
+archive heading, the citation.
+
+**Measured truncation on the longest form**, the combined edition at 58
+characters: the first 40 are `Aug 10-16: 16,842 verified job cuts · 1,`. The
+first metric survives whole with its unit, and the preview line opens with
+`1,376 hiring signals` in full, which is exactly the half a phone drops.
+
+**The archive moved with it.** The subject's period token is still a literal
+PREFIX of the archived edition's title, now `Aug 10-16` against `Aug 10-16,
+2026`. The archive adds the year because that page is cited; a window crossing
+a new year carries both (`Dec 28 - Jan 3, 2026-2027`), which is the only shape
+where dropping one would publish a wrong year. Five shapes are pinned, both
+tiers and both ISO-year boundaries.
+
+**Unchanged through all of it:** the AI-inflation property, which is the
+argument for having written it as a property rather than a string. It has now
+survived three complete rewrites of this line.

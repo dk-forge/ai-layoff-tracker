@@ -57,6 +57,7 @@ PHP = shutil.which("php")
 _WANTED = ("alt_digest_date_range", "alt_digest_period_phrase",
            "alt_digest_iso_week", "alt_digest_week_label",
            "alt_digest_week_id", "alt_digest_edition_label",
+           "alt_digest_short_range", "alt_digest_subject_period",
            "alt_digest_valid_freq",
            "alt_digest_chars", "alt_digest_subject_line",
            "alt_digest_section_heading", "alt_digest_fallback_subject")
