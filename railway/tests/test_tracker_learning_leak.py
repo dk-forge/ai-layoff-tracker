@@ -576,6 +576,20 @@ class PoisonedRunTests(unittest.TestCase):
         self.assertIn("independent_recall_pct", point)
         td.assert_nameless(state)
 
+    def test_an_unreadable_run_does_not_count_toward_the_quiet_streak(self):
+        # Observed live: two UNKNOWN points sat in the history and the counter
+        # read them as two quiet days, because it asked for `rules` and took the
+        # absence as a zero. The cadence test was already right; this counter
+        # was not, and a disagreement between them is how a loop stops running
+        # while every number about it looks healthy.
+        with open(td.LEARN_STATE_PATH, "w") as fh:
+            json.dump({"history": [{"date": "2026-08-16", "method": "m4",
+                                    "state": "unknown"}] * 2}, fh)
+        self._run()
+        with open(td.LEARN_STATE_PATH) as fh:
+            state = json.load(fh)
+        self.assertEqual(state["quiet_runs"], 0)
+
     def test_independent_recall_counts_only_what_it_could_judge(self):
         # Every poisoned headline is unmatched, so recall is 0% over a real
         # denominator — never a silent 100% on an empty judgement.

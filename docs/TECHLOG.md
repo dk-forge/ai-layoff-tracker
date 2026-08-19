@@ -358,6 +358,34 @@ cadence could never earn anything. `vocab_phrase` normalises the wording around
 the headcount and the floor is two: a phrasing that appears twice in one window
 is a phrasing we should be searching for.
 
+### The first real run, and what it says
+
+Green on 2026-08-19: 250 anchor articles, 4 announcements it could judge, 2 of
+them ours, so **independent recall 50.0% with a band of 15% to 85%** - which is
+the honest read at that denominator and exactly why the band is stored. Zero
+rows dropped. Both misses classified `not_wired`: a publisher carried the story
+and our allowlist does not admit it. Neither reached the rule floor of two, so
+no allowlist change was proposed and the post-mortem still went out, which is
+the intended behaviour - a miss with a named cause is a finding even when it is
+not yet a pattern.
+
+That mirrors the owner's own spot check the same day, where two of four misses
+were "publisher not wired". It is the tier worth mining.
+
+**The honest ceiling: four judgeable announcements out of 250 articles.** A
+headline has to state a headcount AND open with something name-shaped before
+this method can judge it at all, and most layoff coverage does neither. So the
+per-run denominator is small, the band is wide, and the trend is the only thing
+worth reading. The cause histogram accumulates faster than the recall figure
+stabilises, which is the right way round for a loop whose output is meant to be
+a sourcing decision.
+
+**One bookkeeping bug the live run exposed**, fixed here: `quiet_runs` counted
+a point with no `rules` key as a zero, so two UNKNOWN days read as two quiet
+days. `learn_today` was already right to ignore those points; the counter was
+not, and a disagreement between them is how a loop stops running while every
+number about it looks healthy.
+
 ### What was deliberately NOT done
 
 - **The chase stays dormant.** It is one secret away from live and that secret

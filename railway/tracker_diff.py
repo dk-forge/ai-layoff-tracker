@@ -1669,7 +1669,12 @@ def learn_run(today=None):
         keys.remove("rules")
     history.append({k: facts[k] for k in keys if k in facts})
     state["history"] = history[-LEARN_HISTORY_MAX:]
-    state["quiet_runs"] = sum(1 for h in state["history"][-LEARN_QUIET_RUNS:]
+    # Count only points that JUDGED something. A run whose corpus was
+    # unreadable carries no `rules` key, and reading its absence as a zero is
+    # how an outage quietly counts as a quiet day — the same trap the cadence
+    # test avoids, which this line was getting wrong while the test was right.
+    judged_points = [h for h in state["history"] if "rules" in h]
+    state["quiet_runs"] = sum(1 for h in judged_points[-LEARN_QUIET_RUNS:]
                               if not int(h.get("rules") or 0))
     _write_learn_state(state)
 
