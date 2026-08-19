@@ -14,6 +14,23 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  # SUPERSEDED PR RUNS ONLY. A newer commit on the same pull request makes the
+  # older run pointless, so it is cancelled and the queue slot is freed.
+  #
+  # Every OTHER event -- push to main, schedule, workflow_dispatch -- gets a
+  # group keyed to its own run id, which no other run can ever share. That
+  # makes `cancel-in-progress` structurally unreachable for them: nothing
+  # queues behind anything and nothing is cancelled. This shape is deliberate.
+  # A shared group that cancels is how Self-heal went blind (57 of its last 100
+  # runs concluded `cancelled` with ZERO jobs, including the one healable
+  # failure of that evening), and a `cancelled` conclusion is one this repo's
+  # alerter and healer then have to interpret. `skipped` costs no runner
+  # minutes and discards no decision; `cancelled` costs a queue slot and throws
+  # a decision away. Prefer conditions that skip over groups that cancel.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   railway-tests:
     # TWO JOBS, ONE SUITE, RUN AT THE SAME TIME. Every assertion still runs;
@@ -61,7 +78,7 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: railway/requirements*.lock
+          cache-dependency-path: railway/requirements.lock
       - name: Install deps
         working-directory: railway
         run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock

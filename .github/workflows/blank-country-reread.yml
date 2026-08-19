@@ -40,6 +40,13 @@ jobs:
       # ALT_PAID_READS=off, and extract_job_location_evidence then returns the
       # "retry later" value per row. A budget stop is UNDECIDED, never a
       # verdict, and never a red run. Stdlib only, so it needs no install.
+          # Restore pip's wheel cache, keyed on THIS lock's own hash. A lock
+          # change changes the key, so a cache entry can never outlive the lock
+          # that vouched for it, and the hash-verified install below still
+          # checks every artifact it uses. The two locks are keyed separately
+          # on purpose: a health job must not pull the heavy cache.
+          cache: 'pip'
+          cache-dependency-path: railway/requirements.lock
       - name: Spend guard (degrade, never halt)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
