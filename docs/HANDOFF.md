@@ -6,6 +6,28 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+**2.20.119 CONSUMED 2026-08-19 BY THE DIGEST MANAGE-LINK FIX. THE 2.20.118
+CLAIM BELOW IS NOT STOLEN, IT IS OVERTAKEN, AND THE HOLDER MUST RE-BUMP.**
+
+The claim below reserves 2.20.118 for the plugin-side half of #163 and had not
+merged when this landed. This change took 2.20.119 rather than 2.20.118 so it
+could not take a number somebody else was standing on. The consequence is
+mechanical and is the reason this note exists: `version_collision.py` requires
+an `ALT_VERSION` strictly above the PREVIOUS MAIN TIP, so once this is on main
+the tip is 2.20.119 and a merge carrying 2.20.118 FAILS. **The holder of the
+claim below re-reads main and takes 2.20.120.** That is a one line edit, not a
+rebase, and the guard will name the number for them.
+
+**Both sessions touched `includes/subscribe.php`, in different places.** This
+change edited the signup intro copy, the `alt_digest_manage_url()` docblock and
+the footer inside `alt_digest_send()`. The claim below edits four comments
+about the retired 13:10 UTC slot. Neither touches the other's lines, but a
+rebase is still required rather than assumed. **The signup fold stamp
+(`railway/signup_fold_stamp.json`) is now recorded against the NEW intro copy**:
+anyone who changes copy above the Subscribe button re-runs
+`python3 railway/signup_fold.py --record`, and the cheapest test in the suite
+will say so first.
+
 - **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the version collision is
   now CHECKED, and it fails the second merge.** The baton was read as HELD by
   `local` and is NOT claimed here. **No plugin file was touched and no version

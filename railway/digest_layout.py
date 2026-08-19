@@ -940,9 +940,27 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
     link = f'color:{LINK};text-decoration:underline;'
     manage = ""
     if manage_url:
-        manage = (f' You can also <a href="{manage_url}" style="{link}">'
-                  f'Manage your subscriptions</a> to change which of these '
-                  f'you get.')
+        # SAYS WHAT ACTUALLY HAPPENS, WHICH IS NOT WHAT IT USED TO SAY.
+        #
+        # It read "Manage your subscriptions", which is the name of a
+        # preference centre, and there is no preference centre. The link goes
+        # to the signup form's own anchor, because a change is made by
+        # re-submitting that form and applying it through the same double opt
+        # in that created the subscription (alt_digest_manage_url() in
+        # includes/subscribe.php holds the reasoning, and the pending_prefs
+        # branch of alt_digest_signup() is the part that makes it safe).
+        #
+        # The mechanism was never the defect. The promise was: the owner
+        # followed his own footer on 2026-08-19 and reported "I can't really
+        # manage", because a reader told they are going to a preference centre
+        # and handed a Subscribe button has been told a false thing about a
+        # working feature. So the sentence now names the form, names the three
+        # steps, and warns that confirmation is required before anything
+        # changes. A reader who reads it is never surprised by the page.
+        manage = (f' To change what you get, <a href="{manage_url}" '
+                  f'style="{link}">re-enter your address on the signup '
+                  f'form</a> and tick the lists you want. The change applies '
+                  f'when you confirm by email.')
     note = f'<p style="{fine}">{escape(edition_note)}</p>' if edition_note else ""
     return (f'<p style="{small}">You get this because you confirmed a digest '
             f'subscription at asktherecruiter.com.</p>'
@@ -1084,8 +1102,12 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     footer.append(unsub_url)
     if manage_url:
         footer.append("")
-        footer.append("Manage your subscriptions, to change which of these "
-                      "you get:")
+        # The same three steps as the HTML part, for the readers for whom this
+        # IS the message. See _footer() for why the old wording was withdrawn.
+        footer.append(_reflow(
+            "To change what you get, re-enter your address on the signup "
+            "form and tick the lists you want. The change applies when you "
+            "confirm by email:"))
         footer.append(manage_url)
     footer.append("")
     if edition_note:

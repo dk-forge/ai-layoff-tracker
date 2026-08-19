@@ -844,8 +844,17 @@ function alt_digest_subscribe_form($context = '') {
                  budget, and the copy edit that made it eleven lines is what
                  put the email field 862.4px down an 812px screen.
 
-                 So it says what the email IS and what confirming costs, and
-                 nothing else. THE TRACKING DISCLOSURE IS NEITHER TRIMMED NOR
+                 So it says what the email IS, what confirming costs, and
+                 since 2.20.119 the one thing a reader arriving from a digest
+                 footer needs: that this same form is where a subscription is
+                 CHANGED, and that the boxes are a replacement rather than an
+                 addition. That last pair of sentences is the landing half of
+                 the footer fix (railway/digest_layout.py _footer), and it
+                 renders for everyone because it is true for everyone, and it
+                 was measured before it shipped: 95.2px of headroom left on the
+                 tightest surface, against the 80px the measurement requires.
+
+                 THE TRACKING DISCLOSURE IS NEITHER TRIMMED NOR
                  HIDDEN: it moved to .alt-digest-tracking below the form, in
                  the flow, visible without opening anything, where it costs the
                  budget nothing because the budget ends at the Subscribe
@@ -854,7 +863,8 @@ function alt_digest_subscribe_form($context = '') {
                  python3 railway/signup_fold.py */ ?>
         <p class="alt-digest-intro"><?php if ($lead !== '') echo esc_html($lead) . ' '; ?>A plain email summary of what changed on these trackers:
             headline numbers, the largest new entries, and links to the sources. You confirm your address
-            by clicking a link we email you, and one click unsubscribes.</p>
+            by clicking a link we email you, and one click unsubscribes.
+            Already subscribed? Use this form to change what you get. The boxes replace what you had.</p>
         <?php /* The context rides on the FORM, not on the <section>. The
                  section's opening tag is matched by a regex in
                  tests/test_digest_route_is_findable.py that reads the signup's
@@ -5603,6 +5613,36 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
  * no token authenticated preferences route: a long lived link in a million
  * inboxes that edits a record without proving the mailbox is a bigger surface
  * than the problem it solves.
+ *
+ * THE MECHANISM SURVIVED A COMPLAINT ON 2026-08-19. THE COPY DID NOT.
+ *
+ * The owner followed his own digest footer and reported "I can't really
+ * manage", on all three emails. He was right, and the fault was never here:
+ * the footer said "Manage your subscriptions", which names a preference
+ * centre, and this returns a signup form. A reader promised a preference
+ * centre and shown a Subscribe button concludes the feature is broken, and
+ * stops looking.
+ *
+ * Both halves of that gap were closed IN COPY, not in mechanism:
+ *   - the footer now names the form and the three steps, and warns that the
+ *     change needs a confirmation click (railway/digest_layout.py _footer);
+ *   - the form's own intro now says, to everyone, that this is where a
+ *     subscription is changed and that the boxes REPLACE rather than add.
+ *
+ * That second sentence is load bearing and is not decoration.
+ * alt_digest_prefs_from_post() builds the WHOLE preference set from the boxes
+ * that were ticked, so a subscriber on all three lists who ticks only
+ * `articles` intending to add it loses the other two. Nothing in the flow
+ * warned them, and a footgun a reader cannot see is worse than an ugly form.
+ *
+ * WHY NOT A TOKEN LINK, given the complaint. Still the docblock's reasoning
+ * above, plus a second thing the outage-shaped version of this argument
+ * misses: the pending_prefs branch of alt_digest_signup() means a stranger
+ * who types your address CANNOT alter what you receive. A possession-only
+ * preference link trades that away. If it is ever built, it needs a
+ * per-recipient URL, which means the payload contract in digest-api.php and
+ * railway/digest_send.py both move; it is not a copy change wearing a
+ * token's clothes.
  */
 function alt_digest_manage_url() {
     return home_url('/ai-layoff-tracker/') . '#alt-digest';
@@ -5741,9 +5781,17 @@ function alt_digest_send($freq) {
               . '<hr style="border:none;border-top:1px solid #ddd;margin:24px 0 12px;">'
               . '<p style="font-size:12px;color:#555;">You get this because you confirmed a digest '
               . 'subscription at asktherecruiter.com. '
-              . '<a href="' . esc_url($unsub) . '">Unsubscribe with one click</a> (stops everything at once), or '
-              . '<a href="' . esc_url(alt_digest_manage_url()) . '">Manage your subscriptions</a> '
-              . 'to change which of these you get.</p>'
+              . '<a href="' . esc_url($unsub) . '">Unsubscribe with one click</a> (stops everything at once). '
+              // THE SAME SENTENCE THE RELAY SENDS, and it has to stay that way.
+              // This is the wp_mail fallback and it composes its own footer, so
+              // it is a SECOND copy of the promise in railway/digest_layout.py
+              // _footer(). It was still making the withdrawn preference
+              // centre promise for the length of one grep after the relay's
+              // copy was corrected, which is how a reader ends up told two
+              // different things about one link depending on which sender ran.
+              . 'To change what you get, '
+              . '<a href="' . esc_url(alt_digest_manage_url()) . '">re-enter your address on the signup form</a> '
+              . 'and tick the lists you want. The change applies when you confirm by email.</p>'
               . '</div>';
         $headers = array_merge(
             array('Content-Type: text/html; charset=UTF-8'),
