@@ -16501,3 +16501,61 @@ ends.
 character count until somebody opens a mail client. Four rewrites, four
 corrections, all four from an inbox. Until a real-client check exists in the
 loop, treat subject-line work as unverified by construction.
+
+## 2026-08-19 - the unformatted figures were ours, and the guard was blind (2.20.117)
+
+Gmail DESKTOP, same message, same send:
+
+    subject   16,842 verified job cuts \xc2\xb7 1,376 hiring signals \xc2\xb7 Aug 10-16
+    preview   582 of 1376 verified against a primary document, from 1324 companies.
+
+The previous session reported this as UNKNOWN and probably the client's snippet
+extraction. That was wrong, and one line of reasoning would have settled it: a
+client that stripped separators would have stripped them from the SUBJECT of
+the same message, and it did not. Two clients showed the same thing.
+
+**The fix is a formatter we own.** `number_format_i18n()` reads
+`$wp_locale->number_format['thousands_sep']` when a `$wp_locale` exists, falls
+back to PHP's `number_format()` when one does not, and passes the result
+through a filter any plugin or theme may hook. Its output therefore depends on
+a locale object and a filter chain this file does not own and a test cannot
+see. For prose that is fine; for a figure a reporter may quote it is not. All
+30 call sites in the digest now go through `alt_digest_number()`: ASCII comma,
+no locale, no filter. The exact call site that was misbehaving in production
+was never identified, and this makes that not matter.
+
+**THE GUARD WAS TECHNICALLY CORRECT AND PRACTICALLY BLIND, and that is the
+lesson worth keeping.** It asserted:
+
+    a figure appearing in more than one composed string is spelled identically
+    in all of them
+
+which is true, and useless. Every figure that actually shipped unformatted
+(10132, 1376, 1324) appears ONCE, so there was nothing to compare it against
+and the assertion passed vacuously on precisely the case it was written for.
+Most numbers appear once.
+
+The replacement is absolute: every integer of four digits or more, in every
+composed string, carries separators - not "if it also appears elsewhere".
+Exemptions are narrow and named (a year, an ISO date, a URL, an HTML
+attribute), and one test asserts the DETECTOR fires on the real defect string
+before the others trust it on our output.
+
+**This is the second guard tonight that was blind in the same way.** The other
+hard-coded a fixture row that happened to still satisfy it. Both were written
+against the example in front of the author rather than against the property. A
+guard that can only fire on a coincidence is not a guard.
+
+**The preview was also running out and the body was leaking in.** Desktop shows
+about 140 characters against the ~100 this was written for, so both truncated
+rows ended in the masthead: "... across 73 companies. AskTheRecruiter.c...".
+Two changes: the ceiling is 140, measured rather than assumed; and the hidden
+div is padded past any client's window with `&zwnj;&nbsp;`, the standard
+preheader padding, which occupies the snippet slots a client would otherwise
+fill from the body. The layoff preview also gained its largest collector, which
+is the fact a reporter checks first and is nowhere in the subject. The
+no-restatement rule and its mechanical test are unchanged.
+
+**Confirmed working, in a real client, on both platforms:** the metric-first
+subject. Every first word differs, the date is last and is what truncation
+eats. That question is settled.

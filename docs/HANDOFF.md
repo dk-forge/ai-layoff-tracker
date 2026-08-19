@@ -877,7 +877,13 @@ still pass, provided the copy moves with it.
   period trails (all four subjects had been identical up to the colon), previews
   add instead of repeating, truncation is nearer 35 than 45, and unformatted
   figures in preview text are pinned by a property test though the cause is
-  UNKNOWN. No emoji, reason recorded. **Next plugin release is 2.20.117.**
+  UNKNOWN. No emoji, reason recorded. **A SIXTH FOLLOW-UP, 2.20.117**: the unformatted preview figures were OURS,
+  not the client's. Every digest figure now goes through `alt_digest_number()`
+  rather than the locale-dependent `number_format_i18n()`, and the guard that
+  missed it (which only fired on figures appearing twice) is replaced by an
+  absolute one. Preview ceiling raised to a measured 140 and the hidden div
+  padded so the masthead cannot leak into the snippet. **Next plugin release is
+  2.20.118.**
 
 Deploy green on the commit SHA; `reader_freshness.py` PASS on 2.20.12; the
 labels confirmed live in both the rendered FAQ and the JSON-LD.
