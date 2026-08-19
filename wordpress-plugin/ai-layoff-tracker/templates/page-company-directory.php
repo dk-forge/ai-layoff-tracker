@@ -267,8 +267,8 @@ $alt_verif = array(
               // standing lesson about what a raced render costs. With no
               // destination the sentence is simply not said.
               if (function_exists('alt_next_step_tool_url')) : ?>
-        We also build a resume tool. It is still being tested, and the first draft
-        is free.
+        We also build a resume and cover letter tool. It is still being tested,
+        and the first draft is free.
         <a href="<?php echo esc_url(alt_next_step_tool_url()); ?>" target="_blank"
            rel="noopener nofollow">Try the draft tool</a>. It has no bearing on what
         this page records.

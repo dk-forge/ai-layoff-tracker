@@ -123,6 +123,36 @@ severance advice and anything else that would be legal advice, a price, a
 testimonial, and the block itself on the tracker, methodology, sources and
 press pages, which are the citation channel.
 
+**Two edits the owner proposed and this did NOT take, recorded so the next
+session does not re-litigate them.** The suggestion was "if you need help
+rewriting your resume use our evidence-based AI resume writing and cover letter
+writing tool", and a link back to asktherecruiter.com.
+
+*"Evidence-based" is an unbacked claim*, on the one page in this project whose
+credibility rests entirely on every figure having a filing behind it. A
+marketing adjective beside a WARN notice is exactly the thing that costs a
+citation. What DID land is "a resume and cover letter tool": cover letter is a
+fact the reader would not otherwise assume, verified on the live app, and it is
+information rather than an adjective.
+
+*The restraint is the conversion mechanism*, not a tax on it. A person who has
+just lost a job trusts a quiet offer on a measured page. The same offer pitched
+reads as an advert on a page about their own job loss, and it would damage both
+the sale and the source.
+
+*The link does not go to asktherecruiter.com.* That domain answers EVERY path
+with the same coming-soon page: `/`, `/pricing`, `/health` and an invented path
+all return 200 with a byte-identical 14,169-byte body. Sending somebody from a
+moment of need to a placeholder is worse than sending them nowhere. The link
+goes to the working tool, checked on the day it shipped: 200, and the response
+carries the tool's own title, its "Adapt my resume free" control and its cover
+letter feature.
+
+**The closing sentence is load-bearing and stays.** "It has no bearing on what
+this page records." It tells a reporter the data is not shaped by the
+commercial interest and tells a laid-off reader they are not being sold to. Do
+not cut it for length.
+
 **Facet pages get the lighter half.** US state pages and the United States
 country page carry the three official links and NO product line. A person
 reading "California layoffs" has not named their own employer, so the intent
