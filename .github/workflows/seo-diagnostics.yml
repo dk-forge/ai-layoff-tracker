@@ -1,0 +1,74 @@
+name: SEO diagnostics (404 log + redirect table)
+
+# Reads the two tables that only wp-admin could show before: the Rank Math 404
+# monitor and the redirection list. It exists because "which links are dead"
+# and "what is generating redirect traffic" were questions a session could only
+# answer from a screenshot, and a screenshot cannot be grouped by cause.
+#
+# MANUAL ONLY, on purpose. There is nothing here to watch on a schedule: the
+# 404 log is a worklist a human works through, not a signal that needs an
+# alarm, and a nightly tick against a host that already 504s under load buys
+# nothing. Run it when you are about to do the work.
+#
+# It READS. It creates no redirect and clears no log. The routes it calls
+# cannot write at all (see includes/seo-diagnostics.php), so a mis-fire here is
+# two GETs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '404 rows to return (default 500)'
+        required: false
+        default: '500'
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Both routes are keyed, and a 503 with state TABLE_MISSING is a real
+      # answer meaning "Rank Math is not keeping this table" — NOT zero 404s.
+      # --fail-with-body is deliberately absent: a 503 must reach the summary
+      # as its message rather than as an exit code with no text.
+      - name: Read the 404 log and the redirect table
+        env:
+          KEY: ${{ secrets.WP_API_KEY }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          BASE="https://asktherecruiter.com/blog/wp-json/layoffs/v1"
+          UA="AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+          curl -sS "$BASE/seo-404s?limit=${LIMIT:-500}" \
+            -H "X-Layoff-API-Key: $KEY" -H "User-Agent: $UA" -o seo-404s.json
+          curl -sS "$BASE/seo-redirects" \
+            -H "X-Layoff-API-Key: $KEY" -H "User-Agent: $UA" -o seo-redirects.json
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+
+          for name in ('seo-404s', 'seo-redirects'):
+              try:
+                  d = json.load(open(name + '.json'))
+              except Exception as exc:
+                  print('## %s\n\nUnreadable response: %s\n' % (name, exc))
+                  continue
+              state = d.get('state') or d.get('code') or 'UNKNOWN'
+              print('## %s — state %s\n' % (name, state))
+              if state != 'OK':
+                  print('```\n%s\n```\n' % json.dumps(d, indent=2)[:2000])
+                  continue
+              if name == 'seo-404s':
+                  print('%s distinct URIs, %s hits\n' % (d['distinct_uris'], d['total_hits']))
+              else:
+                  print('%s redirects, %s hits\n' % (d['count'], d['total_hits']))
+              print('```json\n%s\n```\n' % json.dumps(d, indent=1)[:60000])
+          PY
+
+      - name: Upload the raw JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-diagnostics
+          path: |
+            seo-404s.json
+            seo-redirects.json

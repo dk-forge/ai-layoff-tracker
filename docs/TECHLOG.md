@@ -1,6 +1,6 @@
 # Tech Log
 
-## 2026-08-19 - every digest that goes out now has a permanent, citable URL (2.20.108)
+## 2026-08-19 - every digest that goes out now has a permanent, citable URL (2.20.109)
 
 A digest with no permanent URL cannot be cited. This product's whole
 differentiator is that every number is traceable, and the one surface where a

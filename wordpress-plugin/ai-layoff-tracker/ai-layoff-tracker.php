@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.108
+ * Version: 2.20.109
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.108');
+define('ALT_VERSION', '2.20.109');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -63,6 +63,19 @@ if (is_readable($alt_digest_archive)) {
 $alt_subscribe_placements = ALT_PLUGIN_DIR . 'includes/subscribe-placements.php';
 if (is_readable($alt_subscribe_placements)) {
     require_once $alt_subscribe_placements;
+}
+// Read-only, keyed access to the Rank Math 404 log and redirect table, so the
+// question "which links are dead and what is generating redirect traffic" can
+// be measured from outside wp-admin instead of guessed. GUARDED with
+// is_readable for the same reason as the file below: it is NEW, so the deploy
+// that introduces it can land this main file first, and a hard require of a
+// not-yet-uploaded include fatals the ENTIRE plugin on every request until it
+// arrives (2.19.20). Its absence must degrade to "those two routes 404", never
+// to a white screen. It registers itself on rest_api_init and declares no
+// function anything else calls, so there is no stub accessor to leave here.
+$alt_seo_diagnostics = ALT_PLUGIN_DIR . 'includes/seo-diagnostics.php';
+if (is_readable($alt_seo_diagnostics)) {
+    require_once $alt_seo_diagnostics;
 }
 // The blog's reading surface (single posts only). GUARDED with is_readable for
 // the same reason build-stamp.php and the WARN partial are: this file is NEW,
