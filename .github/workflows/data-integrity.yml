@@ -47,13 +47,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-          # Restore pip's wheel cache, keyed on THIS lock's own hash. A lock
-          # change changes the key, so a cache entry can never outlive the lock
-          # that vouched for it, and the hash-verified install below still
-          # checks every artifact it uses. The two locks are keyed separately
-          # on purpose: a health job must not pull the heavy cache.
-          cache: 'pip'
-          cache-dependency-path: railway/requirements-min.lock
 
       # data_integrity.check_all() is stdlib-only by design (it has to run in
       # ops_status, which is dependency-free). Only the --report ledger write
