@@ -32,6 +32,10 @@ on:
         description: 'Purge table-only WARN rows first (clean reload)'
         required: false
         default: ''
+      quebec_months:
+        description: 'Quebec monthly PDFs to read back (4 = daily default, 40 = the whole CDN archive to 2023-08)'
+        required: false
+        default: ''
 
 permissions:
   contents: write   # commit the ratcheted per-state baselines
@@ -92,6 +96,12 @@ jobs:
           WARN_START: ${{ github.event.inputs.start || '' }}
           WARN_LIMIT: ${{ github.event.inputs.limit || '' }}
           WARN_PURGE: ${{ github.event.inputs.purge || '' }}
+          # Quebec reads the last 4 monthly PDFs on a scheduled run, which is
+          # all a daily job needs. The CDN holds 36 months, so a BACKFILL is a
+          # manual dispatch with quebec_months=40: it costs nothing but
+          # bandwidth (no LLM on this path) and the dedup hash makes it
+          # idempotent against everything already stored.
+          QUEBEC_MONTHS: ${{ github.event.inputs.quebec_months || '4' }}
           # DeepSeek count-fallback for the fragile scrapers (FL/GA/MI/NY/ID/LA/
           # WA/MS/WV). Dormant today (probe: zero firings after the NY regex fix);
           # activates only when a site shifts a column/label, reading that one

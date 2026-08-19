@@ -143,6 +143,12 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
     $alt_jt = ALT_PLUGIN_DIR . 'templates/partials/jurisdiction-table.php';
     if (is_readable($alt_jt)) include $alt_jt;
     ?>
+
+    <h3 id="alt-notice-registers">What a notice register does not tell you</h3>
+    <p>A notice register records what an employer told the authority it intends to do. It does not record what happened next. Several of our sources are registers of this kind. Each publisher states the limitation itself, and we pass it on rather than smoothing it over.</p>
+    <p><b>Quebec.</b> The ministry publishes the collective-dismissal notices it received each month. It says four things about that list. The notices are an intention to dismiss, not a finished layoff. A dismissal may fall outside the month its notice arrived in. A layoff later cancelled stays on the list. And each monthly list is a snapshot, so the ministry does not revise it afterwards. A Quebec total therefore runs high against dismissals actually carried out. We publish these rows as filed notices, and every row says so.</p>
+    <p><b>Poland, Mazovia.</b> The regional labour office prints two numbers in the same paragraph. One counts people who lost work that month. The other counts people named in that month&rsquo;s new notifications. We read the second and ignore the first. They measure different things, and adding them would count the same job twice.</p>
+    <p><b>US state WARN.</b> The same gap exists here, with one difference that matters. Most states mark a notice rescinded or cancelled, and we drop those rows. Quebec publishes no such marker, so we cannot make the same correction there.</p>
   </section>
 
   <section class="alt-method-sec" id="m-notice-gap">

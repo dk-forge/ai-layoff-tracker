@@ -9,6 +9,26 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
+- **WORKING ON (current subject, 2026-08-18, LATEST):** the two non-US
+  collective-dismissal registers, landing as **2.20.94**
+  (`railway/sources/wup_mazowieckie.py`, `railway/sources/quebec.py`,
+  `railway/warn_import.py`, `.github/workflows/warn-import.yml`,
+  `templates/page-methodology.php`, `templates/page-sources.php`,
+  `railway/tests/test_wup_mazowieckie_parse.py`, TECHLOG). The brief was to
+  BUILD Quebec and Mazovia; both have been live since 2.19.112 / 2.19.136, so
+  this is what the audit found instead. Mazovia was returning **3 of the 11
+  notices** its listing page was serving - a capital letter in the legal-form
+  anchor cost all of February, three unread deadline phrasings cost all of June,
+  and June's largest notice has no legal form at all. Each post states its own
+  total, so the run now audits against it (384 of 384). Quebec: all 142 live
+  rows cited the publications INDEX rather than the month's PDF, and the
+  ministry's four caveats - intention, not completion; cancelled layoffs never
+  removed; snapshot never revised - reached no reader. Both are now on the row
+  and in a new methodology section. Neither touches `dedup_hash`, so `/bulk`
+  field-updates in place. **The Quebec archive backfill is dispatched
+  separately** (`quebec_months=40`): measured at 1,318 notices / 48,391 jobs
+  from 36 PDFs back to 2023-08, against 142 rows live today.
+
 - **WORKING ON (current subject, 2026-08-19, LATEST):** the email digest's
   dates, places and citation, landing as **2.20.93**
   (`includes/subscribe.php`, `railway/tests/fixtures/digest_compose_harness.php`,
