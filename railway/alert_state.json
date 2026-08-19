@@ -1,16 +1,11 @@
 {
   "open": {
-    "deploy-wordpress-plugin:main:f42c7d51c4aba603": {
-      "first": 1787126938,
-      "last": 1787126938,
-      "subject": "CI SELF-TIMEOUT: Deploy WordPress plugin \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 30m0s"
-    },
     "tests:ops-resend-ua:8f32a6ddbcaac88e": {
       "first": 1787125267,
       "last": 1787125267,
       "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
     }
   },
-  "updated_at": "2026-08-19T08:08:58+00:00",
+  "updated_at": "2026-08-19T08:19:28+00:00",
   "version": 1
 }
