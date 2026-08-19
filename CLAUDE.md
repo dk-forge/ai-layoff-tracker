@@ -93,8 +93,20 @@ and exiting non-zero so the outage manufactured extra red runs. Three rules now:
    comment "AI-causation is correctness-critical". The consequence is real: the
    2026-08-07 swap to flash-lite was validated on a news-EXTRACTION gold set and
    moved the AI-causation classifier with it. The env var is also set in no
-   workflow, so it runs on its default everywhere. Decide which behaviour is
-   intended before trusting either. WARN notices skip the LLM: `warn_import.py` scrapes
+   workflow, so it runs on its default everywhere. **That coupling is now
+   MEASURED and the answer is UNKNOWN, leaning benign** (2026-08-18,
+   `railway/ab_ai_causation.py`, $0.0527): against an independent referee the
+   candidate and the pre-swap incumbent are indistinguishable (88.0% vs 87.5%,
+   overlapping intervals) and flash-lite does NOT over-call AI -- it flags 35 of
+   200 against the incumbent's 40, and none of the 50 plain negatives. But 25
+   rows have no label because the two labellers disagreed, and 9 more are
+   labelled only by two models agreeing against the candidate's objection. Until
+   somebody reads `docs/recall-reference-sets/ai-causation-2026-08.review.md`
+   (34 rows, ~20 min) every figure above is a reading of the easy 87.5% of the
+   corpus. **Do not quote a precision or recall number for `ai_explicit` from
+   that run, and do not move a production model on it.**
+   `python3 railway/ab_ai_causation.py --rescore` folds the rulings in and
+   spends nothing. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 9AM ET GitHub cron, `0 13 * * *`).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental
@@ -138,6 +150,25 @@ the end check.
   never a red run.
 - **Never write a row directly.** A new source builds a raw dict and calls `extract_layoff_data` → `post_to_wordpress`. The raw dict MUST set `raw_text` (the extractor reads ONLY that and returns None if empty — the bug that made supplemental news silently post zero). Mirror `sources/newsapi.py`. Ship key-gated sources DORMANT with dry-run diagnostics. See RUNBOOK "add a new source".
 - **Competitor data stays private** (standalone brand): never put competitor names or numbers in the repo or GitHub logs. Competitor tracking lives ENTIRELY in the local benchmark (`gen.py` reads only our own `agg_*.json`; the competitor figures are maintained by hand in `scratchpad/bm-live.html`). **No secret is involved and none is needed.** The `BENCHMARK_FEED_URLS`/`BENCHMARK_COMPANIES` secrets power a SEPARATE, OPTIONAL automated loop (`tracker-diff`) that is **dormant by the owner's decision (2026-07-28)** — it exits green on its schedule and costs nothing. **Do not ask the owner to add those secrets.**
+- **The learning loop is armed; the chase is not. They are the same file.**
+  `tracker_diff.py --learn` runs daily inside `tracker-diff.yml` and needs no
+  secret, because its reference universe is our OWN GDELT query *before* the
+  `TRUSTED_DOMAINS` gate — layoff coverage our net could see and does not read.
+  It stores no row, calls no model ($0.00/run, `ALT_PAID_READS=off` and no
+  OpenRouter key in scope) and fetches no page, so no robots.txt or paywall is
+  ever touched. It emits **rules, not a score**: a phrasing to add, an outlet to
+  review, a country or language we do not cover, mailed paste-ready → RUNBOOK
+  "a tracker learning email arrived". The trending number is **independent
+  recall** (`railway/tracker_learning_state.json`, committed): of the
+  announcements a run could judge, the share we already held unaided.
+  **Every name it reads leaves through exactly one sink** (`_email_rules`, the
+  owner's inbox). stdout, the health ledger and the committed file are held
+  nameless BY CONSTRUCTION — `assert_nameless` is an allowlist of numbers, ISO
+  dates and frozen label words, so a name cannot be spelled by anything public,
+  and `tests/test_tracker_learning_leak.py` poisons a whole run to prove it.
+  Never "improve" this by logging a subject for debugging; that test will fail,
+  and it is supposed to. The earned cadence steps down to Mondays after three
+  runs with no rule — do not answer a quiet loop by lowering `RULE_FLOOR`.
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
 - **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
 - **A headline FAIL is closed by a human, never by the calendar.** A failing

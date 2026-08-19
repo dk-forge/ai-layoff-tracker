@@ -1,5 +1,27 @@
 name: Tracker-diff discovery tripwire
 
+# TWO HALVES OF ONE MACHINE, AND ONLY ONE OF THEM IS DORMANT.
+#
+# The CHASE (step "Run tracker-diff") needs a reference company list, which
+# only ever arrived in a secret the owner decided against on 2026-07-28. It
+# stays dormant, exits clean and costs nothing. Nothing below re-opens that
+# question and nothing here should ever ask for those secrets again.
+#
+# The LEARNING half (step "Run tracker-learn") is ARMED and needs no secret at
+# all. Its reference universe is the GDELT layoff corpus BEFORE our own
+# trusted-domain gate: coverage our net could see and does not read. It stores
+# no row, calls no model and names no competitor. What it produces is RULES —
+# a wording to add, an outlet to review, a country or language we do not cover
+# — mailed to the owner as paste-ready lines, plus the independent-recall
+# figure that is supposed to trend up as those rules are adopted.
+#
+# COST: $0.00 per run. One keyless GDELT query (bounded to two attempts so it
+# can never sit on the shared endpoint the ingest needs) and up to
+# TRACKER_LEARN_MAX_CANDIDATES reads of our OWN public /query. No model is
+# called on any path and none may ever be added: the step is run with
+# ALT_PAID_READS=off and without OPENROUTER_API_KEY, so a future paid call
+# fails rather than quietly spends.
+#
 # Diffs competitor tracker feeds against our data; anything they list that we
 # lack becomes a company-targeted primary-source query -> extractor -> add. We
 # never cite them — their list is only a discovery signal pointing at a primary
@@ -29,6 +51,15 @@ on:
         description: 'Set to 1 to log candidates without posting'
         required: false
         default: ''
+
+# The learning half commits its measurement file (see the step for why the
+# trend cannot live on the runner).
+permissions:
+  contents: write
+
+concurrency:
+  group: tracker-diff
+  cancel-in-progress: false
 
 jobs:
   diff:
@@ -69,3 +100,34 @@ jobs:
           EDGAR_USER_AGENT: ${{ secrets.EDGAR_USER_AGENT }}
           TRACKER_DIFF_DRY: ${{ github.event.inputs.dry_run }}
         run: python tracker_diff.py
+      # The armed half. It runs AFTER the chase deliberately: both report under
+      # the one `tracker_diff` health id (they are one collector), so the last
+      # writer is the one the health page shows, and that should be the half
+      # that actually did something.
+      - name: Run tracker-learn
+        working-directory: railway
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          # Structural, not a promise: no OpenRouter key is in scope here and
+          # paid reads are off, so a model call added to this path in future
+          # fails loudly instead of quietly spending.
+          ALT_PAID_READS: 'off'
+        run: python tracker_diff.py --learn
+      - name: Commit the learning trend
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Counts, dates and label words only — `assert_nameless` refuses to
+          # write anything else, so this file cannot carry a name even if the
+          # corpus is full of them. It is committed because the trend is the
+          # whole point: independent recall is a number that only means
+          # something across runs, and a runner's disk does not outlive the job.
+          git add railway/tracker_learning_state.json
+          git diff --cached --quiet && { echo "nothing learned to record"; exit 0; }
+          git commit -m "learn: tracker independent-recall point $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1

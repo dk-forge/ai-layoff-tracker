@@ -1,0 +1,4 @@
+{
+ "_readme": "One line per row you have ruled on: the row id mapped to true when the TEXT explicitly attributes the cuts to AI, false when it does not. Rows you leave out stay UNADJUDICATED and are scored nowhere -- nothing here is ever defaulted. The rows waiting for you are in ai-causation-2026-08.review.md. When you are done, run `python3 railway/ab_ai_causation.py --rescore`: it folds your calls in, calls no model and spends nothing, so acting on this file is free.",
+ "_example": "\"70293\": true"
+}

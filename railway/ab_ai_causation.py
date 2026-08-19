@@ -306,6 +306,12 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=0, help="score fewer items")
     ap.add_argument("--dry-run", action="store_true",
                     help="build every prompt and call nothing")
+    ap.add_argument("--rescore", nargs="?", const=str(GOLDSET_PATH),
+                    help="re-derive the gold set and the score from the "
+                         "verdicts a previous run already committed, making "
+                         "NO model call. This is how the owner's adjudications "
+                         "get folded in: reading the review file must not cost "
+                         "$0.05 to act on.")
     ap.add_argument("--out", default=os.environ.get("AIC_OUT", ""),
                     help="also write the full per-item record here")
     args = ap.parse_args(argv)
@@ -342,7 +348,24 @@ def main(argv=None):
     raw = {m: {} for m in models}
     states = {m: {"ok": 0, "error": 0, "budget_stop": 0} for m in models}
     budget_stopped = False
-    for n, item in enumerate(items, 1):
+
+    if args.rescore:
+        prior = json.loads(Path(args.rescore).read_text())
+        missing = [m for m in models if m not in (prior.get("verdicts") or {})]
+        if missing:
+            print(f"{args.rescore} holds no verdicts for {missing}; it cannot "
+                  f"be re-scored. That is UNKNOWN, not a zero.")
+            return 3
+        for model in models:
+            verdicts[model] = {int(k): v for k, v in prior["verdicts"][model].items()}
+            raw[model] = {int(k): v for k, v in (prior.get("raw") or {}).get(model, {}).items()}
+            states[model]["ok"] = len(verdicts[model])
+        print(f"\nRE-SCORING from {args.rescore}: no model was called and "
+              f"nothing was spent. The verdicts are the ones that run "
+              f"committed ({prior.get('run_at')}).")
+
+    to_ask = [] if args.rescore else items
+    for n, item in enumerate(to_ask, 1):
         for model in models:
             if budget_stopped:
                 states[model]["budget_stop"] += 1
@@ -360,7 +383,8 @@ def main(argv=None):
             print(f"  ... {n}/{len(items)} items, "
                   f"${spend.logical_run_cost_usd():.4f} spent")
 
-    print(f"\n{spend.run_summary()}")
+    if not args.rescore:
+        print(f"\n{spend.run_summary()}")
     for model in models:
         print(f"  {model:32s} ok={states[model]['ok']:3d} "
               f"error={states[model]['error']:3d} "
@@ -390,10 +414,32 @@ def main(argv=None):
     adjudications = {}
     if ADJUDICATION_PATH.exists():
         try:
-            adjudications = {int(k): bool(v) for k, v in
-                             json.loads(ADJUDICATION_PATH.read_text()).items()}
-        except (ValueError, TypeError, AttributeError) as exc:
+            raw_adj = json.loads(ADJUDICATION_PATH.read_text())
+        except ValueError as exc:
             print(f"::warning::could not read {ADJUDICATION_PATH}: {exc}")
+            raw_adj = {}
+        skipped = []
+        for key, value in (raw_adj or {}).items():
+            # Per KEY, not one comprehension over the file: this is hand-edited,
+            # and one stray line must not silently discard every ruling in it.
+            # Keys that are not row ids (the note the stub ships with, a comment
+            # somebody typed) are skipped and NAMED.
+            try:
+                row_id = int(key)
+            except (TypeError, ValueError):
+                skipped.append(key)
+                continue
+            if isinstance(value, bool):
+                adjudications[row_id] = value
+            else:
+                skipped.append(key)
+        if skipped:
+            print(f"::notice::{ADJUDICATION_PATH.name}: ignored "
+                  f"{len(skipped)} non-ruling key(s) "
+                  f"({', '.join(map(str, skipped[:6]))}). A ruling is a row id "
+                  f"mapped to true or false; anything else is not read, and "
+                  f"the rows it meant stay UNADJUDICATED rather than "
+                  f"defaulting.")
     human_ids = set()
     for item in items:
         if item["id"] in adjudications:
@@ -453,6 +499,34 @@ def main(argv=None):
             print(f"    {stratum:18s} weight x{s['weights'][stratum]:6.2f}  "
                   f"precision {_fmt(p['tp'], p['tp'] + p['fp'])}  |  "
                   f"recall {_fmt(p['tp'], p['tp'] + p['fn'])}")
+    # --- the fair comparison that needs no human at all --------------------
+    #
+    # The scores above cannot compare the incumbent with the candidate: the
+    # incumbent helped write the key, so it is right by construction on every
+    # agreed row and the candidate pays for every objection. That asymmetry is
+    # not evidence of anything.
+    #
+    # This is. The SECOND labeller is a referee neither of them helped choose,
+    # from a third family, and both were asked the same 200 questions. "How
+    # often does each model agree with the same independent referee" is
+    # symmetric, needs no gold label, and is available today.
+    referee = LABELLERS[1]
+    print(f"\nAGREEMENT WITH AN INDEPENDENT REFEREE ({referee}) — symmetric, "
+          f"needs no adjudication, and the only comparison of the incumbent "
+          f"with the candidate that is not rigged by who wrote the key:")
+    for model in [LABELLERS[0], CANDIDATE]:
+        shared = [i["id"] for i in items
+                  if verdicts[model].get(i["id"]) is not None
+                  and verdicts[referee].get(i["id"]) is not None]
+        same = sum(1 for i in shared
+                   if verdicts[model][i] == verdicts[referee][i])
+        role = "incumbent" if model == LABELLERS[0] else "candidate"
+        print(f"  {model:32s} ({role:9s}) {_fmt(same, len(shared))}")
+    for model in models:
+        called = sum(1 for i in items if verdicts[model].get(i["id"]))
+        judged = sum(1 for i in items if verdicts[model].get(i["id"]) is not None)
+        print(f"  {model:32s} calls AI on {called}/{judged} of the corpus")
+
     if fair:
         print(f"\nFAIR head-to-head — the {len(human_ids)} human-adjudicated "
               f"row(s) only. Small, and the only subset where no model's own "
@@ -483,7 +557,8 @@ def main(argv=None):
     goldset = {
         "version": 1,
         "name": "ai-causation-2026-08",
-        "run_at": run_at,
+        "run_at": prior["run_at"] if args.rescore else run_at,
+        "rescored_at": run_at if args.rescore else None,
         "sample": SAMPLE_PATH.name,
         "labellers": LABELLERS,
         "candidate": CANDIDATE,
@@ -500,8 +575,14 @@ def main(argv=None):
             "awaiting_human_optional": len(candidate_objections),
             "unknown_unreadable": len(unread),
         },
-        "spend_usd": round(spend.logical_run_cost_usd(), 6),
-        "truncated": spend.run_truncation(),
+        # A re-score makes no call, so THIS process spent nothing. Reporting
+        # that as the corpus's cost would erase what the labelling run actually
+        # paid; the figure belongs to the verdicts, not to the arithmetic over
+        # them.
+        "spend_usd": (prior["spend_usd"] if args.rescore
+                      else round(spend.logical_run_cost_usd(), 6)),
+        "truncated": (prior.get("truncated") if args.rescore
+                      else spend.run_truncation()),
         "labels": {str(k): v for k, v in sorted(gold.items())},
         "verdicts": {m: {str(k): v for k, v in sorted(verdicts[m].items())}
                      for m in models},
@@ -516,7 +597,8 @@ def main(argv=None):
         Path(args.out).write_text(json.dumps(goldset, indent=1, sort_keys=True) + "\n")
         print(f"wrote {args.out}")
 
-    spend.record_job_run(items=len(items) * len(models))
+    if not args.rescore:
+        spend.record_job_run(items=len(items) * len(models))
     return 0
 
 

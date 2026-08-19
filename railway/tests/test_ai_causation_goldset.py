@@ -216,6 +216,36 @@ class ScorerTests(unittest.TestCase):
         # certainty from 53 observations.
         self.assertNotIn("[100.0%, 100.0%]", text)
 
+    def test_the_referee_comparison_uses_the_second_labeller(self):
+        """The incumbent-vs-candidate comparison in the scores above is rigged:
+        the incumbent helped write the key. The referee comparison is the
+        unrigged one and it must ask the SAME third model about BOTH."""
+        source = Path(self.h.__file__).read_text()
+        block = source.split("AGREEMENT WITH AN INDEPENDENT REFEREE", 1)[1]
+        self.assertIn("referee = LABELLERS[1]", source)
+        self.assertIn("[LABELLERS[0], CANDIDATE]", block)
+
+    def test_a_rescore_reports_what_the_LABELLING_run_spent(self):
+        """`--rescore` makes no call, so this process spends nothing. Writing
+        that zero into the corpus would erase what the verdicts actually cost
+        and would make the next reader think the answer was free."""
+        source = Path(self.h.__file__).read_text()
+        self.assertIn('prior["spend_usd"] if args.rescore', source)
+
+    def test_the_committed_goldset_carries_its_own_cost_and_open_items(self):
+        path = self.h.GOLDSET_PATH
+        if not path.exists():
+            self.skipTest("no labelling run has been committed yet")
+        data = json.loads(path.read_text())
+        self.assertGreater(data["spend_usd"], 0)
+        self.assertNotIn(data["candidate"], data["labellers"])
+        counts = data["counts"]
+        # gold is agreement plus adjudication, never a default.
+        self.assertEqual(
+            counts["items"],
+            counts["gold_by_agreement"] + counts["gold_by_human"]
+            + counts["awaiting_human_required"] + counts["unknown_unreadable"])
+
     def test_one_charged_request_sits_behind_one_gate_read(self):
         """A callable that loops or retries inside metered_call puts several
         charges behind one gate check -- the defect that overshot a run ceiling
