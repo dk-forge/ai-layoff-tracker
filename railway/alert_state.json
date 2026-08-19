@@ -17,6 +17,11 @@
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
     },
+    "deploy-wordpress-plugin:main:973999a049809e5c": {
+      "first": 1787164893,
+      "last": 1787164893,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 The action 'Install lftp' has timed out after 3 minutes."
+    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1787161951,
       "last": 1787161951,
@@ -28,6 +33,6 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   },
-  "updated_at": "2026-08-19T18:15:07+00:00",
+  "updated_at": "2026-08-19T18:41:34+00:00",
   "version": 1
 }
