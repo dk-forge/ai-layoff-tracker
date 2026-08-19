@@ -699,6 +699,15 @@ def main(argv=None):
 LEARN_WINDOW_HOURS = max(6, min(168, int(os.environ.get("TRACKER_LEARN_WINDOW_HOURS", "36"))))
 LEARN_MAX_RECORDS = max(10, min(250, int(os.environ.get("TRACKER_LEARN_MAX_RECORDS", "250"))))
 LEARN_QUERY_ATTEMPTS = max(1, min(3, int(os.environ.get("TRACKER_LEARN_QUERY_ATTEMPTS", "2"))))
+# GDELT's ArtList endpoint REFUSES a long query, and does it with HTTP 200 and
+# the plain-text body "Your query was too short or too long." — which is not
+# JSON, so it surfaces as a parse error and looks like a transient blip. The
+# ingest's own 927-character `gdelt.QUERY` (all 48 discovery terms) is over that
+# limit on this endpoint; measured 2026-08-18, 465 chars was refused and 152
+# answered. So the learning corpus is retrieved with a ROTATING SLICE of the
+# vocabulary, bounded by characters rather than by term count so a longer term
+# added later cannot silently push it back over.
+LEARN_QUERY_CHARS = max(80, min(300, int(os.environ.get("TRACKER_LEARN_QUERY_CHARS", "200"))))
 LEARN_MAX_CANDIDATES = max(5, min(400, int(os.environ.get("TRACKER_LEARN_MAX_CANDIDATES", "120"))))
 # A headline headcount below this is usually a single-site or single-role note
 # that our net is not trying to catch; counting it as a miss would manufacture
@@ -715,7 +724,7 @@ LEARN_HISTORY_MAX = 180
 LEARN_QUIET_RUNS = max(2, int(os.environ.get("TRACKER_LEARN_QUIET_RUNS", "3")))
 # The measurement method is versioned so a trend line can never silently splice
 # two different definitions of the same percentage.
-LEARN_METHOD = "m2"
+LEARN_METHOD = "m4"
 
 RULE_KINDS = ("vocabulary", "outlet", "country_edition", "language")
 # Minimum unmatched articles before a rule is worth the owner's attention. An
@@ -747,7 +756,8 @@ _PUBLIC_WORDS = frozenset(RULE_KINDS) | frozenset({
 _PUBLIC_KEYS = frozenset(RULE_KINDS) | frozenset({
     "date", "method", "mode", "cadence", "window_hours", "corpus", "candidates",
     "matched", "unmatched", "unknown", "independent_recall_pct", "rules",
-    "rules_by_kind", "history", "quiet_runs", "emailed", "state",
+    "rules_by_kind", "history", "quiet_runs", "emailed", "state", "explored",
+    "rule_misses",
 })
 _PUBLIC_DATE_RX = re.compile(r"^\d{4}-\d{2}-\d{2}(T[0-9:]{5,8}Z)?$")
 
@@ -799,7 +809,17 @@ def public_render(facts):
 
 def _learn_corpus(window_hours=None):
     """The layoff-news corpus BEFORE our trusted-domain gate, from the GDELT
-    API we already call. Returns (articles, error). Never fetches a page.
+    API we already call. Returns (anchor, rotating, error). Never fetches a page.
+
+    TWO SLICES, AND THE SPLIT IS THE POINT. Independent recall is only a trend
+    if its denominator is comparable between runs, so it is measured on the
+    ANCHOR slice: a fixed head of the vocabulary, the same query every day.
+    The ROTATING slice walks the rest of the vocabulary and feeds rule
+    discovery only — measured 2026-08-18, one day's rotation ("collective
+    dismissal", "retrenchment", "plant closure") yielded 4 candidates from 250
+    articles while the everyday words yield several times that, so letting the
+    rotation into the measurement would make the number swing on which words
+    came up rather than on our coverage.
 
     THE ATTEMPT BUDGET IS DELIBERATELY SMALLER THAN THE INGEST'S. GDELT's public
     endpoint is shared and throttles hard: measured from here on 2026-08-18 the
@@ -809,20 +829,55 @@ def _learn_corpus(window_hours=None):
     same rule gdelt.py already applies to its rotating segment sweeps: a
     rate-limited query is skipped with a log line and comes back around, and it
     must never sit on a shared endpoint that the ingest needs next."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta, timezone, date as _date
     from sources import gdelt
+    try:
+        from source_registry import discovery_terms
+        terms = discovery_terms()
+    except Exception:
+        terms = ()
     end = datetime.now(timezone.utc)
     start = end - timedelta(hours=window_hours or LEARN_WINDOW_HOURS)
     patience = gdelt.QUERY_ATTEMPTS
     gdelt.QUERY_ATTEMPTS = min(patience, LEARN_QUERY_ATTEMPTS)
     try:
-        articles, _rate_limited, err = gdelt._query_window(
-            gdelt.QUERY, start, end, LEARN_MAX_RECORDS)
+        anchor, _rl, err = gdelt._query_window(
+            learn_query(terms, None), start, end, LEARN_MAX_RECORDS)
+        # The exploring half is best-effort: it widens what the rules can see
+        # and must never decide whether the run happened.
+        rotating, _rl2, _err2 = gdelt._query_window(
+            learn_query(terms, _date.today()), start, end, LEARN_MAX_RECORDS)
     finally:
         gdelt.QUERY_ATTEMPTS = patience
-    if articles is None:
-        return [], (err or "window abandoned")
-    return articles, None
+    if anchor is None:
+        return [], [], (err or "window abandoned")
+    return anchor, (rotating or []), None
+
+
+def learn_query(terms, today):
+    """A GDELT query from a rotating slice of the discovery vocabulary.
+
+    Bounded by `LEARN_QUERY_CHARS` because the endpoint refuses a long query
+    (see the constant). The slice rotates on the calendar date, so the whole
+    vocabulary is walked over a few days rather than the first N terms being
+    the only ones this loop ever looks through — the same deterministic
+    rotation `gdelt._segment_queries_for_now` uses, for the same reason."""
+    terms = [t for t in (terms or []) if t]
+    if not terms:
+        return ""
+    # `today=None` is the ANCHOR: always the head of the vocabulary, so the
+    # recall denominator is built the same way every run.
+    start = 0 if today is None else today.toordinal() % len(terms)
+    picked, size = [], 2
+    for i in range(len(terms)):
+        term = terms[(start + i) % len(terms)]
+        quoted = f'"{term}"' if " " in term else term
+        cost = len(quoted) + (4 if picked else 0)
+        if picked and size + cost > LEARN_QUERY_CHARS:
+            break
+        picked.append(quoted)
+        size += cost
+    return "(" + " OR ".join(picked) + ")"
 
 
 _HEADCOUNT_RX = (
@@ -1125,7 +1180,7 @@ def learn_run(today=None):
         return facts
     facts["cadence"] = "daily"
 
-    articles, err = _learn_corpus()
+    anchor, rotating, err = _learn_corpus()
     if err:
         # An upstream throttle is UNKNOWN. Three things it must not become:
         #   * a PASS — the word UNKNOWN leads the health detail and a point is
@@ -1149,45 +1204,53 @@ def learn_run(today=None):
         state["history"] = [h for h in history if isinstance(h, dict)][-LEARN_HISTORY_MAX:]
         _write_learn_state(state)
         return facts
-    facts["corpus"] = len(articles)
+    facts["corpus"] = len(anchor)
+    facts["explored"] = len(rotating)
 
-    candidates = []
-    for art in articles:
-        title = str(art.get("title") or "")
-        jobs = headline_jobs(title)
-        if not jobs:
-            continue
-        token = headline_employer_token(title)
-        if not token:
-            continue
-        candidates.append((art, jobs, token))
-        if len(candidates) >= LEARN_MAX_CANDIDATES:
-            break
+    def _candidates(articles, measured):
+        out = []
+        for art in articles:
+            title = str(art.get("title") or "")
+            jobs = headline_jobs(title)
+            if not jobs:
+                continue
+            token = headline_employer_token(title)
+            if not token:
+                continue
+            out.append((art, jobs, token, measured))
+            if len(out) >= LEARN_MAX_CANDIDATES:
+                break
+        return out
+
+    candidates = _candidates(anchor, True) + _candidates(rotating, False)
 
     matched = unknown = 0
-    unmatched = []
+    unmatched = []          # every miss, measured or explored, feeds the rules
     seen_tokens = {}
-    for art, jobs, token in candidates:
+    for art, jobs, token, measured in candidates:
         key = token.lower()
         if key not in seen_tokens:
             seen_tokens[key] = _our_rows(token)
         rows = seen_tokens[key]
         if rows is None:
-            unknown += 1      # our own API did not answer; judged nothing
+            if measured:
+                unknown += 1  # our own API did not answer; judged nothing
             continue
         verdict = rows_verdict(rows, jobs, _seendate_to_date(art.get("seendate")))
         if verdict == "match":
-            matched += 1
+            matched += measured
         elif verdict == "unknown":
-            unknown += 1      # same company and count, implausible date
+            unknown += measured   # same company and count, implausible date
         else:
-            unmatched.append(art)
+            unmatched.append((art, measured))
 
-    judged = matched + len(unmatched)
+    measured_misses = sum(1 for _a, m in unmatched if m)
+    judged = matched + measured_misses
     facts["candidates"] = judged
     facts["matched"] = matched
-    facts["unmatched"] = len(unmatched)
+    facts["unmatched"] = measured_misses
     facts["unknown"] = unknown
+    facts["rule_misses"] = len(unmatched)
     # INDEPENDENT RECALL: of the announcements we could judge, the share our own
     # pipeline already holds — with no pointer from anybody. Nothing in this
     # loop stores a row, so every find here is unaided by construction and this
@@ -1203,7 +1266,7 @@ def learn_run(today=None):
         discovery = discovery_terms()
     except Exception:
         discovery = ()
-    rules = rank_rules(unmatched, TRUSTED_DOMAINS, discovery)
+    rules = rank_rules([a for a, _m in unmatched], TRUSTED_DOMAINS, discovery)
     facts["rules"] = len(rules)
     facts["rules_by_kind"] = {kind: sum(1 for r in rules if r["kind"] == kind)
                               for kind in RULE_KINDS if any(r["kind"] == kind for r in rules)}

@@ -1209,7 +1209,9 @@ rules is what should make it climb. Read the TREND, never a single point — one
 run is a 36-hour window of world news and moves several points on nothing.
 
 **If a run says UNKNOWN**, GDELT throttled the query (its public endpoint is
-shared and does this routinely). Nothing is broken, nothing was judged, no rule
+shared and does this routinely; it also refuses an over-long query with an HTTP
+200 and a plain-text body, which is why `learn_query` is capped in characters -
+do not raise that cap). Nothing is broken, nothing was judged, no rule
 was inferred and no cadence was earned; the point is committed as `unknown` so
 the gap is visible rather than absent. Repeated UNKNOWNs for a week are worth a
 look; one is not.

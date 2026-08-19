@@ -103,6 +103,38 @@ class NamelessGuardTests(unittest.TestCase):
         self.assertIn("matched 3", td.public_render({"matched": 3, "rules": 0}))
 
 
+class CorpusQueryTests(unittest.TestCase):
+    """GDELT refuses a long query with HTTP 200 and a plain-text body, which
+    reads downstream as a JSON parse error. Measured 2026-08-18: the ingest's
+    own 927-character query was refused; 152 characters answered."""
+
+    TERMS = ("layoffs", "job cuts", "reduction in force", "collective dismissal",
+             "retrenchment", "workforce optimization", "plant closure")
+
+    def test_the_query_stays_inside_the_ceiling(self):
+        for day in (date(2026, 8, 18), date(2026, 8, 19), date(2027, 1, 1)):
+            q = td.learn_query(self.TERMS, day)
+            self.assertLessEqual(len(q), td.LEARN_QUERY_CHARS)
+            self.assertTrue(q.startswith("(") and q.endswith(")"))
+
+    def test_a_single_term_longer_than_the_ceiling_still_yields_a_query(self):
+        # Never return "()" — an empty group is a query GDELT accepts and
+        # answers with nonsense, which would be read as an empty corpus.
+        q = td.learn_query(("a" * (td.LEARN_QUERY_CHARS + 50),), date(2026, 8, 18))
+        self.assertTrue(q.startswith("(") and len(q) > 3)
+
+    def test_the_slice_rotates_so_the_whole_vocabulary_is_walked(self):
+        seen = {td.learn_query(self.TERMS, date(2026, 8, 18 + i))
+                for i in range(len(self.TERMS))}
+        self.assertGreater(len(seen), 1)
+        joined = " ".join(seen)
+        for term in self.TERMS:
+            self.assertIn(term, joined)
+
+    def test_no_terms_is_empty_rather_than_a_malformed_query(self):
+        self.assertEqual(td.learn_query((), date(2026, 8, 18)), "")
+
+
 class EntryPointTests(unittest.TestCase):
     """The guard that a test which only IMPORTS the module cannot give you."""
 
@@ -360,6 +392,45 @@ class PoisonedRunTests(unittest.TestCase):
         self.assertEqual(point["state"], "unknown")
         self.assertNotIn("rules", point)
         self.assertTrue(td.learn_today([point] * 5, date(2026, 8, 18)))
+
+    def test_only_the_anchor_slice_is_measured_but_both_teach(self):
+        """The rotating slice must not enter the recall denominator, or the
+        number swings on which words came up rather than on our coverage."""
+        anchor = _poisoned_articles(3)
+        rotating = [dict(a, title=a["title"].replace(MARK, "Qqzz"),
+                         domain="rotating-only.example") for a in _poisoned_articles(3)]
+        calls = []
+
+        def _two_slices(query, *a, **k):
+            calls.append(query)
+            return ((anchor if len(calls) == 1 else rotating), False, None)
+
+        gdelt._query_window = _two_slices
+        facts, _ = self._run()
+        self.assertEqual(len(calls), 2)
+        self.assertNotEqual(calls[0], calls[1])
+        self.assertEqual(facts["corpus"], 3)
+        self.assertEqual(facts["explored"], 3)
+        # Measured on the anchor only...
+        self.assertEqual(facts["candidates"], 3)
+        self.assertEqual(facts["unmatched"], 3)
+        # ...while the rules see every miss from both slices.
+        self.assertEqual(facts["rule_misses"], 6)
+        self.assertTrue(any(k == "outlet" for k in facts["rules_by_kind"]))
+
+    def test_a_rotating_slice_outage_does_not_stop_the_measurement(self):
+        anchor = _poisoned_articles(2)
+        calls = []
+
+        def _anchor_only(query, *a, **k):
+            calls.append(query)
+            return (anchor, False, None) if len(calls) == 1 else (None, True, "HTTP 429")
+
+        gdelt._query_window = _anchor_only
+        facts, _ = self._run()
+        self.assertEqual(facts["state"], "ran")
+        self.assertEqual(facts["explored"], 0)
+        self.assertEqual(facts["candidates"], 2)
 
     def test_the_quiet_cadence_skips_without_touching_the_corpus(self):
         with open(td.LEARN_STATE_PATH, "w") as fh:

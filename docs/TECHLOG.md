@@ -226,6 +226,23 @@ non-vacuous by adding a `print` of the outlet subjects, which failed it.
 
 ### Three things measured rather than assumed
 
+**GDELT refuses the ingest's own query, and says so with a 200.** The DOC
+endpoint answers a long query with HTTP 200 and the plain-text body "Your query
+was too short or too long." - not JSON, so downstream it surfaces as a parse
+error and reads like a transient blip. `gdelt.QUERY` is 927 characters (all 48
+discovery terms); measured 2026-08-18, 465 characters was refused and 152
+answered. So the corpus is retrieved in two bounded slices instead
+(`learn_query`, capped in CHARACTERS so a longer term added later cannot
+silently push it back over): a FIXED anchor - the head of the vocabulary, the
+same query every run - and a ROTATING slice that walks the rest.
+
+**Only the anchor is measured, and that is what makes the number a trend.** One
+day's rotation ("collective dismissal", "retrenchment", "plant closure") yielded
+4 candidates from 250 articles where the everyday words yield several times
+that. Letting the rotation into the denominator would make independent recall
+swing on which words came up rather than on our coverage. The rotating slice
+feeds rule discovery only, and its failure cannot stop a measurement.
+
 **GDELT throttles this query hard, and patience is the wrong answer here.** The
 first live run spent 426 seconds in backoff over five attempts and still came
 back empty (HTTP 429; the endpoint's own message asks for one request every five
