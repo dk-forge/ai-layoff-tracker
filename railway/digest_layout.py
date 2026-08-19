@@ -579,11 +579,12 @@ def subject_line(payload: dict, parts) -> str:
 
         <period>: <figure> <unit>
 
-        Aug 10-16: 16,842 verified job cuts
-        Aug 10-16: 1,376 hiring signals
-        Aug 10-16: 16,842 verified job cuts · 1,376 hiring signals
-        Aug 19: 1,101 verified job cuts
-        Aug 19: 150 hiring signals
+        16,842 verified job cuts · Aug 10-16
+        1,376 hiring signals · Aug 10-16
+        2 new posts · Aug 10-16
+        16,842 verified job cuts · 1,376 hiring signals · Aug 10-16
+        1,101 verified job cuts · Aug 19
+        150 hiring signals · Aug 19
 
     THE BRAND WAS IN FRONT OF THIS AND THE OWNER TOOK IT OUT AFTER TESTING IT
     IN A REAL INBOX: "on gmail mobile all you see is asktherecruiter.com." The
@@ -601,10 +602,16 @@ def subject_line(payload: dict, parts) -> str:
     subject names days. The year went with it, because the inbox stamps every
     message already.
 
-    THE PERIOD IS THE SAME STRING THE ARCHIVE OPENS WITH, so a reader following
-    the link meets the same words before anything else. A weekly subject opens
-    "Aug 10-16" and the archived edition is titled "Aug 10-16, 2026"; the
-    archive adds the year because that page is cited.
+    THE METRIC LEADS BECAUSE THE PERIOD DID NOT WORK. The owner sent an inbox
+    screenshot showing four editions all beginning "Aug 10-16:", which made
+    every subject honest and the SET unusable: the word that told them apart
+    arrived after the part that was identical on every one. With the metric
+    first the first word differs on every edition, and truncation eats the DATE
+    rather than the news, which is the correct thing to lose.
+
+    THE PERIOD IS THE SAME STRING THE ARCHIVE OPENS WITH. It is a suffix here
+    and a prefix there, so a reader following the link meets the same words.
+    The archive adds the year because that page is cited.
 
     AND THE ACCURACY PROPERTY SURVIVED THE CHANGE, which is why it is a
     property and not a string. 2.20.103 shipped "AI Layoff Tracker: 16,842
@@ -644,7 +651,7 @@ def subject_line(payload: dict, parts) -> str:
     if metrics and period:
         # Two at most. A third runs past any client's display width and buys
         # nothing a reader can see.
-        line = f"{period}: " + " · ".join(metrics[:2])
+        line = " · ".join(metrics[:2]) + f" · {period}"
         # THE CEILING IS 100 AND NOT 78. The combined line runs to about 62 now
         # that the brand prefix is gone, and it is meant to be read from the
         # left and completed by the preheader rather than read whole.
@@ -652,7 +659,7 @@ def subject_line(payload: dict, parts) -> str:
             return line
         # One metric rather than a truncated two: a subject cut mid-figure
         # publishes a wrong number in the line most people only ever see.
-        line = f"{period}: {metrics[0]}"
+        line = f"{metrics[0]} · {period}"
         if len(line) <= 100:
             return line
 
@@ -726,16 +733,24 @@ def preheader_text(parts) -> str:
     # truncated mid-figure publishes a wrong number in the one line of the
     # message most people ever read.
     # ------------------------------------------------------------------
-    metrics = []
-    for one in (parts or []):
-        metric, minor = part_metric(one)
-        if metric and not minor:
-            metrics.append(metric)
-    if len(metrics) >= 2 and composed:
-        completed = f"{metrics[1]}. {composed}"
-        if len(completed) <= PREHEADER_MAX:
-            return completed
-
+    # ------------------------------------------------------------------
+    # THE PREVIEW ADDS, IT NEVER REPEATS, and this is where that rule moved.
+    #
+    # It used to prepend the SECOND metric, because the subject led with the
+    # period and truncated before reaching it. The subject now leads with the
+    # metrics and trails the date, so both figures are in the subject and
+    # prepending one here would restate it. The owner's inbox screenshot caught
+    # exactly that failure on two of three streams.
+    #
+    # So the snippet is the leading section's own, which every composer now
+    # writes to carry the facts its subject cannot: the AI figure and the
+    # United States split for the layoff tracker, the verified split for the
+    # talent tracker, the newest post's title for the blog.
+    #
+    # A line that will not fit is dropped whole rather than cut: a snippet
+    # truncated mid-figure publishes a wrong number in the one line of the
+    # message most people ever read.
+    # ------------------------------------------------------------------
     if composed and len(composed) <= PREHEADER_MAX:
         return composed
 

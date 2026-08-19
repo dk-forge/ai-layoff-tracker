@@ -16332,3 +16332,65 @@ tiers and both ISO-year boundaries.
 **Unchanged through all of it:** the AI-inflation property, which is the
 argument for having written it as a property rather than a string. It has now
 survived three complete rewrites of this line.
+
+## 2026-08-19 - the first real inbox, and four things character counts missed (2.20.116)
+
+The owner sent a screenshot of Gmail on iOS with four editions in the list.
+This is the first time anything in this loop saw a real mail client, and it
+found four defects in one look. Three previous corrections to this line also
+came from his inbox rather than from our reasoning. That is the finding.
+
+**1. The metric now leads and the period trails.** All four subjects began
+"Aug 10-16:", so in a list they were indistinguishable and the word that told
+them apart arrived after the part identical on every one. Leading with the
+period made each subject honest and made the SET unusable; those are different
+goals. Now the first word differs on every edition and truncation eats the
+DATE rather than the news, which is the right thing to lose because the inbox
+stamps the date already.
+
+    16,842 verified job cuts \xc2\xb7 Aug 10-16
+    1,376 hiring signals \xc2\xb7 Aug 10-16
+    2 new posts \xc2\xb7 Aug 10-16
+    16,842 verified job cuts \xc2\xb7 1,376 hiring signals \xc2\xb7 Aug 10-16
+    1,101 verified job cuts \xc2\xb7 Aug 19
+    150 hiring signals \xc2\xb7 Aug 19
+
+**2. The preview restated the subject on two of three streams.** The one rule a
+preview has is that it ADDS. Each composer now writes a snippet carrying what
+its own subject cannot: the AI figure, the United States split and the company
+count for the layoff tracker; the verified split and the company count for the
+talent tracker, because how many signals carry a primary document is exactly
+what its headline does not say; the newest post's own title for the blog,
+because a count of posts is not a reason to open one.
+
+**3. Truncation is nearer 35 characters than the documented 45.** Re-derived
+from the screenshot: "Aug 10-16: 16,842 verified job cut..." lost the plural
+and the whole second metric. Every standalone subject now fits inside 35; the
+combined edition loses its date first and its second metric second, which is
+the intended priority.
+
+**4. Unformatted figures in the preview, and the cause is UNKNOWN.** The
+screenshot shows `1376` and `10132` in preview text beside `1,376` and `16,842`
+in the subjects. Both strings are composed by the site through
+number_format_i18n and this session could not reproduce it: nothing between
+composition and the wire touches a separator, and the harness renders both with
+commas. It may be the client's own snippet extraction. What is checkable has
+been pinned instead - a figure appearing in more than one composed string is
+spelled identically in all of them - so a future edit cannot introduce the
+defect even though this one could not be found.
+
+**No emoji, and the reason is recorded so it is not revisited.** The owner
+asked. This product is cited as a primary source and its register is measured
+and factual, which is the register that makes the numbers trusted. Once the
+metric leads, the figures differentiate the editions better than a glyph would,
+which was the only real argument for one. A screen reader also has to make
+sense of the line.
+
+**Archive parity moved with the reorder.** The period token is a SUFFIX of the
+subject and a PREFIX of the archived edition's title, and the tests hold both
+ends.
+
+**The standing gap.** Every claim in this repo about a subject line is a
+character count until somebody opens a mail client. Four rewrites, four
+corrections, all four from an inbox. Until a real-client check exists in the
+loop, treat subject-line work as unverified by construction.
