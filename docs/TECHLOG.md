@@ -93,6 +93,7 @@ The rows whose sources genuinely never state a job location keep their blank
 while they do: a reader filtering by country now finds the Google row under the
 United States as an American company's cut, with its job-location column still
 honestly empty, rather than not finding it at all.
+
 ## 2026-08-18 - a correctly labelled feed that still collects nothing (2.20.92)
 
 Earlier the same day, `economynext_lk` was reclassified from `broke` to
