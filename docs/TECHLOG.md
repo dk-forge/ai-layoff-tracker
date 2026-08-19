@@ -1,5 +1,89 @@
 # Tech Log
 
+## 2026-08-18 - the public search box returned most of the database for a two-letter company name
+
+A recall probe on the sibling tracker asked its `/query` endpoint for **EY**
+and got **13,934 of 30,986 rows**. The same question here returned **1,968 of
+65,441**. The top hits were a Brazilian space startup, a Bolivian statistics
+agency and a debt-collection company: `q=` was a SQL `LIKE '%EY%'`, and
+"money", "survey", "Monterrey", "key" and "attorney" all contain the letters.
+
+The endpoint was correct the whole time on `Workday` (7 here), `Stripe` (2) and
+`Expedia` (10), which is exactly why nobody caught it. **The defect only bites
+on short all-caps names, and this is a domain made of them** - EY, PwC, IBM,
+SAP, BT, GE, HP, KPMG, UBS, ING. `q=GE` was returning **8,612 rows**, one row
+in eight, mostly on the word "Germany".
+
+**This is the third appearance of one class in this family of products.** The
+ingest gate had it on 2026-08-17 when `layoff` matched `playoff` and six of ten
+gated items were football fixtures (`railway/sources/regional_feeds.py`). The
+`keyword=` endpoint has it in the TECHLOG entry above from 2026-08-05, where
+`keyword=AI` returned 5,322 rows on "maintenance", "Air" and "retail" - and
+that one was **worked around rather than fixed**: `ai_causation_sample_build.py`
+draws its sample with a word-boundary regex in Python because the endpoint could
+not be trusted to. The workaround stays (it also knows "artificial
+intelligence", "chatbot" and the rest) but the substring underneath it is gone.
+
+### The fix, and the three fixes it is deliberately not
+
+`alt_freetext_clause()` in `includes/db.php` now serves all three free-text
+paths - `q`, `company` and `keyword` - and no fourth one can be added without
+going through it (`test_search_word_boundary.py` holds that).
+
+- **NOT a minimum query length.** That makes every count above look fixed and
+  returns an honest-looking zero for every real two-letter employer. An empty
+  result nobody can tell is wrong is worse than a noisy one obviously is.
+- **NOT a case-sensitive search.** `EY` versus `ey` inside a word is most of the
+  signal here, but a reader typing `workday` must still find `Workday`. REGEXP
+  follows the column collation, which is `_ci`: the token is matched, the case
+  is not.
+- **NOT a boundary on scripts that do not have one.** A boundary assertion needs
+  a non-word character on the far side of the term. Japanese and Chinese are
+  written without one, so `\b退任\b` matches nothing at all in a real
+  headline; Korean has the spaces but glues particles on, so `삼성` would stop
+  finding `삼성전자`. **Any term carrying a non-Latin letter keeps the substring
+  search**, stated as a positive rule over `\p{Latin}` rather than as a list of
+  scripts somebody has to remember to extend. Behaviour there is unchanged, so
+  no regression is possible, and the defect being fixed is a Latin-acronym
+  defect.
+
+### The dialect is proven on the server, never assumed
+
+There is no portable word-boundary syntax and guessing wrong is silent. MySQL 8
+runs ICU and takes `\b` while **rejecting** the POSIX `[[:<:]]` it used to
+require; MySQL 5.7 and its Spencer engine take `[[:<:]]` and read `\b` as a
+literal `b`, which matches nothing and would have emptied the search box on
+every query. `alt_regexp_boundary_syntax()` probes the live server with **both a
+positive and a negative** - `'EY LLP'` must match and `'money survey key'` must
+not - and caches the answer for a day. Neither passing is a third state, not a
+pass: the caller falls back to the substring behaviour, which is the honest
+degraded answer rather than a wrong one.
+
+### The index situation, and why the LIKE stayed
+
+`wp_alt_layoffs` has fifteen indexes and **not one of them can serve this
+query**. No B-tree answers a leading wildcard and there is no FULLTEXT index on
+any text column, so `q=` was already a full scan of 65,441 rows and has been
+for as long as the box has existed. The regex is therefore ANDed **behind** the
+LIKE rather than replacing it: the cheap substring stays the first pass and the
+regex only runs on the rows it already admitted. The scan is the one we were
+already paying for; the precision is new. A test asserts the absence of the
+FULLTEXT index, so the day one is added is the day this choice is revisited.
+
+### Measured, live, before and after (2.20.96)
+
+| q= | before | after |
+|---|---|---|
+| EY | 1,968 | see the deploy note below |
+| GE | 8,612 | |
+| IBM | 58 | |
+| SAP | 94 | |
+| BT | 78 | |
+| Workday | 7 | 7 |
+| Stripe | 2 | 2 |
+| Expedia | 10 | 10 |
+| 退任 (JP) | 1 | 1 |
+
 ## 2026-08-18 - one metered_call was making two requests, and neither the gate nor the ledger could see the second
 
 `ops_status.py [2a]` reports two jobs past their per-run ceiling. Both were
