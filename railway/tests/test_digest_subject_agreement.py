@@ -56,7 +56,8 @@ PHP = shutil.which("php")
 # renames one, this fails loudly rather than testing a stale copy.
 _WANTED = ("alt_digest_date_range", "alt_digest_period_phrase",
            "alt_digest_iso_week", "alt_digest_week_label",
-           "alt_digest_edition_label",
+           "alt_digest_week_id", "alt_digest_edition_label",
+           "alt_digest_valid_freq",
            "alt_digest_chars", "alt_digest_subject_line",
            "alt_digest_section_heading", "alt_digest_fallback_subject")
 
@@ -73,14 +74,16 @@ foreach (explode(',', $argv[2]) as $name) {
 $in = json_decode($argv[3], true);
 echo json_encode(array(
     'subject'  => alt_digest_subject_line($in['freq'], $in['from'], $in['to'],
-                                          $in['headings'], $in['fallback']),
+                                          $in['headings'], $in['fallback'],
+                                          $in['parts']),
     'fallback' => alt_digest_fallback_subject($in['freq'], $in['to']),
     'heading'  => alt_digest_section_heading($in['section_text']),
 ));
 """
 
 
-def php_subject(freq, to, headings, fallback, section_text="", frm=""):
+def php_subject(freq, to, headings, fallback, section_text="", frm="",
+                parts=None):
     handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
                                          encoding="utf-8")
     try:
@@ -88,6 +91,7 @@ def php_subject(freq, to, headings, fallback, section_text="", frm=""):
         handle.close()
         payload = json.dumps({"freq": freq, "from": frm or to, "to": to,
                               "headings": headings, "fallback": fallback,
+                              "parts": parts or [],
                               "section_text": section_text})
         run = subprocess.run([PHP, handle.name, SUBSCRIBE, ",".join(_WANTED),
                               payload],
@@ -99,14 +103,19 @@ def php_subject(freq, to, headings, fallback, section_text="", frm=""):
     return json.loads(run.stdout)
 
 
-def python_subject(freq, to, headings, fallback, frm=""):
+def python_subject(freq, to, headings, fallback, frm="", parts=None):
     """digest_layout.subject_line, driven through the shape it really takes."""
     payload = {"from": frm or to, "to": to, "freq": freq, "subject": fallback}
     # A section that cannot name itself has an EMPTY text part, which is the
     # real shape: the composers return nothing rather than a nameless section.
-    parts = [(name, "<p>x</p>", (name + "\nsomething\n") if name else "", "")
-             for name in headings]
-    return layout.subject_line(payload, parts)
+    metrics = list(parts or [])
+    built = []
+    for index, name in enumerate(headings):
+        one = metrics[index] if index < len(metrics) else {}
+        built.append((name, "<p>x</p>",
+                      (name + "\nsomething\n") if name else "", "",
+                      (str(one.get("metric", "")), bool(one.get("minor")))))
+    return layout.subject_line(payload, built)
 
 
 # The cases, chosen to cover every branch on both sides rather than to be
@@ -152,8 +161,17 @@ class TheTwoSendersComposeTheSameSubject(unittest.TestCase):
     def test_every_case_agrees(self):
         for freq, frm, to, headings in CASES:
             with self.subTest(freq=freq, frm=frm, to=to, headings=headings):
-                php = php_subject(freq, to, headings, FALLBACK, frm=frm)["subject"]
-                py = python_subject(freq, to, headings, FALLBACK, frm=frm)
+                # A metric fragment per heading, so the combined form, the
+                # single-metric form and the no-metric fallback are all driven
+                # on both sides rather than only the last of the three.
+                parts = [{"metric": m, "minor": mi}
+                         for m, mi in (("16,842 verified job cuts", False),
+                                       ("1,376 hiring signals", False),
+                                       ("2 new posts", True))][:len(headings)]
+                php = php_subject(freq, to, headings, FALLBACK, frm=frm,
+                                  parts=parts)["subject"]
+                py = python_subject(freq, to, headings, FALLBACK, frm=frm,
+                                    parts=parts)
                 self.assertEqual(php, py,
                                  "the wp_mail sender and the relay would put "
                                  "different subjects on the same digest")

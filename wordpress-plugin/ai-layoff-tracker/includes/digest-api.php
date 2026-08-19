@@ -178,7 +178,18 @@ function alt_api_digest_recipients($request) {
                   Absent on an older plugin build, which digest_layout treats
                   as "fall back to the edition label", never as "no subject".
                 */
-                'subject' => isset($part['subject']) ? (string) $part['subject'] : '',
+                /*
+                  THE SECTION'S FIGURE-AND-UNIT FRAGMENT FOR THE SUBJECT LINE,
+                  and the reason it is composed by the SITE: it carries a
+                  FIGURE, and digest_layout may not produce one. The relay
+                  joins fragments; it never computes a number.
+
+                  `minor` marks a fragment that appears in a subject only when
+                  it is the only one there. Absent on an older plugin build,
+                  which both senders read as "no metric" and fall back from.
+                */
+                'metric' => isset($part['metric']) ? (string) $part['metric'] : '',
+                'minor'  => !empty($part['minor']),
             );
         }
     }

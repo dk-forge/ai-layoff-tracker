@@ -1774,6 +1774,26 @@ function alt_digest_week_label($date) {
 }
 
 /**
+ * "2026 Week 33". The week identified WITHOUT its dates, for the subject line.
+ *
+ * WHY THE YEAR IS HERE AND NOT IN alt_digest_week_label(). Inside the edition
+ * the number always sits beside the dates it covers, so the year is already
+ * on the line and repeating it would read as machine output. A SUBJECT has no
+ * room for the dates, so the week number is travelling alone, and "Week 33"
+ * alone is ambiguous across years and unsortable in a mailbox holding two
+ * years of them. Year first, so a mailbox sorted by subject sorts by edition.
+ *
+ * IT IS THE ISO YEAR AND NOT THE CALENDAR YEAR, and that is the trap: the week
+ * of 28 December 2026 to 3 January 2027 is 2026 Week 53, and the week of 31
+ * December 2029 is 2030 Week 1. Reading the calendar year beside an ISO week
+ * ships silently and is found the following January.
+ */
+function alt_digest_week_id($date) {
+    $iso = alt_digest_iso_week($date);
+    return $iso === null ? '' : $iso[0] . ' Week ' . $iso[1];
+}
+
+/**
  * "Week 33, 10 to 16 August 2026". THE NUMBER NEVER TRAVELS WITHOUT ITS DATES.
  *
  * A bare "Week 33" is a label a reader has to look up, and two readers on two
@@ -2123,43 +2143,97 @@ function alt_digest_chars($s) {
 }
 
 function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
-                                 $composed = '') {
+                                 $parts = array()) {
+    /*
+      ONE PATTERN FOR ALL THREE STREAMS, chosen by the owner:
+
+          AskTheRecruiter.com \xc2\xb7 <period>: <figure> <unit>
+
+          AskTheRecruiter.com \xc2\xb7 2026 Week 33: 16,842 verified job cuts
+          AskTheRecruiter.com \xc2\xb7 2026 Week 33: 1,376 hiring signals
+          AskTheRecruiter.com \xc2\xb7 2026 Week 33: 16,842 verified job cuts \xc2\xb7 1,376 hiring signals
+
+      His reasoning: the brand up front lets a subscriber identify sender and
+      topic in a crowded inbox, the middle dot gives a cleaner hierarchy than a
+      space, and the three read as one weekly series.
+
+      AND IT FIXES THE ACCURACY DEFECT STRUCTURALLY. What shipped on
+      2026-08-19 was "AI Layoff Tracker: 16,842 verified cuts this week", and a
+      reader who never opened it took away sixteen thousand AI-attributed cuts
+      from a week whose AI figure was ZERO. That is the exact overclaim this
+      product exists to avoid, on its most quoted surface, on the metric it is
+      named after. Leading with the SITE rather than the tracker means nothing
+      juxtaposes "AI Layoff Tracker" with a raw cut count, so the line cannot
+      be read as an AI figure at all. The rule it produced still binds every
+      future subject and is enforced by
+      tests/test_digest_subject_never_inflates_ai.py:
+
+          A READER WHO SEES ONLY THE SUBJECT MUST NOT COME AWAY WITH A LARGER
+          AI FIGURE THAN THE EMAIL REPORTS.
+
+      THE TWO UNITS READ DIFFERENTLY BECAUSE THEY ARE DIFFERENT, and a future
+      consistency pass must not flatten them. The layoff tracker counts
+      VERIFIED JOB CUTS, each with a filing or a named report behind it. The
+      talent tracker counts HIRING SIGNALS, which deliberately means something
+      weaker: a published indication, mostly unverified. Calling verified cuts
+      "signals" would give away the product's whole differentiator.
+
+      THE PERIOD IS THE ISO WEEK WITH ITS ISO YEAR, or the send date on a daily
+      edition. A day is not a week and must not be numbered as one; the shape
+      is kept so the three still read as one series.
+
+      $parts is a list of array('metric' => ..., 'minor' => bool) in the site's
+      own section order. The blog's metric is MINOR: it is the least important
+      of the three numbers, the line is already at its ceiling, and it appears
+      only when it is the only thing the message carries.
+    */
+    $major = array(); $minor = array();
+    foreach ((array) $parts as $part) {
+        $part = (array) $part;
+        $metric = trim((string) ($part['metric'] ?? ''));
+        if ($metric === '') continue;
+        if (!empty($part['minor'])) $minor[] = $metric; else $major[] = $metric;
+    }
+    $metrics = $major ? $major : $minor;
+
+    $period = (alt_digest_valid_freq($freq) === 'weekly')
+        ? alt_digest_week_id($from)
+        : alt_digest_date_range($to, $to);
+
+    if ($metrics && $period !== '') {
+        $dot = "\xc2\xb7";
+        // Two at most. A third metric would run the line past any client's
+        // display width and buys nothing a reader can see.
+        $line = 'AskTheRecruiter.com ' . $dot . ' ' . $period . ': '
+              . implode(' ' . $dot . ' ', array_slice($metrics, 0, 2));
+        /*
+          THE CEILING IS 100 AND NOT 78, DELIBERATELY. The combined line runs
+          to about 83 characters and the owner chose it knowing Gmail on mobile
+          truncates near 45. The old 78-character rule was sized for a subject
+          meant to be read whole; this one is meant to be read from the left
+          and completed by the preheader, which is composed for exactly that.
+        */
+        if (alt_digest_chars($line) <= 100) return $line;
+        // One metric rather than a truncated two. A subject cut mid-figure
+        // publishes a wrong number in the line most people only ever see.
+        $line = 'AskTheRecruiter.com ' . $dot . ' ' . $period . ': ' . $metrics[0];
+        if (alt_digest_chars($line) <= 100) return $line;
+    }
+
+    /*
+      NOTHING COULD SUPPLY A FIGURE, so the edition label, and failing that the
+      site's own dated fallback. A bare date is not a subject.
+    */
     $names = array();
     foreach ((array) $headings as $h) {
         $h = trim((string) $h);
         if ($h !== '') $names[] = $h;
     }
-    /*
-      THE SECTION'S OWN METRIC-FIRST SUBJECT WINS, when it composed one.
-
-      The owner asked for the figure in the subject and he is right for this
-      product: for a data tracker the statistic IS the news. The composer is
-      the only place that may produce a figure, so it composes the whole line
-      and this chooses between it and the dated fallback. There is deliberately
-      no arithmetic here.
-
-      It is the LEADING section's subject, the same section preheader_text
-      describes, so the two lines a recipient sees before opening cannot name
-      different trackers. That was a live defect once.
-    */
-    $composed = trim((string) $composed);
-    if ($composed !== '' && alt_digest_chars($composed) <= 78) return $composed;
-
     $phrase = alt_digest_period_phrase($from, $to, $freq);
-    // No section could name itself, so there is nothing to lead with and a
-    // bare date is not a subject. The site's own dated fallback goes out.
     if (!$names || $phrase === '') return $fallback;
-
-    /*
-      THE EDITION FORM, which is what an older plugin build and any section
-      that cannot compose a figure fall back to. It names the section a reader
-      meets FIRST and then dates the edition; it never lists the others. A
-      masthead does not list its own contents, and "AI Layoff Tracker and 2
-      more" is what the owner rejected.
-    */
     $subject = $names[0] . ', ' . $phrase;
-    if (alt_digest_chars($subject) > 78) $subject = $phrase;
-    return alt_digest_chars($subject) <= 78 ? $subject : $fallback;
+    if (alt_digest_chars($subject) > 100) $subject = $phrase;
+    return alt_digest_chars($subject) <= 100 ? $subject : $fallback;
 }
 
 /** What the SITE calls a section: its own first line, nothing else. The Python
@@ -4469,34 +4543,54 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n";
     }
     /*
-      THE SUBJECT THIS SECTION WOULD PUT ON AN EDITION IT LEADS.
+      THIS SECTION'S FRAGMENT FOR THE SUBJECT, BOUND TO ITS OWN UNIT.
 
-      METRIC FIRST, because the owner asked for it and because the research is
-      on his side: a data product's subject should carry the statistic, since
-      for a data product the statistic IS the news. A narrative newsletter puts
-      the hook in the subject and the figure in the preview line; we are the
-      other kind.
+      WHAT SHIPPED ON 2026-08-19 AND WHY IT WAS THE MOST SERIOUS DEFECT IN THE
+      REBUILD. The subject read "AI Layoff Tracker: 16,842 verified cuts this
+      week". Metric first, inside the character budget, composed from the same
+      query as the body. And a reader who never opened it took away sixteen
+      thousand AI-attributed cuts from a week whose AI figure was ZERO. The one
+      line that reaches the largest audience inflated the metric the product is
+      named after from nothing to five figures, on its most quoted surface,
+      while every line inside the edition was scrupulous about it.
 
-      IT NAMES ITS OWN STREAM. "AI Layoff Tracker and Talent Intelligence
-      Tracker: August 19, 2026" is a list of products, and once there are three
-      streams a reader with two subscriptions cannot tell which arrived without
-      opening it. Each stream's subject identifies that stream and then says
-      what happened in it.
+      THE DEFECT WAS THE JUXTAPOSITION, not the numbers: a brand name beside an
+      unqualified count reads as a count of that brand's metric, whatever the
+      figures are and whichever tier is sending. So the fix is structural
+      rather than a wording change. The subject now leads with the SITE and
+      never with a tracker (alt_digest_subject_line), so there is no brand for
+      a count to attach to, and this section contributes only a figure wearing
+      its unit.
 
-      THE FIGURE IS THE WORLDWIDE VERIFIED TOTAL, which is the number the
-      edition's own second headline carries and the one a reader is most likely
-      to quote. The United States figure leads the PREHEADER instead, so the
-      two lines a recipient sees before opening carry both, and neither repeats
-      the other.
-
-      NO DATE. The inbox already stamps the send, the masthead carries the
-      week, and ~45 characters is the whole budget. "this week" and "today" are
-      the two words that make the figure's window unambiguous inside it.
+      THE UNIT IS "verified job cuts" AND A CONSISTENCY PASS MAY NOT FLATTEN
+      IT. Each of these has a filing or a named report behind it. The talent
+      tracker's "hiring signals" deliberately means something weaker, a
+      published indication that is mostly unverified, and calling verified cuts
+      "signals" would give away the product's whole differentiator.
     */
-    $subject = 'AI Layoff Tracker: ' . number_format_i18n($ver_jobs)
-             . ' verified cuts ' . ($wname === 'today' ? 'today' : $wname);
+    $metric = number_format_i18n($ver_jobs) . ' verified job cuts';
+
+    /*
+      THE PREHEADER COMPLETES A TRUNCATED SUBJECT RATHER THAN RESTATING IT.
+
+      The owner chose a ~78 character subject knowing Gmail on mobile cuts
+      around 45. That truncation lands mid-figure and drops the second metric
+      entirely, so the preview line is where the rest of the thought has to
+      live. It used to open with the same United States figure the subject's
+      first metric already implies, which spent the one recovery slot on a
+      repeat.
+
+      So it leads with the two things a truncated subject cannot carry: the AI
+      figure, which is the one a reader is most likely to get wrong from the
+      subject alone, and the United States split, which is the owner's stated
+      first priority and appears nowhere in the subject.
+    */
+    $preheader = alt_digest_fit_preheader(
+        alt_digest_count($ai_jobs, 'cut') . ' attributed to AI',
+        array(number_format_i18n($us_jobs) . ' of the cuts in the United States',
+              $range));
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
-                 'subject' => $subject);
+                 'metric' => $metric);
 }
 
 /**
@@ -4781,7 +4875,17 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                . '<p data-alt="note">' . esc_html($cite_url) . '</p>';
         $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n";
     }
-    return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
+    /*
+      ITS OWN SUBJECT AND ITS OWN METRIC FRAGMENT, EACH BOUND TO ITS UNIT.
+
+      "hiring signals" is not "jobs" and not "cuts", and the combined edition's
+      subject sets this figure beside the layoff tracker's. Two numbers side by
+      side are read as the same quantity unless each says what it counts, so
+      the unit lives inside the fragment rather than being implied by position.
+    */
+    $metric = alt_digest_count($total, 'hiring signal');
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
+                 'metric' => $metric);
 }
 
 /**
@@ -5094,13 +5198,15 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         $text .= '    ' . $item['link'] . "\n";
     }
     $html .= '</table>';
-    // Its own stream, its own metric. Deliberately NOT called "AskTheRecruiter
-    // Weekly": that name belongs to the combined edition, which carries both
-    // trackers as well and does not exist yet. A subject naming a product the
-    // message is not would be worse than a dull one.
-    $subject = 'From the blog: ' . alt_digest_count($found, 'new post');
+    /*
+      A MINOR METRIC. The post count is the least important of the three
+      numbers and the combined subject is already at its ceiling, so it reaches
+      a subject only when it is the ONLY thing the message carries, which is
+      the articles-only subscriber, who exists.
+    */
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
-                 'subject' => $subject);
+                 'metric' => alt_digest_count($found, 'new post'),
+                 'minor' => true);
 }
 
 /* ------------------------------------------------------------------ */
@@ -5187,28 +5293,60 @@ function alt_digest_send($freq) {
         // because the sections are: this list is what THIS person consented
         // to, so the subject names what is actually inside their message.
         $headings = array();
-        $composed_subject = '';
+        $subject_parts = array();
         foreach (array('layoff', 'talent', 'articles') as $list) {
             $cols = alt_digest_lists()[$list];
             if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq && $sections[$list]) {
                 $parts_html[] = $sections[$list]['html'];
                 $parts_text[] = $sections[$list]['text'];
                 $headings[] = alt_digest_section_heading($sections[$list]['text']);
-                // The FIRST section this person actually gets is the one whose
-                // subject goes on their message, matching the relay exactly.
-                if ($composed_subject === '') {
-                    $composed_subject = (string) ($sections[$list]['subject'] ?? '');
-                }
+                // EVERY section this person gets, in the site's order, so the
+                // combined form can see both trackers. Matches the relay exactly.
+                $subject_parts[] = array(
+                    'metric' => (string) ($sections[$list]['metric'] ?? ''),
+                    'minor'  => !empty($sections[$list]['minor']),
+                );
             }
         }
         if (!$parts_html) continue;   // nothing to say to this person today
         $subject = alt_digest_subject_line($freq, $from_date, $to_date, $headings,
-                                           $fallback_subject, $composed_subject);
+                                           $fallback_subject, $subject_parts);
 
         $unsub = alt_digest_unsub_url($row['unsub_token']);
         // Text-first HTML: no images, no pixels, no external assets. See the
         // file header for why tracking is deliberately absent.
-        $html = '<div style="font-family:sans-serif;max-width:600px;color:#1a1a1a;">'
+        /*
+          THE PREVIEW LINE, WHICH THIS SENDER DID NOT HAVE AT ALL.
+
+          The relay's own renderer (railway/digest_layout.render_html) has
+          emitted a hidden preheader since it was written; this fallback
+          sender never did, so a message that went out through wp_mail showed
+          the client's own guess in the preview slot, which is where "View this
+          email in your browser" comes from.
+
+          It matters more now than it did. The subject leads with the brand,
+          which costs about twenty characters the From name already supplies,
+          so Gmail on mobile truncates near 45 and the tail of the subject is
+          dropped. The preview is the one slot left to complete it.
+
+          Hidden, and FIRST, so it is the text the client picks up. The colour
+          matches the surrounding page for the clients that ignore display:none.
+        */
+        $preheader = '';
+        foreach (array('layoff', 'talent', 'articles') as $list) {
+            $cols = alt_digest_lists()[$list];
+            if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq
+                && $sections[$list] && !empty($sections[$list]['preheader'])) {
+                $preheader = (string) $sections[$list]['preheader'];
+                break;
+            }
+        }
+        $hidden = ($preheader === '') ? '' :
+            '<div style="display:none;max-height:0;max-width:0;overflow:hidden;'
+            . 'opacity:0;font-size:1px;line-height:1px;color:#ffffff;'
+            . 'mso-hide:all;">' . esc_html($preheader) . '</div>';
+        $html = $hidden
+              . '<div style="font-family:sans-serif;max-width:600px;color:#1a1a1a;">'
               . implode('', $parts_html)
               . '<hr style="border:none;border-top:1px solid #ddd;margin:24px 0 12px;">'
               . '<p style="font-size:12px;color:#555;">You get this because you confirmed a digest '

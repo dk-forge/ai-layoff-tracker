@@ -15443,3 +15443,59 @@ silently succeeded and wiped the whole working tree. It was recovered from
 reverted tree before it was noticed. The repo's standing instruction not to use
 `git stash` exists for exactly this. `git status` before and after any
 tree-level command, or do not run it.
+
+
+## 2026-08-19 - the subject line inflated the metric the product is named after (2.20.105)
+
+**The defect, shipped in 2.20.103 and live for about an hour.**
+
+    AI Layoff Tracker: 16,842 verified cuts this week
+
+Metric first, inside the character budget, composed from the same query as the
+body. A reader who never opened it took away sixteen thousand AI-attributed
+cuts from a week whose AI figure was ZERO. Every line inside that edition is
+scrupulous about the distinction - the reviewed-entry count, the dated base
+rate, the "why that matters" line - and the subject undid all of it before the
+email was opened, on the product's most quoted surface, on the metric it is
+named after.
+
+**The defect was the juxtaposition, not the instance.** A brand name beside an
+unqualified count reads as a count of that brand's metric, whatever the figures
+are and whichever tier is sending. Rewording one line would have left the
+pattern in place for a layoffs-only stream, which is legitimately titled the AI
+Layoff Tracker.
+
+**The fix is structural.** The owner settled one pattern for all three streams:
+
+    AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts
+    AskTheRecruiter.com · 2026 Week 33: 1,376 hiring signals
+    AskTheRecruiter.com · 2026 Week 33: 16,842 verified job cuts · 1,376 hiring signals
+
+Leading with the SITE means nothing juxtaposes a tracker brand with a raw count,
+so no subject can be read as an AI figure at all. `alt_digest_subject_line()`
+joins figure-and-unit fragments the composers supply; it computes nothing. The
+ISO YEAR is in the period token, because a week number travelling without its
+dates is ambiguous across years and unsortable in a mailbox.
+
+**The two units are load-bearing and a consistency pass may not flatten them.**
+Verified job cuts each have a filing or a named report behind them. Hiring
+signals are deliberately weaker: a published indication, mostly unverified.
+Calling verified cuts "signals" would give away the differentiator, and it is
+the same signals-versus-jobs confusion arriving in the subject line.
+
+**The guard**, `tests/test_digest_subject_never_inflates_ai.py`, holds a
+property rather than a string, because it has to survive a future rewording:
+
+    A COMPOSED SUBJECT EITHER NAMES NO AI TRACKER, OR IT NAMES THE AI FIGURE.
+
+Checkable because the subject is composed by the site from the same /aggregate
+response as the body, so the true AI figure is in hand at compose time.
+
+**Preview text.** The brand prefix costs about twenty characters the From name
+already supplies, and Gmail on mobile truncates near 45, so the second metric is
+what a phone drops. The tradeoff was made knowingly by the owner. The preheader
+now COMPLETES the subject rather than restating it: on a combined edition it
+leads with the second metric, then the AI figure, then the United States split,
+none of which the subject carries. The wp_mail fallback sender had no hidden
+preheader at all, which is where "View this email in your browser" came from;
+it has one now, matching the relay.
