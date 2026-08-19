@@ -153,6 +153,117 @@ read.
 
 **Nothing here changed a production model.** The swap is the owner's call, and
 it should be made on the review file, not on this entry.
+## 2026-08-18 - the learning half of tracker_diff is armed, and it needed no secret (railway only)
+
+### What was asked
+
+"Use benchmarks to find what we're missing, learn from that so we're not
+reliant on them, and keep learning." A comparison that only produces a score
+teaches nothing; one that produces a RULE - a wording, an outlet, a country -
+makes the dependence smaller every time it runs.
+
+### What was already there
+
+Almost all of it. `tracker_diff.py` already measured full-list and INDEPENDENT
+recall, learned outlets from wins (country-tagged), captured missed vocabulary,
+clustered unresolved names into ranked source-gap categories, emailed the owner
+a paste-ready learning digest, and stepped its cadence down once independence
+held. None of that needed rebuilding.
+
+What it needed was an INPUT. Every one of those mechanisms hangs off a reference
+company list, and that list only ever arrived through `BENCHMARK_FEED_URLS` /
+`BENCHMARK_COMPANIES` - secrets the owner decided against on 2026-07-28. The
+machine was not broken, it was unfed, and the one food it accepted is food it
+must not be given.
+
+### What changed
+
+A second, competitor-free reference universe, and a second entry point
+(`tracker_diff.py --learn`) that uses it. **The corpus is our own GDELT query
+before our own trusted-domain gate.** The ingest asks GDELT for layoff coverage
+with `discovery_terms()` and then discards every article whose domain is not in
+`TRUSTED_DOMAINS`. Those discards are, by construction, layoff coverage our net
+could see and chose not to read - a reference universe that needs no secret,
+names no competitor, and is already paid for.
+
+Each headline that states a headcount is matched against our own rows by count
+and date (`rows_verdict`), one `/query` read per employer token. That verdict
+has THREE states and the third is load bearing: a row with the same company and
+the same headcount but a date far outside the window is UNKNOWN, not a miss.
+Measured against a real sweep, those are retrospective pieces about events we
+already hold, and scoring them as misses would both depress the recall number
+and manufacture rules out of our own coverage. What matches is
+independent recall: of the announcements the run could judge, the share our own
+pipeline held UNAIDED - unaided by construction, because this loop stores
+nothing. What does not match becomes rules: a repeated phrasing no discovery
+term sees, a domain carrying two or more stories we lack, a country with three,
+a non-English language with three. They go to the owner's inbox as paste-ready
+lines, the same shape `health_digest` uses for a broken scraper, because that is
+the loop the owner already runs.
+
+**Cost: $0.00 per run**, and structurally so. One keyless GDELT query plus at
+most `TRACKER_LEARN_MAX_CANDIDATES` reads of our own public API. No model is
+called on any path, the step carries no `OPENROUTER_API_KEY`, and it runs with
+`ALT_PAID_READS=off` so a paid call added here later fails instead of spending.
+
+### The leak safety is structural, and that was the design constraint
+
+Everything this loop reads is a name. Exactly one sink may carry one -
+`_email_rules`, to the owner's inbox - and the other three (stdout, which is a
+public Actions log; the source-health ledger, which renders on a public page;
+the committed measurement file) may carry none.
+
+That is not held by care. `assert_nameless` is an ALLOWLIST over the entire
+vocabulary a public sink may contain: numbers, ISO dates, and a frozen set of
+label words. A name cannot be spelled with it. Every public sink renders through
+`public_render`, and the committed file is validated before it is written, so an
+unsafe value fails the run rather than landing in a commit.
+`tests/test_tracker_learning_leak.py` poisons a whole run - employer, outlet,
+country and language all one marker token - and asserts the marker reaches the
+email and NOTHING else. The email assertion is there on purpose: a test that
+only proves silence would pass on a loop that learned nothing. Proven
+non-vacuous by adding a `print` of the outlet subjects, which failed it.
+
+### Three things measured rather than assumed
+
+**GDELT throttles this query hard, and patience is the wrong answer here.** The
+first live run spent 426 seconds in backoff over five attempts and still came
+back empty (HTTP 429; the endpoint's own message asks for one request every five
+seconds). The ingest is right to be that patient - it is collecting data and a
+lost window is data nobody re-reads. This query collects nothing, so it is
+bounded to two attempts, the same rule `gdelt.py` already applies to its
+rotating segment sweeps, and it can never sit on a shared endpoint the ingest
+needs next.
+
+**An unreadable corpus is UNKNOWN, and it is recorded as itself.** Not a pass -
+the health detail leads with the word and a point is written to the trend. Not a
+degraded collector - nothing of ours failed and no data was lost. And not a
+quiet run - the point carries no `rules` key, so the earned cadence skips it
+entirely and an outage can never wean the loop.
+
+**The vocabulary rule is grouped by PHRASE, not by headline.** Grouped by
+headline every unmatched article becomes its own rule: forty one-off "rules" a
+day that nobody reads, and a rule count that can never reach zero, so the earned
+cadence could never earn anything. `vocab_phrase` normalises the wording around
+the headcount and the floor is two: a phrasing that appears twice in one window
+is a phrasing we should be searching for.
+
+### What was deliberately NOT done
+
+- **The chase stays dormant.** It is one secret away from live and that secret
+  is a decision, not an oversight. Nothing here re-opens it.
+- **No new health id.** Both halves report under `tracker_diff` because they are
+  one collector; a new id needs a label in `assets/health.js`, which needs a
+  plugin version, and the baton is HELD. The learn step runs after the chase in
+  the same job so the health page shows the half that did something.
+- **No cross-run rule memory.** Remembering which outlets were already suggested
+  would need their names in a committed file. A salted hash was considered and
+  rejected: the candidate space is small enough to brute force, and "probably
+  not reversible" is not the standard this rule is held to.
+- **Nothing is scraped.** Titles come from the GDELT API response. No article
+  page is fetched, so no robots.txt, paywall or bot wall is touched by this
+  loop at all.
+
 ## 2026-08-18 - the Mazovia register was reading three of its eleven notices, and every Quebec row cited an index instead of a document (2.20.94)
 
 ### What was asked, and what was already there
@@ -345,13 +456,47 @@ an answer only with an exact quote from that body. It writes `country` and
 nothing else, dry-run by default because `/edit` pins the row and publishes the
 claim.
 
-The price was not the constraint. **Only 31 of the 82 news rows have a fetchable
-body at all.** Fifty of them cite a `news.google.com/rss/articles/...` redirect
+The price was not the constraint either. **Only 31 of the 82 news rows have a
+fetchable body at all.** Fifty of them cite a `news.google.com/rss/articles/...` redirect
 that no longer resolves - every one returns an 11-byte page, and Wayback holds
 no snapshot of an RSS redirect, because an RSS redirect is not a page anyone
 archives. The remaining one is a 403. That is a hard ceiling on this job and no
 amount of spend moves it; the estimate was right about the rate and wrong about
 the denominator, which is the kind of error only fetching them finds.
+
+### Run, and the finding is that a supported quote is not an answering quote
+
+Dry-run 2026-08-18: 31 bodies read, **$0.0093 spent against the $0.02 estimate**,
+four countries "recovered". Every one passed the verbatim quote gate that
+guards every other evidence path in `extractor.py`. Three of the four still
+could not place a row, and one of those three would have published a wrong
+country:
+
+| row | returned | the exact quote it returned |
+|---|---|---|
+| Zepz | Poland | "proposed the closure of business units in Kenya and Poland" |
+| Bosch | Germany | "Bundesweit gehen 25.000 Beschaeftigte auf die Strasse." |
+| Thermo Fisher | United States | "Cambridge and Plainville" |
+| Stellantis | US | "U.S. plant workers" |
+
+Zepz names two countries and one was written. Bosch's sentence is a nationwide
+PROTEST and names no country at all. Thermo Fisher's is two city names, correct
+only if you already know where Plainville is, and Cambridge is in two
+countries. Only the last states its answer, and its article says so outright:
+"Stellantis will indefinitely lay off up to 2,450 U.S. plant workers in Warren,
+Michigan".
+
+The gate proved the quote EXISTS. Nothing proved the quote ANSWERS. So one more
+rule now stands after it: the quote must name the returned country and no other
+country, canonically, matched on whole words so that "campus" does not contain
+the United States. It rejects the first three and keeps the fourth, and
+`tests/test_job_location_evidence.py` pins it on those four verbatim, so a later
+relaxation has to argue with the run that produced them.
+
+**Written: one row.** Stellantis 70499 -> United States, 2,450 jobs. That is
+0.04% of the US all-time headline against a movement floor of 8,000, so no
+headline guard moves; nothing else was written, and three candidates that a
+looser reading would have called recoveries are still blank.
 
 ### What stays blank, and why that is the answer
 
