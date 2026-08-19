@@ -17,6 +17,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "tests:ops-resend-ua:8f32a6ddbcaac88e",
+      "kind": "alert",
+      "last_attempt_at": "2026-08-19T07:41:09+00:00",
+      "last_error": "HTTP 403 from Resend: {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1010/\",\"title\":\"Error 1010: Access denied\",\"status\":403,\"detail\":\"The site owner has blocked access based on your browser's signature.\",\"instance\":\"a2d783a4b843a1e9\",\"error_code\":1010,\"e",
+      "payload": {
+        "body": "The workflow 'Tests' failed on GitHub Actions and nothing else would have told you.\n\n  repo:     dk-forge/ai-layoff-tracker\n  workflow: Tests\n  branch:   ops/resend-ua\n  trigger:  pull_request\n  run:      https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32228197188\n\nWHAT FAILED:\n  AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : Template-defined functions must be guarded against double-declare (a template renders more than once per request => FATAL). Wrap each in `if (!function_exists('name')) { ... }`, or (rarely) load the file once via require_once and allowli\n\nContext from the failed step:\n  FAIL: test_every_template_function_is_guarded_or_require_once (test_no_unguarded_template_functions.NoUnguardedTemplateFunctions.test_every_template_function_is_guarded_or_require_once)\n\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste this line:\n  \"The GitHub Actions workflow 'Tests' is failing on ops/resend-ua with: AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : Template-defined functions must be guarded against double-declare (a template renders more than once per request => FATAL). Wrap each in `if (!function_exists('name')) { ... }`, or (rarely) load the file once via require_once and allowli. The run is https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32228197188. Reproduce it locally, find the root cause, and fix it.\"\n\nYou will get ONE more email about this workflow: a RECOVERED notice on its next green run. We suppress repeats of this same failure on purpose. An alarm that mails eight times in an afternoon is one you learn to filter. A filtered alarm is how this defect stayed live for hours in the first place.",
+        "dedupe_key": "tests:ops-resend-ua:8f32a6ddbcaac88e",
+        "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
+      },
+      "raised_at": "2026-08-19T07:41:09+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32228197188",
+      "scope": "tests:ops-resend-ua",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -381,6 +397,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-19T07:35:01+00:00",
+  "updated_at": "2026-08-19T07:41:09+00:00",
   "version": 1
 }
