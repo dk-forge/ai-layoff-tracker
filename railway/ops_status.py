@@ -1093,6 +1093,14 @@ def main():
                           f"{cc_doc.get('backlog_oldest')} - shrinking this is the work")
                 for name in (cc_doc.get("undeclared") or [])[:8]:
                     print(f"      UNDECLARED  {name}  (arrived in the data unnoticed)")
+                naming = cc_doc.get("per_employer_naming") or []
+                if naming:
+                    # A DIFFERENT QUESTION from coverage, and the more valuable
+                    # one: a total makes coverage measurable, a register makes
+                    # layoffs findable. Printed every session so the count of
+                    # places on earth that name employers stays in view.
+                    print(f"    per-employer registers: {len(naming)} jurisdictions on "
+                          f"earth NAME the filing employer - {', '.join(naming)}")
                 ledger = cc_doc.get("refusal_ledger") or []
                 if ledger:
                     ver = sum(1 for r in ledger if r.get("verified_here"))

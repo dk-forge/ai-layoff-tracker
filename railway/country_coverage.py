@@ -566,6 +566,42 @@ REFUSAL_LEDGER = (
                "Act text was never read",
      "alternative": "www.tootukassa.ee, the authority that receives the notification, "
                     "describing its own duty (Crawl-delay 10)", "verified_here": True},
+    # --- from the 2026-08-19 sub-national sweep for per-employer registers.
+    # These matter more than most: each one is a jurisdiction whose ANSWER we do
+    # not have, in the exact search where a national "no" hides a regional "yes".
+    {"host": "www.ti.ch", "country": "Switzerland (Ticino)",
+     "nature": "robots.txt: 'User-agent: ClaudeBot / Disallow: /'. Zero content requests "
+               "were made. Ticino is therefore UNKNOWN in the cantonal register sweep, "
+               "not a no",
+     "alternative": "none found", "verified_here": False},
+    {"host": "www.saskatchewan.ca", "country": "Canada (Saskatchewan)",
+     "nature": "robots.txt: 'User-agent: ClaudeBot / Disallow: /'. Zero content requests "
+               "were made. Saskatchewan is UNKNOWN in the provincial register sweep, not "
+               "a no",
+     "alternative": "none found", "verified_here": False},
+    {"host": "datos.comunidad.madrid", "country": "Spain (Madrid)",
+     "nature": "blanket 'Disallow: /' — and it holds Madrid's ERE dataset, so whether "
+               "Madrid names employers the way Balears does is UNVERIFIED. Of the "
+               "Spanish communities this is the single most valuable unread file",
+     "alternative": "datos.gob.es aggregates the catalogue but not the file",
+     "verified_here": False},
+    {"host": "opendata.swiss, www.canada.ca, yukon.ca, regione.toscana.it, "
+             "princeedwardisland.ca", "country": "Switzerland, Canada, Italy",
+     "nature": "HTTP 403 to our identifying agent (PEI behind a Radware WAF). Not "
+               "retried under another identity. Yukon, PEI and Toscana are UNKNOWN in "
+               "the sub-national sweep rather than negative",
+     "alternative": "none found", "verified_here": False},
+    {"host": "www.govdata.de, canlii.org", "country": "Germany, Canada",
+     "nature": "robots-refused. canlii.org matters least (case law, not notices); "
+               "govdata.de is the German federal open-data catalogue and would have been "
+               "the one place a Land-level Massenentlassung dataset surfaced",
+     "alternative": "the Lander portals, which were swept directly",
+     "verified_here": False},
+    {"host": "zentralplus.ch", "country": "Switzerland",
+     "nature": "HTTP 402, a hard paywall. Not circumvented. Recorded only because a "
+               "paywalled local outlet is not a public register and must never be "
+               "treated as one",
+     "alternative": "none needed", "verified_here": False},
     # --- path-level disallows a production collector must honour
     {"host": "www.moel.go.kr /info/defaulter/", "country": "South Korea",
      "nature": "path-level disallow over the ONE genuine per-employer public naming "
@@ -597,6 +633,146 @@ REFUSAL_LEDGER = (
      "alternative": "the HTML pages on the same hosts", "verified_here": False},
 )
 
+
+
+# ---------------------------------------------------------------------------
+# THE PER-EMPLOYER REGISTERS — the far more valuable question, asked separately
+# ---------------------------------------------------------------------------
+# EVERYTHING ABOVE ANSWERS "DOES A COUNTABLE TOTAL EXIST". This answers a
+# different and much better question: does a public authority anywhere publish
+# a list that NAMES THE EMPLOYER filing a collective-dismissal notice? A total
+# makes coverage MEASURABLE. A register makes layoffs FINDABLE, which is the
+# thing the tracker is actually for, and the two must never be conflated — the
+# error that has bitten this project twice.
+#
+# The owner's question was "in most countries there is no register to search;
+# do we have them all, or are there more to register with?" This is where that
+# is answered, and the answer is kept apart from the coverage register on
+# purpose so nobody reads "publishes a total" as "names employers".
+#
+# THE SHAPE OF THE WORLD, as established on 2026-08-19: at national level,
+# essentially nowhere. Sweden's Arbetsformedlingen states that a varselanmalan
+# is ALWAYS covered by secrecy; Canada's ESDC states that group termination
+# notices are confidential and records that one bank's details "were published
+# in error and have since been removed"; the canton of Aargau handles
+# notifications "mit hochster Diskretion". Naming is the exception and it is
+# devolved almost everywhere it happens — which is why a national NO is not an
+# answer in a country that devolves labour administration, and why the search
+# below went to cantons, provinces, voivodeships and autonomous communities.
+#
+# 165+ sub-national units were checked by name to produce this list. The
+# NEAR-MISSES are recorded with it because they are what stops the next pass
+# re-walking the same ground: a jurisdiction that publishes the row and omits
+# the name is a decision that could change, and it is a different thing from a
+# jurisdiction that publishes nothing.
+PER_EMPLOYER_REGISTERS = (
+    {"jurisdiction": "United States (state WARN units)", "country": "United States",
+     "names_employers": True,
+     "what": ("one row per WARN notice with employer, site, date and headcount. The "
+              "type specimen, and the only one at national-scale coverage — because it "
+              "is 50-odd separate state registers, not one"),
+     "since": "varies by state", "in_tracker": True,
+     "cite": "https://www.dol.gov/agencies/eta/layoffs/warn"},
+    {"jurisdiction": "Quebec", "country": "Canada", "names_employers": True,
+     "what": ("avis de licenciement collectif, published monthly by the ministry with "
+              "employer, region and headcount. Re-verified 2026-08-19: a scrapeable "
+              "monthly PDF URL pattern. THE MINISTRY'S OWN CAVEAT MATTERS — a notice is "
+              "an INTENTION, and the list is NOT revised when an amendment arrives, so "
+              "it is an upper bound on that employer's cut"),
+     "since": "the only Canadian province of 13 that names", "in_tracker": True,
+     "cite": "https://www.quebec.ca/emploi/aide-employeurs/licenciement-collectif"},
+    {"jurisdiction": "Mazowieckie voivodeship", "country": "Poland",
+     "names_employers": True,
+     "what": ("zwolnienia grupowe listing naming the employer. Found only because "
+              "somebody surveyed all 16 Polish voivodeship labour offices and exactly "
+              "one named employers — the warning this whole exercise is built on"),
+     "since": "one of 16 voivodeships", "in_tracker": True,
+     "cite": "https://wupwarszawa.praca.gov.pl/"},
+    {"jurisdiction": "Illes Balears", "country": "Spain", "names_employers": True,
+     "what": ("THE FOURTH PLACE ON EARTH, found 2026-08-19 and verified by downloading "
+              "the file rather than by reading a catalogue page. 'Expedients Regulacio "
+              "Ocupacio (ERO i ERTO) Illes Balears', CC-BY, 49 columns, 3,817 rows: "
+              "EMPRESA (populated on every row), NIF, DATA PRESENTACIO, MUNICIPI, ILLA, "
+              "NUM. TOTAL TREBALLADORS, TREBALLADORS AFECTATS INICIAL, CODI CNAE 09, "
+              "CAUSES and MESURA. THE CAVEAT THAT SIZES IT HONESTLY, and it is a large "
+              "one: MESURA splits SUSPENSIO 1,747 / RED. JOR. 971 / blank 740 / "
+              "EXTINCIO 359, and only those 359 are collective DISMISSALS — the rest is "
+              "short-time work, the same near-miss that ERTE is everywhere in Spain. The "
+              "companion 2023-2025 file is ERTO-only, so NAMED DISMISSAL ROWS EFFECTIVELY "
+              "STOP AT 2022 and the catalogue marks the dataset 'No s'actualitza'. It "
+              "settles the existence question. It is not a WARN-scale feed. "
+              "CORROBORATION: ASEDIE's 2026 infomediary report finds 11 Spanish "
+              "communities publish ERE/ERTE datasets and that ONLY Baleares includes the "
+              "NIF or razon social"),
+     "since": "2008-2022 for dismissals", "in_tracker": False,
+     "cite": ("https://intranet.caib.es/opendatacataleg/dataset/"
+              "expedients-regulacio-ocupacio-ero-erto-illes-balears")},
+    # --- NEAR-MISSES. Recorded because each is a decision rather than an
+    # absence, and a decision can be revisited by whoever made it.
+    {"jurisdiction": "Euskadi", "country": "Spain", "names_employers": False,
+     "what": ("THE BEST NEAR-MISS ON EARTH and the cheapest thing on this page to act "
+              "on. Identical row-per-notice shape to Balears and CURRENT — 216 rows from "
+              "2021-11-08 to 2026-06-18, split Extincion 79 / Suspension 101 / Reduccion "
+              "36 — with the company CIF DELIBERATELY MASKED ('***0071**'). One redacted "
+              "column from being a fifth register, at exactly the cadence Balears lacks"),
+     "since": "2021", "in_tracker": False,
+     "cite": "https://opendata.euskadi.eus/"},
+    {"jurisdiction": "Podlaskie voivodeship", "country": "Poland",
+     "names_employers": False,
+     "what": ("the same shape as Euskadi: one row per notice with powiat, sector, "
+              "headcount and date, name omitted. Two of 16 voivodeships therefore "
+              "publish per-notice rows and only one names"),
+     "since": None, "in_tracker": False,
+     "cite": "https://wupbialystok.praca.gov.pl/"},
+    {"jurisdiction": "federal (SPF Emploi / FOD WASO)", "country": "Belgium",
+     "names_employers": True,
+     "what": ("PARTIAL AND SELECTIVE, which is why it is a near-miss rather than a "
+              "register. The quarterly and annual collective-dismissal reports name "
+              "individual firms with headcount and municipality, but in NARRATIVE prose "
+              "and explicitly only the ones that drew media attention — roughly 40 named "
+              "of 112 units in 2025. Useful as a named-entity target, never as a feed, "
+              "and a coverage figure built on it would measure Belgian press interest"),
+     "since": None, "in_tracker": False,
+     "cite": ("https://emploi.belgique.be/fr/themes/restructuration/licenciement-collectif/"
+              "statistiques-relatives-aux-restructurations")},
+    {"jurisdiction": "14 krajske pobocky", "country": "Czechia", "names_employers": True,
+     "what": ("REPORTED, NOT VERIFIED. Each regional labour office's annual "
+              "'Zprava o situaci na krajskem trhu prace' PDF is reported to carry "
+              "hromadne propousteni counts AND to name the largest filing employers, "
+              "2013-2025. Same narrative-selection objection as Belgium. Verification "
+              "failed here: the PDFs are font-subset encoded and a hand-rolled text "
+              "extraction silently drops every diacritic word"),
+     "since": "2013", "in_tracker": False,
+     "cite": "https://up.gov.cz/tiskove-zpravy"},
+)
+
+# The units swept to produce the list above, recorded so the next pass does not
+# re-walk them. Named rather than counted, because "we checked Switzerland" is
+# not a claim anybody can check and "we checked 14 named cantons" is.
+PER_EMPLOYER_SWEPT = {
+    "Switzerland": ("14 of 26 cantons by name: ZH BS AG SO ZG TG GE VD BE LU SG FR NE "
+                    "JU. No cantonal naming list found. Ticino (www.ti.ch) names "
+                    "ClaudeBot and disallows all, so TI is UNKNOWN, not no"),
+    "Canada": ("all 13 jurisdictions plus the federal ESDC regime. ESDC states group "
+               "termination notices are CONFIDENTIAL. Only Quebec names. Saskatchewan "
+               "names ClaudeBot and disallows all; Yukon and PEI blocked; those three "
+               "are UNKNOWN, not no"),
+    "Poland": "all 16 voivodeships. Mazowieckie names; Podlaskie publishes rows without "
+              "names; the BIP sites of the WUPs are the one surface not swept",
+    "Spain": ("13 of 17 autonomous communities. Balears names; Euskadi masks. "
+              "datos.comunidad.madrid is 'Disallow: /' and holds Madrid's ERE CSV, "
+              "whose fields are therefore UNVERIFIED"),
+    "Germany": "Bund, the Regionaldirektionen and the Lander open-data portals. Nothing "
+               "per-employer, and the BA Fachstatistiken catalogue carries no "
+               "Massenentlassung product at all",
+    "Japan": "4 of 47 prefectural labour bureaus (Hokkaido, Aichi, Osaka, Tottori). "
+             "Procedure pages only, no lists. The other 43 are UNKNOWN",
+    "South Korea": "the regional employment and labour offices publish awareness notices "
+                   "about the duty to file, never lists of filers",
+    "Italy": ("not swept below national level, and it should be: Regione Lombardia's own "
+              "page routes art. 4 filings AWAY from itself to the PROVINCES, so Italian "
+              "per-employer data sits one tier below where anyone has looked"),
+}
 
 # ---------------------------------------------------------------------------
 # THE ACKNOWLEDGED BACKLOG — the one concession, and why it is not an exemption
@@ -851,10 +1027,6 @@ ACKNOWLEDGED_BACKLOG = {
       "/info/defaulter/ is robots-disallowed and was not fetched. It proves the "
       "naming barrier in Korea is policy rather than statute."
       ),
-    'Switzerland': ("2026-08-18",
-      "outside the EU/EEA for this purpose — Art. 335d-335g Code of "
-      "Obligations, cantonal notification. Not yet researched."
-      ),
     'Thailand': ("2026-08-18",
       "Labour Protection Act B.E. 2541 s.121 requires 60 days' notice to "
       "the Labour Inspector — but it is NARROW, covering machinery and "
@@ -1001,6 +1173,13 @@ REGISTER = {
         "denominator_basis": "national_notification_aggregate",
         "assessed": "2026-08-18",
         "cite": "https://www.mites.gob.es/estadisticas/reg/reg26may/reg_05_2026.xlsx",
+        "per_employer_register": ("SEPARATELY, AND MORE VALUABLE THAN THE TOTAL: one of "
+                                  "the 17 autonomous communities publishes the "
+                                  "underlying notices WITH THE EMPLOYER NAMED. See "
+                                  "PER_EMPLOYER_REGISTERS — Illes Balears, verified "
+                                  "2026-08-19, and Euskadi publishing the same rows with "
+                                  "the CIF masked. Only Balears names, of the 11 "
+                                  "communities that publish an ERE/ERTE dataset at all"),
     },
 
     "Portugal": {
@@ -1553,6 +1732,47 @@ REGISTER = {
                    "https://portal.stf.jus.br/jurisprudenciaRepercussao/tema.asp?num=638"),
         "assessed": "2026-08-18",
     },
+    "Switzerland": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("TWO duties, and the second is the one a collector would otherwise "
+                   "miss. (1) Massenentlassung — Code des obligations / "
+                   "Obligationenrecht art. 335d (what counts), 335f (inform and consult) "
+                   "and 335g (WRITTEN NOTIFICATION to the cantonal labour office, with "
+                   "the employment ending no earlier than 30 days after it). (2) art. 29 "
+                   "AVG with art. 53 AVV — a separate, LOWER duty to report the dismissal "
+                   "of a larger number of employees or a plant closure to the competent "
+                   "cantonal office as early as possible, where 'larger number' means 10 "
+                   "and A CANTON MAY LOWER IT TO 6. SECO's own portal foregrounds the "
+                   "second, not the first, so anything keyed only on OR 335d is keyed on "
+                   "the wrong threshold. Read from arbeit.swiss (SECO/ALV), fully "
+                   "permissive; fedlex.admin.ch permits us in robots but serves a "
+                   "JavaScript shell with no law body, so the OR text was NOT read at "
+                   "source"),
+        "authority": ("the competent CANTONAL labour office — there is no federal "
+                      "recipient, which is why there is no federal count"),
+        "threshold": ("OR 335d, within 30 days: at least 10 dismissals in an "
+                      "establishment of more than 20 and fewer than 100; at least 10% in "
+                      "100-299; at least 30 in 300+. Coverage includes part-timers, "
+                      "apprentices, interns, probationers and fixed-terms over 3 months. "
+                      "AVG 29 / AVV 53 sits lower at 10, or 6 where a canton so provides"),
+        "aggregate": ("NONE NATIONALLY. SECO's statistics pages carry no series of "
+                      "Massenentlassung notifications, and its 'Die Lage auf dem "
+                      "Arbeitsmarkt' is unemployment and Kurzarbeit only — Kurzarbeit "
+                      "being SHORT-TIME WORK, the standard near-miss, rejected. RESIDUAL "
+                      "STATED RATHER THAN SMOOTHED: BFS/OFS's catalogue was NOT "
+                      "enumerated the way Germany's BA publication calendar was, so this "
+                      "is 'no series found on the receiving side and none at SECO', not "
+                      "the exhaustive negative Germany's entry carries. ONE CANTON DOES "
+                      "PUBLISH A COUNT: St. Gallen's AWA-Barometer reports a quarterly "
+                      "cantonal figure, with no names. 14 of 26 cantons were checked by "
+                      "name for a per-employer list and none publishes one; Aargau "
+                      "states it handles notifications 'mit hochster Diskretion'; Ticino "
+                      "names ClaudeBot and disallows everything, so TI is UNKNOWN"),
+        "assessed": "2026-08-19",
+        "cite": ("https://www.arbeit.swiss/secoalv/en/home/menue/unternehmen/"
+                 "massenentlassungen/meldepflicht.html"),
+    },
+
     "Germany": {
         "class": REGIME_NO_AGGREGATE,
         "regime": "Massenentlassungsanzeige — s.17(1) and (3) Kundigungsschutzgesetz (KSchG)",
@@ -2334,6 +2554,13 @@ def classify_all(today=None, fetch=None):
         # writing a collector.
         refusal_ledger=[dict(r) for r in REFUSAL_LEDGER],
         refusal_hosts=len(REFUSAL_LEDGER),
+        # A DIFFERENT QUESTION FROM EVERYTHING ELSE IN THIS REPORT, carried
+        # here so it is in front of a human every session: not "can coverage be
+        # measured" but "does anybody publish a list that names employers".
+        per_employer_registers=[dict(r) for r in PER_EMPLOYER_REGISTERS],
+        per_employer_naming=sorted(r["jurisdiction"] for r in PER_EMPLOYER_REGISTERS
+                                   if r.get("names_employers")),
+        per_employer_swept=dict(PER_EMPLOYER_SWEPT),
     )
     return report
 
@@ -2480,6 +2707,16 @@ def _render(report):
             alt = r.get("alternative") or "none found"
             lines.append(f"      {r['host']}  [{r.get('country')}]")
             lines.append(f"          alternative: {alt}")
+    regs = report.get("per_employer_registers") or []
+    naming = [r for r in regs if r.get("names_employers")]
+    if regs:
+        lines.append(f"  PER-EMPLOYER REGISTERS — authorities that NAME the employer "
+                     f"filing a notice  ({len(naming)} found)")
+        for r in regs:
+            mark = "NAMES" if r.get("names_employers") else "near-miss"
+            held = "in tracker" if r.get("in_tracker") else "NOT ingested"
+            lines.append(f"      [{mark}] {r['jurisdiction']} ({r['country']}) — {held}")
+            lines.append(f"          {r['what']}")
     for dup in report.get("vocabulary_duplicates") or []:
         lines.append(f"  VOCABULARY  '{dup['stored']}' is stored alongside "
                      f"'{dup['canonical']}' — one country, two spellings "
