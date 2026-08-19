@@ -19,7 +19,12 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Pure-guard tests do not create API clients or make network calls.
 sys.modules.setdefault("openai", SimpleNamespace())
-sys.modules.setdefault("requests", SimpleNamespace())
+# `requests` is stubbed through tests/_requests_stub.py and nowhere else:
+# sys.modules is process-global, so a per-module stub makes the surface a
+# function of discovery order (see that module's docstring).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
 
 import sources.edgar as edgar
 from sources.edgar import _edgar_source_name, _has_exit_cost_item

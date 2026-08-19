@@ -21,18 +21,15 @@ sweep, it is an outage of the news path.
 """
 import os
 import sys
-import types
 import unittest
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Stub only `requests` (never a sources.* module — see
+# Stub only `requests`, via the shared installer (never a sources.* module — see
 # tests/test_warn_generic_drift.py for why faking those hides real breakage).
-if "requests" not in sys.modules:
-    _stub = types.ModuleType("requests")
-    _stub.RequestException = Exception
-    _stub.get = lambda *a, **k: None
-    sys.modules["requests"] = _stub
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
 
 
 class _Resp:

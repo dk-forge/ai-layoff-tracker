@@ -232,6 +232,55 @@ is what the authorising email says. New tests:
 against the real handlers, five of which fail when the delta is disconnected.
 2.20.120.
 
+## 2026-08-19 - the test suite's `requests` was whoever imported first
+
+**Five tests in `tests/test_digest_subscription.WeeklyEmailWiring` passed alone
+and ERRORed in a full-suite run**, with
+`AttributeError: <module 'requests'> does not have the attribute 'get'`. Nothing
+in the code under test was wrong. Five red tests about nothing is exactly the
+noise that trains a person to skim past red.
+
+`sys.modules["requests"]` is a process-global slot, and **35 test modules each
+stood their own partial stub into it and SKIPPED when one was already there** -
+`sys.modules.setdefault("requests", SimpleNamespace())` in 29 of them, a bare
+`types.ModuleType("requests")` with `RequestException = Exception` in the warn
+tests, and `if "requests" not in sys.modules` in the digest test itself. So the
+SURFACE of `requests` was a function of unittest's discovery order. Run alone,
+`test_digest_subscription` installed its own stub, which defines `get`, and
+passed. Run in the suite, `test_companies_house_identity` got there first with a
+`SimpleNamespace()` carrying no attributes at all, and `mock.patch.object(hd.requests,
+"get", ...)` had nothing to patch.
+
+The manifestation is order- and environment-dependent, which is the disease
+rather than a mitigation: on a machine where the real `requests` is installed
+(CI installs it from the lock) the real module fills the slot and nothing shows;
+in one local full-suite run a later module happened to attach `.get` to the
+shared namespace before the digest tests ran, and they passed. Both polluter
+shapes reproduce the exact five errors on origin/main in two modules:
+
+    python3 -m unittest tests.test_companies_house_identity tests.test_digest_subscription
+    python3 -m unittest tests.test_warn_sanitize tests.test_digest_subscription
+
+**The fix is structural, because `tearDown` cannot help here.** A module under
+test binds `requests` at import and keeps that reference for the rest of the
+process, so restoring the slot afterwards restores nothing. `tests/_requests_stub.py`
+is now the single installer: it prefers the real `requests` when importable, and
+otherwise creates **or completes** the stub with the whole surface any module
+under test touches (the verbs, `Session`, the exception classes,
+`requests.exceptions`). Completing rather than skipping is the entire point - a
+stub already in the slot still ends up whole no matter who put it there. The
+stub verbs raise `RuntimeError("no network in tests")` rather than returning
+`None`, so an unpatched call cannot read as a pass.
+
+`tests/test_requests_stub_isolation.py` pins it: no test module may write the
+`requests` slot itself, `install()` completes exactly the partial stub that broke
+`WeeklyEmailWiring`, the verbs refuse the network, and it is idempotent. Adding
+an attribute to the stub belongs in that one file - a per-module addition is how
+the surface became order-dependent in the first place.
+
+Full-suite before and after are identical apart from the fix: 10 pre-existing
+errors in both, unchanged.
+
 ## 2026-08-19 - the manage link named a preference centre that does not exist
 
 **The complaint, about all three digests: "when i click this: You can also

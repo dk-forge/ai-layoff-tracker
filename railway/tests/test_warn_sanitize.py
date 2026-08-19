@@ -7,20 +7,16 @@ appending RESCINDED/CANCELLED to the employer name rather than removing the row.
 """
 import os
 import sys
-import types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-# Only stub `requests` (a bare stub is enough for warn_import's real deps to
-# import offline). Do NOT install fake `sources.*` modules: they persist in
-# sys.modules and shadow the real sources.warn / sources.warn_custom for every
-# test loaded after this one, which silently breaks their parsers. See the same
-# note in tests/test_warn_generic_drift.py.
-_rq = sys.modules.get("requests")
-if _rq is None:
-    _rq = types.ModuleType("requests")
-    sys.modules["requests"] = _rq
-if not hasattr(_rq, "RequestException"):
-    _rq.RequestException = Exception
+# Only stub `requests`, and only through tests/_requests_stub.py (one shared
+# surface for a process-global slot). Do NOT install fake `sources.*` modules:
+# they persist in sys.modules and shadow the real sources.warn /
+# sources.warn_custom for every test loaded after this one, which silently
+# breaks their parsers. See the same note in tests/test_warn_generic_drift.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
 
 import warn_import as W  # noqa: E402
 

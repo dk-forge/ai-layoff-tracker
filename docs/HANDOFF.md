@@ -6,6 +6,17 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the test suite's
+  `requests` stub is shared instead of first-come.** The baton was read as HELD
+  by `local` and is NOT claimed here. **No plugin file was touched and no
+  version was consumed** - the change is `railway/tests/_requests_stub.py`,
+  `railway/tests/test_requests_stub_isolation.py`, the 35 test modules that used
+  to install their own partial `requests` into `sys.modules`, and TECHLOG, so
+  `reader_freshness.py` has nothing to verify. Five `WeeklyEmailWiring` tests
+  ERRORed in a full-suite run and passed alone because the stub's surface
+  depended on discovery order; see TECHLOG 2026-08-19. **The next plugin release
+  is still whatever the newest claim below says; this did not move it.**
+
 **DO NOT TAKE A VERSION NUMBER OUT OF A CLAIM. READ MAIN.**
 
 A number written in a claim is a number that was true when somebody typed it.
