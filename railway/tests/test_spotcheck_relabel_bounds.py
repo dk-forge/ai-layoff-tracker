@@ -276,6 +276,105 @@ class ASecondObjectDoesNotThrowAwayTheFirst(unittest.TestCase):
             sc.first_json_object('{"a": ')
 
 
+class TheDeadlineIsNotSwallowedByRetry(unittest.TestCase):
+    """The script owns a 360s wall-clock deadline (SIGALRM) so a trickling LLM
+    response cannot run into the workflow's timeout-minutes uncaught (see the
+    DEADLINE_SECONDS docstring). Run 32269578659 (2026-08-19) proved that
+    budget was not actually honoured: the step ran 9m49s against a 360s
+    deadline before the workflow's 10-minute ceiling cancelled it.
+
+    Root cause: `request_json`'s blanket `except Exception` caught the
+    SIGALRM's `Deadline` and re-raised it as a plain `RuntimeError`. That
+    RuntimeError is indistinguishable, by `spend.metered_call` (railway/
+    spend.py, out of bounds for this script), from an ordinary transient
+    failure, so metered_call retried with a brand-new `urlopen()` call --
+    except `signal.alarm()` is one-shot, so the retry had no deadline
+    protection left and could hang again with nothing to stop it.
+    """
+
+    def test_a_deadline_raised_mid_call_propagates_as_a_deadline(self):
+        # This is what happens when SIGALRM fires while urlopen is blocked:
+        # the interrupted syscall raises Deadline from inside the try. Before
+        # the fix, request_json's `except Exception` swallowed it into a
+        # RuntimeError, which is exactly what let spend.metered_call retry an
+        # unbounded call after the one-shot alarm had already fired.
+        def fake_urlopen(*_a, **_k):
+            raise sc.Deadline("wall-clock deadline (360s) reached")
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            with self.assertRaises(sc.Deadline):
+                sc.request_json("http://example.invalid/x", attempts=1, timeout=45)
+
+    def test_a_retry_issued_after_the_deadline_already_rang_touches_no_network(self):
+        # Simulates spend.metered_call retrying request_json after the alarm
+        # has already fired once (one-shot) and been converted to the module
+        # flag. The retry must fail immediately, not attempt a fresh,
+        # unprotected urlopen() call.
+        sc._deadline_message = "wall-clock deadline (360s) reached"
+        try:
+            def boom_if_called(*_a, **_k):
+                raise AssertionError("urlopen was called after the deadline had "
+                                      "already fired; this is the unprotected "
+                                      "retry that produced the 9m49s hang")
+            with mock.patch("urllib.request.urlopen", boom_if_called):
+                with self.assertRaises(sc.Deadline):
+                    sc.request_json("http://example.invalid/x", attempts=1, timeout=45)
+        finally:
+            sc._deadline_message = None
+
+    def test_main_exits_cleanly_when_the_flagging_pass_hits_the_deadline(self):
+        with mock.patch.dict(os.environ, {"WP_API_KEY": "test-key",
+                                          "OPENROUTER_API_KEY": "test-key"}), \
+             mock.patch.object(sc, "arm_deadline", lambda *_a, **_k: None), \
+             mock.patch.object(sc.spend, "paid_reads_enabled", lambda: True), \
+             mock.patch.object(sc, "request_json",
+                               lambda *a, **k: {"data": [SMALL_ROW]}), \
+             mock.patch.object(sc, "ask_model",
+                               mock.Mock(side_effect=sc.Deadline("wall-clock deadline (360s) reached"))):
+            summaries = []
+            with mock.patch.object(sc, "summary", summaries.append):
+                code = sc.main()
+        self.assertEqual(code, 0, "a self-imposed deadline must exit clean, not fail the job")
+        self.assertTrue(any("deadline" in s.lower() for s in summaries),
+                        "a run that stopped itself at its deadline must say so")
+
+    def test_main_exits_cleanly_when_the_confirm_pass_hits_the_deadline(self):
+        flags = [_flag(SMALL_ROW, "industry", "Manufacturing")]
+        calls = {"n": 0}
+
+        def ask_model_side_effect(prompt):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return {"flags": flags}
+            raise sc.Deadline("wall-clock deadline (360s) reached")
+
+        with mock.patch.dict(os.environ, {"WP_API_KEY": "test-key",
+                                          "OPENROUTER_API_KEY": "test-key"}), \
+             mock.patch.object(sc, "arm_deadline", lambda *_a, **_k: None), \
+             mock.patch.object(sc.spend, "paid_reads_enabled", lambda: True), \
+             mock.patch.object(sc, "ask_model", side_effect := ask_model_side_effect):
+            calls_made = []
+
+            def fake_request_json(url, payload=None, headers=None, attempts=3, timeout=120):
+                calls_made.append((url, payload))
+                if "sort=layoff_date" in url:
+                    return {"data": [SMALL_ROW]}
+                if "sort=job_count" in url:
+                    return {"data": []}
+                if url.endswith("alert"):
+                    return {"ok": True}
+                raise AssertionError("unexpected request: " + url)
+
+            summaries = []
+            with mock.patch.object(sc, "request_json", fake_request_json), \
+                 mock.patch.object(sc, "summary", summaries.append):
+                code = sc.main()
+        self.assertEqual(code, 0, "a deadline during confirmation must exit clean, not fail the job")
+        self.assertFalse(any(url.endswith("edit") for url, _ in calls_made),
+                         "confirmation never finished, so nothing may be written")
+        self.assertTrue(any("deadline" in s.lower() for s in summaries),
+                        "a run that stopped itself at its deadline must say so")
+
+
 class TheDocsDoNotClaimIndependence(unittest.TestCase):
     def test_the_public_correction_reason_does_not_say_independent(self):
         src = (Path(__file__).resolve().parents[1] /

@@ -123,9 +123,19 @@ class Deadline(Exception):
     """Raised by SIGALRM wherever execution happens to be."""
 
 
+#: Set by the SIGALRM handler the instant the wall-clock budget is spent, and
+#: never cleared. `signal.alarm` is one-shot: once it has fired there is no
+#: second interrupt coming, so a caller that swallows the first Deadline and
+#: tries again would run that retry with no protection at all. This flag is
+#: what stands in for the alarm on every attempt after the first.
+_deadline_message = None
+
+
 def arm_deadline(seconds):
     def ring(signum, frame):
-        raise Deadline(f"wall-clock deadline ({seconds}s) reached")
+        global _deadline_message
+        _deadline_message = f"wall-clock deadline ({seconds}s) reached"
+        raise Deadline(_deadline_message)
     signal.signal(signal.SIGALRM, ring)
     signal.alarm(max(1, int(seconds)))
 
@@ -138,15 +148,35 @@ def summary(text):
 
 
 def request_json(url, payload=None, headers=None, attempts=3, timeout=120):
+    """A Deadline must reach main() as a Deadline, not as a RuntimeError.
+
+    `metered_call` (railway/spend.py, out of bounds for this script to change)
+    retries anything it does not recognise by exception class NAME, and a
+    bare `except Exception` here used to convert the SIGALRM's Deadline into a
+    RuntimeError before metered_call ever saw it -- so the retry it issued ran
+    a brand-new urlopen with the one-shot alarm already spent and nothing left
+    to bound it. This is the hang measured on 2026-08-19 (run 32269578659): the
+    step ran 9m49s against a 360s deadline.
+
+    Two changes close it: Deadline is re-raised untouched instead of being
+    folded into `last`, and every attempt (including one a caller outside this
+    function retries) checks `_deadline_message` BEFORE opening a socket, so a
+    retry issued after the deadline has already rung costs nothing and hangs
+    on nothing.
+    """
     headers = {"User-Agent": UA, **(headers or {})}
     last = None
     for attempt in range(attempts):
+        if _deadline_message:
+            raise Deadline(_deadline_message)
         try:
             data = json.dumps(payload).encode() if payload is not None else None
             if data is not None:
                 headers = {"Content-Type": "application/json", **headers}
             req = urllib.request.Request(url, data=data, headers=headers)
             return json.load(urllib.request.urlopen(req, timeout=timeout))
+        except Deadline:
+            raise
         except Exception as exc:
             last = exc
             if attempt + 1 < attempts:
@@ -466,6 +496,18 @@ def main():
                 f"{len(label_flags)} proposed label change(s) were flagged but NOT "
                 "confirmed (`" + str(exc) + "`), so none were applied. A single-pass "
                 "flag is not a finding. The next run re-samples.")
+        clear_hold_alert()
+        return 0
+    except Deadline as exc:
+        # Same reasoning as the PaidReadsOff branch above: the SECOND pass is
+        # what stopped, so nothing was confirmed and nothing was applied. Exit
+        # 0, not 1 -- a self-imposed deadline is the script finishing cleanly
+        # with what it had, not a correction failure.
+        summary("## Classification spot-check — confirmation skipped at its own deadline\n"
+                f"{len(label_flags)} proposed label change(s) were flagged but the "
+                "confirmation pass did not finish (`" + str(exc) + "`) before the "
+                "script's own wall-clock deadline. Nothing was confirmed, so nothing "
+                "was applied. It resumes on the next schedule.")
         clear_hold_alert()
         return 0
     except Exception as exc:
