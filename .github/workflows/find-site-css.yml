@@ -37,8 +37,38 @@ jobs:
     # of the old 25 ceiling). 3x the median rounded: 40.
     timeout-minutes: 40
     steps:
+      # APT STALLED TWICE ON 2026-08-19, 45 AND 20 MINUTES, ON A STEP THAT
+      # NORMALLY TAKES SECONDS. Neither run failed; both sat in the deploy's
+      # concurrency group until a human cancelled them, and because GitHub
+      # keeps only one pending run per group, every deploy queued behind them
+      # was cancelled by the next merge. One stalled apt call held the whole
+      # release path for over an hour.
+      #
+      # The ceiling is per STEP, not per job, so a stall now fails in three
+      # minutes and names its own step instead of consuming the job's budget
+      # and reporting as an unattributed timeout. The retry is bounded and
+      # covers the ordinary case: a mirror that is briefly unreachable.
+      #
+      # The runner image sometimes ships lftp already, so the check comes
+      # first and skips the network entirely when it does.
       - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
+        timeout-minutes: 3
+        run: |
+          set -e
+          if command -v lftp >/dev/null 2>&1; then
+            echo "lftp already present: $(lftp --version | head -1)"
+            exit 0
+          fi
+          for attempt in 1 2 3; do
+            if sudo apt-get update -qq && sudo apt-get install -y -qq lftp; then
+              echo "lftp installed on attempt $attempt"
+              exit 0
+            fi
+            echo "attempt $attempt failed, retrying in 5s"
+            sleep 5
+          done
+          echo "::error::could not install lftp after 3 attempts"
+          exit 1
 
       - name: Verify secrets are configured
         env:
