@@ -621,6 +621,45 @@ REFUSAL_LEDGER = (
                "paywalled local outlet is not a public register and must never be "
                "treated as one",
      "alternative": "none needed", "verified_here": False},
+    # --- from the 2026-08-19 Africa / Middle East sweep
+    {"host": "pmg.org.za", "country": "South Africa",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /' — twice, plus "
+               "'Content-Signal: ai-train=no'. The Parliamentary Monitoring Group is the "
+               "obvious archive of committee presentations carrying CCMA retrenchment "
+               "figures, and it is closed to us",
+     "alternative": "www.gov.za and labour.gov.za, both open — the Budget Vote speeches "
+                    "carry the same indicator", "verified_here": False},
+    {"host": "beoe.gov.pk", "country": "Pakistan",
+     "nature": "robots.txt names ClaudeBot with 'Disallow: /'",
+     "alternative": "web.archive.org", "verified_here": False},
+    {"host": "nationalgovernment.co.za", "country": "South Africa",
+     "nature": "HTTP 403 on robots.txt ITSELF, so permission could not even be "
+               "established and nothing was fetched. It mirrors the CCMA Annual Report, "
+               "which is why South Africa's FY2023/24 figure stays unverified",
+     "alternative": "labour.gov.za, which permits everything except /_layouts/, "
+                    "/_vti_bin/ and /_catalogs/", "verified_here": False},
+    {"host": "www.loc.gov, leseco.ma, tamimi.com", "country": "United States, Morocco, "
+             "Gulf",
+     "nature": "403 to our identifying agent (loc.gov, leseco.ma) and a 307 redirect loop "
+               "acting as a bot wall (tamimi.com). None defeated",
+     "alternative": "lematin.ma for Moroccan coverage; none for the others",
+     "verified_here": False},
+    {"host": "kuwaitcalculator.com", "country": "Kuwait",
+     "nature": "robots.txt is SELF-CONTRADICTORY — a Cloudflare-inserted ClaudeBot block "
+               "followed by an explicit ClaudeBot allow. Recorded because the rule for "
+               "this case is worth fixing once: an ambiguous directive is treated as the "
+               "restrictive one and the host is NOT fetched",
+     "alternative": "not needed — a calculator site, no primary material",
+     "verified_here": False},
+    {"host": "manpower.gov.kw, miepeec.gov.ma, gulfmigration.eu",
+     "country": "Kuwait, Morocco",
+     "nature": "NOT REFUSALS — ECONNREFUSED / timeout from this environment, robots.txt "
+               "included. miepeec.gov.ma is the reason Morocco's publication question is "
+               "UNKNOWN rather than answered, and it is the last plausible home of a "
+               "per-employer register in the region. Worth retrying from another network",
+     "alternative": "web.archive.org served the Kuwaiti labour law's own official PDF; "
+                    "nothing substitutes for the Moroccan ministry",
+     "verified_here": False},
     # --- path-level disallows a production collector must honour
     {"host": "www.moel.go.kr /info/defaulter/", "country": "South Korea",
      "nature": "path-level disallow over the ONE genuine per-employer public naming "
@@ -847,11 +886,6 @@ ACKNOWLEDGED_BACKLOG = {
       "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
       "or a real PDF library."
       ),
-    'Botswana': ("2026-08-18",
-      "not yet researched. The Employment Act redundancy provisions are the "
-      "likely instrument; whether a notification duty to the Commissioner of "
-      "Labour exists, and whether anything is published, is unresolved."
-      ),
     'Cambodia': ("2026-08-18",
       "Labour Law 1997 art. 95 and 130 require informing the labour "
       "inspectorate and MLVT of a mass layoff; no numeric threshold was "
@@ -967,15 +1001,33 @@ ACKNOWLEDGED_BACKLOG = {
       "fetching and was NOT retried, so the Act itself is unread. This register "
       "records NO_REGIME only on the instrument, so it stays outstanding."
       ),
-    'Kuwait': ("2026-08-18",
-      "not yet researched. Labour Law in the Private Sector No. 6 of 2010 is "
-      "the likely instrument; whether a collective termination notification "
-      "duty exists, and whether anything is published, is unresolved."
-      ),
     'Morocco': ("2026-08-18",
-      "Code du Travail art. 66-71 requires the governor's authorisation "
-      "for economic dismissal — an approval regime. Publication "
-      "unresolved."
+      "THE STATUTE IS NOW READ IN FULL AND PUBLICATION IS UNKNOWN — those are "
+      "two separate states and the entry must not collapse them. Code du "
+      "Travail (Loi 65-99) art. 66: an employer habitually employing TEN OR "
+      "MORE workers who plans to dismiss all or some for technological, "
+      "structural or economic reasons must inform the workers' delegates and "
+      "union representatives at least one month ahead, and a signed "
+      "proces-verbal of those consultations goes to the delegue provincial "
+      "charge du travail. Art. 67: the dismissal is SUBORDINATE TO AN "
+      "AUTHORISATION issued by the gouverneur of the prefecture or province "
+      "within two months, on the conclusions of a provincial commission the "
+      "gouverneur chairs; an economic file additionally needs a grounds "
+      "report, the firm's financial position and a chartered accountant's "
+      "report. Art. 69 extends it to closures, art. 70 keeps notice and "
+      "severance owed whether or not the authorisation was obtained. THIS IS "
+      "EX-ANTE APPROVAL, NOT NOTIFICATION, and the consequence is the same as "
+      "India's: the countable state event is an APPLICATION, permission can be "
+      "refused, and any aggregate must say 'granted'. PUBLICATION UNKNOWN FOR "
+      "AN ENVIRONMENT REASON, NOT A REFUSAL: miepeec.gov.ma — the ministry "
+      "running the Observatoire National du Marche du Travail and its annual "
+      "labour-market report, the one plausible publisher — answers ECONNREFUSED "
+      "from here, robots.txt included. That is also the only remaining place in "
+      "this region a per-employer register could exist unseen, since the "
+      "provincial commissions hold named files. REJECTED: a lawyer's newspaper "
+      "assertion that no economic-dismissal authorisation was issued between "
+      "2004 and 2020 is colour, never a figure. TO CLOSE: reach miepeec.gov.ma "
+      "from an environment with Moroccan egress."
       ),
     'New Zealand': ("2026-08-18",
       "STRONGLY INDICATED NO_REGIME, STILL DELIBERATELY NOT RECORDED AS ONE, "
@@ -996,10 +1048,6 @@ ACKNOWLEDGED_BACKLOG = {
       "the Employment Relations Authority determine redundancy entitlements — a "
       "dispute-resolution power, not a disclosure duty."
       ),
-    'Nigeria': ("2026-08-18",
-      "Labour Act s.20 covers redundancy with notification to the trade "
-      "union and the Ministry. Publication unresolved."
-      ),
     'Pakistan': ("2026-08-18",
       "Standing Orders Ordinance 1968 SO 12/13 covers termination and "
       "retrenchment, and NO duty to notify a public authority was found "
@@ -1007,20 +1055,6 @@ ACKNOWLEDGED_BACKLOG = {
       "after the 18th Amendment and the Punjab, Sindh, KP and Balochistan "
       "variants were NOT checked. Deliberately NOT recorded as 'no "
       "regime' on this evidence."
-      ),
-    'South Africa': ("2026-08-18",
-      "THE STATUTE IS VERIFIED AND THE AGGREGATE IS NOT, so it is not "
-      "classified. Labour Relations Act 66 of 1995 s.189/s.189A applies to "
-      "employers over 50 employees, banding from 10 dismissals (up to 200 staff) "
-      "to 50 (501+), with a CCMA facilitation route. The CCMA Annual Report is "
-      "reported to carry s.189A employees-facing-retrenchment and jobs-saved as "
-      "a performance indicator, annually on an April-March year at a 6-7 month "
-      "lag. THE FIGURES CAME FROM SEARCH-RESULT SUMMARIES, NOT A READ OF THE "
-      "SOURCE: ccma.org.za is WAF-403 and the parliamentary mirror's PDF has no "
-      "text layer. TO CLOSE: a human verifies one year. NOTE even then it would "
-      "be a FLOOR, not a complete count — it covers matters referred to the "
-      "CCMA, not all employer notifications. saflii.org names ClaudeBot and "
-      "disallows it."
       ),
     'South Korea': ("2026-08-18",
       "THE STATUTE IS NOW VERIFIED FROM PRIMARY TEXT and the publication "
@@ -1753,6 +1787,147 @@ REGISTER = {
                    "https://portal.stf.jus.br/jurisprudenciaRepercussao/tema.asp?num=638"),
         "assessed": "2026-08-18",
     },
+    "South Africa": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Labour Relations Act 66 of 1995 s.189 and s.189A — operational "
+                   "requirements dismissals, with s.189A adding a CCMA facilitation route "
+                   "for larger employers"),
+        "authority": ("no ex-ante filing to a ministry: the CCMA (Commission for "
+                      "Conciliation, Mediation and Arbitration) receives s.189A referrals "
+                      "and is what makes the population countable"),
+        "threshold": ("employers of more than 50 employees, banded by workforce size: 10 "
+                      "dismissals up to 200 staff, rising to 50 at 501+"),
+        "aggregate": ("PUBLISHED, AND ONE YEAR IS NOW VERIFIED FROM A PERMITTED SOURCE, "
+                      "which is what this entry was waiting for. The Deputy Minister of "
+                      "Employment and Labour's Budget Vote speech of 2025-07-03, on "
+                      "gov.za: 'the CCMA facilitated the saving of 30 581 jobs out of "
+                      "64 919 facing retrenchment' for FY2024/25 (April-March). A 2015 "
+                      "CCMA statement on the same host gives 103,949 jobs saved over "
+                      "2010-2015, so the series runs back at least that far. TWO "
+                      "CORRECTIONS TO THE EARLIER ASSESSMENT: the lag is roughly THREE "
+                      "months, not six or seven — the Budget Vote speech on gov.za is the "
+                      "fastest permitted route to each year's figure and beats the annual "
+                      "report — and the figures no longer rest on search-result "
+                      "summaries. THE LIMIT THAT MUST TRAVEL WITH IT: the unit is "
+                      "employees in s.189A matters REFERRED TO THE CCMA, not all South "
+                      "African retrenchments and not all s.189 processes. Facilitation is "
+                      "compulsory only on request, so an unknown share never enters the "
+                      "denominator. It is a FLOOR. FY2023/24 (38,428 facing / 14,887 "
+                      "saved) is still UNVERIFIED — ccma.org.za is WAF-403 and the "
+                      "nationalgovernment.co.za mirror returns 403 on its own robots.txt, "
+                      "so permission could not even be established"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-19",
+        "cite": ("https://www.gov.za/news/speeches/deputy-minister-jomo-sibiya-employment-"
+                 "and-labour-dept-budget-vote-202526-03-jul-2025"),
+        "caveat_partial_refusal": ("ccma.org.za (the publisher) is WAF-403, saflii.org "
+                                   "names ClaudeBot and disallows it, and pmg.org.za — "
+                                   "the parliamentary monitoring archive, the obvious "
+                                   "route to committee presentations of these figures — "
+                                   "names ClaudeBot with 'Disallow: /' TWICE. gov.za and "
+                                   "labour.gov.za are open and are the permitted route"),
+    },
+
+    "Nigeria": {
+        "class": NO_REGIME,
+        "regime": ("NO disclosure duty to any public authority exists, and this CORRECTS "
+                   "the register's own earlier note, which said s.20 involved the "
+                   "Ministry. Labour Act Cap L1 LFN 2004 s.20 was read verbatim: on "
+                   "redundancy the employer shall inform THE TRADE UNION OR WORKERS' "
+                   "REPRESENTATIVE of the reasons and extent, apply last-in-first-out "
+                   "subject to merit, and use best endeavours to negotiate redundancy "
+                   "payments. The Minister appears in s.20(2) ONLY as a regulation-making "
+                   "power. There is no filing, no form, no authority and NO THRESHOLD OF "
+                   "ANY KIND. The information duty is real but private, running to the "
+                   "union where workers are represented — worth stating, because 'no "
+                   "regime' here means no PUBLIC disclosure, not no obligation. Read on a "
+                   "secondary host: the Federal Ministry's own copy at nelex.gov.ng is "
+                   "robots-permitted but a scanned image with no text layer"),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE, and there is no notification stream for one to be derived "
+                      "from. THE SUB-NATIONAL QUESTION IS CLOSED RATHER THAN UNSAMPLED, "
+                      "which is rare and worth the words: labour is item 34 of the "
+                      "EXCLUSIVE Legislative List, Second Schedule Part I of the 1999 "
+                      "Constitution, and under s.4(2)-(3) the National Assembly legislates "
+                      "on Exclusive List items to the exclusion of the State Houses of "
+                      "Assembly. No Nigerian state CAN create a WARN-style duty, so the "
+                      "36 states and the FCT need not be swept. NEAR-MISS REJECTED: the "
+                      "NBS Nigeria Labour Force Survey is a household survey"),
+        "denominator_basis": None,
+        "assessed": "2026-08-19",
+        "cite": "https://jurist.ng/labour_act/sec-20",
+    },
+
+    "Kuwait": {
+        "class": NO_REGIME,
+        "regime": ("NO collective-dismissal notification duty exists anywhere in Law No. 6 "
+                   "of 2010 on Labour in the Private Sector, established by reading the "
+                   "whole instrument — the Public Authority for Manpower's own English "
+                   "translation, 76,226 characters, searched for collective, closure, "
+                   "liquidation, reduction, redundancy, suspension, cessation, notify the "
+                   "ministry, competent authority and approval, with every hit read. Art. "
+                   "44 is individual notice from employer to employee; art. 45-47 are "
+                   "unfair-dismissal restrictions; art. 50 expires the contract on "
+                   "bankruptcy or final closure WITHOUT any filing; art. 61 covers wages "
+                   "during a closure. THE FALSE POSITIVE THIS ENTRY EXISTS TO KILL: the "
+                   "widely quoted 'inform the competent Ministry three months in advance' "
+                   "clause concerns non-renewal of a COLLECTIVE (group) EMPLOYMENT "
+                   "CONTRACT — a collective bargaining agreement — and has nothing to do "
+                   "with collective dismissal. TWO RESIDUAL RISKS, stated rather than "
+                   "buried: the ARABIC original governs and was not read, and art. 8's "
+                   "returns are prescribed by ministerial decision, so a filing duty could "
+                   "live outside the statute. Both are cheap to check from an environment "
+                   "with Gulf egress. NOTE ON PROVENANCE: manpower.gov.kw is unreachable "
+                   "from here (ECONNREFUSED, not a refusal), so the official PDF was read "
+                   "through a web.archive.org snapshot of that same file"),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE. NEAR-MISSES REJECTED: art. 8's annual headcount return is a "
+                      "STOCK of employees, not separations; and Kuwait's labour figures "
+                      "reach ILOSTAT through a Labour Force Sample Survey"),
+        "denominator_basis": None,
+        "assessed": "2026-08-19",
+        "cite": ("https://web.archive.org/web/20220723102143/"
+                 "https://www.manpower.gov.kw/docs/LaborLaw/Labor_Law_Eng.pdf"),
+    },
+
+    "Botswana": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Employment Act Cap 47:01 s.25 (Redundancy), read verbatim: 'when an "
+                   "employer forms an intention to terminate contracts of employment for "
+                   "the purpose of reducing the size of his work force, he shall "
+                   "forthwith give written notice of that intention to the Commissioner "
+                   "and to every employee to be or likely to be directly affected'. "
+                   "s.25(1) is first-in-last-out subject to operational need, s.25(3) a "
+                   "six-month re-engagement priority, s.25(4) makes contravention an "
+                   "offence under s.151(b)"),
+        "authority": "the Commissioner of Labour, Ministry of Labour and Home Affairs",
+        "threshold": ("NONE — AND THAT IS THE FINDING. The duty attaches to the INTENTION "
+                      "to reduce, with no minimum number of dismissals and no minimum "
+                      "employer size, which is a broader trigger than US WARN, than "
+                      "Directive 98/59/EC, and than South Africa's s.189A. Botswana's "
+                      "Commissioner therefore holds a thresholdless national dataset"),
+        "aggregate": ("NO PERIODIC PUBLICATION, but the count demonstrably EXISTS and is "
+                      "disclosed ad hoc, which is a different and more hopeful state than "
+                      "Germany's. Answering a parliamentary question in February 2023 the "
+                      "Minister of Labour and Home Affairs stated that 1,170 companies had "
+                      "submitted notifications of intention to retrench between January "
+                      "2019 and January 2023, with 3,680 workers losing jobs — reported by "
+                      "the government's own Daily News, and naming NO companies. A later "
+                      "PQ reportedly gives 700 companies / 5,392 employees for January "
+                      "2024 to May 2026 and is UNVERIFIED. There is no cadence, no stable "
+                      "unit and no format, so this is not a published series. It is the "
+                      "best 'one request away from an aggregate' candidate found "
+                      "anywhere: the realistic route is a direct ministry request or a "
+                      "Hansard trawl of the recurring question, not a scrape. NEAR-MISSES "
+                      "REJECTED: Statistics Botswana's Quarterly Labour Force Module and "
+                      "Formal Employment Stats Brief are survey and stock series"),
+        "assessed": "2026-08-19",
+        "cite": ("https://www.botswanalmo.org.bw/system/files/"
+                 "Legislation_Employment_Act.pdf"),
+    },
+
     "Switzerland": {
         "class": REGIME_NO_AGGREGATE,
         "regime": ("TWO duties, and the second is the one a collector would otherwise "
