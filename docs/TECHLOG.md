@@ -1,5 +1,92 @@
 # Tech Log
 
+## 2026-08-19 - the plugin-side half of the 6:00 Eastern move, 2.20.122
+
+**Claimed 2.20.118, shipped as 2.20.122, and lost the race three times on the
+way.**
+That is the version rule working rather than failing, and it is worth recording
+because the number moved under this change while it did nothing wrong. It
+claimed 2.20.118 and pushed; the manage-link fix (#164) landed 2.20.119 while
+this sat in CI, so this re-read `origin/main` and took 2.20.120; the
+preferences-delta fix (#167) then landed 2.20.120 while THAT sat in CI, so this
+re-read and took 2.20.121; the footer-authority fix (#168) then landed 2.20.121
+the same way, so this re-read once more and took 2.20.122. **The race is
+structural, not bad luck**: a full CI pass here is about thirteen minutes
+because the `rendered` group drives a real headless Chrome, and on an evening
+with four digest changes in flight that is longer than the gap between merges.
+A change that needs several CI passes will lose to one that needs a short one,
+every time, and the answer is to re-read rather than to reserve. `version_collision.py` fails a merge whose
+`ALT_VERSION` is not strictly above the previous main tip, so each of those
+merges would have failed rather than silently shipping two builds under one
+version string - which is exactly the 2.20.115 defect the guard was built for.
+**2.20.118 was never deployed and is dead.** The lesson is the one `fff9547`
+wrote down the same evening: a version number in a claim is only true at the
+moment it is typed, so read it from main immediately before merging and re-read
+it after a lost race. Do not reconstruct it from history.
+
+Four sessions were in `includes/subscribe.php` and every rebase auto-merged,
+because none of them touched another's lines: this change edits four comments
+about the retired 13:10 UTC slot, #164 edited the signup intro copy, the
+`alt_digest_manage_url()` docblock and the footer inside `alt_digest_send()`,
+#167 added the itemised preference delta to the confirmation email, and #168
+made `alt_digest_footer_blocks()` the single footer authority. Only the TECHLOG
+ever conflicted, and only because every session adds its entry at the top.
+
+**The move to 6:00 AM Eastern left two things owed on the plugin side, and PR
+#163 deliberately did not take them.** The baton read HELD by `local`, so that
+change touched no plugin file and consumed no ALT_VERSION. This is the other
+half, taken with the baton claimed on the owner's instruction.
+
+**One: the weekly slot's own health row had no name on the public page.**
+`digest_send.py` stamps `digest_weekly` after a completed weekly pass - the
+signal that exists because the daily tier would otherwise keep `digest_mailer`
+green over a weekly tier that had stopped. It had no `meta{}` entry in
+`assets/health.js`, so the health page rendered it with the generic
+"Operational collector" fallback: a row a reader could see, could not identify,
+and would reasonably read as an unnamed scraper. It now carries its cadence
+(Mondays, 7:30 AM Eastern), its scope (Internal) and how it is collected (self-
+reported by the scheduled sender after a completed pass), in the same four-field
+shape as `digest_mailer` beside it. The row says "counts only, never addresses"
+for the same reason its neighbour does.
+
+`digest_weekly` is therefore deleted from `KNOWN_UNLABELLED` in
+`tests/test_source_registry_parity.py`. That set is the list of reporters that
+intentionally have no label, and `test_classified_reporters_are_not_also_labelled`
+fails if an id is in both - so the label and the exemption cannot drift apart,
+and shrinking the set is the only way to close one of these.
+
+**Two: four comments in `includes/subscribe.php` still described the send slot
+that no longer exists.** They said the workflow runs at 13:10 UTC and picks the
+weekly tier on Mondays, and that a reader therefore holds figures "about fifteen
+hours old". Both halves are now wrong: the sender is 6:00 AM Eastern daily
+(10:00 UTC under EDT, 11:00 under EST) and 7:30 AM Eastern on Mondays, and with
+ingest finishing near 22:00 UTC the gap is about TWELVE hours. The stale figure
+sat directly above `alt_digest_data_cut_label()`, the citation block and the
+access-date clock - the three places whose entire job is to state how old the
+numbers are - so a session reading the code to check that claim would have been
+told the wrong number by the comment explaining it. The matching comment in
+`tests/test_digest_scope_rules.py` is corrected with them.
+
+**No reader-facing copy stated a time and none needed changing.**
+`alt_digest_cadence_sentence()` says "each morning" and "Monday mornings", which
+were true at 13:10 UTC and are true at 6:00 Eastern; its docblock now names both
+slots in Eastern rather than UTC, because Eastern is what the reader
+experiences and UTC is what daylight saving moves.
+
+**And the WP-Cron fallback now runs AFTER the sender rather than before it,
+which is the ordering it always wanted.** `alt_digest_cron_schedule()` fires at
+13:00 UTC. Against the old 13:10 UTC workflow that was ten minutes EARLIER, so
+on a day WP-Cron fired on time the fallback claimed the tier and the external
+sender stood down - the standby beating the sender to it. Against a 10:00/11:00
+UTC sender the fallback is genuinely second and finds the day already claimed.
+The 13:00 is kept deliberately and must not be re-pointed at the sender's slot:
+its value is being late, and WP-Cron is traffic-dependent, so its scheduled time
+is a floor rather than a promise. The claim still ages out after
+`ALT_DIGEST_CLAIM_HOURS`, so if the workflow stops the fallback resumes on its
+own.
+
+Comments only, plus one `meta{}` entry and the version. No composer, no send
+guard, no unsubscribe path and no reader-facing string was touched.
 ## 2026-08-19 - the footer had three authors and no editor
 
 **Yesterday's fix closed one instance of a bug and left the class open.** The

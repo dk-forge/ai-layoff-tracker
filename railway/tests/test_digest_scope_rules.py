@@ -825,8 +825,9 @@ class TheEmailCanBeCited(unittest.TestCase):
         # shape plus the current UTC year rather than against a computed date,
         # because a run that straddles midnight UTC should not go red for it.
         # The access date now carries a CLOCK. Ingest finishes near 22:00 UTC
-        # and the send runs at 13:10 UTC, so the figures are about fifteen
-        # hours old when they land, and a bare date implied otherwise.
+        # and the send runs at 6:00 AM Eastern (10:00 UTC under EDT, 11:00
+        # under EST), so the figures are about twelve hours old when they
+        # land, and a bare date implied otherwise.
         year = datetime.datetime.now(datetime.timezone.utc).year
         self.assertRegex(
             line, rf"accessed [A-Z][a-z]+ \d{{1,2}}, {year} at \d\d:\d\d UTC\.")
