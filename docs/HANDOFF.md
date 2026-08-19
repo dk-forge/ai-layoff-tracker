@@ -6,6 +6,20 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.108.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change makes the 404 log and the
+  redirect table READABLE from outside wp-admin, because a session asked to
+  find the leak in 417 dead hits and 2,000 redirect hits could see neither and
+  was guessing against a screenshot. Claimed 2.20.107, found a sibling
+  session had landed that same number on main, and rebased to 2.20.108. Plugin files touched:
+  `includes/seo-diagnostics.php` (new, two keyed GET routes, read-only, no
+  visitor IP returned, a missing table reports TABLE_MISSING at HTTP 503 rather
+  than an empty list) and `ai-layoff-tracker.php` (the guarded require plus the
+  version). Rest is `.github/workflows/seo-diagnostics.yml`, manual dispatch
+  only. **No live row was edited, no redirect was created and no log was
+  cleared.** **Next plugin release is 2.20.109.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.107.** The baton was
   read as HELD by `local` and is NOT claimed here; only the version number is,
   which is what this file asks for. Branched from `origin/main` at 2.20.106 and
