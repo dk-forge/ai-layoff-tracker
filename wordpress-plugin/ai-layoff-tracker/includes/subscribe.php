@@ -452,9 +452,15 @@ function alt_digest_form_url() {
 /**
  * When the first one lands, stated from the schedule rather than invented.
  *
- * .github/workflows/digest-send.yml runs at 13:10 UTC every day and picks the
- * weekly tier on Mondays, so these two sentences are true today. If that cron
- * moves, this moves with it.
+ * .github/workflows/digest-send.yml sends the daily tier at 6:00 AM Eastern
+ * seven days a week and the weekly look-back at 7:30 AM Eastern on Mondays, so
+ * these two sentences are true today. The slots are stated in Eastern rather
+ * than UTC because that is what the reader experiences and what the owner
+ * asked for; the workflow carries two candidate UTC cron lines per slot (10:00
+ * / 11:00 and 11:30 / 12:30) and railway/digest_slot.py picks the real one, so
+ * daylight saving does not move the morning. If those slots move, this moves
+ * with them. Neither sentence names a time, which is why the 2026-08-19 move
+ * changed nothing a reader sees.
  */
 function alt_digest_cadence_sentence($freq) {
     return $freq === 'daily'
@@ -2520,10 +2526,11 @@ function alt_digest_place($state, $country, $location) {
  * to "17 to 18 August 2026" and "18 Aug 2026", in the one block whose whole
  * job is to be copied into somebody else's article.
  *
- * UTC, because the collection cron and the send cron both run in UTC and the
- * gap between them is the fact the line exists to state. Ingest finishes near
- * 22:00 UTC and the digest goes out at 13:10 UTC, so a reader is holding
- * figures about fifteen hours old, and nothing in the email said so.
+ * UTC, because the collection cron runs in UTC and the gap between it and the
+ * send is the fact the line exists to state. Ingest finishes near 22:00 UTC
+ * and the digest goes out at 6:00 AM Eastern (10:00 UTC under EDT, 11:00 under
+ * EST), so a reader is holding figures about twelve hours old, and nothing in
+ * the email said so.
  *
  * Reads the option directly rather than reformatting api.php's string, because
  * parsing a formatted date back out of prose is how a timezone gets lost.
@@ -4345,10 +4352,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       WHEN THESE FIGURES WERE TRUE, NEXT TO THE FIGURE AND NOT IN A FOOTER.
 
       The email is a SNAPSHOT and it read like a live page. Ingest finishes
-      near 22:00 UTC and the send runs at 13:10 UTC, so a reader opening this
-      at breakfast holds numbers about fifteen hours old. The citation at the
-      foot has always carried the stamp; the citation is also the block a
-      general reader never reaches.
+      near 22:00 UTC and the send runs at 6:00 AM Eastern (10:00 UTC under EDT,
+      11:00 under EST), so a reader opening this at breakfast holds numbers
+      about twelve hours old. The citation at the foot has always carried the
+      stamp; the citation is also the block a general reader never reaches.
 
       Two facts, two short sentences, because they are genuinely different: the
       database stopped moving at one time and we read it at another. Neither is
@@ -4957,8 +4964,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     /*
       THE ACCESS DATE NOW CARRIES A CLOCK, because the day on its own was not
       the fact a reader needed. Ingest finishes near 22:00 UTC and this digest
-      goes out at 13:10 UTC, so the figures are about fifteen hours old when
-      they land. A bare date implies they were read this morning.
+      goes out at 6:00 AM Eastern (10:00 UTC under EDT, 11:00 under EST), so the
+      figures are about twelve hours old when they land. A bare date implies
+      they were read this morning.
     */
     $read_date = alt_digest_date_range(gmdate('Y-m-d'), gmdate('Y-m-d'));
     if ($read_date !== '') $read_date .= ' at ' . gmdate('H:i') . ' UTC';
@@ -6331,9 +6339,30 @@ function alt_api_subscriber_stats($request) {
     return $res;
 }
 
+/**
+ * The in-WordPress fallback sender's slot, and it now runs AFTER the real one.
+ *
+ * This WP-Cron tick is the standby: .github/workflows/digest-send.yml is the
+ * sender, at 6:00 AM Eastern daily (10:00 UTC under EDT, 11:00 under EST) and
+ * 7:30 AM Eastern on Mondays for the weekly. The external job claims the tier
+ * first and this fallback finds the claim and stands down for the day, so the
+ * ordering below is the one it always wanted. Until 2026-08-19 the workflow ran
+ * at 13:10 UTC, ten minutes AFTER this tick, so on a day WP-Cron actually fired
+ * on time the fallback got there first and the external sender was the one that
+ * stood down.
+ *
+ * The claim ages out after ALT_DIGEST_CLAIM_HOURS, so if the workflow stops
+ * firing this fallback resumes by itself rather than waiting to be re-armed.
+ *
+ * 13:00 UTC is kept deliberately. It is not a mirror of the sender's slot and
+ * must not be re-pointed at one: the fallback's job is to be LATE enough that
+ * the real sender has already claimed the day, and WP-Cron is traffic-
+ * dependent anyway, so its scheduled time is a floor rather than a promise.
+ */
 function alt_digest_cron_schedule() {
     if (!wp_next_scheduled('alt_digest_cron')) {
-        // 13:00 UTC: morning US East, so a "daily" digest reads as today's.
+        // 13:00 UTC: morning US East, and after the external sender's 6:00 AM
+        // Eastern slot, so the fallback finds the day already claimed.
         $first = strtotime('today 13:00 UTC');
         if ($first < time()) $first = strtotime('tomorrow 13:00 UTC');
         wp_schedule_event($first, 'daily', 'alt_digest_cron');

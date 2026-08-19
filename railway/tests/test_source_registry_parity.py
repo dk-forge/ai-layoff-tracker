@@ -44,13 +44,6 @@ KNOWN_UNLABELLED = {
     # standalone meta entry.
     "foreign_filings": "reports per country: edinet_jp / opendart_kr / cvm_br",
     "distress_watchlist": "reports under a per-jurisdiction runtime label",
-    # Ops telemetry about THIS repo's own scheduling, not a data collector: it
-    # records that the external weekly digest slot completed a pass, and
-    # ops_status.weekly_digest_lines is what reads it. A public health-page
-    # label is still owed and is deliberately deferred - the session that added
-    # this row held no version baton and touched no plugin file. Give it a
-    # meta{} entry (and an ALT_VERSION bump) and delete this line.
-    "digest_weekly": "external weekly-digest slot liveness (self-report)",
 }
 
 

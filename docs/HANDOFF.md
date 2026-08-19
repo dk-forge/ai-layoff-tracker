@@ -38,15 +38,44 @@ is skipped. If you are adding the `digest_weekly` label to `assets/health.js`
 | 2.20.117 | the tip when the evening started |
 | 2.20.118 | CLAIMED below for the plugin half of #163, **never merged, now DEAD** |
 | 2.20.119 | **CONSUMED and ON MAIN** - the digest manage-link fix (PR #164) |
+| 2.20.120 | **CONSUMED and ON MAIN** - the preferences-delta fix (PR #167) |
+| 2.20.121 | **CONSUMED and ON MAIN** - the footer-authority fix (PR #168) |
+| 2.20.122 | **CONSUMED and ON MAIN** - the plugin half of #163 (PR #165), which is what 2.20.118 became |
 
 So 2.20.118 is not available and not owed to anyone: once 2.20.119 was on
 main, a merge carrying 2.20.118 fails the guard. Anyone merging a plugin change
-next reads main per the block at the top and takes what follows 2.20.119. **Two
-plugin changes are queued behind this and they cannot both have the same
-number** - the plugin half of #163, and the `digest_weekly` health label. First
-one to merge reads main, second one re-reads it after losing the race.
+next reads main per the block at the top and takes what follows.
 
-**`includes/subscribe.php` HAS TWO SESSIONS IN IT TONIGHT, IN DIFFERENT PLACES.**
+**PR #165 LOST THE RACE THREE TIMES AND THAT IS THE RULE WORKING.** It claimed
+2.20.118; #164 landed 2.20.119, then #167 landed 2.20.120, then #168 landed
+2.20.121, each while #165 sat in CI, so it re-read main and took 2.20.120,
+2.20.121 and finally 2.20.122. Nothing about the change was wrong any of those
+times - the number simply moved under it, which is why it is read from main and
+not from a claim. Each of those merges would have been FAILED by the guard
+rather than shipping two builds under one version string.
+
+**AND THE RACE IS STRUCTURAL, WHICH IS WORTH KNOWING BEFORE THE NEXT BUSY
+EVENING.** A full CI pass here is about thirteen minutes, because the
+`rendered` group drives a real headless Chrome; on an evening with four digest
+changes in flight, that is longer than the gap between merges. A change needing
+several passes will lose to one needing few, every time. The answer is to
+re-read and re-bump, which is cheap - not to reserve a number, which is what
+kept failing.
+
+**The two changes this ledger listed as queued turned out to be ONE.** It named
+"the plugin half of #163" and "the `digest_weekly` health label" as separate
+merges racing for separate numbers; they are the same PR, #165, because the
+label and the stale send-time comments are both what #163 left owed on the
+plugin side. Nothing is queued behind it.
+
+**`includes/subscribe.php` HAD FOUR SESSIONS IN IT TONIGHT, IN DIFFERENT
+PLACES, AND EVERY REBASE AUTO-MERGED.** PR #165 edits four comments about the
+retired 13:10 UTC send slot and nothing else in this file; #167 added the
+itemised preference delta to the confirmation email; #168 made
+`alt_digest_footer_blocks()` the single footer authority. None moved a line the
+note below describes. Only `docs/TECHLOG.md` ever conflicted, and only because
+every session adds its entry at the top. Check rather than assume, which is what
+those rebases did.
 PR #164 edited the signup intro copy, the `alt_digest_manage_url()` docblock and
 the footer inside `alt_digest_send()`. The claim below edits four comments about
 the retired 13:10 UTC slot. Neither touches the other's lines, so a rebase
@@ -508,6 +537,30 @@ red first; do not answer it by editing the stamp by hand.
   name an edition identically, and the outstanding talent composer copy landed
   with it. Written here before the push, and main re-read immediately before
   merging, per the 2.20.92 collision note below.
+
+**RELEASED 2026-08-19, LANDED AS 2.20.122.** Claimed as 2.20.118 and overtaken
+three times - by #164 (2.20.119), #167 (2.20.120) and #168 (2.20.121) - so it
+re-read main before each merge attempt and ended on 2.20.122, per the rule at
+the top of this file. 2.20.118 is dead. The plugin-side half of #163 is
+done: `digest_weekly` now has a `meta{}` entry in `assets/health.js`, so the
+public health page names the external weekly slot instead of rendering it as an
+unnamed "Operational collector", and it is deleted from `KNOWN_UNLABELLED` in
+`railway/tests/test_source_registry_parity.py` (an id in both is what
+`test_classified_reporters_are_not_also_labelled` fails on, which is what keeps
+a label and its exemption from drifting apart). Four comments in
+`includes/subscribe.php` and one in `railway/tests/test_digest_scope_rules.py`
+described the retired 13:10 UTC slot and a fifteen-hour data age; the sender is
+6:00 AM Eastern daily and 7:30 on Mondays, and with ingest near 22:00 UTC the
+age is about twelve hours. The docblock over `alt_digest_cron_schedule()` now
+records that the 13:00 UTC WP-Cron fallback runs AFTER the sender rather than
+ten minutes before it, and that its 13:00 must not be re-pointed at the
+sender's slot - being late is the whole of its value. **Comments only on the
+PHP side**: no composer, no send guard, no unsubscribe path and no
+reader-facing string. `alt_digest_cadence_sentence()` still says "each
+morning" / "Monday mornings", which were true at 13:10 UTC and are true now.
+**Do not take the next number from this line: read `origin/main` per the block
+at the top of this file. It was 2.20.122 when this merged, and it moved three
+times while this change was in CI.**
 
 **BATON TAKEN 2026-08-19 ON THE OWNER'S INSTRUCTION, not under the stale
 clause.** The holder below is unchanged in kind (still `local`); this session
