@@ -1582,7 +1582,13 @@ $alt_hero_basis  = 'counted by filing date';
 
     <div class="alt-cite-box" id="alt-cite-box">
         <span class="alt-detail-h">Cite this tracker</span>
-        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"></span>. Data from SEC EDGAR 8-K filings, US state WARN notices, and credible news outlets.</code>
+        <?php // The access date is SERVER-RENDERED. It used to be JavaScript-only,
+              // so every crawler and every answer engine read "Accessed ." -- a
+              // citation with no date, on the one product whose selling point is
+              // traceability. The URL was missing outright. layoffs.js still
+              // overwrites the date with the reader's own, which is more accurate
+              // for a human and no longer load-bearing for anyone else. ?>
+        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"><?php echo esc_html(wp_date('M j, Y')); ?></span>. <?php echo esc_html(home_url('/ai-layoff-tracker/')); ?> Data from SEC EDGAR 8-K filings, US state WARN notices, and credible news outlets. Licensed CC BY 4.0.</code>
         <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>
     </div>
 

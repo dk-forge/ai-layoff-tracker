@@ -1,5 +1,76 @@
 # Tech Log
 
+## 2026-08-18 - the citation was JavaScript, so nothing that cites us could read it
+
+A discoverability and citability audit, fetching the live site with a crawler
+User-Agent rather than reading the repo. **Most of it came back green, and that
+is the headline finding**, so it is recorded before the defects: the front end
+really is fully server-side (a Googlebot fetch of `/state-layoffs/texas/`
+returns 18,040 characters of prose with 2,358 entries, 222,350 jobs and 2,259
+employers stated in text); `robots.txt` carries `Content-Signal:
+search=yes, ai-input=yes, ai-train=no`; `/blog/llms.txt` exists and names the
+licence; the sitemap index carries **7,500 company URLs, 103 facet URLs, 63
+report URLs and 12 core pages**; every facet and company page already emits a
+correct `Dataset` node `isPartOf` the tracker's dataset, with `license`,
+`temporalCoverage` and `spatialCoverage`; the home page adds `FAQPage`; and the
+per-country disclosure-regime register **is already public**, as the
+jurisdiction table on the methodology page, naming each register, what
+qualifies as a record and the filing threshold, with UNKNOWN where the statute
+is not encoded rather than a guess.
+
+**Two things were broken, and both were the same thing: the citation only
+existed for a reader who ran JavaScript.**
+
+The tracker page's "Cite this tracker" box built its access date in
+`layoffs.js` (`#alt-cite-date`). Fetched as Googlebot the box read, verbatim:
+
+    AI Layoff Tracker, AskTheRecruiter.com. Accessed . Data from SEC EDGAR 8-K
+    filings, US state WARN notices, and credible news outlets.
+
+An access date is the one field a citation of a live dataset cannot do without,
+and it was empty for every crawler and every answer engine. **The box also
+carried no URL at all**, so even a human who copied it produced a reference
+nobody can follow back to a row. On the product whose entire differentiator is
+that every number traces to a document, the cite affordance was the least
+machine-readable thing on the page.
+
+And the **~7,600 durable landing pages had no citation affordance whatsoever**.
+The tracker page and the press kit have one; they are 2 URLs out of ~7,600. The
+company, country, US state, city and industry pages are the URLs somebody
+actually reaches from a search for one employer or one state, they are
+server-rendered with their figures in prose, and a journalist reading one had
+nothing to paste and no statement of the licence in words.
+
+### The fix
+
+`alt_cite_line()` and `alt_cite_box_html()` in `ai-layoff-tracker.php` build one
+reference in PHP, on the server, with no JavaScript in the path. Every field is
+literally true of the page it sits on: that page's own heading, its own
+canonical URL, the access date, and the CC BY 4.0 licence the `Dataset` node on
+the same page already declares. `page-facet.php` and
+`page-company-directory.php` render it; `page-tracker.php` now server-renders
+its date and its URL and lets `layoffs.js` overwrite the date with the reader's
+own, so JS makes it more accurate for a human and its absence no longer makes
+it wrong for anybody else.
+
+### What was deliberately NOT done
+
+**No `dateModified` on the facet and company `Dataset` nodes.** It was the
+obvious next field and it would have been a false claim. The home dataset sets
+`dateModified` to today because the dataset genuinely changes daily; a slice
+holding three 2025 entries did not change today, and asserting it did is
+structured data describing something the page does not contain. The cite line
+carries an *access* date instead, which is true by construction.
+
+**No copy button on the new blocks.** The existing one binds a single element id
+in `layoffs.js`, and these pages do not all load it. A selectable `<code>` needs
+no script, which is the entire point of the change.
+
+**No JSON-LD added to the press, methodology or sources pages.** They carry
+none today. `WebPage` earns no rich result and would have been motion rather
+than leverage; the pages already state their figures in prose, which is what an
+answer engine reads.
+
 ## 2026-08-18 - the public search box returned most of the database for a two-letter company name
 
 A recall probe on the sibling tracker asked its `/query` endpoint for **EY**

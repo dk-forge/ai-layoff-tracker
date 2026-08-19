@@ -242,6 +242,14 @@ $alt_bd_titles = array(
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 
+    <?php // A pasteable reference, server-rendered. These pages are where a
+          // citer lands from a search for one state or one industry, and they
+          // carried no citation affordance at all. function_exists is the
+          // FTP-deploy race guard every optional call in this plugin uses.
+          if (function_exists('alt_cite_box_html')) {
+              echo alt_cite_box_html(alt_facet_heading($alt_f), $alt_f['url']); // escaped inside
+          } ?>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('facet'); ?>

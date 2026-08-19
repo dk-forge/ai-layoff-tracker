@@ -173,6 +173,12 @@ $alt_verif = array(
     <p>See the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">tracker methodology</a>
     and <a href="<?php echo esc_url(home_url('/contact/')); ?>">submit a correction</a>.</p>
 
+    <?php // Same pasteable reference as the facet pages. 7,500 company URLs are
+          // in the sitemap and every one of them was uncitable by hand.
+          if (function_exists('alt_cite_box_html')) {
+              echo alt_cite_box_html($alt_dir['company']['display_name'] . ' layoff records', $alt_dir['url']); // escaped inside
+          } ?>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('company'); ?>

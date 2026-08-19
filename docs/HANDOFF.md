@@ -6,6 +6,18 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.97.** The baton was
+  read as HELD and is NOT claimed here; only the version number is, which is
+  what this file asks for. The change is the **citation affordance a machine can
+  read**: the tracker page's "Cite this tracker" box filled its access date from
+  JavaScript, so every crawler and answer engine read "Accessed ." and no URL at
+  all; and the ~7,600 durable landing pages (company, country, US state, city,
+  industry) carried no citation affordance whatsoever. Plugin files touched:
+  `ai-layoff-tracker.php` (new `alt_cite_line`/`alt_cite_box_html`),
+  `templates/page-tracker.php`, `templates/page-facet.php`,
+  `templates/page-company-directory.php`. **Next plugin release is 2.20.98.**
+  Written here and pushed within minutes, per the 2.20.92 collision note below.
+
 - **STATUS:** HELD
 - **HOLDER:** local
 - **SINCE:** 2026-08-12

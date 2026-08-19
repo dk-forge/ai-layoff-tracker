@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.96
+ * Version: 2.20.97
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.96');
+define('ALT_VERSION', '2.20.97');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -141,6 +141,54 @@ function alt_dataset_jsonld() {
         ),
     );
 }
+/**
+ * ONE server-rendered citation line, for the pages a citer actually lands on.
+ *
+ * WHY THIS EXISTS. The tracker's whole differentiator is that every number is
+ * traceable, and until 2.20.97 the citation affordance did not survive being
+ * read by a machine. Two defects, both measured on the live site:
+ *
+ * 1. The tracker page's own "Cite this tracker" box filled its access date from
+ *    JavaScript (`#alt-cite-date`, layoffs.js). Fetched with a crawler UA the
+ *    box read "AI Layoff Tracker, AskTheRecruiter.com. Accessed . Data from
+ *    ...": a citation with no date. It also carried no URL at all, so anything
+ *    that copied it produced a reference nobody can follow back to a row.
+ * 2. The ~7,600 durable landing pages -- company, country, US state, city,
+ *    industry -- carried no citation affordance whatsoever. They are the URLs a
+ *    journalist reaches from a search for one employer or one state, they are
+ *    fully server-rendered with their figures in prose, they already carry a
+ *    correct Dataset node naming the licence, and a human reading one had no
+ *    pasteable reference and no statement of the licence in words.
+ *
+ * So the line is built in PHP, on the server, with no JavaScript in the path.
+ * Everything in it is literally true of the page it sits on: the page's own
+ * title, its own canonical URL, the access date, and the CC BY 4.0 licence the
+ * Dataset node on the same page already declares. Nothing is asserted that the
+ * page does not contain.
+ *
+ * The access date is the SERVER's date. A citer in another timezone may be a
+ * day off, which is why the tracker page still lets layoffs.js overwrite the
+ * date with the reader's own: JS makes it more accurate for a human, and its
+ * absence no longer makes it wrong for a crawler.
+ */
+function alt_cite_line($name, $url, $accessed = '') {
+    if ($accessed === '') $accessed = wp_date('M j, Y');
+    return sprintf(
+        '%s. AI Layoff Tracker, AskTheRecruiter.com. Accessed %s. %s Licensed CC BY 4.0; every entry links to the filing, notice or report behind it.',
+        $name, $accessed, $url
+    );
+}
+
+/**
+ * The block form, for the facet and company pages. `alt-cite-box` is the class
+ * the tracker page's box already uses, so this inherits its layout and its
+ * 375px behaviour rather than introducing a second look for the same thing.
+ */
+function alt_cite_box_html($name, $url) {
+    return '<div class="alt-cite-box"><span class="alt-detail-h">Cite this page</span><code>'
+        . esc_html(alt_cite_line($name, $url)) . '</code></div>';
+}
+
 function alt_output_jsonld($blocks) {
     foreach ((array) $blocks as $b) {
         echo '<script type="application/ld+json">' . wp_json_encode($b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
