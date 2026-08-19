@@ -6,6 +6,22 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.115.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is.
+  **The company pages now offer a next step to the person the 33% click-through
+  rate is actually made of.** A next-step aside renders below the whole record
+  on `/company-layoffs/<slug>/`, and a lighter version with NO product line
+  renders on US state pages and the United States country page. Plugin files
+  touched: `templates/page-company-directory.php`, `templates/page-facet.php`,
+  `assets/layoffs.css`, `ai-layoff-tracker.php` (version plus one new helper,
+  `alt_next_step_tool_url()`). **No data was touched, no row was edited, and
+  `includes/subscribe.php` was NOT opened** because a live session holds it.
+  The digest form is unchanged and the block does not offer it: a weekly list
+  of other people's layoffs is not what a newly laid-off reader wants, and the
+  two are different needs sharing one page rather than one box.
+  `railway/tests/test_next_step_block.py` pins the constraints that make this
+  safe to keep. **Next plugin release is 2.20.116.**
+
 - **NO VERSION CLAIMED BY A SIDE SESSION (2026-08-19): the confirm and
   unsubscribe links are now watched.** The baton was read as HELD by `local`
   and is NOT claimed here. **No plugin file was touched and no version was

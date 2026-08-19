@@ -2462,6 +2462,59 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
     line-height: 1.5;
 }
 
+/* ---------------- Next-step aside (company + US facet pages) ----------------
+   THE JOB OF THIS BLOCK IS TO NOT LOOK LIKE THE DATA.
+
+   Everything above it on these pages is the record: entries, sources, totals.
+   This is the one block that is not, so it has to be legible as a different
+   kind of content before a word of it is read. Three devices do that, and each
+   one is doing a job the other two cannot.
+
+     - A rule across the top, with real space above it, so the record has a
+       visible end rather than trailing off into an offer.
+     - The surface-2 ground and border the citation box already uses on these
+       same pages, so it reads as another piece of page furniture rather than
+       as a fourth kind of entry.
+     - Its own uppercase label ("Not part of the record"), which is the only
+       one of the three that survives a screen reader and a plain-text render.
+
+   The heading is set at body-ish size on purpose. An <h2> that matched the
+   entry headings would put a promotional block at the same visual rank as a
+   filing, which is precisely the thing this page cannot afford.
+
+   Colours are the existing tokens, so the block inherits the dark palette and
+   the contrast audit already covers the pairs it uses. Nothing here is
+   position: sticky, nothing overlays the record, and nothing animates. */
+.alt-next-step {
+    margin: 34px 0 0;
+    padding: 18px 20px;
+    border: 1px solid var(--alt-border);
+    border-top: 3px solid var(--alt-border);
+    border-radius: 10px;
+    background: var(--alt-surface-2);
+    /* min-width:0 plus a contained overflow: these pages carry long employer
+       names and long URLs, and the hard bar on this project is no horizontal
+       bleed at 375px. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.alt-next-step h2 {
+    margin: 6px 0 10px;
+    font-size: 17px;
+    line-height: 1.3;
+}
+.alt-next-step p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.6; color: var(--alt-ink); }
+.alt-next-step-list { margin: 0 0 12px; padding-left: 20px; }
+.alt-next-step-list li { margin: 0 0 10px; font-size: 14.5px; line-height: 1.6; color: var(--alt-ink); }
+.alt-next-step-list li:last-child { margin-bottom: 0; }
+/* A paragraph in the else-branch stands where the list stands, so it keeps the
+   list's spacing rather than the lead paragraph's. */
+p.alt-next-step-list { padding-left: 0; }
+.alt-next-step-note { margin: 0 !important; font-size: 13px !important; color: var(--alt-ink-2) !important; }
+@media (max-width: 480px) {
+    .alt-next-step { padding: 16px 14px; }
+}
+
 /* single entry page */
 .alt-single { max-width: 720px; }
 .alt-back { font-size: 13px; color: var(--alt-blue); text-decoration: none; }

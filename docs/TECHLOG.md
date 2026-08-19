@@ -68,6 +68,110 @@ record (`--closed` prints who, why and where the fix landed).
 
 The one entry was closed under review: reviewer `dak`, `--fixed-in 1de4aa1`.
 `[4b2]` now reads "none - nothing is being suppressed".
+## 2026-08-19 - the best-converting pages on the site converted into nothing
+
+**The measurement.** Search Console, live:
+
+    "stepan layoffs"          4 clicks / 12 impressions    33% CTR
+    "athenahealth layoff"     1 click  /  3 impressions    33% CTR
+    "cover letter examples"   0 clicks / 89 impressions      0% CTR
+
+Company-name layoff queries click through at a third. The site's generic
+career advice clicks through at zero. Somebody who searches their own employer
+plus "layoffs" is, most often, a person who has just been laid off or believes
+they are about to be. They arrived on a company page, read the filing, and the
+page offered them nothing to do next.
+
+**What shipped (2.20.115).** A next-step aside on `/company-layoffs/<slug>/`,
+below every entry, below the navigation and below the citation box. Three
+practical items, all free: what the WARN notice period means (our own
+methodology), where to file for unemployment (CareerOneStop's state finder,
+sponsored by the US Department of Labor's Employment and Training
+Administration), and Rapid Response (dol.gov), the free state service that
+exists for exactly this situation. Then one sentence about our resume tool.
+
+**Why the register is what it is.** These are people reading a page about
+their own job in the worst week of their year. No urgency, no scarcity, no
+exclamation marks, and nothing that assumes the reader lost a job, because a
+journalist and a researcher read these pages too. The framing is a condition
+("If a layoff affects you") and the lead is "Some people reach this page
+because the cuts are their own". Written so it is useful if they were laid off
+and unembarrassing if they were not.
+
+**Why the offer is one line and disclosed.** These pages are cited BECAUSE
+they are a neutral primary source that is not selling anything. So: the block
+is an `<aside>`, it renders after the entire record, it carries its own
+"Not part of the record" label for readers the CSS cannot reach, it emits no
+structured data at all, and every link inside it is `nofollow`, our own
+included. The sentence says plainly that the tool has no bearing on what the
+page records.
+
+**The honest call to action, given the product is unlaunched.** It is not
+"buy". asktherecruiter.com still serves a coming-soon landing page; the
+working app answers on a Railway SANDBOX hostname. What is true today is that
+a first draft is free and the tool is still in testing, so that is exactly
+what the copy says. The destination is `alt_next_step_tool_url()`, one
+filterable definition in `ai-layoff-tracker.php`, because a sandbox hostname
+is not a promise and it renders on ~7,500 URLs. **Repoint it at the real
+domain on launch day.**
+
+**What was deliberately left off.** The digest signup, which already renders
+on these pages and is untouched. A weekly list of other people's layoffs is
+not what a newly laid-off person wants, so the block does not offer it: they
+are two needs sharing one page, not one need sharing one box. Also left off:
+severance advice and anything else that would be legal advice, a price, a
+testimonial, and the block itself on the tracker, methodology, sources and
+press pages, which are the citation channel.
+
+**Two edits the owner proposed and this did NOT take, recorded so the next
+session does not re-litigate them.** The suggestion was "if you need help
+rewriting your resume use our evidence-based AI resume writing and cover letter
+writing tool", and a link back to asktherecruiter.com.
+
+*"Evidence-based" is an unbacked claim*, on the one page in this project whose
+credibility rests entirely on every figure having a filing behind it. A
+marketing adjective beside a WARN notice is exactly the thing that costs a
+citation. What DID land is "a resume and cover letter tool": cover letter is a
+fact the reader would not otherwise assume, verified on the live app, and it is
+information rather than an adjective.
+
+*The restraint is the conversion mechanism*, not a tax on it. A person who has
+just lost a job trusts a quiet offer on a measured page. The same offer pitched
+reads as an advert on a page about their own job loss, and it would damage both
+the sale and the source.
+
+*The link does not go to asktherecruiter.com.* That domain answers EVERY path
+with the same coming-soon page: `/`, `/pricing`, `/health` and an invented path
+all return 200 with a byte-identical 14,169-byte body. Sending somebody from a
+moment of need to a placeholder is worse than sending them nowhere. The link
+goes to the working tool, checked on the day it shipped: 200, and the response
+carries the tool's own title, its "Adapt my resume free" control and its cover
+letter feature.
+
+**The closing sentence is load-bearing and stays.** "It has no bearing on what
+this page records." It tells a reporter the data is not shaped by the
+commercial interest and tells a laid-off reader they are not being sold to. Do
+not cut it for length.
+
+**Facet pages get the lighter half.** US state pages and the United States
+country page carry the three official links and NO product line. A person
+reading "California layoffs" has not named their own employer, so the intent
+signal is weaker and the page is likelier to be read by somebody slicing the
+data. Non-US country pages and industry pages carry nothing, because all three
+items are United States programmes and a block of links that do not apply is
+worse than no block. The company page gates the same way, on whether the
+employer's own records name a US location.
+
+**The guard.** `railway/tests/test_next_step_block.py`. Copy blocks drift: one
+more link, then a testimonial, then a price, each edit small and defensible.
+The end state is a data page that reads as lead generation, and the cost of
+that is not a worse conversion rate, it is a reporter citing somebody else. So
+the position, the aside, the label, the absence of structured data, the
+nofollow on every link, the single product mention, the disclosure and the
+banned urgency vocabulary are all pinned as assertions. Reading grade and the
+dash ban are NOT re-implemented there; `style_check.py` already scores both
+templates (5.8 and 6.5 against a ceiling of 11) and
+`test_ui_copy_punctuation.py` already bans the characters.
 
 ## 2026-08-19 - the two links inside an email were watched by nothing
 

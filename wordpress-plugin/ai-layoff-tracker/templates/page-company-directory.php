@@ -190,6 +190,91 @@ $alt_verif = array(
               echo alt_cite_box_html($alt_dir['company']['display_name'] . ' layoff records', $alt_dir['url']); // escaped inside
           } ?>
 
+    <?php
+    /* THE NEXT STEP, FOR THE READER THIS PAGE IS ACTUALLY REACHING.
+     *
+     * WHO ARRIVES HERE. Search Console reads company-name layoff queries at a
+     * 33% click-through rate against roughly zero for the site's generic
+     * career advice. Somebody who searches their own employer plus "layoffs"
+     * is most often a person who has just been laid off, or thinks they are
+     * about to be. Until now the page gave them a filing and nothing else.
+     *
+     * FOUR RULES THE BLOCK IS BUILT TO OBEY, and each one is a thing that
+     * could go wrong rather than a preference.
+     *
+     * 1. THE DATA STAYS FIRST. This renders after every entry, after the
+     *    navigation and after the citation box. It is an <aside>, not a
+     *    section of the record, and it carries its own label saying so. It
+     *    changes nothing about what the page reports or how.
+     *
+     * 2. NOTHING HERE ASSUMES THE READER LOST A JOB. The heading is a
+     *    condition and the lead says "some people". A journalist or a
+     *    researcher reading it should find it unremarkable rather than
+     *    embarrassing.
+     *
+     * 3. USEFULNESS BEFORE THE PRODUCT. Three practical things come first and
+     *    all three are free: what the notice period means, where to file for
+     *    unemployment, and the free state service that exists for exactly this
+     *    situation. The product is one sentence at the bottom and states
+     *    plainly that it is still in testing.
+     *
+     * 4. NO STRUCTURED DATA AND NO COMMERCIAL MARKUP. A crawler assessing this
+     *    page as a source sees an aside with two nofollowed government links
+     *    and one nofollowed link of our own. The Dataset node this page already
+     *    emits is untouched. The reason a reporter cites these pages is that
+     *    they are not selling anything, so the offer is disclosed in words and
+     *    described in none of the machine-readable metadata.
+     *
+     * WHY THE US ITEMS ARE GATED. The WARN Act, state unemployment insurance
+     * and Rapid Response are United States programmes. This tracker holds
+     * records from many countries, so an employer whose records name no US
+     * location gets the jurisdiction pointer instead of three links that do
+     * not apply to them.
+     */
+    $alt_ns_us = in_array('United States', (array) $alt_dir['countries'], true);
+    ?>
+    <aside class="alt-next-step" aria-labelledby="alt-next-step-h">
+        <span class="alt-detail-h">Not part of the record</span>
+        <h2 id="alt-next-step-h">If a layoff affects you</h2>
+        <p>Some people reach this page because the cuts are their own. These are
+        the first practical steps, and none of them costs anything.</p>
+        <?php if ($alt_ns_us) : ?>
+        <ul class="alt-next-step-list">
+            <li><b>What the notice period means.</b> The federal WARN Act requires
+            covered US employers to give 60 days of written notice.
+            <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/#m-notice-gap')); ?>">We
+            measure what each notice we hold recorded</a>.</li>
+
+            <li><b>Unemployment insurance.</b> Your state runs it, not your
+            employer, and you file the claim yourself.
+            <a href="https://www.careeronestop.org/LocalHelp/UnemploymentBenefits/find-unemployment-benefits.aspx"
+               target="_blank" rel="noopener nofollow">Find your state office</a>.</li>
+
+            <li><b>Rapid Response.</b> States offer a free service to people in a
+            layoff. It covers benefits, health insurance and training.
+            <a href="https://www.dol.gov/agencies/eta/layoffs/workers"
+               target="_blank" rel="noopener nofollow">Read what it offers workers</a>.</li>
+        </ul>
+        <?php else : ?>
+        <p class="alt-next-step-list">Notice rules and unemployment support differ
+        by country.
+        <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/#m-jurisdictions')); ?>">See
+        which register we read for each place</a>.</p>
+        <?php endif; ?>
+        <p class="alt-next-step-note">This is background, not legal advice.
+        <?php // function_exists is the FTP-deploy race guard: an upload can land
+              // this template before ai-layoff-tracker.php, and 2.20.21 is the
+              // standing lesson about what a raced render costs. With no
+              // destination the sentence is simply not said.
+              if (function_exists('alt_next_step_tool_url')) : ?>
+        We also build a resume and cover letter tool. It is still being tested,
+        and the first draft is free.
+        <a href="<?php echo esc_url(alt_next_step_tool_url()); ?>" target="_blank"
+           rel="noopener nofollow">Try the draft tool</a>. It has no bearing on what
+        this page records.
+        <?php endif; ?></p>
+    </aside>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('company'); ?>
