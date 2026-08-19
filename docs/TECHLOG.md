@@ -1,5 +1,16 @@
 # Tech Log
 
+## 2026-08-19 - methodology said "in order to" where the style gate says "to" (2.20.106)
+
+`railway/style_check.py` exited 1 on origin/main with one finding unrelated to
+any in-flight work: methodology `#m-ai` carried "Cuts made in order to hire
+people with stronger AI skills...", and "in order to" is banned jargon. The
+gate steps aside for a phrase in quotation marks, because a rule being QUOTED
+is not the rule being used; here it was used, so the fix is the shorter
+wording, not quoting around it. Now reads "Cuts made to hire people with
+stronger AI skills do not earn the strict tag either." The ruling that sentence
+carries (2.20.104) is untouched; only the connective changed. Gate exits 0.
+
 ## 2026-08-19 - the last six speaker rows are ruled, and five wrong AI rows came out of the live count
 
 **What the owner authorised, stated narrowly so it cannot be read as more.** He
