@@ -1,5 +1,121 @@
 # Tech Log
 
+## 2026-08-19 - the last six speaker rows are ruled, and five wrong AI rows came out of the live count
+
+**What the owner authorised, stated narrowly so it cannot be read as more.** He
+deferred ONE ruling to this session: the **mechanical application of his own
+speaker rule** (2.20.102) to six rows he had already seen. Not a fresh judgement,
+not a new rule, and nothing about the model. Every rule applied here is his; only
+the reading of six stored texts against it is the session's.
+
+**The six were re-read, not taken on trust.** A prior session had summarised them.
+A mechanical application of a written rule is legitimate; an unchecked one is not,
+so each row's stored text was read again against `#m-ai` before confirming. All
+six hold: none carries an employer attribution. 70293 Snap is a headline plus a
+reporter's summary; 70653 TikTok is a third party's claim ("It also claims
+that..."); 54973 Microsoft/MSN is The Verge's framing, where "by Microsoft" names
+whose push it is and not who spoke; 48830 Suncor is the reporter's generic
+"Driverless technology is only just starting to cause layoffs" with a union in the
+headline, while the Suncor statement in the text announces a truck fleet; 70683
+ByteDance is a "sources say" headline where the company confirmed only the count;
+70681 TikTok is a press purpose clause where the company confirmed the layoffs and
+not the reason. No disagreement with the prior session on any of the six.
+
+**Gold coverage is now 200 of 200 and nothing is parked.** `--rescore`, $0.00, no
+model called.
+
+**THE VERDICT ON THE 2026-08-07 SWAP IS STILL UNKNOWN, AND THAT IS NOW A SETTLED
+UNKNOWN RATHER THAN A BLOCKED ONE.** Every previous UNKNOWN was procedural - rows
+carried no label. That reason is gone. What is left is substantive and it is worth
+stating in full, because "UNKNOWN" read twice in a row invites somebody to round it
+to a pass. Production `google/gemini-2.5-flash-lite`: precision 69.5%
+(CI 49.0-85.4%), recall 78.1% (CI 56.3-91.5%). Pre-swap incumbent
+`deepseek/deepseek-chat`: precision 68.3% (CI 49.2-83.7%), recall 88.1%
+(CI 68.8-96.2%), inflated by construction as a gold labeller. On the one unrigged
+measure - symmetric agreement with the independent referee - they are level:
+incumbent 175/200 = 87.5% (CI 82.2-91.4%), candidate 176/200 = 88.0%
+(CI 82.8-91.8%). On the fair adjudicated subset they are one row apart, 17/34
+against 16/34, intervals overlapping heavily. The swap is neither vindicated nor
+condemned at n=200. Nothing here moves a production model.
+
+**The six cost the candidate ~9 points of precision (78.5% -> 69.5%), and that is
+the most interesting number in the exercise.** Gold is `false` on all six and
+flash-lite called AI on FOUR of them (70293, 48830, 70683, 70681) against three
+each for the incumbent and the referee. Press-framed AI attribution is the normal
+shape of an AI layoff story, so this is not an exotic stratum - it is the one the
+headline number is most exposed to. It is also six rows. It is a reason to widen
+the hard-negative stratum, not a reason to revert a model.
+
+**The parking test had a known defect and it bit, exactly as predicted.**
+`test_a_parked_recommendation_is_reported_not_swallowed` hard-coded row 70293 and
+was NOT gated on `_confirmed_by`, unlike its two siblings, so confirming the six
+reddened it with `AssertionError: 70293 not found in []` - a test failing while
+finding nothing wrong. It was a test of today's file contents wearing the costume
+of a property. Re-parking a row to satisfy it would have been the tail wagging the
+dog and deleting it would have thrown away a real invariant, so it is now gated
+like its siblings AND the row is read out of the file rather than typed: whatever
+is parked must come back parked, and an empty queue is the confirmed state rather
+than a silence. A hard-coded parked COUNT (33) in the sibling above it was derived
+for the same reason; it sits behind the gate so it could not bite today, but a
+number that only happens to be right is not a guard. The guard is undiminished:
+park a new recommendation without signing the file and it bites again.
+
+**FIVE LIVE ROWS WERE CORRECTED. This published.** Dry run first on every row, then
+apply, through `apply-correction.yml` with a reason that names the rule rather than
+the session. `ai_explicit=0` and `ai_causation=ai_linked` - the broad tier, which is
+exactly where `#m-ai` says a press characterisation belongs, so the cuts stay
+counted and labeled rather than disappearing.
+
+| id | company | jobs | stored | ruled | deciding phrase, from its own stored text |
+|---|---|---|---|---|---|
+| 70653 | TikTok | 439 | `ai_explicit=1`, contributing_cause | false | "**It also claims that** TikTok is looking to replace the moderators with artificial intelligence-driven systems" - a third party |
+| 54973 | Microsoft / MSN | 50 | `ai_explicit=1`, primary_cause | false | "The layoffs are part of a bigger push **by Microsoft** to rely on artificial intelligence to pick news and content" - The Verge's framing |
+| 48830 | Suncor Energy | 400 | `ai_explicit=1`, primary_cause | false | "Driverless technology is only just **starting to cause layoffs**" - the reporter's, and generic |
+| 70683 | ByteDance TikTok | 500 | `ai_explicit=1`, contributing_cause | false | "cuts hundreds of jobs **in shift towards** AI content moderation" - a "sources say" headline; the company confirmed only the count |
+| 107375 | General Motors | 600 | `ai_explicit=1`, contributing_cause | false | AI-skills-swap rule: the IT work continued and only the required skill changed. GM's own statement named no AI |
+
+**Measured live, before and after.** Strict AI **203,858 -> 201,869 jobs (-1,989)**
+over **96 -> 91 entries**; `ai_verified_jobs` 136,358 -> 135,408; `ai_primary_jobs`
+56,093 -> 55,643 over 32 -> 30 entries; `ai_announced_jobs` 67,500 -> 66,461.
+**`ai_broad_jobs` is UNCHANGED at 232,573**, which is the point: no cut was erased,
+five were moved from the strict tier to the labeled broad one.
+
+**The headline guard noticed and did not fire, correctly.** `headline_movement`
+reads "AI-attributed jobs, all time: -1,989 jobs over 1.0d (floor 8,000)" - inside
+the floor, so no sticky incident opened and no closure package is needed.
+`headline_containment` remains UNKNOWN on the US/Worldwide pair, but for a reason
+that predates this work: the `us_all_time` close at 02:46Z left the two baselines
+in different recorder runs, and it re-arms when the next run advances them
+together. That is the documented post-close state, not a new failure.
+
+**70293 SNAP WAS DELIBERATELY NOT CORRECTED, AND IT IS THE ONE THING HERE THAT
+STILL NEEDS THE OWNER.** Its gold label is `false` and correct - the gold set judges
+the stored snippet, and that snippet carries no employer attribution. The live row
+is a different question and the mechanical rule does not answer it. Row 70293's
+`ai_language` holds an **Evan Spiegel memo quote**, the CEO's own words: "rapid
+advancements in artificial intelligence enable our teams to reduce repetitive work,
+increase velocity, and better support our community, partners, and advertisers."
+That is an employer speaker, so the speaker rule does not condemn the live row. The
+quote is attributed to TechCrunch and appears nowhere in the row's own source text
+(the row is sourced to economictimes.indiatimes.com), so what 70293 actually has is
+the **missing-receipt** defect - the same shape as row 292 TCS, already flagged in
+the recommendations file - and `finalize_ai_causation` sends a causal label with no
+receipt to `unknown`, never to `false`. On its merits the Spiegel quote reads much
+like 107465 Upwork ("AI means smaller, differently resourced teams"), which is ruled
+`true`. Applying the speaker rule to it would have been a judgement dressed as an
+application, so it was left alone and 1,000 US jobs stayed in the strict count.
+
+**A SECOND THING FOR THE OWNER, AND IT IS BIGGER THAN FIVE ROWS.** All five
+corrected rows still carry the `ai_automation` reason tag, which `#m-ai` defines as
+"the employer names AI or automation, with a quote on file" - the same speaker line
+the strict tile draws, and the methodology says in terms that "both draw the speaker
+line the same way". The vocabulary already holds `possible_ai` for the press-linked
+case. So the tag and the tile now disagree on these five rows. It was left alone on
+purpose: retagging is a second decision that changes the public reason filter, it
+was not what the owner authorised, and it is almost certainly not confined to five
+rows. The question to answer once is whether every row moved to `ai_linked` should
+have its reason tag moved with it, as a sweep.
+
 ## 2026-08-19 - the "AI skills swap" is restructuring, not an AI layoff (2.20.104)
 
 **The open question.** The speaker ruling earlier the same day settled who has

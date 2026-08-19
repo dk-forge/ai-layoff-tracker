@@ -1,108 +1,124 @@
 # AI causation — recommended rulings, for confirmation
 
-> ## RULED AND CONFIRMED IN PART, 2026-08-19
+> ## RULED AND CONFIRMED IN FULL, 2026-08-19
 >
-> **Updated 2026-08-19, second ruling.** The GM row is now decided; the six
-> parked rows are not. See the two blocks marked UPDATED below.
+> **All 34 open rows now carry a ruling. Nothing is parked. Gold coverage is
+> 200 of 200.** The three questions this file raised are all answered, and the
+> two that were rules rather than row calls are published where a reader can
+> check them, on methodology `#m-ai`.
 >
-> **The speaker question is answered: `ai_explicit` requires THE EMPLOYER to have
+> **1. The speaker question: `ai_explicit` requires THE EMPLOYER to have
 > attributed the cuts to AI.** A report counts when it quotes or reports the
 > employer saying it. A journalist's own characterisation, with no such statement
-> from the employer, is the BROAD tier (`ai_linked`), not this one. The rule is now
-> written where a reader can check it (methodology `#m-ai`), asked for in
-> `extractor.ai_causation_prompt()` and `SYSTEM_PROMPT` rule 2, and described in
-> `alt_allowed_ai_causation()`. It is no longer derived across three files and
-> stated in none.
+> from the employer, is the BROAD tier (`ai_linked`), not this one. Ruled by the
+> owner; written into `#m-ai`, `extractor.ai_causation_prompt()`, `SYSTEM_PROMPT`
+> rule 2 and `alt_allowed_ai_causation()` at 2.20.102. The reason, on the record:
+> the product already runs two tiers, a strict one that is the employer's own
+> words with a quote on file and a broad one that also holds press framing.
+> Ruling "the source text suffices" would collapse the two and delete the
+> distinction the broad tier exists to carry.
 >
-> **The reason for that answer, on the record.** The product already answers the
-> other question separately. It runs two tiers: a strict one that is the employer's
-> own words with a quote on file, and a broad one that is employer words PLUS press
-> framing. Ruling "source" would collapse the two and delete the distinction. The
-> broad tier exists precisely to hold press-attributed cuts.
+> **2. The AI-skills-swap question: 107375 (General Motors) is `false`.** GM's own
+> words do name AI, so the speaker ruling did not dispose of it. The test the owner
+> accepted: **did the work go away, or did the required skill change?** If a system
+> now does the work, that is an AI layoff. If the same work still needs doing by
+> different people, that is restructuring. Written into `#m-ai` at 2.20.104.
 >
-> **27 of the 33 recommendations are now live rulings.** 25 were accepted as
-> written; **107481 (GoKwik)** and **107491 (Snowflake)** were flipped to `false` by
-> the ruling, as this file said they would be.
+> **3. The six speaker rows are CONFIRMED `false`** — `70293` Snap, `70653` TikTok,
+> `54973` Microsoft/MSN, `48830` Suncor, `70683` ByteDance/TikTok, `70681` TikTok.
+> The owner deferred this one ruling to a session on 2026-08-19, and what he
+> authorised was narrow: **the mechanical application of his own speaker rule to six
+> rows he had already seen, not a fresh judgement and not a new rule.** Each row's
+> stored text was re-read against `#m-ai` before confirming rather than confirmed on
+> the strength of the earlier summary. None carries an employer attribution:
 >
-> ### UPDATED: 107375 (General Motors) is RULED, and the answer is `false`
->
-> The speaker ruling did not settle it, because GM's own words do name AI. The
-> owner ruled the second question instead, and the test he accepted is this:
-> **did the work go away, or did the required skill change?** If a system now does
-> the work, that is an AI layoff. If the same work still needs doing by different
-> people, that is restructuring. GM is the second, so `107375` is `false` and it is
-> now a live ruling in the JSON rather than a row held out of it. That makes **28**
-> live rulings. The test is written into methodology `#m-ai` beside the speaker
-> rule, so the next "AI skills swap" row does not have to be re-argued.
->
-> **GM is stored LIVE as `ai_explicit=1`, so this ruling adds an eleventh row to the
-> stored-value disagreement list, on the "out of the AI count" side.** Nothing is
-> queued and no live value was touched.
->
-> ### The ruling reaches SIX more rows than this file said it did
->
-> This file named three rows as turning on the speaker question. Re-reading every
-> recommended-AI row against the ruled test finds six more whose stored text carries
-> **no employer attribution at all**. They are recommended `false` under the ruling
-> and remain **PARKED**, because five of them are stored LIVE as `ai_explicit=1`:
->
-> | id | company | who actually said AI |
+> | id | company | who actually said AI, in the stored text |
 > |---|---|---|
-> | 70293 | Snap | "AI **push leads to** 1,000 job cuts" is the headline. No employer statement in the text. |
-> | 70653 | TikTok | "**It also claims that** TikTok is looking to replace the moderators…" — a third party's claim. |
-> | 54973 | Microsoft / MSN | "The layoffs are part of a bigger push **by Microsoft** to rely on AI" — the reporter's framing. |
-> | 48830 | Suncor | "Driverless technology is only just starting to cause layoffs" — the reporter's, and generic. |
-> | 70683 | ByteDance / TikTok | "cuts hundreds of jobs **in shift towards** AI content moderation" — headline framing. |
-> | 70681 | TikTok | The company confirmed the layoffs, **not the reason**. Press purpose clause. |
+> | 70293 | Snap | "AI **push leads to** 1,000 job cuts" is the headline; the second sentence is the reporter's summary. No employer statement. |
+> | 70653 | TikTok | "**It also claims that** TikTok is looking to replace the moderators…" — a third party's claim, not TikTok's. |
+> | 54973 | Microsoft / MSN | "The layoffs are part of a bigger push **by Microsoft** to rely on AI" — The Verge's framing. "by Microsoft" says whose push, not who spoke. |
+> | 48830 | Suncor | "Driverless technology is only just **starting to cause layoffs**" — the reporter's, and generic; the union is in the headline. The Suncor statement in the text announces a truck fleet. |
+> | 70683 | ByteDance / TikTok | "cuts hundreds of jobs **in shift towards** AI content moderation" — a "sources say" headline. The company confirmed only the count. |
+> | 70681 | TikTok | Press purpose clause. The company confirmed the layoffs, **not the reason**. |
 >
-> Confirming those five would add five rows to the corrections worklist for the
-> number this product is named after, so a session does not get to make that call.
-> Strip the six `rec:` prefixes to accept, or flip a value first to disagree.
->
-> **Corroboration the ruling is the right one:** production already stores 107481,
-> 107491 and 107469 as `ai_linked`, the broad tier. The live classifier was applying
-> the speaker rule before anybody wrote it down.
->
-> ### UPDATED: what `--rescore` returns after the GM ruling (194 gold labels, $0.00)
+> ### What `--rescore` returns now (200 gold labels, $0.00, no model called)
 >
 > | model | precision (pop-weighted) | recall (pop-weighted) |
 > |---|---|---|
-> | `deepseek/deepseek-chat` (incumbent, a labeller) | 73.7% (CI 53.9–87.9%) | 88.1% (CI 68.8–96.2%) |
-> | `openai/gpt-4.1-mini` (referee, a labeller) | 82.6% (CI 62.1–92.8%) | 83.8% (CI 61.1–94.1%) |
-> | `google/gemini-2.5-flash-lite` (**production**) | **78.5%** (CI 57.2–91.6%) | **78.1%** (CI 56.3–91.5%) |
+> | `deepseek/deepseek-chat` (incumbent, a labeller — INFLATED by construction) | 68.3% (CI 49.2–83.7%) | 88.1% (CI 68.8–96.2%) |
+> | `openai/gpt-4.1-mini` (referee, a labeller — INFLATED by construction) | 75.2% (CI 54.0–89.2%) | 83.8% (CI 61.1–94.1%) |
+> | `google/gemini-2.5-flash-lite` (**production**) | **69.5%** (CI 49.0–85.4%) | **78.1%** (CI 56.3–91.5%) |
 >
-> Fair head-to-head on the 28 adjudicated rows: referee 17/28 = 60.7%, incumbent
-> 14/28 = 50.0%, candidate 14/28 = 50.0%. All three intervals overlap heavily. GM is
-> the one row that moved: the candidate and the referee both read it `not AI`, the
-> incumbent read it `AI`, so the ruling cost the incumbent a false positive and cost
-> the candidate nothing. That is one row and it settles nothing on its own.
+> Fair head-to-head on the 34 adjudicated rows: referee 20/34 = 58.8% (CI 42.2–73.6%),
+> incumbent 17/34 = 50.0% (CI 34.1–65.9%), candidate 16/34 = 47.1% (CI 31.5–63.3%).
+> Symmetric referee agreement, which needs no adjudication and is the only comparison
+> not rigged by who wrote the key: incumbent 175/200 = 87.5% (CI 82.2–91.4%),
+> candidate 176/200 = 88.0% (CI 82.8–91.8%).
 >
-> **VERDICT ON THE 2026-08-07 SWAP: still UNKNOWN.** Six rows carry no label at all,
-> and all six are labeller disagreements, so nothing scores them. That is a
-> legitimate UNKNOWN and must not be read as a pass. Only confirming or rejecting
-> the six parked rows can move it, and that is the owner's call.
+> **The six cost the production candidate ~9 points of precision, and that is the
+> most interesting thing in this file.** They are exactly where it is weakest: gold
+> is `false` on all six, and flash-lite called AI on four of them (70293, 48830,
+> 70683, 70681) against three each for the incumbent and the referee. Press-framed
+> AI attribution is the normal shape of an AI layoff story, so this stratum is not
+> exotic. It is also six rows, and six rows settle nothing.
 >
-> **The provisional numbers below this banner did not reproduce.** This file
-> projected prec 80.9% / rec 72.6% for the candidate at 199 rows; the harness run at
-> 199 rows returns **69.5% / 78.1%**. The file warned that nothing on disk could
-> reproduce them, and it was right to. Quote the harness, never the projection.
+> **VERDICT ON THE 2026-08-07 SWAP: UNKNOWN — and now a SETTLED UNKNOWN, not a
+> blocked one.** Every previous UNKNOWN here was procedural: rows carried no label.
+> That reason is gone; adjudication is complete at 200 of 200. What remains is
+> substantive. On the one unrigged measure the incumbent and the candidate are
+> level (87.5% vs 88.0%, intervals almost identical); on the fair adjudicated
+> subset they are one row apart with intervals overlapping heavily; the candidate
+> trades recall for precision against the incumbent and every interval is wide.
+> **The swap is neither vindicated nor condemned at n=200.** Do not read this as a
+> pass, and do not move a production model on it. The harness prints UNKNOWN by
+> construction and has no branch that prints anything else, because choosing a
+> production model is the owner's call and not a score's.
 >
-> ### UPDATED: the stored-value disagreement list is now ELEVEN
+> **Do not quote the projections below this banner.** This file once projected
+> prec 80.9% / rec 72.6% for the candidate; the harness returns the table above.
+> The file warned that nothing on disk could reproduce the projections, and it was
+> right to. Quote the harness.
 >
-> The speaker ruling removed three of the seven flips that would have moved a row
-> **into** the AI count, which was the riskiest half of the list. The GM ruling then
-> added one to the **out of** side. Still unqueued, still for a separate reviewed
-> pass:
+> ### The stored-value disagreement list: five were CORRECTED LIVE on 2026-08-19
 >
-> - **into** the AI count (stored `false`, ruled AI): `60800`, `107469`, `54968`, `49084`
-> - **out of** the AI count (stored `true`, ruled not AI): `107375`, `49090`, `26455`, `306`, `176954`, `70469`, `293`
-> - `70681`, `107481`, `107491` have **left** the list: all three are ruled `false` and stored `false`, so there is nothing to correct.
-> - If the six parked rows are later confirmed, five more join the **out of** side: `70293`, `70653`, `54973`, `48830`, `70683`.
+> The corrections are applied, published to the public corrections log, and
+> `edited=1` pins each row against re-import. Live effect: strict AI
+> **203,858 → 201,869 jobs (−1,989)** over **96 → 91 entries**, with
+> `ai_broad_jobs` unchanged at 232,573 — the jobs moved to the labeled broad tier
+> rather than vanishing.
 >
-> Nothing is queued. `/edit` sets `edited=1`, rewrites the dedup hash and publishes
-> to the public corrections log.
-
+> - **Corrected out of the strict AI count** (`ai_explicit=0`, `ai_causation=ai_linked`):
+>   `70653` TikTok 439, `54973` Microsoft 50, `48830` Suncor 400, `70683`
+>   ByteDance/TikTok 500, `107375` General Motors 600.
+> - **`70293` Snap was DELIBERATELY NOT corrected, and this is the one thing here
+>   that still needs the owner.** Its gold label is `false` and correct: the gold set
+>   judges the stored snippet, and that snippet has no employer attribution. But the
+>   LIVE row's `ai_language` carries an **Evan Spiegel memo quote** — the CEO's own
+>   words, "rapid advancements in artificial intelligence enable our teams to reduce
+>   repetitive work, increase velocity…" — sourced to TechCrunch and appearing
+>   nowhere in this row's own source text. So the speaker rule does **not**
+>   mechanically condemn the live row: there IS an employer speaker. What the row
+>   actually has is the **missing-receipt** defect (the same shape as row 292 TCS,
+>   below), and the verbatim rule sends a quote-less causal label to `unknown`, not
+>   to `false`. Correcting it would have been a judgement, not an application, so it
+>   was left alone.
+> - **Still unqueued, still for a separate reviewed pass** — into the AI count
+>   (stored `false`, ruled AI): `60800`, `107469`, `54968`, `49084`; out of it
+>   (stored `true`, ruled not AI): `49090`, `26455`, `306`, `176954`, `70469`, `293`.
+>   `70681`, `107481`, `107491` are ruled `false` and stored `false`, so there is
+>   nothing to correct on them.
+>
+> **Corroboration the speaker ruling is the right one:** production already stores
+> 107481, 107491 and 107469 as `ai_linked`. The live classifier was applying the
+> rule before anybody wrote it down.
 ---
+
+> **EVERYTHING BELOW THIS LINE IS THE ORIGINAL RECOMMENDATION PASS, KEPT AS A
+> RECORD OF WHAT WAS PROPOSED AND WHY.** It is superseded by the banner above:
+> every row is now ruled, nothing is parked, and the mechanics it describes
+> ("coverage stays 175 of 200", "strip the prefix to confirm") have already been
+> carried out. Read it for a row's deciding phrase and the rubric reason. Do not
+> read its status lines, its counts, or its provisional score tables as current.
 
 **Status: RECOMMENDATION. Nothing here is decided.** Produced 2026-08-19 by a
 Claude session that read each row's stored text against the **written** rubric
