@@ -6,6 +6,19 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.106.** The baton was
+  read as HELD by `local` and is NOT claimed here; only the version number is,
+  which is what this file asks for. The change is one banned-jargon fix that
+  `railway/style_check.py` was failing on at origin/main, unrelated to any
+  in-flight work: the `#m-ai` AI-skills-swap sentence used "in order to", and it
+  now reads "Cuts made to hire people with stronger AI skills do not earn the
+  strict tag either." The phrase is USED there, not quoted, so the replacement
+  is the fix rather than quotation marks. Meaning is unchanged. Plugin files
+  touched: `templates/page-methodology.php` (that one phrase) and
+  `ai-layoff-tracker.php` (version only). No data, no ruling, no live row.
+  **Next plugin release is 2.20.107.** Written here before the push, and main
+  re-read immediately before merging, per the 2.20.92 collision note below.
+
 - **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the six speaker rows are
   confirmed and five live rows were corrected.** The baton was read as HELD by
   `local` and is NOT claimed here. **No plugin file was touched and no version was
