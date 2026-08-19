@@ -21,6 +21,15 @@ name: Send email digest
 # transport with no host or password falls back to the dry run, names the
 # missing secret and exits 0. A missing key stays a state, not a failure.
 #
+# A REJECTED credential IS a failure, and that distinction is the whole of the
+# 2026-08-19 change. Every run now opens one connection to the relay, logs in
+# and hangs up before it reads a single recipient, so a run with nobody due
+# still reports whether this job could send at all. Before that, the credential
+# path was only walked when there was a message in hand: Brevo had been
+# answering 535 since 2026-08-17 and every scheduled run was green, because
+# every scheduled run had an empty list. The mailer's health row now carries
+# `credential=<STATE>` beside the send counts, and ops_status reads it.
+#
 # 13:10 UTC daily, ten minutes after the site's own WP-Cron slot, so if this
 # job is armed it claims the tier and the built in wp_mail sender stands down
 # for that day rather than both sending.
@@ -42,6 +51,10 @@ on:
         description: 'Set to 1 to render the digest and send nothing'
         required: false
         default: '1'
+      verify_only:
+        description: 'Set to 1 to prove the relay credential and stop. Connects, authenticates, hangs up. Reads no recipient, builds no message, stamps nothing.'
+        required: false
+        default: ''
       freq:
         description: 'daily, weekly, or blank for auto (both tiers on Mondays)'
         required: false
@@ -90,6 +103,10 @@ jobs:
           DIGEST_SMTP_USER: ${{ secrets.DIGEST_SMTP_USER }}
           DIGEST_SMTP_PASSWORD: ${{ secrets.DIGEST_SMTP_PASSWORD }}
           DIGEST_FROM: ${{ secrets.DIGEST_FROM }}
+          # "Did my rotation work?", answerable without sending anybody an
+          # email. The scheduled run performs this same check on every run;
+          # this input is the manual form of it, and it stamps nothing.
+          DIGEST_VERIFY_ONLY: ${{ github.event.inputs.verify_only }}
           DIGEST_DRY_RUN: ${{ github.event.inputs.dry_run }}
           DIGEST_FREQ: ${{ github.event.inputs.freq }}
           DIGEST_LIMIT: ${{ github.event.inputs.limit }}

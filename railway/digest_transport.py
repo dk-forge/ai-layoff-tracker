@@ -42,6 +42,15 @@ would have to unpick every one of them instead.
 Nothing in this repo can read that dashboard setting, so nothing here claims a
 verdict about it: `tracking_note()` states what is believed to be on and names
 the copy that has to change if it is ever turned off.
+
+CAN IT STILL AUTHENTICATE? A SEPARATE QUESTION FROM WHETHER IT SENT.
+
+Every transport also answers `verify()`: connect, authenticate, hang up, with
+no message built and no recipient read. It exists because until 2026-08-19 the
+credential was only ever exercised by a real delivery, so a run with an empty
+list could not tell a working relay from one refusing us, and for three days it
+did not. `resolve_transport` still cannot arm anything by accident, and a
+MISSING credential is still not a fault - see the four states below.
 """
 from __future__ import annotations
 
@@ -57,6 +66,10 @@ from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 
 RESEND_ENDPOINT = "https://api.resend.com/emails"
+# A read-only route, used ONLY to ask whether the key is accepted. It is a
+# GET and it is not the send endpoint, so a credential check cannot become a
+# send by a typo in one string.
+RESEND_VERIFY_ENDPOINT = "https://api.resend.com/domains"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
 
@@ -89,6 +102,67 @@ class Message:
         local, _, domain = self.to.partition("@")
         keep = local[:1] if local else "?"
         return f"{keep}***@{domain or '?'}"
+
+
+# ---------------------------------------------------------------------------
+# Proving the credential without sending anything
+# ---------------------------------------------------------------------------
+
+# THE FOUR STATES, AND WHY THERE ARE FOUR RATHER THAN TWO.
+#
+# On 2026-08-19 the armed SMTP credential was being rejected by the relay with
+# 535 5.7.8 and every scheduled run was green, because every scheduled run had
+# nobody due: the credential path is only walked when there is a message to
+# carry, so a broken password and a quiet list are the same run. The only two
+# runs that touched the relay were manual test sends, which are deliberately
+# kept out of the health ledger, so they reddened a dispatch nobody was
+# watching and recorded nothing.
+#
+# A LOGIN with no message after it settles that question and costs one short
+# connection. What it must NOT do is collapse the answers together:
+#
+#   OK        the relay accepted the credential. The only pass.
+#   REJECTED  the relay refused it. A FAULT: it fails identically tomorrow and
+#             a human has to rotate a secret. This is the state that has to be
+#             loud, because it is the one that was silent.
+#   ABSENT    nothing is armed. A state, never a fault - the whole sender is
+#             dormant by construction and a red run for an unset secret is how
+#             a red run stops meaning anything.
+#   UNKNOWN   the question could not be settled: the relay was unreachable,
+#             there is no user to LOGIN as, or the transport has no check. NOT
+#             a pass. Absence of a signal never resolves to one here.
+ABSENT = "absent"
+OK = "ok"
+REJECTED = "rejected"
+UNKNOWN = "unknown"
+
+# The SMTP replies that mean "your credential is wrong", as opposed to "come
+# back later". 535 is what Brevo answered. 530 is a relay demanding AUTH we did
+# not offer, and 534/538 are mechanism refusals - all of them settled facts
+# about the credential rather than weather, so all of them are a fault. A 4xx
+# is explicitly NOT here: a temporary auth failure is UNKNOWN.
+_AUTH_REJECT_CODES = frozenset({530, 534, 535, 538})
+
+
+@dataclass
+class CredentialCheck:
+    """What one attempt to authenticate established. Never a message sent."""
+
+    state: str
+    transport: str
+    detail: str
+
+    @property
+    def is_fault(self) -> bool:
+        """Only a refusal is a fault. Absent and unknown are not."""
+        return self.state == REJECTED
+
+    @property
+    def is_pass(self) -> bool:
+        return self.state == OK
+
+    def line(self) -> str:
+        return f"{self.state.upper()}: {self.detail}"
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +303,18 @@ class Transport:
     def _deliver(self, message: Message) -> str:
         raise NotImplementedError
 
+    def verify(self) -> CredentialCheck:
+        """Can this transport authenticate? Answered WITHOUT sending anything.
+
+        The default is UNKNOWN rather than OK, so a provider added later that
+        forgets to implement this reports "not established" instead of
+        inheriting a pass it never earned.
+        """
+        return CredentialCheck(
+            UNKNOWN, self.name,
+            f"the {self.name} transport has no credential check, so whether it "
+            f"can authenticate is not established by this run")
+
     def describe(self) -> str:
         return self.name
 
@@ -270,6 +356,18 @@ class DryRunTransport(Transport):
         lines.append("=" * 68 + "\n")
         write("".join(lines))
         return "dryrun"
+
+    def verify(self) -> CredentialCheck:
+        """ABSENT, always. There is no credential, and that is not a fault.
+
+        This is the state the whole sender is designed to sit in until somebody
+        arms it, so it must never be confused with a refusal. It is equally not
+        a pass: nothing has been proved about any relay.
+        """
+        return CredentialCheck(
+            ABSENT, self.name,
+            f"nothing is armed ({self.reason or 'dry run'}), so there is no "
+            f"credential to prove. Dormant, not broken, and not verified either")
 
     def describe(self) -> str:
         return f"dryrun ({self.reason})" if self.reason else "dryrun"
@@ -334,6 +432,40 @@ class ResendTransport(Transport):
         except Exception:  # noqa: BLE001
             return "sent"
 
+    def verify(self) -> CredentialCheck:
+        """One authenticated GET. Lists domains, sends nothing, costs nothing.
+
+        401 and 403 are the API saying the key itself is wrong, which is the
+        same settled fact as an SMTP 535. Every other outcome - a 5xx, a
+        timeout, an unparseable answer - leaves the question open and reports
+        UNKNOWN rather than borrowing either verdict.
+        """
+        request = urllib.request.Request(
+            RESEND_VERIFY_ENDPOINT,
+            headers={"Authorization": f"Bearer {self.api_key}",
+                     "User-Agent": UA},
+            method="GET")
+        try:
+            with self.opener(request, timeout=self.timeout) as response:
+                response.read(2048)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                return CredentialCheck(
+                    REJECTED, self.name,
+                    f"Resend refused RESEND_API_KEY with HTTP {exc.code}. The "
+                    f"key is wrong or revoked and a human has to rotate it")
+            return CredentialCheck(
+                UNKNOWN, self.name,
+                f"Resend answered HTTP {exc.code} to the key check, which says "
+                f"nothing about the key. Not established")
+        except Exception as exc:  # noqa: BLE001
+            return CredentialCheck(
+                UNKNOWN, self.name,
+                f"could not reach Resend to check the key: {_scrub(str(exc))}. "
+                f"Not established, and not a fault")
+        return CredentialCheck(
+            OK, self.name, "Resend accepted RESEND_API_KEY")
+
 
 class SmtpTransport(Transport):
     """Any SMTP relay: Brevo, SES-SMTP, Postmark, Mailgun, a mailbox provider.
@@ -375,22 +507,83 @@ class SmtpTransport(Transport):
     def _deliver(self, message: Message) -> str:
         mail = self._build(message)
         try:
-            if self.factory is not None:
-                client = self.factory(self.host, self.port, timeout=self.timeout)
-            elif self.port == 465:
-                client = smtplib.SMTP_SSL(self.host, self.port,
-                                          timeout=self.timeout,
-                                          context=ssl.create_default_context())
-            else:
-                client = smtplib.SMTP(self.host, self.port, timeout=self.timeout)
-                client.starttls(context=ssl.create_default_context())
-            with client:
+            with self._connect() as client:
                 if self.user:
                     client.login(self.user, self.password)
                 client.send_message(mail)
         except Exception as exc:  # noqa: BLE001
             raise TransportError(f"smtp {self.host}: {_scrub(str(exc))}") from None
         return "smtp"
+
+    def _connect(self):
+        """Open a connection the way `_deliver` opens one. One definition.
+
+        A second way of dialling the relay would let the check pass on a path
+        the send does not take, which is a check that proves the wrong thing.
+        """
+        if self.factory is not None:
+            return self.factory(self.host, self.port, timeout=self.timeout)
+        if self.port == 465:
+            return smtplib.SMTP_SSL(self.host, self.port, timeout=self.timeout,
+                                    context=ssl.create_default_context())
+        client = smtplib.SMTP(self.host, self.port, timeout=self.timeout)
+        client.starttls(context=ssl.create_default_context())
+        return client
+
+    def verify(self) -> CredentialCheck:
+        """Connect, STARTTLS, LOGIN, QUIT. No message is built and none is sent.
+
+        This is the whole point of the exercise: the relay's answer to LOGIN is
+        the same answer it gives during a real send, so a run with nobody due
+        can still tell a working credential from a rejected one. `with client`
+        is the QUIT.
+
+        WHAT COUNTS AS A REFUSAL is narrow on purpose. An auth reply in
+        `_AUTH_REJECT_CODES` is settled and is a fault. A 4xx, a dropped
+        connection, a DNS failure or a timeout is weather, and reports UNKNOWN
+        so a bad ten seconds on the relay never rotates a good secret.
+        """
+        if not self.user:
+            return CredentialCheck(
+                UNKNOWN, self.name,
+                f"DIGEST_SMTP_USER is not set, so this transport sends without "
+                f"a LOGIN and there is no credential at {self.host} to prove")
+        try:
+            with self._connect() as client:
+                client.login(self.user, self.password)
+        except smtplib.SMTPResponseException as exc:
+            # SMTPAuthenticationError is a subclass, so this one handler covers
+            # both, and the CODE decides - not the class. A 4xx authentication
+            # error is a relay asking us to come back, not a wrong password.
+            code = 0
+            try:
+                code = int(exc.smtp_code)
+            except Exception:  # noqa: BLE001
+                pass
+            raw = getattr(exc, "smtp_error", "") or ""
+            if isinstance(raw, bytes):
+                raw = raw.decode("utf-8", "replace")
+            text = _scrub(str(raw or exc))
+            if code in _AUTH_REJECT_CODES:
+                return CredentialCheck(
+                    REJECTED, self.name,
+                    f"the relay at {self.host} refused DIGEST_SMTP_USER / "
+                    f"DIGEST_SMTP_PASSWORD with {code} {text}. Settled: it "
+                    f"fails identically on the next run until the secret is "
+                    f"rotated")
+            return CredentialCheck(
+                UNKNOWN, self.name,
+                f"the relay at {self.host} answered {code} {text} to LOGIN, "
+                f"which is not a settled verdict on the credential")
+        except Exception as exc:  # noqa: BLE001
+            return CredentialCheck(
+                UNKNOWN, self.name,
+                f"could not reach the relay at {self.host} to check the "
+                f"credential: {_scrub(str(exc))}. Not established, not a fault")
+        return CredentialCheck(
+            OK, self.name,
+            f"the relay at {self.host} accepted DIGEST_SMTP_USER / "
+            f"DIGEST_SMTP_PASSWORD. No message was built and none was sent")
 
 
 def _scrub(text: str) -> str:

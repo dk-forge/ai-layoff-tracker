@@ -44,6 +44,7 @@ Exit codes:
 """
 import json
 import os as _os
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -788,6 +789,57 @@ def subscriber_lines():
     return lines
 
 
+def digest_credential_lines(health):
+    """What the mailer's last run established about its own credential.
+
+    WHY THIS IS A LINE OF ITS OWN rather than left to the staleness ceiling in
+    [2]. Between 2026-08-17 and 2026-08-19 the armed Brevo credential was being
+    refused with 535 and this tool said nothing at all, three sessions running.
+    The health row was not stale and it was not degraded: it read `ok, 0
+    entries`, which was a true description of a run with nobody due and no
+    description whatsoever of a relay that had stopped accepting us. The row
+    now carries `credential=<STATE>` and this reads it, because the fact worth
+    seeing at session start is not how many people got an email yesterday - it
+    is whether anyone COULD have.
+
+    PASS / FAIL / UNKNOWN, and a fourth for dormancy. An unreadable row is
+    UNKNOWN and never a pass.
+
+    ONLY `REJECTED` raises an issue, and that does not contradict the rule in
+    `subscriber_lines` above about keeping this panel informational. That rule
+    is about an unreadable panel, and it still holds here: an unreadable row,
+    an absent row and an unreachable relay all print UNKNOWN and raise nothing.
+    A refusal is not an unreadable panel. It is a settled fault with a named
+    remedy that only the owner can perform.
+    """
+    if not isinstance(health, dict):
+        return ["credential UNKNOWN - the health endpoint could not be read, so",
+                "          the mailer's credential state is not established here."], False
+    row = health.get("digest_mailer")
+    if not isinstance(row, dict):
+        return ["credential UNKNOWN - no digest_mailer health row. The sender has",
+                "          not recorded a run, which is not a sender that is working."], False
+    detail = str(row.get("detail") or "")
+    match = re.search(r"credential=([A-Z]+)", detail)
+    if not match:
+        return ["credential UNKNOWN - the mailer's last row predates this check, so it",
+                "          says how many were sent, not whether it could have sent."], False
+    state = match.group(1)
+    if state == "REJECTED":
+        return (["credential REJECTED - the relay refused us on the mailer's last run.",
+                 f"          {detail[:150]}",
+                 "          -> RUNBOOK 'the digest cannot authenticate'. A human has to",
+                 "          rotate the secret; nothing in this repo can."], True)
+    if state == "OK":
+        return ["credential OK - the relay accepted us on the mailer's last run."], False
+    if state == "ABSENT":
+        return ["credential DORMANT - none is armed, so nothing sends. A state,",
+                "          not a fault. Arming it is a reviewed change to digest-send.yml."], False
+    return (["credential UNKNOWN - not established on the mailer's last run:",
+             f"          {detail[:150]}",
+             "          Not a pass. The next run settles it."], False)
+
+
 def _print_wrapped(text, width=86, indent="        "):
     """One slice per line, wrapped, so a multi-slice verdict stays readable."""
     import textwrap
@@ -858,6 +910,7 @@ def main():
 
     # 2. Health triage
     print("\n[2] SOURCE HEALTH  (https://asktherecruiter.com/blog/ai-layoff-tracker/ai-tracker-health/)")
+    health = None
     try:
         health = json.load(_get(f"{BASE}/wp-json/layoffs/v1/source-health?cb={uuid.uuid4()}"))
         now = datetime.now(timezone.utc)
@@ -1233,6 +1286,13 @@ def main():
     print("\n[4c] DIGEST SUBSCRIBERS  (keyed /subscriber-stats; counts only, no addresses)")
     for line in subscriber_lines():
         print(f"    {line}")
+    # Can the sender still authenticate? A separate question from how many
+    # people are on the list, and the one that was invisible for three days.
+    _cred_lines, _cred_bad = digest_credential_lines(health)
+    for line in _cred_lines:
+        print(f"    {line}")
+    if _cred_bad:
+        issues.append("the digest relay is refusing our credential")
 
     # 4d. Did anything decline to run at all because the host was unreachable?
     #
