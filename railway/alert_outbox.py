@@ -83,6 +83,23 @@ HISTORY_KEPT = 100
 #: short enough that a wrong API key does not sit undiscovered for a week.
 FAIL_LOUD_ATTEMPTS = 12
 
+#: The same ceiling expressed in time rather than in tries, because the attempt
+#: count only moves when the drain RUNS.
+#:
+#: THE DEFECT THIS CLOSES. `stuck()` asked one question — "has this failed 12
+#: times?" — and a held alert accrues attempts only when alert-drain.yml
+#: executes and manages to commit the result. If the drain is disabled, broken,
+#: out of Actions minutes, or stopped by GitHub's 60-day inactivity rule on
+#: scheduled workflows, an entry sits at `attempts: 1` forever. Nothing goes
+#: red, `ops_status [4b]` prints "1 held (most-tried: x1)" and exits 0, and the
+#: alert is simply never delivered. A queue that quietly never drains is the
+#: original silence with extra steps, and measuring it in attempts made the
+#: silence load-bearing: the quieter the failure, the greener the dashboard.
+#:
+#: Six hours, to line up with FAIL_LOUD_ATTEMPTS at the drainer's 30-minute
+#: cadence, and far longer than any outage this host has produced.
+MAX_HELD_HOURS = 6
+
 VERSION = 1
 
 
@@ -137,8 +154,38 @@ def pending(doc: dict) -> list[dict]:
     return out
 
 
-def stuck(doc: dict) -> list[dict]:
-    return [e for e in pending(doc) if e.get("attempts", 0) >= FAIL_LOUD_ATTEMPTS]
+def _age_hours(entry: dict, now: datetime | None = None) -> float:
+    """How long this has been held, in hours. Unparseable -> 0.0, i.e. UNKNOWN
+    is not escalated on age alone; the attempt count still speaks for it."""
+    raised = entry.get("raised_at") or ""
+    try:
+        when = datetime.fromisoformat(raised)
+    except (TypeError, ValueError):
+        return 0.0
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, ((now or datetime.now(timezone.utc)) - when).total_seconds() / 3600.0)
+
+
+def overdue(doc: dict, now: datetime | None = None) -> list[dict]:
+    """Held longer than MAX_HELD_HOURS, however few attempts it has had."""
+    return [e for e in pending(doc) if _age_hours(e, now) >= MAX_HELD_HOURS]
+
+
+def stuck(doc: dict, now: datetime | None = None) -> list[dict]:
+    """Entries that are no longer "the relay is having a bad night".
+
+    TWO questions, not one. Too many failed attempts means the relay is
+    answering and refusing. Too much elapsed time means nobody is even asking —
+    which is the failure the attempt count cannot see, because a drain that
+    never runs never increments anything. Either way the owner has not been
+    told, which is the only thing this queue exists to prevent.
+    """
+    blocked = {id(e): e for e in pending(doc)
+               if e.get("attempts", 0) >= FAIL_LOUD_ATTEMPTS}
+    for e in overdue(doc, now):
+        blocked[id(e)] = e
+    return [e for e in pending(doc) if id(e) in blocked]
 
 
 def enqueue(doc: dict, *, key: str, kind: str, scope: str, payload: dict,
@@ -223,7 +270,13 @@ def describe(doc: dict) -> list[str]:
         return [f"empty — nothing held; last settled {last.get('settled_at')} "
                 f"({last.get('settled_because', '')[:60]})"]
 
-    lines = [f"{len(held)} alert(s) HELD — raised but not yet delivered"]
+    oldest = max(_age_hours(e) for e in held)
+    lines = [f"{len(held)} alert(s) HELD — raised but not yet delivered "
+             f"(oldest {oldest:.1f}h)"]
+    if oldest >= MAX_HELD_HOURS:
+        lines.append(f"  HELD LONGER THAN {MAX_HELD_HOURS}h. At the drainer's "
+                     "30-minute cadence this is not an outage waiting to pass. "
+                     "Check that alert-drain.yml is still running at all.")
     for e in held[:5]:
         subject = (e.get("payload") or {}).get("subject", e.get("key", ""))
         lines.append(f"  {e.get('raised_at')}  x{e.get('attempts', 0)}  "
@@ -278,8 +331,10 @@ def main(argv=None) -> int:
 
     blocked = stuck(doc)
     if blocked:
-        print(f"::error::{len(blocked)} alert(s) have failed delivery "
-              f"{FAIL_LOUD_ATTEMPTS}+ times and are not reaching the owner.")
+        worst_age = max(_age_hours(e) for e in blocked)
+        print(f"::error::{len(blocked)} alert(s) are not reaching the owner "
+              f"(oldest held {worst_age:.1f}h; escalation is "
+              f"{FAIL_LOUD_ATTEMPTS}+ attempts OR {MAX_HELD_HOURS}h held).")
         return 2
     return 0
 

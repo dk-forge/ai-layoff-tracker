@@ -1,5 +1,92 @@
 # Tech Log
 
+## 2026-08-19 - an idempotency key that named a cause, not a transition
+
+**The report was that 35 alerts were stuck. Two were, and both had already
+been delivered by the time anyone looked.** `railway/alert_outbox.json` holds 35
+entries because `HISTORY_KEPT` is 100 and settled entries are deliberately kept
+for forensics: 33 were `delivered` or `cancelled`, and `last_error` on a settled
+entry is the last thing that went wrong BEFORE it succeeded, not a live target.
+The 28 `/alert` errors in it are pre-migration history and nothing is addressed
+to that route: a held payload is `{subject, body, dedupe_key}`, transport-free,
+and the drain re-routes it through whatever `ci_alert.deliver` uses today. So
+there was nothing to delete, and deleting it would have cost the record of the
+2026-07-31 and 2026-08-19 outages for no gain.
+
+**What was real: five HTTP 409s in one day, and every one of them a genuine
+alarm Resend refused.** The key was `alt-raise-{cause}`. Measured off the
+committed ledger's own history:
+
+    09:19  RAISE  deploy-wordpress-plugin:main:973999a049809e5c
+    09:24  CLEAR    "
+    18:41  RAISE    "     same key, new run, new body  ->  HTTP 409
+
+A cause is not a transition. It can open, close and open again well inside
+Resend's 24-hour window, and when it does, the second alarm carries a new run
+URL in its body, so the key is spent and the payload no longer matches. The
+resolves had the same shape from the other end: `alt-resolve-{scope}-{count}`
+varied only by HOW MANY alerts were cleared, so clearing one alert twice in a
+day was one key and two bodies.
+
+**The ledger was right and Resend was wrong.** Every 409 was a real re-raise
+that the open/resolved ledger had correctly ruled sendable. Nothing was lost,
+because `alert_drain.drain()` re-sent each one on the next 30-minute tick — but
+only by accident, and for a bad reason (below). The cost was a delayed alert, a
+spurious held entry and two commits per alarm.
+
+**Both obvious repairs are worse, and one of them is dangerous.** Folding the
+body into the key makes every run a distinct key, so Resend dedupes nothing and
+the second guard is gone. Making the body byte-identical per cause makes the key
+and the payload AGREE - at which point Resend stops answering 409 and starts
+answering 200 with the original email's id, having sent nothing. The 18:41 alarm
+would then vanish in silence instead of failing loudly. That is the trade this
+repository always refuses: a silent pass is the expensive mistake, a loud
+refusal is the cheap one.
+
+**So the key names the transition.** `alt-raise-{cause}-{first}` and
+`alt-resolve-{scope}-{newest cleared}`, both taken from the ledger rather than
+from the clock, so two runners racing on the SAME transition still agree. A
+re-raise after a clear is a different transition and gets a different key. The
+fortnightly STILL FAILING reminder keeps `first`, so it is correctly the same
+transition as the raise it repeats. An undeduped legacy alert now carries NO key
+at all, where it used to share the string `alt-raise-` with every other one.
+
+**The guard moved to the path that actually needed it.** Two runners racing on a
+brand-new raise are closed by the committed claim - `git push` to main is the
+compare-and-swap and the loser re-derives, finds the cause open and goes quiet.
+What had NO guard was the drain: `alert_drain.drain()` called
+`ci_alert.deliver(payload)` with no `idem` whatsoever, so every alert that had
+ever been held was re-sent unprotected, on the one path where the same decision
+genuinely is sent more than once. `alert-drain.yml` admits it in its own failure
+text - "alerts delivered this run may be re-sent on the next tick" when it
+cannot commit the drained outbox. `post_alert` now stamps the key into the
+payload, the payload is what gets held, and the drain reproduces it.
+
+**And the queue can no longer age out of sight.** `stuck()` asked one question:
+has this failed `FAIL_LOUD_ATTEMPTS` times? Attempts only accrue when
+alert-drain.yml RUNS. Disable it, break it, or let GitHub's inactivity rule stop
+the schedule, and an entry sits at `attempts: 1` for ever with nothing red and
+`ops_status [4b]` printing "1 held (most-tried: x1)" and exiting 0 - a dashboard
+that got greener the more completely the delivery path had failed. `stuck()` is
+now attempts OR `MAX_HELD_HOURS` (6h, the same ceiling the attempt count encodes
+at a 30-minute cadence), mirrored in `ops_status [4b]`, which now exits 2 on it.
+An age that cannot be parsed is UNKNOWN: reported, never escalated on alone.
+
+**No terminal-state discard was added, on purpose.** The permanent 4xx class
+here is 401/403 (bad key) and 422 (unverified sender), and all three are things
+a human fixes by rotating a secret. Dropping an alert because the key is wrong
+is precisely the dropped alert. Those already hold, already go red on the drain
+(it returns 1 when the relay answers and refuses), and already open the
+host-independent GitHub issue at the `stuck` line. The one 4xx that was being
+retried pointlessly was the 409, and it is fixed at the source rather than
+swept into a tombstone.
+
+Pinned by `tests/test_ops_mail_split.py` (a reopened cause is a new key, one
+transition is one key, two clears of a scope in a day are two keys, an undeduped
+alert carries none, the drain carries the held key, a pre-migration payload
+still drains) and `tests/test_alert_outbox.py` (an alert nobody retried still
+becomes loud, a short outage still does not page, an unparseable age is UNKNOWN).
+
 ## 2026-08-19 - the version collision now fails the second merge
 
 **Detection, at the one moment the defect is true.** Two PRs stamped 2.20.115

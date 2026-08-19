@@ -319,6 +319,32 @@ def _outbox_doc():
 #: one only makes ops_status escalate at a slightly different point.
 _HELD_ALERT_FAIL_LOUD = 12
 
+#: Mirrors alert_outbox.MAX_HELD_HOURS, duplicated for the same reason.
+#:
+#: The attempt count above only moves when alert-drain.yml RUNS. A drain that is
+#: disabled, broken, or stopped by GitHub's inactivity rule on scheduled
+#: workflows leaves every held alert at `attempts: 1` for ever, and this section
+#: used to print that as "1 held (most-tried: x1)" and exit 0 — a dashboard that
+#: got greener the more completely the delivery path had failed. Age is the
+#: question attempts cannot answer.
+_HELD_ALERT_MAX_HOURS = 6
+
+
+def _held_alert_age_hours(entry):
+    """Hours since this was raised. Unparseable -> 0.0: an entry whose age
+    cannot be read is UNKNOWN, and UNKNOWN is not escalated on age alone (the
+    attempt count still speaks for it) — but it is never silently a pass
+    either, because it is reported as UNKNOWN in the lines below."""
+    from datetime import datetime, timezone
+
+    try:
+        when = datetime.fromisoformat(entry.get("raised_at") or "")
+    except (TypeError, ValueError):
+        return 0.0
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, (datetime.now(timezone.utc) - when).total_seconds() / 3600.0)
+
 
 def _held_alerts():
     return [e for e in _outbox_doc().get("entries", [])
@@ -328,8 +354,12 @@ def _held_alerts():
 def _held_alerts_need_a_human():
     """A queue that quietly never drains is the original silence with extra
     steps. A queue that is holding an alert through a ten-minute outage is the
-    design working, and must NOT page."""
-    return any(e.get("attempts", 0) >= _HELD_ALERT_FAIL_LOUD for e in _held_alerts())
+    design working, and must NOT page.
+
+    Two ways to stop being an outage: too many refusals, or too much silence."""
+    held = _held_alerts()
+    return (any(e.get("attempts", 0) >= _HELD_ALERT_FAIL_LOUD for e in held)
+            or any(_held_alert_age_hours(e) >= _HELD_ALERT_MAX_HOURS for e in held))
 
 
 def _report_held_alerts():
@@ -337,17 +367,27 @@ def _report_held_alerts():
     if not held:
         return ["none — every alert raised has reached the owner"]
     worst = max(e.get("attempts", 0) for e in held)
-    lines = [f"{len(held)} held (most-tried: x{worst}); alert-drain.yml delivers "
-             f"them when the host answers"]
+    oldest = max(_held_alert_age_hours(e) for e in held)
+    lines = [f"{len(held)} held (most-tried: x{worst}, oldest {oldest:.1f}h); "
+             f"alert-drain.yml delivers them when the relay answers"]
     for e in held[:4]:
         subject = (e.get("payload") or {}).get("subject", e.get("key", ""))
-        lines.append(f"  {e.get('raised_at')}  x{e.get('attempts', 0)}  {subject[:66]}")
+        age = _held_alert_age_hours(e)
+        stamp = f"{age:.1f}h" if e.get("raised_at") else "age UNKNOWN"
+        lines.append(f"  {e.get('raised_at')}  x{e.get('attempts', 0)}  "
+                     f"[{stamp}]  {subject[:56]}")
     if len(held) > 4:
         lines.append(f"  ... and {len(held) - 4} more")
     if worst >= _HELD_ALERT_FAIL_LOUD:
-        lines.append("  These have failed too many times to be an outage. Check "
-                     "RESEND_API_KEY, and check that OPS_MAIL_FROM uses a "
-                     "domain the Resend account has verified.")
+        lines.append("  ACTION NEEDED: these have failed too many times to be an "
+                     "outage. Check RESEND_API_KEY, and check that OPS_MAIL_FROM "
+                     "uses a domain the Resend account has verified.")
+    if oldest >= _HELD_ALERT_MAX_HOURS:
+        lines.append(f"  ACTION NEEDED: held longer than {_HELD_ALERT_MAX_HOURS}h. "
+                     "At a drain every 30 minutes that is not an outage waiting "
+                     "to pass — check alert-drain.yml is still running AT ALL "
+                     "(`gh run list --workflow=alert-drain.yml`). Nobody has "
+                     "been told about the failure this alert describes.")
     return lines
 
 

@@ -47,6 +47,12 @@ Resend's own `Idempotency-Key` is a second, independent guard on the same
 24 hours. This ledger is what makes RECOVERED work and what holds the fourteen
 day reminder window; the header only closes a gap of seconds.
 
+That header names a TRANSITION, not a cause, and until 2026-08-19 it named a
+cause — which is not the same thing, because a cause can open, close and open
+again well inside Resend's 24-hour window. It did exactly that twice on
+2026-08-19 and the genuine second alarm came back HTTP 409
+`invalid_idempotent_request` both times. See `Decision.idempotency_key()`.
+
 Stdlib only. This is the notification path and no dependency resolver may take
 it down.
 """
@@ -140,7 +146,7 @@ class Decision:
     """
 
     def __init__(self, kind, *, subject="", body="", note="", key="",
-                 scope="", cleared=()):
+                 scope="", cleared=(), transition=0):
         self.kind = kind
         self.subject = subject
         self.body = body
@@ -148,18 +154,77 @@ class Decision:
         self.key = key
         self.scope = scope
         self.cleared = list(cleared)
+        #: The instant this particular alarm TRANSITION happened, taken from the
+        #: ledger rather than from the clock. For a raise it is when the cause
+        #: opened; for a resolve it is the last sighting of the newest thing
+        #: being cleared. See idempotency_key() for why it has to be here.
+        self.transition = int(transition or 0)
 
     @property
     def sends(self) -> bool:
         return self.kind in ("raise", "resolve")
 
     def idempotency_key(self) -> str:
-        """Stable for one alarm transition, so a racing duplicate collapses at
-        Resend even if it got past the committed claim."""
+        """Stable for one alarm TRANSITION — not for one cause.
+
+        THE DEFECT THIS CLOSES
+        ----------------------
+        This used to be `alt-raise-{cause}` and `alt-resolve-{scope}-{count}`,
+        which name a CAUSE, not a transition. A cause can legitimately open,
+        close and open again inside Resend's 24-hour idempotency window, and on
+        2026-08-19 two of them did:
+
+            09:19 RAISE deploy-wordpress-plugin:main:973999a049809e5c
+            09:24 CLEAR   "
+            18:41 RAISE   "        <- same key, new run, new body -> HTTP 409
+
+        The 18:41 raise was a genuine new alarm about a genuine new red run. The
+        ledger was right to send it. Resend refused it with
+        `invalid_idempotent_request`, because the key had been used at 09:19 with
+        a different body. The same happened to the resolves, whose key varied
+        only by how MANY alerts were cleared — clearing one alert twice in a day
+        is one key and two bodies.
+
+        WHY THE OBVIOUS FIXES ARE BOTH WRONG
+        ------------------------------------
+        *Fold the body into the key* and every run of a cause is a distinct key,
+        so Resend never dedupes anything and the second guard is gone.
+
+        *Make the body byte-identical per cause* and the key and payload agree —
+        at which point Resend stops answering 409 and starts answering 200 with
+        the ORIGINAL email's id, having sent nothing. The 18:41 alarm would then
+        be swallowed in silence instead of failing loudly. That is strictly
+        worse: this repository's whole posture is that a silent pass is the
+        expensive mistake and a loud refusal is the cheap one.
+
+        So the key names the transition. A re-raise after a clear is a different
+        transition and gets a different key; a retry or a re-drain of the SAME
+        transition gets the same one and collapses, which is the property the
+        guard was always supposed to have.
+
+        WHAT THIS COSTS
+        ---------------
+        Two runners racing on a brand-new raise now compute `first` a second or
+        two apart and would each send. That race is closed by the committed
+        claim — `git push` to main is the compare-and-swap, and the loser
+        re-derives, finds the cause open and goes quiet — which is the primary
+        guard and always was. What this key now genuinely protects is the retry
+        and drain path, where the SAME decision is sent more than once and the
+        old cause-scoped key was never carried at all (alert_drain called
+        deliver() with no key whatsoever, so a re-drain after a failed outbox
+        commit could mail the owner twice; alert-drain.yml admits as much in its
+        own error text).
+        """
         if self.kind == "raise":
-            return f"alt-raise-{self.key}"
+            # No cause key is the legacy "send it every time" shape. There is
+            # nothing to dedup, so there must be no idempotency key: a shared
+            # `alt-raise-` would make every undeduped alert collide with every
+            # other one inside the same 24 hours.
+            if not self.key:
+                return ""
+            return f"alt-raise-{self.key}-{self.transition}"
         if self.kind == "resolve":
-            return f"alt-resolve-{self.scope}-{len(self.cleared)}"
+            return f"alt-resolve-{self.scope}-{self.transition}"
         return ""
 
 
@@ -188,21 +253,35 @@ def decide(state: dict, payload: dict, now: int | None = None) -> Decision:
         extra = f"\n\nThis clears {len(open_keys)} open alert(s):\n"
         for k in open_keys:
             extra += "  - " + str(entries[k].get("subject") or k) + "\n"
+        # The transition is the newest sighting among the things being cleared.
+        # Ledger-derived, so two runners racing on the SAME clear agree on it,
+        # and clearing this scope again tomorrow is a different number.
+        newest = max((int(entries[k].get("last") or entries[k].get("first") or 0)
+                      for k in open_keys), default=0)
         return Decision("resolve", subject=subject, body=body + extra,
-                        scope=resolve, cleared=open_keys)
+                        scope=resolve, cleared=open_keys, transition=newest)
 
     if dedupe:
         prior = entries.get(dedupe)
+        # The instant this cause OPENED, which is what apply() will store as
+        # `first`. A cause that is already open keeps it, so the fortnightly
+        # STILL FAILING reminder is the same transition as the raise it repeats.
+        # A cause that was cleared and has come back has no prior, so it opens
+        # now and is a new transition — the case that produced HTTP 409 twice on
+        # 2026-08-19.
+        opened = now
         if prior:
             first = int(prior.get("first", now))
             last = int(prior.get("last", first))
+            opened = first
             if (now - last) < REMIND_AFTER_SECONDS:
                 return Decision(
                     "silent", key=dedupe,
                     note=("suppressed: this exact cause is already open "
                           f"(raised {_ago(now - first)} ago)"))
             subject = "STILL FAILING: " + subject
-        return Decision("raise", subject=subject, body=body, key=dedupe)
+        return Decision("raise", subject=subject, body=body, key=dedupe,
+                        transition=opened)
 
     return Decision("raise", subject=subject, body=body)
 

@@ -22,6 +22,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -300,3 +301,68 @@ class TheWorkflowsThatCarryThis(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AHeldAlertCannotAgeOutOfSIGHT(unittest.TestCase):
+    """The attempt count only moves when the drain RUNS.
+
+    `stuck()` asked exactly one question — has this failed FAIL_LOUD_ATTEMPTS
+    times? — and every held entry accrues attempts only when alert-drain.yml
+    executes and manages to commit the result. Disable that workflow, break it,
+    run out of Actions minutes, or let GitHub's inactivity rule stop the
+    schedule, and an entry sits at `attempts: 1` for ever: nothing red, nothing
+    stuck, `ops_status [4b]` printing "1 held (most-tried: x1)" and exiting 0.
+
+    The dashboard got GREENER the more completely the delivery path had failed,
+    which is the exact failure class this repository keeps finding. Age is the
+    question the attempt count cannot answer.
+    """
+
+    def _aged(self, hours, attempts=1):
+        doc = alert_outbox.empty()
+        _, entry = alert_outbox.enqueue(doc, key="k", kind="alert", scope="s",
+                                        payload={"subject": "CI RED: Tests"},
+                                        reason="HTTP 504")
+        entry["raised_at"] = (
+            datetime.now(timezone.utc) - timedelta(hours=hours)
+        ).isoformat(timespec="seconds")
+        entry["attempts"] = attempts
+        return doc
+
+    def test_an_alert_nobody_ever_retried_still_becomes_loud(self):
+        doc = self._aged(alert_outbox.MAX_HELD_HOURS + 1, attempts=1)
+        self.assertTrue(
+            alert_outbox.overdue(doc),
+            "held past the ceiling with one attempt is a drain that is not "
+            "running, not an outage that will pass")
+        self.assertTrue(
+            alert_outbox.stuck(doc),
+            "an entry nobody is even asking about is an alert nobody received")
+
+    def test_the_ordinary_short_outage_still_does_not_page(self):
+        """The design working must never look like the design failing."""
+        doc = self._aged(0.2, attempts=2)
+        self.assertFalse(alert_outbox.overdue(doc))
+        self.assertFalse(alert_outbox.stuck(doc))
+
+    def test_status_exits_non_zero_on_an_aged_entry(self):
+        doc = self._aged(alert_outbox.MAX_HELD_HOURS + 3, attempts=1)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "outbox.json"
+            alert_outbox.save(doc, path)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = alert_outbox.main(["status", "--path", str(path)])
+        self.assertEqual(code, 2, "an aged held alert must not exit 0")
+        self.assertIn("not reaching the owner", buf.getvalue())
+
+    def test_an_unparseable_raised_at_is_unknown_not_an_escalation(self):
+        """PASS / FAIL / UNKNOWN are three states. An age that cannot be read
+        is not evidence of lateness, and must not manufacture a page on its
+        own — the attempt count still speaks for the entry."""
+        doc = alert_outbox.empty()
+        _, entry = alert_outbox.enqueue(doc, key="k", kind="alert", scope="s",
+                                        payload={}, reason="")
+        entry["raised_at"] = "not-a-date"
+        self.assertEqual(alert_outbox._age_hours(entry), 0.0)
+        self.assertFalse(alert_outbox.overdue(doc))
