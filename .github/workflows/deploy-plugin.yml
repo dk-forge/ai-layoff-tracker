@@ -124,7 +124,13 @@ jobs:
       # The runner image sometimes ships lftp already, so the check comes
       # first and skips the network entirely when it does.
       - name: Install lftp
-        timeout-minutes: 3
+        # SIX MINUTES, BECAUSE THREE WAS SMALLER THAN THE STEP'S OWN RETRIES.
+        # The previous edit gave each apt call its own timeout so an attempt
+        # could fail rather than hang, which was right, and left the ceiling at
+        # 3 minutes, which was wrong: one attempt could now cost 100 seconds, so
+        # the second was killed mid-flight and the third never ran. A retry
+        # budget has to fit inside the step that holds it.
+        timeout-minutes: 6
         run: |
           set -e
           if command -v lftp >/dev/null 2>&1; then
@@ -132,44 +138,43 @@ jobs:
             exit 0
           fi
           # EACH ATTEMPT IS BOUNDED, because apt HANGS rather than failing.
-          # The first version of this retried on failure and never reached
-          # attempt 2: apt-get update sat on an unreachable mirror and ate the
-          # whole 3-minute step ceiling inside attempt 1. A retry loop only
-          # helps if an attempt can actually fail, so each call gets its own
-          # timeout and three attempts fit inside the ceiling with room.
+          # A retry loop only helps if an attempt can actually fail, so every
+          # call gets its own timeout and the ceiling above fits all three.
           #
-          # INSTALL IS TRIED BEFORE UPDATE, AND THAT IS THE FIX FOR 2026-08-19.
-          # Three deploys in a row died at exactly 40 seconds on `apt-get
-          # update`, which is the timeout and not an error: a mirror was
-          # stalling. The `&&` meant install was never even attempted, so a
-          # slow INDEX REFRESH blocked a package the runner can already resolve
-          # from the index its image shipped with. The refresh is an
-          # optimisation for a stale index; the install is the job. Try the job
-          # first, and fall back to refresh-then-install only when it is really
-          # needed.
+          # INSTALL BEFORE UPDATE. The index refresh is an optimisation for a
+          # stale index; the install is the job. On 2026-08-19 a stalling mirror
+          # made `update && install` fail three deploys in a row without ever
+          # attempting the install, for a package the runner could already
+          # resolve from the index its image shipped with.
           #
-          # THE LAST ATTEMPT IS LOUD. `-qq` swallows apt's own diagnosis, so
-          # three silent timeouts told the next person nothing about the cause.
-          # The final attempt drops it and prints whatever apt has to say.
+          # ATTEMPT 1 IS THE CHEAP ONE, install only, so the common case costs
+          # seconds. Attempts 2 and 3 refresh first, and 3 drops -qq so apt's
+          # own diagnosis reaches the log: three silent timeouts told the next
+          # person nothing about the cause.
+          #
+          # Acquire::Retries lets apt retry a mirror inside a single call, which
+          # is cheaper than another pass through this loop.
+          APT_OPTS="-o Acquire::Retries=3"
           for attempt in 1 2 3; do
-            if timeout 60 sudo apt-get install -y -qq lftp; then
-              echo "lftp installed on attempt $attempt (no index refresh needed)"
-              exit 0
+            if [ "$attempt" != 1 ]; then
+              echo "attempt $attempt: refreshing the package index first"
+              timeout 45 sudo apt-get update -qq $APT_OPTS || true
             fi
             if [ "$attempt" = 3 ]; then
-              echo "index refresh and install, with apt's own output:"
-              timeout 60 sudo apt-get update || true
-              timeout 60 sudo apt-get install -y lftp && {
-                echo "lftp installed on attempt $attempt after a refresh"; exit 0; }
-            elif timeout 40 sudo apt-get update -qq \
-                 && timeout 60 sudo apt-get install -y -qq lftp; then
-              echo "lftp installed on attempt $attempt after a refresh"
+              echo "attempt 3: installing with apt's own output"
+              if timeout 60 sudo apt-get install -y $APT_OPTS lftp; then
+                echo "lftp installed on attempt 3"
+                exit 0
+              fi
+            elif timeout 60 sudo apt-get install -y -qq $APT_OPTS lftp; then
+              echo "lftp installed on attempt $attempt"
               exit 0
             fi
             echo "attempt $attempt failed or timed out, retrying in 5s"
             sleep 5
           done
-          echo "::error::could not install lftp after 3 attempts"
+          echo "::error::could not install lftp after 3 attempts. This is the \
+            runner's package mirror, not the plugin: re-run the job."
           exit 1
 
       - name: Verify target is the live plugin directory
