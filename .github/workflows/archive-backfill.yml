@@ -100,6 +100,54 @@ jobs:
           # cycle. That gate went 7 -> 4; this limit did not move.
           # railway/tests/test_archive_promise.py pins the ceiling arithmetic.
           #
+          # CHECKED AGAIN 2026-08-19, when archive_recheck_cadence went red
+          # projecting a 14.5d cycle (3,396 due, a measured 234/day) and again
+          # printed "raise throughput in archive-backfill.yml". THAT
+          # INSTRUCTION IS WRONG AND THIS IS THE SECOND TIME IT HAS SENT A
+          # SESSION HERE. Read the last 12 runs' own logs before believing it.
+          # Every run prints `oldest_unarchived_checked_at` before each batch,
+          # and at the END of a run it reads, in order: 4.0d (08-09), 3.0d
+          # (08-10), 4.0d (08-11), 3.0d (08-12), 5.0d (08-13), 3.7d and 4.0d
+          # (08-14), 5.0d (08-15), 5.0d (08-16), 3.2d (08-17), 4.0d (08-18).
+          # A full pass over the pool completes in 3 to 5 days against a 4-day
+          # eligibility gate, so the promise is being KEPT, with margin, every
+          # single day. The runs on 08-16, 08-17 and 08-18 all stopped on an
+          # EMPTY batch, not on this limit, not on the deadline and not on
+          # ARCHIVE_SPN_MAX. Handing this job more capacity would hand it more
+          # zeroes.
+          #
+          # TWO ARTIFACTS STACK TO MAKE THE RED, AND NEITHER IS THROUGHPUT.
+          # (1) The 48h throughput sample lands in the convoy trough. The pool
+          #     arrives in convoys behind the 4-day gate, so 08-17 (432) plus
+          #     08-18 (38) samples as 234/day for a pool that really cycles at
+          #     ~850/day. data_integrity already knows this and guards it with
+          #     `measured_pass`: the projection may not overrule a direct
+          #     reading that already shows the pool completing inside the bound.
+          # (2) That guard is defeated because the age reading JUMPS BACKWARDS
+          #     between runs. 08-18's run left the oldest at 2026-08-14 06:53;
+          #     20 hours later, with no run in between, it read 2026-08-11
+          #     06:48, three days OLDER. The same reversal is in the logs on
+          #     08-13 (08-09 07:09 -> 08-08 06:11), on 08-15 (08-10 07:36 ->
+          #     08-07 07:17) and on 08-17 (08-11 06:47 -> 08-09 07:09).
+          #     Nothing the cron does can produce that. Both the candidate
+          #     query and `alt_archive_coverage_counts()` JOIN the archive index
+          #     to the layoffs table, so an archive row whose layoff rows were
+          #     purged or re-sourced drops OUT of the pool with its `checked_at`
+          #     frozen, and re-enters carrying that frozen stamp the moment a
+          #     later import or /edit cites the URL again. The age then counts
+          #     time during which the URL was not ours to check. The next daily
+          #     run hands it out immediately (08-13 cleared 14, 08-17 cleared
+          #     431), which is why the reading snaps forward again.
+          # The nightly WARN import runs 00:37-01:15Z and re-cites 44,288 URLs;
+          # this job runs at 05:25Z. Anything sampling the site in those ~4
+          # hours reads a contaminated age. CI ran at 01:54Z.
+          # DO NOT answer this by raising the limit, the deadline, SPN, the run
+          # frequency, MAX_AGE_DAYS or PROJECTED_MAX_AGE_DAYS. The fix, if the
+          # owner wants one, is at RE-ENTRY: a URL that re-enters the cited pool
+          # should read as queued (checked_at NULL, "first check by <next run>")
+          # rather than as an ancient attempt, which is also the only way the
+          # page stops printing a next-check date that is already in the past.
+          #
           # SIZED FROM THE CYCLE, 2026-08-06. The re-check promise is kept only
           # if the whole due pool is re-attempted inside a week, so the limit is
           # pool / promise, not a round number. Measured live that day: 3,782
