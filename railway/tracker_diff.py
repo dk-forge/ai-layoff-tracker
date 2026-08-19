@@ -663,10 +663,6 @@ def main(argv=None):
         raise
 
 
-if __name__ == "__main__":
-    sys.exit(main())
-
-
 # ===========================================================================
 # LEARNING MODE — the competitor-free half of this machine
 # ===========================================================================
@@ -1226,3 +1222,7 @@ def learn_run(today=None):
     print("tracker-learn:", line)
     report_source_health("tracker_diff", "ok", 0, "learning run: " + line)
     return facts
+
+
+if __name__ == "__main__":
+    sys.exit(main())
