@@ -489,7 +489,7 @@ class ThePromisesAreUnchanged(unittest.TestCase):
     def test_it_still_passes_with_no_manage_url(self):
         built = message(manage_url="")
         dt.assert_message_is_clean(built)
-        self.assertNotIn("Manage your subscriptions", built.html)
+        self.assertNotIn("To change what you get", built.html)
 
     def test_nothing_in_the_shell_fetches_from_a_server(self):
         html = message(("layoff", "talent", "articles")).html.lower()
@@ -502,6 +502,77 @@ class ThePromisesAreUnchanged(unittest.TestCase):
             plain = re.sub(r"<[^>]+>", "", label).strip().lower()
             self.assertNotIn(plain, ("click here", "here", "read more", "link"))
             self.assertGreater(len(plain), 4, label)
+
+
+class TheManageLinkPromisesWhatTheReaderWillActuallyGet(unittest.TestCase):
+    """THE DEFECT: the footer named a preference centre that does not exist.
+
+    It said "Manage your subscriptions" and linked to the signup form's own
+    anchor. The owner followed it on 2026-08-19 and reported "I can't really
+    manage", on all three digests. The mechanism is fine and deliberate (see
+    alt_digest_manage_url() in includes/subscribe.php); the sentence was not.
+
+    These hold the fix as a PROMISE, not as a string. A reader is told which
+    page they are going to, what they will do there, and that nothing changes
+    until they confirm. If any of the three drops out of either body part, the
+    footer is over-promising again.
+    """
+
+    PLUGIN = os.path.join(
+        HERE, "..", "..", "wordpress-plugin", "ai-layoff-tracker",
+        "includes", "subscribe.php")
+
+    def _parts(self):
+        built = message(("layoff", "talent", "articles"))
+        return (built.html, built.text)
+
+    def test_the_withdrawn_promise_is_gone_from_both_parts(self):
+        for part in self._parts():
+            self.assertNotIn("Manage your subscriptions", part,
+                             "the footer is naming a preference centre again, "
+                             "and there is still no preference centre")
+
+    def test_it_says_the_reader_re_enters_their_address_on_the_form(self):
+        """The single most useful sentence in the fix. A reader who knows a
+        Subscribe form is coming is not surprised by one."""
+        for part in self._parts():
+            self.assertIn("re-enter your address on the signup form", part)
+
+    def test_it_warns_that_nothing_changes_until_they_confirm(self):
+        """alt_digest_signup() parks a confirmed subscriber's new choices in
+        pending_prefs and applies them only on the confirm click. A reader who
+        submits and is not told that believes the change already landed."""
+        for part in self._parts():
+            self.assertIn("confirm by email", part)
+
+    def test_the_landing_page_acknowledges_the_reader_who_followed_it(self):
+        """THE OTHER HALF, AND THE REASON THIS TEST REACHES INTO THE PLUGIN.
+
+        Honest footer copy pointing at a page that still reads as a pure
+        signup form is half a fix. The form's own intro has to say that this
+        is where a subscription is CHANGED, or the reader arrives and concludes
+        they are in the wrong place, which is exactly what happened.
+        """
+        src = open(os.path.normpath(self.PLUGIN), encoding="utf-8").read()
+        start = src.find('<p class="alt-digest-intro"')
+        intro = " ".join(src[start:src.find("</p>", start)].split())
+        self.assertGreater(start, 0, "the signup intro moved or was renamed")
+        self.assertIn("Already subscribed?", intro)
+        self.assertIn("change what you get", intro)
+
+    def test_the_landing_page_warns_that_the_boxes_replace(self):
+        """alt_digest_prefs_from_post() builds the WHOLE preference set from
+        the ticked boxes. A subscriber on three lists who ticks only one
+        intending to add it loses the other two, silently. Unwarned, that is a
+        footgun; this sentence is the warning and it is not decoration."""
+        src = open(os.path.normpath(self.PLUGIN), encoding="utf-8").read()
+        start = src.find('<p class="alt-digest-intro"')
+        intro = " ".join(src[start:src.find("</p>", start)].split())
+        self.assertIn("boxes replace", intro)
+
+    def test_no_em_dashes_reached_the_reader(self):
+        for part in self._parts():
+            self.assertNotIn("\u2014", part)
 
 
 class ReadingTheEmailWhenNobodyIsDue(unittest.TestCase):

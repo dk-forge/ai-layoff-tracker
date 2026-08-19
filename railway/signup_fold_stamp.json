@@ -1,79 +1,79 @@
 {
   "_comment": "What the signup's copy was when the phone fold was last measured, and what it measured. Written by railway/signup_fold.py --record; read by railway/tests/test_signup_fold_stamp.py. Never edit by hand: a stamp nobody measured is worse than no stamp.",
-  "copy_chars": 814,
-  "copy_sha256": "84dd5c3ade7526e1542b675c5b5ee6a34b3147b8af64f7f8d16cb23830d00a0b",
+  "copy_chars": 904,
+  "copy_sha256": "97436cd52b52a960bfea9ef5f301615409b19902d49faf1dc35f953dd8b9f389",
   "figures": {
     "blog@375x812": {
-      "headroom_px": 162.7,
+      "headroom_px": 95.2,
       "parts": {
         "email row": 70,
         "field": 44,
         "frequency": 68,
         "heading": 24.7,
-        "intro": 157.5,
+        "intro": 225,
         "lists": 214.5,
         "privacy": 44,
-        "section": 815.9,
+        "section": 862.4,
         "submit": 44,
-        "tracking note": 84
+        "tracking note": 0
       },
-      "reach_px": 649.3,
+      "reach_px": 716.8,
       "screen_px": 812
     },
     "blog@414x896": {
-      "headroom_px": 289.2,
+      "headroom_px": 244.2,
       "parts": {
         "email row": 70,
         "field": 44,
         "frequency": 68,
         "heading": 24.7,
-        "intro": 157.5,
+        "intro": 202.5,
         "lists": 172,
         "privacy": 44,
-        "section": 752.4,
+        "section": 776.4,
         "submit": 44,
-        "tracking note": 63
+        "tracking note": 0
       },
-      "reach_px": 606.8,
+      "reach_px": 651.8,
       "screen_px": 896
     },
     "tracker@375x812": {
-      "headroom_px": 165.9,
+      "headroom_px": 121.8,
       "parts": {
         "email row": 70,
         "field": 44,
         "frequency": 68,
         "heading": 29,
-        "intro": 108.4,
+        "intro": 151.8,
         "lists": 172,
         "privacy": 44,
-        "section": 691.9,
+        "section": 715.8,
         "submit": 44,
-        "tracking note": 58.5
+        "tracking note": 0
       },
-      "reach_px": 646.1,
+      "reach_px": 690.2,
       "screen_px": 812
     },
     "tracker@414x896": {
-      "headroom_px": 250,
+      "headroom_px": 205.7,
       "parts": {
         "email row": 70,
         "field": 44,
         "frequency": 68,
         "heading": 29,
-        "intro": 108.4,
+        "intro": 151.8,
         "lists": 172,
         "privacy": 44,
-        "section": 691.9,
+        "section": 715.8,
         "submit": 44,
-        "tracking note": 58.5
+        "tracking note": 0
       },
-      "reach_px": 646,
+      "reach_px": 690.3,
       "screen_px": 896
     }
   },
-  "measured_at_utc": "2026-08-17T04:56Z",
-  "measured_on": "2026-08-16",
+  "measured_at_utc": "2026-08-19T21:14Z",
+  "measured_on": "2026-08-19",
   "measured_on_platform": "darwin",
   "required_headroom_px": 80.0
 }

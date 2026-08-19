@@ -993,8 +993,8 @@ class ManageYourSubscriptions(unittest.TestCase):
         msg = digest_send.build_message(
             payload, payload["recipients"][0],
             "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
-        self.assertNotIn("Manage your subscriptions", msg.html)
-        self.assertNotIn("Manage your subscriptions", msg.text)
+        self.assertNotIn("To change what you get", msg.html)
+        self.assertNotIn("To change what you get", msg.text)
         dt.assert_message_is_clean(msg)
 
     def test_a_manage_url_off_our_own_site_is_refused(self):
@@ -1012,7 +1012,13 @@ class ManageYourSubscriptions(unittest.TestCase):
         self.assertIn("#alt-digest", sub)
         sender = sub[sub.index("function alt_digest_send("):]
         sender = sender[:sender.index("\n}")]
-        self.assertIn("Manage your subscriptions", sender)
+        # THE SAME THREE PROMISES THE RELAY MAKES. This is a second,
+        # independently written footer, so "it offers it too" is not enough:
+        # it has to offer the reader the same thing, or which sender ran
+        # decides what the reader was told.
+        self.assertIn("re-enter your address on the signup form", sender)
+        self.assertIn("confirm by email", sender)
+        self.assertNotIn("Manage your subscriptions", sender)
 
     def test_the_route_hands_the_relay_the_url_rather_than_the_relay_building_it(self):
         api = open(os.path.join(PLUGIN, "includes", "digest-api.php"),

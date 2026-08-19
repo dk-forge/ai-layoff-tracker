@@ -1,5 +1,75 @@
 # Tech Log
 
+## 2026-08-19 - the manage link named a preference centre that does not exist
+
+**The complaint, about all three digests: "when i click this: You can also
+Manage your subscriptions to change which of these you get. I can't really
+manage btw that's on all 3 emails".** He was right, and the mechanism was not
+the fault.
+
+`alt_digest_manage_url()` returns the signup form's own anchor, deliberately.
+A change is made by re-submitting that form, and `alt_digest_signup()`'s
+`pending_prefs` branch parks a confirmed subscriber's new choices and applies
+them only when the emailed confirm link is clicked. That is a real preference
+change, it needs the mailbox, and a stranger who types your address cannot
+alter what you receive. Nothing about it was broken.
+
+**What was broken is that the footer named something else.** "Manage your
+subscriptions" is the name of a preference centre. The reader arrives at a
+form with three empty checkboxes and a Subscribe button, which shows no current
+state, says nothing about why they are there, and offers no next step. A reader
+promised a preference centre and handed a Subscribe button concludes the
+feature is broken and stops looking. That is exactly what happened, to the
+person who wrote it.
+
+**Fixed in copy, on both sides of the click, and the landing half is the half
+that mattered.** Honest footer copy pointing at a page that still reads as a
+pure signup form would have been half a fix.
+
+  - The footer now says: "To change what you get, re-enter your address on the
+    signup form and tick the lists you want. The change applies when you
+    confirm by email." It names the destination, the three steps, and the fact
+    that nothing changes until the confirm click.
+  - The form's intro now ends: "Already subscribed? Use this form to change
+    what you get. The boxes replace what you had." It renders for everyone,
+    because it is true for everyone.
+
+**That last sentence is a bug fix, not a courtesy.**
+`alt_digest_prefs_from_post()` builds the WHOLE preference set from the ticked
+boxes, so a subscriber on all three lists who ticks only `articles` intending
+to ADD it loses the other two, silently. Nothing anywhere warned them.
+
+**There were two footers, and the second one was still lying after the first
+was fixed.** `alt_digest_send()` in subscribe.php is the wp_mail fallback and
+composes its own footer independently of `digest_layout._footer`. It kept the
+withdrawn wording until a grep found it. `test_digest_sender.py` used to assert
+only that the fallback "offers it too"; it now asserts the fallback makes the
+same three promises, so which sender ran cannot decide what the reader was
+told.
+
+**No token route was built, and the reason is not timidity. WRITE THIS DOWN
+BEFORE PROPOSING A PREFERENCE CENTRE AGAIN: possession of a link currently
+CANNOT change what a subscriber receives. Only the mailbox can.** That is what
+`pending_prefs` buys. A stranger who types your address into the form changes
+nothing until a confirm link delivered to YOU is clicked, and the unsub token
+that does live in inboxes is fail-safe by design because the worst it can do is
+stop mail. A tokenised preference link is not a neutral convenience swap: it
+moves the class of "who can edit this record" from mailbox-proof to
+link-possession, permanently, in a million inboxes. The objection in the
+original docblock stands and this is the second, larger half of it.
+
+**And it does not fit through the door anyway.** It needs a PER-RECIPIENT
+manage URL, where the payload carries exactly one for the whole send
+(`digest-api.php:262`, read at `railway/digest_send.py:415`), so both of those
+move. That is a contract change, not a copy change, and it is written down in
+`alt_digest_manage_url()`'s docblock for whoever picks it up.
+
+**The fold was measured, not assumed.** The intro grew, and the intro sits
+inside the 812px phone budget. `railway/signup_fold.py`: 95.2px of headroom on
+the tightest surface (blog@375x812), against the 80px the tool requires, all
+four surfaces OK, stamp re-recorded. Both Chrome authority tests green.
+2.20.119.
+
 ## 2026-08-19 - the digest moved to 6:00 Eastern, and the clock it keeps is now the reader's
 
 **The owner asked for the two daily digests at 6:00 AM Eastern and the weekly
@@ -86,7 +156,6 @@ figures are "about fifteen hours old" (they are now about twelve); they are
 comments only, no reader-facing copy states a time, and the two cadence
 sentences a subscriber actually sees already read "each morning" and "Monday
 mornings", which are true of the new schedule.
-
 
 ## 2026-08-19 - an idempotency key that named a cause, not a transition
 
