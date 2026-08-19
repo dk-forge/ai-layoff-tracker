@@ -1902,6 +1902,79 @@ function alt_digest_week_label($date) {
 }
 
 /**
+ * "Aug 10-16", "Aug 31 - Sep 6", "Aug 19". A window as an inbox reads it.
+ *
+ * WHY THE ISO WEEK CAME OUT OF THE SUBJECT. The owner read "2026 Week 33:
+ * 16,842 verified job cuts" and said: "normal people dont care about week 33."
+ * He is right, and the reason is worth writing down because the week number is
+ * not wrong and has not been deleted. It is PRECISE FOR CITATION and OPAQUE
+ * FOR SKIMMING. A researcher quoting us wants 2026-W33, which sorts and cannot
+ * be misread. A person deciding whether to open an email wants to know which
+ * days it is about, and has to translate a week number to get there.
+ *
+ * So the week number moved to where people cite and the dates stayed where
+ * people skim. 2026-W33 is still the archive URL, still the edition's own
+ * dateline, and still in the cite-this block. Only the subject changed.
+ *
+ * THE YEAR IS DROPPED, deliberately: the inbox already stamps every message
+ * with its date, and those six characters buy more as part of the metric. The
+ * year is still on every surface where a figure is quoted rather than skimmed,
+ * which is the same division of labour as the week number.
+ *
+ * ABBREVIATED MONTHS, because this is the one string in the product written
+ * for a 45-character truncation rather than for a reader with the whole line.
+ * Everywhere else spells the month in full.
+ *
+ * A WEEKLY NAMES ITS WINDOW AND A DAILY NAMES ITS DAY, and that distinction is
+ * load bearing. A weekly edition sends on the 19th about the 10th to the 16th,
+ * so putting the send date on it would make a false claim about when the
+ * figures are from. Callers pass the window they mean; see
+ * alt_digest_subject_period.
+ */
+function alt_digest_short_range($from, $to) {
+    $a = substr(trim((string) $from), 0, 10);
+    $b = substr(trim((string) $to), 0, 10);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $a, $ma)) return '';
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $b, $mb)) return '';
+    $short = array('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+    $am = (int) $ma[2]; $ad = (int) $ma[3];
+    $bm = (int) $mb[2]; $bd = (int) $mb[3];
+    if ($am < 1 || $am > 12 || $bm < 1 || $bm > 12) return '';
+    if ($ad < 1 || $ad > 31 || $bd < 1 || $bd > 31) return '';
+    if ($a === $b) return $short[$am - 1] . ' ' . $ad;
+    // Tight hyphen between two numerals, spaced between two month-and-day
+    // pairs: the standard typographic rule for a range, and the only way
+    // "Aug 31 - Sep 6" does not read as one date.
+    if ($am === $bm && $ma[1] === $mb[1]) return $short[$am - 1] . ' ' . $ad . '-' . $bd;
+    return $short[$am - 1] . ' ' . $ad . ' - ' . $short[$bm - 1] . ' ' . $bd;
+}
+
+/**
+ * The period token a SUBJECT carries, and the one place that decides which
+ * window a tier names.
+ *
+ * A WEEKLY NAMES ITS WINDOW. "Aug 10-16" for an edition that sends on the
+ * 19th, because the figures are from the 10th to the 16th and a single date
+ * would claim otherwise. The owner first proposed the send date here and it
+ * was talked back: a weekly named by its send day is a false claim about when
+ * its figures are from, every week, in the line most people only ever see.
+ *
+ * A DAILY NAMES ITS DAY. "Aug 19", not the two-day collection window, which is
+ * the masthead convention: a front page carries the publication date and the
+ * stories inside state their own spans. The edition's dateline still shows the
+ * full window it covers.
+ *
+ * DO NOT FLATTEN THESE INTO ONE RULE in a later consistency pass. They look
+ * like an inconsistency and they are the point.
+ */
+function alt_digest_subject_period($freq, $from, $to) {
+    return (alt_digest_valid_freq($freq) === 'weekly')
+        ? alt_digest_short_range($from, $to)
+        : alt_digest_short_range($to, $to);
+}
+
+/**
  * "2026 Week 33". The week identified WITHOUT its dates, for the subject line.
  *
  * WHY THE YEAR IS HERE AND NOT IN alt_digest_week_label(). Inside the edition
@@ -2302,43 +2375,50 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
 
           <period>: <figure> <unit>
 
-          2026 Week 33: 16,842 verified job cuts
-          2026 Week 33: 1,376 hiring signals
-          2026 Week 33: 16,842 verified job cuts \xc2\xb7 1,376 hiring signals
-          August 19, 2026: 1,101 verified job cuts
-          August 19, 2026: 150 hiring signals
+          Aug 10-16: 16,842 verified job cuts
+          Aug 10-16: 1,376 hiring signals
+          Aug 10-16: 16,842 verified job cuts \xc2\xb7 1,376 hiring signals
+          Aug 19: 1,101 verified job cuts
+          Aug 19: 150 hiring signals
 
-      THE BRAND WAS IN FRONT OF THIS AND THE OWNER TOOK IT OUT AFTER TESTING IT
-      IN A REAL INBOX: "on gmail mobile all you see is asktherecruiter.com."
-      The prefix cost about twenty characters and Gmail truncates near 45, so
-      the part a phone showed was the sender's name, which the From line
-      already carries, and the figure fell off the end. The brand is not lost;
-      it moved to the slot that was always carrying it.
+      TWO THINGS CAME OUT OF THIS LINE, BOTH ON MEASUREMENT.
 
-      So every subject now opens on its period and its figure, which is exactly
-      the part a phone shows. The longest form is the combined edition and it
-      truncates after the first metric's unit, not inside a number.
+      The brand went first. The owner read the shipped subject on Gmail mobile:
+      "on gmail mobile all you see is asktherecruiter.com." The prefix cost
+      about twenty characters the From display name already carries, so the
+      part a phone showed was the sender's name and the figure fell off.
 
-      AND THE ACCURACY PROPERTY SURVIVED THE CHANGE, which is why it is a
-      property and not a string. 2.20.103 shipped "AI Layoff Tracker: 16,842
-      verified cuts this week" on a week whose AI figure was ZERO, so a reader
-      who never opened it took away sixteen thousand AI-attributed cuts. No
-      tracker brand appears in this line at all now, so nothing juxtaposes a
-      brand with a raw count and no subject can be read as an AI figure.
+      Then the ISO week: "normal people dont care about week 33." The week
+      number is not wrong and is not deleted; it is PRECISE FOR CITATION and
+      OPAQUE FOR SKIMMING. 2026-W33 is still the archive URL, the edition's own
+      dateline and the cite-this block. A subject is the one place a reader is
+      skimming rather than quoting, so it names days.
+
+      The year went with it: the inbox stamps every message already, and six
+      characters buy more as part of the metric. Same division of labour, and
+      the year is still on every surface where a figure is quoted.
+
+      A WEEKLY NAMES ITS WINDOW AND A DAILY NAMES ITS DAY. See
+      alt_digest_subject_period for why that asymmetry is deliberate and must
+      survive a consistency pass.
+
+      THE ACCURACY PROPERTY IS UNCHANGED THROUGH ALL OF IT, which is the
+      argument for having written it as a property rather than a string.
+      2.20.103 shipped "AI Layoff Tracker: 16,842 verified cuts this week" on a
+      week whose AI figure was ZERO, so a reader who never opened it took away
+      sixteen thousand AI-attributed cuts. No tracker brand appears in this
+      line at all now, so nothing juxtaposes a brand with a raw count.
       tests/test_digest_subject_never_inflates_ai.py holds it:
 
           A READER WHO SEES ONLY THE SUBJECT MUST NOT COME AWAY WITH A LARGER
           AI FIGURE THAN THE EMAIL REPORTS.
 
-      THE PERIOD IS THE SAME STRING THE ARCHIVE PRINTS. A weekly subject opens
-      "2026 Week 33" and the archived edition is titled "2026 Week 33 · August
-      10-16", so a reader moving from the inbox to the archive meets the same
-      words in the same order. See alt_digest_edition_label. A daily subject
-      opens "August 19, 2026", which is what the archive prints for a daily
-      row, verbatim.
-
-      A DAY IS NOT A WEEK and is not numbered as one, but the shape is kept so
-      the editions read as one series.
+      THE PERIOD IS THE SAME STRING THE ARCHIVE OPENS WITH. A subject reads
+      "Aug 10-16: 16,842 verified job cuts" and the archived edition is titled
+      "Aug 10-16, 2026", so a reader following the link meets the same words
+      before anything else. The archive adds the year because that page is
+      cited; the subject drops it because that line is skimmed. See
+      alt_edition_label in includes/digest-archive.php.
 
       THE TWO UNITS READ DIFFERENTLY BECAUSE THEY ARE DIFFERENT, and a future
       consistency pass must not flatten them. The layoff tracker counts
@@ -2361,9 +2441,7 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
     }
     $metrics = $major ? $major : $minor;
 
-    $period = (alt_digest_valid_freq($freq) === 'weekly')
-        ? alt_digest_week_id($from)
-        : alt_digest_date_range($to, $to);
+    $period = alt_digest_subject_period($freq, $from, $to);
 
     if ($metrics && $period !== '') {
         $dot = "\xc2\xb7";
