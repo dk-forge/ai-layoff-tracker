@@ -3,8 +3,8 @@
  "measured": "2026-08-14",
  "counts": {
   "total": 382,
-  "wired": 20,
-  "researched": 335,
+  "wired": 19,
+  "researched": 336,
   "refused": 27
  },
  "sources": [
@@ -3371,7 +3371,7 @@
    "collector": "",
    "feed_url": "https://www.ft.lk/rss",
    "probed": "2026-08-14",
-   "reason": "The read times out. EconomyNext is wired for Sri Lanka instead.",
+   "reason": "The read times out. Sri Lanka is covered by its own market sweep instead: no publisher in this country has a direct feed we read.",
    "note": ""
   },
   {
@@ -3400,11 +3400,11 @@
    "country": "Sri Lanka",
    "publisher": "EconomyNext",
    "language": "en",
-   "status": "wired",
-   "collector": "national_feeds",
-   "feed_url": "https://economynext.com/feed/",
-   "probed": "2026-08-14",
-   "evidence": "HTTP 200, RSS, 20 items; robots.txt allows the /feed/ path",
+   "status": "researched",
+   "collector": "local_news",
+   "feed_url": "",
+   "probed": "2026-08-18",
+   "evidence": "Its own feed answered HTTP 200 from a laptop and HTTP 202 to the collector's datacentre - a bot wall keyed on the address range, not a broken feed. We do not disguise a client to get past one. Measured instead: this country's own Google News edition returns economynext.com items under the live layoff queries (4 of 241 items across the en/si/ta editions), so its stories reach the tracker through the market sweep and the direct feed was a second route to a publisher we already read.",
    "note": ""
   },
   {

@@ -1,6 +1,6 @@
 # Tech Log
 
-## 2026-08-18 - the Mazovia register was reading three of its eleven notices, and every Quebec row cited an index instead of a document (2.20.92)
+## 2026-08-18 - the Mazovia register was reading three of its eleven notices, and every Quebec row cited an index instead of a document (2.20.94)
 
 ### What was asked, and what was already there
 
@@ -113,6 +113,192 @@ The Polish host was re-checked before any request. `wupwarszawa.praca.gov.pl`
 and `warszawa.praca.gov.pl` both serve a robots.txt that allows us and names no
 AI agent; the ClaudeBot disallow is on `psz.praca.gov.pl`, which this collector
 does not touch. `cnesst.gouv.qc.ca` remains untouched and unneeded.
+
+## 2026-08-19 - the digest said "in 17 to 18 August 2026", and printed the place as "KY"
+
+### What the owner sent back
+
+Four complaints, and three of them had already been worked on by earlier
+sessions. Re-reading the render rather than the diff is what found the rest.
+
+1. **"On the title put the date it's going out."** Already done, and verified
+   here rather than assumed. `alt_digest_send()` composes the window as
+   `from = today - N days`, `to = gmdate('Y-m-d')`, so the `to` the subject
+   carries IS the send date. Both senders agree on it, which
+   `test_digest_subject_agreement.py` holds.
+2. **"2026 so far should be YTD 2026."** Already done. The heading is
+   `YTD 2026`, in both tracker sections, and no "so far" string survives
+   anywhere in `subscribe.php`.
+3. **"This doesn't make sense how it is - dates, locations, countries."** Not
+   done, and this was the real work. See below.
+4. **"Cite this - broken."** The markup had been repaired; the CONTENT had
+   not. See below.
+
+### The dates
+
+`alt_digest_date_range()` returns a LABEL: "17 to 18 August 2026". In front of
+a caption that is right. Dropped after a preposition it is not English, and it
+went out five times in one send:
+
+    All 8 entries in 17 to 18 August 2026 are verified
+    No verified job cuts worldwide in 17 to 18 August 2026 carry ...
+    1 of the 5 companies listed for 17 to 18 August 2026 links ...
+    These lines cover 386 of the 675 verified job cuts in 17 to 18 August 2026.
+    ... we classified by industry in 17 to 18 August 2026.
+
+`alt_digest_span_phrase()` is the other form and carries its own preposition:
+`on 18 August 2026`, `on 17 and 18 August 2026`, `between 11 and 18 August
+2026`. The two-day case is not a flourish - a daily digest covers exactly two
+dates, so it is the shape most subscribers see, and nothing lies *between* two
+consecutive days.
+
+There was also a SECOND date format. `alt_digest_short_date()` printed
+"18 Aug 2026" inside the biggest-cuts table, two lines under a caption reading
+"17 to 18 August 2026". That function is deleted, not merely unused: every date
+a reader meets now comes from `alt_digest_date_range`.
+
+### The locations and the countries
+
+The delivered row read:
+
+    RNDC of Kentucky, LLC (KY, takes effect 17 Aug 2026)
+
+`leaders[]` carries `state`, `country` AND `location`, and the composer printed
+`location`, which for a WARN notice is the postal code and nothing else. So the
+biggest-cuts table said "KY" while the country table two blocks below said
+"United States": one email, one place, two vocabularies, one of them readable
+only to an American.
+
+`alt_digest_place()` expands the code through `alt_us_state_names()`, api.php's
+single definition and the source of the state page slugs, then names the
+country. Three cases the live data really contains:
+
+| stored | printed |
+|---|---|
+| state `KY`, country `United States` | Kentucky, United States |
+| state `CA`, country `Multiple countries` | California, plus other countries |
+| nothing at all | location not recorded |
+
+"Multiple countries" is a bucket, not a country, and appended to a state it
+produced "California, Multiple countries", which is not a place anybody lives.
+The empty case is STATED. Around a third of verified job cuts sit on entries
+with no country recorded, the headline already says so, and a silent row let a
+reader assume the place was obvious.
+
+The qualifiers also moved OUT of the anchor. The whole label used to be the
+link text, so a phone showed three underlined lines of blue and a screen reader
+announced the parenthesis as the destination's name.
+
+### The citation
+
+The markup was fixed on 2026-08-18 (a real `h3`, the URL on its own line). The
+content was still wrong in two ways, both only visible in a render.
+
+The last-modified stamp arrived from `alt_data_last_updated_label()` as
+"Aug 18, 2026 · 2:22 PM EDT". That is right for a web page and it was a THIRD
+date format inside this email, in the one block whose whole job is to be pasted
+into somebody else's article. `alt_digest_data_cut_label()` reads the same
+option and renders "18 August 2026 at 18:22 UTC". It also carries the api.php
+label as its fallback, in ONE place, so the sentence under the headline and the
+citation at the foot can never disagree about whether we have a stamp.
+
+The stamp is now IN the reference string rather than in a sentence after it,
+which is what Chicago and APA actually ask for, and the access date carries a
+clock. Ingest finishes near 22:00 UTC and the send runs at 13:10 UTC, so the
+figures are about fifteen hours old when they land, and a bare date implied
+otherwise. The same two facts are also stated directly under the headline,
+because the citation is the block a general reader never reaches:
+
+    The database last changed 18 August 2026 at 18:22 UTC. This digest was
+    composed 19 August 2026 at 00:00 UTC, and every figure in it is the
+    snapshot taken then.
+
+The talent section now carries a citation of its own, with NO as-of stamp,
+because the talent endpoints publish no last-write and borrowing the layoff
+tracker's would be a lie about a separate database.
+
+### One more agreement error, found in the same render
+
+    From 185 companies, 17 to 18 August 2026. 1 of the 186 are verified
+    against primary documents.
+
+The verb agreed with the TOTAL rather than with the count in front of it. The
+verified count is one on most days, so this was the sentence a sceptical reader
+met most often.
+
+### The harness was kinder than production, twice
+
+`digest_compose_harness.php` keyed talent fixtures on the window alone, so the
+`/query` call got the `/aggregate` payload and the ranked list could never be
+rendered at all. Its `get_posts()` ignored the `date_query`, so a render could
+print "12 posts we published on 17 and 18 August 2026" over a list spanning two
+months. Both now behave like the functions they stand in for. It also lifts
+`alt_us_state_names()` out of api.php at load rather than copying the array,
+because a list whose whole point is that there is one of it must not acquire a
+second copy in a fixture.
+
+### Verified
+
+Rendered against LIVE `/aggregate`, `/talent/v1/*` and `/wp/v2/posts` for both
+tiers, and read at 375px and at desktop width. No horizontal overflow, no
+clipped figure, one date format throughout. Every URL the email prints was
+fetched: the tracker page, the talent tracker page and an entry permalink all
+return 200 with a browser user agent.
+## 2026-08-18 - a correctly labelled feed that still collects nothing (2.20.92)
+
+Earlier the same day, `economynext_lk` was reclassified from `broke` to
+`unreachable`: it answers HTTP 202 to the collector's datacentre and HTTP 200
+to a laptop, so it is a bot wall keyed on an address range and there is no
+parser fault to fix. That was right, and it left the feed armed, degraded and
+collecting **zero rows**, with the arm-vs-retire question escalated. A correct
+label is not a fixed source, and neither retiring the publisher (Sri Lanka's
+only one in the catalogue) nor skipping it was an acceptable answer.
+
+### What was measured, in the order it was tried
+
+1. **Other paths on the same host.** `/feed/atom/` answers 200 with a body that
+   does not parse as a feed; the `wp-json/wp/v2/posts` endpoint the same;
+   `/category/economy/feed/` 404s. `robots.txt` was read first and permits
+   `/feed/`. No alternative path exists, and a path probed from a laptop proves
+   nothing about the runner's range anyway - the wall is on the address, not
+   the URL.
+2. **Is the content already arriving through a path we run?** It is. Asking the
+   Sri Lanka market's own committed queries against its own Google News
+   editions (`en-LK`, `si-LK`, `ta-LK`, exactly as `local_news` asks them)
+   returned **241 items, 4 of them from economynext.com** - alongside
+   dailymirror.lk 9, sundaytimes.lk 6, island.lk 4, themorning.lk 4, ft.lk 3.
+   economynext.com is also already a listed domain in `sources/gdelt.py`. So
+   the direct feed was a SECOND route to a publisher two collectors already
+   reach.
+
+The direct feed's own contribution, measured: **0 stored rows over the 14 days
+to 2026-08-18** (`ops_status [2a]`, `national_feeds`: 8 calls, 6 items, 0
+stored), and the single item that passed the relevance filter on a laptop probe
+was a false positive - an SLT-Mobitel fiber/5G/AI investment story with no
+headcount in it.
+
+### The fix
+
+`economynext_lk` is gone from `national_feeds.FEEDS`. EconomyNext moves to
+catalogue status `researched` - "Researched, watched through its market sweep",
+the status that already existed for exactly this - with the measurement above as
+its evidence. Sri Lanka keeps its coverage through the route that actually
+reaches it, and the sources page, the catalogue partial, `assets/health.js`
+`meta{}` and the arming arithmetic (14 feeds, $2.12/month worst case) all move
+in the same commit. One stale line went with it: the Daily FT refusal row said
+"EconomyNext is wired for Sri Lanka instead", which stopped being true here.
+
+**What was NOT done, deliberately.** No user agent was spoofed. A 202 aimed at
+automated clients is an access control, and the standard browser-ish UA we send
+to our own WP host is a different thing entirely. Moving the job to GitHub
+Actions - a different address range - was available and was not taken, because
+it is address-shopping around a soft block and it was not needed once the
+content turned out to arrive anyway.
+
+`classify_failure` and `UNREACHABLE_STATUSES` stay exactly as they are. They are
+general: the next feed to hit an address-range wall still has to be told apart
+from one whose URL we broke. What changed is that "unreachable" is now the
+beginning of a procedure, written down in RUNBOOK, rather than a place to stop.
 
 ## 2026-08-18 - the healer was not slow, it was blind: its own concurrency group was eating the failures
 
@@ -247,6 +433,103 @@ path deleted from FORBIDDEN still fails a test instead of quietly becoming
 healable.
 
 
+## 2026-08-18 - two countries can now be measured exactly, and the useful half of the answer is which cannot
+
+### The claim that had no number
+
+`rolling_recall` measures one slice exactly: US SEC 8-K Item 2.05, where EDGAR
+enumerates the universe for a period. Everything else in the corpus was an
+opinion, and the stated goal is worldwide coverage that can be DEFENDED per
+country. A parallel pass built the per-country REGISTRY (which countries publish
+a countable total at all). This is the collectors for the ones that do.
+
+`railway/national_denominators.py` fetches the collective-redundancy totals
+published by the authority that RECEIVES the notifications, divides our own
+holdings for the same country and window by them, and reports the result the way
+`rolling_recall` reports its own: MEASURED / NOT MEASURABLE / UNKNOWN, a band
+rather than a point, an assessment that carries a date and expires, and a
+declared slice that says why it could not be computed instead of dropping out.
+Every state constant, the Wilson interval and the settle lag are IMPORTED from
+that module - nothing here is a second copy of a rule that lives there.
+
+### What is now measured, live, 2026-08-18
+
+| country | notified | we hold | coverage band |
+|---|---|---|---|
+| Great Britain (HR1, TULRCA 1992 s.193, 2025-07..2026-06) | 303,097 workers | 47,834..48,318 | **15.8% - 15.9%** |
+| Estonia (koondamisteated, Töötukassa, 2025-07..2026-06) | 2,941 workers | 695 | **23.6%** |
+
+Both denominators are the publisher's own universe rather than a sample, so
+anyone can download the same file and check the arithmetic. The band's ends are
+`country=X` (strict job location, misses global cuts that hit X) and
+`country_basis=any` (unions employer domicile, counts a global cut whole).
+
+Taiwan's series (大量解僱通報, ~11,752 workers over 337 plants in 2025) parses and
+was read by hand today; the module reports it UNKNOWN from this machine because
+OpenSSL 3.6 rejects the ministry's intermediate for carrying no Subject Key
+Identifier. That is an environment fact and it is reported as one - it is never
+to be cleared by disabling verification.
+
+### Four things this measurement refuses to do
+
+**It will not add two countries together.** Directive 98/59/EC lets each member
+state pick between two threshold formulations and go lower still; Sweden's floor
+is five workers, Croatia's twenty; Taiwan counts 廠場, so one company filing for
+four plants counts four times. `combine()` raises `IncomparableSeries` unless the
+unit AND the period match, and the test asserts the refusal. There is no
+worldwide percentage in the module and there must not be one.
+
+**It will not read the Taiwanese twin.** Dataset 27508 (大量解僱預警通報) sits
+beside 27505 with a near-identical title, is the wage-arrears early-warning
+tripwire under a different statute, and is keyed on Western years instead of ROC
+years. Its 2025 figures are 6,579 / 503,386 against 337 / 11,752 - a factor of
+43. The parser refuses a Western-year column rather than converting it, and the
+test fixture carries 27508's exact shape.
+
+**It will not sum a partial window.** ONS writes `[c]` for a confidential
+suppression; summed as zero it shrinks the denominator, which INFLATES our
+coverage - the direction a broken measurement must never fail in. A window
+missing any of its twelve months raises.
+
+**It will not report a ratio above 1.0 as coverage.** Our rows are not a subset
+of the notified population, so a ratio over 1 means the numerator left the
+denominator's universe. Northern Ireland proved it on the first run: the series
+is NI-only, our country vocabulary spells every NI row "United Kingdom", and the
+ratio came out at 177%. NI is therefore NOT MEASURABLE with the denominator
+still read and freshness-checked every run - a denominator with no matching
+numerator is not a measurement.
+
+### The negative findings, which are worth more than estimates
+
+Five countries publish a real total this project still cannot use, each recorded
+with its reason and an expiry:
+
+- **Netherlands** - current reports behind an Anubis proof-of-work wall. Not a
+  robots directive, and equally not ours to solve.
+- **Romania, Latvia** - annual PDF only. That is a lock question rather than a
+  parsing one: a PDF dependency in a hash-pinned lock for one country is not
+  worth it, and the lock exists because twenty workflows once installed
+  unverified packages next to two API keys.
+- **Poland, Iceland** - the publisher's page carries only the current period and
+  keeps no archive, so any history would be OURS. A denominator this project
+  assembles is not an independent denominator. Iceland is worse still: a month
+  with no collective redundancies gets no post at all, so absence is not zero.
+
+So the honest ceiling, stated plainly: **of every country surveyed, only a
+handful can ever be measured exactly, and today two of them are.** That is a
+more useful sentence than a table of estimates would have been.
+
+### Cost, robots, and what is not published
+
+$0.00. Seven file or API requests and eight `/aggregate` reads, all free and
+keyless; no model is called on any path. The .xlsx reader is a zip and some XML
+rather than openpyxl, so the measurement cannot break when the lock is
+refreshed. robots.txt was read before the first content request on every host;
+`apiservice.mol.gov.tw` rejects its own robots.txt through a WAF and serves the
+data to our identifying agent under an open licence, which is recorded as
+"permitted with the robots file unreadable" rather than as either a pass or a
+refusal. Nothing here reaches a reader-facing surface: the figures land in the
+repo and in `ops_status [3e]`, and what to claim publicly is the owner's call.
 ## 2026-08-18 - the unplaced third is 109 rows, and the tool built to place them would have placed 27 of them wrong
 
 ### What was asked, and what the measurement said instead
@@ -671,9 +954,15 @@ a source is working when the collector cannot read it; only the wording moved,
 and it had to, because "feed broke" sends a session to audit a parser that is
 returning valid RSS to every other network.
 
-What is left for the owner: the feed stays armed and stays degraded, which is a
+What was left for the owner: the feed stays armed and stays degraded, which is a
 true statement about a real gap. Dropping it would remove the only Sri Lankan
 publisher in the catalogue, so that is a coverage decision, not a repair.
+
+**RESOLVED the same day (2.20.92, entry at the top of this log).** It was not a
+coverage decision in the end, because the coverage was already there: the Sri
+Lanka market sweep returns economynext.com items under its own live queries, so
+the direct feed was redundant rather than load bearing. The feed is dropped and
+the publisher is `researched`, watched through its market sweep.
 
 ### 3. `zero snapshots taken - Wayback unreachable?` - the question mark was the defect
 

@@ -624,13 +624,13 @@ class TheArticlesList(unittest.TestCase):
         But "the three newest" is only honest if the reader is told there were
         more, so the query ceiling is above the print limit."""
         for part in (self.o["articles_html"], self.o["articles_text"]):
-            self.assertIn("The 3 newest of 4 posts we published in", part)
+            self.assertIn("The 3 newest of 4 posts we published between", part)
         self.assertNotIn("A fifth post", self.o["articles_text"],
                          "the cut to three did not actually drop anything")
 
     def test_the_section_states_its_window_like_every_other_block(self):
         self.assertRegex(self.o["articles_text"],
-                         r"posts we published in .*\b20\d{2}\.")
+                         r"posts we published (on|between) .*\b20\d{2}\.")
 
     def test_the_composer_picks_no_size_and_no_colour_here_either(self):
         """digest_layout.py owns the design. This section used to write its

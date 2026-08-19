@@ -1113,6 +1113,64 @@ def main():
     except Exception as exc:
         print(f"    UNKNOWN - could not read the per-country register: {exc}")
         issues.append("COVERAGE: per-country register unreadable")
+    # 3e. COVERAGE OUTSIDE THE US — measured against national denominators.
+    #
+    # [3c] measures ONE slice of ONE country exactly, and until this section
+    # existed everything else was an opinion. "We cover country X well" is not a
+    # claim anybody should publish unmeasured, and a goal you cannot measure is
+    # a hope.
+    #
+    # These are counts of collective-redundancy notifications published by the
+    # authority that RECEIVES them, so the denominator is the publisher's own
+    # universe rather than anything we assembled. Each figure is a BAND: the low
+    # end is strict job location, the high end unions employer domicile and
+    # therefore counts a global cut whole.
+    #
+    # It prints NO total and NO average. The denominators are not comparable —
+    # Directive 98/59/EC lets every member state pick its own threshold and
+    # Taiwan counts plants — and national_denominators.combine() refuses to add
+    # two series that count different things. A worldwide percentage here would
+    # be exactly the flattering nonsense that refusal exists to prevent.
+    print("\n[3e] COVERAGE OUTSIDE THE US  (vs national collective-redundancy totals)")
+    try:
+        import national_denominators
+        nd_doc = national_denominators.load_measurement()
+        nd_state, _nd_detail = national_denominators.judge(nd_doc)
+        if nd_doc is None:
+            print("    UNKNOWN - no national-denominator measurement has been written "
+                  "yet. Coverage outside the US is UNMEASURED, not fine.")
+            print("              Run: python3 railway/national_denominators.py --write")
+            not_provisioned.append("national_denominators (never measured)")
+        else:
+            for key in nd_doc.get("declared_slices") or []:
+                s = (nd_doc.get("slices") or {}).get(key) or {
+                    "state": national_denominators.UNKNOWN,
+                    "detail": "absent from the report"}
+                state = s.get("state")
+                country = s.get("country", "?")
+                if state == national_denominators.MEASURED:
+                    lo, hi = s["confirmed_interval"]
+                    print(f"    MEASURED  {country}: {s['coverage_lower']:.1%}"
+                          f"-{s['coverage_upper']:.1%} of {s['denominator']:,} "
+                          f"{s['unit']} notified  ({s['period']['label']})")
+                    print(f"              {s['label']}")
+                    print(f"              we hold {s['held_jobs_strict']:,}.."
+                          f"{s['held_jobs_any']:,}; Wilson on the low end "
+                          f"{lo:.1%}-{hi:.1%} (sampling only — the definitional "
+                          f"mismatch is larger)")
+                elif state == national_denominators.NOT_MEASURABLE:
+                    print(f"    NOT MEASURABLE  {country}: {key}")
+                    _print_wrapped(s.get("detail") or "", indent="              ")
+                else:
+                    print(f"    UNKNOWN   {country}: {key}")
+                    _print_wrapped(s.get("detail") or "", indent="              ")
+            if nd_state == national_denominators.UNKNOWN:
+                issues.append("COVERAGE: national denominators are UNVERIFIED")
+            print(f"    measured {nd_doc.get('measured_at')} - bands, never a point, "
+                  f"and never summed across countries")
+    except Exception as exc:
+        print(f"    UNKNOWN - could not read the national denominators: {exc}")
+        issues.append("COVERAGE: national denominators unreadable")
 
     # 4. RECENT CI — is any workflow red right now?
     #

@@ -1576,23 +1576,12 @@ function alt_api_digest_click($request) {
 /* Digest composition (reads the trackers' own public APIs)            */
 /* ------------------------------------------------------------------ */
 
-/**
- * A date a reader can read, out of the ISO date the endpoints return.
- *
- * Returns '' for anything that is not a plain YYYY-MM-DD, and every caller
- * treats that as "print no date". A row whose date we do not have prints
- * nothing there: not a zero, not today, not the period's edge.
- */
-function alt_digest_short_date($iso) {
-    $iso = substr(trim((string) $iso), 0, 10);
-    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $iso, $m)) return '';
-    $month = (int) $m[2];
-    $day = (int) $m[3];
-    if ($month < 1 || $month > 12 || $day < 1 || $day > 31) return '';
-    $names = array('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
-    return $day . ' ' . $names[$month - 1] . ' ' . $m[1];
-}
+/*
+  alt_digest_short_date() lived here and rendered "18 Aug 2026". It is gone,
+  and so is the second date format it put in the email. Every date a reader
+  meets now comes from alt_digest_date_range, which spells the month out, so a
+  row date and a window label are written the same way.
+*/
 
 /**
  * The window a section is about, spelled out for a reader.
@@ -1634,6 +1623,143 @@ function alt_digest_date_range($from, $to) {
         return $ad . ' ' . $names[$am - 1] . ' to ' . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
     }
     return $ad . ' to ' . $bd . ' ' . $names[$bm - 1] . ' ' . $by;
+}
+
+/**
+ * THE SAME WINDOW, WORDED TO SIT INSIDE A SENTENCE.
+ *
+ * WHAT THE OWNER READ, AND HE WAS RIGHT. "This doesn't make sense how it is:
+ * dates, locations, countries." The dates half of that is this line, which
+ * went out in five places in one send:
+ *
+ *     All 8 entries in 17 to 18 August 2026 are verified
+ *
+ * "in 17 to 18 August 2026" is not English. alt_digest_date_range() returns a
+ * LABEL, and a label is the right thing when it stands alone in front of a
+ * caption ("17 to 18 August 2026, verified only, ranked by job count"). Drop
+ * the same label after a preposition and it reads as machine output, which is
+ * the one thing a citable product cannot afford.
+ *
+ * So this is the other form, and it carries its own preposition. A caller
+ * writes "posts we published " . $span, never "published in " . $span. Two
+ * shapes, because two grammars: a window can be named or it can be entered.
+ *
+ *   one day        on 18 August 2026
+ *   two days       on 17 and 18 August 2026
+ *   longer         between 11 and 18 August 2026
+ *
+ * The two-day case is not a flourish. A daily digest covers exactly two dates,
+ * so it is the shape most subscribers see, and "between 17 and 18 August" is
+ * wrong about it: nothing lies between two consecutive days.
+ *
+ * Returns '' on anything alt_digest_date_range() cannot read, and every caller
+ * treats that the way it treats an unreadable range, by composing nothing.
+ */
+function alt_digest_span_phrase($from, $to) {
+    $a = substr(trim((string) $from), 0, 10);
+    $b = substr(trim((string) $to), 0, 10);
+    $range = alt_digest_date_range($a, $b);
+    if ($range === '') return '';
+    if ($a === $b) return 'on ' . $range;
+    // " to " cannot occur inside a month name or a year, so this is a safe
+    // swap and not a guess about the string's shape.
+    $joined = str_replace(' to ', ' and ', $range);
+    $ta = strtotime($a . ' 00:00:00 UTC');
+    $tb = strtotime($b . ' 00:00:00 UTC');
+    if ($ta !== false && $tb !== false && ($tb - $ta) === DAY_IN_SECONDS) {
+        return 'on ' . $joined;
+    }
+    return 'between ' . $joined;
+}
+
+/**
+ * A PLACE A READER RECOGNISES, out of the three columns the row really has.
+ *
+ * WHAT WENT OUT. "RNDC of Kentucky, LLC (KY, takes effect 17 Aug 2026)". The
+ * leaders payload carries `state`, `country` and `location`, and this email
+ * printed `location`, which for a WARN row is the two-letter postal code and
+ * nothing else. So the biggest-cuts table said "KY" while the country table
+ * two blocks below said "United States", and the same email named one place
+ * two ways, one of them in a vocabulary only an American reader can decode.
+ *
+ * The state code is expanded through alt_us_state_names(), api.php's single
+ * definition, which is also where the state pages take their slugs from. It is
+ * guarded because this file is loaded by harnesses that do not load api.php,
+ * and an unresolvable code falls back to the stored code rather than to
+ * nothing: a reader who sees "KY, United States" has lost a detail, and a
+ * reader who sees no place at all has lost the fact.
+ *
+ * `location` is used only when it is not simply repeating the country, which
+ * is how a news-path row carries a city.
+ *
+ * AN EMPTY RESULT IS A REAL ANSWER and the caller says so out loud. Around a
+ * third of verified job cuts sit on entries with no country recorded, the
+ * headline already says that, and a row that quietly showed nothing let a
+ * reader assume the place was obvious.
+ */
+function alt_digest_place($state, $country, $location) {
+    $state = trim((string) $state);
+    $country = trim((string) $country);
+    $location = trim((string) $location);
+    /*
+      "Multiple countries" IS NOT A COUNTRY. It is the stored bucket for a
+      global cut announced with no per-country split, and the country table in
+      this same section already gives it a line of its own. Appended to a state
+      it produced "(California, Multiple countries, takes effect 11 August
+      2026)", which is not a place anybody lives. It is held back and spoken as
+      what it is, either as a qualifier after a real place or on its own.
+    */
+    $unsplit = (strcasecmp($country, 'Multiple countries') === 0);
+    if ($unsplit) $country = '';
+    $parts = array();
+    if ($state !== '') {
+        $names = function_exists('alt_us_state_names') ? alt_us_state_names() : array();
+        $code = strtoupper(preg_replace('/[^A-Za-z]/', '', $state));
+        $parts[] = isset($names[$code]) ? $names[$code] : $state;
+    } elseif ($location !== '' && strcasecmp($location, $country) !== 0
+              && strcasecmp($location, 'Multiple countries') !== 0) {
+        $parts[] = $location;
+    }
+    if ($country !== '') $parts[] = $country;
+    if ($unsplit) {
+        $parts[] = $parts ? 'plus other countries' : 'Multiple countries, no split given';
+    }
+    return implode(', ', $parts);
+}
+
+/**
+ * WHEN THE FIGURES WERE TRUE, in the same date shape as everything else.
+ *
+ * api.php's alt_data_last_updated_label() formats the same option as
+ * "Aug 18, 2026 · 2:22 PM EDT". That is right for a web page a reader is
+ * looking at in a browser. Inside this email it was a THIRD date format, next
+ * to "17 to 18 August 2026" and "18 Aug 2026", in the one block whose whole
+ * job is to be copied into somebody else's article.
+ *
+ * UTC, because the collection cron and the send cron both run in UTC and the
+ * gap between them is the fact the line exists to state. Ingest finishes near
+ * 22:00 UTC and the digest goes out at 13:10 UTC, so a reader is holding
+ * figures about fifteen hours old, and nothing in the email said so.
+ *
+ * Reads the option directly rather than reformatting api.php's string, because
+ * parsing a formatted date back out of prose is how a timezone gets lost.
+ * Returns '' when the option is missing, and the caller prints no sentence.
+ */
+function alt_digest_data_cut_label() {
+    $ts = function_exists('get_option') ? (int) get_option('alt_last_write', 0) : 0;
+    if ($ts > 0) {
+        $day = alt_digest_date_range(gmdate('Y-m-d', $ts), gmdate('Y-m-d', $ts));
+        if ($day !== '') return $day . ' at ' . gmdate('H:i', $ts) . ' UTC';
+    }
+    /*
+      THE FALLBACK, AND IT IS ONE PLACE ON PURPOSE. api.php's own label spells
+      the date its own way, so it is the degraded path rather than the normal
+      one. It is resolved HERE so the sentence under the headline and the
+      citation at the foot can never disagree about whether we have a stamp:
+      two call sites with two fallbacks is how one of them ends up silent.
+    */
+    return function_exists('alt_data_last_updated_label')
+        ? (string) alt_data_last_updated_label() : '';
 }
 
 /**
@@ -1756,11 +1882,26 @@ function alt_digest_rank_table($rows) {
         if (!empty($row['url'])) {
             $label = '<a href="' . esc_url($row['url']) . '">' . $label . '</a>';
         }
+        /*
+          THE QUALIFIERS SIT OUTSIDE THE LINK, and that is why they are a
+          separate field rather than more label.
+
+          The biggest-cuts row is "Blueprint Medicines (Massachusetts, United
+          States, takes effect 18 August 2026)". All of it used to be the
+          anchor text, so a mobile reader met three underlined lines of blue,
+          and a screen reader announced the whole parenthesis as the name of
+          the destination. Link text should say where the link goes. Here that
+          is the company, and the place and the date are facts about the row.
+        */
+        $suffix = trim((string) ($row['suffix'] ?? ''));
+        if ($suffix !== '') $label .= ' ' . esc_html($suffix);
         $html .= '<tr>'
                . '<td data-alt="label' . $edge . '">' . $label . '</td>'
                . '<td data-alt="figure' . $edge . '" align="right" width="34%">'
                . esc_html((string) $row['figure']) . '</td></tr>';
-        $text .= '  ' . $row['label'] . ': ' . $row['figure'] . "\n";
+        $text .= '  ' . $row['label']
+               . ($suffix !== '' ? ' ' . $suffix : '')
+               . ': ' . $row['figure'] . "\n";
         // The plain destination, never the counted one: a text reader should
         // not be handed a machine-shaped URL to squint at.
         if (!empty($row['plain_url'])) $text .= '    ' . $row['plain_url'] . "\n";
@@ -1789,7 +1930,9 @@ function alt_digest_rank_table($rows) {
  * $headline the verified figure the block sits under
  * $unit     'job cut', SINGULAR; alt_digest_count pluralises it
  * $missing  what an uncovered row lacks, e.g. 'no country recorded'
- * $range    the window, because this line has to stand on its own too
+ * $span     the window as a prepositional phrase, because this line has to
+ *           stand on its own too. alt_digest_span_phrase, not the label form:
+ *           it lands inside a sentence here, never in front of one.
  */
 /**
  * WHERE A HEADLINE FIGURE COUNTS, in the fewest words that are true.
@@ -1829,13 +1972,13 @@ function alt_digest_geo_scope($headline, $covered) {
         : 'worldwide';
 }
 
-function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing, $range) {
+function alt_digest_reconcile_note($shown, $covered, $headline, $unit, $missing, $span) {
     $shown = (int) $shown; $covered = (int) $covered; $headline = (int) $headline;
     if ($shown === $headline) return '';
     $parts = array();
     $parts[] = 'These lines cover ' . number_format_i18n($shown) . ' of the '
-             . alt_digest_count($headline, 'verified ' . $unit) . ' in '
-             . $range . '.';
+             . alt_digest_count($headline, 'verified ' . $unit) . ' '
+             . $span . '.';
     $ranked = $covered - $shown;
     if ($ranked > 0) {
         $parts[] = number_format_i18n($ranked)
@@ -2268,7 +2411,7 @@ function alt_digest_tracker_url($from, $to) {
  * caller holds has already been cut to five and a rank of ninth cannot be
  * read off a list of five.
  */
-function alt_digest_composition_note($block, $headline, $range) {
+function alt_digest_composition_note($block, $headline, $span) {
     $MIN_RANKED = 4;
     $COVER_FLOOR = 0.6;
     $CONCENTRATION = 0.5;
@@ -2297,7 +2440,7 @@ function alt_digest_composition_note($block, $headline, $range) {
     $line = $top3[0] . ', ' . $top3[1] . ' and ' . $top3[2]
           . ' are the three largest, ' . round(100 * $top3_jobs / $covered)
           . '% of the ' . number_format_i18n($covered)
-          . ' verified job cuts we classified by industry in ' . $range . '.';
+          . ' verified job cuts we classified by industry ' . $span . '.';
 
     // Rank is 1-based and read off the FULL list, which is why this function
     // takes the raw block rather than the five rows the caller printed.
@@ -2371,12 +2514,20 @@ function alt_digest_composition_note($block, $headline, $range) {
  * because that one is true whether or not we can date the last write.
  */
 function alt_digest_cite_note($name, $range, $url, $read_date, $label) {
+    /*
+      THE LAST-MODIFIED STAMP IS PART OF THE REFERENCE, not a sentence after
+      it. Chicago prefers a last-modified date and asks for an access date
+      alongside it; APA asks for the retrieval date on a source designed to
+      change. Both belong in the string somebody pastes, so both are in it.
+
+      A missing stamp drops that clause and keeps the rest. It is not filled
+      in from the access date: those are different facts, and conflating them
+      would claim the database changed at the moment we happened to read it.
+    */
     $cite = $name . ', AskTheRecruiter.com. Figures for ' . $range
+          . ((string) $label !== '' ? ', as of ' . $label : '')
           . ', accessed ' . $read_date . '.';
     $note = array();
-    if ((string) $label !== '') {
-        $note[] = 'Our database last changed ' . $label . '.';
-    }
     /*
       "Usually rises, and a correction can lower it" is the honest pair, and
       the second half is not hedging. Late filings and WARN notices arrive for
@@ -2453,6 +2604,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $range = alt_digest_date_range($from, $to);
     if ($range === '') return null;
+    // The same window worded to sit inside a sentence. Two forms, because the
+    // label goes in front of a caption and this one goes after a preposition.
+    // See alt_digest_span_phrase for the sentence the owner sent back.
+    $span = alt_digest_span_phrase($from, $to);
+    if ($span === '') return null;
 
     $url = home_url('/ai-layoff-tracker/');
     /*
@@ -2644,6 +2800,31 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     }
 
     /*
+      WHEN THESE FIGURES WERE TRUE, NEXT TO THE FIGURE AND NOT IN A FOOTER.
+
+      The email is a SNAPSHOT and it read like a live page. Ingest finishes
+      near 22:00 UTC and the send runs at 13:10 UTC, so a reader opening this
+      at breakfast holds numbers about fifteen hours old. The citation at the
+      foot has always carried the stamp; the citation is also the block a
+      general reader never reaches.
+
+      Two facts, two short sentences, because they are genuinely different: the
+      database stopped moving at one time and we read it at another. Neither is
+      guessed. A build that cannot date the last write prints only the second,
+      which is still true.
+    */
+    $cut = alt_digest_data_cut_label();
+    $composed = alt_digest_date_range(gmdate('Y-m-d'), gmdate('Y-m-d'));
+    if ($composed !== '') {
+        $composed .= ' at ' . gmdate('H:i') . ' UTC';
+        $asof = ($cut !== '' ? 'The database last changed ' . $cut . '. ' : '')
+              . 'This digest was composed ' . $composed . ', and every figure '
+              . 'in it is the snapshot taken then.';
+        $html .= '<p data-alt="source">' . esc_html($asof) . '</p>';
+        $text .= $asof . "\n";
+    }
+
+    /*
       THE SECOND TIER, AND WHY IT IS STATED EVEN WHEN IT IS EMPTY.
 
       The site publishes that verified and announced are never mixed. A reader
@@ -2653,16 +2834,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       above is the whole set rather than a slice they have to go and check.
     */
     if ($has_announced) {
-        $tier = $range . ' holds ' . alt_digest_count($all_entries, 'entry', 'entries')
-              . ', ' . number_format_i18n($ver_entries) . ' of them verified. '
+        $tier = 'There ' . alt_digest_verb($all_entries, 'is', 'are') . ' '
+              . alt_digest_count($all_entries, 'entry', 'entries') . ' '
+              . $span . ', ' . number_format_i18n($ver_entries)
+              . ' of them verified. '
               . 'Including announced estimates, the same window holds '
               . alt_digest_count($all_jobs, 'job cut') . ' across '
               . alt_digest_count($companies_n, 'company', 'companies') . '.';
     } else {
         $tier = ($all_entries === 1
-                    ? 'The one entry in ' . $range . ' is verified'
-                    : 'All ' . number_format_i18n($all_entries) . ' entries in '
-                      . $range . ' are verified')
+                    ? 'The one entry ' . $span . ' is verified'
+                    : 'All ' . number_format_i18n($all_entries) . ' entries '
+                      . $span . ' are verified')
               . ', across ' . alt_digest_count($companies_n, 'company', 'companies')
               . '. The window holds no announced estimates.';
     }
@@ -2702,7 +2885,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                  . alt_digest_count($ai_entries, 'entry', 'entries')
                  . ', ' . $range . ', worldwide.';
     } else {
-        $ai_line = 'No verified job cuts worldwide in ' . $range
+        $ai_line = 'No verified job cuts worldwide ' . $span
                  . ' carry an explicit AI attribution from the employer.';
     }
     $html .= '<p data-alt="note">' . esc_html($ai_line) . '</p>';
@@ -2731,13 +2914,33 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $tier_known = false;
         foreach ($leaders as $l) {
             $l = (array) $l;
-            // The date the cuts take effect. A row carrying no date shows none
-            // rather than borrowing the window's edge.
-            $when = alt_digest_short_date($l['layoff_date'] ?? '');
+            /*
+              THE DATE THE CUTS TAKE EFFECT, IN THE EMAIL'S ONE DATE SHAPE.
+
+              This used alt_digest_short_date and printed "18 Aug 2026" two
+              lines under a caption reading "17 to 18 August 2026". One message,
+              two spellings of the same month, in the block a reader looks at
+              hardest. Every date in this email is now "18 August 2026", which
+              is what alt_digest_date_range gives for a single day.
+
+              A row carrying no date still shows none, rather than borrowing
+              the window's edge.
+            */
+            $day = substr((string) ($l['layoff_date'] ?? ''), 0, 10);
+            $when = alt_digest_date_range($day, $day);
             $label = trim((string) ($l['company_name'] ?? ''));
             if ($label === '') continue;
             $detail = array();
-            if (!empty($l['location'])) $detail[] = (string) $l['location'];
+            /*
+              WHERE, IN WORDS A READER OUTSIDE THE UNITED STATES CAN READ.
+              See alt_digest_place. An empty place is stated rather than left
+              blank: a third of verified cuts sit on entries with no country,
+              the headline says so, and a silent row let a reader assume the
+              place was obvious.
+            */
+            $place = alt_digest_place($l['state'] ?? '', $l['country'] ?? '',
+                                      $l['location'] ?? '');
+            $detail[] = ($place !== '') ? $place : 'location not recorded';
             if ($when !== '') $detail[] = 'takes effect ' . $when;
             if (!empty($l['ai_explicit'])) $detail[] = 'AI attributed';
             /*
@@ -2776,10 +2979,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                 $tier_known = true;
                 if (!empty($l['announced'])) { $detail[] = 'announced'; $announced_rows++; }
             }
-            if ($detail) $label .= ' (' . implode(', ', $detail) . ')';
             $permalink = trim((string) ($l['permalink'] ?? ''));
             $row = array(
                 'label'  => $label,
+                // Outside the anchor, so the link text is the company name.
+                // See alt_digest_rank_table.
+                'suffix' => $detail ? '(' . implode(', ', $detail) . ')' : '',
                 'figure' => alt_digest_jobs_phrase((int) ($l['job_count'] ?? 0)),
             );
             if ($permalink !== '' && alt_digest_link_allowed($permalink)) {
@@ -2859,8 +3064,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                   honest answer is the one printed: this row has no page, and
                   here is why.
                 */
-                $basis[] = $linked . ' of the ' . $count . ' companies listed for '
-                         . $range . alt_digest_verb($linked, ' links', ' link')
+                $basis[] = $linked . ' of the ' . $count . ' companies listed '
+                         . $span . alt_digest_verb($linked, ' links', ' link')
                          . ' to an entry page naming the filing or report behind the '
                          . 'row. '
                          . alt_digest_verb($count - $linked, 'The other one arrived',
@@ -2943,7 +3148,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $html .= $c_html;
         $text .= $c_text;
         $note = alt_digest_reconcile_note($shown, $covered, $ver_jobs, 'job cut',
-                                          'no country recorded', $range);
+                                          'no country recorded', $span);
         if ($note !== '') {
             $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
             $text .= $note . "\n";
@@ -2979,13 +3184,13 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
           alt_digest_composition_note for the three floors and why each exists.
         */
         $shape = alt_digest_composition_note($data['top_industries'] ?? null,
-                                             $ver_jobs, $range);
+                                             $ver_jobs, $span);
         if ($shape !== '') {
             $html .= '<p data-alt="note">' . esc_html($shape) . '</p>';
             $text .= $shape . "\n";
         }
         $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cut',
-                                          'no industry recorded', $range);
+                                          'no industry recorded', $span);
         if ($note !== '') {
             $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
             $text .= $note . "\n";
@@ -3108,9 +3313,15 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       loaded by harnesses that do not load api.php, and an absent stamp
       prints nothing rather than a guess.
     */
-    $cite_label = function_exists('alt_data_last_updated_label')
-        ? (string) alt_data_last_updated_label() : '';
+    $cite_label = alt_digest_data_cut_label();
+    /*
+      THE ACCESS DATE NOW CARRIES A CLOCK, because the day on its own was not
+      the fact a reader needed. Ingest finishes near 22:00 UTC and this digest
+      goes out at 13:10 UTC, so the figures are about fifteen hours old when
+      they land. A bare date implies they were read this morning.
+    */
     $read_date = alt_digest_date_range(gmdate('Y-m-d'), gmdate('Y-m-d'));
+    if ($read_date !== '') $read_date .= ' at ' . gmdate('H:i') . ' UTC';
     if ($read_date !== '') {
         list($cite, $cite_url, $cite_note) = alt_digest_cite_note(
             'AI Layoff Tracker', $range, $url, $read_date, $cite_label);
@@ -3172,10 +3383,14 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     // window does not go out. See alt_digest_date_range for why.
     $range = alt_digest_date_range($from, $to);
     if ($range === '') return null;
+    // The prepositional form of the same window. See alt_digest_span_phrase.
+    $span = alt_digest_span_phrase($from, $to);
+    if ($span === '') return null;
 
     $url = home_url('/talent-intelligence-tracker/');
     $companies_n = (int) ($data['companies'] ?? 0);
-    $verified = number_format_i18n((int) ($data['verified'] ?? 0));
+    $verified_n = (int) ($data['verified'] ?? 0);
+    $verified = number_format_i18n($verified_n);
     $totalf = number_format_i18n($total);
     /*
       WHERE, AND WHY THIS ONE SAYS LESS THAN THE LAYOFF SECTION'S.
@@ -3209,7 +3424,14 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $text = "Talent Intelligence Tracker\n{$lede}\n";
     $detail = 'From ' . alt_digest_count($companies_n, 'company', 'companies') . ', '
             . $range . '. ' . $verified . ' of the ' . $totalf . ' '
-            . alt_digest_verb($total, 'is', 'are')
+            /*
+              THE VERB AGREES WITH THE COUNT IN FRONT OF IT, which is the
+              verified figure and not the total. This read the total, so a live
+              send published "1 of the 186 are verified against primary
+              documents". The verified count is one on most days, so this was
+              the sentence a sceptical reader met most often.
+            */
+            . alt_digest_verb($verified_n, 'is', 'are')
             . ' verified against primary documents.';
     $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
     $text .= $detail . "\n";
@@ -3309,7 +3531,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 // since/until window selects on. Some signals reach us with
                 // no date on the source; those show none rather than borrow
                 // the day we captured them.
-                $when = alt_digest_short_date($row['published_date'] ?? '');
+                $pub = substr((string) ($row['published_date'] ?? ''), 0, 10);
+                $when = alt_digest_date_range($pub, $pub);
                 /*
                   THE NUMBER THAT DID THE RANKING IS SHOWN, because a list
                   claiming to lead with the biggest signals and printing no
@@ -3347,9 +3570,9 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 // Agreement, because "1 of the signals show no date" is the
                 // same carelessness as "1 jobs" and lands on the same reader.
                 $basis = ($undated === 1)
-                    ? ('One signal listed for ' . $range . ' shows no date, because the '
+                    ? ('One signal listed ' . $span . ' shows no date, because the '
                        . 'source carries none. We do not substitute the day we captured it.')
-                    : ($undated . ' signals listed for ' . $range . ' show no date, because '
+                    : ($undated . ' signals listed ' . $span . ' show no date, because '
                        . 'the source carries none. We do not substitute the day we '
                        . 'captured them.');
                 $html .= '<p data-alt="note">' . esc_html($basis) . '</p>';
@@ -3389,8 +3612,38 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     }
 
     $click = alt_digest_track_link($send_id, $url);
-    $html .= '<p><a href="' . esc_url($click) . '">Open the Talent Intelligence Tracker</a></p>';
-    $text .= "\nOpen the tracker: {$url}\n";
+    $link_text = 'Open the Talent Intelligence Tracker for ' . $range;
+    $html .= '<p><a href="' . esc_url($click) . '">' . esc_html($link_text) . '</a></p>';
+    $text .= "\n{$link_text}:\n{$url}\n";
+
+    /*
+      THIS SECTION IS AS CITABLE AS THE OTHER ONE, and until now only one of
+      them said so. A reader who quotes a hiring-signal figure out of this
+      email has the same problem a reader quoting a layoff figure has: the
+      email is a snapshot and the database behind it keeps moving.
+
+      NO "AS OF" STAMP HERE, and that is honest absence rather than an
+      oversight. The layoff citation carries one because api.php publishes the
+      layoff table's last write. The talent endpoints publish no equivalent, so
+      this cites the window and the access time, which are the two facts we
+      really have. Do not fill the gap with the layoff tracker's stamp: they
+      are separate databases on separate ingest schedules.
+
+      Plain text, not an anchor, for the reason spelled out on
+      alt_digest_cite_note: a citation is a string somebody pastes, and a
+      counted link in a published story records our click counter instead of
+      our address.
+    */
+    $read_date = alt_digest_date_range(gmdate('Y-m-d'), gmdate('Y-m-d'));
+    if ($read_date !== '') {
+        $read_date .= ' at ' . gmdate('H:i') . ' UTC';
+        list($cite, $cite_url, $cite_note) = alt_digest_cite_note(
+            'Talent Intelligence Tracker', $range, $url, $read_date, '');
+        $html .= '<h3>Cite this</h3>'
+               . '<p data-alt="note">' . esc_html($cite) . '</p>'
+               . '<p data-alt="note">' . esc_html($cite_url) . '</p>';
+        $text .= "\nCite this\n" . $cite . "\n" . $cite_url . "\n";
+    }
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader);
 }
 
@@ -3603,15 +3856,18 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
     $found = count($items);
     $items = array_slice($items, 0, 3);
     $range = alt_digest_date_range($from, $to);
+    // The prepositional form, because every clause here ends in the window.
+    // See alt_digest_span_phrase for the sentence the owner sent back.
+    $span = alt_digest_span_phrase($from, $to);
     $shown = count($items);
     $caption = $found > $shown
         ? ($shown === 1
-            ? 'The newest of ' . $found . ' posts we published in ' . $range . '.'
-            : 'The ' . $shown . ' newest of ' . $found . ' posts we published in '
-              . $range . '.')
+            ? 'The newest of ' . $found . ' posts we published ' . $span . '.'
+            : 'The ' . $shown . ' newest of ' . $found . ' posts we published '
+              . $span . '.')
         : ($found === 1
-            ? 'The one post we published in ' . $range . '.'
-            : 'All ' . $found . ' posts we published in ' . $range . ', newest first.');
+            ? 'The one post we published ' . $span . '.'
+            : 'All ' . $found . ' posts we published ' . $span . ', newest first.');
 
     $html = '<h2>From the blog</h2>';
     $text = "From the blog\n";

@@ -10,7 +10,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **HOLDER:** local
 - **SINCE:** 2026-08-12
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the two non-US
-  collective-dismissal registers, landing as **2.20.92**
+  collective-dismissal registers, landing as **2.20.94**
   (`railway/sources/wup_mazowieckie.py`, `railway/sources/quebec.py`,
   `railway/warn_import.py`, `.github/workflows/warn-import.yml`,
   `templates/page-methodology.php`, `templates/page-sources.php`,
@@ -28,6 +28,31 @@ holder, so the start-of-session ritual surfaces it automatically.
   field-updates in place. **The Quebec archive backfill is dispatched
   separately** (`quebec_months=40`): measured at 1,318 notices / 48,391 jobs
   from 36 PDFs back to 2023-08, against 142 rows live today.
+
+- **WORKING ON (current subject, 2026-08-19, LATEST):** the email digest's
+  dates, places and citation, landing as **2.20.93**
+  (`includes/subscribe.php`, `railway/tests/fixtures/digest_compose_harness.php`,
+  `railway/tests/test_digest_scope_rules.py`,
+  `railway/tests/test_digest_subscription.py`, TECHLOG). The owner's four
+  complaints: the send date in the subject (already done, verified here), YTD
+  2026 (already done), "dates, locations, countries" (NOT done - the window
+  label was being dropped after prepositions, a second date format was in the
+  biggest-cuts table, and the place column printed the bare postal code), and
+  "Cite this - broken" (markup was fixed, content was not: a third date format
+  and no clock on the access date). **THE VERSION COLLIDED ANYWAY.** This claimed 2.20.92 here and pushed,
+  and a sibling session landed a different 2.20.92 on main in the same
+  window. Rebased to **2.20.93**. Writing the claim down is necessary and
+  is not sufficient: a session that needs a version should push the bump
+  within minutes of writing the claim, or re-read main immediately before
+  merging, which is what caught this one. Only digest files and their tests are touched.
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-18): 2.20.92.** The baton was
+  read as HELD and is NOT claimed here; only the version number is, which is
+  what this file asks for so the 2.20.88 collision above does not repeat. The
+  change is `economynext_lk` leaving `national_feeds` after its stories were
+  measured arriving through the Sri Lanka market sweep; the plugin files it
+  touches are `templates/page-sources.php`, the generated
+  `partials/source-catalogue-table.php` and `assets/health.js`. **Next plugin
+  release is 2.20.93.**
 
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the methodology page's
   typed update cadence, landing as **2.20.89** (`templates/page-methodology.php`,

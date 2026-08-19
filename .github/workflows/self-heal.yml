@@ -23,9 +23,12 @@ name: Self-heal
 # variable SELF_HEAL_DISABLED=true (Settings → Secrets and variables →
 # Actions → Variables), or delete this file.
 #
-# Budget is structural: one healer at a time (concurrency group), one open PR
-# per cause fingerprint, a hard ceiling of 3 open healer PRs (the gate skips
-# past it). A flapping workflow cannot fan out drafts or spend unboundedly.
+# Budget is structural, and it lives in the GATE, not in the concurrency group:
+# one open PR per cause fingerprint (the branch name IS the fingerprint) and a
+# hard ceiling of 3 open healer PRs, which the gate skips past. A flapping
+# workflow cannot fan out drafts or spend unboundedly. The group deliberately
+# does NOT serialise healers any more — see the concurrency block below for the
+# 57-in-100 cancelled runs that bought.
 
 on:
   workflow_run:
