@@ -293,7 +293,7 @@ def gate_verdict(raw_entry):
             messages=[{"role": "system", "content": GATE_SYSTEM},
                       {"role": "user",
                        "content": f"Published by: {outlet}\n\n{text[:GATE_CHARS]}"}],
-        ), what="the pre-extraction gate")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="the pre-extraction gate")
         content = ""
         if response.choices and response.choices[0].message:
             content = response.choices[0].message.content or ""
@@ -305,6 +305,16 @@ def gate_verdict(raw_entry):
     return GATE_NO if "NO" in content.upper() and "YES" not in content.upper() else GATE_YES
 
 _client = None
+
+#: How many times ONE paid question may be asked before it is given up on.
+#:
+#: This used to live on the SDK client as `max_retries=1`, which put the retry
+#: INSIDE the callable handed to `spend.metered_call()` — a second POST with no
+#: second gate read and no second meter entry. `spend.metered_call(attempts=N)`
+#: does the same job with the brake and the meter on every attempt, so the
+#: resilience is unchanged and the spend is visible. Raising this raises what a
+#: single item may cost; the per-run ceiling still bounds the run.
+MODEL_CALL_ATTEMPTS = 2
 
 
 class CreditsExhaustedError(RuntimeError):
@@ -440,7 +450,18 @@ def _get_client():
             # history-recovery job for many minutes. Per-entry callers handle
             # a timeout as a recorded failed candidate and continue.
             timeout=REQUEST_TIMEOUT_SECONDS,
-            max_retries=1,
+            # ZERO, and it must stay zero. `spend.metered_call()` reads the
+            # brake immediately before the request and meters immediately
+            # after, so ONE metered_call has to be ONE request. The SDK's own
+            # retry sits INSIDE the callable: it re-POSTs without the gate
+            # being re-read and only the last response is metered, which is the
+            # multi-request-callable defect wearing a library's clothes. It is
+            # not hypothetical for a timeout — OpenRouter may have generated
+            # (and billed) the completion the client gave up waiting for, so
+            # the retry is a second charge nothing counted. Retry by calling
+            # metered_call again. Pinned by
+            # tests/test_one_request_per_metered_call.py.
+            max_retries=0,
             default_headers={
                 # optional OpenRouter attribution headers
                 "HTTP-Referer": "https://asktherecruiter.com",
@@ -663,7 +684,7 @@ def classify_ai_evidence(raw_text):
             extra_body=USAGE_ACCOUNTING,
             model=MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        ), what="AI-causation reassessment")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="AI-causation reassessment")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -864,7 +885,7 @@ If the text names a city, region or state, return the country it is in.
             model=MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM},
                       {"role": "user", "content": prompt}],
-        ), what="job-location re-read")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="job-location re-read")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -914,7 +935,7 @@ TEXT:\n""" + raw_text
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=350,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        ), what="context-evidence reassessment")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="context-evidence reassessment")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -983,7 +1004,7 @@ TEXT:\n""" + raw_text
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=200,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        ), what="reason-tag classification")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="reason-tag classification")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -1059,7 +1080,7 @@ def classify_industry(company, raw_text):
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=40,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        ), what="industry classification")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="industry classification")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -1121,7 +1142,7 @@ TEXT:\n""" + raw_text
             extra_body=USAGE_ACCOUNTING,
             model=CLASSIFY_MODEL, max_tokens=250,
             messages=[{"role": "system", "content": MINI_SYSTEM}, {"role": "user", "content": prompt}],
-        ), what="role-category extraction")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="role-category extraction")
         content = response.choices[0].message.content if response.choices else ""
         result = _parse_json_response(content or "")
     except Exception as exc:
@@ -1209,7 +1230,7 @@ TEXT:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
-        ), what="layoff extraction")
+        ), attempts=MODEL_CALL_ATTEMPTS, what="layoff extraction")
     except spend.PaidReadsOff:
         # The ceiling tripped between the check at the top of this function and
         # the call (another paid call in between spent the last of it). Same

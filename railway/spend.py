@@ -81,6 +81,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -877,27 +878,65 @@ def _usage_of(response):
 
 
 def metered_call(model: str, make_call, *, what: str | None = None,
-                 usage_of=None):
+                 usage_of=None, attempts: int = 1, retry_sleep: float = 0.0):
     """Make ONE paid model call under the per-run brake, and meter it.
 
     `make_call` is a zero-argument callable that performs exactly one request
     and returns the response (an OpenAI SDK object or the parsed JSON dict).
     One call per invocation is the whole point: a callable that loops, or that
     retries internally, puts several charges behind one gate check and is the
-    defect this function exists to remove. Retry by calling this again.
+    defect this function exists to remove.
 
-    Raises PaidReadsOff BEFORE the request when paid reads are off. Anything
-    `make_call` itself raises propagates unchanged, so existing per-call error
-    handling is untouched.
+    RETRY BELONGS HERE, NOT IN THE CALLABLE (2026-08-18). "Retry by calling
+    this again" was the rule and it was routinely obeyed in the letter and
+    broken in the spirit, because the retry was delegated to something inside
+    the callable that nobody read as a loop: `request_json(..., attempts=2)`
+    in the daily spot-check, and — in five scripts — the OpenAI SDK's OWN
+    `max_retries`, which defaults to 2 and silently re-POSTs on 408/409/429/5xx
+    and on any connection error. Both re-send the request without the gate
+    being re-read, and only the LAST response is metered. A timeout is the
+    expensive case: OpenRouter may have generated (and billed) the completion
+    the client stopped waiting for, so the retry is a second charge that no
+    ledger, no ceiling and no $/row figure has ever seen.
+
+    So `attempts` is the ONE supported way to retry a paid call, and each
+    attempt is a full cycle: gate read, request, meter. N attempts cost at most
+    N calls and every one of them is both checked and counted. A run can still
+    only overshoot its ceiling by a single call, which is the honest bound.
+
+    Raises PaidReadsOff BEFORE the request when paid reads are off — including
+    before a retry, so a run that trips its ceiling on attempt 1 does not buy
+    attempt 2. Anything `make_call` itself raises propagates unchanged once the
+    attempts are used up, so existing per-call error handling is untouched.
     """
-    if not paid_reads_enabled():
-        raise PaidReadsOff(
-            f"paid reads are OFF (per-run ceiling "
-            f"${effective_run_ceiling_usd():.3f} or the monthly cap); "
-            f"{what or 'this call'} was not made and nothing is decided by it")
-    response = make_call()
-    record_usage(model, (usage_of or _usage_of)(response))
-    return response
+    attempts = max(1, int(attempts))
+    for attempt in range(attempts):
+        if not paid_reads_enabled():
+            raise PaidReadsOff(
+                f"paid reads are OFF (per-run ceiling "
+                f"${effective_run_ceiling_usd():.3f} or the monthly cap); "
+                f"{what or 'this call'} was not made and nothing is decided by it")
+        try:
+            response = make_call()
+        except PaidReadsOff:
+            raise
+        except Exception as exc:
+            # A budget stop raised from INSIDE the callable is still a budget
+            # stop, not a transport failure. extractor._get_client() re-checks
+            # the brake and raises its own PaidReadsDisabled; retrying that
+            # would be asking a question the answer to which is already "no".
+            if type(exc).__name__ in ("PaidReadsDisabled", "PaidReadsOff"):
+                raise
+            # The request may or may not have been charged; we cannot know, and
+            # a meter must not invent a number. What we can guarantee is that
+            # the NEXT attempt reads the brake again.
+            if attempt + 1 >= attempts:
+                raise
+            if retry_sleep:
+                time.sleep(retry_sleep * (attempt + 1))
+            continue
+        record_usage(model, (usage_of or _usage_of)(response))
+        return response
 
 
 # --------------------------------------------------------------------------

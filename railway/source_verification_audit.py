@@ -69,7 +69,14 @@ def _verify(row, text):
         return "UNVERIFIABLE", "no model / empty source"
     company = row.get("company_name"); jobs = row.get("job_count"); date = row.get("layoff_date")
     try:
-        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key,
+                        # ZERO: the SDK retries by default (2), which
+                        # re-POSTs inside the callable handed to
+                        # metered_call — a charge with no gate read and
+                        # no meter entry. Retry via metered_call's own
+                        # `attempts=`, which re-reads the brake and
+                        # meters each try.
+                        max_retries=0)
         prompt = (
             "You audit a layoff database against its source. The row claims:\n"
             f"  company: {company}\n  jobs cut: {jobs}\n  date: {date}\n\n"

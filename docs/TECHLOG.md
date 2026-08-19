@@ -1,5 +1,66 @@
 # Tech Log
 
+## 2026-08-18 - one metered_call was making two requests, and neither the gate nor the ledger could see the second
+
+`ops_status.py [2a]` reports two jobs past their per-run ceiling. Both were
+chased to the end, and **neither is a live leak** - which is worth writing down,
+because the alarm is correct in what it measures and both entries age out on
+their own:
+
+- **`edgar-history-sweep`, $0.272 vs $0.150.** Run 31572141302 (2026-08-12) was
+  a manual dispatch carrying `run_ceiling_usd=0.40` and `max_calls=1500`; its
+  own log prints `ALT_RUN_CEILING_USD: 0.40`. It spent $0.272 under an
+  authorised $0.40 ceiling and never tripped it. The entry predates the
+  `ceiling_usd` field (2026-08-15), so ops_status falls back to the table's
+  named number and reports an overshoot that did not happen. Sibling run
+  31570908283 is the same story at $0.26. Both leave the 14-day window on
+  2026-08-26. Nothing to fix; do not raise the named ceiling to silence it.
+- **`ai-evidence-sweep`, $0.020 vs $0.015.** Run 31200721446 (2026-08-07),
+  under a real `ALT_RUN_CEILING_USD=0.015`, is the ORIGINAL per-item-gate
+  defect, fixed on 2026-08-11 by `spend.metered_call()`. Every run since
+  2026-08-12 stops at $0.0150-$0.0151 with `truncated: per-run ceiling`. The
+  brake holds; the window still contains a pre-fix run. It ages out 2026-08-21.
+
+### What the hunt found instead, and this one was live
+
+"The `make_call` handed to `metered_call` must perform exactly ONE request" was
+obeyed in the letter everywhere and broken in the spirit in six places, because
+the second request was delegated to something nobody reads as a loop:
+
+- `daily_classification_spotcheck.ask_model` passed `attempts=2` to
+  `request_json` **inside** the metered lambda. Two POSTs, one gate read, and
+  only whichever attempt returned was metered.
+- five scripts built `openai.OpenAI(...)` and took the SDK's **default
+  `max_retries=2`** (`extractor.py` set 1). The SDK re-POSTs on 408/409/429/5xx
+  and on any connection error, from inside the callable.
+
+A retried 429 is usually free, so the ceiling exposure is small. The timeout is
+not: a client-side timeout does not cancel a generation, so OpenRouter may have
+produced and billed the completion the client stopped waiting for, and the retry
+is a second charge that no ledger entry, no ceiling and no $/row figure has ever
+seen. That is worse than an overshoot, which is at least measured.
+
+`spend.metered_call(attempts=N, retry_sleep=S)` is now the one supported way to
+retry a paid call: every attempt is gate read -> request -> meter, so N attempts
+cost at most N calls and each is both checked and counted, and a run that trips
+its ceiling on attempt 1 does not buy attempt 2. Default is 1, so nothing gets
+extra spend by upgrading spend.py. `extractor.MODEL_CALL_ATTEMPTS = 2` keeps the
+resilience the SDK's `max_retries=1` used to provide, with the brake and the
+meter on both tries. Every OpenAI client in a paid script now sets
+`max_retries=0`.
+
+`railway/tests/test_one_request_per_metered_call.py` pins it in three ways: the
+retry cycle behaviourally (including "the brake is re-read between attempts, not
+cached"), the spot-check end to end against a fake transport counting POSTs, and
+a source-level backstop asserting no paid script builds an OpenAI client without
+`max_retries=0` and no metered callable carries an `attempts=` of its own. It
+fails on the pre-fix tree in six places, each naming its file. The SDK default
+is the version of this defect that arrives by upgrading a dependency rather than
+by anybody writing a loop, which is exactly why the backstop is source-level.
+
+Nothing was spent proving any of this: the diagnosis is the committed ledger
+plus two GitHub run logs, and the tests use a fake transport.
+
 ## 2026-08-18 - the extraction swap moved the AI-causation classifier, and eleven days later something finally measured it
 
 `OPENROUTER_MODEL` went to `google/gemini-2.5-flash-lite` on 2026-08-07: 30/30
