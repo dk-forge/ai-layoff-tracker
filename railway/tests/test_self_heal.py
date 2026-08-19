@@ -214,14 +214,31 @@ class TheFingerprintIsTheBudgetLedger(unittest.TestCase):
 class TheForbiddenPathGuard(unittest.TestCase):
     """A prompt is a request; the diff check is the fact."""
 
+    # Deliberately restated by hand rather than iterated from FORBIDDEN: this
+    # is a second opinion about what must be caught, so a path DELETED from
+    # FORBIDDEN still fails a test instead of quietly becoming healable.
     VIOLATIONS = [
         "railway/spend.py",
+        "railway/spend_jobs.json",
+        "railway/spend_month.json",
+        "railway/data_integrity.py",
         "railway/headline_incidents.json",
+        "railway/headline_baseline.json",
+        "railway/recall_adjudications.json",
+        "railway/warn_recall_adjudications.json",
+        "railway/deferral_ledger.json",
+        "docs/STYLE.md",
+        "railway/style_check.py",
+        "railway/ci_alert.py",
         "railway/alert_outbox.json",
+        ".github/workflows/ci-alert.yml",
+        ".github/workflows/alert-drain.yml",
         "railway/requirements.lock",
         "railway/requirements-min.lock",
         "docs/HANDOFF.md",
         ".github/workflows/self-heal.yml",
+        "railway/self_heal.py",
+        "railway/tests/test_self_heal.py",
     ]
 
     def test_every_forbidden_path_is_caught(self):
@@ -384,9 +401,16 @@ class TheWorkflowFileKeepsItsShape(unittest.TestCase):
                              "the action must be pinned to a 40-hex commit SHA, "
                              "not a tag a maintainer can move")
 
-    def test_one_healer_at_a_time(self):
+    def test_the_concurrency_group_cannot_discard_a_decision(self):
+        # WAS test_one_healer_at_a_time, asserting `group: self-heal`. That
+        # shared group did not bound spend and DID drop failures: GitHub keeps
+        # one pending run per group, so on a busy repo the waiting run is
+        # cancelled before any job starts. It also passed vacuously once the
+        # group was keyed per run, because the old string is a prefix of the
+        # new one. Assert the real property instead — the group is keyed to the
+        # triggering run, so every failure reaches the gate.
         self.assertIn("concurrency:", self.src)
-        self.assertIn("group: self-heal", self.src)
+        self.assertIn("group: self-heal-${{ github.event.workflow_run.id", self.src)
         self.assertIn("cancel-in-progress: false", self.src)
 
     def test_the_pr_is_a_draft_and_a_human_merges(self):
@@ -490,6 +514,109 @@ class TheWorkflowFileKeepsItsShape(unittest.TestCase):
         # fails on must be one the healer was told about.
         for pattern in self_heal.FORBIDDEN:
             self.assertIn(pattern, self.src, pattern)
+
+
+class TheBoundaryIsMechanicalVersusSemantic(unittest.TestCase):
+    """What the healer may re-derive, and what belongs to a human.
+
+    The healer is allowed the class of defect with ONE correct answer the repo
+    already knows how to produce. It is refused the class whose answer is a
+    judgement, because every one of those can be made to look fixed by being
+    loosened, and a loosened guardrail is the one failure a later green run
+    cannot detect. CLAUDE.md forbids these by name after two individually
+    correct guards agreed to erase an open incident.
+    """
+
+    src = (ROOT / ".github/workflows/self-heal.yml").read_text(encoding="utf-8")
+
+    def test_it_may_never_edit_an_invariant_or_its_tolerance(self):
+        # data_integrity.py DEFINES what we check and how much drift we allow.
+        self.assertEqual(self_heal.violations(["railway/data_integrity.py"]),
+                         ["railway/data_integrity.py"])
+
+    def test_it_may_never_move_a_baseline_or_close_an_incident(self):
+        for path in ("railway/headline_baseline.json",
+                     "railway/headline_incidents.json",
+                     "railway/recall_adjudications.json",
+                     "railway/warn_recall_adjudications.json"):
+            self.assertEqual(self_heal.violations([path]), [path], path)
+
+    def test_it_may_never_move_the_copy_ceiling_only_the_copy(self):
+        # The 2026-08-18 red was a 35-word sentence against a 30-word ceiling.
+        # Rewriting the sentence is the fix; moving the ceiling is not, so the
+        # checker and the standard are out of reach while the page is not.
+        self.assertEqual(self_heal.violations(["railway/style_check.py"]),
+                         ["railway/style_check.py"])
+        self.assertEqual(self_heal.violations(["docs/STYLE.md"]),
+                         ["docs/STYLE.md"])
+        self.assertEqual(self_heal.violations(
+            ["wordpress-plugin/ai-layoff-tracker/templates/page-tracker.php"]), [])
+
+    def test_it_may_never_edit_the_spend_brake_or_its_meters(self):
+        for path in ("railway/spend.py", "railway/spend_jobs.json",
+                     "railway/spend_month.json"):
+            self.assertEqual(self_heal.violations([path]), [path], path)
+
+    def test_it_may_never_edit_the_alarm_channel_that_reports_on_it(self):
+        for path in ("railway/ci_alert.py", "railway/alert_outbox.json",
+                     ".github/workflows/ci-alert.yml",
+                     ".github/workflows/alert-drain.yml"):
+            self.assertEqual(self_heal.violations([path]), [path], path)
+
+    def test_it_may_never_edit_its_own_restraints(self):
+        # A healer that can rewrite its own gate, guard or boundary test has
+        # no restraints at all.
+        for path in ("railway/self_heal.py",
+                     "railway/tests/test_self_heal.py",
+                     ".github/workflows/self-heal.yml"):
+            self.assertEqual(self_heal.violations([path]), [path], path)
+
+    def test_the_mechanical_class_stays_available(self):
+        # The boundary must not swallow the work the healer exists to do:
+        # ordinary source and test fixes remain healable.
+        self.assertEqual(self_heal.violations(
+            ["railway/extractor.py", "railway/tests/test_extractor.py",
+             "railway/sources/newsapi.py", "docs/TECHLOG.md"]), [])
+
+    def test_the_prompt_teaches_the_mechanical_class(self):
+        # A test that names its own regeneration command is the cheapest real
+        # heal there is, and it was reaching the owner as an email.
+        self.assertIn("regenerate", self.src.lower())
+        self.assertIn("RUN THAT GENERATOR", self.src)
+
+    def test_the_prompt_still_refuses_to_widen_anything(self):
+        self.assertIn("never widen a ceiling", self.src)
+        self.assertIn("RAISING THE CEILING IS NOT", self.src)
+
+
+class TheGateIsReachedByEveryFailure(unittest.TestCase):
+    """The concurrency group must not be able to discard a decision.
+
+    A single shared group is not budget control — GitHub keeps at most ONE
+    pending run per group, so a busy repo cancels waiting runs before any job
+    starts. On 2026-08-18, 57 of the last 100 Self-heal runs concluded
+    `cancelled` with zero jobs, and the Self-heal run created two seconds after
+    a real `Tests` failure on main was one of them. Budget lives in the gate,
+    which is testable; serialisation lived here, and silently ate failures.
+    """
+
+    src = (ROOT / ".github/workflows/self-heal.yml").read_text(encoding="utf-8")
+
+    def test_the_concurrency_group_is_keyed_per_triggering_run(self):
+        self.assertIn("group: self-heal-${{ github.event.workflow_run.id", self.src)
+
+    def test_there_is_no_repo_wide_shared_group(self):
+        self.assertNotIn("group: self-heal\n", self.src)
+
+    def test_a_queued_run_is_never_cancelled_in_progress(self):
+        self.assertIn("cancel-in-progress: false", self.src)
+
+    def test_the_budget_that_moved_here_is_enforced_in_the_gate(self):
+        # The two limits the shared group was believed to provide.
+        self.assertIsInstance(self_heal.MAX_OPEN_PRS, int)
+        self.assertGreaterEqual(self_heal.MAX_OPEN_PRS, 1)
+        self.assertTrue(self_heal.branch_name("Tests", "boom")
+                        .startswith(self_heal.BRANCH_PREFIX))
 
 
 if __name__ == "__main__":

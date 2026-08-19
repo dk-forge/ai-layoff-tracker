@@ -111,14 +111,60 @@ BRANCH_PREFIX = "self-heal/"
 #: (headline_incidents, the outbox, the baton), a spend/guardrail constant
 #: (spend.py), a supply-chain artifact nobody unattended may refresh (the
 #: hash-pinned locks), or the healer itself.
+#
+#: THE LINE IS MECHANICAL vs SEMANTIC. The healer may re-derive a thing that
+#: has one correct answer its generator already knows (regenerate a committed
+#: artifact, rewrite a sentence that overran a word ceiling, fix a typed
+#: constant against its source of truth). It may never touch a thing whose
+#: correct answer is a JUDGEMENT — what we promise to check, how much drift we
+#: tolerate, whether an open incident is closed, or what we are willing to
+#: spend. Those belong to a human, and every one of them can be made to look
+#: "fixed" by loosening it, which is the one failure mode a red run cannot
+#: detect afterwards. CLAUDE.md names this by name: two individually correct
+#: guards once agreed to erase an open incident, so the boundary is written
+#: here as a diff-checked fact rather than trusted to a prompt.
 FORBIDDEN = (
+    # Spend: the brake AND its meters. Editing the ledger is editing the brake.
     "railway/spend.py",
+    "railway/spend_jobs.json",
+    "railway/spend_month.json",
+    # The invariants themselves and the human-owned state they stand on. A
+    # live-data FAIL is already gate-refused, but defence in depth: a healer
+    # working some OTHER red must not be able to reach in and widen a
+    # tolerance, move a baseline, or close a sticky incident. CLAUDE.md:
+    # "Never close one by editing either JSON by hand."
+    "railway/data_integrity.py",
     "railway/headline_incidents.json",
+    "railway/headline_baseline.json",
+    "railway/recall_adjudications.json",
+    "railway/warn_recall_adjudications.json",
+    "railway/deferral_ledger.json",
+    # The copy standard and its ceiling. A sentence that overran the ceiling is
+    # MECHANICAL and the healer should rewrite the sentence; the ceiling that
+    # caught it is a judgement and is not the healer's to move. Forbidding the
+    # checker is what makes the only available fix the correct one.
+    "docs/STYLE.md",
+    "railway/style_check.py",
+    # The alarm channel. NEVER_HEAL keeps the healer off these workflows'
+    # failures; this keeps it out of their code and state from any other
+    # failure. A healer thrashing on the alarm is the one loop worse than
+    # silence, and it is the channel that reports the healer's own mistakes.
+    "railway/ci_alert.py",
     "railway/alert_outbox.json",
+    ".github/workflows/ci-alert.yml",
+    ".github/workflows/alert-drain.yml",
+    # Supply chain: nobody unattended refreshes a hash-pinned lock.
     "railway/requirements.lock",
     "railway/requirements-min.lock",
+    # The session baton.
     "docs/HANDOFF.md",
+    # The healer itself — its workflow, its gate and guard, and the test that
+    # pins this boundary. A healer that can edit its own restraints has none.
+    # (The guard runs self_heal.py from MAIN's checkout, so a branch edit could
+    # not weaken the check in flight; this stops it being PROPOSED at all.)
     ".github/workflows/self-heal.yml",
+    "railway/self_heal.py",
+    "railway/tests/test_self_heal.py",
 )
 
 

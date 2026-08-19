@@ -387,6 +387,13 @@ JOB_RUN_CEILINGS_USD = {
     "news-catchup":            0.150,  # weekly   MODELLED ~113 x $0.0011
     "distress-watchlist":      0.050,  # weekly   COUNTED small sweep
     "source-verification-audit": 0.200,  # monthly  bigger sampled audit
+    # Dispatch-only, like ab-extraction-models, so it claims nothing in
+    # the ladder (DISCRETIONARY_RUNS_PER_MONTH = 0). MEASURED-BY-PRICE:
+    # 200 items x 3 models at the live /models rates on 2026-08-18 is
+    # $0.073 (deepseek-chat $0.025 + gpt-4.1-mini $0.038 + flash-lite
+    # $0.010). $0.150 is ~2x that, so a corpus that grows or a model
+    # that answers at length does not silently truncate the run.
+    "ab-ai-causation":         0.150,  # manual   see railway/ab_ai_causation.py
 }
 
 # ---------------------------------------------------------------------------
@@ -451,6 +458,7 @@ DISCRETIONARY_JOBS = frozenset({
     "enrich-context",            # ditto
     "reclassify-legacy-ai",      # re-reads history under today's rules
     "ab-extraction-models",      # model comparison; buys no row at all
+    "ab-ai-causation",           # ditto, for the AI-causation classifier
 })
 
 # Half a cent. A rationed job is never handed ZERO because the month is lean —
@@ -1047,6 +1055,7 @@ def _load_ledger() -> dict:
 DISCRETIONARY_RUNS_PER_MONTH = {
     "news-catchup": 5,           # weekly, Monday 09:30 UTC
     "ab-extraction-models": 0,   # workflow_dispatch only, no schedule
+    "ab-ai-causation": 0,        # ditto
 }
 
 _month_class_cache: dict | None = None
