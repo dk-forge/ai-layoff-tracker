@@ -65,6 +65,22 @@
       "state": "pending"
     },
     {
+      "attempts": 1,
+      "key": "resolve:card-contract:ci-no-cache-on-the-light-lock",
+      "kind": "resolve",
+      "last_attempt_at": "2026-08-19T02:25:35+00:00",
+      "last_error": "HTTP 503 from /alert: {\"code\":\"wp_die\",\"message\":\"Briefly unavailable for scheduled maintenance. Check back in a minute.\",\"data\":{\"status\":503},\"additional_errors\":[]}",
+      "payload": {
+        "body": "'Card contract' on ci/no-cache-on-the-light-lock passed again.\n\n  run: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32208462592\n\nWhatever was failing is no longer failing. Nothing to do.",
+        "resolve_scope": "card-contract:ci-no-cache-on-the-light-lock",
+        "subject": "RECOVERED: Card contract is green again"
+      },
+      "raised_at": "2026-08-19T02:25:35+00:00",
+      "run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/32208462592",
+      "scope": "card-contract:ci-no-cache-on-the-light-lock",
+      "state": "pending"
+    },
+    {
       "attempts": 3,
       "key": "resolve:tests:main",
       "kind": "resolve",
@@ -364,6 +380,6 @@
       "state": "delivered"
     }
   ],
-  "updated_at": "2026-08-19T02:25:32+00:00",
+  "updated_at": "2026-08-19T02:25:35+00:00",
   "version": 1
 }
