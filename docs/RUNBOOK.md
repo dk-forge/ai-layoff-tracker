@@ -1171,6 +1171,59 @@ far more than collection did.
 - Employers who withhold headcounts. In H1 2026 media, only one US event had a
   public number; the rest deliberately withheld. That cell cannot go green.
 
+## A tracker learning email arrived (rules to apply)
+
+`tracker_diff.py --learn` runs daily inside `tracker-diff.yml` and is the
+AUTOMATED, CONTINUOUS version of step 4 of the monthly audit above: diff the
+SOURCES, not the events. It reads the GDELT layoff corpus BEFORE our own
+trusted-domain gate — coverage our net could see and does not read — matches
+each headline that states a headcount against our own rows, and turns what is
+left into rules.
+
+**It costs nothing.** One keyless GDELT query, bounded to two attempts, plus one
+read per candidate of our own `/query`. No model is called on any path. Do not
+add one: a measurement that spends money is a measurement that gets switched off
+in a lean month, and the whole value of this loop is that it never has to argue
+for its budget.
+
+**What the email contains, and what to do with each kind:**
+
+| rule | what it means | the change |
+|---|---|---|
+| `VOCABULARY` | the same phrasing appeared twice or more around a headcount, and no term in `discovery_terms()` matches it | add the wording to `source_registry.GLOBAL_TERMS` (or a market's `terms`) |
+| `OUTLET` | a domain carried 2+ layoff stories we do not hold, and it is not in the allowlist | review it and, if it is an editorial newsroom, add it to `sources/gdelt.py` `TRUSTED_DOMAINS` |
+| `COUNTRY EDITION` | 3+ unmatched stories filed from a country | check `source_registry.MARKETS` — is there a register there, or only news? |
+| `LANGUAGE` | 3+ unmatched non-English stories | add a native term to `sources/gdelt.py` `NATIVE_TERMS` |
+
+**Two rules about the outlets in that email, and neither is negotiable.** They
+are DISCOVERY signals. Never store an aggregator or another layoff tracker as a
+source — some of their figures are provably fabricated, and a discovery pointer
+is not evidence. And never put any name from that email into the repo, a commit
+message or a test fixture: paste the email into a session, make the change, and
+let the name stay in the inbox it arrived in.
+
+**The number to watch is independent recall**, printed in the Actions log and
+committed to `railway/tracker_learning_state.json`: of the announcements the run
+could judge, the share our own pipeline already held, unaided. Adopting the
+rules is what should make it climb. Read the TREND, never a single point — one
+run is a 36-hour window of world news and moves several points on nothing.
+
+**If a run says UNKNOWN**, GDELT throttled the query (its public endpoint is
+shared and does this routinely). Nothing is broken, nothing was judged, no rule
+was inferred and no cadence was earned; the point is committed as `unknown` so
+the gap is visible rather than absent. Repeated UNKNOWNs for a week are worth a
+look; one is not.
+
+**If the loop goes quiet**, it steps down to Mondays after three consecutive
+runs that produced no rule, and steps straight back up on the first rule. That
+is the loop saying it has taught what this method can teach, which is a result,
+not a fault. Do not answer it by lowering `RULE_FLOOR` — the floors are what
+stop one-off headlines becoming forty unactionable "rules" a day.
+
+**The other half of `tracker_diff` (the chase) stays dormant** and needs no
+attention: it wants a reference company list that only ever arrived in a secret
+the owner decided against on 2026-07-28. Do not ask for those secrets.
+
 ## The coverage figure is UNKNOWN (ops_status `[3c]`)
 
 `[3c] MEASURED COVERAGE` prints a band per slice. If a slice says **UNKNOWN**,

@@ -640,18 +640,589 @@ def run():
         report_source_health("tracker_diff", "ok", posted, detail)
 
 
-def main():
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    learn = "--learn" in argv
     if not (os.environ.get("WP_SITE_URL") and (DRY or os.environ.get("WP_API_KEY"))):
         print("WP_SITE_URL (and WP_API_KEY unless dry) required")
         return 1
     try:
-        run()
+        # Two halves of one machine, deliberately separate entry points. The
+        # chase (`run`) needs a reference list that only ever arrived in a
+        # secret and stays dormant without it; the learning half (`learn_run`)
+        # needs no secret at all and is the one that is armed.
+        learn_run() if learn else run()
         return 0
     except Exception as exc:
         if not DRY:
-            report_source_health("tracker_diff", "degraded", 0, f"tracker-diff failed: {exc}")
+            label = "tracker-learn" if learn else "tracker-diff"
+            # `exc` is ours or the stdlib's; no name from the corpus is ever
+            # carried in an exception raised by this module (the leak test
+            # pins that the poisoned run's marker never reaches stdout).
+            report_source_health("tracker_diff", "degraded", 0, f"{label} failed: {exc}")
         raise
 
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ===========================================================================
+# LEARNING MODE — the competitor-free half of this machine
+# ===========================================================================
+# The chase above needs a reference LIST, which only ever arrived in a secret
+# the owner decided against on 2026-07-28. That half stays dormant. This half
+# answers the same question — "what exists to be found that we did not find?" —
+# from a reference universe that needs NO secret and names NO competitor: the
+# GDELT article corpus BEFORE our own trusted-domain gate is applied.
+#
+# The daily ingest queries GDELT with the same vocabulary and then throws away
+# every article whose domain is not in TRUSTED_DOMAINS. Those discarded
+# articles are, by construction, layoff coverage that our net could see and
+# chose not to read. Diffing them against our own rows produces exactly the
+# four things the owner asked to learn: a wording we do not search for, an
+# outlet we do not trust, a country we do not cover, a language we have no
+# native term for.
+#
+# WHAT THIS COSTS: nothing. One extra GDELT ArtList query (keyless, the same
+# endpoint the ingest already calls) plus one read per candidate against our
+# OWN public /query. No model is called on any path and none may ever be added
+# here — see the cost note in tracker-learn.yml.
+#
+# WHAT IT NEVER DOES: it never stores a row (a discovery signal is not
+# evidence), never fetches an article page (so no robots.txt, paywall or bot
+# wall is ever touched — titles come from the GDELT API response), and never
+# writes a name anywhere but the owner's inbox. That last property is
+# structural, not careful: every public sink goes through `public_render`,
+# which only accepts numbers, ISO dates and words from a frozen label set, and
+# raises `LeakGuard` on anything else. tests/test_tracker_learning_leak.py
+# poisons a run and proves the marker reaches the email and nothing else.
+# ---------------------------------------------------------------------------
+
+LEARN_WINDOW_HOURS = max(6, min(168, int(os.environ.get("TRACKER_LEARN_WINDOW_HOURS", "36"))))
+LEARN_MAX_RECORDS = max(10, min(250, int(os.environ.get("TRACKER_LEARN_MAX_RECORDS", "250"))))
+LEARN_QUERY_ATTEMPTS = max(1, min(3, int(os.environ.get("TRACKER_LEARN_QUERY_ATTEMPTS", "2"))))
+LEARN_MAX_CANDIDATES = max(5, min(400, int(os.environ.get("TRACKER_LEARN_MAX_CANDIDATES", "120"))))
+# A headline headcount below this is usually a single-site or single-role note
+# that our net is not trying to catch; counting it as a miss would manufacture
+# rules out of noise.
+LEARN_MIN_JOBS = max(10, int(os.environ.get("TRACKER_LEARN_MIN_JOBS", "25")))
+# How far our stored layoff_date may sit from the article's date and still be
+# the same event. Announcement and effective dates legitimately differ by weeks.
+LEARN_MATCH_DAYS = max(7, int(os.environ.get("TRACKER_LEARN_MATCH_DAYS", "45")))
+LEARN_STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "tracker_learning_state.json")
+LEARN_HISTORY_MAX = 180
+# Three empty runs in a row is not a broken loop, it is a loop with nothing to
+# say; it steps down to Mondays and steps straight back up on the first rule.
+LEARN_QUIET_RUNS = max(2, int(os.environ.get("TRACKER_LEARN_QUIET_RUNS", "3")))
+# The measurement method is versioned so a trend line can never silently splice
+# two different definitions of the same percentage.
+LEARN_METHOD = "m2"
+
+RULE_KINDS = ("vocabulary", "outlet", "country_edition", "language")
+# Minimum unmatched articles before a rule is worth the owner's attention. An
+# outlet that closed one gap once is a coincidence; two is a pattern.
+#
+# THE VOCABULARY FLOOR IS THE ONE THAT MATTERS, and it is why the vocabulary
+# subject is a normalised PHRASE rather than the headline. Grouping by headline
+# gives every unmatched article a rule of its own — a daily email of ~40
+# one-off "rules" that nobody reads and, worse, a loop whose rule count can
+# never reach zero, so the earned cadence below could never earn anything. A
+# wording that shows up twice in one window is a wording we should be
+# searching for; a wording that shows up once is a headline.
+RULE_FLOOR = {"vocabulary": 2, "outlet": 2, "country_edition": 3, "language": 3}
+# Per-kind ceiling on one run's email. A loop that asks for forty changes gets
+# none of them made.
+RULE_CAP = {"vocabulary": 5, "outlet": 8, "country_edition": 5, "language": 5}
+
+
+class LeakGuard(RuntimeError):
+    """Raised when a value that could carry a name reaches a public sink."""
+
+
+# Every string any public sink is allowed to contain. Not a filter over free
+# text — an allowlist of the whole vocabulary. A name cannot be spelled with it.
+_PUBLIC_WORDS = frozenset(RULE_KINDS) | frozenset({
+    "learn", "ok", "degraded", "unknown", "pass", "fail",
+    "daily", "weekly", "quiet", "skipped", "ran", LEARN_METHOD,
+})
+_PUBLIC_KEYS = frozenset(RULE_KINDS) | frozenset({
+    "date", "method", "mode", "cadence", "window_hours", "corpus", "candidates",
+    "matched", "unmatched", "unknown", "independent_recall_pct", "rules",
+    "rules_by_kind", "history", "quiet_runs", "emailed", "state",
+})
+_PUBLIC_DATE_RX = re.compile(r"^\d{4}-\d{2}-\d{2}(T[0-9:]{5,8}Z)?$")
+
+
+def assert_nameless(obj, path="root"):
+    """Prove a structure carries no free text, recursively. Raises LeakGuard.
+
+    This is the whole leak-safety property and it is deliberately a WHITELIST:
+    numbers, booleans, None, ISO dates and words from `_PUBLIC_WORDS`. A
+    reviewer noticing a name is not a mechanism; a function that cannot spell
+    one is. Everything printed, health-reported or committed by learning mode
+    passes through here first.
+    """
+    if isinstance(obj, bool) or obj is None or isinstance(obj, (int, float)):
+        return obj
+    if isinstance(obj, str):
+        if obj in _PUBLIC_WORDS or _PUBLIC_DATE_RX.match(obj):
+            return obj
+        raise LeakGuard(f"{path}: refusing to publish free text")
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k not in _PUBLIC_KEYS:
+                raise LeakGuard(f"{path}.{k}: key is not a declared public field")
+            assert_nameless(v, f"{path}.{k}")
+        return obj
+    if isinstance(obj, (list, tuple)):
+        for i, v in enumerate(obj):
+            assert_nameless(v, f"{path}[{i}]")
+        return obj
+    raise LeakGuard(f"{path}: unsupported type {type(obj).__name__}")
+
+
+def public_render(facts):
+    """One log/health line from a nameless fact dict. Raises on anything else."""
+    assert_nameless(facts)
+    parts = []
+    for key in sorted(facts):
+        val = facts[key]
+        if isinstance(val, dict):
+            inner = ", ".join(f"{k} {val[k]}" for k in sorted(val))
+            if inner:
+                parts.append(f"{key}: {inner}")
+        else:
+            parts.append(f"{key} {val}")
+    return "; ".join(parts)
+
+
+# --- reading the reference universe ---------------------------------------
+
+def _learn_corpus(window_hours=None):
+    """The layoff-news corpus BEFORE our trusted-domain gate, from the GDELT
+    API we already call. Returns (articles, error). Never fetches a page.
+
+    THE ATTEMPT BUDGET IS DELIBERATELY SMALLER THAN THE INGEST'S. GDELT's public
+    endpoint is shared and throttles hard: measured from here on 2026-08-18 the
+    default five attempts spent 426 seconds in backoff and still came back
+    empty. The ingest is right to be that patient — it is collecting data and a
+    lost window is data nobody re-reads. This query collects nothing. It is the
+    same rule gdelt.py already applies to its rotating segment sweeps: a
+    rate-limited query is skipped with a log line and comes back around, and it
+    must never sit on a shared endpoint that the ingest needs next."""
+    from datetime import datetime, timedelta, timezone
+    from sources import gdelt
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(hours=window_hours or LEARN_WINDOW_HOURS)
+    patience = gdelt.QUERY_ATTEMPTS
+    gdelt.QUERY_ATTEMPTS = min(patience, LEARN_QUERY_ATTEMPTS)
+    try:
+        articles, _rate_limited, err = gdelt._query_window(
+            gdelt.QUERY, start, end, LEARN_MAX_RECORDS)
+    finally:
+        gdelt.QUERY_ATTEMPTS = patience
+    if articles is None:
+        return [], (err or "window abandoned")
+    return articles, None
+
+
+_HEADCOUNT_RX = (
+    # "500 jobs", "1,200 workers", "12,000 employees"
+    re.compile(r"(?<![\d,.%])(\d{1,3}(?:,\d{3})+|\d{2,6})\s+"
+               r"(?:more\s+)?(?:jobs|workers|employees|staff|positions|roles|people)\b", re.I),
+    # "cut 500", "lays off 1,200", "to axe 900"
+    re.compile(r"\b(?:cut|cuts|cutting|lay\s*off|lays\s*off|laying\s*off|axe|axes|"
+               r"slash|slashes|eliminate|eliminates|shed|sheds|sack|sacks)\s+"
+               r"(?:about|around|up\s+to|some|its|nearly|almost|over)?\s*"
+               r"(\d{1,3}(?:,\d{3})+|\d{2,6})(?![\d,.%])", re.I),
+)
+# Words that open a headline without being the employer.
+_TITLE_STOP = {
+    "exclusive", "breaking", "update", "updated", "report", "reports", "opinion",
+    "analysis", "watch", "live", "video", "photos", "the", "a", "an", "more",
+    "why", "how", "what", "when", "after", "amid", "as", "another", "new",
+    "us", "u.s.", "uk", "eu", "tech", "ai", "big",
+    # Generic leading adjectives. Measured against a real sweep on 2026-08-18,
+    # "Major retail meat company closes plants, lays off over 3,200" produced
+    # the employer token "Major", which of course matches nothing we hold and
+    # so scored a real headline as a miss. Skipping the word drops to the next
+    # token, which is lower case, which correctly yields no candidate at all.
+    "major", "top", "global", "local", "state", "federal", "national",
+    "leading", "giant", "embattled", "struggling", "troubled",
+}
+
+
+def headline_jobs(title):
+    """The headcount a headline states, or None. FIRST number only, matching the
+    same rule the ingest uses — a headline that says "500 of 2,000" announces
+    500. A percentage is never a headcount."""
+    for rx in _HEADCOUNT_RX:
+        m = rx.search(title or "")
+        if m:
+            try:
+                n = int(m.group(1).replace(",", ""))
+            except ValueError:
+                continue
+            if n >= LEARN_MIN_JOBS:
+                return n
+    return None
+
+
+def headline_employer_token(title):
+    """A best-effort employer token from a headline, deterministically.
+
+    Learning mode has no LLM (that is the point: it must cost nothing), so this
+    is a heuristic and is treated as one — a wrong token makes an article look
+    unmatched, and the rule floors above are what stop one bad guess becoming a
+    rule. Returns '' when the headline does not open with a name-shaped token."""
+    t = re.sub(r"\s+", " ", str(title or "")).strip()
+    t = re.sub(r"^[A-Z][A-Za-z]{2,9}:\s*", "", t)          # "Exclusive: ..."
+    t = re.split(r"\s+[-–|]\s+", t)[0]                      # drop " - Outlet"
+    for word in re.split(r"[^A-Za-z0-9&.'’-]+", t):
+        if not word or word.lower() in _TITLE_STOP:
+            continue
+        if word[0].isupper() or word.isupper():
+            clean = word.strip(".'’-")
+            if len(clean) >= 3:
+                return clean
+        else:
+            break   # past the leading capitalised run; no employer here
+    return ""
+
+
+def _our_rows(token, timeout=30):
+    """Rows we already hold for an employer token, or None when the lookup
+    could not be made. None is UNKNOWN and is excluded from the denominator —
+    an API blip must never be recorded as a miss (or as a find)."""
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    if not (site and token):
+        return None
+    try:
+        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+                         params={"company": token, "per_page": 50},
+                         headers=UA, timeout=timeout)
+        if r.status_code != 200:
+            return None
+        return r.json().get("data") or []
+    except Exception:
+        return None
+
+
+def rows_verdict(rows, jobs, when, match_days=None):
+    """"match" / "miss" / "unknown" for one headline against our own rows.
+
+    A match is the same headcount (within rounding) at a date the same event
+    could plausibly carry. The third state is the one that had to exist: a row
+    with the SAME company and the SAME headcount but a date far outside the
+    window is not evidence we hold this event and is certainly not evidence we
+    missed it — most often it is a retrospective piece about an event we
+    already have. Scoring that as a miss would depress independent recall and
+    manufacture a rule out of our own coverage. Pure, so the rule that decides
+    the headline number is tested rather than trusted."""
+    from datetime import date as _date
+    window = match_days or LEARN_MATCH_DAYS
+    tolerance = max(1, int(round(jobs * 0.02)))
+    ambiguous = False
+    for row in rows or []:
+        try:
+            count = int(row.get("job_count") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not count or abs(count - jobs) > tolerance:
+            continue
+        stamp = str(row.get("layoff_date") or "")[:10]
+        if not when or not _PUBLIC_DATE_RX.match(stamp or "x"):
+            return "match"     # count agrees and we cannot date it: not a miss
+        try:
+            y, m, d = (int(x) for x in stamp.split("-"))
+            delta = abs((_date(y, m, d) - when).days)
+        except Exception:
+            return "match"
+        if delta <= window:
+            return "match"
+        ambiguous = True
+    return "unknown" if ambiguous else "miss"
+
+
+def _seendate_to_date(seendate):
+    from datetime import date as _date
+    s = re.sub(r"[^0-9]", "", str(seendate or ""))
+    if len(s) < 8:
+        return None
+    try:
+        return _date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+    except ValueError:
+        return None
+
+
+def vocab_phrase(title):
+    """The wording around the headcount, normalised, or ''.
+
+    This is the SUBJECT of a vocabulary rule. Grouping by it (rather than by
+    headline) is what makes the rule "this phrasing keeps appearing and we do
+    not search for it" instead of "here is another headline"."""
+    for rx in _HEADCOUNT_RX:
+        m = rx.search(title or "")
+        if not m:
+            continue
+        low = str(title).lower()
+        window = low[max(0, m.start() - 40):m.end() + 24]
+        words = [w for w in re.split(r"[^a-z]+", window) if len(w) > 2]
+        # Drop the fragments at both edges of the window, which are cut
+        # mid-word as often as not, and the count itself (digits are gone
+        # already) — what is left is the phrasing.
+        return " ".join(words[1:-1] if len(words) > 3 else words)[:70]
+    return ""
+
+
+def rank_rules(unmatched, trusted_domains, discovery):
+    """Turn unmatched articles into RULES, ranked. Returns a list of dicts
+    {kind, subject, count, examples} — the PRIVATE object. Pure and tested."""
+    buckets = {kind: {} for kind in RULE_KINDS}
+    for art in unmatched:
+        title = str(art.get("title") or "")
+        domain = str(art.get("domain") or "").lower().strip()
+        country = str(art.get("sourcecountry") or "").strip()
+        language = str(art.get("language") or "").strip()
+        if domain and not _covered_by_allowlist(domain, {d.lower() for d in trusted_domains or []}):
+            buckets["outlet"].setdefault(domain, []).append(title)
+        if country:
+            buckets["country_edition"].setdefault(country, []).append(title)
+        if language and language.lower() not in ("english", "en", ""):
+            buckets["language"].setdefault(language, []).append(title)
+        if title and not vocab_hit(title, discovery):
+            phrase = vocab_phrase(title)
+            if phrase:
+                buckets["vocabulary"].setdefault(phrase, []).append(title)
+    rules = []
+    for kind in RULE_KINDS:
+        floor, cap = RULE_FLOOR[kind], RULE_CAP[kind]
+        ranked = sorted(buckets[kind].items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        for subject, titles in ranked[:cap]:
+            if len(titles) < floor:
+                continue
+            rules.append({"kind": kind, "subject": subject,
+                          "count": len(titles), "examples": titles[:3]})
+    return rules
+
+
+def learn_today(history, today, quiet_runs=None):
+    """Earned cadence. Daily while the loop is teaching something; after
+    `quiet_runs` consecutive recorded runs that produced ZERO rules it steps
+    down to Mondays, and the first rule of any run steps it straight back up.
+    Pure + tested — a backoff nobody can reason about gets overridden."""
+    quiet = quiet_runs or LEARN_QUIET_RUNS
+    pts = [p for p in (history or []) if isinstance(p, dict) and "rules" in p]
+    if len(pts) < quiet:
+        return True
+    if any(int(p.get("rules") or 0) > 0 for p in pts[-quiet:]):
+        return True
+    return today.weekday() == 0
+
+
+# --- the two sinks ---------------------------------------------------------
+
+def _learn_state():
+    try:
+        with open(LEARN_STATE_PATH) as fh:
+            state = json.load(fh)
+        return state if isinstance(state, dict) else {}
+    except Exception:
+        return {}
+
+
+def _write_learn_state(state):
+    """Commit-bound measurement file. Passed through assert_nameless BEFORE it
+    is written, so an unsafe value fails the run instead of being committed."""
+    assert_nameless(state)
+    with open(LEARN_STATE_PATH, "w") as fh:
+        json.dump(state, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+
+
+def _rule_instruction(rule):
+    """The paste-ready line for one rule — the same shape health_digest uses
+    for a broken scraper, because that is the loop the owner already runs."""
+    kind = rule["kind"]
+    subject = rule["subject"]
+    if kind == "vocabulary":
+        return ('Add the missing wording from this headline to '
+                f'source_registry.GLOBAL_TERMS: "{subject}"')
+    if kind == "outlet":
+        return (f'Review {subject} for sources/gdelt.py TRUSTED_DOMAINS '
+                f'({rule["count"]} layoff stories we did not read).')
+    if kind == "country_edition":
+        return (f'Review coverage for {subject} ({rule["count"]} unmatched '
+                'layoff stories) — source_registry.MARKETS.')
+    return (f'Add a native-language term for {subject} to '
+            f'sources/gdelt.py NATIVE_TERMS ({rule["count"]} unmatched stories).')
+
+
+def _email_rules(rules, facts):
+    """Owner-only. Every NAME in this whole module leaves through this one
+    function and no other. Best-effort; never raises."""
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key and rules):
+        return False
+    lines = [
+        "The learning run compared the worldwide layoff-news corpus against our",
+        "own rows and found coverage we do not have. Each line below is a change,",
+        "not a score.",
+        "",
+        f"Independent recall this run: {facts.get('independent_recall_pct')}% "
+        f"({facts.get('matched')} of {facts.get('candidates')} announcements we "
+        "could match found by our own pipeline, unaided).",
+        "",
+    ]
+    for kind in RULE_KINDS:
+        of_kind = [r for r in rules if r["kind"] == kind]
+        if not of_kind:
+            continue
+        lines.append(f"{kind.replace('_', ' ').upper()}:")
+        for rule in of_kind[:8]:
+            lines.append("  - " + _rule_instruction(rule))
+            for ex in rule["examples"][:1]:
+                if ex != rule["subject"]:
+                    lines.append(f"      seen: {ex[:120]}")
+        lines.append("")
+    lines += [
+        "Paste into a Claude Code session in the ai-layoff-tracker repo:",
+        '  "Adopt the rules from today\'s tracker learning email: add the terms,',
+        '   review the outlets, and update the sources page in the same session."',
+        "",
+        "These outlets are DISCOVERY signals. Never store an aggregator or another",
+        "tracker as a source, and never put any name from this email in the repo.",
+    ]
+    try:
+        requests.post(f"{site}/wp-json/layoffs/v1/alert",
+                      json={"subject": f"Tracker learning: {len(rules)} rule(s) to apply",
+                            "message": "\n".join(lines)},
+                      headers={**UA, "X-ALT-KEY": key}, timeout=30)
+        return True
+    except Exception:
+        # Never printed with a body: a failed send must not spill the names it
+        # was carrying into the Actions log.
+        print("learning email could not be delivered (non-fatal)")
+        return False
+
+
+def learn_run(today=None):
+    """One learning run. Returns the PUBLIC fact dict (never any name)."""
+    from datetime import date as _date
+    today = today or _date.today()
+    state = _learn_state()
+    history = state.get("history") or []
+    facts = {"date": today.isoformat(), "method": LEARN_METHOD, "mode": "learn",
+             "window_hours": LEARN_WINDOW_HOURS}
+
+    if not learn_today(history, today):
+        facts["cadence"] = "quiet"
+        facts["state"] = "skipped"
+        print("tracker-learn:", public_render(facts))
+        report_source_health("tracker_diff", "ok", 0,
+                             "learning loop quiet (no rule found in the last "
+                             f"{LEARN_QUIET_RUNS} runs): " + public_render(facts))
+        return facts
+    facts["cadence"] = "daily"
+
+    articles, err = _learn_corpus()
+    if err:
+        # An upstream throttle is UNKNOWN. Three things it must not become:
+        #   * a PASS — the word UNKNOWN leads the health detail and a point is
+        #     written to the committed trend, so a day the corpus could not be
+        #     read is visible as itself and can never be read as a quiet day;
+        #   * a DEGRADED collector — nothing of ours is broken, no data is
+        #     lost, and a shared endpoint throttling an advisory query is not
+        #     an incident anyone should be paged for;
+        #   * a QUIET run — the point carries no `rules` key, so the earned
+        #     cadence below skips it entirely. An outage cannot wean the loop.
+        facts["state"] = "unknown"
+        facts["corpus"] = 0
+        line = public_render(facts)
+        print("tracker-learn: UNKNOWN — the reference corpus could not be read "
+              "(upstream); nothing judged, no rule inferred")
+        report_source_health("tracker_diff", "ok", 0,
+                             "learning run UNKNOWN: the reference corpus could not "
+                             "be read this run (upstream throttle or outage). "
+                             "Nothing was judged and no rule was inferred. " + line)
+        history.append({k: facts[k] for k in ("date", "method", "state")})
+        state["history"] = [h for h in history if isinstance(h, dict)][-LEARN_HISTORY_MAX:]
+        _write_learn_state(state)
+        return facts
+    facts["corpus"] = len(articles)
+
+    candidates = []
+    for art in articles:
+        title = str(art.get("title") or "")
+        jobs = headline_jobs(title)
+        if not jobs:
+            continue
+        token = headline_employer_token(title)
+        if not token:
+            continue
+        candidates.append((art, jobs, token))
+        if len(candidates) >= LEARN_MAX_CANDIDATES:
+            break
+
+    matched = unknown = 0
+    unmatched = []
+    seen_tokens = {}
+    for art, jobs, token in candidates:
+        key = token.lower()
+        if key not in seen_tokens:
+            seen_tokens[key] = _our_rows(token)
+        rows = seen_tokens[key]
+        if rows is None:
+            unknown += 1      # our own API did not answer; judged nothing
+            continue
+        verdict = rows_verdict(rows, jobs, _seendate_to_date(art.get("seendate")))
+        if verdict == "match":
+            matched += 1
+        elif verdict == "unknown":
+            unknown += 1      # same company and count, implausible date
+        else:
+            unmatched.append(art)
+
+    judged = matched + len(unmatched)
+    facts["candidates"] = judged
+    facts["matched"] = matched
+    facts["unmatched"] = len(unmatched)
+    facts["unknown"] = unknown
+    # INDEPENDENT RECALL: of the announcements we could judge, the share our own
+    # pipeline already holds — with no pointer from anybody. Nothing in this
+    # loop stores a row, so every find here is unaided by construction and this
+    # number is the one that should trend up as the rules are adopted.
+    facts["independent_recall_pct"] = round(100.0 * matched / judged, 1) if judged else None
+
+    try:
+        from sources.gdelt import TRUSTED_DOMAINS
+    except Exception:
+        TRUSTED_DOMAINS = set()
+    try:
+        from source_registry import discovery_terms
+        discovery = discovery_terms()
+    except Exception:
+        discovery = ()
+    rules = rank_rules(unmatched, TRUSTED_DOMAINS, discovery)
+    facts["rules"] = len(rules)
+    facts["rules_by_kind"] = {kind: sum(1 for r in rules if r["kind"] == kind)
+                              for kind in RULE_KINDS if any(r["kind"] == kind for r in rules)}
+    facts["state"] = "ran"
+    facts["emailed"] = bool(_email_rules(rules, facts))
+
+    history = [h for h in history if isinstance(h, dict)]
+    history.append({k: facts[k] for k in
+                    ("date", "method", "rules", "matched", "unmatched", "unknown",
+                     "candidates", "independent_recall_pct") if k in facts})
+    state["history"] = history[-LEARN_HISTORY_MAX:]
+    state["quiet_runs"] = sum(1 for h in state["history"][-LEARN_QUIET_RUNS:]
+                              if not int(h.get("rules") or 0))
+    _write_learn_state(state)
+
+    line = public_render(facts)
+    print("tracker-learn:", line)
+    report_source_health("tracker_diff", "ok", 0, "learning run: " + line)
+    return facts
