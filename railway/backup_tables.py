@@ -59,12 +59,29 @@ class UnpinnedColumn(Exception):
 # reads. `bulk` = /bulk rebuilds these rows. `derived` = rebuilt by re-running a
 # job, so the file is evidence rather than the restore path. `manual` = there is
 # no automated return path today, and the runbook says so out loud.
+#
+# THREE STATES, NOT TWO, AND THEY ARE DIFFERENT KEYS ON PURPOSE.
+#   `optional`      the table may not EXIST on a given install (it ships with
+#                   the release that introduces it, and FTPS deploys race). An
+#                   absent optional table is skipped with a reason, never
+#                   recorded as zero rows: "we could not read it" and "it is
+#                   empty" are different answers.
+#   `may_be_empty`  the table exists and holding nothing is a legitimate fact.
+#                   `warn_transparency` is an editorial register nobody has
+#                   written into yet. The first live export FAILED the whole
+#                   run on it, which was this table being misclassified rather
+#                   than the check being wrong.
+# Every table states BOTH explicitly rather than defaulting, so adding a table
+# forces the decision instead of inheriting one. A table declared
+# `may_be_empty: False` still fails the run at zero rows, and that is the check
+# that catches a walk which returned nothing.
 # --------------------------------------------------------------------------
 TABLES: Dict[str, dict] = {
     "layoffs": {
         "pk": "id",
         "restorable": "bulk",
         "optional": False,
+        "may_be_empty": False,
         "why": "The curated corpus. The rows that cost real money in LLM extraction.",
         "columns": [
             "id", "post_id", "dedup_hash", "company", "company_key", "ticker",
@@ -82,6 +99,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "derived",
         "optional": False,
+        "may_be_empty": False,
         "why": "Canonical events. One real event counted once.",
         "columns": ["id", "event_key", "canonical_layoff_id", "created_at"],
     },
@@ -89,6 +107,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "derived",
         "optional": False,
+        "may_be_empty": False,
         "why": "Every corroborating source for an event, kept instead of discarded.",
         "columns": [
             "id", "event_id", "report_key", "source_name", "source_type",
@@ -100,6 +119,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": False,
+        "may_be_empty": False,
         "why": (
             "Wayback permalinks. Rate-limited into existence over about a week, "
             "so re-earning them costs another week."
@@ -113,6 +133,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": False,
+        "may_be_empty": False,
         "why": "Reviewed employer identities. Human review, not derivable.",
         "columns": [
             "id", "company_key", "slug", "display_name", "aliases",
@@ -123,7 +144,15 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": False,
-        "why": "Editorial WARN-transparency register. Human adjudication.",
+        # LEGITIMATELY EMPTY TODAY. The first live export read 0 rows here and
+        # the drift check FAILED the whole run on "a required table exported
+        # ZERO rows", which was this table being misclassified rather than the
+        # check being wrong. It is an editorial register that a human writes
+        # into, and nobody has written into it yet. `optional` cannot express
+        # that: the table EXISTS, so "absent" is the wrong word, and reporting
+        # it as absent would hide the day it really did disappear.
+        "may_be_empty": True,
+        "why": "Editorial WARN-transparency register. Human adjudication, and empty until somebody adjudicates.",
         "columns": [
             "id", "record_key", "state", "employer", "related_layoff_id",
             "assessment_status", "notice_date", "affected_date",
@@ -135,6 +164,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": False,
+        "may_be_empty": False,
         "why": (
             "Collector telemetry. The history behind every staleness verdict; "
             "without it 'has this source ever worked' is unanswerable."
@@ -145,6 +175,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": True,
+        "may_be_empty": True,
         "why": "Published digest editions. They render public archive URLs that have been linked.",
         "columns": [
             "id", "send_id", "freq", "slug", "window_from", "window_to",
@@ -155,6 +186,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": True,
+        "may_be_empty": True,
         # Read the column list before assuming this is personal data. It is a
         # per-RUN log: how many were eligible and how many got it. There is no
         # address column and no recipient id, by deliberate design.
@@ -165,6 +197,7 @@ TABLES: Dict[str, dict] = {
         "pk": "id",
         "restorable": "manual",
         "optional": True,
+        "may_be_empty": True,
         # Aggregate counters. No subscriber id, no IP, no user agent, no
         # per-click row, so it cannot answer "who clicked" even in principle.
         # `url` is a destination this site composed and allow-listed; the
@@ -176,6 +209,7 @@ TABLES: Dict[str, dict] = {
         "pk": "post_id",
         "restorable": "manual",
         "optional": True,
+        "may_be_empty": True,
         "why": "A post id and a count. Nowhere to record who, when or from where.",
         "columns": ["post_id", "claps"],
     },

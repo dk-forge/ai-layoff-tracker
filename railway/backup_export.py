@@ -247,8 +247,10 @@ def check_drift(manifest: dict, previous: dict) -> tuple:
             else:
                 problems.append(f"{name}: REQUIRED table is missing from the export")
             continue
-        if entry.get("rows", 0) == 0 and not spec["optional"]:
-            problems.append(f"{name}: exported ZERO rows, which a required table never has")
+        if entry.get("rows", 0) == 0 and not spec.get("may_be_empty", False):
+            problems.append(
+                f"{name}: exported ZERO rows, and this table is declared as one "
+                f"that is never legitimately empty")
 
     if manifest.get("total_rows", 0) == 0:
         problems.append("the export is empty: zero rows across every table")

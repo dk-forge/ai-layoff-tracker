@@ -80,13 +80,19 @@ jobs:
         run: |
           set -o pipefail
           START=$(date +%s)
+          # The outputs are written whatever the exit code. A run that FAILED is
+          # exactly when "how long did it take" is worth knowing, and the first
+          # version lost it: `set -o pipefail` carried the failure straight past
+          # these two lines and the summary printed "Walk took s".
+          RC=0
           python backup_export.py \
             --out "$GITHUB_WORKSPACE/backup-out" \
             --report \
             ${{ (github.event_name == 'schedule' || inputs.record_baseline) && '--record' || '' }} \
-            | tee "$GITHUB_STEP_SUMMARY"
+            | tee "$GITHUB_STEP_SUMMARY" || RC=$?
           echo "seconds=$(( $(date +%s) - START ))" >> "$GITHUB_OUTPUT"
           echo "tag=backup-$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          exit $RC
 
       - name: Measured runtime
         if: ${{ !cancelled() }}
