@@ -32,17 +32,12 @@
       "last": 1787177658,
       "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 2 plugin file(s) changed and ALT_VERSION did not move above the current main tip (2.20.120 at 16ddd621, still 2.20.120 "
     },
-    "tests:claude-confident-jepsen-455457:34291805cb755c6c": {
-      "first": 1787177975,
-      "last": 1787177975,
-      "subject": "CI RED: Tests \u2014 requests.exceptions.ConnectionError: HTTPSConnectionPool(host='example.test', port=443): Max retries exceeded with url: / (Caused by NameResolutionError(\"HTTPSConne"
-    },
     "tests:docs-version-collision-record:2311c750a7e68598": {
       "first": 1787163307,
       "last": 1787163307,
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   },
-  "updated_at": "2026-08-19T22:33:01+00:00",
+  "updated_at": "2026-08-20T04:24:37+00:00",
   "version": 1
 }
