@@ -72,20 +72,77 @@ class TheStubIsComplete(unittest.TestCase):
         self.assertEqual(got, "True")
 
     def test_the_verbs_refuse_the_network_rather_than_returning_none(self):
-        # a stub verb that returns None makes an unpatched call look like a pass.
-        # Seed an empty stub so this exercises the stub even where the real
-        # `requests` is installed (CI installs it from the lock, and install()
-        # rightly prefers it).
+        """The refusal is raised AND no socket is ever opened.
+
+        Both halves, because the first alone proved nothing and said so
+        loudly. This assertion used to call `requests.get('https://example.test')`
+        against whatever `install()` returned. Locally that is the stub and it
+        passed; on CI `requests` is installed from the lock, `install()` rightly
+        prefers the real module, and the "guard" made a REAL request — which
+        failed with
+        `requests.exceptions.ConnectionError ... NameResolutionError` and
+        reddened CI on 2026-08-19. A test named "refuses the network" was the
+        only thing in the suite reaching for DNS.
+
+        Two structural fixes, and neither is a hosts-file entry or an
+        `except ConnectionError`: either of those makes this pass while proving
+        the opposite of its name.
+
+        1. Seed an EMPTY `requests` into a fresh subprocess's `sys.modules`, so
+           `install()` completes a stub and the assertion is about the stub on
+           every machine. What is under test is the stub's contract, not
+           whether the runner has the real library.
+        2. Arm a tripwire on `socket` FIRST. `RuntimeError` is a weak witness --
+           a future verb could open a connection and raise it afterwards -- so
+           the socket layer, not the exception type, is what testifies that
+           nothing left the process.
+        """
         got = self._run(
+            # (2) the tripwire goes down before anything can import around it
+            "import socket\n"
+            "touched = []\n"
+            "def _tripped(*a, **k):\n"
+            "    touched.append(1)\n"
+            "    raise AssertionError('the network was touched')\n"
+            "socket.socket = _tripped\n"
+            "socket.create_connection = _tripped\n"
+            "socket.getaddrinfo = _tripped\n"
+            # (1) exercise the stub, not whatever the runner happens to have
             "sys.modules['requests'] = types.ModuleType('requests')\n"
             "import _requests_stub; _requests_stub.install()\n"
             "import requests\n"
+            "verdict = 'SILENT'\n"
             "try:\n"
             "    requests.get('https://example.test')\n"
-            "    print('SILENT')\n"
             "except RuntimeError as e:\n"
-            "    print('raised' if 'no network' in str(e) else 'wrong')\n")
-        self.assertEqual(got, "raised")
+            "    verdict = 'raised' if 'no network' in str(e) else 'wrong'\n"
+            "except BaseException as e:\n"
+            "    verdict = type(e).__name__\n"
+            "print(verdict, 'sockets=%d' % len(touched))\n")
+        self.assertEqual(got, "raised sockets=0")
+
+    def test_the_tripwire_itself_fires_when_something_does_reach_the_network(self):
+        """A guard nobody has seen fail is a guard nobody should trust.
+
+        Without this, `sockets=0` above would also be what a broken tripwire
+        printed, and the test would go green on exactly the defect it exists to
+        catch.
+        """
+        got = self._run(
+            "import socket\n"
+            "touched = []\n"
+            "def _tripped(*a, **k):\n"
+            "    touched.append(1)\n"
+            "    raise AssertionError('the network was touched')\n"
+            "socket.socket = _tripped\n"
+            "socket.create_connection = _tripped\n"
+            "socket.getaddrinfo = _tripped\n"
+            "try:\n"
+            "    socket.create_connection(('example.test', 443))\n"
+            "except AssertionError:\n"
+            "    pass\n"
+            "print('sockets=%d' % len(touched))\n")
+        self.assertEqual(got, "sockets=1")
 
     def test_installing_twice_keeps_the_same_module(self):
         got = self._run(
