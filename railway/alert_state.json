@@ -51,8 +51,13 @@
       "first": 1787211332,
       "last": 1787211332,
       "subject": "CI RED: Weekly off-host backup \u2014 EXCLUDED wp_alt_subscribers: Personal data: email addresses, consent records, and two live tokens (confirm_to..."
+    },
+    "weekly-off-host-backup:main:8e22b6bc18a39b3d": {
+      "first": 1787214597,
+      "last": 1787214597,
+      "subject": "CI RED: Weekly off-host backup \u2014 baseline NOT advanced: a failing run must not become the new normal"
     }
   },
-  "updated_at": "2026-08-20T07:59:06+00:00",
+  "updated_at": "2026-08-20T08:29:57+00:00",
   "version": 1
 }
