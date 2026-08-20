@@ -39,6 +39,7 @@ Offline: every response is a literal dict of the shape the endpoint returns.
 import json
 import os
 import sys
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -82,6 +83,7 @@ class Harness:
                        for f in (flags if agreed_ids is None
                                  else [f for f in flags if f["id"] in agreed_ids])]
         self.calls = []          # (url, payload)
+        self.alerts = []         # what reached the operational mailer
         self.summary_text = []
 
     def request_json(self, url, payload=None, headers=None, attempts=3, timeout=120):
@@ -92,8 +94,6 @@ class Harness:
             return {"data": self.biggest}
         if url.endswith("edit"):
             return {"edited": [e["id"] for e in (payload or {}).get("edits", [])]}
-        if url.endswith("alert"):
-            return {"ok": True, "sent": True}
         raise AssertionError("unexpected request: " + url)
 
     def ask_model(self, prompt):
@@ -108,18 +108,43 @@ class Harness:
     def edited_ids(self):
         return {e["id"] for p in self.edit_payloads for e in p.get("edits", [])}
 
+    def notify(self, subject, body, *, dedupe_key="", resolve_scope="",
+               what="operational alert"):
+        """Stand in front of the door operational mail leaves by.
+
+        THIS MOVED ON 2026-08-20 and the promise did not. The held-relabel
+        notice used to be POSTed to the site's `/alert` route, so this harness
+        followed `request_json`. That route calls bare `wp_mail`, which the
+        Brevo plugin re-stamps with the reader NEWSLETTER's From line, so a
+        notice about 92,000 jobs reached the owner dressed as a mailing list.
+
+        Everything asserted below is unchanged: the owner is told, the alarm
+        carries a cause key so it cannot mail daily forever, and a clean run
+        clears it.
+        """
+        self.alerts.append({"subject": subject, "body": body,
+                            "dedupe_key": dedupe_key,
+                            "resolve_scope": resolve_scope})
+        return True
+
     @property
     def alert_payloads(self):
-        return [p for url, p in self.calls if url.endswith("alert")]
+        return list(self.alerts)
 
     @property
     def output(self):
         return "\n".join(self.summary_text)
 
     def run(self):
+        door = types.SimpleNamespace(
+            configured=lambda: True,
+            notify=self.notify,
+            resolve=lambda scope, subject, body, what="": self.notify(
+                subject, body, resolve_scope=scope, what=what))
         with mock.patch.dict(os.environ, {"WP_API_KEY": "test-key",
                                           "OPENROUTER_API_KEY": "test-key"}), \
              mock.patch.object(sc, "request_json", self.request_json), \
+             mock.patch.object(sc, "ops_notify", door), \
              mock.patch.object(sc, "ask_model", self.ask_model), \
              mock.patch.object(sc, "arm_deadline", lambda *_a, **_k: None), \
              mock.patch.object(sc, "summary", self.summary_text.append), \
@@ -158,16 +183,17 @@ class BigCountryRelabelIsHeld(unittest.TestCase):
             self.assertIn(str(rid), out, f"row {rid} was held without being named")
         self.assertIn("5,000", out, "the run does not state the bound it applied")
 
-    def test_the_owner_is_told_through_the_existing_alert_route(self):
+    def test_the_owner_is_told_through_the_operational_mailer(self):
         h = self._incident_harness()
         h.run()
         self.assertTrue(h.alert_payloads,
-                        "nothing was posted to /alert, so a held relabel waits in a "
-                        "queue nobody drains")
+                        "nothing reached the operational mailer, so a held "
+                        "relabel waits in a queue nobody drains")
         p = h.alert_payloads[0]
-        self.assertIn("dedupe_key", p, "an alert with no cause key mails daily forever")
+        self.assertTrue(p["dedupe_key"],
+                        "an alert with no cause key mails daily forever")
         self.assertRegex(p["dedupe_key"], r"^[a-z0-9][a-z0-9:._-]{0,159}$",
-                         "the endpoint rejects a dedupe_key outside this shape")
+                         "the ledger rejects a dedupe_key outside this shape")
         self.assertIn("114335", p["body"])
 
     def test_an_unbounded_edit_cannot_slip_past_the_writer(self):
@@ -231,7 +257,7 @@ class NothingHeldClearsTheAlarm(unittest.TestCase):
     def test_a_clean_run_resolves_the_open_alert(self):
         h = Harness(newest=[SMALL_ROW], biggest=[], flags=[])
         h.run()
-        self.assertTrue(any("resolve_scope" in (p or {}) for p in h.alert_payloads),
+        self.assertTrue(any((p or {}).get("resolve_scope") for p in h.alert_payloads),
                         "nothing cleared the open hold, so a fixed backlog keeps "
                         "mailing STILL FAILING every fortnight")
 
