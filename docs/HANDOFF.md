@@ -100,6 +100,47 @@ re-runs `python3 railway/signup_fold.py`, reads the pixels, then `--record`.
 `tests/test_signup_fold_stamp.py` is the cheapest test in the suite and will go
 red first; do not answer it by editing the stamp by hand.
 
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.123, read off main
+  (2.20.122) immediately before merging.** The baton was read as HELD by
+  `local` and is NOT claimed here; only the version number is. **THIS SESSION
+  OPENED `includes/subscribe.php`, WHICH ANOTHER LIVE SESSION IS IN RIGHT NOW**
+  on the digest PREHEADERS (unformatted numbers, around the layoff composer's
+  preheader and `railway/digest_layout.py`'s preheader fallback). This change
+  deliberately did not touch the layoff or talent preheader composition. It DID
+  change the ARTICLES preheader, and that is not an accident: the blog subject
+  now leads with the lead post's title, which is the string that preheader led
+  with, so leaving it would have shipped a subject and a preview that are the
+  same sentence. Whoever rebases second should check that one block by hand;
+  nothing else in this change is near a preheader.
+
+  **The two correctness fixes this was opened for were already on main.** Every
+  digest link already carried `date_basis=effective` and the figure pair
+  already carried a settling note. What shipped is what stops them regressing:
+  `alt_digest_layoff_basis()` is now the single definition of the basis in both
+  its spellings, the harness records the composer's real /aggregate parameters,
+  and `TheLinkAndTheFiguresCannotDriftApart` fails when the links and the
+  figures name different bases. The provisional wording was being REPLACED by
+  the day-count sentence on exactly the edition that states a direction, so
+  the two are additive now and the dateline carries `provisional`.
+
+  **The 35-45% length cut was NOT achieved: the section is 755 words against
+  772.** The keep-list in the brief is about 600 of them, so deleting the two
+  sections it authorised compressing entirely would reach roughly 22%. Do not
+  answer this by cutting the AI block, source quality, the biggest-cuts table
+  or the citation without the owner saying so.
+
+  **Talent: all three "other activity" categories had real data** and none had
+  to be omitted. One open gap is named in `alt_digest_talent_url()`'s docblock:
+  whether the talent page treats an empty parameter as a CLEARED filter is
+  unverified, so the filtered links write only the parameters they mean and a
+  returning reader with a saved filter may see a smaller number.
+
+  Plugin files touched: `includes/subscribe.php`, `ai-layoff-tracker.php`
+  (version only). Rest is `railway/digest_layout.py` (a `series` variant),
+  `railway/tests/fixtures/digest_compose_harness.php`, four test files,
+  TECHLOG and this file. **Next plugin release is 2.20.124. Re-read main
+  immediately before claiming it.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.121.** 2.20.120 was
   claimed here first and then LOST to PR #167, which merged while this was
   being written; main was re-read at rebase time and this took the number after

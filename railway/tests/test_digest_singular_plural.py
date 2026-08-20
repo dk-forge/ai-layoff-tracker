@@ -183,10 +183,16 @@ def layoff_with_singular_remainders():
     # printed five and leaves a remainder of exactly one, and one job carries no
     # industry. Both halves of the note therefore say "1", which is the line the
     # owner quoted back.
+    #
+    # FOUR INDUSTRIES, NOT SIX, SINCE THE PRINTED LIST BECAME A TOP THREE on
+    # 2026-08-19. The fixture's job is to leave a remainder of exactly ONE
+    # below the cut, because a remainder of one is the whole subject of this
+    # test; six industries against a top three leaves three, and the sentence
+    # would correctly read "3 more sit below" and test nothing. The cut moved,
+    # so the fixture moves with it and the assertion is unchanged.
     data["layoff"]["top_industries"] = [
-        _tuple("Retail & E-commerce", 3, 3), _tuple("Healthcare & Pharma", 1, 1),
-        _tuple("Logistics & Transport", 1, 1), _tuple("Manufacturing", 1, 1),
-        _tuple("Media & Entertainment", 1, 1), _tuple("Technology", 1, 1),
+        _tuple("Retail & E-commerce", 5, 5), _tuple("Healthcare & Pharma", 1, 1),
+        _tuple("Logistics & Transport", 1, 1), _tuple("Technology", 1, 1),
     ]
     return data
 

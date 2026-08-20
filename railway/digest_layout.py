@@ -211,6 +211,24 @@ VARIANT_STYLES = {
                          f"font-variant-numeric:tabular-nums;"),
     ("p", "unit"): (f"margin:0 0 6px;font-family:{FONT};font-size:13px;"
                     f"line-height:1.4;color:{MUTED};"),
+    # ------------------------------------------------------------------
+    # A WHOLE RANKED DIMENSION ON ONE LINE, added 2026-08-19 when the layoff
+    # edition's geography and industry blocks stopped being tables. The owner's
+    # reading was that the email answers "what happened" and the site answers
+    # "show me everything behind it", and that it was doing both and neither
+    # cleanly. Those two dimensions are skimmed rather than studied, so they
+    # became one sentence each: a caption naming the window and the unit, then
+    # the items separated by middle dots.
+    #
+    # SET AS BODY TEXT AND NOT AS SMALL PRINT. It carries figures a reader is
+    # meant to read, so it is the size of a standfirst rather than the size of
+    # a note, which is what the caption used to be. The links inside it are the
+    # same per-item destinations the table rows carried, so the line has to be
+    # comfortable to tap: 1.6 line-height gives the anchors vertical room on a
+    # 375px screen where a six-item series wraps to three lines.
+    # ------------------------------------------------------------------
+    ("p", "series"): (f"margin:0 0 14px;font-family:{FONT};font-size:14px;"
+                      f"line-height:1.6;color:{INK};"),
     ("p", "change"): (f"margin:0;font-family:{FONT};font-size:13px;"
                       f"line-height:1.4;font-weight:700;color:{MUTED};"),
     # The eyebrow over a headline figure. Uppercase and letterspaced is how a

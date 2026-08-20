@@ -194,20 +194,107 @@ class EveryFilteredLinkNamesItsDateBasis(unittest.TestCase):
 
     def test_the_unplaced_residual_is_never_linked(self):
         """There is no filter for an empty country, and a link that quietly
-        showed something else would be worse than none."""
+        showed something else would be worse than none.
+
+        THE SHAPE CHANGED AND THE PROPERTY DID NOT. The geography block was a
+        table of rows and is now one inline series, so the residual is an item
+        between two middle dots rather than a `<tr>`. It still has to be there
+        and it still has to be unlinked, so the assertion moved from the row to
+        the item and asserts the same two things.
+        """
         text = self.section["text"]
         block = text.split("Where the jobs were")[1].split("Which industries")[0]
         residual = [l for l in block.splitlines()
                     if "No country recorded" in l]
-        self.assertTrue(residual, "the residual row went missing")
+        self.assertTrue(residual, "the residual went missing")
         html = self.section["html"]
         geo = html.split("Where the jobs were")[1].split("Which industries")[0]
-        row = [r for r in geo.split("<tr>") if "No country recorded" in r]
-        self.assertTrue(row)
-        self.assertNotIn("<a ", row[0],
+        items = [i for i in geo.split("\u00b7") if "No country recorded" in i]
+        self.assertTrue(items, "the residual went missing from the HTML part")
+        self.assertNotIn("<a ", items[0],
                          "the unplaced residual acquired a link, which cannot "
                          "reproduce it")
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheLinkAndTheFiguresCannotDriftApart(unittest.TestCase):
+    """The CTA lands on the basis the figures beside it were counted on.
+
+    THE GAP THIS CLOSES, WHICH THE CLASS ABOVE DOES NOT.
+
+    Every test above asserts that a link NAMES a basis, and one of them asserts
+    the literal string `date_basis=effective`. Both would stay green through
+    the next form of this defect: the composer moving its /aggregate calls to
+    the filing basis while the links keep saying `effective`. The link would
+    still name a basis, the assertion would still match its remembered string,
+    and every figure in the email would be counted one way while every link
+    landed on the other.
+
+    So this reads BOTH halves out of one render. The `requests` the harness
+    records are the parameters the real composer really sent; the anchors are
+    the URLs it really built. They are required to be the two spellings of ONE
+    basis, and that pair has exactly one definition in the plugin,
+    alt_digest_layoff_basis(). A change to either spelling is a change to that
+    function, and a change to only one of them fails here.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.section = compose(fixture())
+        cls.html_links, cls.text_links = links_in(cls.section)
+        src = open(SUBSCRIBE, encoding="utf-8").read()
+        body = re.search(r"function alt_digest_layoff_basis\(.*?\n\}", src, re.S)
+        assert body, "alt_digest_layoff_basis went missing from the composer"
+        pairs = dict(re.findall(r"'(query|link)'\s*=>\s*'([a-z_]+)'", body.group(0)))
+        cls.pairs = pairs
+
+    def test_the_plugin_states_the_basis_in_exactly_one_place(self):
+        self.assertEqual(set(self.pairs), {"query", "link"},
+                         "the basis pair is no longer a pair")
+        src = open(SUBSCRIBE, encoding="utf-8").read()
+        composer = src[src.index("function alt_digest_compose_layoff"):]
+        self.assertNotIn("'date_basis', '", composer,
+                         "a composer request spells the basis as a literal "
+                         "again, so it can move without the links moving")
+
+    def test_every_aggregate_call_counts_on_the_query_spelling(self):
+        asked = [r["params"].get("date_basis")
+                 for r in self.section["requests"]
+                 if "/layoffs/" in r["route"]]
+        self.assertTrue(asked, "the composer made no layoff aggregate call")
+        for basis in asked:
+            self.assertEqual(basis, self.pairs["query"],
+                             "a figure in this email is counted on a basis "
+                             "the links do not land on")
+
+    def test_every_tracker_link_lands_on_the_same_basis(self):
+        seen = 0
+        for url in self.html_links + self.text_links:
+            if not url.startswith(TRACKER + "?"):
+                continue
+            seen += 1
+            self.assertIn("date_basis=" + self.pairs["link"], url,
+                          f"this link does not land on the basis the "
+                          f"figures were computed with: {url}")
+        self.assertGreater(seen, 0, "nothing was linked at all")
+
+    def test_the_headline_cta_is_one_of_them(self):
+        """The link the section signs off with is the one a reader follows to
+        check the number in the subject line, so it is named rather than left
+        to the sweep above."""
+        # The CTA is the one tracker link on which EVERY filter is cleared:
+        # it reproduces the headline, so it may not narrow it.
+        keys = ("years", "quarters", "months", "country", "industry", "state",
+                "sources", "reasons", "roles", "company", "keyword",
+                "min_jobs", "q")
+        cta = [u for u in self.text_links
+               if u.startswith(TRACKER + "?")
+               and all(re.search(rf"[?&]{k}=(&|$)", u) for k in keys)]
+        self.assertTrue(cta, f"the unfiltered CTA is gone: {self.text_links!r}")
+        self.assertIn("date_basis=" + self.pairs["link"], cta[0])
+        self.assertIn("from=2026-08-10", cta[0])
+        self.assertIn("to=2026-08-16", cta[0])

@@ -1,5 +1,109 @@
 # Tech Log
 
+## 2026-08-19 - the digest editorial pass: a basis that cannot drift, a comparison that says it is provisional, and the two promises the emails were not keeping, 2.20.123
+
+**The two "correctness fixes" this was opened for were ALREADY ON MAIN, and
+saying so is the finding.** The brief described a CTA that lands on the filing
+basis while the email counts on the effective one, and an unqualified
+week-over-week. Both were fixed earlier the same evening: every digest link has
+carried `date_basis=effective` since the per-row links landed, and the figure
+pair has carried a settling note since the week-on-week comparison landed. What
+was left open in both cases was the part that stops them coming back, and that
+is what shipped.
+
+**THE BASIS NOW HAS ONE DEFINITION AND THE TEST BINDS BOTH HALVES OF IT.**
+`alt_digest_layoff_basis()` holds the pair - `layoff_date` for the /aggregate
+parameter, `effective` for the page control - and the composer's three
+aggregate calls and `alt_digest_tracker_url()` all read it. The old test
+asserted the literal string `date_basis=effective` on every anchor, which would
+have stayed green through the next form of this defect: the composer moving its
+figures to the filing basis while the links kept saying `effective`. The link
+would still name A basis and the assertion would still match. The harness now
+records the parameters the composer really sent, and
+`TheLinkAndTheFiguresCannotDriftApart` requires the requests and the anchors to
+be the two spellings of ONE basis. A change to one of them fails.
+
+**"PROVISIONAL" WAS BEING TRADED AWAY FOR THE ASYMMETRY, on the one edition
+that states a direction.** The maturity note REPLACED the provisional sentence
+whenever a comparison printed, so the week that reads "down 51% from Week 32"
+was the week that never used the word "provisional" and never said the figure
+usually rises. The two sentences are additive now, the comparison says in plain
+words that it is not yet like for like, the note is its own paragraph directly
+under the pair rather than the front half of a sentence about country coverage,
+and the dateline carries `provisional` ahead of every figure in the edition.
+The daily tier composes no comparison at all (the seven-day window is the
+gate), and the archive renders the composed body, so there is no second place
+where an unqualified version of this could survive.
+
+**THE EMAIL LINKS TO ITS OWN ARCHIVED EDITION, WHICH IT NEVER HAS.** The slug
+is derived through `alt_edition_slug()`, the archive's single definition, so the
+link cannot name a different edition than the one being captured. **This needed
+a line in `alt_edition_allowed_paths()` and the test suite caught it**: the
+weekly slug is `2026-W33`, that W is uppercase, and the general tracker pattern
+is `[a-z0-9][a-z0-9\-]*`, so every archived edition refused to publish itself
+with "a link path is not on the allowlist". It is written as the two slug
+shapes `alt_edition_slug()` can mint rather than by allowing uppercase in every
+tracker path segment, which would widen the whole surface to buy one URL. An
+archived edition is a fixed record and not a filtered view, so it needs no
+basis.
+
+**GEOGRAPHY AND INDUSTRY ARE ONE LINE EACH** (`alt_digest_inline_series`, and a
+`series` variant in `digest_layout.py`), the industry list is a top three rather
+than a top five, and the shape sentence is computed but no longer printed
+because every word of it was visible in the line above it. Every per-item link
+survives, the unplaced residual is still unlinked, and the coverage note now
+states a LARGER shortfall because fewer rows are shown, which is the note
+working.
+
+**THE LENGTH TARGET WAS NOT MET AND THE ARITHMETIC SAYS IT COULD NOT BE.** The
+brief asked for 35-45% off and named six sections to keep. On the live-shaped
+fixture the section is 755 words against 772, and the honest reason is that the
+six keep-list sections are about 600 of those words. Deleting the two sections
+the brief authorised compressing ENTIRELY would reach about 22%. Reaching 35%
+means cutting the AI block, the source-quality block, the biggest-cuts table or
+the citation, and none of those was authorised and every one of them is the
+transparency the brief said was not what is being cut. Recorded rather than
+rounded up.
+
+**THE TALENT EMAIL NOW SAYS WHAT A SIGNAL IS AND CARRIES THE OTHER TWO THIRDS
+OF WHAT THE FORM PROMISES.** "1,379 hiring signals" sat above a row naming
+2,200 jobs with nothing saying those count different things. And the signup box
+promises hiring, leadership and compensation while the digest delivered hiring
+only. Three counts now follow the ranked list - leadership moves
+(`pillar=leadership_change`), funding rounds (`funding=1`) and pay and benefits
+changes (`pillar=rewards_comp`) - each its own slim aggregate call on the
+window, each linking to that filtered view. **All three had real data sources;
+none had to be omitted.** They OVERLAP by design and the line says so, because
+they are not a partition and must never be summed against the headline. The
+funding COUNT only, never the dollars: the sibling's funding amounts are known
+to be materially wrong and that is its defect to fix. A failed call prints no
+line at all, because a category rendered as 0 because a request failed is a
+measurement we did not make published as one we did.
+
+**The talent CTA also promised a window it did not carry.** It read "Open the
+Talent Intelligence Tracker for August 10-16, 2026" and pointed at the bare
+page. `alt_digest_talent_url()` now writes `since` and `until`. It deliberately
+does NOT copy the layoff composer's "cleared, not omitted" empty-key trick:
+whether the talent page reads an empty value as a cleared filter is UNVERIFIED
+from this repo, and writing keys on a guess is worse than not writing them.
+Named in the docblock as an open gap rather than hidden.
+
+**THE BLOG SUBJECT LEADS WITH THE HEADLINE.** `2 new posts - Aug 10-16` is a
+count of things the reader cannot see; the post's own title is this stream's
+metric, the way a job count is the layoff section's. One title, never a
+concatenation, trimmed on a word boundary to 80 characters by
+`alt_digest_subject_title()` so a long headline is shortened rather than losing
+the whole subject to the 100-character fallback. No brand prefix and no "From
+the blog:" label. **The articles preheader had to move with it**: it led with
+the same title, so the subject and the preview would have been the same
+sentence twice for the articles-only subscriber, who is the only reader whose
+subject this metric reaches. It now offers the SECOND title, or the lead post's
+standfirst on a one-post edition. That file's own rule is "the preview adds, it
+never repeats", so this applies it rather than overrides it.
+
+**Pre-existing and NOT caused here:** the four errors in
+`test_digest_dst_slot.TheWeeklySlotHasItsOwnLivenessRow` reproduce on a clean
+`origin/main` checkout.
 ## 2026-08-20 - branch failures are ROUTED, not silenced
 
 **Four CI RED emails in about 35 minutes, and two of them were version
