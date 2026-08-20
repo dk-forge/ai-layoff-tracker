@@ -60,6 +60,46 @@ class AnEmptyOrShrunkenExportFails(unittest.TestCase):
         self.assertEqual(verdict, FAIL)
         self.assertTrue(any("no tables" in l or "empty" in l for l in lines))
 
+    def test_a_table_that_may_legitimately_be_empty_does_not_fail_at_zero(self):
+        """warn_transparency is an editorial register nobody has written into.
+
+        The first live export failed the whole run on it. That was the table
+        being misclassified, not the check being wrong, so the fix is a
+        per-table declaration and not a softer rule.
+        """
+        self.assertTrue(backup_tables.TABLES["warn_transparency"]["may_be_empty"])
+        empty = {"rows": 0, "bytes": 0, "sha256": "", "site_count": 0,
+                 "restorable": "manual", "date_range": None}
+        m = manifest()
+        m["tables"]["warn_transparency"] = dict(empty)
+        previous = manifest()
+        previous["tables"]["warn_transparency"] = dict(empty)
+        verdict, lines = backup_export.check_drift(m, state_from(previous))
+        self.assertEqual(verdict, PASS, f"an empty-by-design table failed: {lines}")
+
+    def test_but_an_empty_by_design_table_LOSING_rows_still_fails(self):
+        """`may_be_empty` licenses staying empty, never going empty."""
+        m = manifest()
+        m["tables"]["warn_transparency"] = {
+            "rows": 0, "bytes": 0, "sha256": "", "site_count": 0,
+            "restorable": "manual", "date_range": None}
+        verdict, lines = backup_export.check_drift(m, state_from(manifest()))
+        self.assertEqual(verdict, FAIL)
+        self.assertTrue(any("warn_transparency" in l and "past the" in l for l in lines))
+
+    def test_every_table_declares_both_states_rather_than_defaulting(self):
+        for name, spec in backup_tables.TABLES.items():
+            with self.subTest(name):
+                self.assertIn("optional", spec)
+                self.assertIn("may_be_empty", spec,
+                              f"{name} must decide whether empty is legitimate")
+
+    def test_the_corpus_may_never_be_empty(self):
+        """The tables worth backing up are the ones this must still catch."""
+        for name in ("layoffs", "events", "source_reports", "archive",
+                     "company_directory", "source_runs"):
+            self.assertFalse(backup_tables.TABLES[name]["may_be_empty"], name)
+
     def test_a_required_table_at_zero_rows_fails(self):
         m = manifest()
         m["tables"]["layoffs"]["rows"] = 0
