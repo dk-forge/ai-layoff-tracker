@@ -29,25 +29,35 @@
       "reason": "The branch claude/elegant-bell-ed6a72 no longer exists. Its PR #165 MERGED as a37042bb at 2.20.122, so the work landed; the collision was only that main took 2.20.122 while the PR sat in checks. git diff origin/main against the branch tip showed the sole remaining difference was railway/alert_state.json, the ledger itself, and no code at all. The remote ref was deleted on 2026-08-20, so no green run of that scope can ever fire and this entry can never clear itself.",
       "reviewed_by": "claude-session (dak)",
       "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 3 plugin file(s) changed and ALT_VERSION did not move above the current main tip (2.20.122 at a37042bb, still 2.20.122 "
+    },
+    {
+      "closed_at": "2026-08-20T16:46:06+00:00",
+      "first": 1787161951,
+      "fixed_in": "PR #180 (2.20.127)",
+      "key": "live-data-integrity-check:main:aa0eaf87db8c4614",
+      "last": 1787161951,
+      "reason": "Stale run from 2026-08-19. The underlying defect was the press page caching published figures on ALT_VERSION alone instead of alt_data_ver, so it served figures 1,594 low across three windows. Fixed and verified: ops_status [3] now reports 19 checks passing.",
+      "reviewed_by": "Dakotta",
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,460,529 jobs / 65,034 entries"
+    },
+    {
+      "closed_at": "2026-08-20T16:46:19+00:00",
+      "first": 1787163307,
+      "fixed_in": "PR #160 (version-collision guard on main)",
+      "key": "tests:docs-version-collision-record:2311c750a7e68598",
+      "last": 1787163307,
+      "reason": "Parked branch, and the alert scope is workflow:branch, so no green run of this scope can ever exist and the alarm cannot clear itself. The underlying work was the version-collision guard, which landed on main independently. The branch was abandoned rather than fixed.",
+      "reviewed_by": "Dakotta",
+      "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
   "open": {
-    "live-data-integrity-check:main:aa0eaf87db8c4614": {
-      "first": 1787161951,
-      "last": 1787161951,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,460,529 jobs / 65,034 entries"
-    },
-    "tests:docs-version-collision-record:2311c750a7e68598": {
-      "first": 1787163307,
-      "last": 1787163307,
-      "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
-    },
     "tests:main:0ffaae47343a56df": {
       "first": 1787239218,
       "last": 1787239218,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['warn:MI'] != []"
     }
   },
-  "updated_at": "2026-08-20T15:28:02+00:00",
+  "updated_at": "2026-08-20T16:46:19+00:00",
   "version": 1
 }
