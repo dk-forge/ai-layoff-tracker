@@ -36,8 +36,13 @@
       "first": 1787163307,
       "last": 1787163307,
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
+    },
+    "tests:fix-cause-never-a-log-marker:2341146f79559757": {
+      "first": 1787199910,
+      "last": 1787199910,
+      "subject": "CI RED: Tests \u2014 AssertionError: 1 sentence too long finding(s). Rewrite these to meet docs/STYLE.md:"
     }
   },
-  "updated_at": "2026-08-20T04:24:37+00:00",
+  "updated_at": "2026-08-20T04:25:10+00:00",
   "version": 1
 }
