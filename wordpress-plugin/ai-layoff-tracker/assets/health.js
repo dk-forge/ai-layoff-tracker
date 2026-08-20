@@ -58,6 +58,7 @@
     digest_weekly: ['Weekly digest slot liveness (the external sender\u2019s own completed-pass signal; counts only, never addresses)', 'Weekly (Mondays, 7:30 AM Eastern)', 'Internal', 'Self-reported by the scheduled sender after a completed weekly pass'],
     link_check: ['Broken-link tripwire: public pages + source-rot sample', 'Daily', 'Internal QA', 'HTTP reachability check'],
     warn_custom_legacy: ['Legacy custom-scraper WARN states (drift watchdog family)', 'Daily', 'United States', 'State labor-agency notices'],
+    backup_export: ['Weekly off-host backup of every public table, checked for drift (subscriber data is never included)', 'Weekly (Sundays)', 'Internal', 'Keyed read of our own tables, published as a GitHub release'],
   };
   const srcLabel = id => {
     const m = meta[id];

@@ -77,6 +77,18 @@ $alt_subscribe_placements = ALT_PLUGIN_DIR . 'includes/subscribe-placements.php'
 if (is_readable($alt_subscribe_placements)) {
     require_once $alt_subscribe_placements;
 }
+// The keyed, allowlisted whole-table read behind the weekly off-host backup.
+// GUARDED with is_readable for the reason spelled out above: this file is NEW,
+// so the deploy that introduces it can land this main file first, and a hard
+// require of a not-yet-uploaded include fatals the ENTIRE plugin on every
+// request until it arrives (2.19.20). Its absence must degrade to "this week's
+// backup run gets a 404 and says so", which is a loud UNKNOWN in a job that
+// runs weekly, and never to a white screen. It registers routes and declares
+// no function any other include calls.
+$alt_backup = ALT_PLUGIN_DIR . 'includes/backup.php';
+if (is_readable($alt_backup)) {
+    require_once $alt_backup;
+}
 // Read-only, keyed access to the Rank Math 404 log and redirect table, so the
 // question "which links are dead and what is generating redirect traffic" can
 // be measured from outside wp-admin instead of guessed. GUARDED with

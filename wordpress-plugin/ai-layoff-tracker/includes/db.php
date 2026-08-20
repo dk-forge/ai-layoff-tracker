@@ -4497,6 +4497,17 @@ function alt_api_bulk(WP_REST_Request $r) {
             'company'            => $company,
             'ticker'             => $e['ticker'] ?? '',
             'job_count'          => $e['job_count'] ?? 0,
+            // Carried through ONLY when the caller sends them. alt_db_upsert
+            // has always accepted these three; alt_api_bulk simply never passed
+            // them on, so a row rebuilt from a backup came back with its
+            // reported-range ceiling collapsed to the point estimate and both
+            // evidence quotes blank. A caller that omits them is unaffected:
+            // job_count_max already floors at job_count, and the evidence
+            // fields already default to ''. See docs/RECOVERY.md for which
+            // columns a /bulk restore does and does not carry.
+            'job_count_max'      => $e['job_count_max'] ?? 0,
+            'employer_country_evidence' => $e['employer_country_evidence'] ?? '',
+            'announcement_evidence'     => $e['announcement_evidence'] ?? '',
             'layoff_date'        => $e['layoff_date'] ?? '',
             // Filing/announcement date, kept alongside the effective date so
             // the tracker can bucket either way (structured WARN rows now carry

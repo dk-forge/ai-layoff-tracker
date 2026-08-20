@@ -1,0 +1,207 @@
+name: Weekly off-host backup
+
+# The tracker's data lived in exactly one place: wp_alt_layoffs on a shared
+# Bluehost account. ~65,000 curated rows, a large share of them produced by paid
+# LLM extraction, with no copy anywhere. The adjudication files are committed
+# JSON so the human rulings survive a loss; the extracted rows did not.
+#
+# This walks every table the plugin owns that MAY leave the host, writes it as
+# gzipped JSON Lines, and attaches it to a GitHub Release. The rolling drift
+# state is committed; the data is not, because it is several MB a week and a
+# repository pays for its history on every clone and every checkout forever.
+#
+# WHAT IS DELIBERATELY NOT IN THE ARTIFACT
+# ----------------------------------------
+# wp_alt_subscribers: addresses, consent records, and two live tokens. This
+# repository is PUBLIC. The boundary is an allowlist enforced on both sides
+# (the plugin's /backup-table 400s on anything not named; railway/backup_tables.py
+# names the same set) plus a pinned column allowlist that fails the run on any
+# column nobody has reviewed. The value scanner is depth and not the boundary,
+# and it proves itself against a seeded positive control before its clean
+# result is believed. A private destination for the subscriber table is an
+# owner decision that has not been made; docs/RECOVERY.md states the options.
+#
+# WHY WEEKLY AND NOT DAILY
+# ------------------------
+# The corpus grows by a few hundred rows a day against a base of 65,000, so a
+# daily run would spend seven times the host bandwidth to shorten the worst-case
+# data loss from a week to a day on a dataset whose rows are re-derivable from
+# their sources at a cost. Weekly is the honest trade, and docs/RECOVERY.md
+# names "up to seven days of ingest" as the gap rather than hiding it.
+#
+# Cheap: no model call, no paid read, plain keyset GETs. See the run summary for
+# the measured wall time.
+
+on:
+  schedule:
+    - cron: '40 6 * * 0'    # Sundays 06:40 UTC, well clear of the daily jobs
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Attach the export to a GitHub Release'
+        type: boolean
+        default: true
+      record_baseline:
+        description: 'Advance railway/backup_state.json (a failing run never does)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: backup-export
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # commit railway/backup_state.json + create the release
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # backup_export reaches the host through source_health/host_call, which
+      # import requests. Nothing here needs the full lock.
+      - name: Install the pinned minimum
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+
+      - name: Walk every exportable table
+        id: export
+        working-directory: railway
+        env:
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          set -o pipefail
+          START=$(date +%s)
+          python backup_export.py \
+            --out "$GITHUB_WORKSPACE/backup-out" \
+            --report \
+            ${{ (github.event_name == 'schedule' || inputs.record_baseline) && '--record' || '' }} \
+            | tee "$GITHUB_STEP_SUMMARY"
+          echo "seconds=$(( $(date +%s) - START ))" >> "$GITHUB_OUTPUT"
+          echo "tag=backup-$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Measured runtime
+        if: ${{ !cancelled() }}
+        run: echo "Walk took ${{ steps.export.outputs.seconds }}s" >> "$GITHUB_STEP_SUMMARY"
+
+      # THE LAST GATE BEFORE ANYTHING IS PUBLISHED.
+      #
+      # backup_export already refuses to write a file it flagged, so this can
+      # only fire if something got past the in-flight scan. It is here anyway,
+      # over the bytes that are actually about to be uploaded, because the cost
+      # of the redundancy is two seconds and the cost of being wrong once is a
+      # breach notification. It reports a COUNT and a table name, never a
+      # matching value: this log is public.
+      - name: Refuse to publish an artifact carrying anything address-shaped
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import gzip, json, pathlib, sys
+          sys.path.insert(0, "railway")
+          import backup_tables
+
+          backup_tables.assert_scanner_detects_seeded_personal_data()
+          print("scanner control: fired on the seeded positive")
+
+          bad = {}
+          for path in sorted(pathlib.Path("backup-out").glob("*.jsonl.gz")):
+              table = path.name.split(".")[0]
+              with gzip.open(path, "rb") as fh:
+                  for line in fh:
+                      if not line.strip():
+                          continue
+                      for reason in backup_tables.scan_row(table, json.loads(line)):
+                          bad[reason] = bad.get(reason, 0) + 1
+          if bad:
+              print("::error::the artifact was NOT published; the scanner flagged:")
+              for reason, n in sorted(bad.items()):
+                  print(f"::error::  {reason} x{n}")
+              raise SystemExit(1)
+          print("artifact scan: clean")
+          PY
+
+      - name: Publish the export as a release asset
+        if: ${{ github.event_name == 'schedule' || inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.export.outputs.tag }}
+        run: |
+          set -euo pipefail
+          NOTES="$(python3 -c "
+          import json
+          m = json.load(open('backup-out/manifest.json'))
+          print(f\"Plugin {m['plugin_version']}, schema {m['schema_version']}, taken {m['exported_at']}.\")
+          print(f\"{m['total_rows']:,} rows, {m['total_bytes']/1e6:.1f} MB compressed.\")
+          print()
+          print('| table | rows | MB | restore path |')
+          print('|---|---:|---:|---|')
+          for k, v in sorted(m['tables'].items()):
+              print(f\"| {k} | {v['rows']:,} | {v['bytes']/1e6:.2f} | {v['restorable']} |\")
+          print()
+          print('Drift: ' + m['drift']['verdict'])
+          print()
+          print('Restore: see docs/RECOVERY.md. Excluded on purpose: ' + ', '.join(m['excluded_tables']) + '.')
+          ")"
+          # A tag that already exists means this ran twice in a day; replace the
+          # assets rather than opening a second release for one week.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" backup-out/* --clobber
+          else
+            gh release create "$TAG" backup-out/* \
+              --title "Data backup $TAG" --notes "$NOTES" --latest=false
+          fi
+
+      # Twelve weeks of weekly exports. Older ones are not more valuable than
+      # the newest (this is a backup, not an archive of every state the corpus
+      # was ever in) and each carries several MB of release storage.
+      - name: Keep the last 12 backup releases
+        if: ${{ github.event_name == 'schedule' || inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release list --limit 200 --json tagName \
+            -q '.[] | select(.tagName | startswith("backup-")) | .tagName' \
+            | sort -r | tail -n +13 | while read -r old; do
+              echo "pruning $old"
+              gh release delete "$old" --cleanup-tag --yes
+            done
+
+      # The drift baseline the NEXT run compares against. Committed because the
+      # state is about the host and must not live on it: a host that lost the
+      # table would otherwise also have lost the record of how big it was.
+      - name: Commit the drift baseline
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          for attempt in 1 2 3; do
+            git add railway/backup_state.json 2>/dev/null || true
+            if git diff --staged --quiet; then
+              echo "Baseline unchanged."
+              exit 0
+            fi
+            git commit -q -m "backup: export baseline $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push origin HEAD:main; then
+              echo "Recorded on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) - rebasing onto current main."
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; exit 0; }
+            sleep $((attempt * 5))
+          done
+          # Not fatal to the EXPORT, which has already been published. A
+          # baseline that did not land makes next week's drift check read
+          # UNCHECKED, which is loud on its own and is the honest state.
+          echo "::warning::Could not commit the backup baseline after 3 attempts."
+          echo "::warning::Next week's drift check will read UNCHECKED until it lands."
