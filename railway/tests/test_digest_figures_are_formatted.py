@@ -38,6 +38,57 @@ WHAT IS DELIBERATELY EXEMPT. A four-digit YEAR is a year and never takes a
 separator, and years are everywhere in this email. An ISO date, a version
 string and a URL are not figures either. Each exemption is narrow and named
 below rather than being a general "looks like it might be fine".
+
+===========================================================================
+AND THEN IT SHIPPED AGAIN, AND THIS GUARD WAS GREEN THROUGH IT. 2026-08-19.
+
+The owner's inbox, a test send he took after the fix above was on main:
+
+    16,842 verified job cuts · Aug 10-16   0 cuts attributed to AI, 10132 in the U...
+    1,379 hiring signals · Aug 10-16       582 of 1379 verified against a primary...
+                                           ... from 1327 companies
+
+The property above was right. Its INPUT SET was wrong, and that is the defect
+worth writing down, because it is the third time in two days that a correct
+assertion has been pointed at the wrong strings.
+
+THE INPUT SET HAD TWO HOLES.
+
+  1. ONE COMPOSER OF THREE. This file composed the LAYOFF section and nothing
+     else. `alt_digest_compose_talent` and `alt_digest_compose_articles` were
+     never invoked by any test in this repo, so every field they build was
+     unscanned - and the talent preheader is one of the two lines in the
+     owner's screenshot. The harness has supported `compose: talent` since it
+     was written. Nothing called it. A guard that reads a third of the surface
+     it names is a guard against a third of the defect.
+
+  2. IT STOPPED AT THE PHP BOUNDARY. The composers hand four strings to
+     digest-api.php; digest_send.py reads them back and digest_layout.py joins
+     them into the subject, the hidden preheader div and the two body parts
+     that a client actually displays. Nothing checked what came out the far
+     end. The preheader especially is a SEPARATE payload field: it does not
+     appear in the html or the text the old tests scanned, it is inserted by
+     render_html, and preheader_text may return a DIFFERENT string entirely
+     when the site's own snippet does not fit. So the one field the defect
+     shipped in was the one field whose delivered form nothing read.
+
+WHAT THE REPRODUCTION ACTUALLY FOUND, so the next session does not re-derive
+it. Both preheaders compose CORRECTLY on this tree and on the live build:
+
+    0 cuts attributed to AI, 10,132 in the United States, across 73 companies,
+    8,240 of them from state WARN filings.
+    582 of 1,379 verified against a primary document, from 1,327 companies.
+
+The screenshot was a build, not a bug: the deployed body differed from the
+tree at the moment of that send. alt_digest_fit_preheader does not lose
+formatting, and digest_layout's fallback never fired. That is why nothing here
+changes a composer. It changes what is watched, so that the next time the two
+disagree, something red says so before an inbox does.
+
+THE ORDER MATTERS: the detector is proved against the owner's literal strings
+FIRST, in test_the_guard_itself_can_fail, before any assertion trusts it. A
+test that cannot fail is not a test, and this file has now been the thing that
+could not fail twice.
 """
 import json
 import os
@@ -57,6 +108,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import digest_layout as layout  # noqa: E402
+import digest_send  # noqa: E402
 
 SUBSCRIBE = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker",
                          "includes", "subscribe.php")
@@ -75,7 +127,20 @@ EXEMPT = (
     re.compile(r"""\s(?:href|src|style|data-alt)\s*=\s*(?:"[^"]*"|'[^']*')"""),
     re.compile(r"\b(?:19|20)\d{2}\b"),
     re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),
+    # A STANDARD'S NUMBER IS ITS NAME. The edition note reads "Weeks are
+    # ISO-8601", and 8,601 would be a nonsense. Spelled with the word ISO
+    # attached rather than as a bare 8601, so a real quantity that happens to
+    # be 8601 is still caught. This exemption exists because the boundary scan
+    # below reads the WHOLE rendered message, footer and edition note
+    # included, which the section-level scans never did.
+    re.compile(r"\bISO[\s‑-]?8601\b"),
 )
+
+# THE FIELDS A CLIENT CAN DISPLAY, named once so a new one cannot be added to
+# the payload and quietly go unwatched. `preheader` is listed FIRST because it
+# is the field the defect shipped in twice and the only one that travels as its
+# own payload member rather than inside a rendered body.
+DISPLAYED = ("preheader", "metric", "text", "html")
 
 
 def strip_exempt(text: str) -> str:
@@ -152,12 +217,69 @@ def layoff_fixture():
     }
 
 
+def talent_fixture():
+    """THE SECTION NO TEST HAD EVER COMPOSED, on the owner's own figures.
+
+    1,379 signals, 582 of them verified, from 1,327 companies is the exact week
+    in the second screenshot. Every one of those is four digits or, in 582's
+    case, sits directly in front of one, which is the shape of the string the
+    preview printed raw: `582 of 1379`.
+    """
+    return {
+        "from": "2026-08-10", "to": "2026-08-16", "compose": "talent",
+        "talent": {"total": 1379, "companies": 1327, "verified": 582},
+        "talent_q": {"rows": [
+            {"company_name": "Northwind Robotics", "headline":
+             "Northwind Robotics opens a 2,400-role plant in Ohio",
+             "headcount": 2400, "signal_date": "2026-08-12",
+             "country": "United States", "permalink": "", "verified": True},
+            {"company_name": "Kestrel Foods", "headline":
+             "Kestrel Foods to add 1,180 shift roles",
+             "headcount": 1180, "signal_date": "2026-08-14",
+             "country": "United States", "permalink": "", "verified": False},
+        ]},
+        "talent_ytd": {"total": 41208, "companies": 9317, "verified": 5064},
+        "options": {"alt_last_write": 1787184000},
+    }
+
+
+def articles_fixture():
+    """The third composer, also never invoked here before.
+
+    Its preheader is the newest post's own title, so the figure risk lives in
+    the caption and the read-time line rather than in the snippet. It is
+    scanned on the same terms as the other two rather than being trusted for
+    being small: `alt_digest_count` reaches it too.
+    """
+    body = "word " * 4200
+    return {
+        "from": "2026-08-10", "to": "2026-08-16", "compose": "articles",
+        "posts": [
+            {"title": "What 10,132 US job cuts in one week actually look like",
+             "excerpt": "A week read through its filings.",
+             "date": "2026-08-14 09:00:00", "content": body,
+             "link": "https://asktherecruiter.com/blog/one/"},
+            {"title": "The WARN notice is the document, not the headline",
+             "excerpt": "Where the numbers come from.",
+             "date": "2026-08-11 09:00:00", "content": body,
+             "link": "https://asktherecruiter.com/blog/two/"},
+        ],
+        "options": {"alt_last_write": 1787184000},
+    }
+
+
+FIXTURES = (("layoff", layoff_fixture), ("talent", talent_fixture),
+            ("articles", articles_fixture))
+
+
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
 class NoComposedFigureIsMissingItsSeparators(unittest.TestCase):
+    """EVERY composer, EVERY field a client can display. Both were narrower."""
 
     @classmethod
     def setUpClass(cls):
-        cls.section = compose(layoff_fixture())
+        cls.sections = {name: compose(build()) for name, build in FIXTURES}
+        cls.section = cls.sections["layoff"]
 
     def _check(self, name, text):
         found = offenders(text)
@@ -167,9 +289,26 @@ class NoComposedFigureIsMissingItsSeparators(unittest.TestCase):
             f"figure the digest composes goes through alt_digest_number(); "
             f"something here used a raw integer.")
 
+    def test_every_displayed_field_of_every_composer(self):
+        """THE ASSERTION THE OLD INPUT SET COULD NOT MAKE.
+
+        It composed `layoff` alone, so two of the three composers were never
+        run by any test in this repo, and the talent preheader is one of the
+        two lines in the owner's second screenshot. The fields are read from
+        DISPLAYED rather than named one test at a time, so a new payload
+        member cannot be added without being scanned.
+        """
+        for name, section in sorted(self.sections.items()):
+            for field in DISPLAYED:
+                with self.subTest(section=name, field=field):
+                    self._check(f"{name}.{field}", section.get(field, ""))
+
     def test_the_preview_line(self):
-        """The line the defect actually shipped in."""
-        self._check("the preheader", self.section.get("preheader", ""))
+        """The line the defect actually shipped in, on both streams."""
+        self._check("the layoff preheader",
+                    self.sections["layoff"].get("preheader", ""))
+        self._check("the talent preheader",
+                    self.sections["talent"].get("preheader", ""))
 
     def test_the_subject_fragment(self):
         self._check("the metric fragment", self.section.get("metric", ""))
@@ -194,13 +333,40 @@ class NoComposedFigureIsMissingItsSeparators(unittest.TestCase):
                       "nowhere else, which is exactly the shape the old guard "
                       "was blind to")
 
+    def test_the_talent_preview_spells_the_screenshot_correctly(self):
+        """The owner's second screenshot, positively.
+
+        `offenders` returning nothing proves no raw figure is present. It does
+        not prove the right figures are, and a composer that dropped the
+        verified split entirely would satisfy it. So the delivered spelling of
+        the exact string he photographed is asserted here.
+        """
+        self.assertEqual(
+            self.sections["talent"].get("preheader", ""),
+            "582 of 1,379 verified against a primary document, "
+            "from 1,327 companies.")
+
     def test_the_guard_itself_can_fail(self):
         """A test that cannot fail is not a test. This proves the detector
-        fires on the real defect string before trusting it on our output."""
+        fires on the real defect strings before trusting it on our output.
+
+        Both screenshots, verbatim. The 2026-08-19 pair is here because a
+        detector proved only against the strings of the FIRST incident is a
+        detector proved against the example in front of its author, which is
+        the exact shape of failure this file exists to record.
+        """
         self.assertEqual(offenders("582 of 1376 verified, from 1324 companies."),
                          ["1376", "1324"])
         self.assertEqual(offenders("0 cuts attributed to AI, 10132 in the US"),
                          ["10132"])
+        self.assertEqual(
+            offenders("0 cuts attributed to AI, 10132 in the United States"),
+            ["10132"])
+        self.assertEqual(
+            offenders("582 of 1379 verified against a primary document, "
+                      "from 1327 companies."),
+            ["1379", "1327"])
+        self.assertEqual(offenders("1379 hiring signals"), ["1379"])
 
     def test_a_year_is_not_a_figure(self):
         self.assertEqual(offenders("August 10-16, 2026 and 1 January 2026"), [])
@@ -216,13 +382,121 @@ class NoComposedFigureIsMissingItsSeparators(unittest.TestCase):
         self.assertEqual(offenders("73 companies"), [])
 
 
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheMessageThatLeavesTheRelayCarriesNoRawFigure(unittest.TestCase):
+    """THE FAR SIDE OF THE BOUNDARY, which nothing used to read.
+
+    The composers hand four strings to digest-api.php. digest_send.py reads
+    them back off the wire and digest_layout.py decides what a client is
+    actually shown: it JOINS metric fragments into one subject, and it CHOOSES
+    a preheader off a three-rung ladder where the site's own snippet is only
+    the first rung. Scanning the composer's output proves what the site said.
+    It does not prove what the reader gets, and the preheader is the field
+    where those two can differ: it travels as its own payload member, appears
+    in neither the html nor the text the section-level tests scan, and is
+    inserted into the message by render_html at the very end.
+
+    So this assembles the payload the site really returns, runs the real
+    usable_sections / subject_line / preheader_text / render_html /
+    render_text, and scans the four fields a client displays. Same detector,
+    proved on the same strings, one boundary further out.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        sections = {name: compose(build()) for name, build in FIXTURES}
+        cls.payload = {
+            "freq": "weekly", "from": "2026-08-10", "to": "2026-08-16",
+            "subject": "Tracker digest",
+            "manage_url": "https://asktherecruiter.com/blog/manage/",
+            "sections": {
+                name: {"html": part["html"], "text": part["text"],
+                       "preheader": part.get("preheader", ""),
+                       "metric": part.get("metric", ""),
+                       "minor": bool(part.get("minor"))}
+                for name, part in sections.items()},
+        }
+        cls.wanted = ["layoff", "talent", "articles"]
+
+    def _rendered(self, wanted):
+        parts = digest_send.usable_sections(self.payload, wanted)
+        self.assertTrue(parts, f"no usable section for {wanted!r}")
+        subject = layout.subject_line(self.payload, parts)
+        preheader = layout.preheader_text(parts)
+        unsub = "https://asktherecruiter.com/blog/u/token/"
+        html = layout.render_html(
+            parts, subject=subject, preheader=preheader, kicker="Weekly",
+            unsub_url=unsub, manage_url=self.payload["manage_url"],
+            edition_note=layout.WEEK_CONVENTION)
+        text = layout.render_text(
+            parts, kicker="Weekly", unsub_url=unsub,
+            manage_url=self.payload["manage_url"],
+            edition_note=layout.WEEK_CONVENTION)
+        return {"subject": subject, "preheader": preheader,
+                "html": html, "text": text}
+
+    def test_every_field_of_every_single_list_message(self):
+        """One list at a time, which is exactly how the test sends go out.
+
+        DIGEST_TEST_LISTS=talent builds a message from the talent section
+        alone, and that message's preheader is the talent preheader with no
+        other section able to stand in for it. The owner's second screenshot is
+        two such messages.
+        """
+        for name in self.wanted:
+            rendered = self._rendered([name])
+            for field, value in sorted(rendered.items()):
+                with self.subTest(list=name, field=field):
+                    found = offenders(value)
+                    self.assertEqual(
+                        found, [],
+                        f"the {field} of a {name}-only message carries "
+                        f"{found!r} with no thousands separator")
+
+    def test_every_field_of_the_combined_message(self):
+        rendered = self._rendered(self.wanted)
+        for field, value in sorted(rendered.items()):
+            with self.subTest(field=field):
+                found = offenders(value)
+                self.assertEqual(
+                    found, [],
+                    f"the {field} of the combined message carries {found!r} "
+                    f"with no thousands separator")
+
+    def test_the_delivered_preheader_is_the_one_the_site_composed(self):
+        """POSITIVE, because "no raw figure" is also true of an empty string.
+
+        preheader_text drops the site's snippet whole when it will not fit and
+        falls back to a line with no figure in it at all. That fallback is
+        correct behaviour and it is ALSO a silent way for this whole file to
+        keep passing while the reader loses the figures. So the delivered
+        snippet is compared to the composed one, per list.
+        """
+        for name in self.wanted:
+            with self.subTest(list=name):
+                composed = (self.payload["sections"][name]
+                            .get("preheader", "")).strip()
+                self.assertTrue(composed,
+                                f"the {name} composer supplied no snippet, so "
+                                f"the reader gets a fallback with no figure")
+                self.assertEqual(self._rendered([name])["preheader"], composed)
+
+    def test_the_delivered_talent_preheader_verbatim(self):
+        """The string the owner photographed, as it leaves the relay."""
+        self.assertEqual(
+            self._rendered(["talent"])["preheader"],
+            "582 of 1,379 verified against a primary document, "
+            "from 1,327 companies.")
+
+
 class ThePhpAndThePythonAgreeOnHowAFigureLooks(unittest.TestCase):
     """The site formats every figure and the relay formats none, which is the
     rule that makes one spelling possible. This pins both halves."""
 
     def test_the_layout_module_formats_nothing(self):
-        source = open(os.path.join(RAILWAY, "digest_layout.py"),
-                      encoding="utf-8").read()
+        with open(os.path.join(RAILWAY, "digest_layout.py"),
+                  encoding="utf-8") as handle:
+            source = handle.read()
         self.assertNotIn("{:,}", source,
                          "digest_layout composed a figure, which is the site's "
                          "job and the reason the two surfaces cannot disagree")
@@ -232,13 +506,37 @@ class ThePhpAndThePythonAgreeOnHowAFigureLooks(unittest.TestCase):
         """number_format_i18n() depends on a $wp_locale this file does not own
         and a filter any plugin may hook, so a figure a reporter may quote does
         not go through it."""
-        source = open(SUBSCRIBE, encoding="utf-8").read()
+        with open(SUBSCRIBE, encoding="utf-8") as handle:
+            source = handle.read()
         code = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
         code = re.sub(r"//[^\n]*", "", code)
         self.assertNotIn("number_format_i18n(", code,
                          "a digest figure went through the locale formatter "
                          "again; use alt_digest_number()")
         self.assertIn("function alt_digest_number(", source)
+
+    def test_every_composer_this_file_knows_about_is_scanned(self):
+        """THE HOLE THAT LET THE SECOND SCREENSHOT HAPPEN, closed structurally.
+
+        The old input set composed `layoff` and nothing else, and nothing said
+        so: two composers existed and no test named them. A fourth composer
+        added tomorrow would repeat that exactly, so this reads the composer
+        names out of digest-api.php - the one place that decides which sections
+        the payload carries - and fails when this file does not build a fixture
+        for one of them.
+        """
+        api = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker",
+                           "includes", "digest-api.php")
+        with open(api, encoding="utf-8") as handle:
+            source = handle.read()
+        shipped = set(re.findall(r"'(\w+)'\s*=>\s*'alt_digest_compose_\w+'",
+                                 source))
+        self.assertTrue(shipped, "no composer map found in digest-api.php")
+        self.assertEqual(
+            shipped - {name for name, _ in FIXTURES}, set(),
+            "digest-api.php ships a composed section this file never renders, "
+            "which is the exact shape of the 2026-08-19 blind spot: the "
+            "property was right and it was pointed at one composer of three")
 
 
 if __name__ == "__main__":
