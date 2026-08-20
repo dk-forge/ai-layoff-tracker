@@ -56,9 +56,19 @@ permanently-red amber that hides real breakage. `[4e]` prints each failure's
 AGE instead, so the distribution accumulates in plain sight and a later session
 can size it from data.
 
-Effect on the night that prompted it: **two of the four emails would not have
+Effect on the night that prompted it: **three of the four emails would not have
 been sent**, and the two unclearable ledger entries would never have existed.
-The `collect` failure on main still arrives, which is the one that mattered.
+All three were `pull_request` runs on branches that were not main -- the two
+version collisions, and `Tests` on claude/confident-jepsen-455457 (run
+32307396560, verified `event=pull_request`). **The fourth, `collect` failing on
+main, still arrives, and it is the one that mattered**: it was the real defect
+of the night, and it was the one carrying `##[endgroup]` where its cause should
+have been.
+
+Written down because the first draft of this entry said TWO, sized against the
+narrower proposal that only covered `Plugin version collision`. The rule that
+shipped is broader and the number moved with it. A record that quotes the
+effect of a rule nobody implemented is worse than no number.
 
 ## 2026-08-20 - the unformatted preheader was a BUILD, and the guard read one composer of three
 
