@@ -269,6 +269,24 @@ function alt_edition_allowed_paths() {
     return array(
         '#^$#',
         '#^ai-layoff-tracker(?!/(confirm|unsubscribe)(/|$))(/[a-z0-9][a-z0-9\-]*)*/?$#',
+        /*
+          AN EDITION'S OWN PERMALINK, WHICH THE GENERAL TRACKER PATTERN CANNOT
+          MATCH. The weekly slug is "2026-W33" and that W is uppercase, so
+          `[a-z0-9][a-z0-9\-]*` refuses it. The layoff section links to its own
+          archived edition since 2.20.123, and without this line every archived
+          edition refuses to publish itself.
+
+          WRITTEN AS THE TWO SLUG SHAPES RATHER THAN BY RELAXING THE RULE
+          ABOVE. Allowing uppercase in every tracker path segment to admit one
+          known slug would widen the whole surface to buy one URL. These are
+          exactly the two forms alt_edition_slug() can mint, and
+          alt_edition_valid_slug() is the same shapes on the reading side.
+
+          IT IS NOT A FILTERED VIEW and needs no basis: an archived edition is
+          a fixed record of what was sent, with nothing for a date basis to
+          reinterpret. See alt_edition_is_filtered_view.
+        */
+        '#^ai-layoff-tracker/editions/(weekly/\d{4}-W\d{2}|daily/\d{4}-\d{2}-\d{2})/?$#',
         '#^layoff/[a-z0-9][a-z0-9\-]*/?$#',
         '#^company-layoffs/[a-z0-9][a-z0-9\-]*/?$#',
         '#^(country|state|industry)-layoffs/[a-z0-9][a-z0-9\-]*/?$#',

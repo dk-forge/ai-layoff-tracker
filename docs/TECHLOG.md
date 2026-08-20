@@ -37,7 +37,15 @@ where an unqualified version of this could survive.
 
 **THE EMAIL LINKS TO ITS OWN ARCHIVED EDITION, WHICH IT NEVER HAS.** The slug
 is derived through `alt_edition_slug()`, the archive's single definition, so the
-link cannot name a different edition than the one being captured.
+link cannot name a different edition than the one being captured. **This needed
+a line in `alt_edition_allowed_paths()` and the test suite caught it**: the
+weekly slug is `2026-W33`, that W is uppercase, and the general tracker pattern
+is `[a-z0-9][a-z0-9\-]*`, so every archived edition refused to publish itself
+with "a link path is not on the allowlist". It is written as the two slug
+shapes `alt_edition_slug()` can mint rather than by allowing uppercase in every
+tracker path segment, which would widen the whole surface to buy one URL. An
+archived edition is a fixed record and not a filtered view, so it needs no
+basis.
 
 **GEOGRAPHY AND INDUSTRY ARE ONE LINE EACH** (`alt_digest_inline_series`, and a
 `series` variant in `digest_layout.py`), the industry list is a top three rather
