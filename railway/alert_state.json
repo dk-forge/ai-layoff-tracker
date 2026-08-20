@@ -9,6 +9,26 @@
       "reason": "The unguarded alt_company_index_strip() in templates/page-company-index.php was fixed on main by 1de4aa1 (2.20.111), which wrapped it in if (!function_exists(...)). tests/test_no_unguarded_template_functions.py passes on main. The raise came from branch ops/resend-ua, whose PR #143 has merged; the ref survives on origin but is an ancestor of main, so tests.yml (pull_request + push to main) will never run under that scope again and no green run can ever fire the resolve.",
       "reviewed_by": "dak",
       "subject": "CI RED: Tests \u2014 AssertionError: [\"page-company-index.php:21 function alt_company_index_strip() is not wrapped in if (!function_exists('alt_company_index_strip'))\"] is not false : T"
+    },
+    {
+      "closed_at": "2026-08-20T04:41:40+00:00",
+      "first": 1787177658,
+      "fixed_in": "#167",
+      "key": "plugin-version-collision:claude-kind-matsumoto-2c6fdd:02ecc7e4c028ec30",
+      "last": 1787177658,
+      "reason": "The branch claude/kind-matsumoto-2c6fdd no longer exists. Its PR #167 MERGED as 16ddd621, so the work landed; the collision was only that main moved to 2.20.120 while the PR sat in checks, leaving the branch stale. git diff origin/main against the branch tip confirmed main was strictly ahead and the branch carried nothing unique, so there was nothing to rebase. The remote ref was deleted on 2026-08-20, which means no green run of that scope can ever fire and this entry can never clear itself.",
+      "reviewed_by": "claude-session (dak)",
+      "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 2 plugin file(s) changed and ALT_VERSION did not move above the current main tip (2.20.120 at 16ddd621, still 2.20.120 "
+    },
+    {
+      "closed_at": "2026-08-20T04:41:40+00:00",
+      "first": 1787178781,
+      "fixed_in": "#165",
+      "key": "plugin-version-collision:claude-elegant-bell-ed6a72:5d940accaca9e5cd",
+      "last": 1787178781,
+      "reason": "The branch claude/elegant-bell-ed6a72 no longer exists. Its PR #165 MERGED as a37042bb at 2.20.122, so the work landed; the collision was only that main took 2.20.122 while the PR sat in checks. git diff origin/main against the branch tip showed the sole remaining difference was railway/alert_state.json, the ledger itself, and no code at all. The remote ref was deleted on 2026-08-20, so no green run of that scope can ever fire and this entry can never clear itself.",
+      "reviewed_by": "claude-session (dak)",
+      "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 3 plugin file(s) changed and ALT_VERSION did not move above the current main tip (2.20.122 at a37042bb, still 2.20.122 "
     }
   ],
   "open": {
@@ -22,22 +42,12 @@
       "last": 1787161951,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,460,529 jobs / 65,034 entries"
     },
-    "plugin-version-collision:claude-elegant-bell-ed6a72:5d940accaca9e5cd": {
-      "first": 1787178781,
-      "last": 1787178781,
-      "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 3 plugin file(s) changed and ALT_VERSION did not move above the current main tip (2.20.122 at a37042bb, still 2.20.122 "
-    },
-    "plugin-version-collision:claude-kind-matsumoto-2c6fdd:02ecc7e4c028ec30": {
-      "first": 1787177658,
-      "last": 1787177658,
-      "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 2 plugin file(s) changed and ALT_VERSION did not move above the current main tip (2.20.120 at 16ddd621, still 2.20.120 "
-    },
     "tests:docs-version-collision-record:2311c750a7e68598": {
       "first": 1787163307,
       "last": 1787163307,
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   },
-  "updated_at": "2026-08-20T04:39:05+00:00",
+  "updated_at": "2026-08-20T04:41:40+00:00",
   "version": 1
 }
