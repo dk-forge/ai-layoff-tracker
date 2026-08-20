@@ -385,6 +385,20 @@ def run(out_dir: Path, *, report: bool, record: bool) -> int:
     elif record:
         print("baseline NOT advanced: a failing run must not become the new normal")
 
+    # THE VERDICT IS ABOUT THE COMPARISON; THE ARTIFACT IS ABOUT THE DATA.
+    # The workflow gates publishing on this, not on the exit code, because the
+    # first run of all resolves to UNKNOWN (there is nothing to compare
+    # against) and throwing away a complete, scanned, 24 MB export because we
+    # could not compare it to a previous one is exactly backwards. FAIL is
+    # different: a truncated or shrunken export is one nobody should be able to
+    # restore from by accident, so that one is not published.
+    out_path = os.environ.get("GITHUB_OUTPUT")
+    if out_path:
+        with open(out_path, "a", encoding="utf-8") as fh:
+            fh.write(f"verdict={verdict}\n")
+            fh.write(f"rows={manifest['total_rows']}\n")
+            fh.write(f"bytes={manifest['total_bytes']}\n")
+
     if report:
         status = {PASS: "ok", FAIL: "degraded", UNKNOWN: "degraded"}[verdict]
         detail = (f"{verdict}: {manifest['total_rows']:,} rows, "

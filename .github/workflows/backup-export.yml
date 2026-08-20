@@ -107,6 +107,7 @@ jobs:
       # breach notification. It reports a COUNT and a table name, never a
       # matching value: this log is public.
       - name: Refuse to publish an artifact carrying anything address-shaped
+        if: ${{ !cancelled() && steps.export.outputs.verdict != '' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -134,8 +135,13 @@ jobs:
           print("artifact scan: clean")
           PY
 
+      # Gated on the DRIFT VERDICT, not on the step's exit code. The first
+      # run of all is UNKNOWN because there is no baseline yet, and a
+      # complete, scanned export is worth keeping whether or not it could be
+      # compared to last week's. Only FAIL withholds the artifact, because a
+      # truncated export is one nobody should restore from by accident.
       - name: Publish the export as a release asset
-        if: ${{ github.event_name == 'schedule' || inputs.publish_release }}
+        if: ${{ !cancelled() && steps.export.outputs.verdict != 'FAIL' && steps.export.outputs.verdict != '' && (github.event_name == 'schedule' || inputs.publish_release) }}
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.export.outputs.tag }}
@@ -169,7 +175,7 @@ jobs:
       # the newest (this is a backup, not an archive of every state the corpus
       # was ever in) and each carries several MB of release storage.
       - name: Keep the last 12 backup releases
-        if: ${{ github.event_name == 'schedule' || inputs.publish_release }}
+        if: ${{ !cancelled() && steps.export.outputs.verdict != 'FAIL' && steps.export.outputs.verdict != '' && (github.event_name == 'schedule' || inputs.publish_release) }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
