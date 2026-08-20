@@ -424,8 +424,8 @@ def main():
         if (stale or real_degraded or integrity_failed or zero_outage
                 or dark_rows or never_missing):
             _email_alert(stale, real_degraded, integrity_failed, zero_outage,
-                         subscribers, dark_lines=dark_lines,
-                         never_lines=never_lines)
+                         dark_lines=dark_lines, never_lines=never_lines,
+                         subscribers=subscribers)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.
