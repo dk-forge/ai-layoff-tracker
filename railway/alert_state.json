@@ -46,23 +46,8 @@
       "first": 1787163307,
       "last": 1787163307,
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
-    },
-    "weekly-off-host-backup:main:0e694682c553f9bc": {
-      "first": 1787211332,
-      "last": 1787211332,
-      "subject": "CI RED: Weekly off-host backup \u2014 EXCLUDED wp_alt_subscribers: Personal data: email addresses, consent records, and two live tokens (confirm_to..."
-    },
-    "weekly-off-host-backup:main:8e22b6bc18a39b3d": {
-      "first": 1787214597,
-      "last": 1787214597,
-      "subject": "CI RED: Weekly off-host backup \u2014 baseline NOT advanced: a failing run must not become the new normal"
-    },
-    "weekly-off-host-backup:main:ae12e05c5976868a": {
-      "first": 1787215954,
-      "last": 1787215954,
-      "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-08-20T08:52:34+00:00",
+  "updated_at": "2026-08-20T09:14:33+00:00",
   "version": 1
 }
