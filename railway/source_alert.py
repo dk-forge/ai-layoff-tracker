@@ -235,8 +235,8 @@ def announce_recovery(key, *, sender=None):
 def enabled():
     """Mail only where a relay is configured. Absent is ABSENT, not broken."""
     try:
-        import opsmail
-        return opsmail.configured()
+        import ops_notify
+        return ops_notify.configured()
     except Exception:                                          # noqa: BLE001
         return False
 

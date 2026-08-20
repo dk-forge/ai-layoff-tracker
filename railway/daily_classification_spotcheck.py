@@ -57,6 +57,8 @@ import signal
 import sys
 import time
 import urllib.request
+
+import ops_notify
 import spend
 
 API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
@@ -113,9 +115,8 @@ AUTO_APPLY_MAX_JOBS = int(os.environ.get("ALT_SPOTCHECK_AUTO_APPLY_MAX_JOBS", "5
 GUARDED_COUNTRY_LABELS = {"multiple countries", "worldwide", "global",
                           "multiple", "various", "europe", "european union"}
 
-#: The `/alert` scope for held relabels. The endpoint clears every open key
-#: beginning `<scope>:` on a resolve, so this prefix must not collide with
-#: another alerter's keys.
+#: The alarm scope for held relabels. A resolve clears every open key beginning
+#: `<scope>:`, so this prefix must not collide with another alerter's keys.
 HOLD_ALERT_SCOPE = "relabel-hold"
 
 
@@ -331,28 +332,38 @@ def _hold_body(held, jobs_by_id, names_by_id=None):
 
 
 def post_hold_alert(held, jobs_by_id, names_by_id=None):
-    """Tell the owner through the route that already reaches him.
+    """Tell the owner, through the one door operational mail leaves by.
+
+    THIS USED TO ARRIVE AS THE NEWSLETTER. It POSTed to the site's `/alert`
+    route, which calls bare `wp_mail()`, which the Brevo plugin rewrites to the
+    SUBSCRIBER relay identity. So a notice saying "92,000 jobs are one
+    unattended edit away from the published US headline" reached the owner from
+    `newsletter@asktherecruiter.com` under the reader newsletter's display
+    name. `ops_notify` gives it the operational From and the shared subject
+    prefix instead, so it sorts with the alarms rather than with the mail he
+    subscribed to.
+
+    The dedup shape is unchanged: one open cause per set of held ids, cleared
+    by `clear_hold_alert()`. `alert_state.decide()` mirrors what the endpoint
+    did, so this is the same ruling read from a committed ledger.
 
     Failure to deliver is NOT a failed run and never reddens CI (the 2026-07-31
     rule: an outage must not manufacture red runs). Nothing is lost by a failed
-    POST either, because the backlog is recomputed from live rows on the next
+    send either, because the backlog is recomputed from live rows on the next
     daily run and re-raised.
     """
-    key = os.environ.get("WP_API_KEY", "")
-    if not key:
-        summary("_The held relabels could not be mailed: WP_API_KEY is not "
+    if not ops_notify.configured():
+        summary("_The held relabels could not be mailed: RESEND_API_KEY is not "
                 "configured. They are listed above and will be re-raised tomorrow._")
         return
     ids = ".".join(sorted(str(f["id"]) for f, _ in held))
-    try:
-        request_json(API + "alert", {
-            "subject": f"{len(held)} label relabel(s) HELD for review, not applied",
-            "body": _hold_body(held, jobs_by_id, names_by_id),
-            "dedupe_key": f"{HOLD_ALERT_SCOPE}:{ids}"[:160],
-        }, {"X-Layoff-API-Key": key}, attempts=2, timeout=45)
-    except Exception as exc:
-        summary(f"_The held relabels could not be mailed (`{exc}`). They are listed "
-                f"above and are re-derived on tomorrow's run._")
+    if not ops_notify.notify(
+            f"{len(held)} label relabel(s) HELD for review, not applied",
+            _hold_body(held, jobs_by_id, names_by_id),
+            dedupe_key=f"{HOLD_ALERT_SCOPE}:{ids}"[:160],
+            what="held-relabel notice"):
+        summary("_The held relabels could not be mailed. They are listed above "
+                "and are re-derived on tomorrow's run._")
 
 
 def clear_hold_alert():
@@ -362,17 +373,13 @@ def clear_hold_alert():
     not reach the model does not know the backlog is empty, and silence is not a
     clear signal.
     """
-    key = os.environ.get("WP_API_KEY", "")
-    if not key:
+    if not ops_notify.configured():
         return
-    try:
-        request_json(API + "alert", {
-            "subject": "label relabel backlog is clear",
-            "body": "Today's classification spot-check held no relabel for review.",
-            "resolve_scope": HOLD_ALERT_SCOPE,
-        }, {"X-Layoff-API-Key": key}, attempts=2, timeout=45)
-    except Exception as exc:
-        print(f"could not post the relabel-hold recovery: {exc}")
+    ops_notify.resolve(
+        HOLD_ALERT_SCOPE,
+        "label relabel backlog is clear",
+        "Today's classification spot-check held no relabel for review.",
+        what="relabel-hold recovery")
 
 
 def main():

@@ -56,6 +56,11 @@ jobs:
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # The operational mailer. Since 2026-08-20 this job's alerts go out
+          # through Resend with the ops From line, not through the site's
+          # /alert route, which wp_mail hands to the reader newsletter's
+          # identity. Without this secret the job runs and says nothing.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           EDGAR_USER_AGENT: ${{ secrets.EDGAR_USER_AGENT }}
           # Dry run unless explicitly armed: the dispatch input wins, else the

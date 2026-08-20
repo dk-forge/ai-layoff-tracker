@@ -31,5 +31,10 @@ jobs:
           PYTHONUNBUFFERED: '1'
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # The operational mailer. Since 2026-08-20 this job's alerts go out
+          # through Resend with the ops From line, not through the site's
+          # /alert route, which wp_mail hands to the reader newsletter's
+          # identity. Without this secret the job runs and says nothing.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           LINK_CHECK_SAMPLE: ${{ github.event.inputs.sample || '60' }}
         run: python link_check.py

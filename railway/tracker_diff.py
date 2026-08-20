@@ -42,6 +42,7 @@ from sources.edgar import search_company_filings
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
+import ops_notify
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 FEEDS = [u.strip() for u in (os.environ.get("BENCHMARK_FEED_URLS") or "").split(",") if u.strip()]
@@ -347,9 +348,7 @@ def _email_recall_gap(missing, recall_pct, n_total):
     so a healthy day is silent. Never raises."""
     if recall_pct >= RECALL_ALERT_PCT or not missing:
         return
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key):
+    if not ops_notify.configured():
         return
     shown = sorted(missing, key=str.lower)[:RECALL_ALERT_MAX_NAMES]
     more = f" (first {len(shown)} of {len(missing)})" if len(missing) > len(shown) else ""
@@ -370,24 +369,19 @@ def _email_recall_gap(missing, recall_pct, n_total):
         '  "Run tracker_diff to chase the missing companies; for any still missing,',
         '   widen discovery and store the announced figure with an announced label."',
     ])
-    try:
-        requests.post(f"{site}/wp-json/layoffs/v1/alert",
-                      json={"subject": subject, "body": body},
-                      headers={"X-Layoff-API-Key": key, "User-Agent": UA["User-Agent"]},
-                      timeout=25)
+    # The names go to the inbox and nowhere else. The printed line carries the
+    # percentage and the count, which `assert_nameless` allows, and never a
+    # company. See ops_notify: it prints no subject and no body, ever.
+    if ops_notify.notify(subject, body, what="recall-gap alert"):
         print(f"recall-gap alert emailed to owner ({recall_pct}% recall, "
               f"{len(missing)} missing)")
-    except Exception as exc:
-        print(f"recall alert failed: {exc}")
 
 
 def _email_learning(vocab_misses, suggestions):
     """Owner-only learning digest: headlines our broad sweep could not see plus
     repeat-winner outlets, so vocabulary and allowlist growth is a one-line
     paste instead of detective work. Best-effort; never raises."""
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key):
+    if not ops_notify.configured():
         return
     lines = ["The daily chase resolved layoffs our own sweep missed. What to learn:\n"]
     if vocab_misses:
@@ -398,14 +392,9 @@ def _email_learning(vocab_misses, suggestions):
         lines += [f"  - {cnt}x {dom}" for dom, cnt in suggestions[:10]]
     lines.append("\nPaste into a Claude session: \"Adopt the outlet/vocabulary learnings from "
                  "today\'s tracker_diff learning email.\"")
-    try:
-        requests.post(f"{site}/wp-json/layoffs/v1/alert",
-                      json={"subject": "Tracker learning: wording/outlets our sweep missed",
-                            "message": "\n".join(lines)},
-                      headers={**UA, "X-ALT-KEY": key}, timeout=30)
+    if ops_notify.notify("Tracker learning: wording/outlets our sweep missed",
+                         "\n".join(lines), what="learning digest"):
         print("learning email sent to owner")
-    except Exception as exc:
-        print(f"learning email failed (non-fatal): {exc}")
 
 
 def run():
@@ -1323,9 +1312,7 @@ def _postmortem_lines(misses):
 def _email_rules(rules, facts, misses=None):
     """Owner-only. Every NAME in this whole module leaves through this one
     function and no other. Best-effort; never raises."""
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key) or not (rules or misses):
+    if not ops_notify.configured() or not (rules or misses):
         return False
     low, high = facts.get("recall_low_pct"), facts.get("recall_high_pct")
     band = f"{low}% to {high}%" if low is not None else "not measurable this run"
@@ -1363,18 +1350,14 @@ def _email_rules(rules, facts, misses=None):
         "  * Never put any name from this email into the repo, a commit message,",
         "    a log line or a test fixture. The lesson travels; the item does not.",
     ]
-    try:
-        requests.post(f"{site}/wp-json/layoffs/v1/alert",
-                      json={"subject": f"Tracker learning: {len(misses or [])} miss(es), "
-                                       f"{len(rules)} change(s) to make",
-                            "message": "\n".join(lines)},
-                      headers={**UA, "X-ALT-KEY": key}, timeout=30)
-        return True
-    except Exception:
-        # Never printed with a body: a failed send must not spill the names it
-        # was carrying into the Actions log.
-        print("learning email could not be delivered (non-fatal)")
-        return False
+    # THE ONE SINK. Every name this run read leaves here and nowhere else, and
+    # `tests/test_tracker_learning_leak.py` poisons a whole run to prove it.
+    # `ops_notify` never prints a subject or a body, so a failed send cannot
+    # spill the names it was carrying into the Actions log.
+    return ops_notify.notify(
+        f"Tracker learning: {len(misses or [])} miss(es), "
+        f"{len(rules)} change(s) to make",
+        "\n".join(lines), what="learning rules email")
 
 
 def parse_local_items(text):

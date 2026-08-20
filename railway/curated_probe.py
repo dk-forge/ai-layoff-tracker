@@ -129,6 +129,8 @@ from datetime import date, datetime, timezone
 
 import requests
 
+import ops_notify
+
 # ONE DEFINITION, IMPORTED RATHER THAN COPIED. These are the pure, tested
 # judgement functions the daily learning loop already uses: what headcount a
 # headline states, which employer it names, whether our rows answer it, whether
@@ -721,22 +723,22 @@ def render_report(items_seen, lessons, held, facts, fresh=None):
 
 
 def _email(report, facts):
-    """Owner-only. Best-effort; never raises, and never prints a body — a failed
-    send must not spill what it was carrying into the terminal."""
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key):
+    """Owner-only, and the ONLY sink any name in this run may reach.
+
+    Best-effort; never raises, and never prints a body. A failed send must not
+    spill what it was carrying into the terminal, which is why `ops_notify`
+    prints a fixed phrase and a delivery note and never the payload.
+
+    It goes through the operational sender rather than the site's `/alert`
+    route. That route hands the message to `wp_mail`, which the Brevo plugin
+    re-stamps with the reader newsletter's From line, so a private recall
+    report arrived looking like a public newsletter.
+    """
+    if not ops_notify.configured():
         return False
-    try:
-        requests.post(f"{site}/wp-json/layoffs/v1/alert",
-                      json={"subject": f"Curated recall probe: {facts.get('lessons')} lesson(s)",
-                            "message": report},
-                      headers={**UA, "X-ALT-KEY": key}, timeout=30)
-        return True
-    except Exception:
-        print("curated-probe: the lesson email could not be delivered (non-fatal); "
-              "the local report was still written")
-        return False
+    return ops_notify.notify(
+        f"Curated recall probe: {facts.get('lessons')} lesson(s)", report,
+        what="curated recall report")
 
 
 # --- the run ---------------------------------------------------------------

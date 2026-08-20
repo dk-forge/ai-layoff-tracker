@@ -28,6 +28,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http_retry import get_with_retry
+import ops_notify
 from source_health import report_source_health
 import spend
 
@@ -145,14 +146,10 @@ def _src_param(st):
 
 
 def _email(subject, body):
-    if not (SITE and KEY):
-        return
-    try:
-        requests.post(f"{SITE}/wp-json/layoffs/v1/alert",
-                      json={"subject": subject, "body": body},
-                      headers={"X-Layoff-API-Key": KEY, **UA}, timeout=25)
-    except Exception:
-        pass
+    """Through the one operational sender. See ops_notify for why the site's
+    `/alert` route stopped being an acceptable way to reach the owner: it
+    posted the audit under the reader newsletter's From line."""
+    ops_notify.notify(subject, body, what="source-verification audit")
 
 
 def main():
