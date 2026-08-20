@@ -83,6 +83,29 @@ class TheDetectorFiresBeforeAnythingTrustsIt(unittest.TestCase):
         self.assertEqual(backup_tables.scan_value(
             "source_reports", "evidence_hash", "b" * 64), [])
 
+    def test_a_url_may_carry_an_external_providers_hex_id(self):
+        """Adjudicated on the first live run. The row is quoted in backup_tables."""
+        self.assertEqual(backup_tables.scan_value(
+            "layoffs", "source_url",
+            "https://finnhub.io/api/news?id=" + "5" * 64), [])
+
+    def test_but_a_non_url_column_still_refuses_a_bare_token(self):
+        """The exemption is by column name, not by 'it looks like a URL'."""
+        for table, column in (("layoffs", "company"), ("layoffs", "excerpt"),
+                              ("layoffs", "dedup_hash"), ("layoffs", "roles"),
+                              ("company_directory", "aliases"),
+                              ("digest_editions", "sections")):
+            with self.subTest(f"{table}.{column}"):
+                self.assertTrue(
+                    backup_tables.scan_value(table, column, "x " + "a" * 64),
+                    f"{table}.{column} stopped refusing a bare 64-hex token")
+
+    def test_no_subscriber_token_column_is_reachable_at_all(self):
+        """The reason the URL exemption is safe, asserted rather than argued."""
+        for spec in backup_tables.TABLES.values():
+            for banned in ("confirm_token", "unsub_token"):
+                self.assertNotIn(banned, spec["columns"])
+
 
 class TheTableAllowlistIsTheBoundary(unittest.TestCase):
 

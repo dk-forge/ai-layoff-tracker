@@ -223,9 +223,34 @@ _TOKEN64 = re.compile(r"\b[a-f0-9]{64}\b")
 
 # Columns whose values are legitimately 64-hex and are NOT tokens. Listed one by
 # one; there is no pattern-based escape from the token rule.
+#
+# THE URL ENTRIES WERE ADJUDICATED, NOT ASSUMED. The first live run of this
+# export stopped on `layoffs.source_url: a 64-hex token-shaped string`, which is
+# the guard doing its job. The row was
+#
+#   id=177145  source_name='Yahoo'
+#   https://finnhub.io/api/news?id=58420ea0...3c3bfa
+#
+# a Finnhub article identifier that happens to be a sha256-shaped digest. One
+# row in 11,800 scanned. A URL column can legitimately carry an external
+# provider's hex id, and a SUBSCRIBER token can never reach one of these:
+# `confirm_token` and `unsub_token` exist only in wp_alt_subscribers, which is
+# not exportable, and the digest's own click wrapper stores the PLAIN
+# destination (alt_digest_track_link) with the per-recipient part built at
+# render time and never written down. So the exemption is correct and it is
+# narrow: it covers URL columns by name, one at a time, and every non-URL
+# column in every exported table still refuses a bare 64-hex string.
 _HASH_COLUMNS = frozenset({
     ("source_reports", "evidence_hash"),
     ("warn_transparency", "evidence_hash"),
+    # URL columns: an external provider's hex identifier is not our token.
+    ("layoffs", "source_url"),
+    ("source_reports", "source_url"),
+    ("warn_transparency", "source_url"),
+    ("warn_transparency", "adjudication_url"),
+    ("archive", "source_url"),
+    ("archive", "archived_url"),
+    ("digest_links", "url"),
 })
 
 # `source_url` and `adjudication_url` can legitimately carry an address inside a

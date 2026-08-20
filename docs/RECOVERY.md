@@ -272,6 +272,20 @@ content. This is layer three and it is a denylist, so it may be a false positive
 on public source text, but **a human decides that, not the job**. The artifact
 was not published. Nothing was leaked.
 
+Adjudicate it like this, which is what happened the first time it fired:
+
+1. Find the actual value. The refusal names the table and column but never the
+   value, because the log is public. Query the live API for that column.
+2. Decide what it is. The first firing was
+   `layoffs.source_url: a 64-hex token-shaped string`, one row in 11,800:
+   `https://finnhub.io/api/news?id=<sha256-shaped>`, a news provider's article
+   identifier. Benign.
+3. Narrow the exemption **by column name, one at a time**, and write the
+   evidence into the comment above it in `railway/backup_tables.py`. Never
+   loosen the pattern, and never exempt a column class.
+4. Add a test that the exemption did not widen: a bare token in a NON-exempt
+   column of the same table must still fire.
+
 ---
 
 ## 7. What a full reimage looks like, in order
