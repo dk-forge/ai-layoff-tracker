@@ -163,6 +163,15 @@ FORBIDDEN = (
     # Supply chain: nobody unattended refreshes a hash-pinned lock.
     "railway/requirements.lock",
     "railway/requirements-min.lock",
+    # The judge of whether a SOURCE is healthy, and its state ledger. The
+    # healer may fix a COLLECTOR; it may never edit the thing that decides a
+    # collector is broken. Every dark source can be made to look fixed by
+    # loosening a threshold, widening a cadence, or writing UNAVAILABLE into
+    # the ledger — and that turns every real outage green, which is the exact
+    # shape of the defect this module was added for (a count floor hid Kansas
+    # for five months). HEALTHY/BROKEN/UNAVAILABLE is a human's call.
+    "railway/source_freshness.py",
+    "railway/source_state.json",
     # The session baton.
     "docs/HANDOFF.md",
     # The healer itself — its workflow, its gate and guard, and the test that

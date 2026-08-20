@@ -434,6 +434,116 @@ and we hold 799. That 63-row gap is entirely outside the 15-month window and is 
 history question, not a freshness one. Separately, Kansas reporting `ok` through
 110 genuinely empty days is a health-signal question, which is the per-state
 freshness tripwire's job, not this fetcher's.
+## 2026-08-19 - the count floor could not see a frozen archive: a per-source freshness tripwire, a three-state ledger, and the collectors nobody had ever looked at
+
+**Kansas had looked green for 110 days while publishing nothing.** Every WARN
+tripwire in this repo asked one question - "did the scraper return notices?" -
+and answered it against a committed high-water COUNT floor. A collector
+re-reading a frozen archive returns its full history every run, clears the
+floor, and reports healthy forever. Measured against the live table on
+2026-08-19: KS last effective date 2026-05-01 (110d), MI 2026-05-30 (81d), MN
+2026-07-01 (49d), IN 2026-07-21 (29d). Same shape as `credential=ABSENT` and
+`0 sent of 0 eligible`: a signal that is true, complete and says nothing.
+
+**The threshold is per source and derived from that source's own history,
+because a calendar ceiling cannot work here.** The same measurement found North
+Dakota 216 days quiet and Montana 29, both legitimate at 4.5 and 6.4 notices a
+year. `railway/source_freshness.py` judges each source through two gates that
+must BOTH agree: rarity (Poisson `P(0) = exp(-rate*days)`) and cadence
+(`days_dark` must exceed 1.25x that source's own 90th-percentile gap). Neither
+gate is redundant. Cadence is what holds Texas back - 226/yr makes a nine-day
+lull read p=0.0038 - and it is what makes Mississippi's quarterly silence
+ordinary BY ITS OWN DATA with no hard-coded exemption. Rarity is what holds
+North Dakota back, whose 216 days DOES exceed its cadence bar.
+
+**THE FIRST CUT PRODUCED A FALSE POSITIVE, AND FIXING IT IS THE MOST USEFUL
+THING IN THIS ENTRY.** It called Kansas dark with apparent certainty. A
+collector audit then found the register holds 910 rows, newest 2026-05-01, and
+that we already hold every notice in the fetch window. Nothing was missing.
+Kansas had not filed since May. The certainty came from the DENOMINATOR: a rate
+averaged over all history reads 33/yr and makes 110 days impossible, while the
+trailing-year rate reads 12.5/yr and makes it a 2.3% event. Filing rates drift,
+so a long-run average will keep condemning states that have genuinely slowed,
+and every one of those is a false alarm that teaches the owner to ignore the
+channel. That is this defect arriving from the other direction.
+
+**So the rate is trailing and quiet is not broken.** The RATE is fitted over
+the trailing 365 days ending at the last observation; the CADENCE keeps a
+1095-day window, because burstiness is stable and a gap distribution needs
+samples a sparse state cannot produce in a year. Both rates are reported, so a
+SLOWDOWN is visible as itself. And there are two thresholds, not one:
+`ALPHA_DARK = 0.01` opens an incident and emails; `ALPHA_QUIET = 0.05` is an
+advisory tier that is printed and digested but NEVER emailed as a breakage and
+NEVER recorded BROKEN.
+
+**What survives, on the six states' real dates:** MI 81d 72.2/yr p=1.1e-07 and
+MN 49d 76.6/yr p=3.4e-05 are BROKEN - independently confirmed, Michigan's API
+caps its own window and Minnesota's older templates parse to zero. KS
+(p=0.023) and IN (p=0.035) are QUIET. MS passes on its quarterly cadence and NE
+on rarity (p=0.166). Nothing else in 45 judged states fires at either
+threshold, and ALPHA_QUIET is not raised to 0.10 because that costs North
+Dakota (p=0.0714).
+
+**Proved by MUTATION in both directions.** `tests/test_source_freshness.py`
+freezes MI's and MN's real dates and asserts the OLD count check PASSES them
+(floor == frozen count, and the ratchet records the collapse as normal) while
+the new one FAILS; that appending one fresh date clears it, so a check that
+returned FAIL unconditionally could not pass; and - the most valuable assertion
+in the file - that Kansas is QUIET, that its long-run rate WOULD have called it
+broken, and that a quiet reading neither opens nor clears an incident. A
+detector that cannot produce a false positive on the one case we know is a
+false positive has not been tested.
+
+**Three states, not two, and only a human moves a source into UNAVAILABLE.**
+`railway/source_state.json` (committed, like `alert_state.json`) holds
+HEALTHY / BROKEN / UNAVAILABLE. A BROKEN source keeps `first_detected` forever
+and its age climbs until somebody fixes or classifies it; UNKNOWN never clears
+BROKEN; UNAVAILABLE is never re-judged by a machine. Seeded with the seven
+sources that cannot be collected (AR, NH, WY, PR, GU, VI, OK), each with a
+reviewer, a reason and a date. The concurrent-push merge keeps the EARLIER
+`first_detected`, so a race cannot reset a broken source's clock.
+
+**The other bug, which is worse and was invisible: a collector that never
+reports AT ALL.** Every guard here iterates the health ledger, so a thing
+missing from it reads as "no problem" rather than "never looked at".
+`railway/source_inventory.py` builds the inventory from what SHOULD exist - the
+56 US jurisdictions, and the `meta{}` registry in `assets/health.js` - and
+diffs it against the live ledger. Two declared collectors have NEVER reported:
+`earnings_ingest` (declared on the public health page, appears in no workflow
+and no module) and `digest_weekly` (its weekly liveness pass has never
+completed). 48 of 56 jurisdictions have a collector; the 8 without are the
+seven UNAVAILABLE plus AS/MP, which have no WARN programme.
+
+**It reaches the owner through the machinery that already exists.**
+`source_alert.py` composes a payload and hands it to `alert_state.claim` and
+`ci_alert.deliver` - Resend, off the host being reported about. The cause key
+is the source plus the reason class and deliberately NOT the day count, which
+changes every morning and would defeat dedup entirely. A backlog is ONE email
+with a block per source, each carrying its own paste-ready line; the subject
+leads with `United States - Kansas WARN` because a list of subjects that all
+start the same way is a list of identical subjects. Also folded into `warn_us`
+health (so the weekly digest carries it), `ops_status [2b]/[2c]`, and one
+issue, never one per source.
+
+**INDEPENDENTLY CONFIRMED, WHICH IS THE PART THAT MAKES THE CALIBRATION
+TRUSTWORTHY.** A separate collector review of the same three states (entry
+above, 2.20.125) reached the same three verdicts from a completely different
+method - reading the registers rather than the dates. Kansas: the listing is
+served oldest-first and the per-run bound was applied in listing order, so the
+collector returned the 150 OLDEST every run; with that fixed the newest notice
+is still 2026-05-01, because the state genuinely has not filed since. QUIET,
+which is what this detector says. Minnesota: 40-odd PDFs answer HTTP 200 and
+parse to zero against an older template. Michigan: 23 of 111 dated records
+dropped on an empty company title. BROKEN and BROKEN, which is what this
+detector says. A statistical judge that agrees with a manual audit on all three,
+including the one that is NOT a defect, is a judge worth wiring to an inbox.
+
+**Detection only. No healing shipped, deliberately.** A partially wired healer
+looks like protection. `railway/source_freshness.py` and
+`railway/source_state.json` are in `self_heal.py` FORBIDDEN: a healer may fix
+the collector, never the judge, because every dark source can be made to look
+fixed by loosening a threshold.
+
 
 ## 2026-08-19 - the digest editorial pass: a basis that cannot drift, a comparison that says it is provisional, and the two promises the emails were not keeping, 2.20.123
 
