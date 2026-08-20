@@ -19,21 +19,21 @@
   "backlog_oldest": "2026-08-18",
   "countries": {
     "Argentina": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE PUBLISHED. The counts that circulate in the press come from Ley 27.275 freedom-of-information requests, and the ministry FORMALLY REFUSED the breakdown by workers, sector and geography under art. 5. So this is a FOIA play, not a scrape, and the cost of the sample is a legal request per period rather than a fetch",
       "assessed": "2026-08-18",
       "authority": "Secretaria de Trabajo",
       "cite": "https://www.argentina.gob.ar/servicio/iniciar-procedimiento-preventivo-de-crisis-de-empresa-ppce",
       "class": "regime_no_aggregate",
       "entries": 0,
-      "jobs": 528,
+      "jobs": 548,
       "regime": "Procedimiento Preventivo de Crisis \u2014 Ley 24.013 arts. 98-105. Structurally the closest thing to a US WARN notice anywhere in Latin America: threshold-gated and filed before the dismissals",
       "state": "not_measurable",
       "stored_name": "Argentina",
       "threshold": "more than 15% of the workforce in firms under 400, more than 10% in 400-1000, more than 5% above 1000"
     },
     "Australia": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE FOUND \u2014 but this negative is weaker than Germany's and is labelled so rather than levelled up. Both obvious verification routes were unavailable: data.gov.au carries a blanket 'User-agent: * / Disallow: /' with no alternative, and servicesaustralia.gov.au reset every connection. So this is an inference from an incomplete search, not a completed check",
       "assessed": "2026-08-18",
       "authority": "the Chief Executive Officer of the Commonwealth Services Delivery Agency (Centrelink / Services Australia)",
@@ -47,7 +47,7 @@
       "threshold": "15 or more employees"
     },
     "Austria": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE located. AMS's own statistics host iambweb.ams.or.at carries a blanket robots.txt disallow, so the search was confined to what is reachable elsewhere \u2014 this classification is therefore weaker than Germany's and should be re-checked before it is quoted",
       "assessed": "2026-08-18",
       "authority": "Arbeitsmarktservice (AMS), 30 days before the dismissals",
@@ -61,7 +61,7 @@
       "threshold": "banded within 30 days: 5 in an establishment of 21-99; 5% in 100-599; 30 in 600+; or 5 workers aged 50+ regardless of size"
     },
     "Bangladesh": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE located at dife.gov.bd, dol.gov.bd or bbs.gov.bd",
       "assessed": "2026-08-18",
       "authority": "a copy of the notice goes to the Inspector General (DIFE) and the collective bargaining agent",
@@ -75,7 +75,7 @@
       "threshold": "per worker with at least one year's continuous service, one month's notice or pay in lieu. There is NO mass threshold, so the duty is individual rather than collective and would not produce an event count even if published"
     },
     "Belgium": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED, and derived directly from the notifications: firms announcing intent, firms notifying a project, and workers affected, by month, region, province and sector, back to 2009. PDF only, no CSV/XLSX/API, released quarterly as a cumulative year-to-date file with per-month detail inside, roughly 6-7 weeks after period end. Verified live on 2026-08-18: HTTP 200, 646,655 bytes, application/pdf. NEAR-MISS to exclude: 'entreprises en restructuration reconnues' is a benefit-eligibility recognition covering firms too small for CCT 24, a different population",
       "assessed": "2026-08-18",
       "authority": "the directeur of the subregional employment service (VDAB / FOREM / Actiris) and the President of the SPF Emploi management committee. ONEM/RVA does NOT receive the notification; its role is downstream benefit administration",
@@ -83,7 +83,7 @@
       "class": "regime_with_aggregate",
       "denominator_basis": "national_notification_aggregate",
       "entries": 0,
-      "jobs": 230131,
+      "jobs": 229941,
       "regime": "Licenciement collectif \u2014 CCT n.24 of 2 Oct 1975 art. 2 with the AR of 24 May 1976 (filing plus a 30-day standstill), and the loi du 13 fevrier 1998 ('loi Renault') ch. VII artt. 62-70 for the procedural and sanction layer",
       "state": "measured",
       "stored_name": "Belgium",
@@ -98,7 +98,7 @@
       "stored_name": "Bosnia and Herzegovina"
     },
     "Botswana": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "NO PERIODIC PUBLICATION, but the count demonstrably EXISTS and is disclosed ad hoc, which is a different and more hopeful state than Germany's. Answering a parliamentary question in February 2023 the Minister of Labour and Home Affairs stated that 1,170 companies had submitted notifications of intention to retrench between January 2019 and January 2023, with 3,680 workers losing jobs \u2014 reported by the government's own Daily News, and naming NO companies. A later PQ reportedly gives 700 companies / 5,392 employees for January 2024 to May 2026 and is UNVERIFIED. There is no cadence, no stable unit and no format, so this is not a published series. It is the best 'one request away from an aggregate' candidate found anywhere: the realistic route is a direct ministry request or a Hansard trawl of the recurring question, not a scrape. NEAR-MISSES REJECTED: Statistics Botswana's Quarterly Labour Force Module and Formal Employment Stats Brief are survey and stock series",
       "assessed": "2026-08-19",
       "authority": "the Commissioner of Labour, Ministry of Labour and Home Affairs",
@@ -112,7 +112,7 @@
       "threshold": "NONE \u2014 AND THAT IS THE FINDING. The duty attaches to the INTENTION to reduce, with no minimum number of dismissals and no minimum employer size, which is a broader trigger than US WARN, than Directive 98/59/EC, and than South Africa's s.189A. Botswana's Commissioner therefore holds a thresholdless national dataset"
     },
     "Brazil": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE, and there is nothing for one to be derived from. NEAR-MISS, excluded with its magnitude stated: Novo CAGED is monthly at roughly a 1.5-month lag and counts EVERY separation \u2014 quits, deaths, retirements, end-of-term \u2014 as individual contract events with no collective flag, no employer grouping and no threshold. Using it as a layoff denominator would overstate by roughly two orders of magnitude",
       "assessed": "2026-08-18",
       "authority": null,
@@ -126,7 +126,7 @@
       "threshold": null
     },
     "Bulgaria": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, and read verbatim out of a bulletin rather than summarised: the Employment Agency's Periodichni byuletini carry EMPLOYERS FILING and WORKERS COVERED \u2014 '68 rabotodateli sa podali uvedomleniya za masovi uvolneniya na 5336 litsa' for January-June 2011, with a May 2011 peak of 18 employers / 2,097 workers. Quarterly cumulative (Jan-Mar / Jan-Jun / Jan-Sep) plus monthly bulletins and annual reviews, 2008 through 2026, one to two months behind. Sector breakdown only \u2014 no employer names. THE READABLE PART IS THE OLD PART: bulletins up to roughly 2012 render inline as HTML and were read; recent ones are file-link pages whose PDFs sit under /web/, which robots disallows",
       "assessed": "2026-08-19",
       "authority": "Agenciya po zaetostta (Employment Agency)",
@@ -150,21 +150,21 @@
       "stored_name": "Cambodia"
     },
     "Canada": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE. A claim reached this register that Quebec publishes a monthly PER-EMPLOYER register \u2014 a WARN-equivalent, which would have been the only one outside the US \u2014 and it is CONTRADICTED. The whole quebec.ca sitemap was enumerated (10,781 URLs) and exactly three pages mention licenciement: the submission form, the employer guidance, and its parent. No register, no listing, no statistics page; the old Emploi-Quebec site now redirects. Federally, open.canada.ca returns nothing for group termination, licenciement collectif or layoff notice. Provinces other than Ontario and Quebec were not checked",
       "assessed": "2026-08-18",
       "authority": "federal: 'the Head' in writing, with a copy to the Minister of Employment and Social Development and the Canada Employment Insurance Commission. Quebec: the ministre de l'Emploi et de la Solidarite sociale",
       "cite": "https://laws-lois.justice.gc.ca/eng/acts/L-2/section-212.html",
       "class": "regime_no_aggregate",
-      "entries": 480,
-      "jobs": 127340,
+      "entries": 80,
+      "jobs": 127317,
       "regime": "Group termination \u2014 Canada Labour Code s.212(1) for federally regulated employers, verified verbatim against the Justice Laws consolidation, PLUS separate provincial regimes: Ontario ESA Form 1, and Quebec's Loi sur les normes du travail RLRQ c. N-1.1 artt. 84.0.1 and 84.0.4, verified against LegisQuebec",
       "state": "not_measurable",
       "stored_name": "Canada",
       "threshold": "federal: 50 or more within any 4-week period, at least 16 weeks ahead. Quebec: 10 or more over 2 consecutive months, with 8, 12 or 16 weeks' notice by size"
     },
     "Chile": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED. 'Trabajadores involucrados con un unico empleador registrado en cartas de aviso de termino de contrato', monthly PDF back to 2020-01, roughly a two-month lag, broken out by causal (including art. 161 inc. 1), sector, firm size and region. THREE LIMITS THAT MUST TRAVEL WITH IT: it is WORKER-level, not event-level \u2014 no employer grouping and no threshold, so it can never be matched against our rows as events; it is dated by month of REGISTRATION, not effective termination; and the Direccion del Trabajo itself warns a registered notice may not result in an actual termination. Describe it as an economic-dismissal WORKER denominator, never as layoff events",
       "assessed": "2026-08-18",
       "authority": "Inspeccion del Trabajo / Direccion del Trabajo",
@@ -184,13 +184,13 @@
       ],
       "class": "unassessed",
       "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
-      "entries": 500,
+      "entries": 0,
       "jobs": 16190,
       "state": "unknown",
       "stored_name": "China"
     },
     "Colombia": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE FOUND. datos.gov.co returns zero matching datasets. mintrabajo.gov.co was unreachable, so the ministry's own microsite is UNKNOWN rather than checked, and this negative is labelled weaker for it",
       "assessed": "2026-08-18",
       "authority": "Ministerio del Trabajo",
@@ -204,7 +204,7 @@
       "threshold": "over 6 months, sliding by size: 30% in firms of 10-50, down to 5% above 1000"
     },
     "Croatia": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED but ANNUAL and PDF only, which is too coarse to serve as a denominator for a tracker reporting monthly. Recorded here as a published total because it is one; it is not a build candidate",
       "assessed": "2026-08-18",
       "authority": "Hrvatski zavod za zaposljavanje (HZZ)",
@@ -219,7 +219,7 @@
       "threshold": "20 or more workers within 90 days"
     },
     "Cyprus": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "UNDETERMINED \u2014 the ministry host blocks us, so we cannot say whether a count is published. Recorded as refused rather than as 'no aggregate', which would be an unearned negative",
       "assessed": "2026-08-18",
       "authority": "the Ministry of Labour and Social Insurance",
@@ -243,7 +243,7 @@
       "stored_name": "Czechia"
     },
     "Denmark": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED. Monthly count of persons AND companies varslet, by region, municipality and DB07 industry, back to 2007-01, released on the 7th business day. CONSTRAINT, stated rather than smoothed over: the figure is readable without a credential only as HTML or a PowerBI export; api.jobindsats.dk answers 401 'Missing bearer token'. So an unattended pipeline would need either a credential we do not have or a materially more brittle scrape than Sweden's plain .xlsx",
       "assessed": "2026-08-18",
       "authority": "Det Regionale Beskaeftigelsesraad, administered via STAR",
@@ -258,7 +258,7 @@
       "threshold": "10 in an establishment of 20-99; 10% in 100-299; 30 in 300+, within 30 days"
     },
     "Estonia": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, and already being read: avaandmed.eesti.ee carries koondamisteated (recipients of collective redundancy notices) as an open dataset, monthly, by county, and railway/national_denominators.py's estonia_series() has been collecting it since 2026-08-18. Licence CC BY-NC 3.0, so it MEASURES and is never republished to a reader-facing surface. The series is revised back to the start of the previous calendar year at every release",
       "assessed": "2026-08-19",
       "authority": "Eesti Tootukassa (Unemployment Insurance Fund)",
@@ -274,21 +274,21 @@
       "threshold": "within 30 calendar days: 5 workers where the employer averages up to 19 employees; 10 where 20-99; 10% where 100-299; 30 where 300+. NOTE the 5-worker floor, which like Sweden's sits BELOW the Directive minimum, so the Estonian count covers a wider population than Croatia's at 20 and the two must never be summed"
     },
     "Finland": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE. The complete StatFin 'tyonv' table list was enumerated through the PxWeb API on 2026-08-18 and contains no muutosneuvottelut table. NEAR-MISS: the fully-furloughed stock series is short-time work, not dismissal",
       "assessed": "2026-08-18",
       "authority": "the TE office / employment authority",
       "cite": "https://www.finlex.fi/fi/laki/ajantasa/2021/20211333",
       "class": "regime_no_aggregate",
       "entries": 0,
-      "jobs": 167107,
+      "jobs": 166557,
       "regime": "Muutosneuvottelut (formerly yhteistoimintaneuvottelut) \u2014 laki yhteistoiminnasta yrityksissa (1333/2021), with notification to the employment authority",
       "state": "not_measurable",
       "stored_name": "Finland",
       "threshold": "employers of 20 or more; 10 or more workers triggers the longer process"
     },
     "France": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "EXISTS AND IS PUBLISHED \u2014 DARES issues the PSE series (procedures and employees concerned) quarterly as XLSX \u2014 AND WE MAY NOT FETCH IT. This is the largest single loss in the register: France is our fifth-largest country by volume and the figure is exactly the right shape. No crawlable mirror exists: the DARES organisation on data.gouv.fr carries 35 datasets and none is PSE, the one 'licenciements economiques' dataset there is abandoned with a 2010Q4 file on a dead host, and the POEM portal's PSE page returns HTTP 500 with no PSE export in its catalogue",
       "assessed": "2026-08-18",
       "authority": "DREETS (the regional directorate), which validates or homologates",
@@ -305,21 +305,21 @@
       "threshold": "10 or more dismissals within 30 days in a firm of 50 or more"
     },
     "Germany": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE. The Bundesagentur fur Arbeit's own complete Fachstatistiken publication calendar was enumerated on 2026-08-18 and contains no product for Entlassung / Massenentlassung / KSchG at all \u2014 the s.17 filings appear to be purely administrative. This establishes that no REGULAR SERIES exists; it does not rule out ad hoc Sonderauswertungen or parliamentary answers, neither of which would be a usable denominator. NEAR-MISS, excluded explicitly: BA does publish 'Realisierte Kurzarbeit', which is SHORT-TIME WORK and not dismissal. Germany is our fourth-largest country by volume, so this is a significant and deliberate blank",
       "assessed": "2026-08-18",
       "authority": "the Agentur fur Arbeit for the establishment, before the dismissals",
       "cite": "https://www.gesetze-im-internet.de/kschg/__17.html",
       "class": "regime_no_aggregate",
       "entries": 150,
-      "jobs": 1675894,
+      "jobs": 1671794,
       "regime": "Massenentlassungsanzeige \u2014 s.17(1) and (3) Kundigungsschutzgesetz (KSchG)",
       "state": "not_measurable",
       "stored_name": "Germany",
       "threshold": "per establishment within 30 days: more than 5 where 21-59 employees; 10% or more than 25 where 60-499; at least 30 where 500+"
     },
     "Greece": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE isolating collective dismissal. The ERGANI system publishes monthly hiring and separation FLOWS, which is a near-miss: it does not break out collective dismissals, and a total separations figure is not a collective-dismissal denominator",
       "assessed": "2026-08-18",
       "authority": "the Ministry of Labour / the Supreme Labour Council (ASE)",
@@ -349,7 +349,7 @@
       "stored_name": "Hungary"
     },
     "Iceland": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, monthly, as a news post 1-3 days after month end. railway/national_denominators.py holds it NOT BUILDABLE, and ONE LEG OF THAT REASONING IS NOW WRONG AND IS CORRECTED HERE: it states that a month with no collective redundancies gets no post at all, so absence could never be told from zero. Verified on 2026-08-19, the post 'Hopuppsagnir i juli 2026' exists and says 'Engin tilkynning um hopuppsogn barst Vinnumalastofnun i juli' \u2014 a zero month IS posted. The other leg stands and is enough on its own: the figure is unarchived prose in a news feed, so a series would be our accumulation rather than the publisher's. Corrected rather than quietly fixed, per RUNBOOK",
       "assessed": "2026-08-19",
       "authority": "Vinnumalastofnun (Directorate of Labour)",
@@ -367,7 +367,7 @@
       "class": "unassessed",
       "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
       "entries": 14529,
-      "jobs": 139611,
+      "jobs": 127611,
       "state": "unknown",
       "stored_name": "India"
     },
@@ -380,7 +380,7 @@
       "stored_name": "Indonesia"
     },
     "Ireland": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "UNDETERMINED, because the department's own host blocks us. What is known: the Redundancy Payments Scheme statistics are a NEAR-MISS (payment claims, not notifications) and must not be used. Whether DETE publishes a count of s.12 notifications could not be established from what remains reachable",
       "assessed": "2026-08-18",
       "authority": "the Minister for Enterprise, Trade and Employment (DETE)",
@@ -404,7 +404,7 @@
       "stored_name": "Isle of Man"
     },
     "Israel": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "UNKNOWN rather than established absent, and the distinction is kept: taasuka.gov.il, which is the receiving authority and therefore the only body that could publish it, returns 403 to all automated clients. NEAR-MISS to reject if anyone re-checks: nevo.co.il bans GPTBot, Google-Extended, Perplexity and '*' outright",
       "assessed": "2026-08-18",
       "authority": "the competent Employment Service bureau",
@@ -418,7 +418,7 @@
       "threshold": "10 or more workers, a FLAT threshold regardless of firm size \u2014 unlike almost every other regime here, which bands by size"
     },
     "Italy": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "UNDETERMINED, and the honest answer changed during this assessment. An earlier pass recorded 'the Comunicazioni Obbligatorie report folds collective dismissal into an undifferentiated Licenziamento total'. THAT CLAIM IS WITHDRAWN: it was never actually checked, and it cannot now be checked, because the report lives on a host that names ClaudeBot and disallows it. Having no positive evidence that a count is published is NOT the same as having verified that none is, and Italy is recorded as the second \u2014 refused \u2014 rather than the first. NEAR-MISS that remains true and excluded either way: CIG/CIGS hours authorised (D.Lgs 148/2015) is short-time work, not dismissal",
       "assessed": "2026-08-18",
       "authority": "the competent regional office (Regione / Ispettorato Territoriale del Lavoro), or the Ministero del Lavoro where units span more than one region \u2014 unverified against primary text",
@@ -434,7 +434,7 @@
       "threshold": "reported as more than 15 employees and at least 5 dismissals within 120 days in one province \u2014 UNVERIFIED, see regime"
     },
     "Japan": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "NONE TODAY \u2014 and this is a 'had a count and lost it', which is a different fact from Germany's 'never had one' and is recorded as such. MHLW ran a MONTHLY national release carrying establishments filing and workers separating: April 2011, 184 establishments / 8,811 workers; June 2012, 103 / 6,813; September 2012, 175 / 13,425. The series runs roughly 2009 to late 2012, no instance from 2013 or later was found, and the 2012 pages now return 404 \u2014 it is retired and being deleted. e-Stat was queried directly and returns ZERO results for \u5927\u91cf\u96c7\u7528\u5909\u52d5, so the figure is not inside \u8077\u696d\u5b89\u5b9a\u696d\u52d9\u7d71\u8a08 either, and the \u52b4\u50cd\u5e02\u5834\u5e74\u5831 that might have carried it was abolished after FY2018. Whether MHLW still compiles the count internally and simply does not publish it is UNKNOWN. NEAR-MISSES REJECTED, each named: \u96c7\u7528\u8abf\u6574\u52a9\u6210\u91d1 subsidises RETAINING workers through short-time work, so counting it inverts the sign; \u52b4\u50cd\u7d4c\u6e08\u52d5\u5411\u8abf\u67fb and \u96c7\u7528\u52d5\u5411\u8abf\u67fb are employer SURVEYS; \u96c7\u7528\u4fdd\u967a\u4e8b\u696d\u5e74\u5831 counts all separations from all causes; and the COVID-era \u96c7\u7528\u3078\u306e\u5f71\u97ff series (weekly from 2020 to early 2023) was a labour-bureau soft count of EXPECTED dismissals gathered by interview, not the art. 27 register",
       "assessed": "2026-08-19",
       "authority": "\u516c\u5171\u8077\u696d\u5b89\u5b9a\u6240\u9577 (the head of the Hello Work office), under MHLW",
@@ -448,7 +448,7 @@
       "threshold": "30 or more separations from one establishment within one month"
     },
     "Jersey": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE. opendata.gov.je returns 'No datasets found for redundancy'. The small-jurisdiction hypothesis \u2014 that a complete published list might exist where the numbers are tiny \u2014 was tested here and did not hold",
       "assessed": "2026-08-18",
       "authority": "the Minister for Social Security",
@@ -462,7 +462,7 @@
       "threshold": "12 or more employees at one establishment within 30 days"
     },
     "Kenya": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE FOUND, and UNKNOWN at the statistical office: knbs.or.ke serves a JavaScript bot challenge and has an expired TLS certificate, and kenyalaw.org returns 403. Neither was bypassed",
       "assessed": "2026-08-18",
       "authority": "the labour officer of the area \u2014 DECENTRALISED, which likely explains the absence of any national aggregate",
@@ -476,7 +476,7 @@
       "threshold": "NONE. The duty bites on a single redundancy, so it would not yield an event count comparable with any threshold-gated regime here even if published"
     },
     "Kuwait": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "NONE. NEAR-MISSES REJECTED: art. 8's annual headcount return is a STOCK of employees, not separations; and Kuwait's labour figures reach ILOSTAT through a Labour Force Sample Survey",
       "assessed": "2026-08-19",
       "authority": null,
@@ -491,7 +491,7 @@
       "threshold": null
     },
     "Latvia": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED. NVA reports the count of employer notifications and the workers covered \u2014 42 notifications covering 2,279 workers in 2024; 79 in 2020, 40 in 2019, 32 in 2018 and 32 in 2021 \u2014 through its own news and annual labour-market reporting. NOT BUILDABLE as a series: railway/national_denominators.py records it as prose inside an annual PDF roughly six months behind, which would cost a PDF dependency in a hash-pinned lock for one country and parse brittle prose to boot. Published is not the same as buildable and this register records the first",
       "assessed": "2026-08-19",
       "authority": "Nodarbinatibas valsts agentura (NVA, State Employment Agency)",
@@ -506,7 +506,7 @@
       "threshold": "within 30 days: at least 5 workers where the employer normally employs more than 20 and fewer than 50; at least 10 where more than 50 and fewer than 100; at least 10% where 100-299; at least 30 where 300+. s.107(1): collective redundancy may not begin earlier than 30 days after the notification is filed"
     },
     "Lithuania": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "UNDETERMINED. A published series is plausible \u2014 the employment service is the notified authority and publishes other labour series \u2014 but it could not be verified",
       "assessed": "2026-08-18",
       "authority": "Uzimtumo tarnyba (the employment service)",
@@ -522,7 +522,7 @@
       "threshold": "banded from 10 workers over 30 days, per the Directive floor"
     },
     "Luxembourg": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE located in ADEM's published series",
       "assessed": "2026-08-18",
       "authority": "ADEM and the Comite de conjoncture",
@@ -536,7 +536,7 @@
       "threshold": "7 dismissals over 30 days, or 15 over 90 days"
     },
     "Malaysia": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE derived from the PK filings. NEAR-MISS: PERKESO's Employment Insurance System 'Loss of Employment' series is monthly and good quality, but it counts INSURANCE CLAIMS rather than employer notifications and covers a different population",
       "assessed": "2026-08-18",
       "authority": "the nearest Jabatan Tenaga Kerja (JTK/JTKSM) office",
@@ -550,7 +550,7 @@
       "threshold": "filed 30 days before retrenchment for Parts I-IV; covers retrenchment, VSS, temporary lay-off and wage reduction"
     },
     "Malta": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE located. Both nso.gov.mt and dier.gov.mt sit behind a Cloudflare wall, so as with Austria this is a weaker negative than Germany's",
       "assessed": "2026-08-18",
       "authority": "the Director of Industrial and Employment Relations (DIER)",
@@ -564,7 +564,7 @@
       "threshold": "10 in establishments of 20-99; 10% in 100-299; 30 in 300+, over 30 days"
     },
     "Mexico": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE FOUND. NEAR-MISS to reject: IMSS insured-employment change is a NET employment series and says nothing about dismissals specifically",
       "assessed": "2026-08-18",
       "authority": "the Tribunal Laboral (formerly the Junta de Conciliacion y Arbitraje)",
@@ -586,7 +586,7 @@
       "stored_name": "Morocco"
     },
     "Netherlands": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED ANNUALLY AS PROSE, and this OVERTURNS the register's previous position that the Netherlands was blocked outright. UWV's own press release \u2014 on uwv.nl/nl/persberichten, which its robots.txt permits \u2014 states '355 bedrijven deden een melding, het hoogste aantal in 10 jaar', 42% more notifications than 2024, 'bijna 25.000 werknemers' and 36% more workers. Verified on 2026-08-19. What IS refused is the SERIES, not the figure: UWV's robots.txt disallows exactly one path, /nl/webpublicaties, which is where a WMCO series would live, and the current reports on cao.minszw.nl sit behind an Anubis proof-of-work interstitial. So the Netherlands publishes a countable total that we may read and may not automate \u2014 recorded as published, with the block named",
       "assessed": "2026-08-19",
       "authority": "UWV, plus the trade unions with members in the firm and the works council. UWV is the one that counts",
@@ -610,7 +610,7 @@
       "stored_name": "New Zealand"
     },
     "Nigeria": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "NONE, and there is no notification stream for one to be derived from. THE SUB-NATIONAL QUESTION IS CLOSED RATHER THAN UNSAMPLED, which is rare and worth the words: labour is item 34 of the EXCLUSIVE Legislative List, Second Schedule Part I of the 1999 Constitution, and under s.4(2)-(3) the National Assembly legislates on Exclusive List items to the exclusion of the State Houses of Assembly. No Nigerian state CAN create a WARN-style duty, so the 36 states and the FCT need not be swept. NEAR-MISS REJECTED: the NBS Nigeria Labour Force Survey is a household survey",
       "assessed": "2026-08-19",
       "authority": null,
@@ -625,7 +625,7 @@
       "threshold": null
     },
     "Norway": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED. NAV's AG200 monthly .xlsx reports workplaces AND persons affected, with masseoppsigelse broken out separately from permittering (furlough) \u2014 the near-miss that would otherwise dominate the series \u2014 plus splits by industry, county and cause. History only from 2020-03, small cells suppressed, and the attachment URL carries a fresh UUID every month so the index page must be scraped rather than the URL templated",
       "assessed": "2026-08-18",
       "authority": "NAV (Arbeids- og velferdsetaten)",
@@ -648,7 +648,7 @@
       "stored_name": "Pakistan"
     },
     "Peru": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE, chased to a conclusion: the 2022 Anuario Estadistico Sectorial XLSX bundle (16 chapter workbooks) and the 2020 PDF (338 pages) were machine-searched and neither carries a cese colectivo chapter. CRITICAL FALSE FRIEND, recorded because a phrase-matching scraper would produce a badly wrong number: MTPE's 'ceses colectivos' pages are the Registro Nacional de Trabajadores Cesados Irregularmente, which is a public-sector 1990-2000 compensation list and nothing to do with current collective dismissal",
       "assessed": "2026-08-18",
       "authority": "Ministerio de Trabajo y Promocion del Empleo (MTPE)",
@@ -662,7 +662,7 @@
       "threshold": "10% of the workforce"
     },
     "Philippines": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "EXISTS AND IS THE BEST-SHAPED REGIME FOUND ANYWHERE \u2014 the PSA's Job Displacement Monitoring System is built explicitly from 'all establishments reporting shutdown/retrenchments to DOLE Regional Offices', which is precisely a notification-derived denominator. Catalogue entries were visible for 2000, 2001, 2004, 2011 and 2012; whether it is still current could NOT be established, because the host refuses us",
       "assessed": "2026-08-18",
       "authority": "the DOLE Regional Office, and the affected worker",
@@ -679,7 +679,7 @@
       "threshold": "30 days before the intended date; any retrenchment, redundancy or closure"
     },
     "Poland": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, and verified live on 2026-08-19 rather than inferred: GUS's Sytuacja spoleczno-gospodarcza kraju labour-market bulletin carries the count of establishments that notified an intent to dismiss and the workers covered \u2014 'W koncu czerwca br. 198 zakladow zglosilo zamiar zwolnienia 20,7 tys. pracownikow (w tym 2,5 tys. osob z sektora publicznego) w ramach zwolnien grupowych'. railway/national_denominators.py holds it NOT BUILDABLE because the figures are Polish prose rounded to 0,1 tys. and the page carries the current period, so a history would be OUR accumulation and not the publisher's. NOTE FOR WHOEVER REVISITS: the page as fetched on 2026-08-19 also carried comparison tables reaching back to June 2024. That is a lead, not a correction \u2014 nobody has established that those tables carry the group-layoff line rather than the unemployment series around it",
       "assessed": "2026-08-19",
       "authority": "powiatowy urzad pracy (district labour office); GUS compiles the count",
@@ -695,7 +695,7 @@
       "threshold": "banded, within 30 days, in employers of 20+: 10 workers where under 100 employed; 10% where 100-299; 30 where 300+. Recorded as the Directive-standard banding the Act transposes, NOT as a read of the Polish text"
     },
     "Portugal": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED. Monthly, quarterly and annual reports carrying BOTH procedures and workers, back to 2012, roughly a one to two month lag, with near-templatable filenames of the form Relatorio-Despedimento-Coletivo-YYYY.MM.pdf. PDF only \u2014 there is no CSV, XLSX or API, so building on it would mean adding a PDF dependency to a hash-pinned lock for one country",
       "assessed": "2026-08-18",
       "authority": "DGERT (Direcao-Geral do Emprego e das Relacoes de Trabalho)",
@@ -710,7 +710,7 @@
       "threshold": "2 workers in a firm under 50, or 5 in a firm of 50+, within 3 months"
     },
     "Romania": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, and read directly out of the source on 2026-08-19 rather than taken from a search summary: ANOFM's Raport de activitate pentru anul 2024 reports collective dismissals ESTIMATED by employers at 16,007 persons for 2024 against 9,600 actually dismissed (59.97% of the estimate), and states the comparison runs over 2009-2024. THE GAP BETWEEN THE TWO NUMBERS IS THE POINT: a notified intention is not a dismissal, and Romania publishes both, which most countries do not. railway/national_denominators.py holds it NOT BUILDABLE \u2014 annual, PDF only, and the month-by-month detail sits inside the report, so it would cost a PDF dependency in a hash-pinned lock for one country",
       "assessed": "2026-08-19",
       "authority": "Inspectoratul Teritorial de Munca (ITM) and the Agentia Judeteana pentru Ocuparea Fortei de Munca, under ANOFM",
@@ -725,7 +725,7 @@
       "threshold": "within 30 days, in employers of 20+: at least 10 workers where under 100 employed; at least 10% where 100-299; at least 30 where 300+. REPORTED, from secondary summaries of art. 68 \u2014 see the regime field for why no permitted primary source could be read"
     },
     "Serbia": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE. The NSZ 2025 annual report was read directly: 'visak zaposlenih' appears only as a BENEFICIARY CATEGORY in active labour market programmes, never as a count of programmes submitted. A secondary source claims roughly 9,000 a year from the 2015-2020 reports and could not be verified. nsz.gov.rs is fully open ('User-agent: * / Disallow:'), so this negative is a strong one",
       "assessed": "2026-08-18",
       "authority": "Nacionalna sluzba za zaposljavanje (NSZ)",
@@ -739,7 +739,7 @@
       "threshold": "more than 10 employees in firms of 20-100; 10% in 100-300; 30+ above 300, over 30 days; or 20+ over 90 days regardless of size"
     },
     "Singapore": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "THE MOST INSTRUCTIVE NEGATIVE IN THE REGISTER, because everything about it looks like a yes. Singapore has the cleanest notification duty in its region AND publishes a clean quarterly retrenchment series \u2014 and the two are NOT connected. MOM attributes the series verbatim to 'Labour Market Survey, Manpower Research & Statistics Department, MOM', and its own coverage note says the data pertain to private sector establishments EACH WITH AT LEAST 25 EMPLOYEES plus the public sector. The notification duty bites at 10. Those are DIFFERENT UNIVERSES, and the figures are rounded to the nearest 10 besides. It is a survey near-miss and must never be described as a notification count. Honest limit: MOM publishes no explicit sentence saying notification data are unused, so this rests on the source attribution and the frame, not on a disclaimer",
       "assessed": "2026-08-18",
       "authority": "Ministry of Manpower (MOM)",
@@ -753,7 +753,7 @@
       "threshold": "employers with at least 10 employees, any retrenchment notified"
     },
     "Slovakia": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, IN A WEAK FORM, and the weakness is the finding. Ustredie PSVR reports THREE units in its own media releases \u2014 notifications filed, jobs THREATENED, and workers ACTUALLY dismissed (1 Jan-15 May 2024: 36 / 3,596 / 2,766; same window 2025: 22 / 2,635). Holding the threatened and the realised figure apart is unusual and valuable \u2014 most countries publish only the first. But the cadence is irregular, the form is HTML prose with no table, and there is no dataset and no archive series, so it is published without being buildable. CHECKED AND NEGATIVE, so nobody re-searches: the full UPSVR statistics index (11 sections), the open-data endpoints (jobseekers and vacancies only, 2019-2026), datasety.html (404), and the annual vykazy V05/V10/V11/V13, which are social-services and child-protection forms. The working hypothesis that UPSVR publishes a named collective-redundancy statistic is NOT supported. data.slovensko.sk rendered as an empty SPA shell and is UNKNOWN rather than negative",
       "assessed": "2026-08-19",
       "authority": "Urad prace, socialnych veci a rodiny (UPSVR)",
@@ -768,7 +768,7 @@
       "threshold": "the Directive banding as transposed in s.73 \u2014 recorded as transposition, NOT as a read of the Slovak text"
     },
     "Slovenia": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE located. NOTE pxweb.stat.si names ClaudeBot in its robots.txt, so the statistical office's own database was not queried",
       "assessed": "2026-08-18",
       "authority": "Zavod RS za zaposlovanje (ZRSZ)",
@@ -782,7 +782,7 @@
       "threshold": "banded from 10 workers depending on establishment size, over 30 days"
     },
     "South Africa": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, AND ONE YEAR IS NOW VERIFIED FROM A PERMITTED SOURCE, which is what this entry was waiting for. The Deputy Minister of Employment and Labour's Budget Vote speech of 2025-07-03, on gov.za: 'the CCMA facilitated the saving of 30 581 jobs out of 64 919 facing retrenchment' for FY2024/25 (April-March). A 2015 CCMA statement on the same host gives 103,949 jobs saved over 2010-2015, so the series runs back at least that far. TWO CORRECTIONS TO THE EARLIER ASSESSMENT: the lag is roughly THREE months, not six or seven \u2014 the Budget Vote speech on gov.za is the fastest permitted route to each year's figure and beats the annual report \u2014 and the figures no longer rest on search-result summaries. THE LIMIT THAT MUST TRAVEL WITH IT: the unit is employees in s.189A matters REFERRED TO THE CCMA, not all South African retrenchments and not all s.189 processes. Facilitation is compulsory only on request, so an unknown share never enters the denominator. It is a FLOOR. FY2023/24 (38,428 facing / 14,887 saved) is still UNVERIFIED \u2014 ccma.org.za is WAF-403 and the nationalgovernment.co.za mirror returns 403 on its own robots.txt, so permission could not even be established",
       "assessed": "2026-08-19",
       "authority": "no ex-ante filing to a ministry: the CCMA (Commission for Conciliation, Mediation and Arbitration) receives s.189A referrals and is what makes the population countable",
@@ -809,7 +809,7 @@
       "stored_name": "South Korea"
     },
     "Spain": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED, and the best-shaped source found anywhere in this corpus. Monthly XLSX and PDF on fixed calendar months with a stable URL pattern, giving empresas, procedimientos and trabajadores afectados split by CNAE sector, cause, firm size, sex and province. Roughly a two-month lag; monthly figures are provisional until the annual consolidation. Critically it SEPARATES despido colectivo from suspension de contrato / reduccion de jornada (ERTE) and isolates the Mecanismo RED \u2014 both short-time work and both fatal near-misses if folded in. Verified live on 2026-08-18: HTTP 200, 484,927 bytes, openxmlformats spreadsheet",
       "assessed": "2026-08-18",
       "authority": "the labour authority of the autonomous community, or the Ministry's Direccion General de Trabajo where the firm spans more than one",
@@ -825,7 +825,7 @@
       "threshold": "banded over 90 days: 10 in a firm under 100; 10% in 100-300; 30 in 300+; or the whole workforce where more than 5 and the firm closes"
     },
     "Sri Lanka": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE, and this is the instructive case in the whole register: an APPROVAL regime generates a far stronger administrative record than a notification regime, and Sri Lanka still publishes only PROSECUTIONS from it. The Labour Statistics volumes for 2017-2019 were read directly and their single TEWA table is 'Enforcement of Labour Laws and Prosecutions' \u2014 case counts and sums recovered, not applications received or approved. The series appears to stop at 2019. So the existence of an approval duty predicts nothing about publication",
       "assessed": "2026-08-18",
       "authority": "Commissioner General of Labour",
@@ -839,7 +839,7 @@
       "threshold": "employers of 15+ workmen, any non-disciplinary termination; excludes the public sector, co-operatives and under 180 days' service"
     },
     "Sweden": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED, and the cleanest in the corpus. Monthly count of persons affected by varsel, by SNI industry and by county, back to 1992-01, as a direct .xlsx, roughly two weeks after month end. Verified live on 2026-08-18: HTTP 200, 130,155 bytes, openxmlformats spreadsheet. The download URL carries a generated id and the county file lagged the industry file by four months when checked, so an automated build must read the index page rather than template the URL",
       "assessed": "2026-08-18",
       "authority": "Arbetsformedlingen",
@@ -855,7 +855,7 @@
       "threshold": "at least 5 workers affected, or 20 within 90 days \u2014 read from the statute, not recalled. NOTE this is far BELOW the Directive 98/59/EC floor, so the Swedish count covers a WIDER population than Denmark's (at the floor) or Norway's (10), and the three must never be summed into a Nordic or European figure"
     },
     "Switzerland": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "NONE NATIONALLY. SECO's statistics pages carry no series of Massenentlassung notifications, and its 'Die Lage auf dem Arbeitsmarkt' is unemployment and Kurzarbeit only \u2014 Kurzarbeit being SHORT-TIME WORK, the standard near-miss, rejected. RESIDUAL STATED RATHER THAN SMOOTHED: BFS/OFS's catalogue was NOT enumerated the way Germany's BA publication calendar was, so this is 'no series found on the receiving side and none at SECO', not the exhaustive negative Germany's entry carries. ONE CANTON DOES PUBLISH A COUNT: St. Gallen's AWA-Barometer reports a quarterly cantonal figure, with no names. 14 of 26 cantons were checked by name for a per-employer list and none publishes one; Aargau states it handles notifications 'mit hochster Diskretion'; Ticino names ClaudeBot and disallows everything, so TI is UNKNOWN",
       "assessed": "2026-08-19",
       "authority": "the competent CANTONAL labour office \u2014 there is no federal recipient, which is why there is no federal count",
@@ -869,7 +869,7 @@
       "threshold": "OR 335d, within 30 days: at least 10 dismissals in an establishment of more than 20 and fewer than 100; at least 10% in 100-299; at least 30 in 300+. Coverage includes part-timers, apprentices, interns, probationers and fixed-terms over 3 months. AVG 29 / AVV 53 sits lower at 10, or 6 where a canton so provides"
     },
     "Taiwan": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "PUBLISHED, and being read. THIS CLOSES A DISAGREEMENT rather than adding a finding: one earlier sweep reported an open dataset back to 2005, a second could not reach the dataset layer at all and verified that \u5927\u91cf\u89e3\u50f1 appears zero times in the TOCs of both MOL flagship publications. BOTH were right \u2014 the series is not in the printed statistical yearbooks and IS on the open-data API. railway/national_denominators.py's taiwan_series() has been reading apiservice.mol.gov.tw under the Open Government Data License since 2026-08-18. COUNTING UNIT TRAP, kept: \u5bb6\u6578 counts \u5ee0\u5834 (plants), so one company filing for four sites counts four times, and that column is NOT an employer count. Annual, ROC years, roughly a six-month lag",
       "assessed": "2026-08-19",
       "authority": "the local competent labour authority (municipality or county), under \u52de\u52d5\u90e8 (Ministry of Labor)",
@@ -893,7 +893,7 @@
       "stored_name": "Thailand"
     },
     "T\u00fcrkiye": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "NONE, and the hypothesis was chased to a conclusion rather than abandoned. The July 2026 ISKUR monthly bulletin (33 tables) and the 2025 yearbook (38 tables) were machine-parsed and neither carries a toplu isci cikarma table. FALSE-FRIEND WARNING for anyone re-checking: keyword hits on 'toplu' are all Toplum Yararina Programlar, a different scheme entirely. ISKUR holds a statutorily complete register and publishes none of it, which makes it the single highest-leverage freedom-of-information target in this register",
       "assessed": "2026-08-18",
       "authority": "ISKUR and the regional directorate of labour",
@@ -907,7 +907,7 @@
       "threshold": "10 workers in workplaces of 20-100; 10% in 101-300; 30 in 301+, within one month"
     },
     "United Kingdom": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "PUBLISHED IN BOTH, and this overturns the working hypothesis that UK HR1 counts surface only through FOI. GB: a monthly management-information table, unbroken from 2020-01, giving HR1 forms received, total potential redundancies AND unique employers submitting. VERIFIED DIRECTLY on 2026-08-18: HTTP 200, 80 table rows, 2020-01 (368 forms / 29,496 potential) through 2026-07 (350 / 22,280 / 319 employers). Roughly a one-month lag. THREE CAVEATS THAT CHANGE HOW IT MAY BE USED: it is explicitly NOT Official Statistics and is revisable; it is HTML only with no CSV or XLSX attachment; and it is dated by MONTH OF RECEIPT, not the month redundancies are proposed, so it runs on a different clock from anything we date by event. NI: monthly proposed AND confirmed redundancies with an industry split, inside the NISRA Labour Market Report \u2014 the extra dimension GB lacks. Together they give near complete UK coverage from a statutory notification base",
       "assessed": "2026-08-18",
       "authority": "GB: the Insolvency Service (Redundancy Payments Service) on behalf of the Secretary of State. NI: NISRA collects on behalf of the Department for the Economy",
@@ -915,7 +915,7 @@
       "cite": "https://www.gov.uk/government/publications/publication-of-data-on-advanced-notification-of-redundancy-scheme/management-information-on-advanced-notification-of-redundancy-scheme",
       "class": "regime_with_aggregate",
       "denominator_basis": "national_notification_aggregate",
-      "entries": 28239,
+      "entries": 27800,
       "jobs": 1824287,
       "regime": "TWO regimes, because the UK has two statutes and two publishers. GREAT BRITAIN: advance notification of redundancies on form HR1, Trade Union and Labour Relations (Consolidation) Act 1992 s.193. NORTHERN IRELAND: the Employment Rights (Northern Ireland) Order 1996 as amended 2006 \u2014 NOT TULRCA, which does not extend there. A parallel sweep attributed the GB series to ONS; that is WRONG and the correction matters, because the ONS Labour Force Survey redundancy rate is a SURVEY ESTIMATE and the classic near-miss here",
       "state": "measured",
@@ -923,22 +923,22 @@
       "threshold": "20 or more proposed dismissals at one establishment within 90 days"
     },
     "United States": {
-      "age_days": 0,
+      "age_days": 2,
       "aggregate": "MEASURED. EDGAR full-text search enumerates every Item 2.05 filing for a period exactly, so the denominator is the universe rather than a sample \u2014 this is the one slice in the project that supports the word RECALL, and railway/rolling_recall.py measures it every week. The WARN layer is a SECOND regime in the same country and it is NOT measurable: there is no national aggregate at all (US DOL keeps no database, BLS Mass Layoff Statistics ended 2013) and Wisconsin, which publishes the right figure, disallows AI agents. See rolling_recall.assess_state_warn()",
       "assessed": "2026-08-18",
       "authority": "SEC (Item 2.05); state rapid-response / dislocated worker units (WARN)",
       "cite": "https://efts.sec.gov/LATEST/search-index?q=%22Item%202.05%22&forms=8-K",
       "class": "regime_with_aggregate",
       "denominator_basis": "closed_enumeration_primary_regulator_index",
-      "entries": 24053,
-      "jobs": 6047191,
+      "entries": 23453,
+      "jobs": 6037290,
       "regime": "SEC 8-K Item 2.05 (costs associated with exit or disposal activities), Securities Exchange Act s.13/15(d) \u2014 a US public company recording a material charge for an exit activity files an 8-K carrying that code in its SGML header. SEPARATELY, state WARN acts and the federal WARN Act 29 U.S.C. 2101 compel notice to state dislocated-worker units",
       "state": "measured",
       "stored_name": "United States",
       "threshold": "Item 2.05: any material exit-or-disposal charge, no headcount floor. Federal WARN: 100+ employees, 50+ affected at a site"
     },
     "Uruguay": {
-      "age_days": -1,
+      "age_days": 1,
       "aggregate": "NONE, and nothing exists for one to be derived from. NEAR-MISS excluded with its shape stated: BPS subsidio por desempleo is a WORKER BENEFIT CLAIM count \u2014 no employer identity, no collective event, no threshold \u2014 and MTSS's open data covers employment promotion contracts, not dismissals. NOTE for whoever revisits: catalogodatos.gub.uy disallows /api/, so use the permitted HTML path",
       "assessed": "2026-08-19",
       "authority": null,
@@ -986,15 +986,15 @@
   ],
   "excluded_not_a_country": [
     {
-      "entries": 116928,
-      "jobs": 4791574,
+      "entries": 116878,
+      "jobs": 4793174,
       "name": "Multiple countries",
       "why": "a scope, not a place \u2014 no legislature, no regime"
     }
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-08-19T02:16:56Z",
+  "measured_at": "2026-08-20T17:42:01Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1146,7 +1146,7 @@
     "Spain": "13 of 17 autonomous communities. Balears names; Euskadi publishes no name column at all (file-verified 2026-08-19, not merely masked). datos.comunidad.madrid is 'Disallow: /' and holds Madrid's ERE CSV, whose fields are therefore UNVERIFIED",
     "Switzerland": "14 of 26 cantons by name: ZH BS AG SO ZG TG GE VD BE LU SG FR NE JU. No cantonal naming list found. Ticino (www.ti.ch) names ClaudeBot and disallows all, so TI is UNKNOWN, not no"
   },
-  "refusal_hosts": 71,
+  "refusal_hosts": 72,
   "refusal_ledger": [
     {
       "alternative": "none \u2014 data.gouv.fr carries no PSE dataset and the POEM portal 500s",
@@ -1644,6 +1644,13 @@
       "host": "argentina.gob.ar (all PDF/DOC/XLS paths), INEGI /rnm/.../download/*, STPS /07_justicia_lab/",
       "nature": "path-level disallows covering exactly the document formats a statistics collector would want",
       "verified_here": false
+    },
+    {
+      "alternative": "none machine-readable. RECOMMENDATION ONLY, NOT ACTIONED BY A SESSION: the archived pages name an OESC Rapid Response coordinator, and asking OESC directly for a data extract or a documented feed is the honest remaining path. That is contacting a third party on the owner's behalf, so it is the OWNER's to send",
+      "country": "United States (Oklahoma)",
+      "host": "employoklahoma.gov/Participants/s/warnnotices",
+      "nature": "NOT A REFUSAL \u2014 'Allow: /'. PERMISSION WAS NEVER THE CONSTRAINT; the state publishes no machine-readable surface at all. Eight routes tried, robots.txt read before every content request: (1) the portal is a Salesforce Experience Cloud Aura shell, 31,445 bytes with ZERO <table> and ZERO <tr>; (2) no .csv/.xlsx/.xls/.pdf link and no published static-resource download route; (3) data.ok.gov has NO WARN dataset (?q=layoff returns 0, ?q=WARN one false positive on a purchase-card file) and its CKAN API is 'Disallow: /api/' so it was NOT called; (4) oklahoma.gov/workforce/employers/layoffs.html gives the statutory thresholds then links to the portal \u2014 the state publishes no list of its own, and its 6.1MB sitemap has no OESC WARN page; (5) oesc.ok.gov is an alias of oklahoma.gov/oesc with no WARN content; (6) no RSS and (7) no documented API on any of them; (8) US DOL /agencies/eta/layoffs/warn is compliance guidance and does NOT republish state notices. Wayback recovers exactly TWO notices (warn_lookups/804 Alutiiq Commercial Enterprises 363 2022-07-25, /833 Mood Cannabis 120 2024-09-20); the sequential ids imply 800+ exist, but the list has sat behind a search form since at least 2015 and was never published as a crawlable page, so there is no index to enumerate. The old okjobmatch.com host is dead on an expired certificate and was NOT fetched. The ONLY thing that returns the data is the undocumented Salesforce aura endpoint, which is out of scope and stays out. Forgone: an estimated 30-60 notices/year. A future feed would map company name, address (street/city/state/ZIP), notice date, and employees affected",
+      "verified_here": true
     }
   ],
   "refused": [
