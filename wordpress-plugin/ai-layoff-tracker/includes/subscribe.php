@@ -5720,6 +5720,49 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         // array_key_exists, not isset: a null total is an answer we cannot
         // read, and isset() would quietly turn it into a zero.
         if (!array_key_exists('total', $cdata)) continue;
+        /*
+          A FILTER THE ENDPOINT IGNORED RETURNS THE HEADLINE, AND THAT IS THE
+          FAILURE THIS LINE EXISTS FOR.
+
+          MEASURED AGAINST THE LIVE ROUTE ON 2026-08-19, not reasoned about.
+          /talent/v1/aggregate does not validate these values: it drops one it
+          does not recognise and answers with the UNFILTERED total. Over the
+          window 2026-08-10 to 2026-08-16, where the unfiltered total is 1,387:
+
+            pillar=leadership_change    846   honoured
+            funding=1                   182   honoured
+            pillar=rewards_comp          97   honoured
+            pillar=company_development  229   honoured
+            pillar=leadership_chang   1,387   IGNORED - one character short
+            pillar=hiring_expansion   1,387   IGNORED - not a pillar at all
+            pillar=                   1,387   IGNORED
+            funding=0                 1,387   IGNORED
+            funding=banana            1,387   IGNORED
+
+          So a one-character typo here, or the sibling plugin renaming a pillar,
+          publishes "Leadership moves 1,387" - the worldwide headline, wearing a
+          category label, as a measurement. That is strictly worse than a wrong
+          zero: a zero invites a question and a plausible large number does not.
+          The error is SILENT, it is in the other repo's gift to cause, and no
+          call fails, so the failed-call guard above cannot see it.
+
+          THE TEST IS EQUALITY WITH THE HEADLINE, because that is the exact
+          signature of the fault and this composer already holds the headline.
+          It costs no extra request.
+
+          WHAT IT GIVES UP, STATED PLAINLY: a genuine week in which every single
+          signal fell into one category would be suppressed. Three categories
+          cannot all equal the total, the categories overlap rather than
+          partition, and the observed shares are 61%, 13% and 7%, so that week
+          is not one this data produces. A suppressed true line costs a line. A
+          published headline-in-disguise costs a number, and this product is
+          built on the numbers being checkable.
+
+          OMITTED AND NOT ZEROED. This is UNKNOWN - we did not measure the
+          category - and the rule this file keeps is that absence of a signal is
+          never a pass and never a zero.
+        */
+        if ((int) $cdata['total'] === $total) continue;
         $activity[] = array(
             'label'  => $cat_label,
             'figure' => alt_digest_number((int) $cdata['total']),
