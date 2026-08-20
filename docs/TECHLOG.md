@@ -60,6 +60,43 @@ on the owner's behalf, so it is the owner's to send, not a session's.
 MI and MN are filed as their own tasks with their evidence rather than fixed
 inline: three root causes in one change is how a revert stops being possible.
 
+**DEPLOY VERIFIED.** `reader_freshness.py` after 2.20.125 went out:
+`PASS: readers are served 2.20.125 and a body built from 9a7ef2735c880c93,
+which is the deployed build`. `php -l` was clean before the push, but only
+after an apostrophe in the new Oklahoma copy broke the parse - a single-quoted
+PHP string, caught by the lint and not by the version-bump ritual, which would
+have taken the sources page down on deploy.
+
+**OPEN QUESTION FOR THE OWNER, FOUND WHILE VERIFYING THE SURFACE AND
+DELIBERATELY NOT ACTED ON: Oklahoma is the ONLY declared gap state still
+carried in the collector lists.** The other three (AR, WY, NH) are absent from
+both `ALL_STATES` and `STATE_WARN_URL`; Oklahoma is in both. The consequence is
+visible on the sources page, which lists it in "US state WARN registries we
+read" with a cadence of `Daily 11am ET` AND counts it in the "N registries we
+read" headline, while the gap table two sections down explains that it is not in
+the feed. The page's own copy anticipates the general case ("a registry we read
+that has not yet published a notice we could count appears in the first number
+and not the second"), so this is not strictly a contradiction - but for Oklahoma
+the read can never succeed by construction, so "we read it daily" is only
+nominally true and the headline count is one high.
+
+Measured: Oklahoma has **3 rows in the whole tracker, all SEC filings and news,
+zero from the state registry** (`/query?state=OK` returns 3; note the `source`
+filter on that endpoint is IGNORED, all spellings return the same 3, so do not
+read a filtered total there as a WARN total). It is absent from
+`warn_state_baselines.json` entirely, so removing it would NOT disturb the
+per-state freshness work. The open scraper does ship an `ok.py`, so the generic
+tier does attempt it.
+
+**Not changed here on purpose.** Dropping a state from `ALL_STATES` is a
+retirement, and retirement is the documented three-step process, not a list
+edit. It is also plausible the split is deliberate: AR/WY/NH have no public
+register at all, while Oklahoma HAS an official registry URL that is merely
+unreadable, which is a fair reason to keep listing it. That is a judgement about
+what the surface should promise, and it belongs to the owner rather than to a
+session that came to fix a collector.
+
+
 ## 2026-08-19 - the two evidence columns had no re-import guard, and the guard the announcement date DID have had never once fired, 2.20.124
 
 **THE REPORTED DEFECT IS REAL AND THE CODE PATH RUNS TENS OF THOUSANDS OF TIMES
