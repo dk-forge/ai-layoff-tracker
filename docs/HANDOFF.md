@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **2.20.127 CONSUMED AND ON MAIN (2026-08-20): the press page's cached figures
+  now move when the data does (PR #180).** The baton was read as HELD by
+  `local` and is NOT claimed here; only the version was, and it was re-read
+  from `origin/main` immediately before every push. **It had to be re-read four
+  times**: this branch claimed 2.20.124, then 2.20.125, then 2.20.126, and each
+  was taken by a concurrent PR (#177, #181, #182) while CI ran. Nothing about
+  the change was wrong any of those times. The rule is the rule because CI is
+  ~13 minutes and plugin merges tonight are faster than that.
+- **A RED MAIN IS EVERYONE'S PROBLEM AND THIS BRANCH FIXED ONE IT DID NOT
+  CAUSE.** `Tests` was red on main from #181 (2.20.125) on a single
+  `test_style_standard` finding: a 60-word sentence in the Oklahoma gap note on
+  the Sources page, against a ceiling of 30. That red blocks every merge, so it
+  is split into three sentences in PR #180's second commit, every fact kept in
+  the same order. Main's `Tests` is green again on 7e85ca2.
+
 - **2.20.126 CLAIMED (2026-08-20): the first off-host backup of the tracker
   data.** The baton was read as HELD by `local` and is NOT claimed here; only
   the version number is, and it was re-read from `origin/main` immediately
