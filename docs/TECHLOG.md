@@ -1,5 +1,92 @@
 # Tech Log
 
+## 2026-08-20 - the unformatted preheader was a BUILD, and the guard read one composer of three
+
+**The bug reported as still live is not live, and the guard that missed it is
+the real defect.** No composer changed here. Only what is watched changed.
+
+**WHAT WAS REPORTED.** The owner's Gmail, iOS and desktop, from a test send he
+took after 2.20.119 was on main:
+
+```
+16,842 verified job cuts · Aug 10-16   0 cuts attributed to AI, 10132 in the U...
+1,379 hiring signals · Aug 10-16       582 of 1379 verified against a primary...
+                                       ... from 1327 companies
+```
+
+Subjects formatted, previews raw, same send. Three causes were on the table:
+`alt_digest_fit_preheader()` losing the formatting while it rebuilds, the
+Python fallback in `digest_layout.preheader_text()` composing a snippet out of
+raw figures, or the deployed body differing from the tree.
+
+**IT WAS THE THIRD, AND IT WAS PROVED RATHER THAN ARGUED.** Three
+`Send email digest` dispatches with `dry_run=1` (which renders the message and
+sends nothing) read the LIVE deployed composers back out of the run log:
+
+```
+0 cuts attributed to AI, 10,132 in the United States, across 73 companies, 8,240 of them from state WARN filings.
+582 of 1,379 verified against a primary document, from 1,327 companies.
+50 Best Interview Questions to Ask Candidates in 2026 (By Category).
+```
+
+Same week, same figures the owner photographed, separators present on all
+three streams. The other two causes are disproved by that output, not merely
+unsupported: rung 1 of the ladder is what shipped, so the fallback never fired,
+and the fitter returned the composed line intact. `alt_digest_number()` reached
+the reader; the build the owner's send ran against predated it. Every raw
+figure in both screenshots is `number_format_i18n()`, which is what every one
+of those call sites used until 2.20.117.
+
+**WHY THE EXISTING TEST WAS GREEN THROUGH IT, which is the part that matters.**
+`tests/test_digest_figures_are_formatted.py` asserts "every integer of four
+digits or more, in every composed string, carries separators". That property is
+correct. Its INPUT SET was wrong, in two ways, and this is the third correct
+assertion in two days pointed at the wrong strings.
+
+**One: it composed `layoff` and nothing else.** `alt_digest_compose_talent`
+and `alt_digest_compose_articles` were never invoked by any test in this repo,
+though the harness has supported `compose: talent` since it was written. The
+talent preheader is one of the two lines in the screenshot. A guard reading a
+third of the surface it names is a guard against a third of the defect.
+
+**Two: it stopped at the PHP boundary.** The composers hand four strings to
+`digest-api.php`; `digest_send.py` reads them back and `digest_layout.py`
+decides what a client is shown. The preheader is the one field where those can
+differ: it travels as its own payload member, it appears in neither the html
+nor the text the old tests scanned, it is inserted by `render_html` at the very
+end, and `preheader_text()` may return a different string entirely when the
+site's snippet does not fit. The one field the defect shipped in was the one
+field whose delivered form nothing read.
+
+**WHAT THE REPLACEMENT ASSERTS.** All three composers are rendered, and every
+field a client can display is scanned on BOTH sides of the boundary: the
+composer's `preheader`, `metric`, `text` and `html`, and then the real
+`usable_sections` -> `subject_line` / `preheader_text` / `render_html` /
+`render_text` output, per single-list message and combined. Per this repo's
+rule the detector is proved against the owner's literal strings first -
+`10132`, `1379`, `1327`, `582 of 1379` - before anything trusts it.
+
+Two assertions are POSITIVE, because "no raw figure" is also true of an empty
+string: the delivered preheader must equal the one the site composed (a
+fallback with no figure in it would otherwise satisfy the whole file), and the
+talent snippet is pinned verbatim. One is STRUCTURAL: the composer names are
+read out of `digest-api.php`, so a fourth section added tomorrow fails this
+file until it has a fixture, rather than repeating the blind spot silently.
+
+**PROVED BY MUTATION, not by being green.** Reverting `$totalf` in
+`alt_digest_compose_talent` to a raw `(string) $total` - which reproduces
+`582 of 1379` exactly - reddens 11 assertions in the new file. The old file,
+run unchanged against that same mutated `subscribe.php`, is 11 tests OK.
+
+`ISO-8601` is newly exempt from the detector. The boundary scan reads the whole
+rendered message including the edition note, which the section-level scans
+never did, and a standard's number is its name. It is spelled with `ISO`
+attached, so a real quantity of 8601 is still caught.
+
+**No plugin file changed, so no `ALT_VERSION` was consumed.** The three
+dispatches sent nothing.
+
+
 ## 2026-08-19 - the plugin-side half of the 6:00 Eastern move, 2.20.122
 
 **Claimed 2.20.118, shipped as 2.20.122, and lost the race three times on the
