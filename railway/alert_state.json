@@ -37,6 +37,11 @@
       "last": 1787153537,
       "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
     },
+    "deploy-wordpress-plugin:main:5b0864ab5959b142": {
+      "first": 1787204588,
+      "last": 1787204588,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 verdict: UNKNOWN"
+    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1787161951,
       "last": 1787161951,
@@ -48,6 +53,6 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   },
-  "updated_at": "2026-08-20T04:41:40+00:00",
+  "updated_at": "2026-08-20T05:43:09+00:00",
   "version": 1
 }
