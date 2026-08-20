@@ -1,6 +1,6 @@
 # Tech Log
 
-## 2026-08-20 - the data existed in exactly one place, and now it does not, 2.20.124
+## 2026-08-20 - the data existed in exactly one place, and now it does not, 2.20.126
 
 **Nothing anywhere took a backup of the tracker data.** `wp_alt_layoffs` lived
 in MySQL on a shared Bluehost account and nowhere else: 65,439 rows, a large
@@ -104,6 +104,16 @@ through. `alt_db_upsert` has always accepted them; bulk simply never sent them,
 so a row rebuilt from a backup came back with its reported range collapsed to
 the point estimate and both evidence quotes blank. Additive: a caller that omits
 them is unaffected.
+
+**Reading `alt_db_upsert` for that also turned up a live defect this change did
+NOT fix**, because it belongs to the daily import path and not to the backup:
+the UPDATE branch wrote `''` over both evidence columns on every re-import that
+did not carry them, and the `announcement_date` guard tested `=== ''` against a
+value `alt_db_valid_date()` returns as NULL, so it had never once fired. It was
+handed off as its own piece of work and shipped separately in 2.20.124 (PR
+#177), which is why this entry sits above that one. The two changes are
+complementary: bulk now SENDS the columns, and upsert now declines to blank them
+when nobody sent them.
 ## 2026-08-19 - a count above zero is not evidence of freshness: three collectors, three root causes, one shared failure mode, 2.20.125
 
 **This is the sentence the per-state tripwire exists for, so it is written where

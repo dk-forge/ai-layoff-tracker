@@ -6,7 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **2.20.124 CLAIMED (2026-08-20): the first off-host backup of the tracker
+- **2.20.126 CLAIMED (2026-08-20): the first off-host backup of the tracker
   data.** The baton was read as HELD by `local` and is NOT claimed here; only
   the version number is, and it was re-read from `origin/main` immediately
   before merging (main moved 2.20.122 -> 2.20.123 while this branch was being

@@ -216,7 +216,7 @@ Columns `/bulk` has no parameter for, and which therefore need section 3a:
 - `updated_at` - restamped by the write, by design
 
 `job_count_max`, `employer_country_evidence` and `announcement_evidence` **are**
-carried, as of 2.20.124. They were not before.
+carried, as of 2.20.126. They were not before.
 
 ### The SQL path was verified against a real MySQL 8
 
