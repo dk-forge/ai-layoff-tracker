@@ -691,21 +691,69 @@ def fetch_wa(max_pages=200):
 # detail page for the one field the listing omits, the affected-employee count.
 # Historical KS rows (799 of them) already exist from when the generic tier
 # worked; re-imports upsert by dedup_hash, so no purge is needed.
+#
+# ORDERING (2026-08-19). The bounds below are RUNTIME bounds, and they are only
+# ever allowed to decide HOW MANY notices a run reads, never WHICH ones. That
+# distinction was not being kept. kansasworks serves this listing OLDEST-FIRST by
+# default -- page 1 is 1998-2000 and the newest notice sits ~35 pages in -- so
+# truncating in listing order reads the oldest N notices every run, keeps
+# returning a healthy-looking non-zero count, and never reaches a new filing.
+# Raising the cap does not fix it; a cap over an unordered listing is unsafe at
+# every value, because it breaks again one notice past the new one.
+#
+# So the fetcher asks for `q[s]=notice_on desc` (Ransack's sort, which the
+# portal's own column headers use) AND re-establishes that order locally from
+# each row's Notice Date. Nothing depends on the server honouring the sort: if it
+# ignores the parameter, the local sort still puts the newest first, and the cap
+# can then only ever discard the OLDEST rows. `tests/test_ks_warn_ordering.py`
+# serves a deliberately oldest-first listing to pin exactly that.
 _KS_BASE = "https://www.kansasworks.com"
 _KS_LIST = (_KS_BASE + "/search/warn_lookups?commit=Search"
-            "&q%5Bnotice_on_gteq%5D={since}&page={page}")
+            "&q%5Bnotice_on_gteq%5D={since}&q%5Bs%5D=notice_on+desc&page={page}")
 _KS_DETAIL_RX = re.compile(r'href="(/search/warn_lookups/(\d+))"')
+_KS_ROW_DATE_RX = re.compile(r"([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})")
 _KS_MAX_DETAILS = 150   # bound the per-run detail fetches; the window is small
+_KS_MAX_PAGES = 8       # listing pages to walk; 25/page, the window holds ~12
+
+
+def _ks_listing_rows(html_text):
+    """Ordered unique [(id, notice_iso_or_"")] from a listing page.
+
+    A listing row is the detail link followed by City / ZIP / LWIB area / Notice
+    Date / WARN Type. The date is read for ORDERING ONLY -- the detail page stays
+    the sole authority for every field that gets stored -- so a miss here costs
+    ordering precision, never correctness of a row.
+    """
+    seen, out = set(), []
+    for block in re.split(r"<tr\b", html_text or "", flags=re.I)[1:]:
+        m = _KS_DETAIL_RX.search(block)
+        if not m:
+            continue
+        nid = m.group(2)
+        if nid in seen:
+            continue
+        seen.add(nid)
+        d = _KS_ROW_DATE_RX.search(re.sub(r"<[^>]+>", " ", block))
+        out.append((nid, _iso(d.group(1)) if d else ""))
+    return out
 
 
 def _ks_listing_ids(html_text):
     """Ordered unique detail-page ids from a listing page."""
-    seen, out = set(), []
-    for path, nid in _KS_DETAIL_RX.findall(html_text or ""):
-        if nid not in seen:
-            seen.add(nid)
-            out.append(nid)
-    return out
+    return [nid for nid, _ in _ks_listing_rows(html_text)]
+
+
+def _ks_newest_first(rows):
+    """[(id, iso)] -> ids, newest notice first, so a cut can only drop the oldest.
+
+    A row whose Notice Date did not parse has UNKNOWN recency, and unknown is
+    NOT old: it sorts FIRST, so a markup change to that one column can cost a
+    wasted detail fetch but can never push a new notice into the tail the
+    per-run bound discards.
+    """
+    undated = [nid for nid, iso in rows if not iso]
+    dated = sorted(((iso, nid) for nid, iso in rows if iso), reverse=True)
+    return undated + [nid for _, nid in dated]
 
 
 def _ks_detail_fields(html_text):
@@ -746,21 +794,28 @@ def _ks_detail_fields(html_text):
 def fetch_ks():
     """Kansas WARN via bounded kansasworks queries + per-notice detail pages."""
     since = (_date.today() - _timedelta(days=456)).isoformat()   # ~15 months
-    ids, out = [], []
-    for page in range(1, 6):                                     # window is small
+    rows, seen, out = [], set(), []
+    for page in range(1, _KS_MAX_PAGES + 1):
         try:
             resp = requests.get(_KS_LIST.format(since=since, page=page),
                                 headers=UA, timeout=45)
             if resp.status_code != 200:
                 break
-            page_ids = _ks_listing_ids(resp.text)
+            page_rows = _ks_listing_rows(resp.text)
         except Exception as exc:
             print(f"    KS listing page {page}: {exc}")
             break
-        new = [i for i in page_ids if i not in ids]
+        new = [r for r in page_rows if r[0] not in seen]
         if not new:
             break                                                # past the end
-        ids.extend(new)
+        seen.update(nid for nid, _ in new)
+        rows.extend(new)
+    # Newest first, so the bound below trims the OLDEST tail and can never be
+    # the reason a new notice went unread. See the ordering note above _KS_LIST.
+    ids = _ks_newest_first(rows)
+    if len(ids) > _KS_MAX_DETAILS:
+        print(f"    KS: {len(ids)} notices listed, reading the newest "
+              f"{_KS_MAX_DETAILS}")
     for nid in ids[:_KS_MAX_DETAILS]:
         try:
             resp = requests.get(f"{_KS_BASE}/search/warn_lookups/{nid}",
