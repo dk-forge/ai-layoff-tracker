@@ -49,6 +49,17 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          # The operational mailer. Since 2026-08-20 this job's alerts go out
+          # through Resend with the ops From line, not through the site's
+          # /alert route, which wp_mail hands to the reader newsletter's
+          # identity. Without this secret the job runs and says nothing.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # Passed wherever RESEND_API_KEY is, so one From line cannot become
+          # two. The variable is unset today and opsmail's default applies; a
+          # job that omitted this would keep the default on the day somebody
+          # sets it, while the five older ops jobs moved. Two From lines is
+          # precisely the defect this change exists to close.
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
           ALERT_THRESHOLD: ${{ github.event.inputs.threshold || '10' }}
           ALERT_RUNWAY_DAYS: ${{ github.event.inputs.runway || '10' }}
         run: python openrouter_balance_check.py

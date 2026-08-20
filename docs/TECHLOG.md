@@ -1,5 +1,143 @@
 # Tech Log
 
+## 2026-08-20 - nine alarms wore the newsletter's face, and the weekly did not explain its own window
+
+Four things the owner found by reading his own inbox. All four were real. One
+of the four turned out to be me.
+
+### The alarms came from `newsletter@`
+
+He received the OpenRouter low-balance alert and the held-relabel notice from
+`newsletter@asktherecruiter.com` under the reader newsletter's display name,
+while CI alerts arrived from `ops@asktherecruiter.com`. His question was
+"why is this sent from newsletter@, can we do system so it is easy for me to
+sort".
+
+**ROOT CAUSE. The 2026-08-19 Resend move converted three callers and left
+nine.** `ci_alert`, `alert_drain` and `opsmail` were ported and pinned by
+`test_ops_mail_split.py`. That test asserts "no request to `/alert`" for those
+three modules by name, so the nine it did not look at are exactly the nine that
+survived a change specifically about them.
+
+The nine went on POSTing to `/wp-json/layoffs/v1/alert`, which calls bare
+`wp_mail()`. On this install the Brevo plugin intercepts `wp_mail` and replaces
+the WHOLE From line with the subscriber relay identity, which `subscribe.php`
+has documented since 2026-08-17 for the confirmation email. Nothing errored.
+Nothing logged. The mail arrived; it arrived wearing the wrong face.
+
+**WHY THAT IS NOT COSMETIC.** It is the eight-emails-in-an-afternoon failure
+with a longer fuse. Mail that looks like a newsletter gets filed with the
+newsletter, and after that the alarm is decoration. CLAUDE.md has said since
+the split that sender identity is deliberately operational and never the
+digest's From name. It was true of the paths somebody had looked at.
+
+**THE FIX.** `railway/ops_notify.py` is the one door. It owns no From line:
+`opsmail` stamps both the sender and the `[AI Layoff Tracker] ` prefix, so
+there is exactly one place either can be wrong. Ported:
+`openrouter_balance_check`, `daily_classification_spotcheck` (hold and clear),
+`link_check`, `source_verification_audit`, `process_tips`, `curated_probe`,
+`tracker_diff` (recall gap, learning digest, learning rules), and
+`source_alert`'s configured() probe.
+
+Dedup semantics are unchanged. `alert_state.decide()` already mirrors the
+endpoint's three shapes, and each caller keeps the shape it had. Changing an
+alarm's cadence in the same commit as its From line would make a later "why did
+this stop mailing?" unanswerable.
+
+`tests/test_ops_sender.py` asserts it rather than remembering it: no module may
+build a request to `/alert`, only reviewed helpers may touch the transport,
+`OPS_MAIL_FROM` is READ in one place (naming it in a diagnostic string is not
+reading it, and three modules rightly do), the prefix is stamped once, every
+ported job's workflow carries `RESEND_API_KEY`, and the reader digest keeps
+Brevo and gains no ops prefix. **It found `source_alert.py` while being
+written**, which is the tenth caller and the argument for the test.
+
+It also caught itself: `post_alert` claims `alert_state.json` before sending,
+which is the right production ordering, so the first run of that suite dirtied
+a tracked file. The ledger is now redirected to a temp dir.
+
+### The hiring signals had no place and no link
+
+The biggest-cuts table prints `(Massachusetts, United States, takes effect 18
+August 2026)` on every row. The hiring rows printed jobs, outlet and date, so
+the email answered "where" for every job lost and for no job gained. A reader
+meeting a 10,000-role spree could not tell whether it was in the United Kingdom
+or in India.
+
+**MEASURED BEFORE DESIGNING, over 200 live rows:** 114 carry a country, 86
+carry none, and those 86 carry no city and no region either, so there is
+nothing to fall back to. 43% therefore print `location not recorded`, in the
+layoff side's own words, because a silent row lets a reader assume the place
+was obvious. The outlet is never used to guess: The Sun is a British paper that
+reports hiring in other countries.
+
+The country arrives as ISO alpha-2 and `alt_normalize_country` knows only `us`
+and `uk` among two-letter codes, so `BR` rendered as `BR`. Resolved by a
+SEPARATE `alt_digest_iso2_country_name`, deliberately not by teaching the
+shared normaliser two-letter codes: that function gates `/add`, `/edit`,
+`/bulk` and the public country filter, where `CA` far more often means
+California than Canada.
+
+The headline is now a link to the article that published it, which is what the
+visible text honestly promises. `source_url` is on 100% of live rows; where one
+is missing the fallback is our own tracker filtered to that company, mirroring
+the biggest-cuts table. `alt_digest_external_link_ok` is a separate guard from
+the click counter's: an href is not a redirect, so the host allowlist does not
+apply, but the scheme and the credentials still do.
+
+Both tiers were fixed at once. `alt_digest_compose_talent` serves daily and
+weekly; only the window differs.
+
+### The weekly did not explain its own window
+
+`Weekly edition, 2026 Week 33 - August 10-16` arrived on Thursday 20 August.
+Every figure was right and so was the window: week 33 is the most recent
+COMPLETE ISO week, and week 34 had not closed. **The number was never wrong.
+The framing was.** This is a product a journalist may cite, and an edition that
+looks stale on arrival is trusted less than one that says what it covers.
+
+The body dateline now leads with `week ending Sunday, August 16` and keeps the
+ISO week second, for citation. **BODY ONLY.** `period_phrase` also feeds the
+subject line's fallback, and the subject was settled with the owner after
+several rounds, so a new `body_dateline` sits beside it rather than rewriting
+it. A test asserts the subject is unchanged, because that is the edit that
+would have shipped silently.
+
+The staleness line is conditional. `STALE_AFTER_DAYS = 2`, read off the
+schedule rather than guessed: the weekly fires Monday 07:30 Eastern over a
+window that closed Sunday, so the ordinary gap is one day, two is a send that
+slipped to Tuesday, and three is the first gap the schedule cannot produce. A
+caveat that prints every week is furniture nobody sees, which this same file
+has been corrected for twice already (the country block and the
+undated-signals note).
+
+### The double send was NOT a bug
+
+He received two weekly editions about an hour apart with different bodies, the
+later one carrying the provisional dateline and the archive link. Read from the
+run logs: every weekly copy on 20 August came from a `workflow_dispatch` run
+with `DIGEST_TEST_TO: dak@dakotta.com`, `send_id=0`, and "nothing recorded in
+the mailer's health row, and no last-sent column stamped". They were my own
+repeated test sends while these changes landed.
+
+The only SCHEDULED runs that day were the daily at 10:20Z, which sent 1 of 1,
+and its daylight-saving twin at 11:26Z, which correctly reported "this tick is
+not ours today" and did nothing. No weekly scheduled run happened at all; the
+weekly is Monday-only.
+
+**The per-period guard is intact and was never engaged**, which is the design:
+`_test_payload` forces `send_id = 0`, and that is the sole condition
+`/digest-complete` is called under. It also REFUSES outright if real recipients
+are due, so a test send can never take a subscriber's pass.
+
+**WORTH KNOWING FOR NEXT TIME.** A nominated test send is byte-identical to a
+real one on purpose, so the operator sees what a subscriber gets. That is the
+right trade and it has a cost: two of them an hour apart are indistinguishable
+from a duplicate-send defect in an inbox. If this confuses anybody again, the
+answer is a marked test send, and the price is that it stops being the thing it
+is demonstrating.
+
+
 ## 2026-08-20 - a source could go BROKEN and never come back, because the merge re-applied the state it was superseding
 
 **MICHIGAN RECOVERED AND THE LEDGER WOULD NOT SAY SO.** A collector fix landed

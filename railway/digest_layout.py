@@ -598,6 +598,126 @@ def period_phrase(payload: dict) -> str:
     return edition_label(start, end)
 
 
+def body_dateline(payload: dict) -> str:
+    """The weekly dateline for the MASTHEAD, which leads with when it ended.
+
+    WHY THIS IS NOT period_phrase. That function also feeds the subject line's
+    fallback, and the subject was settled with the owner after several rounds:
+    "1,387 hiring signals · Aug 10-16" is approved and stays byte for byte.
+    Changing the shared function to fix the body would have quietly rewritten
+    the subject too, which is the sort of edit that gets found in an inbox.
+
+    WHAT THE BODY SAID AND WHY IT WAS NOT ENOUGH. "Weekly edition, 2026 Week 33
+    · August 10-16", received on Thursday 20 August. Every character of that is
+    correct: week 33 is the most recent COMPLETE ISO week, and week 34 had not
+    closed. But a bare range makes the reader do the arithmetic to work out how
+    current it is, and the first thing they have to decode is a week NUMBER,
+    which is the most precise part and the least readable one.
+
+    Leading with the end date answers "how current is this" immediately. The
+    ISO week keeps its place, second, because it is what a citation needs and
+    it is the only part that is unambiguous across conventions.
+
+    This is a product a journalist may cite. An edition that looks stale on
+    arrival is trusted less than one that explains its own window, even when
+    both carry identical figures.
+
+    Returns "" for anything but a readable weekly window; the caller falls back
+    to period_phrase, and never guesses.
+    """
+    if str((payload or {}).get("freq") or "").strip().lower() != "weekly":
+        return ""
+    try:
+        start = datetime.date.fromisoformat(
+            str((payload or {}).get("from") or "").strip()[:10])
+        end = datetime.date.fromisoformat(
+            str((payload or {}).get("to") or "").strip()[:10])
+    except ValueError:
+        return ""
+    # A MIDDLE DOT AND NOT A COMMA, the same separator the edition label uses,
+    # so the two surfaces read as one publication.
+    return f"week ending {_weekday_stamp(end)} \u00b7 {week_id(start)}"
+
+
+def _weekday_stamp(day: datetime.date) -> str:
+    """"Sunday, August 16". The day name earns its place here and nowhere else.
+
+    Every other date in this email is `_stamp`, and one date shape is a rule
+    this file has been corrected for twice. This is the deliberate exception,
+    in one line, because the fact the line exists to carry IS the day: an ISO
+    week ends on a Sunday, and naming it is what tells a reader the window is
+    closed rather than running.
+    """
+    # The shared formatter with its trailing year trimmed, the same way
+    # edition_label trims it, so there is still exactly one place in this file
+    # that spells a month. The year is not lost: the ISO week id beside this
+    # carries it, and it is the ISO year, which is the one that can differ.
+    return f"{WEEKDAYS[day.weekday()]}, {_drop_year(_stamp(day))}"
+
+
+def _drop_year(text: str) -> str:
+    trimmed = re.sub(r",\s*\d{4}$", "", text)
+    return trimmed or text
+
+
+#: Monday first, matching `date.weekday()`.
+WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+            "Saturday", "Sunday")
+
+#: How late a weekly send has to be before the edition explains its own window.
+#:
+#: PICKED FROM THE SCHEDULE, NOT GUESSED. The weekly fires Monday 07:30 Eastern
+#: over the ISO week that closed the previous day, so the ORDINARY gap between
+#: the window closing and the message arriving is one day. A send that slips to
+#: Tuesday is two days out and still obviously current. Three days is where a
+#: reader starts doing arithmetic, and it is the first gap that cannot happen
+#: on the normal schedule at all.
+#:
+#: SO THE LINE MUST NOT APPEAR ON A NORMAL MONDAY. A caveat that prints every
+#: week is furniture, readers stop seeing it, and it stops working on the one
+#: week it was written for. This file has learned that lesson twice already,
+#: in the country block and in the undated-signals note: fixed prose around
+#: variable data is correct on average and wrong in the particular case a
+#: reader happens to check.
+STALE_AFTER_DAYS = 2
+
+
+def staleness_note(payload: dict, today: datetime.date | None = None) -> str:
+    """One line explaining the window, and ONLY when the send is late.
+
+    WHAT WENT WRONG. A weekly edition headed "2026 Week 33 · August 10-16"
+    arrived on Thursday 20 August. The content was right: week 33 is the most
+    recent COMPLETE ISO week, and week 34 had not closed. But the email did
+    not explain itself, so it read as stale on arrival, and an edition that
+    looks stale gets trusted less than one that says why it covers what it
+    covers. The number was never wrong. The framing was.
+
+    Returns "" for a daily edition, for an unreadable window, and for any
+    weekly send inside `STALE_AFTER_DAYS` of its window closing, which is
+    every send on the normal schedule.
+    """
+    if str((payload or {}).get("freq") or "").strip().lower() != "weekly":
+        return ""
+    try:
+        end = datetime.date.fromisoformat(
+            str((payload or {}).get("to") or "").strip()[:10])
+    except ValueError:
+        return ""
+    today = datetime.date.today() if today is None else today
+    if (today - end).days <= STALE_AFTER_DAYS:
+        return ""
+    # The week AFTER the one being reported: the one a reader is currently
+    # living in and wondering why they are not reading about.
+    nxt_start = end + datetime.timedelta(days=1)
+    nxt_end = nxt_start + datetime.timedelta(days=6)
+    # The body's date shape, not the subject's short one, and without the
+    # year for the same reason the dateline drops it: the line already sits
+    # under an edition label naming the ISO year.
+    return (f"This covers the last complete week. "
+            f"{week_label(nxt_start)}, {_drop_year(date_range(nxt_start, nxt_end))}, "
+            f"closes {WEEKDAYS[nxt_end.weekday()]}.")
+
+
 def subject_line(payload: dict, parts) -> str:
     """One pattern for all three streams, chosen by the owner.
 
@@ -796,16 +916,25 @@ def _cell(inner: str, *, padding: str, top_rule: bool = False) -> str:
             f'{border}">{inner}</td></tr>')
 
 
-def _masthead(kicker: str) -> str:
+def _masthead(kicker: str, notice: str = "") -> str:
     brand = (f'<p style="margin:0;font-family:{FONT};font-size:17px;'
              f'line-height:1.3;font-weight:700;letter-spacing:0.01em;'
              f'color:{INK};">{escape(BRAND)}</p>')
-    if not kicker:
-        return brand
-    return brand + (f'<p style="margin:6px 0 0;font-family:{FONT};'
-                    f'font-size:12px;line-height:1.4;letter-spacing:0.06em;'
-                    f'text-transform:uppercase;color:{MUTED};">'
-                    f'{escape(kicker)}</p>')
+    out = brand
+    if kicker:
+        out += (f'<p style="margin:6px 0 0;font-family:{FONT};'
+                f'font-size:12px;line-height:1.4;letter-spacing:0.06em;'
+                f'text-transform:uppercase;color:{MUTED};">'
+                f'{escape(kicker)}</p>')
+    if notice:
+        # SENTENCE CASE AND NOT THE KICKER'S UPPERCASE. This is a sentence a
+        # reader reads, not a label they scan past, and uppercasing it would
+        # file it with the furniture it exists to be an exception to. It sits
+        # under the kicker because that is the line it explains.
+        out += (f'<p style="margin:8px 0 0;font-family:{FONT};'
+                f'font-size:12px;line-height:1.5;color:{MUTED};">'
+                f'{escape(notice)}</p>')
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -1084,7 +1213,7 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
 
 def render_html(parts, *, subject: str, preheader: str, kicker: str,
                 unsub_url: str, manage_url: str,
-                edition_note: str = "") -> str:
+                edition_note: str = "", notice: str = "") -> str:
     """The whole message. Inline styles only, tables only, no style block."""
     rows = []
     for index, part in enumerate(parts):
@@ -1143,7 +1272,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
           f'max-width:{WIDTH_PX}px;border-collapse:collapse;'
           f'background-color:{CARD_BG};border:1px solid {RULE};'
           f'border-radius:10px;">'
-        + _cell(_masthead(kicker), padding="24px 28px 18px")
+        + _cell(_masthead(kicker, notice), padding="24px 28px 18px")
         + "".join(rows)
         + "</table></td></tr></table></body></html>")
 
@@ -1181,7 +1310,7 @@ def _reflow(block: str) -> str:
 
 
 def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
-                edition_note: str = "") -> str:
+                edition_note: str = "", notice: str = "") -> str:
     """A real alternative, not a stripped tag byproduct.
 
     Every figure, every entry and both ways out are here, because for a text
@@ -1192,6 +1321,10 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     head = [BRAND.upper()]
     if kicker:
         head.append(kicker)
+    # THE SAME SENTENCE AS THE HTML PART, FROM THE SAME PLACE. A text reader is
+    # owed the explanation for exactly the same reason.
+    if notice:
+        head.append(notice)
     body = []
     for index, part in enumerate(parts):
         if index:

@@ -58,6 +58,29 @@ It also splits the budget: the reader digest keeps Brevo's 300/day and
 be able to eat the allowance the readers depend on. Sender identity is
 deliberately operational (`OPS_MAIL_FROM`), never the digest's From name.
 
+**EVERY OTHER OPERATIONAL EMAIL GOES THROUGH `railway/ops_notify.py`, which is
+the one door.** That move converted three callers on 2026-08-19 and left nine,
+and nothing noticed, because a wrong From line produces no error anywhere. The
+nine went on POSTing to `/alert`, which calls bare `wp_mail()`, which the Brevo
+plugin replaces wholesale with the SUBSCRIBER newsletter identity: on
+2026-08-19 the owner received his OpenRouter low-balance alarm and his
+held-relabel notice from `newsletter@asktherecruiter.com` under the reader
+newsletter's display name. Mail that looks like a newsletter gets filed with
+the newsletter, and after that the alarm is decoration.
+
+**One From (`AI Layoff Tracker Ops <ops@asktherecruiter.com>`), one subject
+prefix (`[AI Layoff Tracker] `), both stamped by `opsmail.send_once` and by
+nothing else**, so one mail rule catches everything operational.
+`ops_notify.notify(subject, body, dedupe_key=..., resolve_scope=...)` keeps the
+ledger's three shapes exactly. It NEVER prints a subject or a body:
+`tracker_diff` and `curated_probe` send names through it and both have a test
+that poisons a whole run to prove those names reach one sink.
+`tests/test_ops_sender.py` fails on a new module that builds its own sender, on
+a second reader of `OPS_MAIL_FROM`, on a caller that stamps the prefix itself,
+and on a ported job whose workflow carries no `RESEND_API_KEY`. **The reader
+digest keeps Brevo, keeps its own From, and must never gain the ops prefix** -
+that direction is tested too.
+
 **The open/resolved ledger moved with it, into `railway/alert_state.json`, and
 THE CLAIM IS COMMITTED BEFORE THE SEND.** That ordering is the whole reason this
 is not a downgrade. A server-side option's read-modify-write window was

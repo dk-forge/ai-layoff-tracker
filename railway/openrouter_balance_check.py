@@ -4,21 +4,34 @@ The whole LLM pipeline (extraction, industry/role/reason classification, tips,
 self-audit) silently stalls the moment OpenRouter credits hit zero. That is
 exactly what happened once, unnoticed, until jobs had been failing for a while.
 This is the cheap tripwire that turns "discovered it ran dry" into "warned in
-time": a daily read of the account balance that emails the owner (via the same
-keyed /alert endpoint the health digest uses) while the balance is low.
+time": a daily read of the account balance that emails the owner while the
+balance is low.
+
+WHO IT COMES FROM, AND WHY THAT IS WORTH A PARAGRAPH.
+
+It goes through `ops_notify`, so the alarm carries the operational From line
+and the `[AI Layoff Tracker]` subject prefix that every other alert carries.
+Until 2026-08-20 it POSTed to the site's `/alert` route, which calls bare
+`wp_mail()`, which the Brevo plugin on this install rewrites to the SUBSCRIBER
+newsletter identity. The owner received this alarm from
+`newsletter@asktherecruiter.com` under the reader newsletter's display name,
+one inbox row away from a digest he had actually subscribed to.
+
+An alarm wearing the newsletter's face gets filtered with the newsletter, and
+a filtered alarm is the original silence wearing a new hat.
 
 Read-only, no LLM calls, ~0 cost. Never raises: a monitoring job must not page
 the owner about its own failure. Env: OPENROUTER_API_KEY (already a GitHub
-secret), WP_SITE_URL, WP_API_KEY, ALERT_THRESHOLD (default 10 USD).
+secret), RESEND_API_KEY, ALERT_THRESHOLD (default 10 USD).
 """
 import json
 import os
 import sys
 import urllib.request
 
+import ops_notify
+
 BASE = "https://openrouter.ai/api/v1"
-SITE = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
-KEY = os.environ.get("WP_API_KEY", "")
 OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 THRESHOLD = float(os.environ.get("ALERT_THRESHOLD") or "10")
@@ -60,17 +73,15 @@ def _num(v):
 
 
 def _email(subject, body):
-    if not (SITE and KEY):
-        print("WP_SITE_URL / WP_API_KEY not set; cannot send alert")
-        return
-    try:
-        import requests
-        requests.post(f"{SITE}/wp-json/layoffs/v1/alert",
-                      json={"subject": subject, "body": body},
-                      headers={"X-Layoff-API-Key": KEY, "User-Agent": UA}, timeout=25)
-        print("alert email sent")
-    except Exception as exc:
-        print(f"alert send failed: {exc}")
+    """Undeduped on purpose, which is the cadence this always had.
+
+    The subject carries the figure, so the endpoint's old suppress-by-subject
+    transient could almost never match two days running. Keeping it undeduped
+    also happens to be right for this particular alarm: a balance heading for
+    zero should go on saying so every day until somebody tops it up, and the
+    thing it is warning about gets worse while it waits.
+    """
+    ops_notify.notify(subject, body, what="OpenRouter balance alert")
 
 
 def _history():

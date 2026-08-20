@@ -514,12 +514,33 @@ class PoisonedRunTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self._saved = (td.LEARN_STATE_PATH, td._learn_fetch,
-                       td.requests, td.report_source_health)
+                       td.requests, td.report_source_health, td.ops_notify)
         td.LEARN_STATE_PATH = os.path.join(self.tmp, "state.json")
         td._learn_fetch = lambda *a, **k: (_poisoned_articles(), 0, None)
 
         self.posts = []
         self.health = []
+        # THE ONE SINK, and it moved on 2026-08-20.
+        #
+        # Every name this loop reads is allowed to reach the owner's inbox and
+        # nothing else. That inbox used to be reached by POSTing to the site's
+        # `/alert` route, so this test followed `requests.post`. Operational
+        # mail now leaves through `ops_notify`, because `/alert` calls bare
+        # `wp_mail`, which the Brevo plugin re-stamps with the reader
+        # NEWSLETTER's From line: the private learning digest was arriving
+        # dressed as a public newsletter.
+        #
+        # The promise under test is unchanged and so is its strength. Stand in
+        # front of the real door, record what walks through it, and assert that
+        # the marker reached that and no other sink.
+        self.emails = []
+        td.ops_notify = types.SimpleNamespace(
+            configured=lambda: True,
+            notify=lambda subject, body, **kw: (
+                self.emails.append({"subject": subject, "body": body, **kw})
+                or True),
+            resolve=lambda *a, **k: True,
+        )
         fake = types.SimpleNamespace(
             # Our own /query: we hold nothing for these employers, so every
             # poisoned headline is a miss and every rule kind fires.
@@ -533,7 +554,7 @@ class PoisonedRunTests(unittest.TestCase):
 
     def tearDown(self):
         (td.LEARN_STATE_PATH, td._learn_fetch,
-         td.requests, td.report_source_health) = self._saved
+         td.requests, td.report_source_health, td.ops_notify) = self._saved
 
     def _run(self):
         buf = io.StringIO()
@@ -547,10 +568,17 @@ class PoisonedRunTests(unittest.TestCase):
         # 1. The loop actually learned something. Without this the rest of the
         #    assertions would pass on an empty run and prove nothing.
         self.assertGreater(facts["rules"], 0)
-        alerts = [k for url, k in self.posts if url.endswith("/alert")]
-        self.assertEqual(len(alerts), 1)
-        email = json.dumps(alerts[0])
+        self.assertEqual(len(self.emails), 1,
+                         "the learning digest must leave through exactly one "
+                         "operational email")
+        email = json.dumps(self.emails[0])
         self.assertIn(MARK.lower(), email.lower())
+
+        # ...and it did not ALSO go out over the wire to the host. A second
+        # copy through the old route would be a second sink, and it would carry
+        # the newsletter's From line.
+        self.assertEqual([url for url, _k in self.posts
+                          if url.endswith("/alert")], [])
 
         # 2. stdout — the GitHub Actions log — carries no name.
         self.assertNotIn(MARK.lower(), out.lower())

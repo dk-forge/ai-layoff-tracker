@@ -26,6 +26,8 @@ except Exception:
 
 import requests
 
+import ops_notify
+
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 BROWSER_UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"}
@@ -57,14 +59,14 @@ def _status(url, headers, timeout=25):
 
 
 def _email(subject, body):
-    if not (SITE and KEY):
-        return
-    try:
-        requests.post(f"{SITE}/wp-json/layoffs/v1/alert",
-                      json={"subject": subject, "body": body},
-                      headers={"X-Layoff-API-Key": KEY, **UA}, timeout=25)
-    except Exception as exc:
-        print(f"alert send failed: {exc}")
+    """Through the one operational sender, not the site's `/alert` route.
+
+    That route calls bare `wp_mail()`, which the Brevo plugin rewrites to the
+    reader newsletter's identity, so a broken-link alarm arrived looking like
+    something the owner had subscribed to. The cadence is unchanged: this is
+    the undeduped shape it always used.
+    """
+    ops_notify.notify(subject, body, what="broken-link alert")
 
 
 def _report(status, entries, detail):

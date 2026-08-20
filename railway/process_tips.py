@@ -42,6 +42,7 @@ from wp_poster import post_to_wordpress
 from sources.newsapi import TRUSTED_DOMAINS
 from sources.warn import STATE_WARN_URL
 from http_retry import get_with_retry
+import ops_notify
 from safe_fetch import BlockedURL, safe_get_with_retry
 import spend
 
@@ -222,13 +223,12 @@ def _email_digest(lines):
     body = ("Tip processor run.\n\n" + "\n".join(lines) +
             "\n\nAuto-posted tips are live and in the corrections trail. "
             "Queued tips are waiting for you in the review queue.")
-    try:
-        requests.post(f"{SITE}/wp-json/layoffs/v1/alert",
-                      json={"subject": f"Layoff tips: {len(lines)} processed",
-                            "body": body},
-                      headers={"X-Layoff-API-Key": KEY, **UA}, timeout=25)
-    except Exception as exc:
-        print(f"digest email failed: {exc}")
+    # Operational, not reader mail: this reaches the owner and nobody else, so
+    # it takes the ops From line and the shared subject prefix. It used to go
+    # through the site's `/alert` route, which wp_mail hands to the newsletter
+    # relay identity.
+    ops_notify.notify(f"Layoff tips: {len(lines)} processed", body,
+                      what="tip processor digest")
 
 
 def main():

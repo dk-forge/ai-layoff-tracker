@@ -1127,7 +1127,8 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
     def test_the_number_that_did_the_ranking_is_shown(self):
         """A list claiming to lead with the biggest signals and printing no
         size is asking to be taken on trust."""
-        self.assertIn("(2,200 jobs, August 14, 2026)", self.text)
+        self.assertIn("(2,200 jobs, location not recorded, August 14, 2026)",
+                      self.text)
 
     def test_a_row_naming_no_jobs_prints_no_count_rather_than_a_zero(self):
         """Absent, null and zero all mean "the source stated no number", and
@@ -1394,13 +1395,120 @@ class TheRowSaysWhoPublishedIt(unittest.TestCase):
             {"company": "Banco do Brasil",
              "headline": "Banco do Brasil anuncia 680 novas vagas",
              "published_date": "2026-08-17", "headcount": 680,
-             "source_name": "Ceisc"}]
-        self.assertIn("(680 jobs, Ceisc, August 17, 2026)", compose(fixture)["text"])
+             "country": "BR", "source_name": "Ceisc"}]
+        self.assertIn("(680 jobs, Brazil, Ceisc, August 17, 2026)",
+                      compose(fixture)["text"])
 
     def test_a_row_carrying_no_source_prints_none(self):
         """Absent is absent. The shipped fixture rows carry no source_name, so
         this is the same assertion the ranking tests already make."""
-        self.assertIn("(2,200 jobs, August 14, 2026)", self.text)
+        self.assertIn("(2,200 jobs, location not recorded, August 14, 2026)",
+                      self.text)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheHiringSignalSaysWhereAndLinksToIt(unittest.TestCase):
+    """The two things this list did not do, and the biggest-cuts table did.
+
+    WHERE. A row read "Evri is launching a 10,000 role hiring spree ... (10,000
+    jobs, The Sun, 19 August 2026)". Two blocks up, a cut reads "(Massachusetts,
+    United States, takes effect 18 August 2026)". So the email answered "where"
+    for every job lost and for no job gained, and a reader could not tell
+    whether a 10,000-role spree was in the United Kingdom or in India.
+
+    AND A LINK. Every layoff row links to the thing that lets a reader check
+    it. These rows were plain text, so the one block made entirely of somebody
+    else's reporting was the one block a reader could not follow.
+    """
+
+    def _rows(self, rows):
+        fixture = talent_fixture()
+        fixture["talent"]["rows"] = rows
+        return compose(fixture)
+
+    def test_a_country_code_becomes_a_country_a_reader_recognises(self):
+        """Storage format is not a place. "(BA, ...)" tells a reader nothing."""
+        out = self._rows([{"company": "Evri", "headline": "Evri to hire 10,000",
+                           "published_date": "2026-08-15", "headcount": 10000,
+                           "country": "GB", "source_name": "The Sun",
+                           "source_url": "https://www.thesun.co.uk/a"}])
+        self.assertIn("United Kingdom", out["text"])
+        self.assertNotIn("(10,000 jobs, GB,", out["text"])
+
+    def test_a_us_row_names_the_state_the_way_a_cut_does(self):
+        out = self._rows([{"company": "Relay", "headline": "Relay opens 5 roles",
+                           "published_date": "2026-08-15", "headcount": 5,
+                           "country": "US", "state": "MA",
+                           "source_name": "Greenhouse",
+                           "source_url": "https://job-boards.greenhouse.io/relay"}])
+        self.assertIn("Massachusetts, United States", out["text"])
+
+    def test_a_row_with_no_country_says_so_rather_than_going_quiet(self):
+        """43% of live rows carry no country, and they carry no city and no
+        region either. A silent row lets a reader assume the place was obvious;
+        the gap is a fact about our coverage they have a right to."""
+        out = self._rows([{"company": "Northwind", "headline": "Northwind hires",
+                           "published_date": "2026-08-15", "headcount": 12,
+                           "source_name": "Wire",
+                           "source_url": "https://wire.example/a"}])
+        self.assertIn("location not recorded", out["text"])
+
+    def test_the_place_is_never_guessed_from_the_outlet(self):
+        """The Sun is a British paper that reports hiring in other countries.
+        Reading a place off a masthead is a guess dressed as a fact."""
+        out = self._rows([{"company": "Acme", "headline": "Acme hires 900",
+                           "published_date": "2026-08-15", "headcount": 900,
+                           "source_name": "The Sun",
+                           "source_url": "https://www.thesun.co.uk/a"}])
+        self.assertIn("location not recorded", out["text"])
+        self.assertNotIn("United Kingdom", out["text"])
+
+    def test_the_headline_links_to_the_source_that_published_it(self):
+        """Link text should say where the link goes, which is the rule the
+        ranked tables already follow. The visible text here IS the outlet's
+        headline, so the article is the only destination it honestly promises.
+        """
+        out = self._rows([{"company": "Evri", "headline": "Evri to hire 10,000",
+                           "published_date": "2026-08-15", "headcount": 10000,
+                           "country": "GB", "source_name": "The Sun",
+                           "source_url": "https://www.thesun.co.uk/article"}])
+        self.assertIn('href="https://www.thesun.co.uk/article"', out["html"])
+        # And the plain part carries the same destination, unwrapped.
+        self.assertIn("https://www.thesun.co.uk/article", out["text"])
+
+    def test_the_qualifiers_stay_outside_the_anchor(self):
+        """A screen reader must not announce the parenthesis as the name of the
+        destination. Same rule, same reason, as alt_digest_rank_table."""
+        out = self._rows([{"company": "Evri", "headline": "Evri to hire 10,000",
+                           "published_date": "2026-08-15", "headcount": 10000,
+                           "country": "GB", "source_name": "The Sun",
+                           "source_url": "https://www.thesun.co.uk/article"}])
+        self.assertIn("</a> (10,000 jobs, United Kingdom, The Sun,",
+                      out["html"])
+
+    def test_a_row_with_no_usable_source_falls_back_to_our_own_page(self):
+        """The same fallback the biggest-cuts table uses when a row has no
+        entry page: the tracker filtered to that company and window."""
+        out = self._rows([{"company": "Northwind", "headline": "Northwind hires",
+                           "published_date": "2026-08-15", "headcount": 12,
+                           "source_name": "Wire"}])
+        self.assertIn("talent-intelligence-tracker/?since=", out["text"])
+        self.assertIn("company=Northwind", out["text"])
+
+    def test_a_dangerous_destination_is_refused_and_never_rendered(self):
+        """An href is not a redirect, so the host allowlist does not apply. The
+        scheme and the credentials still do: a mail client must not be handed
+        `javascript:` or `https://ourhost@evil.example`."""
+        for bad in ("javascript:alert(1)", "https://a@evil.example/x",
+                    "ftp://a.example/x", "https://localhost/x"):
+            out = self._rows([{"company": "Northwind",
+                               "headline": "Northwind hires",
+                               "published_date": "2026-08-15", "headcount": 12,
+                               "source_name": "Wire", "source_url": bad}])
+            self.assertNotIn(bad, out["html"], bad)
+            self.assertNotIn(bad, out["text"], bad)
+            # It still gets our own page rather than losing its link.
+            self.assertIn("company=Northwind", out["text"], bad)
 
 
 if __name__ == "__main__":
