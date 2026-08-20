@@ -1,5 +1,65 @@
 # Tech Log
 
+## 2026-08-20 - branch failures are ROUTED, not silenced
+
+**Four CI RED emails in about 35 minutes, and two of them were version
+collisions on branches whose pull requests had already merged.** The owner:
+"yes narrow the branch alerts to main only."
+
+MEASURED FIRST, and the window is one day, not seven. The committed ledger
+began on 2026-08-19 with the move to Resend; before that the open/resolved
+state lived in a WordPress option and cannot be read from a checkout, so
+anything earlier is UNKNOWN rather than quiet. In that window: **16 raises, 10
+naming main and 6 naming a side branch, plus 8 RECOVERED notices** -- 24
+operational emails in 24 hours. **Not one of the six side-branch raises needed
+the owner to change any code.** Two were version collisions on merged-and-stale
+branches, one was the style gate on the branch of the agent fixing this very
+alerter, and every one of the six was `pull_request`-triggered.
+
+They also manufactured work. The scope is `workflow:branch`, so deleting a
+stale branch means no green run of that scope can ever fire: two of tonight's
+became **unclearable** ledger entries, each owed a false STILL FAILING every 14
+days until a human closed it by hand. The alert did not merely fail to help.
+
+**ROUTING, NOT SILENCING, and the difference is the entire design.** A
+`pull_request` failure on a branch that is not main now goes to
+`ops_status.py [4e]` instead of the inbox. It is still red in GitHub, still red
+in the pull request, still blocks that merge, and is **listed by name, branch
+and age** at every session start. Silence and invisibility are different
+things, and CLAUDE.md is explicit that a filtered alarm is how a defect stayed
+live for hours.
+
+Four categories are never routed, and each is a test:
+
+1. **Any failure on main.** Checked first and unconditionally; no conclusion,
+   cause or event reaches past it.
+2. **A live-data incident, from ANY branch.** This is the one a naive branch
+   check breaks. A branch reading asktherecruiter.com reads the same wrong
+   number main does, which is why those raise under the branch-free
+   `<workflow>:live.data` scope already. Routing consults
+   `live_data_identity(cause)` -- the same function that builds that key, read
+   from data_integrity's own registry -- rather than a branch name, and a test
+   asserts the label is still recognised so the guard cannot pass vacuously.
+3. **Scheduled, pushed and dispatched runs, wherever they run.** A nightly job
+   failing is not somebody's working branch. Only `pull_request` is routed.
+4. **RECOVERED.** A routed raise writes NOTHING to the ledger, so there is no
+   open cause to orphan and none is owed a clear; anything that did raise still
+   clears normally. Both halves are pinned.
+
+**NO ESCALATION THRESHOLD IS SET, deliberately.** A branch red for many hours
+is a session that stopped or a branch nobody owns, and that is worth knowing --
+but sizing that window needs a distribution of how long branch failures
+normally live, and the only readable data is six events from one night, several
+created by the session that would have been setting the threshold. A ceiling
+guessed from that is the 2-day staleness bound on a weekly job all over again:
+permanently-red amber that hides real breakage. `[4e]` prints each failure's
+AGE instead, so the distribution accumulates in plain sight and a later session
+can size it from data.
+
+Effect on the night that prompted it: **two of the four emails would not have
+been sent**, and the two unclearable ledger entries would never have existed.
+The `collect` failure on main still arrives, which is the one that mattered.
+
 ## 2026-08-20 - the unformatted preheader was a BUILD, and the guard read one composer of three
 
 **The bug reported as still live is not live, and the guard that missed it is

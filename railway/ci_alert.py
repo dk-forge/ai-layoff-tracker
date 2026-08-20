@@ -503,6 +503,64 @@ def live_data_scope(workflow):
     return f"{_slug(workflow)}:{LIVE_DATA_SEGMENT}"
 
 
+#: The branch every failure pages the owner about, always, no exceptions.
+PROTECTED_BRANCH = "main"
+
+
+def route_to_ops_status(*, event, branch, cause):
+    """Does this red run go to ops_status [4e] instead of the owner's inbox?
+
+    -> (routed, why). `why` is printed either way, because a routing decision
+    nobody can read is the same problem as an alarm nobody can read.
+
+    THIS IS ROUTING, NOT SILENCING, and the distinction is the whole of it. A
+    routed failure is still red in GitHub, still red in the pull request, still
+    blocks the merge, and is still LISTED by ops_status.py section [4e] with its
+    age. What changes is that it does not interrupt a person at 22:33.
+
+    WHAT IT CATCHES: a pull-request-triggered failure on a branch that is not
+    main. That failure has a session actively holding it, the failure text
+    prints the fix, and it clears on the next push. Measured on 2026-08-19/20,
+    the only window this repo can audit (the committed ledger began that day;
+    before it, open/resolved state lived in a WordPress option and is not
+    readable from a checkout): 16 raises, 10 on main and 6 on a side branch, and
+    NOT ONE of the six needed the owner to change any code. Two were version
+    collisions on branches whose PRs had already merged, one was the style gate
+    on the branch of the agent fixing this very alerter. They arrived at the
+    same weight as a real `collect` failure on main, which is how a real one
+    gets missed.
+
+    FOUR THINGS IT MUST NEVER CATCH, and each is a test:
+
+    1. ANY failure on main. No exceptions, no window, no new condition.
+    2. A LIVE-DATA incident, from any branch. Those raise under the branch-free
+       `<workflow>:live.data` scope precisely because a wrong published number
+       is one alarm rather than one per branch, and a branch reading
+       asktherecruiter.com is reading the same wrong number main is. This is the
+       one a naive branch check breaks, so it is consulted BY IDENTITY --
+       `live_data_identity(cause)`, the same function that builds the key --
+       rather than by branch name.
+    3. A scheduled or cron-triggered run, wherever it runs. A nightly job
+       failing is not somebody's working branch. Only `pull_request` is routed;
+       `schedule`, `push`, `workflow_dispatch` and everything else page.
+    4. A RECOVERED notice. A routed raise writes NOTHING to the ledger, so
+       there is no open cause to orphan and none is owed a clear. Anything that
+       did raise still clears normally.
+    """
+    if branch == PROTECTED_BRANCH:
+        return False, f"on {PROTECTED_BRANCH}: the owner hears about this every time"
+    if event != "pull_request":
+        return False, (f"triggered by '{event}', not a pull request: a scheduled or "
+                       "pushed run is not somebody's working branch")
+    identity = live_data_identity(cause)
+    if identity:
+        return False, (f"a LIVE-DATA incident ({identity}): every branch reads the "
+                       "same wrong published number, so this pages from any branch")
+    return True, (f"a pull-request failure on '{branch}': red in the pull request, "
+                  "where the session that owns it is standing and the check prints "
+                  "the fix")
+
+
 def extract_cause(raw_log, limit=400):
     """Pull the actual failing assertion out of a failed run's log.
 
@@ -931,6 +989,19 @@ def main(argv=None):
     print(f"cause:      {cause or '(none extracted)'}")
     print(f"normalised: {normalise(cause)}")
     print(f"dedupe_key: {dedupe_key}")
+
+    routed, why = route_to_ops_status(event=args.event, branch=args.branch,
+                                      cause=cause)
+    print(f"routing:    {'ops_status [4e]' if routed else 'the owner'} — {why}")
+    if routed:
+        # Deliberately BEFORE any ledger write. A routed raise leaves no open
+        # cause, so there is nothing to orphan and no RECOVERED is owed; the
+        # green run's resolve finds nothing open for the scope and stays silent
+        # on its own, which is behaviour this path does not have to arrange.
+        print("not mailed, and nothing written to the ledger. The run is still "
+              "red, still blocks the pull request, and is listed with its age "
+              "by ops_status.py [4e].")
+        return 0
 
     if args.dry_run:
         print("--- subject ---")
