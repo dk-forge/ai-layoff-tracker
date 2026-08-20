@@ -1,0 +1,70 @@
+name: Backup restore drill
+
+# A backup nobody has restored from is a hypothesis. This is the exercise.
+#
+# WHAT IT PROVES
+#   The whole HTTP return path, end to end, against the real site: a real
+#   exported row -> a /bulk entry -> alt_db_upsert -> read back -> compared
+#   column by column. The fidelity table it prints is MEASURED, not read off
+#   the PHP, so "which columns survive a restore" has an answer somebody
+#   observed rather than inferred.
+#
+# WHAT IT DOES NOT PROVE
+#   An INSERT into an empty table. Every row it sends already exists, so
+#   alt_db_upsert takes its UPDATE branch, and the branches differ (UPDATE pins
+#   editorially corrected rows and declines to blank an absent industry).
+#   Proving the insert path needs a throwaway WordPress, which this repo does
+#   not have. docs/RECOVERY.md names that as an open gap instead of letting
+#   this stand in for it.
+#
+# SIDE EFFECT, stated because it is not nothing: the sampled rows get their
+# `updated_at` restamped, so /changed-rows reports them for that window. No new
+# row is created and no value changes, because every value it sends is the
+# value it just read.
+#
+# Dispatch only. A drill on a timer becomes a thing nobody reads, and this one
+# writes to production, however harmlessly.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: 'How many live rows to round-trip'
+        type: string
+        default: '200'
+
+concurrency:
+  group: backup-restore-drill
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the pinned minimum
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+
+      - name: Round-trip live rows through /bulk and diff them
+        working-directory: railway
+        env:
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: |
+          set -o pipefail
+          python backup_restore.py --fidelity --sample "${{ inputs.sample }}" \
+            | tee "$GITHUB_STEP_SUMMARY"
+
+      # The SQL path is the lossless one and a reimage depends on it, so prove
+      # it produces something loadable rather than assuming. Offline: it reads
+      # a fixture, not the host.
+      - name: Prove the SQL emitter against a fixture
+        working-directory: railway
+        run: python -m unittest tests.test_backup_restore_sql -v

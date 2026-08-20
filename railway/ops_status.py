@@ -1686,6 +1686,134 @@ def main():
         print("    THIS IS NOT A PASS.")
         issues.append("the shared stash stack could not be read")
 
+    # 9. IS THERE A COPY OF THE DATA ANYWHERE BUT THE HOST.
+    #
+    #    Read from the committed baseline, so it answers offline and cannot be
+    #    answered by the host it is a backup OF. A backup whose only record of
+    #    itself lives on the machine that might be gone is not a backup.
+    print("\n[9] OFF-HOST BACKUP  (railway/backup_state.json; weekly)")
+    try:
+        # Read the file, do NOT import backup_export: that module imports
+        # source_health, which imports `requests`, and ops_status is
+        # dependency-free on purpose so it runs anywhere at session start.
+        import datetime as _dt
+        _state_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                                    "backup_state.json")
+        state = {}
+        if _os.path.exists(_state_path):
+            with open(_state_path, encoding="utf-8") as _fh:
+                state = json.load(_fh)
+        if not state:
+            print("    UNKNOWN — no export has been recorded yet. That is not a pass:")
+            print("    until one lands, wp_alt_layoffs exists only on Bluehost.")
+            print("    -> gh workflow run backup-export.yml")
+            unverified.append("whether any off-host backup exists")
+        else:
+            taken = state.get("recorded_at", "?")
+            age_days = None
+            try:
+                taken_at = _dt.datetime.strptime(taken, "%Y-%m-%dT%H:%M:%SZ")
+                age_days = (_dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None)
+                            - taken_at).days
+            except Exception:  # noqa: BLE001
+                pass
+            age = f"{age_days}d ago" if age_days is not None else "age unknown"
+            print(f"    last export {taken} ({age}), plugin {state.get('plugin_version','?')}")
+            print(f"    {state.get('total_rows', 0):,} rows, "
+                  f"{state.get('total_bytes', 0) / 1e6:.1f} MB compressed, "
+                  f"{state.get('took_seconds', '?')}s")
+            for name, entry in sorted((state.get("tables") or {}).items()):
+                print(f"      {name:20s} {entry.get('rows', 0):>9,} rows")
+            # The job runs weekly, so the ceiling is the cadence plus a miss.
+            # A 2-day ceiling on a weekly job is permanent noise that hides the
+            # real breakage; 15 days means two runs in a row did not land.
+            if age_days is not None and age_days > 15:
+                print(f"    STALE — no export in {age_days} days against a weekly cadence.")
+                print("    -> docs/RECOVERY.md 'the weekly backup stopped'")
+                issues.append("the weekly off-host backup has stopped")
+            print("    restore: docs/RECOVERY.md. Subscriber data is NEVER in this artifact.")
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        print(f"    UNKNOWN — could not read the backup baseline ({exc}).")
+        print("    THIS IS NOT A PASS.")
+        unverified.append("whether the off-host backup is current")
+
+    # [10] A row whose citation cannot be verified is the one defect this
+    #      product cannot absorb, and until now the only archive signal any
+    #      session saw was the CADENCE promise (data_integrity's
+    #      archive_recheck_cadence, which surfaces in [4]). "Are we re-checking
+    #      on time?" and "what share of our citations actually has a permanent
+    #      copy?" are different questions, and only the first was on any
+    #      dashboard — the same source-health-is-not-data-integrity split this
+    #      repo has already been bitten by once.
+    #
+    #      DELIBERATELY NOT AN ALARM. It appends to neither `issues` nor
+    #      `unverified`, because the steady state here IS a backlog: the
+    #      un-archivable tail is re-checked every ALT_ARCHIVE_RECHECK_DAYS
+    #      forever and never given up on, so a non-zero gap is the system
+    #      working, not a fault. An unreachable endpoint prints UNKNOWN and
+    #      stays silent rather than manufacturing an action item.
+    print("\n[10] SOURCE ARCHIVE COVERAGE  (public /archive-coverage; NOT an alarm)")
+    try:
+        with _get(f"{BASE}/wp-json/layoffs/v1/archive-coverage"
+                  f"?cb={uuid.uuid4().hex[:8]}") as _resp:
+            cov = json.load(_resp)
+        total = int(cov.get("distinct_source_urls") or 0)
+        archived = int(cov.get("archived") or 0)
+        pending = int(cov.get("pending") or 0)
+        unavailable = int(cov.get("unavailable") or 0)
+        if total <= 0:
+            raise ValueError(f"no denominator in /archive-coverage: {cov!r}")
+        gap = total - archived
+        print(f"    {100.0 * archived / total:.1f}% archived — {archived:,} of {total:,} "
+              f"distinct cited source URLs have a permanent Wayback copy")
+        # Split the missing set by CAUSE. "Never attempted" and "attempted and
+        # failed" are different problems with different fixes, and a merged
+        # count hides which one you have.
+        print(f"    the {gap:,} without one, by CAUSE:")
+        print(f"      attempted, retrying   {pending:>7,}  'pending' — re-tried every "
+              f"72h, up to 5 rounds")
+        print(f"      attempted, exhausted  {unavailable:>7,}  'unavailable' — 5 failed "
+              f"rounds; re-checked every")
+        print(f"                                     {cov.get('recheck_days', '?')} days "
+              f"FOREVER, never given up on")
+        # `queued` is derived and CLAMPED at zero server-side, so it cannot be
+        # quoted as a clean "nothing is unattempted". The archive index keeps
+        # rows for URLs whose layoff rows were later purged or re-sourced; those
+        # orphans inflate the status tallies above the live denominator and the
+        # clamp then hides however much real queue sits underneath. Say that,
+        # rather than reporting a reassuring zero we cannot stand behind.
+        queued = cov.get("queued")
+        orphans = (archived + pending + unavailable) - total
+        if orphans > 0:
+            print(f"      never attempted       {'UNKNOWN':>7}  reads {queued}, but the index "
+                  f"holds ~{orphans:,} orphan row(s)")
+            print("                                     for purged/re-sourced URLs and the "
+                  "figure is")
+            print("                                     clamped at 0, so a small queue "
+                  "cannot be ruled out")
+        else:
+            print(f"      never attempted       {int(queued or 0):>7,}  no archive row yet; "
+                  f"the next daily run takes it")
+        oldest = cov.get("oldest_unarchived_checked_at")
+        print(f"    oldest un-archived attempt: {oldest or 'none'} "
+              f"(pool {int(cov.get('unarchived_live') or 0):,})")
+        print("    -> FORWARD coverage is the DAILY archive-backfill (05:25 UTC), which")
+        print("       drains every newly cited URL, brand-new rows included, with no")
+        print("       ingest-path change. archive-sources.yml (weekly) is a DIFFERENT")
+        print("       job: the ~54 WARN source DOCUMENTS, re-captured because their")
+        print("       CONTENT rolls. It is not the path any per-row link waits on.")
+        print("    -> the cadence PROMISE is data_integrity's archive_recheck_cadence "
+              "and reports in [4].")
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        if _is_egress_block(exc):
+            print(f"    UNKNOWN — /archive-coverage unreachable from this environment "
+                  f"({exc}).")
+            print("    Likely an ENVIRONMENT BLOCK, not an archive outage. Not a pass, "
+                  "and not a fault.")
+        else:
+            print(f"    UNKNOWN — could not read /archive-coverage ({exc}).")
+            print("    THIS IS NOT A PASS. It is also not an action item on its own.")
+
     print("\n" + "-" * 64)
     if issues:
         if egress_blocked:

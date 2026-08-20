@@ -6,6 +6,26 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **2.20.126 CLAIMED (2026-08-20): the first off-host backup of the tracker
+  data.** The baton was read as HELD by `local` and is NOT claimed here; only
+  the version number is, and it was re-read from `origin/main` immediately
+  before merging (main moved 2.20.122 -> 2.20.123 while this branch was being
+  built, and the claim moved with it). Plugin files touched:
+  `includes/backup.php` (new, keyed read-only routes), `includes/db.php`
+  (`alt_api_bulk` passes through three columns `alt_db_upsert` already
+  accepted), `assets/health.js` (the `backup_export` label), and the main
+  file. See TECHLOG 2026-08-20 and docs/RECOVERY.md.
+  **The `ops_status.py` diff in commit 2496751 also carries a section
+  `[10] SOURCE ARCHIVE COVERAGE` hunk from a CONCURRENT session** which was
+  uncommitted in the shared worktree when this branch staged that file for its
+  own section `[9]`. It is informational only (it appends to neither
+  `issues` nor `unverified`), it is documented in PR #176's body, and it was
+  deliberately carried rather than rewritten out.
+  **THREE CROSS-SESSION COLLISIONS IN THIS CHECKOUT IN ONE NIGHT.** The third
+  one switched the branch out from under this session mid-edit and lost two
+  staged doc files. The rest of this work was finished in a separate
+  `git worktree`. Check `git status` before staging, stage by explicit path,
+  and prefer an isolated worktree over the primary checkout.
 - **2.20.125 CLAIMED (2026-08-19): the Oklahoma coverage gap, corrected on the
   sources page.** The baton was read as HELD by `local` and is NOT claimed here;
   only the version number is, and it was re-read from `origin/main` immediately
