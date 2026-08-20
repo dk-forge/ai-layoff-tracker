@@ -314,5 +314,125 @@ class TheDifferenceExplainersAreOpenWithoutAClick(unittest.TestCase):
             "Attributes present: %r" % sorted(owner))
 
 
+# ---------------------------------------------------------------------------
+# 3. A CACHED PUBLISHED FIGURE HAS TO MOVE WHEN THE DATA MOVES.
+# ---------------------------------------------------------------------------
+class APublishedFigureCacheTracksTheData(unittest.TestCase):
+    """The press page kept publishing the totals the site had before an ingest.
+
+    Live on 2026-08-20, all four caught by `figures_agree_across_surfaces`:
+
+        press "so far" total    523,489    /aggregate said   525,083
+        press calendar year     558,253    /aggregate said   559,847
+        press "the home page
+        headlines N"            524,905    home was serving  526,499
+
+    Every one of them exactly 1,594 low: not a wrong query, one internally
+    consistent snapshot of a site that had moved on. The cause was the cache
+    KEY. `alt_api_cached`, the facet pages, the company directory and the
+    company index all key on `alt_data_ver`, which every data-changing path
+    bumps through alt_flush_caches(), so they are orphaned the instant rows
+    land. The press page's four caches were keyed on the plugin version alone,
+    so nothing short of a deploy or the hourly TTL could move them, and the
+    three deletes in alt_flush_caches_on_deploy() that looked like they covered
+    this named keys without the suffix and had never matched anything.
+
+    The third figure is the one that makes this a reader's problem rather than
+    a checker's: the press page STATES the home page's headline. A number one
+    surface remembers about another is a claim, and it was wrong for as long as
+    the cache held. Shortening the TTL would only make it rarer.
+    """
+
+    # Every transient that holds a number a reader or a journalist can quote.
+    FIGURE_CACHES = (
+        ("templates/page-press.php",
+         ("press_year_stats", "press_sb_groups", "press_statements",
+          "press_monthly_compare")),
+        ("templates/page-tracker.php", ("fresh_alltime",)),
+    )
+
+    @unittest.skipUnless(PHP, "php is not installed; cannot execute db.php")
+    def _key(self, version, data_ver):
+        body = _php_fn("alt_figure_cache_key")
+        code = ("define('ALT_VERSION', '%s');"
+                "function get_option($n, $d = false) { return %d; }"
+                "%s echo alt_figure_cache_key('press_statements');"
+                % (version, data_ver, body))
+        proc = subprocess.run([PHP, "-r", code], capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise AssertionError("php failed:\n%s" % proc.stderr.strip())
+        return proc.stdout.strip()
+
+    @unittest.skipUnless(PHP, "php is not installed; cannot execute db.php")
+    def test_a_write_orphans_the_cached_figure(self):
+        """The whole defect, executed: same deploy, one more write."""
+        self.assertNotEqual(
+            self._key("2.20.124", 41), self._key("2.20.124", 42),
+            "alt_data_ver moved and the key did not, so the surface would keep "
+            "serving the figure it computed before the rows arrived")
+
+    @unittest.skipUnless(PHP, "php is not installed; cannot execute db.php")
+    def test_a_deploy_orphans_the_cached_figure_too(self):
+        """The half that already worked, kept: a deploy can change the SHAPE."""
+        self.assertNotEqual(
+            self._key("2.20.124", 42), self._key("2.20.125", 42),
+            "a deploy that changes what the cached array holds could be served "
+            "the old shape")
+
+    def test_every_cached_figure_goes_through_the_one_helper(self):
+        """One definition of the key, so a fifth cache cannot be keyed by hand."""
+        for rel, names in self.FIGURE_CACHES:
+            src = _strip_php_comments((PLUGIN / rel).read_text())
+            for name in names:
+                for verb in ("get_transient", "set_transient"):
+                    self.assertIn(
+                        "%s(alt_figure_cache_key('%s')" % (verb, name), src,
+                        "%s: %s for '%s' does not go through "
+                        "alt_figure_cache_key()" % (rel, verb, name))
+
+    def test_the_helper_folds_in_the_data_version(self):
+        body = _strip_php_comments(_php_fn("alt_figure_cache_key"))
+        self.assertIn("alt_data_ver", body,
+                      "alt_figure_cache_key() no longer reads the data version, "
+                      "which is the entire reason it exists")
+        self.assertIn("ALT_VERSION", body)
+
+    def test_no_surface_keys_a_figure_on_the_plugin_version_alone(self):
+        """The exact shape that shipped the wrong number, banned everywhere.
+
+        `get_transient('alt_something_' . ALT_VERSION)` survives every ingest.
+        A cache that legitimately holds no published number (a captcha answer, a
+        rate-limit counter) does not need the data version, but it must not be
+        keyed on the plugin version either, so this pattern has no honest use.
+        """
+        offenders = []
+        for php in sorted(PLUGIN.rglob("*.php")):
+            src = _strip_php_comments(php.read_text())
+            for m in re.finditer(r"(get|set)_transient\(\s*'[^']*'\s*\.\s*ALT_VERSION",
+                                 src):
+                offenders.append("%s: %s" % (php.relative_to(PLUGIN),
+                                             m.group(0)))
+        self.assertEqual(
+            [], offenders,
+            "keyed on the plugin version and nothing else, so an ingest cannot "
+            "move it. Use alt_figure_cache_key(): " + "; ".join(offenders))
+
+    def test_the_deploy_flush_no_longer_pretends_to_clear_the_press_caches(self):
+        """Three deletes that named keys nothing had ever written.
+
+        They are worse than nothing: the next reader of that function believes
+        a deploy clears the press page's figures by hand, and stops looking for
+        the key that actually holds them.
+        """
+        main = _strip_php_comments((PLUGIN / "ai-layoff-tracker.php").read_text())
+        for dead in ("alt_press_sb_groups", "alt_press_statements",
+                     "alt_press_year_stats"):
+            self.assertNotIn(
+                "delete_transient('%s')" % dead, main,
+                "%s has not been a transient key since the version suffix was "
+                "added; deleting it is a no-op that reads like protection"
+                % dead)
+
+
 if __name__ == "__main__":
     unittest.main()

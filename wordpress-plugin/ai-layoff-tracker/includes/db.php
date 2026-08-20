@@ -3202,9 +3202,11 @@ function alt_announced_tier_sentence() {
  */
 function alt_warn_notice_gap_stats() {
     global $wpdb;
-    // Keyed on plugin version too, so a deploy that changes this function's
-    // output shape can never be served a stale cached array of the old shape.
-    $key = 'alt_notice_gap_' . md5(ALT_VERSION . '|' . (int) get_option('alt_data_ver', 1));
+    // alt_figure_cache_key() carries BOTH halves: the plugin version, so a
+    // deploy that changes this function's output shape can never be served a
+    // stale cached array of the old shape, and alt_data_ver, so a WARN import
+    // moves the gap figure the moment it lands.
+    $key = alt_figure_cache_key('notice_gap');
     $hit = get_transient($key);
     if (is_array($hit)) return $hit;
 
@@ -3642,11 +3644,15 @@ function alt_archive_note_text($status, $next_date) {
  * in a 15-minute transient); nothing here is typed.
  */
 function alt_archive_coverage_line_html() {
-    $c = get_transient('alt_archive_cov_line');
+    // Same rule as every other published figure (alt_figure_cache_key): a
+    // recorded archive bumps alt_data_ver, so the published percentage moves
+    // with the index instead of trailing it by up to a quarter of an hour.
+    $ck = alt_figure_cache_key('archive_cov_line');
+    $c = get_transient($ck);
     if (!is_array($c)) {
         if (!function_exists('alt_archive_coverage_counts')) return '';
         $c = alt_archive_coverage_counts();
-        set_transient('alt_archive_cov_line', $c, 15 * MINUTE_IN_SECONDS);
+        set_transient($ck, $c, 15 * MINUTE_IN_SECONDS);
     }
     if ((int) $c['distinct_source_urls'] <= 0) return '';
     $f = function ($n) { return number_format((int) $n); };
@@ -5274,6 +5280,39 @@ add_filter('nocache_headers', function ($headers) {
     }
     return $headers;
 }, 999);
+
+/**
+ * THE cache key for any transient that holds a PUBLISHED FIGURE.
+ *
+ * One rule, written once: a cached number is keyed on the plugin version AND on
+ * `alt_data_ver`. The plugin version covers a deploy that changes what the
+ * number means; `alt_data_ver` covers a write that changes what the number IS,
+ * because every data-changing path bumps it through alt_flush_caches(). A key
+ * missing the second half survives an ingest, so the surface holding it keeps
+ * publishing the total the site had before the rows landed.
+ *
+ * THAT IS NOT HYPOTHETICAL AND IT WAS LIVE. Until 2.20.127 the press page —
+ * the surface that exists to be quoted — cached its figures under
+ * 'alt_press_statements_' . ALT_VERSION and nothing else. /aggregate, the home
+ * page (which shares alt_api_cached with it), the facet pages, the company
+ * directory and the company index were all keyed on alt_data_ver and moved the
+ * moment rows arrived; the press page did not. Measured on 2026-08-20 it was
+ * publishing 523,489 verified job cuts for 2026 to date against the API's
+ * 525,083, its calendar-year row 558,253 against 559,847, and — the reader-
+ * facing half — its "the tracker home page headlines N" sentence said 524,905
+ * while the home page was serving 526,499. Every one of those was exactly
+ * 1,594 low: one internally consistent snapshot of a site that had moved on.
+ * `figures_agree_across_surfaces` in railway/published_figures.py caught it and
+ * was right to; a cross-reference to another surface's number has to be read,
+ * not remembered, and an hour-old read is a memory.
+ *
+ * Deliberately NOT solved by shortening the TTL. A shorter window makes the
+ * wrong number rarer, not absent, and "rarer" is the state that gets quoted
+ * without anyone noticing. The figure now changes when the data does.
+ */
+function alt_figure_cache_key($name) {
+    return 'alt_' . $name . '_' . md5(ALT_VERSION . '|' . (int) get_option('alt_data_ver', 1));
+}
 
 /**
  * Micro-cache for the public read endpoints. Nearly every visitor issues the
