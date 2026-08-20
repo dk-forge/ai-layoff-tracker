@@ -51,8 +51,13 @@
       "first": 1787209644,
       "last": 1787209644,
       "subject": "CI RED: Tests \u2014 AssertionError: 1 sentence too long finding(s). Rewrite these to meet docs/STYLE.md:"
+    },
+    "weekly-off-host-backup:main:0e694682c553f9bc": {
+      "first": 1787211332,
+      "last": 1787211332,
+      "subject": "CI RED: Weekly off-host backup \u2014 EXCLUDED wp_alt_subscribers: Personal data: email addresses, consent records, and two live tokens (confirm_to..."
     }
   },
-  "updated_at": "2026-08-20T07:07:25+00:00",
+  "updated_at": "2026-08-20T07:35:32+00:00",
   "version": 1
 }
