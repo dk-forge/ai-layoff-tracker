@@ -6,6 +6,30 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-20): 2.20.128, read off main
+  (2.20.127) immediately before merging.** The baton was read as HELD by
+  `local` and is NOT claimed here; only the version number is.
+
+  **`/talent/v1/aggregate` IGNORES A FILTER VALUE IT DOES NOT RECOGNISE AND
+  ANSWERS WITH THE UNFILTERED TOTAL.** Measured live, not reasoned about; the
+  table is in TECHLOG. `pillar=leadership_chang` returns 1,387, the headline.
+  So a typo, or the sibling renaming a pillar, publishes the worldwide total
+  under a category label as a measurement. The counts that shipped in 2.20.123
+  were correct; nothing guarded them. A category count equal to the headline is
+  now OMITTED as UNKNOWN, never zeroed. **The real fix belongs in the TALENT
+  plugin**, which should reject an unknown `pillar` rather than drop it. Do not
+  remove this guard when that lands.
+
+  **THIS LOST THE RACE FOUR TIMES:** 2.20.124 to #177, 2.20.125 to #181, and
+  2.20.126 then 2.20.127 to #180. Re-read and re-bump each time; never reserve.
+  The conflict was ALWAYS in TECHLOG and HANDOFF and never in the code, because
+  both files take their entry at the top. Rebuilding from `origin/main` and
+  re-applying the hunk beats resolving prose three ways.
+
+  Plugin files touched: `includes/subscribe.php`, `ai-layoff-tracker.php`
+  (version only). Rest is `railway/tests/test_digest_talent_activity.py` (new),
+  TECHLOG and this file. **Next plugin release is 2.20.129. Re-read main
+  immediately before claiming it.**
 - **2.20.127 CONSUMED AND ON MAIN (2026-08-20): the press page's cached figures
   now move when the data does (PR #180).** The baton was read as HELD by
   `local` and is NOT claimed here; only the version was, and it was re-read

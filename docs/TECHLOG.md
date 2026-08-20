@@ -1,5 +1,80 @@
 # Tech Log
 
+## 2026-08-20 - the talent aggregate ignores a filter it does not recognise, and answers with the headline, 2.20.128
+
+**FOUND BY PROBING THE LIVE ROUTE AFTER THE SEND HAD ALREADY GONE OUT.** The
+"Other talent activity" block added in 2.20.123 narrows /talent/v1/aggregate
+three times over the same window. That endpoint does not validate its filter
+values: it DROPS one it does not recognise and answers with the UNFILTERED
+total. Measured over 2026-08-10 to 2026-08-16, unfiltered total 1,387:
+
+| filter | total | |
+|---|---|---|
+| `pillar=leadership_change` | 846 | honoured |
+| `funding=1` | 182 | honoured |
+| `pillar=rewards_comp` | 97 | honoured |
+| `pillar=company_development` | 229 | honoured |
+| `pillar=leadership_chang` | **1,387** | IGNORED, one character short |
+| `pillar=hiring_expansion` | **1,387** | IGNORED, not a pillar at all |
+| `pillar=` | **1,387** | IGNORED |
+| `funding=0` | **1,387** | IGNORED |
+| `funding=banana` | **1,387** | IGNORED |
+
+**The numbers that shipped in 2.20.123 were CORRECT** - 846, 182 and 97 are
+genuinely distinct filtered counts, and the live test send carried real
+figures. The defect is that nothing stood between a correct render and a
+catastrophic one. A one-character typo here, or the SIBLING plugin renaming a
+pillar, publishes "Leadership moves 1,387": the worldwide headline, wearing a
+category label, presented as a measurement. Nothing fails, nothing logs, and
+the number is plausible. **That is strictly worse than a wrong zero** - a zero
+invites a question and a plausible large number does not - and the
+failed-call guard already in the loop cannot see it, because no call fails.
+
+**THE GUARD IS EQUALITY WITH THE HEADLINE**, which is the exact signature of
+the fault and costs no extra request, since the composer already holds the
+unfiltered total. A category whose count equals it is OMITTED, as UNKNOWN,
+never zeroed. What that gives up is stated rather than hidden: a genuine week
+in which one category held every signal would be suppressed. Three overlapping
+categories cannot all equal the total and the observed shares are 61%, 13% and
+7%, so that is not a week this data produces. A suppressed true line costs a
+line; a published headline-in-disguise costs a number, and this product is
+built on the numbers being checkable.
+
+`tests/test_digest_talent_activity.py` drives the real composer over a harness
+whose category answers the test chooses, and holds four states apart: a real
+count prints, a count equal to the headline is omitted, a FAILED call is
+omitted rather than zeroed, and a real zero from a working call prints.
+Verified to bite: with the guard line removed,
+`test_a_count_equal_to_the_headline_is_omitted` fails and the other six pass.
+
+**The lesson is the one this repo keeps relearning in new places.** A caller
+cannot tell "filtered to nothing" from "filter not understood" unless it
+checks, and an endpoint that answers 200 with a plausible body is not the same
+as an endpoint that answered the question asked. The talent tracker is the
+sibling's to fix - it should reject an unknown `pillar` rather than drop it -
+and this repo does not get to wait for that before it stops publishing the
+result.
+
+**THIS LOST THE VERSION RACE FOUR TIMES:** 2.20.124 to #177, 2.20.125 to #181,
+2.20.126 to #180, 2.20.127 to #180 again. Each time main was re-read at rebase
+time and the number after it taken, which is the rule working rather than
+failing. Two things are worth recording for the next busy evening.
+
+**The docs are now the expensive conflict, not the code.** TECHLOG and HANDOFF
+both take their new entry at the TOP, so every concurrent session collides
+there and nowhere else; the code hunks merged cleanly every time. Rebuilding
+the branch from `origin/main` and re-applying the one hunk is faster and safer
+than resolving a three-way conflict in a file where both sides are prose.
+
+**A red main blocks every branch, and the fix for it can be unmergeable.** PR
+#181 (2.20.125) landed a 60-word sentence on the sources page past STYLE.md's
+30-word ceiling, so `Tests` was red on main and every PR rebased onto it
+inherited the failure. The self-heal PR that fixed it, #184, then could not
+merge: it had claimed 2.20.126, which #180 spent while it sat in CI. That is
+the version race turning a one-line copy fix into a blocked one. It was
+resolved on main by `d9ec431` independently.
+
+
 ## 2026-08-20 - The press page published the totals the site had before the ingest, because its cache key never learned what a write is (2.20.127)
 
 `ops_status.py [3]` reported `figures_agree_across_surfaces` FAILING: the home
