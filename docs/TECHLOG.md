@@ -86,6 +86,49 @@ attached, so a real quantity of 8601 is still caught.
 **No plugin file changed, so no `ALT_VERSION` was consumed.** The three
 dispatches sent nothing.
 
+## 2026-08-19 - the alert said the failure was `##[endgroup]`
+
+**An operational email went out whose entire WHAT FAILED section read
+`##[endgroup]`.** That is a GitHub log-group marker. It is formatting. The
+sibling tracker's `collect` run 32307688627 went red on main, `ci_alert.py`
+went looking for a cause, matched none of its buckets, and fell through to its
+documented fallback -- "the last real output line still beats 'a job failed'".
+The last non-empty line before `##[error]Process completed with exit code 1.`
+was the fold marker that closes the step. The fallback was right in principle
+and had no idea that formatting is not output.
+
+**The subject line was the smaller half.** `cause` is also what `build_alert`
+FINGERPRINTS. `##[endgroup]` is a constant: it survives `normalise()`
+unchanged, so every no-cause failure of that workflow and branch hashes to one
+key, and the second one is suppressed as "already open". The promise this
+module exists to keep is one email per CAUSE; a garbage cause silently
+converted that into one email per WORKFLOW, and no surface anywhere said so.
+Dedup degrading into deafness is the exact failure mode the module's own
+docstring is about.
+
+The fix is `is_cause_line()`, applied twice -- once to keep markers out of the
+candidate pool and once to refuse one that reaches the answer anyway, because
+either alone is a guard the next new bucket walks around. Two shapes are
+refused, because `##[` alone does not settle it: `##[error]` and `##[warning]`
+carry real messages and are read as causes elsewhere in the module, while
+`##[group]`, `##[endgroup]` and `##[section]` are STRUCTURE -- the text after
+`##[group]` names a fold ("Run python3 run_collect.py"), which says what was
+about to happen and never what went wrong. Any workflow command with no
+message at all goes too.
+
+Refusing is honest, not lossy: `build_alert` already had a truthful no-cause
+path, and it now reads "no error line could be extracted from the log" over the
+run URL. "I could not read a cause, here is the run" is actionable. A log
+marker is not.
+
+The documented fallback is unchanged. On the real log the cause becomes
+`[publish] sent=0 stored=0 duplicate=0 errors=0` -- thin, but genuinely what
+the job last said. Only formatting was ever the defect.
+
+New tests in `tests/test_ci_alert.py::AMarkerIsNeverACause`, built on the real
+lines of run 32307688627, including one that pins the half that made no noise:
+two unrelated failures that share nothing but the trailing marker must not
+collapse onto one dedup key.
 
 ## 2026-08-19 - the plugin-side half of the 6:00 Eastern move, 2.20.122
 

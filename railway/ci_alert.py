@@ -229,6 +229,48 @@ _PYTEST_SUMMARY = re.compile(r"^FAILED\s+\S+::\S+.*$")
 _UNITTEST_HEAD = re.compile(r"^(?:FAIL|ERROR):\s+\w+\s+\(.*\)\s*$")
 _LOOSE_ERROR = re.compile(r"(?i)(?:^|\s)(?:error|fatal|failed)[: ]")
 
+# A GitHub workflow-command marker carrying no message of its own: "##[endgroup]",
+# "##[group]", "##[section]". These are FORMATTING, and formatting is never a
+# cause -- but on 2026-08-19 one was the ENTIRE "WHAT FAILED:" section of a real
+# email (sibling tracker, `collect` run 32307688627). No bucket matched that log,
+# so the fallback below took the last non-empty body line and mailed
+# "##[endgroup]" as the diagnosis.
+#
+# THE SUBJECT LINE IS THE SMALLER HALF OF THAT DEFECT. `cause` is also what
+# build_alert fingerprints, so a marker does not merely read badly, it HASHES:
+# every unrelated no-cause failure of that workflow+branch normalises to the same
+# constant and lands on one key, where the second one is suppressed as "already
+# open". The promise is one email per cause; a garbage cause silently turns that
+# into one email per WORKFLOW, and no surface says so.
+#
+# So a marker is refused, and refusing is honest rather than lossy: build_alert
+# already has a truthful no-cause path ("no error line could be extracted from
+# the log", plus the run URL and the paragraph saying why). Saying "I could not
+# read a cause, here is the run" is actionable. A log marker is not.
+# Two shapes, because "##[" alone does not settle it. `##[error]` and
+# `##[warning]` carry a real message and are read as causes elsewhere in this
+# module; `##[group]`, `##[endgroup]` and `##[section]` are STRUCTURE, and the
+# text after `##[group]` is the name of a fold, not a diagnosis -- "Run python3
+# run_collect.py" says what was about to happen, never what went wrong.
+_STRUCTURAL_MARKER = re.compile(r"^##\[(?:group|endgroup|section)\]", re.IGNORECASE)
+#: Any workflow command with no message at all, including ones not named above.
+_EMPTY_MARKER = re.compile(r"^##\[[^\]]*\]\s*$")
+
+
+def is_cause_line(line):
+    """Could this line be a diagnosis at all? -> bool.
+
+    False for blank lines, whitespace, fold markers, and any workflow command
+    with nothing after it. Used in TWO places on purpose: to keep markers out of
+    the candidate pool, and to refuse one that reaches the final answer anyway.
+    Either alone is a guard that the next new bucket can walk around.
+    """
+    stripped = (line or "").strip()
+    if not stripped:
+        return False
+    return not (_STRUCTURAL_MARKER.match(stripped)
+                or _EMPTY_MARKER.match(stripped))
+
 # Applied IN ORDER to turn a message into a cause fingerprint. Anything that can
 # change run-to-run while the underlying defect stays the same must die here, or
 # the same broken thing mails twice.
@@ -489,7 +531,7 @@ def extract_cause(raw_log, limit=400):
         if _GENERIC_ERROR.match(body):
             cut = i
             break
-    body_lines = [ln for ln in lines[:cut] if ln.strip()]
+    body_lines = [ln for ln in lines[:cut] if is_cause_line(ln)]
 
     annotations, exceptions, pytest_detail, test_heads, loose = [], [], [], [], []
     for ln in body_lines:
@@ -521,10 +563,16 @@ def extract_cause(raw_log, limit=400):
         # "a job failed", and saying so honestly beats inventing a diagnosis.
         cause = body_lines[-1].strip() if body_lines else ""
 
+    # A marker that reached the answer is NOT an answer. Returning "" hands
+    # build_alert its honest no-cause path; keeping the marker would put
+    # formatting in the subject line and in the dedup key.
+    if not is_cause_line(cause):
+        cause = ""
+
     context = []
     for bucket in (test_heads, exceptions, pytest_detail, annotations):
         for ln in bucket[-3:]:
-            if ln != cause and ln not in context:
+            if ln != cause and ln not in context and is_cause_line(ln):
                 context.append(ln)
     return cause[:limit], context[:5]
 
@@ -595,9 +643,10 @@ def build_alert(*, repo, workflow, branch, event, run_url, run_id, cause,
     if not cause:
         lines.append("")
         lines.append(
-            "No assertion or error line could be read out of this run's log (the log may "
-            "have expired, or the job died before producing one). Open the run URL. This "
-            "email is telling you the truth it has, not guessing at one.")
+            "No assertion or error line could be read out of this run's log. The log may "
+            "have expired, the job may have died before producing one, or the failing step "
+            "may have printed nothing but log markers. Open the run URL. This email is "
+            "telling you the truth it has, not guessing at one.")
     lines.append(
         "\nWhat to do: open a Claude Code session in the ai-layoff-tracker repo and paste "
         "this line:\n"
