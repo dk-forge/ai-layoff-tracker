@@ -196,27 +196,52 @@ gh workflow run backup-restore-drill.yml -f sample=200
 
 It round-trips real rows through `/bulk` and diffs them column by column.
 
-**What the drill proves:** the whole HTTP chain end to end against the real
-site, and which columns come back identical.
+**Measured, 2026-08-20, sample of 200:**
 
-**What the drill does NOT prove:** an INSERT into an empty table. Every row it
-sends already exists, so `alt_db_upsert` takes its UPDATE branch, and the
-branches differ (UPDATE pins editorially corrected rows and declines to blank an
-absent industry). **Proving the insert path needs a throwaway WordPress, which
-this repo does not have.** That gap is open. Section 3a avoids it entirely by
-not using `/bulk`.
+```
+drill: 200 live rows
+/bulk received 200, upserted 200
+compared 200 rows, column by column:
+  every column except updated_at came back identical
+```
 
-Columns `/bulk` has no parameter for, and which therefore need section 3a:
+**What that means, precisely.** On an UPDATE of a row that already exists,
+`/bulk` does not clobber the columns it has no parameter for. The sample was
+not a soft one: of those 200 rows, 200 carried an `event_id`, 200 a `post_id`,
+140 a `role_categories`, 27 the `edited` pin, 11 a `roles_evidence` and 3 a
+`superset_of`. So the preservation result is real.
 
-- `id`, `post_id` - reassigned on insert; `post_id` links to a CPT post a reimage does not have anyway
-- `company_key` - re-derived from `company` by `alt_company_key()`
-- `role_categories`, `roles_evidence` - re-derivable only where `roles` text exists
-- `edited` - the editorial pin. **Losing this un-pins corrected rows**, so a later re-import could revert a correction
-- `event_id`, `superset_of` - rebuilt by `reconcile-supersets` and the event migration
-- `updated_at` - restamped by the write, by design
+**What it does NOT mean.** It is not a statement about an INSERT into an empty
+table, which is the reimage case. There, a column `/bulk` cannot send is simply
+not there afterwards. And the 27 `edited` rows demonstrate the editorial pin
+rather than fidelity: `alt_db_upsert` returns before writing for those, so
+nothing about them was restored at all.
+
+**The INSERT path has never been exercised**, because proving it needs a
+throwaway WordPress, which this repo does not have. That gap is open. Section
+3a avoids it entirely by not using `/bulk`.
+
+Columns `/bulk` has no parameter for, with how much of the corpus carries one.
+On a reimage through **3b** these are absent afterwards; through **3a** they are
+not:
+
+| column | rows carrying a value | what happens on a fresh insert |
+|---|---:|---|
+| `event_id` | 65,441 (100%) | 0; rebuilt by the event migration |
+| `edited` | 13,481 (20.6%) | 0, so **corrected rows lose their pin** and a later re-import can revert the correction |
+| `post_id` | 1,941 (3.0%) | NULL; the CPT post a reimage does not have anyway |
+| `role_categories` | 1,546 (2.4%) | re-derived from `roles` where that text exists, otherwise lost |
+| `superset_of` | 405 (0.6%) | 0; rebuilt by `reconcile-supersets` |
+| `roles_evidence` | 172 (0.3%) | lost |
+| `company_key` | 65,428 | re-derived from `company` by `alt_company_key()` |
+| `id` | all | reassigned |
+| `updated_at` | - | restamped by the write, by design |
 
 `job_count_max`, `employer_country_evidence` and `announcement_evidence` **are**
 carried, as of 2.20.126. They were not before.
+
+The one that should worry you is `edited`. Losing it un-pins 13,481
+editorially corrected rows.
 
 ### The SQL path was verified against a real MySQL 8
 

@@ -256,6 +256,33 @@ def fidelity(base: str, headers: dict, sample: int) -> int:
             if row.get(c) != new.get(c):
                 changed[c] += 1
 
+    # WHAT THE SAMPLE ACTUALLY CONTAINED. Without this the headline result is
+    # uninterpretable: "every column identical" over 200 rows that all happen
+    # to carry 0 in the interesting columns proves nothing, and a reader has no
+    # way to tell that from a real result. Counted on the rows as READ, with
+    # MySQL's string zeros coerced - "0" is truthy in Python and counting it as
+    # a value is how a flattering number gets published.
+    def _truthy(v):
+        return v not in (None, "", "0", 0)
+
+    composition = {
+        "edited": sum(1 for r in before.values() if _truthy(r.get("edited"))),
+        "superset_of": sum(1 for r in before.values() if _truthy(r.get("superset_of"))),
+        "event_id": sum(1 for r in before.values() if _truthy(r.get("event_id"))),
+        "post_id": sum(1 for r in before.values() if _truthy(r.get("post_id"))),
+        "role_categories": sum(1 for r in before.values()
+                               if (r.get("role_categories") or "").strip(",")),
+        "roles_evidence": sum(1 for r in before.values() if _truthy(r.get("roles_evidence"))),
+    }
+    print("\nwhat this sample actually exercised:")
+    for col, n in sorted(composition.items()):
+        note = "" if n else "   <-- NOT EXERCISED: the result says nothing about this column"
+        print(f"  {col:20s} {n:4d} of {len(before)} rows carry a value{note}")
+    if composition["edited"]:
+        print(f"  NOTE: the {composition['edited']} `edited` rows are editorially PINNED, so")
+        print("        alt_db_upsert returns before writing. They demonstrate the pin,")
+        print("        not restore fidelity.")
+
     print(f"\ncompared {compared} rows, column by column:")
     lost = []
     for c in columns:
@@ -269,7 +296,12 @@ def fidelity(base: str, headers: dict, sample: int) -> int:
         print(f"  {c:28s} {n:5d} changed  <-- NOT carried by an HTTP restore")
     if not lost:
         print("  every column except updated_at came back identical")
-    print("\nColumns /bulk has no parameter for are restored by --emit-sql instead.")
+    print()
+    print("READ THAT AS: on an UPDATE of a row that already exists, /bulk does not")
+    print("clobber the columns it has no parameter for. It is NOT a statement about")
+    print("an INSERT into an empty table, which is the reimage case: there the")
+    print("columns /bulk cannot send simply are not there afterwards. Use --emit-sql")
+    print("for a reimage. docs/RECOVERY.md section 5 spells the difference out.")
     return 0 if compared else 3
 
 

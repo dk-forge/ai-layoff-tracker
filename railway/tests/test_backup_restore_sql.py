@@ -260,6 +260,38 @@ class TheEmitterRefusesWhatItShould(unittest.TestCase):
                 backup_restore.emit_sql(tmp, "layoffs", "wp_", io.StringIO())
 
 
+class TheFidelityDrillSaysWhatItMeasured(unittest.TestCase):
+    """A clean diff over an unrepresentative sample is a flattering number.
+
+    The drill's headline is "every column came back identical". That is only
+    interpretable next to what the sample actually contained, so the drill
+    prints its own composition and names any column it did NOT exercise.
+    """
+
+    def test_it_reports_composition_and_names_unexercised_columns(self):
+        import inspect
+        src = inspect.getsource(backup_restore.fidelity)
+        self.assertIn("what this sample actually exercised", src)
+        self.assertIn("NOT EXERCISED", src)
+
+    def test_it_coerces_mysql_string_zeros(self):
+        """"0" is truthy in Python, and counting it as a value inflates the sample."""
+        import inspect
+        src = inspect.getsource(backup_restore.fidelity)
+        self.assertIn('v not in (None, "", "0", 0)', src)
+
+    def test_it_refuses_to_let_the_result_stand_for_an_insert(self):
+        import inspect
+        src = inspect.getsource(backup_restore.fidelity)
+        self.assertIn("NOT a statement about", src)
+        self.assertIn("INSERT into an empty table", src)
+
+    def test_it_says_pinned_rows_prove_the_pin_and_not_fidelity(self):
+        import inspect
+        src = inspect.getsource(backup_restore.fidelity)
+        self.assertIn("editorially PINNED", src)
+
+
 class TheBulkEntryMapping(unittest.TestCase):
 
     def test_company_is_renamed_and_tags_are_unpacked(self):
