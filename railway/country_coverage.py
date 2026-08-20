@@ -727,6 +727,41 @@ REFUSAL_LEDGER = (
      "nature": "path-level disallows covering exactly the document formats a "
                "statistics collector would want",
      "alternative": "the HTML pages on the same hosts", "verified_here": False},
+    # --- added 2026-08-19. A US STATE, recorded here because this is the one
+    # committed ledger and the lesson is identical: without the tried-and-failed
+    # list somebody re-walks all eight routes in three months.
+    {"host": "employoklahoma.gov/Participants/s/warnnotices", "country": "United States (Oklahoma)",
+     "nature": "NOT A REFUSAL — 'Allow: /'. PERMISSION WAS NEVER THE CONSTRAINT; the "
+               "state publishes no machine-readable surface at all. Eight routes tried, "
+               "robots.txt read before every content request: (1) the portal is a "
+               "Salesforce Experience Cloud Aura shell, 31,445 bytes with ZERO <table> "
+               "and ZERO <tr>; (2) no .csv/.xlsx/.xls/.pdf link and no published "
+               "static-resource download route; (3) data.ok.gov has NO WARN dataset "
+               "(?q=layoff returns 0, ?q=WARN one false positive on a purchase-card "
+               "file) and its CKAN API is 'Disallow: /api/' so it was NOT called; "
+               "(4) oklahoma.gov/workforce/employers/layoffs.html gives the statutory "
+               "thresholds then links to the portal — the state publishes no list of "
+               "its own, and its 6.1MB sitemap has no OESC WARN page; (5) oesc.ok.gov "
+               "is an alias of oklahoma.gov/oesc with no WARN content; (6) no RSS and "
+               "(7) no documented API on any of them; (8) US DOL /agencies/eta/layoffs/"
+               "warn is compliance guidance and does NOT republish state notices. "
+               "Wayback recovers exactly TWO notices (warn_lookups/804 Alutiiq "
+               "Commercial Enterprises 363 2022-07-25, /833 Mood Cannabis 120 "
+               "2024-09-20); the sequential ids imply 800+ exist, but the list has sat "
+               "behind a search form since at least 2015 and was never published as a "
+               "crawlable page, so there is no index to enumerate. The old "
+               "okjobmatch.com host is dead on an expired certificate and was NOT "
+               "fetched. The ONLY thing that returns the data is the undocumented "
+               "Salesforce aura endpoint, which is out of scope and stays out. "
+               "Forgone: an estimated 30-60 notices/year. A future feed would map "
+               "company name, address (street/city/state/ZIP), notice date, and "
+               "employees affected",
+     "alternative": "none machine-readable. RECOMMENDATION ONLY, NOT ACTIONED BY A "
+                    "SESSION: the archived pages name an OESC Rapid Response "
+                    "coordinator, and asking OESC directly for a data extract or a "
+                    "documented feed is the honest remaining path. That is contacting "
+                    "a third party on the owner's behalf, so it is the OWNER's to send",
+     "verified_here": True},
 )
 
 
