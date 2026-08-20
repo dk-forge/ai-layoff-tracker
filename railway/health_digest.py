@@ -124,7 +124,54 @@ def subscriber_line():
             f"{last.get('recipients')}, {clicks} clicks, {unsub} unsubscribed.")
 
 
-def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribers=""):
+def _dark_source_lines():
+    """The committed dark-source ledger, as email-ready blocks.
+
+    Read from railway/source_state.json rather than re-derived, so the digest,
+    ops_status and the import that wrote it all say the same thing. A collector
+    that answers with a frozen archive is invisible to every count-based check
+    in this file, which is why it has its own ledger at all.
+    """
+    try:
+        import source_alert
+        import source_freshness
+        rows = source_freshness.broken(source_freshness.load_ledger())
+    except Exception as exc:                                   # noqa: BLE001
+        return [f"(the dark-source ledger could not be read: {exc} - UNKNOWN, "
+                f"not a clean bill of health)"], []
+    if not rows:
+        return [], []
+    out = ["\nThese collectors run and answer, but have published NOTHING NEW, "
+           "on evidence strong enough to call a break (p below 0.01 against "
+           "their own recent filing rate). Every count-based check reads them "
+           "as healthy:\n"]
+    for r in rows:
+        out.append(source_alert.block(r))
+        out.append("")
+    return out, rows
+
+
+def _never_reported_lines(health):
+    """Collectors declared on the health page that have NO health row at all.
+
+    Absent is the state nothing in this repo could see: it does not render
+    green, it does not render. This is the only place that says the number.
+    """
+    try:
+        import source_inventory
+        missing = source_inventory.never_reported(health)
+    except Exception as exc:                                   # noqa: BLE001
+        return [f"(the source inventory could not be built: {exc} - UNKNOWN)"], []
+    if not missing:
+        return [], []
+    return (["\n" + f"{len(missing)} declared collector(s) have NEVER reported "
+             f"health at all: {', '.join(missing)}.",
+             "  Absent is not green. Either they do not run, or they run and "
+             "never report. Both need a look.\n"], list(missing))
+
+
+def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribers="",
+                 dark_lines=(), never_lines=()):
     """Mail the owner an actionable breakage report, through Resend.
 
     THIS USED TO GO THROUGH `/alert` ON THE WORDPRESS HOST, which is the host
@@ -158,6 +205,8 @@ def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribe
     else:
         subject = f"{len(names)} data source(s) need attention: {', '.join(names[:4])}"
     lines = ["The weekly health check found collectors that stopped or degraded.\n"]
+    lines.extend(dark_lines)
+    lines.extend(never_lines)
     if integrity_failed:
         lines = ["The weekly health check found the live site publishing a number that "
                  "fails a data-integrity guard.\n"]
@@ -327,7 +376,18 @@ def main():
         print(f"  ::error:: STALE {s}: last reported {a}d ago (expected <= {m}d): collector may have stopped")
 
     integrity_failed = list(integrity.failed) if integrity is not None else []
+    dark_lines, dark_rows = _dark_source_lines()
+    never_lines, never_missing = _never_reported_lines(health)
+    for _line in dark_lines + never_lines:
+        for _sub in str(_line).splitlines():
+            if _sub.strip():
+                print(f"  {_sub}")
     detail = f"{ok} ok, {len(degraded)} degraded, {len(stale)} stale"
+    if dark_rows:
+        detail += f" | DARK (publishing nothing new): " + ", ".join(
+            r["key"] for r in dark_rows)
+    if never_missing:
+        detail += f" | NEVER REPORTED: " + ", ".join(never_missing)
     if integrity is not None and integrity.verdict != "pass":
         detail += " | " + integrity.one_line()
     if degraded:
@@ -357,9 +417,15 @@ def main():
         except Exception as exc:
             print(f"(digest health post skipped: {exc})")
         # Email ONLY on real breakage, with a ready-to-paste fix instruction.
-        if stale or real_degraded or integrity_failed or zero_outage:
+        # A DARK source and a NEVER-REPORTED one are breakage too, and neither
+        # could reach this email before: a dark collector is degraded only if
+        # the freshness check caught it, and a collector with no health row at
+        # all is in none of the lists above by definition.
+        if (stale or real_degraded or integrity_failed or zero_outage
+                or dark_rows or never_missing):
             _email_alert(stale, real_degraded, integrity_failed, zero_outage,
-                         subscribers)
+                         subscribers, dark_lines=dark_lines,
+                         never_lines=never_lines)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.

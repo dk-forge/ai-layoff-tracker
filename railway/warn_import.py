@@ -22,6 +22,8 @@ import time
 
 import requests
 
+import source_alert
+import source_freshness
 from sources.warn import pull_warn
 from sources.warn_custom import pull_warn_custom
 from source_health import report_source_health
@@ -302,6 +304,66 @@ def detect_generic_state_drift(counts, expected, baselines=None, *,
     return sorted(drift)
 
 
+def assess_state_freshness(entries, attempted, *, errored=(), collapsed=(),
+                           today=None, ledger_path=None):
+    """Did each attempted state return anything NEWER, judged on its own cadence.
+
+    The count floors above answer "did the scraper return notices?". This
+    answers the other question, the one no tripwire in this file could ask: a
+    collector re-reading a FROZEN archive returns its whole history every run,
+    clears every floor, and reports healthy forever. Kansas had looked green for
+    110 days when this was written.
+
+    The statistics live in `source_freshness`, ONE definition, so a session
+    reading the committed ledger reaches the same verdict as the run that wrote
+    it. This function is only the plumbing: it turns the run's own output into a
+    per-state date series, judges it, folds the result into the committed
+    three-state ledger, and hands back what to say.
+
+    Never raises. A freshness check that sinks a successful import has cost more
+    than the gap it found.
+    """
+    today = today or source_freshness.today_utc()
+    dates_by_state, produced = {}, {}
+    for e in entries:
+        st = (e.get("state") or "").upper()
+        if not st:
+            continue
+        dates_by_state.setdefault(st, []).append(e.get("layoff_date"))
+        produced[st] = produced.get(st, 0) + 1
+    errored, collapsed = {s.upper() for s in errored}, {s.upper() for s in collapsed}
+
+    ledger = source_freshness.load_ledger(ledger_path or
+                                          source_freshness.SOURCE_STATE_LEDGER)
+    dark, unknown = [], []
+    for st in sorted({s.upper() for s in attempted}):
+        key = f"warn:{st}"
+        # A state a HUMAN has classified UNAVAILABLE (no public register, or a
+        # register with no headcount) is not in this queue and never re-enters
+        # it on a machine's say-so.
+        if (ledger.get("sources", {}).get(key, {}).get("state")
+                == source_freshness.UNAVAILABLE):
+            continue
+        profile = source_freshness.cadence_profile(dates_by_state.get(st, []),
+                                                   today=today)
+        verdict = source_freshness.judge(profile, today=today)
+        kind = None
+        if verdict["verdict"] == source_freshness.FAIL:
+            kind = source_freshness.classify(
+                verdict["verdict"], errored=st in errored,
+                produced=produced.get(st, 0), count_collapsed=st in collapsed)
+        source_freshness.record(ledger, key, profile=profile,
+                                verdict=verdict["verdict"],
+                                reason=verdict["reason"], classification=kind,
+                                today=today, label=f"{st} WARN",
+                                p0=verdict.get("p0"))
+        if verdict["verdict"] == source_freshness.FAIL:
+            dark.append(st)
+        elif verdict["verdict"] == source_freshness.UNKNOWN:
+            unknown.append(st)
+    return ledger, sorted(dark), sorted(unknown)
+
+
 def describe_state_drift(drifted, counts, floors, unreachable=None):
     """The human-readable body of a collapse message, one entry per state.
 
@@ -423,6 +485,10 @@ def main():
     # warn_custom_* family: warn_custom_states / warn_custom_legacy are re-reported
     # by the custom-scraper blocks BELOW this point, which would clobber a value
     # written here, and a brand-new literal id would need a health.js label.
+    # Names the freshness check reads further down. Initialised here so a
+    # skipped optional tier (WARN_SKIP_NEW_STATES=1) cannot turn the check into
+    # a NameError, which would read as "could not run" on a healthy run.
+    _new_errors, _wanted_new, _new_drift = set(), [], []
     _generic_by_state = {}
     for _e in entries:
         _gs = (_e.get("state") or "").upper()
@@ -600,6 +666,7 @@ def main():
             print(f"WARN new-states module unavailable: {exc}")
         scrape_all = len(states) == 1 and str(states[0]).lower() == "all"
         wanted = list(NEW_CUSTOM_STATES) if scrape_all else [s.upper() for s in states if s.upper() in NEW_CUSTOM_STATES]
+        _wanted_new = list(wanted)
         new_entries = []
         drift_states = []
         for st in wanted:
@@ -616,6 +683,7 @@ def main():
                     print(f"::warning:: WARN {st} custom scraper returned 0 notices — likely structural drift (page changed). Check the scraper.")
             except Exception as exc:
                 drift_states.append(st)
+                _new_errors.add(st)
                 print(f"WARN {st} (new importer) failed: {exc}")
         # PARTIAL collapse, the failure this tier could not see. Until now the
         # only tripwire here was `len(got) == 0`, so a state could lose most of
@@ -726,6 +794,61 @@ def main():
 
     entries = _sanitize_warn_entries(entries)
     entries.sort(key=lambda e: e["layoff_date"], reverse=True)
+
+    # ---- FRESHNESS: did each state return anything NEWER than last time? ----
+    # Everything above this line is a COUNT check, and a count cannot see a
+    # collector re-reading a frozen archive: it returns its whole history every
+    # run, clears every floor, and reports healthy forever. Kansas had looked
+    # green for 110 days. Deliberately placed after the sanitiser (so a
+    # rescinded or unnamed row cannot pass for freshness) and before the
+    # WARN_LIMIT truncation (which would drop history and forge a collapse).
+    _dark, _unknown_fresh = [], []
+    try:
+        _attempted = set()
+        if _scrape_all_c:
+            _attempted |= set(_expected_g) | set(_expected_c) | set(_wanted_new)
+        else:
+            _attempted |= {s.upper() for s in states if s.lower() != "all"}
+        # A state that produced rows is attempted whether or not a registry
+        # claimed it, so a tier added later is watched by construction.
+        _attempted |= {(e.get("state") or "").upper() for e in entries if e.get("state")}
+        _attempted.discard("")
+        _errored = set(_new_errors) | {s for s in _legacy_drift
+                                       if _got_by_state.get(s, 0) == 0}
+        _collapsed = set(_generic_drift) | set(_real_drift) | set(_new_drift)
+        _fresh_ledger, _dark, _unknown_fresh = assess_state_freshness(
+            entries, _attempted, errored=_errored, collapsed=_collapsed)
+        source_freshness.save_ledger(_fresh_ledger)
+        _rows = source_freshness.broken(_fresh_ledger)
+        if _dark:
+            # ONE finding listing the states, never one alarm per state.
+            print(f"::warning:: {len(_dark)} WARN state(s) are publishing "
+                  f"NOTHING NEW while their counts look healthy: "
+                  f"{source_freshness.describe(_rows, limit=8)}")
+        _quiet = source_freshness.quiet(_fresh_ledger)
+        if _quiet:
+            # Advisory, deliberately separate from the dark list and never
+            # emailed as a breakage. Kansas sat here at p=0.023 with an audit
+            # showing every notice already collected: the register was quiet,
+            # the collector was fine, and calling that "dark" is the false
+            # positive that teaches an owner to ignore the channel.
+            print("::notice:: publishing less than their own recent rate "
+                  "predicts, but NOT evidence of a break: "
+                  + ", ".join(f"{r['key'].split(':')[-1]} {r.get('days_dark')}d "
+                              f"(p={r.get('p0')})" for r in _quiet))
+        if _unknown_fresh:
+            print(f"::notice:: freshness UNKNOWN (too little history to fit a "
+                  f"rate, which is not a pass): {', '.join(_unknown_fresh)}")
+        if _rows and source_alert.enabled():
+            _sent, _claimed, _note = source_alert.announce(
+                _rows, run_url=source_alert.run_url())
+            print(f"dark-source alert: sent={_sent} new={len(_claimed)} ({_note})")
+    except Exception as exc:                                   # noqa: BLE001
+        # Telemetry must never sink an import that worked. A freshness check
+        # that could not run is UNKNOWN and says so; it is not a clean bill.
+        print(f"::warning:: freshness check could not run ({exc}) — state "
+              f"freshness is UNKNOWN this run, not verified")
+
     if limit:
         entries = entries[:limit]
     print(f"WARN import: {len(entries)} notices to upsert (bulk)")
@@ -767,14 +890,29 @@ def main():
     # Fold per-state generic-tier drift into the terminal status: a state that
     # went dark while its peers stayed healthy is a coverage gap the health page
     # and weekly digest must show, even though the bulk upsert itself succeeded.
+    #
+    # A state that is publishing NOTHING NEW goes through the same door. It is
+    # not a second channel and must not become one: the health ledger is what
+    # the public health page renders and what health_digest.py mails with a
+    # paste-ready fix, and that is the owner's established loop. One line
+    # naming every dark state, because six at once is one finding.
+    _problems = []
     if _generic_drift:
+        _problems.append("generic-tier state(s) went dark vs healthy peers "
+                         "(likely open-scraper drift): " + ", ".join(_generic_drift))
+    if _dark:
+        _problems.append(f"{len(_dark)} state(s) publishing nothing new "
+                         f"(freshness, own-cadence): " + ", ".join(_dark))
+    if _problems:
         report_source_health("warn_us", "degraded", len(entries),
-                             f"{scope}: {upserted} upserted, but generic-tier state(s) went "
-                             f"dark vs healthy peers (likely open-scraper drift): "
-                             + ", ".join(_generic_drift))
+                             f"{scope}: {upserted} upserted, but " + "; ".join(_problems))
     else:
+        _fresh_note = (f", {len(_unknown_fresh)} state(s) UNKNOWN (too little "
+                       f"history to judge)" if _unknown_fresh else "")
         report_source_health("warn_us", "ok", len(entries),
-                             f"{scope}: {upserted} upserted from {len(entries)} notices")
+                             f"{scope}: {upserted} upserted from {len(entries)} "
+                             f"notices, every state also publishing NEW "
+                             f"notices on its own cadence{_fresh_note}")
 
 
 if __name__ == "__main__":

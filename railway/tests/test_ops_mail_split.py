@@ -681,3 +681,105 @@ class TheDrainCarriesTheGuardItUsedToDrop(unittest.TestCase):
             ok, _note, _t = ci_alert.deliver({"subject": "s", "body": "b"})
         self.assertTrue(ok)
         self.assertEqual(seen["idem"], "")
+
+
+class ADarkSourceUsesTheSameDedupContract(unittest.TestCase):
+    """A collector that publishes nothing new mails through THIS machinery.
+
+    Not a parallel channel: `source_alert` composes a payload and hands it to
+    `alert_state.claim` and `ci_alert.deliver`, so every property the rest of
+    this file pins applies to it unchanged. What is pinned here is the part
+    specific to a dark source: the cause key must not carry the day count (it
+    changes every morning and would defeat dedup entirely), a backlog is ONE
+    email, and each source still recovers on its own.
+    """
+
+    ROWS = [
+        {"key": "warn:KS", "days_dark": 110, "rate_per_year": 15.35,
+         "p0": 0.0098, "classification": "drift", "last_reason": "110d dark"},
+        {"key": "warn:MI", "days_dark": 81, "rate_per_year": 62.06,
+         "p0": 0.0, "classification": "drift", "last_reason": "81d dark"},
+    ]
+
+    def setUp(self):
+        import source_alert
+        self.SA = source_alert
+
+    def test_the_cause_key_ignores_the_day_count(self):
+        a = self.SA.cause_key(dict(self.ROWS[0]))
+        b = self.SA.cause_key(dict(self.ROWS[0], days_dark=111, p0=0.004))
+        self.assertEqual(a, b)
+
+    def test_two_sources_are_two_causes(self):
+        self.assertNotEqual(self.SA.cause_key(self.ROWS[0]),
+                            self.SA.cause_key(self.ROWS[1]))
+
+    def test_the_reason_class_changes_the_cause(self):
+        drifted = self.SA.cause_key(self.ROWS[0])
+        hard = self.SA.cause_key(dict(self.ROWS[0], classification="hard_failure"))
+        self.assertNotEqual(drifted, hard)
+
+    def test_the_scope_prefixes_the_key_so_a_resolve_can_match_it(self):
+        scope, key = self.SA.cause_key(self.ROWS[0])
+        self.assertTrue(key.startswith(scope + ":"))
+        self.assertTrue(alert_state.KEY_SAFE.match(key), key)
+
+    def test_a_backlog_is_one_email_and_two_open_causes(self):
+        sends = []
+        with _Ledger() as ledger, mock.patch.object(opsmail, "send_once",
+                                                    _sent(sends)):
+            with mock.patch.object(alert_state, "commit_enabled",
+                                   lambda: False):
+                ok, claimed, _note = self.SA.announce(self.ROWS)
+        self.assertTrue(ok)
+        self.assertEqual(len(sends), 1, "six dark states must not be six emails")
+        self.assertEqual(len(claimed), 2)
+        for row in self.ROWS:
+            self.assertIn(self.SA.identity(row["key"])[1], sends[0]["body"])
+
+    def test_the_same_dark_source_is_not_mailed_twice(self):
+        sends = []
+        with _Ledger(), mock.patch.object(opsmail, "send_once", _sent(sends)):
+            with mock.patch.object(alert_state, "commit_enabled", lambda: False):
+                self.SA.announce(self.ROWS)
+                ok, claimed, note = self.SA.announce(self.ROWS)
+        self.assertEqual(len(sends), 1)
+        self.assertFalse(ok)
+        self.assertEqual(claimed, [])
+
+    def test_recovery_clears_one_source_and_leaves_the_other_open(self):
+        sends = []
+        with _Ledger() as ledger, mock.patch.object(opsmail, "send_once",
+                                                    _sent(sends)):
+            with mock.patch.object(alert_state, "commit_enabled", lambda: False):
+                self.SA.announce(self.ROWS)
+                self.SA.announce_recovery("warn:KS")
+                still_open = ledger.open_keys()
+        self.assertEqual(len(sends), 2)
+        self.assertTrue(any("Kansas" in s["subject"] for s in sends))
+        self.assertEqual(len(still_open), 1)
+        self.assertIn("warn:mi", still_open[0])
+
+    def test_the_subject_leads_with_country_then_source(self):
+        subject, _body = self.SA.build([self.ROWS[0]])
+        self.assertTrue(subject.startswith("United States - Kansas WARN"),
+                        subject)
+
+    def test_the_paste_ready_line_comes_before_the_numbers(self):
+        _subject, body = self.SA.build(self.ROWS)
+        self.assertLess(body.index("Paste this into a Claude Code session"),
+                        body.index("its own rate:"))
+
+    def test_the_email_forbids_the_one_fix_that_would_be_worst(self):
+        _subject, body = self.SA.build([self.ROWS[0]])
+        self.assertIn("do not change the freshness threshold", body)
+
+    def test_an_unavailable_source_never_reaches_the_mailer(self):
+        """WY is not public by statute. Mailing about it monthly is how the
+        whole channel gets filtered."""
+        import source_freshness
+        ledger = source_freshness.load_ledger()
+        self.assertEqual(ledger["sources"]["warn:WY"]["state"],
+                         source_freshness.UNAVAILABLE)
+        self.assertEqual(
+            [r["key"] for r in source_freshness.broken(ledger)], [])

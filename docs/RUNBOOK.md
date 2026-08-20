@@ -226,6 +226,75 @@ Skip, do not cancel, and do not start. In order of what it saves:
 
 ## "X is broken" playbooks
 
+**A COLLECTOR WENT DARK** (`ops_status [2b]`, or an email whose subject is
+`United States - <State> WARN`)
+
+Dark means the collector still runs and still answers, and everything it
+returns is old. This is NOT the same as a broken collector, and until
+2026-08-19 nothing in this repo could tell them apart: every WARN tripwire was
+a COUNT floor, so a collector re-reading a frozen archive returned its whole
+history every run, cleared every floor, and reported healthy. Kansas looked
+green for 110 days while publishing nothing.
+
+0. **Check whether it is DARK or merely QUIET first.** They are different
+   findings and only one of them is a defect. QUIET (`p` between 0.01 and 0.05
+   against the source's own recent rate) means the register is publishing less
+   than expected and there is no evidence the collector is at fault - Kansas
+   read exactly like this at p=0.023, and an audit found we already held every
+   notice in its window. A QUIET source is never emailed as a breakage and
+   never recorded BROKEN. Do not go looking for a bug in it; note it and move
+   on. Everything below is for a source the ledger calls BROKEN.
+1. **Read the classification before touching anything.** It is in the email, in
+   `ops_status [2b]`, and in `python3 railway/source_freshness.py --report`.
+   * `drift` - it returns rows, none newer. The listing, the pagination or the
+     date column it reads has moved. This is the common case and the one a
+     session fixes quickly.
+   * `format_change` - it answers, but fewer rows parse than its own floor.
+     Compare the live markup against the parser's field mapping.
+   * `hard_failure` - it errored or returned nothing. Check the portal still
+     exists at the URL we cite before writing any parser code.
+2. **Fix the collector. NEVER the judge.** The one repair that must never
+   happen is widening `ALPHA`, `CADENCE_MARGIN` or `MIN_DARK_DAYS`, or writing
+   `UNAVAILABLE` into `railway/source_state.json`, to make the alarm stop. That
+   turns every real outage green. Both files are in `self_heal.py` FORBIDDEN
+   and the guard job re-checks the branch's real diff.
+3. **Prove the fix with rows, not with a green run.** A collector repaired into
+   returning garbage is worse than one that is dark, because WARN rows go
+   straight to `/bulk` and the public table. Run it against the real register
+   and read what came back: employers non-empty, job counts parsed, dates in a
+   sane range, and a row count plausible against that state's own historical
+   rate rather than 10x or a tenth of it.
+4. **It clears itself.** The next run whose frontier advances records HEALTHY
+   and mails one RECOVERED notice. Nothing needs closing by hand.
+5. **If it genuinely cannot be collected**, a HUMAN records that, with a reason
+   and a date:
+   `python3 railway/source_freshness.py --classify-unavailable warn:XX
+   --reviewer "<name>" --reason "<why>"`. A machine may never do this. A
+   BROKEN source stays BROKEN with its age climbing until it is fixed or
+   classified; it never ages out and it never becomes UNAVAILABLE on its own.
+
+**WHAT IS AND IS NOT AUTO-FIXABLE, HONESTLY.** The tracker is about 99%
+automated and this does not move that number. These will always need a person:
+a state with no public register at all (WY by statute; AR and NH by
+records-request; PR, GU and VI publish no list), a policy refusal like
+Oklahoma's headcount-free projection behind an undocumented internal API, a
+portal that migrated to a new platform, and infrastructure flakiness such as a
+register refusing requests from a runner. Detection covers all of them.
+Repair does not, and claiming otherwise is how Kansas stayed green.
+
+**A COLLECTOR HAS NEVER REPORTED AT ALL** (`ops_status [2c]`)
+
+Worse than dark, because it does not render green - it does not render. The
+inventory is built from what SHOULD exist (the 56 US jurisdictions, and the
+`meta{}` registry in `assets/health.js` that the session ritual already
+requires you to update) and diffed against the live health ledger. Anything
+declared with no health row is `NEVER_REPORTED`. Either the collector does not
+run, or it runs and never calls `report_source_health`. Find out which before
+anything else; a source that was retired needs step 3 of the retirement
+("stop every remaining path that posts health under that id"), and a source
+that was never built needs its label removed from the health page until it is.
+
+
 **TWO MERGES CLAIMED ONE PLUGIN VERSION** (`Plugin version collision` is red)
 
 The failing run names the cause, the files and the number to use. Read it

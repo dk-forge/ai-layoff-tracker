@@ -1,0 +1,61 @@
+{
+  "sources": {
+    "warn:AR": {
+      "label": "Arkansas WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "no public register; notices are records-request only",
+      "unavailable_reviewer": "owner (brief 2026-08-19; matches warn_import.py _NOT_GENERIC_TIER)",
+      "unavailable_since": "2026-08-19"
+    },
+    "warn:GU": {
+      "label": "Guam WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "publishes no list",
+      "unavailable_reviewer": "owner (brief 2026-08-19)",
+      "unavailable_since": "2026-08-19"
+    },
+    "warn:NH": {
+      "label": "New Hampshire WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "no public register; notices are records-request only",
+      "unavailable_reviewer": "owner (brief 2026-08-19; matches warn_import.py _NOT_GENERIC_TIER)",
+      "unavailable_since": "2026-08-19"
+    },
+    "warn:OK": {
+      "label": "Oklahoma WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "OESC publishes all 218 notices through a guest-readable Apex call, but the projection carries no affected-employee count and reading the object directly is refused for the guest user (INSUFFICIENT_ACCESS). A row with no headcount cannot enter wp_alt_layoffs. Structurally absent, not unmeasured; re-verified at the source 2026-08-13.",
+      "unavailable_reviewer": "owner (re-verified 2026-08-13, warn_import.py _NOT_GENERIC_TIER)",
+      "unavailable_since": "2026-08-19"
+    },
+    "warn:PR": {
+      "label": "Puerto Rico WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "publishes no list",
+      "unavailable_reviewer": "owner (brief 2026-08-19)",
+      "unavailable_since": "2026-08-19"
+    },
+    "warn:VI": {
+      "label": "US Virgin Islands WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "publishes no list",
+      "unavailable_reviewer": "owner (brief 2026-08-19)",
+      "unavailable_since": "2026-08-19"
+    },
+    "warn:WY": {
+      "label": "Wyoming WARN",
+      "state": "UNAVAILABLE",
+      "classification": "policy",
+      "unavailable_reason": "notices are not public by statute",
+      "unavailable_reviewer": "owner (brief 2026-08-19; matches warn_import.py _NOT_GENERIC_TIER)",
+      "unavailable_since": "2026-08-19"
+    }
+  },
+  "_note": "Three states: HEALTHY, BROKEN, UNAVAILABLE. Only a human moves a source into or out of UNAVAILABLE, with a reviewer, a reason and a date (railway/source_freshness.py --classify-unavailable). A machine that may decide a source is permanently gone is a machine that can turn a real outage into a permanent hole. A BROKEN source keeps its first_detected forever and its age climbs until somebody fixes it or classifies it; it never ages out."
+}

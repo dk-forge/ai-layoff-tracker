@@ -262,6 +262,10 @@ jobs:
               railway/opsmail.py, railway/alert_state.py,
               railway/alert_state.json,
               .github/workflows/ci-alert.yml, .github/workflows/alert-drain.yml.
+              The judge of whether a SOURCE is healthy, and its state ledger
+              (you may fix a collector, never the thing that decides a
+              collector is broken): railway/source_freshness.py,
+              railway/source_state.json.
               The hash-pinned locks: railway/requirements.lock,
               railway/requirements-min.lock. The baton: docs/HANDOFF.md. The
               healer itself: .github/workflows/self-heal.yml,

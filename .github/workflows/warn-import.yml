@@ -142,10 +142,12 @@ jobs:
           set -euo pipefail
           git config user.name  'ai-layoff-tracker-bot'
           git config user.email 'bot@users.noreply.github.com'
-          # The import wrote this file; `git reset` below would throw it away.
+          # The import wrote these files; `git reset` below would throw them away.
           cp railway/warn_state_baselines.json "$RUNNER_TEMP/warn_baselines.json"
+          cp railway/source_state.json "$RUNNER_TEMP/source_state.json"
           for attempt in 1 2 3; do
             cp "$RUNNER_TEMP/warn_baselines.json" railway/warn_state_baselines.json
+            cp "$RUNNER_TEMP/source_state.json" railway/source_state.json
             git fetch -q origin main
             python - <<'PY'
           import json, subprocess
@@ -164,11 +166,20 @@ jobs:
                     open(P, "w"), indent=2, sort_keys=True)
           open(P, "a").write("\n")
           PY
-            git add railway/warn_state_baselines.json
+            # The dark-source ledger merges by its OWN rules, not by max(): a
+            # human's UNAVAILABLE outranks either side, and the EARLIER
+            # first_detected survives so a race cannot reset a broken source's
+            # age and hand it a fresh clock. See source_freshness.merge_ledgers.
+            git show "origin/main:railway/source_state.json" \
+              > "$RUNNER_TEMP/theirs_source_state.json" 2>/dev/null || \
+              echo '{"sources": {}}' > "$RUNNER_TEMP/theirs_source_state.json"
+            python3 railway/source_freshness.py \
+              --merge-into "$RUNNER_TEMP/theirs_source_state.json"
+            git add railway/warn_state_baselines.json railway/source_state.json
             if git diff --staged --quiet; then
               echo "Baselines unchanged."; exit 0
             fi
-            git commit -q -m "warn: ratchet per-state baselines $(date -u +%Y-%m-%dT%H:%MZ)"
+            git commit -q -m "warn: per-state baselines + source freshness $(date -u +%Y-%m-%dT%H:%MZ)"
             if git push origin HEAD:main; then
               echo "Recorded on attempt $attempt."; exit 0
             fi

@@ -245,6 +245,41 @@ the end check.
   read 73.3% on rows we demonstrably held. → RUNBOOK "you have items from a
   curated digest".
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
+- **"The collector ran" is not "the collector brought back anything new."**
+  Every WARN tripwire was a COUNT floor until 2026-08-19, and a collector
+  re-reading a FROZEN archive returns its whole history every run, clears the
+  floor, and reports healthy forever. Kansas looked green for 110 days while
+  publishing nothing; MI 81, MN 49, IN 29. `railway/source_freshness.py` judges
+  each source against ITS OWN history through two gates that must both agree:
+  Poisson rarity AND the source's own 90th-percentile publication gap times
+  1.25. Neither is redundant - cadence is what stops Texas firing on a nine-day
+  lull and what makes Mississippi's quarterly silence ordinary without a
+  hard-coded exemption; rarity is what stops North Dakota firing at 216
+  legitimate days.
+  **QUIET AND BROKEN ARE DIFFERENT STATES, and the first cut got that wrong.**
+  It called Kansas dark; an audit found the register holds 910 rows and we were
+  missing nothing - Kansas had simply not filed since May. The certainty came
+  from the denominator, 33/yr averaged over all history against 12.5/yr over the
+  trailing year, which is the difference between "impossible" and a 2.3% event.
+  So the RATE is fitted over the trailing 365 days (rates drift), the CADENCE
+  keeps 1095 days (burstiness does not, and gaps need samples), both are
+  reported so a slowdown reads as itself, and there are two thresholds:
+  `ALPHA_DARK = 0.01` opens an incident and emails, `ALPHA_QUIET = 0.05` is
+  advisory and is never emailed as a breakage. On the six states a measurement
+  called dark, only MI and MN survive as broken; KS and IN are QUIET. **Do not answer a dark
+  source by widening a threshold or by writing UNAVAILABLE into
+  `railway/source_state.json`** - both are in `self_heal.py` FORBIDDEN, and a
+  healer may fix the collector but never the judge. The ledger is three states:
+  HEALTHY / BROKEN / **UNAVAILABLE, which only a human sets**, with a reviewer,
+  a reason and a date. A BROKEN source never ages out. → RUNBOOK "a collector
+  went dark".
+- **A source that never reports at all does not show up green. It does not show
+  up.** Every guard here iterates the health ledger, so absence read as "no
+  problem" rather than "never looked at". `railway/source_inventory.py` builds
+  the inventory from what SHOULD exist (56 US jurisdictions; the `meta{}`
+  registry in `assets/health.js`) and diffs it against the live ledger;
+  `ops_status [2c]` prints it. On 2026-08-19 two declared collectors had NEVER
+  reported: `earnings_ingest` and `digest_weekly`.
 - **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
   **The email digest is the same lesson in a fourth state.** Its relay credential was rejected for three days while every scheduled run was green, because the credential was only ever exercised by a real delivery and nobody was due — so `0 sent of 0 eligible` was true, complete, and said nothing. Every run now does a LOGIN with no message after it (`Transport.verify()`), and the `digest_mailer` health row carries `credential=<STATE>`, read at session start by `ops_status [4c]`. Four states, not two: **ABSENT** (nothing armed) is green, **REJECTED** is a red run a human clears by rotating a secret, **UNKNOWN** (relay unreachable) is never a pass and never a fault. Do not collapse ABSENT into REJECTED — a missing key must stay a state — and do not read a 4xx or a dropped connection as REJECTED, which would send the owner to rotate a working secret.
 - **A headline FAIL is closed by a human, never by the calendar.** A failing

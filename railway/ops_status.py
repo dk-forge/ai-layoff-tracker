@@ -1233,6 +1233,77 @@ def main():
         print(f"    HEALTH UNREACHABLE: {exc}")
         (egress_blocked if _is_egress_block(exc) else issues).append("health endpoint unreachable")
 
+    # 2b. SOURCE FRESHNESS + INVENTORY.
+    #
+    # Section [2] above reads the health ledger, which answers "did the
+    # collector run?". It cannot answer either of the two questions below, and
+    # for months nothing could:
+    #
+    #   * is what it returned NEW? A collector re-reading a frozen archive
+    #     returns its whole history every run and clears every count floor.
+    #     Kansas looked green for 110 days while publishing nothing.
+    #   * which collectors never report AT ALL? Those do not show up green.
+    #     They do not show up, and absent reads as "no problem" rather than
+    #     "never looked at".
+    #
+    # Both are read from committed files and one live ledger, so this works from
+    # any session, including an egress-blocked one for the committed half.
+    print("\n[2b] SOURCE FRESHNESS  (committed railway/source_state.json)")
+    try:
+        import source_freshness as _sf
+        _ledger = _sf.load_ledger()
+        _dark_rows = _sf.broken(_ledger)
+        for _r in _dark_rows:
+            print(f"    DARK      {_r['key']}: {_r.get('days_dark')}d with no new "
+                  f"record ({_r.get('classification')}), open {_r['age_days']}d")
+            _print_wrapped(str(_r.get("last_reason") or ""))
+        if _dark_rows:
+            # ONE issue, not one per source. A backlog found on the first run is
+            # a backlog, and six entries in this list is how a session learns to
+            # skim it.
+            issues.append(f"{len(_dark_rows)} source(s) dark "
+                          f"(publishing nothing new) -> RUNBOOK 'a collector went dark'")
+        for _q in _sf.quiet(_ledger):
+            # Advisory, and pointedly NOT an issue: Kansas read like this at
+            # p=0.023 with an audit showing every notice already collected.
+            print(f"    (quiet)   {_q['key']}: {_q.get('days_dark')}d with no "
+                  f"new record, recent {_q.get('rate_per_year')}/yr vs long-run "
+                  f"{_q.get('rate_long_run_per_year')}/yr. Not evidence of a break.")
+        _unavail = _sf.unavailable(_ledger)
+        _unk_src = _sf.unknown_sources(_ledger)
+        print(f"    {len(_dark_rows)} BROKEN, {len(_unavail)} UNAVAILABLE "
+              f"(human-classified), {len(_unk_src)} UNKNOWN.")
+        if _unk_src:
+            print(f"    UNKNOWN   too little history to judge, which is NOT a "
+                  f"pass: {', '.join(_unk_src[:12])}")
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"    UNKNOWN: source freshness could not be read ({exc})")
+        unverified.append("whether any collector has gone dark")
+
+    print("\n[2c] SOURCE INVENTORY  (what SHOULD exist, vs what reports)")
+    try:
+        import source_inventory as _si
+        _inv = _si.summary(health or {})
+        print(f"    {_inv['jurisdictions_collected']} of {_inv['jurisdictions']} "
+              f"US jurisdictions have a WARN collector; no public register in: "
+              f"{', '.join(_inv['jurisdictions_uncollected'])}")
+        _never = _inv.get("never_reported")
+        if _never is None:
+            print(f"    UNKNOWN: {_inv.get('never_reported_error')}")
+            unverified.append("which collectors have never reported health")
+        elif _never:
+            print(f"    NEVER REPORTED  {len(_never)} declared collector(s) have "
+                  f"NO health row at all: {', '.join(_never)}")
+            print("        Absent is not green. Either the collector does not "
+                  "run, or it runs and never reports.")
+            issues.append(f"{len(_never)} collector(s) declared but never reported")
+        else:
+            print(f"    every one of the {_inv['declared_collectors']} declared "
+                  f"collectors has reported at least once.")
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"    UNKNOWN: inventory could not be built ({exc})")
+        unverified.append("the source inventory")
+
     # 2a. RUN COST — "is this run expensive" was unanswerable until 2026-08-02.
     #
     # The only cost signal in this repo was a daily account balance, which
