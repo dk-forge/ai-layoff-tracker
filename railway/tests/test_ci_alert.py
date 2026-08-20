@@ -668,5 +668,115 @@ class OneIncidentAcrossTwoBranches(unittest.TestCase):
         self.assertTrue(first.startswith("tests:live.data:"), first)
 
 
+# ---------------------------------------------------------------------------
+# A log marker is never a cause.
+#
+# REAL LINES from `collect` run 32307688627 (sibling tracker, main,
+# 2026-08-19T22:48Z), tab-prefixed exactly as `gh run view --log-failed` emits
+# them. That run mailed an alert whose entire WHAT FAILED section read
+# "##[endgroup]": no bucket matched the log, so the fallback took the last
+# non-empty body line, and the last non-empty body line was a log-group marker.
+# ---------------------------------------------------------------------------
+
+def _collect_log(*content_lines):
+    return "\n".join(
+        f"collect\tUNKNOWN STEP\t2026-08-19T22:48:43.76{i:02d}000Z {line}"
+        for i, line in enumerate(content_lines))
+
+
+ENDGROUP_RUN = _collect_log(
+    "[sec_form_d] searching SEC filings",
+    "[sec_form_d] 0 fetched, 0 filtered out, 0 going to the classifier",
+    "[sec_form_d] found=0 stored=0 duplicate=0 rejected=0 deferred=0",
+    "##[warning][guardrail] amount/3a2a9b08 Nvidia $150,000,000,000 - held back, never published, red in 139h",
+    "##[warning][guardrail] amount/26c3c9ab Lovable $13,300,000,000 - held back, never published, red in 91h",
+    "[guardrails] Answer them:  python3 guardrails.py",
+    "",
+    "[publish] sent=0 stored=0 duplicate=0 errors=0",
+    "##[endgroup]",
+    "##[error]Process completed with exit code 1.",
+    "##[group]Run git config user.name  'talent-intel-bot'",
+    "Cleaning up orphan processes",
+)
+
+#: The degenerate case: the failing step printed nothing but markers. There is
+#: genuinely no cause to be had, and the only honest answer is to say so.
+MARKERS_ONLY = _collect_log(
+    "##[group]Run python3 run_collect.py",
+    "##[endgroup]",
+    "   ",
+    "##[section]Finishing",
+    "##[error]Process completed with exit code 1.",
+    "Cleaning up orphan processes",
+)
+
+
+class AMarkerIsNeverACause(unittest.TestCase):
+
+    def test_the_endgroup_run_no_longer_reports_a_log_marker(self):
+        """The regression, on the log that shipped it."""
+        cause, context = ci_alert.extract_cause(ENDGROUP_RUN)
+        self.assertNotIn("##[", cause)
+        self.assertTrue(ci_alert.is_cause_line(cause), repr(cause))
+        # The documented fallback is unchanged: the last REAL output line still
+        # beats "a job failed". Only formatting was ever the defect.
+        self.assertEqual(cause, "[publish] sent=0 stored=0 duplicate=0 errors=0")
+        for line in context:
+            self.assertNotIn("##[", line)
+
+    def test_a_step_that_printed_only_markers_extracts_nothing(self):
+        cause, context = ci_alert.extract_cause(MARKERS_ONLY)
+        self.assertEqual(cause, "")
+        self.assertEqual(context, [])
+
+    def test_markers_and_whitespace_are_refused_one_by_one(self):
+        for line in ("##[endgroup]", "##[group]", "##[section]", "  ##[endgroup]  ",
+                     # a fold's NAME says what was about to happen, not what broke
+                     "##[group]Run python3 run_collect.py", "##[section]Finishing",
+                     "##[debug]", "##[error]", "", "   ", "\t"):
+            self.assertFalse(ci_alert.is_cause_line(line), repr(line))
+        # ...and a marker that CARRIES a message is still a cause.
+        for line in ("##[error]AssertionError: 3 != 4",
+                     "##[warning]guardrail red in 139h",
+                     "[publish] sent=0 stored=0"):
+            self.assertTrue(ci_alert.is_cause_line(line), repr(line))
+
+    def test_no_cause_mails_the_truth_instead_of_the_marker(self):
+        """'I could not read a cause, here is the run' is actionable.
+        '##[endgroup]' is not."""
+        cause, context = ci_alert.extract_cause(MARKERS_ONLY)
+        subject, body, key = ci_alert.build_alert(
+            repo="dk-forge/x", workflow="collect", branch="main", event="schedule",
+            run_url="https://github.com/dk-forge/x/actions/runs/32307688627",
+            run_id=32307688627, cause=cause, context=context)
+        self.assertNotIn("##[", subject)
+        self.assertNotIn("##[", body)
+        self.assertIn("no error line could be extracted", subject)
+        self.assertIn("actions/runs/32307688627", body)
+        self.assertIn("could be read out of this run's log", body)
+
+    def test_a_marker_cause_can_no_longer_become_a_dedup_key(self):
+        """The half of this defect that made no noise.
+
+        `cause` is what build_alert fingerprints. When it was "##[endgroup]",
+        every unrelated no-cause failure of one workflow+branch hashed to the
+        SAME key, and the second one was suppressed as a duplicate of the
+        first. One email per cause quietly became one email per workflow.
+        The real failures below share nothing but the marker.
+        """
+        def key_for(*content):
+            cause, context = ci_alert.extract_cause(_collect_log(*content))
+            return ci_alert.build_alert(
+                repo="dk-forge/x", workflow="collect", branch="main",
+                event="schedule", run_url="u", run_id=1,
+                cause=cause, context=context)[2]
+
+        a = key_for("[publish] sent=0 stored=0 duplicate=0 errors=0",
+                    "##[endgroup]", "##[error]Process completed with exit code 1.")
+        b = key_for("[sec_edgar] DEGRADED: 11 candidates, none stored",
+                    "##[endgroup]", "##[error]Process completed with exit code 1.")
+        self.assertNotEqual(a, b, "two different failures collapsed onto one key")
+
+
 if __name__ == "__main__":
     unittest.main()
