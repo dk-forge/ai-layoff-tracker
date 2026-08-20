@@ -3,33 +3,33 @@
     "sec_item_205_us",
     "state_warn_official_totals"
   ],
-  "measured_at": "2026-08-17T20:02:28Z",
+  "measured_at": "2026-08-20T16:56:58Z",
   "note": "Rolling recall against denominators the tracker does not construct. Written by rolling-recall.yml. Committed on purpose: the data being measured changes without a commit. NEVER hand-edit a figure here \u2014 re-run the module. Recall is a BAND, not a point, because no editor adjudicated these matches; see the module docstring.",
   "slices": {
     "sec_item_205_us": {
       "absent": 0,
       "absent_filings": [],
-      "confirmed": 42,
+      "confirmed": 45,
       "confirmed_interval": [
-        0.9161983874908382,
+        0.9213457380593594,
         1.0
       ],
       "denominator_basis": "closed_enumeration_primary_regulator_index",
-      "detail": "recall is between 42/42 = 100.0% (count-confirmed) and 42/42 = 100.0% (name+window proposed, unadjudicated); 59 of 215 enumerated filings UNKNOWN, 111 out of scope (percentage only), 3 unreachable",
+      "detail": "recall is between 45/45 = 100.0% (count-confirmed) and 45/45 = 100.0% (name+window proposed, unadjudicated); 61 of 215 enumerated filings UNKNOWN, 109 out of scope (percentage only), 0 unreachable",
       "enumerated_filings": 215,
       "enumeration_query": "\"Item 2.05\"",
       "in_scope": 45,
-      "judged": 42,
+      "judged": 45,
       "key": "sec_item_205_us",
       "label": "US SEC 8-K Item 2.05 (exit/disposal costs) with a stated headcount",
-      "out_of_scope": 111,
+      "out_of_scope": 109,
       "proposed": 0,
       "proposed_filings": [],
       "recall_confirmed": 1.0,
       "recall_upper": 1.0,
       "settle_days": 45,
       "state": "measured",
-      "undecidable": 59,
+      "undecidable": 61,
       "undecidable_filings": [
         {
           "accession": "0001193125-25-154044",
@@ -167,13 +167,19 @@
           "accession": "0001193125-25-277556",
           "filer": "Korro Bio, Inc.",
           "filing_date": "2025-11-12",
-          "why": "headcount_may_be_exhibit_only"
+          "why": "exhibit_index_unreadable"
         },
         {
           "accession": "0001193125-25-305339",
           "filer": "Leslie's, Inc.",
           "filing_date": "2025-12-02",
           "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0001454938-25-000142",
+          "filer": "Teads Holding Co.",
+          "filing_date": "2025-12-08",
+          "why": "exhibit_index_unreadable"
         },
         {
           "accession": "0001104659-25-120646",
@@ -198,6 +204,12 @@
           "filer": "VIAVI SOLUTIONS INC.",
           "filing_date": "2026-01-28",
           "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0001171843-26-000516",
+          "filer": "HARVARD BIOSCIENCE INC",
+          "filing_date": "2026-01-29",
+          "why": "exhibit_index_unreadable"
         },
         {
           "accession": "0001193125-26-031987",
@@ -239,7 +251,7 @@
           "accession": "0001421517-26-000021",
           "filer": "Energy Recovery, Inc.",
           "filing_date": "2026-02-25",
-          "why": "headcount_may_be_exhibit_only"
+          "why": "exhibit_index_unreadable"
         },
         {
           "accession": "0001577526-26-000013",
@@ -386,26 +398,10 @@
           "why": "headcount_may_be_exhibit_only"
         }
       ],
-      "unreachable": 3,
-      "unreachable_filings": [
-        {
-          "accession": "0001193125-26-048738",
-          "filer": "Ultragenyx Pharmaceutical Inc.",
-          "why": "HTTPError: HTTP Error 530: <none>"
-        },
-        {
-          "accession": "0001193125-26-216107",
-          "filer": "AUTOLIV INC",
-          "why": "HTTPError: HTTP Error 530: <none>"
-        },
-        {
-          "accession": "0001544522-26-000088",
-          "filer": "Freshworks Inc.",
-          "why": "HTTPError: HTTP Error 530: <none>"
-        }
-      ],
+      "unreachable": 0,
+      "unreachable_filings": [],
       "upper_interval": [
-        0.9161983874908382,
+        0.9213457380593594,
         1.0
       ],
       "window": {
