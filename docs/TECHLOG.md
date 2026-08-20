@@ -1,5 +1,65 @@
 # Tech Log
 
+## 2026-08-19 - a count above zero is not evidence of freshness: three collectors, three root causes, one shared failure mode, 2.20.125
+
+**This is the sentence the per-state tripwire exists for, so it is written where
+the next person will find it.** Kansas, Michigan and Minnesota were reviewed in
+one pass. They had three different root causes and one identical symptom: **each
+reported a healthy non-zero count while being wrong.**
+
+- Kansas returned 150 notices every run and looked fine. They were the 150
+  OLDEST, because the listing is served oldest-first and the per-run bound was
+  being applied in listing order. Fed 190 notices the pre-fix code printed
+  `125 notices kept from 125 listed` and never reached the newest.
+- Minnesota opens 52 PDFs, every one of which answers HTTP 200, and **silently
+  yields nothing from more than 40 of them** - every report older than 2025-08
+  parses to zero rows against a template the parser does not know.
+- Michigan **drops 23 of 111 dated records on an empty company title** without a
+  murmur, and still returns 88.
+
+A source-health check that asks "did the collector run?" or "did it return
+rows?" passes all three. **Absence of a signal is not a pass, and neither is a
+positive number: the count has to be about the RIGHT rows.** Kansas is the clean
+demonstration, because there the honest answer turned out to be that the state
+had genuinely not filed since 2026-05-01 - which only became knowable by
+comparing against the register's own newest row rather than against zero.
+
+**OKLAHOMA IS A REASONED GAP, NOT A SILENT ONE, AND ROBOTS.TXT ALLOWS US.** A
+routine coverage review found no legitimate machine-readable route. Eight were
+tried with robots.txt read before every content request, and the tried-and-
+failed list is now in the committed refusal ledger
+(`railway/country_coverage.py`) rather than in prose, because a refusal without
+evidence is a guess somebody redoes in three months. In short: the portal is a
+Salesforce Aura shell with zero table markup; there is no CSV, spreadsheet, PDF,
+feed or documented API; the state open-data catalogue has no WARN dataset (and
+its CKAN API is `Disallow: /api/`, so it was NOT called); Oklahoma's own
+workforce page links to the portal instead of publishing a list; and US DOL does
+not republish state notices. Wayback recovers exactly two notices, and since the
+list has sat behind a search form since at least 2015 there is no index to
+enumerate. The only thing that returns the data is the undocumented Salesforce
+`aura` endpoint, which is out of scope and stays out.
+
+**`Allow: /` matters here.** Oklahoma is a TECHNICAL absence, not a permission
+refusal, and the ledger records it as `NOT A REFUSAL` for that reason. Whoever
+revisits this should know they were never told no. Estimated 30 to 60 notices a
+year forgone; a future feed would map company name, address
+(street/city/state/ZIP), notice date and employees affected.
+
+**The sources page was CORRECTED, not merely updated.** It claimed Oklahoma
+publishes "only employer, location, notice date and notice type" with "no
+affected-employee count anywhere in the data". That is wrong: both notices
+recovered from the archive carry counts (363 and 120). The blocker was never
+missing headcounts, it is that nothing is published in a readable form at all,
+and the old copy would have sent the next reader looking for the wrong thing.
+
+**Recommendation only, deliberately NOT actioned.** The archived pages name an
+OESC Rapid Response coordinator, and asking OESC directly for a data extract or
+a documented feed is the honest remaining path. That is contacting a third party
+on the owner's behalf, so it is the owner's to send, not a session's.
+
+MI and MN are filed as their own tasks with their evidence rather than fixed
+inline: three root causes in one change is how a revert stops being possible.
+
 ## 2026-08-19 - the two evidence columns had no re-import guard, and the guard the announcement date DID have had never once fired, 2.20.124
 
 **THE REPORTED DEFECT IS REAL AND THE CODE PATH RUNS TENS OF THOUSANDS OF TIMES
@@ -96,6 +156,75 @@ two evidence columns through - not on `main` at 2.20.123, and not on
 `backup/export-and-recovery`. A backup restore through `/bulk` therefore cannot
 restore evidence at all, with or without this change. That is a separate gap in
 the backup path and is left for the session holding that branch.
+## 2026-08-19 - Michigan cannot be extended and Minnesota can, but not by a tweak: measuring two "thin-by-design" collectors
+
+Both were flagged as thin-by-design collectors reading a recent window only (MI
+dark 81 days, MN 49). They are two different situations and only one of them is
+a defect in our code. **Neither is changed here** - this entry is the
+measurement, so the next session starts from facts rather than the label.
+
+**MICHIGAN IS NOT EXTENDABLE: THE STATE'S INDEX HOLDS 112 RECORDS, FULL STOP.**
+The collector reads michigan.gov's Sitecore SXA search API with `p=500`, and the
+suspicion was that the window came from that bound. It does not. The response
+carries its own `Count`, and `Count` is **112** - `p=500` already asks for more
+than exists, and `&e=500` (the start-index parameter) returns zero results with
+no overlap, so there is no second page being missed. Those 112 records span
+**2024-11-29 to 2027-01-14** (2024: 1, 2025: 68, 2026: 41, 2027: 1 - the 2027 is
+a legitimately future-dated layoff date). The recent window is imposed by the
+SOURCE, not chosen by the collector, so there is no full history to extend to
+from this endpoint. Finding an older Michigan history means finding a DIFFERENT
+Michigan publication, which is a discovery question, not a bound to raise.
+
+**A separate live defect fell out of that measurement and is deliberately NOT
+fixed here.** 111 of the 112 records carry a parseable date, but `fetch_mi`
+returns only **88** entries. Roughly 23 records are dropped, most plausibly on an
+empty company title (neither `content-title-link` nor `<h3>` matched the
+fragment), since none of the 112 has `jobs <= 0` and every date is inside
+`_entry`'s bound. We already hold 102 MI WARN rows - MORE than the collector now
+returns - so this is a live parsing loss on the current window, not a backfill
+gap. Different root cause, different change: three of them in one commit is how
+a revert stops being possible.
+
+**MINNESOTA: DISCOVERY IS FINE, THE OLD-TEMPLATE PARSER IS THE BLOCKER.** The
+Wayback CDX discovery in `fetch_mn` returns **52 distinct plant-closing PDFs**,
+covering monthly reports 2022-2026 plus annual reports for 2021, 2022, 2023 and
+2024, and **all 52 answer HTTP 200 live at mn.gov today** - the `limit=500` is
+not binding and no archive fallback is needed. `fetch_mn` nevertheless returns
+**72 entries, every one dated 2025-08-06 to 2026-07-01**. Every report older than
+2025-08 is fetched, opened, and parsed to ZERO rows.
+
+`_mn_parse_table` was repaired mid-2026 for the template DEED introduced then.
+The older template is not a variant of it: the header wraps across two physical
+rows AND each logical column is split into three physical columns with `None`
+padding, and pdfplumber does not return the body as one table at all. The 2023
+annual report yields nine fragmentary tables on page 1, of which the first holds
+only a header row and a group-summary row; the 2023 and 2024 monthlies behave
+the same way. So MN IS extendable and the data is genuinely reachable, but it
+needs a word-position parser for the old layout, not a header-matching tweak.
+
+**It was not forced, on purpose.** A speculative parser over a fragmented table
+is exactly how a wrong number gets published, and a wrong number is far worse
+than a missing one. It is also well-shaped work for its own session, because the
+reports carry their own oracle: each prints its record count and affected-worker
+total inline (`RR Start Date: May 2023 (12 records)`, then `86`), so a new parser
+can be checked month by month against the state's own printed figures before a
+single row is posted.
+
+**Access notes.** mn.gov's robots.txt permits `/deed/assets/` and states
+`Visit-time: 0000-1200` (GMT) and `Request-rate: 10`; both were honoured. **
+michigan.gov publishes no robots.txt at all** - `/robots.txt` returns an Akamai
+"Access Denied" to our tracker UA, and the Internet Archive's 2026-01-28 snapshot
+of it IS that same Access Denied page, so the archive's crawler was refused too.
+There is no stated crawl policy to honour or violate; the control is a blanket
+WAF rather than a directive aimed at automated clients. The browser UA the MI/MA
+collectors already use predates this work and was NOT changed, but it is flagged
+here rather than left implicit, because it is the owner's call and not a
+session's.
+
+No rows were imported and no code changed, so no `/bulk`, no `/bulk-purge`, and
+no plugin version bump. $0 spent: every probe was plain HTTP with
+`ALT_PAID_READS=off`, and no model call was made.
+
 ## 2026-08-19 - Kansas was never the bug the review predicted: the register is quiet, and the cap over an oldest-first listing was a live trap
 
 **A routine coverage review found the Kansas collector dark for 110 days while
