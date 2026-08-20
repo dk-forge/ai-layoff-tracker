@@ -407,6 +407,15 @@ def record(ledger, key, *, profile, verdict, reason, classification=None,
     if label:
         entry["label"] = label
     entry["last_checked"] = today
+    # WHICH READING THIS IS, in this entry's own lineage. It is the ordering
+    # half of the `recorded_in` pattern the headline_containment baselines use:
+    # a merge cannot tell a race from a routine re-merge by comparing states or
+    # dates, but it can tell them apart by asking whether one side already SAW
+    # the other. A run loads the committed ledger and increments, so a re-merge
+    # against that same committed copy is always strictly ahead of it, while two
+    # runners that both loaded seq N both write N+1 and are visibly level.
+    # See merge_ledgers. Bump it on every observation, UNAVAILABLE included.
+    entry["observation_seq"] = int(entry.get("observation_seq") or 0) + 1
     entry["max_effective"] = profile.get("max_effective")
     for field in ("rate_per_year", "rate_long_run_per_year", "cadence_days",
                   "observations", "span_days", "rate_basis_days", "slowed"):
@@ -463,12 +472,47 @@ def record(ledger, key, *, profile, verdict, reason, classification=None,
     return entry
 
 
+#: The fields that describe ONE OBSERVATION: what a single run saw and what it
+#: concluded from it. They travel as a SET, from one side or the other, and are
+#: never unioned key-by-key. `dict.update()` cannot express a key the winning
+#: side REMOVED, and the recovery branch of `record` removes three of these
+#: (`first_detected`, `classification`, `days_dark`) precisely to say the
+#: incident is over. Unioning put them back beside the PASS that closed them,
+#: which is how `warn:MI` came to read BROKEN, `last_verdict: PASS`,
+#: `days_dark: 82` and `recovered_at` all at once on 2026-08-20.
+OBSERVATION_FIELDS = (
+    "state", "last_verdict", "last_reason", "last_checked", "max_effective",
+    "p0", "advisory", "days_dark", "classification", "first_detected",
+    "recovered_at", "rate_per_year", "rate_long_run_per_year", "cadence_days",
+    "observations", "span_days", "rate_basis_days", "slowed",
+)
+
+
+def _seq(entry):
+    """Which reading this is in the entry's lineage. Absent reads as 0."""
+    try:
+        return int(entry.get("observation_seq") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _evidence(entry):
+    """The newest record this side actually saw. The empty string sorts first.
+
+    This is what a verdict is a claim ABOUT. BROKEN says "nothing newer than
+    this exists"; PASS says "something newer arrived". A side holding a LATER
+    value has read data the other side never saw.
+    """
+    seen = [v for v in (entry.get("frontier"), entry.get("max_effective")) if v]
+    return max(seen) if seen else ""
+
+
 def merge_ledgers(mine, theirs):
     """Fold a concurrently-pushed ledger into this run's, losing nothing.
 
     Two runners can both write this file, so the commit step retries against
-    origin/main and merges rather than overwriting. The rules are the same three
-    the ledger itself enforces, applied to a race:
+    origin/main and merges rather than overwriting. The rules are the ones the
+    ledger itself enforces, applied to a race:
 
       * UNAVAILABLE is a human's judgement and always wins over either side's
         machine verdict.
@@ -476,6 +520,44 @@ def merge_ledgers(mine, theirs):
         source's age and hand it a fresh clock. Ages that reset are how a
         problem stays permanently new and permanently ignorable.
       * The LATER frontier survives, because the frontier only ever advances.
+
+    WHY A BROKEN SIDE DOES NOT SIMPLY WIN
+    -------------------------------------
+    It used to: `if cur.state == BROKEN or other.state == BROKEN: BROKEN`. That
+    is right for the race it was written for and wrong for the call that
+    actually happens. `warn-import.yml` passes `--merge-into origin/main` on
+    EVERY run, so `theirs` is normally not a concurrent runner at all: it is the
+    PREVIOUSLY COMMITTED state, which this run has already read and superseded.
+    So once any source went BROKEN on main, every later run re-merged that
+    BROKEN over its own fresh healthy observation and the source could never
+    recover -- for any source, not only the one it was noticed on. That is the
+    shape this repo has already paid for twice: the alert entry that could not
+    clear, the outbox that could not drain. A state machine with no path out.
+
+    Both properties have to hold at once, and either alone is trivial (keep
+    BROKEN always; clear it always). They are separated by ORDER, not by state:
+
+      1. `observation_seq` decides. A run loads the committed ledger and
+         increments, so a routine re-merge is STRICTLY AHEAD of the copy it is
+         merging, and the reading that already saw the other one wins. Two
+         genuine racers both loaded seq N and both wrote N+1, so they are level
+         and this rule stays silent -- which is the whole point of recording it.
+      2. Level, but one side read a LATER record: that side saw data the other
+         never did, so its verdict supersedes rather than races.
+      3. Level on both: a true race on identical evidence. BROKEN wins, and a
+         genuine break is never lost to a runner that finished second.
+
+    The merged entry therefore carries exactly ONE run's self-consistent
+    observation. It can never hold one run's verdict beside another's incident.
+
+    REJECTED -- comparing `last_checked`: its resolution is a whole day, and
+    two runners race within the same day, so it cannot see the case it would
+    have to decide. REJECTED -- evidence recency ALONE: it repairs the ordinary
+    recovery (the frontier advances when a source starts publishing again) but
+    not an entry already poisoned by this defect, whose committed BROKEN sits
+    on the advanced frontier and therefore ties forever. REJECTED -- ageing
+    BROKEN out on a clock: CLAUDE.md, a headline incident is closed by a human
+    and never by the calendar, and waiting is not neutral.
     """
     out = {"sources": dict((theirs or {}).get("sources") or {})}
     for key, other in ((mine or {}).get("sources") or {}).items():
@@ -488,16 +570,72 @@ def merge_ledgers(mine, theirs):
         if other.get("state") == UNAVAILABLE:
             out["sources"][key] = other
             continue
-        merged = dict(cur)
-        merged.update(other)
-        for field, pick in (("first_detected", min), ("frontier", max),
-                            ("max_effective", max)):
-            values = [v for v in (cur.get(field), other.get(field)) if v]
-            if values:
-                merged[field] = pick(values)
-        if cur.get("state") == BROKEN or other.get("state") == BROKEN:
-            merged["state"] = BROKEN
-        out["sources"][key] = merged
+
+        # Everything that is NOT one run's observation -- the label, the
+        # healer's attempt log, the frontier bookkeeping -- unions as before.
+        merged = {k: v for k, v in cur.items() if k not in OBSERVATION_FIELDS}
+        merged.update({k: v for k, v in other.items()
+                       if k not in OBSERVATION_FIELDS})
+
+        cur_seq, other_seq = _seq(cur), _seq(other)
+        cur_ev, other_ev = _evidence(cur), _evidence(other)
+        if cur_seq != other_seq:
+            winner = cur if cur_seq > other_seq else other
+        elif cur_ev != other_ev:
+            winner = cur if cur_ev > other_ev else other
+        elif cur.get("state") == BROKEN or other.get("state") == BROKEN:
+            winner = cur if cur.get("state") == BROKEN else other
+        else:
+            winner = other
+        merged.update({k: v for k, v in winner.items()
+                       if k in OBSERVATION_FIELDS})
+        if max(cur_seq, other_seq):
+            merged["observation_seq"] = max(cur_seq, other_seq)
+
+        # The frontier is a high-water mark, not an observation: it only ever
+        # advances, so it takes the later of the two along with the stamp that
+        # explains it.
+        frontier_side = cur if (cur.get("frontier") or "") >= (
+            other.get("frontier") or "") else other
+        if frontier_side.get("frontier"):
+            merged["frontier"] = frontier_side["frontier"]
+            if frontier_side.get("frontier_advanced_at"):
+                merged["frontier_advanced_at"] = \
+                    frontier_side["frontier_advanced_at"]
+
+        # A BROKEN source keeps the EARLIER first_detected and goes on ageing.
+        # A source that is no longer BROKEN keeps no clock at all: carrying one
+        # across is how a closed incident comes back wearing a PASS.
+        first = [v for v in (cur.get("first_detected"),
+                             other.get("first_detected")) if v]
+        if merged.get("state") == BROKEN and first:
+            merged["first_detected"] = min(first)
+        elif merged.get("state") != BROKEN:
+            merged.pop("first_detected", None)
+
+        # The healer's bookkeeping is cumulative, so a race must not discard an
+        # attempt the other side recorded.
+        attempts = [v for v in (cur.get("attempts"), other.get("attempts"))
+                    if isinstance(v, int)]
+        if attempts:
+            merged["attempts"] = max(attempts)
+        tried = list(cur.get("tried") or [])
+        for item in (other.get("tried") or []):
+            if item not in tried:
+                tried.append(item)
+        if tried or "tried" in merged:
+            merged["tried"] = tried
+
+        # KEY ORDER IS PART OF THE ARTEFACT. This file is committed and read
+        # by humans in diffs, so a merge that reshuffles 46 untouched entries
+        # buries the one entry it actually changed. Emit the winner's own key
+        # order -- which is `record`'s -- and append whatever only the other
+        # side carried.
+        order = [k for k in winner if k in merged]
+        order += [k for k in cur if k in merged and k not in order]
+        order += [k for k in other if k in merged and k not in order]
+        order += [k for k in merged if k not in order]
+        out["sources"][key] = {k: merged[k] for k in order}
     for key, value in (mine or {}).items():
         if key != "sources":
             out.setdefault(key, value)

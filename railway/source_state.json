@@ -362,13 +362,11 @@
       "p0": 1.0,
       "frontier": "2027-01-14",
       "frontier_advanced_at": "2026-08-20",
-      "state": "BROKEN",
-      "first_detected": "2026-08-20",
+      "state": "HEALTHY",
       "attempts": 0,
       "tried": [],
-      "classification": "drift",
-      "days_dark": 82,
-      "recovered_at": "2026-08-20"
+      "recovered_at": "2026-08-20",
+      "observation_seq": 1
     },
     "warn:MN": {
       "label": "MN WARN",

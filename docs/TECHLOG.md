@@ -1,5 +1,83 @@
 # Tech Log
 
+## 2026-08-20 - a source could go BROKEN and never come back, because the merge re-applied the state it was superseding
+
+**MICHIGAN RECOVERED AND THE LEDGER WOULD NOT SAY SO.** A collector fix landed
+as d032f39 (PR #190): MI's frontier advanced 2026-05-30 -> 2027-01-14,
+observations 88 -> 111, live MI WARN rows 102 -> 125, and the run's own verdict
+was PASS. `railway/source_state.json` at 33223f7 nevertheless read, in one
+entry, at the same time:
+
+```
+state: BROKEN   last_verdict: PASS   recovered_at: 2026-08-20   days_dark: 82
+```
+
+BROKEN, PASSING and RECOVERED at once. That is not a state, it is two runs'
+observations stapled together, and it reddened
+`test_ops_mail_split.py::ADarkSourceUsesTheSameDedupContract` on main.
+
+**ROOT CAUSE, and it was never about Michigan.** `source_freshness.merge_ledgers`
+held `if cur.state == BROKEN or other.state == BROKEN: merged.state = BROKEN`.
+That is correct for the race it was written for: a BROKEN observation must not
+be lost because another runner finished first. But `warn-import.yml` passes
+`--merge-into origin/main` on EVERY run, so `other` is almost never a
+concurrent runner. It is the PREVIOUSLY COMMITTED state, which this run has
+already read and superseded. So once ANY source went BROKEN on main, every
+later run re-merged that BROKEN over its own fresh healthy observation. **For
+any source, not only this one.** Third instance of the same shape in this repo:
+the alert entry that could not clear, the outbox that could not drain, and now
+a collector that could not recover. A state machine with no path out.
+
+Second defect, same function: `merged = dict(cur); merged.update(other)` is a
+UNION, and a union cannot express a key the winning side REMOVED. `record`'s
+recovery branch pops `first_detected`, `classification` and `days_dark`
+precisely to say the incident is closed; the union put all three back beside
+the PASS that closed them. That is the `days_dark: 82` above.
+
+**THE FIX: order the two readings, do not rank their states.** Every entry now
+carries `observation_seq`, the ordering half of the `recorded_in` pattern the
+`headline_containment` baselines already use. A run loads the committed ledger
+and increments, so a routine re-merge is STRICTLY AHEAD of the copy it is
+merging and the reading that already saw the other one wins. Two genuine racers
+both loaded seq N and both wrote N+1, so they are level, the counter
+deliberately says nothing, and the old race rule answers: BROKEN wins. Between
+those, a level pair whose evidence differs is decided by evidence recency - a
+side holding a later `frontier` has read data the other never saw. Observation
+fields now travel as a SET from the winning side rather than key-by-key, so a
+merged entry always carries exactly one run's self-consistent observation.
+
+Both properties are asserted, because either alone is trivial (keep BROKEN
+always; clear it always), and both are proved by MUTATION: the ten new
+assertions in `tests/test_source_freshness.py::AMergeMustLoseNeitherABreakNorARecovery`
+were run against the pre-fix `merge_ledgers` and eight of them fail there. A
+committed entry can no longer hold a contradictory combination, and that is
+checked against the file that ships, not against a fixture.
+
+REJECTED: comparing `last_checked` (resolution is a whole day, and racers race
+within a day, so it cannot see the case it would have to decide). REJECTED:
+evidence recency ALONE (it repairs an ordinary recovery, but not an entry
+already poisoned by this defect, whose committed BROKEN sits on the ADVANCED
+frontier and therefore ties itself broken forever - which is exactly the state
+main was in). REJECTED: ageing BROKEN out on a clock - a headline incident is
+closed by a human and never by the calendar, and waiting is not neutral.
+
+`warn:MI` was corrected by RUNNING THE REAL PATH, not by editing the file:
+`judge()` re-derived PASS from the profile numbers the run itself recorded
+(reproducing `0d quiet, under the 14d floor` exactly), `record()` performed the
+recovery transition, and the real `--merge-into` CLI folded origin/main back
+in. The resulting diff touches five lines of one entry and nothing else. 0
+BROKEN, 43 HEALTHY, 7 UNAVAILABLE, 3 UNKNOWN.
+
+MI was the only source affected: the ledger is three commits old, it went
+BROKEN at 90c3d44 (legitimately) and was stuck at 33223f7 (the first run after
+the collector fix). No other entry had yet had a recovery to lose.
+
+STILL OPEN, deliberately not widened into here: `--reopen` moves an
+UNAVAILABLE source back to the queue, but `merge_ledgers` gives a human's
+UNAVAILABLE unconditional precedence on BOTH sides, so a reopen merged against
+a committed UNAVAILABLE is discarded. Same family, different function, and it
+needs its own change.
+
 ## 2026-08-20 - the talent aggregate ignores a filter it does not recognise, and answers with the headline, 2.20.128
 
 **FOUND BY PROBING THE LIVE ROUTE AFTER THE SEND HAD ALREADY GONE OUT.** The
