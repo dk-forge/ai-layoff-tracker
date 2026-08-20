@@ -724,8 +724,9 @@ class TheWeeklyArchiverFitsInsideItsOwnCeiling(unittest.TestCase):
     """
 
     def _archiver(self):
-        import types
-        sys.modules.setdefault("requests", types.ModuleType("requests"))
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from _requests_stub import install as install_requests
+        install_requests()          # shared surface, never a local partial stub
         import archive_sources
         return archive_sources
 

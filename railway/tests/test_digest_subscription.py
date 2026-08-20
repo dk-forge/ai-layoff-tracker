@@ -23,7 +23,6 @@ import os
 import re
 import subprocess
 import sys
-import types
 import unittest
 from unittest import mock
 
@@ -173,14 +172,21 @@ def _load_ops_status():
 
 def _load_health_digest():
     """health_digest imports requests at module scope; the wiring under test is
-    pure formatting, so stand a stub in rather than skip the guard entirely."""
+    pure formatting, so stand a stub in rather than skip the guard entirely.
+
+    The stub comes from tests/_requests_stub.py, which COMPLETES whatever is
+    already in the process-global slot. This used to install its own partial
+    stub only when the slot was empty, so in a full-suite run a warn test's
+    `RequestException`-only stub got there first and every test below died on
+    "module 'requests' does not have the attribute 'get'".
+    """
     if RAILWAY not in sys.path:
         sys.path.insert(0, RAILWAY)
-    if "requests" not in sys.modules:
-        stub = types.ModuleType("requests")
-        stub.get = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no network in tests"))
-        stub.post = stub.get
-        sys.modules["requests"] = stub
+    here = os.path.abspath(HERE)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from _requests_stub import install as install_requests
+    install_requests()
     import health_digest
     return health_digest
 

@@ -15,20 +15,16 @@ import json
 import os
 import sys
 import tempfile
-import types
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-# Same requests-only stub as test_warn_generic_drift: warn_import imports the
+# Same shared requests stub as test_warn_generic_drift: warn_import imports the
 # real scrapers at module load, and installing fake `sources.*` modules would
 # shadow them for every test discovered after this one. These tests call only
 # pure in-memory helpers, so no network is reachable.
-_rq = sys.modules.get("requests")
-if _rq is None:
-    _rq = types.ModuleType("requests")
-    sys.modules["requests"] = _rq
-if not hasattr(_rq, "RequestException"):
-    _rq.RequestException = Exception
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
 
 import warn_import as W  # noqa: E402
 

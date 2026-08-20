@@ -10,7 +10,6 @@ never floods false alarms.
 """
 import os
 import sys
-import types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # warn_import imports the real state scrapers (sources.warn / sources.warn_custom
@@ -24,12 +23,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # parsers. A requests-only stub cannot leak into another module's real import.
 # These tests exercise only pure in-memory helpers (detect_generic_state_drift,
 # _parse_generic_baselines) and never call a scraper, so no network is possible.
-_rq = sys.modules.get("requests")
-if _rq is None:
-    _rq = types.ModuleType("requests")
-    sys.modules["requests"] = _rq
-if not hasattr(_rq, "RequestException"):     # real requests already has it; a
-    _rq.RequestException = Exception         # bare stub from an earlier test may not
+#
+# The stub comes from tests/_requests_stub.py and nowhere else: it is a
+# process-global slot, so a per-module stub makes its surface depend on
+# discovery order. See that module's docstring.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
 
 import unittest  # noqa: E402
 

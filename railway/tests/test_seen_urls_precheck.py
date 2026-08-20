@@ -12,7 +12,9 @@ import types
 import unittest
 from unittest import mock
 
-sys.modules.setdefault("requests", types.ModuleType("requests"))  # seen_urls imports it; tests patch it anyway
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()  # seen_urls imports requests; tests patch it anyway
 sys.modules.setdefault("openai", types.ModuleType("openai"))
 sys.modules["openai"].OpenAI = lambda *a, **k: None
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

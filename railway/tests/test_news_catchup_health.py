@@ -18,7 +18,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # The test exercises only mocked collector/health calls.  Keep it runnable in
 # the repository's lightweight local test environment, which may not install
 # the Railway requirements first.
-sys.modules.setdefault("requests", SimpleNamespace())
+# `requests` is stubbed through tests/_requests_stub.py and nowhere else:
+# sys.modules is process-global, so a per-module stub makes the surface a
+# function of discovery order (see that module's docstring).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
 sys.modules.setdefault("openai", SimpleNamespace())
 
 import news_catchup
