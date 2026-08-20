@@ -410,7 +410,198 @@ class TheLedgerIsPersistentAndStubborn(unittest.TestCase):
         self.assertIn("frontier_receded_at", entry)
 
 
+class AMergeMustLoseNeitherABreakNorARecovery(unittest.TestCase):
+    """The two directions of `merge_ledgers`, each proved by mutation.
+
+    `warn-import.yml` passes `--merge-into origin/main` on EVERY run, so
+    `theirs` is normally not a concurrent runner at all: it is the previously
+    committed state this run has already superseded. The old rule -- BROKEN
+    wins unconditionally -- could not tell those apart, so once any source went
+    BROKEN on main every later run re-merged that BROKEN over its own fresh
+    healthy observation and the source could never recover. Measured on
+    `warn:MI` at 33223f7, which read BROKEN / last_verdict PASS /
+    recovered_at 2026-08-20 / days_dark 82 simultaneously.
+
+    Both properties are asserted here, because either one alone is easy:
+    keeping BROKEN always, or clearing it always.
+    """
+
+    FRONTIER_OLD = "2026-05-30"
+    FRONTIER_NEW = "2027-01-14"
+
+    def _broken(self, frontier=FRONTIER_OLD, day="2026-08-19", seq=1):
+        return {"label": "MI WARN", "observation_seq": seq,
+                "state": SF.BROKEN, "last_verdict": SF.FAIL,
+                "last_reason": "82d with no newer record", "last_checked": day,
+                "first_detected": day, "classification": SF.DRIFT,
+                "days_dark": 82, "attempts": 0, "tried": [],
+                "frontier": frontier, "max_effective": frontier,
+                "frontier_advanced_at": "2026-05-30"}
+
+    def _healthy(self, frontier=FRONTIER_NEW, day="2026-08-20", seq=1):
+        return {"label": "MI WARN", "observation_seq": seq,
+                "state": SF.HEALTHY, "last_verdict": SF.PASS,
+                "last_reason": "0d quiet, under the 14d floor",
+                "last_checked": day, "recovered_at": day, "attempts": 0,
+                "tried": [], "frontier": frontier, "max_effective": frontier,
+                "frontier_advanced_at": day}
+
+    @staticmethod
+    def _merge(mine, theirs):
+        return SF.merge_ledgers({"sources": {"warn:MI": mine}},
+                                {"sources": {"warn:MI": theirs}})["sources"]["warn:MI"]
+
+    # --- direction 1: a genuine BROKEN observation survives a race -----------
+    def test_a_concurrent_race_still_preserves_broken(self):
+        """Both runners read the SAME newest record, so neither has seen
+        anything the other has not. That is a race, and the break is kept."""
+        same = self.FRONTIER_OLD
+        broke = self._broken(frontier=same, day="2026-08-20", seq=5)
+        healthy = self._healthy(frontier=same, day="2026-08-20", seq=5)
+        for mine, theirs in ((broke, healthy), (healthy, broke)):
+            with self.subTest(first=mine["state"]):
+                merged = self._merge(mine, theirs)
+                self.assertEqual(merged["state"], SF.BROKEN)
+                self.assertEqual(merged["last_verdict"], SF.FAIL)
+                self.assertEqual(merged["first_detected"], "2026-08-20")
+
+    def test_a_race_cannot_reset_a_broken_sources_clock(self):
+        old = self._broken(day="2026-06-01", seq=5)
+        new = self._broken(day="2026-08-20", seq=5)
+        self.assertEqual(self._merge(new, old)["first_detected"], "2026-06-01")
+        self.assertEqual(self._merge(old, new)["first_detected"], "2026-06-01")
+
+    # --- direction 2: a genuine recovery can now be recorded -----------------
+    def test_a_fresh_healthy_observation_clears_a_committed_broken(self):
+        """The live case. The fresh side read 2027-01-14; the committed side
+        never saw past 2026-05-30, so its BROKEN is a claim about data that has
+        since been superseded, not a rival reading of the same instant."""
+        merged = self._merge(self._healthy(), self._broken())
+        self.assertEqual(merged["state"], SF.HEALTHY)
+        self.assertEqual(merged["last_verdict"], SF.PASS)
+        self.assertEqual(merged["frontier"], self.FRONTIER_NEW)
+        self.assertEqual(merged["recovered_at"], "2026-08-20")
+
+    def test_it_clears_whichever_side_the_recovery_arrives_on(self):
+        merged = self._merge(self._broken(), self._healthy())
+        self.assertEqual(merged["state"], SF.HEALTHY)
+        self.assertEqual(merged["last_verdict"], SF.PASS)
+
+    def test_a_stale_pass_never_clears_a_break_on_newer_evidence(self):
+        """The mirror image: the BROKEN side is the one with newer evidence
+        (a frontier that advanced and then went dark again), so it decides."""
+        merged = self._merge(self._healthy(frontier=self.FRONTIER_OLD),
+                             self._broken(frontier=self.FRONTIER_NEW))
+        self.assertEqual(merged["state"], SF.BROKEN)
+        self.assertEqual(merged["last_verdict"], SF.FAIL)
+
+    # --- the key-removal defect ---------------------------------------------
+    def test_a_merged_pass_never_carries_the_fields_of_an_open_incident(self):
+        """`merged = dict(cur); merged.update(other)` is a union, and a union
+        cannot express a key the winning side REMOVED. The recovery branch of
+        `record` removes exactly these three to say the incident is closed."""
+        merged = self._merge(self._healthy(), self._broken())
+        for gone in ("days_dark", "classification", "first_detected"):
+            self.assertNotIn(gone, merged, f"{gone} survived a recovery")
+
+    def test_no_entry_can_hold_a_contradictory_combination(self):
+        """BROKEN, PASSING and RECOVERED at once is not a state, it is two
+        runs' observations stapled together."""
+        for mine, theirs in ((self._healthy(), self._broken()),
+                             (self._broken(), self._healthy()),
+                             (self._broken(), self._broken()),
+                             (self._healthy(), self._healthy())):
+            with self.subTest(mine=mine["state"], theirs=theirs["state"]):
+                assert_self_consistent(self, "warn:MI", self._merge(mine, theirs))
+
+    # --- the bookkeeping a race must not drop -------------------------------
+    def test_a_race_keeps_every_repair_attempt_either_side_logged(self):
+        a = dict(self._broken(seq=5), attempts=2, tried=["relist"])
+        b = dict(self._broken(seq=5), attempts=1, tried=["reparse"])
+        merged = self._merge(a, b)
+        self.assertEqual(merged["attempts"], 2)
+        self.assertEqual(sorted(merged["tried"]), ["relist", "reparse"])
+
+    # --- lineage: the routine re-merge the workflow actually performs -------
+    def test_the_run_that_already_read_the_committed_copy_decides(self):
+        """The live case, and the one the old rule could not see. A run loads
+        main's ledger and increments, so its reading is strictly AHEAD of the
+        copy it merges. Nothing about the frontier is needed for this: the
+        poisoned `warn:MI` entry carried the ADVANCED frontier beside its
+        BROKEN, so on evidence alone it would have tied itself broken forever.
+        """
+        stuck = self._broken(frontier=self.FRONTIER_NEW, day="2026-08-20", seq=2)
+        fresh = self._healthy(frontier=self.FRONTIER_NEW, seq=3)
+        merged = self._merge(fresh, stuck)
+        self.assertEqual(merged["state"], SF.HEALTHY)
+        self.assertEqual(merged["last_verdict"], SF.PASS)
+        self.assertEqual(merged["observation_seq"], 3)
+
+    def test_a_later_break_is_not_undone_by_an_earlier_pass(self):
+        merged = self._merge(self._healthy(seq=2),
+                             self._broken(frontier=self.FRONTIER_NEW, seq=3))
+        self.assertEqual(merged["state"], SF.BROKEN)
+        self.assertEqual(merged["last_verdict"], SF.FAIL)
+
+    def test_record_advances_the_lineage_on_every_observation(self):
+        ledger = {"sources": {}}
+        profile = SF.cadence_profile(load_fixture()["KS"], today=MEASURED_ON)
+        for expected in (1, 2, 3):
+            SF.record(ledger, "warn:KS", profile=profile, verdict=SF.PASS,
+                      reason="ok", today=MEASURED_ON)
+            self.assertEqual(
+                ledger["sources"]["warn:KS"]["observation_seq"], expected)
+
+    def test_two_runners_from_the_same_base_are_level_and_broken_wins(self):
+        """Both loaded seq 4, so both wrote seq 5. The counter deliberately
+        says nothing here, and the race rule is what answers."""
+        same = self.FRONTIER_OLD
+        broke = self._broken(frontier=same, day="2026-08-20", seq=5)
+        healthy = self._healthy(frontier=same, seq=5)
+        for mine, theirs in ((broke, healthy), (healthy, broke)):
+            with self.subTest(first=mine["state"]):
+                self.assertEqual(self._merge(mine, theirs)["state"], SF.BROKEN)
+
+    def test_a_humans_unavailable_still_outranks_both(self):
+        human = {"state": SF.UNAVAILABLE, "classification": SF.POLICY,
+                 "unavailable_reviewer": "owner", "unavailable_reason": "x",
+                 "frontier": self.FRONTIER_NEW}
+        self.assertEqual(self._merge(self._broken(), human)["state"],
+                         SF.UNAVAILABLE)
+        self.assertEqual(self._merge(human, self._broken())["state"],
+                         SF.UNAVAILABLE)
+
+
+def assert_self_consistent(case, key, entry):
+    """One entry is ONE run's observation. It may not mix two.
+
+    A PASS closed the incident, so it cannot still be carrying the incident's
+    fields; a BROKEN entry has an open incident, so it must carry them.
+    """
+    verdict, state = entry.get("last_verdict"), entry.get("state")
+    if verdict == SF.PASS:
+        case.assertNotEqual(state, SF.BROKEN,
+                            f"{key}: state BROKEN beside last_verdict PASS")
+        for gone in ("days_dark", "classification", "first_detected"):
+            case.assertNotIn(gone, entry, f"{key}: PASS still carrying {gone}")
+    if state == SF.BROKEN:
+        case.assertNotEqual(verdict, SF.PASS,
+                            f"{key}: BROKEN beside last_verdict PASS")
+        case.assertIn("first_detected", entry,
+                      f"{key}: BROKEN with no clock on it")
+        if entry.get("recovered_at") and entry.get("first_detected"):
+            case.assertLess(entry["recovered_at"], entry["first_detected"],
+                            f"{key}: BROKEN and recovered on the same run")
+
+
 class TheCommittedLedgerIsWellFormed(unittest.TestCase):
+    def test_no_committed_entry_is_internally_contradictory(self):
+        """Read against the file that ships. `warn:MI` failed this at 33223f7
+        with state BROKEN, last_verdict PASS, days_dark 82 and a recovered_at
+        of the same day -- one entry describing two different runs."""
+        for key, entry in (SF.load_ledger().get("sources") or {}).items():
+            assert_self_consistent(self, key, entry)
+
     def test_the_seeded_unavailable_states_are_all_human_signed(self):
         ledger = SF.load_ledger()
         keys = SF.unavailable(ledger)
