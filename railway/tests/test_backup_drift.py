@@ -191,6 +191,41 @@ class NoBaselineIsUnknownAndNeverAPass(unittest.TestCase):
         self.assertNotEqual(UNKNOWN, PASS)
 
 
+class TheWorkflowKeepsTheFileUnlessDriftFAILED(unittest.TestCase):
+    """The artifact is gated on the verdict, never on the exit code.
+
+    The first run of all is UNKNOWN because there is no baseline. Discarding a
+    complete, scanned 24 MB export because it could not be compared to last
+    week's would be exactly backwards, and it is what the first version did.
+    """
+
+    WORKFLOW = pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows" / "backup-export.yml"
+
+    def test_the_export_step_emits_a_verdict_output(self):
+        import inspect
+        src = inspect.getsource(backup_export.run)
+        self.assertIn("verdict={verdict}", src)
+
+    def test_publishing_is_gated_on_the_verdict_and_not_on_success(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        publish = text.split("Publish the export as a release asset")[1].split("- name:")[0]
+        self.assertIn("steps.export.outputs.verdict != 'FAIL'", publish)
+        self.assertNotIn("if: ${{ success()", publish)
+
+    def test_a_fail_verdict_withholds_the_artifact(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        for step in ("Publish the export as a release asset", "Keep the last 12 backup releases"):
+            with self.subTest(step):
+                block = text.split(step)[1].split("- name:")[0]
+                self.assertIn("!= 'FAIL'", block)
+
+    def test_an_unrun_export_publishes_nothing(self):
+        """An empty verdict means the step never got far enough to have one."""
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        publish = text.split("Publish the export as a release asset")[1].split("- name:")[0]
+        self.assertIn("steps.export.outputs.verdict != ''", publish)
+
+
 class AHealthyExportPasses(unittest.TestCase):
     """Without this the file could pass by the checker failing everything."""
 
