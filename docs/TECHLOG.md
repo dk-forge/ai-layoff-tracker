@@ -1,5 +1,80 @@
 # Tech Log
 
+## 2026-08-20 - The press page published the totals the site had before the ingest, because its cache key never learned what a write is (2.20.127)
+
+`ops_status.py [3]` reported `figures_agree_across_surfaces` FAILING: the home
+page publishing 526,499 verified job cuts for 2026 and the press page 523,489.
+The press page carries five large totals and three of them were in play; the
+other two are different claims and were correct (566,898 is full-year 2024,
+576,012 is 2018, both in the year-by-year table).
+
+**Measured against the live API, every press figure was exactly 1,594 low.**
+
+| press page | /aggregate, same query | gap |
+|---|---|---|
+| 523,489 to date, effective basis | 525,083 | 1,594 |
+| 558,253 calendar 2026, effective basis | 559,847 | 1,594 |
+| 524,905 quoted as the home page's headline (notice basis) | 526,499, which is what the home page was serving | 1,594 |
+
+One number uniformly wrong is a bad query. Three windows on two date bases
+uniformly wrong by the same amount is one internally consistent SNAPSHOT of a
+site that had moved on: the split still subtracted correctly (34,764 filed for
+later effective dates, which is what the API said too), so nothing on the page
+looked broken from inside the page.
+
+**The cause is the cache KEY, not the SQL.** `alt_api_cached`, the facet pages,
+the company directory and the company index all key on `alt_data_ver`, which
+every data-changing path bumps through `alt_flush_caches()`, so they are
+orphaned the instant rows land. That is why the home page - which shares
+`alt_api_cached` with `/aggregate` - matched the API exactly and passed
+condition (1) of the invariant. The press page's four caches
+(`alt_press_statements_`, `alt_press_sb_groups_`, `alt_press_year_stats_`,
+`alt_press_monthly_compare_`) were keyed on `ALT_VERSION` and nothing else, so
+no write could move them: only a deploy or the hourly TTL. The tracker page's
+all-time counts (`alt_fresh_alltime_`) had the same shape.
+
+**And the three lines that looked like they covered this had never matched
+anything.** `alt_flush_caches_on_deploy()` deleted `alt_press_statements`,
+`alt_press_sb_groups` and `alt_press_year_stats` - the keys without the version
+suffix. All three were no-ops that read like protection, which is worse than
+absent, because the next reader stops looking for the key that actually holds
+the figure.
+
+**The reader-facing half is the third row of that table.** The press page STATES
+the home page's headline, in prose, by number. A number one surface remembers
+about another is a claim, and `published_figures.py` already ruled on this
+shape: "a cross-reference to another surface's number has to be read, not
+remembered". An hour-old read is a memory. This is the same defect 2.20.99 fixed
+by making that sentence a live read instead of typed prose - the read was live,
+the cache under it was not.
+
+**Fix: one owner for the key.** `alt_figure_cache_key($name)` in db.php returns
+`md5(ALT_VERSION | alt_data_ver)`. The plugin version covers a deploy that
+changes what the cached array MEANS; the data version covers a write that
+changes what it IS. Every cache holding a published figure goes through it: the
+four press caches, the tracker's all-time counts, `alt_warn_notice_gap_stats()`
+(which already had the right shape by hand and is now the helper's caller rather
+than a second definition of it) and the archive-coverage line. The dead deletes
+are gone, with a comment saying why nothing replaced them.
+
+**Not fixed by shortening the TTL, deliberately, and the TTL is exactly why
+this had to be fixed rather than waited out.** Polled every two minutes against
+`/aggregate`: the press page held 523,489 from 06:21Z to 06:36Z and at 06:38Z
+refilled to 525,083, matching the API. So the wrong number self-heals within the
+hour and comes back on the next ingest. That is the worst available shape for an
+alarm, not the best: `figures_agree_across_surfaces` goes red, a session arrives,
+finds the site agreeing with itself, and learns to discount the check. A shorter
+window makes the wrong number rarer, not absent, and "rarer" is the state that
+gets quoted without anyone noticing. **A green re-run of [3] is not evidence this
+was fixed; it is evidence the cache is young.**
+
+Guard: `test_headline_total_agreement.APublishedFigureCacheTracksTheData`. It
+EXECUTES `alt_figure_cache_key` through the php binary and asserts the key moves
+when `alt_data_ver` moves and when `ALT_VERSION` moves; it asserts every figure
+cache goes through the one helper; it bans
+`get_transient('alt_...' . ALT_VERSION)` anywhere in the plugin, which is the
+exact shape that shipped the wrong number and has no honest use; and it fails if
+the dead deletes come back. All six fail against the pre-fix tree.
 ## 2026-08-20 - the data existed in exactly one place, and now it does not, 2.20.126
 
 **Nothing anywhere took a backup of the tracker data.** `wp_alt_layoffs` lived

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.126
+ * Version: 2.20.127
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.126');
+define('ALT_VERSION', '2.20.127');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -535,9 +535,13 @@ function alt_flush_caches_on_deploy() {
     delete_transient('alt_stats_cache');
     delete_transient('alt_faq_numbers');
     delete_transient('alt_coverage_counts');
-    delete_transient('alt_press_sb_groups');
-    delete_transient('alt_press_statements');
-    delete_transient('alt_press_year_stats');
+    // The press page's figure caches are NOT deleted here, and these three
+    // lines used to try. They named 'alt_press_sb_groups' and friends; the
+    // real keys have carried a suffix for a long time, so all three were
+    // no-ops that read like protection. Those caches now go through
+    // alt_figure_cache_key() (db.php), which folds in ALT_VERSION and
+    // alt_data_ver, so a deploy AND every data write orphan them by changing
+    // the key. Nothing to delete, and nothing to keep in step by hand.
     // The .htaccess header block is guarded by a 12h "verified" transient, so a
     // deploy that CHANGES those rules (cache lifetimes, endpoint list) sat
     // unapplied for up to 12 hours while every other cache updated instantly
