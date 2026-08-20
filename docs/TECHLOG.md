@@ -96,6 +96,64 @@ two evidence columns through - not on `main` at 2.20.123, and not on
 `backup/export-and-recovery`. A backup restore through `/bulk` therefore cannot
 restore evidence at all, with or without this change. That is a separate gap in
 the backup path and is left for the session holding that branch.
+## 2026-08-19 - Kansas was never the bug the review predicted: the register is quiet, and the cap over an oldest-first listing was a live trap
+
+**A routine coverage review found the Kansas collector dark for 110 days while
+reporting `ok`, and the predicted cause was wrong.** The read going in was that
+`fetch_ks` bounds itself with `_KS_MAX_DETAILS = 150` over an unordered listing,
+so new notices are never reached. Measured against the state's own register, the
+collector is fine and Kansas has simply not filed. The Kansas Department of
+Commerce WARN page (`kansascommerce.gov/program/workforce-services/warn/`)
+publishes exactly one data link, and it points at the same kansasworks
+`warn_lookups` search this fetcher reads. Running the state's OWN query, the
+whole register is 910 rows and its newest notice is id 2304, **2026-05-01** -
+110 days ago. Asking Ransack directly for the newest (`q[s]=notice_on desc`,
+`id desc`, `created_at desc`, all three agree) returns the same row. `fetch_ks`
+returns 12 notices for its 15-month window, and `/query` already holds all 12,
+including 2026-05-01. **Nothing was recovered because nothing was missing.**
+
+The `33/yr` filing rate behind `P(0) ~ 0.000` is a long-run average carried by
+2002-2012 (50-80/yr). The register's recent rate is 2023: 21, 2024: 14, 2025: 13,
+2026: 7 - about 13/yr, which puts P(0 notices in 110 days) nearer 2%. Unlikely,
+not impossible, and not evidence of a broken reader.
+
+**The ordering defect is real anyway, and it was one filing away from biting.**
+kansasworks serves this listing OLDEST-FIRST by default: page 1 is 1998-2000 and
+the newest notice sits ~35 pages in. The old code walked `range(1, 6)` and then
+took `ids[:150]` in listing order. Both bounds are applied to an oldest-first
+sequence, so they were deciding WHICH notices got read, not merely how many. The
+only reason that was not already the outage is the `notice_on_gteq` date filter,
+which shrinks the window to a single 12-row page - the bound is dormant, not
+safe. Feed the same code 190 notices and it reads the 125 oldest, never reaches
+the newest, and prints `125 notices kept from 125 listed`: a healthy-looking
+non-zero count, which is exactly the silent-green shape.
+
+**Raising the cap is not the fix, because a cap over an unordered listing is
+unsafe at every value** - set it to 500 and it breaks again at 501. The fetcher
+now asks for `q[s]=notice_on desc` AND re-establishes that order locally from
+each row's Notice Date, so nothing depends on the server honouring the sort. The
+bound can then only ever discard the OLDEST tail. A row whose date does not parse
+sorts FIRST, because unknown recency is not old: a markup change to that one
+column can cost a wasted detail fetch but can never push a new notice into the
+part of the list the cap drops. The listing date is used for ORDERING ONLY; the
+detail page remains the sole authority for every stored field.
+
+`tests/test_ks_warn_ordering.py` pins it by serving a listing that is
+deliberately oldest-first, i.e. a server that IGNORES the sort we ask for, with
+more notices than the cap. **Confirmed failing against the pre-fix code**
+(`'1189' not found in [...]`, the 125 oldest) and passing after. The three
+existing KS guards in `tests/test_ks_warn.py` cover only the two pure parsers and
+stayed green throughout, which is the whole reason this one tests `fetch_ks`
+end to end rather than another parser.
+
+Live behaviour is unchanged: 12 notices, 2025-05-21 to 2026-05-01, identical to
+before. No `/bulk` import and no `/bulk-purge` was run, because no row changed.
+
+**Open and NOT addressed here:** the register holds 862 rows dated 2000 or later
+and we hold 799. That 63-row gap is entirely outside the 15-month window and is a
+history question, not a freshness one. Separately, Kansas reporting `ok` through
+110 genuinely empty days is a health-signal question, which is the per-state
+freshness tripwire's job, not this fetcher's.
 
 ## 2026-08-19 - the digest editorial pass: a basis that cannot drift, a comparison that says it is provisional, and the two promises the emails were not keeping, 2.20.123
 
