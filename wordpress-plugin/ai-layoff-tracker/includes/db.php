@@ -760,18 +760,37 @@ function alt_db_upsert(array $row) {
         if (!empty($existing->edited)) {
             return (int) $existing->id;
         }
-        // An import that carries NO industry (structured WARN rows never do)
-        // must not blank a value already on the row — the daily WARN upsert
-        // would otherwise erase every /industry-backfill fill overnight.
-        // Clearing an industry deliberately goes through /edit (pinned).
-        if ($data['industry'] === '') {
-            unset($data['industry']);
-        }
-        // Same rule for the filing/announcement date: a re-import that carries
-        // no notice date (a state that lists only the effective date) must not
-        // erase a date already on the row. Clearing goes through /edit (pinned).
-        if (isset($data['announcement_date']) && $data['announcement_date'] === '') {
-            unset($data['announcement_date']);
+        // An import that carries NO value for one of these must not blank a
+        // value already on the row — the daily WARN/ERM bulk upsert and every
+        // /add re-post would otherwise erase overnight what the enrichment
+        // workers filled in. Clearing any of them deliberately goes through
+        // /edit, which pins the row.
+        //
+        //   industry                  — structured WARN rows never carry one,
+        //                               so this protects /industry-backfill.
+        //   announcement_date         — a state that lists only the effective
+        //                               date carries no notice date.
+        //   employer_country_evidence — enrich_context.py's exact source quote
+        //   announcement_evidence     — for the domicile and the notice date.
+        //
+        // THE TEST IS "NOT CARRIED", WHICH IS NOT THE SAME AS `=== ''`. The
+        // announcement_date guard read `=== ''` from the day it was written
+        // and therefore never once fired: the value it inspects has already
+        // been through alt_db_valid_date(), which returns NULL — never the
+        // empty string — for a missing or unparseable date, so the branch was
+        // unreachable and the daily re-import went on writing NULL over a
+        // stored notice date. Both evidence columns had no guard at all. Every
+        // one of these is a "the source did not say" column, so null and ''
+        // mean the same thing here and both must skip the write.
+        // railway/tests/test_upsert_reimport_guards.py runs the SHIPPED
+        // function and fails if any of the four is present in the UPDATE
+        // payload of a re-import that does not carry it.
+        foreach (array('industry', 'announcement_date',
+                       'employer_country_evidence', 'announcement_evidence') as $keep) {
+            if (array_key_exists($keep, $data)
+                && ($data[$keep] === '' || $data[$keep] === null)) {
+                unset($data[$keep]);
+            }
         }
         $wpdb->update($table, $data, array('id' => (int) $existing->id));
         return (int) $existing->id;
