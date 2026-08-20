@@ -112,6 +112,34 @@ function alt_data_last_updated_label() {
   found the composer falls back to the stored code, which is the same thing
   production does, so the test still runs and still means something.
 */
+/*
+  THE ARCHIVE'S OWN TWO FUNCTIONS, LIFTED RATHER THAN STUBBED.
+
+  The layoff section links to the edition's permalink, and it derives the slug
+  through alt_edition_slug(), the archive's single definition. Requiring the
+  whole of includes/digest-archive.php here would drag in the table plumbing
+  and the rewrite rules this harness deliberately does not have, and writing a
+  stub would give the project a second definition of a URL whose whole point is
+  that a reader can cite it. So the two pure functions are read out of the real
+  file at load time, exactly as alt_us_state_names() is below. When they cannot
+  be found the composer's function_exists guard prints no link, which is the
+  same thing production does when the archive is not loaded.
+*/
+$alt_archive_php = dirname($argv[1]) . '/digest-archive.php';
+if (is_readable($alt_archive_php)) {
+    $alt_arch_src = file_get_contents($alt_archive_php);
+    foreach (array('alt_edition_index_url', 'alt_edition_url', 'alt_edition_slug') as $alt_fn) {
+        if (function_exists($alt_fn)) continue;
+        if (preg_match('/function\s+' . $alt_fn . '\([^)]*\)\s*\{.*?\n\}/s',
+                       $alt_arch_src, $alt_am)) {
+            $alt_sig = substr($alt_am[0], strlen('function ' . $alt_fn));
+            $alt_sig = substr($alt_sig, 0, strpos($alt_sig, ')') + 1);
+            eval('function ' . $alt_fn . $alt_sig . ' '
+                 . substr($alt_am[0], strpos($alt_am[0], '{')));
+        }
+    }
+}
+
 $alt_api_php = dirname($argv[1]) . '/api.php';
 if (is_readable($alt_api_php)) {
     $alt_api_src = file_get_contents($alt_api_php);
@@ -143,8 +171,20 @@ $FIXTURE = json_decode(file_get_contents($argv[2]), true);
  * for, so the year-to-date call and the period call cannot be confused: the
  * composer sending the wrong `from` is exactly the kind of bug worth failing.
  */
+/*
+  EVERY REQUEST THE COMPOSER REALLY MADE, RECORDED.
+
+  A test can read the links out of the rendered body, but the other half of the
+  question "does the link land on the basis these figures were counted on?" is
+  the parameter the composer sent to /aggregate, and that was invisible from
+  outside. Recording it here means the assertion compares two things the real
+  composer did, rather than one thing it did against a string a test remembers.
+*/
+$GLOBALS['__requests'] = array();
+
 function rest_do_request($req) {
     global $FIXTURE;
+    $GLOBALS['__requests'][] = array('route' => $req->route, 'params' => $req->params);
     if (strpos($req->route, '/talent/') === 0) {
         /*
           THE ROUTE, NOT ONLY THE WINDOW. The talent section reads TWO routes
@@ -156,6 +196,28 @@ function rest_do_request($req) {
         */
         if (strpos($req->route, '/query') !== false && !empty($FIXTURE['talent_q'])) {
             return new WP_REST_Response_Stub($FIXTURE['talent_q']);
+        }
+        /*
+          THE CATEGORY CALLS ARE THEIR OWN ANSWERS, NOT THE HEADLINE'S.
+
+          "Other talent activity" asks /aggregate three more times over the
+          SAME window, each narrowed by one filter. Keying on `since` alone
+          handed all three the headline payload, so the harness printed the
+          same total three times and a test could not tell a working category
+          count from a broken one.
+
+          A fixture that does not supply a category answers with an ERROR,
+          which is what a talent plugin that cannot serve that filter really
+          does, and the composer's documented response to it is to print no
+          line for that category rather than a zero. So existing fixtures keep
+          exercising the absent branch instead of acquiring an invented count.
+        */
+        foreach (array('pillar', 'funding', 'direction') as $filter) {
+            $value = $req->get_param($filter);
+            if ($value === null || $value === '') continue;
+            $key = 'talent_cat_' . $filter . '_' . $value;
+            if (!isset($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
+            return new WP_REST_Response_Stub($FIXTURE[$key]);
         }
         $key = ($req->get_param('since') === $FIXTURE['from']) ? 'talent' : 'talent_ytd';
         if (empty($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
@@ -236,4 +298,9 @@ if ($which === 'talent') {
     $out = alt_digest_compose_layoff($FIXTURE['from'], $FIXTURE['to'], 0);
 }
 
-echo json_encode($out === null ? array('null' => true) : $out);
+if ($out === null) {
+    echo json_encode(array('null' => true, 'requests' => $GLOBALS['__requests']));
+} else {
+    $out['requests'] = $GLOBALS['__requests'];
+    echo json_encode($out);
+}

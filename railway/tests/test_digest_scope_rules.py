@@ -516,13 +516,19 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         """
         text = compose(layoff_fixture())["text"]
         country = text.split("Where the jobs were")[1].split("Which industries")[0]
-        self.assertIn("No country recorded: 5,371 jobs", country)
+        self.assertIn("No country recorded 5,371", country)
         self.assertNotIn("These lines cover", country,
                          "the regional column is supposed to sum to the "
                          "worldwide headline exactly")
         industry = text.split("Which industries")[1].split("2026 YTD")[0]
-        self.assertIn("These lines cover 10,519 of the 13,710 verified job cuts",
+        # THE PRINTED LIST IS THREE ROWS NOW, NOT FIVE, so the shortfall this
+        # states is LARGER than it was and the caveat is more of the truth
+        # rather than less: 8,658 covered against 10,519 before, with the two
+        # rows that left the page now counted in the "below the lines shown"
+        # figure instead. That is the point of computing it.
+        self.assertIn("These lines cover 8,658 of the 13,710 verified job cuts",
                       industry)
+        self.assertIn("3,985 more sit below the lines shown", industry)
         self.assertIn("1,067 are on entries with no industry recorded", industry)
 
     def test_the_ranked_lists_are_sorted_by_the_column_they_print(self):
@@ -530,18 +536,30 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         prints the verified one, so the rows have to be re-sorted. Otherwise a
         list titled "the largest" is not ordered by the number beside it."""
         text = compose(layoff_fixture())["text"]
-        block = text.split("Which industries")[1].split("Where these came")[0]
-        rows = [l for l in block.splitlines() if l[:1].isspace() and ":" in l]
-        self.assertIn("Aerospace & Defense", rows[0],
-                      "the industry list is still in the endpoint's order, "
-                      "which is a different tier than the one printed")
-        values = [int(re.search(r"([\d,]+) jobs", r).group(1).replace(",", ""))
-                  for r in rows]
+        # THE SHAPE IS A SERIES AND THE PROPERTY IS UNCHANGED. The block was a
+        # table of indented rows and is now one line of "label figure" items
+        # separated by middle dots, so the row parser became an item parser.
+        # What is asserted is the same thing: the list is ordered by the number
+        # printed beside each label, not by the endpoint's own column.
+        block = text.split("Which industries")[1].split("2026 YTD")[0]
+        line = [l for l in block.splitlines() if "\u00b7" in l][0]
+        items = [i.strip() for i in line.split(": ", 1)[1].split("\u00b7")]
+        self.assertTrue(items[0].startswith("Aerospace & Defense"),
+                        "the industry list is still in the endpoint's order, "
+                        "which is a different tier than the one printed")
+        values = [int(re.search(r"([\d,]+)\.?$", i).group(1).replace(",", ""))
+                  for i in items]
         self.assertEqual(values, sorted(values, reverse=True))
 
-    def test_one_job_is_not_one_jobs(self):
+    def test_the_verified_column_is_what_the_series_prints(self):
+        """This was "1 job is not 1 jobs", and the singular it guarded is gone
+        with the per-item unit: the caption names "verified job cuts" once and
+        the items are bare formatted numbers, so no item can disagree with a
+        noun. The half of that test that still bites is the tier: the endpoint
+        returns 2,501 on the announced-inclusive column for this row and 1 on
+        the verified one, and this block prints the verified one."""
         text = compose(layoff_fixture())["text"]
-        self.assertIn("Multiple countries, no split given: 1 job\n", text)
+        self.assertIn("Multiple countries, no split given 1 ", text)
 
     def test_a_measured_zero_on_the_ai_figure_is_stated_not_hidden(self):
         """On an AI tracker "none this week" is the answer a reader came for,
@@ -649,7 +667,9 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
     def test_a_window_it_cannot_date_composes_nothing_at_all(self):
         """A section that cannot say what it covers does not go out."""
         fixture = layoff_fixture(**{"from": "not-a-date"})
-        self.assertEqual(compose(fixture), {"null": True})
+        # The harness also reports the requests the composer made, so this
+        # asserts the verdict rather than the whole envelope.
+        self.assertTrue(compose(fixture).get("null"))
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
@@ -661,7 +681,7 @@ class TheVerifiedTierIsNeverMixed(unittest.TestCase):
 
     def test_the_country_list_reads_the_verified_column(self):
         text = compose(layoff_fixture())["text"]
-        self.assertIn("Multiple countries, no split given: 1 job", text)
+        self.assertIn("Multiple countries, no split given 1 ", text)
         self.assertNotIn("2,501", text,
                          "the block is printing the announced-inclusive tier "
                          "under a verified headline")
@@ -1000,13 +1020,28 @@ class ThePeriodIsAllowedToHaveAShape(unittest.TestCase):
     rows the table above it prints, and silent when the period has no shape
     worth naming. A line that always fires is decoration."""
 
-    def test_it_names_the_three_largest_and_their_share(self):
+    def test_the_three_largest_are_shown_rather_than_read_back(self):
+        """THE SHAPE SENTENCE WAS CUT AND THE SHAPE WAS NOT.
+
+        It read "Aerospace & Defense, Food & Hospitality and Retail &
+        E-commerce are the three largest, 63% of the ... we classified by
+        industry ...". Every word of that is now visible in the line above it:
+        the same three names, in the same order, with their figures, under a
+        caption naming the window and the tier, and with the coverage note
+        below stating the denominator. The sentence was reading the list back
+        to the reader, and the email is now three rows shorter for it.
+
+        What may NOT happen is the list quietly changing order or tier, so
+        that is what this asserts instead."""
         text = compose(layoff_fixture())["text"]
-        self.assertIn("Aerospace & Defense, Food & Hospitality and Retail & "
-                      "E-commerce are the three largest", text)
-        self.assertRegex(text, r"are the three largest, \d+% of the [\d,]+ "
-                               r"verified job cuts we classified by industry "
-                               r"between August 9 and 16, 2026\.")
+        block = text.split("Which industries")[1].split("2026 YTD")[0]
+        line = [l for l in block.splitlines() if "\u00b7" in l][0]
+        for name in ("Aerospace & Defense", "Food & Hospitality",
+                     "Retail & E-commerce"):
+            self.assertIn(name, line)
+        self.assertNotIn("are the three largest", text,
+                         "the shape sentence is back, reading the line above "
+                         "it out loud")
 
     def test_it_places_technology_when_technology_is_not_in_the_top_three(self):
         """The documented editorial rule: this is the AI Layoff Tracker, so
@@ -1022,7 +1057,12 @@ class ThePeriodIsAllowedToHaveAShape(unittest.TestCase):
             _tuple("Retail & E-commerce", 1500, 1500), _tuple("Energy", 900, 900),
         ]
         text = compose(fixture)["text"]
-        self.assertIn("are the three largest", text)
+        # The industry line still prints, so this is not a vacuous pass: the
+        # block is there and the technology clause is deliberately absent.
+        self.assertIn("Which industries", text)
+        self.assertIn("Technology 9,000", text,
+                      "the industry line went missing, so nothing is being "
+                      "tested about what it does or does not say")
         self.assertNotIn("Technology is", text)
 
     def test_it_is_silent_when_too_little_of_the_headline_is_classified(self):

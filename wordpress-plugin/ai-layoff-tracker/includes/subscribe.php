@@ -2720,6 +2720,43 @@ function alt_digest_subject_line($freq, $from, $to, $headings, $fallback,
 
 /** What the SITE calls a section: its own first line, nothing else. The Python
  *  side reads the identical thing (digest_layout.section_heading). */
+/**
+ * A POST TITLE CUT TO THE SUBJECT'S BUDGET, ON A WORD BOUNDARY OR NOT AT ALL.
+ *
+ * WHY A CEILING AT ALL. alt_digest_subject_line() joins the metric to the
+ * period with a middle dot and refuses anything over 100 characters, falling
+ * back to the section heading. A 96-character headline would therefore not be
+ * shortened, it would VANISH, and the subject would read "From the blog,
+ * 2026 Week 33". Losing the whole title to protect the last six characters of
+ * it is the wrong trade.
+ *
+ * 80, NOT 100. The longest period token this composes beside is
+ * "Aug 31 - Sep 6" at 14 characters, plus three for the separator. 80 leaves
+ * room for that and for the daily form, so a title that fits here fits the
+ * subject on every day of the year rather than on most of them.
+ *
+ * THE CUT IS ON A WORD BOUNDARY AND IS MARKED. A headline severed mid-word is
+ * a different headline; an ellipsis says a reader is holding the front of one.
+ * If there is no space to cut at, the title is returned whole and the subject
+ * line's own fallback decides, because inventing a hyphenation here would be
+ * worse than deferring to a rule that already exists.
+ *
+ * THIS IS NOT THE FIGURE RULE AND DOES NOT WEAKEN IT. "A subject is never cut
+ * mid-figure" is about numbers, where a truncation publishes a wrong one. A
+ * title carries no arithmetic, and the ellipsis is the reader's signal.
+ */
+function alt_digest_subject_title($title, $max = 80) {
+    $title = trim(preg_replace('/\s+/', ' ', (string) $title));
+    if ($title === '' || alt_digest_chars($title) <= $max) return $title;
+    $cut = function_exists('mb_substr') ? mb_substr($title, 0, $max - 1, 'UTF-8')
+                                        : substr($title, 0, $max - 1);
+    $space = strrpos($cut, ' ');
+    if ($space === false || $space < 12) return $title;
+    // U+2026, one character rather than three dots, so the ceiling arithmetic
+    // above is the arithmetic a client applies.
+    return rtrim(substr($cut, 0, $space), " ,;:-") . "\xe2\x80\xa6";
+}
+
 function alt_digest_section_heading($text) {
     foreach (preg_split('/\r\n|\r|\n/', (string) $text) as $line) {
         $line = trim($line);
@@ -2871,6 +2908,53 @@ function alt_digest_rank_table($rows) {
         if (!empty($row['plain_url'])) $text .= '    ' . $row['plain_url'] . "\n";
     }
     return array($html . '</table>', $text);
+}
+
+/**
+ * A RANKED DIMENSION AS ONE LINE, because most of them do not earn a table.
+ *
+ * WHY THIS EXISTS. The layoff edition printed six blocks in the same shape: a
+ * heading, a caption restating the window, a table of rows, and a note. On the
+ * live week of 10-16 August that came to 772 words, and the owner's reading was
+ * that the email answers "what happened" while the site answers "show me
+ * everything behind it", and it was doing both and neither cleanly. Geography
+ * and industry are the two dimensions a reader SKIMS rather than studies, so
+ * they are the two that become a line.
+ *
+ * NOTHING IS DROPPED EXCEPT FURNITURE. Every label keeps its link, so the
+ * per-row destinations added on 2026-08-19 all survive and every one of them
+ * still names its window and its basis. A row with no url renders as plain
+ * text, which is how the unplaced residual stays unlinked: there is no filter
+ * for an empty country and a link that quietly showed something else would be
+ * worse than none.
+ *
+ * THE TEXT PART CARRIES NO URLS, which is what alt_digest_rank_table already
+ * did for these two dimensions: a text reader should not be handed a
+ * machine-shaped URL to squint at once per region.
+ *
+ * THE CALLER OWNS THE SENTENCE. This returns only the series, so the window,
+ * the tier and the geography basis are written by the caller INTO the same
+ * line. That is the rule this file will not bend: a line of this email lifted
+ * out on its own is still true and still says what it covers, and a bare
+ * "United States 10,132" lifted out says neither.
+ */
+function alt_digest_inline_series($rows) {
+    $rows = array_values($rows);
+    if (!$rows) return array('', '');
+    // U+00B7, the same separator the dateline and the subject line use. Not an
+    // emoji and not an en dash: one character every client already renders.
+    $sep = " \xc2\xb7 ";
+    $html = array();
+    $text = array();
+    foreach ($rows as $row) {
+        $label = esc_html((string) $row['label']);
+        if (!empty($row['url'])) {
+            $label = '<a href="' . esc_url($row['url']) . '">' . $label . '</a>';
+        }
+        $html[] = $label . ' ' . esc_html((string) $row['figure']);
+        $text[] = (string) $row['label'] . ' ' . (string) $row['figure'];
+    }
+    return array(implode($sep, $html), implode($sep, $text));
 }
 
 /**
@@ -3321,7 +3405,7 @@ function alt_digest_tracker_url($from, $to, $filters = array()) {
         // promising the same one. That defect has been fixed twice on the press
         // page and once here; tests/test_digest_link_basis.py now fails on any
         // digest link that does not name it.
-        'date_basis=effective',
+        'date_basis=' . rawurlencode(alt_digest_layoff_basis('link')),
     );
     /*
       Cleared, not omitted, and the trailing `=` is written by hand.
@@ -3368,6 +3452,87 @@ function alt_digest_tracker_url($from, $to, $filters = array()) {
         $pairs[] = $blank . '=' . (isset($set[$blank]) ? rawurlencode($set[$blank]) : '');
     }
     return home_url('/ai-layoff-tracker/') . '?' . implode('&', $pairs);
+}
+
+/**
+ * THE TALENT TRACKER, ON THIS WINDOW, AND OPTIONALLY ON ONE CATEGORY.
+ *
+ * THE DEFECT IT FIXES. The talent section's only link read "Open the Talent
+ * Intelligence Tracker for August 10-16, 2026" and pointed at the bare page,
+ * which opens on the tracker's own default window. The label promised a
+ * window the URL did not carry. That is the same class of fault
+ * alt_digest_tracker_url() exists for, one tracker over.
+ *
+ * THE PARAMETER NAMES ARE THE TALENT PLUGIN'S, NOT THIS ONE'S, and they are
+ * deliberately not guessed. That page reads `since` and `until` for the
+ * window, `pillar` for the four-value category vocabulary, and `funding=1`
+ * as a predicate rather than a pillar, because a funding round is a field on
+ * a row and not a category of row. There is no `date_basis` here and there
+ * must not be: the talent tracker has one date, the day the source published.
+ *
+ * WHAT IS DELIBERATELY NOT COPIED FROM alt_digest_tracker_url(). That function
+ * writes every unused filter as a bare `key=`, so a returning reader's saved
+ * filter is CLEARED rather than left ANDed into our figure. Whether the talent
+ * page honours an empty value the same way is UNVERIFIED from this repo, and
+ * writing keys on a guess would be worse than not writing them: a parameter
+ * the page does not understand can select nothing at all. So this writes only
+ * the parameters it means. The consequence is stated rather than hidden: a
+ * reader who left a filter set on that page may see a smaller number than the
+ * one beside the link. Verify the clearing behaviour on the live page before
+ * closing that gap, and close it here when it is known.
+ *
+ * THE TALENT TRACKER IS A SEPARATE PLUGIN. This composes a URL for it and
+ * reads its REST API, which is what this composer has always done. Nothing
+ * here edits it, and a change to how that page parses a URL belongs there.
+ */
+/**
+ * THE ONE BASIS THE LAYOFF DIGEST COUNTS ON, IN BOTH ITS SPELLINGS.
+ *
+ * WHY THIS FUNCTION EXISTS RATHER THAN TWO STRING LITERALS.
+ *
+ * Every figure in the layoff section is counted on the EFFECTIVE basis, the
+ * day the jobs end. The composer asks /aggregate for it as
+ * `date_basis=layoff_date`, which is that endpoint's column name. The tracker
+ * page spells the same basis `date_basis=effective`, which is that page's
+ * control value. Two names, one basis, and until now they were four separate
+ * string literals in four places with nothing but a comment holding them
+ * together.
+ *
+ * THAT IS EXACTLY THE DRIFT THIS REPO KEEPS PAYING FOR. The link losing its
+ * basis has been fixed on the press page twice and in this composer once. The
+ * next form of the same defect is not a missing parameter, it is a link that
+ * still carries a basis while the figures beside it have quietly moved to a
+ * different one, and no assertion in the suite could have caught that: the
+ * link would still name A basis, and the test would still be green.
+ *
+ * So the query spelling and the link spelling are members of ONE array. A
+ * change to either is a change to this function, and
+ * tests/test_digest_link_basis.py reads the composer's real /aggregate
+ * requests and its real anchors and fails when the pair they use is not the
+ * pair this returns.
+ *
+ * $for is 'query' for the REST parameter and 'link' for the page's control.
+ * An unknown key returns '', which reaches a caller as a missing parameter
+ * rather than as a wrong one.
+ */
+function alt_digest_layoff_basis($for) {
+    $basis = array('query' => 'layoff_date', 'link' => 'effective');
+    return isset($basis[$for]) ? $basis[$for] : '';
+}
+
+function alt_digest_talent_url($from, $to, $filters = array()) {
+    $base = home_url('/talent-intelligence-tracker/');
+    $from = substr(trim((string) $from), 0, 10);
+    $to = substr(trim((string) $to), 0, 10);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) return $base;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) return $base;
+    $pairs = array('since=' . rawurlencode($from), 'until=' . rawurlencode($to));
+    foreach ((array) $filters as $key => $value) {
+        $value = is_array($value) ? implode(',', $value) : (string) $value;
+        if (trim($value) === '') continue;
+        $pairs[] = rawurlencode((string) $key) . '=' . rawurlencode($value);
+    }
+    return $base . '?' . implode('&', $pairs);
 }
 
 /**
@@ -3588,7 +3753,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       Here the window and the printed dates are the same quantity, and the
       copy below says which one it is.
     */
-    $req->set_param('date_basis', 'layoff_date');
+    $req->set_param('date_basis', alt_digest_layoff_basis('query'));
     /*
       `include` is an OPT-IN allowlist (alt_aggregate_blocks). `include=leaders`
       alone therefore returned `top_countries` as an empty array, which is why
@@ -3778,7 +3943,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $p_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
         $p_req->set_param('from', $p_from);
         $p_req->set_param('to', $p_to);
-        $p_req->set_param('date_basis', 'layoff_date');
+        $p_req->set_param('date_basis', alt_digest_layoff_basis('query'));
         $p_req->set_param('include', 'top_countries');
         $p_res = rest_do_request($p_req);
         if ($p_res && !$p_res->is_error()) {
@@ -3851,8 +4016,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     // client and every terminal already renders; an emoji used as furniture is
     // a coloured picture in half of them and a box in the other half.
     $sep = " \xc2\xb7 ";
+    /*
+      "PROVISIONAL" IS IN THE DATELINE, WHICH IS AHEAD OF EVERY FIGURE.
+
+      The maturity sentence lower down qualifies the two headline figures. It
+      cannot qualify the lead, which states a direction one line below this and
+      is the part most likely to be quoted on its own. A dateline is where a
+      data edition states the status of its whole run, so it states it here,
+      once, before a reader has read a number.
+    */
     $dateline = alt_digest_edition_label($from, $to) . $sep . 'verified job cuts'
-              . $sep . 'counted by the date the cuts take effect';
+              . $sep . 'counted by the date the cuts take effect'
+              . $sep . 'provisional';
 
     $lead = array();
     $us_change = $change_phrase($us_jobs, $prior_us, false);
@@ -4020,31 +4195,61 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       against the day the digest composes. On the intended Monday send they are
       two and nine. A run forced on another day says whatever is true that day.
     */
+    /*
+      THE WORD "PROVISIONAL" IS NO LONGER TRADED AWAY FOR THE ASYMMETRY.
+
+      This used to REPLACE the provisional sentence with the day-count one
+      whenever a comparison was printed, so the one edition that states a
+      direction was the one edition that never used the word, and never said
+      the figure usually rises. The owner read "down 51% from Week 32" as a
+      collapse. A large part of that 51% is collection lag: Week 33 had had
+      three days to settle and Week 32 had had ten.
+
+      So the two sentences are ADDITIVE now. The first marks the window
+      provisional and names both directions a correction can move it. The
+      second is the asymmetry made concrete, which is stronger than a generic
+      caveat because it hands the reader the actual gap, and it says in plain
+      words that the comparison is not yet like for like.
+
+      IT SITS FIRST IN THE QUALIFIER PARAGRAPH, directly under the two figures
+      that carry the direction, rather than after the country reconciliation.
+      A caveat a reader meets after an unrelated sentence about country
+      coverage is a caveat in fine print.
+    */
     $maturity = 'Filings and notices keep arriving, so this window is '
               . 'provisional: it usually rises, and a correction can lower it.';
     if ($prior_all !== null) {
         $settled = (int) floor((strtotime(gmdate('Y-m-d') . ' 00:00:00 UTC')
                                 - strtotime($to . ' 00:00:00 UTC')) / DAY_IN_SECONDS);
         if ($settled >= 0) {
-            // THE ASYMMETRY MADE CONCRETE, which is stronger than a generic
-            // provisional note because it gives the reader the actual gap.
-            $maturity = 'Filings and notices keep arriving, so the newer week is the '
-                      . 'less complete one: it has had '
+            $maturity .= ' The comparison is not yet like for like: this week has had '
                       . alt_digest_count($settled, 'day') . ' to settle against '
                       . alt_digest_count($settled + 7, 'day') . ' for the week before it.';
         }
     }
     /*
-      ONE PARAGRAPH, NOT TWO. Both sentences qualify the same pair of figures,
-      and the first render put five consecutive grey paragraphs between the
-      headline and the next heading. Five stacked qualifiers is the shape the
-      owner called heavy, whatever each one says.
+      TWO PARAGRAPHS, AND THIS REVERSES A NOTE THIS FILE USED TO HOLD.
+
+      They were joined to stop five consecutive grey paragraphs stacking under
+      the headline. Two is not five, and the two sentences answer different
+      questions: one says the figures are provisional and the comparison is not
+      yet like for like, the other says how much of the total carries no
+      country. Run together, the provisional caveat became the front half of a
+      sentence about country coverage, which is how a caveat ends up read as
+      fine print. The maturity note goes first and alone, directly under the
+      pair of figures that carries the direction it qualifies.
     */
-    $qualifier = trim($reconcile . ($maturity === '' ? '' : ' ' . $maturity));
     $html .= $pair_html
-           . '<p data-alt="scope">' . esc_html($scope) . '</p>'
-           . '<p data-alt="note">' . esc_html($qualifier) . '</p>';
-    $text .= "\n" . $pair_text . $scope . "\n" . $qualifier . "\n";
+           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
+    $text .= "\n" . $pair_text . $scope . "\n";
+    if ($maturity !== '') {
+        $html .= '<p data-alt="note">' . esc_html($maturity) . '</p>';
+        $text .= $maturity . "\n";
+    }
+    if ($reconcile !== '') {
+        $html .= '<p data-alt="note">' . esc_html($reconcile) . '</p>';
+        $text .= $reconcile . "\n";
+    }
 
     /*
       THE YEAR TO DATE, FETCHED HERE AND RENDERED AT THE FOOT.
@@ -4072,7 +4277,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $ytd_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
         $ytd_req->set_param('from', $ytd_year . '-01-01');
         $ytd_req->set_param('to', $to);
-        $ytd_req->set_param('date_basis', 'layoff_date');
+        $ytd_req->set_param('date_basis', alt_digest_layoff_basis('query'));
         /*
           `top_countries`, because this headline needs its OWN geography
           measurement. Borrowing the period's would be the adjacency fault
@@ -4618,7 +4823,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                                                              'The rest arrived')
                          . ' through a bulk filing import, which builds no page, so '
                          . alt_digest_verb($count - $linked, 'it links', 'they link')
-                         . ' to the tracker filtered to that company instead.';
+                         . ' to the tracker filtered to that company.';
             }
             /*
               THE CAVEAT THAT USED TO BE HERE IS GONE, because it is no longer
@@ -4694,11 +4899,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       wrong.
     */
     if ($countries_all || $multi > 0 || $covered < $ver_jobs) {
-        $caption = $range . ', verified only, counted where the jobs were rather than '
-                 . 'where the employer is based. Regions are our own grouping.';
-        $html .= '<h3>Where the jobs were</h3>'
-               . '<p data-alt="caption">' . esc_html($caption) . '</p>';
-        $text .= "\nWhere the jobs were\n" . $caption . "\n";
+        /*
+          ONE LINE, AND THE CAPTION IS ITS OPENING CLAUSE.
+
+          This was a caption, a seven row table and a note. It is a dimension a
+          reader skims, so it is now a series on a single line and the caption
+          is the sentence that series sits inside. Nothing a caveat carried has
+          been dropped: the window, the tier and the geography basis are all
+          still in front of the figures, which is the property that matters,
+          because a line lifted out on its own still says what it covers.
+        */
+        $caption = $range . ', verified job cuts, counted where the jobs were '
+                 . 'rather than where the employer is based';
 
         $region_jobs = array();
         $region_countries = array();
@@ -4746,9 +4958,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         if (!empty($region_jobs['Elsewhere'])) $order[] = 'Elsewhere';
         foreach ($order as $region) {
             if (empty($region_jobs[$region])) continue;
+            /*
+              THE UNIT IS IN THE CAPTION, ONCE, NOT ON EVERY ITEM. On a line
+              the whole point of which is that it is one line, "10,132 jobs .
+              476 jobs . 371 jobs" spends a sixth of its words repeating a
+              word the clause in front of it already said. The separators
+              still carry thousands, which is not negotiable.
+            */
             $rows[] = array(
                 'label'  => $region,
-                'figure' => alt_digest_jobs_phrase($region_jobs[$region]),
+                'figure' => alt_digest_number($region_jobs[$region]),
                 'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
                                 $from, $to,
                                 array('country' => $region_countries[$region]))),
@@ -4758,7 +4977,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         if ($multi > 0) {
             $rows[] = array(
                 'label'  => 'Multiple countries, no split given',
-                'figure' => alt_digest_jobs_phrase($multi),
+                'figure' => alt_digest_number($multi),
                 'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
                                 $from, $to, array('country' => 'Multiple countries'))),
             );
@@ -4768,12 +4987,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         if ($unplaced_rows > 0) {
             // No url. See the docblock: there is no filter for an empty country.
             $rows[] = array('label' => 'No country recorded',
-                            'figure' => alt_digest_jobs_phrase($unplaced_rows));
+                            'figure' => alt_digest_number($unplaced_rows));
             $shown += $unplaced_rows;
         }
-        list($c_html, $c_text) = alt_digest_rank_table($rows);
-        $html .= $c_html;
-        $text .= $c_text;
+        list($c_html, $c_text) = alt_digest_inline_series($rows);
         /*
           THE RECONCILIATION, WHICH ON THIS BLOCK IS NOW ALWAYS EXACT. It is
           still computed rather than asserted: a line claiming the column adds
@@ -4782,10 +4999,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         */
         $note = alt_digest_reconcile_note($shown, $ver_jobs, $ver_jobs, 'job cut',
                                           'no country recorded', $span);
-        if ($note !== '') {
-            $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
-            $text .= $note . "\n";
-        }
+        $tail = '. Regions are our own grouping.' . ($note === '' ? '' : ' ' . $note);
+        $html .= '<h3>Where the jobs were</h3>'
+               . '<p data-alt="series">' . esc_html($caption . ': ') . $c_html
+               . esc_html($tail) . '</p>';
+        $text .= "\nWhere the jobs were\n" . $caption . ': ' . $c_text . $tail . "\n";
     }
 
     /*
@@ -4795,12 +5013,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       the closure simply returns nothing for it.
     */
     list($industries_all, , $ind_covered) = $verified_split($data['top_industries'] ?? null);
-    $industries = array_slice($industries_all, 0, 5, true);
+    /*
+      THREE, NOT FIVE, AND ON ONE LINE. The fourth and fifth rows of this
+      table were never the finding; the derived composition note underneath
+      is, and it reads the WHOLE block rather than the printed slice, so its
+      arithmetic is unaffected by how many rows are shown. The shortfall note
+      below still measures what the printed lines cover, so cutting two rows
+      makes the caveat larger and truer rather than hiding anything.
+    */
+    $industries = array_slice($industries_all, 0, 3, true);
     if (count($industries) > 1) {
-        $caption = $range . ', verified only, by the industry we classified the employer into.';
-        $html .= '<h3>Which industries</h3>'
-               . '<p data-alt="caption">' . esc_html($caption) . '</p>';
-        $text .= "\nWhich industries\n" . $caption . "\n";
+        $caption = $range . ', verified job cuts, by the industry we classified '
+                 . 'the employer into';
         $rows = array(); $shown = 0;
         foreach ($industries as $name => $value) {
             // EVERY LINE LINKED, and to this window and this basis. The
@@ -4809,15 +5033,17 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             // reproduces the figure beside it. See alt_digest_tracker_url.
             $rows[] = array(
                 'label'  => $name,
-                'figure' => alt_digest_jobs_phrase($value),
+                'figure' => alt_digest_number($value),
                 'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
                                 $from, $to, array('industry' => $name))),
             );
             $shown += $value;
         }
-        list($i_html, $i_text) = alt_digest_rank_table($rows);
-        $html .= $i_html;
-        $text .= $i_text;
+        list($i_html, $i_text) = alt_digest_inline_series($rows);
+        $html .= '<h3>Which industries</h3>'
+               . '<p data-alt="series">' . esc_html($caption . ': ') . $i_html
+               . esc_html('.') . '</p>';
+        $text .= "\nWhich industries\n" . $caption . ': ' . $i_text . ".\n";
         /*
           THE ONE LINE IN THIS EMAIL THAT SAYS WHAT A NUMBER MEANS. It sits
           here, under the table it is derived from, because that table is its
@@ -4828,11 +5054,29 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         */
         list($shape, $tech) = alt_digest_composition_note($data['top_industries'] ?? null,
                                                           $ver_jobs, $span);
-        if ($shape !== '') {
-            $html .= '<p data-alt="note">' . esc_html($shape) . '</p>';
-            $text .= $shape . "\n";
-        }
-        // Its own line, at its own weight. See alt_digest_composition_note.
+        /*
+          THE SHAPE SENTENCE IS COMPUTED AND NO LONGER PRINTED, and that is a
+          deliberate editorial cut rather than a deletion.
+
+          It read "Food & Hospitality, Aerospace & Defense and Retail &
+          E-commerce are the three largest, 90% of the 12,348 verified job
+          cuts we classified by industry between August 10 and 16, 2026." Every
+          word of it is now visible in the line directly above: the three names
+          in order, with their figures, under a caption that names the window
+          and the tier, and with the coverage note below stating the
+          denominator. It was reading the list back to the reader.
+
+          THE TECHNOLOGY CLAUSE STAYS, because it is the only part that says
+          something the list does not: technology's real rank and share when it
+          is ranked OUTSIDE the three shown. That is the finding a reader of an
+          AI layoff tracker came for, and on a three-row list it fires more
+          often than it did on a five-row one, not less.
+
+          $shape is still computed because it is the same call, it costs
+          nothing, and alt_digest_composition_note's floors decide whether the
+          period has a shape worth naming at all. Its return is what the
+          technology clause is gated on.
+        */
         if ($tech !== '') {
             $html .= '<p data-alt="finding">' . esc_html($tech) . '</p>';
             $text .= $tech . "\n";
@@ -4940,6 +5184,54 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $link_text = 'Open the tracker for ' . $range;
     $html .= '<p><a href="' . esc_url($click) . '">' . esc_html($link_text) . '</a></p>';
     $text .= "\n{$link_text}:\n{$open}\n";
+
+    /*
+      THE EDITION'S OWN PERMALINK, WHICH THE EMAIL HAS NEVER OFFERED.
+
+      This edition is archived at a stable URL the moment it is sent, and no
+      message ever linked to it. That is the one link a journalist actually
+      needs: the tracker link above lands on a live view that will have moved
+      by the time anybody follows a citation, and this one is the record as it
+      was published. The section is now short by design, so the full record
+      has to be one click away rather than in the message.
+
+      THE SLUG IS DERIVED, NOT LOOKED UP. alt_edition_slug() is the archive's
+      own single definition and is a pure function of the tier and the window,
+      so this cannot name a different edition than the one being captured.
+      Guarded with function_exists for the same reason the tier sentence is:
+      this file is loaded by harnesses that do not load digest-archive.php,
+      and an absent archive prints no line rather than a broken link.
+
+      IT IS DELIBERATELY NOT A COUNTED LINK. The counted wrapper exists to
+      tell us whether the tracker link is followed at all; a second counted
+      link in the same paragraph buys nothing and puts a redirect between a
+      citation and the thing it cites.
+
+      A TEST SEND HAS NO PUBLISHED EDITION and this link will 404 for it. That
+      is correct and is not worth a branch: the edition publishes in the same
+      request that sends the real message, so every recipient of a real
+      edition has it, and a nominated test send is not an edition.
+    */
+    if (function_exists('alt_edition_slug') && function_exists('alt_edition_url')) {
+        /*
+          THE TIER IS DERIVED FROM THE WINDOW, not passed in, and it is the
+          SAME derivation the week-on-week comparison above already uses: a
+          seven day window is the weekly edition and anything else is not.
+          The composer has never been told which tier it is composing for, and
+          giving it a second way to find out is a second thing that can
+          disagree with the first.
+        */
+        $freq_hint = ($ft !== false && $tt !== false && ($tt - $ft) === 6 * DAY_IN_SECONDS)
+                   ? 'weekly' : 'daily';
+        $edition_slug = alt_edition_slug($freq_hint, $from, $to);
+        if ($edition_slug !== '') {
+            $edition_url = alt_edition_url($freq_hint, $edition_slug);
+            $edition_text = 'Read this edition in the archive';
+            $html .= '<p><a href="' . esc_url($edition_url) . '">'
+                   . esc_html($edition_text) . '</a></p>';
+            $text .= "\n{$edition_text}:\n{$edition_url}\n";
+        }
+    }
 
     /*
       THE BIBLIOGRAPHY ENTRY, AT THE FOOT, WHERE ONE BELONGS.
@@ -5172,6 +5464,25 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
           . esc_html(alt_digest_verb($total, 'new hiring signal', 'new hiring signals'))
           . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
+    /*
+      WHAT THE UNIT IS, IN THE READER'S WORDS, BESIDE THE FIGURE IT COUNTS.
+
+      THE DEFECT THE OWNER READ. "1,379 hiring signals" sat above a ranked list
+      whose top row named 2,200 jobs. Nothing in the message said those two
+      numbers count different things, so the only available reading is that the
+      week held 1,379 jobs and one employer supplied 2,200 of them. The rule
+      was already written down in the comment above this one, and a rule that
+      lives only in a comment is a rule the reader never gets.
+
+      IT IS NOT THE VERIFIED SPLIT AND DOES NOT REPLACE IT. The sentence below
+      says how many signals carry a primary document, which is a different
+      question: this one says what ONE of them is. Both are short and both
+      travel with the figure, because a reader who quotes the headline takes
+      whatever is next to it and nothing else.
+    */
+    $unit_note = 'A hiring signal is one sourced employer update, not one job. '
+               . 'Job counts below are the roles named in that update.';
+    $html .= '<p data-alt="note">' . esc_html($unit_note) . '</p>';
     $lede = alt_digest_count($total, 'new hiring signal') . ', ' . $scope;
     // The same rule as the layoff section, same reason. This lede happens to
     // fit today; composing the snippet anyway means it keeps fitting when
@@ -5192,7 +5503,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
     $preheader = alt_digest_fit_preheader(
         $verified . ' of ' . $totalf . ' verified against a primary document',
         array('from ' . alt_digest_count($companies_n, 'company', 'companies')));
-    $text = "Talent Intelligence Tracker\n{$lede}\n";
+    $text = "Talent Intelligence Tracker\n{$lede}\n" . $unit_note . "\n";
     $detail = 'From ' . alt_digest_count($companies_n, 'company', 'companies') . ', '
             . $range . '. ' . $verified . ' of the ' . $totalf . ' '
             /*
@@ -5359,6 +5670,77 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         }
     }
 
+    /*
+      OTHER TALENT ACTIVITY, BECAUSE THE FORM PROMISES IT AND THE EMAIL DID NOT.
+
+      The signup checkbox reads "hiring, leadership and compensation signals".
+      The digest delivered hiring and nothing else, so two thirds of what a
+      subscriber consented to was invisible in every edition they received.
+
+      EACH COUNT IS ITS OWN QUERY, ON THIS WINDOW, AGAINST THE TALENT PLUGIN'S
+      OWN VOCABULARY. Leadership and pay are pillars, a closed four-value list
+      the pipeline always sets. A funding round is NOT a pillar: it is a
+      predicate over the amount and stage fields, which is why it is asked for
+      as `funding=1` and not as a category name. These are the same three
+      specifications that page's own "I'm looking for" control offers, so a
+      count here and the view the reader lands on are the same question.
+
+      THEY OVERLAP BY DESIGN AND THE LINE SAYS SO. A funded employer can also
+      be hiring, and a pay change can sit on a row that is also a leadership
+      move. Summing them, or subtracting them from the headline, would be
+      arithmetic on sets that are not disjoint. The caption states it rather
+      than leaving a reader to add three numbers and find they do not fit.
+
+      THE COUNT ONLY, NEVER THE DOLLARS. The talent tracker's funding AMOUNTS
+      are known to be materially wrong: fund raises and IPOs are counted as
+      company rounds and one stored figure is off by more than an order of
+      magnitude. That is the sibling repo's defect to fix. Publishing a count
+      of rounds does not depend on it; publishing a total raised would.
+
+      A FAILED CALL PRINTS NO LINE, and this is the difference that matters. An
+      endpoint that cannot answer is UNKNOWN, and a category rendered as "0"
+      because a request failed is a measurement we did not make, published as
+      one we did. A real zero from a working call is a real zero and prints.
+    */
+    $activity = array();
+    foreach (array(
+        array('Leadership moves', 'pillar', 'leadership_change'),
+        array('Funding rounds', 'funding', '1'),
+        array('Pay and benefits changes', 'pillar', 'rewards_comp'),
+    ) as $cat) {
+        list($cat_label, $cat_key, $cat_value) = $cat;
+        $creq = new WP_REST_Request('GET', '/talent/v1/aggregate');
+        $creq->set_param('since', $from);
+        $creq->set_param('until', $to);
+        $creq->set_param('include', 'fresh');
+        $creq->set_param($cat_key, $cat_value);
+        $cres = rest_do_request($creq);
+        if (!$cres || $cres->is_error()) continue;
+        $cdata = (array) $cres->get_data();
+        // array_key_exists, not isset: a null total is an answer we cannot
+        // read, and isset() would quietly turn it into a zero.
+        if (!array_key_exists('total', $cdata)) continue;
+        $activity[] = array(
+            'label'  => $cat_label,
+            'figure' => alt_digest_number((int) $cdata['total']),
+            'url'    => alt_digest_track_link($send_id, alt_digest_talent_url(
+                            $from, $to, array($cat_key => $cat_value))),
+        );
+    }
+    if ($activity) {
+        list($act_html, $act_text) = alt_digest_inline_series($activity);
+        // The heading above already says what this is. See the region and
+        // industry lines in the layoff section for the same shape.
+        $act_caption = $range . ', worldwide';
+        $act_tail = '. These categories overlap with the hiring signals above '
+                  . 'and with each other, so they do not sum to the headline.';
+        $html .= '<h3>Other talent activity</h3>'
+               . '<p data-alt="series">' . esc_html($act_caption . ': ') . $act_html
+               . esc_html($act_tail) . '</p>';
+        $text .= "\nOther talent activity\n" . $act_caption . ': '
+               . $act_text . $act_tail . "\n";
+    }
+
     // One year-to-date line, for the reason spelled out in
     // alt_digest_compose_layoff: this data revises upward, so any
     // period-over-period delta manufactures a fall out of a reporting lag.
@@ -5393,10 +5775,20 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
         }
     }
 
-    $click = alt_digest_track_link($send_id, $url);
+    /*
+      THE LINK CARRIES THE WINDOW THE LABEL PROMISES. It used to point at the
+      bare page, which opens on the tracker's own default window, under a label
+      reading "for August 10-16, 2026". See alt_digest_talent_url.
+
+      $url, the unparameterised page, is still what the citation below prints,
+      and deliberately: a bibliography entry names the work, and the window it
+      covers is already a separate field in that entry.
+    */
+    $open = alt_digest_talent_url($from, $to);
+    $click = alt_digest_track_link($send_id, $open);
     $link_text = 'Open the Talent Intelligence Tracker for ' . $range;
     $html .= '<p><a href="' . esc_url($click) . '">' . esc_html($link_text) . '</a></p>';
-    $text .= "\n{$link_text}:\n{$url}\n";
+    $text .= "\n{$link_text}:\n{$open}\n";
 
     /*
       THIS SECTION IS AS CITABLE AS THE OTHER ONE, and until now only one of
@@ -5710,19 +6102,36 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       is, and it is the single thing the subject's figure cannot carry. It is
       the author's words, not ours, and a second title is added only when it
       fits, because a snippet is never truncated mid-title.
+
+      AND THE SUBJECT NOW CARRIES THAT TITLE, so this gives it up. The subject
+      led with "2 new posts", which is a count of things the reader has not
+      seen and no reason to open any of them, and the preview carried the
+      headline that was. Leading the subject with the headline is the right way
+      round, and it makes the old preview an exact repeat of the subject in the
+      one case where both are shown: the articles-only subscriber, who is the
+      only reader whose subject this metric ever reaches.
+
+      SO THE PREVIEW MOVES ONE DOWN THE LIST. It offers the SECOND title, and
+      the count of whatever is below that, which is again the thing the subject
+      cannot carry. On a single-post edition there is no second title and the
+      post's own standfirst goes in the slot: the author's summary of the piece
+      the subject just named, which adds rather than repeats.
     */
     $preheader = '';
     if ($items) {
         $titles = array();
         foreach ($items as $item) $titles[] = $item['title'];
-        $lead_title = array_shift($titles);
-        $rest = array();
+        array_shift($titles);
         if ($titles) {
-            $rest[] = (count($titles) === 1)
-                ? 'and ' . $titles[0]
-                : 'and ' . alt_digest_count(count($titles), 'more post');
+            $rest = (count($titles) > 1)
+                ? array('and ' . alt_digest_count(count($titles) - 1, 'more post'))
+                : array();
+            $preheader = alt_digest_fit_preheader('Also: ' . $titles[0], $rest);
+        } else {
+            $blurb = trim((string) ($items[0]['blurb'] ?? ''));
+            $preheader = ($blurb === '') ? ''
+                       : alt_digest_fit_preheader($blurb, array());
         }
-        $preheader = alt_digest_fit_preheader($lead_title, $rest);
     }
     /*
       THE BREAKUP THE OWNER ASKED FOR, AND WHY IT IS A TABLE.
@@ -5778,8 +6187,31 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       a subject only when it is the ONLY thing the message carries, which is
       the articles-only subscriber, who exists.
     */
+    /*
+      THE HEADLINE IS THIS STREAM'S METRIC.
+
+      "2 new posts \xc2\xb7 Aug 10-16" is too generic to earn an open: it names a
+      quantity of things the reader cannot see and no reason to want any of
+      them. The post's own title is the metric here, in the same way a job
+      count is the layoff section's, and it is the author's words rather than
+      ours. No brand prefix and no "From the blog:" label: the sender column
+      already carries the brand, and a category label in front of a headline
+      spends the characters Gmail truncates on saying nothing.
+
+      ONE TITLE, NEVER A CONCATENATION. Two headlines joined by a dot is a
+      subject a reader parses instead of reads, and the second one is always
+      cut. The lead is the newest post, which is the sort this composer prints
+      and states; there is no engagement signal in this repo to rank on, and
+      inventing one to pick a "best" title would be the fixed-prose-around-
+      variable-data fault in a new place. The rest of the edition is named in
+      the preview line directly above.
+
+      STILL 'minor'. A post title must never displace a tracker figure for a
+      subscriber who takes both, which is what that flag governs, and nothing
+      about leading with the headline changes that ordering.
+    */
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
-                 'metric' => alt_digest_count($found, 'new post'),
+                 'metric' => alt_digest_subject_title($items ? $items[0]['title'] : ''),
                  'minor' => true);
 }
 
