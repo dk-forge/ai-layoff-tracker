@@ -1,0 +1,79 @@
+{
+  "plugin_version": "2.20.128",
+  "recorded_at": "2026-08-20T08:52:17Z",
+  "schema_version": 1,
+  "tables": {
+    "archive": {
+      "bytes": 1093468,
+      "date_range": null,
+      "rows": 25448,
+      "sha256": "5ce02b6da088717f2f22f96c06a235d87c1a179df2b84b27b25f6840d53d94e8"
+    },
+    "company_directory": {
+      "bytes": 1116868,
+      "date_range": null,
+      "rows": 38332,
+      "sha256": "164a2e4496b574b4b6b1c2bbe0bc8ba740ff11f675982b4781b4890f1251c5b1"
+    },
+    "digest_editions": {
+      "bytes": 5505,
+      "date_range": null,
+      "rows": 2,
+      "sha256": "c9280fdbe2a1c0d2379b61fe77529a8cab90ae887cb66e38c84e25f7d86121cf"
+    },
+    "digest_links": {
+      "bytes": 1134,
+      "date_range": null,
+      "rows": 24,
+      "sha256": "46d4d9f065fe458f1478d5db7348aa184ccad1a42d6911ccb5943f206249ff9d"
+    },
+    "digest_sends": {
+      "bytes": 153,
+      "date_range": null,
+      "rows": 4,
+      "sha256": "d6d5e28218fdce5e566c94471180d8a01a6a7b75f7113e55fe21b003c03ba3f9"
+    },
+    "events": {
+      "bytes": 2904143,
+      "date_range": null,
+      "rows": 105178,
+      "sha256": "1ab24a877c015e135ec9aaf73240aa1d960501c515f7087acc53db4e4e6118e4"
+    },
+    "layoffs": {
+      "bytes": 5835956,
+      "date_range": [
+        "2002-01-03",
+        "2028-08-31"
+      ],
+      "rows": 65441,
+      "sha256": "a3601ea4570be1f88ba6a9e830d10170d412601690520368df5274daca4b6df2"
+    },
+    "post_claps": {
+      "bytes": 58,
+      "date_range": null,
+      "rows": 2,
+      "sha256": "6a530db61823dd94f9aea38895687ea39e395955b37a632808fac37e00c8cfea"
+    },
+    "source_reports": {
+      "bytes": 13093892,
+      "date_range": null,
+      "rows": 132169,
+      "sha256": "4ab7087c82f572557945fe49ab16b2a16d5fbaf5fc77cdc3005b5e0b1ea22e99"
+    },
+    "source_runs": {
+      "bytes": 64049,
+      "date_range": null,
+      "rows": 4067,
+      "sha256": "4b8730f4d811a81e532287b07d55163c8050fea90d50f52b5c299b8bff8b1ed0"
+    },
+    "warn_transparency": {
+      "bytes": 20,
+      "date_range": null,
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "took_seconds": 357,
+  "total_bytes": 24115246,
+  "total_rows": 370667
+}
