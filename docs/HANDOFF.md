@@ -6,6 +6,32 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-20): 2.20.129, read off main
+  (2.20.128) immediately before merging.** The baton was read as HELD by
+  `local` and is NOT claimed here; only the version number is.
+
+  **NINE OPERATIONAL ALARMS CAME FROM `newsletter@`.** The 2026-08-19 Resend
+  move converted three callers and left nine, and nothing noticed, because a
+  wrong From line produces no error anywhere. Those nine POSTed to `/alert`,
+  which calls bare `wp_mail()`, which the Brevo plugin re-stamps with the
+  SUBSCRIBER identity. `railway/ops_notify.py` is now the one door; the From is
+  `AI Layoff Tracker Ops <ops@asktherecruiter.com>` and the subject prefix is
+  `[AI Layoff Tracker] `, both stamped by `opsmail` and nowhere else.
+  `tests/test_ops_sender.py` fails on a tenth caller with its own sender. **Do
+  not add a new ops email by calling `opsmail` directly** unless you also add
+  the module to `DIRECT_SENDERS` with a reason.
+
+  **THE SIBLING TALENT TRACKER IS STILL UNPORTED** and has no `opsmail.py` at
+  all: `ci_alert.py:535`, `health_digest.py:833` and `run_benchmark_diff.py:134`
+  still POST to `talent/v1/alert`, so its alarms both wear the newsletter's
+  face AND still depend on the host they report about. Same fix, different
+  repo, different handover (`docs/HANDOVER.md` over there).
+
+  Plugin files touched: `includes/subscribe.php` (hiring-signal location and
+  link), `ai-layoff-tracker.php` (version only). Rest is `railway/ops_notify.py`
+  (new), nine ported callers, `railway/digest_layout.py` and `digest_send.py`
+  (weekly dateline), and three test files.
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-20): 2.20.128, read off main
   (2.20.127) immediately before merging.** The baton was read as HELD by
   `local` and is NOT claimed here; only the version number is.
