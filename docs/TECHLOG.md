@@ -1,5 +1,109 @@
 # Tech Log
 
+## 2026-08-20 - the data existed in exactly one place, and now it does not, 2.20.124
+
+**Nothing anywhere took a backup of the tracker data.** `wp_alt_layoffs` lived
+in MySQL on a shared Bluehost account and nowhere else: 65,439 rows, a large
+share of them produced by paid LLM extraction. The adjudication files are
+committed JSON so the human rulings survive a loss; the extracted rows did not.
+Neither this repo nor the sibling had a backup document or a backup workflow.
+
+**THE PUBLIC ROUTE COULD NOT HAVE DONE IT, AND THAT IS THE FIRST FINDING.** The
+brief assumed the weekly job could read `/query`, since the data is public
+anyway. It cannot: `alt_db_row_to_array()` deliberately shapes rows for humans
+and drops `dedup_hash`, which is the unique key `alt_db_upsert` keys on. A file
+built from the reader export is a file that cannot be restored, which is the
+exact failure this change exists to close. So the backup read is a separate
+keyed route with a separate contract - raw columns, every row, keyset paged -
+using the `WP_API_KEY` that already exists. No new secret.
+
+**THE SECOND FINDING IS THAT `/bulk-purge` IS NOT "EMPTY THE TABLE".** The brief
+described the restore as `/bulk-purge` then `/bulk`. `alt_api_bulk_purge()`
+deletes WARN rows with no post and no editorial pin, and nothing else, because
+it exists for the WARN purge-and-reimport cycle. There is no endpoint that
+empties `wp_alt_layoffs` and a restore does not need one: a reimage starts
+against tables `dbDelta` has just created. docs/RECOVERY.md says so under its
+own heading, because reaching for it at 2am would delete live WARN rows to no
+purpose.
+
+**THE PERSONAL-DATA BOUNDARY IS STRUCTURAL, AND ONLY TWO OF ITS THREE LAYERS
+ARE THE BOUNDARY.** The artifact is published to a PUBLIC repository and
+`wp_alt_subscribers` holds addresses, consent records and two live tokens.
+
+* Layer 1, the table allowlist, is COMPLETE: the set of tables is finite and
+  written down, the plugin's `/backup-table` 400s on anything it does not name,
+  `railway/backup_tables.py` names the same set, and a test asserts the two
+  agree. Two allowlists that disagree are one allowlist and one decoration.
+* Layer 2, the column allowlist, is COMPLETE and is what makes the boundary
+  survive the future: the day somebody adds an `email` column to an exported
+  table, the run goes red and a human reads it, rather than the column riding
+  along.
+* Layer 3, the value scanner, is a DENYLIST and is depth, never the boundary.
+  `excerpt`, `roles` and `source_url` hold arbitrary prose scraped from the open
+  web, so no content rule over them can be complete. It is written down in the
+  module docstring that this layer must never be mistaken for the guard.
+
+**Layer 3 is proved against a seeded positive control before its clean result is
+believed** - on every run, in the workflow before publishing, and in four tests
+including one that sabotages the detector and requires the export to refuse. A
+guard only ever observed to pass is indistinguishable from a guard that does
+nothing, and this repo has been bitten by that shape more than once.
+
+**`digest_sends` AND `digest_links` ARE EXPORTED, AGAINST FIRST APPEARANCES, AND
+THE SCHEMAS ARE WHY.** They were handed over as "who received what and when" and
+"per-recipient click data". They are neither. `digest_sends` is
+`(id, freq, sent_at, recipients, eligible)`: a per-RUN log with no address
+column and no recipient id. `digest_links` is
+`(id, send_id, link_hash, url, clicks)`: an aggregate counter with no subscriber
+id, no IP, no user agent and no per-click row, so it cannot answer "who clicked"
+even in principle, and its `url` is a destination the site composed and
+allow-listed rather than a per-recipient tokenised link. A test pins both. The
+lesson is the ordinary one: read the schema, do not classify from the name.
+
+**A REAL MySQL 8 CAUGHT A DEFECT IN THE RESTORE, WHICH IS THE WHOLE ARGUMENT FOR
+EXERCISING IT.** `sql_literal()` STRIPPED NUL rather than escaping it. MySQL
+accepted the file, reported success, and returned the value one byte shorter. A
+restore that quietly alters a value is worse than one that fails, because the
+failure is at least visible. It now escapes NUL and Ctrl-Z, nothing is removed,
+and `tests/test_backup_restore_sql.py` carries the regression. All ten
+adversarial strings then round-tripped byte-identically through the real schema.
+
+**WHAT IS STILL UNVERIFIED, STATED RATHER THAN ROUNDED OFF.** The `/bulk` INSERT
+path has never been exercised against an empty table. The fidelity drill sends
+rows that already exist, so `alt_db_upsert` takes its UPDATE branch, and the two
+branches differ - UPDATE pins editorially corrected rows and declines to blank
+an absent industry. Proving the insert path needs a throwaway WordPress, which
+this repo does not have. The SQL path avoids `/bulk` entirely and is the one a
+reimage uses.
+
+**THE BLOG IS NOT BACKED UP AND THE RUNBOOK SAYS SO WITHOUT SOFTENING IT.** 557
+posts, 2,063 `layoffs` CPT permalink pages, 14 pages and 2,171 media items exist
+on Bluehost and nowhere else. That is the SEO asset. A WordPress WXR export
+would cover the posts and not the media; nobody is running one. An owner who
+believes he has a full backup and finds out at 2am that his articles are gone is
+worse off than one who knew the boundary, so section 4 of docs/RECOVERY.md is a
+table of what is NOT covered with the measured counts in it.
+
+**Drift fails loudly** on an empty or missing required table, a count more than
+5% below the last good run, a missing manifest field, or a walk that came away
+with materially fewer rows than the site's own `COUNT(*)` - the
+silent-truncation case, which is the one that produces a small file and a green
+run. No baseline reads UNCHECKED, which is not a pass, and a failing run never
+advances the baseline, for the same reason `data_integrity`'s recorder refuses
+to pin a failing slice.
+
+**Storage is a release asset and only the manifest is committed**, because the
+compressed export is several MB a week and a repository pays for its history on
+every clone and every one of ~80 workflow checkouts, forever, with no delta
+compression to amortise it. `ops_status [9]` reads the committed baseline
+OFFLINE: a backup whose only record of itself lives on the machine that might be
+gone is not a backup.
+
+`alt_api_bulk` also learned to pass `job_count_max` and the two evidence columns
+through. `alt_db_upsert` has always accepted them; bulk simply never sent them,
+so a row rebuilt from a backup came back with its reported range collapsed to
+the point estimate and both evidence quotes blank. Additive: a caller that omits
+them is unaffected.
 ## 2026-08-19 - a count above zero is not evidence of freshness: three collectors, three root causes, one shared failure mode, 2.20.125
 
 **This is the sentence the per-state tripwire exists for, so it is written where
