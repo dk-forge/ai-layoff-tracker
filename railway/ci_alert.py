@@ -846,6 +846,42 @@ def main(argv=None):
                             note=note, transient=transient, run_url=args.run_url)
         return 0
 
+    # ONE WORKFLOW, ONE DIRECTION, AND MAIN IS UNTOUCHED.
+    #
+    # `Plugin version collision` on a PR BRANCH is not the defect that check
+    # exists to catch, and version-collision.yml says so in its own header: "the
+    # collision does not exist until the second merge, which is where this
+    # compares the new main tip against the previous one." On a branch it means
+    # only that main moved while the PR sat in checks. The check is red in the
+    # pull request, its output IS the fix instruction, and the session standing
+    # in that PR is the one who acts. It cannot reach main; the push-to-main run
+    # is what catches the case that can, and that one still mails.
+    #
+    # MEASURED, on the night the ledger became readable (2026-08-19, the only
+    # 24 hours this file can audit -- before that the open/resolved state lived
+    # in a WordPress option and is not auditable from here). 15 raises: 10 named
+    # main, 5 named a side branch, and NOT ONE of the five needed the owner to
+    # change any code. Two of the five were version collisions on branches whose
+    # pull requests had ALREADY MERGED, so the fix was to delete the branch --
+    # and deleting it means no green run of that scope can ever fire, which
+    # turns each one into an unclearable ledger entry that mails a false STILL
+    # FAILING every 14 days until a human closes it by hand. The alert did not
+    # merely fail to help. It manufactured work.
+    #
+    # This narrows the EMAIL and nothing else. The check still runs, still goes
+    # red, still blocks the pull request, still shows in ops_status [4]. Nothing
+    # on main is silenced, no live-data scope is touched, and the RECOVERED
+    # notice is untouched. Do not widen this to a second workflow without the
+    # same argument from that workflow's own design: the fix for noise in this
+    # repo is fewer real pages, never a quieter alarm.
+    if (_slug(args.workflow) == "plugin-version-collision"
+            and args.branch != "main"):
+        print("plugin version collision on a PR branch: red in the pull request, "
+              "where the session that owns it is standing and the check prints "
+              "the fix. Not mailed. A collision ON MAIN still mails -- that is "
+              "the one this check exists for.")
+        return 0
+
     label = "CI RED"
     if conclusion == "cancelled":
         # See _SELF_TIMEOUT. A cancelled run is silent UNLESS it killed itself,

@@ -668,5 +668,48 @@ class OneIncidentAcrossTwoBranches(unittest.TestCase):
         self.assertTrue(first.startswith("tests:live.data:"), first)
 
 
+class ACollisionOnAPrBranchIsNotThePage(unittest.TestCase):
+    """`Plugin version collision` mails on main and is quiet on a PR branch.
+
+    version-collision.yml's own header: "the collision does not exist until the
+    second merge, which is where this compares the new main tip against the
+    previous one." On a branch it means main moved while the PR sat in checks --
+    red in the pull request, where the session that owns it is standing and
+    where the check prints the fix. On main it is a wrong version number already
+    merged, and that is the owner's business every time.
+    """
+
+    def _run(self, workflow, branch, conclusion="failure"):
+        argv = ["--run-id", "1", "--workflow", workflow, "--conclusion", conclusion,
+                "--branch", branch, "--event", "push", "--repo", "dk-forge/x",
+                "--run-url", "https://example.invalid/run/1", "--dry-run"]
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = ci_alert.main(argv)
+        return code, buf.getvalue()
+
+    def test_a_collision_on_a_pr_branch_is_not_mailed(self):
+        code, out = self._run("Plugin version collision", "claude/kind-matsumoto-2c6fdd")
+        self.assertEqual(code, 0)
+        self.assertIn("Not mailed", out)
+        self.assertNotIn("--- subject ---", out)
+
+    def test_a_collision_ON_MAIN_still_mails(self):
+        """The guard that keeps this a narrowing and not a silencing."""
+        with mock.patch.object(ci_alert, "fetch_failed_log",
+                               return_value="AssertionError: ALT_VERSION did not move"):
+            code, out = self._run("Plugin version collision", "main")
+        self.assertEqual(code, 0)
+        self.assertIn("--- subject ---", out)
+        self.assertIn("Plugin version collision", out)
+
+    def test_no_other_workflow_is_narrowed(self):
+        with mock.patch.object(ci_alert, "fetch_failed_log",
+                               return_value="AssertionError: something real"):
+            code, out = self._run("Tests", "claude/confident-jepsen-455457")
+        self.assertEqual(code, 0)
+        self.assertIn("--- subject ---", out)
+
+
 if __name__ == "__main__":
     unittest.main()
