@@ -34,9 +34,11 @@ the allowance readers depend on. Two identities, cleanly separated, and both
 halves of that are tested here.
 """
 import ast
+import contextlib
 import os
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -92,6 +94,24 @@ def _evaluated_strings(path):
 
 def _railway_modules():
     return sorted(p for p in RAILWAY.glob("*.py"))
+
+
+@contextlib.contextmanager
+def _scratch_ledger():
+    """Send for real, but never into the COMMITTED ledger.
+
+    `ops_notify.notify` calls `ci_alert.post_alert`, which claims
+    railway/alert_state.json before sending. That is the correct production
+    ordering and it means an unguarded test rewrites a tracked file: the first
+    run of this suite dirtied the real ledger, which would have been committed
+    by anyone staging with `git add -u`. A test that mutates repository state
+    is a test that has to be remembered, and this one no longer has to be.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        with mock.patch.dict(
+                os.environ,
+                {"ALERT_STATE_PATH": str(Path(tmp) / "alert_state.json")}):
+            yield
 
 
 class NobodyMailsTheOwnerBehindTheHelpersBack(unittest.TestCase):
@@ -225,7 +245,8 @@ class OneSubjectPrefixSoOneMailRuleCatchesEverything(unittest.TestCase):
 
     def test_the_prefix_is_stamped_once_end_to_end(self):
         sent = []
-        with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+        with _scratch_ledger(), \
+                mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
                 mock.patch.object(
                     opsmail, "send_once",
                     lambda s, b, i="": (sent.append(s) or
@@ -292,7 +313,8 @@ class TheDoorItselfIsWellBehaved(unittest.TestCase):
         from contextlib import redirect_stdout
         secret = "Zzyzxcorp"
         buf = io.StringIO()
-        with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+        with _scratch_ledger(), \
+                mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
                 mock.patch.object(opsmail, "send_once",
                                   lambda s, b, i="": (True, "emailed the owner",
                                                       False)), \

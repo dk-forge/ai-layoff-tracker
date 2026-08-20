@@ -1815,6 +1815,37 @@ function alt_digest_link_allowed($url) {
     return in_array(strtolower($parts['host']), alt_digest_link_hosts(), true);
 }
 
+/**
+ * A THIRD-PARTY DESTINATION WE ARE WILLING TO PUT IN AN EMAIL.
+ *
+ * This is NOT alt_digest_link_allowed with the host check removed, and the
+ * difference is the whole point. That function guards the click COUNTER, which
+ * redirects from our own domain and therefore must never accept a destination
+ * we do not own: an open redirect wearing our name is worse than no counter.
+ *
+ * This one guards an `<a href>` and nothing else. The reader's client goes
+ * straight to the outlet, our domain is not in the path, and there is no
+ * redirect to abuse. What still has to be true is that the value is an
+ * ordinary absolute web address: a scheme a mail client will not treat as
+ * script or as a local file, no embedded credentials (the
+ * https://ourhost@evil.example shape), a real host, and a sane length.
+ *
+ * It exists for the hiring-signal list, whose rows quote somebody else's
+ * headline and whose only honest destination is somebody else's article.
+ */
+function alt_digest_external_link_ok($url) {
+    if (!is_string($url) || $url === '' || strlen($url) > 600) return false;
+    $parts = wp_parse_url($url);
+    if (!is_array($parts)) return false;
+    if (!isset($parts['scheme'])
+        || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)) return false;
+    if (isset($parts['user']) || isset($parts['pass'])) return false;
+    if (empty($parts['host'])) return false;
+    // A host with no dot is not a public name; it is localhost, an intranet
+    // label, or a typo, and none of the three belongs in a reader's inbox.
+    return strpos($parts['host'], '.') !== false;
+}
+
 function alt_digest_link_hash($url) {
     return md5((string) $url);
 }
@@ -2514,6 +2545,179 @@ function alt_digest_place($state, $country, $location) {
     if ($unsplit) {
         $parts[] = $parts ? 'plus other countries' : 'Multiple countries, no split given';
     }
+    return implode(', ', $parts);
+}
+
+/**
+ * ISO 3166-1 alpha-2 to a country name a reader recognises.
+ *
+ * WHY THIS IS SEPARATE FROM alt_normalize_country(). That function is the
+ * layoff side's vocabulary gate: /add, /edit, /bulk and the public country
+ * FILTER all pass through it, so anything it maps changes stored data and
+ * changes what a filter returns. It deliberately knows only `us` and `uk`
+ * among two-letter codes, and it deliberately leaves `Georgia` alone because
+ * folding it would lose a country to save a US state. Teaching it that `CA` is
+ * Canada and `IN` is India would reinterpret every ambiguous two-letter value
+ * anyone has ever typed into a layoff row, in a column where `CA` far more
+ * often means California.
+ *
+ * The talent side has no such ambiguity, because the column is not free text.
+ * `/talent/v1/query` emits ISO 3166-1 alpha-2 by construction, and the same
+ * row carries `state` separately: measured over 200 live rows on 2026-08-20,
+ * every row with a `state` also had `country` = `US`, and no row had a state
+ * under any other country. So the codes can be resolved here, safely, without
+ * touching the gate the layoff data goes through.
+ *
+ * AN UNKNOWN CODE RETURNS EMPTY rather than the code itself. "(BA, The Sun,
+ * 19 August 2026)" is not a place; it is our storage format leaking into a
+ * reader's inbox, and the caller has a true sentence to print instead. The
+ * list below is the full current alpha-2 assignment, so this should not
+ * happen; it is written as the safe answer rather than the expected one.
+ */
+function alt_digest_iso2_country_name($code) {
+    $code = strtoupper(trim((string) $code));
+    if (!preg_match('/^[A-Z]{2}$/', $code)) return '';
+    static $names = null;
+    if ($names === null) {
+        $names = array(
+        'AD' => 'Andorra', 'AE' => 'UAE', 'AF' => 'Afghanistan',
+        'AG' => 'Antigua and Barbuda', 'AI' => 'Anguilla', 'AL' => 'Albania',
+        'AM' => 'Armenia', 'AO' => 'Angola', 'AQ' => 'Antarctica',
+        'AR' => 'Argentina', 'AS' => 'American Samoa', 'AT' => 'Austria',
+        'AU' => 'Australia', 'AW' => 'Aruba', 'AX' => 'Aland Islands',
+        'AZ' => 'Azerbaijan', 'BA' => 'Bosnia and Herzegovina',
+        'BB' => 'Barbados', 'BD' => 'Bangladesh', 'BE' => 'Belgium',
+        'BF' => 'Burkina Faso', 'BG' => 'Bulgaria', 'BH' => 'Bahrain',
+        'BI' => 'Burundi', 'BJ' => 'Benin', 'BL' => 'Saint Barthelemy',
+        'BM' => 'Bermuda', 'BN' => 'Brunei', 'BO' => 'Bolivia',
+        'BQ' => 'Caribbean Netherlands', 'BR' => 'Brazil', 'BS' => 'Bahamas',
+        'BT' => 'Bhutan', 'BV' => 'Bouvet Island', 'BW' => 'Botswana',
+        'BY' => 'Belarus', 'BZ' => 'Belize', 'CA' => 'Canada',
+        'CC' => 'Cocos Islands', 'CD' => 'DR Congo',
+        'CF' => 'Central African Republic', 'CG' => 'Republic of the Congo',
+        'CH' => 'Switzerland', 'CI' => 'Ivory Coast', 'CK' => 'Cook Islands',
+        'CL' => 'Chile', 'CM' => 'Cameroon', 'CN' => 'China',
+        'CO' => 'Colombia', 'CR' => 'Costa Rica', 'CU' => 'Cuba',
+        'CV' => 'Cape Verde', 'CW' => 'Curacao', 'CX' => 'Christmas Island',
+        'CY' => 'Cyprus', 'CZ' => 'Czechia', 'DE' => 'Germany',
+        'DJ' => 'Djibouti', 'DK' => 'Denmark', 'DM' => 'Dominica',
+        'DO' => 'Dominican Republic', 'DZ' => 'Algeria', 'EC' => 'Ecuador',
+        'EE' => 'Estonia', 'EG' => 'Egypt', 'EH' => 'Western Sahara',
+        'ER' => 'Eritrea', 'ES' => 'Spain', 'ET' => 'Ethiopia',
+        'FI' => 'Finland', 'FJ' => 'Fiji', 'FK' => 'Falkland Islands',
+        'FM' => 'Micronesia', 'FO' => 'Faroe Islands', 'FR' => 'France',
+        'GA' => 'Gabon', 'GB' => 'United Kingdom', 'GD' => 'Grenada',
+        'GE' => 'Georgia', 'GF' => 'French Guiana', 'GG' => 'Guernsey',
+        'GH' => 'Ghana', 'GI' => 'Gibraltar', 'GL' => 'Greenland',
+        'GM' => 'Gambia', 'GN' => 'Guinea', 'GP' => 'Guadeloupe',
+        'GQ' => 'Equatorial Guinea', 'GR' => 'Greece',
+        'GS' => 'South Georgia and the South Sandwich Islands',
+        'GT' => 'Guatemala', 'GU' => 'Guam', 'GW' => 'Guinea-Bissau',
+        'GY' => 'Guyana', 'HK' => 'Hong Kong',
+        'HM' => 'Heard Island and McDonald Islands', 'HN' => 'Honduras',
+        'HR' => 'Croatia', 'HT' => 'Haiti', 'HU' => 'Hungary',
+        'ID' => 'Indonesia', 'IE' => 'Ireland', 'IL' => 'Israel',
+        'IM' => 'Isle of Man', 'IN' => 'India',
+        'IO' => 'British Indian Ocean Territory', 'IQ' => 'Iraq',
+        'IR' => 'Iran', 'IS' => 'Iceland', 'IT' => 'Italy', 'JE' => 'Jersey',
+        'JM' => 'Jamaica', 'JO' => 'Jordan', 'JP' => 'Japan', 'KE' => 'Kenya',
+        'KG' => 'Kyrgyzstan', 'KH' => 'Cambodia', 'KI' => 'Kiribati',
+        'KM' => 'Comoros', 'KN' => 'Saint Kitts and Nevis',
+        'KP' => 'North Korea', 'KR' => 'South Korea', 'KW' => 'Kuwait',
+        'KY' => 'Cayman Islands', 'KZ' => 'Kazakhstan', 'LA' => 'Laos',
+        'LB' => 'Lebanon', 'LC' => 'Saint Lucia', 'LI' => 'Liechtenstein',
+        'LK' => 'Sri Lanka', 'LR' => 'Liberia', 'LS' => 'Lesotho',
+        'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'LV' => 'Latvia',
+        'LY' => 'Libya', 'MA' => 'Morocco', 'MC' => 'Monaco',
+        'MD' => 'Moldova', 'ME' => 'Montenegro', 'MF' => 'Saint Martin',
+        'MG' => 'Madagascar', 'MH' => 'Marshall Islands',
+        'MK' => 'North Macedonia', 'ML' => 'Mali', 'MM' => 'Myanmar',
+        'MN' => 'Mongolia', 'MO' => 'Macao', 'MP' => 'Northern Mariana Islands',
+        'MQ' => 'Martinique', 'MR' => 'Mauritania', 'MS' => 'Montserrat',
+        'MT' => 'Malta', 'MU' => 'Mauritius', 'MV' => 'Maldives',
+        'MW' => 'Malawi', 'MX' => 'Mexico', 'MY' => 'Malaysia',
+        'MZ' => 'Mozambique', 'NA' => 'Namibia', 'NC' => 'New Caledonia',
+        'NE' => 'Niger', 'NF' => 'Norfolk Island', 'NG' => 'Nigeria',
+        'NI' => 'Nicaragua', 'NL' => 'Netherlands', 'NO' => 'Norway',
+        'NP' => 'Nepal', 'NR' => 'Nauru', 'NU' => 'Niue',
+        'NZ' => 'New Zealand', 'OM' => 'Oman', 'PA' => 'Panama',
+        'PE' => 'Peru', 'PF' => 'French Polynesia', 'PG' => 'Papua New Guinea',
+        'PH' => 'Philippines', 'PK' => 'Pakistan', 'PL' => 'Poland',
+        'PM' => 'Saint Pierre and Miquelon', 'PN' => 'Pitcairn Islands',
+        'PR' => 'Puerto Rico', 'PS' => 'Palestine', 'PT' => 'Portugal',
+        'PW' => 'Palau', 'PY' => 'Paraguay', 'QA' => 'Qatar',
+        'RE' => 'Reunion', 'RO' => 'Romania', 'RS' => 'Serbia',
+        'RU' => 'Russia', 'RW' => 'Rwanda', 'SA' => 'Saudi Arabia',
+        'SB' => 'Solomon Islands', 'SC' => 'Seychelles', 'SD' => 'Sudan',
+        'SE' => 'Sweden', 'SG' => 'Singapore', 'SH' => 'Saint Helena',
+        'SI' => 'Slovenia', 'SJ' => 'Svalbard and Jan Mayen',
+        'SK' => 'Slovakia', 'SL' => 'Sierra Leone', 'SM' => 'San Marino',
+        'SN' => 'Senegal', 'SO' => 'Somalia', 'SR' => 'Suriname',
+        'SS' => 'South Sudan', 'ST' => 'Sao Tome and Principe',
+        'SV' => 'El Salvador', 'SX' => 'Sint Maarten', 'SY' => 'Syria',
+        'SZ' => 'Eswatini', 'TC' => 'Turks and Caicos Islands',
+        'TD' => 'Chad', 'TF' => 'French Southern Territories', 'TG' => 'Togo',
+        'TH' => 'Thailand', 'TJ' => 'Tajikistan', 'TK' => 'Tokelau',
+        'TL' => 'Timor-Leste', 'TM' => 'Turkmenistan', 'TN' => 'Tunisia',
+        'TO' => 'Tonga', 'TR' => 'Turkey', 'TT' => 'Trinidad and Tobago',
+        'TV' => 'Tuvalu', 'TW' => 'Taiwan', 'TZ' => 'Tanzania',
+        'UA' => 'Ukraine', 'UG' => 'Uganda',
+        'UM' => 'United States Minor Outlying Islands',
+        'US' => 'United States', 'UY' => 'Uruguay', 'UZ' => 'Uzbekistan',
+        'VA' => 'Vatican City', 'VC' => 'Saint Vincent and the Grenadines',
+        'VE' => 'Venezuela', 'VG' => 'British Virgin Islands',
+        'VI' => 'United States Virgin Islands', 'VN' => 'Vietnam',
+        'VU' => 'Vanuatu', 'WF' => 'Wallis and Futuna', 'WS' => 'Samoa',
+        'YE' => 'Yemen', 'YT' => 'Mayotte', 'ZA' => 'South Africa',
+        'ZM' => 'Zambia', 'ZW' => 'Zimbabwe',
+        );
+    }
+    return isset($names[$code]) ? $names[$code] : '';
+}
+
+/**
+ * WHERE A HIRING SIGNAL IS, in the layoff side's words and shape.
+ *
+ * THE DEFECT. A hiring-signal row read "Evri is launching a 10,000 role hiring
+ * spree ... (10,000 jobs, The Sun, 19 August 2026)". The biggest-cuts row two
+ * blocks up reads "Blueprint Medicines (Massachusetts, United States, takes
+ * effect 18 August 2026)". So the email answered "where" for every cut and for
+ * no hire, and a reader meeting a 10,000-role spree could not tell whether it
+ * was in the United Kingdom or in India. The outlet is not the answer: The Sun
+ * is a British paper that reports on hiring in other countries, and inferring
+ * a place from a masthead is a guess dressed as a fact.
+ *
+ * THE COLUMNS ARE REAL AND SO IS THEIR ABSENCE. Measured over 200 live rows on
+ * 2026-08-20: 114 carry a country, 86 carry none, and the 86 carry no city and
+ * no region either, so there is nothing to fall back to. That is 43% of rows
+ * printing "location not recorded", which is a lot, and it is the true number.
+ * It is stated rather than left blank for the same reason alt_digest_place
+ * states it: a silent row lets a reader assume the place was obvious, and the
+ * gap is a fact about our coverage that the person reading has a right to.
+ *
+ * The state code is expanded only under the United States, which is the only
+ * country the talent rows carry one for.
+ */
+function alt_digest_talent_place($row) {
+    $row = (array) $row;
+    $raw = trim((string) ($row['country'] ?? ''));
+    // ISO alpha-2 first, then the layoff side's gate, so a row that arrives
+    // carrying a spelled-out name is still spoken the same way the cuts are.
+    $country = alt_digest_iso2_country_name($raw);
+    if ($country === '' && $raw !== '' && function_exists('alt_normalize_country')) {
+        $country = (string) alt_normalize_country($raw);
+        // A value the gate did not recognise comes back unchanged. A bare
+        // two-letter code that got this far is storage, not a place.
+        if (preg_match('/^[A-Za-z]{2}$/', $country)) $country = '';
+    }
+    $parts = array();
+    $state = trim((string) ($row['state'] ?? ''));
+    if ($state !== '' && $country === 'United States') {
+        $names = function_exists('alt_us_state_names') ? alt_us_state_names() : array();
+        $code = strtoupper(preg_replace('/[^A-Za-z]/', '', $state));
+        $parts[] = isset($names[$code]) ? $names[$code] : $state;
+    }
+    if ($country !== '') $parts[] = $country;
     return implode(', ', $parts);
 }
 
@@ -5633,6 +5837,25 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 $facts = array();
                 $jobs = isset($row['headcount']) ? (int) $row['headcount'] : 0;
                 if ($jobs > 0) $facts[] = alt_digest_jobs_phrase($jobs);
+                /*
+                  WHERE, WHICH THIS LIST DID NOT SAY UNTIL 2026-08-20.
+
+                  The biggest-cuts table two blocks up prints "(Massachusetts,
+                  United States, takes effect 18 August 2026)" on every row.
+                  This one printed jobs, outlet and date, so the email answered
+                  "where" for every cut and for no hire, and a reader meeting a
+                  10,000-role spree could not tell whether it was in the United
+                  Kingdom or in India.
+
+                  A ROW WITH NO PLACE SAYS SO, in the same words the cuts use.
+                  43% of live rows carry no country, and they carry no city and
+                  no region either, so there is nothing to fall back to and
+                  nothing to infer from. Guessing from the outlet's own country
+                  is the one tempting move and it is wrong: The Sun is a
+                  British paper that reports hiring in other countries.
+                */
+                $place = alt_digest_talent_place($row);
+                $facts[] = ($place !== '') ? $place : 'location not recorded';
                 // WHO PUBLISHED IT. The row's own stored outlet, never
                 // derived from the URL and never guessed: a row that carries
                 // no source name prints no source, in the same way a row that
@@ -5640,9 +5863,60 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                 $outlet = trim((string) ($row['source_name'] ?? ''));
                 if ($outlet !== '') $facts[] = $outlet;
                 if ($when !== '') { $facts[] = $when; } else { $undated++; }
-                if ($facts) $line .= ' (' . implode(', ', $facts) . ')';
-                $html .= '<li>' . esc_html($line) . '</li>';
+                /*
+                  THE HEADLINE IS A LINK, and until 2026-08-20 it was the only
+                  list in this email that was not.
+
+                  Every layoff block links each row to the thing that lets a
+                  reader check it. These rows shipped as plain text, so the one
+                  block whose whole content is somebody else's reporting was
+                  the one block a reader could not follow.
+
+                  IT LINKS TO THE SOURCE, not to us, and that follows the rule
+                  alt_digest_rank_table states: link text should say where the
+                  link goes. The visible text here IS the outlet's headline,
+                  quoted as they published it, so the article is the only
+                  destination that text honestly promises. `source_url` is
+                  present on 100% of live rows.
+
+                  NOT COUNTED, AND NOT PRETENDED TO BE. alt_digest_track_link
+                  wraps first-party destinations only, by design, because a
+                  counter that forwards anywhere is an open redirect on our own
+                  domain. An external link is handed over plain rather than
+                  routed through a guard it cannot pass.
+
+                  WHERE A ROW SOMEHOW CARRIES NO USABLE SOURCE, the fallback is
+                  the talent tracker filtered to that company and window, which
+                  is the same fallback the biggest-cuts table uses when a row
+                  has no entry page. That one IS first-party, so it is counted.
+                */
+                $src = trim((string) ($row['source_url'] ?? ''));
+                $href = '';
+                $plain = '';
+                if (alt_digest_external_link_ok($src)) {
+                    $href = $src;
+                    $plain = $src;
+                } elseif ($co !== '') {
+                    $plain = alt_digest_talent_url($from, $to,
+                        array('company' => $co));
+                    $href = alt_digest_track_link($send_id, $plain);
+                }
+                $shown = esc_html($line);
+                if ($href !== '') {
+                    $shown = '<a href="' . esc_url($href) . '">' . $shown . '</a>';
+                }
+                if ($facts) {
+                    // Outside the anchor, exactly as alt_digest_rank_table
+                    // keeps its qualifiers outside: a screen reader should not
+                    // announce the parenthesis as the name of the destination.
+                    $shown .= ' ' . esc_html('(' . implode(', ', $facts) . ')');
+                    $line .= ' (' . implode(', ', $facts) . ')';
+                }
+                $html .= '<li>' . $shown . '</li>';
                 $text .= '  - ' . $line . "\n";
+                // The plain destination, never the counted one: a text reader
+                // should not be handed a machine-shaped URL to squint at.
+                if ($plain !== '') $text .= '    ' . $plain . "\n";
             }
             $html .= '</ul>';
             /*

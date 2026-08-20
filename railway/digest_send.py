@@ -452,13 +452,20 @@ def _kicker(payload: dict) -> str:
     Both facts come from the payload the site sent. When it carries a date
     this cannot read, the line is omitted rather than filled in.
     """
-    phrase = digest_layout.period_phrase(payload)
+    # THE WEEKLY LEADS WITH WHEN ITS WINDOW ENDED. See
+    # digest_layout.body_dateline: a bare range makes a reader work out how
+    # current the edition is, and "week ending Sunday, August 16" answers it in
+    # the first three words. The ISO week follows, for citation.
+    #
+    # BODY ONLY. The subject keeps period_phrase, because the subject was
+    # settled with the owner and is not being reopened here.
+    phrase = digest_layout.body_dateline(payload) or \
+        digest_layout.period_phrase(payload)
     if not phrase:
         return ""
     freq = str(payload.get("freq") or "").strip().lower()
     # "Edition" rather than "digest", because the word a masthead uses is the
-    # word a reader takes for what this is. The phrase already carries the ISO
-    # week number and the dates it covers for a weekly send.
+    # word a reader takes for what this is.
     tier = {"weekly": "Weekly edition", "daily": "Daily edition"}.get(freq, "Edition")
     return f"{tier}, {phrase}"
 
@@ -493,6 +500,10 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # head and every style block with it. No figure is composed there either.
     subject = digest_layout.subject_line(payload, parts)
     kicker = _kicker(payload)
+    # ONE LINE, AND ONLY WHEN THE SEND IS LATE. See digest_layout.staleness_note
+    # for the threshold and for why an unconditional caveat would be worse than
+    # none. On the normal Monday 07:30 Eastern slot this is empty.
+    notice = digest_layout.staleness_note(payload)
     # The week-numbering convention, and only on the tier that prints a week
     # number. See digest_layout.WEEK_CONVENTION for why it is stated at all.
     edition_note = (digest_layout.WEEK_CONVENTION
@@ -500,9 +511,10 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
                     else "")
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
-        kicker=kicker, unsub_url=unsub, manage_url=manage,
+        kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
         edition_note=edition_note)
-    text = digest_layout.render_text(parts, kicker=kicker, unsub_url=unsub,
+    text = digest_layout.render_text(parts, kicker=kicker, notice=notice,
+                                     unsub_url=unsub,
                                      manage_url=manage, edition_note=edition_note)
 
     return Message(
