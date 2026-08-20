@@ -56,8 +56,13 @@
       "first": 1787214597,
       "last": 1787214597,
       "subject": "CI RED: Weekly off-host backup \u2014 baseline NOT advanced: a failing run must not become the new normal"
+    },
+    "weekly-off-host-backup:main:ae12e05c5976868a": {
+      "first": 1787215954,
+      "last": 1787215954,
+      "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-08-20T08:29:57+00:00",
+  "updated_at": "2026-08-20T08:52:34+00:00",
   "version": 1
 }
