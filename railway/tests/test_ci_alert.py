@@ -5,6 +5,7 @@ The log fixtures below are REAL lines from the eight consecutive red runs of
 `gh run view --log-failed` emits them. Offline, no network, no keys.
 """
 import io
+import os
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -776,6 +777,131 @@ class AMarkerIsNeverACause(unittest.TestCase):
         b = key_for("[sec_edgar] DEGRADED: 11 candidates, none stored",
                     "##[endgroup]", "##[error]Process completed with exit code 1.")
         self.assertNotEqual(a, b, "two different failures collapsed onto one key")
+
+
+class BranchFailuresAreRoutedNotSilenced(unittest.TestCase):
+    """A pull-request failure on a side branch goes to ops_status [4e].
+
+    Four categories must NEVER be routed, and each has its own assertion below,
+    because every one of them is a way this change could quietly become the
+    filtered alarm CLAUDE.md is written against.
+    """
+
+    # A real live-data invariant label, read from data_integrity's registry, so
+    # a rename breaks this test rather than silently returning that class to
+    # one email per branch.
+    LIVE = ("Published breakdowns reconcile with their own headline "
+            "| United States jobs, all time: recorded 1,234 jobs")
+
+    # --- the one case that is routed -------------------------------------
+    def test_a_pull_request_failure_on_a_side_branch_is_routed(self):
+        routed, why = ci_alert.route_to_ops_status(
+            event="pull_request", branch="claude/kind-matsumoto-2c6fdd",
+            cause="plugin version collision: ALT_VERSION did not move")
+        self.assertTrue(routed, why)
+
+    # --- category 1: main, always ----------------------------------------
+    def test_the_same_failure_on_main_still_pages(self):
+        routed, why = ci_alert.route_to_ops_status(
+            event="pull_request", branch="main",
+            cause="plugin version collision: ALT_VERSION did not move")
+        self.assertFalse(routed, why)
+
+    def test_no_conclusion_or_cause_can_route_a_main_failure(self):
+        """main is checked FIRST and unconditionally. Nothing below it applies."""
+        for cause in ("", "##[endgroup]", self.LIVE, "AssertionError: 3 != 4"):
+            for event in ("pull_request", "push", "schedule", "workflow_dispatch"):
+                routed, why = ci_alert.route_to_ops_status(
+                    event=event, branch="main", cause=cause)
+                self.assertFalse(routed, f"{event} / {cause!r}: {why}")
+
+    # --- category 2: live data, from ANY branch --------------------------
+    def test_a_live_data_failure_pages_from_any_branch(self):
+        """The one a naive branch check breaks.
+
+        A branch reading asktherecruiter.com reads the same wrong number main
+        does. That is why these raise under a branch-free scope in the first
+        place, and routing must consult the same identity function rather than
+        the branch name.
+        """
+        for branch in ("claude/confident-jepsen-455457",
+                       "fix/reader-freshness-content", "docs/editorial-spec"):
+            routed, why = ci_alert.route_to_ops_status(
+                event="pull_request", branch=branch, cause=self.LIVE)
+            self.assertFalse(routed, f"{branch}: {why}")
+            # ...and for the LIVE-DATA reason, not incidentally for another one.
+            self.assertIn("LIVE-DATA", why)
+        # main is covered by its own test above and short-circuits earlier.
+        self.assertFalse(ci_alert.route_to_ops_status(
+            event="pull_request", branch="main", cause=self.LIVE)[0])
+
+    def test_the_live_data_test_above_is_not_vacuous(self):
+        """If the label ever stops being recognised, say so here rather than
+        letting the assertion above pass for the wrong reason."""
+        self.assertIsNotNone(ci_alert.live_data_identity(self.LIVE))
+
+    # --- category 3: scheduled and cron runs, wherever they run ----------
+    def test_a_scheduled_run_pages_from_a_non_main_ref(self):
+        for event in ("schedule", "push", "workflow_dispatch", "repository_dispatch"):
+            routed, why = ci_alert.route_to_ops_status(
+                event=event, branch="claude/some-branch",
+                cause="AssertionError: the nightly job broke")
+            self.assertFalse(routed, f"{event}: {why}")
+
+    # --- category 4: the ledger does not leak ----------------------------
+    def test_a_routed_raise_writes_nothing_to_the_ledger(self):
+        """No open cause means nothing to orphan and no RECOVERED owed."""
+        calls = []
+        with mock.patch.object(ci_alert, "fetch_failed_log",
+                               return_value="AssertionError: a branch-only defect"), \
+             mock.patch.object(ci_alert, "post_alert",
+                               side_effect=lambda *a, **k: calls.append(a)), \
+             mock.patch.object(ci_alert, "hold",
+                               side_effect=lambda **k: calls.append(k)):
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code = ci_alert.main([
+                    "--run-id", "1", "--workflow", "Tests", "--conclusion", "failure",
+                    "--branch", "claude/side", "--event", "pull_request",
+                    "--repo", "dk-forge/x", "--run-url", "https://example.invalid/1"])
+            out = buf.getvalue()
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [], "a routed raise touched the alert ledger")
+        self.assertIn("ops_status [4e]", out)
+        self.assertIn("nothing written to the ledger", out)
+
+    def test_a_green_run_still_clears_anything_that_did_raise(self):
+        """RECOVERED is untouched. The resolve path runs before routing and is
+        not reached by it."""
+        posted = []
+
+        def capture(site, key, payload, sleep=None):
+            posted.append(payload)
+            return True, "emailed the owner", False
+
+        orig, ci_alert.post_alert = ci_alert.post_alert, capture
+        try:
+            with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+                 mock.patch.object(ci_alert, "live_data_was_evaluated",
+                                   lambda *a: True):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    code = ci_alert.main([
+                        "--run-id", "1", "--workflow", "Tests",
+                        "--conclusion", "success", "--branch", "claude/side",
+                        "--event", "pull_request", "--repo", "dk-forge/x",
+                        "--run-url", "https://example.invalid/1"])
+        finally:
+            ci_alert.post_alert = orig
+        self.assertEqual(code, 0)
+        self.assertTrue(posted, "a green run on a side branch posted no resolve")
+        self.assertEqual(posted[0]["resolve_scope"], "tests:claude-side")
+
+    # --- and the blast radius stays where it was -------------------------
+    def test_a_non_pull_request_event_is_never_routed(self):
+        routed, _ = ci_alert.route_to_ops_status(
+            event="", branch="claude/side", cause="AssertionError: x")
+        self.assertFalse(routed)
 
 
 if __name__ == "__main__":

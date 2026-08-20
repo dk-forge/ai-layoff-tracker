@@ -478,6 +478,85 @@ _DEFERRAL_LEDGER = Path(__file__).resolve().parent / "deferral_ledger.json"
 _DEFERRAL_ESCALATE_AFTER = 3
 
 
+#: Conclusions ci_alert.py treats as a red run. Kept in step with its ALERTABLE
+#: rather than re-guessed here, because two vocabularies for one event is the
+#: defect that left self_heal blind to self-timeouts until 2026-08-18.
+_ROUTED_CONCLUSIONS = ("failure", "timed_out", "startup_failure")
+
+
+def _routed_branch_failures():
+    """(lines, unknown) — the pull-request failures ci_alert.py did NOT mail.
+
+    THE OTHER HALF OF THE ROUTING CHANGE, and the half that makes it safe. From
+    2026-08-20 a pull-request-triggered failure on a branch that is not main
+    goes here instead of to the owner's inbox. Silence and INVISIBILITY are
+    different things, and this repo has already paid for confusing them: a
+    filtered alarm is how a defect stayed live for hours. So every failure that
+    was not mailed is listed here, by branch, with its age.
+
+    Only the NEWEST run per workflow+branch is shown. A branch that failed and
+    was then fixed is not an open item, and listing every historical red run
+    would rebuild the wall of noise this change exists to remove.
+
+    NO ESCALATION THRESHOLD IS SET, ON PURPOSE. A branch red for many hours is a
+    session that stopped or a branch nobody owns, and that is worth knowing --
+    but sizing that window needs a distribution of how long branch failures
+    normally live, and the only data this repo can read is 2026-08-19/20, six
+    events, several of them created by the session that would have been setting
+    the threshold. A ceiling guessed from that is the 2-day staleness bound on a
+    weekly job all over again: permanently-red amber that hides real breakage.
+    The AGE is printed from today so the distribution accumulates in plain
+    sight, and a later session can size it from data rather than from a feeling.
+
+    Never contributes to the exit code. A routed failure is somebody's working
+    branch, not a call for the owner.
+    """
+    ok, out, why = _gh(["run", "list", "-L", "200", "--json",
+                        "name,conclusion,status,url,createdAt,headBranch,event"],
+                       timeout=60)
+    if not ok:
+        return [f"UNKNOWN - {why}. Routed branch failures could not be read, "
+                f"which is not the same as there being zero of them."], True
+    try:
+        runs = json.loads(out or "[]")
+    except ValueError:
+        return ["UNKNOWN - gh returned output that was not JSON"], True
+
+    newest = {}
+    for run in runs:
+        if run.get("status") != "completed":
+            continue
+        branch = run.get("headBranch") or ""
+        if run.get("event") != "pull_request" or branch == "main" or not branch:
+            continue
+        seat = (run.get("name") or "", branch)
+        if seat not in newest:            # gh returns newest first
+            newest[seat] = run
+
+    still_red = [(seat, run) for seat, run in newest.items()
+                 if run.get("conclusion") in _ROUTED_CONCLUSIONS]
+    if not still_red:
+        return ["none - no pull-request branch is currently red"], False
+
+    still_red.sort(key=lambda pair: pair[1].get("createdAt", ""))
+    lines = [f"{len(still_red)} pull-request failure(s) not mailed; each is red in "
+             f"its own PR and blocks that merge"]
+    for (workflow, branch), run in still_red:
+        age = ""
+        try:
+            started = datetime.strptime(run.get("createdAt", ""),
+                                        "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            hours = (datetime.now(timezone.utc) - started).total_seconds() / 3600
+            age = f"{hours:.1f}h ago" if hours < 48 else f"{hours / 24:.1f}d ago"
+        except (ValueError, TypeError):
+            age = "age unknown"
+        lines.append(f"  {workflow} on {branch}  ({age})")
+        lines.append(f"    {run.get('url', '')}")
+    lines.append("A LIVE-DATA failure is never routed here, and a failure on main "
+                 "is never routed here. Both still mail.")
+    return lines, False
+
+
 def _deferral_doc():
     import json
 
@@ -1500,6 +1579,16 @@ def main():
         # report exists to hand to a human. It is cheap to close and it costs a
         # false STILL FAILING email every fortnight until someone does.
         issues.append(f"{_orphaned} unclearable alarm(s) need a reviewed close")
+
+    # And the failures that are deliberately NOT mailed. From 2026-08-20 a
+    # pull-request failure on a side branch is ROUTED here instead of to the
+    # owner's inbox, and routing is only honest if the routed thing is visible.
+    print("\n[4e] ROUTED BRANCH FAILURES  (red in a PR, deliberately not mailed)")
+    _routed_lines, _routed_unknown = _routed_branch_failures()
+    for line in _routed_lines:
+        print(f"    {line}")
+    # Deliberately NOT an `issues.append`. A session's own branch being red is
+    # not a call for the owner; that is the entire point of routing it here.
 
     # 4c. The audience. Counts only, never an address.
     print("\n[4c] DIGEST SUBSCRIBERS  (keyed /subscriber-stats; counts only, no addresses)")
