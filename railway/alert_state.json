@@ -32,11 +32,6 @@
     }
   ],
   "open": {
-    "data-quality-report-anomaly-flags:main:0833cf25d1880164": {
-      "first": 1787153537,
-      "last": 1787153537,
-      "subject": "CI SELF-TIMEOUT: Data quality report (anomaly flags) \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 10m0s"
-    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1787161951,
       "last": 1787161951,
@@ -53,6 +48,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['warn:MI'] != []"
     }
   },
-  "updated_at": "2026-08-20T15:20:18+00:00",
+  "updated_at": "2026-08-20T15:28:02+00:00",
   "version": 1
 }
