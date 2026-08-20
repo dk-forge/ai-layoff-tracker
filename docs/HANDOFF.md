@@ -6,6 +6,57 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **2.20.125 CLAIMED (2026-08-19): the Oklahoma coverage gap, corrected on the
+  sources page.** The baton was read as HELD by `local` and is NOT claimed here;
+  only the version number is, and it was re-read from `origin/main` immediately
+  before the bump (main had moved 2.20.123 -> 2.20.124 while this branch was
+  being built, so the claim moved with it). Plugin files touched:
+  `templates/page-sources.php` (the Oklahoma gap row: its stated reason was
+  WRONG, not merely stale) and the main file. Everything else in the branch is
+  Python and docs. `reader_freshness.py` quoted in TECHLOG 2026-08-19.
+
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-19): 2.20.124, read off main
+  (2.20.123) immediately before merging.** The baton was read as HELD by
+  `local` and is NOT claimed here; only the version number is. The plugin file
+  touched is `includes/db.php`, inside `alt_db_upsert()` and nothing else - the
+  four-column re-import guard. Also `railway/tests/test_upsert_reimport_guards.py`,
+  `railway/tests/fixtures/upsert_reimport_harness.php` and TECHLOG.
+
+  **`alt_db_upsert()` blanked two evidence columns on every re-import, and the
+  `announcement_date` guard next to them had never once fired** - it tested
+  `=== ''` against a value `alt_db_valid_date()` returns as NULL, so the branch
+  was unreachable and the daily sweep wrote NULL over stored notice dates. Both
+  are fixed by one "not carried" loop over `industry`, `announcement_date` and
+  the two evidence columns. Measured live first: no surviving casualty in the
+  corpus (137/137 news and 180/180 8-K announcement dates still hold their
+  evidence), which is latent-not-bleeding, not harmless - see TECHLOG
+  2026-08-19 for why the two look identical from outside.
+
+  **ANYONE ON `backup/export-and-recovery`: `alt_api_bulk` does NOT pass the
+  two evidence columns through**, on main or on that branch. A restore through
+  `/bulk` cannot restore evidence regardless of this change. Left alone here
+  deliberately; it belongs to whoever holds that branch.
+- **NO VERSION CONSUMED (2026-08-19): the Kansas WARN collector, and a fourth
+  cross-session collision in this checkout.** The baton was read as HELD by
+  `local` and is NOT claimed here. **No plugin file was touched and no version
+  was consumed** - the change is `railway/sources/warn_new_states.py`,
+  `railway/tests/test_ks_warn_ordering.py` and TECHLOG, so
+  `reader_freshness.py` has nothing to verify. Kansas turned out NOT to be
+  broken (the state's register genuinely has no notice after 2026-05-01); the
+  shipped fix is the latent ordering defect behind it. See TECHLOG 2026-08-19.
+  **The collision warning above is now confirmed a fourth time, same night,
+  same shape.** A `git add` of three explicit paths still swept in
+  `docs/HANDOFF.md` and `docs/RECOVERY.md`, because a concurrent session had
+  staged them into the shared index between the edit and the commit; a second
+  commit then picked up that session's TECHLOG entry the same way. Both were
+  reverted out (`git reset --soft` + `git restore --staged`, then the blob
+  rebuilt from `origin/main` via `hash-object`/`update-index` so the shared
+  worktree was never touched) and the other session's work is intact. **Staging
+  by explicit path is NOT sufficient protection - the index is shared, so a
+  path you name can still carry someone else's staged content.** Verify with
+  `git show --stat HEAD` AFTER committing, and do the work in an isolated
+  worktree from the start, which is where the rest of this session ran.
+
 - **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-19): the test suite's
   `requests` stub is shared instead of first-come.** The baton was read as HELD
   by `local` and is NOT claimed here. **No plugin file was touched and no

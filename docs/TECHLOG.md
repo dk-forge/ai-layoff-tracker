@@ -1,5 +1,288 @@
 # Tech Log
 
+## 2026-08-19 - a count above zero is not evidence of freshness: three collectors, three root causes, one shared failure mode, 2.20.125
+
+**This is the sentence the per-state tripwire exists for, so it is written where
+the next person will find it.** Kansas, Michigan and Minnesota were reviewed in
+one pass. They had three different root causes and one identical symptom: **each
+reported a healthy non-zero count while being wrong.**
+
+- Kansas returned 150 notices every run and looked fine. They were the 150
+  OLDEST, because the listing is served oldest-first and the per-run bound was
+  being applied in listing order. Fed 190 notices the pre-fix code printed
+  `125 notices kept from 125 listed` and never reached the newest.
+- Minnesota opens 52 PDFs, every one of which answers HTTP 200, and **silently
+  yields nothing from more than 40 of them** - every report older than 2025-08
+  parses to zero rows against a template the parser does not know.
+- Michigan **drops 23 of 111 dated records on an empty company title** without a
+  murmur, and still returns 88.
+
+A source-health check that asks "did the collector run?" or "did it return
+rows?" passes all three. **Absence of a signal is not a pass, and neither is a
+positive number: the count has to be about the RIGHT rows.** Kansas is the clean
+demonstration, because there the honest answer turned out to be that the state
+had genuinely not filed since 2026-05-01 - which only became knowable by
+comparing against the register's own newest row rather than against zero.
+
+**OKLAHOMA IS A REASONED GAP, NOT A SILENT ONE, AND ROBOTS.TXT ALLOWS US.** A
+routine coverage review found no legitimate machine-readable route. Eight were
+tried with robots.txt read before every content request, and the tried-and-
+failed list is now in the committed refusal ledger
+(`railway/country_coverage.py`) rather than in prose, because a refusal without
+evidence is a guess somebody redoes in three months. In short: the portal is a
+Salesforce Aura shell with zero table markup; there is no CSV, spreadsheet, PDF,
+feed or documented API; the state open-data catalogue has no WARN dataset (and
+its CKAN API is `Disallow: /api/`, so it was NOT called); Oklahoma's own
+workforce page links to the portal instead of publishing a list; and US DOL does
+not republish state notices. Wayback recovers exactly two notices, and since the
+list has sat behind a search form since at least 2015 there is no index to
+enumerate. The only thing that returns the data is the undocumented Salesforce
+`aura` endpoint, which is out of scope and stays out.
+
+**`Allow: /` matters here.** Oklahoma is a TECHNICAL absence, not a permission
+refusal, and the ledger records it as `NOT A REFUSAL` for that reason. Whoever
+revisits this should know they were never told no. Estimated 30 to 60 notices a
+year forgone; a future feed would map company name, address
+(street/city/state/ZIP), notice date and employees affected.
+
+**The sources page was CORRECTED, not merely updated.** It claimed Oklahoma
+publishes "only employer, location, notice date and notice type" with "no
+affected-employee count anywhere in the data". That is wrong: both notices
+recovered from the archive carry counts (363 and 120). The blocker was never
+missing headcounts, it is that nothing is published in a readable form at all,
+and the old copy would have sent the next reader looking for the wrong thing.
+
+**Recommendation only, deliberately NOT actioned.** The archived pages name an
+OESC Rapid Response coordinator, and asking OESC directly for a data extract or
+a documented feed is the honest remaining path. That is contacting a third party
+on the owner's behalf, so it is the owner's to send, not a session's.
+
+MI and MN are filed as their own tasks with their evidence rather than fixed
+inline: three root causes in one change is how a revert stops being possible.
+
+## 2026-08-19 - the two evidence columns had no re-import guard, and the guard the announcement date DID have had never once fired, 2.20.124
+
+**THE REPORTED DEFECT IS REAL AND THE CODE PATH RUNS TENS OF THOUSANDS OF TIMES
+A DAY.** `alt_db_upsert()` puts `employer_country_evidence` and
+`announcement_evidence` into `$data` with a `?? ''` default and, on the UPDATE
+branch, writes all of `$data` to the row. It special-cased exactly two columns
+to avoid blanking a value a re-import does not carry - `industry` and
+`announcement_date` - and the two evidence TEXT columns got no such guard. So
+every re-upsert that does not carry them wrote `''` over whatever
+`enrich_context.py` had stored: the daily WARN/ERM `/bulk` sweep, which
+re-upserts every notice it scrapes rather than only new ones, and every `/add`
+re-post of an article already seen.
+
+**AND THE `announcement_date` GUARD, WHICH IS THE PRECEDENT THIS WAS FIXED
+AGAINST, HAS NEVER FIRED IN ITS LIFE.** It read
+
+```php
+if (isset($data['announcement_date']) && $data['announcement_date'] === '') {
+```
+
+but the value it inspects has already been through `alt_db_valid_date()`, which
+returns **NULL - never the empty string** - for a missing or unparseable date.
+The branch was unreachable, and the daily re-import went on writing NULL over
+stored notice dates for as long as the guard has existed. It read as protection
+the whole time. This is the `industry`/`announcement_date` pair failing the way
+`alt_export_is_filtered()` failed: a second copy of a rule that had quietly
+stopped matching the thing it copies.
+
+The fix is one loop over all four columns, testing "not carried" rather than
+`=== ''`. Every one of them is a "the source did not say" column, so `null` and
+`''` mean the same thing and both skip the write. Clearing any of them
+deliberately still goes through `/edit`, which pins the row with `edited = 1`
+and is skipped by the upsert entirely.
+
+**THE LIVE CORPUS SHOWS NO SURVIVING CASUALTY, AND THAT IS NOT THE SAME AS "IT
+NEVER FIRED".** Measured 2026-08-19 against asktherecruiter.com, before any
+change:
+
+| read | result |
+|---|---|
+| news rows with an `announcement_date` | 137, of which **137 still carry the evidence quote** |
+| 8-K rows with an `announcement_date` | 180, of which **180 still carry the evidence quote** |
+| rows with `announcement_date` set and evidence blank | **0** |
+| WARN rows carrying an employer domicile | **0 of 44,012** |
+| news/8-K rows with `employer_country` set and evidence blank | 41 |
+
+All 41 are accounted for without invoking the bug: 8 were set through `/edit`,
+which allows `employer_country` with no evidence, and the other 33 are one
+contiguous block (ids 107531-107597, stepping by 2, all 2025 events) written by
+a single curated batch - and every one of the 33 still holds its
+`announcement_evidence`, which a blanking would have destroyed in the same
+write. The extractor cannot produce the asymmetry on its own:
+`extractor.py:1315` nulls `employer_country` itself when the domicile quote is
+unsupported, so on the LLM path a domicile and its evidence are always written
+together or not at all.
+
+So the honest verdict is **latent, not bleeding**: on today's paths nothing
+puts evidence on a row that then gets re-imported. The domicile backfill
+queries `country=Multiple countries` plus the ~109 blank-country rows, which
+excludes every WARN row; `enrich_context.py` can queue a WARN row (its
+`context_missing` filter is `employer_country = '' OR announcement_date IS
+NULL`) but a state WARN list page yields no exact domicile quote, and today's
+run wrote 0 entries from 1 row checked. **A value destroyed before anything can
+read it leaves exactly the same trace as a value never written**, which is the
+whole reason this is being fixed on the code rather than on the corpus.
+
+**The permanent-versus-recurring distinction is what makes it worth fixing
+now.** `enrich_context.py` re-fills only what its `context_missing` filter can
+see, and that filter reads `employer_country` and `announcement_date` - never
+the evidence columns. A row whose domicile survives while its evidence is
+blanked is therefore **out of the queue forever**: the loss is permanent, not a
+recurring cost. The `announcement_date` half is worse in the same direction,
+because that guard now works: the date is preserved and its evidence is not, so
+the row keeps a published date with no provenance behind it, on a product whose
+entire promise is provenance.
+
+**The test runs the SHIPPED function, not a description of it.**
+`railway/tests/fixtures/upsert_reimport_harness.php` loads `includes/db.php`
+behind a recording `$wpdb` and reports the actual UPDATE payload;
+`railway/tests/test_upsert_reimport_guards.py` asserts that a re-import
+carrying none of the four names none of them, that one carrying all four writes
+all four, that an INSERT is untouched, and that an `edited` row still takes no
+write at all. Proven by mutation: against the pre-fix `db.php` it fails 2 of 5,
+naming both the evidence columns and the dead date guard.
+
+**NOT CHANGED, AND DELIBERATELY.** `employer_country` itself is also unguarded,
+so a WARN re-import blanks it too - but that one is self-healing (the row falls
+straight back into `context_missing` and is re-offered to the enrichment queue)
+and, more importantly, a WARN notice genuinely does not state an employer
+domicile. Pinning one there would preserve a claim the source never made.
+
+**ONE PREMISE IN THE BRIEF DID NOT HOLD.** `alt_api_bulk` does **not** pass the
+two evidence columns through - not on `main` at 2.20.123, and not on
+`backup/export-and-recovery`. A backup restore through `/bulk` therefore cannot
+restore evidence at all, with or without this change. That is a separate gap in
+the backup path and is left for the session holding that branch.
+## 2026-08-19 - Michigan cannot be extended and Minnesota can, but not by a tweak: measuring two "thin-by-design" collectors
+
+Both were flagged as thin-by-design collectors reading a recent window only (MI
+dark 81 days, MN 49). They are two different situations and only one of them is
+a defect in our code. **Neither is changed here** - this entry is the
+measurement, so the next session starts from facts rather than the label.
+
+**MICHIGAN IS NOT EXTENDABLE: THE STATE'S INDEX HOLDS 112 RECORDS, FULL STOP.**
+The collector reads michigan.gov's Sitecore SXA search API with `p=500`, and the
+suspicion was that the window came from that bound. It does not. The response
+carries its own `Count`, and `Count` is **112** - `p=500` already asks for more
+than exists, and `&e=500` (the start-index parameter) returns zero results with
+no overlap, so there is no second page being missed. Those 112 records span
+**2024-11-29 to 2027-01-14** (2024: 1, 2025: 68, 2026: 41, 2027: 1 - the 2027 is
+a legitimately future-dated layoff date). The recent window is imposed by the
+SOURCE, not chosen by the collector, so there is no full history to extend to
+from this endpoint. Finding an older Michigan history means finding a DIFFERENT
+Michigan publication, which is a discovery question, not a bound to raise.
+
+**A separate live defect fell out of that measurement and is deliberately NOT
+fixed here.** 111 of the 112 records carry a parseable date, but `fetch_mi`
+returns only **88** entries. Roughly 23 records are dropped, most plausibly on an
+empty company title (neither `content-title-link` nor `<h3>` matched the
+fragment), since none of the 112 has `jobs <= 0` and every date is inside
+`_entry`'s bound. We already hold 102 MI WARN rows - MORE than the collector now
+returns - so this is a live parsing loss on the current window, not a backfill
+gap. Different root cause, different change: three of them in one commit is how
+a revert stops being possible.
+
+**MINNESOTA: DISCOVERY IS FINE, THE OLD-TEMPLATE PARSER IS THE BLOCKER.** The
+Wayback CDX discovery in `fetch_mn` returns **52 distinct plant-closing PDFs**,
+covering monthly reports 2022-2026 plus annual reports for 2021, 2022, 2023 and
+2024, and **all 52 answer HTTP 200 live at mn.gov today** - the `limit=500` is
+not binding and no archive fallback is needed. `fetch_mn` nevertheless returns
+**72 entries, every one dated 2025-08-06 to 2026-07-01**. Every report older than
+2025-08 is fetched, opened, and parsed to ZERO rows.
+
+`_mn_parse_table` was repaired mid-2026 for the template DEED introduced then.
+The older template is not a variant of it: the header wraps across two physical
+rows AND each logical column is split into three physical columns with `None`
+padding, and pdfplumber does not return the body as one table at all. The 2023
+annual report yields nine fragmentary tables on page 1, of which the first holds
+only a header row and a group-summary row; the 2023 and 2024 monthlies behave
+the same way. So MN IS extendable and the data is genuinely reachable, but it
+needs a word-position parser for the old layout, not a header-matching tweak.
+
+**It was not forced, on purpose.** A speculative parser over a fragmented table
+is exactly how a wrong number gets published, and a wrong number is far worse
+than a missing one. It is also well-shaped work for its own session, because the
+reports carry their own oracle: each prints its record count and affected-worker
+total inline (`RR Start Date: May 2023 (12 records)`, then `86`), so a new parser
+can be checked month by month against the state's own printed figures before a
+single row is posted.
+
+**Access notes.** mn.gov's robots.txt permits `/deed/assets/` and states
+`Visit-time: 0000-1200` (GMT) and `Request-rate: 10`; both were honoured. **
+michigan.gov publishes no robots.txt at all** - `/robots.txt` returns an Akamai
+"Access Denied" to our tracker UA, and the Internet Archive's 2026-01-28 snapshot
+of it IS that same Access Denied page, so the archive's crawler was refused too.
+There is no stated crawl policy to honour or violate; the control is a blanket
+WAF rather than a directive aimed at automated clients. The browser UA the MI/MA
+collectors already use predates this work and was NOT changed, but it is flagged
+here rather than left implicit, because it is the owner's call and not a
+session's.
+
+No rows were imported and no code changed, so no `/bulk`, no `/bulk-purge`, and
+no plugin version bump. $0 spent: every probe was plain HTTP with
+`ALT_PAID_READS=off`, and no model call was made.
+
+## 2026-08-19 - Kansas was never the bug the review predicted: the register is quiet, and the cap over an oldest-first listing was a live trap
+
+**A routine coverage review found the Kansas collector dark for 110 days while
+reporting `ok`, and the predicted cause was wrong.** The read going in was that
+`fetch_ks` bounds itself with `_KS_MAX_DETAILS = 150` over an unordered listing,
+so new notices are never reached. Measured against the state's own register, the
+collector is fine and Kansas has simply not filed. The Kansas Department of
+Commerce WARN page (`kansascommerce.gov/program/workforce-services/warn/`)
+publishes exactly one data link, and it points at the same kansasworks
+`warn_lookups` search this fetcher reads. Running the state's OWN query, the
+whole register is 910 rows and its newest notice is id 2304, **2026-05-01** -
+110 days ago. Asking Ransack directly for the newest (`q[s]=notice_on desc`,
+`id desc`, `created_at desc`, all three agree) returns the same row. `fetch_ks`
+returns 12 notices for its 15-month window, and `/query` already holds all 12,
+including 2026-05-01. **Nothing was recovered because nothing was missing.**
+
+The `33/yr` filing rate behind `P(0) ~ 0.000` is a long-run average carried by
+2002-2012 (50-80/yr). The register's recent rate is 2023: 21, 2024: 14, 2025: 13,
+2026: 7 - about 13/yr, which puts P(0 notices in 110 days) nearer 2%. Unlikely,
+not impossible, and not evidence of a broken reader.
+
+**The ordering defect is real anyway, and it was one filing away from biting.**
+kansasworks serves this listing OLDEST-FIRST by default: page 1 is 1998-2000 and
+the newest notice sits ~35 pages in. The old code walked `range(1, 6)` and then
+took `ids[:150]` in listing order. Both bounds are applied to an oldest-first
+sequence, so they were deciding WHICH notices got read, not merely how many. The
+only reason that was not already the outage is the `notice_on_gteq` date filter,
+which shrinks the window to a single 12-row page - the bound is dormant, not
+safe. Feed the same code 190 notices and it reads the 125 oldest, never reaches
+the newest, and prints `125 notices kept from 125 listed`: a healthy-looking
+non-zero count, which is exactly the silent-green shape.
+
+**Raising the cap is not the fix, because a cap over an unordered listing is
+unsafe at every value** - set it to 500 and it breaks again at 501. The fetcher
+now asks for `q[s]=notice_on desc` AND re-establishes that order locally from
+each row's Notice Date, so nothing depends on the server honouring the sort. The
+bound can then only ever discard the OLDEST tail. A row whose date does not parse
+sorts FIRST, because unknown recency is not old: a markup change to that one
+column can cost a wasted detail fetch but can never push a new notice into the
+part of the list the cap drops. The listing date is used for ORDERING ONLY; the
+detail page remains the sole authority for every stored field.
+
+`tests/test_ks_warn_ordering.py` pins it by serving a listing that is
+deliberately oldest-first, i.e. a server that IGNORES the sort we ask for, with
+more notices than the cap. **Confirmed failing against the pre-fix code**
+(`'1189' not found in [...]`, the 125 oldest) and passing after. The three
+existing KS guards in `tests/test_ks_warn.py` cover only the two pure parsers and
+stayed green throughout, which is the whole reason this one tests `fetch_ks`
+end to end rather than another parser.
+
+Live behaviour is unchanged: 12 notices, 2025-05-21 to 2026-05-01, identical to
+before. No `/bulk` import and no `/bulk-purge` was run, because no row changed.
+
+**Open and NOT addressed here:** the register holds 862 rows dated 2000 or later
+and we hold 799. That 63-row gap is entirely outside the 15-month window and is a
+history question, not a freshness one. Separately, Kansas reporting `ok` through
+110 genuinely empty days is a health-signal question, which is the per-state
+freshness tripwire's job, not this fetcher's.
 ## 2026-08-19 - the count floor could not see a frozen archive: a per-source freshness tripwire, a three-state ledger, and the collectors nobody had ever looked at
 
 **Kansas had looked green for 110 days while publishing nothing.** Every WARN
@@ -90,6 +373,19 @@ leads with `United States - Kansas WARN` because a list of subjects that all
 start the same way is a list of identical subjects. Also folded into `warn_us`
 health (so the weekly digest carries it), `ops_status [2b]/[2c]`, and one
 issue, never one per source.
+
+**INDEPENDENTLY CONFIRMED, WHICH IS THE PART THAT MAKES THE CALIBRATION
+TRUSTWORTHY.** A separate collector review of the same three states (entry
+above, 2.20.125) reached the same three verdicts from a completely different
+method - reading the registers rather than the dates. Kansas: the listing is
+served oldest-first and the per-run bound was applied in listing order, so the
+collector returned the 150 OLDEST every run; with that fixed the newest notice
+is still 2026-05-01, because the state genuinely has not filed since. QUIET,
+which is what this detector says. Minnesota: 40-odd PDFs answer HTTP 200 and
+parse to zero against an older template. Michigan: 23 of 111 dated records
+dropped on an empty company title. BROKEN and BROKEN, which is what this
+detector says. A statistical judge that agrees with a manual audit on all three,
+including the one that is NOT a defect, is a judge worth wiring to an inbox.
 
 **Detection only. No healing shipped, deliberately.** A partially wired healer
 looks like protection. `railway/source_freshness.py` and
