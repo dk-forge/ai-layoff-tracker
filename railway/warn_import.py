@@ -485,9 +485,12 @@ def main():
     # warn_custom_* family: warn_custom_states / warn_custom_legacy are re-reported
     # by the custom-scraper blocks BELOW this point, which would clobber a value
     # written here, and a brand-new literal id would need a health.js label.
-    # Names the freshness check reads further down. Initialised here so a
-    # skipped optional tier (WARN_SKIP_NEW_STATES=1) cannot turn the check into
-    # a NameError, which would read as "could not run" on a healthy run.
+    #
+    # The three names below belong to the FRESHNESS check further down, and are
+    # initialised here so that a skipped optional tier (WARN_SKIP_NEW_STATES=1)
+    # cannot turn that check into a NameError. A NameError there would print
+    # "freshness could not run" on an otherwise healthy run, which is a false
+    # UNKNOWN and exactly the kind of noise that gets a real one ignored.
     _new_errors, _wanted_new, _new_drift = set(), [], []
     _generic_by_state = {}
     for _e in entries:
