@@ -275,9 +275,21 @@ def fetch_mi():
     out = []
     for res in data.get("Results", []):
         html = (res.get("Html") or "").replace("&nbsp;", " ")
-        m = (re.search(r'class="content-title-link"[^>]*>(.*?)</a>', html, re.S)
-             or re.search(r"<h3[^>]*>(.*?)</h3>", html, re.S))
-        title = _strip_tags(m.group(1)) if m else ""
+        # Take the first pattern that yields a NON-EMPTY name, not the first
+        # that matches. Newer fragments render the anchor as a placeholder
+        # (href="" with no text) and put the real name in the <h3> after it;
+        # `or` short-circuits on the match OBJECT, so the empty anchor won and
+        # 23 of 112 live records were dropped for an empty company (measured
+        # 2026-08-19). No name in either place stays a SKIP - the URL slug is
+        # not a company name and must never be used as one.
+        title = ""
+        for pat in (r'class="content-title-link"[^>]*>(.*?)</a>',
+                    r"<h3[^>]*>(.*?)</h3>"):
+            m = re.search(pat, html, re.S)
+            if m:
+                title = _strip_tags(m.group(1))
+                if title:
+                    break
 
         def field(label):
             fm = re.search(rf"<strong>\s*{label}[^<]*</strong>\s*:?\s*([^<]+)", html, re.I)
