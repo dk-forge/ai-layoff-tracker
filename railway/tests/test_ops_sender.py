@@ -363,6 +363,36 @@ class EveryJobThatMailsCarriesTheKeyThatLetsItMail(unittest.TestCase):
         "tracker_diff.py": "tracker-diff.yml",
     }
 
+    def test_the_sender_override_travels_with_the_key(self):
+        """`OPS_MAIL_FROM` goes wherever `RESEND_API_KEY` goes, on the ops side.
+
+        The variable is unset today, so `opsmail`'s default applies everywhere
+        and nothing is visibly wrong. That is the trap. Five older ops
+        workflows pass `vars.OPS_MAIL_FROM` and the six ported ones did not, so
+        the day somebody sets that variable to move the sender, five jobs would
+        move and six would keep the old From. Two From lines is precisely the
+        defect this whole change exists to close, arriving later and by a
+        different route.
+        """
+        missing = []
+        for workflow in set(self.JOBS.values()):
+            text = (WORKFLOWS / workflow).read_text()
+            if "RESEND_API_KEY" in text and "OPS_MAIL_FROM" not in text:
+                missing.append(workflow)
+        self.assertEqual(sorted(missing), [], missing)
+
+    def test_the_reader_send_never_receives_the_operations_sender(self):
+        """digest-send.yml carries RESEND_API_KEY, because Resend is one of the
+        transports the READER digest can be pointed at. It must never carry
+        OPS_MAIL_FROM: that would be the alarm's identity on an edition
+        somebody subscribed to. The reader path reads DIGEST_FROM."""
+        path = WORKFLOWS / "digest-send.yml"
+        if not path.exists():
+            self.skipTest("no digest-send workflow")
+        text = path.read_text()
+        self.assertIn("DIGEST_FROM", text)
+        self.assertNotIn("OPS_MAIL_FROM", text)
+
     def test_each_workflow_passes_the_resend_key(self):
         missing = []
         for script, workflow in self.JOBS.items():

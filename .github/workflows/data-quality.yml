@@ -150,4 +150,10 @@ jobs:
           # /alert route, which wp_mail hands to the reader newsletter's
           # identity. Without this secret the job runs and says nothing.
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # Passed wherever RESEND_API_KEY is, so one From line cannot become
+          # two. The variable is unset today and opsmail's default applies; a
+          # job that omitted this would keep the default on the day somebody
+          # sets it, while the five older ops jobs moved. Two From lines is
+          # precisely the defect this change exists to close.
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
         run: python3 railway/daily_classification_spotcheck.py
