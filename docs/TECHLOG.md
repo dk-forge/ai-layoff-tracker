@@ -1,5 +1,107 @@
 # Tech Log
 
+## 2026-08-20 - the worldwide news gate discarded silently, so three explanations for 114 empty countries were all equally unfalsifiable
+
+**This is a MEASUREMENT change. It fixes nothing on purpose.**
+
+114 countries have a configured trusted outlet and zero stored rows. Two
+explanations had already been proposed and BOTH were wrong:
+
+* *"the 43-domain allowlist is dropping them."* `TRUSTED_DOMAINS` holds **705
+  domains across 117 TLDs** (read with `ast.literal_eval`; a regex read a
+  fragment and reported 43). Turkey 4, Egypt 4, Saudi 3, UAE 5, plus Reuters.
+* *"those countries have no layoff news."* The owner found five real events -
+  a Bursa plant, a Middle East consultancy, an Izmir manufacturer, a Turkish
+  grocer and an Egyptian startup - all in English, all from outlets already on
+  the list.
+
+A third guess was available and no better: the 36h window is queried with
+`maxrecords=250` and `sortby=datedesc`, so a query that returns exactly 250 is
+TRUNCATED and everything below the cut never existed as far as we know.
+
+**The reason all three survived is that `sources/gdelt._fetch_trusted`
+discarded silently.** Its only output was `N matched, M trusted, K fetched`.
+Nobody could say whether a Turkish article was never returned, returned and
+dropped at the allowlist, returned and already seen, or fetched into nothing.
+Three causes, one number, no way to tell them apart. So: instrument first,
+report second, and do not touch the allowlist, the cap or the market list until
+the data exists.
+
+### What is recorded now
+
+`railway/gdelt_reach.py`, per run:
+
+1. **candidates returned per query, and whether the query hit `maxrecords`.**
+   The single most valuable number here. The BigQuery mirror's `LIMIT 900` is
+   now `gdelt_bq.MIRROR_LIMIT` for the same reason - it is the same silent cap.
+2. **kept vs dropped per source country, with the reason.** Every candidate
+   lands in exactly ONE of `kept / not_allowlisted / duplicate_url /
+   fetch_failed / empty_text / already_ingested / gate_no / budget_stop /
+   not_an_event`, so the columns add up to what GDELT returned.
+3. **query outcome: answered or ABANDONED.** `returned=None` is recorded as
+   abandoned and NEVER as a zero. "GDELT answered and there was nothing" and
+   "we never found out" are different days, and collapsing them is how a lost
+   window reads as a quiet Tuesday.
+
+### Where it surfaces, and why nowhere else
+
+The `gdelt` row of the existing health ledger, **whose `detail` had been empty
+on every run ever recorded**. `alt_source_health_record` truncates `detail` to
+240 chars, so `health_detail()` is a budget, not a dump: headline facts first,
+then countries worst-dropped-first until the budget runs out. Every health
+write is also appended to the PUBLIC `/source-runs` table, so this is durable,
+keyless history from the first run - no new store, no new workflow, no new
+alert channel and no plugin change (nothing under `wordpress-plugin/` was
+touched, so no version is owed). `ops_status.py [2d]` reads it back and is
+explicitly informational: a capped query is a fact about reach, not a fault,
+and an abandoned window already degrades the row in `[2]`. Do not turn this
+into an alarm - a quiet Tuesday is not news.
+
+Nameless by construction. A country is a TWO-LETTER ccTLD code and nothing
+else, so the module cannot spell an employer, a headline or a URL even when one
+is handed to it (`note_cc` launders anything that is not `[a-z]{2}` to `zz`).
+`tests/test_gdelt_reach.py` poisons a run with a real outlet, a real employer
+and a URL and proves the publish paths REFUSE rather than sanitise. `zz` is the
+honest bucket for a generic TLD - `dailysabah.com` is Turkish and a domain
+alone cannot say so - and its size is REPORTED, because a large `zz` means the
+country signal is weak, which is itself a finding.
+
+### What the existing telemetry already answered, for free
+
+`/source-runs?source=gdelt&days=90` - public, keyless, and nobody had read it:
+
+* **Production is NOT losing windows to 429s.** 115 rows, 54 `ok`, 2
+  `degraded`, and BOTH degraded rows are 2026-07-18, one of them *"abandoned
+  after 3 attempts"* - i.e. before `QUERY_ATTEMPTS` was raised to 5. **Zero
+  abandoned windows since 2026-07-19.** The local machine 429s on every
+  attempt, and that is a fact about this address, not about Railway. The
+  independent-cause hypothesis is DEAD for the broad window.
+* **Three runs started and never posted a terminal note** (2026-07-22,
+  2026-08-02, 2026-08-19 evening): a `running` row with no `ok` and no
+  `degraded` after it. Those runs vanished without degrading anything.
+* **The twice-daily cadence has been ONCE daily since 2026-08-13**, at drifting
+  times, with 2026-08-16 missing entirely. Before that it was a clean 13:0x and
+  22:0x. That is half the worldwide news discovery, and no surface said so.
+* Completed runs pull 63-125 raw entries (mean 89.4, n=54).
+
+**The cap question is still UNKNOWN** and will stay UNKNOWN until an
+instrumented cron run publishes. `railway/gdelt_reach_probe.py` can answer it
+by hand for $0 - ONE request, no article fetch, no model, no row, no health
+note - and deliberately has no workflow: a second scheduled caller would
+compete with the collector it is meant to measure and could manufacture the
+very 429s it is looking for.
+
+### Reported, not fixed
+
+`sources/google_news.py` has **no domain gate at all** - no allowlist import,
+no `_is_trusted`, nothing, at the collector or anywhere downstream in
+`cron.py`. `templates/page-sources.php:121` tells readers it holds the
+*"Same trusted-outlet standard"* as GDELT. It does not. It also pulled 150
+entries last run against GDELT's 98, so this is the larger of the two news
+paths. That is a public-copy accuracy problem and it needs its own change, on
+its own evidence - not a hurried edit inside a measurement PR.
+
+
 ## 2026-08-20 - nine alarms wore the newsletter's face, and the weekly did not explain its own window
 
 Four things the owner found by reading his own inbox. All four were real. One

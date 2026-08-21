@@ -17,6 +17,7 @@ from sources.regional_feeds import pull_regional_feeds
 from sources.national_feeds import pull_national_feeds
 from sources.press_releases import pull_press_releases, reviewed_feed_count
 import extractor
+import gdelt_reach
 from extractor import extract_layoff_data, spend_deferral_count
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
@@ -395,13 +396,27 @@ def run():
         # window overlaps the twice-daily runs; dedup drops the repeats.
         now = datetime.now(timezone.utc)
         report_source_health("gdelt", "running", 0, "collection in progress")
+        # Measurement only (railway/gdelt_reach.py). The reach ledger is
+        # reset here rather than inside the collector because a backfill
+        # sweep calls pull_gdelt_between many times and one run is one ledger.
+        gdelt_reach.reset()
         pulled = pull_gdelt_between(now - timedelta(hours=36), now)
         for e in pulled:
             e.setdefault("_collector", "gdelt")
         entries += pulled
-        report_source_health("gdelt", "ok", len(pulled))
+        # `detail` was EMPTY on every gdelt run ever recorded, which is why
+        # nobody could say whether a window was truncated at maxrecords or a
+        # country was dropped at the allowlist. It is a 240-char budget in the
+        # store, so health_detail() spends the headline facts first. Every
+        # health write is also appended to the public /source-runs table, so
+        # this is durable history from the first run.
+        report_source_health("gdelt", "ok", len(pulled),
+                             gdelt_reach.current().health_detail())
     except Exception as e:
-        report_source_health("gdelt", "degraded", 0, str(e))
+        # An abandoned window already lands here. Carry the reach facts with
+        # it so a degraded run says WHICH slots died, not only that one did.
+        _reach = gdelt_reach.current().health_detail(budget=140)
+        report_source_health("gdelt", "degraded", 0, f"{e} | {_reach}"[:240])
         print(f"GDELT source failed: {e}")
 
     # RETIRED: the EDINET(JP)/OpenDART(KR)/CVM(BR) discovery probes ingested zero
@@ -425,7 +440,14 @@ def run():
     # never skipped, and still lands as a corroborating source report. FAIL
     # OPEN: if the check errors, extract everything (server dedup backstops) -
     # a cost optimization must never be able to cost coverage.
+    _before_seen = {id(e): e for e in entries}
     entries = filter_already_seen(entries)
+    # Which countries the overlapping 36h window is re-reading. Measurement
+    # only: these rows were dropped by the pre-check that already existed.
+    _kept_ids = {id(e) for e in entries}
+    for _e in _before_seen.values():
+        if id(_e) not in _kept_ids and _e.get("_reach_cc"):
+            gdelt_reach.current().note_cc(_e["_reach_cc"], "already_ingested")
 
     results = []
     posted = skipped_dupes = skipped_not_layoff = failed = 0
@@ -447,12 +469,16 @@ def run():
                     spend.record_gate_outcome(verdict != extractor.GATE_NO)
                 if verdict == extractor.GATE_NO and GATE_MODE == "live":
                     gate_dropped += 1
+                    if raw.get("_reach_cc"):
+                        gdelt_reach.current().note_cc(raw["_reach_cc"], "gate_no")
                     continue
 
             # DeepSeek extracts structured data
             extracted = extract_layoff_data(raw)
             if not extracted:
                 skipped_not_layoff += 1
+                if raw.get("_reach_cc"):
+                    gdelt_reach.current().note_cc(raw["_reach_cc"], "not_an_event")
                 continue
             if verdict == extractor.GATE_NO:
                 # Shadow mode's whole purpose: the gate would have dropped a
@@ -495,6 +521,13 @@ def run():
     # was unanswerable from a run's own output — the only cost signal in the repo
     # was a daily account balance that could not attribute a cent to a run.
     print(spend.run_summary(rows_stored=posted))
+    # The reach ledger again, now with the downstream stages folded in. The
+    # health `detail` above is the COLLECTOR-stage view only (240 chars, and
+    # it is written before extraction runs); this end-of-run table is the one
+    # that says whether a country's candidates died at the allowlist, at the
+    # already-seen pre-check, at the headline gate or at extraction.
+    for _line in gdelt_reach.current().report_lines():
+        print(_line)
     # The run's spend record, WITH a per-collector breakdown (spend books each
     # call under the _collector tag set above). Railway has no
     # GITHUB_WORKFLOW_REF and cannot commit, so the printed ledger line is

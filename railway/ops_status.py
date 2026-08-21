@@ -1109,6 +1109,76 @@ def _print_wrapped(text, width=86, indent="        "):
             print(indent + line)
 
 
+
+# --- [2d] worldwide news reach --------------------------------------------
+
+_REACH_RX = re.compile(
+    r"q(\d+) ans(\d+) aband(\d+) cap(\d+) ret(\d+) kept(\d+) drop(\d+)")
+
+
+def gdelt_reach_lines(runs):
+    """Read the reach facts back out of the gdelt /source-runs history.
+
+    `_fetch_trusted` discarded silently for the whole life of this collector,
+    so "114 countries have a configured outlet and zero rows" had three live
+    explanations and no way to tell them apart. The two that this section can
+    actually distinguish are:
+
+      THE CAP IS BINDING   a query returned exactly `maxrecords` over a 36h
+                           window sorted newest-first, so everything below the
+                           cut was never offered to us at all.
+      THE WINDOW WAS LOST  the query was abandoned after its retries, which is
+                           a whole slice of a day of worldwide news gone with
+                           no trace, and a COMPLETELY INDEPENDENT cause.
+
+    Informational by design. It appends nothing to `issues`: an abandoned
+    window already degrades the gdelt row in section [2], and a capped query
+    is a fact about reach, not a fault. Never turn a normal run into an alarm
+    here -- a quiet Tuesday is not news.
+
+    Returns (lines, unmeasured) where `unmeasured` is True when no run in the
+    window carried reach facts. Absence of the signal is UNKNOWN, never a pass.
+    """
+    terminal = [r for r in runs
+                if isinstance(r, dict) and r.get("status") in ("ok", "degraded")]
+    parsed = []
+    for r in terminal:
+        m = _REACH_RX.search(str(r.get("detail") or ""))
+        if m:
+            q, ans, aband, cap, ret, kept, drop = (int(g) for g in m.groups())
+            parsed.append({"at": r.get("attempted_at"), "q": q, "ans": ans,
+                           "aband": aband, "cap": cap, "ret": ret,
+                           "kept": kept, "drop": drop})
+    if not parsed:
+        return ([
+            "reach UNKNOWN - no run in this window recorded what GDELT returned.",
+            "  Either the instrumented collector has not run yet, or the runs",
+            "  predate it. Not a pass: a silent collector is unmeasured, not clean.",
+        ], True)
+
+    latest = parsed[0]
+    capped_runs = sum(1 for p in parsed if p["cap"])
+    aband_runs = sum(1 for p in parsed if p["aband"])
+    lines = [
+        f"last measured run {str(latest['at'])[:16]}: {latest['q']} quer(ies), "
+        f"{latest['ans']} answered, {latest['ret']} article(s) returned",
+        f"  kept {latest['kept']}, dropped {latest['drop']}",
+    ]
+    if latest["cap"]:
+        lines.append(
+            f"  CAP BINDING: {latest['cap']} quer(ies) returned exactly maxrecords."
+            " Coverage below the cut was never offered.")
+    if latest["aband"]:
+        lines.append(
+            f"  WINDOW LOST: {latest['aband']} quer(ies) abandoned after retries."
+            " That slice of the day has no trace. -> RUNBOOK 'a data source broke'")
+    lines.append(
+        f"over {len(parsed)} measured run(s): {capped_runs} with a capped query, "
+        f"{aband_runs} with an abandoned window")
+    return (lines, False)
+
+
+
 def main():
     issues = []
     egress_blocked = []
@@ -1324,6 +1394,27 @@ def main():
         print(f"    UNKNOWN: could not read the spend ledgers ({exc}).")
         print("    Not a pass — this run did not measure cost.")
         unverified.append("LLM run cost")
+
+    # 2d. WORLDWIDE NEWS REACH — what GDELT actually returned, and what we did
+    # with it. See railway/gdelt_reach.py for why this had to be built: the
+    # trusted-domain gate discarded silently, so nobody could say whether a
+    # country was never returned, returned and dropped, or returned and
+    # deduped. Read off the PUBLIC /source-runs telemetry, so it needs no key.
+    print("\n[2d] WORLDWIDE NEWS REACH  (public /source-runs; informational, never an alarm)")
+    try:
+        _runs = json.load(_get(
+            f"{BASE}/wp-json/layoffs/v1/source-runs?source=gdelt&days=30&per_page=120&cb={uuid.uuid4()}"))
+        _rl, _unmeasured = gdelt_reach_lines(_runs.get("runs") or [])
+        for _line in _rl:
+            print(f"    {_line}")
+        if _unmeasured:
+            unverified.append("worldwide news reach")
+    except Exception as exc:
+        print(f"    REACH UNKNOWN: {exc}")
+        if _is_egress_block(exc):
+            egress_blocked.append("source-runs unreachable")
+        else:
+            unverified.append("worldwide news reach")
 
     # 3. LIVE DATA INTEGRITY — is the data those collectors produced CORRECT?
     #
