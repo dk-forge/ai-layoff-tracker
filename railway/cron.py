@@ -355,6 +355,18 @@ def run():
                     report_source_health(source, "degraded", 0,
                         f"{source} returned 0 items — {hint}")
                     print(f"::warning::{source} returned 0 items")
+                elif source == "google_news":
+                    # Citation quality rides along with the OK row. A run can be
+                    # perfectly healthy and still be storing links that rot:
+                    # robots.txt forbids following a Google News redirector, so
+                    # the unresolved share is a standing ceiling, not a breakage,
+                    # and it belongs where someone reads it rather than only in a
+                    # run log nobody opens.
+                    from sources.google_news import citation_summary
+                    report_source_health(
+                        source, "ok", len(pulled),
+                        citation_summary(getattr(pull_google_news,
+                                                 "citation_states", None)))
                 else:
                     report_source_health(source, "ok", len(pulled))
             elif source in ("regional_feeds", "national_feeds"):
