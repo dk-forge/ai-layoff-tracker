@@ -1,5 +1,61 @@
 # Tech Log
 
+## 2026-08-20 - the Sources page claimed a gate the Google News collector does not have
+
+Found while instrumenting the GDELT reach (PR #194), reported there and fixed
+here, because a public-copy claim about coverage needs its own evidence.
+
+**THE CLAIM.** `templates/page-sources.php` described the Google News collector
+to readers and ended with "Same trusted-outlet standard", meaning the GDELT
+allowlist. The FAQ in `ai-layoff-tracker.php` said the same thing more broadly:
+"Worldwide, we add named news coverage in 65+ languages from an editorially
+maintained trusted-outlet allowlist", with Google News named as part of that
+worldwide coverage two answers earlier.
+
+**THE FACT.** `railway/sources/google_news.py` has no domain gate at all: zero
+occurrences of `TRUSTED`, `_is_trusted` or `allowlist` in the file, and nothing
+downstream applies one either. `cron.py` calls `pull_google_news` and gates
+nothing. `sources/gdelt.py` defines `TRUSTED_DOMAINS` (705 domains) and enforces
+it in `_is_trusted` / `_fetch_trusted`; that enforcement is GDELT's alone.
+
+This is the LARGER of the two news paths. Last recorded run at the time of
+writing: google_news 150 entries, gdelt 98. So the overstatement covered the
+majority of news ingest.
+
+**WHY THE COPY WAS CORRECTED RATHER THAN THE COLLECTOR.** Applying the GDELT
+allowlist to google_news is a coverage change, not a copy change, so it was
+shadow-measured first (no rows stored, no model called, $0.00). A real
+collector run, real query set, real edition rotation, 140 unique items:
+
+| verdict against the 705-domain allowlist | items | share |
+|---|---|---|
+| KEPT | 23 | 16.4% |
+| DROPPED | 117 | 83.6% |
+| unjudgeable | 0 | 0% |
+
+The gate would have removed five sixths of the path. The dropped set is not
+mostly junk: KING5, KOMO, PBS, Georgia Public Broadcasting, HousingWire,
+AppleInsider, 9to5Mac and the Harvard Crimson all fail it, and those are exactly
+the local and trade titles that carry a named headcount for a mid-sized cut.
+A national allowlist built for a worldwide wire index is the wrong instrument
+for a per-market headline feed.
+
+**A SECOND FINDING, NOT FIXED HERE.** The allowlist is also not the only gate
+google_news lacks. `challengergray.com` came back in the shadow run, and a
+compiled tally is excluded by design in `local_news.py`, `regional_feeds.py` and
+`national_feeds.py` through `AGGREGATOR_HOSTS` / `AGGREGATOR_URL_PATTERNS`.
+google_news imports none of that. The Sources page never claimed it did, so this
+is not a copy defect, but it is a real gap and it belongs to whoever next opens
+that collector.
+
+**MECHANICAL NOTE FOR ANY FUTURE ATTEMPT AT THE GATE.** The stored `source_url`
+is a `news.google.com` redirect for every single row (140 of 140 in the shadow
+run), so a gate applied to the stored URL drops 100% of the path and reports
+nothing wrong. The outlet's real domain is in the RSS `<source url="...">`
+attribute, which `_parse_items` does not currently read.
+
+Plugin 2.20.131. Files: `templates/page-sources.php` (the Google News row),
+`ai-layoff-tracker.php` (the "What sources do you use?" answer, and version).
 ## 2026-08-20 - the worldwide news gate discarded silently, so three explanations for 114 empty countries were all equally unfalsifiable
 
 **This is a MEASUREMENT change. It fixes nothing on purpose.**
