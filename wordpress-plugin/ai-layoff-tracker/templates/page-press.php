@@ -1,11 +1,71 @@
 <?php if (!defined('ABSPATH')) exit;
+/*
+  ONE "TODAY" FOR THE WHOLE PAGE, AND IT IS THE READER'S TODAY.
+
+  This page published two of them. The year table below cut on MySQL
+  CURDATE(), which this host answers in US Eastern; every other figure cut on
+  PHP gmdate('Y-m-d'), which is UTC. Measured live on 2026-08-20 at 21:32 ET,
+  the year-to-date block read 1,001,545 for 2026 and the year table read
+  1,000,514 for the same year on the same basis, 1,031 apart, with an "as of
+  Aug 21" dateline on an evening that was still Aug 20 in every US newsroom.
+
+  Site-local wins, because the audience is American reporters and the dateline
+  they will print is theirs. alt_site_today() is the one owner (api.php) and
+  db.php reads it too, so the aggregate's to_date_* columns cut at the same
+  instant this page does. Everything below derives from $alt_press_now: no
+  second call to a clock, so no second answer.
+
+  The clock TIME on the "Generated" stamp moved to the same zone for the same
+  reason. It used to be labelled UTC beside an unlabelled UTC date, which is
+  how a reader was expected to notice the two were the same zone.
+*/
+$alt_press_now   = function_exists('alt_site_now_ts') ? alt_site_now_ts() : (int) current_time('timestamp');
+$alt_press_today = gmdate('Y-m-d', $alt_press_now);
+$alt_press_year  = (int) gmdate('Y', $alt_press_now);
+$alt_press_tz    = function_exists('alt_site_tz_abbr') ? alt_site_tz_abbr() : 'UTC';
+
+/*
+  WHICH ROWS MAY BE THE PAGE'S HEADLINE EXAMPLE, and why this is a gate rather
+  than a correction to one row.
+
+  "Largest single cut" picked the biggest job_count in the window and nothing
+  else. On 2026-08-20 that put row 177321, "Automaker Giant", 50,000 jobs, at
+  the top of both the statement cards and the soundbite library. That row is
+  bronze, provisional, has no country and no employer country, and reaches us
+  through a Google News redirect to a content farm that had ANONYMISED the
+  employer. The name is the anonymisation. July's example, "Aeternum Health,
+  Inc." at 20,000, is gold but equally unreviewed and reads synthetic too.
+
+  A fact-checker's first click on a press page lands on the largest number.
+  Editing one row would not have helped: the next content-farm headline with a
+  big number would have taken the same slot the same day. So the SELECTION is
+  gated, on the two columns that already record how much we trust a row.
+
+  gold = an SEC filing. warn = a state WARN Act notice. silver = a corroborated
+  named report. bronze, a single uncorroborated report, cannot carry this slot,
+  and neither can any row still marked provisional in review whatever its tier.
+  That is deliberately stricter than the totals, which keep every tier: a total
+  is a floor built from everything we can trace, an EXAMPLE is a recommendation
+  to go and quote one specific company.
+
+  Stated on the page, not just here, in $alt_press_flagship_note below. The
+  cards are omitted rather than relaxed when a short window holds no row that
+  qualifies.
+
+  Row 177321's own fate is a separate decision: changing a job count changes
+  the dedup hash and needs /bulk-purge plus a re-import, and it moves published
+  totals. This page simply stops recommending it.
+*/
+$alt_press_flagship_sql = "verification_level IN ('gold','warn','silver') AND review_status <> 'provisional'";
+$alt_press_flagship_note = 'Largest-cut examples come only from entries backed by an SEC filing, a WARN notice or a corroborated report, and never from a row still marked provisional in review.';
+
 // Year-by-year stats straight from the fast table, cached an hour. The press
 // page must never show a number the tracker itself cannot reproduce.
 $alt_press_years = get_transient(alt_figure_cache_key('press_year_stats'));
 if (!is_array($alt_press_years)) {
     global $wpdb;
     $alt_t = alt_db_table();
-    $alt_press_years = $wpdb->get_results(
+    $alt_press_years = $wpdb->get_results($wpdb->prepare(
         // superset_of=0, for the reason every other query on this page carries
         // it: a rollup row and its members are the same jobs twice. Without it
         // the 2026 row read 935,408 against the API's 922,720 for the same
@@ -15,8 +75,8 @@ if (!is_array($alt_press_years)) {
         // named for what it counts.
         "SELECT YEAR(layoff_date) y, COUNT(*) entries, COALESCE(SUM(job_count),0) jobs,
                 COALESCE(SUM(CASE WHEN ai_explicit=1 THEN job_count END),0) ai_jobs
-         FROM $alt_t WHERE superset_of=0 AND layoff_date >= '2015-01-01' AND layoff_date <= CURDATE()
-         GROUP BY YEAR(layoff_date) ORDER BY y DESC", ARRAY_A) ?: array();
+         FROM $alt_t WHERE superset_of=0 AND layoff_date >= '2015-01-01' AND layoff_date <= %s
+         GROUP BY YEAR(layoff_date) ORDER BY y DESC", $alt_press_today), ARRAY_A) ?: array();
     set_transient(alt_figure_cache_key('press_year_stats'), $alt_press_years, HOUR_IN_SECONDS);
 }
 
@@ -30,9 +90,9 @@ $alt_sb_groups = get_transient(alt_figure_cache_key('press_sb_groups'));
 if (!is_array($alt_sb_groups)) {
     global $wpdb; $alt_t = alt_db_table();
     $alt_tk = home_url('/ai-layoff-tracker/');
-    $alt_y = (int) gmdate('Y');
-    $alt_ytd_from = sprintf('%04d-01-01', $alt_y); $alt_ytd_to = gmdate('Y-m-d');
-    $alt_lm = strtotime(gmdate('Y-m-01') . ' -1 day');
+    $alt_y = $alt_press_year;
+    $alt_ytd_from = sprintf('%04d-01-01', $alt_y); $alt_ytd_to = $alt_press_today;
+    $alt_lm = strtotime(gmdate('Y-m-01', $alt_press_now) . ' -1 day');
     $alt_m_from = gmdate('Y-m-01', $alt_lm); $alt_m_to = gmdate('Y-m-t', $alt_lm);
     $alt_m_label = gmdate('F Y', $alt_lm);
     /*
@@ -95,8 +155,10 @@ if (!is_array($alt_sb_groups)) {
         $sql .= " GROUP BY $col ORDER BY j DESC LIMIT 1";
         return $wpdb->get_row($wpdb->prepare($sql, $a));
     };
-    $alt_bigcut = function ($from, $to, $cty) use ($wpdb, $alt_t) {
-        $sql = "SELECT company, job_count FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND superset_of=0 AND job_count > 0";
+    $alt_bigcut = function ($from, $to, $cty) use ($wpdb, $alt_t, $alt_press_flagship_sql) {
+        // See the gate note at the top of this file: an EXAMPLE is a
+        // recommendation, so it is held to a higher bar than a total.
+        $sql = "SELECT company, job_count FROM $alt_t WHERE layoff_date BETWEEN %s AND %s AND announced=0 AND superset_of=0 AND job_count > 0 AND $alt_press_flagship_sql";
         $a = array($from, $to); if ($cty !== '') { $sql .= " AND country = %s"; $a[] = $cty; }
         $sql .= " ORDER BY job_count DESC, id DESC LIMIT 1";
         return $wpdb->get_row($wpdb->prepare($sql, $a));
@@ -133,7 +195,7 @@ if (!is_array($alt_sb_groups)) {
         $r = $alt_toprole($from, $to);
         if ($r) $items[] = array('label' => 'Roles hit hardest', 'text' => $r['label'] . ' was the job function hit hardest in ' . $when . ', across ' . number_format($r['j']) . ' cuts where the source named the team affected.', 'link' => $alt_lk(array_merge($periodarg, array('roles' => $r['slug']))), 'linklabel' => 'See the ' . $r['label'] . ' rows');
         $big = $alt_bigcut($from, $to, '');
-        if ($big && $big->company) $items[] = array('label' => 'Largest single cut', 'text' => 'The largest single layoff in ' . $when . ': ' . $big->company . ', at ' . number_format((int) $big->job_count) . ' jobs.', 'link' => $alt_lk(array_merge($periodarg, array('company' => $big->company))), 'linklabel' => 'See the ' . $big->company . ' entries');
+        if ($big && $big->company) $items[] = array('label' => 'Largest single cut', 'text' => 'The largest single layoff in ' . $when . ', among entries with strong evidence and no open review flag: ' . $big->company . ', at ' . number_format((int) $big->job_count) . ' jobs.', 'link' => $alt_lk(array_merge($periodarg, array('company' => $big->company))), 'linklabel' => 'See the ' . $big->company . ' entries');
         return $items;
     };
 
@@ -213,11 +275,29 @@ if (!is_array($alt_ps)) {
     // Evidence tiers. These are not new labels: they are the ai_causation values
     // already stored on every row, surfaced so a reporter can choose the
     // strictness their story needs instead of trusting one blended number.
+    /*
+      THE BOX THE TIERS ARE MEASURED AGAINST, READ RATHER THAN ASSUMED.
+
+      This page asserted "Tier 1 plus Tier 2 equals the tracker's verified AI
+      box, to the job". It did not. The tiers sum ai_causation IN
+      ('primary_cause','contributing_cause'); every other AI figure on this
+      site sums ai_explicit=1, and on 2026-08-20 about 700 jobs carried
+      ai_explicit=1 with ai_causation='context_only'. Tiers 42,253, box
+      42,953, and the page printed the box six times elsewhere.
+
+      The tier SQL is NOT widened to swallow the remainder. Folding
+      context-only rows into "Tier 2: the employer names AI as a contributing
+      cause" would make the arithmetic close by making the Tier 2 label false,
+      which is the same defect one layer down. Instead the box is read here and
+      the residual is printed, so a reporter can reconcile the two definitions
+      instead of trusting a claim of equality.
+    */
     $alt_tiers = $wpdb->get_row(
         "SELECT COALESCE(SUM(CASE WHEN ai_causation='primary_cause' AND announced=0 THEN job_count END),0) t1,
                 COALESCE(SUM(CASE WHEN ai_causation='contributing_cause' AND announced=0 THEN job_count END),0) t2,
-                COALESCE(SUM(CASE WHEN ai_causation='ai_linked' AND announced=0 THEN job_count END),0) t3
-         FROM $alt_pt WHERE superset_of=0 AND YEAR(layoff_date) = " . (int) gmdate('Y'));
+                COALESCE(SUM(CASE WHEN ai_causation='ai_linked' AND announced=0 THEN job_count END),0) t3,
+                COALESCE(SUM(CASE WHEN ai_explicit=1 AND announced=0 THEN job_count END),0) box
+         FROM $alt_pt WHERE superset_of=0 AND YEAR(layoff_date) = " . $alt_press_year);
 
     // One period's figures.
     $alt_pstats = function ($from, $to) use ($wpdb, $alt_pt) {
@@ -252,10 +332,12 @@ if (!is_array($alt_ps)) {
              WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND $col <> '' AND announced=0 $extra
              GROUP BY $col ORDER BY j DESC LIMIT 1", $from, $to));
     };
-    $alt_pbig = function ($from, $to) use ($wpdb, $alt_pt) {
+    $alt_pbig = function ($from, $to) use ($wpdb, $alt_pt, $alt_press_flagship_sql) {
+        // Same gate as $alt_bigcut, same reason. See the note at the top.
         return $wpdb->get_row($wpdb->prepare(
             "SELECT company, job_count, country FROM $alt_pt
              WHERE superset_of=0 AND layoff_date BETWEEN %s AND %s AND announced=0 AND job_count > 0
+               AND $alt_press_flagship_sql
              ORDER BY job_count DESC, id DESC LIMIT 1", $from, $to));
     };
     $alt_stn = alt_us_state_names();
@@ -323,7 +405,7 @@ if (!is_array($alt_ps)) {
             $out[] = array(
                 'label' => 'Largest single documented cut',
                 'text'  => sprintf(
-                    'The largest single documented cut for %s: %s, at %s jobs. The entry links to the filing or named report that put the number on the record, so it can be checked at source before it is quoted.',
+                    'The largest single documented cut for %s: %s, at %s jobs. We draw this example only from entries with strong evidence and no open review flag. The entry links to the filing or named report that put the number on the record, so it can be checked at source before it is quoted.',
                     $label, $big->company, $alt_pn($big->job_count)),
                 'link' => $alt_plk(array_merge($linkargs, array('company' => $big->company))),
                 'linklabel' => 'See the ' . $big->company . ' entries');
@@ -331,10 +413,10 @@ if (!is_array($alt_ps)) {
         return $out;
     };
 
-    $alt_y2 = (int) gmdate('Y');
-    $alt_wk_from = gmdate('Y-m-d', strtotime('-7 days'));
-    $alt_wk_to   = gmdate('Y-m-d');
-    $alt_lmts    = strtotime(gmdate('Y-m-01') . ' -1 day');
+    $alt_y2 = $alt_press_year;
+    $alt_wk_from = gmdate('Y-m-d', $alt_press_now - 7 * DAY_IN_SECONDS);
+    $alt_wk_to   = $alt_press_today;
+    $alt_lmts    = strtotime(gmdate('Y-m-01', $alt_press_now) . ' -1 day');
     $alt_mo_from = gmdate('Y-m-01', $alt_lmts); $alt_mo_to = gmdate('Y-m-t', $alt_lmts);
     $alt_mo_lab  = gmdate('F Y', $alt_lmts);
 
@@ -348,15 +430,16 @@ if (!is_array($alt_ps)) {
         // nobody owns the convention. M j, Y is the house format the rest of
         // the tracker already uses (alt_data_last_updated_label, the
         // methodology audit stamp), so it is the one that stays.
-        'generated' => gmdate('M j, Y') . ', ' . gmdate('H:i') . ' UTC',
+        'generated' => gmdate('M j, Y', $alt_press_now) . ', ' . gmdate('H:i', $alt_press_now) . ' ' . $alt_press_tz,
         'tiers'     => array(
             't1' => (int) ($alt_tiers->t1 ?? 0),
             't2' => (int) ($alt_tiers->t2 ?? 0),
             't3' => (int) ($alt_tiers->t3 ?? 0),
+            'box' => (int) ($alt_tiers->box ?? 0),
             'year' => $alt_y2,
         ),
         'sets' => array(
-            array('id' => 'weekly', 'title' => 'This week', 'sub' => 'rolling 7 days to ' . gmdate('M j, Y'),
+            array('id' => 'weekly', 'title' => 'This week', 'sub' => 'rolling 7 days to ' . gmdate('M j, Y', $alt_press_now),
                   'items' => $alt_build($alt_wk_from, $alt_wk_to, 'the last seven days',
                                         array('from' => $alt_wk_from, 'to' => $alt_wk_to))),
             array('id' => 'monthly', 'title' => $alt_mo_lab, 'sub' => 'complete calendar month',
@@ -366,9 +449,9 @@ if (!is_array($alt_ps)) {
                   // from/to, not years=: this block is "1 January to today", and
                   // the calendar year is a wider window. See the note on
                   // $ytd_items above for the measurement.
-                  'items' => $alt_build(sprintf('%04d-01-01', $alt_y2), gmdate('Y-m-d'), $alt_y2 . ' so far',
+                  'items' => $alt_build(sprintf('%04d-01-01', $alt_y2), $alt_press_today, $alt_y2 . ' so far',
                                         array('from' => sprintf('%04d-01-01', $alt_y2),
-                                              'to' => gmdate('Y-m-d')))),
+                                              'to' => $alt_press_today))),
         ),
     );
 
@@ -376,7 +459,7 @@ if (!is_array($alt_ps)) {
     // statement stays reachable after its cadence rolls over.
     $alt_arch = array();
     for ($i = 2; $i <= 13; $i++) {
-        $ts = strtotime(gmdate('Y-m-01') . " -$i month");
+        $ts = strtotime(gmdate('Y-m-01', $alt_press_now) . " -$i month");
         $f = gmdate('Y-m-01', $ts); $t = gmdate('Y-m-t', $ts);
         $st = $alt_pstats($f, $t);
         if ((int) ($st->v ?? 0) <= 0) continue;
@@ -397,7 +480,7 @@ if (!is_array($alt_ps)) {
     // path would fatal on every cached page load.
     $alt_rel = array();
     for ($i = 1; $i <= 12; $i++) {
-        $ts = strtotime(gmdate('Y-m-01') . " -$i month");
+        $ts = strtotime(gmdate('Y-m-01', $alt_press_now) . " -$i month");
         $f = gmdate('Y-m-01', $ts); $t = gmdate('Y-m-t', $ts);
         $st = $alt_pstats($f, $t);
         if ((int) ($st->v ?? 0) <= 0) continue;
@@ -421,14 +504,14 @@ if (!is_array($alt_ps)) {
     // naming the other, which is a 33,939 gap for a reporter to discover on
     // their own after quoting one of them.
     $alt_cy = $alt_pstats(sprintf('%04d-01-01', $alt_y2), sprintf('%04d-12-31', $alt_y2));
-    $alt_td = $alt_pstats(sprintf('%04d-01-01', $alt_y2), gmdate('Y-m-d'));
+    $alt_td = $alt_pstats(sprintf('%04d-01-01', $alt_y2), $alt_press_today);
     // AND THE SAME CALENDAR YEAR ON THE HOME PAGE'S BASIS, so the block below
     // can state the other surface's figure instead of claiming one of ours is
     // it. This is the read that replaces the sentence that went stale.
     $alt_fy = $alt_pstats_filed(sprintf('%04d-01-01', $alt_y2), sprintf('%04d-12-31', $alt_y2));
     $alt_ps['split'] = array(
         'year'     => $alt_y2,
-        'as_of'    => gmdate('M j, Y'),
+        'as_of'    => gmdate('M j, Y', $alt_press_now),
         'to_date'  => (int) ($alt_td->v ?? 0),
         'calendar' => (int) ($alt_cy->v ?? 0),
         'later'    => max(0, (int) ($alt_cy->v ?? 0) - (int) ($alt_td->v ?? 0)),
@@ -448,7 +531,7 @@ if (!is_array($alt_ps)) {
      different url read as two conflicting datasets (audit 2026-07-28). */ ?>
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press kit and soundbites</h1>
-  <p class="alt-lead"><span class="alt-lead-text">AskTheRecruiter is the open intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>
+  <p class="alt-lead"><span class="alt-lead-text">AskTheRecruiter is the open intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Live layoff numbers you can quote, each with a link to the exact rows behind it.</span></p>
   <?php /* THE JUMP MENU IS THE SECOND THING ON THE PAGE, and it moved up here
            in 2.20.32 for the same reason the tracker grew a press button in
            the same release: the thing a reader came for was below the thing
@@ -481,6 +564,26 @@ if (!is_array($alt_ps)) {
     <a href="#alt-boilerplate">About</a>
     <a href="#alt-press-signup">Contact &amp; brief</a>
   </nav>
+
+  <?php /* THE THIRD LEAD SENTENCE LIVES HERE, NOT IN THE LEAD, and it is
+           9.3 pixels of why.
+
+           2.20.130 put the owner's "what AskTheRecruiter is" sentence at the
+           top of the lead, which is right and stays. It also pushed this nav
+           from inside the fold to 821.3px down an 812px screen, and CI has
+           been red on
+           test_the_jump_menu_is_on_the_first_screen_on_a_phone ever since. The
+           measurement that cleared it read 750px on a local macOS Chrome; the
+           guard runs on Ubuntu Chrome, and the font stacks do not agree. A
+           local render is not proof for a fold assertion.
+
+           So the lead gives up a sentence rather than the guard giving up
+           pixels. Provenance is what a journalist reads AFTER deciding to use
+           the page, never before, so it is the sentence that could move. The
+           812px ceiling is the iPhone fold and is not negotiable: it exists
+           because a reporter on a phone used to meet a title, a lead and a
+           four-clause disclaimer before anything quotable (2.20.32). */ ?>
+  <p class="alt-muted">Figures update automatically from the tracker's database and are reproducible from the public API.</p>
 
   <p class="alt-sb-disclaimer"><b>Every number on this page traces to an SEC filing, a state WARN notice, or a named news report. Nothing is estimated.</b> That makes our totals a documented floor, deliberately smaller than announcement surveys: surveys count intentions, including multi-year plans and cuts with no public paper trail. We count what can be verified, on the day each cut takes effect.</p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How every number is built</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>
@@ -518,7 +621,7 @@ if (!is_array($alt_ps)) {
   </table>
   </div>
   <p class="alt-press-split"><?php echo esc_html(function_exists('alt_period_split_sentence') ? alt_period_split_sentence($alt_sp['to_date'], $alt_sp['calendar'], $alt_sp['as_of'], (string) $alt_sp['year']) : ''); ?></p>
-  <p class="alt-muted">Both figures come from the same query. Only the end date changes, so you can reproduce either one from the public API. For the first row, use <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html(gmdate('Y-m-d')); ?></code>. For the third row, use <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code>. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>.</p>
+  <p class="alt-muted">Both figures come from the same query. Only the end date changes, so you can reproduce either one from the public API. For the first row, use <code>aggregate?from=<?php echo (int) $alt_sp['year']; ?>-01-01&amp;to=<?php echo esc_html($alt_press_today); ?></code>. For the third row, use <code>to=<?php echo (int) $alt_sp['year']; ?>-12-31</code>. Verified job cuts are <code>jobs</code> minus <code>announced_jobs</code>. Every date on this page is <?php echo esc_html($alt_press_tz); ?>, including the cut-off for today, so the whole page shares one dateline.</p>
 
   <?php /* WHICH DATE, the third block, and the one this page was missing.
            The two rows above reconcile two PERIODS on one basis. They do not
@@ -681,7 +784,7 @@ if (!is_array($alt_ps)) {
 
   <h2 id="alt-press-statements">Numbers you can use right now</h2>
   <p>This week, the latest complete month, and the year to date. Each card is ready to paste into a pitch or a story. Each one ends with a link that opens the live tracker, filtered to the exact rows behind the number. An editor can check the claim in one click.</p>
-  <p class="alt-muted"><b>Generated <?php echo esc_html($alt_ps['generated']); ?>.</b> Figures refresh hourly; the wording stays stable. When a period rolls over, it moves to the archive below, so a number you already quoted stays reachable.</p>
+  <p class="alt-muted"><b>Generated <?php echo esc_html($alt_ps['generated']); ?>.</b> Figures refresh hourly; the wording stays stable. When a period rolls over, it moves to the archive below, so a number you already quoted stays reachable. <?php echo esc_html($alt_press_flagship_note); ?></p>
 
   <?php foreach ($alt_ps['sets'] as $alt_set) : if (empty($alt_set['items'])) continue; ?>
   <h3 id="alt-ps-<?php echo esc_attr($alt_set['id']); ?>" class="alt-sb-grouptitle"><?php echo esc_html($alt_set['title']); ?> <small class="alt-muted">(<?php echo esc_html($alt_set['sub']); ?>)</small></h3>
@@ -724,7 +827,7 @@ if (!is_array($alt_ps)) {
   <?php if ($alt_sb_groups) : ?>
   <h2 id="alt-soundbites">Soundbite library</h2>
   <p>One-line versions of the same numbers, grouped by period and by region. Copy, cite, done. Attribute to "the AI Layoff Tracker by AskTheRecruiter.com." Each links to the chart or rows behind it.</p>
-  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> means the employer named AI in its own words, quote on file. The <b>broad measure</b> adds looser AI-linked cases, such as an AI pivot underway or press AI-framing, and is always larger. The two are never merged. Pick the standard your story needs. <b>Two stages, always labeled too.</b> The verified figure leads every soundbite. <?php echo esc_html(function_exists('alt_announced_tier_sentence') ? alt_announced_tier_sentence() : ''); ?> A figure that says including announced adds that tier.</p>
+  <p class="alt-sb-disclaimer"><b>Two AI measures, always labeled.</b> <b>Verified</b> means the employer named AI in its own words, quote on file. The <b>broad measure</b> adds looser AI-linked cases, such as an AI pivot underway or press AI-framing. It is never smaller than the verified measure.<?php if ((int) $alt_ps['tiers']['t3'] === 0) : ?> Right now the two are equal at the verified stage: every AI-linked case on record for <?php echo (int) $alt_ps['tiers']['year']; ?> sits in the announced stage. That is why the paired percentages below match.<?php endif; ?> The two are never merged. Pick the standard your story needs. <b>Two stages, always labeled too.</b> The verified figure leads every soundbite. <?php echo esc_html(function_exists('alt_announced_tier_sentence') ? alt_announced_tier_sentence() : ''); ?> A figure that says including announced adds that tier.</p>
     <?php foreach ($alt_sb_groups as $alt_g) : ?>
   <h3 id="<?php echo esc_attr($alt_g['id']); ?>" class="alt-sb-grouptitle"><?php echo esc_html($alt_g['title']); ?></h3>
   <div class="alt-soundbites">
@@ -740,7 +843,7 @@ if (!is_array($alt_ps)) {
       <?php endforeach; ?>
   </div>
     <?php endforeach; ?>
-  <p class="alt-muted">Figures are current live values and change as new sources are verified. Every number is reproducible from the public API.</p>
+  <p class="alt-muted">Figures are current live values and change as new sources are verified. Every number is reproducible from the public API. <?php echo esc_html($alt_press_flagship_note); ?></p>
   <?php endif; ?>
 
   <h2 id="alt-evidence-ladder">What counts as an AI layoff</h2>
@@ -763,14 +866,23 @@ if (!is_array($alt_ps)) {
       <tr>
         <td><b>Tier 3</b><br><small>AI-linked, no direct statement</small></td>
         <td>No employer statement. An AI pivot is underway, or the press framed the cut that way. Reported separately and <b>never</b> merged into the tiers above.</td>
-        <td>This tier is exactly what the <b>&#34;AI-linked, broad&#34;</b> box adds on top of the specific figure. It is the only reason that box is larger.</td>
+        <td>This tier is what the <b>&#34;AI-linked, broad&#34;</b> box adds on top of the specific figure, and the only reason that box can be larger.<?php if ((int) $alt_ps['tiers']['t3'] === 0) : ?> For <?php echo (int) $alt_ps['tiers']['year']; ?> it is empty at the verified stage, so the two boxes match here. Every AI-linked case on record sits in the announced stage instead.<?php endif; ?></td>
         <td><b><?php echo number_format($alt_ps['tiers']['t3']); ?></b></td>
         <td><a href="<?php echo esc_url(add_query_arg(array('years' => $alt_ps['tiers']['year'], 'ai_broad' => '1', 'date_basis' => 'effective'), home_url('/ai-layoff-tracker/'))); ?>" target="_blank" rel="noopener">Tiers 1 + 2 + 3 &rarr;</a></td>
       </tr>
     </tbody>
   </table></div>
-  <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI. Verified and announced sort those same rows a second way: by whether the cut has happened yet. The two axes reconcile exactly. Tier 1 plus Tier 2 equals the tracker's verified AI box, to the job. Tier 3 is precisely the gap between the specific figure and the broad one. Nothing is double counted and nothing is invented for this table.</p>
-  <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated reason is on record. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to pick who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
+  <p><b>These are not a second set of numbers.</b> The tiers are the same rows you already see on the tracker, sorted by how directly the employer tied the cut to AI. Verified and announced sort those same rows a second way: by whether the cut has happened yet. <?php
+    // 'box' arrived with 2.20.132 and the statement cache is keyed on
+    // ALT_VERSION, so it is always present in practice. Guarded anyway: a
+    // missing key must never let the page claim an equality it has not
+    // measured, which is the defect being fixed three lines down.
+    $alt_t12 = (int) $alt_ps['tiers']['t1'] + (int) $alt_ps['tiers']['t2'];
+    $alt_box = (int) ($alt_ps['tiers']['box'] ?? 0);
+    $alt_resid = $alt_box - $alt_t12;
+    ?>
+    <?php if ($alt_box > 0 && $alt_resid > 0) : ?>Tier 1 and Tier 2 add to <?php echo number_format($alt_t12); ?> of the tracker's verified AI box of <?php echo number_format($alt_box); ?>. The <?php echo number_format($alt_resid); ?>-job difference is rows where the employer named AI as context rather than as a stated cause. Those rows count in the box and in no tier here.<?php elseif ($alt_box > 0 && $alt_resid === 0) : ?>Tier 1 and Tier 2 add to <?php echo number_format($alt_t12); ?>, which is the tracker's verified AI box exactly.<?php else : ?>The tier columns count the stored cause on each row. The tracker's verified AI box counts every row where the employer named AI, so it is the wider of the two.<?php endif; ?> Tier 3 is reported on its own and is never folded into either figure above. Nothing is double counted and nothing is invented for this table.</p>
+  <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated reason is on record. The tier columns count the stored cause on each row; the tracker's AI box counts every row where the employer named AI, which is the wider of the two. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to pick who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
 
   <h2 id="alt-monthly-release">Monthly release schedule</h2>
   <p>Each month's figures are final once that month has closed, and the one-page report for it lives at a permanent link. The release date is the <b>1st of the following month</b>. Nothing is embargoed and nothing is held back: the link is live the moment the month closes.</p>

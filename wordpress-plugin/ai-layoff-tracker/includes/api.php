@@ -731,6 +731,62 @@ add_action('deleted_post', 'alt_flush_caches');
  * filings/notices/news) and "cleaning" (dedup + fact-check).
  */
 /**
+ * THE SITE'S OWN "TODAY", IN ONE PLACE.
+ *
+ * This install publishes its datelines in US Eastern. Three surfaces had
+ * already hardcoded that zone (alt_data_last_updated_label here, the report
+ * page's stamp, the corrections dateline), and MySQL on this host answers
+ * CURDATE() in it too. What was NOT in it was current_time(): WordPress's
+ * timezone on this install is UTC, so current_time('Y-m-d') returns tomorrow's
+ * date for the last four or five hours of every US evening.
+ *
+ * That is not cosmetic. db.php built the aggregate's to_date_* columns on
+ * current_time() while the press page's year table cut on CURDATE(), so one
+ * page published two different "today" and the 2026 total read 1,001,545 in
+ * one block and 1,000,514 in another, 1,031 apart, on the surface built for
+ * American reporters to quote. One expression now answers the question, and
+ * every caller reads it from here.
+ *
+ * NOT wp_timezone(): that returns the install's configured zone, which is the
+ * UTC that caused this. The published dateline is the fact being preserved.
+ */
+function alt_site_timezone() {
+    try {
+        return new DateTimeZone('America/New_York');
+    } catch (Exception $e) {
+        return new DateTimeZone('UTC');
+    }
+}
+
+/**
+ * A UNIX timestamp SHIFTED into site-local wall clock, so gmdate() called on
+ * it formats site-local. Same idiom as WordPress current_time('timestamp'),
+ * and the reason every date on the press page can be derived with one offset.
+ */
+function alt_site_now_ts() {
+    $now = time();
+    try {
+        return $now + alt_site_timezone()->getOffset(new DateTime('@' . $now));
+    } catch (Exception $e) {
+        return $now;
+    }
+}
+
+/** Today's date on the site's published dateline. */
+function alt_site_today() {
+    return gmdate('Y-m-d', alt_site_now_ts());
+}
+
+/** The abbreviation for that zone right now, for stamping a clock time. */
+function alt_site_tz_abbr() {
+    try {
+        return (new DateTime('now', alt_site_timezone()))->format('T');
+    } catch (Exception $e) {
+        return 'UTC';
+    }
+}
+
+/**
  * Honest "data last updated" label = the timestamp of the last ACTUAL write to
  * the table (set on every ingest via alt_last_write), NOT the page-render time.
  * Returns '' if nothing has ever been written. Used on the report/press/sources
@@ -740,7 +796,7 @@ function alt_data_last_updated_label() {
     $ts = (int) get_option('alt_last_write', 0);
     if ($ts <= 0) return '';
     try {
-        return (new DateTime('@' . $ts))->setTimezone(new DateTimeZone('America/New_York'))
+        return (new DateTime('@' . $ts))->setTimezone(alt_site_timezone())
             ->format('M j, Y · g:i A T');
     } catch (Exception $e) {
         return '';

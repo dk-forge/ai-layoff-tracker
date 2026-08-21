@@ -1,5 +1,136 @@
 # Tech Log
 
+## 2026-08-20 - the press page recommended a company that does not exist, and published two different todays (2.20.132)
+
+Four correctness defects on `/ai-layoff-tracker/press/`, the surface built to
+be quoted. A wrong figure on a tracker page is a wrong figure; a wrong figure
+here gets reprinted with our name on it.
+
+### 1. The headline example was a content farm's anonymisation
+
+Both the statement cards and the soundbite library led with **"The largest
+single layoff in 2026 so far: Automaker Giant, at 50,000 jobs."** Row 177321
+is bronze, provisional, no country, no employer country, reached through a
+Google News redirect to a page about a Brazilian saving of R$90 billion. The
+employer had been ANONYMISED by the outlet and we stored the anonymisation as
+the company name. July's example, "Aeternum Health, Inc." at 20,000, is gold
+but equally unreviewed and reads synthetic too.
+
+A fact-checker's first click lands on the largest number. Editing one row
+would not have helped: the next content-farm headline with a big number takes
+the same slot the same day. **`SELECT ... ORDER BY job_count DESC` with no
+quality predicate was the defect**, so the SELECTION is gated instead:
+
+    verification_level IN ('gold','warn','silver') AND review_status <> 'provisional'
+
+gold = an SEC filing, warn = a state WARN notice, silver = a corroborated
+named report. Deliberately stricter than the totals, which keep every tier: a
+total is a floor built from everything traceable, an EXAMPLE is a
+recommendation to go and quote one specific company. Both call sites read one
+`$alt_press_flagship_sql`, the rule is printed for readers in
+`$alt_press_flagship_note`, and a window with no qualifying row omits the card
+rather than relaxing.
+
+Measured live 2026-08-20:
+
+| Window | Before | After |
+|---|---|---|
+| 2026 to date | Automaker Giant, 50,000 (bronze/provisional) | Ideal US Talent Systems Worker OpCo LLC, 9,891 (warn) |
+| July 2026 | Aeternum Health, Inc., 20,000 (gold/provisional) | Ideal US Talent Systems Worker OpCo LLC, 9,891 (warn) |
+| last 7 days | Tyson Foods, Inc., 2,495 (warn) | unchanged |
+
+**Row 177321 was NOT purged.** Changing a job count changes its dedup hash and
+needs `/bulk-purge` plus a re-import, and it moves published totals. The page
+stops recommending it; the row's fate is a separate decision.
+
+### 2. "Tier 1 plus Tier 2 equals the tracker's verified AI box, to the job"
+
+False by 700 jobs. The tier query summed `ai_causation IN
+('primary_cause','contributing_cause')` and every other AI figure on the site
+sums `ai_explicit=1`. Live: 25,600 + 16,653 = **42,253** against the **42,953**
+printed six times elsewhere and served as `ai_verified_jobs`. The residue is
+`ai_explicit=1 AND ai_causation='context_only'`, 700 jobs.
+
+**Shipped option (b), the copy fix, NOT the SQL fix, and the review's own
+premise for (a) does not survive checking.** (a) was "make the tier SQL
+partition the `ai_explicit=1` set, nothing published changes". It cannot do
+both. Partitioning means the residue lands in Tier 2, whose printed figure
+moves from 16,653 to 17,353 and whose stated definition - *the employer names
+AI as a contributing cause* - has to widen to cover rows recorded as context
+rather than cause. That is widening a claim to match a number, one layer down.
+The tier cells are published figures on a press page.
+
+So the equality claim is gone. The page now reads the box alongside the tiers
+and prints the reconciliation: **42,253 of a box of 42,953, and the 700-job
+difference named**. A reporter can close the two definitions instead of
+trusting an assertion that they are one. **Moving 700 jobs into the headline
+AI tier is the owner's call and has not been made.**
+
+### 3. "The broad measure is always larger", contradicted eight times below it
+
+The soundbite library promised it, then printed eight identical pairs: world
+8%/8%, US 1%/1%, Germany, UK, France, Canada 0%/0%, Australia 44%/44%, India
+24%/24%. The tier table showed Tier 3 = 0 beside prose calling that tier *"the
+only reason that box is larger"*.
+
+The arithmetic was right. `ai_broad_jobs` 98,286 vs `ai_jobs` 89,571 for 2026:
+the broad tier does add 8,715, but **all 8,715 sit at the announced stage**
+while the page shows verified figures. Both sentences now render conditionally
+off the live `t3` and say the broad tier is empty at the verified stage for
+2026, which is why the pairs match.
+
+### 4. Two different todays, 1,031 jobs apart
+
+"2026 year to date" said **1,001,545**; the yearly table's 2026 row said
+**1,000,514**. Same basis. The yearly block cut on MySQL `CURDATE()`, which
+this host answers in US Eastern; everything else cut on PHP `gmdate('Y-m-d')`,
+which is UTC. Confirmed against the API: `to=2026-08-20` returns 1,000,514 and
+`to=2026-08-21` returns 1,001,545.
+
+**Site-local wins**, because the audience is American reporters and the page
+was stamping "as of Aug 21" at 21:32 ET on Aug 20. `alt_site_today()` in
+api.php is the one owner and the page derives every date from one
+`$alt_press_now`, including the Generated clock, which now carries the zone
+abbreviation instead of an unlabelled UTC date beside a labelled UTC time.
+
+**db.php reads it too, and that is not scope creep, it is the same bug.** The
+comment over `$today_sql` has claimed "Site timezone" since it was written and
+`current_time()` does not deliver it here - WordPress's configured zone on this
+install is UTC. So the aggregate's `to_date_*` columns and `as_of` were cut at
+TOMORROW for the last four or five hours of every US evening. Left alone, the
+press page moving to Eastern would have broken `published_figures`, whose
+`_periods()` derives the press page's expected to-date total from exactly those
+columns. One expression, both callers, cross-check stays green. `headline_movement`
+reads `jobs`, not `to_date_*`, so no baseline moves and no sticky incident opens.
+
+Three surfaces already hardcoded `America/New_York` (the data-updated label,
+the report stamp, the corrections dateline); the label now reads the helper.
+
+`railway/style_check.py`: press 8.0 grade, 11% passive, 0 findings.
+
+### 5. And the fold, which was ours
+
+Folded in rather than filed, because it is the same file and the same deploy.
+`test_the_jump_menu_is_on_the_first_screen_on_a_phone` has been red on main
+since 2.20.130 (886424b): the jump menu ends **821.3px down an 812px screen**,
+so a reporter arriving on a phone is told nothing about the soundbite library
+before scrolling.
+
+The cause is the sentence that release added to the lead, which the owner asked
+for and which stays first and verbatim. **The measurement that cleared it read
+750px on a local macOS Chrome. The guard runs on Ubuntu Chrome and reads
+821.3.** That is the lesson worth keeping: a local render is not proof for a
+fold assertion, and the sibling's measurement was honest and wrong.
+
+So the lead gives up a sentence instead of the guard giving up pixels.
+*"Figures update automatically from the tracker's database and are reproducible
+from the public API"* moves below the nav. Provenance is what a journalist
+reads AFTER deciding to use the page, never before, so it is the sentence that
+could move. **The 812px ceiling is not widened** - it is the iPhone fold, and
+it exists because a reporter on a phone used to meet a title, a lead and a
+four-clause disclaimer before anything quotable (2.20.32).
+
+
 ## 2026-08-20 - the Sources page claimed a gate the Google News collector does not have
 
 Found while instrumenting the GDELT reach (PR #194), reported there and fixed
