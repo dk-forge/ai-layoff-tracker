@@ -531,7 +531,7 @@ if (!is_array($alt_ps)) {
      different url read as two conflicting datasets (audit 2026-07-28). */ ?>
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press kit and soundbites</h1>
-  <p class="alt-lead"><span class="alt-lead-text">AskTheRecruiter is the open intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>
+  <p class="alt-lead"><span class="alt-lead-text">AskTheRecruiter is the open intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Live layoff numbers you can quote, each with a link to the exact rows behind it.</span></p>
   <?php /* THE JUMP MENU IS THE SECOND THING ON THE PAGE, and it moved up here
            in 2.20.32 for the same reason the tracker grew a press button in
            the same release: the thing a reader came for was below the thing
@@ -564,6 +564,26 @@ if (!is_array($alt_ps)) {
     <a href="#alt-boilerplate">About</a>
     <a href="#alt-press-signup">Contact &amp; brief</a>
   </nav>
+
+  <?php /* THE THIRD LEAD SENTENCE LIVES HERE, NOT IN THE LEAD, and it is
+           9.3 pixels of why.
+
+           2.20.130 put the owner's "what AskTheRecruiter is" sentence at the
+           top of the lead, which is right and stays. It also pushed this nav
+           from inside the fold to 821.3px down an 812px screen, and CI has
+           been red on
+           test_the_jump_menu_is_on_the_first_screen_on_a_phone ever since. The
+           measurement that cleared it read 750px on a local macOS Chrome; the
+           guard runs on Ubuntu Chrome, and the font stacks do not agree. A
+           local render is not proof for a fold assertion.
+
+           So the lead gives up a sentence rather than the guard giving up
+           pixels. Provenance is what a journalist reads AFTER deciding to use
+           the page, never before, so it is the sentence that could move. The
+           812px ceiling is the iPhone fold and is not negotiable: it exists
+           because a reporter on a phone used to meet a title, a lead and a
+           four-clause disclaimer before anything quotable (2.20.32). */ ?>
+  <p class="alt-muted">Figures update automatically from the tracker's database and are reproducible from the public API.</p>
 
   <p class="alt-sb-disclaimer"><b>Every number on this page traces to an SEC filing, a state WARN notice, or a named news report. Nothing is estimated.</b> That makes our totals a documented floor, deliberately smaller than announcement surveys: surveys count intentions, including multi-year plans and cuts with no public paper trail. We count what can be verified, on the day each cut takes effect.</p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How every number is built</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/contact/')); ?>">Contact us</a></p>

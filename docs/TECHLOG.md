@@ -108,6 +108,29 @@ the report stamp, the corrections dateline); the label now reads the helper.
 
 `railway/style_check.py`: press 8.0 grade, 11% passive, 0 findings.
 
+### 5. And the fold, which was ours
+
+Folded in rather than filed, because it is the same file and the same deploy.
+`test_the_jump_menu_is_on_the_first_screen_on_a_phone` has been red on main
+since 2.20.130 (886424b): the jump menu ends **821.3px down an 812px screen**,
+so a reporter arriving on a phone is told nothing about the soundbite library
+before scrolling.
+
+The cause is the sentence that release added to the lead, which the owner asked
+for and which stays first and verbatim. **The measurement that cleared it read
+750px on a local macOS Chrome. The guard runs on Ubuntu Chrome and reads
+821.3.** That is the lesson worth keeping: a local render is not proof for a
+fold assertion, and the sibling's measurement was honest and wrong.
+
+So the lead gives up a sentence instead of the guard giving up pixels.
+*"Figures update automatically from the tracker's database and are reproducible
+from the public API"* moves below the nav. Provenance is what a journalist
+reads AFTER deciding to use the page, never before, so it is the sentence that
+could move. **The 812px ceiling is not widened** - it is the iPhone fold, and
+it exists because a reporter on a phone used to meet a title, a lead and a
+four-clause disclaimer before anything quotable (2.20.32).
+
+
 ## 2026-08-20 - the Sources page claimed a gate the Google News collector does not have
 
 Found while instrumenting the GDELT reach (PR #194), reported there and fixed
