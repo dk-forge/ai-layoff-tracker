@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:main:f0e9d3b1ee7d4652": {
-      "first": 1787275600,
-      "last": 1787275600,
-      "subject": "CI RED: Tests \u2014 AssertionError: 821.3 not less than 812 : the press page's jump menu ends 821px down a 812px screen, so a journalist who arrives on a phone is told nothing about th"
-    }
-  },
-  "updated_at": "2026-08-21T01:26:41+00:00",
+  "open": {},
+  "updated_at": "2026-08-21T02:29:53+00:00",
   "version": 1
 }
