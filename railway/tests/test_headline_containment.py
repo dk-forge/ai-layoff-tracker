@@ -339,15 +339,21 @@ class ItCannotLaunderItself(unittest.TestCase):
     it just caught.
     """
 
-    def _record(self, observations, baseline_slices):
+    def _record(self, observations, baseline_slices, now=AT_0810):
         d = Path(tempfile.mkdtemp())
         bpath, ipath = d / "baseline.json", d / "incidents.json"
         bpath.write_text(json.dumps({"slices": baseline_slices}), encoding="utf-8")
         ipath.write_text(json.dumps({"open": {}, "closed": []}), encoding="utf-8")
         ctx = di.Ctx(_feed(observations), 5, "cb")
+        # The clock is injected here for the same reason _run injects it (see
+        # AT_0810 above). It was not, and on 2026-08-21T18:23:51Z the 2026-08-07
+        # baseline in these fixtures aged past MAX_BASELINE_AGE_DAYS: the
+        # movement check flipped to UNKNOWN, the recorder stopped holding the
+        # failing pair, and this file went red on every branch at that instant
+        # while asserting nothing it was written to assert.
         movement = di.MovementInvariant(headlines=di.HEADLINES, baseline_path=bpath,
-                                        incidents_path=ipath)
-        containment = di.ContainmentInvariant(baseline_path=bpath)
+                                        incidents_path=ipath, now=now)
+        containment = di.ContainmentInvariant(baseline_path=bpath, now=now)
         report = di.Report([movement.run(ctx), containment.run(ctx)])
         written, notes = di.record_baseline(ctx, report, path=bpath,
                                             incidents_path=ipath)
