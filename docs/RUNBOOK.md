@@ -264,6 +264,15 @@ the whole 2026-08-16 run had already been lost this way with every surface green
    the collectors after the death point, and GDELT's 36h window only overlaps
    one missed daily run, so two consecutive deaths are a real gap.
 
+**The window is gathered per source, and that is load-bearing.** `/source-runs`
+caps `per_page` at 200 with no pagination, while its `since` field still
+advertises the whole requested window. One unfiltered 14-day fetch returns the
+newest 200 rows and READS complete: on 2026-08-21 it reached back only to 08-17
+and reported ONE orphan where there were six. `run_completion.collect()` uses
+the unfiltered call only to DISCOVER which sources reported, then re-queries
+each one, and names any source that still fills a page as UNCHECKED rather than
+clean. Do not simplify it back to a single call.
+
 **Do NOT** answer a repeat by widening `run_completion.GRACE`. The grace is
 sized to avoid convicting a run that is still in flight (one hour, ~8x the
 slowest single collector), not to wait out a collector that keeps dying.

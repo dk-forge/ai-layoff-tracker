@@ -1441,14 +1441,19 @@ def main():
     # Every surface read green throughout. See railway/run_completion.py.
     print("\n[2e] RUN COMPLETION  (public /source-runs; a start with no finish)")
     try:
-        _cruns = json.load(_get(
-            f"{BASE}/wp-json/layoffs/v1/source-runs?days=14&per_page=500&cb={uuid.uuid4()}"))
-        _cl, _cissue = run_completion.verdict_lines(_cruns.get("runs") or [])
+        def _runs_fetch(params):
+            _q = "&".join(f"{k}={v}" for k, v in params.items())
+            return json.load(_get(
+                f"{BASE}/wp-json/layoffs/v1/source-runs?{_q}&cb={uuid.uuid4()}"))
+        _crows, _cincomplete = run_completion.collect(_runs_fetch)
+        _cl, _cissue = run_completion.verdict_lines(_crows, incomplete=_cincomplete)
         for _line in _cl:
             print(f"    {_line}")
         if _cissue:
             issues.append(_cissue)
-        elif not (_cruns.get("runs") or []):
+        if _cincomplete:
+            unverified.append("collector run completion (page cap)")
+        elif not _crows:
             unverified.append("collector run completion")
     except Exception as exc:
         print(f"    RUN COMPLETION UNKNOWN: {exc}")
