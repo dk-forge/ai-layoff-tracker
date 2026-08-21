@@ -6,6 +6,18 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-21): the Google News
+  citation is resolved offline, and its ceiling is robots.txt.** The baton was
+  read as HELD by `local` and is NOT claimed here. **No plugin file was touched
+  and no version was consumed** - the change is `railway/sources/google_news_url.py`,
+  `railway/sources/google_news.py`, the `google_news` health branch in
+  `railway/cron.py`, `railway/tests/test_google_news_url.py` and TECHLOG, so
+  `reader_freshness.py` has nothing to verify. The owner approved a backfill of
+  the 124 `news.google.com` rows and it was deliberately NOT run: all 76 such
+  rows in the newest 1,000 are unresolvable offline, so a `/bulk-purge` plus
+  re-import would delete rows and recreate them with the identical redirector.
+  See TECHLOG 2026-08-21. **The next plugin release is still whatever the newest
+  claim below says; this did not move it.**
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-20): 2.20.131, read off main
   (2.20.130) immediately before merging.** The baton was read as HELD by
   `local` and is NOT claimed here; only the version number is.

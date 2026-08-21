@@ -14,9 +14,22 @@ flows through the SAME extract_layoff_data -> post_to_wordpress pipeline, and al
 the usual guards (verbatim count, date bounds, dedup, normalization) apply once.
 
 We do NOT fetch the article body: the item link is a Google redirect to the
-(often paywalled) page, and the headcount is already in the title/snippet. The
-Google News link is stored as the source_url — it resolves to the article in a
-browser and is Wayback-archivable like any other source.
+(often paywalled) page, and the headcount is already in the title/snippet.
+
+THE LINK IS RESOLVED OFFLINE BEFORE THE ROW IS BUILT (sources/google_news_url.py).
+Storing the redirector as source_url was a citation-quality defect on two counts:
+a Wayback snapshot of it preserves a REDIRECT PAGE rather than the evidence, and
+the tokens are opaque and expire, so the citation rots by construction. A direct
+publisher link is canonicalised; a legacy `CBMi<len><url>` token is decoded.
+
+That resolution is OFFLINE ONLY and it has a measured ceiling. news.google.com's
+robots.txt is `Disallow: /` for every agent, so following the redirect is not
+available to us, and on 2026-08-21 all 259 sampled items across the US/DE/JP
+editions carried the opaque `AU_yqL...` token, which embeds no URL — 0 decoded.
+Those keep the redirector (it does reach the article while the token lives; the
+outlet home page from <source url> never pointed at the article and is not a
+substitute) and are COUNTED, not papered over: pull_google_news.citation_states
+and the health detail report how many rows carry a rotting link.
 
 No key. Optional env: GOOGLE_NEWS_MAX (items/run cap, default 150),
 GOOGLE_NEWS_GAP_SECONDS (polite gap between queries, default 1).
@@ -33,6 +46,7 @@ from email.utils import parsedate_to_datetime
 import requests
 
 import run_slice
+from sources.google_news_url import resolve as resolve_article_url
 
 RSS = "https://news.google.com/rss/search"
 # Google News serves python-requests fine, but a browser-ish UA is safest and
@@ -195,12 +209,35 @@ def _parse_items(xml_text):
     return out
 
 
+def citation_summary(states):
+    """One line the health page and the run log can both carry.
+
+    Names the ceiling every time rather than only when it is breached: an
+    unresolved count is not a fault to be fixed by trying harder, it is what
+    robots.txt leaves on the table, and a reader of this line should not have to
+    go and rediscover that."""
+    states = states or {}
+    resolved = int(states.get("direct", 0)) + int(states.get("decoded", 0))
+    unresolved = int(states.get("unresolved", 0))
+    total = resolved + unresolved
+    if not total:
+        return "no items to cite"
+    pct = 100.0 * resolved / total
+    return (f"{resolved}/{total} ({pct:.0f}%) cite the publisher directly; "
+            f"{unresolved} keep a Google News redirector (opaque token; "
+            f"robots.txt forbids following it)")
+
+
 def pull_google_news(queries=None, company_names=None):
     """Return a list of raw dicts ready for extract_layoff_data.
 
     Fail-loud: on an HTTP/parse error, set pull_google_news.last_error so the
     cron caller can degrade the source instead of masking a dead feed as 'ok'."""
     pull_google_news.last_error = None
+    # Citation quality, counted per run so a rotting link is visible rather than
+    # assumed: 'direct' and 'decoded' cite the publisher, 'unresolved' still
+    # carries a Google News redirector because robots.txt forbids following it.
+    pull_google_news.citation_states = {"direct": 0, "decoded": 0, "unresolved": 0}
     qs = list(queries or DISCOVERY_QUERIES)
     # Company-targeted queries are the surgical fix for the exact miss list
     # (Google, HP, Accenture, SAP, Uber...): the watchlist supplies the names.
@@ -274,12 +311,18 @@ def pull_google_news(queries=None, company_names=None):
                 raw_text = f"{raw_text} (via {source})"
             if not raw_text:
                 continue
+            # OFFLINE resolution, before the row is built: the publisher's own
+            # article URL where it can be had, the redirector where it cannot.
+            # Never a network call — news.google.com's robots.txt forbids it.
+            cite_url, cite_state = resolve_article_url(link)
+            pull_google_news.citation_states[cite_state] = (
+                pull_google_news.citation_states.get(cite_state, 0) + 1)
             results.append({
                 "source_type": "news",
                 "source_name": source or "Google News",
                 "verification_level": "bronze",
                 "raw_text": raw_text,
-                "source_url": link,
+                "source_url": cite_url,
                 "company_name": None,   # the extractor fills this in
                 "ticker": None,
                 "filing_date": _iso_date(it.get("published")),
@@ -296,6 +339,7 @@ def pull_google_news(queries=None, company_names=None):
     print(f"Google News: {len(results)} unique items; {len(jobs)} query-edition "
           f"jobs planned across editions [{', '.join(l[0] for l in locales)}]"
           + (f" ({errors} error(s))" if errors else ""))
+    print(f"Google News citations: {citation_summary(pull_google_news.citation_states)}")
     return results
 
 

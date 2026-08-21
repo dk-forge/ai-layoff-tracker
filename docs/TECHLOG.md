@@ -1,5 +1,72 @@
 # Tech Log
 
+## 2026-08-21 - the Google News citation was a redirect, and the fix has a robots.txt-shaped ceiling that is now measured instead of assumed
+
+**The defect.** Rows discovered through the Google News RSS path stored the
+REDIRECTOR as `source_url` (`https://news.google.com/rss/articles/CBMi...`),
+not the publisher's article. Measured 2026-08-19 over a 5,000-row newest-first
+sample: 124 rows cite `news.google.com` - 90 `archived`, 24 `pending`, 10
+`unavailable` - and over the last 90 days that host is the single largest cause
+of unarchived news rows, 10 of 25. Two failures, both citation quality rather
+than archiving cadence: even the `archived` ones snapshot a REDIRECT PAGE, so
+the permanent copy preserves a hop and not the evidence; and the tokens are
+opaque and expire, so those citations rot by construction, which is the exact
+failure the Wayback work exists to prevent.
+
+**THE OBVIOUS FIX IS NOT AVAILABLE TO US, AND THAT IS THE HEADLINE.**
+`news.google.com/robots.txt` is `Disallow: /` for `User-agent: *` with no
+`Allow` covering `/rss/articles/`, and it names `ClaudeBot`, `anthropic-ai` and
+`GPTBot` outright. Following the redirect is a blocked fetch. Google's internal
+`batchexecute` route does resolve these tokens and is a bot-control bypass. So
+the article URL is reachable only by means this project will not use.
+
+**AND THE OFFLINE PATH IS EMPTY TODAY, WHICH WAS WORTH MEASURING RATHER THAN
+GUESSING.** The legacy `CBMi<len><url>` token embedded the publisher URL in its
+base64 body and decodes with no network at all. Sampled 2026-08-21 across the
+US, DE and JP editions: 259 items, 259 redirectors, **0 decodable** - every
+current token is the opaque `AU_yqL...` form, which carries no URL. Against the
+live `/query`, all 76 Google News rows in the newest 1,000 are likewise
+unresolvable. The legacy decoder still ships because it is free and other
+Google News surfaces still emit that form; it is simply not where today's items
+are.
+
+**So the resolution is three-state and the third state is counted, not hidden.**
+`railway/sources/google_news_url.py` resolves offline: `direct` (the item
+already linked the publisher; canonicalised), `decoded` (legacy token recovered)
+and `unresolved` (opaque token). An `unresolved` KEEPS the redirector, because
+it does reach the article while the token lives. `pull_google_news` resolves
+before the row is built - the row still goes raw dict -> `extract_layoff_data`
+-> `post_to_wordpress` with `raw_text` set, so every guard applies once - and
+counts the states into `pull_google_news.citation_states`, which
+`citation_summary()` renders into the run log AND into the `google_news` health
+detail. The share of rows carrying a rotting link is now a number on the health
+page rather than something a session rediscovers by sampling.
+
+**WHAT WAS DELIBERATELY NOT DONE, TWICE.**
+
+*Not the home page.* Every RSS item carries `<source url="https://www.geekwire.com">`
+(259 of 259), and substituting that for the article was the tempting "fix". It
+is outlet identity, not evidence: it cannot verify the specific claim, and
+archiving a home page would register as coverage that is not evidence - the
+silent-pass shape this repo refuses everywhere else. Publisher identity already
+reaches the row as `source_name`. `test_unresolved_never_degrades_to_a_publisher_home_page`
+pins that.
+
+*Not the backfill.* The owner approved one, and it was NOT run, because the
+approved resolution leaves existing rows' `source_url` unchanged: all 76 sampled
+live rows are unresolvable offline, so `/bulk-purge` plus re-import would delete
+124 rows and recreate them with the identical redirector at best - and in
+practice recover fewer, since articles from before the RSS window are no longer
+discoverable. There is no repair to apply. If the tokens ever become resolvable,
+the repair is a purge + re-import (the source_url change moves the dedup hash),
+not an upsert.
+
+**The guard against the next session "improving" this.**
+`tests/test_google_news_url.py` asserts on the SOURCE that the resolver imports
+no HTTP client - a network call added behind an untaken branch would pass a
+behavioural check - so a future attempt to follow the redirector goes red, and
+it is supposed to. `citation_summary()` is required to carry the reason next to
+the number, so the ceiling travels with the measurement.
 ## 2026-08-20 - the press page recommended a company that does not exist, and published two different todays (2.20.132)
 
 Four correctness defects on `/ai-layoff-tracker/press/`, the surface built to
