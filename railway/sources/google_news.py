@@ -188,7 +188,15 @@ def _iso_date(pubdate):
 
 def _parse_items(xml_text):
     """Parse an RSS 2.0 body into a list of {title, link, description, source,
-    published}. Never raises."""
+    source_home, published}. Never raises.
+
+    `source_home` is the `<source url="...">` attribute — the OUTLET'S OWN
+    domain, which the redirector in `link` hides. It is read here because two
+    separate audits needed it and neither could get at it (TECHLOG 2026-08-20:
+    "the outlet's real domain is in the RSS <source url> attribute, which
+    _parse_items does not currently read"). It is publisher IDENTITY, not the
+    article: it names who published, never which document, so it must not be
+    stored as a row's `source_url` — see sources/google_news_url.py."""
     out = []
     try:
         root = ET.fromstring(xml_text)
@@ -205,6 +213,8 @@ def _parse_items(xml_text):
             "description": _t("description"),
             "published": _t("pubDate"),
             "source": (src_el.text if src_el is not None and src_el.text else ""),
+            "source_home": ((src_el.get("url") or "").strip()
+                            if src_el is not None else ""),
         })
     return out
 

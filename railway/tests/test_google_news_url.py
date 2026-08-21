@@ -78,6 +78,12 @@ class Resolution(unittest.TestCase):
         self.assertNotEqual(url, "https://www.geekwire.com")
         self.assertTrue(url.startswith("https://news.google.com/"))
 
+    def test_a_home_page_is_not_accepted_as_a_decoded_article(self):
+        """A bare origin decoded out of a blob is still not a document."""
+        self.assertTrue(gnu._plausible_article_url("https://www.geekwire.com/a"))
+        self.assertFalse(gnu._plausible_article_url("https://localhost"))
+        self.assertFalse(gnu._plausible_article_url("ftp://ex.com/a"))
+
     def test_legacy_token_decodes_to_the_publisher_url(self):
         url, state = gnu.resolve(legacy_token_url("https://www.bbc.co.uk/news/business-123"))
         self.assertEqual((url, state), ("https://www.bbc.co.uk/news/business-123", "decoded"))
@@ -192,6 +198,19 @@ class CollectorWiring(unittest.TestCase):
         rows, _ = self._pull()
         self.assertEqual({r["source_name"] for r in rows},
                          {"geekwire.com", "Reuters"})
+
+    def test_the_outlet_domain_is_parsed_but_never_stored_as_the_citation(self):
+        """`<source url>` is read (a future outlet gate needs it — TECHLOG
+        2026-08-20) and must stay OUT of source_url: it names who published,
+        never which document."""
+        from sources.google_news import _parse_items
+        items = _parse_items(FEED.format(opaque=OPAQUE, legacy=OPAQUE))
+        self.assertEqual([i["source_home"] for i in items],
+                         ["https://www.geekwire.com", "https://www.reuters.com"])
+        rows, _ = self._pull()
+        for row in rows:
+            self.assertNotIn(row["source_url"],
+                             ("https://www.geekwire.com", "https://www.reuters.com"))
 
 
 if __name__ == "__main__":

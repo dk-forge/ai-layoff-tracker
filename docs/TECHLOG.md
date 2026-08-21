@@ -61,6 +61,17 @@ discoverable. There is no repair to apply. If the tokens ever become resolvable,
 the repair is a purge + re-import (the source_url change moves the dedup hash),
 not an upsert.
 
+**INDEPENDENTLY CORROBORATED THE DAY BEFORE.** The 2026-08-20 Sources-page
+entry below shadow-measured the same collector for a different reason and found
+the same thing: "the stored `source_url` is a `news.google.com` redirect for
+every single row (140 of 140 in the shadow run)". It also left a note that
+`_parse_items` does not read the `<source url="...">` attribute, which any
+future outlet gate needs. It does now - as `source_home`, parsed and
+deliberately NOT stored as a row's `source_url`, with a test pinning both
+halves. The outlet gate itself is still open and still belongs to whoever next
+opens that collector; so does the aggregator exclusion (`challengergray.com`)
+that entry flagged.
+
 **The guard against the next session "improving" this.**
 `tests/test_google_news_url.py` asserts on the SOURCE that the resolver imports
 no HTTP client - a network call added behind an untaken branch would pass a
