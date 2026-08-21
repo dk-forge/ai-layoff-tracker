@@ -1,6 +1,20 @@
 {
   "cadence": "daily",
   "cron": "0 22 * * *",
+  "rotation": {
+    "gdelt_segments": {
+      "days": 30,
+      "per_run": 4,
+      "runs": 30,
+      "terms": 117
+    },
+    "news_editions": {
+      "days": 11,
+      "per_run": 4,
+      "runs": 11,
+      "terms": 44
+    }
+  },
   "source": "railway/railway.toml [deploy] cronSchedule",
   "utc_hours": [
     22

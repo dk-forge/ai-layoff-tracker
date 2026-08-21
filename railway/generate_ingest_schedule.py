@@ -20,7 +20,9 @@ following it.
 """
 from __future__ import annotations
 
+import ast
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -71,8 +73,74 @@ def parse_cron_schedule(toml_text: str) -> dict:
     }
 
 
+# Rotating query rings the PUBLIC pages quote a sweep time for. Each run takes
+# `per_run` terms and `run_slice.rotate` steps by exactly one run, so the full
+# sweep is ceil(size / per_run) RUNS -- which is only a number of DAYS once you
+# know the cadence. That is the whole reason these are derived here instead of
+# typed: the Sources page said "about every six days" for the editions ring,
+# which was true at two runs a day and became eleven days on 2026-08-14 with
+# nobody to notice. Sizes are read from the collectors by AST so this stays
+# stdlib-only and needs no key, no network and no optional dependency.
+ROTATIONS = (
+    # (public key, module, terms symbol, per-run symbol, skip_first)
+    # google_news pins the US edition and rotates only the remainder.
+    ("news_editions", "sources/google_news.py",
+     "GOOGLE_NEWS_LOCALES", "LOCALES_PER_RUN", True),
+    ("gdelt_segments", "sources/gdelt.py",
+     "SEGMENT_TERMS", "SEGMENT_QUERIES_PER_RUN", False),
+)
+
+
+def _ring_size(module_rel: str, terms: str, skip_first: bool) -> int:
+    src = (ROOT / "railway" / module_rel).read_text(encoding="utf-8")
+    for node in ast.parse(src).body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == terms for t in node.targets):
+            n = len(ast.literal_eval(node.value))
+            return n - 1 if skip_first else n
+    raise ValueError(f"{terms} not found in {module_rel}")
+
+
+def _per_run(module_rel: str, name: str) -> int:
+    src = (ROOT / "railway" / module_rel).read_text(encoding="utf-8")
+    m = re.search(re.escape(name) + r'\s*=\s*max\(0,\s*min\(\d+,\s*(?:int\(\s*os\.environ\.get\('
+                  r'\s*"[A-Z_]+"\s*,\s*"(\d+)"\s*\)\s*\)|_env_int\(\s*"[A-Z_]+"\s*,\s*(\d+)\s*\))', src)
+    if not m:
+        raise ValueError(f"could not read the shipped default for {name}")
+    return int(m.group(1) or m.group(2))
+
+
+def rotation_sweeps(runs_per_day: int) -> dict:
+    """Days to sweep each public rotating ring once, at this cadence."""
+    out = {}
+    for key, module_rel, terms, per_run_name, skip_first in ROTATIONS:
+        size = _ring_size(module_rel, terms, skip_first)
+        per_run = _per_run(module_rel, per_run_name)
+        if per_run <= 0:
+            continue
+        runs = math.ceil(size / per_run)
+        out[key] = {
+            "terms": size,
+            "per_run": per_run,
+            "runs": runs,
+            "days": math.ceil(runs / max(1, runs_per_day)),
+        }
+    return out
+
+
+def build_schedule(toml_text: str) -> dict:
+    """The whole committed document: the cron, plus what it implies.
+
+    One function so the generator and tests/test_ingest_schedule.py cannot
+    disagree about what the file should contain.
+    """
+    schedule = parse_cron_schedule(toml_text)
+    schedule["rotation"] = rotation_sweeps(len(schedule["utc_hours"]))
+    return schedule
+
+
 def main() -> int:
-    schedule = parse_cron_schedule(TOML.read_text(encoding="utf-8"))
+    schedule = build_schedule(TOML.read_text(encoding="utf-8"))
     rendered = json.dumps(schedule, indent=2, sort_keys=True) + "\n"
     if OUT.exists() and OUT.read_text(encoding="utf-8") == rendered:
         print(f"unchanged: {OUT}")

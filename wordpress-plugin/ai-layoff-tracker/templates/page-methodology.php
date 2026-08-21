@@ -95,7 +95,7 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
     $alt_ing_say = '';
     if ($alt_ing_n) {
         $alt_ing_say = 'News and SEC filings: '
-            . ($alt_ing_n === 1 ? 'once daily' : ($alt_ing_n === 2 ? 'twice daily' : $alt_ing_n . ' times daily'))
+            . (function_exists('alt_ingest_cadence_phrase') ? alt_ingest_cadence_phrase() : '')
             . ($alt_ing_lbl ? ', at ' . $alt_ing_lbl : '') . '. ';
     }
     ?>

@@ -1632,7 +1632,7 @@ function alt_register_query_routes() {
     ));
     // URL-level "already ingested?" pre-check for collectors. The ingest
     // pipeline overlaps its pull windows on purpose (a 36h GDELT window on a
-    // twice-daily cadence), so the SAME article URL reaches the extractor ~3
+    // ingest cadence), so the SAME article URL reaches the extractor several
     // times; the identical re-read adds zero evidence (the source-report
     // INSERT IGNOREs the duplicate hash) but costs an LLM call every time.
     // POST {urls:[...]} -> {seen:[...]} lets a collector skip exactly those,
@@ -3409,6 +3409,46 @@ function alt_ingest_schedule() {
     $minute = (int) ($j['utc_minute'] ?? 0);
     if ($minute < 0 || $minute > 59) $minute = 0;
     return array('utc_hours' => array_values(array_unique($hours)), 'utc_minute' => $minute);
+}
+
+/**
+ * How often ingest runs, as a phrase for reader-facing copy.
+ *
+ * WHY THIS IS DERIVED. The cron went from twice a day to once a day on
+ * 2026-08-14 and moved hour on 2026-08-18. The methodology page followed,
+ * because it computed this phrase; the Sources page, the Health page, the FAQ
+ * and the health-page collector labels did not, because they had "twice daily"
+ * typed into them. They stayed wrong for six days on the live site, and the
+ * methodology page contradicted itself four lines apart. A cadence typed into
+ * copy has no generator behind it and nothing to fail when the schedule moves.
+ *
+ * Returns '' when the schedule is unreadable: an absent cadence is honest, a
+ * stale typed one is not. Callers must render nothing rather than a default.
+ */
+function alt_ingest_cadence_phrase() {
+    $s = alt_ingest_schedule();
+    if (!$s) return '';
+    $n = count($s['utc_hours']);
+    if ($n === 1) return 'once daily';
+    if ($n === 2) return 'twice daily';
+    return $n . ' times daily';
+}
+
+/**
+ * Days for a rotating query ring to sweep its full set, or 0 if unknown.
+ *
+ * Also derived, and for the same reason: the Sources page promised the news
+ * editions swept "about every six days", which was true at two runs a day and
+ * silently became eleven when the cron halved. The figures are computed in
+ * railway/generate_ingest_schedule.py from the collectors' own ring sizes.
+ */
+function alt_ingest_rotation_days($key) {
+    $path = ALT_PLUGIN_DIR . 'data/ingest-schedule.json';
+    if (!is_readable($path)) return 0;
+    $j = json_decode((string) file_get_contents($path), true);
+    if (!is_array($j) || empty($j['rotation'][$key]['days'])) return 0;
+    $d = (int) $j['rotation'][$key]['days'];
+    return ($d > 0 && $d < 3650) ? $d : 0;
 }
 
 /** Next scheduled ingest as a UTC unix timestamp, or null without a schedule. */

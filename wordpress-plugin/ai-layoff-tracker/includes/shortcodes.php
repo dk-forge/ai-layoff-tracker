@@ -428,8 +428,13 @@ function alt_render_status_header() {
         $alt_ing = function_exists('alt_ingest_schedule') ? alt_ingest_schedule() : null;
         $alt_ing_n = $alt_ing ? count($alt_ing['utc_hours']) : 0;
         $alt_ing_label = function_exists('alt_ingest_times_label') ? alt_ingest_times_label() : '';
-        $alt_cadence = ($alt_ing_n === 2 ? 'twice daily' : ($alt_ing_n === 1 ? 'daily' : ($alt_ing_n > 2 ? $alt_ing_n . '× daily' : 'twice daily')))
-            . ($alt_ing_label ? ' · ' . $alt_ing_label : '');
+        // One definition (alt_ingest_cadence_phrase), and NO fallback phrase:
+        // the old expression guessed 'twice daily' whenever the schedule could
+        // not be read, which is the same wrong answer the typed copy gave for
+        // six days after the cron halved. An absent cadence is honest.
+        $alt_cad_phrase = function_exists('alt_ingest_cadence_phrase') ? alt_ingest_cadence_phrase() : '';
+        $alt_cadence = $alt_cad_phrase
+            . ($alt_ing_label ? ($alt_cad_phrase ? ' · ' : '') . $alt_ing_label : '');
         ?>
         <span class="alt-status" id="alt-status-live"><span class="alt-live-dot" aria-hidden="true"></span> Live · updated <span id="alt-live-time"><?php echo esc_html($alt_cadence); ?></span></span>
         <?php /* The promise line the talent strip carries, restored here by

@@ -15,12 +15,13 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 
-from generate_ingest_schedule import OUT, TOML, parse_cron_schedule  # noqa: E402
+from generate_ingest_schedule import (  # noqa: E402
+    OUT, TOML, build_schedule, parse_cron_schedule)
 
 
 class IngestScheduleMatchesCron(unittest.TestCase):
     def test_committed_json_matches_railway_toml(self):
-        expected = parse_cron_schedule(TOML.read_text(encoding="utf-8"))
+        expected = build_schedule(TOML.read_text(encoding="utf-8"))
         self.assertTrue(OUT.exists(),
                         "data/ingest-schedule.json is missing; run "
                         "python3 railway/generate_ingest_schedule.py")

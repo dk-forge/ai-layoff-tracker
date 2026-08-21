@@ -33,7 +33,7 @@ log.
 ## Architecture
 
 ```
-┌─ Railway cron (2×/day) ── SEC EDGAR 8-K search + NewsAPI + GDELT (worldwide,
+┌─ Railway cron (schedule: railway/railway.toml) ── SEC EDGAR 8-K search + GDELT (worldwide,
 │                           multilingual) → LLM extraction via
 │                           OpenRouter → dedup checks → POST /add
 ├─ GitHub Actions (daily) ─ WARN notices, all obtainable states: warn-scraper
@@ -71,7 +71,7 @@ wordpress-plugin/ai-layoff-tracker/   the site (deployed by FTPS on push to main
   assets/layoffs.js                   entire front-end (no build step)
   templates/page-tracker.php          the tracker page incl. methodology + corrections log
 railway/                              Python ingest
-  cron.py                             news pipeline entry point (Railway, 2×/day)
+  cron.py                             news pipeline entry point (Railway; see railway.toml)
   warn_import.py                      WARN pipeline entry point (GitHub Actions, daily)
   sources/                            edgar, newsapi, gdelt, warn, warn_custom (8 custom state collectors)
   extractor.py                        LLM extraction (gemini-2.5-flash-lite) + classification

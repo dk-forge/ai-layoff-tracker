@@ -16,11 +16,18 @@
   const entriesLabel = x => (x && x.status === 'ok')
     ? `${Number(x.entries || 0).toLocaleString()} found`
     : 'No completed count';
+  // The Railway-cron cadence, handed over by PHP from data/ingest-schedule.json
+  // rather than typed here. Eight collector labels below read 'Twice daily'
+  // through the whole of 2026-08-14..20, when the cron had been running once a
+  // day since the 14th. A cadence typed into a label has nothing to fail when
+  // the schedule moves.
+  const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
+  const CRON = cap(altHealthData.ingestCadence) || 'On the ingest schedule';
   // [coverage target, cadence, country/region, collection method]. The
   // region+method pair renders under the source id in both tables so a reader
   // can see what country a collector serves and how it collects.
   const meta = {
-    edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', 'Twice daily', 'United States', 'Official filings API'],
+    edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', CRON, 'United States', 'Official filings API'],
     warn_us: ['State WARN mass-layoff notices', 'Daily', 'United States', 'State labor-agency notices'],
     warn_quebec: ['Quebec collective-dismissal notices (MESS)', 'Daily check, monthly register', 'Canada', 'Provincial labour-ministry filings'],
     federal_rif: ['US federal RIF separations (OPM EHRI)', 'Monthly', 'United States', 'Official OPM workforce dataset'],
@@ -30,13 +37,13 @@
     newsapi: ['Retired collector (replaced by Google News RSS)', 'Retired 2026-07-25', 'Worldwide', 'Licensed news API'],
     news_catchup: ['Weekly catch-up sweep of credible outlets (fills weekend gaps)', 'Weekly', 'Worldwide', 'Licensed news API'],
     data_integrity: ['Live data-integrity guards: known duplicates count once, no single row carries a headline, no headline moves without rows to explain it', 'Daily', 'Internal QA', 'Read-only assertions against the public API'],
-    google_news: ['Free worldwide layoff-headline discovery (no key)', 'Twice daily', 'Worldwide', 'Google News RSS'],
-    local_news: ['Local-language market sweep, searching each market in its own words', 'Twice daily', '25 markets', 'Google News national editions'],
-    regional_feeds: ['Regional news feeds covering low-volume countries: RNZ Pacific, Pacific Island Times, Financial Afrik, Jeune Afrique, Caribbean News Global', 'Twice daily', 'Pacific · Francophone Africa · Caribbean', 'Publisher RSS feeds'],
-    national_feeds: ['One verified national publisher per mid-sized economy. Egypt, Colombia, Ethiopia, Kazakhstan, Ghana, Pakistan, Jordan, Iraq, Jamaica, Nepal, Papua New Guinea, Paraguay, Serbia and Peru', 'Twice daily', '14 countries', 'Publisher RSS feeds'],
-    gdelt: ['Worldwide multilingual news discovery', 'Twice daily', 'Worldwide', 'Open news-index API'],
+    google_news: ['Free worldwide layoff-headline discovery (no key)', CRON, 'Worldwide', 'Google News RSS'],
+    local_news: ['Local-language market sweep, searching each market in its own words', CRON, '25 markets', 'Google News national editions'],
+    regional_feeds: ['Regional news feeds covering low-volume countries: RNZ Pacific, Pacific Island Times, Financial Afrik, Jeune Afrique, Caribbean News Global', CRON, 'Pacific · Francophone Africa · Caribbean', 'Publisher RSS feeds'],
+    national_feeds: ['One verified national publisher per mid-sized economy. Egypt, Colombia, Ethiopia, Kazakhstan, Ghana, Pakistan, Jordan, Iraq, Jamaica, Nepal, Papua New Guinea, Paraguay, Serbia and Peru', CRON, '14 countries', 'Publisher RSS feeds'],
+    gdelt: ['Worldwide multilingual news discovery', CRON, 'Worldwide', 'Open news-index API'],
     gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],
-    press_releases: ['Reviewed company-controlled IR/newsroom feeds', 'Twice daily', 'Per reviewed company (US · DE)', 'Company RSS/Atom feeds'],
+    press_releases: ['Reviewed company-controlled IR/newsroom feeds', CRON, 'Per reviewed company (US · DE)', 'Company RSS/Atom feeds'],
     eurofound_erm: ['Eurofound ERM restructuring announcements', 'Daily', 'European Union', 'Official monitor dataset'],
     company_watchlist: ['Targeted sweep of large employers with no current-year entry', 'Daily, rotating slice', 'Worldwide', 'Licensed news API'],
     supplemental_news: ['Non-English / global news expansion (NewsData.io · Marketaux · Finnhub)', 'Daily', 'Worldwide (Europe-weighted)', 'Licensed news APIs'],
@@ -47,9 +54,9 @@
     role_enrichment: ['Role categories from already-stored row text', 'Daily evidence-only', 'Internal', 'Stored-evidence re-read'],
     archive_backfill: ['Permanent Internet Archive (Wayback) snapshots of every source link', 'Daily, resumable', 'Internal', 'Wayback availability + Save Page Now'],
     dedupe_llm: ['Cross-source duplicate remover (daily deep scan)', 'Daily', 'Internal', 'Cross-source dedup'],
-    edinet_jp: ['EDINET daily filing list, discovery only, nothing ingested', 'Twice daily', 'Japan', 'Official filings API'],
-    opendart_kr: ['OpenDART disclosure list, discovery only, nothing ingested', 'Twice daily', 'South Korea', 'Official filings API'],
-    cvm_br: ['CVM Fato Relevante yearly index, discovery only, nothing ingested', 'Twice daily', 'Brazil', 'Official open-data portal'],
+    edinet_jp: ['EDINET daily filing list, discovery only, nothing ingested', 'Retired 2026-07-24', 'Japan', 'Official filings API'],
+    opendart_kr: ['OpenDART disclosure list, discovery only, nothing ingested', 'Retired 2026-07-24', 'South Korea', 'Official filings API'],
+    cvm_br: ['CVM Fato Relevante yearly index, discovery only, nothing ingested', 'Retired 2026-07-24', 'Brazil', 'Official open-data portal'],
     companies_house_insolvency: ['UK insolvency signals, lead to targeted news', 'Weekly', 'United Kingdom', 'Official registry API'],
     courtlistener_bankruptcy: ['US bankruptcy petitions, lead to targeted news', 'Weekly', 'United States', 'Federal court dockets'],
     edgar_historical: ['Historical SEC 8-K/6-K backfill (live feed is "edgar")', 'Backfill, resumable', 'United States', 'Official filings API'],
