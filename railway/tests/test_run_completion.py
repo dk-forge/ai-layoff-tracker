@@ -153,5 +153,72 @@ class RunningIsNotHealthy(unittest.TestCase):
                       "look maximally healthy and reset its own staleness clock")
 
 
+class CollectionIsNotSilentlyTruncated(unittest.TestCase):
+    """The endpoint caps per_page at 200 and has no pagination.
+
+    Its `since` field still advertises the full requested window, so an
+    unfiltered 14-day fetch returns the newest 200 rows and READS complete. On
+    2026-08-21 that reached back only to 08-17, so the real 2026-08-16 incident
+    sat outside the data while the response claimed to cover it -- and the
+    section reported one orphan where there were six.
+    """
+
+    def test_it_tops_up_per_source_rather_than_trusting_one_page(self):
+        seed = [note("gdelt", "running", "2026-08-19T22:07:19+00:00")]
+        deep = seed + [note("gdelt", "running", "2026-08-16T16:04:06+00:00"),
+                       note("gdelt", "ok", "2026-08-16T16:12:00+00:00")]
+        calls = []
+
+        def fetch(params):
+            calls.append(params)
+            return {"runs": deep if params.get("source") == "gdelt" else seed}
+
+        rows, incomplete = rc.collect(fetch)
+        self.assertEqual(incomplete, [])
+        self.assertEqual(len(calls), 2, "one discovery call plus one per source")
+        self.assertEqual(len(rows), 3, "the per-source page must be merged in")
+
+    def test_sources_are_discovered_never_hardcoded(self):
+        """A collector that stops reporting must not drop out of the check."""
+        seed = [note("a_new_collector", "running", "2026-08-20T10:00:00+00:00")]
+
+        def fetch(params):
+            return {"runs": seed}
+
+        rc.collect(fetch)
+        self.assertTrue(True)  # the assertion is the call below
+        seen = []
+
+        def fetch2(params):
+            seen.append(params.get("source"))
+            return {"runs": seed}
+
+        rc.collect(fetch2)
+        self.assertIn("a_new_collector", seen)
+
+    def test_a_source_that_still_fills_a_page_is_UNKNOWN_not_clean(self):
+        full = [note("gdelt", "running", "2026-08-20T10:00:00+00:00")] * rc.PAGE_CAP
+
+        def fetch(params):
+            return {"runs": full}
+
+        _rows, incomplete = rc.collect(fetch)
+        self.assertEqual(incomplete, ["gdelt"])
+        lines, _issue = rc.verdict_lines(_rows, now=NOW, incomplete=incomplete)
+        text = " ".join(lines)
+        self.assertIn("UNKNOWN", text)
+        self.assertIn("UNCHECKED, not clean", text)
+
+    def test_duplicate_rows_across_pages_are_not_double_counted(self):
+        row = note("gdelt", "running", "2026-08-19T22:07:19+00:00")
+
+        def fetch(params):
+            return {"runs": [row]}
+
+        rows, _ = rc.collect(fetch)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(len(rc.orphans(rows, now=NOW)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

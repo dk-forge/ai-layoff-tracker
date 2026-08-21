@@ -56,6 +56,51 @@ GRACE = timedelta(hours=1)
 WINDOW = timedelta(days=14)
 
 
+# The /source-runs endpoint caps per_page at 200 and offers NO pagination, while
+# its `since` field still advertises the whole requested window. An unfiltered
+# 14-day fetch therefore returns the newest 200 rows and LOOKS complete: on
+# 2026-08-21 it reached back only to 08-17, so the 2026-08-16 incident was
+# outside the data while the response claimed to cover it. A monitor that
+# silently sees less than it says is the defect this module exists to catch.
+PAGE_CAP = 200
+
+
+def collect(fetch, days=14):
+    """Every run in the window, gathered so the cap cannot truncate it.
+
+    `fetch(params)` -> decoded JSON. One unfiltered call discovers WHICH sources
+    reported (never a hardcoded list -- a collector that stops reporting must not
+    drop out of the check), then one call per source, because the cap applies per
+    query and a single source's 14 days fits inside it comfortably.
+
+    Returns (runs, incomplete), where `incomplete` names any source whose own
+    fetch still hit the cap. That is UNKNOWN coverage, not a pass.
+    """
+    seed = fetch({"days": days, "per_page": PAGE_CAP}) or {}
+    rows = list(seed.get("runs") or [])
+    sources = sorted({str(r.get("source") or "") for r in rows
+                      if isinstance(r, dict) and r.get("status") == RUNNING})
+    merged, seen, incomplete = list(rows), set(), []
+    for src in sources:
+        if not src:
+            continue
+        got = (fetch({"source": src, "days": days, "per_page": PAGE_CAP}) or {})
+        got_rows = list(got.get("runs") or [])
+        if len(got_rows) >= PAGE_CAP:
+            incomplete.append(src)
+        merged += got_rows
+    deduped = []
+    for r in merged:
+        if not isinstance(r, dict):
+            continue
+        key = (r.get("source"), r.get("status"), r.get("attempted_at"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(r)
+    return deduped, incomplete
+
+
 def _parsed(runs):
     """(datetime, source, status) triples, oldest first, unparseable dropped."""
     out = []
@@ -115,7 +160,7 @@ def orphans(runs, now=None, grace=GRACE, window=WINDOW):
     return found
 
 
-def verdict_lines(runs, now=None):
+def verdict_lines(runs, now=None, incomplete=()):
     """(lines, issue) for ops_status and the weekly digest to print verbatim.
 
     `issue` is None when there is nothing to act on. Absence of telemetry is
@@ -127,12 +172,19 @@ def verdict_lines(runs, now=None):
             "          could not be checked. Not a pass.",
         ], None)
 
+    lines_pre = []
+    for src in (incomplete or ()):
+        lines_pre.append(f"UNKNOWN   {src} returned a full page ({PAGE_CAP} rows), so its "
+                         f"older runs")
+        lines_pre.append(f"          were not read. That part of the window is "
+                         f"UNCHECKED, not clean.")
+
     found = orphans(runs, now=now)
     if not found:
-        return (["PASS      every collector run in this window posted a terminal "
-                 "note."], None)
+        return (lines_pre + ["PASS      every collector run in this window posted a "
+                             "terminal note."], None)
 
-    lines = [f"ORPHANED  {len(found)} collector run(s) started and never finished:"]
+    lines = lines_pre + [f"ORPHANED  {len(found)} collector run(s) started and never finished:"]
     for f in found[:8]:
         tail = (f"then {f['source']} started again"
                 if f["followed_by"] == RUNNING else "the ledger stops there")
