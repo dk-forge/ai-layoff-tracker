@@ -32,6 +32,8 @@ from email.utils import parsedate_to_datetime
 
 import requests
 
+import run_slice
+
 RSS = "https://news.google.com/rss/search"
 # Google News serves python-requests fine, but a browser-ish UA is safest and
 # matches the rest of the project's outbound calls.
@@ -131,19 +133,21 @@ LOCALES_PER_RUN = max(0, min(8, _env_int("GOOGLE_NEWS_LOCALES_PER_RUN", 4)))
 
 
 def _locales_for_now():
-    """US always, plus a deterministic rotating slice of the rest."""
+    """US always, plus a deterministic rotating slice of the rest.
+
+    The `hour // 12` this used to carry removed the coupling to railway.toml's
+    exact HOURS but kept the `* 2`, which is a hardcoded two-runs-a-day. Once
+    the cron went daily on 2026-08-14 the index advanced twice per run and this
+    ring's full sweep went from 6 days to 11. It survived only because 44 rest
+    locales and a stride of 8 share a factor of 4; the euphemism ring in
+    sources/gdelt.py, on the same arithmetic, lost half its terms outright.
+    `run_slice.rotate` steps by exactly one run, so no cadence can stride it.
+    """
     us = GOOGLE_NEWS_LOCALES[0]
     rest = GOOGLE_NEWS_LOCALES[1:]
     if not LOCALES_PER_RUN or not rest:
         return [us]
-    now = datetime.now(timezone.utc)
-    # Schedule-agnostic half-day index: the previous `hour < 17` was silently
-    # coupled to railway.toml's exact cron hours; any schedule change could
-    # collapse both runs onto the same rotation slice with no signal.
-    run_of_day = now.hour // 12
-    start = ((now.timetuple().tm_yday * 2 + run_of_day) * LOCALES_PER_RUN) % len(rest)
-    picked = [rest[(start + i) % len(rest)] for i in range(LOCALES_PER_RUN)]
-    return [us] + picked
+    return [us] + run_slice.rotate(rest, LOCALES_PER_RUN)
 
 
 def _clean(text):
