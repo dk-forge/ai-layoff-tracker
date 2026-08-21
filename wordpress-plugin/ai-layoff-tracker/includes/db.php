@@ -5601,7 +5601,14 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
       ahead of the WHERE clause, so a placeholder here would have to be
       threaded in front of every existing $params entry.
     */
-    $today_sql = current_time('Y-m-d');
+    // alt_site_today(), NOT current_time(): the comment above has claimed
+    // "site timezone" since this was written, and current_time() does not
+    // deliver it on this install. WordPress's configured zone here is UTC, so
+    // for the last four or five hours of every US evening this cut the to_date_*
+    // columns at TOMORROW. The press page's own year table cut on MySQL
+    // CURDATE(), which is Eastern, and the two disagreed by 1,031 jobs on
+    // 2026-08-20. One owner now, in api.php, and both callers read it.
+    $today_sql = function_exists('alt_site_today') ? alt_site_today() : current_time('Y-m-d');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $today_sql)) $today_sql = gmdate('Y-m-d');
 
     /*
