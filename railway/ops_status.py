@@ -58,6 +58,7 @@ import benchmark_freshness  # noqa: E402  - sibling module, stdlib only
 import stash_watch  # noqa: E402  - sibling module, stdlib only
 import subscriber_routes  # noqa: E402  - sibling module, stdlib only
 import alert_state  # noqa: E402  - sibling module, stdlib only
+import run_completion  # noqa: E402  - sibling module, stdlib only
 
 # The repo this script lives in — [8] reads its stash stack. Derived from the
 # file, never from the cwd: ops_status.py is run from anywhere.
@@ -1297,6 +1298,15 @@ def main():
             elif status == "retired":
                 print(f"    (retired) {src}: {str(detail)[:60]}")
                 ok += 1
+            elif status == "running":
+                # NOT ok. This ledger keeps only the LATEST note, and a `running`
+                # note carries a fresh checked_at, so a collector that died
+                # mid-flight used to land in the `else` below as one of the
+                # "N source(s) OK" AND reset its own staleness clock while doing
+                # it. Whether this one is in flight or stranded is [2e]'s
+                # question; here it is simply not evidence of health.
+                print(f"    (running) {src}: started, no terminal note yet — "
+                      f"see [2e]")
             else:
                 ok += 1
         print(f"    {ok} source(s) OK.")
@@ -1416,6 +1426,36 @@ def main():
             egress_blocked.append("source-runs unreachable")
         else:
             unverified.append("worldwide news reach")
+
+    # 2e. RUN COMPLETION — did the collectors FINISH, or only start?
+    #
+    # Section [2] reads the health ledger, which keeps only the LATEST note per
+    # source, so an orphaned `running` is erased by the next run within a day.
+    # [2b] judges whether a source is PUBLISHING; a run that dies before it
+    # queries publishes nothing and reads as a quiet day. The append-only
+    # /source-runs telemetry is the only place a start/finish PAIR survives.
+    #
+    # Three gdelt runs since 2026-05-23 started and never finished, and the
+    # 2026-08-16 run died earlier still. Two are provably dead processes rather
+    # than dropped telemetry (no end-of-run record in railway/spend_jobs.json).
+    # Every surface read green throughout. See railway/run_completion.py.
+    print("\n[2e] RUN COMPLETION  (public /source-runs; a start with no finish)")
+    try:
+        _cruns = json.load(_get(
+            f"{BASE}/wp-json/layoffs/v1/source-runs?days=14&per_page=500&cb={uuid.uuid4()}"))
+        _cl, _cissue = run_completion.verdict_lines(_cruns.get("runs") or [])
+        for _line in _cl:
+            print(f"    {_line}")
+        if _cissue:
+            issues.append(_cissue)
+        elif not (_cruns.get("runs") or []):
+            unverified.append("collector run completion")
+    except Exception as exc:
+        print(f"    RUN COMPLETION UNKNOWN: {exc}")
+        if _is_egress_block(exc):
+            egress_blocked.append("source-runs unreachable")
+        else:
+            unverified.append("collector run completion")
 
     # 3. LIVE DATA INTEGRITY — is the data those collectors produced CORRECT?
     #

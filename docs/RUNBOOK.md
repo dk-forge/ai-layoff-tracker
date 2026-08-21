@@ -226,6 +226,48 @@ Skip, do not cancel, and do not start. In order of what it saves:
 
 ## "X is broken" playbooks
 
+**A COLLECTOR RUN NEVER FINISHED** (`ops_status [2e]`)
+
+`cron.py` posts a `running` note before each collector and an `ok`/`degraded`
+note after it, so every attempt is a PAIR. `[2e]` reads the append-only
+`/source-runs` telemetry and reports a `running` that nothing ever answered.
+
+This is NOT the same finding as DARK or QUIET below. Those ask whether a source
+is PUBLISHING; this asks whether the run got to the end at all. Nothing checked
+it until 2026-08-20, and nothing could: the health ledger keeps only the LATEST
+note per source, so the next day's run overwrites the orphan within a day, and
+an orphaned `running` carries a FRESH `checked_at` - so a collector that died
+mid-flight landed in section [2]'s "N source(s) OK" AND reset its own staleness
+clock while doing it. Three gdelt runs (2026-07-22, 2026-08-02, 2026-08-19) and
+the whole 2026-08-16 run had already been lost this way with every surface green.
+
+1. **Decide which of the two shapes it is. They have different fixes.**
+   - **The process died.** `railway/spend_jobs.json` holds an end-of-run record
+     (`railway-<YYYYMMDD>T<HHMM>`) for every run that reached the end. No record
+     for that run means the process did not get there.
+   - **The terminal health POST was dropped.** `report_source_health` retries
+     three times and then gives up silently, on purpose - a telemetry write must
+     never fail a completed job. A record IN `spend_jobs.json` plus a missing
+     terminal note means the run finished and only the note was lost. That is a
+     host blip, not an ingest failure; note it and move on.
+
+2. **If the process died, get Railway's own log.** It is the ONLY place the
+   cause is recorded: Railway cannot be log-harvested from this repo, and
+   `restartPolicyType = "NEVER"` means a killed run is not retried, so nothing
+   here can see an OOM or a platform kill. Railway dashboard -> the
+   layoff-cron service -> the deployment covering that timestamp.
+
+3. **What the run cost you.** A death is not silent data loss of the whole day:
+   collectors that finished before it posted their rows, and every rotation
+   slice postpones rather than strands (pinned by
+   `tests/test_rotation_covers_ring.py`). What IS lost is that run's window for
+   the collectors after the death point, and GDELT's 36h window only overlaps
+   one missed daily run, so two consecutive deaths are a real gap.
+
+**Do NOT** answer a repeat by widening `run_completion.GRACE`. The grace is
+sized to avoid convicting a run that is still in flight (one hour, ~8x the
+slowest single collector), not to wait out a collector that keeps dying.
+
 **A COLLECTOR WENT DARK** (`ops_status [2b]`, or an email whose subject is
 `United States - <State> WARN`)
 

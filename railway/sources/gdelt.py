@@ -19,6 +19,7 @@ import requests
 from sources import gdelt_bq
 
 import gdelt_reach
+import run_slice
 
 from source_registry import discovery_terms
 
@@ -853,13 +854,14 @@ EUPHEMISM_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_EUPHEMISM_QU
 
 
 def _segment_queries_for_now():
-    """Deterministic daily rotation over the segment matrix (0 disables)."""
-    if not SEGMENT_QUERIES_PER_RUN:
-        return []
-    now = datetime.now(timezone.utc)
-    run_of_day = 0 if now.hour < 17 else 1  # the two Railway cron slots
-    start_idx = ((now.timetuple().tm_yday * 2 + run_of_day) * SEGMENT_QUERIES_PER_RUN) % len(SEGMENT_TERMS)
-    picked = [SEGMENT_TERMS[(start_idx + i) % len(SEGMENT_TERMS)] for i in range(SEGMENT_QUERIES_PER_RUN)]
+    """Deterministic rotation over the segment matrix (0 disables).
+
+    The slice comes from `run_slice.rotate`, which steps by exactly one run.
+    This used to compute its own index from `tm_yday * 2 + (hour < 17)`, a
+    hardcoded twice-a-day cadence that stopped being true on 2026-08-14 and
+    stretched this ring's full sweep from 15 days to 44 with no signal.
+    """
+    picked = run_slice.rotate(SEGMENT_TERMS, SEGMENT_QUERIES_PER_RUN)
     return [f"{QUERY} {term}" for term in picked]
 
 
@@ -968,11 +970,7 @@ def pull_gdelt_between(start, end, max_records=250):
     # non-health-bearing rules as segments - a rate-limited term is skipped
     # and rotates back within days. Deterministic rotation like the segments.
     if NATIVE_QUERIES_PER_RUN:
-        _now = datetime.now(timezone.utc)
-        _run = 0 if _now.hour < 17 else 1
-        _start = ((_now.timetuple().tm_yday * 2 + _run) * NATIVE_QUERIES_PER_RUN) % len(NATIVE_TERMS)
-        for _i in range(NATIVE_QUERIES_PER_RUN):
-            native_query = NATIVE_TERMS[(_start + _i) % len(NATIVE_TERMS)]
+        for native_query in run_slice.rotate(NATIVE_TERMS, NATIVE_QUERIES_PER_RUN):
             nat_articles, _, nat_error = _query_window(native_query, start, end, max_records, "native")
             if nat_articles is None:
                 print(f"GDELT native-term skipped ({nat_error}): {native_query}")
@@ -981,11 +979,7 @@ def pull_gdelt_between(start, end, max_records=250):
             articles.extend(nat_articles)
     # English-doublespeak sweep: standalone for the same reason as native terms.
     if EUPHEMISM_QUERIES_PER_RUN:
-        _now = datetime.now(timezone.utc)
-        _run = 0 if _now.hour < 17 else 1
-        _start = ((_now.timetuple().tm_yday * 2 + _run) * EUPHEMISM_QUERIES_PER_RUN) % len(EUPHEMISM_TERMS)
-        for _i in range(EUPHEMISM_QUERIES_PER_RUN):
-            eu_query = EUPHEMISM_TERMS[(_start + _i) % len(EUPHEMISM_TERMS)]
+        for eu_query in run_slice.rotate(EUPHEMISM_TERMS, EUPHEMISM_QUERIES_PER_RUN):
             eu_articles, _, eu_error = _query_window(eu_query, start, end, max_records, "euphemism")
             if eu_articles is None:
                 print(f"GDELT euphemism-term skipped ({eu_error}): {eu_query}")

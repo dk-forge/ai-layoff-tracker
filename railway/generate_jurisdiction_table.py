@@ -23,6 +23,7 @@ Re-run after collector changes:
 
     python3 generate_jurisdiction_table.py
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -31,6 +32,26 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from warn_transparency_evidence import STATUTORY_NOTICE_DAYS  # noqa: E402
+
+
+def _ingest_cadence():
+    """"twice daily" / "once daily" from the real cron, or '' when unreadable.
+
+    Typed here as "twice daily" until 2026-08-20, six days after the cron went
+    to one run a day. A generated file with a typed cadence in it is still typed
+    copy; an empty string drops the clause rather than naming a schedule we did
+    not read.
+    """
+    path = (HERE.parent / "wordpress-plugin" / "ai-layoff-tracker" / "data"
+            / "ingest-schedule.json")
+    try:
+        hours = json.loads(path.read_text(encoding="utf-8")).get("utc_hours") or []
+    except Exception:
+        return ""
+    if not hours:
+        return ""
+    return {1: "once daily", 2: "twice daily"}.get(
+        len(hours), "{n} times daily".format(n=len(hours)))
 
 OUT = (HERE.parent / "wordpress-plugin" / "ai-layoff-tracker" / "templates"
        / "partials" / "jurisdiction-table.php")
@@ -167,9 +188,10 @@ def render():
         ),
         (
             "United States (SEC EDGAR)",
-            "8-K and 6-K filings from SEC full-text search, twice daily, "
+            "8-K and 6-K filings from SEC full-text search{c}, "
             "including Item 2.05 (costs associated with exit or disposal "
-            "activities).",
+            "activities).".format(
+                c=(", " + _ingest_cadence()) if _ingest_cadence() else ""),
             "A filing whose text states a workforce reduction; the job count "
             "must appear verbatim in the filing.",
             "No headcount threshold. What triggers a filing is securities-"

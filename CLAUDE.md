@@ -131,7 +131,7 @@ still:
    Front-end is fully server-side: the browser calls `/query` (table), `/aggregate` (charts+stats),
    `/facets` (dropdowns). Data lives in a custom indexed table `wp_alt_layoffs` (scales to 100K+ rows);
    rich entries also exist as `layoffs` CPT posts for permalink pages.
-2. **`railway/`** — Python ingest. Cron 2×/day (EDGAR + NewsAPI + GDELT worldwide) → LLM
+2. **`railway/`** — Python ingest. Cron on the schedule in `railway/railway.toml` (EDGAR + Google News + GDELT worldwide) → LLM
    extraction via OpenRouter → POST `/add`. The extraction model is
    `google/gemini-2.5-flash-lite` (swapped 2026-08-07 on a news-path gold set,
    30/30 at 0.388x the incumbent's cost). `OPENROUTER_CLASSIFY_MODEL` pins
@@ -267,6 +267,46 @@ the end check.
   headcount and employer, and folding the rest in is what made the first version
   read 73.3% on rows we demonstrably held. → RUNBOOK "you have items from a
   curated digest".
+- **A ROTATING QUERY SET MUST NEVER DERIVE ITS OWN RUN COUNTER.** Every rotation
+  used to pick its slice with `tm_yday * 2 + (hour < 17)`, a hardcoded
+  twice-a-day that nothing tied to `railway.toml`. The cron went once-daily on
+  2026-08-14, so the index advanced twice per run while each run consumed one
+  slice, and each ring was walked in strides of two. A stride that shares a
+  factor with the ring size is not slower coverage, it is **permanent loss**:
+  `EUPHEMISM_TERMS` (16 taken 2) lost exactly half its vocabulary for six days,
+  and the 16:00 to 22:00 move on 2026-08-18 swapped WHICH half rather than
+  fixing anything. Nothing reported it, because a query that is never issued
+  produces no error, no health row and no log line. Call
+  `run_slice.rotate(TERMS, PER_RUN)`, which steps by exactly one run read from
+  `railway.toml`; an unreadable schedule falls back to ONE run a day because
+  repeating a slice is safe and skipping one is not.
+  `tests/test_rotation_covers_ring.py` walks every shipped ring at seven
+  cadences and fails on a single unreached term.
+- **"The collector started" is not "the collector finished."** `cron.py` posts
+  `running` then a terminal note, and nothing checked the pairing until
+  2026-08-20. The health ledger keeps only the LATEST note, so the next run
+  erases the orphan within a day, and an orphaned `running` carries a FRESH
+  `checked_at` — so a collector that died mid-flight counted toward
+  `ops_status [2]`'s "N source(s) OK" **and reset its own staleness clock**.
+  Three gdelt runs (2026-07-22, 2026-08-02, 2026-08-19) and the whole 2026-08-16
+  run were lost this way with every surface green. `run_completion.py` pairs the
+  append-only `/source-runs` telemetry and `ops_status [2e]` reports it. The
+  discriminator between a dead process and a dropped health POST is
+  `railway/spend_jobs.json`, which holds an end-of-run record for every run that
+  reached the end. **Do not answer a repeat by widening `GRACE`** — it exists to
+  avoid convicting a run still in flight, not to wait out one that keeps dying.
+- **NEVER TYPE A CADENCE INTO READER-FACING COPY.** The cron's shape is
+  `railway/railway.toml` -> `data/ingest-schedule.json` ->
+  `alt_ingest_cadence_phrase()`. When it halved on 2026-08-14 the two surfaces
+  that computed their copy followed and everything else did not: the Sources
+  page said "twice daily" seven times and promised an edition sweep "about every
+  six days" that was really eleven, the Health page and eight `health.js`
+  collector labels said it, the FAQ said it twice, and all 182 rows of the
+  generated country table promised "2×/day (13:00 & 22:00 UTC)". The methodology
+  page contradicted itself four lines apart, live. `tests/test_cadence_is_derived.py`
+  fails on a typed cadence in any hand-edited surface and on a committed partial
+  that disagrees with the schedule. **There is deliberately NO fallback phrase**:
+  an absent cadence is honest, a stale typed one is not.
 - **Country filter**: `country_basis=any` (table/exports) unions job-location OR employer-HQ so US-HQ global cuts show under a US filter; headline stats stay strict job-location. Don't "fix" the discrepancy — it's intentional and documented.
 - **"The collector ran" is not "the collector brought back anything new."**
   Every WARN tripwire was a COUNT floor until 2026-08-19, and a collector

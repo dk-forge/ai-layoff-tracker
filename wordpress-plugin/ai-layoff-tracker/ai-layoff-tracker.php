@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.132
+ * Version: 2.20.133
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.132');
+define('ALT_VERSION', '2.20.133');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1260,6 +1260,12 @@ function alt_enqueue_assets() {
             'apiUrl' => esc_url_raw(rest_url('layoffs/v1/')),
             'widgetUrl' => esc_url_raw(home_url('/?alt_tracker_widget=1')),
             'trackerUrl' => esc_url_raw(home_url('/ai-layoff-tracker/')),
+            // Cadence for the Railway-cron collectors, DERIVED from
+            // railway.toml. health.js had 'Twice daily' typed into eight
+            // collector labels and kept showing it for six days after the cron
+            // halved on 2026-08-14. Empty when the schedule is unreadable;
+            // health.js renders its own honest placeholder rather than a guess.
+            'ingestCadence' => alt_ingest_cadence_phrase(),
         ));
         return;
     }
@@ -1588,7 +1594,8 @@ add_filter('rank_math/opengraph/facebook/og_image_type', function ($t) {
  * The page said "updated daily" four times in its own copy, and its Dataset
  * node carried a live dateModified, while the Article and WebPage nodes beside
  * it were frozen at the day the WordPress page was last hand-edited (2026-07-14)
- * and credited to a Person named "admin". The data changes twice a day; the
+ * and credited to a Person named "admin". The data changes on the ingest
+ * schedule (see data/ingest-schedule.json); the
  * post row does not. So derive the date from the last actual write to the
  * table (alt_last_write, the same timestamp the on-page freshness label uses),
  * and attribute the page to the organisation that publishes it rather than to
@@ -1833,7 +1840,7 @@ function alt_faq_items() {
         array('How many layoffs have there been in ' . $n['y'] . ' so far?',
             'So far in ' . $n['y'] . ' the tracker holds ' . $f($n['entries']) . ' verified layoff entries totaling ' . $f($n['jobs']) . ' job cuts worldwide, counted by effective date: the day each cut takes effect, with anything dated later than today left out. Companies explicitly blamed AI for ' . $f($n['ai_jobs']) . ' of those cuts. The totals on the tracker page itself are counted by filing date by default, which is a different question and a different number for the same year, so the two are not meant to match; the date basis switch on the page moves between them. Totals update daily as new filings and reports are verified.'),
         array('Where does the layoff data come from?',
-            'Four kinds of sources. SEC 8-K filings, searched twice daily. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, Eurofound\'s per-company database of announced restructuring across the EU27, Norway and historically the UK, which its national correspondents compile from media reports rather than from government filings (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' entries in total.'),
+            'Four kinds of sources. SEC 8-K filings, searched ' . (alt_ingest_cadence_phrase() ?: 'on a fixed schedule') . '. Official WARN notices from ' . alt_warn_states_phrase() . ', imported daily with no AI processing. The European Restructuring Monitor, Eurofound\'s per-company database of announced restructuring across the EU27, Norway and historically the UK, which its national correspondents compile from media reports rather than from government filings (imported daily and credited to Eurofound; because these are announcement-stage figures, they feed the separately labeled "Announced" tier and never the verified totals). And worldwide press coverage in 65+ languages through the GDELT news index plus Google News, read across 45 national editions. The dataset spans ' . $n['start'] . ' to the present across ' . $f($n['countries']) . ' countries, ' . $f($n['all']) . ' entries in total.'),
         array('What sources do you use?',
             'Official government filings and legally required notices first: every SEC 8-K/6-K filing and official WARN mass-layoff notices from ' . alt_warn_states_phrase() . ' (each a live link on our Data Sources page). For the EU we read Eurofound\'s European Restructuring Monitor, an EU agency database compiled by national correspondents from media reports rather than from the confidential notifications employers file with labour authorities. Worldwide, we add named news coverage in 65+ languages. The GDELT news index is read against an editorially maintained trusted-outlet allowlist. The Google News editions carry no allowlist, so the outlet is whichever publication Google News named, and the entry cites that report. Nothing is estimated; every number links back to one of these. The Data Sources page lists each one, with links to check the raw source yourself.',
             array('ai-layoff-tracker/sources/', 'See the full Data Sources page &rarr;')),
@@ -1849,7 +1856,7 @@ function alt_faq_items() {
         array('Can journalists and researchers use this data?',
             'Yes, free with attribution to asktherecruiter.com (CC BY 4.0). Filtered or full CSV and JSON downloads are on the page, and a public REST API serves the same data. Corrected entries are publicly flagged, and every correction to published figures is disclosed in the on-page corrections log.'),
         array('How often is the tracker updated?',
-            'Continuously. News and SEC filings are collected twice daily (morning and after US market close, ET); official WARN notices and Eurofound ERM records import daily; and the daily summary, stats, charts and table read live data on every page load. The Tracker Health page shows every collector\'s latest run in real time.'),
+            'Continuously. News and SEC filings are collected ' . (alt_ingest_cadence_phrase() ?: 'on a fixed schedule') . (alt_ingest_times_label() ? ' (' . alt_ingest_times_label() . ')' : '') . '; official WARN notices and Eurofound ERM records import daily; and the daily summary, stats, charts and table read live data on every page load. The Tracker Health page shows every collector\'s latest run in real time.'),
         array('What is the difference between "verified" and "announced" job cuts?',
             'Verified cuts have a filing or independently reported source behind them: a WARN notice, an SEC filing, or a named outlet\'s report of cuts taking place. Announced cuts are company plans reported at announcement stage, tracked in their own labeled tier and never mixed into the verified totals, because announced plans can shrink, stretch over years, or partially happen through attrition.'),
         array('How do I report an error?',

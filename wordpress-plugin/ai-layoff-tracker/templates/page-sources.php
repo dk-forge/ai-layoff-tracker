@@ -23,6 +23,16 @@ $alt_state_names = array(
     'TX' => 'Texas', 'UT' => 'Utah', 'VA' => 'Virginia', 'VT' => 'Vermont',
     'WA' => 'Washington', 'WI' => 'Wisconsin',
 );
+// Ingest cadence, DERIVED from railway.toml via data/ingest-schedule.json.
+// This page had "twice daily" typed into it in eight places and kept saying so
+// for six days after the cron halved on 2026-08-14. A cadence with no generator
+// behind it has nothing to fail when the schedule moves. Empty string when the
+// schedule is unreadable, and every sentence below is written to read correctly
+// without it rather than fall back to a guess.
+$alt_cad     = function_exists('alt_ingest_cadence_phrase') ? alt_ingest_cadence_phrase() : '';
+$alt_cad_sp  = $alt_cad ? ' ' . $alt_cad : '';          // leading space form
+$alt_cad_c   = $alt_cad ? ', ' . $alt_cad : '';         // leading comma form
+$alt_ed_days = function_exists('alt_ingest_rotation_days') ? alt_ingest_rotation_days('news_editions') : 0;
 $alt_state_urls = function_exists('alt_state_warn_urls') ? alt_state_warn_urls() : array();
 ksort($alt_state_urls);
 // States not yet in the automated WARN feed, in plain English, the gap is
@@ -76,7 +86,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     <tbody>
       <tr>
         <td><b>SEC EDGAR</b></td><td>US public companies + foreign filers</td>
-        <td>Every 8-K / 6-K filing, searched twice daily for layoff language (incl. Item 2.05 exit costs). Structured, no AI processing.</td>
+        <td>Every 8-K / 6-K filing, searched<?php echo esc_html($alt_cad_sp); ?> for layoff language (incl. Item 2.05 exit costs). Structured, no AI processing.</td>
         <td>Verified</td>
         <td><a href="https://efts.sec.gov/LATEST/search-index?q=%22reduction%20in%20force%22&forms=8-K" target="_blank" rel="noopener">Full-text search &#8599;</a></td>
       </tr>
@@ -112,31 +122,31 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>GDELT news index</b></td><td>Worldwide, every country</td>
-        <td>Global news in 65+ languages, searched twice daily. Allowlist of trusted outlets only, never open-web crawling.</td>
+        <td>Global news in 65+ languages, searched<?php echo esc_html($alt_cad_sp); ?>. Allowlist of trusted outlets only, never open-web crawling.</td>
         <td>Verified (named report)</td>
         <td><a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">About GDELT &#8599;</a></td>
       </tr>
       <tr>
         <td><b>Google News</b></td><td>Worldwide</td>
-        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. We read <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more). That way we search each market in its own language and its own outlets, not through a US lens. <b>This path carries no outlet allowlist.</b> Google News returns whichever publication carried the story, so local and trade titles the GDELT allowlist does not name are read here too. Every headline still goes through the same extraction, verification and duplicate checks as every other source. Each entry links back to the report it came from. Editions rotate across the twice-daily runs, so we sweep the full set about every six days.</td>
+        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. We read <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more). That way we search each market in its own language and its own outlets, not through a US lens. <b>This path carries no outlet allowlist.</b> Google News returns whichever publication carried the story, so local and trade titles the GDELT allowlist does not name are read here too. Every headline still goes through the same extraction, verification and duplicate checks as every other source. Each entry links back to the report it came from. Editions rotate across the runs<?php echo $alt_ed_days ? ', so we sweep the full set about every ' . (int) $alt_ed_days . ' days' : ''; ?>.</td>
         <td>Verified (named report)</td>
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
       <tr>
         <td><b>Local-language market sweep</b></td><td>25 markets, in their own languages</td>
-        <td>Searches each market in its own words rather than in English, twice daily. An English query put to a German or Spanish edition returns the worldwide English feed, not that country's news. So this sweep carries a phrase set written per language and per market, from German, French and Spanish to Arabic, Russian, Turkish and Ukrainian. A free locality check runs before any article is read by a model, so foreign stories are dropped rather than paid for. Layoff tracker products and compiled tallies are excluded by design; only individual reporting is ever read.</td>
+        <td>Searches each market in its own words rather than in English<?php echo esc_html($alt_cad_c); ?>. An English query put to a German or Spanish edition returns the worldwide English feed, not that country's news. So this sweep carries a phrase set written per language and per market, from German, French and Spanish to Arabic, Russian, Turkish and Ukrainian. A free locality check runs before any article is read by a model, so foreign stories are dropped rather than paid for. Layoff tracker products and compiled tallies are excluded by design; only individual reporting is ever read.</td>
         <td>Verified (named report)</td>
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
       <tr>
         <td><b>Regional news feeds</b><br><span class="alt-muted">Pacific · Francophone Africa · Caribbean</span></td><td>~50 low-volume countries</td>
-        <td>Five regional publishers' own RSS feeds, read twice daily, covering countries too small for a dedicated sweep. <b>RNZ Pacific</b> and the <b>Pacific Island Times</b> cover the Pacific islands (Fiji, Papua New Guinea, Samoa, Tonga, Vanuatu, Solomon Islands, Guam, Palau, Micronesia and more). <b>Financial Afrik</b> and <b>Jeune Afrique</b> cover Francophone Africa in French (Senegal, Ivory Coast, Cameroon, Morocco, Tunisia, Mali and more). <b>Caribbean News Global</b> covers the Caribbean (Saint Lucia, Jamaica, Barbados, Guyana and more). Only stories carrying collective-layoff language in English or French are read further. The publication decides nothing: the article text itself determines the country and count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
+        <td>Five regional publishers' own RSS feeds, read<?php echo esc_html($alt_cad_sp); ?>, covering countries too small for a dedicated sweep. <b>RNZ Pacific</b> and the <b>Pacific Island Times</b> cover the Pacific islands (Fiji, Papua New Guinea, Samoa, Tonga, Vanuatu, Solomon Islands, Guam, Palau, Micronesia and more). <b>Financial Afrik</b> and <b>Jeune Afrique</b> cover Francophone Africa in French (Senegal, Ivory Coast, Cameroon, Morocco, Tunisia, Mali and more). <b>Caribbean News Global</b> covers the Caribbean (Saint Lucia, Jamaica, Barbados, Guyana and more). Only stories carrying collective-layoff language in English or French are read further. The publication decides nothing: the article text itself determines the country and count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
         <td>Verified (named report)</td>
         <td><a href="https://www.rnz.co.nz/international/pacific" target="_blank" rel="noopener">RNZ Pacific &#8599;</a></td>
       </tr>
       <tr>
         <td><b>National publisher feeds</b><br><span class="alt-muted">14 countries, one publisher each</span></td><td>Egypt · Colombia · Ethiopia · Kazakhstan · Ghana · Pakistan · Jordan · Iraq · Jamaica · Nepal · Papua New Guinea · Paraguay · Serbia · Peru</td>
-        <td>The leading business or national publisher in each of fourteen mid-sized economies, read twice daily from the publisher's own feed. These are countries where a national news edition returns the worldwide English feed and no regional service covers them, so nothing local was ever being requested. One publisher per country, chosen by measurement: every candidate was fetched first hand and ten of twenty-five were unusable, each for a reason printed in the publisher catalogue below. A fifteenth was connected and then dropped. Sri Lanka's EconomyNext serves its feed to a browser but not to this collector's network. Rather than disguise the client, we measured that its stories already reach us through Sri Lanka's own news edition. It is listed below as watched through its market sweep. Only stories carrying collective-layoff language in English, Spanish, Russian or Serbian are read further. The publication decides nothing: the article text itself determines the country and the count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
+        <td>The leading business or national publisher in each of fourteen mid-sized economies, read<?php echo esc_html($alt_cad_sp); ?> from the publisher's own feed. These are countries where a national news edition returns the worldwide English feed and no regional service covers them, so nothing local was ever being requested. One publisher per country, chosen by measurement: every candidate was fetched first hand and ten of twenty-five were unusable, each for a reason printed in the publisher catalogue below. A fifteenth was connected and then dropped. Sri Lanka's EconomyNext serves its feed to a browser but not to this collector's network. Rather than disguise the client, we measured that its stories already reach us through Sri Lanka's own news edition. It is listed below as watched through its market sweep. Only stories carrying collective-layoff language in English, Spanish, Russian or Serbian are read further. The publication decides nothing: the article text itself determines the country and the count, through the same extraction and verification as every other source. Compiled layoff tallies are excluded by design.</td>
         <td>Verified (named report)</td>
         <td><a href="#alt-src-catalogue">See the catalogue &darr;</a></td>
       </tr>
@@ -154,7 +164,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Company IR &amp; newsroom feeds</b></td><td>Reviewed employer/exchange feeds</td>
-        <td>A reviewed allowlist of company investor-relations and newsroom RSS feeds, checked twice daily so a layoff a company discloses in its own release is caught even before wire pickup. Runs through the same extraction and verification as the rest.</td>
+        <td>A reviewed allowlist of company investor-relations and newsroom RSS feeds, checked<?php echo esc_html($alt_cad_sp); ?> so a layoff a company discloses in its own release is caught even before wire pickup. Runs through the same extraction and verification as the rest.</td>
         <td>Verified (named report)</td>
         <td><span class="alt-muted">Reviewed feed list</span></td>
       </tr>
@@ -253,7 +263,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php')) include ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php'; ?>
 
   <h2 id="alt-src-news">Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
-  <p>Beyond official filings, we watch a reviewed allowlist of reputable news outlets in every country, in 65+ languages. We check them twice daily through GDELT and Google News, never the open web. The full list is below, built straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register, if any, we pull directly.</p>
+  <p>Beyond official filings, we watch a reviewed allowlist of reputable news outlets in every country, in 65+ languages. We check them<?php echo esc_html($alt_cad_sp); ?> through GDELT and Google News, never the open web. The full list is below, built straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register, if any, we pull directly.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php')) : ?>
   <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
   <?php else : ?>

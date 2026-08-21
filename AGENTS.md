@@ -19,7 +19,7 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
    Front-end is fully server-side: the browser calls `/query` (table), `/aggregate` (charts+stats),
    `/facets` (dropdowns). Data lives in a custom indexed table `wp_alt_layoffs` (scales to 100K+ rows);
    rich entries also exist as `layoffs` CPT posts for permalink pages.
-2. **`railway/`** — Python ingest. Cron 2×/day (EDGAR + NewsAPI + GDELT worldwide) → DeepSeek-V3
+2. **`railway/`** — Python ingest. Cron on the schedule in `railway/railway.toml` (EDGAR + Google News + GDELT worldwide) → DeepSeek-V3
    extraction via OpenRouter → POST `/add`. WARN notices skip the LLM: `warn_import.py` scrapes
    states via `warn-scraper` and bulk-upserts via `/bulk` (daily 11AM ET GitHub cron).
 3. **`.github/workflows/`** — deploy (FTPS on push to main) + all data jobs (see RUNBOOK).

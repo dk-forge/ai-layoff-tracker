@@ -14,6 +14,8 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
+import run_slice
+
 NEWSAPI_URL = "https://newsapi.org/v2/everything"
 
 # Every domain here is also in the GDELT trusted-source allowlist (sources/
@@ -82,12 +84,10 @@ SEGMENT_QUERIES_PER_RUN = max(0, min(6, int(os.environ.get("NEWSAPI_SEGMENT_QUER
 
 
 def _segment_queries_for_now():
-    if not SEGMENT_QUERIES_PER_RUN:
-        return []
-    now = datetime.now(timezone.utc)
-    run_of_day = 0 if now.hour < 17 else 1
-    start = ((now.timetuple().tm_yday * 2 + run_of_day) * SEGMENT_QUERIES_PER_RUN) % len(SEGMENT_TERMS)
-    picked = [SEGMENT_TERMS[(start + i) % len(SEGMENT_TERMS)] for i in range(SEGMENT_QUERIES_PER_RUN)]
+    # Retired collector, converted with the rest so the defect cannot come back
+    # with it: the old index here was the same hardcoded twice-a-day stride that
+    # cost sources/gdelt.py half its euphemism ring (see run_slice).
+    picked = run_slice.rotate(SEGMENT_TERMS, SEGMENT_QUERIES_PER_RUN)
     return [f'(layoffs OR "job cuts" OR "workforce reduction") AND {term}' for term in picked]
 
 
