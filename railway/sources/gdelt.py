@@ -18,6 +18,8 @@ import requests
 
 from sources import gdelt_bq
 
+import gdelt_reach
+
 from source_registry import discovery_terms
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
@@ -861,7 +863,7 @@ def _segment_queries_for_now():
     return [f"{QUERY} {term}" for term in picked]
 
 
-def _query_window(query, start, end, max_records):
+def _query_window(query, start, end, max_records, reach_label="broad"):
     """One GDELT ArtList query with patient 429 backoff.
 
     Returns (articles, saw_rate_limit, last_error); articles is None when the
@@ -900,6 +902,12 @@ def _query_window(query, start, end, max_records):
         except Exception as e:
             last_error = str(e)
             print(f"GDELT query error (attempt {attempt + 1}/{QUERY_ATTEMPTS}): {e}")
+    # Measurement only (see railway/gdelt_reach.py). `articles is None` is an
+    # ABANDONED window and is recorded as such, never as a zero: "GDELT said
+    # there was nothing" and "we never found out" are different days.
+    gdelt_reach.current().note_query(
+        reach_label, None if articles is None else len(articles),
+        max_records, abandoned=articles is None, rate_limited=saw_rate_limit)
     return articles, saw_rate_limit, last_error
 
 
@@ -917,6 +925,7 @@ def pull_gdelt_between(start, end, max_records=250):
             from source_registry import discovery_terms as _terms
             bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
             print(f"GDELT via BigQuery mirror: {len(bq_articles)} article(s), no rate limits")
+            gdelt_reach.current().note_query("mirror", len(bq_articles), gdelt_bq.MIRROR_LIMIT)
             return _fetch_trusted(bq_articles)
         except Exception as e:
             print(f"GDELT BigQuery mirror failed ({e}); falling back to public API")
@@ -936,6 +945,7 @@ def pull_gdelt_between(start, end, max_records=250):
                 from source_registry import discovery_terms as _terms
                 bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
                 print(f"GDELT public API abandoned; BigQuery mirror recovered {len(bq_articles)} article(s)")
+                gdelt_reach.current().note_query("mirror", len(bq_articles), gdelt_bq.MIRROR_LIMIT)
                 return _fetch_trusted(bq_articles)
             except Exception as e:
                 print(f"BigQuery fallback also failed: {e}")
@@ -947,7 +957,7 @@ def pull_gdelt_between(start, end, max_records=250):
     # health-bearing: a segment that stays rate-limited is skipped with a log
     # line and rotates back around within days, so it must not fail the run.
     for segment_query in _segment_queries_for_now():
-        seg_articles, _, seg_error = _query_window(segment_query, start, end, max_records)
+        seg_articles, _, seg_error = _query_window(segment_query, start, end, max_records, "segment")
         if seg_articles is None:
             print(f"GDELT segment skipped ({seg_error}): {segment_query[-60:]}")
             continue
@@ -963,7 +973,7 @@ def pull_gdelt_between(start, end, max_records=250):
         _start = ((_now.timetuple().tm_yday * 2 + _run) * NATIVE_QUERIES_PER_RUN) % len(NATIVE_TERMS)
         for _i in range(NATIVE_QUERIES_PER_RUN):
             native_query = NATIVE_TERMS[(_start + _i) % len(NATIVE_TERMS)]
-            nat_articles, _, nat_error = _query_window(native_query, start, end, max_records)
+            nat_articles, _, nat_error = _query_window(native_query, start, end, max_records, "native")
             if nat_articles is None:
                 print(f"GDELT native-term skipped ({nat_error}): {native_query}")
                 continue
@@ -976,7 +986,7 @@ def pull_gdelt_between(start, end, max_records=250):
         _start = ((_now.timetuple().tm_yday * 2 + _run) * EUPHEMISM_QUERIES_PER_RUN) % len(EUPHEMISM_TERMS)
         for _i in range(EUPHEMISM_QUERIES_PER_RUN):
             eu_query = EUPHEMISM_TERMS[(_start + _i) % len(EUPHEMISM_TERMS)]
-            eu_articles, _, eu_error = _query_window(eu_query, start, end, max_records)
+            eu_articles, _, eu_error = _query_window(eu_query, start, end, max_records, "euphemism")
             if eu_articles is None:
                 print(f"GDELT euphemism-term skipped ({eu_error}): {eu_query}")
                 continue
@@ -1000,7 +1010,7 @@ def pull_gdelt_between(start, end, max_records=250):
             "theme:WB_2790_LABOR_REDUNDANCY OR "
             "theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"
         )
-        theme_articles, _, theme_error = _query_window(theme_query, start, end, max_records)
+        theme_articles, _, theme_error = _query_window(theme_query, start, end, max_records, "theme")
         if theme_articles is None:
             print(f"GDELT dismissal/redundancy theme sweep skipped ({theme_error})")
         else:
@@ -1024,7 +1034,7 @@ def pull_gdelt_between(start, end, max_records=250):
             '"licenziamenti" OR "esuberi"',
         )
         eq = euro_queries[datetime.now(timezone.utc).timetuple().tm_yday % len(euro_queries)]
-        euro_articles, _, euro_error = _query_window(eq, start, end, max_records)
+        euro_articles, _, euro_error = _query_window(eq, start, end, max_records, "euro")
         if euro_articles is None:
             print(f"GDELT European-language sweep skipped ({euro_error})")
         else:
@@ -1037,11 +1047,26 @@ def pull_gdelt_between(start, end, max_records=250):
 def _fetch_trusted(articles):
     """Trusted-domain gate + concurrent article fetch, shared by both the
     BigQuery-mirror and public-API paths."""
+    reach = gdelt_reach.current()
     candidates, seen = [], set()
     for a in articles:
         url = a.get("url")
         dom = _domain(a)
-        if not url or url in seen or not _is_trusted(dom):
+        # Every candidate is attributed to exactly ONE outcome, so the columns
+        # add up to the number GDELT returned. Order matters and matches the
+        # gate below it: a same-run repeat is counted as a repeat even when its
+        # domain is also untrusted, because that is the question being asked
+        # ("was it dropped at the allowlist?") and double-counting would
+        # inflate the allowlist's share. Measurement only -- the `continue`
+        # below is the pre-existing behaviour, unchanged.
+        if not url:
+            reach.note(dom, "empty_text")
+            continue
+        if url in seen:
+            reach.note(dom, "duplicate_url")
+            continue
+        if not _is_trusted(dom):
+            reach.note(dom, "not_allowlisted")
             continue
         seen.add(url)
         candidates.append((a, url, dom))
@@ -1055,10 +1080,14 @@ def _fetch_trusted(articles):
             text = _fetch_article(url)
         except Exception as e:
             print(f"GDELT fetch error {url}: {e}")
+            reach.note(dom, "fetch_failed")
             return None
         if not text.strip():
+            reach.note(dom, "empty_text")
             return None
+        reach.note(dom, "kept")
         return {
+            "_reach_cc": gdelt_reach.country_of(dom),
             "source_type": "news",
             "source_name": dom,
             "verification_level": "bronze",
@@ -1078,4 +1107,6 @@ def _fetch_trusted(articles):
                 results.append(entry)
 
     print(f"GDELT: {len(articles)} matched, {len(candidates)} trusted, {len(results)} fetched")
+    for line in reach.report_lines():
+        print(line)
     return results

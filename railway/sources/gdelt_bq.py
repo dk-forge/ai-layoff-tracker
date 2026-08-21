@@ -113,6 +113,12 @@ def query_company_articles(company, start, end, terms):
     return rows_to_articles(dict(row) for row in job.result())
 
 
+# The mirror has a row cap exactly like the public API's `maxrecords`, and it
+# is binding in the same silent way. Named once so `gdelt_reach` can say
+# whether a mirror window was TRUNCATED rather than complete.
+MIRROR_LIMIT = 900
+
+
 def query_window_articles(start, end, terms):
     """All matching articles in [start, end] from the GKG mirror.
 
