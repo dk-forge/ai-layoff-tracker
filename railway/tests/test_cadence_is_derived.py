@@ -82,6 +82,36 @@ class CadenceIsNeverTyped(unittest.TestCase):
                       "cadence after the fact behind it is gone")
 
 
+class GeneratorPathsSurviveTheirImport(unittest.TestCase):
+    """A generator's paths must not depend on HOW it was imported.
+
+    `tests/test_country_scope.py` adds `os.path.join(HERE, "..")` to sys.path,
+    so whichever entry wins decides whether __file__ carries a literal `..`.
+    `Path(...).parent.parent` does not resolve that component, so the same
+    module resolved its output and data paths into `railway/tests/` under one
+    import order and correctly under another. It reached CI green locally and
+    red on the runner purely on module import ORDER.
+    """
+
+    def test_generator_paths_are_resolved(self):
+        import sys
+        if RAILWAY not in sys.path:
+            sys.path.insert(0, RAILWAY)
+        import generate_country_table as gct
+        import generate_jurisdiction_table as gjt
+        for label, path in (("country SRC", gct.SRC), ("country OUT", gct.OUT),
+                            ("country SCHEDULE", gct.SCHEDULE),
+                            ("jurisdiction OUT", gjt.OUT)):
+            with self.subTest(path=label):
+                self.assertNotIn("..", str(path).split(os.sep),
+                                 f"{label} carries an unresolved '..' component "
+                                 f"({path}); build it from "
+                                 f"Path(__file__).resolve()")
+                self.assertTrue(os.path.exists(os.path.dirname(str(path))),
+                                f"{label} points at a directory that does not "
+                                f"exist: {path}")
+
+
 class GeneratedPartialsMatchTheSchedule(unittest.TestCase):
     """The committed partials must agree with the committed schedule."""
 
@@ -99,6 +129,16 @@ class GeneratedPartialsMatchTheSchedule(unittest.TestCase):
                                "country-sources-table.php"), encoding="utf-8") as fh:
             html = fh.read()
         expected = gct.scan_cadence_cell()
+        # A degraded helper must not be able to make this test vacuous. When the
+        # generator cannot read the schedule it renders a bare "Active", and if
+        # the committed table ever said the same this would pass while proving
+        # nothing. That is not hypothetical: an unresolved `..` in the
+        # generator's own paths made scan_cadence_cell() return exactly that,
+        # and only the committed table disagreeing caught it.
+        self.assertNotEqual(expected, "Active",
+                            f"the generator could not read the schedule at "
+                            f"{gct.SCHEDULE}; fix the path, do not accept the "
+                            f"degraded cell as the expected value")
         self.assertIn(expected, html)
         # And no row may carry a different one.
         cells = set(re.findall(r"<td>(Active[^<]*)</td>", html))

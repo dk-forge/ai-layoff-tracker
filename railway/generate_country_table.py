@@ -11,9 +11,17 @@ import re
 from collections import OrderedDict
 from pathlib import Path
 
-SRC = Path(__file__).parent / "sources" / "gdelt.py"
-OUT = Path(__file__).parent.parent / "wordpress-plugin" / "ai-layoff-tracker" / "templates" / "partials" / "country-sources-table.php"
-SCHEDULE = Path(__file__).parent.parent / "wordpress-plugin" / "ai-layoff-tracker" / "data" / "ingest-schedule.json"
+# .resolve() is load-bearing, not tidiness. tests/test_country_scope.py imports
+# this module through `os.path.join(HERE, "..")`, so __file__ can arrive as
+# ".../railway/tests/../generate_country_table.py". `..` is a PATH COMPONENT
+# until something resolves it, so an unresolved `.parent.parent` walked to
+# ".../railway/tests" and every path below pointed inside the tests directory.
+# OUT would have written the committed partial there; SCHEDULE silently missed,
+# and _schedule() swallowed it into "no schedule known".
+HERE = Path(__file__).resolve().parent
+SRC = HERE / "sources" / "gdelt.py"
+OUT = HERE.parent / "wordpress-plugin" / "ai-layoff-tracker" / "templates" / "partials" / "country-sources-table.php"
+SCHEDULE = HERE.parent / "wordpress-plugin" / "ai-layoff-tracker" / "data" / "ingest-schedule.json"
 
 
 def _schedule():
