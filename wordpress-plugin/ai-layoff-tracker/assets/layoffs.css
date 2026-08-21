@@ -2769,7 +2769,7 @@ p.alt-next-step-list { padding-left: 0; }
 .alt-gap-none { background: var(--alt-cream-2); color: var(--alt-warn-ink); }
 
 /* Press: table of contents + soundbite group titles */
-.alt-press-toc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 4px; padding: 12px 14px; border: 1px solid var(--alt-grid); border-radius: 10px; background: var(--alt-surface-2); font-size: 14px; }
+.alt-press-toc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 4px; padding: 4px 14px; border: 1px solid var(--alt-grid); border-radius: 10px; background: var(--alt-surface-2); font-size: 14px; }
 .alt-press-toc .alt-toc-label { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; color: var(--alt-muted); }
 .alt-press-toc a { color: var(--op-green, var(--alt-accent)); text-decoration: none; }
 .alt-press-toc a:hover { text-decoration: underline; }
