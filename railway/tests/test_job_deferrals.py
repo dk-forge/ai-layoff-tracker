@@ -101,10 +101,17 @@ class _JobCase(unittest.TestCase):
 
         # Every worker defers into OUR ledger, never the committed one.
         real_defer, real_clear = host_call.defer, host_call.clear
-        host_call.defer = lambda job, reason: real_defer(
-            job, reason, ledger=self.ledger, envelope=self.envelope)
-        host_call.clear = lambda job: real_clear(
-            job, ledger=self.ledger, envelope=self.envelope)
+        # **kw, not a fixed signature: defer() grew a `source` argument so a
+        # deferral CLOSES the running note its job opened (see host_call.defer).
+        # A stub that pins today's parameter list turns tomorrow's argument into
+        # a TypeError inside the worker, which this harness would report as a
+        # plain non-zero exit -- a broken stub wearing the costume of a real
+        # failure.
+        host_call.defer = lambda job, reason, **kw: real_defer(
+            job, reason, **{**kw, "ledger": self.ledger,
+                            "envelope": self.envelope})
+        host_call.clear = lambda job, **kw: real_clear(
+            job, **{**kw, "ledger": self.ledger, "envelope": self.envelope})
         self.addCleanup(lambda: setattr(host_call, "defer", real_defer))
         self.addCleanup(lambda: setattr(host_call, "clear", real_clear))
 

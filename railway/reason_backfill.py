@@ -432,7 +432,7 @@ def main():
     except host_call.Deferred as exc:
         # Raised only from page one of the scan: nothing was read, classified
         # or written, so this is not a degraded collector.
-        return host_call.defer(JOB, str(exc))
+        return host_call.defer(JOB, str(exc), source="reason_backfill")
     except CreditsExhaustedError as exc:
         # BILLING, not code: the LLM provider is out of credits. Record a
         # distinct, actionable state and exit 0 so it does not page as a code

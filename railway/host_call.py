@@ -99,13 +99,31 @@ class Deferred(Exception):
 # The ledger bookkeeping, shared by the CLI and the Python workers.
 # --------------------------------------------------------------------------
 
+DEFERRED_DETAIL = ("deferred: the host did not answer, so nothing was "
+                   "attempted this run")
+
+
 def defer(job: str, reason: str, *, ledger=deferral_ledger.LEDGER,
-          envelope: str = DEFAULT_ENVELOPE) -> int:
+          envelope: str = DEFAULT_ENVELOPE, source: str = "") -> int:
     """Record one deferral and return the process exit code.
 
     0 normally — a host that never answered is not a job that failed — and
     non-zero on the `ESCALATE_AFTER`th in a row, at which point the job is not
     waiting out an outage, it is hiding behind one.
+
+    `source` CLOSES THE RUNNING NOTE, and omitting it strands one. Jobs that
+    open with `require_running_note` have already written `running` to the
+    health ledger by the time they defer, and this path used to exit 0 without
+    ever answering it. That ledger keeps only the LATEST note per source, so the
+    collector sat at `running` — which reads as healthy AND refreshes its own
+    staleness clock — until the next day's run happened to overwrite it. The
+    2026-08-17 enrich-roles deferral (host 503) is exactly that, and it showed
+    up as an unexplained orphan in `run_completion` four days later.
+
+    A deferral is recorded `degraded`, not `ok`: the work did not happen. It is
+    deliberately NOT an ops_status [2] action item, because deferrals already
+    have their own escalation path in [4d], which counts them and goes red on
+    the third in a row. One transient 503 must not raise the same alarm twice.
     """
     doc = deferral_ledger.load(ledger)
     entry = deferral_ledger.record_deferral(doc, job=job, reason=reason,
@@ -115,6 +133,17 @@ def defer(job: str, reason: str, *, ledger=deferral_ledger.LEDGER,
         deferral_ledger.write_envelope(envelope, job=job, state="deferred",
                                        reason=reason, run_url=_run_url(),
                                        key=_run_key())
+    if source:
+        # Local import: source_health imports this module, so a module-level
+        # import here is a cycle. Best-effort by the same rule as every other
+        # health write — a bookkeeping failure must never turn a deferral into
+        # a red run.
+        try:
+            from source_health import report_source_health
+            report_source_health(source, "degraded", 0,
+                                 f"{DEFERRED_DETAIL} ({reason})"[:240])
+        except Exception as exc:                                # pragma: no cover
+            print(f"deferral health note failed for {source} (non-fatal): {exc}")
     streak = entry.get("consecutive", 1)
     _github_output("outcome", "deferred")
     print(f"DEFERRED: {job} could not reach the host ({reason}).")

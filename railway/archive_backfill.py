@@ -402,7 +402,7 @@ def main():
         # Not one candidate was handed out, so nothing was checked and nothing
         # recorded. Health is deliberately NOT marked degraded: the collector
         # is fine, the host did not answer, and the ledger is where that lives.
-        return host_call.defer(JOB, str(exc))
+        return host_call.defer(JOB, str(exc), source="archive_backfill")
     except Exception as exc:
         if not DRY_RUN:
             report_source_health("archive_backfill", "degraded", 0, f"archive backfill failed: {exc}")
