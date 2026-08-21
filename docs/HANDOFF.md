@@ -6,6 +6,41 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-20): 2.20.131, read off main
+  (2.20.130) immediately before merging.** The baton was read as HELD by
+  `local` and is NOT claimed here; only the version number is.
+
+  **THE SOURCES PAGE CLAIMED A GATE THE GOOGLE NEWS COLLECTOR DOES NOT HAVE.**
+  Its row ended "Same trusted-outlet standard", meaning GDELT's 705-domain
+  `TRUSTED_DOMAINS`. `sources/google_news.py` has no domain gate at all and
+  nothing downstream applies one. That is the LARGER news path (150 entries to
+  gdelt's 98 on the last recorded run), so the overstatement covered most of
+  news ingest. The FAQ answer "What sources do you use?" said the same thing
+  more broadly and is corrected with it.
+
+  **THE COLLECTOR WAS NOT GATED, AND THE MEASUREMENT IS WHY.** A shadow run
+  (real queries, real edition rotation, no rows stored, no model called, $0.00)
+  scored 140 items against the allowlist: 23 kept, 117 dropped, 83.6%. The
+  dropped set includes KING5, KOMO, PBS, Georgia Public Broadcasting,
+  HousingWire, 9to5Mac and the Harvard Crimson. Applying it is a coverage
+  decision for the owner, not a copy fix. **Do not apply that gate on the
+  strength of the copy alone.**
+
+  **IF ANYONE DOES TRY IT LATER, THE OBVIOUS IMPLEMENTATION SILENTLY DROPS
+  EVERYTHING.** The stored `source_url` is a `news.google.com` redirect on every
+  row (140 of 140). The outlet's real domain lives in the RSS
+  `<source url="...">` attribute, which `_parse_items` does not read.
+
+  **THIS LOST THE VERSION RACE ONCE:** it claimed 2.20.130 and #196 took it
+  while CI ran. The rebase then auto-merged both bumps to the SAME number
+  with no conflict, which is the exact defect `version-collision.yml`
+  exists for. Re-read and re-bumped to 2.20.131. Never reserve a number.
+
+  Plugin files touched: `templates/page-sources.php`, `ai-layoff-tracker.php`
+  (the one FAQ answer, and version). Rest is TECHLOG and this file.
+  **Next plugin release is 2.20.132. Re-read main immediately before claiming
+  it.**
+
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-20): 2.20.129, read off main
   (2.20.128) immediately before merging.** The baton was read as HELD by
   `local` and is NOT claimed here; only the version number is.

@@ -118,7 +118,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>Google News</b></td><td>Worldwide</td>
-        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. We read <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more). That way we search each market in its own language and its own outlets, not through a US lens. Same trusted-outlet standard. Editions rotate across the twice-daily runs, so we sweep the full set about every six days.</td>
+        <td>Supplements GDELT for recent coverage. Headlines carry the headcount even when the linked article is paywalled, so marquee layoffs are not missed. We read <b>45 national editions</b> (US, UK, DE, FR, JP, BR, IN and more). That way we search each market in its own language and its own outlets, not through a US lens. <b>This path carries no outlet allowlist.</b> Google News returns whichever publication carried the story, so local and trade titles the GDELT allowlist does not name are read here too. Every headline still goes through the same extraction, verification and duplicate checks as every other source. Each entry links back to the report it came from. Editions rotate across the twice-daily runs, so we sweep the full set about every six days.</td>
         <td>Verified (named report)</td>
         <td><a href="https://news.google.com" target="_blank" rel="noopener">Google News &#8599;</a></td>
       </tr>
