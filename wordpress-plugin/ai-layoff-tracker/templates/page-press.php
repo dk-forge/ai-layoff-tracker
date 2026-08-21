@@ -448,7 +448,7 @@ if (!is_array($alt_ps)) {
      different url read as two conflicting datasets (audit 2026-07-28). */ ?>
   <p class="alt-eyebrow">AskTheRecruiter · press &amp; media kit</p>
   <h1>Press kit and soundbites</h1>
-  <p class="alt-lead"><span class="alt-lead-text">Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>
+  <p class="alt-lead"><span class="alt-lead-text">AskTheRecruiter is the open intelligence platform helping workers understand the changing job market and improve their chances of getting hired. Live layoff numbers you can quote, each with a link to the exact rows behind it. Figures update automatically from the tracker's database and are reproducible from the public API.</span></p>
   <?php /* THE JUMP MENU IS THE SECOND THING ON THE PAGE, and it moved up here
            in 2.20.32 for the same reason the tracker grew a press button in
            the same release: the thing a reader came for was below the thing
