@@ -282,17 +282,15 @@ class Reach:
         budget loses the least interesting tail and never the headline.
         """
         t = self.totals()
-        head = (f"q{t['queries']} ans{t['answered']} aband{t['abandoned']} "
-                f"cap{t['capped']} ret{t['returned']} "
-                f"kept{t['kept']} drop{t['dropped']}")
+        # `key=value` with full words, because this string is rendered RAW on
+        # the public health page (assets/health.js) next to rows that already
+        # read `queue=573 checked=40 stated=6`. A terse operator code would be
+        # cheaper in characters and unreadable to the person the page is for.
+        head = (f"returned={t['returned']} queries={t['queries']} "
+                f"answered={t['answered']} abandoned={t['abandoned']} "
+                f"capped={t['capped']} kept={t['kept']} dropped={t['dropped']}")
         by_reason = self.by_reason()
-        # Short, frozen reason keys. Full words are in `summary()`; the health
-        # line is a budget and these are unambiguous against REASONS order.
-        short = {"not_allowlisted": "dom", "duplicate_url": "dup",
-                 "fetch_failed": "fet", "empty_text": "emp",
-                 "already_ingested": "seen", "gate_no": "gate",
-                 "budget_stop": "budg", "not_an_event": "noev"}
-        reasons = " ".join(f"{short[r]}{by_reason[r]}"
+        reasons = " ".join(f"{r}={by_reason[r]}"
                            for r in REASONS if r != "kept" and by_reason.get(r))
         parts = [head]
         if reasons:
@@ -306,7 +304,7 @@ class Reach:
         tail = []
         for cc, reasons_map in ranked:
             total = sum(reasons_map.values())
-            chunk = f"{cc}{reasons_map.get('kept', 0)}/{total}"
+            chunk = f"{cc} {reasons_map.get('kept', 0)}/{total}"
             if len(line) + len("; ") + len(" ".join(tail + [chunk])) > budget:
                 break
             tail.append(chunk)

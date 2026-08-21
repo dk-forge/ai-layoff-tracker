@@ -1113,7 +1113,8 @@ def _print_wrapped(text, width=86, indent="        "):
 # --- [2d] worldwide news reach --------------------------------------------
 
 _REACH_RX = re.compile(
-    r"q(\d+) ans(\d+) aband(\d+) cap(\d+) ret(\d+) kept(\d+) drop(\d+)")
+    r"returned=(\d+) queries=(\d+) answered=(\d+) abandoned=(\d+) "
+    r"capped=(\d+) kept=(\d+) dropped=(\d+)")
 
 
 def gdelt_reach_lines(runs):
@@ -1145,7 +1146,7 @@ def gdelt_reach_lines(runs):
     for r in terminal:
         m = _REACH_RX.search(str(r.get("detail") or ""))
         if m:
-            q, ans, aband, cap, ret, kept, drop = (int(g) for g in m.groups())
+            ret, q, ans, aband, cap, kept, drop = (int(g) for g in m.groups())
             parsed.append({"at": r.get("attempted_at"), "q": q, "ans": ans,
                            "aband": aband, "cap": cap, "ret": ret,
                            "kept": kept, "drop": drop})

@@ -157,13 +157,14 @@ class HealthDetailIsABudget(unittest.TestCase):
     def test_headline_facts_survive_a_tight_budget(self):
         line = self._big().health_detail(budget=80)
         self.assertLessEqual(len(line), 80)
-        for fact in ("q4", "ans3", "aband1", "cap2", "ret512"):
+        for fact in ("returned=512", "queries=4", "answered=3",
+                     "abandoned=1", "capped=2"):
             self.assertIn(fact, line)
 
     def test_worst_dropped_country_is_first_in_the_tail(self):
         line = self._big().health_detail()
         tail = line.split("; ")[-1]
-        self.assertTrue(tail.startswith("aa"), tail)
+        self.assertTrue(tail.startswith("aa "), tail)
 
     def test_the_detail_is_nameless(self):
         gdelt_reach.assert_nameless(self._big().summary())
