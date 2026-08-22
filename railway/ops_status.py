@@ -135,6 +135,25 @@ def _benign_states_only(detail):
     return bool(codes) and all(c in BENIGN_STATES for c in codes)
 
 
+def _is_deferral(detail):
+    """A deferral CLOSES its running note, and must not alarm twice.
+
+    host_call.defer writes a `degraded` row so the collector does not sit at
+    `running` looking healthy. That row is honest -- the work did not happen --
+    but deferrals already have their own escalation in [4d], which counts them
+    and goes red on the third in a row. Treating one transient 503 as an
+    ACTION NEEDED here would raise the same incident on two channels, which is
+    how a channel gets ignored.
+    """
+    try:
+        import host_call
+        marker = host_call.DEFERRED_DETAIL
+    except Exception:                                    # pragma: no cover
+        return False
+    # Prefix, not equality: defer() appends the underlying reason.
+    return str(detail).startswith(marker[:40])
+
+
 def _low_volume_warn(src, detail):
     """A warn_custom_* degraded is benign if it names no high-volume state."""
     if not src.startswith("warn_custom"):
@@ -1289,6 +1308,7 @@ def main():
                 print(f"    STALE     {src}: {age}d old — collector may have STOPPED. -> RUNBOOK 'a data source broke'")
                 issues.append(f"{src} stale")
             elif (status == "degraded" and src not in SOFT
+                  and not _is_deferral(detail)
                   and not _benign_states_only(detail) and not _low_volume_warn(src, detail)):
                 print(f"    DEGRADED  {src}: {str(detail)[:80]} -> RUNBOOK 'a data source broke'")
                 issues.append(f"{src} degraded")
@@ -1441,14 +1461,19 @@ def main():
     # Every surface read green throughout. See railway/run_completion.py.
     print("\n[2e] RUN COMPLETION  (public /source-runs; a start with no finish)")
     try:
-        _cruns = json.load(_get(
-            f"{BASE}/wp-json/layoffs/v1/source-runs?days=14&per_page=500&cb={uuid.uuid4()}"))
-        _cl, _cissue = run_completion.verdict_lines(_cruns.get("runs") or [])
+        def _runs_fetch(params):
+            _q = "&".join(f"{k}={v}" for k, v in params.items())
+            return json.load(_get(
+                f"{BASE}/wp-json/layoffs/v1/source-runs?{_q}&cb={uuid.uuid4()}"))
+        _crows, _cincomplete = run_completion.collect(_runs_fetch)
+        _cl, _cissue = run_completion.verdict_lines(_crows, incomplete=_cincomplete)
         for _line in _cl:
             print(f"    {_line}")
         if _cissue:
             issues.append(_cissue)
-        elif not (_cruns.get("runs") or []):
+        if _cincomplete:
+            unverified.append("collector run completion (page cap)")
+        elif not _crows:
             unverified.append("collector run completion")
     except Exception as exc:
         print(f"    RUN COMPLETION UNKNOWN: {exc}")
