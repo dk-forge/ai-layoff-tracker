@@ -922,10 +922,21 @@ class MovementInvariant:
     label = "No headline moves without rows to explain it"
     reads_live_data = True
 
-    def __init__(self, headlines=HEADLINES, baseline_path=None, incidents_path=None):
+    def __init__(self, headlines=HEADLINES, baseline_path=None, incidents_path=None,
+                 now=None):
+        # `now` mirrors ContainmentInvariant and exists for the same reason its
+        # sibling states: a test that pins a real historical reading must not
+        # rot as the wall clock moves past it. Without this seam the staleness
+        # branch below read datetime.now() unconditionally, so the 2026-08-07
+        # fixture in tests/test_headline_containment.py aged past
+        # MAX_BASELINE_AGE_DAYS at 2026-08-21T18:23:51Z and turned every run on
+        # every branch red from that instant on -- a guard defeated by the
+        # calendar, which is the precise failure this module is written against.
+        # Production passes nothing and still reads the real clock.
         self.headlines = tuple(h for h in headlines if h.watch_movement)
         self.baseline_path = baseline_path or BASELINE_PATH
         self.incidents_path = incidents_path or INCIDENTS_PATH
+        self.now = now
 
     def run(self, ctx):
         base = load_baseline(self.baseline_path)
@@ -1015,7 +1026,7 @@ class MovementInvariant:
                         f"no recorded baseline for this slice ({jobs:,} jobs now) — movement "
                         f"is UNMEASURED until data-integrity.yml records one",
                         observed=observed, pending=True)
-        days = _days_since(prior.get("captured_at"))
+        days = _days_since(prior.get("captured_at"), self.now)
         if days is None:
             return _out(UNKNOWN,
                         f"baseline has no readable capture time: {prior.get('captured_at')!r}",
