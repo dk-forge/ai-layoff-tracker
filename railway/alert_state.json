@@ -51,7 +51,13 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {},
-  "updated_at": "2026-08-23T07:49:54+00:00",
+  "open": {
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1787507389,
+      "last": 1787507389,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,480,991 jobs / 65,105 entries"
+    }
+  },
+  "updated_at": "2026-08-23T17:49:49+00:00",
   "version": 1
 }
