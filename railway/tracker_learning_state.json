@@ -61,7 +61,21 @@
       "date": "2026-08-22",
       "method": "m4",
       "state": "unknown"
+    },
+    {
+      "candidates": 3,
+      "causes": {},
+      "date": "2026-08-23",
+      "dropped": 0,
+      "independent_recall_pct": 100.0,
+      "matched": 3,
+      "method": "m4",
+      "recall_high_pct": 100.0,
+      "recall_low_pct": 43.8,
+      "rules": 0,
+      "unknown": 1,
+      "unmatched": 0
     }
   ],
-  "quiet_runs": 1
+  "quiet_runs": 2
 }
