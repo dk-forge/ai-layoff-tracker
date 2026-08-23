@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "style-standard:main:5fca9a5b5efcb8c2": {
-      "first": 1787384935,
-      "last": 1787384935,
-      "subject": "CI RED: Style standard \u2014 curl: (35) Recv failure: Connection reset by peer"
-    }
-  },
-  "updated_at": "2026-08-22T07:48:56+00:00",
+  "open": {},
+  "updated_at": "2026-08-23T07:49:54+00:00",
   "version": 1
 }
