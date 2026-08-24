@@ -520,16 +520,20 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         self.assertNotIn("These lines cover", country,
                          "the regional column is supposed to sum to the "
                          "worldwide headline exactly")
-        industry = text.split("Which industries")[1].split("2026 YTD")[0]
-        # THE PRINTED LIST IS THREE ROWS NOW, NOT FIVE, so the shortfall this
-        # states is LARGER than it was and the caveat is more of the truth
-        # rather than less: 8,658 covered against 10,519 before, with the two
-        # rows that left the page now counted in the "below the lines shown"
-        # figure instead. That is the point of computing it.
+        # THE SHORTFALL NOTE MOVED TO "Data notes". An editorial review found
+        # the edition read like a methodology note because the build-detail
+        # residuals were interleaved between the tables; they are now collected
+        # once, together, before the methodology. The note itself is unchanged
+        # and still computed from the WHOLE block rather than the printed slice,
+        # so its arithmetic is identical: it is asserted here in its new home.
+        notes = text.split("\nData notes\n")[1].split("\nAbout this snapshot")[0]
         self.assertIn("These lines cover 8,658 of the 13,710 verified job cuts",
-                      industry)
-        self.assertIn("3,985 more sit below the lines shown", industry)
-        self.assertIn("1,067 are on entries with no industry recorded", industry)
+                      notes)
+        self.assertIn("3,985 more sit below the lines shown", notes)
+        self.assertIn("1,067 are on entries with no industry recorded", notes)
+        # AND IT IS NO LONGER WEDGED BETWEEN THE INDUSTRY LINE AND THE YEAR.
+        industry = text.split("Which industries")[1].split("2026 YTD")[0]
+        self.assertNotIn("These lines cover", industry)
 
     def test_the_ranked_lists_are_sorted_by_the_column_they_print(self):
         """The endpoint sorts on the announced-inclusive column and this block
@@ -1509,6 +1513,150 @@ class TheHiringSignalSaysWhereAndLinksToIt(unittest.TestCase):
             self.assertNotIn(bad, out["text"], bad)
             # It still gets our own page rather than losing its link.
             self.assertIn("company=Northwind", out["text"], bad)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class TheDominantEventIsSurfacedUpTop(unittest.TestCase):
+    """WHEN ONE ENTRY IS THE WHOLE STORY, IT LEADS.
+
+    An external editorial review read a week whose worldwide total was ~61% one
+    employer, and essentially all of the AI-attributed cuts that same employer,
+    and found the fact buried below the AI block and two tables. A reader who
+    skims the top left believing AI attribution had surged across many
+    employers. So a dominant entry is now surfaced immediately under the two
+    headline figures, keyed on the data and not hard-coded to any company:
+    either the largest entry is >=40% of the worldwide total that contains it,
+    or a single verified entry is essentially all of the week's AI-attributed
+    verified cuts. Tiers are never mixed: a share is only ever entry over a
+    total that contains the entry.
+    """
+
+    def test_an_ordinary_week_surfaces_no_dominant_line(self):
+        """The default fixture's largest entry is 4,320 of 13,710 verified, 31%,
+        below the floor and not the AI driver. A line that always fires is
+        decoration, so nothing prints."""
+        text = compose(layoff_fixture())["text"]
+        self.assertNotIn("One entry dominated", text)
+
+    def test_an_entry_over_40pc_leads_and_names_its_window_and_share(self):
+        fixture = layoff_fixture()
+        # 9,000 of the 13,710 verified worldwide total is 66%.
+        fixture["layoff"]["leaders"][0]["job_count"] = 9000
+        text = compose(fixture)["text"]
+        line = [l for l in text.splitlines() if l.startswith("One entry dominated")]
+        self.assertTrue(line, "a >40% entry was not surfaced up top")
+        self.assertIn("Applied Aerospace", line[0])
+        self.assertIn("9,000", line[0])
+        self.assertIn("66% of the 13,710 verified job cuts worldwide", line[0])
+        # It names its own window, like every figure-bearing line in the section.
+        self.assertRegex(line[0], YEAR)
+
+    def test_the_dominant_line_sits_under_the_headline_and_above_the_tables(self):
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][0]["job_count"] = 9000
+        lines = compose(fixture)["text"].splitlines()
+        at = [i for i, l in enumerate(lines) if l.startswith("One entry dominated")][0]
+        pair = [i for i, l in enumerate(lines) if l.startswith("  Worldwide:")][0]
+        self.assertGreater(at, pair, "the dominant line is above the headline pair")
+        for heading in ("AI-attributed cuts", "Biggest cuts", "Where the jobs were"):
+            self.assertLess(at, lines.index(heading),
+                            f"the dominant line sits below {heading}, so it is "
+                            f"buried again")
+
+    def test_a_sole_ai_driver_is_surfaced_even_below_the_share_floor(self):
+        """The misread the review actually caught: one verified entry is ALL of
+        the AI-attributed cuts while being a minority of the total. On a tracker
+        named for AI, that is exactly the thing a skimmer must not miss."""
+        fixture = layoff_fixture()
+        # Applied Aerospace, 4,320, is 31% of the total but all of the AI cuts.
+        fixture["layoff"]["leaders"][0]["ai_explicit"] = True
+        fixture["layoff"]["totals"]["ai_verified_jobs"] = 4320
+        fixture["layoff"]["totals"]["ai_verified_entries"] = 1
+        text = compose(fixture)["text"]
+        line = [l for l in text.splitlines() if l.startswith("One entry dominated")]
+        self.assertTrue(line, "the sole AI driver was not surfaced")
+        self.assertIn("account for all of the week's AI-attributed cuts", line[0])
+        self.assertIn("This week's AI attribution came from a single employer",
+                      text)
+
+    def test_the_share_never_mixes_tiers(self):
+        """An ANNOUNCED entry sits outside the verified headline, so its share is
+        taken against the announced-inclusive total and the sentence says so.
+        Comparing it to the verified figure would be the tier-mixing this file
+        exists to prevent."""
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][0]["announced"] = True
+        fixture["layoff"]["leaders"][0]["job_count"] = 9000
+        line = [l for l in compose(fixture)["text"].splitlines()
+                if l.startswith("One entry dominated")][0]
+        self.assertIn("announced job cuts", line)
+        self.assertIn("once announced estimates are included", line)
+        self.assertNotIn("of the 13,710 verified job cuts worldwide", line,
+                         "an announced entry was compared to the verified total")
+
+    def test_the_interpretation_sentence_follows_a_concentrated_week(self):
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][0]["job_count"] = 9000
+        text = compose(fixture)["text"]
+        self.assertIn("one employer's story rather than a broad shift across "
+                      "many", text)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class ThePercentageWaitsUntilItIsLikeForLike(unittest.TestCase):
+    """A CONFIDENT PERCENT ON A WINDOW THAT HAS BARELY SETTLED IS A LAG, NOT A
+    FALL.
+
+    This data revises upward for weeks, and a weekly digest composes one to
+    three days after its window closes while the comparison week has had seven
+    more days to settle. An editorial review flagged a confident "-42%" resting
+    on one day of data. So the NUMBER is withheld until the current window has
+    settled at least a full week; before that the direction is stated and the
+    figure is replaced by a visible "early, not like for like" flag. The
+    maturity sentence quantifies the exact day gap either way.
+
+    Windows are computed relative to today, because the settle age is measured
+    against the day the digest composes.
+    """
+
+    @staticmethod
+    def _with_prior(days_before_today):
+        """A 7-day window whose end is `days_before_today` days ago, with a
+        prior week for the comparison to fire against."""
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        to = today - datetime.timedelta(days=days_before_today)
+        frm = to - datetime.timedelta(days=6)
+        prior_from = frm - datetime.timedelta(days=7)
+        fixture = layoff_fixture(**{"from": frm.isoformat(), "to": to.isoformat()})
+        fixture["prior_from"] = prior_from.isoformat()
+        fixture["prior"] = {
+            "totals": {"jobs": 8000, "announced_jobs": 0},
+            "top_countries": [_tuple("United States", 3000, 3000)]}
+        return fixture
+
+    def test_a_fresh_window_states_the_direction_and_withholds_the_number(self):
+        # Ends yesterday: one day to settle against the prior week's eight.
+        text = compose(self._with_prior(1))["text"]
+        change = [l for l in text.splitlines() if "from Week" in l]
+        self.assertTrue(change, "no comparison was printed at all")
+        for line in change:
+            self.assertIn("(early, not like for like)", line,
+                          "a fresh window published a confident direction")
+            self.assertNotRegex(line, r"\bup \d+%|\bdown \d+%",
+                                "the percentage was published on a window too "
+                                "fresh to compare")
+        self.assertIn("this week has had 1 day to settle against 8 days", text)
+
+    def test_a_settled_window_publishes_the_number(self):
+        # Ends two weeks ago: fourteen days to settle, past the one-week floor.
+        text = compose(self._with_prior(14))["text"]
+        change = [l for l in text.splitlines() if "from Week" in l]
+        self.assertTrue(change)
+        self.assertTrue(any(re.search(r"\b(up|down) \d+% from Week", l)
+                            for l in change),
+                        "a settled window withheld a like-for-like percentage")
+        for line in change:
+            self.assertNotIn("(early, not like for like)", line)
 
 
 if __name__ == "__main__":
