@@ -876,6 +876,14 @@ _MN_SEED_PDFS = [  # verified-live 2026-07-19; CDX discovery adds the rest
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-report-2023_tcm1045-663809.pdf",
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-october-2025_tcm1045-712065.pdf",
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-january_tcm1045-722872.pdf",
+    # 2026 monthly reports the CDX index still lacks (verified-live 2026-08-24):
+    # DEED published them but Wayback has not archived their asset URLs, and the
+    # HTML index that lists them is Radware/ShieldSquare CAPTCHA-walled (we do
+    # not bypass it), so seeding is the only reach. Both parse with the existing
+    # _mn_parse_table (+8 notices dry-run 2026-08-24). Discovered via a search
+    # index of mn.gov/deed/assets, which DOES index these PDFs.
+    "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-february_tcm1045-742362.pdf",
+    "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-april_tcm1045-749441.pdf",
     "https://mn.gov/deed/assets/plant-closing-mass-layoff-warn-2026-june_tcm1045-758364.pdf",
     # keep recent months here until CDX archives them or a JS-render discovery lands
 ]

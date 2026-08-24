@@ -97,6 +97,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="#alt-state-warn">See all <?php echo count($alt_state_urls); ?> &darr;</a></td>
       </tr>
       <tr>
+        <td><b>Minnesota per-company WARN letters</b></td><td>Minnesota</td>
+        <td>Minnesota posts its recent notices as individual employer WARN letters, not in the monthly report table. So we read each letter to recover the employer, date and affected-employee count. We use only a count stated in the letter; a notice without one is left out, never estimated. Every row links its source letter. The monthly report table is still read separately, and a letter is only counted when it is newer than the latest monthly report, so the two cannot double-count.</td>
+        <td>Verified</td>
+        <td><a href="https://mn.gov/deed/programs-services/dislocated-worker-program/reports/" target="_blank" rel="noopener">MN DEED WARN reports &#8599;</a></td>
+      </tr>
+      <tr>
         <td><b>Hawaii WARN notices (OCR)</b></td><td>Hawaii</td>
         <td>Hawaii posts each notice as a scanned image PDF. So we read the scan with OCR, character recognition software, to recover the affected-employee count the state gives in the letter. We use only a clearly stated count. A notice without one, or with a redacted total, is left out, never estimated. Every row links its source PDF.</td>
         <td>Verified</td>
