@@ -233,6 +233,10 @@ TRUSTED_DOMAINS = {
     "reviewjournal.com",          # Las Vegas R-J (hospitality)
     "ibj.com",                    # Indianapolis Business Journal
     "geekwire.com",               # Seattle tech — breaks Amazon/Microsoft cuts early
+    # Added via the discovery-learning loop: a local-business newsroom carried a
+    # Seattle HQ layoff our allowlist did not admit. Family-owned daily (est.
+    # 1895), own editorial staff, covers business/construction/real-estate/legal.
+    "djc.com",                    # United States — Seattle Daily Journal of Commerce (local business daily)
     "marketplace.org",            # APM Marketplace
     "kuow.org",                   # Seattle NPR (Boeing/Amazon/Microsoft)
     "wbur.org",                   # Boston NPR (biotech)

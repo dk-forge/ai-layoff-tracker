@@ -12,7 +12,7 @@ at the allowlist, returned and already seen, or fetched and turned into nothing.
 
 Two explanations have already been checked and were WRONG:
 
-  "the allowlist is too small"  — it holds 705 domains across 117 TLDs, and the
+  "the allowlist is too small"  — it holds 706 domains across 117 TLDs, and the
                                   MENA and Turkish outlets are all in it.
   "there is no such news"       — the owner found five real events in English
                                   from outlets that are already allowlisted.
