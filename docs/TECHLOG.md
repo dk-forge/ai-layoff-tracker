@@ -1,5 +1,80 @@
 # Tech Log
 
+## 2026-08-24 - Minnesota went dark for 53 days because DEED moved recent notices from the monthly report TABLE to per-company LETTERS, and nothing read the letters
+
+**The stall.** `source_freshness` flagged `warn:MN` BROKEN: 53 days with no new
+MN notice, P(0)=1.1e-05 against its own 78.77/yr rate. Every count-based check
+read green because the national WARN total hid one dark state, and MN's own
+count floor was clear: `fetch_mn()` returned 72 rows every run, newest effective
+date 2026-07-01. The floor cannot see a collector re-reading a frozen archive.
+
+**Root cause: DISCOVERY, not parsing.** `fetch_mn` (sources/warn_custom.py)
+reads DEED's MONTHLY report PDFs — structured tables, parsed by `_mn_parse_table`
+into the WARN /bulk path. Discovery is a hand seed list + a Wayback CDX query
+scoped to `mn.gov/deed/assets/plant-closing*`. Both topped out at the June 2026
+report (`_tcm1045-758364`). Two things had happened that the `plant-closing*`
+query could not see:
+  1. DEED published Feb (`742362`) and April (`749441`) 2026 monthly reports that
+     Wayback had not archived and the seed list never carried. Both parse fine
+     with the existing `_mn_parse_table` (verified: +8 rows, 72 -> 80).
+  2. More importantly, mid-2026 DEED began posting each employer's WARN LETTER as
+     its own asset PDF (`/assets/warn-YYYY-<company>_tcm1045-N.pdf`, and the older
+     `YYYY-warn-<company>` shape). Those are FREE TEXT, not tables, so
+     `_mn_parse_table` returns [] and they never entered the pipeline. The
+     post-July-1 notices — Pearson's Candy (Jul 30, 80 jobs), Heliene (Aug 5),
+     UCare (Aug 3), Revol Greens (Aug 5) — all live only as letters.
+
+**The HTML index that lists these is CAPTCHA-walled, live AND in Wayback**
+(Radware/ShieldSquare; the archived snapshot of the index IS the captcha wall).
+We do not bypass it. But two KEYLESS routes reach the letter URLs, and one is
+durable: Wayback CDX indexes them under the `warn-*` / `YYYY-warn*` prefixes —
+the same index `fetch_mn` already queries, just a prefix its `plant-closing*`
+query never covered (verified 2026-08-24: the Aug 5 Heliene letter was already
+in CDX). A search index of `mn.gov/deed/assets` also surfaces them; that is how
+the missing monthly PDFs and the seed letters were found.
+
+**The fix (two parts).**
+  * `_MN_SEED_PDFS` gains the Feb and April 2026 monthly reports (zero-risk
+    backfill through the existing parser, +8 rows).
+  * New `sources/warn_mn_letters.py` — `pull_mn_warn_letters()` discovers the
+    per-company letters (current-year CDX + a fresh-letter seed backstop),
+    fetches each PDF, and returns raw dicts with `raw_text` set for the standard
+    cron gate -> `extract_layoff_data` -> `post_to_wordpress` path (free text, so
+    the LLM extractor, not a brittle regex — Heliene/UCare state their counts in
+    prose a regex misses). Wired into cron.py's source loop as `mn_warn_letters`.
+
+**Why it cannot double-count against the monthly reports.** A letter and its
+monthly-report twin do NOT share a dedup key (db.php's date-gated fuzzy dedup
+covers only news/8K/press_release/erm; WARN rows are exempt), so both would
+count. The collector therefore emits ONLY letters dated after the newest monthly
+report — a cutoff DERIVED from `_MN_SEED_PDFS` (June -> 2026-07-01), so it
+self-adjusts when a session seeds a newer monthly report. Rows carry
+`source_type=warn`, so a news article on the same event is folded in by the
+existing news+WARN reconcile-supersets pass exactly as for every other WARN row.
+Cost is bounded: current-year discovery only, a hard `MAX_LETTERS` cap, and
+cron's `filter_already_seen` (URL dedup) drops any already-ingested letter before
+the LLM call, so steady-state extraction is ~0.
+
+**Dry-run (verify-before-live, no model call, $0).**
+`python3 sources/warn_mn_letters.py --dry-run`: 16 current-year URLs discovered,
+cutoff 2026-07-01, 5 emitted past it — Pearson's Candy (Jul 30), Heliene (Aug 5),
+Revol Greens (Aug 5), UCare (Aug 3), plus one undated fail-safe. The 4 dated ones
+are exactly the post-July-1 notices the stall was missing; Chartwells (Apr 22) is
+correctly dropped below the cutoff. The live `warn:MN` freshness alarm clears
+once the next keyed cron run ingests these.
+
+**The honest going-forward sliver.** There is no keyless, CAPTCHA-free AUTO
+discovery of a letter in the window between DEED publishing it and Wayback
+archiving it. CDX lag is usually short for these, so the gap is small, but a
+genuinely fresh letter can be invisible until CDX catches up or a human hand-seeds
+it. Closing that window fully would need a keyed web-search API — a NEW secret,
+flagged for the owner, NOT added here. `warn:MN`'s freshness threshold was NOT
+touched: the alarm was correct, the collector was stale.
+
+Surfaces: health.js gains a `warn_mn_letters` label; the Sources page gains a
+Minnesota per-company WARN letters row. New `tests/test_warn_mn_letters.py`.
+Plugin bump 2.20.135 -> 2.20.136 (health.js + page-sources.php).
+
 ## 2026-08-21 - the Google News citation was a redirect, and the fix has a robots.txt-shaped ceiling that is now measured instead of assumed
 
 **The defect.** Rows discovered through the Google News RSS path stored the

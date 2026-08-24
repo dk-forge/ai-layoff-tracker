@@ -32,6 +32,7 @@
     warn_quebec: ['Quebec collective-dismissal notices (MESS)', 'Daily check, monthly register', 'Canada', 'Provincial labour-ministry filings'],
     federal_rif: ['US federal RIF separations (OPM EHRI)', 'Monthly', 'United States', 'Official OPM workforce dataset'],
     warn_hi_ocr: ['Hawaii WARN notices (OCR)', 'Daily', 'United States', 'Scanned state notices, OCR-read'],
+    warn_mn_letters: ['Minnesota per-company WARN letters', 'Daily', 'United States', 'State labor-agency notices'],
     warn_mazowieckie: ['Mazowieckie collective dismissals (WUP Warszawa)', 'Daily check, monthly register', 'Poland', 'Official regional labour-office register'],
     source_audit: ['Monthly self-audit (rows re-verified against their sources)', 'Monthly', 'Internal QA', 'Read-only accuracy check'],
     newsapi: ['Retired collector (replaced by Google News RSS)', 'Retired 2026-07-25', 'Worldwide', 'Licensed news API'],

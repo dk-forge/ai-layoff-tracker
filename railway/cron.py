@@ -16,6 +16,7 @@ from sources.local_news import pull_local_news
 from sources.regional_feeds import pull_regional_feeds
 from sources.national_feeds import pull_national_feeds
 from sources.press_releases import pull_press_releases, reviewed_feed_count
+from sources.warn_mn_letters import pull_mn_warn_letters
 import extractor
 import gdelt_reach
 from extractor import extract_layoff_data, spend_deferral_count
@@ -313,6 +314,15 @@ def run():
         # carries the headcount even for paywalled marquee layoffs. Code kept in
         # sources/newsapi.py + the branch below, re-enablable by restoring this row.
         ("press_releases", pull_press_releases),
+        # Minnesota DEED per-company WARN LETTER PDFs. DEED shifted recent
+        # notices from the monthly report tables (fetch_mn -> /bulk) to
+        # individual free-text letters, which _mn_parse_table cannot read; they
+        # went unread for 53 days (MN freshness stall, 2026-08-24) while every
+        # count-based check stayed green. Free text, so they ride the standard
+        # gate -> extract -> post path here. The collector emits only letters
+        # dated after the newest monthly report, so a letter and its monthly-
+        # report twin cannot both be counted (see sources/warn_mn_letters.py).
+        ("mn_warn_letters", pull_mn_warn_letters),
     ):
         try:
             report_source_health(source, "running", 0, "collection in progress")

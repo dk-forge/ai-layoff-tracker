@@ -6,6 +6,23 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-08-24): 2.20.136 — Minnesota WARN letters recovered.**
+  The baton was read as FREE on origin/main (the 2026-08-12 `local` hold was
+  owner-confirmed stale and released in `d7501cd`); this session took it to make
+  the fix. MN had gone 53 days dark because DEED moved recent notices from the
+  monthly report TABLE to per-company LETTER PDFs that `_mn_parse_table` cannot
+  read. New `railway/sources/warn_mn_letters.py` discovers the letters (CDX +
+  seed, no CAPTCHA bypass) and feeds them through the cron LLM-extract path;
+  `_MN_SEED_PDFS` gains the Feb/April 2026 monthly reports. Plugin files touched:
+  `assets/health.js` (`warn_mn_letters` label) and
+  `templates/page-sources.php` (a Minnesota letters row), plus
+  `ai-layoff-tracker.php` (version only). Rest is `railway/cron.py`,
+  `railway/sources/warn_custom.py`, `railway/tests/test_warn_mn_letters.py` and
+  TECHLOG. **Re-read main immediately before merging and take the next patch
+  after it if this lost a race.** The live `warn:MN` freshness alarm clears once
+  the next keyed cron run ingests the letters. Full write-up in TECHLOG
+  2026-08-24.
+
 - **NO VERSION CONSUMED BY A SIDE SESSION (2026-08-21): the Google News
   citation is resolved offline, and its ceiling is robots.txt.** The baton was
   read as HELD by `local` and is NOT claimed here. **No plugin file was touched
