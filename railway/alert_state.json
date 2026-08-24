@@ -52,17 +52,12 @@
     }
   ],
   "open": {
-    "live-data-integrity-check:main:aa0eaf87db8c4614": {
-      "first": 1787507389,
-      "last": 1787507389,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,480,991 jobs / 65,105 entries"
-    },
     "tests:main:7a3940d9a0bada5e": {
       "first": 1787591173,
       "last": 1787591173,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['warn:MN'] != []"
     }
   },
-  "updated_at": "2026-08-24T17:06:14+00:00",
+  "updated_at": "2026-08-24T18:00:03+00:00",
   "version": 1
 }
