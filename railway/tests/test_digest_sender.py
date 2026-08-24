@@ -599,9 +599,17 @@ class TheDeployMaintenanceWindow(unittest.TestCase):
 class RunWiring(unittest.TestCase):
     def test_a_dry_run_never_claims_a_send(self):
         """A dry run that recorded a delivery would make the next real run skip
-        every person it merely printed."""
+        every person it merely printed.
+
+        DIGEST_FREQ is pinned so exactly one tier runs on any day of the week.
+        Left on `auto`, this read the ambient calendar and on a Monday
+        resolve_freqs runs BOTH tiers, so `digest-recipients` is read once per
+        tier (two reads, neither a send) and the old exact-list assertion went
+        red every Monday. Reading the list per tier is not claiming a send; the
+        actual invariant is that a dry run never calls `digest-complete`, which
+        is asserted explicitly below."""
         env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k",
-               "DIGEST_DRY_RUN": "1"}
+               "DIGEST_DRY_RUN": "1", "DIGEST_FREQ": "daily"}
         buf = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(digest_send, "_call") as call, \
@@ -609,7 +617,10 @@ class RunWiring(unittest.TestCase):
                 mock.patch("sys.stdout", buf):
             call.return_value = _payload()
             digest_send.main()
-        self.assertEqual([c.args[0] for c in call.call_args_list], ["digest-recipients"])
+        routes = [c.args[0] for c in call.call_args_list]
+        self.assertEqual(routes, ["digest-recipients"])
+        self.assertNotIn("digest-complete", routes,
+                         "a dry run must never record a send")
         self.assertIn("would send 1 of 1", buf.getvalue())
 
     def test_a_real_send_records_ids_and_never_addresses(self):
