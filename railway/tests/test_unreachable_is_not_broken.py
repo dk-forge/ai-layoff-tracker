@@ -232,5 +232,77 @@ class LouisianaUnreachableTests(unittest.TestCase):
             "OH=61 (floor 787)")
 
 
+# ---------------------------------------------------------------------------
+# 4. Colorado: a Google-export rate-limit is UNREACHABLE, not a collapsed state.
+# ---------------------------------------------------------------------------
+class ColoradoUnreachableTests(unittest.TestCase):
+    """CDLE publishes the year as Google Sheets workbooks, and Google rate-limits
+    a CI runner's IP with a 403/429 HTML body. When every workbook is refused
+    that way `fetch_co` used to return 0 rows silently, which the per-state floor
+    read as `CO=0 (floor 39) — likely site drift` and sent a human to a parser
+    that reads the full year from any un-blocked address. A refusal is UNREACHABLE;
+    only a workbook that answered 200 with a real xlsx counts as read."""
+
+    @staticmethod
+    def _empty_xlsx():
+        """A real, openable workbook with a WARN sheet but no data rows — the
+        source answering coherently with nothing, which is not an outage. Starts
+        with the PK magic so it also passes the reachability gate."""
+        import io
+        from openpyxl import Workbook
+        wb = Workbook()
+        wb.active.title = "2026 WARN"
+        buf = io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    def setUp(self):
+        wc.SOURCE_UNREACHABLE.clear()
+
+    def test_a_refused_export_is_recorded_as_unreachable(self):
+        """Every workbook comes back as a 403 HTML body — the datacentre block.
+        CO must be flagged UNREACHABLE, not silently returned as zero rows."""
+        def get(url, **kw):
+            if "export?format=xlsx" in url:
+                return _Resp(403, b"<html>Sorry, too many requests</html>")
+            return _Resp(200, b"<html>no ids here</html>")  # landing, no IDs
+
+        out = wc.fetch_co(get=get)
+        self.assertEqual(out, [])
+        self.assertIn("CO", wc.SOURCE_UNREACHABLE)
+        self.assertIn("UNREAD", wc.SOURCE_UNREACHABLE["CO"])
+
+    def test_a_429_throttle_is_also_unreachable(self):
+        def get(url, **kw):
+            if "export?format=xlsx" in url:
+                return _Resp(429, b"<html>rate limited</html>")
+            return _Resp(200, b"")
+        wc.fetch_co(get=get)
+        self.assertIn("CO", wc.SOURCE_UNREACHABLE)
+
+    def test_a_reachable_but_empty_workbook_is_NOT_unreachable(self):
+        """The half that must NOT be softened: a 200 with a genuine (if empty)
+        xlsx is the source answering coherently. Zero rows there is a real state
+        of the data, our finding to make — never laundered into 'the net was
+        down'."""
+        book = self._empty_xlsx()
+        def get(url, **kw):
+            if "export?format=xlsx" in url:
+                return _Resp(200, book)
+            return _Resp(200, b"")
+        wc.fetch_co(get=get)
+        self.assertNotIn("CO", wc.SOURCE_UNREACHABLE)
+
+    def test_the_drift_message_separates_co_unreachable_from_site_drift(self):
+        import warn_import as wi
+        drift = wi.describe_state_drift(
+            ["CO", "OH"], {"CO": 0, "OH": 61},
+            {"CO": 39.0, "OH": 787.0},
+            unreachable={"CO": "Google Sheets export refused this runner"})
+        self.assertIn("CO", drift)
+        self.assertIn("Google Sheets", drift)
+        self.assertIn("OH=61", drift)
+
+
 if __name__ == "__main__":
     unittest.main()

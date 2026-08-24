@@ -318,31 +318,62 @@ def fetch_mi():
     return out
 
 
-def fetch_co():
-    """Colorado CDLE: per-year Google Sheets workbooks linked from the landing page."""
+def fetch_co(get=None):
+    """Colorado CDLE: per-year Google Sheets workbooks linked from the landing page.
+
+    Two things can go dark here, and only ONE of them is our parser's fault, so
+    they must not be reported the same way. The CDLE landing page is now behind a
+    bot wall (bare HTTP 403), so live workbook-ID discovery is dead and we lean on
+    the pinned fallback IDs; that alone is survivable while 2026's workbook stays
+    current. But the Google export endpoint also rate-limits a CI runner's IP with
+    a 403/429 HTML body — and when every workbook is refused that way, this used
+    to return 0 rows silently, which the per-state floor read as "site drift" and
+    blamed on the scraper. It is not drift; it is UNREACHABLE, exactly the LA
+    distinction. So a workbook only counts as READ when the export answered 200
+    with an actual xlsx; if NONE could be read, we record SOURCE_UNREACHABLE["CO"]
+    and let the caller say so out loud instead of manufacturing a drift alarm on a
+    scraper that is fine (it returns the full year from any un-blocked IP).
+    """
     from openpyxl import load_workbook
+    do_get = get or (lambda u, **kw: requests.get(u, **kw))
     landing = "https://cdle.colorado.gov/employers/layoff-separations/layoff-warn-list"
     ids = []
     try:
-        page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
-        ids = list(dict.fromkeys(re.findall(r"docs\.google\.com/spreadsheets/d/([A-Za-z0-9_-]{20,})", page)))
+        resp = do_get(landing, headers=UA, timeout=TIMEOUT)
+        if resp.status_code == 200:
+            ids = list(dict.fromkeys(re.findall(r"docs\.google\.com/spreadsheets/d/([A-Za-z0-9_-]{20,})", resp.text)))
+        else:
+            print(f"CO landing returned HTTP {resp.status_code} (bot wall) — using pinned workbook IDs")
     except Exception as e:
-        print(f"CO landing fetch failed: {e}")
+        print(f"CO landing fetch failed: {e} — using pinned workbook IDs")
     # known workbooks (2026 current + 2025 archive) as fallback
     for known in ("19jmo4Cwj933cmSBKV1t0zZ5O-2H5IpiLIhSH9MF8WF0",
                   "1aFv4ntRhjnTMFKqBnuzbIkExCWgp6vnblYGm_h9GUeI"):
         if known not in ids:
             ids.append(known)
     out = []
+    workbooks_read = 0        # exports that answered 200 with a real xlsx
+    workbooks_blocked = 0     # transport error, non-200, or a non-xlsx body
     for sid in ids[:6]:
         try:
-            xls = requests.get(
+            xls = do_get(
                 f"https://docs.google.com/spreadsheets/d/{sid}/export?format=xlsx",
                 headers=UA, timeout=60)
+            # A 403/429 rate-limit or an interstitial comes back as an HTML body,
+            # not a zip. Only a 200 whose payload actually starts with the xlsx/zip
+            # magic is a workbook we truly read; anything else is a refusal, and a
+            # refusal must be counted as UNREACHABLE, never parsed as zero rows.
+            if xls.status_code != 200 or xls.content[:2] != b"PK":
+                workbooks_blocked += 1
+                print(f"CO workbook {sid[:8]} blocked: HTTP {xls.status_code}, "
+                      f"{len(xls.content)} bytes (not xlsx) — UNREACHABLE, not empty")
+                continue
             wb = load_workbook(io.BytesIO(xls.content), read_only=True, data_only=True)
         except Exception as e:
-            print(f"CO workbook {sid[:8]} failed: {e}")
+            workbooks_blocked += 1
+            print(f"CO workbook {sid[:8]} failed: {e} — UNREACHABLE, not empty")
             continue
+        workbooks_read += 1
         for ws in wb.worksheets:
             if "warn" not in ws.title.lower() or "archiv" in ws.title.lower():
                 continue
@@ -363,6 +394,16 @@ def fetch_co():
                 e = _entry("CO", company, jobs, date)
                 if e:
                     out.append(e)
+    # Distinguish UNREACHABLE from empty: if not one workbook could be read (every
+    # export refused this runner) then a 0 here is a block, not a vanished state,
+    # and the floor check must not blame the scraper for drift it did not commit.
+    if workbooks_read == 0 and workbooks_blocked:
+        SOURCE_UNREACHABLE["CO"] = (
+            f"Google Sheets export refused this runner for all "
+            f"{workbooks_blocked} workbook(s) (403/429 or non-xlsx body); "
+            f"CO is UNREAD this run, not empty — the scraper reads the full "
+            f"year from any un-blocked IP")
+        print(f"::warning:: CO is UNREACHABLE this run: {SOURCE_UNREACHABLE['CO']}")
     return out
 
 
