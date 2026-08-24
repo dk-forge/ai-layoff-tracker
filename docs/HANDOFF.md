@@ -809,8 +809,8 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** local
+- **STATUS:** FREE
+- **HOLDER:** -
 - **SINCE:** 2026-08-12
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the two non-US
   collective-dismissal registers, landing as **2.20.94**, with a page-cache flush as **2.20.95**
