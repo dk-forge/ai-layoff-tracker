@@ -3724,6 +3724,125 @@ function alt_digest_layoff_basis($for) {
     return isset($basis[$for]) ? $basis[$for] : '';
 }
 
+/**
+ * THE ONE ENTRY THAT IS THE WHOLE STORY, when there is one.
+ *
+ * WHAT THIS ANSWERS. An external editorial review read a week whose worldwide
+ * total was ~61% one employer, and essentially all of the AI-attributed cuts
+ * that same one employer, and found that fact buried below the AI block, the
+ * source split and two tables. A reader who skims the top of the edition
+ * leaves believing AI attribution surged across many employers, when it was a
+ * single event. So when one entry dominates, it is surfaced immediately under
+ * the two headline figures, in one plain sentence, keyed on the data and not
+ * hard-coded to any company.
+ *
+ * TWO TRIGGERS, EITHER SUFFICES:
+ *   - the largest single entry is >= SHARE_FLOOR of the worldwide total that
+ *     CONTAINS it (a "concentrated" week); OR
+ *   - a single verified entry accounts for essentially all of the week's
+ *     AI-attributed verified cuts (the sole AI-attribution driver), which is
+ *     the misread the review actually caught.
+ *
+ * TIER IS NEVER MIXED. A verified entry's share is taken against the verified
+ * worldwide total the headline shows; an announced entry sits OUTSIDE that
+ * total, so its share is taken against the announced-inclusive one, and the
+ * sentence names which denominator it used. A share is only ever
+ * entry / (a total that contains the entry).
+ *
+ * RETURNS array('event' => <sentence or ''>, 'interpretation' => <sentence or
+ * ''>, 'concentrated' => bool). Both sentences are '' when no entry dominates,
+ * because a line that always fires is decoration - the same discipline
+ * alt_digest_composition_note() follows. The event sentence names the window,
+ * so a line lifted out on its own still says what it covers.
+ */
+function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
+                                   $ai_verified_jobs, $range) {
+    $empty = array('event' => '', 'interpretation' => '', 'concentrated' => false);
+    $leaders = is_array($leaders) ? $leaders : array();
+    // The single largest entry by job count. db.php orders leaders by
+    // job_count DESC, but the maximum is taken defensively rather than trusting
+    // position, because a share is too load-bearing to rest on an ordering.
+    $top = null;
+    foreach ($leaders as $l) {
+        $l = (array) $l;
+        $jobs = (int) ($l['job_count'] ?? 0);
+        if ($jobs <= 0) continue;
+        if ($top === null || $jobs > (int) $top['job_count']) $top = $l;
+    }
+    if ($top === null) return $empty;
+    $jobs = (int) $top['job_count'];
+    $company = trim((string) ($top['company_name'] ?? ''));
+    if ($company === '' || $range === '') return $empty;
+
+    $tier_known = array_key_exists('announced', $top);
+    $announced = !empty($top['announced']);
+    $ai = !empty($top['ai_explicit']);
+
+    if ($tier_known && $announced) {
+        $denom = (int) $all_jobs;
+        $denom_label = 'the ' . alt_digest_number($all_jobs)
+                     . ' job cuts worldwide once announced estimates are included';
+        $tier_word = 'announced ';
+    } else {
+        $denom = (int) $ver_jobs;
+        $denom_label = 'the ' . alt_digest_number($ver_jobs)
+                     . ' verified job cuts worldwide';
+        $tier_word = $tier_known ? 'verified ' : '';
+    }
+    if ($denom <= 0) return $empty;
+
+    $share = 100.0 * $jobs / $denom;
+    $SHARE_FLOOR = 40.0;
+    $concentrated = ($share >= $SHARE_FLOOR);
+
+    // THE AI-ATTRIBUTION DRIVER. A single verified, employer-attributed entry
+    // that is essentially all of the week's AI-attributed verified cuts. The
+    // 0.80 floor lets one entry among a few small others still count as "the
+    // driver" without claiming to be the whole of it; the wording below says
+    // "all" only when it literally is.
+    $ai_driver = ($ai && !$announced && (int) $ai_verified_jobs > 0
+                  && $jobs >= 0.80 * (int) $ai_verified_jobs);
+
+    if (!$concentrated && !$ai_driver) return $empty;
+
+    $place = alt_digest_place($top['state'] ?? '', $top['country'] ?? '',
+                              $top['location'] ?? '');
+    $where = ($place !== '') ? (' in ' . $place) : '';
+    // A whole-number percent: above the 40% floor there is no sub-1% case the
+    // decimal branch elsewhere guards, so this reads as a share and not a
+    // measurement pretending to precision it does not have.
+    $pct = (string) round($share) . '%';
+
+    // The window leads the sentence so the whole line carries a year, which is
+    // the property every figure-bearing line in this section holds.
+    $event = 'One entry dominated ' . $range . ': ' . $company . '\'s '
+           . alt_digest_number($jobs) . ' ' . $tier_word . 'job cuts' . $where
+           . ' were ' . $pct . ' of ' . $denom_label;
+    if ($ai_driver) {
+        $all_or_most = ($jobs >= (int) $ai_verified_jobs) ? 'all' : 'most';
+        $event .= ', and account for ' . $all_or_most
+                . ' of the week\'s AI-attributed cuts';
+    }
+    $event .= '.';
+
+    // ONE DERIVED SENTENCE OF INTERPRETATION, and it is derived, never a guess.
+    // What changed this week beyond the numbers: whether the total is one
+    // employer's decision or a broad shift. Three cases, each read off the same
+    // two facts the event line used.
+    if ($concentrated) {
+        $interp = 'This week the worldwide total is one employer\'s story '
+                . 'rather than a broad shift across many.';
+    } elseif ($ai_driver) {
+        $interp = 'This week\'s AI attribution came from a single employer, '
+                . 'not a broad shift across many.';
+    } else {
+        $interp = '';
+    }
+
+    return array('event' => $event, 'interpretation' => $interp,
+                 'concentrated' => $concentrated);
+}
+
 function alt_digest_talent_url($from, $to, $filters = array()) {
     $base = home_url('/talent-intelligence-tracker/');
     $from = substr(trim((string) $from), 0, 10);
@@ -4168,6 +4287,40 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         }
     }
     /*
+      IS THE PERCENTAGE LIKE FOR LIKE YET. This data revises UPWARD for weeks:
+      filings and WARN notices arrive after the event, so the newest window is
+      always the least complete one we hold. A weekly digest composes one to
+      three days after its window closes, and the comparison week has had seven
+      more days to settle by construction. Publishing a confident "-42%" that
+      rests on a window with barely any days to settle turns a collection lag
+      into a fall that never happened - exactly the misread an editorial review
+      flagged.
+
+      So the NUMBER is withheld until the current window has settled at least a
+      full week, which is the earliest most of its late arrivals are in. Before
+      that the DIRECTION is still stated (it is the sign of a real difference)
+      but the number is replaced by a visible "early, not like for like" flag,
+      and the maturity sentence lower down quantifies the exact day gap either
+      way. This is deliberately conservative: on the intended Monday send the
+      current window has settled two or three days against the prior week's
+      nine or ten, which is not comparable, and the reader is told so rather
+      than handed a precise-looking figure.
+
+      $settle_days is the current window's own age, computed from its end date
+      against the day the digest composes. A run forced on another day says
+      whatever is true that day. It is read once here so the change phrase and
+      the maturity note cannot disagree about it.
+    */
+    $PCT_MIN_SETTLE_DAYS = 7;
+    $settle_days = null;
+    $now_ts = strtotime(gmdate('Y-m-d') . ' 00:00:00 UTC');
+    $end_ts = strtotime($to . ' 00:00:00 UTC');
+    if ($now_ts !== false && $end_ts !== false) {
+        $settle_days = (int) floor(($now_ts - $end_ts) / DAY_IN_SECONDS);
+    }
+    $pct_like_for_like = ($settle_days !== null && $settle_days >= $PCT_MIN_SETTLE_DAYS);
+
+    /*
       THE DIRECTION IN WORDS AND IN A GLYPH, and the words work without it.
 
       $with_glyph is false for the LEAD, because a triangle inside a sentence
@@ -4178,7 +4331,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       glyph is redundant on purpose, so nothing is lost when a client, a
       reader or a text part drops it.
     */
-    $change_phrase = function ($now, $before, $with_glyph = true) use ($prior_label) {
+    $change_phrase = function ($now, $before, $with_glyph = true)
+            use ($prior_label, $pct_like_for_like) {
         if ($before === null) return '';
         $c = alt_digest_change($now, $before);
         if ($c === null) return '';
@@ -4186,9 +4340,20 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         // "from Week 32", matching the lead word for word. The lead and the
         // figure block state the same comparison and must not spell it two ways.
         $on = ($prior_label === '') ? 'the week before' : ('from ' . $prior_label);
-        $words = ($word === 'level with')
-            ? 'level with ' . $on
-            : $word . ($pct === '' ? '' : ' ' . $pct) . ' ' . $on;
+        if ($word === 'level with') {
+            $words = 'level with ' . $on;
+        } elseif ($pct === '') {
+            // No base to take a percentage of (the prior window was zero).
+            // State the direction without a number, and without the settling
+            // flag: this is about an absent denominator, not about maturity.
+            $words = $word . ' ' . $on;
+        } elseif (!$pct_like_for_like) {
+            // The number would rest on a window too fresh to compare. State
+            // the direction and flag it, never the figure. See the note above.
+            $words = $word . ' ' . $on . ' (early, not like for like)';
+        } else {
+            $words = $word . ' ' . $pct . ' ' . $on;
+        }
         return $with_glyph ? ($glyph . ' ' . $words) : $words;
     };
 
@@ -4330,6 +4495,23 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
           . implode(' ', $lead) . "\n";
 
     /*
+      THE DENSE RECONCILIATION IS GATHERED, NOT SCATTERED.  (editorial trim)
+
+      An editorial review found the edition read like a methodology note: the
+      residual arithmetic that tells a reader how a figure was built - which
+      rows link to a page, how much of the classified total the printed lines
+      cover - was interleaved between the tables it qualifies, so the body was a
+      third longer than the story needed. Those notes are collected here as they
+      are computed and printed once, together, in a "Data notes" section just
+      before the methodology, so the tables stay skimmable and nothing a caveat
+      carried is lost. What STAYS beside its figure is the caveat a reader is
+      doing arithmetic against as they read it: the provisional/like-for-like
+      note and the missing-country sum under the two headlines. Only the
+      build-detail residue moves.
+    */
+    $data_notes = array();
+
+    /*
       THE TWO HEADLINES. See alt_digest_stat_pair for why they are one table
       and for the property the caller has to keep. The scope line under them
       states, ONCE and for both, the four things a figure has to carry: the
@@ -4422,14 +4604,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     $maturity = 'Filings and notices keep arriving, so this window is '
               . 'provisional: it usually rises, and a correction can lower it.';
-    if ($prior_all !== null) {
-        $settled = (int) floor((strtotime(gmdate('Y-m-d') . ' 00:00:00 UTC')
-                                - strtotime($to . ' 00:00:00 UTC')) / DAY_IN_SECONDS);
-        if ($settled >= 0) {
-            $maturity .= ' The comparison is not yet like for like: this week has had '
-                      . alt_digest_count($settled, 'day') . ' to settle against '
-                      . alt_digest_count($settled + 7, 'day') . ' for the week before it.';
-        }
+    // Reuses $settle_days computed above, so the day gap the maturity note
+    // states and the like-for-like gate on the percentage cannot disagree.
+    if ($prior_all !== null && $settle_days !== null && $settle_days >= 0) {
+        $maturity .= ' The comparison is not yet like for like: this week has had '
+                  . alt_digest_count($settle_days, 'day') . ' to settle against '
+                  . alt_digest_count($settle_days + 7, 'day') . ' for the week before it.';
     }
     /*
       TWO PARAGRAPHS, AND THIS REVERSES A NOTE THIS FILE USED TO HOLD.
@@ -4446,6 +4626,34 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     $html .= $pair_html
            . '<p data-alt="scope">' . esc_html($scope) . '</p>';
     $text .= "\n" . $pair_text . $scope . "\n";
+
+    /*
+      WHAT HAPPENED, IN ONE LINE, WHEN ONE ENTRY IS THE WHOLE STORY.
+
+      An editorial review read a week that was ~61% one employer, and
+      essentially all of the AI-attributed cuts that same employer, and found
+      the fact buried below the AI block and two tables. A reader who skims the
+      top left believing AI attribution had surged across many employers. So a
+      dominant entry is surfaced HERE, immediately under the two headline
+      figures, as one plain sentence, followed by one derived sentence of what
+      that means for the week. Both are keyed on the data: on a week with no
+      dominant entry alt_digest_dominant_event returns empty and nothing prints,
+      because a line that always fires is decoration. See that function for the
+      >=40% and sole-AI-driver triggers and for why the tiers are never mixed.
+    */
+    $dominant = alt_digest_dominant_event(
+        $data['leaders'] ?? null, $ver_jobs, $all_jobs,
+        (int) ($totals['ai_verified_jobs'] ?? 0), $range);
+    if ($dominant['event'] !== '') {
+        $html .= '<p data-alt="finding">' . esc_html($dominant['event']) . '</p>';
+        $text .= $dominant['event'] . "\n";
+    }
+    if ($dominant['interpretation'] !== '') {
+        $html .= '<p data-alt="standfirst">'
+               . esc_html($dominant['interpretation']) . '</p>';
+        $text .= $dominant['interpretation'] . "\n";
+    }
+
     if ($maturity !== '') {
         $html .= '<p data-alt="note">' . esc_html($maturity) . '</p>';
         $text .= $maturity . "\n";
@@ -5048,9 +5256,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
               it. Restore both only if the link stops reconciling.
             */
             if ($basis) {
-                $line = implode(' ', $basis);
-                $html .= '<p data-alt="note">' . esc_html($line) . '</p>';
-                $text .= $line . "\n";
+                // MOVED TO "Data notes". This is build detail - which rows have
+                // an entry page and why the rest do not - not a caveat a reader
+                // does arithmetic against while reading the table. It is
+                // collected and printed once with the other residuals.
+                $data_notes[] = implode(' ', $basis);
             }
         }
     }
@@ -5285,11 +5495,15 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
             $html .= '<p data-alt="finding">' . esc_html($tech) . '</p>';
             $text .= $tech . "\n";
         }
+        // MOVED TO "Data notes". The unclassified-industry residual is the same
+        // build-detail class as the entry-page basis above: it says how much of
+        // the headline the three printed rows cover. It is still computed here,
+        // from the whole block rather than the printed slice, so its arithmetic
+        // is unchanged; only where it prints moved.
         $note = alt_digest_reconcile_note($shown, $ind_covered, $ver_jobs, 'job cut',
                                           'no industry recorded', $span);
         if ($note !== '') {
-            $html .= '<p data-alt="note">' . esc_html($note) . '</p>';
-            $text .= $note . "\n";
+            $data_notes[] = $note;
         }
     }
 
@@ -5478,6 +5692,25 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       the point: a section that disappears on a quiet day makes the edition
       unskimmable, and the reader who learned where to look has to learn again.
     */
+    /*
+      DATA NOTES: the residual arithmetic, once, together, ahead of the
+      methodology. See the $data_notes docblock near the top for why these were
+      pulled out of the tables they sit between. The section is OMITTED when
+      there is nothing to reconcile - unlike the fixed methodology blocks below
+      it, a "Data notes" heading over no notes is a heading about nothing. Each
+      note already names its own window, so a note lifted out still says what it
+      covers. It sits before "About this snapshot" because it is about the
+      figures, and the snapshot and citation are about the reading of them.
+    */
+    if ($data_notes) {
+        $html .= '<h3>Data notes</h3>';
+        $text .= "\nData notes\n";
+        foreach ($data_notes as $dn) {
+            $html .= '<p data-alt="note">' . esc_html($dn) . '</p>';
+            $text .= $dn . "\n";
+        }
+    }
+
     if ($snapshot !== '') {
         $html .= '<h3>About this snapshot</h3>'
                . '<p data-alt="note">' . esc_html($snapshot) . '</p>';
