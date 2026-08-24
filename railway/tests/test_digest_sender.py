@@ -600,12 +600,15 @@ class RunWiring(unittest.TestCase):
     def test_a_dry_run_never_claims_a_send(self):
         """A dry run that recorded a delivery would make the next real run skip
         every person it merely printed."""
+        import datetime
         env = {"WP_SITE_URL": "https://x.test/blog", "WP_API_KEY": "k",
                "DIGEST_DRY_RUN": "1"}
         buf = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(digest_send, "_call") as call, \
                 mock.patch.object(digest_send, "_record_health"), \
+                mock.patch.object(digest_send, "_today",
+                                  return_value=datetime.date(2026, 8, 18)), \
                 mock.patch("sys.stdout", buf):
             call.return_value = _payload()
             digest_send.main()
