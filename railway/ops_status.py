@@ -744,36 +744,45 @@ def _report_run_cost():
                 # written before ceiling_usd existed have no such record, so
                 # they fall back to the named ceiling — the old behaviour, and
                 # the reason the message says which basis it used.
-                worst, basis, recorded = None, ceiling, False
+                worst, basis = None, None
                 for e in entries:
                     cost = float(e.get("cost_usd") or 0)
                     own = e.get("ceiling_usd")
-                    ran_under = float(own) if own is not None else ceiling
-                    if ran_under is None:
-                        # Neither a named ceiling nor a recorded one, so this
-                        # run cannot be judged against anything. Skipping it in
-                        # silence is the absence of a signal being read as a
-                        # pass — the exact thing CLAUDE.md forbids. Collect it
-                        # and say so below. railway-cron lived here: it keeps
-                        # the global RUN_CEILING_USD default (no named ceiling)
-                        # and the Railway round trip dropped the recorded one,
-                        # so the biggest metered job in this table was never
-                        # once compared to a limit.
+                    # Judge a run ONLY against the ceiling it RECORDED running
+                    # under — never against the table's CURRENT named number
+                    # when the run recorded none of its own. An unrecorded
+                    # entry cannot be proven to have overshot: it may have run
+                    # under an operator's authorised one-off override (
+                    # edgar-history-sweep offers a per-dispatch run_ceiling_usd
+                    # input on purpose — the $0.2721 run on 2026-08-12 ran under
+                    # an authorised $0.40, not the named $0.150), or it may
+                    # simply predate ceiling recording (added 2026-08-14). Either
+                    # way, asserting a brake failure on it is a false alarm in
+                    # the one place that must only ever report real ones, and a
+                    # false ACTION item is exactly how a real overshoot later
+                    # goes unread. Unrecorded is UNKNOWN — collected and PRINTED
+                    # below, never silent, never an ACTION. Since 2026-08-14
+                    # every run records its ceiling (pinned by
+                    # tests/test_spend_ceiling_is_recorded.py), so an unrecorded
+                    # entry is a pre-fix relic that ages out of the window on its
+                    # own. This subsumes the old railway-cron case (no named AND
+                    # no recorded ceiling): it too recorded none, so it too is
+                    # UNKNOWN, by the same rule rather than a separate branch.
+                    if own is None:
                         unjudged.setdefault(job, [0, 0.0])
                         unjudged[job][0] += 1
                         unjudged[job][1] = max(unjudged[job][1], cost)
                         continue
+                    ran_under = float(own)
                     if cost <= ran_under * 1.25:
                         continue
                     if worst is None or cost > worst:
-                        worst, basis, recorded = cost, ran_under, own is not None
+                        worst, basis = cost, ran_under
                 if worst is not None:
-                    named = (" (the ceiling that run ran under)" if recorded else
-                             " (its named ceiling; that run recorded none)")
                     problems.append(
                         f"{job} spent ${worst:.3f} in one run, past its "
-                        f"${basis:.3f} ceiling{named} — the per-job brake is "
-                        f"not holding")
+                        f"${basis:.3f} ceiling (the ceiling that run ran under) "
+                        f"— the per-job brake is not holding")
             if unjudged:
                 # UNKNOWN, printed. Deliberately NOT an ACTION item: a run
                 # nobody can audit is not evidence of an overshoot, and putting
@@ -782,8 +791,10 @@ def _report_run_cost():
                 # also self-clearing — entries written since 2026-08-15 carry
                 # their own ceiling, so these age out of the window rather than
                 # needing to be closed.
-                print(f"    not judged  run(s) that recorded no ceiling AND "
-                      f"whose job has no named one — UNKNOWN, not a pass:")
+                print(f"    not judged  run(s) that recorded no ceiling of "
+                      f"their own — UNKNOWN, not a pass (a run is judged only "
+                      f"against the ceiling it ran under, and these recorded "
+                      f"none; pre-2026-08-14 relics that age out of the window):")
                 for job in sorted(unjudged):
                     n, worst = unjudged[job]
                     print(f"      {job:26} {n:>4} run(s), dearest ${worst:.4f}, "
