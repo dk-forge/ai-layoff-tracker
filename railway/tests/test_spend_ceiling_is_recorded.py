@@ -199,11 +199,22 @@ class UnjudgeableRunsAreNotPasses(unittest.TestCase):
         self.assertGreater(spend.RUN_CEILING_USD, 0)
 
     def test_the_dashboard_judges_a_run_by_the_ceiling_it_recorded(self):
-        """The `own`-before-named precedence, pinned by shape: a recorded
-        ceiling must be used even when the ceilings table names none."""
+        """A run is judged ONLY against the ceiling it RECORDED. A run that
+        recorded none is UNKNOWN — never judged against the table's current
+        named number, which it may never have run under (an authorised dispatch
+        override, or a pre-recording relic). Pinned by shape so the fallback to
+        the named ceiling cannot creep back in and re-manufacture the
+        edgar-history-sweep false alarm (an authorised $0.40 override reported
+        against the named $0.150)."""
         self.assertIn('own = e.get("ceiling_usd")', self.OPS)
-        self.assertIn("ran_under = float(own) if own is not None else ceiling",
-                      self.OPS)
+        # own is the ONLY basis; there is no `else ceiling` fallback that would
+        # judge an unrecorded run against a number it may not have run under.
+        self.assertIn("ran_under = float(own)", self.OPS)
+        self.assertNotIn(
+            "ran_under = float(own) if own is not None else ceiling", self.OPS,
+            "the named-ceiling fallback is back: an unrecorded run judged "
+            "against the table's current number re-creates the false brake "
+            "alarm this closed")
 
 
 if __name__ == "__main__":
