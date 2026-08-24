@@ -1,11 +1,11 @@
 {
-  "matched": 56,
-  "measured_at": "2026-08-17T16:45:23Z",
+  "matched": 55,
+  "measured_at": "2026-08-24T16:55:46Z",
   "note": "Render copy of railway/recall_measurement.json for the tracker page's measured-completeness paragraph. Written by recall_goldset.write_measurement(), which is the ONLY writer of either file \u2014 so every path that moves the canonical figure moves this one too. railway/tests/test_archive_promise.py pins them together. Do not hand-edit.",
   "precision_verbatim": {
     "checked": 40,
-    "measured_at": "2026-08-17",
-    "ok": 39
+    "measured_at": "2026-08-24",
+    "ok": 38
   },
   "reference_events": 57,
   "reference_set_id": "sec-item-205-us-2025-07_2026-06"

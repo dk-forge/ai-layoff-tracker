@@ -1,7 +1,15 @@
 {
   "candidates_needing_adjudication": [],
-  "lost_since_adjudication": [],
-  "matched": 56,
+  "lost_since_adjudication": [
+    {
+      "filer": "PACKAGING CORP OF AMERICA",
+      "filing_date": "2025-12-04",
+      "id": "sec-205-0001193125-25-307535",
+      "stated_job_count": 200,
+      "tracker_event_ids": []
+    }
+  ],
+  "matched": 55,
   "matched_floor": 52,
   "matched_ids": [
     "sec-205-0001751788-25-000139",
@@ -33,7 +41,6 @@
     "sec-205-0001173514-25-000133",
     "sec-205-0000047217-25-000068",
     "sec-205-0001193125-25-303185",
-    "sec-205-0001193125-25-307535",
     "sec-205-0001193125-25-311445",
     "sec-205-0001104659-25-119486",
     "sec-205-0001193125-25-318445",
@@ -61,8 +68,8 @@
     "sec-205-0001628280-26-039805",
     "sec-205-0001193125-26-278582"
   ],
-  "measured_at": "2026-08-17T16:45:23Z",
-  "missed": 1,
+  "measured_at": "2026-08-24T16:55:46Z",
+  "missed": 2,
   "missed_events": [
     {
       "filer": "WABASH NATIONAL Corp",
