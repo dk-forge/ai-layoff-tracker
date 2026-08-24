@@ -29,6 +29,11 @@ class Market:
 # extraction and evidence validation decide whether an article is a real event.
 GLOBAL_TERMS = (
     "layoff", "layoffs", "laid off", "job cuts", "cutting jobs",
+    # Verb-phrase gap (2026-08-24, discovery-learning loop): the vocabulary had
+    # the noun "job cuts" and the gerund "cutting jobs" but not the base/infinitive
+    # "cut jobs" ("... to cut jobs", "will cut jobs"), the standard headline form
+    # for a mid-size cut. Layoff-specific and low-noise; NOT the bare word "cut".
+    "cut jobs",
     "job losses", "redundancy", "redundancies", "staff cuts",
     "workforce reduction", "headcount reduction", "headcount cuts",
     "reduction in force", "RIF", "downsizing", "position eliminations",
