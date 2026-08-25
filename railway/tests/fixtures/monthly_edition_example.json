@@ -1,0 +1,86 @@
+{
+  "_comment": "A month-to-date MONTHLY layoff edition, for eyeballing the 'jobs out vs jobs in' layout. Window is August 1-24, 2026. The `indeed` block is the exact shape tit_indeed_index_data() returns (numbers are the task's own worked example: index 101.79 up 0.34, AI share 6.28% up 0.33). Render it with digest_compose_harness.php - see the command in the monthly-edition PR / test_digest_monthly_edition.py. Everything here is fixture data; the composer does the arithmetic and never invents a figure.",
+  "from": "2026-08-01",
+  "to": "2026-08-24",
+  "freq": "monthly",
+  "compose": "layoff",
+  "options": { "alt_last_write": 1755990000 },
+  "last_updated_label": "August 24, 2026 at 22:00 UTC",
+  "indeed": {
+    "national": {
+      "index": 101.79,
+      "vs_baseline": 1.79,
+      "as_of": "2026-08-14",
+      "month_ago": { "date": "2026-07-15", "delta": 0.34, "index": 101.45 },
+      "source_name": "Indeed Hiring Lab",
+      "source_url": "https://github.com/hiring-lab/job_postings_tracker"
+    },
+    "ai": {
+      "share_pct": 6.28,
+      "as_of": "2026-07-31",
+      "month_ago": { "date": "2026-07-01", "delta": 0.33, "share_pct": 5.95 },
+      "source_url": "https://github.com/hiring-lab/job_postings_tracker"
+    },
+    "rule": "US job postings context from Indeed Hiring Lab, not the tracker's own records."
+  },
+  "layoff": {
+    "totals": {
+      "jobs": 84210, "entries": 421,
+      "announced_jobs": 12000, "announced_entries": 20,
+      "ai_verified_jobs": 1500, "ai_verified_entries": 8,
+      "companies": 388
+    },
+    "leaders": [
+      { "company_name": "Applied Aerospace", "job_count": 4320,
+        "layoff_date": "2026-08-12", "ai_explicit": false,
+        "location": "", "state": "", "country": "",
+        "permalink": "https://asktherecruiter.com/blog/layoff/applied/",
+        "announced": false,
+        "source_url": "https://www.sec.gov/filing/applied" },
+      { "company_name": "Paramount Skydance", "job_count": 2500,
+        "layoff_date": "2026-08-11", "ai_explicit": true,
+        "location": "CA", "state": "CA", "country": "United States",
+        "permalink": "", "announced": false,
+        "source_url": "https://edd.ca.gov/warn/paramount.pdf" }
+    ],
+    "top_countries": [
+      ["United States", 50000, 0, null, 42000, 1500],
+      ["Brazil", 3000, 0, null, 2500, 0]
+    ],
+    "top_industries": [
+      ["Aerospace & Defense", 8000, 0, null, 7200, 0],
+      ["Retail & E-commerce", 6000, 0, null, 5400, 0],
+      ["Food & Hospitality", 4000, 0, null, 3600, 0]
+    ],
+    "source_types": [
+      ["warn", 30000, 0, null, 28000, 0],
+      ["8K", 20000, 0, null, 19000, 1500]
+    ],
+    "top_states": [
+      ["CA", 20000, 0, null, 15000, 1500],
+      ["IL", 12000, 0, null, 9000, 0],
+      ["TX", 8000, 0, null, 6000, 0],
+      ["NY", 6000, 0, null, 4500, 0],
+      ["WA", 4000, 0, null, 3000, 0]
+    ],
+    "reasons": [
+      ["restructuring", 40000, 0, null, 30000, 0],
+      ["cost_reduction", 25000, 0, null, 18000, 0],
+      ["ai_automation", 1600, 0, null, 1500, 1500],
+      ["offshoring", 3000, 0, null, 2200, 0]
+    ],
+    "top_roles": [
+      ["Manufacturing & production", 20000, 0, null, 14000, 0],
+      ["Engineering & IT", 12000, 0, null, 8000, 1500],
+      ["Customer support & success", 6000, 0, null, 4000, 0],
+      ["Sales & marketing", 4000, 0, null, 2500, 0]
+    ]
+  },
+  "ytd": {
+    "totals": { "jobs": 971602, "announced_jobs": 463348, "ai_verified_jobs": 42253 },
+    "top_countries": [
+      ["United States", 402000, 0, null, 300000, 25000],
+      ["Multiple countries", 60000, 0, null, 40000, 0]
+    ]
+  }
+}

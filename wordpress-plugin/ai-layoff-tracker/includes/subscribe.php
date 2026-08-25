@@ -212,8 +212,39 @@ function alt_digest_lists() {
     );
 }
 
+/*
+ * THE THREE TIERS THIS PRODUCT SENDS, and the one place their names are the
+ * truth. 'monthly' was added 2026-08-25 for the marquee "jobs out vs jobs in"
+ * edition (our verified cuts beside Indeed's postings backdrop). It is a real,
+ * accepted value everywhere the enum is read - stored, windowed, composed and
+ * archived - so the machinery is coherent the moment a monthly send is made.
+ *
+ * THE SCHEDULED MONTHLY TICK IS NOT YET ARMED (see the note on
+ * alt_digest_monthly_window and the PR that introduced it): digest_slot.py and
+ * digest-send.yml still schedule only the daily and weekly slots, and the
+ * public form only OFFERS monthly when alt_digest_monthly_enabled() is filtered
+ * on. Accepting the value here does not send anything on its own; it means that
+ * a manual send, the render harness, or the eventual monthly cron all agree on
+ * the same window and the same columns rather than silently coercing to weekly.
+ */
 function alt_digest_valid_freq($f) {
-    return in_array($f, array('daily', 'weekly'), true) ? $f : 'weekly';
+    return in_array($f, array('daily', 'weekly', 'monthly'), true) ? $f : 'weekly';
+}
+
+/*
+ * Is the MONTHLY option offered on the public signup form yet?
+ *
+ * Ships FALSE, on purpose, and this is the codebase's standing dormant-feature
+ * pattern (a feature is armed by a reviewed code change, never by data quietly
+ * appearing - see digest-send.yml's "arming is a code change" note and
+ * alt_edition_tier_indexable). The whole monthly pipeline - validation, window,
+ * period, last-sent column, composer, Indeed backdrop, methodology - is built
+ * and testable while this is false, so a reader can never pick a cadence that
+ * no scheduled job fulfils. Flip the filter to true in the SAME change that
+ * arms the monthly tick in digest_slot.py / digest-send.yml, not before.
+ */
+function alt_digest_monthly_enabled() {
+    return (bool) apply_filters('alt_digest_offer_monthly', false);
 }
 
 /**
@@ -224,7 +255,16 @@ function alt_digest_valid_freq($f) {
  * hours would silently skip that person every other day.
  */
 function alt_digest_period_seconds($freq) {
-    return $freq === 'daily' ? 20 * HOUR_IN_SECONDS : 6 * DAY_IN_SECONDS;
+    if ($freq === 'daily') return 20 * HOUR_IN_SECONDS;
+    // Monthly rides slightly under its nominal period for the same reason the
+    // others do: a run at 00:05 on the 1st and 23:55 on the last day is one
+    // monthly cadence, and a strict 28-31 days would skip a person whose two
+    // sends drifted a few minutes apart. 25 days clears a 28-day February with
+    // room and is still comfortably short of the shortest gap between two
+    // first-of-month sends, so it never lets a second copy through inside one
+    // month either.
+    if ($freq === 'monthly') return 25 * DAY_IN_SECONDS;
+    return 6 * DAY_IN_SECONDS;
 }
 
 /**
@@ -242,8 +282,10 @@ function alt_digest_period_seconds($freq) {
  * of its own choosing.
  */
 function alt_digest_last_sent_column($freq) {
-    return alt_digest_valid_freq($freq) === 'daily'
-        ? 'last_sent_daily' : 'last_sent_weekly';
+    $f = alt_digest_valid_freq($freq);
+    if ($f === 'daily')   return 'last_sent_daily';
+    if ($f === 'monthly') return 'last_sent_monthly';
+    return 'last_sent_weekly';
 }
 
 /**
@@ -463,9 +505,18 @@ function alt_digest_form_url() {
  * changed nothing a reader sees.
  */
 function alt_digest_cadence_sentence($freq) {
-    return $freq === 'daily'
-        ? 'Daily digests go out each morning, so your first one arrives tomorrow.'
-        : 'Weekly digests go out on Monday mornings, so your first one arrives on the next Monday.';
+    if ($freq === 'daily') {
+        return 'Daily digests go out each morning, so your first one arrives tomorrow.';
+    }
+    if ($freq === 'monthly') {
+        // The monthly edition covers the month so far and goes out at the start
+        // of each month. This sentence is only ever shown to somebody who could
+        // pick monthly, which the form does not offer until the monthly tick is
+        // armed (alt_digest_monthly_enabled), so it does not promise a send the
+        // schedule cannot yet make.
+        return 'Monthly editions go out at the start of each month, covering the month so far, so your first one arrives with the next edition.';
+    }
+    return 'Weekly digests go out on Monday mornings, so your first one arrives on the next Monday.';
 }
 
 /**
@@ -899,6 +950,14 @@ function alt_digest_subscribe_form($context = '') {
                 <legend>How often for the digests?</legend>
                 <label><input type="radio" name="alt_freq" value="weekly" checked> Weekly</label>
                 <label><input type="radio" name="alt_freq" value="daily"> Daily</label>
+                <?php /* Monthly is offered only once the monthly tick is armed,
+                          so a reader can never choose a cadence no scheduled job
+                          fulfils. See alt_digest_monthly_enabled(). Off by
+                          default, so this markup is absent and the form is
+                          byte-identical to before. */
+                if (alt_digest_monthly_enabled()) : ?>
+                <label><input type="radio" name="alt_freq" value="monthly"> Monthly</label>
+                <?php endif; ?>
             </fieldset>
 
             <div class="alt-digest-row">
@@ -2303,6 +2362,44 @@ function alt_digest_edition_label($from, $to) {
 }
 
 /**
+ * "August 2026 · August 1-24". THE MONTHLY EDITION'S MASTHEAD, the same shape
+ * as alt_digest_edition_label but naming the month instead of an ISO week.
+ *
+ * WHY A SEPARATE FUNCTION AND NOT A BRANCH INSIDE alt_digest_edition_label.
+ * That function is a cross-language PORT: alt_digest_period_phrase reads it and
+ * digest_layout.py mirrors it line for line, held by
+ * tests/test_digest_subject_agreement.py. Teaching it a month would fork the
+ * port for a tier the subject line does not compose yet. This is the composer's
+ * own masthead helper, called only under $is_monthly, so the weekly path and
+ * the port are untouched.
+ *
+ * THE NUMBER NEVER TRAVELS WITHOUT ITS DATES, exactly as the week label does:
+ * "August 2026" alone would not say which slice of the month, so the month-to-
+ * date range rides beside it. The trailing ", YYYY" is trimmed off the range
+ * when it repeats the year the month label already carries, the same trim and
+ * for the same reason as the weekly label, so nothing spells 2026 twice.
+ */
+function alt_digest_month_edition_label($from, $to) {
+    $range = alt_digest_date_range($from, $to);
+    if ($range === '') return '';
+    if (!preg_match('/^(\d{4})-(\d{2})-\d{2}$/', substr(trim((string) $from), 0, 10), $m)) {
+        return $range;
+    }
+    $names = array('January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December');
+    $mi = (int) $m[2];
+    if ($mi < 1 || $mi > 12) return $range;
+    $label = $names[$mi - 1] . ' ' . $m[1];
+    $fy = (int) $m[1];
+    $ty = (int) substr((string) $to, 0, 4);
+    if ($fy === $ty) {
+        $trimmed = preg_replace('/,\s*\d{4}$/', '', $range);
+        if ($trimmed !== null && $trimmed !== '') $range = $trimmed;
+    }
+    return $label . " \xc2\xb7 " . $range;
+}
+
+/**
  * THE PREVIOUS COMPLETE ISO WEEK, which is what a weekly edition may report.
  *
  * The weekly tier fires on Mondays and an ISO week ends on Sunday, so the week
@@ -2348,8 +2445,48 @@ function alt_digest_weekly_window($now = null) {
  */
 function alt_digest_window($freq, $now = null) {
     $now = ($now === null) ? time() : (int) $now;
-    if (alt_digest_valid_freq($freq) === 'weekly') return alt_digest_weekly_window($now);
+    $f = alt_digest_valid_freq($freq);
+    if ($f === 'weekly')  return alt_digest_weekly_window($now);
+    if ($f === 'monthly') return alt_digest_monthly_window($now);
     return array(gmdate('Y-m-d', $now - DAY_IN_SECONDS), gmdate('Y-m-d', $now));
+}
+
+/**
+ * THE CURRENT MONTH, MONTH TO DATE, which is what a monthly edition reports.
+ *
+ * from = the first day of the month we are currently IN.
+ * to   = YESTERDAY, the last COMPLETE day, which is the same edge convention the
+ *        weekly window uses. The weekly window reports the previous complete
+ *        week and never a day still filling up; the monthly one reports the
+ *        month so far and, for the same reason, stops at the last settled day
+ *        rather than at a partial today. A daily edition deliberately DOES
+ *        include today because it is provisional and says so; a marquee monthly
+ *        brief should not open on a half-counted day.
+ *
+ * THE MONTH IS THE CURRENT ONE, NOT THE PREVIOUS COMPLETE ONE, and that is a
+ * deliberate difference from the weekly tier. The owner asked for a month-to-
+ * date "jobs out vs jobs in" brief, so the edition names the month it is being
+ * read in. The dateline the composer builds says "month to date, provisional"
+ * so a reader is never told a running month is a finished one.
+ *
+ * THE FIRST-OF-MONTH EDGE. On the 1st, yesterday is in the previous month and
+ * would invert the window, so `to` is clamped up to `from`. That yields a
+ * single-day window on the 1st (the month's first, still provisional), which is
+ * the only honest reading of "this month so far" on day one and never an
+ * inverted or empty range. In practice the monthly tick is not meant to fire on
+ * the 1st for a same-month brief; the clamp is a safety floor, not the intended
+ * operating point, and it is documented so a later reader does not mistake it
+ * for one.
+ *
+ * Returns array($from, $to) as Y-m-d, both inclusive.
+ */
+function alt_digest_monthly_window($now = null) {
+    $now = ($now === null) ? time() : (int) $now;
+    $first = strtotime(gmdate('Y-m-01', $now) . ' 00:00:00 UTC');
+    $yesterday = strtotime(gmdate('Y-m-d', $now) . ' 00:00:00 UTC') - DAY_IN_SECONDS;
+    // max(): never let `to` fall before `from`. See the first-of-month note.
+    $to = max($first, $yesterday);
+    return array(gmdate('Y-m-d', $first), gmdate('Y-m-d', $to));
 }
 
 /**
@@ -2978,7 +3115,8 @@ function alt_digest_section_heading($text) {
  * and a fallback is still a subject somebody receives.
  */
 function alt_digest_fallback_subject($freq, $to) {
-    $label = (strtolower(trim((string) $freq)) === 'weekly') ? 'Weekly' : 'Daily';
+    $f = strtolower(trim((string) $freq));
+    $label = ($f === 'weekly') ? 'Weekly' : (($f === 'monthly') ? 'Monthly' : 'Daily');
     $stamp = alt_digest_date_range($to, $to);
     return '[AskTheRecruiter] ' . $label . ' tracker digest'
          . ($stamp === '' ? '' : ', ' . $stamp);
@@ -4070,14 +4208,146 @@ function alt_digest_cite_note($name, $range, $url, $read_date, $label) {
 }
 
 /**
+ * A signed change worded for an email text series: "up 0.34", "down 0.12",
+ * "unchanged". Words, not a glyph, because a plus/minus sign in a plain-text
+ * mail part and read aloud by a screen reader is worse than the word.
+ *
+ * $decimals is fixed rather than trimmed: the Indeed series carries two
+ * meaningful decimals ("up 0.34 index points") and dropping a trailing zero
+ * would make "0.30" read as "0.3", a different precision than the source
+ * published. Returns array('word', 'value') or null when there is no change to
+ * describe, so the caller can compose the whole clause or omit it.
+ */
+function alt_digest_indeed_signed($delta, $decimals = 2) {
+    if (!is_numeric($delta)) return null;
+    $n = (float) $delta;
+    $word = $n > 0 ? 'up' : ($n < 0 ? 'down' : 'unchanged');
+    return array($word, number_format(abs($n), $decimals, '.', ','));
+}
+
+/**
+ * THE "JOBS IN" BACKDROP, FROM INDEED HIRING LAB, FOR THE MONTHLY EDITION ONLY.
+ *
+ * The layoff tracker measures "jobs out": verified cuts, each with a filing or
+ * a named report behind it. The marquee monthly edition sets that beside "jobs
+ * in": the level of US hiring demand, which the sibling talent plugin already
+ * publishes from Indeed Hiring Lab's free CC BY 4.0 series. Both plugins run on
+ * the same WordPress install, so this reads tit_indeed_index_data() directly -
+ * GUARDED, because a monthly edition must render on an install where the talent
+ * plugin is absent or older, in which case this block is simply not there.
+ *
+ * THIS IS EXTERNAL CONTEXT AND THE COPY SAYS SO, in the same words the sibling
+ * panel uses: it describes the whole US labour market and is never summed into,
+ * subtracted from or compared like-for-like with the tracker's own counts. The
+ * value and the AI share are shown exactly as Indeed published them; only the
+ * month-on-month change is ours, which the licence asks us to state, so the
+ * footer does. Every figure is cast and formatted here, and every date runs
+ * through alt_digest_date_range, so nothing external reaches the page unescaped
+ * and nothing is invented: a missing index returns null and the caller omits
+ * the whole block rather than printing an empty shell that would imply a market
+ * with no postings.
+ *
+ * Returns array('html' => ..., 'text' => ...) or null.
+ */
+function alt_digest_indeed_block() {
+    if (!function_exists('tit_indeed_index_data')) return null;
+    $data = tit_indeed_index_data();
+    if (!is_array($data)) return null;
+    $national = is_array($data['national'] ?? null) ? $data['national'] : array();
+    // No index, no block. `0` is a real reading and not absence, so the test is
+    // "the key is there and numeric", not "the value is truthy".
+    if (!isset($national['index']) || !is_numeric($national['index'])) return null;
+
+    $ai = is_array($data['ai'] ?? null) ? $data['ai'] : array();
+
+    $index    = (float) $national['index'];
+    $vs_base  = isset($national['vs_baseline']) && is_numeric($national['vs_baseline'])
+                ? (float) $national['vs_baseline'] : null;
+    $n_asof   = alt_digest_date_range($national['as_of'] ?? '', $national['as_of'] ?? '');
+    $n_month  = is_array($national['month_ago'] ?? null) ? $national['month_ago'] : array();
+    $src_name = trim((string) ($national['source_name'] ?? '')) ?: 'Indeed Hiring Lab';
+
+    $share    = isset($ai['share_pct']) && is_numeric($ai['share_pct']) ? (float) $ai['share_pct'] : null;
+    $ai_asof  = alt_digest_date_range($ai['as_of'] ?? '', $ai['as_of'] ?? '');
+    $ai_month = is_array($ai['month_ago'] ?? null) ? $ai['month_ago'] : array();
+
+    // The index sentence. The level always; the "up/down vs a month earlier"
+    // clause only when the source carried a month-ago reading.
+    $index_txt = 'The Indeed US Job Postings Index'
+               . ($vs_base !== null
+                  ? ' (100 = February 1, 2020) stood at ' . number_format($index, 2, '.', ',')
+                  : ' stood at ' . number_format($index, 2, '.', ','))
+               . ($n_asof !== '' ? ' as of ' . $n_asof : '');
+    $n_sig = !empty($n_month) ? alt_digest_indeed_signed($n_month['delta'] ?? null) : null;
+    if ($n_sig !== null) {
+        $index_txt .= ($n_sig[0] === 'unchanged')
+            ? ', unchanged from a month earlier'
+            : ', ' . $n_sig[0] . ' ' . $n_sig[1] . ' index points from a month earlier';
+    }
+    $index_txt .= '.';
+
+    // The AI-share sentence, only when the AI series is present at all.
+    $share_txt = '';
+    if ($share !== null) {
+        $share_txt = 'AI-related terms appeared in ' . number_format($share, 2, '.', ',')
+                   . '% of US postings' . ($ai_asof !== '' ? ' as of ' . $ai_asof : '');
+        $a_sig = !empty($ai_month) ? alt_digest_indeed_signed($ai_month['delta'] ?? null) : null;
+        if ($a_sig !== null) {
+            $share_txt .= ($a_sig[0] === 'unchanged')
+                ? ', unchanged from a month earlier'
+                : ', ' . $a_sig[0] . ' ' . $a_sig[1] . ' points from a month earlier';
+        }
+        $share_txt .= '.';
+    }
+
+    $context = 'External context from ' . $src_name . ', not the tracker\'s own '
+             . 'records. These figures describe the whole US labour market and are '
+             . 'not counted in the job-cut totals above.';
+
+    // The source/as-of line. Names the licence and both "as of" dates, because
+    // the AI series lags the index by a few weeks and a reader has to see how
+    // current each half of the backdrop is.
+    $source_line = 'Source: ' . $src_name . ' (CC BY 4.0).'
+                 . ($n_asof !== '' ? ' Index as of ' . $n_asof . '.' : '')
+                 . ($share !== null && $ai_asof !== '' ? ' AI share as of ' . $ai_asof . '.' : '');
+
+    $html = '<h3>Jobs in: US hiring demand</h3>'
+          . '<p data-alt="note">' . esc_html($context) . '</p>'
+          . '<p data-alt="lead">' . esc_html($index_txt) . '</p>';
+    $text = "\nJobs in: US hiring demand\n" . $context . "\n" . $index_txt . "\n";
+    if ($share_txt !== '') {
+        $html .= '<p data-alt="lead">' . esc_html($share_txt) . '</p>';
+        $text .= $share_txt . "\n";
+    }
+    $html .= '<p data-alt="note">' . esc_html($source_line) . '</p>';
+    $text .= $source_line . "\n";
+
+    return array('html' => $html, 'text' => $text);
+}
+
+/**
  * Compose the layoff-tracker section for the period. Reads the plugin's own
  * public /aggregate endpoint through the REST layer (rest_do_request), so the
  * digest can never disagree with what the tracker page itself serves.
  * Returns array('html' => ..., 'text' => ...) or null when there is nothing
  * to say (or the endpoint failed; a broken digest is worse than none).
  */
-function alt_digest_compose_layoff($from, $to, $send_id = 0) {
+function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
     if (!function_exists('rest_do_request')) return null;
+    /*
+      WHICH TIER IS BEING COMPOSED, AND WHY THE COMPOSER IS NOW TOLD.
+      For the daily and weekly editions the composer still infers everything it
+      needs from the window itself, and $freq is left empty by those callers, so
+      their output is byte-for-byte what it always was. The MONTHLY edition is
+      the one case the window shape cannot name on its own - a month-to-date span
+      is just "some multi-day range" to the arithmetic - and it needs two things
+      that depend on knowing the tier: a masthead that says the month rather than
+      an ISO week, and the Indeed "jobs in" backdrop, which appears on the
+      monthly edition only. Every monthly-specific branch below is guarded by
+      $is_monthly; nothing else in this function reads $freq.
+    */
+    $is_monthly = (alt_digest_valid_freq($freq) === 'monthly'
+                   && strtolower(trim((string) $freq)) === 'monthly');
     $req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
     $req->set_param('from', $from);
     $req->set_param('to', $to);
@@ -4426,9 +4696,22 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       data edition states the status of its whole run, so it states it here,
       once, before a reader has read a number.
     */
-    $dateline = alt_digest_edition_label($from, $to) . $sep . 'verified job cuts'
+    /*
+      THE MASTHEAD NAMES THE MONTH ON A MONTHLY EDITION, not an ISO week. A
+      month-to-date span is 20-odd days, and printing "Week 34" over it would be
+      a false claim about the window in the line above every figure - the exact
+      class of masthead error this section is built to avoid. The provisional
+      token also says "month to date" so a reader is never handed a running
+      month as a finished one. Daily and weekly are untouched: $is_monthly is
+      false for them and the label is the ISO-week one it has always been.
+    */
+    $edition_masthead = $is_monthly
+        ? alt_digest_month_edition_label($from, $to)
+        : alt_digest_edition_label($from, $to);
+    $provisional_token = $is_monthly ? 'month to date, provisional' : 'provisional';
+    $dateline = $edition_masthead . $sep . 'verified job cuts'
               . $sep . 'counted by the date the cuts take effect'
-              . $sep . 'provisional';
+              . $sep . $provisional_token;
 
     $lead = array();
     $us_change = $change_phrase($us_jobs, $prior_us, false);
@@ -4464,9 +4747,28 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       51%, and a single sentence carrying both reads as an error the reader has
       caught rather than a summary.
     */
-    $opening = 'In Week ' . (($iso = alt_digest_iso_week($from)) ? $iso[1] : '')
-             . ' of ' . (($iso) ? $iso[0] : substr((string) $to, 0, 4))
-             . ', employers verified ';
+    /*
+      THE LEAD OPENS ON ITS WINDOW, and for a monthly edition the window is the
+      month so far. "So far in August 2026" is the month-to-date form of the
+      weekly "In Week 33 of 2026": it names the period the figures cover and the
+      word "so far" carries the same not-yet-complete signal the dateline's
+      "month to date" does, so a lifted-out sentence still says what it covers
+      and never reads as a finished-month total. The weekly/daily opening is
+      unchanged - $is_monthly is false for them and $iso is computed exactly as
+      before.
+    */
+    if ($is_monthly) {
+        $mnames = array('January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December');
+        $mm = (int) substr((string) $from, 5, 2);
+        $month_name = ($mm >= 1 && $mm <= 12) ? $mnames[$mm - 1] : '';
+        $opening = 'So far in ' . trim($month_name . ' ' . substr((string) $from, 0, 4))
+                 . ', employers verified ';
+    } else {
+        $opening = 'In Week ' . (($iso = alt_digest_iso_week($from)) ? $iso[1] : '')
+                 . ' of ' . (($iso) ? $iso[0] : substr((string) $to, 0, 4))
+                 . ', employers verified ';
+    }
     if ($us_change !== '' && $us_jobs > 0) {
         $lead[] = $opening . alt_digest_number($us_jobs) . ' US job cuts, '
                 . $us_change . '.';
@@ -5850,15 +6152,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
     */
     if (function_exists('alt_edition_slug') && function_exists('alt_edition_url')) {
         /*
-          THE TIER IS DERIVED FROM THE WINDOW, not passed in, and it is the
-          SAME derivation the week-on-week comparison above already uses: a
-          seven day window is the weekly edition and anything else is not.
-          The composer has never been told which tier it is composing for, and
-          giving it a second way to find out is a second thing that can
-          disagree with the first.
+          THE TIER IS DERIVED FROM THE WINDOW for daily and weekly - a seven day
+          window is the weekly edition and anything else is daily - which is the
+          SAME derivation the week-on-week comparison above uses. The MONTHLY
+          edition is the one tier the window shape cannot name (a month-to-date
+          span is just "not seven days"), so when the caller has told us it is
+          monthly we take that and archive the permalink under the monthly tier;
+          the slug is still alt_edition_slug's own pure function of tier and
+          window, so it cannot name a different edition than the one captured.
         */
-        $freq_hint = ($ft !== false && $tt !== false && ($tt - $ft) === 6 * DAY_IN_SECONDS)
-                   ? 'weekly' : 'daily';
+        $freq_hint = $is_monthly ? 'monthly'
+            : (($ft !== false && $tt !== false && ($tt - $ft) === 6 * DAY_IN_SECONDS)
+               ? 'weekly' : 'daily');
         $edition_slug = alt_edition_slug($freq_hint, $from, $to);
         if ($edition_slug !== '') {
             $edition_url = alt_edition_url($freq_hint, $edition_slug);
@@ -5910,6 +6215,26 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       the point: a section that disappears on a quiet day makes the edition
       unskimmable, and the reader who learned where to look has to learn again.
     */
+    /*
+      JOBS IN: THE INDEED BACKDROP, ON THE MONTHLY EDITION ONLY, and here in the
+      running order because it turns the edition into the "jobs out vs jobs in"
+      brief: the tracker's own verified cuts above, the whole-market hiring
+      demand beside them. It is external context, separately headed and sourced,
+      and never our number - see alt_digest_indeed_block for the guarantees. It
+      is placed AFTER the tracker's own tables and BEFORE the reconciliation and
+      methodology, so a reader has read our figures before meeting the outside
+      series, and it is OMITTED whole when the talent plugin's data is absent
+      (never a fabricated figure - the iron rule). Daily and weekly editions do
+      not carry it: $is_monthly gates the whole block.
+    */
+    if ($is_monthly) {
+        $indeed = alt_digest_indeed_block();
+        if ($indeed !== null) {
+            $html .= $indeed['html'];
+            $text .= $indeed['text'];
+        }
+    }
+
     /*
       DATA NOTES: the residual arithmetic, once, together, ahead of the
       methodology. See the $data_notes docblock near the top for why these were
@@ -7168,8 +7493,11 @@ function alt_digest_send($freq) {
     }
 
     // Compose each tracker's section ONCE per run, not per recipient.
+    // $freq reaches the layoff composer so it can render the monthly masthead
+    // and the Indeed "jobs in" backdrop. The other two composers take three
+    // parameters and ignore the fourth (PHP permits the extra argument).
     $sections = array(
-        'layoff' => alt_digest_compose_layoff($from_date, $to_date, $send_id),
+        'layoff' => alt_digest_compose_layoff($from_date, $to_date, $send_id, $freq),
         'talent' => alt_digest_compose_talent($from_date, $to_date, $send_id),
         'articles' => alt_digest_compose_articles($from_date, $to_date, $send_id),
     );

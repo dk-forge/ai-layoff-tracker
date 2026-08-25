@@ -48,6 +48,7 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
     <a href="#m-jurisdictions">What qualifies as a record, by jurisdiction</a> ·
     <a href="#m-notice-gap">WARN notice periods, measured</a> ·
     <a href="#m-differ">Why our totals differ from other headline numbers</a> ·
+    <a href="#m-editions">The email editions and their evidence tiers</a> ·
     <a href="#m-audit">The tracker audits itself</a> ·
     <a href="#m-who">Who runs this</a> ·
     <a href="#m-use">Using the data</a>
@@ -164,6 +165,35 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
     <p>Treat our verified figure as a documented floor. It is smaller than the estimates, but every single number is clickable back to a legal filing or a named outlet. Since July 2026 we also track <em>announcement-stage</em> cuts as their own labeled tier. We tag them "Announced" in the table and show them as a separate headline number, so one page answers both questions. Unlike the announcement surveys, every announcement here links to its source too.</p>
     <p><b>Where the uncounted cuts go.</b> US reporting law leaves large, legal gaps that no receipts-based tracker can see. Naming them is part of being honest about what our floor is. The federal WARN Act requires a public notice only when a single site loses 50 or more people at an employer of 100 or more. So a company that spreads the same cuts across many smaller offices files nothing. An employer can also skip the public notice entirely by paying wages in place of the 60-day warning, and that layoff never reaches a state database. A global "reducing headcount by 10,000" announcement often resolves to far fewer US filings. Overseas cuts, natural attrition and voluntary buyouts, none of which file WARN, come out of the total first. Small businesses and contractor terminations rarely generate any filing or news at all. The economy-wide total for those uncounted cuts comes from statistical estimates, such as US Bureau of Labor Statistics surveys and weekly unemployment-claims data. Those estimates do not name an employer, and we do not restate them as tracker rows. A number we cannot trace to a source is exactly what this tracker exists not to publish.</p>
     <p>Compare us with the public trackers category by category, and our number is not always the smaller one. We run <em>higher</em> than WARN-only aggregators, because we add SEC filings and named news on top of the same notices. We run <em>at or above</em> tech-event trackers by job volume. On our broad measure we run <em>at or above</em> the announcement AI surveys, with a quote on every entry. We run <em>lower</em> only on all-industry totals. That gap is receiptless cuts: federal-workforce reductions, buyouts, attrition, and small closings that file nothing. We do not claim them, because we cannot source them.</p>
+  </section>
+
+  <section class="alt-method-sec" id="m-editions">
+    <h2>The email editions and their evidence tiers</h2>
+    <p>The tracker sends email editions in three cadences. A <b>daily</b> edition covers the last two days and is provisional. A <b>weekly</b> edition covers the previous complete week (Monday to Sunday). A <b>monthly</b> edition covers the current month so far and is the "jobs out vs jobs in" brief: it sets our verified cuts beside the level of US hiring demand from Indeed Hiring Lab. Every edition names the window it covers, in its dateline and again beside each figure.</p>
+    <h3>What triggers a daily send</h3>
+    <p>A daily edition goes out when the day has news worth a reader's inbox. Any one of these is enough:</p>
+    <ul class="alt-method-list">
+      <li>a layoff of <b>250 or more roles</b> entering the tracker,</li>
+      <li>a <b>new WARN notice or regulatory filing</b> (an SEC 8-K, or an equivalent primary document), or</li>
+      <li>a <b>confirmed leadership change or return-to-office decision</b> at a tracked employer.</li>
+    </ul>
+    <p>A change in the Indeed job-postings backdrop does <b>not</b> trigger a send. That series is whole-market context, not an event, and moving it out of the "jobs in" panel and into a send trigger would confuse the two. The weekly and monthly editions run on their own fixed schedule regardless, because a quiet week or month is itself a reading and suppressing it would turn "nothing happened" into "we did not look."</p>
+    <h3>The evidence tiers</h3>
+    <p>Every counted cut in an edition carries an evidence tier, strongest first. The tiers describe how well the cut is documented, never how large it is.</p>
+    <ul class="alt-method-list">
+      <li><b>Employer-confirmed.</b> The employer itself stated the cut, in its own filing, release or on-record statement. This is the only tier the strict AI attribution can draw on, because the strict AI tag requires the employer to have named AI.</li>
+      <li><b>Primary-document verified.</b> A legal or regulatory document records the cut: a WARN notice, an SEC 8-K, or an equivalent government or exchange filing. The strongest documentary evidence we hold.</li>
+      <li><b>Corroborated.</b> Two or more independent named outlets report the same cut with a job count, without a primary document behind it yet.</li>
+      <li><b>Reported.</b> A single named outlet reports the cut. We keep it only when the record carries usable evidence, and it stays the weakest tier until a document or a second source arrives.</li>
+    </ul>
+    <h3>The source types</h3>
+    <p>Each cut also carries the kind of source it came from:</p>
+    <ul class="alt-method-list">
+      <li><span class="alt-badge alt-badge-warn">WARN notice</span> a US state mass-layoff filing.</li>
+      <li><span class="alt-badge alt-badge-gold">SEC 8-K</span> a legal filing pulled from SEC EDGAR.</li>
+      <li><span class="alt-badge alt-badge-bronze">News</span> a named report found through worldwide news discovery.</li>
+      <li><span class="alt-badge alt-badge-silver">Job board</span> whole-market hiring-demand context from a job board, currently Indeed Hiring Lab (CC&nbsp;BY&nbsp;4.0). This is the "jobs in" backdrop on the monthly edition. It is never counted in any verified or AI total; it describes the labour market, not an employer.</li>
+    </ul>
   </section>
 
   <section class="alt-method-sec" id="m-audit">

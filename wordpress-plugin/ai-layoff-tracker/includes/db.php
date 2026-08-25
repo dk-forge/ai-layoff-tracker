@@ -245,9 +245,9 @@ function alt_db_install() {
         consent_layoff TINYINT(1) NOT NULL DEFAULT 0,
         consent_talent TINYINT(1) NOT NULL DEFAULT 0,
         consent_articles TINYINT(1) NOT NULL DEFAULT 0,
-        freq_layoff VARCHAR(6) NOT NULL DEFAULT 'weekly',
-        freq_talent VARCHAR(6) NOT NULL DEFAULT 'weekly',
-        freq_articles VARCHAR(6) NOT NULL DEFAULT 'weekly',
+        freq_layoff VARCHAR(10) NOT NULL DEFAULT 'weekly',
+        freq_talent VARCHAR(10) NOT NULL DEFAULT 'weekly',
+        freq_articles VARCHAR(10) NOT NULL DEFAULT 'weekly',
         status VARCHAR(12) NOT NULL DEFAULT 'pending',
         confirm_token CHAR(64) NULL,
         unsub_token CHAR(64) NOT NULL,
@@ -258,6 +258,7 @@ function alt_db_install() {
         last_sent_at DATETIME NULL,
         last_sent_daily DATETIME NULL,
         last_sent_weekly DATETIME NULL,
+        last_sent_monthly DATETIME NULL,
         PRIMARY KEY (id),
         UNIQUE KEY email (email),
         KEY status (status),
@@ -287,6 +288,18 @@ function alt_db_install() {
                   WHERE last_sent_daily IS NULL AND last_sent_at IS NOT NULL");
     $wpdb->query("UPDATE $subscribers SET last_sent_weekly = last_sent_at
                   WHERE last_sent_weekly IS NULL AND last_sent_at IS NOT NULL");
+    /*
+      last_sent_monthly, added 2026-08-25 for the monthly "jobs out vs jobs in"
+      edition. Same one-time back-fill as the two tiers above and for the same
+      reason: a NULL would make a row that later switches to monthly due for its
+      first monthly edition the instant the tick is armed, and a duplicate on the
+      day of a repair is the one outcome worth avoiding. Widening freq_* to
+      VARCHAR(10) in the CREATE above is the other half of this change - the
+      columns were VARCHAR(6) and would have truncated the 7-character value
+      'monthly' to 'monthl', which no reader of the enum would ever match.
+    */
+    $wpdb->query("UPDATE $subscribers SET last_sent_monthly = last_sent_at
+                  WHERE last_sent_monthly IS NULL AND last_sent_at IS NOT NULL");
 
     // Digest send log. One row per send RUN (not per recipient), so the stats
     // route can answer "when did the last digest go out and to how many" from
