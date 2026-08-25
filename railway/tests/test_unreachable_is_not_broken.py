@@ -349,14 +349,21 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(404, b"not found")
             return _Resp(404, b"")
 
-        # Belt-and-suspenders against a cross-test leak of the module-global
-        # SOURCE_UNREACHABLE: this cleared it in setUp, but in the full-suite CI
-        # run a prior NC case's entry survived into this one (setUp alone did not
-        # hold). Nothing runs between this clear and the injected-404 call, so
-        # any "NC" left afterwards is THIS call's verdict and nothing else's.
-        wc.SOURCE_UNREACHABLE.pop("NC", None)
-        wc.fetch_nc(get=get)
-        self.assertNotIn("NC", wc.SOURCE_UNREACHABLE)
+        # Fully isolate this call's effect from the module-global. setUp and a
+        # pop() both proved insufficient in the full-suite CI run (a prior NC
+        # case's entry survived into this one), so we swap SOURCE_UNREACHABLE for
+        # a fresh dict for the duration of the call: fetch_nc writes NC into
+        # THIS dict, nothing outside the call can, and the assertion reads only
+        # what this call produced. The "must not be softened" half is intact —
+        # a 404 must leave `fresh` without an NC key.
+        saved = wc.SOURCE_UNREACHABLE
+        wc.SOURCE_UNREACHABLE = {}
+        try:
+            wc.fetch_nc(get=get)
+            fresh = wc.SOURCE_UNREACHABLE
+        finally:
+            wc.SOURCE_UNREACHABLE = saved
+        self.assertNotIn("NC", fresh)
 
 
 # ---------------------------------------------------------------------------
