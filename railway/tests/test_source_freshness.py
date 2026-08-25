@@ -704,5 +704,115 @@ class TheHealerMayNotEditTheJudge(unittest.TestCase):
             self.assertIn(path, self_heal.FORBIDDEN)
 
 
+class OutOfBandDatesKeepAStateHonest(unittest.TestCase):
+    """MN's fresh WARN notices arrive as per-company letters through the LLM
+    cron, not this monthly scrape. Judged on the scrape alone, warn:MN reads
+    DARK forever while MN publishes normally and the rows sit live in the DB —
+    which is exactly what happened for 55 days after the 2026-08-24 recovery.
+    assess_state_freshness folds in `extra_dates_by_state` (read from the DB by
+    db_frontier_dates) so the verdict reflects what the state is actually
+    publishing. Proved by mutation: the SAME stale scrape is DARK without the
+    fold and PASSES with it.
+    """
+
+    def setUp(self):
+        import tempfile
+        self.fx = load_fixture()
+        # The monthly scrape's own output for MN — the frozen 2026-07-01 tail.
+        self.entries = [{"state": "MN", "layoff_date": d} for d in self.fx["MN"]]
+        self.tmp = tempfile.NamedTemporaryFile(
+            suffix=".json", delete=False, mode="w")
+        self.tmp.write('{"sources": {}}')
+        self.tmp.close()
+        self.addCleanup(lambda: os.unlink(self.tmp.name))
+
+    def _dark(self, *, extra=None):
+        _ledger, dark, _unknown = W.assess_state_freshness(
+            self.entries, {"MN"}, today=MEASURED_ON,
+            ledger_path=self.tmp.name, extra_dates_by_state=extra)
+        return dark
+
+    def test_without_the_fold_mn_is_dark(self):
+        # The bug, pinned: the monthly scrape alone is stale, so MN is dark.
+        self.assertIn("MN", self._dark())
+
+    def test_folding_a_fresh_out_of_band_date_clears_mn(self):
+        # A letter dated the measurement day is what db_frontier_dates would
+        # return; folded in, MN is publishing and no longer dark.
+        self.assertNotIn(
+            "MN", self._dark(extra={"MN": [MEASURED_ON.isoformat()]}))
+
+    def test_the_fold_does_not_invent_freshness_from_nothing(self):
+        # The half that must NOT be softened: an EMPTY out-of-band read leaves
+        # the stale scrape exactly as dark as it was, so a failing DB query can
+        # never launder a genuinely dark state into a pass.
+        self.assertIn("MN", self._dark(extra={}))
+        self.assertIn("MN", self._dark(extra={"MN": []}))
+
+    def test_mn_is_registered_out_of_band(self):
+        # A guard against silently dropping MN from the set that gets the DB
+        # read — without it this whole mechanism is dead code for MN.
+        self.assertIn("MN", W._OUT_OF_BAND_STATES)
+
+    def test_overlapping_dates_are_not_double_counted(self):
+        """The bug the fresh-tail rule fixes. The DB read overlaps the scrape;
+        folding the overlap counts MN's spring notices twice, inflates the rate
+        and tightens the cadence until a NORMAL gap reads as a break (MN's true
+        newest, 2026-08-03, flipped QUIET -> false FAIL that way). So folding
+        [all the overlap + one fresh tail] must land in EXACTLY the same place as
+        folding [the tail alone]: the overlap contributes nothing."""
+        with_overlap = W.assess_state_freshness(
+            self.entries, {"MN"}, today=MEASURED_ON, ledger_path=self.tmp.name,
+            extra_dates_by_state={"MN": list(self.fx["MN"]) + ["2026-08-03"]},
+        )[0]["sources"]["warn:MN"]
+        tail_only = W.assess_state_freshness(
+            self.entries, {"MN"}, today=MEASURED_ON, ledger_path=self.tmp.name,
+            extra_dates_by_state={"MN": ["2026-08-03"]},
+        )[0]["sources"]["warn:MN"]
+        for field in ("max_effective", "cadence_days", "rate_per_year",
+                      "observations", "state"):
+            self.assertEqual(with_overlap.get(field), tail_only.get(field),
+                             f"the overlap leaked into {field}")
+
+    def test_a_pass_clears_a_committed_broken_mn(self):
+        """End to end: a ledger that already holds warn:MN BROKEN (the frozen
+        2026-07-01 state this fix inherits) is CLEARED when the out-of-band fold
+        supplies a fresh date that earns a PASS. QUIET would not clear it, so
+        this pins that the fold reaches PASS, not merely 'less dark'."""
+        # Seed the ledger BROKEN, the way production currently sits.
+        seed = W.assess_state_freshness(
+            self.entries, {"MN"}, today=MEASURED_ON,
+            ledger_path=self.tmp.name)[0]
+        self.assertEqual(seed["sources"]["warn:MN"].get("state"), SF.BROKEN)
+        cleared = W.assess_state_freshness(
+            self.entries, {"MN"}, today=MEASURED_ON, ledger_path=self.tmp.name,
+            extra_dates_by_state={"MN": [MEASURED_ON.isoformat()]})[0]
+        self.assertEqual(cleared["sources"]["warn:MN"].get("state"), SF.HEALTHY)
+        self.assertNotIn("classification", cleared["sources"]["warn:MN"])
+
+
+class DbFrontierDatesNeverSinksTheImport(unittest.TestCase):
+    """db_frontier_dates is best-effort: any failure falls back to the scrape's
+    own dates (the old behaviour), never a crash that would sink a good import.
+    """
+
+    def setUp(self):
+        self._wp = os.environ.get("WP_SITE_URL")
+        os.environ.pop("WP_SITE_URL", None)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("WP_SITE_URL", self._wp)
+            if self._wp is not None else None)
+
+    def test_no_wp_url_returns_empty_not_error(self):
+        self.assertEqual(W.db_frontier_dates({"MN"}), {})
+
+    def test_a_transport_error_is_swallowed(self):
+        import unittest.mock as mock
+        os.environ["WP_SITE_URL"] = "https://example.invalid/blog"
+        with mock.patch("warn_import.requests.get",
+                        side_effect=OSError("connection refused")):
+            self.assertEqual(W.db_frontier_dates({"MN"}), {})
+
+
 if __name__ == "__main__":
     unittest.main()

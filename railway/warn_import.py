@@ -28,6 +28,20 @@ from sources.warn import pull_warn
 from sources.warn_custom import pull_warn_custom
 from source_health import report_source_health
 
+# States whose FRESH notices arrive through a pipeline OTHER than this monthly
+# WARN scrape, so this run's own `entries` under-report how current the state
+# is. Minnesota files recent notices as per-company WARN LETTER PDFs that post
+# via the LLM cron (sources/warn_mn_letters.py, wired in cron.py), not the
+# monthly-report bulk path here. The monthly max froze at 2026-07-01 while the
+# letters kept MN current, so `warn:MN` freshness read DARK for 55 days while
+# the state was publishing normally and the rows were live in the DB. Railway's
+# cron cannot write the committed freshness ledger, so the only channel from
+# that collector to this GitHub-Actions commit is the published DB: for these
+# states we read the newest dates the API actually holds and fold them into the
+# freshness series. Add a state here the same session you wire it a second,
+# out-of-band collector. See db_frontier_dates + assess_state_freshness.
+_OUT_OF_BAND_STATES = {"MN"}
+
 # --- last-mile clean-up, applied to EVERY state scraper's output -------------
 # Deliberately here and not in an individual scraper: these two defects are
 # structural to scraping government HTML tables, so one guard at the import
@@ -304,8 +318,60 @@ def detect_generic_state_drift(counts, expected, baselines=None, *,
     return sorted(drift)
 
 
+def db_frontier_dates(states, *, limit=30):
+    """Newest WARN `layoff_date`s already in the DB per state — best-effort.
+
+    The only channel from an OUT-OF-BAND collector (Railway cron) to this run's
+    freshness commit (GitHub Actions) is the published API; Railway cannot write
+    the committed ledger. So for `_OUT_OF_BAND_STATES` we ask the API what it
+    actually holds and fold those dates into the freshness series, which is what
+    keeps `warn:MN` honest once the monthly scrape alone has gone stale.
+
+    Never raises. A freshness read that sinks a successful import has cost more
+    than the gap it finds; on any failure the state falls back to this scrape's
+    own dates (the pre-existing behaviour), so the worst case is the old bug,
+    never a crash or a lost import.
+    """
+    out = {}
+    wp = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
+    if not wp:
+        return out
+    headers = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
+    for st in states:
+        try:
+            # `/query` returns rows newest-first under a "data" key. We do NOT
+            # filter by `source_type` here, and that is deliberate for an
+            # OUT-OF-BAND state: MN's WARN notices arrive as per-company letters
+            # that go through the extract->post pipeline, where a letter is
+            # superset-linked to any existing NEWS coverage of the same event —
+            # so the surviving row's `source_type` is often `news` even though a
+            # WARN letter is its origin (Heliene's 2026-08 WARN letter lands as
+            # the news row, while UCare's lands as warn). Filtering to warn would
+            # throw away the very freshness the letters recovery exists to give
+            # this key. The `_OUT_OF_BAND_STATES` gate is what keeps this narrow:
+            # a state whose WARN comes ONLY through its register is never read
+            # this way, so news about it can never stand in for a dead register.
+            resp = requests.get(
+                f"{wp}/wp-json/layoffs/v1/query",
+                params={"state": st, "per_page": limit},
+                headers=headers, timeout=30)
+            if resp.status_code != 200:
+                print(f"db_frontier_dates({st}): HTTP {resp.status_code}, skipped")
+                continue
+            payload = resp.json()
+            rows = (payload.get("data") if isinstance(payload, dict) else payload)
+            dates = [r.get("layoff_date") for r in (rows or [])
+                     if r.get("layoff_date")]
+            if dates:
+                out[st.upper()] = dates
+        except Exception as exc:                                   # noqa: BLE001
+            print(f"db_frontier_dates({st}) skipped: {exc}")
+    return out
+
+
 def assess_state_freshness(entries, attempted, *, errored=(), collapsed=(),
-                           today=None, ledger_path=None):
+                           today=None, ledger_path=None,
+                           extra_dates_by_state=None):
     """Did each attempted state return anything NEWER, judged on its own cadence.
 
     The count floors above answer "did the scraper return notices?". This
@@ -331,6 +397,30 @@ def assess_state_freshness(entries, attempted, *, errored=(), collapsed=(),
             continue
         dates_by_state.setdefault(st, []).append(e.get("layoff_date"))
         produced[st] = produced.get(st, 0) + 1
+    # Fold in dates from OUT-OF-BAND collectors (see _OUT_OF_BAND_STATES): a
+    # state whose fresh notices arrive through a different pipeline than this
+    # scrape would otherwise be judged only on this run's stale max and read
+    # DARK while publishing normally.
+    #
+    # Add ONLY the fresh TAIL — dates strictly newer than this scrape's own
+    # newest for the state. The DB read overlaps the scrape (both hold MN's
+    # spring notices), and appending the overlap would count those dates TWICE,
+    # inflating the measured rate and tightening the cadence until a normal gap
+    # reads as a break: with the full overlap folded, MN at its true newest
+    # (2026-08-03) flips from QUIET to a false FAIL. The tail alone advances
+    # `max_effective` without touching the cadence the scrape already measured.
+    #
+    # DATE series ONLY; `produced` stays a count of what THIS scrape returned,
+    # because the count floors — not this function — own "did the scraper return
+    # rows?", and inflating it here would mask a broken monthly scraper behind
+    # the letters' rows.
+    for st, dates in (extra_dates_by_state or {}).items():
+        st = st.upper()
+        scraped = [d for d in dates_by_state.get(st, []) if d]
+        cutoff = max(scraped) if scraped else None
+        for d in dates:
+            if d and (cutoff is None or d > cutoff):
+                dates_by_state.setdefault(st, []).append(d)
     errored, collapsed = {s.upper() for s in errored}, {s.upper() for s in collapsed}
 
     ledger = source_freshness.load_ledger(ledger_path or
@@ -819,8 +909,15 @@ def main():
         _errored = set(_new_errors) | {s for s in _legacy_drift
                                        if _got_by_state.get(s, 0) == 0}
         _collapsed = set(_generic_drift) | set(_real_drift) | set(_new_drift)
+        # Out-of-band states (MN's WARN letters post via the LLM cron, not this
+        # scrape) carry their fresh dates in the DB, not in `entries`. Read them
+        # so warn:MN is judged on what MN is actually publishing, not on the
+        # monthly scrape's frozen max. Best-effort; only the out-of-band states
+        # we actually attempted, so a state with no register is never queried.
+        _extra_dates = db_frontier_dates(_OUT_OF_BAND_STATES & _attempted)
         _fresh_ledger, _dark, _unknown_fresh = assess_state_freshness(
-            entries, _attempted, errored=_errored, collapsed=_collapsed)
+            entries, _attempted, errored=_errored, collapsed=_collapsed,
+            extra_dates_by_state=_extra_dates)
         source_freshness.save_ledger(_fresh_ledger)
         _rows = source_freshness.broken(_fresh_ledger)
         if _dark:
