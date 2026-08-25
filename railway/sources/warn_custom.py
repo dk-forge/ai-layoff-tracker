@@ -747,15 +747,29 @@ def fetch_nc():
         print(f"    NC: archive index failed ({exc})")
         hrefs = []
     seen = set()
+    # A 403/429/5xx or a transport error means we never got to READ the year —
+    # that is UNREACHABLE, not a year genuinely missing from the archive, and it
+    # must be reported as such or the caller blames a parser that returns the
+    # full 1,150+ notices from any un-blocked IP (the LA/CO lesson). commerce.
+    # nc.gov 403s the archive PDFs for a datacentre runner while serving them to
+    # a laptop, so this is exactly the state's whole 2015-2025 history vanishing
+    # from the count with the scraper working perfectly.
+    unreachable_years = []
     for href in hrefs:
         ym = re.search(r"(20\d\d)", href)
         # 2014 exists on the page but predates the tracker's 2015 cutoff
         if not ym or int(ym.group(1)) < 2015 or href in seen:
             continue
         seen.add(href)
+        yr = ym.group(1)
         url = href if href.startswith("http") else "https://www.commerce.nc.gov" + href
         try:
             resp = requests.get(url, headers=UA, timeout=60)
+            if resp.status_code in (403, 429) or resp.status_code >= 500:
+                unreachable_years.append(yr)
+                print(f"    NC {yr} archive: UNREACHABLE (HTTP "
+                      f"{resp.status_code}) — this year is UNREAD, not absent")
+                continue
             if resp.status_code != 200 or resp.content[:4] != b"%PDF":
                 raise RuntimeError(f"HTTP {resp.status_code} / not a PDF")
             entries = _nc_grid_entries(_pdf_tables(resp.content), url)
@@ -765,8 +779,18 @@ def fetch_nc():
                     for p in pdf.pages:
                         entries += _nc_text_rows(p.extract_words(), url)
             out += entries
+        except requests.RequestException as exc:
+            unreachable_years.append(yr)
+            print(f"    NC {yr} archive: UNREACHABLE ({exc}) — UNREAD, not absent")
         except Exception as exc:
-            print(f"    NC {ym.group(1)} archive: failed ({exc})")
+            print(f"    NC {yr} archive: failed ({exc})")
+    if unreachable_years:
+        SOURCE_UNREACHABLE["NC"] = (
+            f"commerce.nc.gov refused this runner for {len(unreachable_years)} "
+            f"archive year(s) ({unreachable_years[-1]}-{unreachable_years[0]}) "
+            f"with HTTP 403/429/5xx; only the reachable years are in this count "
+            f"— the scraper reads the full history from any un-blocked IP")
+        print(f"::warning:: NC is INCOMPLETE this run: {SOURCE_UNREACHABLE['NC']}")
     return out
 
 
@@ -1055,6 +1079,22 @@ def fetch_ma():
     client = httpx.Client(http2=True, headers=_MA_HEADERS, follow_redirects=True, timeout=TIMEOUT)
     landing = client.get(_MA_LANDING)
     out = []
+    # mass.gov throttles a datacentre runner: measured 2026-08, the scrape read
+    # the full 365 notices from a laptop but only 173 from the CI runner, because
+    # the FY workbooks 403/429 partway through. A partial read is not scraper
+    # drift, it is UNREACHABLE, and must be reported so the caller does not blame
+    # a parser that is working (the LA/CO/NC lesson).
+    _blocked = []
+
+    def _blocking(status):
+        return status in (403, 429) or status >= 500
+
+    if _blocking(landing.status_code):
+        SOURCE_UNREACHABLE["MA"] = (
+            f"mass.gov refused this runner at the landing page (HTTP "
+            f"{landing.status_code}); no MA notices could be read this run")
+        print(f"::warning:: MA is UNREACHABLE this run: {SOURCE_UNREACHABLE['MA']}")
+        return out
 
     def add(company, jobs_raw, date_raw, fallback_date, city):
         company = re.sub(r"^\*Updated\*\s*", "", str(company or ""))
@@ -1080,6 +1120,9 @@ def fetch_ma():
     fy_urls = re.findall(r'href="(https://www\.mass\.gov/doc/fy\d\d-warn-report[^"]*/download)"', landing.text)
     for url in sorted(set(fy_urls)):
         r = client.get(_html.unescape(url))
+        if _blocking(r.status_code):
+            _blocked.append(url)
+            continue
         if r.status_code != 200:
             continue
         wb = load_workbook(io.BytesIO(r.content), read_only=True, data_only=True)
@@ -1105,6 +1148,13 @@ def fetch_ma():
                     continue
                 add(get("company"), get("jobs"), get("date"), get("recv"), get("city"))
     client.close()
+    if _blocked:
+        SOURCE_UNREACHABLE["MA"] = (
+            f"mass.gov refused this runner for {len(_blocked)} archive FY "
+            f"workbook(s) (HTTP 403/429/5xx); the shortfall vs floor is a block, "
+            f"not scraper drift — the scrape reads the full history from any "
+            f"un-blocked IP")
+        print(f"::warning:: MA is INCOMPLETE this run: {SOURCE_UNREACHABLE['MA']}")
     return out
 
 

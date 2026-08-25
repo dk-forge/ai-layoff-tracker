@@ -36,6 +36,7 @@ nothing. That is a real defect and must still go red / still say "broke".
 """
 import sys
 import unittest
+import unittest.mock as mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -302,6 +303,72 @@ class ColoradoUnreachableTests(unittest.TestCase):
         self.assertIn("CO", drift)
         self.assertIn("Google Sheets", drift)
         self.assertIn("OH=61", drift)
+
+
+# ---------------------------------------------------------------------------
+# 5. North Carolina: a 403 on the archive PDFs is UNREACHABLE, not a collapse.
+# ---------------------------------------------------------------------------
+class NorthCarolinaUnreachableTests(unittest.TestCase):
+    """commerce.nc.gov serves the 2015-2025 archive PDFs to a browser but 403s a
+    datacentre runner, so NC drops from its ~1,150-notice history to the ~470 of
+    the current years alone. That is the whole archive vanishing with the parser
+    working — UNREACHABLE, not drift. A coherent 404, by contrast, is a year
+    genuinely gone and must NOT be laundered into an outage."""
+
+    _INDEX = ('<a href="https://www.commerce.nc.gov/2020-warn/open">2020</a>'
+              '<a href="https://www.commerce.nc.gov/2019-warn/open">2019</a>')
+
+    def setUp(self):
+        wc.SOURCE_UNREACHABLE.clear()
+
+    def test_a_403_on_the_archive_is_recorded_unreachable(self):
+        def get(url, **kw):
+            if "warn-summary-report-archives" in url:
+                return _Resp(200, self._INDEX)
+            if "/open" in url:                       # the per-year PDFs
+                return _Resp(403, b"<html>Forbidden</html>")
+            return _Resp(404, b"")                   # current-year CSV path
+
+        with mock.patch("sources.warn_custom.requests.get", side_effect=get):
+            wc.fetch_nc()
+        self.assertIn("NC", wc.SOURCE_UNREACHABLE)
+        self.assertIn("403", wc.SOURCE_UNREACHABLE["NC"])
+
+    def test_a_coherent_404_is_not_unreachable(self):
+        """The half that must NOT be softened: a 404 is a year absent from the
+        archive, a real gap, not the network refusing us."""
+        def get(url, **kw):
+            if "warn-summary-report-archives" in url:
+                return _Resp(200, self._INDEX)
+            if "/open" in url:
+                return _Resp(404, b"not found")
+            return _Resp(404, b"")
+
+        with mock.patch("sources.warn_custom.requests.get", side_effect=get):
+            wc.fetch_nc()
+        self.assertNotIn("NC", wc.SOURCE_UNREACHABLE)
+
+
+# ---------------------------------------------------------------------------
+# 6. The legacy-tier drift message separates MA/NC unreachable from site drift.
+# ---------------------------------------------------------------------------
+class MassachusettsAndNorthCarolinaDriftMessageTests(unittest.TestCase):
+    def test_unreachable_states_are_not_blamed_for_drift(self):
+        import warn_import as wi
+        drift = wi.describe_state_drift(
+            ["MA", "NC", "TX"],
+            {"MA": 173, "NC": 477, "TX": 40},
+            {"MA": 365.0, "NC": 1154.0, "TX": 800.0},
+            unreachable={
+                "MA": "mass.gov refused this runner for 3 FY workbook(s)",
+                "NC": "commerce.nc.gov refused this runner for 9 archive year(s)",
+            })
+        # MA and NC carry their unreachable reason…
+        self.assertIn("mass.gov", drift)
+        self.assertIn("commerce.nc.gov", drift)
+        # …and TX, which really is short against its floor, still reads as the
+        # bare collapse it is — the annotation is per-state, not blanket.
+        self.assertIn("TX=40", drift)
 
 
 if __name__ == "__main__":
