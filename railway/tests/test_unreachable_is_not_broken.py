@@ -35,7 +35,9 @@ guard also pins the case where the host DID answer coherently and we still got
 nothing. That is a real defect and must still go red / still say "broke".
 """
 import sys
+import types
 import unittest
+import unittest.mock as mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -349,20 +351,33 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(404, b"not found")
             return _Resp(404, b"")
 
-        # Fully isolate this call's effect from the module-global. setUp and a
-        # pop() both proved insufficient in the full-suite CI run (a prior NC
-        # case's entry survived into this one), so we swap SOURCE_UNREACHABLE for
-        # a fresh dict for the duration of the call: fetch_nc writes NC into
-        # THIS dict, nothing outside the call can, and the assertion reads only
-        # what this call produced. The "must not be softened" half is intact —
-        # a 404 must leave `fresh` without an NC key.
-        saved = wc.SOURCE_UNREACHABLE
+        # Make the call physically incapable of a network request. setUp, a
+        # pop(), and a fresh-dict swap all still failed in the full-suite CI run
+        # with a REAL 403 for these exact fixture years — meaning fetch_nc
+        # reached the live host despite the injected `get`, by a route the code
+        # alone does not explain (a stale/aliased module surface under full-suite
+        # import order). So we also blind the module's `requests`: any request
+        # that escapes `get` raises RuntimeError, which fetch_nc's generic
+        # `except` treats as "failed", NOT unreachable. Combined with the
+        # injected 404, no path can flag NC, and none can touch the wire. The
+        # must-not-be-softened half is intact: a coherent 404 leaves NC unset.
+        _NeverRaised = type("_NeverRaised", (Exception,), {})
+        blind = types.SimpleNamespace(
+            get=mock.Mock(side_effect=RuntimeError("no network in tests")),
+            post=mock.Mock(side_effect=RuntimeError("no network in tests")),
+            RequestException=_NeverRaised,
+            exceptions=types.SimpleNamespace(RequestException=_NeverRaised),
+        )
+        saved_req = wc.requests
+        saved_src = wc.SOURCE_UNREACHABLE
+        wc.requests = blind
         wc.SOURCE_UNREACHABLE = {}
         try:
             wc.fetch_nc(get=get)
             fresh = wc.SOURCE_UNREACHABLE
         finally:
-            wc.SOURCE_UNREACHABLE = saved
+            wc.requests = saved_req
+            wc.SOURCE_UNREACHABLE = saved_src
         self.assertNotIn("NC", fresh)
 
 
