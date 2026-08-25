@@ -35,11 +35,14 @@ from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-for _m in ("requests", "openai"):
-    if _m not in sys.modules:
-        _stub = types.ModuleType(_m)
-        _stub.RequestException = Exception
-        sys.modules[_m] = _stub
+# `requests` is stubbed through tests/_requests_stub.py and nowhere else:
+# sys.modules is process-global, so a per-module stub makes the surface a
+# function of discovery order (see that module's docstring).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
+if "openai" not in sys.modules:
+    sys.modules["openai"] = types.ModuleType("openai")
 
 import tracker_diff as td
 

@@ -22,11 +22,14 @@ from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-for _m in ("requests", "pdfplumber"):
-    if _m not in sys.modules:
-        _st = types.ModuleType(_m)
-        _st.RequestException = Exception
-        sys.modules[_m] = _st
+# `requests` is stubbed through tests/_requests_stub.py and nowhere else:
+# sys.modules is process-global, so a per-module stub makes the surface a
+# function of discovery order (see that module's docstring).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
+if "pdfplumber" not in sys.modules:
+    sys.modules["pdfplumber"] = types.ModuleType("pdfplumber")
 
 from sources import warn_new_states as ks
 
