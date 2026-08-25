@@ -36,7 +36,6 @@ nothing. That is a real defect and must still go red / still say "broke".
 """
 import sys
 import unittest
-import unittest.mock as mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -319,7 +318,14 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
               '<a href="https://www.commerce.nc.gov/2019-warn/open">2019</a>')
 
     def setUp(self):
+        # Clear on BOTH ends: this class's own runs never leak the module-global
+        # SOURCE_UNREACHABLE into a sibling test, and a sibling never leaks into
+        # ours. fetch_nc takes an injected `get` (below) so no request can escape
+        # to the live commerce.nc.gov -- the failure that read the sibling's
+        # 403 message on a 404 run was a live archive PDF slipping past a
+        # module-global mock, and injection cannot be defeated that way.
         wc.SOURCE_UNREACHABLE.clear()
+        self.addCleanup(wc.SOURCE_UNREACHABLE.clear)
 
     def test_a_403_on_the_archive_is_recorded_unreachable(self):
         def get(url, **kw):
@@ -329,8 +335,7 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(403, b"<html>Forbidden</html>")
             return _Resp(404, b"")                   # current-year CSV path
 
-        with mock.patch("sources.warn_custom.requests.get", side_effect=get):
-            wc.fetch_nc()
+        wc.fetch_nc(get=get)
         self.assertIn("NC", wc.SOURCE_UNREACHABLE)
         self.assertIn("403", wc.SOURCE_UNREACHABLE["NC"])
 
@@ -344,8 +349,7 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(404, b"not found")
             return _Resp(404, b"")
 
-        with mock.patch("sources.warn_custom.requests.get", side_effect=get):
-            wc.fetch_nc()
+        wc.fetch_nc(get=get)
         self.assertNotIn("NC", wc.SOURCE_UNREACHABLE)
 
 
