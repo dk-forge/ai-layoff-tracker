@@ -349,6 +349,12 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(404, b"not found")
             return _Resp(404, b"")
 
+        # Belt-and-suspenders against a cross-test leak of the module-global
+        # SOURCE_UNREACHABLE: this cleared it in setUp, but in the full-suite CI
+        # run a prior NC case's entry survived into this one (setUp alone did not
+        # hold). Nothing runs between this clear and the injected-404 call, so
+        # any "NC" left afterwards is THIS call's verdict and nothing else's.
+        wc.SOURCE_UNREACHABLE.pop("NC", None)
         wc.fetch_nc(get=get)
         self.assertNotIn("NC", wc.SOURCE_UNREACHABLE)
 
