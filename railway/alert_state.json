@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "self-heal:main:680dfa8c21a0ca37": {
+      "first": 1787681544,
+      "last": 1787681544,
+      "subject": "CI SELF-TIMEOUT: Self-heal \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 30m0s"
+    },
     "tests:main:7a3940d9a0bada5e": {
       "first": 1787591173,
       "last": 1787591173,
@@ -63,6 +68,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: 'NC' unexpectedly found in {'NC': 'commerce.nc.gov refused this runner for 2 archive year(s) (2019-2020) with HTTP 403/429/5xx; only the reachable y"
     }
   },
-  "updated_at": "2026-08-25T17:29:05+00:00",
+  "updated_at": "2026-08-25T18:12:25+00:00",
   "version": 1
 }
