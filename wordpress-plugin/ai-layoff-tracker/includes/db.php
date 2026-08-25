@@ -5971,7 +5971,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     */
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id, announced
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
@@ -6009,6 +6009,18 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             // a CPT post fall back to the company click-filter. Additive key:
             // every consumer reads leaders by name, never by position.
             'permalink' => $row->post_id ? (string) get_permalink((int) $row->post_id) : '',
+            /*
+              THE ROW'S OWN SOURCE URL, so the digest can offer a SUPPORTING
+              link to the filing or report behind the cut, alongside the entry
+              page. Added 2026-08-25. A bulk-imported WARN row carries no
+              `layoffs` post and so no permalink, but it does carry the state
+              labour department URL it was scraped from, and that is exactly the
+              citation a reporter checking us wants. The digest links it through
+              alt_digest_external_link_ok() (a plain, uncounted `<a href>`),
+              never through the first-party click counter, so no open redirect
+              is created. Additive key: every consumer reads leaders by name.
+            */
+            'source_url' => (string) ($row->source_url ?? ''),
         );
     }
 

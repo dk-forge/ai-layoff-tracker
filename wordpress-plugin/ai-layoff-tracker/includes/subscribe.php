@@ -3100,6 +3100,24 @@ function alt_digest_rank_table($rows) {
         */
         $suffix = trim((string) ($row['suffix'] ?? ''));
         if ($suffix !== '') $label .= ' ' . esc_html($suffix);
+        /*
+          THE SUPPORTING SOURCE LINK, AFTER THE QUALIFIERS AND OUTSIDE THE
+          COMPANY ANCHOR. The company name links to the citable unit we host
+          (the entry page, or the tracker filtered to that company). This is a
+          SECOND link to the filing or report itself, which is the destination
+          a reporter checking us actually follows, and it is the one link the
+          bulk-import rows could never carry an entry page for. It is a plain
+          external `<a href>`, already vetted by alt_digest_external_link_ok in
+          the caller, and never routed through the first-party click counter:
+          an outlet URL cannot pass that counter's host guard, correctly, so it
+          is handed over plain exactly as the hiring-signal list does. Its text
+          is the word "Source", so the link says where it goes, and it renders
+          only when the row carries one.
+        */
+        $source_url = trim((string) ($row['source_url'] ?? ''));
+        if ($source_url !== '') {
+            $label .= ' <a href="' . esc_url($source_url) . '" data-alt="source-link">Source</a>';
+        }
         $html .= '<tr>'
                . '<td data-alt="label' . $edge . '">' . $label . '</td>'
                . '<td data-alt="figure' . $edge . '" align="right" width="34%">'
@@ -3110,6 +3128,9 @@ function alt_digest_rank_table($rows) {
         // The plain destination, never the counted one: a text reader should
         // not be handed a machine-shaped URL to squint at.
         if (!empty($row['plain_url'])) $text .= '    ' . $row['plain_url'] . "\n";
+        // The source, on its own line in the text part, labelled so a reader
+        // knows it points at the filing or report rather than at us.
+        if ($source_url !== '') $text .= '    Source: ' . $source_url . "\n";
     }
     return array($html . '</table>', $text);
 }
@@ -4092,8 +4113,19 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
       provenance a reporter needs before quoting anything. Both come out of
       the SAME response as the headline, so they cannot describe a different
       filter set than the number they sit under.
+
+      `top_states`, `reasons` and `top_roles` joined the list on 2026-08-25,
+      and each answers a question a reader of a layoff tracker asks and the
+      section could not answer: which US state, why the employer said, and
+      which teams. They render below in the same verified-tier, windowed,
+      top-five style as `top_industries`, out of this SAME response, so none of
+      them can describe a different window or tier than the headline. Two of
+      them OVERLAP by construction and their blocks say so: `reasons` and
+      `top_roles` are LIKE-over-packed-tags, an entry can carry several, so
+      they do not sum to the headline and carry no reconciliation note.
+      `top_states` is a US-only subset for the same reason.
     */
-    $req->set_param('include', 'leaders,top_countries,top_industries,source_types');
+    $req->set_param('include', 'leaders,top_countries,top_industries,source_types,top_states,reasons,top_roles');
     $res = rest_do_request($req);
     if (!$res || $res->is_error()) return null;
     $data = $res->get_data();
@@ -5044,6 +5076,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         $rows = array();
         $linked = 0;
         $filtered = 0;
+        $sourced = 0;
         $announced_rows = 0;
         // Whether the payload can answer the tier question AT ALL. Absence of
         // the field is UNKNOWN and must never render as "none are announced":
@@ -5127,6 +5160,26 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                 'suffix' => $detail ? '(' . implode(', ', $detail) . ')' : '',
                 'figure' => alt_digest_jobs_phrase((int) ($l['job_count'] ?? 0)),
             );
+            /*
+              THE SUPPORTING SOURCE LINK, WHERE THE ROW CARRIES A USABLE URL.
+
+              This is the link the older note below said we could not build, and
+              it was right for the counter and wrong for the reader. The counter
+              (alt_digest_link_allowed) admits our own hosts only, correctly, so
+              an outlet URL cannot be routed through it. But a PLAIN `<a href>`
+              straight to the outlet is a different object with a different
+              guard, alt_digest_external_link_ok, which the hiring-signal list
+              has used since 2026-08-20. So a WARN row with no entry page can
+              still carry the one citation that matters: the state labour
+              department filing it was scraped from. It is additive to the
+              company link, never a replacement, and counted separately so the
+              basis sentence can say how many rows a reader can trace to source.
+            */
+            $source_url = trim((string) ($l['source_url'] ?? ''));
+            if ($source_url !== '' && alt_digest_external_link_ok($source_url)) {
+                $row['source_url'] = $source_url;
+                $sourced++;
+            }
             if ($permalink !== '' && alt_digest_link_allowed($permalink)) {
                 $row['url'] = alt_digest_track_link($send_id, $permalink);
                 $row['plain_url'] = $permalink;
@@ -5215,17 +5268,19 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                   carries state WARN, Hawaii and California backfills, federal
                   RIF notices and the European Restructuring Monitor.)
 
-                  AND NO, WE CANNOT LINK THE FILING ITSELF INSTEAD. It was
-                  checked. Two independent reasons, both deliberate. The
-                  leaders query (db.php) selects company, job_count,
-                  layoff_date, ai_explicit, state, country and post_id, and no
-                  source_url, so the URL is not in this payload. And
-                  alt_digest_link_allowed() admits our own hosts and nothing
-                  else, because a link counter that forwards anywhere is a
-                  phishing relay wearing our domain. A state labour
-                  department URL would fail that guard, correctly. So the
-                  honest answer is the one printed: this row has no page, and
-                  here is why.
+                  THE FILING ITSELF IS NOW LINKED SEPARATELY, which reverses
+                  half of what this note used to say. It read "we cannot link
+                  the filing itself", on two grounds: the leaders query carried
+                  no source_url, and alt_digest_link_allowed() admits our own
+                  hosts only. The second is still true and is the reason the
+                  COUNTER cannot carry an outlet URL. But a plain, uncounted
+                  `<a href>` is a different object with its own guard,
+                  alt_digest_external_link_ok(), and db.php now ships source_url
+                  in the payload, so the "Source" link beside each row points
+                  straight at the state labour department filing or the report.
+                  What remains true is the ENTRY PAGE half: a bulk-import row has
+                  no `layoffs` post and so no first-party permalink, which is
+                  what the company name falls back to the company-filter for.
                 */
                 $basis[] = $linked . ' of the ' . $count . ' companies listed '
                          . $span . alt_digest_verb($linked, ' links', ' link')
@@ -5236,6 +5291,22 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
                          . ' through a bulk filing import, which builds no page, so '
                          . alt_digest_verb($count - $linked, 'it links', 'they link')
                          . ' to the tracker filtered to that company.';
+            }
+            /*
+              HOW MANY ROWS A READER CAN TRACE STRAIGHT TO SOURCE, computed and
+              named the same way $linked is, because a fixed sentence would be
+              false on any week where a row carries no usable URL. The "Source"
+              links point at the outlet or the filing itself, which is the
+              citation a reporter checks first and the one the entry-page link
+              cannot always provide.
+            */
+            if ($sourced > 0) {
+                $basis[] = $sourced === $count
+                    ? 'Every row also carries a "Source" link to the filing or '
+                      . 'report it was drawn from.'
+                    : $sourced . ' of the ' . $count . ' also '
+                      . alt_digest_verb($sourced, 'carries', 'carry')
+                      . ' a "Source" link to the filing or report behind the row.';
             }
             /*
               THE CAVEAT THAT USED TO BE HERE IS GONE, because it is no longer
@@ -5505,6 +5576,153 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0) {
         if ($note !== '') {
             $data_notes[] = $note;
         }
+    }
+
+    /*
+      BY US STATE, WHICH IS THE DIMENSION THE WARN PATH IS RICHEST IN. A US
+      state files the notice, so the `state` column is populated for the WARN
+      backbone of this tracker and for any placed US row; column [4] is the
+      verified tier, the SAME quantity every ranked block in this section reads,
+      so this cannot describe a different tier than the headline.
+
+      IT IS A SUBSET, NOT A BREAKDOWN, AND CARRIES NO RECONCILIATION NOTE. These
+      are US states only, so the column is a slice of the worldwide headline and
+      was never meant to sum to it. Asserting it summed would be the fixed-prose
+      fault; saying nothing is the truth. The caption names it "US" so a reader
+      does not read the slice as the whole.
+
+      THE CODES ARE EXPANDED THROUGH alt_us_state_names(), api.php's single
+      definition and the very map alt_digest_place() and the state pages use, so
+      "CA" reads "California" here exactly as it does everywhere else we publish.
+      An unrecognised code (a territory the map does not carry) prints unchanged
+      rather than being guessed at, and the link carries the code the page's
+      `state` control accepts.
+    */
+    list($states_all, , ) = $verified_split($data['top_states'] ?? null);
+    $states = array_slice($states_all, 0, 5, true);
+    if (count($states) > 1) {
+        $state_map = function_exists('alt_us_state_names') ? alt_us_state_names() : array();
+        $caption = $range . ', verified US job cuts, by the state where the '
+                 . 'notice was filed';
+        $rows = array();
+        foreach ($states as $code => $value) {
+            $code = strtoupper((string) $code);
+            $rows[] = array(
+                'label'  => isset($state_map[$code]) ? $state_map[$code] : $code,
+                'figure' => alt_digest_number($value),
+                'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                $from, $to, array('state' => $code))),
+            );
+        }
+        list($s_html, $s_text) = alt_digest_inline_series($rows);
+        $html .= '<h3>By US state</h3>'
+               . '<p data-alt="series">' . esc_html($caption . ': ') . $s_html
+               . esc_html('.') . '</p>';
+        $text .= "\nBy US state\n" . $caption . ': ' . $s_text . ".\n";
+    }
+
+    /*
+      WHY, BY THE REASON TAG THE EMPLOYER OR REPORT GAVE. Same verified tier
+      (column [4]), same window, out of the same response.
+
+      IT OVERLAPS BY CONSTRUCTION, so it carries no reconciliation note. The
+      reason tags are a fixed vocabulary and an entry can hold SEVERAL (a row
+      tagged both "restructuring" and "cost reduction" counts in each, db.php
+      builds this as a LIKE over packed tags), so these lines do not partition
+      the headline and must not claim to. The caption says so in the fewest
+      words that are true: "an entry can carry more than one".
+
+      THE TWO AI TAGS KEEP THE TRACKER'S OWN LABELS. "Reason tag: AI or
+      automation" and "Reason tag: AI press-linked" are the page's spellings
+      (REASON_LABELS, assets/layoffs.js), and they are deliberately NOT the
+      names on the AI stat tiles: the tiles count ai_explicit/ai_causation
+      columns and these count reason_tags, which are different quantities, and a
+      reader who meets the AI reason here should meet it spelled exactly as the
+      page spells it. This inline map mirrors that JS map the same way
+      $source_names above is a local copy of the collector names: there is no
+      PHP definition to share, so it is kept here with this note against drift.
+    */
+    list($reasons_all, , ) = $verified_split($data['reasons'] ?? null);
+    $reasons_top = array_slice($reasons_all, 0, 5, true);
+    if (count($reasons_top) > 1) {
+        $reason_names = array(
+            'ai_automation'           => 'Reason tag: AI or automation',
+            'possible_ai'             => 'Reason tag: AI press-linked',
+            'revenue_decline'         => 'Revenue decline',
+            'restructuring'           => 'Restructuring',
+            'merger_acquisition'      => 'Merger / acquisition',
+            'offshoring'              => 'Offshoring',
+            'product_discontinuation' => 'Product discontinued',
+            'cost_reduction'          => 'Cost reduction',
+            'macroeconomic'           => 'Macroeconomic',
+            'closure'                 => 'Plant / site closure',
+        );
+        $caption = $range . ', verified job cuts, by the reason the employer or '
+                 . 'report gave, and an entry can carry more than one';
+        $rows = array();
+        foreach ($reasons_top as $tag => $value) {
+            $tag = (string) $tag;
+            $rows[] = array(
+                'label'  => isset($reason_names[$tag]) ? $reason_names[$tag] : $tag,
+                'figure' => alt_digest_number($value),
+                'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                $from, $to, array('reasons' => $tag))),
+            );
+        }
+        list($r_html, $r_text) = alt_digest_inline_series($rows);
+        $html .= '<h3>Why</h3>'
+               . '<p data-alt="series">' . esc_html($caption . ': ') . $r_html
+               . esc_html('.') . '</p>';
+        $text .= "\nWhy\n" . $caption . ': ' . $r_text . ".\n";
+    }
+
+    /*
+      ROLES MOST AFFECTED. Same verified tier (column [4]), same window, same
+      response. top_roles arrives ALREADY keyed by its human label, because
+      db.php builds it from alt_role_categories(), so nothing is mapped for
+      display.
+
+      IT OVERLAPS like the reason tags and for the same reason: an entry naming
+      several teams counts in each, so it does not sum to the headline and
+      carries no reconciliation note. The caption says "an entry can name
+      several".
+
+      THE LINK NEEDS THE SLUG, WHICH IS THE REVERSE OF alt_role_categories().
+      The roles filter on the page sends slugs, not labels (assets/layoffs.js
+      keeps the same reverse map for exactly this reason), so the slug is
+      derived from api.php's one definition rather than hand-kept. When that map
+      is not loaded the row renders WITHOUT a link rather than a wrong one, which
+      is the same graceful degrade the leaders block makes for a missing page.
+    */
+    list($roles_all, , ) = $verified_split($data['top_roles'] ?? null);
+    $roles_top = array_slice($roles_all, 0, 5, true);
+    if (count($roles_top) > 1) {
+        $role_slug = array();
+        if (function_exists('alt_role_categories')) {
+            foreach (alt_role_categories() as $slug => $label) {
+                $role_slug[$label] = $slug;
+            }
+        }
+        $caption = $range . ', verified job cuts, by the roles affected, and an '
+                 . 'entry can name several';
+        $rows = array();
+        foreach ($roles_top as $label => $value) {
+            $label = (string) $label;
+            $row = array(
+                'label'  => $label,
+                'figure' => alt_digest_number($value),
+            );
+            if (isset($role_slug[$label])) {
+                $row['url'] = alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                  $from, $to, array('roles' => $role_slug[$label])));
+            }
+            $rows[] = $row;
+        }
+        list($ro_html, $ro_text) = alt_digest_inline_series($rows);
+        $html .= '<h3>Roles most affected</h3>'
+               . '<p data-alt="series">' . esc_html($caption . ': ') . $ro_html
+               . esc_html('.') . '</p>';
+        $text .= "\nRoles most affected\n" . $caption . ': ' . $ro_text . ".\n";
     }
 
     /*

@@ -140,13 +140,26 @@ if (is_readable($alt_archive_php)) {
     }
 }
 
+/*
+  api.php's two vocabularies the composer maps through, LIFTED not stubbed for
+  the same reason the state map is: alt_us_state_names() expands the state block
+  and alt_role_categories() is the label->slug reverse the roles block links
+  through. Both are api.php's single definition; copying either here would give
+  the project a second list whose whole point is that there is one. When a lift
+  cannot find a function the composer's function_exists guard degrades exactly
+  as production does (the state code prints unchanged, the role row drops its
+  link), so the test still runs and still means something.
+*/
 $alt_api_php = dirname($argv[1]) . '/api.php';
 if (is_readable($alt_api_php)) {
     $alt_api_src = file_get_contents($alt_api_php);
-    if (preg_match('/function\s+alt_us_state_names\(\)\s*\{.*?\n\}/s',
-                   $alt_api_src, $alt_m)) {
-        eval('function alt_us_state_names() '
-             . substr($alt_m[0], strpos($alt_m[0], '{')));
+    foreach (array('alt_us_state_names', 'alt_role_categories') as $alt_fn) {
+        if (function_exists($alt_fn)) continue;
+        if (preg_match('/function\s+' . $alt_fn . '\(\)\s*\{.*?\n\}/s',
+                       $alt_api_src, $alt_m)) {
+            eval('function ' . $alt_fn . '() '
+                 . substr($alt_m[0], strpos($alt_m[0], '{')));
+        }
     }
 }
 
