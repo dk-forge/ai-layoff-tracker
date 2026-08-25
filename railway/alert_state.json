@@ -56,8 +56,13 @@
       "first": 1787591173,
       "last": 1787591173,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['warn:MN'] != []"
+    },
+    "tests:main:952792f20e226249": {
+      "first": 1787678944,
+      "last": 1787678944,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'NC' unexpectedly found in {'NC': 'commerce.nc.gov refused this runner for 2 archive year(s) (2019-2020) with HTTP 403/429/5xx; only the reachable y"
     }
   },
-  "updated_at": "2026-08-24T18:00:03+00:00",
+  "updated_at": "2026-08-25T17:29:05+00:00",
   "version": 1
 }
