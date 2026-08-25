@@ -169,7 +169,7 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
 
   <section class="alt-method-sec" id="m-editions">
     <h2>The email editions and their evidence tiers</h2>
-    <p>The tracker sends email editions in three cadences. A <b>daily</b> edition covers the last two days and is provisional. A <b>weekly</b> edition covers the previous complete week (Monday to Sunday). A <b>monthly</b> edition covers the current month so far and is the "jobs out vs jobs in" brief: it sets our verified cuts beside the level of US hiring demand from Indeed Hiring Lab. Every edition names the window it covers, in its dateline and again beside each figure.</p>
+    <p>The tracker sends email editions in three cadences. A <b>daily</b> edition covers the last two days and is provisional. A <b>weekly</b> edition covers the previous complete week (Monday to Sunday). A <b>monthly</b> edition covers the current month so far. It is the "jobs out vs jobs in" brief, setting our verified cuts beside the level of US hiring demand from Indeed Hiring Lab. Every edition names the window it covers, in its dateline and again beside each figure.</p>
     <h3>What triggers a daily send</h3>
     <p>A daily edition goes out when the day has news worth a reader's inbox. Any one of these is enough:</p>
     <ul class="alt-method-list">
@@ -177,7 +177,7 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
       <li>a <b>new WARN notice or regulatory filing</b> (an SEC 8-K, or an equivalent primary document), or</li>
       <li>a <b>confirmed leadership change or return-to-office decision</b> at a tracked employer.</li>
     </ul>
-    <p>A change in the Indeed job-postings backdrop does <b>not</b> trigger a send. That series is whole-market context, not a layoff or filing of its own, and moving it out of the "jobs in" panel and into a send trigger would confuse the two. The weekly and monthly editions run on their own fixed schedule regardless, because a quiet week or month is itself a reading and suppressing it would turn "nothing happened" into "we did not look."</p>
+    <p>A change in the Indeed job-postings backdrop does <b>not</b> trigger a send. That series is whole-market context, not a layoff or filing of its own. Moving it into a send trigger would confuse the two. The weekly and monthly editions run on their own fixed schedule regardless. A quiet week or month is itself a reading, and suppressing it would turn "nothing happened" into "we did not look."</p>
     <h3>The evidence tiers</h3>
     <p>Every counted cut in an edition carries an evidence tier, strongest first. The tiers describe how well the cut is documented, never how large it is.</p>
     <ul class="alt-method-list">

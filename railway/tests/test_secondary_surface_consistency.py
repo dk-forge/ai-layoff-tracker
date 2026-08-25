@@ -1121,7 +1121,10 @@ class TableOfContentsTests(unittest.TestCase):
 
     def test_every_methodology_entry_is_its_headings_own_words(self):
         toc, heads = self._toc_and_headings(TPL / "page-methodology.php", "alt-method-toc")
-        self.assertEqual(len(toc), 13)
+        # 14 since the monthly edition shipped: "#m-editions" (the email editions
+        # and their evidence tiers) is a real new methodology section, added to
+        # the contents in the same change.
+        self.assertEqual(len(toc), 14)
         for anchor, label in toc:
             self.assertIn(anchor, heads, "%r points at no section" % label)
             self.assertEqual(label, heads[anchor],

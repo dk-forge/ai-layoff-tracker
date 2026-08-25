@@ -747,20 +747,14 @@ function alt_digest_subscribe_form($context = '') {
         display: flex; align-items: center; gap: 10px;
         min-height: 44px; margin: 0; font-size: 14px;
     }
-    /* The choices go in their own flex-wrap row, NOT the fieldset: a <legend>
-       is a flex item like any other and flexing the fieldset would seat "How
-       often for the digests?" beside the choices. Two choices sit on one line;
-       a third (Monthly, once armed) wraps at a phone width, and the gap keeps
-       both axes honest - 16px between two on a line, 8px between a wrapped row
-       and the one above it, either way clear of the 8px adjacency floor. This
-       used to be inline-flex + margin-right on the labels, which gave a wrapped
-       third radio 0px of vertical clearance. */
-    .alt-digest-freq-opts {
-        display: flex; flex-wrap: wrap; gap: 8px 16px;
-    }
+    /* The frequency pair stays on ONE line, so this is inline-flex on the
+       labels rather than a flex column on the fieldset: a <legend> is a flex
+       item like any other and turning the fieldset into a row would seat
+       "How often for the digests?" beside the two choices. 16px between them
+       clears the 8px adjacency floor twice over. */
     .alt-digest-freq label {
         display: inline-flex; align-items: center; gap: 10px;
-        min-height: 44px; margin: 0; font-size: 14px;
+        min-height: 44px; margin: 0 16px 0 0; font-size: 14px;
     }
     /* A 13px box in a flex row is a flex item, and flex items shrink. */
     .alt-digest-lists input, .alt-digest-freq input { flex: none; }
@@ -954,18 +948,16 @@ function alt_digest_subscribe_form($context = '') {
 
             <fieldset class="alt-digest-freq">
                 <legend>How often for the digests?</legend>
-                <div class="alt-digest-freq-opts">
                 <label><input type="radio" name="alt_freq" value="weekly" checked> Weekly</label>
                 <label><input type="radio" name="alt_freq" value="daily"> Daily</label>
-                <?php /* Monthly is offered only once the monthly tick is armed,
-                          so a reader can never choose a cadence no scheduled job
-                          fulfils. See alt_digest_monthly_enabled(). Off by
-                          default, so this markup is absent and the form is
-                          byte-identical to before. */
-                if (alt_digest_monthly_enabled()) : ?>
-                <label><input type="radio" name="alt_freq" value="monthly"> Monthly</label>
-                <?php endif; ?>
-                </div>
+                <?php /* No Monthly radio yet. The monthly EDITION is built
+                          (window, compose, the "jobs in" backdrop) but its
+                          scheduled send is not armed, and a reader must never
+                          be offered a cadence no job fulfils. The public
+                          opt-in and the monthly cron slot arm together in one
+                          reviewed change; until then the form is exactly the
+                          two-choice form it has always been, and the phone
+                          fold measured against it still holds. */ ?>
             </fieldset>
 
             <div class="alt-digest-row">
