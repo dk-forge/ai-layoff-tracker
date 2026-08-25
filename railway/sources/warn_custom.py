@@ -563,18 +563,22 @@ _NC_WARN_BASE = ("https://www.commerce.nc.gov/data-tools-reports/"
                  "labor-market-data-tools/workforce-warn-reports")
 
 
-def _nc_year_csv(y):
+def _nc_year_csv(y, get=None):
     """Current NC vintage: Drupal year page -> rotating date-stamped CSV on
-    files.nc.gov (the page slug only exists for the current year or two)."""
+    files.nc.gov (the page slug only exists for the current year or two).
+
+    `get` is injectable so the tests drive every request without a network and
+    without depending on which `requests` object this module bound at import."""
     import csv as _csv
-    page = requests.get(f"{_NC_WARN_BASE}/report-workforce-warn-summary-list-{y}",
-                        headers=UA, timeout=TIMEOUT)
+    do_get = get or (lambda u, **kw: requests.get(u, **kw))
+    page = do_get(f"{_NC_WARN_BASE}/report-workforce-warn-summary-list-{y}",
+                  headers=UA, timeout=TIMEOUT)
     if page.status_code != 200:
         return []
     m = re.search(r'href="(https://files\.nc\.gov/[^"]+\.csv[^"]*)"', page.text)
     if not m:
         return []
-    text = requests.get(_html.unescape(m.group(1)), headers=UA, timeout=TIMEOUT).text
+    text = do_get(_html.unescape(m.group(1)), headers=UA, timeout=TIMEOUT).text
     out = []
     for r in _csv.DictReader(io.StringIO(text)):
         jobs = _count(r.get("Number affected at this location") or "")
@@ -727,21 +731,28 @@ def _nc_text_rows(words, url):
     return out
 
 
-def fetch_nc():
+def fetch_nc(get=None):
     """NC Commerce, three vintages (verified 2026-07-18): the current year or
     two live on Drupal pages with a rotating CSV; 2015-2025 hang off the
     warn-summary-report-archives page as per-year PDFs — gridded tables for
-    2018+, headerless text columns for 2015-2017. Everything fail-isolated."""
+    2018+, headerless text columns for 2015-2017. Everything fail-isolated.
+
+    `get` is injectable so the tests drive every request path (the current-year
+    CSV, the archive index, and each per-year PDF) without a network. Injection
+    rather than mocking the module global is deliberate: it cannot be defeated
+    by discovery order or by whichever `requests` object this module bound at
+    import time, which is what left the archive PDFs reachable in one CI run."""
     from datetime import date as _date
+    do_get = get or (lambda u, **kw: requests.get(u, **kw))
     out = []
     for y in (_date.today().year, _date.today().year - 1):  # Jan rollover safety
         try:
-            out += _nc_year_csv(y)
+            out += _nc_year_csv(y, get=do_get)
         except Exception as exc:
             print(f"    NC {y}: summary-list failed ({exc})")
     try:
-        arch = requests.get(f"{_NC_WARN_BASE}/warn-summary-report-archives",
-                            headers=UA, timeout=TIMEOUT)
+        arch = do_get(f"{_NC_WARN_BASE}/warn-summary-report-archives",
+                      headers=UA, timeout=TIMEOUT)
         hrefs = re.findall(r'href="([^"]*warn[^"]*/open)"', arch.text, re.I)
     except Exception as exc:
         print(f"    NC: archive index failed ({exc})")
@@ -764,7 +775,7 @@ def fetch_nc():
         yr = ym.group(1)
         url = href if href.startswith("http") else "https://www.commerce.nc.gov" + href
         try:
-            resp = requests.get(url, headers=UA, timeout=60)
+            resp = do_get(url, headers=UA, timeout=60)
             if resp.status_code in (403, 429) or resp.status_code >= 500:
                 unreachable_years.append(yr)
                 print(f"    NC {yr} archive: UNREACHABLE (HTTP "

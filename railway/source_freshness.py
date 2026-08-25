@@ -457,15 +457,19 @@ def record(ledger, key, *, profile, verdict, reason, classification=None,
         if entry.get("state") != BROKEN:
             entry["state"] = HEALTHY
     elif verdict == PASS:
+        was_broken = entry.get("state") == BROKEN
         entry.pop("advisory", None)
-        if entry.get("state") == BROKEN:
-            entry["state"] = HEALTHY
+        # A PASS closes any open incident (FAIL) AND any quiet stretch (QUIET),
+        # so none of the FAIL/QUIET-only fields may survive on it -- see
+        # assert_self_consistent. The old code cleared these ONLY when
+        # recovering FROM BROKEN, so a QUIET source (days_dark set, state
+        # HEALTHY) that then read PASS kept a stale days_dark beside a
+        # PASS/HEALTHY entry, a contradiction the well-formedness test rejects.
+        for gone in ("days_dark", "classification", "first_detected"):
+            entry.pop(gone, None)
+        entry["state"] = HEALTHY
+        if was_broken:
             entry["recovered_at"] = today
-            entry.pop("first_detected", None)
-            entry.pop("classification", None)
-            entry.pop("days_dark", None)
-        else:
-            entry["state"] = HEALTHY
     else:  # UNKNOWN
         if entry.get("state") != BROKEN:
             entry["state"] = entry.get("state") or UNKNOWN

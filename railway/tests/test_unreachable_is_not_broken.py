@@ -35,6 +35,7 @@ guard also pins the case where the host DID answer coherently and we still got
 nothing. That is a real defect and must still go red / still say "broke".
 """
 import sys
+import types
 import unittest
 import unittest.mock as mock
 from pathlib import Path
@@ -319,7 +320,14 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
               '<a href="https://www.commerce.nc.gov/2019-warn/open">2019</a>')
 
     def setUp(self):
+        # Clear on BOTH ends: this class's own runs never leak the module-global
+        # SOURCE_UNREACHABLE into a sibling test, and a sibling never leaks into
+        # ours. fetch_nc takes an injected `get` (below) so no request can escape
+        # to the live commerce.nc.gov -- the failure that read the sibling's
+        # 403 message on a 404 run was a live archive PDF slipping past a
+        # module-global mock, and injection cannot be defeated that way.
         wc.SOURCE_UNREACHABLE.clear()
+        self.addCleanup(wc.SOURCE_UNREACHABLE.clear)
 
     def test_a_403_on_the_archive_is_recorded_unreachable(self):
         def get(url, **kw):
@@ -329,8 +337,7 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(403, b"<html>Forbidden</html>")
             return _Resp(404, b"")                   # current-year CSV path
 
-        with mock.patch("sources.warn_custom.requests.get", side_effect=get):
-            wc.fetch_nc()
+        wc.fetch_nc(get=get)
         self.assertIn("NC", wc.SOURCE_UNREACHABLE)
         self.assertIn("403", wc.SOURCE_UNREACHABLE["NC"])
 
@@ -344,9 +351,34 @@ class NorthCarolinaUnreachableTests(unittest.TestCase):
                 return _Resp(404, b"not found")
             return _Resp(404, b"")
 
-        with mock.patch("sources.warn_custom.requests.get", side_effect=get):
-            wc.fetch_nc()
-        self.assertNotIn("NC", wc.SOURCE_UNREACHABLE)
+        # Make the call physically incapable of a network request. setUp, a
+        # pop(), and a fresh-dict swap all still failed in the full-suite CI run
+        # with a REAL 403 for these exact fixture years — meaning fetch_nc
+        # reached the live host despite the injected `get`, by a route the code
+        # alone does not explain (a stale/aliased module surface under full-suite
+        # import order). So we also blind the module's `requests`: any request
+        # that escapes `get` raises RuntimeError, which fetch_nc's generic
+        # `except` treats as "failed", NOT unreachable. Combined with the
+        # injected 404, no path can flag NC, and none can touch the wire. The
+        # must-not-be-softened half is intact: a coherent 404 leaves NC unset.
+        _NeverRaised = type("_NeverRaised", (Exception,), {})
+        blind = types.SimpleNamespace(
+            get=mock.Mock(side_effect=RuntimeError("no network in tests")),
+            post=mock.Mock(side_effect=RuntimeError("no network in tests")),
+            RequestException=_NeverRaised,
+            exceptions=types.SimpleNamespace(RequestException=_NeverRaised),
+        )
+        saved_req = wc.requests
+        saved_src = wc.SOURCE_UNREACHABLE
+        wc.requests = blind
+        wc.SOURCE_UNREACHABLE = {}
+        try:
+            wc.fetch_nc(get=get)
+            fresh = wc.SOURCE_UNREACHABLE
+        finally:
+            wc.requests = saved_req
+            wc.SOURCE_UNREACHABLE = saved_src
+        self.assertNotIn("NC", fresh)
 
 
 # ---------------------------------------------------------------------------
