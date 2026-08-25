@@ -747,14 +747,20 @@ function alt_digest_subscribe_form($context = '') {
         display: flex; align-items: center; gap: 10px;
         min-height: 44px; margin: 0; font-size: 14px;
     }
-    /* The frequency pair stays on ONE line, so this is inline-flex on the
-       labels rather than a flex column on the fieldset: a <legend> is a flex
-       item like any other and turning the fieldset into a row would seat
-       "How often for the digests?" beside the two choices. 16px between them
-       clears the 8px adjacency floor twice over. */
+    /* The choices go in their own flex-wrap row, NOT the fieldset: a <legend>
+       is a flex item like any other and flexing the fieldset would seat "How
+       often for the digests?" beside the choices. Two choices sit on one line;
+       a third (Monthly, once armed) wraps at a phone width, and the gap keeps
+       both axes honest - 16px between two on a line, 8px between a wrapped row
+       and the one above it, either way clear of the 8px adjacency floor. This
+       used to be inline-flex + margin-right on the labels, which gave a wrapped
+       third radio 0px of vertical clearance. */
+    .alt-digest-freq-opts {
+        display: flex; flex-wrap: wrap; gap: 8px 16px;
+    }
     .alt-digest-freq label {
         display: inline-flex; align-items: center; gap: 10px;
-        min-height: 44px; margin: 0 16px 0 0; font-size: 14px;
+        min-height: 44px; margin: 0; font-size: 14px;
     }
     /* A 13px box in a flex row is a flex item, and flex items shrink. */
     .alt-digest-lists input, .alt-digest-freq input { flex: none; }
@@ -948,6 +954,7 @@ function alt_digest_subscribe_form($context = '') {
 
             <fieldset class="alt-digest-freq">
                 <legend>How often for the digests?</legend>
+                <div class="alt-digest-freq-opts">
                 <label><input type="radio" name="alt_freq" value="weekly" checked> Weekly</label>
                 <label><input type="radio" name="alt_freq" value="daily"> Daily</label>
                 <?php /* Monthly is offered only once the monthly tick is armed,
@@ -958,6 +965,7 @@ function alt_digest_subscribe_form($context = '') {
                 if (alt_digest_monthly_enabled()) : ?>
                 <label><input type="radio" name="alt_freq" value="monthly"> Monthly</label>
                 <?php endif; ?>
+                </div>
             </fieldset>
 
             <div class="alt-digest-row">

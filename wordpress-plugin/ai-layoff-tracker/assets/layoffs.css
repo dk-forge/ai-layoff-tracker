@@ -4254,18 +4254,23 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
         gap: 10px;
         min-height: 44px;
     }
-    /* The frequency pair takes the same 44px and keeps its line, which is the
-       component's own rule restated in the file that was overruling it. A
-       block-level label is the full width of the fieldset, so two of them
-       stack edge to edge with 0px between: that is the mis-tap this section
-       exists to prevent, arrived at by the rule meant to prevent it. Side by
-       side with 16px of margin they are two clear targets on one row. */
+    /* The choices take the same 44px and share a flex-wrap row, which is the
+       component's own rule restated in the file that was overruling it. The
+       spacing lives on the .alt-digest-freq-opts wrapper (gap: 8px 16px) so a
+       third choice wrapping to a second line clears the same 8px floor the two
+       on one line clear with 16px between them; the label carries no margin of
+       its own, or the wrapper gap and the margin would sum to 32px on a row. */
+    .alt-digest-freq-opts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+    }
     .alt-digest-freq label {
         display: inline-flex;
         align-items: center;
         gap: 10px;
         min-height: 44px;
-        margin-right: 16px;
+        margin: 0;
     }
 
     /* --- 6. A card headline is a link the width of the card ----------- */
