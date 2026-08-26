@@ -295,7 +295,14 @@ class PressTablesScrollTests(unittest.TestCase):
         self.assertNotRegex(d, r"overflow-x:\s*hidden")
 
     def test_the_base_wrapper_still_scrolls(self):
-        self.assertIn(".alt-health-table-wrap{overflow-x:auto}", self.css)
+        # The base rule must still scroll horizontally. It gained
+        # `position:relative` when the a11y pass anchored a "swipe to see more"
+        # hint inside it, so assert the PROPERTY is in the rule rather than that
+        # the rule is exactly `{overflow-x:auto}` — the scroll is the contract,
+        # not the property count.
+        i = self.css.index(".alt-health-table-wrap{")
+        rule = self.css[i:self.css.index("}", i)]
+        self.assertIn("overflow-x:auto", rule)
 
 
 class OneTitlePerPageTests(unittest.TestCase):
