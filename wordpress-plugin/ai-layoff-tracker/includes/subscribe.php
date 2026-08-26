@@ -4302,7 +4302,7 @@ function alt_digest_indeed_block() {
 
     $context = 'External context from ' . $src_name . ', not the tracker\'s own '
              . 'records. These figures describe the whole US labour market and are '
-             . 'not counted in the job-cut totals above.';
+             . 'not counted in the totals above.';
 
     // The source/as-of line. Names the licence and both "as of" dates, because
     // the AI series lags the index by a few weeks and a reader has to see how
@@ -6382,8 +6382,40 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
  * talent plugin is a SEPARATE plugin on the same install; if it is inactive
  * its namespace does not resolve and this quietly returns null.
  */
-function alt_digest_compose_talent($from, $to, $send_id = 0) {
+function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     if (!function_exists('rest_do_request')) return null;
+    /*
+      WHICH TIER IS BEING COMPOSED, AND WHY THIS SECTION IS NOW TOLD.
+
+      Until 2026-08-26 this composer took three arguments and every caller that
+      passed a fourth (digest-api.php and digest-archive.php already do, for the
+      layoff composer's sake) had it silently ignored. It reads $freq now for
+      ONE reason: the Indeed "jobs in" backdrop below, which pairs our talent
+      signals with the whole-market hiring demand.
+
+      THE BACKDROP HAS ONE HOME PER EDITION, AND $is_monthly IS THE SWITCH.
+      The MONTHLY edition already renders the identical Indeed block in the
+      layoff section (alt_digest_compose_layoff, gated on $is_monthly there),
+      placed after the tracker's own tables - the marquee "jobs out vs jobs in"
+      brief. A monthly dual-list subscriber gets BOTH sections concatenated, so
+      rendering the backdrop here too would print it twice in one email. So the
+      rule is: the talent section carries the backdrop for the DAILY and WEEKLY
+      cadences (where the layoff section never has it), and DEFERS to the layoff
+      section on the monthly edition. That is "render it once, in one section"
+      by construction - the block only ever lives in a single composed section
+      for a given tier, so no downstream assembler (the in-WordPress sender, the
+      relay, or the public archive) can double it, and none of them needs a
+      per-recipient dedup pass. See the backdrop block lower down for the rest.
+
+      The one state this does not cover is a MONTHLY, TALENT-ONLY subscriber,
+      who would get neither copy. That state is not reachable through the
+      product: the signup form applies ONE frequency across all of a
+      subscriber's lists (alt_digest_prefs_from_post) and does not offer monthly
+      at all until alt_digest_monthly_enabled() is filtered on, so there is no
+      UI path to a talent list set to monthly on its own.
+    */
+    $is_monthly = (alt_digest_valid_freq($freq) === 'monthly'
+                   && strtolower(trim((string) $freq)) === 'monthly');
     $agg = new WP_REST_Request('GET', '/talent/v1/aggregate');
     $agg->set_param('since', $from);
     $agg->set_param('until', $to);
@@ -6460,8 +6492,32 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
       travel with the figure, because a reader who quotes the headline takes
       whatever is next to it and nothing else.
     */
+    /*
+      WHAT A COUNT MEANS, NOT JUST WHAT A SIGNAL IS. The sibling talent plugin
+      classifies every row by what its headcount MEANS (pipeline/count_meaning),
+      and a just-merged fix reworded job-board scan deltas from "opened N roles"
+      to "listed N more active postings than our previous scan": a board's
+      active-posting count rising is an OBSERVATION, not a confirmed opening -
+      old listings expire while new ones appear. That distinction has to reach
+      this email, because the headline count here (an /aggregate COUNT over the
+      window) includes those job-board scans alongside confirmed announcements.
+
+      IT IS ONE SENTENCE, NOT A BREAKDOWN, AND DELIBERATELY SO. /talent/v1/
+      aggregate does not expose a split by signal type or count-meaning: the
+      include=fresh mode this section reads returns only scalars (total,
+      companies, verified, money), and even the full response groups only by
+      pillar, direction and confidence, none of which is the confirmed-vs-scan
+      distinction. Deriving a split from the 40 sampled /query rows would be a
+      partial count published as a whole one, which is the exact fabrication the
+      iron rules forbid. So the honest move is to state plainly what the count
+      can and cannot mean, consistent with the merged "opened roles" wording,
+      and to leave the split unstated because it is unmeasured here.
+    */
     $unit_note = 'A hiring signal is one sourced employer update, not one job. '
-               . 'Job counts below are the roles named in that update.';
+               . 'Job counts below are the roles named in that update. Some '
+               . 'signals are job-board scans, where a rise means the employer '
+               . 'listed more active postings than our previous scan, not that '
+               . 'it confirmed new openings.';
     $html .= '<p data-alt="note">' . esc_html($unit_note) . '</p>';
     $lede = alt_digest_count($total, 'new hiring signal') . ', ' . $scope;
     // The same rule as the layoff section, same reason. This lede happens to
@@ -6865,6 +6921,38 @@ function alt_digest_compose_talent($from, $to, $send_id = 0) {
                        . alt_digest_count($ytd_total, 'hiring signal') . ', '
                        . $ytd_scope . "\n";
             }
+        }
+    }
+
+    /*
+      JOBS IN: THE INDEED BACKDROP, IN THE TALENT SECTION, and this is its
+      natural home: the talent section is about hiring, and Indeed Hiring Lab's
+      US Job Postings Index is the whole-market context for hiring. It is placed
+      AFTER our own signals (the headline, the biggest signals, the activity
+      lines and the YTD figure) and BEFORE the footer link and citation, so a
+      reader has read the tracker's own figures before meeting the outside
+      series - the same running order the monthly layoff section uses.
+
+      IT IS THE SAME alt_digest_indeed_block() the monthly layoff section reuses,
+      guarded the same way: a WHOLE-BLOCK omission when the sibling talent plugin
+      or its data is absent (function_exists inside the helper, null return here
+      omits it), never a fabricated figure. The block heads and sources itself
+      ("Jobs in: US hiring demand", Indeed Hiring Lab, CC BY 4.0, its own as-of
+      dates) and its own copy says it is external context "not counted in the
+      totals above" - so a reader never adds this whole-market index
+      level (base 100 = February 1, 2020) to our signal counts. It is a THIRD
+      distinct unit from a cut and a hiring signal, and it says so.
+
+      $is_monthly GATES IT OUT of the talent section, because on the monthly
+      edition the layoff section already carries the identical block - see the
+      $is_monthly note at the top of this function for why one home per edition
+      is the whole dedup story.
+    */
+    if (!$is_monthly && function_exists('alt_digest_indeed_block')) {
+        $indeed = alt_digest_indeed_block();
+        if ($indeed !== null) {
+            $html .= $indeed['html'];
+            $text .= $indeed['text'];
         }
     }
 
@@ -7494,11 +7582,14 @@ function alt_digest_send($freq) {
 
     // Compose each tracker's section ONCE per run, not per recipient.
     // $freq reaches the layoff composer so it can render the monthly masthead
-    // and the Indeed "jobs in" backdrop. The other two composers take three
-    // parameters and ignore the fourth (PHP permits the extra argument).
+    // and the Indeed "jobs in" backdrop, and the talent composer so it can
+    // carry that same backdrop on the daily/weekly cadences and DEFER to the
+    // layoff section on the monthly edition (one home per edition, no double
+    // render). The articles composer takes three parameters and ignores the
+    // fourth (PHP permits the extra argument).
     $sections = array(
         'layoff' => alt_digest_compose_layoff($from_date, $to_date, $send_id, $freq),
-        'talent' => alt_digest_compose_talent($from_date, $to_date, $send_id),
+        'talent' => alt_digest_compose_talent($from_date, $to_date, $send_id, $freq),
         'articles' => alt_digest_compose_articles($from_date, $to_date, $send_id),
     );
 

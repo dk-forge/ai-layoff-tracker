@@ -194,7 +194,7 @@ class TheIndeedBackdropRenders(unittest.TestCase):
         self.assertIn("CC BY 4.0", html)
 
     def test_the_block_says_it_is_external_and_uncounted(self):
-        self.assertIn("not counted in the job-cut totals above",
+        self.assertIn("not counted in the totals above",
                       self.section["html"])
 
     def test_the_block_is_in_the_text_part_too(self):
