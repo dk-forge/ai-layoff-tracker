@@ -295,6 +295,7 @@ class CronWiringTests(unittest.TestCase):
              patch.object(cron, "_pull_regional_feeds_rows", return_value=[]), \
              patch.object(cron, "_pull_national_feeds_rows", return_value=[]), \
              patch.object(cron, "pull_press_releases", return_value=[]), \
+             patch.object(cron, "pull_mn_warn_letters", return_value=[]), \
              patch.object(cron, "reviewed_feed_count", return_value=1), \
              patch.object(cron, "pull_gdelt_between", return_value=[]), \
              patch.object(cron, "filter_already_seen", side_effect=lambda e: e), \
