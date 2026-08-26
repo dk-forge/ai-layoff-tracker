@@ -4302,7 +4302,7 @@ function alt_digest_indeed_block() {
 
     $context = 'External context from ' . $src_name . ', not the tracker\'s own '
              . 'records. These figures describe the whole US labour market and are '
-             . 'not counted in the job-cut totals above.';
+             . 'not counted in the totals above.';
 
     // The source/as-of line. Names the licence and both "as of" dates, because
     // the AI series lags the index by a few weeks and a reader has to see how
@@ -6939,7 +6939,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
       omits it), never a fabricated figure. The block heads and sources itself
       ("Jobs in: US hiring demand", Indeed Hiring Lab, CC BY 4.0, its own as-of
       dates) and its own copy says it is external context "not counted in the
-      job-cut totals above" - so a reader never adds this whole-market index
+      totals above" - so a reader never adds this whole-market index
       level (base 100 = February 1, 2020) to our signal counts. It is a THIRD
       distinct unit from a cut and a hiring signal, and it says so.
 

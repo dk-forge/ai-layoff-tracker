@@ -151,7 +151,7 @@ class TheTalentBackdropRenders(unittest.TestCase):
     def test_the_block_says_it_is_external_and_uncounted(self):
         # The wall that stops a reader adding a whole-market index level to our
         # signal counts. It is a THIRD distinct unit and the copy says so.
-        self.assertIn("not counted in the job-cut totals above",
+        self.assertIn("not counted in the totals above",
                       self.section["html"])
 
     def test_the_block_is_in_the_text_part_too(self):
