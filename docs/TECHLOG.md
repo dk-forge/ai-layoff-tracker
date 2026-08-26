@@ -1,5 +1,48 @@
 # Tech Log
 
+## 2026-08-26 - style_check.collect() went from 762s to 0.5s (one quadratic regex)
+
+**What.** `style_check.collect()` was the single biggest cost in CI: it drove
+`test_reader_copy_says_entries` (~780s) and `test_style_standard` (~700s), which
+is why the Tests workflow had to split into four legs to keep each under the
+15-minute wall. Profiled from `railway/`:
+`cProfile.run('s.collect(s.repo_root())')` reported **761.975s, of which 761.213s
+(99.9%) was `re.Pattern.sub`**. Per file, `includes/subscribe.php` alone took
+**863.95s** and `templates/page-press.php` 5.29s; every other target was under
+1.2s.
+
+**Root cause.** ONE regex in `_clean_literal`: `re.sub(r"\s+([,.;:!?])", ...)`.
+`\s+` followed by a character class that usually does NOT match is catastrophic
+on long whitespace runs: at every offset inside a run, `\s+` re-matches the rest
+of the run and then fails the class, so a k-space run costs O(k^2). The 7k-line
+templates carry long whitespace runs in their text nodes, so this dominated
+everything. Attributing `re.sub` time by pattern confirmed 8.4s of an 8.2s
+page-press extraction was this one pattern; the other two subs in the function
+were 0.003s and 0.001s.
+
+**Fix.** Two linear passes instead of one: `re.sub(r"\s+", " ", text)` (always
+succeeds, consumes each run once, O(n)) then `re.sub(r" ([,.;:!?])", r"\1", text)`
+(a single literal space before punctuation cannot re-scan a run). Provably
+identical output: every caller of `_clean_literal` collapses whitespace with
+`" ".join(text.split())` immediately after, so normalising runs to one space
+here changes no reader-visible segment. Verified by snapshotting `collect()`'s
+full Segment list (text, path, line, page) with the old and new code:
+**1370 segments, byte-identical.** `collect()` now runs in **~0.5s**;
+subscribe.php dropped from 863.95s to 0.143s.
+
+**Downstream.** `railway/run_tests.py` `_MEASURED_WEIGHTS` refreshed for the two
+tests (780 -> measured, 700 -> measured) so the four-leg deal rebalances toward
+even. No `timeout-minutes` raised. The style checks flag exactly what they flagged
+before.
+
+**Two-repo change.** `style_check.py` is byte-identical in
+`ai-layoff-tracker` and `talent-intelligence-tracker`. This edit must be copied
+into the sibling repo and `STYLE_CHECK_SHA256` updated in both
+`test_style_standard.py` files; `.github/workflows/style-standard.yml` reddens
+while they differ.
+
+**style_check.py sha256:** `395f73c00170717f6d11e01fb01f4d6ad5a7644cb4e177c4a0df90a29c25846f`
+
 ## 2026-08-25 - A MONTHLY digest edition: the "jobs out vs jobs in" brief (2.20.138)
 
 **What.** A third digest cadence, `monthly`, sitting beside `daily` and

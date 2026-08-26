@@ -72,18 +72,21 @@ GROUPS = ("rest", "rest-2", "rendered-1", "rendered-2")
 _LIVE_DATA_PINNED_TO_REST = ("test_dedup_live",)
 
 #: Per-module wall seconds MEASURED FROM CI on 2026-08-26 (run_tests prints
-#: `TIMING <secs> <stem>`; re-run and re-read to refresh). TWO modules dominate,
-#: both driven by style_check.collect()'s whole-product reader-copy walk:
-#: test_reader_copy_says_entries (~780s, in a test body) and test_style_standard
-#: (~700s, in setUpClass). Each is a SINGLE module and cannot be split, so the
-#: deal isolates each on its own leg; the real fix is making collect() fast, and
-#: then these two fall and the legs rebalance on the next measurement. Everything
-#: unlisted is weighted by how many `def test_` it declares. THE WEIGHT ONLY
-#: BALANCES THE DEAL: a wrong weight makes a leg heavier, never drops a test (the
-#: totality guard pins that). Re-measure if a leg drifts — do NOT raise the wall.
+#: `TIMING <secs> <stem>`; re-run and re-read to refresh). Until 2026-08-26 TWO
+#: modules dominated, both driven by style_check.collect()'s reader-copy walk:
+#: test_reader_copy_says_entries (~780s) and test_style_standard (~700s). That was
+#: one quadratic regex in _clean_literal (see docs/TECHLOG.md 2026-08-26): collect()
+#: dropped from 762s to ~0.5s. The two values below are the post-fix CI TIMING
+#: reads: test_style_standard 0.0s and test_reader_copy_says_entries 0.7s (its
+#: browser subtests still run in CI, which amortises the Chrome startup that costs
+#: ~9s cold locally). Both are now ordinary members of their legs rather than a leg
+#: unto itself. Everything unlisted is weighted by how many `def test_` it declares.
+#: THE WEIGHT ONLY BALANCES THE DEAL: a wrong weight makes a leg heavier, never
+#: drops a test (the totality guard pins that). Re-measure if a leg drifts — do NOT
+#: raise the wall.
 _MEASURED_WEIGHTS = {
     # browser (rendered) — measured per-test wall
-    "test_reader_copy_says_entries": 780,       # style_check.collect() walk (grows with repo)
+    "test_reader_copy_says_entries": 1,         # CI 0.7s; collect() no longer dominates
     "test_blog_applause_surface": 45,
     "test_signup_terminal_states": 43,
     "test_tap_targets": 17,
@@ -97,9 +100,8 @@ _MEASURED_WEIGHTS = {
     "test_card_space": 4,
     "test_rendered_contrast": 3,
     "test_signal_board_periods": 3,
-    # non-browser (rest) — test_style_standard's cost is in setUpClass, invisible
-    # to per-test timing, inferred from its leg total (rest-2 ~798s, tests ~60s)
-    "test_style_standard": 700,                 # style_check.collect() walk, same driver
+    # non-browser (rest)
+    "test_style_standard": 1,                   # CI 0.0s; collect() now ~0.5s
     "test_digest_sender": 31,
     "test_dedup_live": 20,
     "test_blog_claps": 15,
