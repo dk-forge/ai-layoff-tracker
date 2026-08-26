@@ -71,23 +71,40 @@ GROUPS = ("rest", "rest-2", "rendered-1", "rendered-2")
 #: would let a leg that never read the live site answer for the one that did.
 _LIVE_DATA_PINNED_TO_REST = ("test_dedup_live",)
 
-#: Relative weights MEASURED FROM CI on 2026-08-26, when the suite ran as three
-#: legs and the single browser leg reached the 15-minute wall on its own. These
-#: modules dominated that leg (full-page renders at four widths, or a whole-repo
-#: reader-copy walk); `test_style_standard` is the one heavy CPU (non-browser)
-#: module. Everything unlisted is weighted by how many `def test_` it declares —
-#: cheap, import-free, and a good enough proxy. THE WEIGHT ONLY BALANCES THE
-#: DEAL: a wrong weight makes a leg slightly heavier, it can never drop a test
-#: (the totality guard in test_test_groups.py pins that). Re-measure and adjust
-#: these if a leg drifts toward the wall again — do NOT raise timeout-minutes.
+#: Per-module wall seconds MEASURED FROM CI on 2026-08-26 (run_tests prints
+#: `TIMING <secs> <stem>`; re-run and re-read to refresh). TWO modules dominate,
+#: both driven by style_check.collect()'s whole-product reader-copy walk:
+#: test_reader_copy_says_entries (~780s, in a test body) and test_style_standard
+#: (~700s, in setUpClass). Each is a SINGLE module and cannot be split, so the
+#: deal isolates each on its own leg; the real fix is making collect() fast, and
+#: then these two fall and the legs rebalance on the next measurement. Everything
+#: unlisted is weighted by how many `def test_` it declares. THE WEIGHT ONLY
+#: BALANCES THE DEAL: a wrong weight makes a leg heavier, never drops a test (the
+#: totality guard pins that). Re-measure if a leg drifts — do NOT raise the wall.
 _MEASURED_WEIGHTS = {
-    "test_reader_copy_says_entries": 130,       # style_check.collect() walk + renders
-    "test_digest_route_is_findable": 130,
-    "test_signup_reaches_landing_pages": 120,
-    "test_tap_targets": 90,
-    "test_blog_reading_surface": 80,
-    "test_nav_submenu": 40,
-    "test_style_standard": 130,                 # non-browser: whole-repo reader-copy walk
+    # browser (rendered) — measured per-test wall
+    "test_reader_copy_says_entries": 780,       # style_check.collect() walk (grows with repo)
+    "test_blog_applause_surface": 45,
+    "test_signup_terminal_states": 43,
+    "test_tap_targets": 17,
+    "test_signup_reaches_landing_pages": 15,
+    "test_nav_submenu": 13,
+    "test_filter_controls": 12,
+    "test_digest_route_is_findable": 10,
+    "test_press_route_is_findable": 5,
+    "test_signal_board_default": 5,
+    "test_blog_reading_surface": 4,
+    "test_card_space": 4,
+    "test_rendered_contrast": 3,
+    "test_signal_board_periods": 3,
+    # non-browser (rest) — test_style_standard's cost is in setUpClass, invisible
+    # to per-test timing, inferred from its leg total (rest-2 ~798s, tests ~60s)
+    "test_style_standard": 700,                 # style_check.collect() walk, same driver
+    "test_digest_sender": 31,
+    "test_dedup_live": 20,
+    "test_blog_claps": 15,
+    "test_budget_stop_is_not_a_failure": 8,
+    "test_subscriber_routes_live": 7,
 }
 
 _BROWSER_CACHE = {}
