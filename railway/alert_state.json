@@ -51,7 +51,13 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {},
-  "updated_at": "2026-08-26T19:40:20+00:00",
+  "open": {
+    "tests:main:d6ea42a604abc6d4": {
+      "first": 1787773872,
+      "last": 1787773872,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'spend.py --degrade' not found in '# Manual, one-off runner for the adjudication-panel DOGE dry-run. workflow_dispatch\\n# ONLY - never runs on a sch"
+    }
+  },
+  "updated_at": "2026-08-26T19:51:12+00:00",
   "version": 1
 }
