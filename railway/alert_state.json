@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:main:17dcbacf5e29886c": {
-      "first": 1787736299,
-      "last": 1787736299,
-      "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
-    }
-  },
-  "updated_at": "2026-08-26T09:25:00+00:00",
+  "open": {},
+  "updated_at": "2026-08-26T09:41:26+00:00",
   "version": 1
 }
