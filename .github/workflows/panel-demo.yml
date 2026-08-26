@@ -1,0 +1,27 @@
+# Manual, one-off runner for the adjudication-panel DOGE dry-run. workflow_dispatch
+# ONLY - it never runs on a schedule or a push. It makes three real (metered)
+# OpenRouter calls so the owner can see the panel actually rule on the held DOGE
+# relabel before the panel is armed. Safe to delete after the demo.
+name: Panel demo (DOGE dry-run)
+on:
+  workflow_dispatch:
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: railway/requirements.lock
+      - name: Install deps
+        working-directory: railway
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: DOGE dry-run (three real votes)
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ALT_PAID_READS: "on"
+        run: python3 adjudication_panel.py --demo
