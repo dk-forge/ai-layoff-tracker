@@ -23,5 +23,6 @@ jobs:
         working-directory: railway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ALT_PANEL_MODELS: "google/gemini-2.5-flash-lite,deepseek/deepseek-chat,openai/gpt-4o-mini"
           ALT_PAID_READS: "on"
         run: python3 adjudication_panel.py --demo
