@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:main:79c920ddbb9299f4": {
-      "first": 1787764913,
-      "last": 1787764913,
-      "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['tests:main', 'tests:live.data:2e215caae5bac21b'] != ['tests:main', 'tests:live.data']"
-    }
-  },
-  "updated_at": "2026-08-26T18:09:17+00:00",
+  "open": {},
+  "updated_at": "2026-08-26T18:13:03+00:00",
   "version": 1
 }
