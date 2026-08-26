@@ -637,6 +637,47 @@ function alt_api_event_sources(WP_REST_Request $request) {
     return rest_ensure_response(array('layoff_id' => $id, 'sources' => alt_event_sources_for_layoff($id)));
 }
 
+/**
+ * Is this URL a Google News redirect/index link rather than a publisher's own
+ * article? Matches news.google.com and its country hosts (news.google.co.uk,
+ * news.google.de, ...). Kept in step with the ingest's own detector in
+ * railway/sources/google_news_url.py.
+ */
+function alt_is_google_news_url($url) {
+    $host = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
+    if ($host === '') return false;
+    return (bool) preg_match('/(^|\.)news\.google\.(com|[a-z]{2,3}(\.[a-z]{2})?)$/', $host);
+}
+
+/**
+ * An HONEST label for a source link, derived from how the row was sourced.
+ * A news report is NOT a primary source, and a Google News redirect URL is an
+ * index record, not the article itself. This is the correction for the external
+ * review's citation-label finding (docs/EXTERNAL_REVIEW_2026-08-20.md): the
+ * button used to say "View primary source" for every row, including news.
+ *
+ * source_type is one of: 8K | press_release | news | warn | erm | federal_rif
+ * | seed (includes/cpt.php alt_allowed_source_types). The JS twin is
+ * sourceLinkLabel() in assets/layoffs.js; test_source_link_label.py runs both
+ * and pins that they never disagree and that a Google-redirect URL is never
+ * called a primary source.
+ */
+function alt_source_link_label($source_type, $source_url = '') {
+    $t = strtolower(trim((string) $source_type));
+    if ($t === '8k' || $t === 'warn' || $t === 'erm' || $t === 'federal_rif') {
+        return 'View official filing';
+    }
+    if ($t === 'press_release') {
+        return 'View employer statement';
+    }
+    if ($t === 'news') {
+        return alt_is_google_news_url($source_url)
+            ? 'View Google News index record'
+            : 'View source report';
+    }
+    return 'View source';
+}
+
 function alt_entry_to_array($post_id) {
     $tags = get_post_meta($post_id, 'reason_tags', true);
     if (!is_array($tags)) {

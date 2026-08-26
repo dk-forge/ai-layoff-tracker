@@ -236,6 +236,25 @@
         url = String(url == null ? '' : url).trim();
         return /^https?:\/\//i.test(url) ? url : '';
     }
+    // Is this a Google News redirect/index link rather than a publisher's own
+    // article? Kept in step with the PHP twin alt_is_google_news_url() and the
+    // ingest's railway/sources/google_news_url.py.
+    function isGoogleNewsUrl(url) {
+        var m = /^https?:\/\/([^\/?#]+)/i.exec(String(url == null ? '' : url));
+        if (!m) return false;
+        return /(^|\.)news\.google\.(com|[a-z]{2,3}(\.[a-z]{2})?)$/i.test(m[1]);
+    }
+    // An HONEST label for a source link, derived from how the row was sourced.
+    // A news report is NOT a primary source, and a Google News redirect is an
+    // index record, not the article. Twin of the PHP alt_source_link_label();
+    // test_source_link_label.py runs both and pins they never disagree.
+    function sourceLinkLabel(sourceType, sourceUrl) {
+        var t = String(sourceType == null ? '' : sourceType).toLowerCase().trim();
+        if (t === '8k' || t === 'warn' || t === 'erm' || t === 'federal_rif') return 'View official filing';
+        if (t === 'press_release') return 'View employer statement';
+        if (t === 'news') return isGoogleNewsUrl(sourceUrl) ? 'View Google News index record' : 'View source report';
+        return 'View source';
+    }
     // Permanent receipt for California WARN rows. CA's per-row source_url is the
     // ROLLING recent-processed xlsx, which drops a notice within weeks (verified:
     // Meta's 2026-07-22 filings, processed in May, are gone from it). But CA also
@@ -4087,7 +4106,8 @@
         }
         var url = safeUrl(row.source_url);
         if (!url) return escapeHtml(row.source_name || 'Source not recorded');
-        return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="Opens the primary source">' + name + ' ↗</a>' + arch;
+        var tip = sourceLinkLabel(row.source_type, row.source_url).replace(/^View /, 'Opens the ');
+        return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="' + escapeHtml(tip) + '">' + name + ' ↗</a>' + arch;
     }
 
     function cardHtml(row, i) {
@@ -4470,8 +4490,9 @@
             }
         } else {
             var url = safeUrl(row.source_url);
-            srcRows.push(srcRow('Primary source', url
-                ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>'
+            var srcLabel = sourceLinkLabel(row.source_type, row.source_url) + ' (' + (row.source_name || 'source') + ') ↗';
+            srcRows.push(srcRow('Source', url
+                ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(srcLabel) + '</a>'
                 : escapeHtml(row.source_name || 'not recorded')));
         }
         // Every row now carries an explicit Archived-copy row: the permanent
@@ -6200,6 +6221,59 @@
         });
     }
 
+    // ACCESSIBLE HORIZONTAL-SCROLL TABLES. The source-directory tables on the
+    // Sources page (country/outlet, catalogue, global authorities,
+    // jurisdictions) all ship inside .alt-health-table-wrap, which scrolls
+    // horizontally on a phone but was an anonymous, unfocusable box: a screen
+    // reader did not announce it, a keyboard could not reach it to scroll, and
+    // nothing told a touch reader there was more table off the right edge.
+    // These give each one a named region role, keyboard focus, and a
+    // "swipe to see more" cue that shows only while the table actually overflows.
+    function scrollRegionLabel(wrap) {
+        var d = wrap.closest ? wrap.closest('details') : null;
+        var sum = d ? d.querySelector('summary') : null;
+        var txt = sum ? sum.textContent : '';
+        if (!txt) {
+            var p = wrap.previousElementSibling;
+            while (p) {
+                if (/^H[1-6]$/.test(p.tagName)) { txt = p.textContent; break; }
+                p = p.previousElementSibling;
+            }
+        }
+        txt = (txt || 'Data table').replace(/\s+/g, ' ').trim().slice(0, 80);
+        return txt + ' (scrollable table)';
+    }
+    function refreshScrollCue(wrap) {
+        var more = (wrap.scrollWidth - wrap.clientWidth - wrap.scrollLeft) > 4;
+        wrap.classList.toggle('alt-scroll-more', more);
+    }
+    function enhanceScrollRegions() {
+        var wraps = document.querySelectorAll('.alt-health-table-wrap');
+        Array.prototype.forEach.call(wraps, function (wrap) {
+            if (wrap.getAttribute('data-alt-scroll') === '1') return;
+            wrap.setAttribute('data-alt-scroll', '1');
+            if (!wrap.hasAttribute('role')) wrap.setAttribute('role', 'region');
+            if (!wrap.hasAttribute('tabindex')) wrap.setAttribute('tabindex', '0');
+            if (!wrap.getAttribute('aria-label')) wrap.setAttribute('aria-label', scrollRegionLabel(wrap));
+            var hint = wrap.nextElementSibling;
+            if (!(hint && hint.classList && hint.classList.contains('alt-scroll-hint'))) {
+                hint = document.createElement('p');
+                hint.className = 'alt-scroll-hint';
+                hint.setAttribute('aria-hidden', 'true');
+                hint.innerHTML = 'Swipe to see more &rarr;';
+                if (wrap.parentNode) wrap.parentNode.insertBefore(hint, wrap.nextSibling);
+            }
+            refreshScrollCue(wrap);
+            wrap.addEventListener('scroll', function () { refreshScrollCue(wrap); }, { passive: true });
+        });
+        if (wraps.length && !enhanceScrollRegions._resize) {
+            enhanceScrollRegions._resize = true;
+            window.addEventListener('resize', function () {
+                document.querySelectorAll('.alt-health-table-wrap').forEach(refreshScrollCue);
+            }, { passive: true });
+        }
+    }
+
     // Was jQuery's $(fn). The script is deferred, so DOMContentLoaded may
     // already have fired by the time it runs; check readyState rather than
     // waiting for an event that has been and gone.
@@ -6253,6 +6327,9 @@
 
         initStatsMeta();
         renderSourceHealth();
+        // Before the needsData early-return below: the Sources page carries the
+        // scroll tables but none of the data surfaces, so this has to run first.
+        enhanceScrollRegions();
 
         var needsData = document.getElementById('alt-cards') || document.getElementById('alt-stats-bar')
             || document.querySelector('.alt-dashboard') || document.querySelector('.alt-ai-tracker')
