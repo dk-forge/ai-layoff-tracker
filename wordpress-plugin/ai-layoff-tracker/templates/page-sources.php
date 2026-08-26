@@ -127,7 +127,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://apps.eurofound.europa.eu/restructuring-events/" target="_blank" rel="noopener">ERM database &#8599;</a></td>
       </tr>
       <tr>
-        <td><b>GDELT news index</b></td><td>Worldwide, every country</td>
+        <td><b>GDELT news index</b></td><td>Worldwide discovery; coverage varies by country</td>
         <td>Global news in 65+ languages, searched<?php echo esc_html($alt_cad_sp); ?>. Allowlist of trusted outlets only, never open-web crawling.</td>
         <td>Verified (named report)</td>
         <td><a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">About GDELT &#8599;</a></td>
@@ -268,8 +268,8 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p>Almost every country requires employers to notify a labour authority before a mass layoff. But most treat those filings as <b>confidential</b>. They publish totals only, never a public list of which companies are cutting. Only <b>US states</b>, <b>Quebec</b> and <b>Poland's Mazovia region</b> publish a public, per-employer notice register we can read directly. The Mazovia register is WUP Warszawa, and a 2026 survey of all 16 Polish voivodeship labour offices found it is the only one that names employers. Everywhere else, the honest options are two. One is the EU's <b>Eurofound ERM</b>, which compiles large restructuring events from national correspondents. The other is a <b>reviewed allowlist of that country's news outlets</b>. That is why a German or Japanese layoff reaches this tracker through a named news report rather than a government file. The government has the file. It just does not make it public. We link each country's official labour authority below, so you can check the filing requirement, and its confidentiality, yourself.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php')) include ALT_PLUGIN_DIR . 'templates/partials/global-authorities-table.php'; ?>
 
-  <h2 id="alt-src-news">Worldwide news, every country &amp; outlet we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> countries, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
-  <p>Beyond official filings, we watch a reviewed allowlist of reputable news outlets in every country, in 65+ languages. We check them<?php echo esc_html($alt_cad_sp); ?> through GDELT and Google News, never the open web. The full list is below, built straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register, if any, we pull directly.</p>
+  <h2 id="alt-src-news">Worldwide news discovery: the countries and outlets we scan<?php if (!empty($alt_scan_countries)) : ?> (<?php echo number_format((int) $alt_scan_countries); ?> configured country markets, <?php echo number_format((int) $alt_scan_outlets); ?> outlets)<?php endif; ?></h2>
+  <p>Beyond official filings, we run worldwide discovery across a reviewed allowlist of reputable news outlets in the countries we cover, in 65+ languages. We check them<?php echo esc_html($alt_cad_sp); ?> through GDELT and Google News, never the open web. <b>Coverage varies by country</b>, and each country's measured coverage is shown below. The full list is built straight from the collector's own configuration, so it <b>updates automatically whenever a source is added</b>. Each country also shows which official register, if any, we pull directly.</p>
   <?php if (file_exists(ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php')) : ?>
   <?php include ALT_PLUGIN_DIR . 'templates/partials/country-sources-table.php'; ?>
   <?php else : ?>
