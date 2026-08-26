@@ -6200,6 +6200,59 @@
         });
     }
 
+    // ACCESSIBLE HORIZONTAL-SCROLL TABLES. The source-directory tables on the
+    // Sources page (country/outlet, catalogue, global authorities,
+    // jurisdictions) all ship inside .alt-health-table-wrap, which scrolls
+    // horizontally on a phone but was an anonymous, unfocusable box: a screen
+    // reader did not announce it, a keyboard could not reach it to scroll, and
+    // nothing told a touch reader there was more table off the right edge.
+    // These give each one a named region role, keyboard focus, and a
+    // "swipe to see more" cue that shows only while the table actually overflows.
+    function scrollRegionLabel(wrap) {
+        var d = wrap.closest ? wrap.closest('details') : null;
+        var sum = d ? d.querySelector('summary') : null;
+        var txt = sum ? sum.textContent : '';
+        if (!txt) {
+            var p = wrap.previousElementSibling;
+            while (p) {
+                if (/^H[1-6]$/.test(p.tagName)) { txt = p.textContent; break; }
+                p = p.previousElementSibling;
+            }
+        }
+        txt = (txt || 'Data table').replace(/\s+/g, ' ').trim().slice(0, 80);
+        return txt + ' (scrollable table)';
+    }
+    function refreshScrollCue(wrap) {
+        var more = (wrap.scrollWidth - wrap.clientWidth - wrap.scrollLeft) > 4;
+        wrap.classList.toggle('alt-scroll-more', more);
+    }
+    function enhanceScrollRegions() {
+        var wraps = document.querySelectorAll('.alt-health-table-wrap');
+        Array.prototype.forEach.call(wraps, function (wrap) {
+            if (wrap.getAttribute('data-alt-scroll') === '1') return;
+            wrap.setAttribute('data-alt-scroll', '1');
+            if (!wrap.hasAttribute('role')) wrap.setAttribute('role', 'region');
+            if (!wrap.hasAttribute('tabindex')) wrap.setAttribute('tabindex', '0');
+            if (!wrap.getAttribute('aria-label')) wrap.setAttribute('aria-label', scrollRegionLabel(wrap));
+            var hint = wrap.nextElementSibling;
+            if (!(hint && hint.classList && hint.classList.contains('alt-scroll-hint'))) {
+                hint = document.createElement('p');
+                hint.className = 'alt-scroll-hint';
+                hint.setAttribute('aria-hidden', 'true');
+                hint.innerHTML = 'Swipe to see more &rarr;';
+                if (wrap.parentNode) wrap.parentNode.insertBefore(hint, wrap.nextSibling);
+            }
+            refreshScrollCue(wrap);
+            wrap.addEventListener('scroll', function () { refreshScrollCue(wrap); }, { passive: true });
+        });
+        if (wraps.length && !enhanceScrollRegions._resize) {
+            enhanceScrollRegions._resize = true;
+            window.addEventListener('resize', function () {
+                document.querySelectorAll('.alt-health-table-wrap').forEach(refreshScrollCue);
+            }, { passive: true });
+        }
+    }
+
     // Was jQuery's $(fn). The script is deferred, so DOMContentLoaded may
     // already have fired by the time it runs; check readyState rather than
     // waiting for an event that has been and gone.
@@ -6253,6 +6306,9 @@
 
         initStatsMeta();
         renderSourceHealth();
+        // Before the needsData early-return below: the Sources page carries the
+        // scroll tables but none of the data surfaces, so this has to run first.
+        enhanceScrollRegions();
 
         var needsData = document.getElementById('alt-cards') || document.getElementById('alt-stats-bar')
             || document.querySelector('.alt-dashboard') || document.querySelector('.alt-ai-tracker')
