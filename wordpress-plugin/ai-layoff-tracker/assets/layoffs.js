@@ -236,6 +236,25 @@
         url = String(url == null ? '' : url).trim();
         return /^https?:\/\//i.test(url) ? url : '';
     }
+    // Is this a Google News redirect/index link rather than a publisher's own
+    // article? Kept in step with the PHP twin alt_is_google_news_url() and the
+    // ingest's railway/sources/google_news_url.py.
+    function isGoogleNewsUrl(url) {
+        var m = /^https?:\/\/([^\/?#]+)/i.exec(String(url == null ? '' : url));
+        if (!m) return false;
+        return /(^|\.)news\.google\.(com|[a-z]{2,3}(\.[a-z]{2})?)$/i.test(m[1]);
+    }
+    // An HONEST label for a source link, derived from how the row was sourced.
+    // A news report is NOT a primary source, and a Google News redirect is an
+    // index record, not the article. Twin of the PHP alt_source_link_label();
+    // test_source_link_label.py runs both and pins they never disagree.
+    function sourceLinkLabel(sourceType, sourceUrl) {
+        var t = String(sourceType == null ? '' : sourceType).toLowerCase().trim();
+        if (t === '8k' || t === 'warn' || t === 'erm' || t === 'federal_rif') return 'View official filing';
+        if (t === 'press_release') return 'View employer statement';
+        if (t === 'news') return isGoogleNewsUrl(sourceUrl) ? 'View Google News index record' : 'View source report';
+        return 'View source';
+    }
     // Permanent receipt for California WARN rows. CA's per-row source_url is the
     // ROLLING recent-processed xlsx, which drops a notice within weeks (verified:
     // Meta's 2026-07-22 filings, processed in May, are gone from it). But CA also
@@ -4087,7 +4106,8 @@
         }
         var url = safeUrl(row.source_url);
         if (!url) return escapeHtml(row.source_name || 'Source not recorded');
-        return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="Opens the primary source">' + name + ' ↗</a>' + arch;
+        var tip = sourceLinkLabel(row.source_type, row.source_url).replace(/^View /, 'Opens the ');
+        return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow" title="' + escapeHtml(tip) + '">' + name + ' ↗</a>' + arch;
     }
 
     function cardHtml(row, i) {
@@ -4470,8 +4490,9 @@
             }
         } else {
             var url = safeUrl(row.source_url);
-            srcRows.push(srcRow('Primary source', url
-                ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml('View primary source (' + (row.source_name || 'source') + ') ↗') + '</a>'
+            var srcLabel = sourceLinkLabel(row.source_type, row.source_url) + ' (' + (row.source_name || 'source') + ') ↗';
+            srcRows.push(srcRow('Source', url
+                ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener nofollow">' + escapeHtml(srcLabel) + '</a>'
                 : escapeHtml(row.source_name || 'not recorded')));
         }
         // Every row now carries an explicit Archived-copy row: the permanent
