@@ -2527,6 +2527,21 @@ p.alt-next-step-list { padding-left: 0; }
 .alt-single-block p { margin: 0; font-size: 15px; line-height: 1.6; color: var(--alt-ink); }
 .alt-cite code { display: block; overflow-wrap: anywhere; background: var(--alt-surface-2); border: 1px solid var(--alt-grid); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; color: var(--alt-ink); margin-top: 4px; }
 
+/* CITATION-PAGE TAP TARGETS. The single-entry page (/layoff/{company}-{date})
+   is a citation surface a journalist opens on a phone, and it was never in the
+   tap-target sweep the tracker and secondary pages pass. Measured on the live
+   page at 375px, its "View primary source" button was ~36.8px tall and the
+   "All layoffs" back link ~18px - both under WCAG 2.5.5's 44px floor. These
+   rules lift only this page's controls, and only on a phone; the desk layout
+   is untouched. test_citation_tap_targets.py renders the button and the link
+   and fails if either drops below 44px, and fails again if this block is
+   removed (the guard is only evidence if it can see the defect). */
+@media (max-width: 767px) {
+    .alt-single .alt-btn { min-height: 44px; box-sizing: border-box; }
+    .alt-single .alt-back { display: inline-flex; align-items: center; min-height: 44px; }
+}
+/* END CITATION-PAGE TAP TARGETS */
+
 .alt-error { color: var(--alt-red); }
 
 /* ---------------- Contact form ----------------
