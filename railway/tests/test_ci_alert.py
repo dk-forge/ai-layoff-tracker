@@ -512,8 +512,15 @@ class Behaviour(unittest.TestCase):
 
         orig, ci_alert.post_alert = ci_alert.post_alert, capture
         try:
+            # Hermetic ledger: this asserts the FIRST resolve is the branch
+            # scope, which only holds when no live-data incident is open in the
+            # real committed ledger (a stale one there reorders/renames the
+            # posted resolves). The behaviour under test is scope selection, not
+            # whatever incident happens to be open on the machine running it.
             with mock.patch.object(ci_alert, "live_data_was_evaluated",
-                                   lambda *a: True):
+                                   lambda *a: True), \
+                    mock.patch.object(ci_alert.alert_state, "open_alarms",
+                                      lambda: []):
                 code, _ = self._run(["--run-id", "1", "--workflow", "Tests",
                                      "--conclusion", "success", "--branch", "main"],
                                     RESEND_API_KEY="k")
@@ -557,8 +564,16 @@ class ASkippedCheckIsNotARecovery(unittest.TestCase):
         os.environ.update({"RESEND_API_KEY": "k"})
         orig, ci_alert.post_alert = ci_alert.post_alert, capture
         try:
+            # Hermetic: this class tests SCOPE SELECTION (does a skipped vs
+            # evaluated run clear the live.data scope), so it must not read the
+            # real committed ledger — an open live-data incident there would make
+            # _recovery_plan resolve that specific key and this assertion depend
+            # on live state (and it did: a stale archive incident reddened it,
+            # and because that reds main, main never went green to clear it).
             with mock.patch.object(ci_alert, "live_data_was_evaluated",
                                    lambda *a: evaluated), \
+                    mock.patch.object(ci_alert.alert_state, "open_alarms",
+                                      lambda: []), \
                     redirect_stdout(io.StringIO()) as out:
                 ci_alert.main(["--run-id", "1", "--workflow", "Tests",
                                "--conclusion", "success", "--branch", "main"])
