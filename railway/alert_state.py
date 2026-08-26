@@ -246,7 +246,17 @@ def decide(state: dict, payload: dict, now: int | None = None) -> Decision:
     entries = state.get("open") or {}
 
     if resolve:
-        open_keys = sorted(k for k in entries if k.startswith(resolve + ":"))
+        # Match a WHOLE key exactly as well as the scope PREFIX. The prefix form
+        # (`tests:main`) clears every cause under a workflow+branch in one email,
+        # which is what a scope-level green run still does when nothing needs
+        # pairing. The exact form (a full `tests:main:<fp>`) clears exactly ONE
+        # cause, which is how a green run now resolves each open cause with its
+        # OWN mirrored heading so the owner can pair a RECOVERED with the BROKEN
+        # it closes. A full cause key never has a `:` after it in the ledger, so
+        # the prefix arm cannot also match a full key and the two never
+        # double-count.
+        open_keys = sorted(k for k in entries
+                           if k == resolve or k.startswith(resolve + ":"))
         if not open_keys:
             return Decision("silent", note="nothing was open for this scope",
                             scope=resolve)
@@ -301,8 +311,15 @@ def apply(state: dict, decision: Decision, now: int | None = None) -> None:
         return
     if decision.kind == "raise" and decision.key:
         prior = entries.get(decision.key) or {}
+        # Keep the FIRST-seen subject, not the latest. The stored subject is the
+        # pristine BROKEN heading a green run mirrors into its RECOVERED so the
+        # two pair in an inbox. A repeat raise carries a "STILL FAILING: " prefix
+        # (see decide), and overwriting with it would smuggle that prefix into
+        # the paired RECOVERED. The first raise is never STILL FAILING, so the
+        # first stored subject is always the clean heading.
         entries[decision.key] = {"first": int(prior.get("first", now)),
-                                 "last": now, "subject": decision.subject}
+                                 "last": now,
+                                 "subject": prior.get("subject") or decision.subject}
 
 
 # ---------------------------------------------------------------------------

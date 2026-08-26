@@ -904,5 +904,78 @@ class BranchFailuresAreRoutedNotSilenced(unittest.TestCase):
         self.assertFalse(routed)
 
 
+class ARecoveredMirrorsTheBrokenItCloses(unittest.TestCase):
+    """The owner could not tell which failure a RECOVERED closed: the BROKEN
+    subject was `CI SELF-TIMEOUT: Tests — ...` but the RECOVERED was the generic
+    `RECOVERED: Tests is green again`. Now the RECOVERED carries the same
+    `{label}: {workflow} — {headline}` tail so the two pair in an inbox."""
+
+    def test_the_recovered_subject_mirrors_the_stored_heading(self):
+        broken = ("CI SELF-TIMEOUT: Tests — the job cancelled ITSELF on "
+                  "timeout-minutes: it exceeded the maximum execution time of 30m0s")
+        rec = ci_alert.recovered_subject(broken, "Tests")
+        self.assertTrue(rec.startswith("RECOVERED — "), rec)
+        self.assertIn(broken, rec, "the RECOVERED does not carry the BROKEN tail")
+
+    def test_a_missing_heading_falls_back_and_never_invents_one(self):
+        self.assertEqual(ci_alert.recovered_subject("", "Tests"),
+                         "RECOVERED: Tests is green again")
+        self.assertEqual(
+            ci_alert.recovered_subject(None, "Deploy WordPress plugin"),
+            "RECOVERED: Deploy WordPress plugin is green again")
+
+    def test_a_still_failing_prefix_is_stripped_from_the_mirror(self):
+        """Defensive: apply() keeps the clean subject, but a pre-change ledger
+        entry might carry the reminder prefix, and it must not leak into the
+        pair."""
+        rec = ci_alert.recovered_subject(
+            "STILL FAILING: CI RED: Tests — boom", "Tests")
+        self.assertNotIn("STILL FAILING", rec)
+        self.assertEqual(rec, "RECOVERED — CI RED: Tests — boom")
+
+    def test_the_plan_makes_one_resolve_per_open_cause(self):
+        import json as _json
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            path.write_text(_json.dumps({"version": 1, "open": {
+                "tests:main:aaaa": {"first": 1, "last": 1,
+                                    "subject": "CI RED: Tests — X"},
+                "tests:main:bbbb": {"first": 2, "last": 2,
+                                    "subject": "CI RED: Tests — Y"}}}))
+            with mock.patch.dict(os.environ, {"ALERT_STATE_PATH": str(path)}):
+                plan = ci_alert._recovery_plan(["tests:main"])
+        self.assertEqual({t for t, _ in plan},
+                         {"tests:main:aaaa", "tests:main:bbbb"})
+        self.assertEqual(dict(plan)["tests:main:aaaa"], "CI RED: Tests — X")
+
+    def test_the_plan_posts_a_scope_noop_when_nothing_is_open(self):
+        import json as _json
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            path.write_text(_json.dumps({"version": 1, "open": {}}))
+            with mock.patch.dict(os.environ, {"ALERT_STATE_PATH": str(path)}):
+                plan = ci_alert._recovery_plan(["tests:main", "tests:live.data"])
+        self.assertEqual(plan, [("tests:main", ""), ("tests:live.data", "")],
+                         "a scope with nothing open must still post one silent "
+                         "resolve, or the branch-free live.data clear is lost")
+
+    def test_a_live_data_key_is_not_swallowed_by_the_branch_scope(self):
+        """The two scopes a green run clears must not overlap: a live.data key
+        must be planned under live.data, never under the branch scope."""
+        import json as _json
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            path.write_text(_json.dumps({"version": 1, "open": {
+                "tests:main:aaaa": {"first": 1, "last": 1, "subject": "S1"},
+                "tests:live.data:bbbb": {"first": 2, "last": 2, "subject": "S2"}}}))
+            with mock.patch.dict(os.environ, {"ALERT_STATE_PATH": str(path)}):
+                plan = ci_alert._recovery_plan(["tests:main", "tests:live.data"])
+        self.assertEqual(plan, [("tests:main:aaaa", "S1"),
+                                ("tests:live.data:bbbb", "S2")])
+
+
 if __name__ == "__main__":
     unittest.main()

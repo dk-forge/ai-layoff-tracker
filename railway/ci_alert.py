@@ -503,6 +503,92 @@ def live_data_scope(workflow):
     return f"{_slug(workflow)}:{LIVE_DATA_SEGMENT}"
 
 
+#: The prefix that pairs a RECOVERED with the BROKEN it closes. The owner reads
+#: the alarm on a phone, and "RECOVERED: Tests is green again" told him nothing
+#: about WHICH failure just cleared when three were open. So the RECOVERED now
+#: MIRRORS the BROKEN subject, carrying the identical `{label}: {workflow} —
+#: {headline}` tail behind this prefix, and the two sort next to each other.
+RECOVERED_PREFIX = "RECOVERED — "
+
+#: Defensive only. `alert_state.apply` keeps the first-seen (clean) subject, so
+#: a stored heading should never carry this. An older ledger entry written
+#: before that change might, and a mirrored "RECOVERED — STILL FAILING: ..." is
+#: ugly rather than wrong; strip it so the pairing stays clean.
+_STILL_FAILING_PREFIX = "STILL FAILING: "
+
+
+def recovered_subject(stored_subject, workflow):
+    """The RECOVERED subject that pairs with a BROKEN one.
+
+    `stored_subject` is the pristine BROKEN heading the ledger kept when the
+    cause opened — `build_alert`'s `f"{label}: {workflow} — {headline}"`. Mirror
+    it so the pair reads:
+
+        CI SELF-TIMEOUT: Tests — the job cancelled ITSELF on timeout-minutes...
+        RECOVERED — CI SELF-TIMEOUT: Tests — the job cancelled ITSELF on time...
+
+    FALLS BACK, NEVER CRASHES, NEVER INVENTS. With no stored heading (an older
+    incident opened before this change, or a scope with nothing open) it returns
+    the generic line the resolve used before, so the pairing is a bonus on top
+    of behaviour that already worked rather than a new way to fail.
+    """
+    tail = (stored_subject or "").strip()
+    if tail.startswith(_STILL_FAILING_PREFIX):
+        tail = tail[len(_STILL_FAILING_PREFIX):].strip()
+    if tail:
+        return (RECOVERED_PREFIX + tail)[:180]
+    return f"RECOVERED: {workflow} is green again"
+
+
+def _recovery_payload(args, resolve_target, stored_subject):
+    """One resolve payload: mirror the BROKEN heading into the subject and name
+    what recovered in the body.
+
+    `resolve_target` is either a full cause key (clear exactly this one cause,
+    the pairable path) or a bare scope (clear the whole scope, the no-op path a
+    green run posts when nothing is open). The subject mirrors only when there is
+    a stored heading to mirror.
+    """
+    subject = recovered_subject(stored_subject, args.workflow)
+    lines = [f"'{args.workflow}' on {args.branch} passed again.", ""]
+    if stored_subject:
+        lines += ["This clears the failure below, which was open until now:",
+                  f"  {stored_subject}", ""]
+    lines += [f"  run: {args.run_url}", "",
+              "Whatever was failing is no longer failing. Nothing to do."]
+    return {"resolve_scope": resolve_target, "subject": subject,
+            "body": "\n".join(lines)}
+
+
+def _recovery_plan(scopes):
+    """Turn the scopes a green run clears into the resolve payloads to post.
+
+    ONE resolve per OPEN cause (so each RECOVERED mirrors its own BROKEN heading
+    and the owner can pair them), read from the committed ledger. A scope with
+    nothing open still yields ONE scope-level resolve — a no-op the ledger
+    answers "nothing was open for this scope" — so a resolve stays observable
+    per scope and the "clear the branch-free live.data scope too" contract is
+    unchanged.
+
+    Reads the ledger without raising: this runs on the notification path, and a
+    resolver that dies while reporting a recovery has told nobody anything.
+    """
+    try:
+        open_rows = alert_state.open_alarms()
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"could not read the alert ledger ({exc}): resolving by scope only")
+        open_rows = []
+    plan = []
+    for sc in scopes:
+        here = [(k, subject) for (k, _first, _last, subject) in open_rows
+                if k == sc or k.startswith(sc + ":")]
+        if here:
+            plan.extend((k, subject) for k, subject in here)
+        else:
+            plan.append((sc, ""))
+    return plan
+
+
 #: The branch every failure pages the owner about, always, no exceptions.
 PROTECTED_BRANCH = "main"
 
@@ -922,14 +1008,14 @@ def main(argv=None):
         if args.dry_run or not opsmail.configured():
             print(f"[dry-run] resolve scopes={scopes}")
             return 0
-        for sc in scopes:
-            payload = {"resolve_scope": sc,
-                       "subject": f"RECOVERED: {args.workflow} is green again",
-                       "body": (f"'{args.workflow}' on {args.branch} passed again.\n\n"
-                                f"  run: {args.run_url}\n\n"
-                                "Whatever was failing is no longer failing. Nothing to do.")}
+        # One resolve per OPEN cause, each mirroring its own BROKEN heading, so a
+        # RECOVERED pairs with the failure it closes. A scope with nothing open
+        # posts a single no-op scope resolve, unchanged from before.
+        plan = _recovery_plan(scopes)
+        for i, (target, stored) in enumerate(plan):
+            payload = _recovery_payload(args, target, stored)
             ok, note, transient = post_alert(site, key, payload)
-            print(f"resolve {sc}: {note}")
+            print(f"resolve {target}: {note}")
             if not ok:
                 # Held like any other alert. Holding a RESOLVE is what lets the
                 # outbox cancel a RED for the same scope that never went out: if
@@ -941,15 +1027,15 @@ def main(argv=None):
                 # path and ci-alert.yml commits exactly one, so a second hold
                 # would overwrite the first and lose the alert we were in the
                 # middle of saving. A failure here means the host is not
-                # answering, so the next scope would fail too, and the next
+                # answering, so the next target would fail too, and the next
                 # green run reposts it.
-                remaining = scopes[scopes.index(sc) + 1:]
+                remaining = [t for t, _ in plan[i + 1:]]
                 if remaining:
-                    print(f"not attempting resolve scope(s) {remaining}: the host "
+                    print(f"not attempting resolve(s) {remaining}: the host "
                           f"is not answering, and there is one envelope to hold. "
                           f"The next green run of this workflow reposts them")
-                return hold(envelope=args.envelope, key=f"resolve:{sc}",
-                            kind="resolve", scope=sc, payload=payload,
+                return hold(envelope=args.envelope, key=f"resolve:{target}",
+                            kind="resolve", scope=target, payload=payload,
                             note=note, transient=transient, run_url=args.run_url)
         return 0
 
