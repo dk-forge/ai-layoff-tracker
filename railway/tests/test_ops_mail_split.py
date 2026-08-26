@@ -683,6 +683,146 @@ class TheDrainCarriesTheGuardItUsedToDrop(unittest.TestCase):
         self.assertEqual(seen["idem"], "")
 
 
+class TheRecoveredPairsWithTheBroken(unittest.TestCase):
+    """The owner asked to be able to tell WHICH failure a RECOVERED closes.
+
+    The BROKEN subject was `CI SELF-TIMEOUT: Tests — the job cancelled ITSELF...`
+    and the RECOVERED was the generic `RECOVERED: Tests is green again`, so a
+    RECOVERED that arrived while three failures were open said nothing about
+    which one cleared. Now a green run resolves each open cause with a RECOVERED
+    that mirrors its own BROKEN heading — one per cause, each pairable — and
+    every dedup property this file pins is preserved.
+    """
+
+    def _raise(self, sends, key, subject):
+        payload = {"subject": subject, "body": "b", "dedupe_key": key}
+        with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+                mock.patch.object(opsmail, "send_once", _sent(sends)), \
+                redirect_stdout(io.StringIO()):
+            ci_alert.post_alert("", "", payload)
+
+    def _green(self, sends, branch="main"):
+        with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+                mock.patch.object(opsmail, "send_once", _sent(sends)), \
+                mock.patch.object(ci_alert, "live_data_was_evaluated",
+                                  lambda *a: True), \
+                redirect_stdout(io.StringIO()):
+            ci_alert.main(["--run-id", "1", "--workflow", "Tests",
+                           "--conclusion", "success", "--branch", branch,
+                           "--run-url", "https://example.invalid/1"])
+
+    @staticmethod
+    def _recovered(sends):
+        return [s for s in sends if s["subject"].startswith("RECOVERED")]
+
+    def test_the_recovered_subject_carries_the_broken_headline_tail(self):
+        sends = []
+        broken = "CI RED: Tests — AssertionError: Spirit dedup regressed"
+        with _Ledger():
+            self._raise(sends, "tests:main:aaaa", broken)
+            sends.clear()
+            self._green(sends)
+        recs = self._recovered(sends)
+        self.assertEqual(len(recs), 1)
+        self.assertTrue(recs[0]["subject"].startswith("RECOVERED — "))
+        self.assertIn("Tests — AssertionError: Spirit dedup regressed",
+                      recs[0]["subject"],
+                      "the RECOVERED does not pair with the BROKEN it closes")
+
+    def test_two_distinct_causes_each_recover_with_their_own_heading(self):
+        sends = []
+        with _Ledger():
+            self._raise(sends, "tests:main:aaaa", "CI RED: Tests — cause ONE")
+            self._raise(sends, "tests:main:bbbb", "CI RED: Tests — cause TWO")
+            sends.clear()
+            self._green(sends)
+        recs = sorted(s["subject"] for s in self._recovered(sends))
+        self.assertEqual(recs, ["RECOVERED — CI RED: Tests — cause ONE",
+                                "RECOVERED — CI RED: Tests — cause TWO"],
+                         "each open cause must recover with its own heading")
+
+    def test_the_recovered_fires_exactly_once_per_cause(self):
+        sends = []
+        with _Ledger() as ledger:
+            self._raise(sends, "tests:main:aaaa", "CI RED: Tests — boom")
+            sends.clear()
+            self._green(sends)
+            self.assertEqual(len(self._recovered(sends)), 1)
+            self.assertEqual(ledger.open_keys(), [],
+                             "the stored heading must be removed on resolve")
+            # Every subsequent green run of an already-green workflow.
+            for _ in range(4):
+                self._green(sends)
+            self.assertEqual(len(self._recovered(sends)), 1,
+                             "a RECOVERED that repeats on every green run is the "
+                             "noise that gets a sender filtered")
+
+    def test_a_scope_with_no_stored_heading_falls_back_and_never_crashes(self):
+        """Nothing open — a routed raise wrote nothing, or an older incident is
+        gone — is a silent scope no-op, not an exception and not an invented
+        heading."""
+        sends = []
+        with _Ledger():
+            self._green(sends)
+        self.assertEqual(self._recovered(sends), [])
+
+    def test_the_claim_is_still_committed_before_the_paired_send(self):
+        """The pairing rides on the same commit-before-send ordering: the ledger
+        is cleared (claimed) before the RECOVERED goes out, so a racing runner
+        re-derives, finds the cause already cleared, and stays quiet."""
+        order = []
+
+        def once(subject, body, idem=""):
+            order.append(("send", subject))
+            return True, "emailed the owner", False
+
+        with _Ledger():
+            with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+                    mock.patch.object(opsmail, "send_once",
+                                      _sent([])), \
+                    redirect_stdout(io.StringIO()):
+                ci_alert.post_alert("", "", {"subject": "CI RED: Tests — boom",
+                                             "body": "b",
+                                             "dedupe_key": "tests:main:aaaa"})
+            real_apply = alert_state.apply
+
+            def spy_apply(state, decision, now=None):
+                if decision.kind == "resolve":
+                    order.append(("claim", decision.scope))
+                return real_apply(state, decision, now)
+
+            with mock.patch.dict(os.environ, {"RESEND_API_KEY": "k"}), \
+                    mock.patch.object(alert_state, "apply", spy_apply), \
+                    mock.patch.object(opsmail, "send_once", once), \
+                    mock.patch.object(ci_alert, "live_data_was_evaluated",
+                                      lambda *a: True), \
+                    redirect_stdout(io.StringIO()):
+                ci_alert.main(["--run-id", "1", "--workflow", "Tests",
+                               "--conclusion", "success", "--branch", "main",
+                               "--run-url", "u"])
+        kinds = [k for k, _ in order]
+        self.assertIn("claim", kinds)
+        self.assertIn("send", kinds)
+        self.assertLess(kinds.index("claim"), kinds.index("send"),
+                        "the RECOVERED was sent before the clear was claimed")
+
+    def test_the_stored_heading_stays_clean_across_a_still_failing_repeat(self):
+        """apply() keeps the FIRST-seen subject, so a STILL FAILING reminder does
+        not smuggle its prefix into the paired RECOVERED."""
+        state = alert_state.empty()
+        payload = {"subject": "CI RED: Tests — boom", "body": "b",
+                   "dedupe_key": "tests:main:aa"}
+        now = 1_700_000_000
+        alert_state.apply(state, alert_state.decide(state, payload, now), now)
+        fifteen = now + 15 * 86400
+        again = alert_state.decide(state, payload, fifteen)
+        self.assertTrue(again.subject.startswith("STILL FAILING: "))
+        alert_state.apply(state, again, fifteen)
+        self.assertEqual(state["open"]["tests:main:aa"]["subject"],
+                         "CI RED: Tests — boom",
+                         "the stored heading must stay the clean BROKEN subject")
+
+
 class ADarkSourceUsesTheSameDedupContract(unittest.TestCase):
     """A collector that publishes nothing new mails through THIS machinery.
 
