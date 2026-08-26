@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "style-standard:main:cf6326caeaf87102": {
-      "first": 1787782572,
-      "last": 1787782572,
-      "subject": "CI RED: Style standard \u2014 style_check.py (scorer) differs from dk-forge/talent-intelligence-tracker."
-    }
-  },
-  "updated_at": "2026-08-26T22:16:12+00:00",
+  "open": {},
+  "updated_at": "2026-08-26T22:25:22+00:00",
   "version": 1
 }
