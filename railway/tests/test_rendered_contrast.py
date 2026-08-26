@@ -34,6 +34,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "railway"))
@@ -228,6 +229,91 @@ class ProbeArithmeticTests(unittest.TestCase):
         src = (ROOT / "railway/contrast_audit.py").read_text()
         self.assertIn("return 3", src, "no UNKNOWN exit path")
         self.assertRegex(src, r"RESULT: UNKNOWN")
+
+
+class ATransientLaunchFlakeIsRetriedNotReportedUnknown(unittest.TestCase):
+    """The deploy contrast step reddened main twice on 2026-08-26 (runs
+    32946362017 and its retry) with "Chrome never exposed a debug target: timed
+    out" at ONE viewport width while every other width PASSED — a fresh headless
+    Chrome that wedged on launch and would have come straight up on a clean
+    relaunch. So the launch is retried. The bar this must clear: a transient
+    launch flake heals, but a Chrome that genuinely will not come up STAYS
+    UNKNOWN (CDPUnavailable -> exit 3), never a pass.
+    """
+
+    def _browser(self):
+        import cdp
+        b = cdp.Browser(width=1280, height=900)
+        return cdp, b
+
+    def test_a_transient_connect_timeout_is_retried_and_then_succeeds(self):
+        cdp, b = self._browser()
+        calls = {"n": 0}
+
+        def flaky_launch(self, chrome):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                # Exactly the failure the real _wait_for_target raises.
+                raise cdp.CDPUnavailable(
+                    'Chrome never exposed a debug target: timed out')
+            return None  # a clean relaunch connects
+
+        with mock.patch.object(cdp, "find_chrome", lambda: "/usr/bin/chrome"), \
+                mock.patch.object(cdp.Browser, "_launch", flaky_launch), \
+                mock.patch.object(cdp.Browser, "_teardown", lambda self: None), \
+                mock.patch.object(cdp.time, "sleep", lambda *_a: None):
+            entered = b.__enter__()
+        self.assertIs(entered, b, "a retried launch that connects must succeed")
+        self.assertEqual(calls["n"], 2, "the launch was not retried")
+
+    def test_a_persistent_launch_failure_stays_unknown(self):
+        cdp, b = self._browser()
+        calls = {"n": 0}
+
+        def dead_launch(self, chrome):
+            calls["n"] += 1
+            raise cdp.CDPUnavailable(
+                'Chrome never exposed a debug target: timed out')
+
+        with mock.patch.object(cdp, "find_chrome", lambda: "/usr/bin/chrome"), \
+                mock.patch.object(cdp.Browser, "_launch", dead_launch), \
+                mock.patch.object(cdp.Browser, "_teardown", lambda self: None), \
+                mock.patch.object(cdp.time, "sleep", lambda *_a: None):
+            with self.assertRaises(cdp.CDPUnavailable):
+                b.__enter__()
+        self.assertEqual(calls["n"], cdp.LAUNCH_ATTEMPTS,
+                         "every attempt must be spent before giving up")
+
+    def test_the_retry_never_turns_unknown_into_a_pass(self):
+        """A persistent launch failure surfaces as CDPUnavailable, which
+        contrast_audit routes to UNKNOWN (exit 3), the same as before this
+        change. The retry only ever heals a flake or preserves the UNKNOWN."""
+        cdp, b = self._browser()
+        with mock.patch.object(cdp, "find_chrome", lambda: "/usr/bin/chrome"), \
+                mock.patch.object(cdp.Browser, "_launch",
+                                  lambda self, chrome: (_ for _ in ()).throw(
+                                      cdp.CDPUnavailable('timed out'))), \
+                mock.patch.object(cdp.Browser, "_teardown", lambda self: None), \
+                mock.patch.object(cdp.time, "sleep", lambda *_a: None):
+            with self.assertRaises(cdp.CDPUnavailable) as ctx:
+                b.__enter__()
+        self.assertIn("UNKNOWN", str(ctx.exception))
+
+    def test_a_missing_chrome_is_not_retried(self):
+        """A missing browser is not a transient launch flake — it is UNKNOWN
+        immediately, and _launch is never even reached."""
+        cdp, b = self._browser()
+        launched = {"n": 0}
+
+        def counted_launch(self, chrome):
+            launched["n"] += 1
+
+        with mock.patch.object(cdp, "find_chrome", lambda: None), \
+                mock.patch.object(cdp.Browser, "_launch", counted_launch), \
+                mock.patch.object(cdp.time, "sleep", lambda *_a: None):
+            with self.assertRaises(cdp.CDPUnavailable):
+                b.__enter__()
+        self.assertEqual(launched["n"], 0, "a missing Chrome must not be retried")
 
 
 if __name__ == "__main__":
