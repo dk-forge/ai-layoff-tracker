@@ -216,10 +216,21 @@ def main(argv=None):
     # take the next one without guessing. Timing the tests does not change which
     # of them run or pass.
     module_times = {}
+    state = {"cur": None}
+
+    def _emit(stem):
+        if stem is not None and stem in module_times:
+            print("TIMING %7.1fs  %s" % (module_times[stem], stem), flush=True)
 
     class _TimedResult(unittest.TextTestResult):
         def startTest(self, test):
             self._t0 = time.perf_counter()
+            stem = type(test).__module__.split(".")[-1]
+            if stem != state["cur"]:
+                # A module just finished; emit it NOW (flushed) so a later leg
+                # timeout still leaves a record of everything that completed.
+                _emit(state["cur"])
+                state["cur"] = stem
             super().startTest(test)
 
         def stopTest(self, test):
@@ -230,8 +241,7 @@ def main(argv=None):
 
     result = unittest.TextTestRunner(
         verbosity=2, resultclass=_TimedResult).run(suite)
-    for stem, secs in sorted(module_times.items(), key=lambda kv: -kv[1]):
-        print("TIMING %7.1fs  %s" % (secs, stem))
+    _emit(state["cur"])   # the last module, on a clean finish
     return 0 if result.wasSuccessful() else 1
 
 
