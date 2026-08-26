@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "panel-demo-doge-dry-run:feat-adjudication-panel:77c13ff3ea3ac300": {
-      "first": 1787773096,
-      "last": 1787773096,
-      "subject": "CI RED: Panel demo (DOGE dry-run) \u2014 openai.NotFoundError: Error code: 404 - {'error': {'message': 'No endpoints found for anthropic/claude-3.5-haiku.', 'code': 404}, 'user_id': 'us"
-    }
-  },
-  "updated_at": "2026-08-26T19:38:17+00:00",
+  "open": {},
+  "updated_at": "2026-08-26T19:40:20+00:00",
   "version": 1
 }
