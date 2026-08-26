@@ -354,7 +354,13 @@ if (!empty($FIXTURE['probe'])) {
 
 $which = $FIXTURE['compose'] ?? 'layoff';
 if ($which === 'talent') {
-    $out = alt_digest_compose_talent($FIXTURE['from'], $FIXTURE['to'], 0);
+    // The fourth argument is the tier, exactly as it is for the layoff composer
+    // below. It is empty for the daily/weekly cases (byte-identical to before,
+    // and the case that carries the Indeed backdrop) and 'monthly' for the
+    // month-to-date edition, where the talent section DEFERS the backdrop to the
+    // layoff section so a combined monthly email never prints it twice.
+    $out = alt_digest_compose_talent($FIXTURE['from'], $FIXTURE['to'], 0,
+                                     (string) ($FIXTURE['freq'] ?? ''));
 } elseif ($which === 'articles') {
     $out = alt_digest_compose_articles($FIXTURE['from'], $FIXTURE['to'], 0);
 } else {

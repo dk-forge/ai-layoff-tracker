@@ -475,8 +475,11 @@ function alt_edition_capture($freq, $from, $to, $send_id = 0) {
     foreach (alt_edition_streams() as $name => $fn) {
         if (!function_exists($fn)) continue;
         // SEND ID ZERO. See the file header. $freq is passed so the layoff
-        // composer archives the monthly masthead and Indeed backdrop; the other
-        // composers ignore the extra argument (PHP permits it).
+        // composer archives the monthly masthead and Indeed backdrop, and the
+        // talent composer carries that backdrop on daily/weekly and defers it to
+        // the layoff section on monthly (one home per edition, so the combined
+        // archive page never shows it twice); the articles composer ignores the
+        // extra argument (PHP permits it).
         $part = $fn($from, $to, 0, $freq);
         if (!is_array($part) || empty($part['html']) || empty($part['text'])) continue;
         $check = alt_edition_public_safe($part['html'] . "\n" . $part['text']);

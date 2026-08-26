@@ -154,9 +154,10 @@ function alt_api_digest_recipients($request) {
                    'talent'   => 'alt_digest_compose_talent',
                    'articles' => 'alt_digest_compose_articles') as $name => $fn) {
         // $freq is passed to every composer so the layoff one can render the
-        // monthly edition (its masthead and the Indeed backdrop). The talent
-        // and articles composers take three parameters and simply ignore the
-        // fourth, which PHP permits; only the layoff composer reads it.
+        // monthly edition (its masthead and the Indeed backdrop) and the talent
+        // one can carry that backdrop on daily/weekly and defer it to the layoff
+        // section on the monthly edition. The articles composer takes three
+        // parameters and simply ignores the fourth, which PHP permits.
         $part = function_exists($fn) ? $fn($from_date, $to_date, $send_id, $freq) : null;
         if (is_array($part) && !empty($part['html']) && !empty($part['text'])) {
             $sections[$name] = array(
