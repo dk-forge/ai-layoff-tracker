@@ -70,7 +70,8 @@ class TheSplitLosesNothing(unittest.TestCase):
 class TheSplitIsDerivedFromTheSource(unittest.TestCase):
 
     def test_a_module_that_imports_cdp_is_rendered(self):
-        rendered = run_tests.modules_in("rendered")
+        rendered = (run_tests.modules_in("rendered-1")
+                    + run_tests.modules_in("rendered-2"))
         self.assertIn("test_rendered_contrast", rendered)
         self.assertIn("test_tap_targets", rendered)
         for stem in rendered:
@@ -79,6 +80,19 @@ class TheSplitIsDerivedFromTheSource(unittest.TestCase):
     def test_a_module_that_does_not_touch_cdp_is_not_rendered(self):
         for stem in run_tests.modules_in("rest"):
             self.assertFalse(run_tests.drives_a_browser(stem), stem)
+
+    def test_the_browser_work_is_dealt_across_two_balanced_legs(self):
+        # The whole point of the second split (2026-08-26): neither browser
+        # leg may carry the entire rendered suite, or its wall clock is back
+        # where it started. Dealt by sorted position, the two legs differ by
+        # at most one module.
+        one = run_tests.modules_in("rendered-1")
+        two = run_tests.modules_in("rendered-2")
+        self.assertTrue(one and two, "a browser leg selected no modules")
+        self.assertLessEqual(
+            abs(len(one) - len(two)), 1,
+            "the browser legs are lopsided (%d vs %d): the deal no longer "
+            "balances them" % (len(one), len(two)))
 
     def test_a_mention_in_prose_does_not_move_a_module(self):
         # The match is anchored at statement position, so a docstring saying
