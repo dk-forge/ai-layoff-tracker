@@ -33,17 +33,19 @@ concurrency:
 
 jobs:
   railway-tests:
-    # THREE JOBS, ONE SUITE, RUN AT THE SAME TIME. Every assertion still runs;
+    # FOUR JOBS, ONE SUITE, RUN AT THE SAME TIME. Every assertion still runs;
     # none is skipped, deleted or marked slow. `railway/run_tests.py` derives
     # the split from each module's own source — a module that imports `cdp`
     # starts a real headless Chrome — so the browser guards (rendered geometry,
     # contrast, tap targets, phone folds) stop queueing behind the CPU-bound
-    # rest of the suite. The browser guards themselves outgrew one 15-minute
-    # job (2026-08-26), so they are dealt across two legs, rendered-1 and
-    # rendered-2, each ~half the browser wall clock; `rest` is the third.
-    # railway/tests/test_test_groups.py pins that the three groups are total
-    # and disjoint against the same glob `discover` uses, so a module cannot
-    # fall out of every leg and stop running unnoticed.
+    # rest of the suite. Both halves outgrew one 15-minute job (2026-08-26), and
+    # a first split by module COUNT left the time lopsided, so each half is now
+    # dealt across TWO legs BY MEASURED WEIGHT: rendered-1/rendered-2 for the
+    # browser guards, rest/rest-2 for the rest — four legs, each ~a quarter of
+    # the old serial wall. test_dedup_live rides `rest` because the live-data
+    # verdict steps below gate on that leg. railway/tests/test_test_groups.py
+    # pins that the four groups are total, disjoint, weight-balanced, and that
+    # a module cannot fall out of every leg and stop running unnoticed.
     #
     # fail-fast is OFF deliberately: one leg failing must not CANCEL the
     # others. A cancelled job is a conclusion this repo's alerter and healer
@@ -52,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [rest, rendered-1, rendered-2]
+        group: [rest, rest-2, rendered-1, rendered-2]
     runs-on: ubuntu-latest
     # MEASURED, and the measurement is the point.
     #
@@ -75,8 +77,15 @@ jobs:
     # the rule below: no single defect, no per-test browser, no unstubbed call
     # — the `_SEGMENTS` walk is already memoised — just ~845s of diffuse
     # rendering at a wall built for less. The doctrine's own remedy is to
-    # split again, so the browser group became rendered-1 + rendered-2, each
-    # ~half. The ceiling did NOT move: that is the point.
+    # split again, so the browser group became rendered-1 + rendered-2. The
+    # ceiling did NOT move: that is the point.
+    #
+    # 2026-08-26 (same day): that count-split balanced the COUNT but not the
+    # TIME — rendered-1 ran ~2m, rendered-2 ~14m, because the heavy full-page
+    # renders all landed on one leg — and `rest` was itself at ~14-15m. So the
+    # deal is now BY MEASURED WEIGHT (run_tests.weight_of), greedy heaviest-
+    # first, and BOTH halves split: rendered-1/rendered-2 and rest/rest-2. Four
+    # legs, each ~a quarter of the old serial wall. Still no ceiling change.
     #
     # The ceiling is unchanged at 15 minutes, on purpose: lowering it makes a
     # slow suite fail sooner, not pass, and raising it silences the one alarm

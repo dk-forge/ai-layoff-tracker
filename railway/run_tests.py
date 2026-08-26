@@ -1,4 +1,4 @@
-"""Run the railway unit suite as one of three groups, so CI can run them at once.
+"""Run the railway unit suite as one of four groups, so CI can run them at once.
 
 WHY THIS EXISTS.
 
@@ -16,26 +16,29 @@ the workflow's wall clock becomes the largest job instead of the sum. Nothing
 is skipped, nothing is marked slow, no assertion is weakened, and no test file
 is edited — the only change is which runner picks it up.
 
-The browser half OUTGREW A SINGLE JOB. It sat at the 15-minute ceiling on its
-own (2026-08-26: the monthly edition's methodology content tipped it over),
-so it is dealt across TWO legs, `rendered-1` and `rendered-2`. Each finishes
-in about half the browser suite's wall clock, well clear of the ceiling, and
-the CPU-bound `rest` group is the third job.
+BOTH HALVES OUTGREW A SINGLE JOB. The browser half hit the 15-minute ceiling
+first (2026-08-26: the monthly edition's methodology content tipped it over);
+a first split by module COUNT balanced the count but not the TIME — one browser
+leg ran ~2m, the other ~14m — and the CPU-bound `rest` half was itself at ~14m.
+So each half is now dealt across TWO legs BY WEIGHT: `rendered-1`/`rendered-2`
+for the browser guards, `rest`/`rest-2` for the rest. Four legs, each about a
+quarter of the old serial wall, comfortably clear of the ceiling.
 
 THE SPLIT IS DERIVED, NEVER HAND-MAINTAINED.
 
 A hand-written list of "the slow ones" is a list that drifts: the next browser
-test lands in the fast job, nobody notices, and the ceiling creeps back. So
-the group is computed from the module's own source — a module that imports
-`cdp` drives a browser (that is the rest/rendered rule) — and the browser
-modules are then dealt alternately across the two legs by their sorted order,
-so a new browser test lands in a leg on the day it is written and the two legs
-stay within one module of each other.
+test lands in the fast job, nobody notices, and the ceiling creeps back. So the
+half is computed from the module's own source — a module that imports `cdp`
+drives a browser — and within a half the modules are dealt greedily (heaviest
+first onto the lightest leg) by `weight_of()`: a per-module runtime MEASURED
+from CI for the heavy few, else the count of `def test_` it declares. A weight
+is only a balance hint; it can never drop a test. `test_dedup_live` is pinned to
+`rest` because the live-data verdict steps in tests.yml gate on that leg.
 
 `ALL` is the same set `unittest discover -s tests -p "test_*.py"` would find
-(the same glob against the same directory), and the three groups partition it
-by construction. tests/test_test_groups.py pins that: total, disjoint, and
-every group actually named by the workflow.
+(the same glob against the same directory), and the four groups partition it
+by construction. tests/test_test_groups.py pins that: total, disjoint, weight-
+balanced, the live-data module on `rest`, and every group named by the workflow.
 
   python3 run_tests.py --group rest
   python3 run_tests.py --group rendered-1
@@ -59,13 +62,38 @@ TESTS = HERE / "tests"
 _IMPORTS_CDP = re.compile(r"^[ \t]*(?:from[ \t]+cdp[ \t]+import|import[ \t]+cdp)\b",
                           re.MULTILINE)
 
-GROUPS = ("rest", "rendered-1", "rendered-2")
+GROUPS = ("rest", "rest-2", "rendered-1", "rendered-2")
 
-#: Which browser leg a rendered module goes to, by its position among the
-#: sorted browser modules: even -> rendered-1, odd -> rendered-2.
-_RENDERED_LEGS = ("rendered-1", "rendered-2")
+#: test_dedup_live writes LIVE_DATA_VERDICT_FILE, and the "Live-data invariants"
+#: steps in tests.yml gate on `matrix.group == 'rest'`. So it MUST ride the
+#: `rest` leg — pinned here so a re-weight can never drift it onto rest-2, which
+#: would let a leg that never read the live site answer for the one that did.
+_LIVE_DATA_PINNED_TO_REST = ("test_dedup_live",)
+
+#: Relative weights MEASURED FROM CI on 2026-08-26, when the suite ran as three
+#: legs and the single browser leg reached the 15-minute wall on its own. These
+#: modules dominated that leg (full-page renders at four widths, or a whole-repo
+#: reader-copy walk); `test_style_standard` is the one heavy CPU (non-browser)
+#: module. Everything unlisted is weighted by how many `def test_` it declares —
+#: cheap, import-free, and a good enough proxy. THE WEIGHT ONLY BALANCES THE
+#: DEAL: a wrong weight makes a leg slightly heavier, it can never drop a test
+#: (the totality guard in test_test_groups.py pins that). Re-measure and adjust
+#: these if a leg drifts toward the wall again — do NOT raise timeout-minutes.
+_MEASURED_WEIGHTS = {
+    "test_reader_copy_says_entries": 130,       # style_check.collect() walk + renders
+    "test_digest_route_is_findable": 130,
+    "test_signup_reaches_landing_pages": 120,
+    "test_tap_targets": 90,
+    "test_blog_reading_surface": 80,
+    "test_nav_submenu": 40,
+    "test_style_standard": 130,                 # non-browser: whole-repo reader-copy walk
+}
 
 _BROWSER_CACHE = {}
+_GROUPING_CACHE = {}
+
+#: A test method declaration, counted (not imported) as the default weight.
+_TEST_DEF = re.compile(r"^[ \t]*(?:async[ \t]+)?def[ \t]+test_\w", re.MULTILINE)
 
 
 def all_modules():
@@ -74,31 +102,78 @@ def all_modules():
 
 
 def drives_a_browser(stem):
-    # Memoised: group_of asks this about every module, and modules_in asks
-    # group_of about every module, so an unmemoised read would be O(n^2) file
-    # opens. The answer is a property of the file's text, which does not change
-    # inside a run.
+    # Memoised: the grouping asks this about every module, so an unmemoised read
+    # would be O(n^2) file opens. The answer is a property of the file's text,
+    # which does not change inside a run.
     if stem not in _BROWSER_CACHE:
         src = (TESTS / f"{stem}.py").read_text(encoding="utf-8", errors="replace")
         _BROWSER_CACHE[stem] = _IMPORTS_CDP.search(src) is not None
     return _BROWSER_CACHE[stem]
 
 
-def group_of(stem):
-    if not drives_a_browser(stem):
-        return "rest"
-    # Deal the browser modules across the two legs by their sorted position, so
-    # neither leg carries the whole rendered suite and the assignment derives
-    # from the source rather than a hand-kept list. Every browser module has a
-    # position here, so none can land in neither leg.
+def weight_of(stem):
+    """Relative cost used only to BALANCE the deal — measured for the heavy few,
+    else the count of `def test_` in the file (import-free)."""
+    if stem in _MEASURED_WEIGHTS:
+        return _MEASURED_WEIGHTS[stem]
+    src = (TESTS / f"{stem}.py").read_text(encoding="utf-8", errors="replace")
+    return max(1, len(_TEST_DEF.findall(src)))
+
+
+def _deal(stems, legs, preload=None):
+    """Greedy longest-processing-time: each stem, heaviest first, goes to the
+    currently-lightest leg. Deterministic — ties break by (load, leg name)."""
+    load = dict(preload or {})
+    for leg in legs:
+        load.setdefault(leg, 0)
+    assign = {}
+    for stem in sorted(stems, key=lambda s: (-weight_of(s), s)):
+        leg = min(legs, key=lambda l: (load[l], l))
+        assign[stem] = leg
+        load[leg] += weight_of(stem)
+    return assign
+
+
+def _compute_grouping():
+    """stem -> leg for every discovered module. Browser (cdp) modules split
+    across two time-balanced legs; the rest split across two more, with the
+    live-data module pinned to `rest`. Nothing lands in no leg."""
     browser = [m for m in all_modules() if drives_a_browser(m)]
-    return _RENDERED_LEGS[browser.index(stem) % 2]
+    nonbrowser = [m for m in all_modules() if not drives_a_browser(m)]
+    assign = {}
+    assign.update(_deal(browser, ["rendered-1", "rendered-2"]))
+    pinned = [m for m in nonbrowser if m in _LIVE_DATA_PINNED_TO_REST]
+    for m in pinned:
+        assign[m] = "rest"
+    preload = {"rest": sum(weight_of(m) for m in pinned), "rest-2": 0}
+    free = [m for m in nonbrowser if m not in _LIVE_DATA_PINNED_TO_REST]
+    assign.update(_deal(free, ["rest", "rest-2"], preload=preload))
+    return assign
+
+
+def _grouping():
+    # Cached on the module set, so a patched all_modules() (the empty-group
+    # test) computes its own answer without poisoning the real one.
+    key = tuple(all_modules())
+    if key not in _GROUPING_CACHE:
+        _GROUPING_CACHE[key] = _compute_grouping()
+    return _GROUPING_CACHE[key]
+
+
+def group_of(stem):
+    return _grouping().get(stem, "rest")
 
 
 def modules_in(group):
     if group not in GROUPS:
         raise SystemExit(f"unknown group {group!r}; expected one of {GROUPS}")
-    return [m for m in all_modules() if group_of(m) == group]
+    g = _grouping()
+    return [m for m in all_modules() if g.get(m) == group]
+
+
+def leg_weight(group):
+    """Total weight assigned to a leg — the balance the deal optimises."""
+    return sum(weight_of(m) for m in modules_in(group))
 
 
 def main(argv=None):

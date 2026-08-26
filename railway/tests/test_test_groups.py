@@ -78,21 +78,35 @@ class TheSplitIsDerivedFromTheSource(unittest.TestCase):
             self.assertTrue(run_tests.drives_a_browser(stem), stem)
 
     def test_a_module_that_does_not_touch_cdp_is_not_rendered(self):
-        for stem in run_tests.modules_in("rest"):
-            self.assertFalse(run_tests.drives_a_browser(stem), stem)
+        for group in ("rest", "rest-2"):
+            for stem in run_tests.modules_in(group):
+                self.assertFalse(run_tests.drives_a_browser(stem), stem)
 
-    def test_the_browser_work_is_dealt_across_two_balanced_legs(self):
-        # The whole point of the second split (2026-08-26): neither browser
-        # leg may carry the entire rendered suite, or its wall clock is back
-        # where it started. Dealt by sorted position, the two legs differ by
-        # at most one module.
-        one = run_tests.modules_in("rendered-1")
-        two = run_tests.modules_in("rendered-2")
-        self.assertTrue(one and two, "a browser leg selected no modules")
-        self.assertLessEqual(
-            abs(len(one) - len(two)), 1,
-            "the browser legs are lopsided (%d vs %d): the deal no longer "
-            "balances them" % (len(one), len(two)))
+    def test_each_half_is_dealt_across_two_weight_balanced_legs(self):
+        # The point of the 2026-08-26 rebalance: no leg carries a half's whole
+        # wall, or the ceiling is back. Balanced BY WEIGHT (a runtime measured
+        # from CI for the heavy few, a test-count otherwise), greedy heaviest-
+        # first, so the two legs of a half differ by no more than the single
+        # heaviest module across them — the tight bound greedy guarantees. A
+        # broken deal (everything in one leg) blows straight past it.
+        for a, b in (("rendered-1", "rendered-2"), ("rest", "rest-2")):
+            ma, mb = run_tests.modules_in(a), run_tests.modules_in(b)
+            self.assertTrue(ma and mb, "%s/%s: a leg selected no modules" % (a, b))
+            wa, wb = run_tests.leg_weight(a), run_tests.leg_weight(b)
+            heaviest = max(run_tests.weight_of(m) for m in ma + mb)
+            self.assertLessEqual(
+                abs(wa - wb), heaviest,
+                "%s(w=%d) vs %s(w=%d) lopsided by more than the heaviest module "
+                "(%d): the deal no longer balances them" % (a, wa, b, wb, heaviest))
+
+    def test_the_live_data_module_rides_the_rest_leg(self):
+        # tests.yml gates the "Live-data invariants" steps on
+        # `matrix.group == 'rest'` and test_dedup_live writes the verdict file.
+        # If the weight deal moved it to rest-2, the leg that never read the live
+        # site would answer for the one that did. Pinned in run_tests, held here.
+        self.assertIn("test_dedup_live", run_tests.modules_in("rest"))
+        self.assertNotIn("test_dedup_live", run_tests.modules_in("rest-2"))
+        self.assertIn("matrix.group == 'rest'", WORKFLOW)
 
     def test_a_mention_in_prose_does_not_move_a_module(self):
         # The match is anchored at statement position, so a docstring saying
