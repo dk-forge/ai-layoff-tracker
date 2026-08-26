@@ -96,10 +96,15 @@ except Exception:                   # pragma: no cover - import guard
 # false claim -- the whole design is to make a wrong reading UNLIKELY to be
 # unanimous. Override with ALT_PANEL_MODELS (comma-separated), keeping them on
 # three distinct families.
+# Three families the tracker's OpenRouter key can actually reach today. The key
+# has no Anthropic access (a live DOGE dry-run on 2026-08-26 404'd on
+# anthropic/claude-3.5-haiku: "No endpoints found"), so Claude is left out until
+# Anthropic is enabled on the account; swap it in via ALT_PANEL_MODELS then.
+# Google + DeepSeek + OpenAI are still three distinct lineages.
 _DEFAULT_PANEL_MODELS = (
-    "anthropic/claude-3.5-haiku",     # Anthropic
     "google/gemini-2.5-flash-lite",   # Google
     "deepseek/deepseek-chat",         # DeepSeek
+    "openai/gpt-4o-mini",             # OpenAI
 )
 
 
