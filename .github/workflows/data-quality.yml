@@ -156,4 +156,12 @@ jobs:
           # sets it, while the five older ops jobs moved. Two From lines is
           # precisely the defect this change exists to close.
           OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          # KILL SWITCH for the three-model adjudication panel on the held-relabel
+          # path (railway/adjudication_panel.py). DORMANT by default: with this
+          # unset the spot-check keeps today's behaviour (hold + bare email, no
+          # panel, no panel spend). To ARM the loop live, uncomment the line
+          # below; to disable it again, comment the line back out (one line, one
+          # decision). Before arming, preview it against the real held queue:
+          #   OPENROUTER_API_KEY=... python3 railway/daily_classification_spotcheck.py --dry-run-armed
+          # ALT_PANEL_ARMED: "1"
         run: python3 railway/daily_classification_spotcheck.py
