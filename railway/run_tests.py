@@ -51,6 +51,7 @@ would otherwise introduce.
 import argparse
 import re
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -208,7 +209,29 @@ def main(argv=None):
 
     print(f"group '{args.group}': {len(names)} module(s), "
           f"{suite.countTestCases()} test(s)")
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
+
+    # Per-module wall time, printed at the end so `weight_of` can be RE-MEASURED
+    # from a CI log (grep 'TIMING'). The deal is only as balanced as the weights,
+    # and the weights are only as good as the last measurement — this is how you
+    # take the next one without guessing. Timing the tests does not change which
+    # of them run or pass.
+    module_times = {}
+
+    class _TimedResult(unittest.TextTestResult):
+        def startTest(self, test):
+            self._t0 = time.perf_counter()
+            super().startTest(test)
+
+        def stopTest(self, test):
+            super().stopTest(test)
+            stem = type(test).__module__.split(".")[-1]
+            module_times[stem] = module_times.get(stem, 0.0) + (
+                time.perf_counter() - getattr(self, "_t0", time.perf_counter()))
+
+    result = unittest.TextTestRunner(
+        verbosity=2, resultclass=_TimedResult).run(suite)
+    for stem, secs in sorted(module_times.items(), key=lambda kv: -kv[1]):
+        print("TIMING %7.1fs  %s" % (secs, stem))
     return 0 if result.wasSuccessful() else 1
 
 
