@@ -231,12 +231,19 @@ class TheArchiveIsWiredAndImmutable(unittest.TestCase):
                           f"{name} records a send and never publishes the edition")
 
     def test_capture_composes_at_send_id_zero(self):
-        """The one line the privacy design rests on."""
+        """The one line the privacy design rests on.
+
+        The THIRD argument - the send_id - must be 0, so a captured section can
+        carry no click-counter URL and never sees a recipient. A FOURTH argument
+        (the tier) was added 2026-08-25 for the monthly edition and is composed
+        content, not recipient context, so it does not touch this invariant: the
+        assertion pins the send_id at 0 while allowing the freq to ride after
+        it."""
         body = self.archive[self.archive.index("function alt_edition_capture("):]
         body = body[:body.index("\nfunction ")]
-        self.assertIn("$fn($from, $to, 0)", body,
-                      "the archive must re-compose at send_id 0, never reuse a "
-                      "section composed for a send")
+        self.assertRegex(body, r"\$fn\(\$from, \$to, 0(?:, \$freq)?\)",
+                         "the archive must re-compose at send_id 0, never reuse a "
+                         "section composed for a send")
 
     def test_nothing_rewrites_a_stored_section(self):
         """Immutability, by shape. `sections` is written by capture and by

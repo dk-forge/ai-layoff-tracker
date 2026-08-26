@@ -179,6 +179,23 @@ class WP_REST_Response_Stub {
 
 $FIXTURE = json_decode(file_get_contents($argv[2]), true);
 
+/*
+  THE SIBLING TALENT PLUGIN'S INDEED BACKDROP, STUBBED FROM THE FIXTURE and only
+  when the fixture supplies it. The monthly layoff edition reads
+  tit_indeed_index_data() through a function_exists guard (both plugins share
+  one WordPress install in production), so a fixture with NO `indeed` key leaves
+  this function undefined and exercises the real talent-plugin-absent path - the
+  block is omitted - while a fixture that supplies `indeed` exercises the
+  present path. Nothing is invented here: the block renders exactly the numbers
+  the fixture carries, the same contract as every other stub in this harness.
+*/
+if (array_key_exists('indeed', $FIXTURE)) {
+    function tit_indeed_index_data() {
+        global $FIXTURE;
+        return is_array($FIXTURE['indeed']) ? $FIXTURE['indeed'] : array();
+    }
+}
+
 /**
  * The stub REST layer. Chooses a fixture by the window the composer asked
  * for, so the year-to-date call and the period call cannot be confused: the
@@ -302,13 +319,50 @@ function wp_strip_all_tags($s) { return strip_tags((string) $s); }
 
 require $argv[1];
 
+/*
+  PROBE MODE. The window, validation, period and last-sent-column helpers are
+  plain functions with no REST dependency, but they load only inside the same
+  WP-stub environment this harness already builds, so testing them anywhere else
+  would mean a second copy of these stubs. A fixture carrying `probe` short-
+  circuits composition and returns those values instead, over an explicit `now`
+  so the month-to-date window is deterministic rather than clock-dependent.
+*/
+if (!empty($FIXTURE['probe'])) {
+    $now = strtotime(((string) ($FIXTURE['now'] ?? '')) . ' 00:00:00 UTC');
+    echo json_encode(array(
+        'valid' => array(
+            'daily'   => alt_digest_valid_freq('daily'),
+            'weekly'  => alt_digest_valid_freq('weekly'),
+            'monthly' => alt_digest_valid_freq('monthly'),
+            'bogus'   => alt_digest_valid_freq('bogus'),
+        ),
+        'period' => array(
+            'daily'   => alt_digest_period_seconds('daily'),
+            'weekly'  => alt_digest_period_seconds('weekly'),
+            'monthly' => alt_digest_period_seconds('monthly'),
+        ),
+        'column' => array(
+            'daily'   => alt_digest_last_sent_column('daily'),
+            'weekly'  => alt_digest_last_sent_column('weekly'),
+            'monthly' => alt_digest_last_sent_column('monthly'),
+        ),
+        'window_monthly' => alt_digest_monthly_window($now),
+        'window_dispatch' => alt_digest_window('monthly', $now),
+    ));
+    exit;
+}
+
 $which = $FIXTURE['compose'] ?? 'layoff';
 if ($which === 'talent') {
     $out = alt_digest_compose_talent($FIXTURE['from'], $FIXTURE['to'], 0);
 } elseif ($which === 'articles') {
     $out = alt_digest_compose_articles($FIXTURE['from'], $FIXTURE['to'], 0);
 } else {
-    $out = alt_digest_compose_layoff($FIXTURE['from'], $FIXTURE['to'], 0);
+    // The fourth argument is the tier. It is empty for the daily/weekly cases
+    // (byte-identical to before) and 'monthly' for the month-to-date edition,
+    // which is what turns on the month masthead and the Indeed backdrop.
+    $out = alt_digest_compose_layoff($FIXTURE['from'], $FIXTURE['to'], 0,
+                                     (string) ($FIXTURE['freq'] ?? ''));
 }
 
 if ($out === null) {

@@ -1,4 +1,4 @@
-"""Run the railway unit suite as one of two groups, so CI can run both at once.
+"""Run the railway unit suite as one of three groups, so CI can run them at once.
 
 WHY THIS EXISTS.
 
@@ -8,29 +8,38 @@ Chrome through `cdp.py`, load a fixture, and read back geometry, computed
 colour and tap-target size. Those are the guards that caught four phone-fold
 regressions and an unreadable dark theme, and every one of them is worth its
 seconds. But Chrome dominates the WALL clock while Python sits idle waiting on
-the DevTools socket, so the two halves of this suite have completely different
+the DevTools socket, so the halves of this suite have completely different
 shapes: one is CPU, one is a subprocess we wait on.
 
-Run in one process they add up. Run as two GitHub jobs they overlap, and the
-workflow's wall clock becomes the larger half instead of the sum. Nothing is
-skipped, nothing is marked slow, no assertion is weakened, and no test file is
-edited — the only change is which runner picks it up.
+Run in one process they add up. Run as parallel GitHub jobs they overlap, and
+the workflow's wall clock becomes the largest job instead of the sum. Nothing
+is skipped, nothing is marked slow, no assertion is weakened, and no test file
+is edited — the only change is which runner picks it up.
+
+The browser half OUTGREW A SINGLE JOB. It sat at the 15-minute ceiling on its
+own (2026-08-26: the monthly edition's methodology content tipped it over),
+so it is dealt across TWO legs, `rendered-1` and `rendered-2`. Each finishes
+in about half the browser suite's wall clock, well clear of the ceiling, and
+the CPU-bound `rest` group is the third job.
 
 THE SPLIT IS DERIVED, NEVER HAND-MAINTAINED.
 
 A hand-written list of "the slow ones" is a list that drifts: the next browser
 test lands in the fast job, nobody notices, and the ceiling creeps back. So
 the group is computed from the module's own source — a module that imports
-`cdp` drives a browser, and that is the whole rule.
+`cdp` drives a browser (that is the rest/rendered rule) — and the browser
+modules are then dealt alternately across the two legs by their sorted order,
+so a new browser test lands in a leg on the day it is written and the two legs
+stay within one module of each other.
 
 `ALL` is the same set `unittest discover -s tests -p "test_*.py"` would find
-(the same glob against the same directory), and the two groups partition it by
-construction. tests/test_test_groups.py pins that: total, disjoint, and both
-groups actually named by the workflow.
+(the same glob against the same directory), and the three groups partition it
+by construction. tests/test_test_groups.py pins that: total, disjoint, and
+every group actually named by the workflow.
 
   python3 run_tests.py --group rest
-  python3 run_tests.py --group rendered
-  python3 run_tests.py --list rendered      # names only, no execution
+  python3 run_tests.py --group rendered-1
+  python3 run_tests.py --list rendered-2      # names only, no execution
 
 Exit code is 0 only when the group ran clean. An empty group is an ERROR, not
 a pass: a group that silently selected nothing is the failure mode this file
@@ -50,7 +59,13 @@ TESTS = HERE / "tests"
 _IMPORTS_CDP = re.compile(r"^[ \t]*(?:from[ \t]+cdp[ \t]+import|import[ \t]+cdp)\b",
                           re.MULTILINE)
 
-GROUPS = ("rest", "rendered")
+GROUPS = ("rest", "rendered-1", "rendered-2")
+
+#: Which browser leg a rendered module goes to, by its position among the
+#: sorted browser modules: even -> rendered-1, odd -> rendered-2.
+_RENDERED_LEGS = ("rendered-1", "rendered-2")
+
+_BROWSER_CACHE = {}
 
 
 def all_modules():
@@ -59,12 +74,25 @@ def all_modules():
 
 
 def drives_a_browser(stem):
-    src = (TESTS / f"{stem}.py").read_text(encoding="utf-8", errors="replace")
-    return _IMPORTS_CDP.search(src) is not None
+    # Memoised: group_of asks this about every module, and modules_in asks
+    # group_of about every module, so an unmemoised read would be O(n^2) file
+    # opens. The answer is a property of the file's text, which does not change
+    # inside a run.
+    if stem not in _BROWSER_CACHE:
+        src = (TESTS / f"{stem}.py").read_text(encoding="utf-8", errors="replace")
+        _BROWSER_CACHE[stem] = _IMPORTS_CDP.search(src) is not None
+    return _BROWSER_CACHE[stem]
 
 
 def group_of(stem):
-    return "rendered" if drives_a_browser(stem) else "rest"
+    if not drives_a_browser(stem):
+        return "rest"
+    # Deal the browser modules across the two legs by their sorted position, so
+    # neither leg carries the whole rendered suite and the assignment derives
+    # from the source rather than a hand-kept list. Every browser module has a
+    # position here, so none can land in neither leg.
+    browser = [m for m in all_modules() if drives_a_browser(m)]
+    return _RENDERED_LEGS[browser.index(stem) % 2]
 
 
 def modules_in(group):

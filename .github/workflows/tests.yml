@@ -33,23 +33,26 @@ concurrency:
 
 jobs:
   railway-tests:
-    # TWO JOBS, ONE SUITE, RUN AT THE SAME TIME. Every assertion still runs;
+    # THREE JOBS, ONE SUITE, RUN AT THE SAME TIME. Every assertion still runs;
     # none is skipped, deleted or marked slow. `railway/run_tests.py` derives
     # the split from each module's own source — a module that imports `cdp`
     # starts a real headless Chrome — so the browser guards (rendered geometry,
     # contrast, tap targets, phone folds) stop queueing behind the CPU-bound
-    # rest of the suite. railway/tests/test_test_groups.py pins that the two
-    # groups are total and disjoint against the same glob `discover` uses, so
-    # a module cannot fall out of both halves and stop running unnoticed.
+    # rest of the suite. The browser guards themselves outgrew one 15-minute
+    # job (2026-08-26), so they are dealt across two legs, rendered-1 and
+    # rendered-2, each ~half the browser wall clock; `rest` is the third.
+    # railway/tests/test_test_groups.py pins that the three groups are total
+    # and disjoint against the same glob `discover` uses, so a module cannot
+    # fall out of every leg and stop running unnoticed.
     #
-    # fail-fast is OFF deliberately: one half failing must not CANCEL the
-    # other. A cancelled job is a conclusion this repo's alerter and healer
+    # fail-fast is OFF deliberately: one leg failing must not CANCEL the
+    # others. A cancelled job is a conclusion this repo's alerter and healer
     # have to interpret, and manufacturing one out of an ordinary red would be
     # noise on the exact channel that reports the red.
     strategy:
       fail-fast: false
       matrix:
-        group: [rest, rendered]
+        group: [rest, rendered-1, rendered-2]
     runs-on: ubuntu-latest
     # MEASURED, and the measurement is the point.
     #
@@ -65,12 +68,24 @@ jobs:
     # Chrome that we sit and wait on. Split, the wall clock is the LARGER
     # half instead of the sum.
     #
+    # 2026-08-26: the browser HALF then reached the same wall on its own. Main
+    # ran the rendered group at 819-856s across five runs; the monthly
+    # edition's methodology content added ~20-60s and it cancelled at 15m0s
+    # three times (runs 32906139842, 32908395922, 32911074187). MEASURED per
+    # the rule below: no single defect, no per-test browser, no unstubbed call
+    # — the `_SEGMENTS` walk is already memoised — just ~845s of diffuse
+    # rendering at a wall built for less. The doctrine's own remedy is to
+    # split again, so the browser group became rendered-1 + rendered-2, each
+    # ~half. The ceiling did NOT move: that is the point.
+    #
     # The ceiling is unchanged at 15 minutes, on purpose: lowering it makes a
     # slow suite fail sooner, not pass, and raising it silences the one alarm
-    # that catches this class. If a half times out again, MEASURE FIRST
+    # that catches this class. If a leg times out again, MEASURE FIRST
     # (`python3 railway/run_tests.py --group <g>` and time it): an unstubbed
     # network call, a sleep, or a browser started per test rather than per
-    # class is a defect to fix where it lives.
+    # class is a defect to fix where it lives — and if it is none of those,
+    # honest growth, deal the browser modules across another leg rather than
+    # raising this number.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5

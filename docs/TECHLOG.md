@@ -1,5 +1,61 @@
 # Tech Log
 
+## 2026-08-25 - A MONTHLY digest edition: the "jobs out vs jobs in" brief (2.20.138)
+
+**What.** A third digest cadence, `monthly`, sitting beside `daily` and
+`weekly`. It reports the current month MONTH TO DATE (from the 1st through the
+last complete day, the same "no partial edge" convention the weekly window uses)
+and is the marquee brief: the tracker's own verified cuts (jobs out) beside the
+level of US hiring demand from Indeed Hiring Lab (jobs in).
+
+**The frequency, added at every enumeration site** so the enum is coherent and a
+partial add cannot corrupt a stored value: `alt_digest_valid_freq`
+(allowlist + a new `alt_digest_monthly_enabled()` dormant-feature filter),
+`alt_digest_period_seconds` (25 days, slightly under a month),
+`alt_digest_last_sent_column` (`last_sent_monthly`), `alt_digest_window` -> new
+`alt_digest_monthly_window()`, `alt_digest_cadence_sentence`,
+`alt_digest_fallback_subject`, the signup form radio (gated), and in `db.php` the
+subscribers schema (new `last_sent_monthly` column + one-time back-fill, and
+freq_* widened VARCHAR(6)->(10) because 'monthly' is 7 chars and (6) would have
+truncated it to 'monthl'). `$freq` is now threaded to `alt_digest_compose_layoff`
+from all three callers (digest-api.php, the wp_mail sender, digest-archive
+capture); the other composers ignore the extra arg.
+
+**The monthly edition body.** `$is_monthly` gates two composer changes: a
+month-naming masthead (`alt_digest_month_edition_label`, "August 2026 · August
+1-24", never an ISO week over a 20-day span) and a "So far in August 2026"
+opening. The cross-language subject-line PORT (period_phrase / subject_period /
+digest_layout.py) is deliberately UNTOUCHED, so monthly falls to the daily-style
+subject and the agreement test needs no Python change.
+
+**The Indeed backdrop** (`alt_digest_indeed_block`, monthly only): reads the
+sibling talent plugin's `tit_indeed_index_data()` GUARDED, renders the index
+level, the AI-role share and the month-on-month change as a text series, names
+Indeed Hiring Lab (CC BY 4.0) and the two "as of" dates, and is OMITTED whole
+when the data is absent (never a fabricated figure). It says in words it is
+external and never counted in our totals.
+
+**Methodology.** `page-methodology.php` gains an "#m-editions" section: the daily
+send THRESHOLD (250+ roles, a new WARN/regulatory filing, or a confirmed
+leadership/RTO change; posting-scan deltas do not trigger a send), the four
+evidence tiers (Employer-confirmed / Primary-document verified / Corroborated /
+Reported) and the four source types (news / WARN / SEC 8-K / job board).
+
+**Tests.** New `test_digest_monthly_edition.py` (19 cases: masthead, opening,
+Indeed render, monthly-only gating, graceful degrade, and a probe of
+window/valid_freq/period/column). `test_edition_archive_privacy` updated
+deliberately: the send-id-0 assertion now allows the trailing `$freq` (the
+send_id is still 0 - the privacy invariant is untouched). The compose harness
+gained a fixture-fed `tit_indeed_index_data()` stub and a `probe` mode.
+
+**DEFERRED, honestly:** the scheduled monthly TICK is not armed. digest_slot.py
+(SEND_TIMES has no day-of-month dimension), its DST cron pair in
+digest-send.yml, digest_send.py's DIGEST_FREQ, and a monthly liveness health row
+are all still daily+weekly only. The public form radio is behind
+`alt_digest_offer_monthly` (default false), so nothing dishonest can ship: a
+reader cannot pick a cadence no job fulfils. Arming = one reviewed change that
+adds the slot AND flips the filter.
+
 ## 2026-08-24 - Minnesota went dark for 53 days because DEED moved recent notices from the monthly report TABLE to per-company LETTERS, and nothing read the letters
 
 **The stall.** `source_freshness` flagged `warn:MN` BROKEN: 53 days with no new
