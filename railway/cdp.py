@@ -149,6 +149,23 @@ class _WS:
             pass
 
 
+# How many times to RELAUNCH Chrome when it comes up but never hands us a debug
+# target. Measured on the deploy contrast step, which reddened main twice on
+# 2026-08-26 (runs 32946362017 and the retry) with "Chrome never exposed a debug
+# target: timed out" at ONE viewport width while every other width passed
+# cleanly, producing exit 3 UNKNOWN -> red main + an alert. A fresh headless
+# Chrome occasionally wedges on launch in CI and comes straight up on a clean
+# relaunch, so the fix is to retry the LAUNCH, with a fresh process and profile.
+#
+# THIS IS NOT A LONGER TIMEOUT, and must never become one. `_wait_for_target`
+# keeps its own 30s deadline: a launch that is genuinely dead still resolves to
+# CDPUnavailable -> UNKNOWN after every attempt, never to a pass. Only a
+# transient launch/connection flake is retried, and a retry that keeps failing
+# is still exactly the UNKNOWN it was before.
+LAUNCH_ATTEMPTS = 3
+LAUNCH_BACKOFF = (1.0, 3.0)  # seconds before the 2nd and 3rd attempt
+
+
 class Browser:
     """Headless Chrome, one tab, context-managed."""
 
@@ -163,9 +180,38 @@ class Browser:
     def __enter__(self):
         chrome = find_chrome()
         if not chrome:
+            # A MISSING browser is not a transient launch flake — retrying it
+            # only stalls. It is UNKNOWN immediately, exactly as before.
             raise CDPUnavailable(
                 'no Chrome/Chromium found. Set CHROME_BIN, or install Chrome. '
                 'This is UNKNOWN, not a pass.')
+        last = None
+        for attempt in range(1, LAUNCH_ATTEMPTS + 1):
+            try:
+                self._launch(chrome)
+                return self
+            except CDPUnavailable as exc:
+                # Chrome came up (or tried to) and never exposed a usable debug
+                # target within the deadline. Tear this attempt's process and
+                # profile down and try a CLEAN relaunch — the wall does not move.
+                last = exc
+                self._teardown()
+                if attempt < LAUNCH_ATTEMPTS:
+                    delay = LAUNCH_BACKOFF[min(attempt - 1, len(LAUNCH_BACKOFF) - 1)]
+                    print('    Chrome did not expose a debug target (attempt %d/%d): '
+                          'relaunching in %.0fs' % (attempt, LAUNCH_ATTEMPTS, delay))
+                    time.sleep(delay)
+        # Every launch attempt failed to connect. This stays UNKNOWN, never a
+        # pass: a transient flake is healed, a Chrome that will not come up is
+        # still reported as unmeasured.
+        raise CDPUnavailable(
+            'Chrome never exposed a debug target after %d launch attempts: %s. '
+            'This is UNKNOWN, not a pass.' % (LAUNCH_ATTEMPTS, last))
+
+    def _launch(self, chrome):
+        """One launch: start Chrome, connect to its debug target, enable the
+        domains. Raises CDPUnavailable on a launch/connection flake so
+        __enter__ can retry it with a fresh process."""
         port = _free_port()
         self._profile = tempfile.mkdtemp(prefix='alt-cdp-')
         args = [
@@ -187,14 +233,21 @@ class Browser:
         ]
         self._proc = subprocess.Popen(
             args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        ws_url = self._wait_for_target(port)
-        self._ws = _WS(ws_url, timeout=self.timeout)
-        self.call('Page.enable')
-        self.call('Runtime.enable')
-        self.call('Emulation.setDeviceMetricsOverride', {
-            'width': self.width, 'height': self.height,
-            'deviceScaleFactor': 1, 'mobile': self.width < 768})
-        return self
+        try:
+            ws_url = self._wait_for_target(port)
+            self._ws = _WS(ws_url, timeout=self.timeout)
+            self.call('Page.enable')
+            self.call('Runtime.enable')
+            self.call('Emulation.setDeviceMetricsOverride', {
+                'width': self.width, 'height': self.height,
+                'deviceScaleFactor': 1, 'mobile': self.width < 768})
+        except (CDPError, OSError) as exc:
+            # A wedged launch: the target never appeared, the websocket
+            # handshake failed, or the first command timed out on a Chrome that
+            # is not really up. All are the same transient class — surface them
+            # as CDPUnavailable so __enter__ relaunches rather than resolving to
+            # a FAIL/PASS on a browser that never rendered anything.
+            raise CDPUnavailable('launch did not connect: %s' % exc)
 
     def _wait_for_target(self, port, deadline=30):
         end = time.time() + deadline
@@ -258,17 +311,33 @@ class Browser:
             raise CDPError('page threw: %s' % desc)
         return res.get('result', {}).get('value')
 
-    def __exit__(self, *exc):
+    def _teardown(self):
+        """Close the websocket, stop Chrome, and remove the profile — best
+        effort, never raises. Used both to clean up a failed launch before a
+        retry and to exit the context. Resets the handles so a retry starts from
+        a known-empty state."""
         if self._ws:
-            self._ws.close()
-        if self._proc:
-            self._proc.terminate()
             try:
-                self._proc.wait(timeout=10)
+                self._ws.close()
             except Exception:
-                self._proc.kill()
+                pass
+            self._ws = None
+        if self._proc:
+            try:
+                self._proc.terminate()
+                try:
+                    self._proc.wait(timeout=10)
+                except Exception:
+                    self._proc.kill()
+            except Exception:
+                pass
+            self._proc = None
         if self._profile:
             shutil.rmtree(self._profile, ignore_errors=True)
+            self._profile = None
+
+    def __exit__(self, *exc):
+        self._teardown()
         return False
 
 
