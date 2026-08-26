@@ -2930,6 +2930,62 @@ if (!defined('ALT_ARCHIVE_DAILY_RUN_UTC')) define('ALT_ARCHIVE_DAILY_RUN_UTC', '
 if (!defined('ALT_ARCHIVE_THROUGHPUT_WINDOW_HOURS')) define('ALT_ARCHIVE_THROUGHPUT_WINDOW_HOURS', 48);
 
 /**
+ * Re-queue re-cited orphan archive rows so a URL that came back into the dataset
+ * re-enters the re-check cadence as fresh, instead of injecting a stale
+ * pre-orphan timestamp into the live promise.
+ *
+ * THE DEFECT THIS CLOSES. An archive row that went 'pending'/'unavailable' and
+ * then had ALL its citing layoff rows purged or re-sourced becomes an ORPHAN.
+ * Orphans are (correctly) never handed to the candidate query below — they are
+ * not cited — so their checked_at FREEZES at the last attempt. When a later
+ * ingest RE-CITES that URL (WARN re-import churn, a news re-scrape that mints a
+ * new dedup-hash row, superset reconciliation, or a genuinely new event reusing
+ * the URL), the INNER-JOIN oldest_unarchived_checked_at (alt_archive_coverage_counts)
+ * surfaces that ancient timestamp the instant the URL is cited again, and
+ * data_integrity's archive_recheck_cadence FAILs on an age (25d seen live
+ * 2026-08-26) the cron will actually clear on its VERY NEXT run. No reader
+ * promise is broken — alt_archive_next_check_date() clamps the printed date
+ * forward — but the false FAIL reddens CI and mails the owner for up to a day.
+ *
+ * THE RULE. A cited row whose layoff side was written (updated_at) AFTER the
+ * archive row's last check has been re-ingested since we last looked at it, so
+ * we have not actually checked THIS citation. Reset checked_at to NULL: that
+ * makes it a top-priority candidate (the ORDER BY sorts NULLs first, so it is
+ * drained in the SAME run), drops it out of the oldest MIN (which skips NULL),
+ * and prints "next check by <tomorrow>" to readers via the clamp.
+ *
+ * THE GUARDRAIL — why this cannot mask a real stall. A normally-cadencing row,
+ * and any row the cron has simply stopped draining, has a layoff side that is
+ * NOT being re-ingested, so its updated_at is NOT newer than checked_at and it
+ * is left untouched — it keeps ageing and still trips the invariant. Only a row
+ * whose citation is demonstrably newer than its last check is re-queued, and
+ * such a row is a fresh candidate the cron re-checks next run regardless.
+ *
+ * Idempotent: a re-queued row has checked_at IS NULL, so `checked_at IS NOT NULL`
+ * excludes it from a second pass in the same run. Called ONLY from the
+ * key-protected candidate endpoint (the daily backfill's pre-fetch step), never
+ * on a public request.
+ */
+function alt_archive_requeue_recited() {
+    global $wpdb;
+    $layoffs = alt_db_table();
+    $archive = alt_archive_table();
+    // Multi-table UPDATE (target `a`, joined to `l`) — no subquery on the target,
+    // so MySQL runs it directly. LIKE 'http%' is a literal here (not $wpdb->prepare),
+    // so the single % is correct. An archive row cited by several layoff rows is
+    // reset once; it qualifies if ANY citing row was re-ingested after the check.
+    return $wpdb->query(
+        "UPDATE $archive a
+            JOIN $layoffs l ON a.url_hash = MD5(TRIM(l.source_url))
+            SET a.checked_at = NULL
+          WHERE a.status IN ('pending','unavailable')
+            AND a.checked_at IS NOT NULL
+            AND l.source_url <> '' AND l.source_url LIKE 'http%'
+            AND l.updated_at IS NOT NULL
+            AND l.updated_at > a.checked_at");
+}
+
+/**
  * Key-protected: return the next batch of DISTINCT source URLs that still need
  * a permanent archive. The gap is computed by LEFT JOIN against the archive
  * index, so this covers EVERY row type (WARN / news / SEC / ERM) and — crucially
@@ -2946,6 +3002,11 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
     if (!alt_archive_table_ready()) {
         return new WP_Error('alt_db_error', 'Archive index unavailable after migration retry.', array('status' => 500));
     }
+    // PRE-FETCH: re-queue any URL re-cited since its last archive check, BEFORE
+    // selecting the batch, so the re-queued rows (checked_at -> NULL) sort to the
+    // front and are drained in THIS run rather than sitting stale until tomorrow.
+    // See alt_archive_requeue_recited() for why this cannot mask a real stall.
+    alt_archive_requeue_recited();
     $limit = min(500, max(1, (int) ($r->get_param('limit') ?: 200)));
     $retry_hours = min(720, max(1, (int) ($r->get_param('retry_hours') ?: ALT_ARCHIVE_RETRY_HOURS)));
     $retry_before = gmdate('Y-m-d H:i:s', time() - $retry_hours * HOUR_IN_SECONDS);
