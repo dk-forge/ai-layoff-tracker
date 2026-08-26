@@ -9,7 +9,7 @@ import requests
 
 from sources import cvm_br, edinet, opendart
 from sources.edgar import pull_edgar_filings
-from sources.gdelt import pull_gdelt_between
+from sources.gdelt import pull_gdelt_between, last_run_status as gdelt_last_run_status
 from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
 from sources.local_news import pull_local_news
@@ -432,7 +432,11 @@ def run():
         # store, so health_detail() spends the headline facts first. Every
         # health write is also appended to the public /source-runs table, so
         # this is durable history from the first run.
-        report_source_health("gdelt", "ok", len(pulled),
+        # `ok` ONLY when every planned window/sweep slot completed. A run that
+        # returned rows but left a capped, abandoned or mirror-ceiling slot is
+        # `degraded` (the collector tracks this per-slot), so a truncated or
+        # lost window is visible on the health page instead of silently green.
+        report_source_health("gdelt", gdelt_last_run_status(), len(pulled),
                              gdelt_reach.current().health_detail())
     except Exception as e:
         # An abandoned window already lands here. Carry the reach facts with

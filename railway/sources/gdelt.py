@@ -6,13 +6,15 @@ each article and extract the layoff details downstream via the same extractor.
 This is the historical + global press layer: free, worldwide, back to 2024,
 and it's where AI-attributed layoff language actually appears.
 """
+import hashlib
 import html
+import json
 import os
 import re
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -669,6 +671,129 @@ FETCH_WORKERS = max(1, min(6, int(os.environ.get("GDELT_FETCH_WORKERS", "4"))))
 QUERY_ATTEMPTS = max(1, min(6, int(os.environ.get("GDELT_QUERY_ATTEMPTS", "5"))))
 QUERY_BACKOFF_SECONDS = max(1, min(120, int(os.environ.get("GDELT_QUERY_BACKOFF_SECONDS", "40"))))
 
+# --- Window coverage: bisection, the work ledger, and the run verdict --------
+#
+# The old worldwide path had three silent coverage leaks, each measured in
+# production (a run showing 900 returned / 99 kept / 801 dropped, one query
+# capped, one window abandoned):
+#
+#   1. `sortby=datedesc` + `maxrecords=250` (or the mirror's `LIMIT 900`) over a
+#      36-hour window means a busy window is TRUNCATED at the newest N and the
+#      tail is invisible. `_collect_window` splits a capped window in half and
+#      re-queries each half until every sub-window returns UNDER the cap (or a
+#      sensible floor is reached and it is recorded `partial`, never dropped).
+#   2. A window the public API abandoned but the BigQuery mirror recovered used
+#      to RETURN EARLY, skipping every other sweep for that run. It no longer
+#      does: the recovered articles are ASSIGNED and the run CONTINUES.
+#   3. An unfinished window vanished. Now every (query-family, window) slot is
+#      written to a committed ledger as queued/attempted/complete/partial/failed
+#      and RETRIED across runs until complete.
+#
+# The ledger is a committed JSON file, mirroring alert_state.json /
+# source_state.json / headline_incidents.json: any session can read what is
+# still owed, and an unfinished cursor survives the run. (Transport caveat: the
+# live cron runs on Railway, which cannot git-commit; the ledger persists wher-
+# ever the file does — a checkout, a backfill, a runner that commits — and is
+# harmless where it does not. See the PR notes.)
+WORK_LEDGER_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gdelt_work_ledger.json")
+
+# Bisection floor: never split a window below this. A busy hour that still caps
+# is recorded `partial` (we took the newest N of it) rather than split into
+# minute-slivers that each cost a full rate-limited request for diminishing
+# return. One hour is the granularity `seendate` itself resolves to.
+MIN_BISECT_WINDOW = timedelta(hours=1)
+
+# How long an incomplete slot is worth retrying. A window older than this is a
+# past gap, not present work; it is pruned with a log line rather than queued
+# forever. Two weeks mirrors the orphan-report window in run_completion.py.
+LEDGER_RETRY_HORIZON = timedelta(days=14)
+
+# Cap the retry fan-out so a backlog cannot make one run issue unbounded extra
+# queries. Oldest-incomplete first; the rest wait for the next run.
+MAX_RETRY_SLOTS_PER_RUN = max(0, min(20, int(os.environ.get("GDELT_MAX_RETRY_SLOTS", "6"))))
+
+# The run verdict, read by cron.py to decide the health status. A run is
+# `degraded` (not silently green) when ANY planned slot did not COMPLETE — a
+# capped-to-floor window, an abandoned sweep, a mirror walk that hit its page
+# ceiling. A fully-abandoned broad window still RAISES (loud, non-zero); this
+# flag is for the partial case that keeps its rows.
+_LAST_RUN_INCOMPLETE = False
+
+
+def last_run_status():
+    """'ok' if every planned slot completed last run, else 'degraded'.
+
+    cron.py reports gdelt health with this, so a capped or abandoned window is
+    visible on the health page instead of being buried under a green 'ok'.
+    """
+    return "degraded" if _LAST_RUN_INCOMPLETE else "ok"
+
+
+def _win_stamp(dt):
+    return dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _slot_key(family, query, start, end):
+    """Stable identity for one (query-family, window) unit of work.
+
+    The query text is folded in via a short hash so two segment queries over the
+    same window are distinct slots, without spelling the query into the key.
+    """
+    qh = hashlib.sha1((query or "").encode("utf-8")).hexdigest()[:10]
+    return f"{family}|{qh}|{_win_stamp(start)}|{_win_stamp(end)}"
+
+
+def _load_work_ledger(path=WORK_LEDGER_PATH):
+    """Read the committed work ledger. Malformed -> empty, never a crash.
+
+    A ledger that cannot be parsed is not a ledger that says nothing is owed, but
+    an ingest run must never be taken down by its own bookkeeping — so an
+    unreadable file starts an empty one and the run proceeds (and re-records).
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if not isinstance(data, dict) or not isinstance(data.get("slots"), dict):
+            raise ValueError("work ledger shape")
+        return data
+    except FileNotFoundError:
+        return {"slots": {}}
+    except Exception as exc:
+        print(f"GDELT work ledger unreadable ({exc}); starting fresh")
+        return {"slots": {}}
+
+
+def _save_work_ledger(ledger, path=WORK_LEDGER_PATH):
+    """Persist the ledger, pruning what is finished or too old to retry."""
+    now = datetime.now(timezone.utc)
+    kept = {}
+    for key, slot in ledger.get("slots", {}).items():
+        end = _parse_stamp(slot.get("window_end"))
+        aged_out = end is not None and (now - end) > LEDGER_RETRY_HORIZON
+        if slot.get("status") == "complete":
+            # Keep a completed slot only briefly, as a dedupe guard against
+            # re-queuing the same window inside one horizon; then let it go.
+            if aged_out:
+                continue
+        elif aged_out:
+            # An incomplete window older than the horizon is a past gap, not
+            # present work. Drop it loudly rather than retry it forever.
+            print(f"GDELT work ledger: dropping aged-out incomplete slot {key}")
+            continue
+        kept[key] = slot
+    payload = {"slots": {k: kept[k] for k in sorted(kept)}}
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, sort_keys=False)
+        fh.write("\n")
+
+
+def _parse_stamp(stamp):
+    try:
+        return datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
 
 def _retry_delay(response, attempt):
     """Honor a bounded Retry-After hint, with jitter for shared API fairness."""
@@ -917,113 +1042,148 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
     return articles, saw_rate_limit, last_error
 
 
-def pull_gdelt_between(start, end, max_records=250):
-    """Return raw layoff-news entries (trusted domains) filed in [start, end]."""
-    # Quota policy (sandbox: 1 TB scanned/month): the BigQuery mirror is
-    # PREFERRED for historical sweeps (GDELT_PREFER_BQ=1 in those workflows —
-    # bounded windows, where shared-endpoint 429s actually lose data) and is
-    # the FALLBACK for live pulls when the public API abandons a window. Both
-    # directions keep monthly scans far inside quota; every query also has a
-    # hard bytes cap.
-    prefer_bq = os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
-    if gdelt_bq.available() and prefer_bq:
-        try:
-            from source_registry import discovery_terms as _terms
-            bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
-            print(f"GDELT via BigQuery mirror: {len(bq_articles)} article(s), no rate limits")
-            gdelt_reach.current().note_query("mirror", len(bq_articles), gdelt_bq.MIRROR_LIMIT)
-            return _fetch_trusted(bq_articles)
-        except Exception as e:
-            print(f"GDELT BigQuery mirror failed ({e}); falling back to public API")
+def _collect_window(query, start, end, max_records, reach_label, floor=MIN_BISECT_WINDOW):
+    """Query one window via the public API, BISECTING it when it caps.
 
-    # GDELT throttles aggressively on historical sweeps — back off and retry
-    # instead of surrendering the whole month window (a 72-window backfill
-    # once lost 63 windows to 429s without this).
-    articles, saw_rate_limit, last_error = _query_window(QUERY, start, end, max_records)
+    Returns (articles, status, saw_rate_limit, last_error):
+      * articles is None only when the FIRST query of a window was abandoned
+        after every attempt (an availability incident the caller handles).
+      * status is "complete" (returned under the cap), "partial" (capped and
+        either at the split floor or with a capped/abandoned sub-window), or
+        "abandoned" (articles is None).
+
+    `sortby=datedesc` + `maxrecords` truncates a busy window at the newest N and
+    drops the tail with no trace. Splitting until each half returns under the cap
+    walks the WHOLE window instead. Overlap at the split point is harmless: the
+    trusted-domain gate dedupes by URL downstream.
+    """
+    articles, saw_rl, err = _query_window(query, start, end, max_records, reach_label)
     if articles is None:
-        # A 429 followed by a malformed/empty upstream response is still an
-        # upstream availability incident. Preserve the 429 marker so the
-        # caller leaves the cursor in place and reports the source as
-        # deferred, rather than classifying the final parser symptom as a
-        # repository failure.
-        if gdelt_bq.available():
-            try:
-                from source_registry import discovery_terms as _terms
-                bq_articles = gdelt_bq.query_window_articles(start, end, _terms())
-                print(f"GDELT public API abandoned; BigQuery mirror recovered {len(bq_articles)} article(s)")
-                gdelt_reach.current().note_query("mirror", len(bq_articles), gdelt_bq.MIRROR_LIMIT)
-                return _fetch_trusted(bq_articles)
-            except Exception as e:
-                print(f"BigQuery fallback also failed: {e}")
-        if saw_rate_limit:
-            last_error = f"HTTP 429 (followed by upstream response error: {last_error or 'unknown error'})"
-        raise RuntimeError(f"GDELT window abandoned after {QUERY_ATTEMPTS} attempts: {last_error or 'unknown error'}")
+        return None, "abandoned", saw_rl, err
+    if len(articles) < max_records:
+        return articles, "complete", saw_rl, err
+    # Capped: the window is truncated at the newest max_records.
+    span = end - start
+    if span <= floor:
+        print(f"GDELT [{reach_label}] window capped at floor "
+              f"{_win_stamp(start)}..{_win_stamp(end)}: keeping newest {len(articles)}, PARTIAL")
+        return articles, "partial", saw_rl, err
+    mid = start + span / 2
+    left, ls, _, _ = _collect_window(query, start, mid, max_records, reach_label, floor)
+    right, rs, _, _ = _collect_window(query, mid, end, max_records, reach_label, floor)
+    combined = list(articles)  # keep the capped parent page too; dedup is downstream
+    if left:
+        combined.extend(left)
+    if right:
+        combined.extend(right)
+    status = "complete" if (ls == "complete" and rs == "complete") else "partial"
+    return combined, status, saw_rl, err
 
-    # Rotating narrow sweeps ride the same window. Only the broad query is
-    # health-bearing: a segment that stays rate-limited is skipped with a log
-    # line and rotates back around within days, so it must not fail the run.
+
+def _collect_mirror(start, end):
+    """Walk the BigQuery mirror to completion. Returns (articles, status).
+
+    Deterministic (date, url) pagination, so a capped window is walked page by
+    page instead of losing everything past the first 900 rows. status is
+    "complete" unless the walk hit its page ceiling (then "partial").
+    """
+    from source_registry import discovery_terms as _terms
+    arts, complete = gdelt_bq.query_window_walk(start, end, _terms())
+    gdelt_reach.current().note_query("mirror", len(arts), gdelt_bq.MIRROR_LIMIT)
+    return arts, ("complete" if complete else "partial")
+
+
+def _span_of(articles):
+    """(oldest, newest) GDELT seendate over a set of articles, or (None, None)."""
+    stamps = sorted(a.get("seendate") for a in articles if a.get("seendate"))
+    return (stamps[0], stamps[-1]) if stamps else (None, None)
+
+
+def _record_slot(ledger, family, query, start, end, status, articles, *, cap_hit=False):
+    """Fold one (family, window) outcome into the work ledger. Returns its key.
+
+    The query text is stored for sweeps (our OWN discovery vocabulary — never a
+    name), so a partial/failed slot can be re-issued verbatim on a later run.
+    The broad query is rebuilt from module QUERY at retry time, not stored.
+    """
+    key = _slot_key(family, query, start, end)
+    now_iso = _win_stamp(datetime.now(timezone.utc))
+    oldest, newest = _span_of(articles)
+    slot = ledger["slots"].get(key, {})
+    slot.update({
+        "family": family,
+        "window_start": _win_stamp(start),
+        "window_end": _win_stamp(end),
+        "status": status,
+        "returned": len(articles),
+        "cap_hit": bool(cap_hit),
+        "oldest": oldest,
+        "newest": newest,
+        "attempts": int(slot.get("attempts", 0)) + 1,
+        "first_seen": slot.get("first_seen", now_iso),
+        "updated": now_iso,
+    })
+    if family != "broad":
+        slot["query_text"] = query
+    ledger["slots"][key] = slot
+    return key
+
+
+def _rebuild_query(slot):
+    """The query string to re-issue for a persisted slot, or None if unknown."""
+    if slot.get("family") == "broad":
+        return QUERY
+    return slot.get("query_text")
+
+
+def _run_sweep_slot(ledger, family, query, start, end, max_records, collected, incomplete):
+    """Run one non-broad slot: never raises, records the outcome, retried later.
+
+    A rate-limited or capped sweep does NOT fail the run — it is skipped with a
+    log line, written to the ledger as failed/partial, and retried next run. It
+    DOES mark the run degraded (visible on the health page), because a planned
+    slot that did not complete is a coverage gap, not a green day.
+    """
+    arts, status, _saw_rl, err = _collect_window(query, start, end, max_records, family)
+    if arts is None:
+        print(f"GDELT {family} skipped ({err}): {query[-60:]}")
+        _record_slot(ledger, family, query, start, end, "failed", [])
+        incomplete.append(f"{family}:abandoned")
+        return
+    cap_hit = status != "complete"
+    print(f"GDELT {family} {query[-48:]}: {len(arts)} article(s)"
+          + (" (capped -> bisected, PARTIAL)" if cap_hit else ""))
+    collected.extend(arts)
+    _record_slot(ledger, family, query, start, end,
+                 "complete" if status == "complete" else "partial", arts, cap_hit=cap_hit)
+    if status != "complete":
+        incomplete.append(f"{family}:partial")
+
+
+def _planned_sweeps():
+    """The (family, query) sweeps scheduled for THIS run, deterministically."""
+    plan = []
     for segment_query in _segment_queries_for_now():
-        seg_articles, _, seg_error = _query_window(segment_query, start, end, max_records, "segment")
-        if seg_articles is None:
-            print(f"GDELT segment skipped ({seg_error}): {segment_query[-60:]}")
-            continue
-        print(f"GDELT segment {segment_query[-48:]}: {len(seg_articles)} article(s)")
-        articles.extend(seg_articles)
-
-    # Native-language sweep: STANDALONE queries (see NATIVE_TERMS), same
-    # non-health-bearing rules as segments - a rate-limited term is skipped
-    # and rotates back within days. Deterministic rotation like the segments.
+        plan.append(("segment", segment_query))
     if NATIVE_QUERIES_PER_RUN:
         for native_query in run_slice.rotate(NATIVE_TERMS, NATIVE_QUERIES_PER_RUN):
-            nat_articles, _, nat_error = _query_window(native_query, start, end, max_records, "native")
-            if nat_articles is None:
-                print(f"GDELT native-term skipped ({nat_error}): {native_query}")
-                continue
-            print(f"GDELT native-term {native_query}: {len(nat_articles)} article(s)")
-            articles.extend(nat_articles)
-    # English-doublespeak sweep: standalone for the same reason as native terms.
+            plan.append(("native", native_query))
     if EUPHEMISM_QUERIES_PER_RUN:
         for eu_query in run_slice.rotate(EUPHEMISM_TERMS, EUPHEMISM_QUERIES_PER_RUN):
-            eu_articles, _, eu_error = _query_window(eu_query, start, end, max_records, "euphemism")
-            if eu_articles is None:
-                print(f"GDELT euphemism-term skipped ({eu_error}): {eu_query}")
-                continue
-            print(f"GDELT euphemism-term {eu_query}: {len(eu_articles)} article(s)")
-            articles.extend(eu_articles)
-
+            plan.append(("euphemism", eu_query))
     # Standalone THEME sweep: GDELT's GKG topic classifier tags a story's subject
-    # matter independent of our keyword vocabulary, so it can catch a layoff piece
-    # phrased around our terms ("trimming its ranks", "workers will be let go").
-    # There is NO "ECON_LAYOFF" theme in GDELT's taxonomy (it returns nothing);
-    # the real layoff-semantic GKG themes are the dismissal/redundancy ones below.
-    # They are thin (rare tags) and macro themes like WB_2747_UNEMPLOYMENT are too
-    # broad to use, so this is a NARROW, strictly-additive recall lever: it runs on
-    # its OWN (not ANDed with the keyword set), the trusted-domain allowlist still
-    # gates every article downstream (_fetch_trusted), and the extractor validates
-    # each candidate — so it only widens what we NOTICE, never what we trust.
-    # Toggle off with GDELT_THEME_SWEEP=0 if it ever adds noise.
+    # matter independent of our keyword vocabulary. NARROW, strictly-additive:
+    # the trusted-domain allowlist still gates every article downstream and the
+    # extractor validates each candidate. Toggle off with GDELT_THEME_SWEEP=0.
     if os.environ.get("GDELT_THEME_SWEEP", "1") != "0":
-        theme_query = (
-            "(theme:WB_2806_DISMISSAL_PROCEDURES OR "
-            "theme:WB_2790_LABOR_REDUNDANCY OR "
-            "theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"
-        )
-        theme_articles, _, theme_error = _query_window(theme_query, start, end, max_records, "theme")
-        if theme_articles is None:
-            print(f"GDELT dismissal/redundancy theme sweep skipped ({theme_error})")
-        else:
-            print(f"GDELT dismissal/redundancy theme sweep: {len(theme_articles)} article(s)")
-            articles.extend(theme_articles)
-
+        plan.append(("theme",
+                     "(theme:WB_2806_DISMISSAL_PROCEDURES OR "
+                     "theme:WB_2790_LABOR_REDUNDANCY OR "
+                     "theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"))
     # Standalone EUROPEAN-LANGUAGE sweep: works-council-driven cuts (a Spanish
     # ERE, German Stellenabbau, French plan social) surface in national business
-    # press before/without English coverage — and European HQs never file an SEC
-    # 8-K, so this is the catchable signal for them. These terms must run
-    # STANDALONE (the segment matrix ANDs terms with the English base QUERY,
-    # which would strangle non-English text). One language per run to respect
-    # the shared rate limit; the trusted-domain allowlist (Handelsblatt,
-    # Les Echos, El Pais, Corriere, ...) still gates every article downstream,
-    # and the extractor validates each candidate. Toggle: GDELT_EURO_SWEEP=0.
+    # press before/without English coverage, and European HQs never file an SEC
+    # 8-K. One language per run. Toggle: GDELT_EURO_SWEEP=0.
     if os.environ.get("GDELT_EURO_SWEEP", "1") != "0":
         euro_queries = (
             '"Stellenabbau" OR "Entlassungen" OR "Arbeitsplätze streichen"',
@@ -1032,14 +1192,130 @@ def pull_gdelt_between(start, end, max_records=250):
             '"licenziamenti" OR "esuberi"',
         )
         eq = euro_queries[datetime.now(timezone.utc).timetuple().tm_yday % len(euro_queries)]
-        euro_articles, _, euro_error = _query_window(eq, start, end, max_records, "euro")
-        if euro_articles is None:
-            print(f"GDELT European-language sweep skipped ({euro_error})")
-        else:
-            print(f"GDELT European-language sweep: {len(euro_articles)} article(s)")
-            articles.extend(euro_articles)
+        plan.append(("euro", eq))
+    return plan
 
-    return _fetch_trusted(articles)
+
+def _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys):
+    """Re-issue unfinished slots from prior runs (cursor persists between runs).
+
+    Bounded to MAX_RETRY_SLOTS_PER_RUN, oldest-incomplete first, only within the
+    retry horizon and never re-running a slot already attempted this run. An
+    unfinished slot is NOT abandoned after N tries — it is queued until it
+    completes or ages out of the horizon.
+    """
+    if not MAX_RETRY_SLOTS_PER_RUN:
+        return
+    horizon_start = end - LEDGER_RETRY_HORIZON
+    pending = []
+    for key, slot in ledger["slots"].items():
+        if key in done_keys:
+            continue
+        if slot.get("status") not in ("partial", "failed", "queued"):
+            continue
+        we = _parse_stamp(slot.get("window_end"))
+        ws = _parse_stamp(slot.get("window_start"))
+        if ws is None or we is None or we < horizon_start or we > end:
+            continue
+        pending.append((ws, we, key, slot))
+    pending.sort(key=lambda t: t[0])  # oldest window first
+    for ws, we, key, slot in pending[:MAX_RETRY_SLOTS_PER_RUN]:
+        family = slot.get("family", "segment")
+        if family not in gdelt_reach.QUERY_LABELS or family == "mirror":
+            family = "segment"
+        query = _rebuild_query(slot)
+        if not query:
+            continue
+        print(f"GDELT retry pending slot {key} (attempt {int(slot.get('attempts', 0)) + 1})")
+        _run_sweep_slot(ledger, family, query, ws, we, max_records, collected, incomplete)
+
+
+def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH):
+    """Return raw layoff-news entries (trusted domains) filed in [start, end].
+
+    Every planned unit of work (the broad window plus each rotating sweep) is a
+    ledger SLOT: attempted, recorded complete/partial/failed, and retried across
+    runs until it completes. A capped window is bisected, an abandoned window is
+    recovered from the BigQuery mirror WITHOUT skipping the other sweeps, and a
+    run with any incomplete slot reports degraded (see last_run_status), so a
+    truncated or lost window is visible instead of silently green.
+    """
+    global _LAST_RUN_INCOMPLETE
+    _LAST_RUN_INCOMPLETE = False
+    ledger = _load_work_ledger(ledger_path)
+    collected = []
+    incomplete = []
+    done_keys = set()
+
+    # Quota policy (sandbox: 1 TB scanned/month): the BigQuery mirror is
+    # PREFERRED for historical sweeps (GDELT_PREFER_BQ=1 in those workflows —
+    # bounded windows, where shared-endpoint 429s actually lose data) and is
+    # the FALLBACK for live pulls when the public API abandons a window.
+    prefer_bq = os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
+
+    # --- BROAD slot (health-bearing) -------------------------------------
+    broad_articles = None
+    broad_status = None
+    broad_cap = False
+    if gdelt_bq.available() and prefer_bq:
+        try:
+            broad_articles, broad_status = _collect_mirror(start, end)
+            broad_cap = broad_status != "complete"
+            print(f"GDELT via BigQuery mirror: {len(broad_articles)} article(s), no rate limits")
+        except Exception as e:
+            print(f"GDELT BigQuery mirror failed ({e}); falling back to public API")
+            broad_articles = None
+
+    if broad_articles is None:
+        arts, status, saw_rl, err = _collect_window(QUERY, start, end, max_records, "broad")
+        if status == "abandoned":
+            # The public API abandoned the WHOLE window. Try the mirror to
+            # RECOVER it — and if it recovers, CONTINUE with the sweeps rather
+            # than returning early (the old early return cost the run every
+            # other sweep). A recovered window is RECOVERED, not lost.
+            if gdelt_bq.available():
+                try:
+                    broad_articles, broad_status = _collect_mirror(start, end)
+                    broad_cap = broad_status != "complete"
+                    print(f"GDELT public API abandoned; BigQuery mirror recovered "
+                          f"{len(broad_articles)} article(s) (RECOVERED, not lost)")
+                except Exception as e:
+                    print(f"BigQuery fallback also failed: {e}")
+                    broad_articles = None
+            if broad_articles is None:
+                # Neither delivered nor recovered. Fail loudly (cron -> degraded,
+                # non-zero) and persist nothing: the whole run failed and the
+                # window is retried next run.
+                if saw_rl:
+                    err = f"HTTP 429 (followed by upstream response error: {err or 'unknown error'})"
+                raise RuntimeError(
+                    f"GDELT window abandoned after {QUERY_ATTEMPTS} attempts: {err or 'unknown error'}")
+        else:
+            broad_articles, broad_status, broad_cap = arts, status, (status != "complete")
+
+    collected.extend(broad_articles)
+    done_keys.add(_record_slot(ledger, "broad", QUERY, start, end,
+                               "complete" if broad_status == "complete" else "partial",
+                               broad_articles, cap_hit=broad_cap))
+    if broad_status != "complete":
+        incomplete.append(f"broad:{broad_status}")
+
+    # --- Rotating sweeps: never return early, each is its own retriable slot ---
+    for family, query in _planned_sweeps():
+        before = set(ledger["slots"])
+        _run_sweep_slot(ledger, family, query, start, end, max_records, collected, incomplete)
+        done_keys |= (set(ledger["slots"]) - before)
+        done_keys.add(_slot_key(family, query, start, end))
+
+    # --- Pick up unfinished work from earlier runs ------------------------
+    _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys)
+
+    _LAST_RUN_INCOMPLETE = bool(incomplete)
+    if incomplete:
+        print(f"GDELT run has {len(incomplete)} incomplete slot(s): "
+              f"{', '.join(sorted(set(incomplete)))} -> health degraded")
+    _save_work_ledger(ledger, ledger_path)
+    return _fetch_trusted(collected)
 
 
 def _fetch_trusted(articles):
