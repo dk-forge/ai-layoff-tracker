@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:live.data:eacb9ee45de18437": {
-      "first": 1787742401,
-      "last": 1787742401,
-      "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (The read operation timed out) \u2014 this headline is windo"
-    }
-  },
-  "updated_at": "2026-08-26T11:06:41+00:00",
+  "open": {},
+  "updated_at": "2026-08-26T11:11:46+00:00",
   "version": 1
 }
