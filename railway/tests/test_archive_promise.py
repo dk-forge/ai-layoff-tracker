@@ -792,5 +792,139 @@ class TheWeeklyArchiverFitsInsideItsOwnCeiling(unittest.TestCase):
         self.assertNotIn("if urls and ok == 0:", src)
 
 
+class RequeueRecitedOrphans(unittest.TestCase):
+    """A re-cited orphan must re-enter the cadence as fresh, not inject a stale
+    pre-orphan timestamp into the promise.
+
+    THE DEFECT (live 2026-08-26). An archive row goes 'unavailable', then all its
+    citing layoff rows are purged/re-sourced -> it is an ORPHAN, correctly never
+    handed to the candidate query, so its checked_at FREEZES. A later ingest
+    re-cites the URL and the INNER-JOIN oldest_unarchived_checked_at surfaces the
+    ancient timestamp the instant it is cited again; archive_recheck_cadence read
+    25.3d and FAILed on an age the very next daily run clears. No reader promise
+    breaks (the printed date is clamped forward), but CI reddens and the owner is
+    mailed for up to a day.
+
+    alt_archive_requeue_recited() resets checked_at -> NULL for a cited row whose
+    layoff side was written (updated_at) AFTER the archive row's last check, so it
+    sorts first (NULLs lead the candidate ORDER BY), drains in the SAME run, and
+    drops out of the oldest MIN. The tests below run the REAL query text from
+    db.php, so a change to the predicate changes what they prove.
+    """
+
+    def _requeue_sql(self):
+        body = data_integrity._php_function_body(DB_PHP, "alt_archive_requeue_recited")
+        self.assertTrue(body, "alt_archive_requeue_recited missing from db.php")
+        m = re.search(r'\$wpdb->query\(\s*"(.*?)"\)', body, re.S)
+        self.assertIsNotNone(m, "alt_archive_requeue_recited lost its UPDATE query")
+        return m.group(1).replace("$archive", "archive").replace("$layoffs", "layoffs")
+
+    def test_the_prefetch_runs_the_requeue_before_selecting_the_batch(self):
+        # It must run in the key-protected candidate endpoint, BEFORE the SELECT,
+        # or the re-queued rows are not drained in the same run.
+        body = data_integrity._php_function_body(DB_PHP, "alt_api_archive_candidates")
+        self.assertTrue(body)
+        call = body.find("alt_archive_requeue_recited(")
+        select = body.find("SELECT l.source_url")
+        self.assertNotEqual(call, -1, "the candidate endpoint no longer calls the re-queue")
+        self.assertNotEqual(select, -1)
+        self.assertLess(call, select, "the re-queue must run BEFORE the candidate SELECT")
+
+    def test_the_condition_is_the_guardrailed_one_not_a_blanket_reset(self):
+        sql = self._requeue_sql()
+        # The guardrail IS the predicate: only rows re-ingested since their last
+        # check, and never an 'archived' row. Losing any clause here is how this
+        # would start masking a real stall or re-checking captured URLs.
+        for needle in ("SET a.checked_at = NULL",
+                       "a.status IN ('pending','unavailable')",
+                       "a.checked_at IS NOT NULL",
+                       "l.updated_at > a.checked_at"):
+            self.assertIn(needle, sql, f"re-queue predicate lost: {needle!r}")
+
+    def _run_real_predicate(self, arch_rows, layoff_rows):
+        """Execute the REAL WHERE/JOIN from db.php against sqlite.
+
+        Only the UPDATE..JOIN is rewritten to sqlite's subquery form; the join
+        condition and the whole WHERE come verbatim from the source, so this
+        tests the shipped predicate rather than a paraphrase of it.
+        """
+        import hashlib
+        import sqlite3
+        sql = self._requeue_sql()
+        join = re.search(r"JOIN\s+layoffs\s+l\s+ON\s+(.*?)\s+SET", sql, re.S).group(1).strip()
+        where = re.search(r"WHERE\s+(.*)$", sql, re.S).group(1).strip()
+        conn = sqlite3.connect(":memory:")
+        conn.create_function("md5", 1, lambda s: hashlib.md5(s.encode()).hexdigest())
+        c = conn.cursor()
+        c.execute("CREATE TABLE layoffs(source_url TEXT, updated_at TEXT)")
+        c.execute("CREATE TABLE archive(url_hash TEXT, status TEXT, checked_at TEXT)")
+        h = lambda u: hashlib.md5(u.encode()).hexdigest()
+        for url, status, checked in arch_rows:
+            c.execute("INSERT INTO archive VALUES(?,?,?)", (h(url), status, checked))
+        for url, updated in layoff_rows:
+            c.execute("INSERT INTO layoffs VALUES(?,?)", (url, updated))
+        oldest = ("SELECT MIN(a.checked_at) FROM layoffs l "
+                  "JOIN archive a ON a.url_hash=md5(trim(l.source_url)) "
+                  "WHERE l.source_url<>'' AND l.source_url LIKE 'http%' "
+                  "AND a.status IN ('pending','unavailable')")
+        before = c.execute(oldest).fetchone()[0]
+        c.execute(f"UPDATE archive SET checked_at=NULL WHERE url_hash IN "
+                  f"(SELECT a.url_hash FROM archive a JOIN layoffs l ON {join} WHERE {where})")
+        after = c.execute(oldest).fetchone()[0]
+        checked_by_url = {url: c.execute("SELECT checked_at FROM archive WHERE url_hash=?",
+                                         (h(url),)).fetchone()[0] for url, _, _ in arch_rows}
+        return before, after, checked_by_url
+
+    def test_a_recited_orphan_is_requeued_and_drops_out_of_oldest(self):
+        # R1 was checked while cited long ago, orphaned, then re-cited (its layoff
+        # row's updated_at is far newer than the archive checked_at).
+        before, after, chk = self._run_real_predicate(
+            arch_rows=[("http://recited", "unavailable", "2026-08-01 06:00:00"),
+                       ("http://fresh",   "unavailable", "2026-08-24 06:00:00")],
+            layoff_rows=[("http://recited", "2026-08-20 00:00:00"),
+                         ("http://fresh",   "2026-07-01 00:00:00")])
+        self.assertIsNone(chk["http://recited"],
+                          "the re-cited orphan must be reset to checked_at NULL")
+        self.assertEqual(before, "2026-08-01 06:00:00")
+        self.assertEqual(after, "2026-08-24 06:00:00",
+                         "with the re-cited orphan re-queued to NULL, the oldest MIN must "
+                         "advance to the next genuinely-overdue attempt")
+
+    def test_a_normally_cadencing_row_is_left_alone(self):
+        # None of these has a layoff side newer than its last check, so a real
+        # stall on any of them still ages into the oldest and trips the invariant.
+        before, after, chk = self._run_real_predicate(
+            arch_rows=[("http://cadence",  "unavailable", "2026-08-24 06:00:00"),
+                       ("http://pending",  "pending",     "2026-08-23 06:00:00"),
+                       ("http://archived", "archived",    "2026-08-01 06:00:00"),
+                       ("http://nullupd",  "unavailable", "2026-08-22 06:00:00")],
+            layoff_rows=[("http://cadence",  "2026-07-01 00:00:00"),
+                         ("http://pending",  "2026-08-10 00:00:00"),
+                         ("http://archived", "2026-08-25 00:00:00"),  # newer, but 'archived'
+                         ("http://nullupd",  None)])                  # no updated_at signal
+        self.assertEqual(chk["http://cadence"], "2026-08-24 06:00:00")
+        self.assertEqual(chk["http://pending"], "2026-08-23 06:00:00")
+        self.assertEqual(chk["http://archived"], "2026-08-01 06:00:00",
+                         "an 'archived' row must never be re-queued, even when re-cited")
+        self.assertEqual(chk["http://nullupd"], "2026-08-22 06:00:00",
+                         "a row with no updated_at signal must be left to age honestly")
+        self.assertEqual(before, after,
+                         "no row qualified, so nothing moved — the guardrail against "
+                         "masking a real stall")
+
+    def test_an_uncited_orphan_is_not_touched(self):
+        # The frozen-timestamp orphan that has NOT been re-cited stays frozen and
+        # out of the promise (the coverage INNER JOIN already excludes it).
+        before, after, chk = self._run_real_predicate(
+            arch_rows=[("http://orphan", "unavailable", "2026-08-01 06:00:00"),
+                       ("http://live",   "unavailable", "2026-08-24 06:00:00")],
+            layoff_rows=[("http://live", "2026-07-01 00:00:00")])  # no row cites http://orphan
+        self.assertEqual(chk["http://orphan"], "2026-08-01 06:00:00",
+                         "an uncited orphan is not a candidate and must not be re-queued")
+        self.assertEqual(before, "2026-08-24 06:00:00",
+                         "the uncited orphan is already excluded from the oldest MIN")
+        self.assertEqual(after, "2026-08-24 06:00:00")
+
+
 if __name__ == "__main__":
     unittest.main()
