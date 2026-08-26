@@ -16,7 +16,7 @@ $src_url = esc_url_raw($e['source_url'] ?? '');   // esc_url_raw drops javascrip
 // plugin passes the path without the /blog prefix; this was the only one left.
 $tracker = home_url('/ai-layoff-tracker/');
 $cite = sprintf(
-    'AI Layoff Tracker, AskTheRecruiter.com. "%s, %s jobs (%s)." Retrieved %s. Primary source: %s.',
+    'AI Layoff Tracker, AskTheRecruiter.com. "%s, %s jobs (%s)." Retrieved %s. Source: %s.',
     $e['company_name'] ?? '',
     number_format_i18n((int) ($e['job_count'] ?? 0)),
     $e['layoff_date'] ?: 'date unknown',
@@ -56,7 +56,15 @@ $cite = sprintf(
     <?php endif; ?>
 
     <?php if ($src_url !== '') : ?>
-    <p><a class="alt-btn alt-btn-primary" href="<?php echo esc_url($src_url); ?>" target="_blank" rel="noopener nofollow">View primary source (<?php echo esc_html($e['source_name'] ?: 'source'); ?>) &#8599;</a></p>
+    <?php
+    // Honest, type-derived label: a news report is not a primary source, and a
+    // Google News redirect is an index record. function_exists guards the
+    // FTP-deploy race the way every optional call on this page does.
+    $src_label = function_exists('alt_source_link_label')
+        ? alt_source_link_label($e['source_type'] ?? '', $src_url)
+        : 'View source';
+    ?>
+    <p><a class="alt-btn alt-btn-primary" href="<?php echo esc_url($src_url); ?>" target="_blank" rel="noopener nofollow"><?php echo esc_html($src_label); ?> (<?php echo esc_html($e['source_name'] ?: 'source'); ?>) &#8599;</a></p>
     <?php
     // The source's permanent Wayback copy, or an honest note carrying the real
     // date of the next automatic archive check — the same state the tracker
