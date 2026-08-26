@@ -116,18 +116,52 @@ def query_company_articles(company, start, end, terms):
 # The mirror has a row cap exactly like the public API's `maxrecords`, and it
 # is binding in the same silent way. Named once so `gdelt_reach` can say
 # whether a mirror window was TRUNCATED rather than complete.
+#
+# It is no longer binding on the ANSWER, only on one page of it: a window that
+# fills a page is WALKED to completion by a deterministic (date, url) cursor
+# (see query_window_walk), instead of losing everything below the 900th row the
+# way a bare `LIMIT 900` did. The number stays as the page size.
 MIRROR_LIMIT = 900
 
+# A hard ceiling on pages per window, so a pathological window (or a stuck
+# cursor) can never issue unbounded BigQuery jobs. 40 pages * 900 rows = 36,000
+# candidate URLs for one window is far above anything real; hitting it means the
+# window is PARTIAL, recorded as such, and retried — never silently truncated.
+MAX_PAGES = 40
 
-def query_window_articles(start, end, terms):
-    """All matching articles in [start, end] from the GKG mirror.
 
-    Matching mirrors the DOC path's intent: the page title carries the shared
-    layoff vocabulary, or GDELT itself themed the article UNEMPLOYMENT. The
-    trusted-domain gate and the extractor stay downstream and unchanged.
+def query_window_page(start, end, terms, after=None, limit=MIRROR_LIMIT):
+    """One deterministic page of the window, ordered by (DATE, url).
+
+    `after` is the (date_int, url) cursor of the last row of the previous page;
+    rows are returned strictly after it, so paging by the last cursor walks the
+    whole window with no gap and no overlap. A bare `LIMIT` with no ORDER BY (the
+    old shape) returned an ARBITRARY 900 rows and dropped the rest with no trace.
+
+    Returns raw row dicts (url/domain/date_int/title) in cursor order, so the
+    caller can read the last row as the next page's cursor.
     """
     bigquery, client = _client()
-    sql = """
+    cursor_clause = ""
+    params = [
+        bigquery.ScalarQueryParameter("day_start", "STRING", start.strftime("%Y-%m-%d")),
+        # exclusive end bound: the day AFTER the window's end date
+        bigquery.ScalarQueryParameter("day_end", "STRING", _next_day(end)),
+        bigquery.ScalarQueryParameter("window_start", "INT64", int(start.strftime("%Y%m%d%H%M%S"))),
+        bigquery.ScalarQueryParameter("window_end", "INT64", int(end.strftime("%Y%m%d%H%M%S"))),
+        bigquery.ScalarQueryParameter("title_re", "STRING", title_pattern(terms)),
+        bigquery.ScalarQueryParameter("page_limit", "INT64", int(limit)),
+    ]
+    if after is not None:
+        after_date, after_url = after
+        # Keyset pagination: strictly after the last (DATE, url) already read.
+        cursor_clause = (
+            "          AND (DATE > @after_date "
+            "OR (DATE = @after_date AND DocumentIdentifier > @after_url))\n"
+        )
+        params.append(bigquery.ScalarQueryParameter("after_date", "INT64", int(after_date)))
+        params.append(bigquery.ScalarQueryParameter("after_url", "STRING", str(after_url)))
+    sql = f"""
         SELECT
             DocumentIdentifier AS url,
             LOWER(SourceCommonName) AS domain,
@@ -143,20 +177,56 @@ def query_window_articles(start, end, terms):
                 LOWER(IFNULL(REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>'), '')),
                 @title_re)
           )
-        LIMIT 900
+{cursor_clause}        ORDER BY DATE, DocumentIdentifier
+        LIMIT @page_limit
     """
     job = client.query(sql, job_config=bigquery.QueryJobConfig(
         maximum_bytes_billed=MAX_BYTES_BILLED,
-        query_parameters=[
-            bigquery.ScalarQueryParameter("day_start", "STRING", start.strftime("%Y-%m-%d")),
-            # exclusive end bound: the day AFTER the window's end date
-            bigquery.ScalarQueryParameter("day_end", "STRING", _next_day(end)),
-            bigquery.ScalarQueryParameter("window_start", "INT64", int(start.strftime("%Y%m%d%H%M%S"))),
-            bigquery.ScalarQueryParameter("window_end", "INT64", int(end.strftime("%Y%m%d%H%M%S"))),
-            bigquery.ScalarQueryParameter("title_re", "STRING", title_pattern(terms)),
-        ],
+        query_parameters=params,
     ))
-    return rows_to_articles(dict(row) for row in job.result())
+    return [dict(row) for row in job.result()]
+
+
+def query_window_walk(start, end, terms, page_limit=MIRROR_LIMIT, max_pages=MAX_PAGES,
+                      page_fn=None):
+    """Walk one window to completion across deterministic pages.
+
+    Returns (articles, complete). `complete` is False only when the walk hit
+    `max_pages` with a still-full final page — the one honest "we did not reach
+    the end" signal, which the caller records as PARTIAL and retries. Every other
+    case is complete: a short (or empty) final page means the window is exhausted.
+
+    `page_fn` is injectable so this is testable with no BigQuery client at all;
+    it defaults to `query_window_page`.
+    """
+    fetch = page_fn or query_window_page
+    articles, seen, after = [], set(), None
+    complete = True
+    for _ in range(max_pages):
+        rows = fetch(start, end, terms, after=after, limit=page_limit)
+        for a in rows_to_articles(rows):
+            if a["url"] not in seen:
+                seen.add(a["url"])
+                articles.append(a)
+        if len(rows) < page_limit:
+            break
+        last = rows[-1]
+        after = (last.get("date_int"), (last.get("url") or "").strip())
+    else:
+        # Loop exhausted max_pages without a short page: there is still more to
+        # read, so this window is only partially walked.
+        complete = False
+    return articles, complete
+
+
+def query_window_articles(start, end, terms):
+    """All matching articles in [start, end] from the GKG mirror.
+
+    Backward-compatible thin wrapper: returns just the walked article list.
+    Callers that need to know whether the walk finished use query_window_walk.
+    """
+    articles, _complete = query_window_walk(start, end, terms)
+    return articles
 
 
 def _next_day(end):
