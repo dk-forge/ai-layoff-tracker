@@ -1230,7 +1230,7 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_k
         _run_sweep_slot(ledger, family, query, ws, we, max_records, collected, incomplete)
 
 
-def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH):
+def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH, deadline=None):
     """Return raw layoff-news entries (trusted domains) filed in [start, end].
 
     Every planned unit of work (the broad window plus each rotating sweep) is a
@@ -1239,6 +1239,17 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     recovered from the BigQuery mirror WITHOUT skipping the other sweeps, and a
     run with any incomplete slot reports degraded (see last_run_status), so a
     truncated or lost window is visible instead of silently green.
+
+    `deadline`, when given, is an absolute `time.monotonic()` cutoff (run
+    33094996142, 2026-08-27: the broad slot cleared via the BigQuery mirror in
+    seconds, then ten rotating sweeps hit the throttled public API one after
+    another, each patient with QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS of its
+    own backoff and no clock, and the job was killed by timeout-minutes with a
+    sweep still retrying). It is consulted before STARTING each sweep, never
+    mid-query, so a sweep already retrying is left to finish rather than cut
+    off part-way; a skipped sweep is simply not attempted this run and stays
+    (or becomes) a ledger slot that the next run retries — no coverage is lost,
+    only deferred.
     """
     global _LAST_RUN_INCOMPLETE
     _LAST_RUN_INCOMPLETE = False
@@ -1302,13 +1313,21 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
 
     # --- Rotating sweeps: never return early, each is its own retriable slot ---
     for family, query in _planned_sweeps():
+        if deadline is not None and time.monotonic() >= deadline:
+            print(f"GDELT sweep collection past its wall-time budget before {family}; "
+                  "remaining sweeps not attempted this run (ledger retries them next run)")
+            incomplete.append(f"{family}:deadline")
+            break
         before = set(ledger["slots"])
         _run_sweep_slot(ledger, family, query, start, end, max_records, collected, incomplete)
         done_keys |= (set(ledger["slots"]) - before)
         done_keys.add(_slot_key(family, query, start, end))
 
     # --- Pick up unfinished work from earlier runs ------------------------
-    _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys)
+    if deadline is None or time.monotonic() < deadline:
+        _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys)
+    else:
+        print("GDELT sweep collection past its wall-time budget; skipping pending-slot retries")
 
     _LAST_RUN_INCOMPLETE = bool(incomplete)
     if incomplete:

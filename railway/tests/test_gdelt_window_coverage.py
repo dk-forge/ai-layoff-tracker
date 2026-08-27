@@ -241,5 +241,74 @@ class RunLevelBehaviour(unittest.TestCase):
                     W_START, W_END, max_records=5, ledger_path=self.ledger_path)
 
 
+class SweepCollectionRespectsTheDeadline(unittest.TestCase):
+    """The rotating sweep loop is the unbounded phase (run 33094996142,
+    2026-08-27): the broad slot went through the BigQuery mirror in seconds,
+    then ten rotating sweeps hit the throttled public API one after another --
+    each one patient (QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS backoff) with no
+    clock of its own -- and the job was killed by timeout-minutes with the
+    third sweep still retrying. gdelt_backfill.py already computes a run-wide
+    BACKFILL_DEADLINE_SECONDS budget, but only consulted it in the
+    post-collection extraction loop; collection itself had no ceiling. This
+    pins that pull_gdelt_between stops STARTING new sweeps once the deadline
+    has passed, the same way reason_backfill.py's single run-wide clock does
+    (tests/test_job_deadlines.py).
+    """
+
+    def setUp(self):
+        gdelt_reach.reset()
+        gdelt._LAST_RUN_INCOMPLETE = False
+        self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
+        self._fetch_patch.start()
+        self.addCleanup(self._fetch_patch.stop)
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        tmp.write('{"slots": {}}')
+        tmp.close()
+        self.ledger_path = tmp.name
+        self.addCleanup(lambda: os.path.exists(self.ledger_path) and os.unlink(self.ledger_path))
+
+    def test_no_new_sweep_starts_once_the_deadline_has_passed(self):
+        now = [0.0]
+        started = []
+
+        def fake_query(query, start, end, mr, label="broad"):
+            if label == "broad":
+                return [], False, None
+            started.append(label)
+            # Simulate this sweep's own retries burning the whole budget, the
+            # way ten throttled QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS retries
+            # did in the real run -- only the NEXT deadline check can catch it.
+            now[0] = 999.0
+            return [_article(f"{label}-1")], False, None
+
+        with patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps",
+                          lambda: [("segment", "a"), ("native", "b"), ("euphemism", "c")]), \
+             patch.object(gdelt.time, "monotonic", lambda: now[0]):
+            gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path, deadline=500.0)
+
+        self.assertEqual(started, ["segment"],
+                         "a sweep started after the deadline had already passed")
+        self.assertEqual(gdelt.last_run_status(), "degraded")
+
+    def test_no_deadline_means_unbounded_as_before(self):
+        started = []
+
+        def fake_query(query, start, end, mr, label="broad"):
+            if label == "broad":
+                return [], False, None
+            started.append(label)
+            return [_article(f"{label}-1")], False, None
+
+        with patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps",
+                          lambda: [("segment", "a"), ("native", "b")]):
+            gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path)
+
+        self.assertEqual(started, ["segment", "native"])
+
+
 if __name__ == "__main__":
     unittest.main()
