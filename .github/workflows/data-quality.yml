@@ -163,5 +163,7 @@ jobs:
           # below; to disable it again, comment the line back out (one line, one
           # decision). Before arming, preview it against the real held queue:
           #   OPENROUTER_API_KEY=... python3 railway/daily_classification_spotcheck.py --dry-run-armed
-          # ALT_PANEL_ARMED: "1"
+          # ARMED 2026-08-27 by the owner, after the DOGE dry-run rejected both
+          # bad relabels 3-0. Comment this line back out to disable instantly.
+          ALT_PANEL_ARMED: "1"
         run: python3 railway/daily_classification_spotcheck.py
