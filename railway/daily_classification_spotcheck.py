@@ -58,6 +58,7 @@ import sys
 import time
 import urllib.request
 
+import adjudication_panel as panel
 import ops_notify
 import spend
 
@@ -118,6 +119,65 @@ GUARDED_COUNTRY_LABELS = {"multiple countries", "worldwide", "global",
 #: The alarm scope for held relabels. A resolve clears every open key beginning
 #: `<scope>:`, so this prefix must not collide with another alerter's keys.
 HOLD_ALERT_SCOPE = "relabel-hold"
+
+# --------------------------------------------------------------------------
+# The three-model adjudication panel (railway/adjudication_panel.py), armed
+# ONLY on the HELD-RELABEL path.
+# --------------------------------------------------------------------------
+# WHAT ARMING CHANGES. Today a confirmed relabel that `screen()` cannot apply
+# unattended (>= 5,000 jobs, an unreadable size, or off a guarded worldwide
+# country label) is HELD and mailed to the owner as a bare notice. When the
+# panel is armed, each such held relabel is routed to THREE independent models
+# (Google + DeepSeek + OpenAI, see adjudication_panel.PANEL_MODELS) that must
+# each APPROVE/REJECT and QUOTE the row's own evidence, and the verdict routes:
+#
+#   AUTO_APPLY  (unanimous, every vote cited, size KNOWN and < 5,000 jobs)
+#               -> applied through the SAME sanctioned /edit correction path
+#               `screen()`'s small fixes use, so it suppresses the old dedup
+#               hash, pins the row, and is disclosed in the public corrections
+#               log. This RESCUES a small relabel that was held only for the
+#               guarded-label rule but that three citing models agree on.
+#   REJECT      (any model rejected) -> logged for audit, NOT applied, NOT
+#               mailed. A bad suggestion the panel killed is noise, not an
+#               action item (the DOGE case).
+#   HOLD        (a split, a non-citing approve, a headline-mover >= 5,000 even
+#               at a citing 3-0, an unreadable size, or a panel error) -> NOT
+#               applied; the owner gets a PANEL-VETTED one-click notice with the
+#               3-0/2-1 tally and each model's cited reason, replacing today's
+#               bare held email.
+#
+# A headline-mover (>= 5,000 jobs) NEVER auto-applies, at any tally: the panel
+# itself returns HOLD for it. The magnitude bound is unchanged and is still
+# re-checked by guard_edits at the moment of the write.
+#
+# COST. The panel fires ONLY on a held relabel, which is a rare, already
+# contested event: the spot-check samples 30 rows/run and holds a handful/day
+# (often zero). Each held relabel costs exactly THREE metered calls (one per
+# model), all under spend's "panel" tag. A run that holds nothing spends
+# nothing here. There is no per-row fan-out: volume is bounded by the caller,
+# never by the size of the corpus.
+#
+# TODO (ai-causation): adjudication_panel.adjudicate_ai_causation() exists but
+# is deliberately NOT wired here. ai_explicit is a higher-volume phase and must
+# gain conflict/impact gating (fire only on a contested call, never on every
+# row) before it can be armed, or it would put three calls behind every
+# classification. Leave it dormant until that gate exists.
+
+#: The kill switch. DORMANT BY DEFAULT: a newly-armed PAID loop that writes to
+#: the public site ships off, exactly like a new source (CLAUDE.md, "Ship
+#: key-gated sources DORMANT"). When OFF the script keeps today's behaviour
+#: (hold + bare email, no panel, no panel spend). To ARM, set ALT_PANEL_ARMED
+#: to 1/on/true/yes in the workflow env; to DISABLE again, remove that one line
+#: (or set it to off). The parent verifies the armed loop against the real held
+#: queue (see --dry-run-armed) BEFORE flipping this on.
+PANEL_ARMED_DEFAULT = False
+
+
+def panel_armed():
+    raw = (os.environ.get("ALT_PANEL_ARMED") or "").strip().lower()
+    if not raw:
+        return PANEL_ARMED_DEFAULT
+    return raw in {"1", "on", "true", "yes"}
 
 
 class Deadline(Exception):
@@ -382,6 +442,284 @@ def clear_hold_alert():
         what="relabel-hold recovery")
 
 
+# --------------------------------------------------------------------------
+# The armed held-relabel loop (panel_armed() only)
+# --------------------------------------------------------------------------
+def _panel_evidence(f, evidence_by_id):
+    """The row's real evidence for the panel: source name/url + the excerpt the
+    models must quote from. Falls back to the flag's own excerpt (if any) so a
+    row that carried no stored source still gets its text in front of the panel.
+    """
+    ev = dict(evidence_by_id.get(f["id"]) or {})
+    if not ev.get("excerpt"):
+        ev["excerpt"] = str(f.get("excerpt") or "")
+    return {"source_name": ev.get("source_name", ""),
+            "url": ev.get("url", ""),
+            "excerpt": ev.get("excerpt", "")}
+
+
+def adjudicate_held(held, jobs_by_id, names_by_id, evidence_by_id, adjudicate=None):
+    """Route each HELD relabel through the three-model panel.
+
+    Returns (applied, still_held, rejected):
+      applied     [(flag, PanelVerdict)] unanimous+citing under the bound, with
+                  a KNOWN numeric size -> safe to auto-apply via /edit.
+      still_held  [(flag, PanelVerdict|None)] the owner decides; a panel-vetted
+                  one-click notice is mailed. A None verdict is a panel error on
+                  that item (an error is not a judgement, so it holds).
+      rejected    [(flag, PanelVerdict)] a model said no; logged, not mailed.
+
+    spend.PaidReadsOff PROPAGATES (CLAUDE.md): a panel that could not afford
+    every vote has reached no verdict, so the caller leaves every relabel HELD
+    and applies nothing from the panel. `adjudicate` is injectable so the tests
+    never build a client, touch the network, or spend.
+    """
+    adj = adjudicate or panel.adjudicate_relabel
+    applied, still_held, rejected = [], [], []
+    for f, _why in held:
+        rid = f["id"]
+        jobs = jobs_by_id.get(rid)
+        size_known = isinstance(jobs, int)
+        row = {"company": names_by_id.get(rid, ""),
+               "job_count": jobs if size_known else 0}
+        evidence = _panel_evidence(f, evidence_by_id)
+        try:
+            verdict = adj(row, f.get("field"), f.get("current"),
+                          f.get("suggested"), evidence)
+        except spend.PaidReadsOff:
+            # Undecided: let it stop the whole loop. The caller holds everything.
+            raise
+        except Exception as exc:
+            # A panel that errored on one item has NOT judged it. Hold it, do
+            # not drop it, and carry the reason so the notice can say why.
+            still_held.append(({**f, "_panel_error": str(exc)}, None))
+            continue
+        if verdict.verdict == panel.AUTO_APPLY and size_known:
+            # AUTO_APPLY already implies the panel saw a sub-5,000 size (it holds
+            # every headline-mover). The extra size_known guard means an
+            # unreadable-size row can never be auto-applied on a job_count the
+            # panel defaulted to 0.
+            applied.append((f, verdict))
+        elif verdict.verdict == panel.REJECT:
+            rejected.append((f, verdict))
+        else:
+            # HOLD_FOR_REVIEW, or an AUTO_APPLY whose size we could not read.
+            still_held.append((f, verdict))
+    return applied, still_held, rejected
+
+
+def _panel_vote_lines(verdict):
+    """Each model's vote, cited quote and reason, for the run log and the mail."""
+    if verdict is None:
+        return ["    (the panel errored on this row and reached no verdict)"]
+    lines = []
+    marks = {True: "APPROVE", False: "REJECT", None: "NO-VOTE"}
+    for vote in verdict.votes:
+        cite = "cited" if vote.cited else "did NOT cite"
+        lines.append(f"    [{marks[vote.approve]}] {vote.model} ({cite}): "
+                     f"{vote.reason}")
+        if vote.cited_quote:
+            lines.append(f"        quote: {vote.cited_quote}")
+        if vote.error:
+            lines.append(f"        error: {vote.error}")
+    return lines
+
+
+def _one_click_command(f, company):
+    """The pre-vetted apply-correction command the owner runs to accept a held
+    relabel. It goes through apply_correction.py -> /edit, the SAME sanctioned
+    path (suppresses the old dedup hash, pins the row, writes the public
+    corrections log). No raw UPDATE, ever.
+    """
+    fields = json.dumps({f.get("field"): f.get("suggested")}, ensure_ascii=False)
+    verify = f' --verify-company "{company}"' if company else ""
+    return (f"python3 railway/apply_correction.py --ids {f['id']} "
+            f"--action edit --fields '{fields}' "
+            f'--reason "panel-reviewed relabel"{verify} --apply')
+
+
+def log_panel_decisions(applied, rejected):
+    """Write the panel's applied and rejected decisions to the run log. A
+    rejected suggestion is auditable here (its verdict and every vote) but is
+    not mailed: a bad suggestion the panel killed is not an action item.
+
+    Calls the module-level `summary` by name (not a default-bound reference) so
+    a test that patches `summary` sees these lines too.
+    """
+    for f, verdict in applied:
+        summary(f"- PANEL AUTO_APPLY row {f['id']} `{f.get('field')}` "
+                f"\"{f.get('current')}\" -> \"{f.get('suggested')}\" "
+                f"(tally {verdict.approve_tally}, unanimous and every vote cited)")
+        for line in _panel_vote_lines(verdict):
+            summary(line)
+    for f, verdict in rejected:
+        summary(f"- PANEL REJECT row {f['id']} `{f.get('field')}` "
+                f"\"{f.get('current')}\" -> \"{f.get('suggested')}\" "
+                f"(tally {verdict.approve_tally}); not applied, not mailed.")
+        for line in _panel_vote_lines(verdict):
+            summary(line)
+
+
+def _panel_hold_body(still_held, jobs_by_id, names_by_id=None):
+    names_by_id = names_by_id or {}
+    lines = ["The daily classification spot-check ran each held relabel past the "
+             "three-model adjudication panel. The changes below were NOT applied: "
+             "the panel did not clear them for an unattended write. Each carries "
+             "the panel's tally, every model's cited reason, and a one-click "
+             "command to apply it through the corrections path.\n"]
+    for f, verdict in still_held:
+        rid = f["id"]
+        jobs = jobs_by_id.get(rid)
+        company = names_by_id.get(rid, "")
+        tally = verdict.approve_tally if verdict is not None else "no verdict"
+        head = (f"HELD row {rid} {company} ({f.get('field')}): "
+                f"\"{f.get('current')}\" -> \"{f.get('suggested')}\", "
+                + (f"{int(jobs):,} jobs" if isinstance(jobs, int) else "job count UNKNOWN")
+                + f". Panel tally: {tally}.")
+        if verdict is not None and verdict.is_headline_mover:
+            head += " Headline-mover (>= 5,000 jobs): never auto-applied."
+        if f.get("_panel_error"):
+            head += f" Panel error: {f['_panel_error']}."
+        lines.append(head)
+        lines.extend(_panel_vote_lines(verdict))
+        lines.append("  To apply it (writes the public corrections log):")
+        lines.append("    " + _one_click_command(f, company))
+        lines.append("")
+    lines.append("Ignoring this mail is safe and is often right: on 2026-08-08 an "
+                 "unattended relabel of this shape put 92,000 jobs into the "
+                 "published US headline for four days.")
+    return "\n".join(lines)
+
+
+def post_panel_hold_alert(still_held, jobs_by_id, names_by_id=None):
+    """Mail the owner a PANEL-VETTED one-click notice, through the one door
+    operational mail leaves by. Same dedup shape and scope as the bare notice
+    (one open cause per set of held ids, cleared by clear_hold_alert), so the
+    only thing that changed is that the mail now carries the panel's reasoning.
+    """
+    if not still_held:
+        return
+    if not ops_notify.configured():
+        summary("_The panel-held relabels could not be mailed: RESEND_API_KEY is "
+                "not configured. They are listed above and will be re-raised "
+                "tomorrow._")
+        return
+    ids = ".".join(sorted(str(f["id"]) for f, _ in still_held))
+    if not ops_notify.notify(
+            f"{len(still_held)} label relabel(s) HELD by the panel, not applied",
+            _panel_hold_body(still_held, jobs_by_id, names_by_id),
+            dedupe_key=f"{HOLD_ALERT_SCOPE}:{ids}"[:160],
+            what="panel-vetted held-relabel notice"):
+        summary("_The panel-held relabels could not be mailed. They are listed "
+                "above and are re-derived on tomorrow's run._")
+
+
+def _dry_run_armed():
+    """Show what the ARMED held-relabel loop WOULD do against the real held
+    queue, writing nothing and emailing nothing.
+
+    Reviewable and reversible: it runs the same two model passes and the same
+    panel the live run would, then PRINTS apply/hold/reject per row with each
+    model's tally and cited reason. It never POSTs /edit and never sends mail,
+    so the parent can show the owner the decisions before flipping ALT_PANEL_ARMED
+    on. It DOES make real metered model calls (flagging, confirmation, and three
+    panel votes per held relabel), so it needs OPENROUTER_API_KEY and spends a
+    few cents; a budget stop just prints UNDECIDED and exits 0.
+    """
+    print("=" * 72)
+    print("ARMED HELD-RELABEL LOOP - DRY RUN (real queue, no writes, no mail)")
+    print(f"panel models: {', '.join(panel.PANEL_MODELS)}")
+    print("=" * 72)
+    if not spend.paid_reads_enabled():
+        print("paid reads are OFF (spend ceiling): cannot run the model passes.")
+        return 0
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        print("OPENROUTER_API_KEY is not set: cannot make the model calls. Set it "
+              "to preview real decisions.")
+        return 0
+    try:
+        newest = request_json(API + "query?sort=layoff_date&dir=desc&per_page=15")
+        biggest = request_json(API + "query?sort=job_count&dir=desc&per_page=15")
+        rows = newest.get("data", []) + biggest.get("data", [])
+        sample = [{"id": r["id"], "company": r["company_name"], "industry": r["industry"],
+                   "country": r["country"], "jobs": r["job_count"],
+                   "excerpt": (r.get("excerpt") or "")[:200]}
+                  for r in rows if r.get("industry")]
+        jobs_by_id = {r["id"]: r["jobs"] for r in sample}
+        names_by_id = {r["id"]: r["company"] for r in sample}
+        evidence_by_id = {r["id"]: {
+            "source_name": (r.get("source_name") or r.get("source_type") or ""),
+            "url": (r.get("source_url") or ""), "excerpt": (r.get("excerpt") or "")}
+            for r in rows if r.get("id")}
+        if not sample:
+            print("no classified entries in this run's sample.")
+            return 0
+        prompt = ("You are auditing a layoff tracker's classifications. For each entry, judge whether "
+                  "the industry and country labels match the company and excerpt. Reply STRICT JSON: "
+                  '{"flags":[{"id":<id>,"field":"industry|country","current":"...","suggested":"...","why":"..."}]} '
+                  "— empty flags list if everything is reasonable. Only flag CLEAR mismatches, not debatable ones.\n\n"
+                  + json.dumps(sample, ensure_ascii=False))
+        flags = ask_model(prompt).get("flags", [])
+        label_flags = [f for f in flags if f.get("field") in ("industry", "country")
+                       and f.get("id") and f.get("suggested")]
+        if not label_flags:
+            print("no label mismatches flagged; nothing to adjudicate.")
+            return 0
+        confirm_prompt = ("Re-check these proposed label corrections for a layoff tracker. "
+                          "For each, answer whether the SUGGESTED value is clearly more accurate than CURRENT. "
+                          "For a country label, judge WHERE THE JOBS WERE CUT, not where the company is "
+                          "headquartered: a worldwide restructuring at an American company is not United States. "
+                          'Reply STRICT JSON {"confirm":[{"id":..,"agree":true|false}]}.\n\n'
+                          + json.dumps(label_flags, ensure_ascii=False))
+        agreed = {i["id"] for i in ask_model(confirm_prompt).get("confirm", []) if i.get("agree")}
+        confirmed = [f for f in label_flags if f["id"] in agreed]
+        edits, held = screen(confirmed, jobs_by_id)
+        print(f"\nsmall fixes screen() would auto-apply (no panel): "
+              f"{[e['id'] for e in edits]}")
+        if not held:
+            print("no HELD relabels this run; the panel would not fire.")
+            return 0
+        print(f"\n{len(held)} HELD relabel(s) -> the panel:")
+        applied, still_held, rejected = adjudicate_held(
+            held, jobs_by_id, names_by_id, evidence_by_id)
+        for label, bucket in (("AUTO_APPLY (would write via /edit)", applied),
+                              ("HOLD (would email one-click)", still_held),
+                              ("REJECT (logged, not applied, not mailed)", rejected)):
+            print(f"\n== {label}: {len(bucket)} ==")
+            for f, verdict in bucket:
+                tally = verdict.approve_tally if verdict is not None else "no verdict"
+                jobs = jobs_by_id.get(f["id"])
+                print(f"  row {f['id']} {names_by_id.get(f['id'], '')} "
+                      f"`{f.get('field')}` \"{f.get('current')}\" -> "
+                      f"\"{f.get('suggested')}\" "
+                      + (f"({int(jobs):,} jobs)" if isinstance(jobs, int) else "(jobs UNKNOWN)")
+                      + f"  tally={tally}")
+                for line in _panel_vote_lines(verdict):
+                    print("  " + line)
+        print("\n(DRY RUN: nothing was written and no mail was sent.)")
+        return 0
+    except spend.PaidReadsOff as exc:
+        print(f"UNDECIDED (budget stop, no verdict): {exc}")
+        return 0
+
+
+def _summarize_bare_hold(held, jobs_by_id, names_by_id):
+    """Today's held-relabel run-log lines (used when the panel is dormant, or
+    when the panel could not afford a verdict). Kept as one function so the
+    armed and dormant paths cannot drift apart in what they tell the log."""
+    summary(f"**{len(held)} confirmed relabel(s) HELD for review, not applied.** "
+            f"A relabel is never applied unattended on a row of "
+            f"{AUTO_APPLY_MAX_JOBS:,} jobs or more, on a row whose size this run "
+            f"could not read, or off a worldwide country label "
+            f"(docs/RUNBOOK.md, \"a label relabel was HELD\"):")
+    for f, why in held:
+        jobs = jobs_by_id.get(f["id"])
+        summary(f"- HELD row {f['id']} {names_by_id.get(f['id'], '')} `{f.get('field')}` "
+                f"\"{f.get('current')}\" -> \"{f.get('suggested')}\" "
+                + (f"({int(jobs):,} jobs)" if isinstance(jobs, int) else "(jobs UNKNOWN)")
+                + f" — {why}")
+
+
 def main():
     # Spend guard: this script builds its own OpenRouter client, so
     # extractor.py's gate does not cover it. Skip cleanly (exit 0) rather than
@@ -405,6 +743,19 @@ def main():
         # must never be what decides whether an edit is small enough to apply.
         jobs_by_id = {r["id"]: r["jobs"] for r in sample}
         names_by_id = {r["id"]: r["company"] for r in sample}
+        # The row's own evidence, for the adjudication panel (armed path only).
+        # The FULL excerpt (not the 200-char sample truncation) plus the stored
+        # source, so each model votes on the real text and quotes from it. Built
+        # off `rows`, not `sample`, so it is populated whether or not the panel
+        # is armed and costs nothing when it is not.
+        evidence_by_id = {
+            r["id"]: {
+                "source_name": (r.get("source_name") or r.get("source_type") or ""),
+                "url": (r.get("source_url") or ""),
+                "excerpt": (r.get("excerpt") or ""),
+            }
+            for r in rows if r.get("id")
+        }
         if not sample:
             summary("## Classification spot-check\nNo classified entries available for this run.")
             return 0
@@ -461,39 +812,79 @@ def main():
 
         edits, held = screen(confirmed, jobs_by_id)
 
-        if held:
-            summary(f"**{len(held)} confirmed relabel(s) HELD for review, not applied.** "
-                    f"A relabel is never applied unattended on a row of "
-                    f"{AUTO_APPLY_MAX_JOBS:,} jobs or more, on a row whose size this run "
-                    f"could not read, or off a worldwide country label "
-                    f"(docs/RUNBOOK.md, \"a label relabel was HELD\"):")
-            for f, why in held:
-                jobs = jobs_by_id.get(f["id"])
-                summary(f"- HELD row {f['id']} {names_by_id.get(f['id'], '')} `{f.get('field')}` "
-                        f"\"{f.get('current')}\" -> \"{f.get('suggested')}\" "
-                        + (f"({int(jobs):,} jobs)" if isinstance(jobs, int) else "(jobs UNKNOWN)")
-                        + f" — {why}")
+        # The armed held-relabel loop. DORMANT by default: `held` is emailed as
+        # today's bare notice and the panel never runs (no calls, no spend).
+        panel_edits, panel_reason = [], ""
+        if held and panel_armed():
+            try:
+                applied, still_held, rejected = adjudicate_held(
+                    held, jobs_by_id, names_by_id, evidence_by_id)
+            except spend.PaidReadsOff as exc:
+                # UNDECIDED: the panel could not afford every vote. Apply nothing
+                # from it and HOLD every relabel with today's bare notice; the
+                # backlog is re-derived and re-adjudicated on the next run. A
+                # budget stop is never an apply and never a crash.
+                summary("**Panel adjudication deferred by the spend ceiling** (`"
+                        + str(exc) + "`): every relabel is HELD, none auto-applied.")
+                _summarize_bare_hold(held, jobs_by_id, names_by_id)
+                post_hold_alert(held, jobs_by_id, names_by_id)
+            else:
+                summary(f"**Adjudication panel ran on {len(held)} held relabel(s):** "
+                        f"{len(applied)} AUTO_APPLY, {len(still_held)} HELD for "
+                        f"review, {len(rejected)} REJECT.")
+                log_panel_decisions(applied, rejected)
+                if still_held:
+                    post_panel_hold_alert(still_held, jobs_by_id, names_by_id)
+                else:
+                    # Nothing left for a human: clear any open hold so a drained
+                    # backlog stops reminding (same contract as today).
+                    clear_hold_alert()
+                panel_edits = [{"id": f["id"], "fields": {f["field"]: f["suggested"]}}
+                               for f, _v in applied]
+                panel_reason = ("Automated classification audit, adjudicated by a "
+                                "three-model citing panel (unanimous approve, every "
+                                "vote quoting the row's source). Applied only to "
+                                "entries below " + f"{AUTO_APPLY_MAX_JOBS:,}" + " jobs; "
+                                "larger relabels are held for a person to review.")
+        elif held:
+            _summarize_bare_hold(held, jobs_by_id, names_by_id)
             post_hold_alert(held, jobs_by_id, names_by_id)
         else:
             clear_hold_alert()
 
-        if not edits:
+        # ---- writes: both edit sets go through the sanctioned /edit path ----
+        if not edits and not panel_edits:
             return 0
         key = os.environ.get("WP_API_KEY", "")
         if not key:
             raise RuntimeError("WP_API_KEY is not configured; refusing to apply corrections")
-        # The bound, re-checked in the function that writes. See guard_edits.
-        guard_edits(edits, jobs_by_id)
-        result = request_json(API + "edit", {
-            "edits": edits,
-            "reason": ("Automated classification audit: a label mismatch flagged by a model "
-                       "and re-checked by a second pass of the same model (DeepSeek). Applied "
-                       "only to entries below " + f"{AUTO_APPLY_MAX_JOBS:,}" + " jobs; larger "
-                       "relabels are held for a person to review."),
-        }, {"X-Layoff-API-Key": key}, attempts=3, timeout=90)
-        applied = result.get("edited", [])
-        summary(f"**Auto-applied {len(applied)} re-checked label fix(es)** on entries below "
-                f"{AUTO_APPLY_MAX_JOBS:,} jobs — disclosed in the public corrections log.")
+
+        if edits:
+            # The bound, re-checked in the function that writes. See guard_edits.
+            guard_edits(edits, jobs_by_id)
+            result = request_json(API + "edit", {
+                "edits": edits,
+                "reason": ("Automated classification audit: a label mismatch flagged by a model "
+                           "and re-checked by a second pass of the same model (DeepSeek). Applied "
+                           "only to entries below " + f"{AUTO_APPLY_MAX_JOBS:,}" + " jobs; larger "
+                           "relabels are held for a person to review."),
+            }, {"X-Layoff-API-Key": key}, attempts=3, timeout=90)
+            applied = result.get("edited", [])
+            summary(f"**Auto-applied {len(applied)} re-checked label fix(es)** on entries below "
+                    f"{AUTO_APPLY_MAX_JOBS:,} jobs — disclosed in the public corrections log.")
+
+        if panel_edits:
+            # The panel-approved relabels, through the SAME /edit path (dedup-hash
+            # suppression + public corrections log). guard_edits stays the last
+            # magnitude check: a headline-mover that reached here is refused at
+            # the write, panel verdict or not.
+            guard_edits(panel_edits, jobs_by_id)
+            result = request_json(API + "edit", {
+                "edits": panel_edits, "reason": panel_reason,
+            }, {"X-Layoff-API-Key": key}, attempts=3, timeout=90)
+            applied = result.get("edited", [])
+            summary(f"**Panel auto-applied {len(applied)} relabel(s)** cleared by a unanimous "
+                    f"citing three-model panel — disclosed in the public corrections log.")
         return 0
     except spend.PaidReadsOff as exc:
         # Exit 0, not 1: the ceiling stopping the SECOND pass means the flags
@@ -524,6 +915,12 @@ def main():
 
 
 if __name__ == "__main__":
+    # --dry-run-armed previews the armed held-relabel loop against the real
+    # queue, writing nothing and mailing nothing (see _dry_run_armed). It is the
+    # gated review step: run it, show the owner the apply/hold/reject decisions,
+    # then arm live by setting ALT_PANEL_ARMED=1 in the workflow.
+    if "--dry-run-armed" in sys.argv[1:]:
+        raise SystemExit(_dry_run_armed())
     code = main()
     # The sample size varies by path here, so items is left UNKNOWN rather
     # than guessed; the metered cost and call count are exact either way.
