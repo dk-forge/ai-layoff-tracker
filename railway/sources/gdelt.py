@@ -744,8 +744,98 @@ def _slot_key(family, query, start, end):
     return f"{family}|{qh}|{_win_stamp(start)}|{_win_stamp(end)}"
 
 
-def _load_work_ledger(path=WORK_LEDGER_PATH):
-    """Read the committed work ledger. Malformed -> empty, never a crash.
+# --- Ledger transport: the live cron cannot keep a file ---------------------
+#
+# WORK_LEDGER_PATH is the right store for a CHECKOUT (a backfill, a test, a
+# session) and the wrong one for the LIVE CRON. Railway runs this in an
+# ephemeral container with no volume and no git identity, so the file written
+# at the end of a run is discarded along with the container. From PR #223 until
+# 2026-08-28 that made the entire retry-unfinished-work mechanism INERT in
+# production: the committed ledger held 0 slots for the whole period while a
+# single production run abandoned 7 of 12 windows, and every one of those
+# windows was LOST rather than retried. Nothing reported it, because the health
+# page's `degraded` reads as "known partial coverage, queued for retry" —
+# which is exactly what the ledger was supposed to make true.
+#
+# The fix is the transport cron.py already uses for its spend records: POST to
+# the keyed /tracker-meta endpoint, which any checkout can read back. The file
+# is KEPT as well, because it is what a local run, a test and a reviewer read.
+#
+# Best-effort in BOTH directions, deliberately: a ledger is bookkeeping, and
+# bookkeeping must never take down an ingest run. A failed sync costs one run
+# of retry memory, which is strictly better than the status quo of all of it.
+LEDGER_REMOTE_TIMEOUT = 30
+
+# Two process-level guards, because `pull_gdelt_between` is called ONCE per run
+# by the live cron but ONCE PER WEEK-WINDOW by gdelt_backfill.py. A multi-year
+# backfill is hundreds of windows, and this host is a shared Bluehost account
+# that has returned 504 under load (TECHLOG 2026-07-31). Un-guarded, the sync
+# would add two requests per window to a job that already posts two health
+# notes per window.
+#
+#   * the remote READ is needed once per process: after the first union, the
+#     file written at the end of each window carries the state forward.
+#   * the remote WRITE is skipped when the slot payload is byte-identical to
+#     the last one accepted, so an idle stretch of windows costs nothing.
+#
+# Neither guard can turn a needed sync into a skipped one: the read flag is set
+# only on a SUCCESSFUL union, and the write hash only on a 200.
+_REMOTE_LEDGER_READ = False
+_REMOTE_LEDGER_PUSHED = None
+
+
+def _remote_tracker_meta(body=None):
+    """POST to the keyed /tracker-meta endpoint; return the stored meta or None.
+
+    An EMPTY body is the documented read — the endpoint returns the whole meta
+    blob — which is the same call spend.py uses to harvest Railway's run
+    records. Returns None whenever the endpoint cannot be used, and a None is
+    always UNKNOWN (could not sync), never "nothing is owed".
+    """
+    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
+    key = os.environ.get("WP_API_KEY", "")
+    if not (site and key):
+        return None
+    try:
+        resp = requests.post(
+            f"{site}/wp-json/layoffs/v1/tracker-meta",
+            json=body or {},
+            headers={"X-Layoff-API-Key": key,
+                     # ModSecurity blocks python-requests against this host.
+                     "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"},
+            timeout=LEDGER_REMOTE_TIMEOUT)
+        if resp.status_code != 200:
+            print(f"GDELT work ledger: /tracker-meta HTTP {resp.status_code} — "
+                  f"this run's retry memory is local only")
+            return None
+        return resp.json()
+    except Exception as exc:
+        print(f"GDELT work ledger: /tracker-meta unreachable ({exc}) — "
+              f"this run's retry memory is local only")
+        return None
+
+
+def _merge_slots(local, remote):
+    """Union two slot maps, keeping the more recently UPDATED record per key.
+
+    Neither side is authoritative and that is the point: a checkout holds slots
+    the cron never saw (a backfill's windows) and the cron holds slots no
+    checkout ever will. Ties go to LOCAL, so a run that just recorded an
+    outcome is never overwritten by the copy it read at startup.
+    """
+    out = {k: v for k, v in (remote or {}).items() if isinstance(v, dict)}
+    for key, slot in (local or {}).items():
+        if not isinstance(slot, dict):
+            continue
+        other = out.get(key)
+        if (not isinstance(other, dict)
+                or str(slot.get("updated") or "") >= str(other.get("updated") or "")):
+            out[key] = slot
+    return out
+
+
+def _load_work_ledger(path=WORK_LEDGER_PATH, remote=True):
+    """Read the work ledger — the committed file UNIONED with the live one.
 
     A ledger that cannot be parsed is not a ledger that says nothing is owed, but
     an ingest run must never be taken down by its own bookkeeping — so an
@@ -756,15 +846,26 @@ def _load_work_ledger(path=WORK_LEDGER_PATH):
             data = json.load(fh)
         if not isinstance(data, dict) or not isinstance(data.get("slots"), dict):
             raise ValueError("work ledger shape")
-        return data
     except FileNotFoundError:
-        return {"slots": {}}
+        data = {"slots": {}}
     except Exception as exc:
         print(f"GDELT work ledger unreadable ({exc}); starting fresh")
-        return {"slots": {}}
+        data = {"slots": {}}
+    global _REMOTE_LEDGER_READ
+    if remote and not _REMOTE_LEDGER_READ:
+        meta = _remote_tracker_meta()
+        if isinstance(meta, dict) and isinstance(meta.get("gdelt_ledger"), dict):
+            _REMOTE_LEDGER_READ = True
+            before = len(data["slots"])
+            data["slots"] = _merge_slots(data["slots"], meta["gdelt_ledger"])
+            gained = len(data["slots"]) - before
+            if gained:
+                print(f"GDELT work ledger: recovered {gained} slot(s) from "
+                      f"/tracker-meta that this container had no copy of")
+    return data
 
 
-def _save_work_ledger(ledger, path=WORK_LEDGER_PATH):
+def _save_work_ledger(ledger, path=WORK_LEDGER_PATH, remote=True):
     """Persist the ledger, pruning what is finished or too old to retry."""
     now = datetime.now(timezone.utc)
     kept = {}
@@ -783,9 +884,25 @@ def _save_work_ledger(ledger, path=WORK_LEDGER_PATH):
             continue
         kept[key] = slot
     payload = {"slots": {k: kept[k] for k in sorted(kept)}}
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(payload, fh, indent=2, sort_keys=False)
-        fh.write("\n")
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2, sort_keys=False)
+            fh.write("\n")
+    except OSError as exc:
+        # A read-only or absent path is survivable now that the remote copy
+        # below is the one the live cron actually depends on.
+        print(f"GDELT work ledger: could not write {path} ({exc})")
+    global _REMOTE_LEDGER_PUSHED
+    if remote:
+        fingerprint = json.dumps(payload["slots"], sort_keys=True)
+        if fingerprint == _REMOTE_LEDGER_PUSHED:
+            # Nothing moved since the last accepted push. A backfill's quiet
+            # window costs no request at all.
+            return
+        if _remote_tracker_meta({"set_gdelt_ledger": payload["slots"]}) is not None:
+            _REMOTE_LEDGER_PUSHED = fingerprint
+            print(f"GDELT work ledger: {len(payload['slots'])} slot(s) persisted "
+                  f"to /tracker-meta")
 
 
 def _parse_stamp(stamp):

@@ -5282,6 +5282,46 @@ function alt_api_tracker_meta(WP_REST_Request $r) {
         $meta['spend_runs'][] = $rec;
         $meta['spend_runs'] = array_slice($meta['spend_runs'], -240);
     }
+    // The GDELT cross-run WORK LEDGER, for exactly the reason add_spend_run
+    // exists above: the Railway cron container is ephemeral and cannot
+    // git-commit, so the railway/gdelt_work_ledger.json it writes is discarded
+    // the instant the run ends. That made the retry-unfinished-work mechanism
+    // INERT in production -- every abandoned window was silently LOST rather
+    // than retried, while the health page reported 'degraded' as though the
+    // gap were known and queued. Measured 2026-08-28: 7 of 12 windows
+    // abandoned in one run, against a committed ledger holding 0 slots since
+    // the day the feature shipped.
+    //
+    // Whitelisted scalar fields only, and bounded at 400 slots. The bound is
+    // NOT cosmetic: gdelt.py prunes by age, and an unbounded option is a way
+    // for a wedged cron to grow one wp_options row without limit.
+    if (isset($body['set_gdelt_ledger']) && is_array($body['set_gdelt_ledger'])) {
+        $slots = array();
+        foreach (array_slice($body['set_gdelt_ledger'], 0, 400, true) as $key => $s) {
+            if (!is_array($s)) continue;
+            $row = array(
+                'family'       => sanitize_text_field((string) ($s['family'] ?? '')),
+                'window_start' => sanitize_text_field((string) ($s['window_start'] ?? '')),
+                'window_end'   => sanitize_text_field((string) ($s['window_end'] ?? '')),
+                'status'       => sanitize_text_field((string) ($s['status'] ?? '')),
+                'returned'     => (int) ($s['returned'] ?? 0),
+                'cap_hit'      => (bool) ($s['cap_hit'] ?? false),
+                'attempts'     => (int) ($s['attempts'] ?? 0),
+                'first_seen'   => sanitize_text_field((string) ($s['first_seen'] ?? '')),
+                'updated'      => sanitize_text_field((string) ($s['updated'] ?? '')),
+            );
+            // Optional: absent on a slot that returned nothing, and query_text
+            // is our OWN discovery vocabulary (never a company name) kept so a
+            // failed sweep can be re-issued verbatim.
+            foreach (array('oldest', 'newest', 'query_text') as $k) {
+                if (isset($s[$k]) && $s[$k] !== null && $s[$k] !== '') {
+                    $row[$k] = sanitize_text_field((string) $s[$k]);
+                }
+            }
+            $slots[sanitize_text_field((string) $key)] = $row;
+        }
+        $meta['gdelt_ledger'] = $slots;
+    }
     update_option('alt_tracker_meta', $meta, false);
     return rest_ensure_response($meta);
 }

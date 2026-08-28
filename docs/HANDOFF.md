@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-08-28): 2.20.149 — the GDELT work ledger now
+  survives the container that writes it.** The baton was read as FREE by
+  `ops_status [0]` on origin/main and this session took it. The cross-run
+  retry ledger from PR #223 was INERT in production for its entire life: the
+  live sweep runs on Railway (ephemeral, no volume, no git identity), so the
+  file it wrote was discarded with the container, the committed copy held zero
+  slots, and every abandoned window was lost rather than retried while the
+  health page said `degraded` as though it were queued. It now round-trips
+  through the keyed `/tracker-meta` endpoint, the same transport `cron.py`
+  already uses for spend records. Plugin files touched: `includes/db.php` (a
+  whitelisted, 400-slot-bounded `gdelt_ledger` section) and
+  `ai-layoff-tracker.php` (version only). Rest is
+  `railway/sources/gdelt.py`, `railway/tests/test_gdelt_ledger_persistence.py`
+  and TECHLOG. **Re-read main immediately before merging and take the next
+  patch after it if this lost a race.** Full write-up in TECHLOG 2026-08-28.
 - **VERSION CLAIMED BY A SIDE SESSION (2026-08-28): 2.20.146 — the dormant
   monthly digest tier made correct (subject window, Indeed baseline from data,
   cadence promises guarded).** The baton was read as HELD by `local` and is NOT

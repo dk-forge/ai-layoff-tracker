@@ -1,5 +1,76 @@
 # Tech Log
 
+## 2026-08-28 - the GDELT work ledger never survived the container that wrote it (2.20.149)
+
+**What.** `ops_status [2]` has reported `gdelt` DEGRADED with
+`queries=12 answered=5 abandoned=7` — seven of twelve windows abandoned in a
+single run. `degraded` is the designed verdict for a run where a planned slot
+did not complete, and it is meant to read as "known partial coverage, queued
+for retry", because PR #223 built a cross-run WORK LEDGER precisely so an
+abandoned window is re-issued on a later run instead of vanishing. That was
+leak #3 in that PR's own list: "an unfinished window vanished."
+
+It still vanished. `railway/gdelt_work_ledger.json` has been committed exactly
+once — the day the feature shipped — and it holds **zero slots**. The live
+sweep runs from `railway/cron.py` on Railway: `restartPolicyType = "NEVER"`, no
+volume, no git identity. The ledger written at the end of a run is discarded
+with the container, so every run started from an empty ledger, retried nothing,
+and re-abandoned. The mechanism was INERT in production for its entire life.
+
+**Why nothing reported it.** Every surface was telling the truth about the
+thing it measured. The health page said `degraded`, which was accurate and
+which reads as "the gap is recorded and queued". The ledger on main said zero
+slots, which was accurate and which reads as "nothing is owed". Neither
+surface's truth was the composition of the two, and no check compared them.
+gdelt.py's own comment even named the transport caveat and called it
+"harmless where it does not [persist]" — it was not harmless, it was the
+whole feature.
+
+**Fix (2.20.149).** The ledger now round-trips through the keyed
+`/tracker-meta` endpoint, which is the transport `cron.py` already uses for its
+per-run spend records for exactly the same reason ("Railway can neither commit
+nor be log-harvested"), and which `spend.py --harvest` already reads back. The
+FILE is kept as well, because it is what a checkout, a backfill and a reviewer
+read; `_merge_slots` unions the two and keeps the more recently `updated`
+record per key, ties to local so a run that just recorded an outcome is never
+overwritten by the copy it read at startup. `db.php` gains a whitelisted,
+400-slot-bounded `gdelt_ledger` section — bounded because an unbounded option
+is a way for a wedged cron to grow one `wp_options` row without limit.
+
+**Both directions are best-effort, deliberately.** A ledger is bookkeeping and
+bookkeeping must never take down an ingest run: a failed sync costs one run of
+retry memory, which is strictly better than the status quo of all of it. A
+non-200 and an unreachable host are UNKNOWN, never "nothing is owed" — the
+local slot survives both, and that is pinned. An unwritable path no longer
+kills the save, now that the remote copy is the one the cron depends on.
+
+**The sync is BOUNDED, because the backfill is not the cron.**
+`pull_gdelt_between` is called once per run by `cron.py` and **once per
+week-window** by `gdelt_backfill.py`, so a multi-year backfill is hundreds of
+calls — and this is a shared Bluehost account that returned 504 under load on
+2026-07-31. Un-guarded, the sync would add two requests per window to a job
+already posting two health notes per window. So the remote READ happens once
+per process (after the first union the file carries state forward), and the
+remote WRITE is skipped when the payload is byte-identical to the last
+ACCEPTED push. Both guards arm on success only: a read flag set on failure
+would leave a process permanently unable to recover its ledger, and a
+fingerprint recorded on attempt would let one 503 mute every later push. Both
+of those are pinned by mutation.
+
+**Verification.** `tests/test_gdelt_ledger_persistence.py`, 23 cases, and both
+halves were confirmed by MUTATION rather than by passing: reverting the
+load-side merge fails 4, removing the save-side POST fails 3. The
+un-credentialed path is pinned to make no request at all, so a local run and a
+test behave exactly as before.
+
+**What this does NOT fix.** The abandonment itself. Seven of twelve windows
+still fail on the day, and this change only ensures they are retried rather
+than lost. Whether the cause is GDELT rate-limiting under the shared API or
+something narrower is unmeasured; `QUERY_ATTEMPTS=5` at a 40s base backoff is
+already patient. If `degraded` persists once the ledger is accumulating, that
+is the next question, and it should be answered with a measurement and not by
+widening a timeout.
+
 ## 2026-08-28 - three corpus arrivals nobody classified, and one of them was not a country (2.20.148)
 
 **What.** The nightly per-country register run went red (exit 3):
