@@ -7624,6 +7624,18 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
             ),
         );
     }
+    // CAN-SPAM 15 U.S.C. 7704(a)(5): a commercial message must carry the
+    // sender's valid PHYSICAL postal address. It is a block like any other
+    // so it cannot be added to one renderer and forgotten in the other two,
+    // and it is UNCONDITIONAL -- unlike the manage block it is not ours to
+    // omit when a payload is thin.
+    $blocks[] = array(
+        'url' => '',
+        'anchor' => '',
+        'sentences' => array(
+            'AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.',
+        ),
+    );
     return $blocks;
 }
 

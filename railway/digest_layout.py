@@ -1151,6 +1151,11 @@ FOOTER_BLOCKS = (
                 "form and tick the lists you want.",
                 "The change applies when you confirm by email."),
      "re-enter your address on the signup form"),
+    # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
+    # address. LAST because it is small print, and UNCONDITIONAL because
+    # unlike the manage block it is not ours to omit -- `footer_blocks()`
+    # filters on the "manage" key only, so this survives a thin payload.
+    ("", ("AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.",), ""),
 )
 
 

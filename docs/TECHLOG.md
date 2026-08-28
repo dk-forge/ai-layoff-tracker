@@ -1,5 +1,34 @@
 # Tech Log
 
+## 2026-08-28 - the digest footer carries a postal address (2.20.150)
+
+**What.** CAN-SPAM 15 U.S.C. 7704(a)(5) requires a commercial message to carry
+the sender's valid PHYSICAL postal address. The digest footer carried none.
+Flagged as an owner item in the nine-edition review because the fix needs the
+owner's real address and an invented one is worse than none; he supplied it.
+
+**Where it went, and why not just in the renderer.** The footer is composed
+THREE times - the HTML part in `digest_layout._footer`, the plain-text part in
+`render_text`, and again in PHP by the in-WordPress `wp_mail` fallback - and
+which one a reader gets depends on whether an external relay claimed the tier,
+which is infrastructure state a reader cannot see. So the sentence is a BLOCK
+in `alt_digest_footer_blocks()` (the authority) mirrored into `FOOTER_BLOCKS`
+(the relay's copy), and `test_digest_sender.py` fails on any difference between
+the two. It is UNCONDITIONAL, unlike the manage block: a legally required
+disclosure is not ours to omit when a payload is thin.
+
+**THE FIRST WORDING WAS WRONG AND A TEST CAUGHT IT.** It read "AI Layoff
+Tracker, 601 Van Ness Ave...", and
+`TheLogSaysWhatActuallyWentOut::test_the_message_carries_only_the_named_section`
+went red: the footer is SHARED by both tiers, so naming one tracker in it
+stamps the layoff brand onto the TALENT tracker's emails. The section-isolation
+guard was built for content leaking between tiers and it caught a brand leak in
+the small print. The address now names the SENDER (`AskTheRecruiter.com`),
+which is both what CAN-SPAM asks for and true of either tier.
+
+**Class:** two-copies-drifted
+**Guard:** railway/tests/test_digest_sender.py
+
 ## 2026-08-28 - the ledger fix was inert in the runs that need it most
 
 **What.** The 2.20.149 entry below made the GDELT work ledger survive its
