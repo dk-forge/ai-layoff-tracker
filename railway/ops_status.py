@@ -59,6 +59,7 @@ import stash_watch  # noqa: E402  - sibling module, stdlib only
 import subscriber_routes  # noqa: E402  - sibling module, stdlib only
 import alert_state  # noqa: E402  - sibling module, stdlib only
 import run_completion  # noqa: E402  - sibling module, stdlib only
+import state_liveness  # noqa: E402  - sibling module, stdlib only (git only)
 
 # The repo this script lives in — [8] reads its stash stack. Derived from the
 # file, never from the cwd: ops_status.py is run from anywhere.
@@ -1492,6 +1493,30 @@ def main():
             egress_blocked.append("source-runs unreachable")
         else:
             unverified.append("collector run completion")
+
+    # [2f] STATE LIVENESS — is each MECHANISM still writing its own file?
+    #
+    # [2e] asks whether a collector run finished. This asks a wider question
+    # the dashboard could not: is the machinery still doing anything at all?
+    # A mechanism that stops does not raise; it stops changing its committed
+    # state file, which is visible in git and was visible in nobody's read of
+    # it. The GDELT work ledger held zero slots from the day it shipped while
+    # production abandoned 7 of 12 windows a run.
+    #
+    # Reads git only, so it needs no key and no network.
+    print()
+    try:
+        _srows = state_liveness.collect()
+        print(state_liveness.render(_srows))
+        _sdead = state_liveness.problems(_srows)
+        if _sdead:
+            issues.append(f"{len(_sdead)} mechanism(s) that have never written "
+                          f"their own state")
+        if any(r["state"] == state_liveness.UNKNOWN for r in _srows):
+            unverified.append("state liveness (too little history to judge)")
+    except Exception as exc:
+        print(f"[2f] STATE LIVENESS UNKNOWN: {exc}")
+        unverified.append("state liveness")
 
     # 3. LIVE DATA INTEGRITY — is the data those collectors produced CORRECT?
     #

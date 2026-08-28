@@ -37,6 +37,9 @@ reprint the aged-out lines every two minutes.
 fails 4, removing the throttle fails 1. No plugin file is touched, so no
 version is consumed and there is nothing for `reader_freshness.py` to verify.
 
+**Class:** silent-stop
+**Guard:** railway/tests/test_gdelt_ledger_persistence.py
+
 **Two things this does NOT do.** It does not stop the runs dying — that root
 cause is unmeasured and needs Railway logs this session cannot read. And the
 discriminator the RUNBOOK prescribes ("check `spend_jobs.json`") **cannot be
@@ -102,6 +105,9 @@ ACCEPTED push. Both guards arm on success only: a read flag set on failure
 would leave a process permanently unable to recover its ledger, and a
 fingerprint recorded on attempt would let one 503 mute every later push. Both
 of those are pinned by mutation.
+
+**Class:** silent-stop
+**Guard:** railway/tests/test_gdelt_ledger_persistence.py
 
 **Verification.** `tests/test_gdelt_ledger_persistence.py`, 23 cases, and both
 halves were confirmed by MUTATION rather than by passing: reverting the
