@@ -106,6 +106,35 @@ class NoUSStateSurvivesAsACountry(unittest.TestCase):
         self.assertEqual(out["North Carolina"], "United States")
         self.assertEqual(out["Kentucky"], "United States")
 
+    def test_a_state_annotated_united_states_folds(self):
+        """THE SUCCESSOR CASE, LIVE 2026-08-28. Row 134117 (Conduent, in the
+        Idaho WARN register) carried country "United States (NJ)": the cleaner
+        reduces it to "united states nj", which is neither a state name nor a
+        mapped country, so the unknown-single-country rule let it through to
+        the country facet and the coverage register refused it as a country.
+        Every annotation shape that cleans to "united states <state>" folds."""
+        out = normalize(("United States (NJ)", "United States (New Jersey)",
+                         "United States - NJ", "United States, Idaho",
+                         "united states of america (CA)"))
+        for value in out:
+            with self.subTest(value=value):
+                self.assertEqual(out[value], "United States")
+
+    def test_the_annotated_georgia_is_the_state(self):
+        # Bare "Georgia" stays a country (see below); "United States (GA)"
+        # names the union first, so the suffix can only mean the state.
+        self.assertEqual(normalize(("United States (GA)",))["United States (GA)"],
+                         "United States")
+
+    def test_annotated_territories_and_usvi_are_left_alone(self):
+        # Same territory judgement as the bare list: PR/GU/VI/AS/MP are not
+        # folded, and the USVI's own name is not a state annotation.
+        out = normalize(("United States Virgin Islands", "United States (PR)",
+                         "United States (Guam)"))
+        for value in out:
+            with self.subTest(value=value):
+                self.assertEqual(out[value], value)
+
     def test_case_and_spacing_do_not_get_a_state_through(self):
         out = normalize(("north carolina", "  NORTH   CAROLINA  ",
                          "New  York", "district of columbia"))

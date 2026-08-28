@@ -837,13 +837,19 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** local
+- **STATUS:** FREE
+- **HOLDER:** -
 - **SINCE:** 2026-08-28
-- **WORKING ON:** country_coverage_fresh UNKNOWN (Turkey, Ukraine, "United
-  States (NJ)"): fold state-annotated US values in alt_normalize_country
-  (api.php), acknowledge Turkey+Ukraine in the register backlog, fix row
-  134117 via edit-entries. Claiming **2.20.148** (read off main at 2.20.147).
+- **RELEASED (2026-08-28): 2.20.148 — the three unclassified corpus arrivals
+  each got the answer they needed.** Turkey = an ALIAS to the classified
+  'Türkiye' entry (spelling split, reported as vocabulary duplicate). Ukraine
+  = a dated ACKNOWLEDGED_BACKLOG entry with the research question stated.
+  "United States (NJ)" = a normalizer gap: `alt_normalize_country` now folds
+  state-ANNOTATED US values ("United States (NJ)" et al.) the way it already
+  folds bare state names; territories and USVI stay unfolded; row 134117
+  corrected to "United States" via edit-entries. TECHLOG 2026-08-28. NEXT:
+  the register workflow and Live data-integrity check should both go green on
+  their next runs; Ukraine's actual classification is the outstanding work.
 - **RELEASED (2026-08-28): 2.20.147 — the archive-cadence reading no longer
   counts a re-cite's frozen timestamp.** `archive_recheck_cadence` reddened CI
   at 11.8d (third strike of the re-cite artifact; drain healthy, oldest 3.0d at

@@ -1,5 +1,40 @@
 # Tech Log
 
+## 2026-08-28 - three corpus arrivals nobody classified, and one of them was not a country (2.20.148)
+
+**What.** The nightly per-country register run went red (exit 3):
+`country_coverage_fresh` UNKNOWN naming Turkey, Ukraine and "United States
+(NJ)" as in the corpus with no classification and no acknowledgment. The
+guard worked exactly as designed — three countries had ARRIVED unnoticed —
+and each of the three needed a different answer.
+
+**Turkey — already classified, under another spelling.** The register holds
+'Türkiye' (Is Kanunu 4857 art. 29, assessed 2026-08-18); the corpus stores
+the English exonym on 4 rows that arrived 2026-08-28 (three news rows and
+the Stellantis 8-K). `ALIASES` gains `"Turkey": "Türkiye"`, the same design
+as Korea→South Korea: the classification is reused and the spelling split is
+reported as a vocabulary duplicate, not absorbed silently.
+
+**Ukraine — genuinely new, acknowledged rather than faked.** One news row
+(id 178665). Added to `ACKNOWLEDGED_BACKLOG` dated 2026-08-28 with the
+research question stated (mass-dismissal notification to the State
+Employment Service is reported in secondary sources, unread in the primary
+text; wartime labour-law derogations must be checked).
+
+**"United States (NJ)" — not a country, a normalizer gap (2.20.148).** Row
+134117 (Conduent, Idaho WARN register, `edited=true`) carried the value in
+its country column. `alt_normalize_country`'s cleaner strips punctuation, so
+"United States (NJ)" keyed to "united states nj" — not a state name, not in
+the map — and the unknown-single-country rule returned it unchanged: the
+same class as the 2026-08-18 North Carolina defect, one shape wider. The
+guard now folds any value cleaning to "united states <state name or postal
+code>" to "United States". Bare "Georgia" keeps its deliberate
+country-first reading, but "United States (GA)" names the union first and
+folds; territories (PR/GU/VI/AS/MP) stay unfolded, and "United States
+Virgin Islands" passes through unchanged — pinned in
+`tests/test_country_is_not_a_state.py`. The row itself was corrected to
+"United States" via the edit-entries workflow (reason logged there).
+
 ## 2026-08-28 - the archive-cadence reading is contaminated by re-cites for ~4 hours a night, third strike (2.20.147)
 
 **What.** `archive_recheck_cadence` FAILed live at 11.8d against its 10d bound

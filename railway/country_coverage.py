@@ -1305,6 +1305,20 @@ ACKNOWLEDGED_BACKLOG = {
       "reached. NEAR-MISSES REJECTED: SSO unemployment-benefit claim counts are "
       "claimants, and s.75 suspension notices are not dismissals."
       ),
+    'Ukraine': ("2026-08-28",
+      "ARRIVED IN THE CORPUS 2026-08-28 (one news row, id 178665, layoff date "
+      "2026-08-12) and is acknowledged the same day, unresearched. WHAT IS "
+      "OUTSTANDING: whether Ukraine's labour law carries a collective-"
+      "redundancy notification duty and to whom. The obvious starting points "
+      "for whoever picks this up: the Code of Labour Laws (KZpP) and the Law "
+      "'On Employment of the Population' — mass-dismissal notification to the "
+      "State Employment Service (Derzhavna sluzhba zainiatosti) is REPORTED in "
+      "secondary sources but has not been read in the primary text, thresholds "
+      "and lead times unverified, and no publication of any aggregate has been "
+      "looked for. Wartime derogations to labour law (the 2022 martial-law "
+      "labour acts) may suspend or alter the duty and must be checked against "
+      "the current text, not a pre-war summary."
+      ),
     'Vietnam': ("2026-08-18",
       "REGIME ESTABLISHED, PUBLICATION UNKNOWN FOR AN ENVIRONMENT REASON. "
       "Labour Code 45/2019/QH14 art. 42 (obligations on structural, "
@@ -2805,6 +2819,11 @@ NOT_A_COUNTRY = {"Multiple countries"}
 ALIASES = {
     "Korea": "South Korea",
     "People's Republic of China": "China",
+    # The corpus stores the English exonym (4 rows arrived 2026-08-28: three
+    # news rows and the Stellantis 8-K, ids 178813/178696/178698/178809); the
+    # register was written under the endonym and its classification (Is Kanunu
+    # 4857 art. 29, assessed 2026-08-18) does not change with the spelling.
+    "Turkey": "Türkiye",
 }
 
 
