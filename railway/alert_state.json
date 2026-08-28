@@ -66,13 +66,8 @@
       "first": 1787880509,
       "last": 1787880509,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
-    },
-    "tests:live.data:2e215caae5bac21b": {
-      "first": 1787879668,
-      "last": 1787879668,
-      "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 11.8d ago (110 pending, 3,144 not yet in Wayback) \u2014 bound is 1"
     }
   },
-  "updated_at": "2026-08-28T01:37:14+00:00",
+  "updated_at": "2026-08-28T02:28:53+00:00",
   "version": 1
 }
