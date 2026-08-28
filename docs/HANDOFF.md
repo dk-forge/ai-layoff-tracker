@@ -826,9 +826,23 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** local (CI/ops fixes: panel openai install in data-quality.yml; historical-sweep self-timeout)
+- **STATUS:** FREE
+- **HOLDER:** -
 - **SINCE:** 2026-08-28
+- **RELEASED (2026-08-28): NO VERSION CONSUMED — two CI/ops fixes, no plugin
+  file touched.** (1) data-quality.yml now installs the hash-pinned min lock
+  (arming the panel in f01e1bf silently made openai its first non-stdlib
+  import; the 2026-08-27 held-relabel mail carried "the openai client is not
+  importable"), and `daily_classification_spotcheck.py` drops NO-OP relabels
+  (row 177321's "Automotive" -> "Automotive" had no filter). (2) The
+  historical sweep's 45-minute self-cancellation (run 33094996142) was a dead
+  GDELT public API ground through ~16 slots' full retry schedules;
+  `sources/gdelt.py` now trips an outage breaker after the first abandoned
+  sweep and queues the rest in the work ledger. Ceiling KEPT at 45 with the
+  measurement at the line. TECHLOG 2026-08-28, both entries. The two held
+  relabels were NOT applied (owner's call; the fixed panel re-rules them on
+  the next daily run). An uncommitted `includes/subscribe.php` edit from a
+  concurrent session was found mid-flight and deliberately left alone.
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the two non-US
   collective-dismissal registers, landing as **2.20.94**, with a page-cache flush as **2.20.95**
   (`railway/sources/wup_mazowieckie.py`, `railway/sources/quebec.py`,
