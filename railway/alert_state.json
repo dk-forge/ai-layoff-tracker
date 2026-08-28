@@ -56,13 +56,8 @@
       "first": 1787851939,
       "last": 1787851939,
       "subject": "CI SELF-TIMEOUT: Historical global news sweep \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 45m0s"
-    },
-    "live-data-integrity-check:main:aa0eaf87db8c4614": {
-      "first": 1787881034,
-      "last": 1787881034,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,537,352 jobs / 65,211 entries"
     }
   },
-  "updated_at": "2026-08-28T02:31:53+00:00",
+  "updated_at": "2026-08-28T02:34:20+00:00",
   "version": 1
 }
