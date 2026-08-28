@@ -24,7 +24,9 @@ jobs:
     # LLM call hanging past its per-socket timeout. The script now owns a
     # 360s wall-clock deadline (DEADLINE_SECONDS in
     # railway/daily_classification_spotcheck.py) and finishes cleanly, so the
-    # worst case is ~40s of earlier steps + 360s + teardown, about 7 minutes.
+    # worst case is ~70s of earlier steps (setup-python + the 4-second
+    # min-lock install added 2026-08-28 + the free report) + 360s + teardown,
+    # about 7.5 minutes.
     # 10 keeps >30% headroom over that worst case and stays the last-resort
     # backstop, never the thing that ends a run.
     timeout-minutes: 10
@@ -32,6 +34,19 @@ jobs:
       # The classification spot-check is now a versioned repository script
       # rather than an inline heredoc, so it must be checked out first.
       - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # The spot-check imports railway/adjudication_panel.py, whose armed path
+      # builds an OpenAI-SDK client (arming it in f01e1bf silently made this
+      # job's first non-stdlib dependency: on 2026-08-27 both held relabels
+      # were mailed as "Panel error: the openai client is not importable").
+      # The MIN lock (openai + requests) is verified sufficient: the whole
+      # import chain (spotcheck -> adjudication_panel -> spend/ops_notify) is
+      # stdlib beyond those two. Hash-pinned, like every other workflow; no
+      # pip cache on min-lock jobs (measured 2026-08-19: the restore is slower
+      # than the 4-second install).
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
       - name: Mark pipeline cleaning
         run: |
           curl -sS -X POST "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status" \

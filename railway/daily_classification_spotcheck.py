@@ -333,6 +333,54 @@ def hold_reason(flag, jobs):
     return None
 
 
+def _norm_label(value):
+    """Whitespace-collapsed, case-folded comparison form of a label."""
+    return " ".join(str(value or "").split()).casefold()
+
+
+def drop_noop_flags(flags, current_by_id):
+    """Split flags into (real changes, no-ops). A no-op proposes the value the
+    row already carries.
+
+    On 2026-08-27 the armed panel run mailed the owner a HELD relabel for row
+    177321 proposing "Automotive" -> "Automotive": a no-op that would have
+    spent three panel votes and a line of the owner's attention on a write
+    that changes nothing. The model is ASKED for mismatches only, but nothing
+    held it to that, so an echoed unchanged value flowed through flagging,
+    confirmation (a model happily "agrees" the value is accurate — it is the
+    current value) and the hold path.
+
+    The reference is the row's ACTUAL current value as this run's sample read
+    it from the corpus, falling back to the flag's own echoed "current" for an
+    id outside the sample. A flag whose suggestion matches EITHER is dropped:
+    matching the corpus means the write is a no-op, and matching its own
+    echoed current means the model itself asserts no change, so its
+    "confirmation" carries no information. Comparison is case- and
+    whitespace-insensitive — "automotive" for "Automotive" is not a change
+    worth three panel votes or an /edit.
+    """
+    kept, noops = [], []
+    for f in flags:
+        suggested = _norm_label(f.get("suggested"))
+        row = current_by_id.get(f.get("id")) or {}
+        actual = _norm_label(row.get(f.get("field")))
+        echoed = _norm_label(f.get("current"))
+        if suggested and (suggested == actual or suggested == echoed):
+            noops.append(f)
+        else:
+            kept.append(f)
+    return kept, noops
+
+
+def _summarize_noop_flags(noops):
+    """A dropped no-op is noted in the run log, never silently discarded."""
+    if noops:
+        summary(f"Dropped {len(noops)} no-op flag(s) proposing the value the row "
+                "already carries (nothing to change, not judged, not held): "
+                + ", ".join(f"row {f.get('id')} {f.get('field')} "
+                            f"\"{f.get('suggested')}\"" for f in noops))
+
+
 def screen(confirmed, jobs_by_id):
     """Split confirmed relabels into (edits to apply, [(flag, why held)])."""
     edits, held = [], []
@@ -662,6 +710,12 @@ def _dry_run_armed():
         flags = ask_model(prompt).get("flags", [])
         label_flags = [f for f in flags if f.get("field") in ("industry", "country")
                        and f.get("id") and f.get("suggested")]
+        current_by_id = {r["id"]: {"industry": r["industry"], "country": r["country"]}
+                         for r in sample}
+        label_flags, noops = drop_noop_flags(label_flags, current_by_id)
+        if noops:
+            print(f"dropped {len(noops)} no-op flag(s) proposing the value the row "
+                  f"already carries: {[f.get('id') for f in noops]}")
         if not label_flags:
             print("no label mismatches flagged; nothing to adjudicate.")
             return 0
@@ -788,6 +842,10 @@ def main():
 
     summary(f"## Classification spot-check — {len(flags)} flag(s) from {len(sample)} sampled entries")
     label_flags = [f for f in flags if f.get("field") in ("industry", "country") and f.get("id") and f.get("suggested")]
+    current_by_id = {r["id"]: {"industry": r["industry"], "country": r["country"]}
+                     for r in sample}
+    label_flags, noops = drop_noop_flags(label_flags, current_by_id)
+    _summarize_noop_flags(noops)
     if not label_flags:
         clear_hold_alert()
         return 0
