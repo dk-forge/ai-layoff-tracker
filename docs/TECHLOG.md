@@ -1,5 +1,38 @@
 # Tech Log
 
+## 2026-08-28 - the daily digest wore a week's masthead over a two-day window (2.20.144)
+
+**What.** The nine-edition review (2026-08-28) found the daily layoff edition -
+a two-day provisional window - rendered the ISO-week masthead ("2026 Week 35 ·
+August 27-28") and opened its lead "In Week 35 of 2026, employers verified ...",
+seven days a week. A two-day figure wearing a week's name is a false claim about
+the window in the two lines most likely to be quoted on their own - the exact
+class of masthead error the monthly branch (2026-08-25) was built to avoid.
+
+**Root cause.** `alt_digest_compose_layoff`'s masthead/lead fork was
+`$is_monthly` ONLY: daily and weekly shared the weekly's labels. It survived
+because the sole guard (`test_digest_week_numbering.
+test_a_daily_edition_carries_no_week_number`) checked the SUBJECT's period
+phrase, never the composed body.
+
+**Fix (2.20.144, ef41d8c).** A week label is earned by the WINDOW, not granted
+by the tier: only a complete Monday-to-Sunday span (the shape
+`alt_digest_weekly_window` constructs) wears "YYYY Week N". Every other
+non-monthly window - the daily pair, an empty-freq preview range, a seven-day
+span straddling two ISO weeks - states its dates (`alt_digest_date_range`) and
+opens "Over August 27-28, 2026, employers verified ...", keeping the
+lifted-out-line property. The weekly edition is byte-identical, asserted.
+`railway/tests/test_digest_daily_masthead.py` (9 cases) holds the composed BODY,
+including a no-week-claim-anywhere sweep over both parts.
+
+**Also found in the same review, deliberately NOT fixed tonight (owner items):**
+the monthly tier (dormant, unwired by design) has a subject that names a single
+day and a typed Indeed baseline ("February 1, 2020") to fix AT ARMING TIME; the
+digest footer carries no physical postal address (CAN-SPAM §7704(a)(5)) - needs
+the owner's real address, never an invented one; the cadence sentences in
+`subscribe.php:507-520` are typed and outside `test_cadence_is_derived.py`'s
+surface list.
+
 ## 2026-08-28 - the armed panel could not import openai in CI, and a no-op relabel reached the owner's inbox
 
 **What.** The first armed run of the held-relabel adjudication panel
