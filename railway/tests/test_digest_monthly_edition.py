@@ -34,11 +34,13 @@ The composers are PHP, so these drive them through
 tests/fixtures/digest_compose_harness.php. Without php on PATH the tests SKIP,
 which is not a pass.
 """
+import datetime
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -49,6 +51,11 @@ SUBSCRIBE = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker",
                          "includes", "subscribe.php")
 HARNESS = os.path.join(HERE, "fixtures", "digest_compose_harness.php")
 PHP = shutil.which("php")
+
+if RAILWAY not in sys.path:
+    sys.path.insert(0, RAILWAY)
+
+import digest_layout as layout            # noqa: E402
 
 
 def _tuple(label, all_jobs, verified_jobs, ai_verified=0):
@@ -64,6 +71,11 @@ INDEED = {
     "national": {
         "index": 101.79,
         "vs_baseline": 1.79,
+        # The baseline NOTE the payload itself carries (build_indeed_index.py
+        # writes it), so a rebased series renames its own baseline. The
+        # composer renders THIS, with a typed fallback only for a pre-2026-08
+        # seed that lacks the field.
+        "baseline": "February 1, 2020 = 100",
         "as_of": "2026-08-14",
         "month_ago": {"date": "2026-07-15", "delta": 0.34, "index": 101.45},
         "source_name": "Indeed Hiring Lab",
@@ -179,8 +191,15 @@ class TheIndeedBackdropRenders(unittest.TestCase):
         html = self.section["html"]
         self.assertIn("101.79", html)
         self.assertIn("up 0.34 index points from a month earlier", html)
-        self.assertIn("100 = February 1, 2020", html)
+        # The baseline note comes FROM THE DATA (national.baseline), not from a
+        # typed literal that would silently lie if Hiring Lab rebased.
+        self.assertIn("(February 1, 2020 = 100)", html)
         self.assertIn("as of August 14, 2026", html)
+
+    def test_the_vs_baseline_figure_is_rendered_not_dead(self):
+        # vs_baseline used to be fetched and never shown; now the reader sees
+        # the change against the baseline the parenthetical just explained.
+        self.assertIn("1.79 points above the baseline", self.section["html"])
 
     def test_the_ai_share_and_change_are_shown(self):
         html = self.section["html"]
@@ -248,6 +267,147 @@ class TheBackdropDegradesGracefully(unittest.TestCase):
         self.assertIn("<h3>Jobs in: US hiring demand</h3>", html)
         self.assertIn("101.79", html)
         self.assertNotIn("of US postings", html)
+
+    def test_a_seed_without_a_baseline_note_gets_the_documented_fallback(self):
+        # A pre-2026-08 talent seed carries no national.baseline; the typed
+        # literal is the FALLBACK for exactly that shape, never the first
+        # choice. This is the accepted staleness risk, stated in the source.
+        fx = monthly_fixture()
+        national = dict(INDEED["national"])
+        national.pop("baseline")
+        fx["indeed"] = {"national": national, "ai": INDEED["ai"]}
+        html = compose(fx)["html"]
+        self.assertIn("(100 = February 1, 2020)", html)
+
+    def test_the_baseline_note_is_not_gated_on_vs_baseline(self):
+        # The old expression keyed the parenthetical on $vs_baseline - a
+        # property of a DIFFERENT number - so an index without it printed an
+        # unexplained level. The note must ride with the index itself.
+        fx = monthly_fixture()
+        national = dict(INDEED["national"])
+        national.pop("baseline")
+        national.pop("vs_baseline")
+        fx["indeed"] = {"national": national, "ai": INDEED["ai"]}
+        html = compose(fx)["html"]
+        self.assertIn("(100 = February 1, 2020)", html)
+        # And no invented delta clause: absence of the figure is absence.
+        self.assertNotIn("points above the baseline", html)
+        self.assertNotIn("points below the baseline", html)
+        self.assertNotIn("level with the baseline", html)
+
+    def test_a_below_baseline_reading_says_below(self):
+        fx = monthly_fixture()
+        national = dict(INDEED["national"])
+        national["index"] = 97.4
+        national["vs_baseline"] = -2.6
+        fx["indeed"] = {"national": national, "ai": INDEED["ai"]}
+        self.assertIn("2.60 points below the baseline", compose(fx)["html"])
+
+
+# The subject-side helpers, lifted by name exactly as
+# test_digest_subject_agreement.py lifts them, so a rename fails loudly
+# rather than testing a stale copy.
+_SUBJECT_FNS = ("alt_digest_date_range", "alt_digest_short_range",
+                "alt_digest_valid_freq", "alt_digest_subject_period",
+                "alt_digest_iso_week", "alt_digest_week_id",
+                "alt_digest_edition_label", "alt_digest_month_edition_label",
+                "alt_digest_period_phrase", "alt_digest_fallback_subject")
+
+_SUBJECT_RUNNER = r"""
+$src = file_get_contents($argv[1]);
+foreach (explode(',', $argv[2]) as $name) {
+    if (!preg_match('/\nfunction ' . preg_quote($name, '/') . '\s*\(.*?\n\}/s',
+                    $src, $m)) {
+        fwrite(STDERR, "could not extract $name from subscribe.php\n");
+        exit(2);
+    }
+    eval($m[0]);
+}
+$in = json_decode($argv[3], true);
+echo json_encode(array(
+    'period'   => alt_digest_subject_period('monthly', $in['from'], $in['to']),
+    'phrase'   => alt_digest_period_phrase($in['from'], $in['to'], 'monthly'),
+    'fallback' => alt_digest_fallback_subject('monthly', $in['to']),
+));
+"""
+
+
+def php_monthly_subject(frm, to):
+    handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
+                                         encoding="utf-8")
+    try:
+        handle.write("<?php\n" + _SUBJECT_RUNNER)
+        handle.close()
+        run = subprocess.run([PHP, handle.name, SUBSCRIBE,
+                              ",".join(_SUBJECT_FNS),
+                              json.dumps({"from": frm, "to": to})],
+                             capture_output=True, text=True, timeout=60)
+    finally:
+        os.unlink(handle.name)
+    if run.returncode != 0:
+        raise AssertionError(f"php runner failed: {run.stderr[:1200]}")
+    return json.loads(run.stdout)
+
+
+class TheMonthlySubjectNamesTheWindow(unittest.TestCase):
+    """The 2026-08-28 nine-edition review's FIX 1: the monthly SUBJECT named a
+    single day ("Aug 26") for a month-to-date window (Aug 1-26). A monthly is
+    a window tier like the weekly - the figures are a month-to-date sum, and
+    one date on them is a false claim in the line most people only ever see.
+    Both senders are pinned to the same strings here (the PHP wp_mail side by
+    extraction, the Python relay side directly), and
+    test_digest_subject_agreement.py drives the full subject-line port over
+    monthly cases besides."""
+
+    WINDOW = ("2026-08-01", "2026-08-24")
+    PERIOD = "Aug 1-24"
+    PHRASE = "August 2026 · August 1-24"
+    FALLBACK = ("[AskTheRecruiter] Monthly tracker digest, "
+                "August 2026 · August 1-24")
+
+    def _payload(self):
+        return {"from": self.WINDOW[0], "to": self.WINDOW[1],
+                "freq": "monthly"}
+
+    @unittest.skipIf(PHP is None, "php is not on PATH.")
+    def test_the_php_subject_period_names_the_window(self):
+        out = php_monthly_subject(*self.WINDOW)
+        self.assertEqual(out["period"], self.PERIOD)
+
+    @unittest.skipIf(PHP is None, "php is not on PATH.")
+    def test_the_php_period_phrase_is_the_masthead_label(self):
+        out = php_monthly_subject(*self.WINDOW)
+        self.assertEqual(out["phrase"], self.PHRASE)
+
+    @unittest.skipIf(PHP is None, "php is not on PATH.")
+    def test_the_php_fallback_subject_names_the_window_too(self):
+        # A fallback is still a subject somebody receives, and the monthly
+        # window is derivable from $to alone (it always starts on the 1st).
+        out = php_monthly_subject(*self.WINDOW)
+        self.assertEqual(out["fallback"], self.FALLBACK)
+
+    def test_the_python_subject_period_names_the_window(self):
+        self.assertEqual(layout.subject_period(self._payload()), self.PERIOD)
+
+    def test_the_python_period_phrase_is_the_masthead_label(self):
+        self.assertEqual(layout.period_phrase(self._payload()), self.PHRASE)
+
+    def test_the_python_month_label_matches_the_masthead_convention(self):
+        # The same string alt_digest_month_edition_label produces: month named,
+        # dates beside it, no year said twice.
+        self.assertEqual(
+            layout.month_edition_label(datetime.date(2026, 8, 1),
+                                       datetime.date(2026, 8, 24)),
+            self.PHRASE)
+
+    def test_a_first_of_month_window_is_one_day_on_both_sides(self):
+        # alt_digest_monthly_window on the 1st clamps to a one-day window; the
+        # subject token for it is that day, not an inverted range.
+        payload = {"from": "2026-09-01", "to": "2026-09-01", "freq": "monthly"}
+        self.assertEqual(layout.subject_period(payload), "Sep 1")
+        if PHP is not None:
+            out = php_monthly_subject("2026-09-01", "2026-09-01")
+            self.assertEqual(out["period"], "Sep 1")
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH.")

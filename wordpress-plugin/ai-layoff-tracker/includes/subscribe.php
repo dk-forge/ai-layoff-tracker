@@ -247,6 +247,27 @@ function alt_digest_monthly_enabled() {
     return (bool) apply_filters('alt_digest_offer_monthly', false);
 }
 
+/*
+ * The frequency a SIGNUP may actually STORE, as opposed to the enum the
+ * machinery accepts. 'monthly' is a valid value everywhere the enum is read
+ * (window, columns, composer) so a manual send and the render harness work,
+ * but the public form does not offer it until alt_digest_monthly_enabled()
+ * is on and digest_slot.py schedules no monthly tick until then. A
+ * hand-crafted POST carrying alt_freq=monthly before arming would therefore
+ * store a cadence no scheduled job fulfils AND put the confirm panel's
+ * monthly promise (alt_digest_cadence_sentence) in front of a reader for a
+ * send the schedule cannot make. So an unoffered monthly coerces to the
+ * form's own default, weekly - the intake gate that keeps the promise and
+ * the schedule telling one story. tests/test_digest_cadence_promises.py
+ * holds both directions: the coercion while dormant, and the pass-through
+ * once the offer filter is on.
+ */
+function alt_digest_accepted_freq($f) {
+    $f = alt_digest_valid_freq($f);
+    if ($f === 'monthly' && !alt_digest_monthly_enabled()) return 'weekly';
+    return $f;
+}
+
 /**
  * The window a row must not already have been sent inside, in seconds.
  *
@@ -512,8 +533,11 @@ function alt_digest_cadence_sentence($freq) {
         // The monthly edition covers the month so far and goes out at the start
         // of each month. This sentence is only ever shown to somebody who could
         // pick monthly, which the form does not offer until the monthly tick is
-        // armed (alt_digest_monthly_enabled), so it does not promise a send the
-        // schedule cannot yet make.
+        // armed (alt_digest_monthly_enabled) - and since 2.20.146 that is
+        // structural, not just the form's radios: alt_digest_accepted_freq
+        // refuses to STORE an unoffered monthly, so no receipt can carry the
+        // freq that selects this branch while the tier is dormant. It cannot
+        // promise a send the schedule will not make.
         return 'Monthly editions go out at the start of each month, covering the month so far, so your first one arrives with the next edition.';
     }
     return 'Weekly digests go out on Monday mornings, so your first one arrives on the next Monday.';
@@ -1128,7 +1152,9 @@ add_action('admin_post_nopriv_alt_digest_subscribe', 'alt_digest_subscribe_submi
  * list is ticked: subscribing to nothing is refused, not silently stored.
  */
 function alt_digest_prefs_from_post($post) {
-    $freq = alt_digest_valid_freq(sanitize_key($post['alt_freq'] ?? 'weekly'));
+    // accepted_freq, not valid_freq: an unoffered monthly must not be storable
+    // from a hand-crafted POST (the form only shows weekly/daily radios).
+    $freq = alt_digest_accepted_freq(sanitize_key($post['alt_freq'] ?? 'weekly'));
     $prefs = array(
         'consent_layoff'   => empty($post['alt_list_layoff']) ? 0 : 1,
         'consent_talent'   => empty($post['alt_list_talent']) ? 0 : 1,
@@ -1418,7 +1444,9 @@ function alt_digest_confirm() {
         if (is_array($parked)) {
             foreach (alt_digest_lists() as $cols) {
                 if (isset($parked[$cols['consent']])) $update[$cols['consent']] = (int) $parked[$cols['consent']];
-                if (isset($parked[$cols['freq']]))    $update[$cols['freq']] = alt_digest_valid_freq($parked[$cols['freq']]);
+                // accepted_freq for the same reason as the intake: parked JSON
+                // predating the gate must not smuggle an unoffered monthly in.
+                if (isset($parked[$cols['freq']]))    $update[$cols['freq']] = alt_digest_accepted_freq($parked[$cols['freq']]);
             }
         }
         $update['pending_prefs'] = null;
@@ -2282,11 +2310,23 @@ function alt_digest_short_range($from, $to) {
  * stories inside state their own spans. The edition's dateline still shows the
  * full window it covers.
  *
+ * A MONTHLY NAMES ITS WINDOW, for the weekly's reason and not the daily's. The
+ * monthly edition covers the month TO DATE (alt_digest_monthly_window: the 1st
+ * through the last complete day), so it is a window tier: an August 25 send
+ * reports August 1-24, and a single date on it would claim a day's figures
+ * over a 24-day sum - the exact defect this token existed to prevent on the
+ * weekly. "Aug 1-24" is also a literal short form of the masthead's own
+ * "August 2026 · August 1-24" (alt_digest_month_edition_label), so the inbox
+ * and the edition describe the same slice of the month. The daily rule does
+ * NOT apply: a daily's two-day window is a collection artifact around one
+ * publication day, a month-to-date window IS the story.
+ *
  * DO NOT FLATTEN THESE INTO ONE RULE in a later consistency pass. They look
  * like an inconsistency and they are the point.
  */
 function alt_digest_subject_period($freq, $from, $to) {
-    return (alt_digest_valid_freq($freq) === 'weekly')
+    $f = alt_digest_valid_freq($freq);
+    return ($f === 'weekly' || $f === 'monthly')
         ? alt_digest_short_range($from, $to)
         : alt_digest_short_range($to, $to);
 }
@@ -2368,10 +2408,11 @@ function alt_digest_edition_label($from, $to) {
  * WHY A SEPARATE FUNCTION AND NOT A BRANCH INSIDE alt_digest_edition_label.
  * That function is a cross-language PORT: alt_digest_period_phrase reads it and
  * digest_layout.py mirrors it line for line, held by
- * tests/test_digest_subject_agreement.py. Teaching it a month would fork the
- * port for a tier the subject line does not compose yet. This is the composer's
- * own masthead helper, called only under $is_monthly, so the weekly path and
- * the port are untouched.
+ * tests/test_digest_subject_agreement.py. Teaching it a month would fork its
+ * week arithmetic for a tier that has its own. Since 2.20.146 THIS function is
+ * part of the same port: alt_digest_period_phrase's monthly branch returns it,
+ * digest_layout.month_edition_label mirrors it, and
+ * tests/test_digest_monthly_edition.py pins both sides to the same string.
  *
  * THE NUMBER NEVER TRAVELS WITHOUT ITS DATES, exactly as the week label does:
  * "August 2026" alone would not say which slice of the month, so the month-to-
@@ -2923,10 +2964,18 @@ function alt_digest_data_cut_label() {
  * this cannot do better, so a failure here is never a subject-less email.
  */
 function alt_digest_period_phrase($from, $to, $freq) {
-    if (strtolower(trim((string) $freq)) === 'weekly') {
+    $f = strtolower(trim((string) $freq));
+    if ($f === 'weekly') {
         // "Week 33, 10 to 16 August 2026". The number never travels without
         // its dates. See alt_digest_edition_label.
         return alt_digest_edition_label($from, $to);
+    }
+    if ($f === 'monthly') {
+        // "August 2026 · August 1-24". The masthead's own label, because a
+        // month-to-date window is a window: naming its final day alone would
+        // put one day's date on a month's figures. Same convention as the
+        // weekly branch above, month instead of ISO week.
+        return alt_digest_month_edition_label($from, $to);
     }
     return alt_digest_date_range($to, $to);
 }
@@ -3117,7 +3166,20 @@ function alt_digest_section_heading($text) {
 function alt_digest_fallback_subject($freq, $to) {
     $f = strtolower(trim((string) $freq));
     $label = ($f === 'weekly') ? 'Weekly' : (($f === 'monthly') ? 'Monthly' : 'Daily');
-    $stamp = alt_digest_date_range($to, $to);
+    $stamp = '';
+    if ($f === 'monthly' && preg_match('/^(\d{4}-\d{2})-\d{2}$/',
+                                       substr(trim((string) $to), 0, 10), $m)) {
+        /*
+          A MONTHLY FALLBACK NAMES ITS WINDOW, NOT ONE DAY. This function only
+          receives $to, but the monthly window is derivable from it alone:
+          alt_digest_monthly_window always starts on the 1st of $to's month
+          (clamped, never straddling a month), so the 1st is reconstructed here
+          rather than a single date being stamped over a month-to-date sum -
+          the same false claim the composed subject's period token avoids.
+        */
+        $stamp = alt_digest_month_edition_label($m[1] . '-01', $to);
+    }
+    if ($stamp === '') $stamp = alt_digest_date_range($to, $to);
     return '[AskTheRecruiter] ' . $label . ' tracker digest'
          . ($stamp === '' ? '' : ', ' . $stamp);
 }
@@ -4263,6 +4325,19 @@ function alt_digest_indeed_block() {
     $index    = (float) $national['index'];
     $vs_base  = isset($national['vs_baseline']) && is_numeric($national['vs_baseline'])
                 ? (float) $national['vs_baseline'] : null;
+    /*
+      THE BASELINE NOTE COMES FROM THE DATA WHEN THE DATA CARRIES IT.
+      build_indeed_index.py (sibling talent plugin) writes national.baseline
+      ("February 1, 2020 = 100") into the payload precisely so a rebased series
+      renames its own baseline. The typed literal below is the FALLBACK for an
+      older seed without the field, and it is a staleness risk by construction:
+      if Hiring Lab ever rebases the index and this install still lacks the
+      field, the parenthetical will state the launch-era baseline. That risk is
+      confined to installs running a pre-2026-08 talent seed; anything newer
+      supplies its own note.
+    */
+    $baseline = trim((string) ($national['baseline'] ?? ''));
+    if ($baseline === '') $baseline = '100 = February 1, 2020';
     $n_asof   = alt_digest_date_range($national['as_of'] ?? '', $national['as_of'] ?? '');
     $n_month  = is_array($national['month_ago'] ?? null) ? $national['month_ago'] : array();
     $src_name = trim((string) ($national['source_name'] ?? '')) ?: 'Indeed Hiring Lab';
@@ -4271,13 +4346,25 @@ function alt_digest_indeed_block() {
     $ai_asof  = alt_digest_date_range($ai['as_of'] ?? '', $ai['as_of'] ?? '');
     $ai_month = is_array($ai['month_ago'] ?? null) ? $ai['month_ago'] : array();
 
-    // The index sentence. The level always; the "up/down vs a month earlier"
-    // clause only when the source carried a month-ago reading.
-    $index_txt = 'The Indeed US Job Postings Index'
-               . ($vs_base !== null
-                  ? ' (100 = February 1, 2020) stood at ' . number_format($index, 2, '.', ',')
-                  : ' stood at ' . number_format($index, 2, '.', ','))
+    /*
+      The index sentence. The baseline parenthetical ALWAYS rides with the
+      level - it is what makes "101.79" a reading rather than a bare number,
+      so it is unconditional. (Until 2.20.146 it was gated on $vs_baseline,
+      a property of a DIFFERENT number: a payload with an index but no
+      vs_baseline printed an unexplained level.) The "vs the baseline" clause
+      renders only when the source carried the figure, and the "up/down vs a
+      month earlier" clause only when it carried a month-ago reading.
+    */
+    $index_txt = 'The Indeed US Job Postings Index (' . $baseline . ') stood at '
+               . number_format($index, 2, '.', ',')
                . ($n_asof !== '' ? ' as of ' . $n_asof : '');
+    if ($vs_base !== null) {
+        $b_sig = alt_digest_indeed_signed($vs_base);
+        $index_txt .= ($b_sig[0] === 'unchanged')
+            ? ', level with the baseline'
+            : ', ' . $b_sig[1] . ' points '
+              . ($b_sig[0] === 'up' ? 'above' : 'below') . ' the baseline';
+    }
     $n_sig = !empty($n_month) ? alt_digest_indeed_signed($n_month['delta'] ?? null) : null;
     if ($n_sig !== null) {
         $index_txt .= ($n_sig[0] === 'unchanged')

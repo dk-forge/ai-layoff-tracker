@@ -513,6 +513,25 @@ def edition_label(start: datetime.date, end: datetime.date) -> str:
     return f"{week_id(start)} \u00b7 {text}"
 
 
+def month_edition_label(start: datetime.date, end: datetime.date) -> str:
+    """"August 2026 · August 1-24". The site's alt_digest_month_edition_label.
+
+    The monthly edition's masthead shape, mirrored here because period_phrase's
+    monthly branch returns it and the two senders must agree
+    (tests/test_digest_monthly_edition.py pins both sides to one string). Same
+    convention as edition_label: the label never travels without its dates -
+    "August 2026" alone would not say which slice of the month - and the
+    trailing ", YYYY" is trimmed off the range when it repeats the year the
+    month label already carries.
+    """
+    text = date_range(start, end)
+    if start.year == end.year:
+        trimmed = re.sub(r",\s*\d{4}$", "", text)
+        if trimmed:
+            text = trimmed
+    return f"{MONTHS[start.month - 1]} {start.year} \u00b7 {text}"
+
+
 SHORT_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
@@ -551,6 +570,11 @@ def subject_period(payload: dict) -> str:
     would claim otherwise. A DAILY NAMES ITS DAY: "Aug 19", not the two-day
     collection window, which is the masthead convention.
 
+    A MONTHLY NAMES ITS WINDOW, for the weekly's reason and not the daily's:
+    the edition covers the month TO DATE, so "Aug 1-24", never a single date
+    stamped over a 24-day sum. Mirrors alt_digest_subject_period's monthly
+    branch, in the same commit.
+
     DO NOT FLATTEN THESE INTO ONE RULE in a later consistency pass. They look
     like an inconsistency and they are the point.
     """
@@ -559,7 +583,8 @@ def subject_period(payload: dict) -> str:
         end = datetime.date.fromisoformat(raw_to)
     except ValueError:
         return ""
-    if str((payload or {}).get("freq") or "").strip().lower() != "weekly":
+    freq = str((payload or {}).get("freq") or "").strip().lower()
+    if freq not in ("weekly", "monthly"):
         return short_range(end, end)
     try:
         start = datetime.date.fromisoformat(
@@ -587,12 +612,17 @@ def period_phrase(payload: dict) -> str:
     except ValueError:
         return ""
     freq = str((payload or {}).get("freq") or "").strip().lower()
-    if freq != "weekly":
+    if freq not in ("weekly", "monthly"):
         return _stamp(end)
     try:
         start = datetime.date.fromisoformat(raw_from)
     except ValueError:
         return ""
+    if freq == "monthly":
+        # "August 2026 · August 1-24": the masthead's own label, because a
+        # month-to-date window is a window and one date on it would put a
+        # day's name on a month's figures. Mirrors alt_digest_period_phrase.
+        return month_edition_label(start, end)
     # A MIDDLE DOT AND NOT A COMMA: an ISO week is identified, not described by
     # an endpoint, and the date already carries a comma of its own.
     return edition_label(start, end)
