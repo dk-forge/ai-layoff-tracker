@@ -3,7 +3,7 @@
     "sec_item_205_us",
     "state_warn_official_totals"
   ],
-  "measured_at": "2026-08-20T16:56:58Z",
+  "measured_at": "2026-08-28T01:01:57Z",
   "note": "Rolling recall against denominators the tracker does not construct. Written by rolling-recall.yml. Committed on purpose: the data being measured changes without a commit. NEVER hand-edit a figure here \u2014 re-run the module. Recall is a BAND, not a point, because no editor adjudicated these matches; see the module docstring.",
   "slices": {
     "sec_item_205_us": {
@@ -15,177 +15,27 @@
         1.0
       ],
       "denominator_basis": "closed_enumeration_primary_regulator_index",
-      "detail": "recall is between 45/45 = 100.0% (count-confirmed) and 45/45 = 100.0% (name+window proposed, unadjudicated); 61 of 215 enumerated filings UNKNOWN, 109 out of scope (percentage only), 0 unreachable",
+      "detail": "recall is between 45/45 = 100.0% (count-confirmed) and 45/45 = 100.0% (name+window proposed, unadjudicated); 16 of 215 enumerated filings UNKNOWN, 154 out of scope (percentage only), 0 unreachable",
       "enumerated_filings": 215,
       "enumeration_query": "\"Item 2.05\"",
       "in_scope": 45,
       "judged": 45,
       "key": "sec_item_205_us",
       "label": "US SEC 8-K Item 2.05 (exit/disposal costs) with a stated headcount",
-      "out_of_scope": 109,
+      "out_of_scope": 154,
       "proposed": 0,
       "proposed_filings": [],
       "recall_confirmed": 1.0,
       "recall_upper": 1.0,
       "settle_days": 45,
       "state": "measured",
-      "undecidable": 61,
+      "undecidable": 16,
       "undecidable_filings": [
-        {
-          "accession": "0001193125-25-154044",
-          "filer": "Warner Music Group Corp.",
-          "filing_date": "2025-07-01",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001213900-25-062194",
-          "filer": "Jasper Therapeutics, Inc.",
-          "filing_date": "2025-07-09",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0000950170-25-096257",
-          "filer": "Sarepta Therapeutics, Inc.",
-          "filing_date": "2025-07-16",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0000950170-25-096438",
-          "filer": "Clearside Biomedical, Inc.",
-          "filing_date": "2025-07-17",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0000950170-25-097881",
-          "filer": "Adicet Bio, Inc.",
-          "filing_date": "2025-07-23",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-25-071009",
-          "filer": "Adaptimmune Therapeutics PLC",
-          "filing_date": "2025-07-28",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-25-071380",
-          "filer": "Merck & Co., Inc.",
-          "filing_date": "2025-07-29",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0000950170-25-105025",
-          "filer": "CarGurus, Inc.",
-          "filing_date": "2025-08-07",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-178947",
-          "filer": "FATE THERAPEUTICS INC",
-          "filing_date": "2025-08-12",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0000950170-25-107313",
-          "filer": "Oric Pharmaceuticals, Inc.",
-          "filing_date": "2025-08-12",
-          "why": "headcount_may_be_exhibit_only"
-        },
         {
           "accession": "0000051434-25-000060",
           "filer": "INTERNATIONAL PAPER CO",
           "filing_date": "2025-08-21",
           "why": "ambiguous_multiple_counts:300,680"
-        },
-        {
-          "accession": "0000051434-25-000059",
-          "filer": "INTERNATIONAL PAPER CO",
-          "filing_date": "2025-08-21",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001501697-25-000021",
-          "filer": "X4 Pharmaceuticals, Inc",
-          "filing_date": "2025-09-17",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-25-092162",
-          "filer": "MAXCYTE, INC.",
-          "filing_date": "2025-09-22",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-221704",
-          "filer": "IO Biotech, Inc.",
-          "filing_date": "2025-09-29",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-223434",
-          "filer": "SUTRO BIOPHARMA, INC.",
-          "filing_date": "2025-09-29",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-25-097097",
-          "filer": "APPLIED DNA SCIENCES INC",
-          "filing_date": "2025-10-06",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-25-096964",
-          "filer": "Trinseo PLC",
-          "filing_date": "2025-10-06",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001060822-25-000157",
-          "filer": "CARTERS INC",
-          "filing_date": "2025-10-27",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001306830-25-000203",
-          "filer": "Celanese Corp",
-          "filing_date": "2025-10-28",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-268036",
-          "filer": "TripAdvisor, Inc.",
-          "filing_date": "2025-11-06",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-269716",
-          "filer": "CODEXIS, INC.",
-          "filing_date": "2025-11-06",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-277556",
-          "filer": "Korro Bio, Inc.",
-          "filing_date": "2025-11-12",
-          "why": "exhibit_index_unreadable"
-        },
-        {
-          "accession": "0001193125-25-305339",
-          "filer": "Leslie's, Inc.",
-          "filing_date": "2025-12-02",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001454938-25-000142",
-          "filer": "Teads Holding Co.",
-          "filing_date": "2025-12-08",
-          "why": "exhibit_index_unreadable"
-        },
-        {
-          "accession": "0001104659-25-120646",
-          "filer": "Semler Scientific, Inc.",
-          "filing_date": "2025-12-12",
-          "why": "headcount_may_be_exhibit_only"
         },
         {
           "accession": "0000879526-26-000003",
@@ -200,63 +50,15 @@
           "why": "headcount_may_be_exhibit_only"
         },
         {
-          "accession": "0001628280-26-003845",
-          "filer": "VIAVI SOLUTIONS INC.",
+          "accession": "0001084765-26-000011",
+          "filer": "RESOURCES CONNECTION, INC.",
           "filing_date": "2026-01-28",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001171843-26-000516",
-          "filer": "HARVARD BIOSCIENCE INC",
-          "filing_date": "2026-01-29",
           "why": "exhibit_index_unreadable"
-        },
-        {
-          "accession": "0001193125-26-031987",
-          "filer": "IO Biotech, Inc.",
-          "filing_date": "2026-01-30",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0000833640-26-000028",
-          "filer": "POWER INTEGRATIONS INC",
-          "filing_date": "2026-02-05",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001000753-26-000009",
-          "filer": "INSPERITY, INC.",
-          "filing_date": "2026-02-10",
-          "why": "headcount_may_be_exhibit_only"
         },
         {
           "accession": "0001104659-26-012358",
           "filer": "ECOLAB INC.",
           "filing_date": "2026-02-10",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001849253-26-000004",
-          "filer": "RYAN SPECIALTY HOLDINGS, INC.",
-          "filing_date": "2026-02-12",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-26-062405",
-          "filer": "STEPAN CO",
-          "filing_date": "2026-02-23",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001421517-26-000021",
-          "filer": "Energy Recovery, Inc.",
-          "filing_date": "2026-02-25",
-          "why": "exhibit_index_unreadable"
-        },
-        {
-          "accession": "0001577526-26-000013",
-          "filer": "C3.ai, Inc.",
-          "filing_date": "2026-02-25",
           "why": "headcount_may_be_exhibit_only"
         },
         {
@@ -266,40 +68,10 @@
           "why": "headcount_may_be_exhibit_only"
         },
         {
-          "accession": "0000096943-26-000011",
-          "filer": "TELEFLEX INC",
-          "filing_date": "2026-02-26",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-26-022572",
-          "filer": "Theravance Biopharma, Inc.",
-          "filing_date": "2026-03-03",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001213900-26-024752",
-          "filer": "InMed Pharmaceuticals Inc.",
-          "filing_date": "2026-03-06",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001650372-26-000021",
-          "filer": "Atlassian Corp",
-          "filing_date": "2026-03-11",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
           "accession": "0001628280-26-020222",
           "filer": "GOODYEAR TIRE & RUBBER CO",
           "filing_date": "2026-03-20",
           "why": "ambiguous_multiple_counts:600,200,400"
-        },
-        {
-          "accession": "0001213900-26-033878",
-          "filer": "ENDRA Life Sciences Inc.",
-          "filing_date": "2026-03-25",
-          "why": "headcount_may_be_exhibit_only"
         },
         {
           "accession": "0001193125-26-143876",
@@ -314,45 +86,9 @@
           "why": "ambiguous_multiple_counts:145,631"
         },
         {
-          "accession": "0001193125-26-149752",
-          "filer": "Cars.com Inc.",
-          "filing_date": "2026-04-09",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-26-155861",
-          "filer": "Snap Inc",
-          "filing_date": "2026-04-15",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-26-049837",
-          "filer": "IAC Inc.",
-          "filing_date": "2026-04-28",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
           "accession": "0001193125-26-192362",
           "filer": "Autolus Therapeutics plc",
           "filing_date": "2026-04-29",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001628280-26-029103",
-          "filer": "Cboe Global Markets, Inc.",
-          "filing_date": "2026-05-01",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-26-055902",
-          "filer": "Kyndryl Holdings, Inc.",
-          "filing_date": "2026-05-06",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-26-210294",
-          "filer": "Vital Farms, Inc.",
-          "filing_date": "2026-05-07",
           "why": "headcount_may_be_exhibit_only"
         },
         {
@@ -362,26 +98,20 @@
           "why": "headcount_may_be_exhibit_only"
         },
         {
-          "accession": "0001628280-26-039805",
-          "filer": "Gitlab Inc.",
-          "filing_date": "2026-06-02",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
           "accession": "0001193125-26-257376",
           "filer": "Fulcrum Therapeutics, Inc.",
           "filing_date": "2026-06-04",
           "why": "ambiguous_multiple_counts:57,9"
         },
         {
-          "accession": "0001193125-26-270384",
-          "filer": "enGene Therapeutics Inc.",
-          "filing_date": "2026-06-15",
-          "why": "headcount_may_be_exhibit_only"
+          "accession": "0001628280-26-042199",
+          "filer": "Veritone, Inc.",
+          "filing_date": "2026-06-10",
+          "why": "exhibit_index_unreadable"
         },
         {
-          "accession": "0001193125-26-270328",
-          "filer": "Neumora Therapeutics, Inc.",
+          "accession": "0001193125-26-270384",
+          "filer": "enGene Therapeutics Inc.",
           "filing_date": "2026-06-15",
           "why": "headcount_may_be_exhibit_only"
         },
