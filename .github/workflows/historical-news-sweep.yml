@@ -80,6 +80,17 @@ concurrency:
 jobs:
   sweep:
     runs-on: ubuntu-latest
+    # Sized from measurement, 2026-08-28: the 20 most recent scheduled runs all
+    # finished in 1.4-2.2 minutes. The one run that ever hit this ceiling
+    # (2026-08-27, run 33094996142) was not the corpus outgrowing 45 minutes:
+    # api.gdeltproject.org went dark and every planned sweep plus the pending
+    # retries ground through the full 6-attempt/90s-backoff schedule against a
+    # dead API (up to ~18 min per abandoned sweep, ~16 slots planned). That is
+    # now bounded at the source: sources/gdelt.py trips an outage breaker after
+    # the FIRST abandoned sweep, queues the rest in the work ledger, and lets
+    # the run finish (worst case ~1 abandoned sweep + BQ broad + the 600s
+    # extraction deadline, ~30 min). 45 keeps >30% headroom over that worst
+    # case and stays the last-resort backstop, never the thing that ends a run.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5

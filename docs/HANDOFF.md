@@ -6,6 +6,17 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-28): 2.20.146 — the dormant
+  monthly digest tier made correct (subject window, Indeed baseline from data,
+  cadence promises guarded).** The baton was read as HELD by `local` and is NOT
+  claimed here; this is the local session's own worker finishing the three
+  reader-copy items the nine-edition review parked. 2.20.145 was already
+  claimed on main by the holder's archive re-cite fix (f97b948), so this took
+  the next patch. The monthly tier stays DORMANT — no slot, no offer;
+  `alt_digest_accepted_freq` now enforces that a reader cannot store the
+  cadence until `alt_digest_offer_monthly` flips beside the new slot. Files:
+  `includes/subscribe.php`, `railway/digest_layout.py`, the digest tests, and
+  `ai-layoff-tracker.php` (version). Full write-up in TECHLOG 2026-08-28.
 - **VERSION CLAIMED (2026-08-24): 2.20.136 — Minnesota WARN letters recovered.**
   The baton was read as FREE on origin/main (the 2026-08-12 `local` hold was
   owner-confirmed stale and released in `d7501cd`); this session took it to make
@@ -828,7 +839,41 @@ immediately before the merge, per the 2.20.92 collision note below.
 
 - **STATUS:** FREE
 - **HOLDER:** -
-- **SINCE:** 2026-08-12
+- **SINCE:** 2026-08-28
+- **RELEASED (2026-08-28): 2.20.148 — the three unclassified corpus arrivals
+  each got the answer they needed.** Turkey = an ALIAS to the classified
+  'Türkiye' entry (spelling split, reported as vocabulary duplicate). Ukraine
+  = a dated ACKNOWLEDGED_BACKLOG entry with the research question stated.
+  "United States (NJ)" = a normalizer gap: `alt_normalize_country` now folds
+  state-ANNOTATED US values ("United States (NJ)" et al.) the way it already
+  folds bare state names; territories and USVI stay unfolded; row 134117
+  corrected to "United States" via edit-entries. TECHLOG 2026-08-28. NEXT:
+  the register workflow and Live data-integrity check should both go green on
+  their next runs; Ukraine's actual classification is the outstanding work.
+- **RELEASED (2026-08-28): 2.20.147 — the archive-cadence reading no longer
+  counts a re-cite's frozen timestamp.** `archive_recheck_cadence` reddened CI
+  at 11.8d (third strike of the re-cite artifact; drain healthy, oldest 3.0d at
+  yesterday's run end). The nightly WARN import re-cites frozen orphans at
+  00:37–01:15Z, hours before the 05:25Z drain's `alt_archive_requeue_recited`,
+  and CI sampled the gap. Fix is read-time symmetry in
+  `alt_archive_coverage_counts()`: the oldest MIN excludes exactly the rows the
+  requeue would reset (pinned equal by a new test running both real SQLs). No
+  threshold moved; stall detection intact. The `tests:live.data` alarm clears
+  on the next green run. TECHLOG 2026-08-28.
+- **RELEASED (2026-08-28): NO VERSION CONSUMED — two CI/ops fixes, no plugin
+  file touched.** (1) data-quality.yml now installs the hash-pinned min lock
+  (arming the panel in f01e1bf silently made openai its first non-stdlib
+  import; the 2026-08-27 held-relabel mail carried "the openai client is not
+  importable"), and `daily_classification_spotcheck.py` drops NO-OP relabels
+  (row 177321's "Automotive" -> "Automotive" had no filter). (2) The
+  historical sweep's 45-minute self-cancellation (run 33094996142) was a dead
+  GDELT public API ground through ~16 slots' full retry schedules;
+  `sources/gdelt.py` now trips an outage breaker after the first abandoned
+  sweep and queues the rest in the work ledger. Ceiling KEPT at 45 with the
+  measurement at the line. TECHLOG 2026-08-28, both entries. The two held
+  relabels were NOT applied (owner's call; the fixed panel re-rules them on
+  the next daily run). An uncommitted `includes/subscribe.php` edit from a
+  concurrent session was found mid-flight and deliberately left alone.
 - **WORKING ON (current subject, 2026-08-18, LATEST):** the two non-US
   collective-dismissal registers, landing as **2.20.94**, with a page-cache flush as **2.20.95**
   (`railway/sources/wup_mazowieckie.py`, `railway/sources/quebec.py`,

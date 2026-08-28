@@ -227,6 +227,97 @@ class RunLevelBehaviour(unittest.TestCase):
         self.assertGreaterEqual(seg[0]["attempts"], 2)
         self.assertEqual(gdelt.last_run_status(), "ok")
 
+    def test_outage_breaker_queues_remaining_sweeps_after_first_abandoned(self):
+        # 2026-08-27 (run 33094996142): api.gdeltproject.org went dark, every
+        # planned sweep ground through its full retry schedule, and the
+        # historical-sweep workflow cancelled ITSELF at 45 minutes — losing the
+        # ledger save. One abandoned sweep = QUERY_ATTEMPTS straight failures,
+        # so the rest must be QUEUED (window + query text kept, no attempt
+        # spent), not attempted against a dead API.
+        attempted = []
+
+        def api_dies_after_broad(query, start, end, mr, label="broad"):
+            if label == "broad":
+                return [_article("broad-1")], False, None
+            attempted.append(query)
+            return None, True, "HTTP 429"          # every sweep would abandon
+
+        sweeps = [("segment", '"Texas"'), ("segment", '"Ohio"'),
+                  ("euphemism", '"quiet part"')]
+        with patch.object(gdelt, "_query_window", api_dies_after_broad), \
+             patch.object(gdelt, "_planned_sweeps", lambda: list(sweeps)):
+            gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path)
+
+        # Only the FIRST sweep was attempted; the breaker stopped the rest.
+        self.assertEqual(attempted, ['"Texas"'])
+        self.assertEqual(gdelt.last_run_status(), "degraded")
+        ledger = self._read_ledger()
+        by_query = {s.get("query_text"): s for s in ledger["slots"].values()
+                    if s["family"] != "broad"}
+        self.assertEqual(by_query['"Texas"']["status"], "failed")
+        self.assertEqual(by_query['"Texas"']["attempts"], 1)
+        # Queued slots keep their query text for the retry path and spent no attempt.
+        self.assertEqual(by_query['"Ohio"']["status"], "queued")
+        self.assertEqual(by_query['"Ohio"']["attempts"], 0)
+        self.assertEqual(by_query['"quiet part"']["status"], "queued")
+
+        # --- A later healthy run picks the queued slots up via the pending path.
+        def healthy(query, start, end, mr, label="broad"):
+            return [_article("ok")], False, None
+
+        with patch.object(gdelt, "_query_window", healthy), \
+             patch.object(gdelt, "_planned_sweeps", lambda: []):
+            gdelt.pull_gdelt_between(
+                W_START + timedelta(hours=2), W_END + timedelta(hours=2),
+                max_records=5, ledger_path=self.ledger_path)
+
+        ledger = self._read_ledger()
+        statuses = {s.get("query_text"): s["status"] for s in ledger["slots"].values()
+                    if s["family"] != "broad"}
+        self.assertEqual(statuses['"Ohio"'], "complete")
+        self.assertEqual(statuses['"quiet part"'], "complete")
+
+    def test_outage_breaker_stops_the_pending_retry_walk_too(self):
+        # Six pending slots against a dead API is the same unbounded grind:
+        # the retry walk must stop at the first abandoned slot, leaving the
+        # rest pending (their natural, durable state).
+        # Seed a ledger with three pending slots inside the retry horizon.
+        ledger = {"slots": {}}
+        for i, q in enumerate(('"A"', '"B"', '"C"')):
+            key = gdelt._slot_key("segment", q, W_START, W_END)
+            ledger["slots"][key] = {
+                "family": "segment", "query_text": q,
+                "window_start": gdelt._win_stamp(W_START),
+                "window_end": gdelt._win_stamp(W_END),
+                "status": "queued", "returned": 0, "cap_hit": False,
+                "oldest": None, "newest": None, "attempts": 0,
+                "first_seen": gdelt._win_stamp(W_START),
+                "updated": gdelt._win_stamp(W_START)}
+        with open(self.ledger_path, "w", encoding="utf-8") as fh:
+            json.dump(ledger, fh)
+
+        attempted = []
+
+        def api_dead_for_sweeps(query, start, end, mr, label="broad"):
+            if label == "broad":
+                return [_article("broad-1")], False, None
+            attempted.append(query)
+            return None, True, "HTTP 429"
+
+        with patch.object(gdelt, "_query_window", api_dead_for_sweeps), \
+             patch.object(gdelt, "_planned_sweeps", lambda: []):
+            gdelt.pull_gdelt_between(
+                W_START, W_END + timedelta(hours=1), max_records=5,
+                ledger_path=self.ledger_path)
+
+        # Exactly one pending slot was tried; the walk stopped there.
+        self.assertEqual(len(attempted), 1)
+        after = self._read_ledger()
+        pending = [s for s in after["slots"].values()
+                   if s["family"] != "broad" and s["status"] in ("queued", "failed")]
+        self.assertEqual(len(pending), 3)  # 1 failed + 2 still queued, none lost
+
     def test_fully_abandoned_broad_window_still_raises_loudly(self):
         # No mirror available, public API abandons: a genuine failed batch that
         # must be non-zero (cron -> degraded), not a silent empty run.

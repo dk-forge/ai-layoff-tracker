@@ -349,6 +349,41 @@ function alt_normalize_country($name) {
     }
     if (isset($us_states[$k])) return 'United States';
 
+    /*
+      A STATE-ANNOTATED UNITED STATES IS STILL THE UNITED STATES. Live on
+      2026-08-28: row 134117 (Conduent, Idaho WARN register) carried country
+      "United States (NJ)", which the cleaner above reduces to
+      "united states nj" — not a state name, not in the map, so the
+      unknown-single-country rule returned it unchanged and the value reached
+      the country facet, the exports and the coverage register (which rightly
+      refused to treat it as a country). Same class as the bare-state defect
+      above, one shape wider: the annotation forms "United States (NJ)",
+      "United States - New Jersey", "United States, NJ" all clean to
+      "united states <state>", so the guard folds that shape when the suffix
+      is a state name or a state postal code. GEORGIA'S AMBIGUITY DOES NOT
+      APPLY HERE: bare "Georgia" is left alone above because the country is
+      the likelier meaning, but "United States (GA)" names the union first,
+      so the suffix can only mean the state. Territories stay out (PR, GU,
+      VI, AS, MP are not in either list), same judgement as above — and
+      "United States Virgin Islands" therefore passes through unchanged.
+    */
+    if (preg_match('/^united states(?: of america)? (.+)$/', $k, $us_m)) {
+        static $us_state_codes = null;
+        if ($us_state_codes === null) {
+            $us_state_codes = array_flip(array(
+                'al', 'ak', 'az', 'ar', 'ca', 'co', 'ct', 'de', 'dc', 'fl',
+                'ga', 'hi', 'id', 'il', 'in', 'ia', 'ks', 'ky', 'la', 'me',
+                'md', 'ma', 'mi', 'mn', 'mo', 'ms', 'mt', 'ne', 'nv', 'nh',
+                'nj', 'nm', 'ny', 'nc', 'nd', 'oh', 'ok', 'or', 'pa', 'ri',
+                'sc', 'sd', 'tn', 'tx', 'ut', 'vt', 'va', 'wa', 'wv', 'wi',
+                'wy',
+            ));
+        }
+        if (isset($us_states[$us_m[1]]) || isset($us_state_codes[$us_m[1]])) {
+            return 'United States';
+        }
+    }
+
     $map = array(
         'us' => 'United States', 'usa' => 'United States', 'united states' => 'United States',
         'united states of america' => 'United States', 'america' => 'United States',

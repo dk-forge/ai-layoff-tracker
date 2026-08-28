@@ -1,5 +1,252 @@
 # Tech Log
 
+## 2026-08-28 - three corpus arrivals nobody classified, and one of them was not a country (2.20.148)
+
+**What.** The nightly per-country register run went red (exit 3):
+`country_coverage_fresh` UNKNOWN naming Turkey, Ukraine and "United States
+(NJ)" as in the corpus with no classification and no acknowledgment. The
+guard worked exactly as designed — three countries had ARRIVED unnoticed —
+and each of the three needed a different answer.
+
+**Turkey — already classified, under another spelling.** The register holds
+'Türkiye' (Is Kanunu 4857 art. 29, assessed 2026-08-18); the corpus stores
+the English exonym on 4 rows that arrived 2026-08-28 (three news rows and
+the Stellantis 8-K). `ALIASES` gains `"Turkey": "Türkiye"`, the same design
+as Korea→South Korea: the classification is reused and the spelling split is
+reported as a vocabulary duplicate, not absorbed silently.
+
+**Ukraine — genuinely new, acknowledged rather than faked.** One news row
+(id 178665). Added to `ACKNOWLEDGED_BACKLOG` dated 2026-08-28 with the
+research question stated (mass-dismissal notification to the State
+Employment Service is reported in secondary sources, unread in the primary
+text; wartime labour-law derogations must be checked).
+
+**"United States (NJ)" — not a country, a normalizer gap (2.20.148).** Row
+134117 (Conduent, Idaho WARN register, `edited=true`) carried the value in
+its country column. `alt_normalize_country`'s cleaner strips punctuation, so
+"United States (NJ)" keyed to "united states nj" — not a state name, not in
+the map — and the unknown-single-country rule returned it unchanged: the
+same class as the 2026-08-18 North Carolina defect, one shape wider. The
+guard now folds any value cleaning to "united states <state name or postal
+code>" to "United States". Bare "Georgia" keeps its deliberate
+country-first reading, but "United States (GA)" names the union first and
+folds; territories (PR/GU/VI/AS/MP) stay unfolded, and "United States
+Virgin Islands" passes through unchanged — pinned in
+`tests/test_country_is_not_a_state.py`. The row itself was corrected to
+"United States" via the edit-entries workflow (reason logged there).
+
+## 2026-08-28 - the archive-cadence reading is contaminated by re-cites for ~4 hours a night, third strike (2.20.147)
+
+**What.** `archive_recheck_cadence` FAILed live at 11.8d against its 10d bound
+("oldest un-archived attempt 11.8d ago, 110 pending, 3,144 not yet in
+Wayback"), reddening Tests on every branch and raising a `tests:live.data`
+alarm — while the drain itself was demonstrably healthy: the 2026-08-27
+archive-backfill run ended on an EMPTY batch with the oldest attempt at
+2026-08-24 (3.0d). Overnight, with no run in between, the live reading jumped
+BACKWARDS to 2026-08-16 06:17. This is the re-cite artifact documented in
+archive-backfill.yml and fixed at the DRAIN on 2026-08-26
+(`alt_archive_requeue_recited`), striking for the third time.
+
+**Root cause — the requeue ran at the wrong end of the night.** The requeue
+resets a re-cited orphan's frozen `checked_at` to NULL, but only inside the
+key-protected candidate pre-fetch, i.e. at the daily 05:25Z drain. The nightly
+WARN import (00:37–01:15Z) can re-cite a frozen orphan HOURS earlier, and
+anything sampling `/archive-coverage` in that gap reads the pre-orphan
+timestamp as the pool's age. CI's Tests run landed in the window (~01:00Z) on
+2026-08-26 (25.3d) and again on 2026-08-28 (11.8d) — both ages the very next
+drain cleared. The docblock even predicted the residual ("reddens CI and mails
+the owner for up to a day") and left it open.
+
+**Fix (2.20.147; claimed 2.20.145, but a concurrent session shipped 2.20.146 mid-flight, so the number moved forward) — read-time symmetry, no threshold moved.** The `$oldest` MIN
+in `alt_archive_coverage_counts()` now excludes exactly the rows the requeue
+would reset: a cited row whose layoff side carries `MAX(l.updated_at) >
+a.checked_at` is semantically QUEUED (its citation has never been checked; the
+next run drains it first, NULLs-first ordering), so its frozen timestamp no
+longer masquerades as the pool's oldest attempt. `PROMISE_DAYS`,
+`MAX_AGE_DAYS`, the projection and the zero-recheck branch are all untouched.
+The stall guardrail holds: a row the cron stopped draining has a layoff side
+nobody re-writes, so it stays in the MIN and ages into the bound, and a
+wholesale stop still trips the zero-recheck branch within 48h.
+`tests/test_archive_promise.py` gains `OldestReadingIgnoresRequeueDueRows`,
+which runs the REAL SQL from db.php against sqlite and pins the read-time
+exclusion set equal to the requeue's reset set (running the requeue must not
+move the reading), plus the stalled-pool-still-ages case.
+
+**Not done, on purpose.** No write-path change: NULLing `checked_at` from the
+WARN /bulk path would put an archive-index write on every import, and the
+backfill's design promise is "NO change to the ingest write path". The
+`tests:live.data:2e215caae5bac21b` alarm clears itself on the next green run.
+## 2026-08-28 - the dormant monthly tier: a subject naming one day, a typed Indeed baseline, and cadence promises nothing checked (2.20.146)
+
+**What.** The three reader-copy items the nine-edition review (2026-08-28)
+parked as owner items are fixed, WITHOUT wiring or arming the monthly tier -
+it stays dormant by design (no send slot); these fixes make it correct so
+arming later is a schedule change, not a copy fix.
+
+**FIX 1 - the monthly SUBJECT named a single day for a month-to-date window.**
+`alt_digest_subject_period` sent monthly into the daily branch
+(`alt_digest_short_range($to,$to)` -> "Aug 26" over an Aug 1-26 edition), and
+`alt_digest_period_phrase` and `alt_digest_fallback_subject` did the same.
+A monthly is a WINDOW tier for the weekly's reason: the figures are a
+month-to-date sum, and one date on them is a false claim in the line most
+people only ever see. Subject token is now the window ("Aug 1-24"); the
+phrase is the masthead's own `alt_digest_month_edition_label` ("August 2026 ·
+August 1-24"); the fallback derives the window from `$to` alone (a monthly
+window always starts on the 1st). The PHP/Python subject port moved in
+lockstep: `digest_layout.py` gains `month_edition_label` and the monthly
+branches in `subject_period`/`period_phrase`;
+`tests/test_digest_subject_agreement.py` gains five monthly cross-language
+cases and `tests/test_digest_monthly_edition.py` pins the exact strings on
+BOTH sides. Daily and weekly subjects are byte-identical.
+
+**FIX 2 - the typed Indeed baseline, and the two defects beside it.** The
+string "(100 = February 1, 2020)" was hand-typed; if Hiring Lab rebases the
+series it silently lies. The payload CARRIES the note (`national.baseline`,
+written by the sibling's build_indeed_index.py), so the composer now renders
+that, with the typed literal as documented fallback ONLY for a pre-2026-08
+seed without the field (the residual staleness risk is named in the source).
+Also: the parenthetical was gated on `$vs_baseline` - a property of a
+DIFFERENT number - so an index without it printed an unexplained level; it is
+unconditional now. And `$vs_base` was fetched but never rendered; the reader
+now sees "1.79 points above the baseline" (above/below/level with), the
+figure the parenthetical just explained. All pinned in
+`test_digest_monthly_edition.py`, including the fallback and below-baseline
+shapes.
+
+**FIX 3 - the typed cadence sentences had no guard, and the monthly promise
+had no gate.** `alt_digest_cadence_sentence` hand-types "each morning" and
+"Monday mornings", and `includes/subscribe.php` is outside
+`test_cadence_is_derived.py`'s surfaces (that rule is INGEST cadence; this is
+DIGEST cadence, sourced from `railway/digest_slot.py` SEND_TIMES) - so a slot
+move would ship a stale promise silently. Deliberately NOT a cross-language
+cadence generator: new `tests/test_digest_cadence_promises.py` DERIVES the
+phrasing facts from digest_slot.py (daily slot unconditional, weekly slot's
+weekday) and reds CI when the sentences disagree, and holds the dormant-tier
+invariant both ways (`SEND_TIMES` monthly slot <-> `alt_digest_offer_monthly`
+default must flip together). The monthly promise itself is now structurally
+unreachable while dormant: new `alt_digest_accepted_freq` refuses to STORE an
+unoffered monthly (a hand-crafted POST was the only way to ask - the form
+shows weekly/daily radios), wired at the signup intake and the parked-prefs
+restore, with the pass-through-once-armed direction tested too.
+
+**Verified.** php -l clean; the digest suite is 662 tests with only the 4
+known dst_slot env errors (system python3 lacks `requests`); every new test
+was run against the pre-fix sources and failed there (14 failures + 1 error).
+2.20.146 consumed - 2.20.145 was already claimed on main by the baton
+holder's archive re-cite fix (f97b948).
+
+## 2026-08-28 - the daily digest wore a week's masthead over a two-day window (2.20.144)
+
+**What.** The nine-edition review (2026-08-28) found the daily layoff edition -
+a two-day provisional window - rendered the ISO-week masthead ("2026 Week 35 ·
+August 27-28") and opened its lead "In Week 35 of 2026, employers verified ...",
+seven days a week. A two-day figure wearing a week's name is a false claim about
+the window in the two lines most likely to be quoted on their own - the exact
+class of masthead error the monthly branch (2026-08-25) was built to avoid.
+
+**Root cause.** `alt_digest_compose_layoff`'s masthead/lead fork was
+`$is_monthly` ONLY: daily and weekly shared the weekly's labels. It survived
+because the sole guard (`test_digest_week_numbering.
+test_a_daily_edition_carries_no_week_number`) checked the SUBJECT's period
+phrase, never the composed body.
+
+**Fix (2.20.144, ef41d8c).** A week label is earned by the WINDOW, not granted
+by the tier: only a complete Monday-to-Sunday span (the shape
+`alt_digest_weekly_window` constructs) wears "YYYY Week N". Every other
+non-monthly window - the daily pair, an empty-freq preview range, a seven-day
+span straddling two ISO weeks - states its dates (`alt_digest_date_range`) and
+opens "Over August 27-28, 2026, employers verified ...", keeping the
+lifted-out-line property. The weekly edition is byte-identical, asserted.
+`railway/tests/test_digest_daily_masthead.py` (9 cases) holds the composed BODY,
+including a no-week-claim-anywhere sweep over both parts.
+
+**Also found in the same review, deliberately NOT fixed tonight (owner items):**
+the monthly tier (dormant, unwired by design) has a subject that names a single
+day and a typed Indeed baseline ("February 1, 2020") to fix AT ARMING TIME; the
+digest footer carries no physical postal address (CAN-SPAM §7704(a)(5)) - needs
+the owner's real address, never an invented one; the cadence sentences in
+`subscribe.php:507-520` are typed and outside `test_cadence_is_derived.py`'s
+surface list.
+
+## 2026-08-28 - the armed panel could not import openai in CI, and a no-op relabel reached the owner's inbox
+
+**What.** The first armed run of the held-relabel adjudication panel
+(2026-08-27) mailed "2 label relabel(s) HELD by the panel, not applied" for
+rows 177321 and 176739 with "Panel error: the openai client is not
+importable" on both. The panel never voted; the mail was the bare-hold
+fallback wearing the panel's subject line.
+
+**Root cause 1 (deps).** `data-quality.yml` had NO python-deps install step -
+every step it ran before f01e1bf was stdlib-only. Arming the panel
+(`ALT_PANEL_ARMED: "1"`) silently made `openai` this job's first third-party
+import, and an absent dependency in a workflow produces no signal until the
+code path that needs it runs. Fix: the standard hash-pinned min-lock install
+(`pip install --require-hashes -r railway/requirements-min.lock`), verified
+sufficient in a clean venv (the whole import chain
+spotcheck -> adjudication_panel -> spend/ops_notify needs only openai +
+requests beyond stdlib). No pip cache, per the 2026-08-19 measurement.
+
+**Root cause 2 (the no-op).** Held row 177321 proposed "Automotive" ->
+"Automotive". There was genuinely no filter: the model is ASKED for clear
+mismatches only, but nothing held it to that, and an echoed unchanged value
+passes flagging, sails through confirmation (the model happily "agrees" the
+suggested value is accurate - it is the current value) and lands in the hold
+queue, where the armed path spends three panel votes on a write that changes
+nothing. New `drop_noop_flags()` in `daily_classification_spotcheck.py` drops
+a flag whose suggestion matches the row's actual current value (as this run's
+sample read it from the corpus) or the flag's own echoed current, case- and
+whitespace-insensitive, on both the live and `--dry-run-armed` paths; dropped
+no-ops are named in the run summary, never silently discarded. Tests in
+`test_spotcheck_relabel_bounds.py` (`NoOpRelabelsAreDropped`) drive the real
+`main()` and assert a no-op is neither written, nor held, nor mailed - and
+that a real change beside a dropped no-op still lands.
+
+The two held corrections themselves were NOT applied here: adjudication is the
+owner's, and the fixed panel re-rules the (still re-derived) backlog on the
+next daily run.
+
+## 2026-08-28 - historical sweep cancelled ITSELF at 45 minutes: unbounded retry grind against a dead GDELT API
+
+**What.** Run 33094996142 (2026-08-27) of "Historical global news sweep" was
+cancelled by its own `timeout-minutes: 45`. Every other scheduled run in the
+last 20 finished in 1.4-2.2 minutes - this was not growth, it was an outage
+shape with no bound.
+
+**Root cause.** `api.gdeltproject.org` went dark (connect/read timeouts plus
+429s). The broad window was fine - the BigQuery mirror served 21,575 articles -
+but every planned public-API sweep (segments, native, euphemism, theme, euro;
+~10 per run, plus up to 6 pending-slot retries) then ground through the full
+`GDELT_QUERY_ATTEMPTS=6` / 90s-backoff schedule against an API that answered
+nothing: up to ~18 minutes per abandoned sweep, ~16 slots planned. The
+existing `BACKFILL_DEADLINE_SECONDS=600` never applied - it bounds the
+per-article EXTRACTION loop in `gdelt_backfill.py`, which runs after
+collection returns. The cancellation also lost the run's work-ledger save and
+left an orphaned `running` health note on `gdelt_historical` (visible in
+`ops_status [2e]`; the cursor was not advanced, so the window self-heals by
+repeating).
+
+**Fix (fit the job, not the ceiling).** An outage breaker in
+`sources/gdelt.py pull_gdelt_between`: the FIRST sweep slot abandoned after
+every attempt trips it - the remaining planned sweeps are recorded QUEUED in
+the work ledger (window + query text kept, no attempt spent) and picked up by
+the existing pending-retry path on a later run, and the pending-retry walk
+itself stops at its first abandoned slot the same way. A false trip costs one
+run of sweeps, all queued, none lost; not tripping costs the whole run,
+ledger included. The run still reports degraded. Worst case is now ~1
+abandoned sweep (~18 min) + mirror broad + the 600s extraction deadline,
+~30 min, so `timeout-minutes: 45` KEEPS its value with the measurement
+written at the line (repo convention). Live cron's gdelt path shares the
+breaker - the orphaned gdelt runs of 2026-08-19 and 2026-08-26 in
+`ops_status [2e]` have the same fingerprint. Tests:
+`test_gdelt_window_coverage.py` (breaker queues remaining sweeps, spent no
+attempt, later healthy run completes them; retry walk stops too).
+
+**Fleet audit** ("fix all the self timeouts"): every other workflow's recent
+max duration sits under 80% of its ceiling. Tests went 14m/15 before
+2026-08-26 (two self-cancellations) and is 2-3m since the style_check
+quadratic-regex fix - no change needed. Watch item: Source-archive backfill,
+max 81m against 120 (68%), rising slowly with the pool.
+
 ## 2026-08-26 - style_check.collect() went from 762s to 0.5s (one quadratic regex)
 
 **What.** `style_check.collect()` was the single biggest cost in CI: it drove

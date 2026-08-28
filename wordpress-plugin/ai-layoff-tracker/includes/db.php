@@ -3591,12 +3591,34 @@ function alt_archive_coverage_counts() {
     // correctly never retries those orphans (they are not candidates), and an
     // orphan's frozen timestamp must not redden a promise no page is making.
     // Same join shape the candidate query runs daily.
+    //
+    // A row already DUE FOR REQUEUE is excluded for the same reason the orphan
+    // is. alt_archive_requeue_recited() resets checked_at -> NULL for a cited
+    // row whose layoff side was re-ingested (updated_at) after the last check,
+    // but it runs only inside the key-protected candidate pre-fetch — the daily
+    // 05:25Z drain. The nightly WARN import (00:37–01:15Z) can re-cite a frozen
+    // orphan HOURS before that, and anything sampling this endpoint in the gap
+    // read the pre-orphan timestamp as the pool's age: archive_recheck_cadence
+    // FAILed on 25.3d (2026-08-26) and 11.8d (2026-08-28) that the next run
+    // cleared both times. The requeue-due row is semantically QUEUED — its
+    // citation has not been checked and the next run drains it first — so the
+    // reading applies the requeue's own predicate (MAX(l.updated_at) newer than
+    // a.checked_at ⇔ some citing row re-ingested since the check) instead of
+    // counting time during which the URL was not ours to check. THE STALL
+    // GUARDRAIL IS UNCHANGED: a row the cron stopped draining has a layoff side
+    // nobody is re-writing, so it stays in this MIN and ages into the bound,
+    // and a wholesale stop trips the zero-recheck branch within 48h regardless.
+    // railway/tests/test_archive_promise.py runs this exact SQL and pins its
+    // exclusion set equal to the requeue's reset set.
     $oldest = $wpdb->get_var(
-        "SELECT MIN(a.checked_at)
-           FROM $layoffs l
-           JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
-          WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
-            AND a.status IN ('pending','unavailable')");
+        "SELECT MIN(t.checked_at)
+           FROM (SELECT a.url_hash, a.checked_at, MAX(l.updated_at) AS recited_at
+                   FROM $layoffs l
+                   JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
+                  WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
+                    AND a.status IN ('pending','unavailable')
+                  GROUP BY a.url_hash, a.checked_at) t
+          WHERE t.recited_at IS NULL OR t.recited_at <= t.checked_at");
     // THE MARGIN, not just the reading. $oldest says whether the promise is
     // ALREADY broken; these two say whether it is ABOUT to break, which is the
     // only version of this number a human can act on in time. On 2026-08-04 the

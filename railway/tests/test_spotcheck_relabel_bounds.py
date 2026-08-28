@@ -253,6 +253,57 @@ class SmallFixesStillLand(unittest.TestCase):
         self.assertNotIn(114335, h.edited_ids)
 
 
+class NoOpRelabelsAreDropped(unittest.TestCase):
+    """A relabel proposing the value the row already carries goes nowhere.
+
+    On 2026-08-27 the armed panel run held and MAILED row 177321 proposing
+    "Automotive" -> "Automotive": three panel votes and a line of the owner's
+    attention spent on a write that changes nothing. Nothing filtered for it.
+    """
+
+    def test_a_noop_on_a_big_row_is_neither_written_nor_held_nor_mailed(self):
+        row = INCIDENT_ROWS[1]  # General Motors, industry "Automotive", 47,000
+        h = Harness(newest=[], biggest=[row],
+                    flags=[_flag(row, "industry", "Automotive")])
+        h.run()
+        self.assertNotIn(row["id"], h.edited_ids)
+        self.assertFalse([p for p in h.alert_payloads if p.get("dedupe_key")],
+                         "a no-op relabel must not reach the owner's inbox")
+        self.assertIn("no-op", h.output)
+
+    def test_a_noop_on_a_small_row_is_not_written(self):
+        h = Harness(newest=[SMALL_ROW], biggest=[],
+                    flags=[_flag(SMALL_ROW, "industry", "Retail")])
+        h.run()
+        self.assertNotIn(SMALL_ROW["id"], h.edited_ids)
+
+    def test_case_and_whitespace_do_not_disguise_a_noop(self):
+        h = Harness(newest=[SMALL_ROW], biggest=[],
+                    flags=[_flag(SMALL_ROW, "industry", "  retail ")])
+        h.run()
+        self.assertNotIn(SMALL_ROW["id"], h.edited_ids)
+
+    def test_a_flag_whose_own_echo_matches_its_suggestion_is_dropped(self):
+        # The model mis-echoes "current" but suggests exactly what it echoed:
+        # by its own account nothing changes, so its confirmation carries no
+        # information — dropped, not judged.
+        flag = {"id": SMALL_ROW["id"], "field": "industry",
+                "current": "Retailing", "suggested": "Retailing",
+                "why": "echo"}
+        h = Harness(newest=[SMALL_ROW], biggest=[], flags=[flag])
+        h.run()
+        self.assertNotIn(SMALL_ROW["id"], h.edited_ids)
+
+    def test_a_real_change_still_lands_beside_a_dropped_noop(self):
+        real = _flag(SMALL_ROW, "industry", "Manufacturing")
+        noop_row = dict(SMALL_ROW, id=900007)
+        h = Harness(newest=[SMALL_ROW, noop_row], biggest=[],
+                    flags=[real, _flag(noop_row, "industry", "Retail")])
+        h.run()
+        self.assertIn(SMALL_ROW["id"], h.edited_ids)
+        self.assertNotIn(900007, h.edited_ids)
+
+
 class NothingHeldClearsTheAlarm(unittest.TestCase):
     def test_a_clean_run_resolves_the_open_alert(self):
         h = Harness(newest=[SMALL_ROW], biggest=[], flags=[])
