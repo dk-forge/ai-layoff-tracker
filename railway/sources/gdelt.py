@@ -766,6 +766,23 @@ def _slot_key(family, query, start, end):
 # of retry memory, which is strictly better than the status quo of all of it.
 LEDGER_REMOTE_TIMEOUT = 30
 
+# Two process-level guards, because `pull_gdelt_between` is called ONCE per run
+# by the live cron but ONCE PER WEEK-WINDOW by gdelt_backfill.py. A multi-year
+# backfill is hundreds of windows, and this host is a shared Bluehost account
+# that has returned 504 under load (TECHLOG 2026-07-31). Un-guarded, the sync
+# would add two requests per window to a job that already posts two health
+# notes per window.
+#
+#   * the remote READ is needed once per process: after the first union, the
+#     file written at the end of each window carries the state forward.
+#   * the remote WRITE is skipped when the slot payload is byte-identical to
+#     the last one accepted, so an idle stretch of windows costs nothing.
+#
+# Neither guard can turn a needed sync into a skipped one: the read flag is set
+# only on a SUCCESSFUL union, and the write hash only on a 200.
+_REMOTE_LEDGER_READ = False
+_REMOTE_LEDGER_PUSHED = None
+
 
 def _remote_tracker_meta(body=None):
     """POST to the keyed /tracker-meta endpoint; return the stored meta or None.
@@ -834,9 +851,11 @@ def _load_work_ledger(path=WORK_LEDGER_PATH, remote=True):
     except Exception as exc:
         print(f"GDELT work ledger unreadable ({exc}); starting fresh")
         data = {"slots": {}}
-    if remote:
+    global _REMOTE_LEDGER_READ
+    if remote and not _REMOTE_LEDGER_READ:
         meta = _remote_tracker_meta()
         if isinstance(meta, dict) and isinstance(meta.get("gdelt_ledger"), dict):
+            _REMOTE_LEDGER_READ = True
             before = len(data["slots"])
             data["slots"] = _merge_slots(data["slots"], meta["gdelt_ledger"])
             gained = len(data["slots"]) - before
@@ -873,9 +892,17 @@ def _save_work_ledger(ledger, path=WORK_LEDGER_PATH, remote=True):
         # A read-only or absent path is survivable now that the remote copy
         # below is the one the live cron actually depends on.
         print(f"GDELT work ledger: could not write {path} ({exc})")
-    if remote and _remote_tracker_meta({"set_gdelt_ledger": payload["slots"]}) is not None:
-        print(f"GDELT work ledger: {len(payload['slots'])} slot(s) persisted to "
-              f"/tracker-meta")
+    global _REMOTE_LEDGER_PUSHED
+    if remote:
+        fingerprint = json.dumps(payload["slots"], sort_keys=True)
+        if fingerprint == _REMOTE_LEDGER_PUSHED:
+            # Nothing moved since the last accepted push. A backfill's quiet
+            # window costs no request at all.
+            return
+        if _remote_tracker_meta({"set_gdelt_ledger": payload["slots"]}) is not None:
+            _REMOTE_LEDGER_PUSHED = fingerprint
+            print(f"GDELT work ledger: {len(payload['slots'])} slot(s) persisted "
+                  f"to /tracker-meta")
 
 
 def _parse_stamp(stamp):

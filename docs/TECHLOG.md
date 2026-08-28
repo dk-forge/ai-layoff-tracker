@@ -44,7 +44,20 @@ non-200 and an unreachable host are UNKNOWN, never "nothing is owed" — the
 local slot survives both, and that is pinned. An unwritable path no longer
 kills the save, now that the remote copy is the one the cron depends on.
 
-**Verification.** `tests/test_gdelt_ledger_persistence.py`, 18 cases, and both
+**The sync is BOUNDED, because the backfill is not the cron.**
+`pull_gdelt_between` is called once per run by `cron.py` and **once per
+week-window** by `gdelt_backfill.py`, so a multi-year backfill is hundreds of
+calls — and this is a shared Bluehost account that returned 504 under load on
+2026-07-31. Un-guarded, the sync would add two requests per window to a job
+already posting two health notes per window. So the remote READ happens once
+per process (after the first union the file carries state forward), and the
+remote WRITE is skipped when the payload is byte-identical to the last
+ACCEPTED push. Both guards arm on success only: a read flag set on failure
+would leave a process permanently unable to recover its ledger, and a
+fingerprint recorded on attempt would let one 503 mute every later push. Both
+of those are pinned by mutation.
+
+**Verification.** `tests/test_gdelt_ledger_persistence.py`, 23 cases, and both
 halves were confirmed by MUTATION rather than by passing: reverting the
 load-side merge fails 4, removing the save-side POST fails 3. The
 un-credentialed path is pinned to make no request at all, so a local run and a

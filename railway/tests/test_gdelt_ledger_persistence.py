@@ -71,6 +71,15 @@ class LedgerPersistenceBase(unittest.TestCase):
         self._saved_env = {k: os.environ.get(k)
                            for k in ("WP_SITE_URL", "WP_API_KEY")}
         self.addCleanup(self._restore_env)
+        # The two process-level sync guards are module state; a test that left
+        # them set would silently disarm the next test's remote call.
+        self._reset_sync_guards()
+        self.addCleanup(self._reset_sync_guards)
+
+    @staticmethod
+    def _reset_sync_guards():
+        gdelt._REMOTE_LEDGER_READ = False
+        gdelt._REMOTE_LEDGER_PUSHED = None
 
     def _restore_env(self):
         for key, value in self._saved_env.items():
@@ -260,6 +269,63 @@ class BookkeepingNeverTakesDownTheRun(LedgerPersistenceBase):
                                 path=unwritable)
         posts = [c for c in recorder.calls if "set_gdelt_ledger" in (c["json"] or {})]
         self.assertEqual(len(posts), 1)
+
+
+class TheSyncIsBoundedForTheBACKFILL(LedgerPersistenceBase):
+    """`pull_gdelt_between` is called ONCE per run by the cron and once per
+    WEEK-WINDOW by gdelt_backfill.py, so an un-guarded sync would add two
+    requests per window to a shared host that has 504'd under load."""
+
+    def test_the_remote_is_read_once_per_process_not_once_per_window(self):
+        recorder = _Recorder(payload={"gdelt_ledger": {}})
+        self._arm(recorder)
+        for _ in range(5):
+            gdelt._load_work_ledger(path=self.path)
+        self.assertEqual(len(recorder.calls), 1,
+                         "the backfill re-read the ledger on every window")
+
+    def test_an_unchanged_ledger_is_not_re_posted(self):
+        recorder = _Recorder()
+        self._arm(recorder)
+        ledger = {"slots": {"a": self._slot("20260828T100000Z")}}
+        gdelt._save_work_ledger(ledger, path=self.path)
+        gdelt._save_work_ledger(ledger, path=self.path)
+        gdelt._save_work_ledger(ledger, path=self.path)
+        self.assertEqual(len(recorder.calls), 1,
+                         "an idle window still cost a request")
+
+    def test_a_changed_ledger_IS_re_posted(self):
+        # The guard must not cost the durability it exists to make affordable.
+        recorder = _Recorder()
+        self._arm(recorder)
+        gdelt._save_work_ledger({"slots": {"a": self._slot("20260828T100000Z")}},
+                                path=self.path)
+        gdelt._save_work_ledger({"slots": {"a": self._slot("20260828T100000Z"),
+                                           "b": self._slot("20260828T110000Z")}},
+                                path=self.path)
+        self.assertEqual(len(recorder.calls), 2)
+
+    def test_a_failed_read_does_not_consume_the_once_per_process_budget(self):
+        # A guard that armed on FAILURE would turn one flaky request into a
+        # process that never recovers its ledger at all.
+        recorder = _Recorder(raises=RuntimeError("connection reset"))
+        self._arm(recorder)
+        gdelt._load_work_ledger(path=self.path)
+        gdelt.requests = _Recorder(payload={"gdelt_ledger":
+                                            {"owed": self._slot("20260828T100000Z")}})
+        self.assertIn("owed", gdelt._load_work_ledger(path=self.path)["slots"])
+
+    def test_a_failed_push_is_retried_on_the_next_save(self):
+        # Likewise: the fingerprint must record what the endpoint ACCEPTED, not
+        # what we attempted, or one 503 would suppress every later push.
+        recorder = _Recorder(payload={}, status_code=503)
+        self._arm(recorder)
+        ledger = {"slots": {"a": self._slot("20260828T100000Z")}}
+        gdelt._save_work_ledger(ledger, path=self.path)
+        good = _Recorder()
+        gdelt.requests = good
+        gdelt._save_work_ledger(ledger, path=self.path)
+        self.assertEqual(len(good.calls), 1, "a 503 permanently muted the sync")
 
 
 class TheRemoteCanBeTurnedOff(LedgerPersistenceBase):
