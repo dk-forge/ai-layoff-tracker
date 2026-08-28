@@ -88,6 +88,23 @@ The daily window (yesterday and today) is also unchanged: it is deliberate,
 documented on `alt_digest_window`, and the real defect underneath the "window
 is imprecise" complaint was the date BASIS, which is fixed above.
 
+**Class:** derived-value-typed-by-hand
+**Guard:** railway/tests/test_digest_talent_observation.py
+
+**Why that class and not `two-copies-drifted`, which it also resembles.** Four
+separate sentences here were facts ABOUT THE ROWS, typed once into copy instead
+of read off them: "each headline is quoted as its source published it", "the
+signals naming the most jobs first", "(23 jobs)", and "the rest are published
+indications we have not confirmed". Every one was true when it was written,
+over a list of news rows, and every one went false as the row mix changed - the
+`ats_boards` collector shipped and the daily edition became mostly board
+readings. Nothing reported it, because prose that has gone stale still renders.
+The drift reading is real too (`pipeline/count_meaning.py` in the talent repo
+is the definition, and this composer had grown an implicit second one), and it
+is recorded here so a later count can go either way. But the shape that let it
+ship is the typed-not-derived one, and the fix is the same shape in reverse:
+the caption is now built from the rows it sits over.
+
 **Proved by mutation.** `railway/tests/test_digest_talent_observation.py`, 20
 tests. Each fix reverted in turn reddens exactly its own assertions: the
 postings phrase (2), the board-read date (1), the derived caption (3), the
