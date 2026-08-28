@@ -783,6 +783,16 @@ LEDGER_REMOTE_TIMEOUT = 30
 _REMOTE_LEDGER_READ = False
 _REMOTE_LEDGER_PUSHED = None
 
+# How often the ledger may be pushed DURING a run. The end-of-run save cannot
+# be the only one: railway-cron wrote no end-of-run record on 2026-08-16,
+# 2026-08-19 or 2026-08-26, and ops_status [2e] shows the matching collector
+# runs starting and never finishing -- so the runs that lose their ledger are
+# exactly the ones whose abandoned windows most need retrying. Two minutes is
+# chosen against the 5s REQUEST_DELAY: a run cannot issue enough queries in
+# that time for the sync to be a meaningful share of its request budget.
+LEDGER_SYNC_INTERVAL_SECONDS = 120
+_LAST_MID_RUN_SYNC = None
+
 
 def _remote_tracker_meta(body=None):
     """POST to the keyed /tracker-meta endpoint; return the stored meta or None.
@@ -865,8 +875,8 @@ def _load_work_ledger(path=WORK_LEDGER_PATH, remote=True):
     return data
 
 
-def _save_work_ledger(ledger, path=WORK_LEDGER_PATH, remote=True):
-    """Persist the ledger, pruning what is finished or too old to retry."""
+def _pruned_slots(ledger, *, quiet=False):
+    """The slots worth keeping: drop what is finished or too old to retry."""
     now = datetime.now(timezone.utc)
     kept = {}
     for key, slot in ledger.get("slots", {}).items():
@@ -879,11 +889,55 @@ def _save_work_ledger(ledger, path=WORK_LEDGER_PATH, remote=True):
                 continue
         elif aged_out:
             # An incomplete window older than the horizon is a past gap, not
-            # present work. Drop it loudly rather than retry it forever.
-            print(f"GDELT work ledger: dropping aged-out incomplete slot {key}")
+            # present work. Drop it loudly rather than retry it forever --
+            # but only from the END-of-run save, or a throttled mid-run sync
+            # would reprint the same line every couple of minutes.
+            if not quiet:
+                print(f"GDELT work ledger: dropping aged-out incomplete slot {key}")
             continue
         kept[key] = slot
-    payload = {"slots": {k: kept[k] for k in sorted(kept)}}
+    return {k: kept[k] for k in sorted(kept)}
+
+
+def _push_slots_remote(slots):
+    """Push the slot map unless it is byte-identical to the last ACCEPTED push."""
+    global _REMOTE_LEDGER_PUSHED
+    fingerprint = json.dumps(slots, sort_keys=True)
+    if fingerprint == _REMOTE_LEDGER_PUSHED:
+        # Nothing moved since the last accepted push. A backfill's quiet
+        # window costs no request at all.
+        return False
+    if _remote_tracker_meta({"set_gdelt_ledger": slots}) is None:
+        return False
+    _REMOTE_LEDGER_PUSHED = fingerprint
+    return True
+
+
+def _sync_ledger_mid_run(ledger):
+    """Throttled mid-run push, so a run that DIES does not lose what it learned.
+
+    The end-of-run save is not enough on its own, because dying mid-run is a
+    thing this job measurably does: railway-cron wrote no end-of-run record on
+    2026-08-16, 2026-08-19 or 2026-08-26, and `ops_status [2e]` shows the
+    matching `gdelt`/`local_news`/`regional_feeds` runs starting and never
+    finishing. A ledger that is only written at the end is lost in exactly the
+    runs whose abandoned windows most need retrying.
+
+    Throttled to one push per LEDGER_SYNC_INTERVAL_SECONDS, and skipped
+    entirely when nothing changed (`_push_slots_remote`), so the worst case is
+    a handful of requests across a long run rather than one per slot.
+    """
+    global _LAST_MID_RUN_SYNC
+    now = time.monotonic()
+    if _LAST_MID_RUN_SYNC is not None and (now - _LAST_MID_RUN_SYNC) < LEDGER_SYNC_INTERVAL_SECONDS:
+        return
+    _LAST_MID_RUN_SYNC = now
+    _push_slots_remote(_pruned_slots(ledger, quiet=True))
+
+
+def _save_work_ledger(ledger, path=WORK_LEDGER_PATH, remote=True):
+    """Persist the ledger, pruning what is finished or too old to retry."""
+    payload = {"slots": _pruned_slots(ledger)}
     try:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2, sort_keys=False)
@@ -892,17 +946,9 @@ def _save_work_ledger(ledger, path=WORK_LEDGER_PATH, remote=True):
         # A read-only or absent path is survivable now that the remote copy
         # below is the one the live cron actually depends on.
         print(f"GDELT work ledger: could not write {path} ({exc})")
-    global _REMOTE_LEDGER_PUSHED
-    if remote:
-        fingerprint = json.dumps(payload["slots"], sort_keys=True)
-        if fingerprint == _REMOTE_LEDGER_PUSHED:
-            # Nothing moved since the last accepted push. A backfill's quiet
-            # window costs no request at all.
-            return
-        if _remote_tracker_meta({"set_gdelt_ledger": payload["slots"]}) is not None:
-            _REMOTE_LEDGER_PUSHED = fingerprint
-            print(f"GDELT work ledger: {len(payload['slots'])} slot(s) persisted "
-                  f"to /tracker-meta")
+    if remote and _push_slots_remote(payload["slots"]):
+        print(f"GDELT work ledger: {len(payload['slots'])} slot(s) persisted "
+              f"to /tracker-meta")
 
 
 def _parse_stamp(stamp):
@@ -1245,6 +1291,9 @@ def _record_slot(ledger, family, query, start, end, status, articles, *, cap_hit
     if family != "broad":
         slot["query_text"] = query
     ledger["slots"][key] = slot
+    # The one place a slot changes, so the one place worth syncing from. The
+    # call is throttled and skips an unchanged ledger, so this is cheap.
+    _sync_ledger_mid_run(ledger)
     return key
 
 

@@ -242,9 +242,28 @@ clock while doing it. Three gdelt runs (2026-07-22, 2026-08-02, 2026-08-19) and
 the whole 2026-08-16 run had already been lost this way with every surface green.
 
 1. **Decide which of the two shapes it is. They have different fixes.**
+   - **First map the COLLECTOR to its JOB — `[2e]` and the spend ledger are
+     keyed differently, and the step below is unusable until you do.** `[2e]`
+     names a collector (`gdelt`, `local_news`, `role_enrichment`);
+     `spend_jobs.json` is keyed by the JOB that ran it, and several collectors
+     share one. Read it off the module that reports the id:
+
+     | collector | module | job in `spend_jobs.json` |
+     |---|---|---|
+     | `gdelt`, `local_news`, `regional_feeds` | `railway/cron.py` | `railway-cron` |
+     | `role_enrichment` | `railway/enrich_roles.py` | `enrich-roles` |
+     | `gdelt_historical` | `railway/gdelt_backfill.py` | **none — see below** |
+
    - **The process died.** `railway/spend_jobs.json` holds an end-of-run record
-     (`railway-<YYYYMMDD>T<HHMM>`) for every run that reached the end. No record
-     for that run means the process did not get there.
+     for every run of that JOB that reached the end. No record on that date
+     means the process did not get there. Check the ledger's own commit date
+     first (`git log -1 -- railway/spend_jobs.json`): a record missing because
+     the harvest has not run since is lag, not a death.
+   - **It cannot be decided at all, for some jobs.** `historical-news-sweep`
+     and `gdelt-backfill` have NEVER written an end-of-run record, so an orphan
+     from `gdelt_historical` is permanently **UNKNOWN** — not triaged, and not
+     clean. Do not read the absence as a death; it is the absence of the
+     instrument. (Found 2026-08-28 while triaging six orphans.)
    - **The terminal health POST was dropped.** `report_source_health` retries
      three times and then gives up silently, on purpose - a telemetry write must
      never fail a completed job. A record IN `spend_jobs.json` plus a missing
