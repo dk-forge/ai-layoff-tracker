@@ -1119,7 +1119,9 @@ def _record_slot(ledger, family, query, start, end, status, articles, *, cap_hit
         "cap_hit": bool(cap_hit),
         "oldest": oldest,
         "newest": newest,
-        "attempts": int(slot.get("attempts", 0)) + 1,
+        # A slot QUEUED by the outage breaker was never attempted this run, so
+        # queueing does not spend one of its attempts.
+        "attempts": int(slot.get("attempts", 0)) + (0 if status == "queued" else 1),
         "first_seen": slot.get("first_seen", now_iso),
         "updated": now_iso,
     })
@@ -1143,13 +1145,16 @@ def _run_sweep_slot(ledger, family, query, start, end, max_records, collected, i
     log line, written to the ledger as failed/partial, and retried next run. It
     DOES mark the run degraded (visible on the health page), because a planned
     slot that did not complete is a coverage gap, not a green day.
+
+    Returns the slot's status ("abandoned" / "partial" / "complete") so the
+    caller's outage breaker can see a dead public API (see pull_gdelt_between).
     """
     arts, status, _saw_rl, err = _collect_window(query, start, end, max_records, family)
     if arts is None:
         print(f"GDELT {family} skipped ({err}): {query[-60:]}")
         _record_slot(ledger, family, query, start, end, "failed", [])
         incomplete.append(f"{family}:abandoned")
-        return
+        return "abandoned"
     cap_hit = status != "complete"
     print(f"GDELT {family} {query[-48:]}: {len(arts)} article(s)"
           + (" (capped -> bisected, PARTIAL)" if cap_hit else ""))
@@ -1158,6 +1163,7 @@ def _run_sweep_slot(ledger, family, query, start, end, max_records, collected, i
                  "complete" if status == "complete" else "partial", arts, cap_hit=cap_hit)
     if status != "complete":
         incomplete.append(f"{family}:partial")
+    return status
 
 
 def _planned_sweeps():
@@ -1227,7 +1233,17 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_k
         if not query:
             continue
         print(f"GDELT retry pending slot {key} (attempt {int(slot.get('attempts', 0)) + 1})")
-        _run_sweep_slot(ledger, family, query, ws, we, max_records, collected, incomplete)
+        status = _run_sweep_slot(ledger, family, query, ws, we, max_records,
+                                 collected, incomplete)
+        if status == "abandoned":
+            # Same outage breaker as the planned sweeps: a slot abandoned after
+            # every attempt means the public API is not answering, and grinding
+            # the remaining pending slots through the full retry schedule is
+            # what ran the 2026-08-27 sweep into its workflow ceiling. The
+            # untouched slots simply stay pending; a later run resumes them.
+            print("GDELT public API unreachable; leaving the remaining pending "
+                  "slots for a later run")
+            break
 
 
 def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH):
@@ -1301,14 +1317,43 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
         incomplete.append(f"broad:{broad_status}")
 
     # --- Rotating sweeps: never return early, each is its own retriable slot ---
+    #
+    # OUTAGE BREAKER (2026-08-28). One sweep slot ABANDONED means the public
+    # API failed every one of QUERY_ATTEMPTS tries in a row — with the 429
+    # backoff schedule that is up to ~18 minutes spent learning the API is not
+    # answering, and this run plans up to ~10 sweeps plus 6 pending retries.
+    # On 2026-08-27 (run 33094996142) api.gdeltproject.org went dark, every
+    # sweep ground through its full retry schedule, and the historical-sweep
+    # workflow cancelled ITSELF at its 45-minute ceiling — which also lost the
+    # ledger save and left an orphaned 'running' health note. So: after the
+    # first abandoned sweep the remaining planned sweeps are recorded QUEUED
+    # (window + query text in the ledger, no attempt spent) and picked up by
+    # _retry_pending_slots on a later run. A false trip costs one run of
+    # sweeps, all of which are queued, none lost; not tripping costs the whole
+    # run, ledger included. The run still reports degraded either way.
+    api_down = False
     for family, query in _planned_sweeps():
+        if api_down:
+            done_keys.add(_record_slot(ledger, family, query, start, end, "queued", []))
+            incomplete.append(f"{family}:queued")
+            continue
         before = set(ledger["slots"])
-        _run_sweep_slot(ledger, family, query, start, end, max_records, collected, incomplete)
+        status = _run_sweep_slot(ledger, family, query, start, end, max_records,
+                                 collected, incomplete)
         done_keys |= (set(ledger["slots"]) - before)
         done_keys.add(_slot_key(family, query, start, end))
+        if status == "abandoned":
+            api_down = True
+            print(f"GDELT public API unreachable (a sweep abandoned after "
+                  f"{QUERY_ATTEMPTS} attempts); queueing the remaining sweeps "
+                  f"for the next run instead of grinding into the workflow ceiling")
 
     # --- Pick up unfinished work from earlier runs ------------------------
-    _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys)
+    if api_down:
+        print("GDELT pending-slot retries skipped this run: the public API is "
+              "not answering, and the slots stay pending for a later run")
+    else:
+        _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys)
 
     _LAST_RUN_INCOMPLETE = bool(incomplete)
     if incomplete:

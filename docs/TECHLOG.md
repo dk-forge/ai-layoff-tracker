@@ -1,5 +1,84 @@
 # Tech Log
 
+## 2026-08-28 - the armed panel could not import openai in CI, and a no-op relabel reached the owner's inbox
+
+**What.** The first armed run of the held-relabel adjudication panel
+(2026-08-27) mailed "2 label relabel(s) HELD by the panel, not applied" for
+rows 177321 and 176739 with "Panel error: the openai client is not
+importable" on both. The panel never voted; the mail was the bare-hold
+fallback wearing the panel's subject line.
+
+**Root cause 1 (deps).** `data-quality.yml` had NO python-deps install step -
+every step it ran before f01e1bf was stdlib-only. Arming the panel
+(`ALT_PANEL_ARMED: "1"`) silently made `openai` this job's first third-party
+import, and an absent dependency in a workflow produces no signal until the
+code path that needs it runs. Fix: the standard hash-pinned min-lock install
+(`pip install --require-hashes -r railway/requirements-min.lock`), verified
+sufficient in a clean venv (the whole import chain
+spotcheck -> adjudication_panel -> spend/ops_notify needs only openai +
+requests beyond stdlib). No pip cache, per the 2026-08-19 measurement.
+
+**Root cause 2 (the no-op).** Held row 177321 proposed "Automotive" ->
+"Automotive". There was genuinely no filter: the model is ASKED for clear
+mismatches only, but nothing held it to that, and an echoed unchanged value
+passes flagging, sails through confirmation (the model happily "agrees" the
+suggested value is accurate - it is the current value) and lands in the hold
+queue, where the armed path spends three panel votes on a write that changes
+nothing. New `drop_noop_flags()` in `daily_classification_spotcheck.py` drops
+a flag whose suggestion matches the row's actual current value (as this run's
+sample read it from the corpus) or the flag's own echoed current, case- and
+whitespace-insensitive, on both the live and `--dry-run-armed` paths; dropped
+no-ops are named in the run summary, never silently discarded. Tests in
+`test_spotcheck_relabel_bounds.py` (`NoOpRelabelsAreDropped`) drive the real
+`main()` and assert a no-op is neither written, nor held, nor mailed - and
+that a real change beside a dropped no-op still lands.
+
+The two held corrections themselves were NOT applied here: adjudication is the
+owner's, and the fixed panel re-rules the (still re-derived) backlog on the
+next daily run.
+
+## 2026-08-28 - historical sweep cancelled ITSELF at 45 minutes: unbounded retry grind against a dead GDELT API
+
+**What.** Run 33094996142 (2026-08-27) of "Historical global news sweep" was
+cancelled by its own `timeout-minutes: 45`. Every other scheduled run in the
+last 20 finished in 1.4-2.2 minutes - this was not growth, it was an outage
+shape with no bound.
+
+**Root cause.** `api.gdeltproject.org` went dark (connect/read timeouts plus
+429s). The broad window was fine - the BigQuery mirror served 21,575 articles -
+but every planned public-API sweep (segments, native, euphemism, theme, euro;
+~10 per run, plus up to 6 pending-slot retries) then ground through the full
+`GDELT_QUERY_ATTEMPTS=6` / 90s-backoff schedule against an API that answered
+nothing: up to ~18 minutes per abandoned sweep, ~16 slots planned. The
+existing `BACKFILL_DEADLINE_SECONDS=600` never applied - it bounds the
+per-article EXTRACTION loop in `gdelt_backfill.py`, which runs after
+collection returns. The cancellation also lost the run's work-ledger save and
+left an orphaned `running` health note on `gdelt_historical` (visible in
+`ops_status [2e]`; the cursor was not advanced, so the window self-heals by
+repeating).
+
+**Fix (fit the job, not the ceiling).** An outage breaker in
+`sources/gdelt.py pull_gdelt_between`: the FIRST sweep slot abandoned after
+every attempt trips it - the remaining planned sweeps are recorded QUEUED in
+the work ledger (window + query text kept, no attempt spent) and picked up by
+the existing pending-retry path on a later run, and the pending-retry walk
+itself stops at its first abandoned slot the same way. A false trip costs one
+run of sweeps, all queued, none lost; not tripping costs the whole run,
+ledger included. The run still reports degraded. Worst case is now ~1
+abandoned sweep (~18 min) + mirror broad + the 600s extraction deadline,
+~30 min, so `timeout-minutes: 45` KEEPS its value with the measurement
+written at the line (repo convention). Live cron's gdelt path shares the
+breaker - the orphaned gdelt runs of 2026-08-19 and 2026-08-26 in
+`ops_status [2e]` have the same fingerprint. Tests:
+`test_gdelt_window_coverage.py` (breaker queues remaining sweeps, spent no
+attempt, later healthy run completes them; retry walk stops too).
+
+**Fleet audit** ("fix all the self timeouts"): every other workflow's recent
+max duration sits under 80% of its ceiling. Tests went 14m/15 before
+2026-08-26 (two self-cancellations) and is 2-3m since the style_check
+quadratic-regex fix - no change needed. Watch item: Source-archive backfill,
+max 81m against 120 (68%), rising slowly with the pool.
+
 ## 2026-08-26 - style_check.collect() went from 762s to 0.5s (one quadratic regex)
 
 **What.** `style_check.collect()` was the single biggest cost in CI: it drove
