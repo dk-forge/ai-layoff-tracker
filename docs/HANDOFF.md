@@ -826,13 +826,19 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** local
+- **STATUS:** FREE
+- **HOLDER:** -
 - **SINCE:** 2026-08-28
-- **WORKING ON:** archive_recheck_cadence red (11.8d, third re-cite artifact):
-  make the /archive-coverage oldest reading exclude rows already due for
-  requeue, so a WARN-import re-cite between 00:37Z and the 05:25Z drain cannot
-  contaminate CI's sample. Claiming **2.20.145** (read off main at 2.20.144).
+- **RELEASED (2026-08-28): 2.20.145 — the archive-cadence reading no longer
+  counts a re-cite's frozen timestamp.** `archive_recheck_cadence` reddened CI
+  at 11.8d (third strike of the re-cite artifact; drain healthy, oldest 3.0d at
+  yesterday's run end). The nightly WARN import re-cites frozen orphans at
+  00:37–01:15Z, hours before the 05:25Z drain's `alt_archive_requeue_recited`,
+  and CI sampled the gap. Fix is read-time symmetry in
+  `alt_archive_coverage_counts()`: the oldest MIN excludes exactly the rows the
+  requeue would reset (pinned equal by a new test running both real SQLs). No
+  threshold moved; stall detection intact. The `tests:live.data` alarm clears
+  on the next green run. TECHLOG 2026-08-28.
 - **RELEASED (2026-08-28): NO VERSION CONSUMED — two CI/ops fixes, no plugin
   file touched.** (1) data-quality.yml now installs the hash-pinned min lock
   (arming the panel in f01e1bf silently made openai its first non-stdlib

@@ -926,5 +926,99 @@ class RequeueRecitedOrphans(unittest.TestCase):
         self.assertEqual(after, "2026-08-24 06:00:00")
 
 
+class OldestReadingIgnoresRequeueDueRows(unittest.TestCase):
+    """The /archive-coverage oldest reading must not be contaminated by a row
+    that is merely WAITING for its requeue.
+
+    THE RESIDUAL WINDOW (live 2026-08-28, and before it 2026-08-26).
+    alt_archive_requeue_recited() runs only in the key-protected candidate
+    pre-fetch — the daily 05:25Z drain. The nightly WARN import (00:37–01:15Z)
+    can re-cite a frozen orphan hours earlier, and anything sampling
+    /archive-coverage in that gap (CI ran at ~01:00Z both times) read the
+    pre-orphan timestamp as the pool's age: archive_recheck_cadence FAILed on
+    25.3d and then 11.8d, reddening CI on every branch and mailing the owner
+    for an age the very next run cleared. The fix is read-time symmetry: the
+    oldest MIN in alt_archive_coverage_counts() excludes exactly the rows the
+    requeue would reset, because a re-cited row is semantically QUEUED.
+
+    These tests run the REAL SQL text from db.php — both queries — so the two
+    predicates cannot drift apart silently.
+    """
+
+    def _oldest_sql(self):
+        body = data_integrity._php_function_body(DB_PHP, "alt_archive_coverage_counts")
+        self.assertTrue(body, "alt_archive_coverage_counts missing from db.php")
+        m = re.search(r'\$oldest = \$wpdb->get_var\(\s*"(.*?)"\);', body, re.S)
+        self.assertIsNotNone(m, "alt_archive_coverage_counts lost its oldest query")
+        return m.group(1).replace("$archive", "archive").replace("$layoffs", "layoffs")
+
+    def _requeue_sql(self):
+        body = data_integrity._php_function_body(DB_PHP, "alt_archive_requeue_recited")
+        self.assertTrue(body)
+        m = re.search(r'\$wpdb->query\(\s*"(.*?)"\)', body, re.S)
+        self.assertIsNotNone(m)
+        return m.group(1).replace("$archive", "archive").replace("$layoffs", "layoffs")
+
+    def _connect(self, arch_rows, layoff_rows):
+        import hashlib
+        import sqlite3
+        conn = sqlite3.connect(":memory:")
+        conn.create_function("md5", 1, lambda s: hashlib.md5(s.encode()).hexdigest())
+        c = conn.cursor()
+        c.execute("CREATE TABLE layoffs(source_url TEXT, updated_at TEXT)")
+        c.execute("CREATE TABLE archive(url_hash TEXT, status TEXT, checked_at TEXT)")
+        h = lambda u: hashlib.md5(u.encode()).hexdigest()
+        for url, status, checked in arch_rows:
+            c.execute("INSERT INTO archive VALUES(?,?,?)", (h(url), status, checked))
+        for url, updated in layoff_rows:
+            c.execute("INSERT INTO layoffs VALUES(?,?)", (url, updated))
+        return conn, c
+
+    # The fixture reproduces the incident shape: a frozen orphan re-cited
+    # overnight, alongside a normally-cadencing pool.
+    ARCH = [("http://recited",  "unavailable", "2026-08-16 06:17:12"),
+            ("http://cadence",  "unavailable", "2026-08-24 06:09:51"),
+            ("http://pending",  "pending",     "2026-08-25 06:00:00"),
+            ("http://nullupd",  "unavailable", "2026-08-23 06:00:00")]
+    LAYO = [("http://recited", "2026-08-28 00:45:00"),   # WARN import re-cite tonight
+            ("http://cadence", "2026-07-01 00:00:00"),
+            ("http://pending", "2026-08-10 00:00:00"),
+            ("http://nullupd", None)]
+
+    def test_a_recited_row_does_not_contaminate_the_reading_before_the_drain(self):
+        conn, c = self._connect(self.ARCH, self.LAYO)
+        oldest = c.execute(self._oldest_sql()).fetchone()[0]
+        self.assertEqual(oldest, "2026-08-23 06:00:00",
+                         "the re-cited row's frozen pre-orphan timestamp must read as "
+                         "queued, not as the pool's oldest attempt — the genuinely "
+                         "oldest UNrequeued attempt leads instead")
+
+    def test_a_stalled_pool_still_ages_into_the_reading(self):
+        # Nobody re-writes the layoff side of a pool the cron stopped draining,
+        # so every row stays in the MIN and the age keeps growing.
+        conn, c = self._connect(
+            arch_rows=[r for r in self.ARCH if r[0] != "http://recited"],
+            layoff_rows=[r for r in self.LAYO if r[0] != "http://recited"])
+        oldest = c.execute(self._oldest_sql()).fetchone()[0]
+        self.assertEqual(oldest, "2026-08-23 06:00:00",
+                         "rows with no re-ingest signal (including updated_at NULL) "
+                         "must keep ageing honestly")
+
+    def test_the_read_exclusion_equals_the_requeue_reset_set(self):
+        # Whatever the requeue would reset is exactly what the reading already
+        # ignored; after the requeue actually runs, the reading is UNCHANGED.
+        conn, c = self._connect(self.ARCH, self.LAYO)
+        before = c.execute(self._oldest_sql()).fetchone()[0]
+        sql = self._requeue_sql()
+        join = re.search(r"JOIN\s+layoffs\s+l\s+ON\s+(.*?)\s+SET", sql, re.S).group(1).strip()
+        where = re.search(r"WHERE\s+(.*)$", sql, re.S).group(1).strip()
+        c.execute(f"UPDATE archive SET checked_at=NULL WHERE url_hash IN "
+                  f"(SELECT a.url_hash FROM archive a JOIN layoffs l ON {join} WHERE {where})")
+        after = c.execute(self._oldest_sql()).fetchone()[0]
+        self.assertEqual(before, after,
+                         "running the requeue must not move the oldest reading — the "
+                         "read-time exclusion and the requeue predicate have drifted apart")
+
+
 if __name__ == "__main__":
     unittest.main()

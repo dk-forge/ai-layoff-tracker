@@ -1,5 +1,47 @@
 # Tech Log
 
+## 2026-08-28 - the archive-cadence reading is contaminated by re-cites for ~4 hours a night, third strike (2.20.145)
+
+**What.** `archive_recheck_cadence` FAILed live at 11.8d against its 10d bound
+("oldest un-archived attempt 11.8d ago, 110 pending, 3,144 not yet in
+Wayback"), reddening Tests on every branch and raising a `tests:live.data`
+alarm — while the drain itself was demonstrably healthy: the 2026-08-27
+archive-backfill run ended on an EMPTY batch with the oldest attempt at
+2026-08-24 (3.0d). Overnight, with no run in between, the live reading jumped
+BACKWARDS to 2026-08-16 06:17. This is the re-cite artifact documented in
+archive-backfill.yml and fixed at the DRAIN on 2026-08-26
+(`alt_archive_requeue_recited`), striking for the third time.
+
+**Root cause — the requeue ran at the wrong end of the night.** The requeue
+resets a re-cited orphan's frozen `checked_at` to NULL, but only inside the
+key-protected candidate pre-fetch, i.e. at the daily 05:25Z drain. The nightly
+WARN import (00:37–01:15Z) can re-cite a frozen orphan HOURS earlier, and
+anything sampling `/archive-coverage` in that gap reads the pre-orphan
+timestamp as the pool's age. CI's Tests run landed in the window (~01:00Z) on
+2026-08-26 (25.3d) and again on 2026-08-28 (11.8d) — both ages the very next
+drain cleared. The docblock even predicted the residual ("reddens CI and mails
+the owner for up to a day") and left it open.
+
+**Fix (2.20.145) — read-time symmetry, no threshold moved.** The `$oldest` MIN
+in `alt_archive_coverage_counts()` now excludes exactly the rows the requeue
+would reset: a cited row whose layoff side carries `MAX(l.updated_at) >
+a.checked_at` is semantically QUEUED (its citation has never been checked; the
+next run drains it first, NULLs-first ordering), so its frozen timestamp no
+longer masquerades as the pool's oldest attempt. `PROMISE_DAYS`,
+`MAX_AGE_DAYS`, the projection and the zero-recheck branch are all untouched.
+The stall guardrail holds: a row the cron stopped draining has a layoff side
+nobody re-writes, so it stays in the MIN and ages into the bound, and a
+wholesale stop still trips the zero-recheck branch within 48h.
+`tests/test_archive_promise.py` gains `OldestReadingIgnoresRequeueDueRows`,
+which runs the REAL SQL from db.php against sqlite and pins the read-time
+exclusion set equal to the requeue's reset set (running the requeue must not
+move the reading), plus the stalled-pool-still-ages case.
+
+**Not done, on purpose.** No write-path change: NULLing `checked_at` from the
+WARN /bulk path would put an archive-index write on every import, and the
+backfill's design promise is "NO change to the ingest write path". The
+`tests:live.data:2e215caae5bac21b` alarm clears itself on the next green run.
+
 ## 2026-08-28 - the daily digest wore a week's masthead over a two-day window (2.20.144)
 
 **What.** The nine-edition review (2026-08-28) found the daily layoff edition -
