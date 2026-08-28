@@ -14,6 +14,7 @@
     "Pakistan",
     "South Korea",
     "Thailand",
+    "Ukraine",
     "Vietnam"
   ],
   "backlog_oldest": "2026-08-18",
@@ -892,17 +893,12 @@
       "state": "unknown",
       "stored_name": "Thailand"
     },
-    "Turkey": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
-      "entries": 0,
-      "jobs": 1696,
-      "state": "unknown",
-      "stored_name": "Turkey"
-    },
     "T\u00fcrkiye": {
       "age_days": 10,
       "aggregate": "NONE, and the hypothesis was chased to a conclusion rather than abandoned. The July 2026 ISKUR monthly bulletin (33 tables) and the 2025 yearbook (38 tables) were machine-parsed and neither carries a toplu isci cikarma table. FALSE-FRIEND WARNING for anyone re-checking: keyword hits on 'toplu' are all Toplum Yararina Programlar, a different scheme entirely. ISKUR holds a statutorily complete register and publishes none of it, which makes it the single highest-leverage freedom-of-information target in this register",
+      "also_stored_as": [
+        "Turkey"
+      ],
       "assessed": "2026-08-18",
       "authority": "ISKUR and the regional directorate of labour",
       "cite": "https://www.iskur.gov.tr/kurumsal/istatistikler/",
@@ -947,19 +943,11 @@
       "class": "regime_with_aggregate",
       "denominator_basis": "closed_enumeration_primary_regulator_index",
       "entries": 43453,
-      "jobs": 6062375,
+      "jobs": 6062376,
       "regime": "SEC 8-K Item 2.05 (costs associated with exit or disposal activities), Securities Exchange Act s.13/15(d) \u2014 a US public company recording a material charge for an exit activity files an 8-K carrying that code in its SGML header. SEPARATELY, state WARN acts and the federal WARN Act 29 U.S.C. 2101 compel notice to state dislocated-worker units",
       "state": "measured",
       "stored_name": "United States",
       "threshold": "Item 2.05: any material exit-or-disposal charge, no headcount floor. Federal WARN: 100+ employees, 50+ affected at a site"
-    },
-    "United States (NJ)": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
-      "entries": 0,
-      "jobs": 1,
-      "state": "unknown",
-      "stored_name": "United States (NJ)"
     },
     "Uruguay": {
       "age_days": 9,
@@ -985,7 +973,7 @@
       "stored_name": "Vietnam"
     }
   },
-  "countries_in_scope": 73,
+  "countries_in_scope": 71,
   "exactly_measurable": [
     "Belgium",
     "Bulgaria",
@@ -1018,7 +1006,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-08-28T01:28:12Z",
+  "measured_at": "2026-08-28T02:31:31Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1692,7 +1680,7 @@
     "refused": 6,
     "regime_no_aggregate": 25,
     "regime_with_aggregate": 20,
-    "unassessed": 18
+    "unassessed": 16
   },
   "unassessed": [
     "Bosnia and Herzegovina",
@@ -1709,17 +1697,17 @@
     "Pakistan",
     "South Korea",
     "Thailand",
-    "Turkey",
     "Ukraine",
-    "United States (NJ)",
     "Vietnam"
   ],
-  "undeclared": [
-    "Turkey",
-    "Ukraine",
-    "United States (NJ)"
-  ],
+  "undeclared": [],
   "vocabulary_duplicates": [
+    {
+      "canonical": "T\u00fcrkiye",
+      "entries": 0,
+      "jobs": 1696,
+      "stored": "Turkey"
+    },
     {
       "canonical": "South Korea",
       "entries": 0,
