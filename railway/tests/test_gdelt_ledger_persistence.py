@@ -80,6 +80,7 @@ class LedgerPersistenceBase(unittest.TestCase):
     def _reset_sync_guards():
         gdelt._REMOTE_LEDGER_READ = False
         gdelt._REMOTE_LEDGER_PUSHED = None
+        gdelt._LAST_MID_RUN_SYNC = None
 
     def _restore_env(self):
         for key, value in self._saved_env.items():
@@ -326,6 +327,73 @@ class TheSyncIsBoundedForTheBACKFILL(LedgerPersistenceBase):
         gdelt.requests = good
         gdelt._save_work_ledger(ledger, path=self.path)
         self.assertEqual(len(good.calls), 1, "a 503 permanently muted the sync")
+
+
+class ARunThatDIESKeepsWhatItLearned(LedgerPersistenceBase):
+    """The end-of-run save cannot be the only one.
+
+    railway-cron wrote NO end-of-run record on 2026-08-16, 2026-08-19 or
+    2026-08-26, and `ops_status [2e]` shows the matching `gdelt`,
+    `local_news` and `regional_feeds` runs starting and never finishing. So
+    the runs that would lose a ledger written only at the end are exactly the
+    runs whose abandoned windows most need retrying — which would have left
+    the durability fix true in principle and inert in the case that matters.
+    """
+
+    def _record(self, ledger, key_suffix):
+        start = gdelt.datetime(2026, 8, 28, tzinfo=gdelt.timezone.utc)
+        end = start + gdelt.timedelta(hours=12)
+        gdelt._record_slot(ledger, "segment", f"q-{key_suffix}", start, end,
+                           "failed", [])
+
+    def test_a_recorded_slot_syncs_before_the_run_ends(self):
+        recorder = _Recorder()
+        self._arm(recorder)
+        ledger = {"slots": {}}
+        self._record(ledger, "a")
+        posts = [c for c in recorder.calls if "set_gdelt_ledger" in (c["json"] or {})]
+        self.assertEqual(len(posts), 1,
+                         "a slot recorded mid-run never left the container")
+        self.assertEqual(len(posts[0]["json"]["set_gdelt_ledger"]), 1)
+
+    def test_the_mid_run_sync_is_throttled(self):
+        # Un-throttled this would be one request per slot against a shared host.
+        recorder = _Recorder()
+        self._arm(recorder)
+        ledger = {"slots": {}}
+        for i in range(8):
+            self._record(ledger, f"q{i}")
+        self.assertEqual(len(recorder.calls), 1,
+                         "the mid-run sync fired once per slot")
+
+    def test_the_throttle_reopens_after_the_interval(self):
+        recorder = _Recorder()
+        self._arm(recorder)
+        ledger = {"slots": {}}
+        self._record(ledger, "a")
+        # Pretend the interval elapsed, rather than sleeping through it.
+        gdelt._LAST_MID_RUN_SYNC -= (gdelt.LEDGER_SYNC_INTERVAL_SECONDS + 1)
+        self._record(ledger, "b")
+        self.assertEqual(len(recorder.calls), 2)
+
+    def test_no_credentials_means_no_mid_run_request(self):
+        recorder = _Recorder()
+        self._disarm(recorder)
+        self._record({"slots": {}}, "a")
+        self.assertEqual(recorder.calls, [])
+
+    def test_the_end_of_run_save_still_pushes_a_changed_ledger(self):
+        # The mid-run push must not consume the final one via the fingerprint.
+        recorder = _Recorder()
+        self._arm(recorder)
+        ledger = {"slots": {}}
+        self._record(ledger, "a")
+        self._record(ledger, "b")          # throttled, not pushed
+        gdelt._save_work_ledger(ledger, path=self.path)
+        posts = [c for c in recorder.calls if "set_gdelt_ledger" in (c["json"] or {})]
+        self.assertEqual(len(posts), 2)
+        self.assertEqual(len(posts[-1]["json"]["set_gdelt_ledger"]), 2,
+                         "the final save did not carry both slots")
 
 
 class TheRemoteCanBeTurnedOff(LedgerPersistenceBase):

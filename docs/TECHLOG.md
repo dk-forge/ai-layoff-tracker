@@ -1,5 +1,51 @@
 # Tech Log
 
+## 2026-08-28 - the ledger fix was inert in the runs that need it most
+
+**What.** The 2.20.149 entry below made the GDELT work ledger survive its
+container. It saved at the END of a run, which is correct for a run that ends.
+`ops_status [2e]` and `railway/spend_jobs.json` say that is not the only kind
+this job has:
+
+| run | began | end-of-run spend record |
+|---|---|---|
+| `local_news`, `regional_feeds` | 2026-08-16 16:04Z | none — `railway-cron` wrote nothing that day |
+| `gdelt` | 2026-08-19 22:07Z | none |
+| `gdelt` | 2026-08-26 22:06Z | none |
+| `role_enrichment` | 2026-08-17 05:03Z | none — `enrich-roles` wrote nothing that day |
+
+The harvest is not the explanation: `spend_jobs.json` was committed
+2026-08-27 22:43Z, a full day after the 08-26 run, and still holds no
+`railway-cron` record for it. These are dead processes. 08-16 and 08-19 are
+already named in CLAUDE.md; **08-26 is new**, so this is a continuing pattern
+and not a closed incident.
+
+So a ledger written only at the end is lost in precisely the runs whose
+abandoned windows most need retrying. The durability fix would have been true
+in principle and inert in the case that matters — the same shape as the defect
+it was fixing.
+
+**Fix.** `_record_slot` — the one place a slot changes — now triggers a
+throttled remote push (`LEDGER_SYNC_INTERVAL_SECONDS = 120`), reusing the
+fingerprint guard so an unchanged ledger still costs nothing. Two minutes is
+chosen against the 5s `REQUEST_DELAY`: a run cannot issue enough queries in
+that window for the sync to be a meaningful share of its request budget. The
+prune is factored into `_pruned_slots(quiet=)` so a mid-run sync does not
+reprint the aged-out lines every two minutes.
+
+**Verification.** 28 cases, mutation-confirmed both ways: removing the hook
+fails 4, removing the throttle fails 1. No plugin file is touched, so no
+version is consumed and there is nothing for `reader_freshness.py` to verify.
+
+**Two things this does NOT do.** It does not stop the runs dying — that root
+cause is unmeasured and needs Railway logs this session cannot read. And the
+discriminator the RUNBOOK prescribes ("check `spend_jobs.json`") **cannot be
+applied to `gdelt_historical` at all**: `historical-news-sweep` and
+`gdelt-backfill` have never written an end-of-run record, so an orphan from
+either is permanently UNKNOWN rather than triaged. The RUNBOOK also does not
+say that the spend ledger is keyed by JOB while the orphan report is keyed by
+COLLECTOR, so using it at all requires a mapping that is written down nowhere.
+
 ## 2026-08-28 - the GDELT work ledger never survived the container that wrote it (2.20.149)
 
 **What.** `ops_status [2]` has reported `gdelt` DEGRADED with
