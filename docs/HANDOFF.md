@@ -826,9 +826,13 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** FREE
-- **HOLDER:** -
+- **STATUS:** HELD
+- **HOLDER:** local
 - **SINCE:** 2026-08-28
+- **WORKING ON:** archive_recheck_cadence red (11.8d, third re-cite artifact):
+  make the /archive-coverage oldest reading exclude rows already due for
+  requeue, so a WARN-import re-cite between 00:37Z and the 05:25Z drain cannot
+  contaminate CI's sample. Claiming **2.20.145** (read off main at 2.20.144).
 - **RELEASED (2026-08-28): NO VERSION CONSUMED — two CI/ops fixes, no plugin
   file touched.** (1) data-quality.yml now installs the hash-pinned min lock
   (arming the panel in f01e1bf silently made openai its first non-stdlib
