@@ -1246,7 +1246,7 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_k
             break
 
 
-def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH):
+def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH, deadline=None):
     """Return raw layoff-news entries (trusted domains) filed in [start, end].
 
     Every planned unit of work (the broad window plus each rotating sweep) is a
@@ -1255,6 +1255,17 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     recovered from the BigQuery mirror WITHOUT skipping the other sweeps, and a
     run with any incomplete slot reports degraded (see last_run_status), so a
     truncated or lost window is visible instead of silently green.
+
+    `deadline`, when given, is an absolute `time.monotonic()` cutoff (run
+    33094996142, 2026-08-27: the broad slot cleared via the BigQuery mirror in
+    seconds, then ten rotating sweeps hit the throttled public API one after
+    another, each patient with QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS of its
+    own backoff and no clock, and the job was killed by timeout-minutes with a
+    sweep still retrying). It is consulted before STARTING each sweep, never
+    mid-query, so a sweep already retrying is left to finish rather than cut
+    off part-way; a skipped sweep is simply not attempted this run and stays
+    (or becomes) a ledger slot that the next run retries — no coverage is lost,
+    only deferred.
     """
     global _LAST_RUN_INCOMPLETE
     _LAST_RUN_INCOMPLETE = False
@@ -1333,6 +1344,19 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     # run, ledger included. The run still reports degraded either way.
     api_down = False
     for family, query in _planned_sweeps():
+        # TWO INDEPENDENT BRAKES, in this order, because they answer different
+        # questions and a run can hit either. The WALL CLOCK asks "is there time
+        # left?" and breaks out entirely — a throttled-but-answering API can burn
+        # the whole timeout-minutes budget one slow request at a time (#231). The
+        # OUTAGE BREAKER asks "is the endpoint answering at all?" and queues the
+        # remaining slots so they are retried next run rather than spending
+        # attempts against a dead host. Deadline first: when time is gone there is
+        # no point recording state for slots we will not reach this run.
+        if deadline is not None and time.monotonic() >= deadline:
+            print(f"GDELT sweep collection past its wall-time budget before {family}; "
+                  "remaining sweeps not attempted this run (ledger retries them next run)")
+            incomplete.append(f"{family}:deadline")
+            break
         if api_down:
             done_keys.add(_record_slot(ledger, family, query, start, end, "queued", []))
             incomplete.append(f"{family}:queued")
@@ -1349,7 +1373,11 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
                   f"for the next run instead of grinding into the workflow ceiling")
 
     # --- Pick up unfinished work from earlier runs ------------------------
-    if api_down:
+    # Same two brakes on the retry walk. Either one alone is a reason to stop:
+    # out of time, or the endpoint is dark. The slots stay pending either way.
+    if deadline is not None and time.monotonic() >= deadline:
+        print("GDELT sweep collection past its wall-time budget; skipping pending-slot retries")
+    elif api_down:
         print("GDELT pending-slot retries skipped this run: the public API is "
               "not answering, and the slots stay pending for a later run")
     else:

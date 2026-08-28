@@ -64,7 +64,16 @@ def run():
         try:
             report_source_health("gdelt_historical", "running", 0, f"window {label}: collection in progress")
             remaining = max_articles - considered if max_articles else 250
-            entries = pull_gdelt_between(w_start, w_end, max_records=min(250, remaining))
+            # The collection phase (rotating GDELT sweeps against a shared,
+            # sometimes-throttled endpoint) used to have no clock of its own —
+            # only the extraction loop below checked BACKFILL_DEADLINE_SECONDS
+            # — so a throttled run could burn the whole timeout-minutes budget
+            # before a single article was considered (run 33094996142,
+            # 2026-08-27). Same run-wide deadline, passed to the phase that
+            # actually blocks.
+            deadline = (started_at + deadline_seconds) if deadline_seconds else None
+            entries = pull_gdelt_between(w_start, w_end, max_records=min(250, remaining),
+                                          deadline=deadline)
             # Same-URL re-reads cost LLM tokens and yield nothing new; the
             # shared pre-check drops them before extraction (fails open).
             try:
