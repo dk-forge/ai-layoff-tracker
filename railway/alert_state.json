@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "historical-global-news-sweep:main:02e1171867db1c03": {
-      "first": 1787851939,
-      "last": 1787851939,
-      "subject": "CI SELF-TIMEOUT: Historical global news sweep \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 45m0s"
-    }
-  },
-  "updated_at": "2026-08-28T02:34:20+00:00",
+  "open": {},
+  "updated_at": "2026-08-28T17:59:45+00:00",
   "version": 1
 }
