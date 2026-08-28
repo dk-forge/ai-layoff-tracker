@@ -1,6 +1,6 @@
 # Tech Log
 
-## 2026-08-28 - the archive-cadence reading is contaminated by re-cites for ~4 hours a night, third strike (2.20.145)
+## 2026-08-28 - the archive-cadence reading is contaminated by re-cites for ~4 hours a night, third strike (2.20.147)
 
 **What.** `archive_recheck_cadence` FAILed live at 11.8d against its 10d bound
 ("oldest un-archived attempt 11.8d ago, 110 pending, 3,144 not yet in
@@ -22,7 +22,7 @@ timestamp as the pool's age. CI's Tests run landed in the window (~01:00Z) on
 drain cleared. The docblock even predicted the residual ("reddens CI and mails
 the owner for up to a day") and left it open.
 
-**Fix (2.20.145) — read-time symmetry, no threshold moved.** The `$oldest` MIN
+**Fix (2.20.147; claimed 2.20.145, but a concurrent session shipped 2.20.146 mid-flight, so the number moved forward) — read-time symmetry, no threshold moved.** The `$oldest` MIN
 in `alt_archive_coverage_counts()` now excludes exactly the rows the requeue
 would reset: a cited row whose layoff side carries `MAX(l.updated_at) >
 a.checked_at` is semantically QUEUED (its citation has never been checked; the
@@ -41,6 +41,64 @@ move the reading), plus the stalled-pool-still-ages case.
 WARN /bulk path would put an archive-index write on every import, and the
 backfill's design promise is "NO change to the ingest write path". The
 `tests:live.data:2e215caae5bac21b` alarm clears itself on the next green run.
+## 2026-08-28 - the dormant monthly tier: a subject naming one day, a typed Indeed baseline, and cadence promises nothing checked (2.20.146)
+
+**What.** The three reader-copy items the nine-edition review (2026-08-28)
+parked as owner items are fixed, WITHOUT wiring or arming the monthly tier -
+it stays dormant by design (no send slot); these fixes make it correct so
+arming later is a schedule change, not a copy fix.
+
+**FIX 1 - the monthly SUBJECT named a single day for a month-to-date window.**
+`alt_digest_subject_period` sent monthly into the daily branch
+(`alt_digest_short_range($to,$to)` -> "Aug 26" over an Aug 1-26 edition), and
+`alt_digest_period_phrase` and `alt_digest_fallback_subject` did the same.
+A monthly is a WINDOW tier for the weekly's reason: the figures are a
+month-to-date sum, and one date on them is a false claim in the line most
+people only ever see. Subject token is now the window ("Aug 1-24"); the
+phrase is the masthead's own `alt_digest_month_edition_label` ("August 2026 ·
+August 1-24"); the fallback derives the window from `$to` alone (a monthly
+window always starts on the 1st). The PHP/Python subject port moved in
+lockstep: `digest_layout.py` gains `month_edition_label` and the monthly
+branches in `subject_period`/`period_phrase`;
+`tests/test_digest_subject_agreement.py` gains five monthly cross-language
+cases and `tests/test_digest_monthly_edition.py` pins the exact strings on
+BOTH sides. Daily and weekly subjects are byte-identical.
+
+**FIX 2 - the typed Indeed baseline, and the two defects beside it.** The
+string "(100 = February 1, 2020)" was hand-typed; if Hiring Lab rebases the
+series it silently lies. The payload CARRIES the note (`national.baseline`,
+written by the sibling's build_indeed_index.py), so the composer now renders
+that, with the typed literal as documented fallback ONLY for a pre-2026-08
+seed without the field (the residual staleness risk is named in the source).
+Also: the parenthetical was gated on `$vs_baseline` - a property of a
+DIFFERENT number - so an index without it printed an unexplained level; it is
+unconditional now. And `$vs_base` was fetched but never rendered; the reader
+now sees "1.79 points above the baseline" (above/below/level with), the
+figure the parenthetical just explained. All pinned in
+`test_digest_monthly_edition.py`, including the fallback and below-baseline
+shapes.
+
+**FIX 3 - the typed cadence sentences had no guard, and the monthly promise
+had no gate.** `alt_digest_cadence_sentence` hand-types "each morning" and
+"Monday mornings", and `includes/subscribe.php` is outside
+`test_cadence_is_derived.py`'s surfaces (that rule is INGEST cadence; this is
+DIGEST cadence, sourced from `railway/digest_slot.py` SEND_TIMES) - so a slot
+move would ship a stale promise silently. Deliberately NOT a cross-language
+cadence generator: new `tests/test_digest_cadence_promises.py` DERIVES the
+phrasing facts from digest_slot.py (daily slot unconditional, weekly slot's
+weekday) and reds CI when the sentences disagree, and holds the dormant-tier
+invariant both ways (`SEND_TIMES` monthly slot <-> `alt_digest_offer_monthly`
+default must flip together). The monthly promise itself is now structurally
+unreachable while dormant: new `alt_digest_accepted_freq` refuses to STORE an
+unoffered monthly (a hand-crafted POST was the only way to ask - the form
+shows weekly/daily radios), wired at the signup intake and the parked-prefs
+restore, with the pass-through-once-armed direction tested too.
+
+**Verified.** php -l clean; the digest suite is 662 tests with only the 4
+known dst_slot env errors (system python3 lacks `requests`); every new test
+was run against the pre-fix sources and failed there (14 failures + 1 error).
+2.20.146 consumed - 2.20.145 was already claimed on main by the baton
+holder's archive re-cite fix (f97b948).
 
 ## 2026-08-28 - the daily digest wore a week's masthead over a two-day window (2.20.144)
 

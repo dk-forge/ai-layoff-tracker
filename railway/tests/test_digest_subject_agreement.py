@@ -57,6 +57,7 @@ PHP = shutil.which("php")
 _WANTED = ("alt_digest_date_range", "alt_digest_period_phrase",
            "alt_digest_iso_week", "alt_digest_week_label",
            "alt_digest_week_id", "alt_digest_edition_label",
+           "alt_digest_month_edition_label",
            "alt_digest_short_range", "alt_digest_subject_period",
            "alt_digest_valid_freq",
            "alt_digest_chars", "alt_digest_subject_line",
@@ -151,6 +152,17 @@ CASES = (
                                             "And a third one for good measure"]),
     ("weekly", "2026-12-28", "2027-01-03", ["From the blog"]),
     ("weekly", "2029-12-31", "2030-01-06", ["AI Layoff Tracker"]),
+    # THE MONTHLY TIER (dormant, unwired - but its subject must already be
+    # correct so arming it later is a schedule change, not a copy fix). A
+    # month-to-date window names its window like the weekly, never a single
+    # day over a 24-day sum. The last one is an unreadable window, which must
+    # fall back identically on both sides.
+    ("monthly", "2026-08-01", "2026-08-24", ["AI Layoff Tracker"]),
+    ("monthly", "2026-08-01", "2026-08-24", ["AI Layoff Tracker",
+                                             "Talent Intelligence Tracker"]),
+    ("monthly", "2026-12-01", "2026-12-31", ["From the blog"]),
+    ("monthly", "2026-09-01", "2026-09-01", ["AI Layoff Tracker"]),
+    ("monthly", "not-a-date", "not-a-date", ["AI Layoff Tracker"]),
 )
 
 FALLBACK = "[AskTheRecruiter] Daily tracker digest, August 18, 2026"

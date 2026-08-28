@@ -6,6 +6,17 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED BY A SIDE SESSION (2026-08-28): 2.20.146 — the dormant
+  monthly digest tier made correct (subject window, Indeed baseline from data,
+  cadence promises guarded).** The baton was read as HELD by `local` and is NOT
+  claimed here; this is the local session's own worker finishing the three
+  reader-copy items the nine-edition review parked. 2.20.145 was already
+  claimed on main by the holder's archive re-cite fix (f97b948), so this took
+  the next patch. The monthly tier stays DORMANT — no slot, no offer;
+  `alt_digest_accepted_freq` now enforces that a reader cannot store the
+  cadence until `alt_digest_offer_monthly` flips beside the new slot. Files:
+  `includes/subscribe.php`, `railway/digest_layout.py`, the digest tests, and
+  `ai-layoff-tracker.php` (version). Full write-up in TECHLOG 2026-08-28.
 - **VERSION CLAIMED (2026-08-24): 2.20.136 — Minnesota WARN letters recovered.**
   The baton was read as FREE on origin/main (the 2026-08-12 `local` hold was
   owner-confirmed stale and released in `d7501cd`); this session took it to make
@@ -829,7 +840,7 @@ immediately before the merge, per the 2.20.92 collision note below.
 - **STATUS:** FREE
 - **HOLDER:** -
 - **SINCE:** 2026-08-28
-- **RELEASED (2026-08-28): 2.20.145 — the archive-cadence reading no longer
+- **RELEASED (2026-08-28): 2.20.147 — the archive-cadence reading no longer
   counts a re-cite's frozen timestamp.** `archive_recheck_cadence` reddened CI
   at 11.8d (third strike of the re-cite artifact; drain healthy, oldest 3.0d at
   yesterday's run end). The nightly WARN import re-cites frozen orphans at
