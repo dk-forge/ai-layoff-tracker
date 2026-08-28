@@ -837,9 +837,13 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** FREE
-- **HOLDER:** -
+- **STATUS:** HELD
+- **HOLDER:** local
 - **SINCE:** 2026-08-28
+- **WORKING ON:** country_coverage_fresh UNKNOWN (Turkey, Ukraine, "United
+  States (NJ)"): fold state-annotated US values in alt_normalize_country
+  (api.php), acknowledge Turkey+Ukraine in the register backlog, fix row
+  134117 via edit-entries. Claiming **2.20.148** (read off main at 2.20.147).
 - **RELEASED (2026-08-28): 2.20.147 — the archive-cadence reading no longer
   counts a re-cite's frozen timestamp.** `archive_recheck_cadence` reddened CI
   at 11.8d (third strike of the re-cite artifact; drain healthy, oldest 3.0d at
