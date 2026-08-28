@@ -4705,9 +4705,33 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       month as a finished one. Daily and weekly are untouched: $is_monthly is
       false for them and the label is the ISO-week one it has always been.
     */
+    /*
+      A WEEK LABEL IS EARNED BY THE WINDOW, NOT GRANTED BY THE TIER. Until
+      2.20.144 this fork was $is_monthly only, so the DAILY edition - a two-day
+      provisional window - wore the ISO-week masthead ("2026 Week 35 · August
+      27-28") and its lead opened "In Week 35 of 2026, ...": a two-day figure
+      wearing a week's name, in the two lines most likely to be quoted on their
+      own, seven days a week. That is the exact class of masthead error the
+      monthly branch above exists to avoid, and it survived because the only
+      guard checked the SUBJECT's period phrase, never the composed body
+      (tests/test_digest_daily_masthead.py now holds the body).
+
+      The gate is the window's own shape: only a complete Monday-to-Sunday span
+      (what alt_digest_weekly_window constructs) may wear "YYYY Week N", so the
+      weekly edition is byte-identical, and every other non-monthly window -
+      the daily pair, an empty-freq preview range, a seven-day span straddling
+      two ISO weeks - states its dates and nothing more.
+    */
+    $mh_ft = strtotime(substr((string) $from, 0, 10) . ' 00:00:00 UTC');
+    $mh_tt = strtotime(substr((string) $to, 0, 10) . ' 00:00:00 UTC');
+    $is_week_window = ($mh_ft !== false && $mh_tt !== false
+                       && ($mh_tt - $mh_ft) === 6 * DAY_IN_SECONDS
+                       && gmdate('N', $mh_ft) === '1');
     $edition_masthead = $is_monthly
         ? alt_digest_month_edition_label($from, $to)
-        : alt_digest_edition_label($from, $to);
+        : ($is_week_window
+            ? alt_digest_edition_label($from, $to)
+            : alt_digest_date_range($from, $to));
     $provisional_token = $is_monthly ? 'month to date, provisional' : 'provisional';
     $dateline = $edition_masthead . $sep . 'verified job cuts'
               . $sep . 'counted by the date the cuts take effect'
@@ -4764,9 +4788,20 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         $month_name = ($mm >= 1 && $mm <= 12) ? $mnames[$mm - 1] : '';
         $opening = 'So far in ' . trim($month_name . ' ' . substr((string) $from, 0, 4))
                  . ', employers verified ';
-    } else {
+    } elseif ($is_week_window) {
         $opening = 'In Week ' . (($iso = alt_digest_iso_week($from)) ? $iso[1] : '')
                  . ' of ' . (($iso) ? $iso[0] : substr((string) $to, 0, 4))
+                 . ', employers verified ';
+    } else {
+        /*
+          THE DAILY LEAD OPENS ON ITS OWN TWO DAYS. "Over August 27-28, 2026,
+          employers verified ..." holds the lifted-out-line property the weekly
+          and monthly openings hold: quoted alone, the sentence still says
+          exactly what it covers, and it no longer claims a week it does not
+          have. The range keeps its year for the same reason "Week 33" keeps
+          its year above: a lifted line must stay unambiguous across years.
+        */
+        $opening = 'Over ' . alt_digest_date_range($from, $to)
                  . ', employers verified ';
     }
     if ($us_change !== '' && $us_jobs > 0) {
