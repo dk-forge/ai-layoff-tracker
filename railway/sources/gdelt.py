@@ -670,6 +670,20 @@ FETCH_WORKERS = max(1, min(6, int(os.environ.get("GDELT_FETCH_WORKERS", "4"))))
 # without any extra request volume.
 QUERY_ATTEMPTS = max(1, min(6, int(os.environ.get("GDELT_QUERY_ATTEMPTS", "5"))))
 QUERY_BACKOFF_SECONDS = max(1, min(120, int(os.environ.get("GDELT_QUERY_BACKOFF_SECONDS", "40"))))
+# How long to wait for ONE query. Was a hardcoded 30 until 2026-08-29, which
+# made an operator who set an environment variable for it change nothing at
+# all -- the silent no-op this repo keeps finding.
+#
+# 30s sits BELOW the endpoint's measured answering latency (19.8-75s+ on
+# 2026-08-29), so some windows are abandoned by our own clock rather than by
+# GDELT. Raising it recovers those AND multiplies the wall clock of a run that
+# is already timing out: run 33094996142 self-cancelled at 45 minutes.
+#
+# So it is CLAMPED, like every other knob here. The ceiling is 90s because
+# QUERY_ATTEMPTS(5) x 90s is already 7.5 minutes for a single window before
+# backoff, and the backfill's own deadline has to survive it. The default is
+# unchanged, so this commit alters no behaviour by itself.
+QUERY_TIMEOUT_SECONDS = max(5, min(90, int(os.environ.get("GDELT_QUERY_TIMEOUT", "30"))))
 
 # --- Window coverage: bisection, the work ledger, and the run verdict --------
 #
@@ -1257,7 +1271,8 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
         time.sleep(delay)
         try:
             resp = requests.get(GDELT_URL, params=params,
-                                headers={"User-Agent": BROWSER_UA}, timeout=30)
+                                headers={"User-Agent": BROWSER_UA},
+                                timeout=QUERY_TIMEOUT_SECONDS)
             if resp.status_code == 429:
                 saw_rate_limit = True
                 last_error = "HTTP 429"
