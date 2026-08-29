@@ -147,6 +147,95 @@ mutation fails with `['earnings_ingest'] is not false`, and reverting it passes
 10/10. Two further cases pin the guard against going vacuous — a synthetic
 registry naming an id that appears nowhere must be caught, and an unreadable
 registry must raise rather than return an empty "nothing is missing".
+## 2026-08-29 - the talent digest's unit is measured, not typed (2.20.153)
+
+**What the owner read.** The same delivered edition as 2.20.151, one line
+higher. The subject was
+
+    30 hiring signals · Aug 28
+
+and four lines into its own body the message said
+
+    9 of the 30 signals listed on August 27 and 28, 2026 state a direction of
+    hiring. The rest are other employer activity in the same window: funding,
+    leadership, pay and site news.
+
+Twenty-one of the thirty were not hiring, and the email said so itself,
+underneath a subject line claiming otherwise. The subject is the one line every
+recipient reads whether or not they open the message.
+
+**The measurement already existed and nothing read it.** The hiring-direction
+share was added to this composer on 2026-08-28 and printed as a note. That was
+the right fix for the body and the wrong place to stop: a measurement whose
+only job is to print a caveat under a false headline has not corrected the
+headline, it has published the contradiction in one message. The reading was
+also taken four paragraphs too late - after the headline, the unit line and the
+lede had each committed to the word "hiring" - so the one number that could
+have contradicted them arrived after they were built.
+
+**Why the previous session did not do it.** It judged renaming an owner-settled
+subject line to be outside a composer's authority, which was the correct call at
+the time, and wrote so in the code. The owner has now asked for it, so it is
+authorised.
+
+**The fix.** `alt_digest_talent_signal_noun($total, $hiring_n)` decides what the
+figure may be CALLED from the same reading that produces the mix note, and the
+reading moves to the top of the composer so the words can consult it. Four
+surfaces that each carried their own literal now read one derivation: the
+headline unit line, the lede, the note that defines the word, and the `metric`
+fragment both senders put in the subject. The year-to-date figure goes through
+the same function with an explicit `null`, because its window was never
+measured and stamping a two-day reading on an eight-month figure is the straddle
+the containment-pair rule forbids.
+
+Three states, and UNKNOWN is not "hiring":
+
+| reading | noun |
+|---|---|
+| `$hiring_n >= $total` | `hiring signal` - unchanged, approved copy |
+| a smaller measured share | `talent and employer-activity signal` |
+| null: no answer, or an answer equal to the unfiltered headline | `talent and employer-activity signal` |
+
+The neutral noun is true in all three, which is why it is the fallback: a
+funding round is employer activity and so is a hiring announcement, so only the
+narrow word can ever be false and only the narrow word needs evidence.
+
+**The all-hiring branch is true and is not reachable from today's endpoint.**
+`/talent/v1/aggregate` answers an unrecognised filter with the UNFILTERED
+total, so "every row is hiring" and "the filter was dropped" arrive as the same
+number, and the call site is obliged to read both as UNKNOWN. The branch is
+kept and probed directly rather than deleted, because the question it asks is
+the right one and the day the endpoint can confirm it honoured a filter, only
+the call site changes. Stating this explicitly so nobody later reads equality
+as all-hiring: that would silently restore the subject line of 2026-08-28.
+
+**The ranked list's heading, derived the same way.** "Biggest hiring signals"
+sat over five readings of employers' own job boards ranked by how far their
+posting counts had risen. The caption directly beneath it was already derived
+from those rows as of 2.20.151; the heading over them was not - the same
+fixed-prose-over-variable-data fault, one line up. It now takes the caption's
+own three branches: all-board reads "Largest observed job-board increases",
+mixed reads "Biggest signals and job-board increases", and an all-reported list
+keeps the approved heading byte for byte, which is the same over-correction
+guard the caption carries.
+
+**Not changed, and deliberately.** The unit is not widened: "one sourced
+employer update" still describes exactly what is counted and the figure is
+untouched. What changed is the NAME on the number. The verified count is not
+widened either.
+
+**One thing in the critique judged wrong.** It asked the two-calendar-day
+"daily" window to state exact cutoff times. The composer sends bare dates -
+`since=2026-08-27&until=2026-08-28` - and selects on a date column: a
+`published_date` is a date, and a board reading is stamped by the day it was
+read. There are no cutoff times to publish, and inventing "00:00 to 23:59 UTC"
+would be a precision claim the data does not carry. The window is already named
+on every figure line ("August 27-28, 2026") and the layoff daily calls itself
+provisional, so no reader is told it covers one day. Declined.
+
+**Class:** derived-value-typed-by-hand
+**Guard:** railway/tests/test_digest_talent_label_is_derived.py
+
 
 ## 2026-08-29 - a job-board reading is an observation, not a report (2.20.151)
 

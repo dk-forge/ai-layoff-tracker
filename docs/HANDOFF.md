@@ -20,6 +20,18 @@ holder, so the start-of-session ritual surfaces it automatically.
   `railway/ops_status.py` ([2c] names the class), the parity test and TECHLOG.
   **Re-read main immediately before merging and take the next patch after it if
   this lost a race.** Full write-up in TECHLOG 2026-08-29.
+- **VERSION CLAIMED (2026-08-29): 2.20.153 - the talent digest's unit is
+  measured, not typed.** `2.20.152` was ALREADY CLAIMED by a concurrent session
+  whose work was uncommitted in the shared working tree when this one started,
+  so this took the next patch after it rather than racing for the same number.
+  This session did its work in a SEPARATE `git worktree` off `origin/main` for
+  the same reason: the tree is shared, and committing by path would have swept
+  that session's `ops_status.py`, `source_inventory.py`, `health.js` and
+  TECHLOG changes into this PR. Nothing outside these files was touched.
+  Plugin files: `includes/subscribe.php` and `ai-layoff-tracker.php` (version
+  only). Rest is the compose harness, two updated digest tests, one new one and
+  TECHLOG. **Re-read main immediately before merging and take the next patch
+  after it if this lost a race.** Full write-up in TECHLOG 2026-08-29.
 - **VERSION CLAIMED (2026-08-29): 2.20.151 — the talent digest stops calling a
   job-board reading a report.** The baton was read as FREE by `ops_status [0]`
   on origin/main and this session took it. The daily talent edition of

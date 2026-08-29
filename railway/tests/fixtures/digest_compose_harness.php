@@ -352,6 +352,28 @@ if (!empty($FIXTURE['probe'])) {
     exit;
 }
 
+/*
+  NOUN PROBE. alt_digest_talent_signal_noun decides what the talent figure may
+  be CALLED, from the measured hiring share. Three of its four inputs are
+  reachable through a composed edition and the fourth is not: today's
+  /talent/v1/aggregate answers an unrecognised filter with the unfiltered
+  total, so the composer is obliged to read "all of them are hiring" as
+  UNKNOWN, and the all-hiring branch cannot be driven from a fixture.
+
+  It is probed directly rather than left untested. A definition with an
+  unreachable branch is exactly the thing that rots into being wrong by the
+  time the transport can express it.
+*/
+if (!empty($FIXTURE['noun_probe'])) {
+    $out = array();
+    foreach ((array) $FIXTURE['noun_probe'] as $case) {
+        $out[] = alt_digest_talent_signal_noun(
+            $case['total'], array_key_exists('hiring', $case) ? $case['hiring'] : null);
+    }
+    echo json_encode($out);
+    exit;
+}
+
 $which = $FIXTURE['compose'] ?? 'layoff';
 if ($which === 'talent') {
     // The fourth argument is the tier, exactly as it is for the layoff composer

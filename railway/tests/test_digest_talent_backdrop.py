@@ -122,7 +122,14 @@ class TheTalentBackdropRenders(unittest.TestCase):
         # The backdrop is an ADDITION to the talent section, never a
         # replacement: our own signals still lead.
         self.assertIn("Talent Intelligence Tracker", self.section["html"])
-        self.assertIn("new hiring signals", self.section["html"])
+        # The unit paragraph, whose NOUN is derived from the window's measured
+        # hiring share since 2026-08-29 (alt_digest_talent_signal_noun). This
+        # fixture supplies no direction reading, so the mix is UNKNOWN and the
+        # neutral noun is the one that is true either way. What this test is
+        # about is that the section renders its own figure at all, so it asks
+        # for the paragraph rather than for a particular word in it.
+        self.assertIn('<p data-alt="unit">new ', self.section["html"])
+        self.assertIn(" signals</p>", self.section["html"])
 
     def test_the_block_heading_is_present_once(self):
         html = self.section["html"]
@@ -228,9 +235,14 @@ class TheCountMeaningHonestyIsStated(unittest.TestCase):
         # The honesty is prose, never a count. Nothing here claims "N of the
         # signals are scans" - that number is not measured and must not be
         # invented. The unit note keeps the original framing intact.
+        # The noun the sentence DEFINES is derived (2026-08-29): it has to be
+        # the same word the figure above it just wore, or the note defines a
+        # term the reader was never shown. The clause after it - the part this
+        # test is actually about - is unchanged.
         html = self.section["html"]
-        self.assertIn("A hiring signal is one sourced employer update, not one job",
+        self.assertIn(" signal is one sourced employer update, not one job",
                       html)
+        self.assertNotRegex(html, r"\d+ of the [\d,]+ signals are scans")
 
     def test_the_honesty_survives_the_monthly_defer(self):
         # The backdrop moves to the layoff section on monthly; the count-meaning

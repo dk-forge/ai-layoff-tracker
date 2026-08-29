@@ -3556,6 +3556,68 @@ function alt_digest_talent_basis() {
 }
 
 /**
+ * WHAT THE HEADLINE COUNT MAY BE CALLED, DERIVED FROM WHAT IS IN IT.
+ *
+ * THE DEFECT, READ IN THE DELIVERED EDITION OF 2026-08-28. The subject line
+ * said "30 hiring signals" and the body four lines down said "9 of the 30
+ * signals ... state a direction of hiring. The rest are other employer
+ * activity in the same window: funding, leadership, pay and site news." The
+ * email contradicted its own subject, and the subject is the line most readers
+ * only ever see. Twenty-one of those thirty were not hiring.
+ *
+ * THE MIX MEASUREMENT ALREADY EXISTED AND NOTHING READ IT. The composer has
+ * asked /talent/v1/aggregate for the hiring-direction share since 2026-08-28
+ * and printed the answer as a note. That was the right fix for the body and
+ * the wrong place to stop: a measurement that only ever prints a caveat
+ * underneath a wrong label has not corrected the label.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A REWORDING. `derived-value-typed-by-hand` is
+ * this repo's most-repeated defect class, and a noun hardcoded in a subject
+ * line is exactly it: the day the mix changes, a typed word is wrong and
+ * nothing reports it. So the count and the noun it governs are decided from
+ * the same reading, in one place, and every surface that names the unit reads
+ * this.
+ *
+ * THREE STATES, AND UNKNOWN IS NOT "HIRING".
+ *
+ *   $hiring_n === null   the endpoint could not answer, OR its answer equalled
+ *                        the unfiltered headline, which is the signature of a
+ *                        filter it ignored (see the call site). Both are
+ *                        UNKNOWN, and an unknown mix may not be published as
+ *                        an all-hiring one.
+ *   $hiring_n >= $total  every signal in the window states a direction of
+ *                        hiring, so "hiring signals" is the true word and the
+ *                        approved copy stands unchanged.
+ *   otherwise            the window holds employer activity that is not
+ *                        hiring, and the label says so.
+ *
+ * THE NEUTRAL NOUN IS TRUE IN ALL THREE, which is why it is the fallback. A
+ * funding round IS employer activity; an all-hiring window is employer
+ * activity too. Only the narrow word can be false, so only the narrow word
+ * needs a measurement behind it.
+ *
+ * THE ALL-HIRING BRANCH IS TRUE BUT IS NOT REACHABLE FROM TODAY'S ENDPOINT,
+ * and that is worth stating rather than discovering. /talent/v1/aggregate
+ * answers an unrecognised filter with the UNFILTERED total, so "every row
+ * states hiring" and "the filter was dropped" arrive as the same number and
+ * the call site is obliged to read both as UNKNOWN. The branch is kept, and
+ * pinned by a direct test, because the question it answers is the right one
+ * and the day that endpoint can confirm it honoured a filter, the call site
+ * changes and this does not. It is not dead code that drifted in: it is the
+ * definition, with one input the transport cannot currently supply.
+ *
+ * IT DOES NOT WIDEN THE UNIT. "A hiring signal is one sourced employer update"
+ * stays exactly what the tracker counts and the figure is untouched. What
+ * changes is the NAME on the number, which is the thing that was wrong.
+ */
+function alt_digest_talent_signal_noun($total, $hiring_n) {
+    if ($hiring_n !== null && (int) $hiring_n >= (int) $total) {
+        return 'hiring signal';
+    }
+    return 'talent and employer-activity signal';
+}
+
+/**
  * A COUNT AND THE NOUN IT GOVERNS, AGREEING. The general case of the above.
  *
  * WHY THIS IS A FUNCTION AND NOT A HABIT. The owner read a delivered digest
@@ -6637,6 +6699,67 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     $verified_n = (int) ($data['verified'] ?? 0);
     $verified = alt_digest_number($verified_n);
     $totalf = alt_digest_number($total);
+
+    /*
+      HOW MANY OF THEM ARE ABOUT HIRING AT ALL, MEASURED, AND READ BEFORE THE
+      FIRST WORD THAT NAMES THE UNIT.
+
+      THE DEFECT. The edition is headed "N hiring signals" and the count is
+      every signal in the window. Measured on the live database over the daily
+      window of 2026-08-27/28: 9 of 27 rows carry signal_direction 'hiring',
+      17 are 'neutral' and 1 is 'comp_shift'. Over the week 2026-08-17 to
+      2026-08-23 it is 215 of 1,075. So the majority of a "hiring signals"
+      count is funding rounds, leadership moves and site news.
+
+      THE ANSWER IS A MEASUREMENT, NOT A REDEFINITION. The unit note below
+      already says a hiring signal is "one sourced employer update", which is
+      a true description of what is counted and also the shape of caveat this
+      file is not allowed to lean on: a definition wide enough to make a
+      funding round a hiring signal has rescued the label by widening it. So
+      the composer asks the endpoint the question instead and prints the
+      answer. The reader gets the mix, not a permissive gloss on the word.
+
+      IT IS READ HERE, AT THE TOP, AND NOT WHERE ITS NOTE IS PRINTED. The
+      reading used to happen four paragraphs down, after the headline, the
+      unit line and the lede had already committed to the word "hiring" - so
+      the one measurement that could contradict them arrived too late to be
+      consulted, and the delivered edition of 2026-08-28 said "30 hiring
+      signals" in its subject with "9 of the 30" in its body. The NOTE still
+      prints in its old position, byte for byte; only the question is asked
+      earlier. See alt_digest_talent_signal_noun for what now reads it.
+
+      GUARDS, SAME SHAPE AS "OTHER TALENT ACTIVITY" BELOW and for the reasons
+      spelled out there: array_key_exists rather than isset so a null is not
+      read as a zero, a failed call yields NO figure because an endpoint that
+      cannot answer is UNKNOWN, and a total equal to the headline is the
+      signature of a filter the endpoint ignored and is discarded. What that
+      last guard gives up is a window in which every single signal states a
+      hiring direction; the observed shares are 33% and 20%, so it is not a
+      window this data produces, and a suppressed true line costs a line while
+      a headline-in-disguise costs a number. $hiring_n stays NULL through
+      both, and null is UNKNOWN rather than zero.
+    */
+    $hiring_n = null;
+    $dreq = new WP_REST_Request('GET', '/talent/v1/aggregate');
+    $dreq->set_param('since', $from);
+    $dreq->set_param('until', $to);
+    $dreq->set_param('include', 'fresh');
+    $dreq->set_param('direction', 'hiring');
+    $dres = rest_do_request($dreq);
+    if ($dres && !$dres->is_error()) {
+        $ddata = (array) $dres->get_data();
+        if (array_key_exists('total', $ddata)
+            && (int) $ddata['total'] !== $total) {
+            $hiring_n = (int) $ddata['total'];
+        }
+    }
+    /*
+      THE NOUN THIS EDITION'S FIGURE MAY WEAR, decided once from that reading
+      and read by the headline unit line, the lede, the ranked list's heading
+      and the subject fragment. Four surfaces, one derivation, so they cannot
+      disagree with each other or with the mix note.
+    */
+    $signal_noun = alt_digest_talent_signal_noun($total, $hiring_n);
     /*
       WHERE, AND WHY THIS ONE SAYS LESS THAN THE LAYOFF SECTION'S.
 
@@ -6671,7 +6794,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     $html = '<h2>Talent Intelligence Tracker</h2>'
           . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
           . '<p data-alt="unit">'
-          . esc_html(alt_digest_verb($total, 'new hiring signal', 'new hiring signals'))
+          . esc_html(alt_digest_verb($total, 'new ' . $signal_noun,
+                                             'new ' . $signal_noun . 's'))
           . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
     /*
@@ -6711,13 +6835,20 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
       can and cannot mean, consistent with the merged "opened roles" wording,
       and to leave the split unstated because it is unmeasured here.
     */
-    $unit_note = 'A hiring signal is one sourced employer update, not one job. '
+    /*
+      THE NOTE DEFINES THE WORD THE HEADLINE JUST USED, so it reads the same
+      derivation. It said "A hiring signal is ..." under a figure now labelled
+      "talent and employer-activity signals", which defines a term the reader
+      was never shown. On an all-hiring window this is byte-identical to the
+      approved sentence, which is the property to preserve.
+    */
+    $unit_note = 'A ' . $signal_noun . ' is one sourced employer update, not one job. '
                . 'Job counts below are the roles named in that update. Some '
                . 'signals are job-board scans, where a rise means the employer '
                . 'listed more active postings than our previous scan, not that '
                . 'it confirmed new openings.';
     $html .= '<p data-alt="note">' . esc_html($unit_note) . '</p>';
-    $lede = alt_digest_count($total, 'new hiring signal') . ', ' . $scope;
+    $lede = alt_digest_count($total, 'new ' . $signal_noun) . ', ' . $scope;
     // The same rule as the layoff section, same reason. This lede happens to
     // fit today; composing the snippet anyway means it keeps fitting when
     // somebody adds a clause to the body, which is exactly how the other one
@@ -6789,62 +6920,29 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     $text .= $detail . "\n";
 
     /*
-      HOW MANY OF THEM ARE ABOUT HIRING AT ALL, MEASURED.
+      THE MEASURED HIRING SHARE, PRINTED WHERE IT ALWAYS WAS. The reading
+      itself moved to the top of the composer (see the block that sets
+      $hiring_n) so that the words naming the unit could consult it; this is
+      unchanged in position, wording and guards. A NULL reading prints nothing,
+      because an endpoint that could not answer is UNKNOWN and a suppressed
+      equal-to-the-headline answer is a filter that was ignored.
 
-      THE DEFECT. The edition is headed "N hiring signals" and the count is
-      every signal in the window. Measured on the live database over the daily
-      window of 2026-08-27/28: 9 of 27 rows carry signal_direction 'hiring',
-      17 are 'neutral' and 1 is 'comp_shift'. Over the week 2026-08-17 to
-      2026-08-23 it is 215 of 1,075. So the majority of a "hiring signals"
-      count is funding rounds, leadership moves and site news.
-
-      THE ANSWER IS A MEASUREMENT, NOT A REDEFINITION. The unit note above
-      already says a hiring signal is "one sourced employer update", which is
-      a true description of what is counted and also the shape of caveat this
-      file is not allowed to lean on: a definition wide enough to make a
-      funding round a hiring signal has rescued the label by widening it. So
-      the composer asks the endpoint the question instead and prints the
-      answer. The reader gets the mix, not a permissive gloss on the word.
-
-      THE HEADLINE COUNT AND THE SUBJECT LINE ARE UNCHANGED. Both are correct
-      counts of signals, they were settled with the owner, and renaming a
-      published unit is a product decision this composer does not get to take
-      on its own. What it can do is stop leaving the mix to be inferred.
-
-      SAME SHAPE, SAME GUARDS AS "OTHER TALENT ACTIVITY" BELOW, for the same
-      reasons spelled out there: array_key_exists rather than isset so a null
-      is not read as a zero, a failed call prints NO line because an endpoint
-      that cannot answer is UNKNOWN, and a total equal to the headline is the
-      signature of a filter the endpoint ignored and is suppressed. What that
-      last guard gives up is a window in which every single signal states a
-      hiring direction; the observed shares are 33% and 20%, so it is not a
-      window this data produces, and a suppressed true line costs a line while
-      a headline-in-disguise costs a number.
+      IT IS STILL WORTH PRINTING NOW THE LABEL IS DERIVED. The noun says the
+      window holds more than hiring; this says how much more, measured.
     */
-    $dreq = new WP_REST_Request('GET', '/talent/v1/aggregate');
-    $dreq->set_param('since', $from);
-    $dreq->set_param('until', $to);
-    $dreq->set_param('include', 'fresh');
-    $dreq->set_param('direction', 'hiring');
-    $dres = rest_do_request($dreq);
-    if ($dres && !$dres->is_error()) {
-        $ddata = (array) $dres->get_data();
-        if (array_key_exists('total', $ddata)
-            && (int) $ddata['total'] !== $total) {
-            $hiring_n = (int) $ddata['total'];
-            // THE LINE CARRIES ITS OWN WINDOW, like every other figure line
-            // here: lifted out on its own it is still true and still says
-            // what it covers. See tests/test_digest_scope_rules.py.
-            $mix = alt_digest_number($hiring_n) . ' of the ' . $totalf
-                 . ' signals listed ' . $span . ' '
-                 . alt_digest_verb($hiring_n, 'states', 'state')
-                 . ' a direction of hiring. The rest are other employer '
-                 . 'activity in the same window: funding, leadership, pay and '
-                 . 'site news. That activity names no roles, and this tracker '
-                 . 'follows it because it tends to come before hiring.';
-            $html .= '<p data-alt="note">' . esc_html($mix) . '</p>';
-            $text .= $mix . "\n";
-        }
+    if ($hiring_n !== null) {
+        // THE LINE CARRIES ITS OWN WINDOW, like every other figure line
+        // here: lifted out on its own it is still true and still says
+        // what it covers. See tests/test_digest_scope_rules.py.
+        $mix = alt_digest_number($hiring_n) . ' of the ' . $totalf
+             . ' signals listed ' . $span . ' '
+             . alt_digest_verb($hiring_n, 'states', 'state')
+             . ' a direction of hiring. The rest are other employer '
+             . 'activity in the same window: funding, leadership, pay and '
+             . 'site news. That activity names no roles, and this tracker '
+             . 'follows it because it tends to come before hiring.';
+        $html .= '<p data-alt="note">' . esc_html($mix) . '</p>';
+        $text .= $mix . "\n";
     }
 
     /*
@@ -6967,11 +7065,36 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                       . 'our own description of what the employer\'s board '
                       . 'listed on two dates, not a headline anyone published.';
             }
+            /*
+              AND THE HEADING OVER THEM, DERIVED FROM THE SAME TWO COUNTS.
+
+              "Biggest hiring signals" sat over a list that was, on the
+              delivered edition of 2026-08-28, five readings of employers' own
+              job boards ranked by how much their posting counts had risen.
+              None of those five is a hiring signal in the sense the heading
+              promises, and the caption directly beneath already said so - it
+              is the same fixed-prose-over-variable-data fault the caption was
+              fixed for, one line higher up.
+
+              THE THREE BRANCHES ARE THE CAPTION'S, deliberately, because they
+              answer the same question about the same rows. An ALL-REPORTED
+              list keeps the approved heading byte for byte: it was always true
+              there, and rewriting it everywhere would trade one wrong fixed
+              phrase for another - the same over-correction guard
+              tests/test_digest_talent_observation.py holds for the caption.
+            */
+            if ($reported_n === 0) {
+                $heading = 'Largest observed job-board increases';
+            } elseif ($scan_n === 0) {
+                $heading = 'Biggest hiring signals';
+            } else {
+                $heading = 'Biggest signals and job-board increases';
+            }
             $caption = $range . ', ' . $order . ' ' . $prov;
-            $html .= '<h3>Biggest hiring signals</h3>'
+            $html .= '<h3>' . esc_html($heading) . '</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>'
                    . '<ul>';
-            $text .= "\nBiggest hiring signals\n" . $caption . "\n";
+            $text .= "\n" . $heading . "\n" . $caption . "\n";
             $undated = 0;
             foreach ($rows as $row) {
                 $row = (array) $row;
@@ -7273,14 +7396,31 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 // reader scanning headings meets the year before the
                 // abbreviation, which is the same principle the month-first
                 // date format follows.
+                /*
+                  THE SAME DERIVATION, OVER ITS OWN WINDOW, WHICH IS WHY THE
+                  READING IS NULL AND NOT $hiring_n.
+
+                  $hiring_n was measured over the EDITION's window. This figure
+                  covers the year, and no hiring-direction reading is taken for
+                  the year, so its mix is UNKNOWN. Passing the two-day reading
+                  here would stamp one window's measurement on another's
+                  figure - the shape the containment-pair rule exists to
+                  forbid - and passing nothing at all would leave the year
+                  wearing a label the day was just corrected out of.
+
+                  So it goes through the same function with an explicit null.
+                  UNKNOWN resolves to the noun that is true either way, and the
+                  argument says at the call site that nobody measured this one.
+                */
+                $ytd_noun = alt_digest_talent_signal_noun($ytd_total, null);
                 $html .= '<h3>' . esc_html($year) . ' YTD</h3>'
                        . '<p data-alt="stat">' . esc_html(alt_digest_number($ytd_total)) . '</p>'
                        . '<p data-alt="unit">'
-                       . esc_html(alt_digest_verb($ytd_total, 'hiring signal',
-                                                  'hiring signals')) . '</p>'
+                       . esc_html(alt_digest_verb($ytd_total, $ytd_noun,
+                                                  $ytd_noun . 's')) . '</p>'
                        . '<p data-alt="scope">' . esc_html($ytd_scope) . '</p>';
                 $text .= "\n{$year} YTD\n"
-                       . alt_digest_count($ytd_total, 'hiring signal') . ', '
+                       . alt_digest_count($ytd_total, $ytd_noun) . ', '
                        . $ytd_scope . "\n";
             }
         }
@@ -7364,12 +7504,20 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     /*
       ITS OWN SUBJECT AND ITS OWN METRIC FRAGMENT, EACH BOUND TO ITS UNIT.
 
-      "hiring signals" is not "jobs" and not "cuts", and the combined edition's
+      A signal is not a "job" and not a "cut", and the combined edition's
       subject sets this figure beside the layoff tracker's. Two numbers side by
       side are read as the same quantity unless each says what it counts, so
       the unit lives inside the fragment rather than being implied by position.
+
+      AND THE UNIT IS THE ONE THIS EDITION MEASURED, not a word typed here.
+      This read 'hiring signal' unconditionally, so the subject of 2026-08-28
+      promised "30 hiring signals" over a window in which nine of the thirty
+      stated a direction of hiring - the contradiction being printed, in the
+      same message, four lines below the fold. The subject is the line most
+      recipients only ever see, so it is the worst place in the product for a
+      hardcoded claim about variable data. See alt_digest_talent_signal_noun.
     */
-    $metric = alt_digest_count($total, 'hiring signal');
+    $metric = alt_digest_count($total, $signal_noun);
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
                  'metric' => $metric);
 }
