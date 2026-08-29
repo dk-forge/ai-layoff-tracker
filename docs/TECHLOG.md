@@ -60,6 +60,93 @@ day nothing else is dark.
 
 **Class:** derived-value-typed-by-hand
 **Guard:** railway/tests/test_ops_mail_split.py
+## 2026-08-29 - a collector that was never built, declared for thirteen months (2.20.152)
+
+**The standing signal.** `ops_status [2c]` opened every session with:
+
+    NEVER REPORTED  1 declared collector(s) have NO health row at all: earnings_ingest
+        Absent is not green. Either the collector does not run, or it runs and
+        never reports.
+
+The signal was correct and it was unresolvable, because the disjunction it
+offered was missing the true branch: **there was no collector.** No module in
+`railway/`, no workflow, no `cron.py` reference. `grep -rlF earnings_ingest`
+over `railway/` and `.github/workflows/` returns nothing; the other 39 declared
+ids return between 1 and 53 files each.
+
+**Where the label came from.** `0802c35` (2.19.84, "surface the 4 new collectors
+on both public pages") added a full four-field description to `meta{}` in
+`assets/health.js`: earnings-call transcripts, daily after calls, US-listed plus
+major global tickers, "Transcript API". The SAME batch (2.19.82 → 2.19.95, this
+log, 2026-07-21) records the reason it was never written:
+
+    FMP earnings **dropped** (transcript endpoint is paid-only, HTTP 402).
+
+The drop was measured, with our own key, and recorded in RUNBOOK's dormant-key
+table as `~~FMP_API_KEY~~ | (dropped)`. Only the label outlived the decision.
+
+**Rebuilding it was checked first, and is not available.** The question is not
+preference, it is which keys we hold and what their documented endpoints
+return. `FMP_API_KEY` and `FINNHUB_API_KEY` are both still in GitHub secrets,
+so this was a live possibility:
+
+| key held | transcript endpoint | tier required |
+|---|---|---|
+| `FMP_API_KEY` | `/stable/earning-call-transcript` | Ultimate. Our key measured HTTP 402 on 2026-07-21 |
+| `FINNHUB_API_KEY` | `/stock/transcripts` | Premium. Free tier is quotes, company-news, basic fundamentals, filings |
+| `MARKETAUX` / `NEWSDATA` / `NEWSAPI` | none | news aggregation, not transcripts |
+| EDGAR (keyless) | none | 8-K EX-99.1 earnings RELEASES, already collected by `edgar` |
+
+Everything else that serves transcripts (Alpha Vantage, API Ninjas,
+EarningsCalls.dev) is a new signup, which the owner has repeatedly ruled out.
+So the dormant-source pattern does not apply: a source ships dormant behind a
+key gate that a key can later open, and there is no key here to add. **The
+honest move is to stop declaring it.**
+
+**What shipped.** The `meta{}` line is deleted. Nothing else referenced it — no
+PHP, and the public Sources page never claimed it, so no reader was ever
+promised transcripts.
+
+**Class:** two-copies-drifted
+**Guard:** railway/tests/test_source_registry_parity.py
+
+**Why that class.** "Which collectors exist" was written down twice: the
+`meta{}` registry on the public health page, and the modules that actually run.
+They diverged. The unusual part is that this divergence was present at BIRTH
+rather than acquired — the label and the decision to drop the collector landed
+in the same batch — which is why no later change could have caught it.
+
+**The guard closes the missing direction.**
+`tests/test_source_registry_parity.py` already guarded reporter → label: a
+collector that POSTs health must have a `meta{}` entry, or the public page
+renders a bare id. Nothing guarded **label → reporter**, so a label could be
+written for a collector nobody built. `source_inventory.unimplemented_collectors()`
+requires every declared id to be named by at least one `.py`/`.yml`/`.json`/`.csv`
+under `railway/` or `.github/workflows/`. That is deliberately the WEAKEST
+possible test of existence — nearly free for a real collector, impossible for a
+label with nothing behind it. `ops_status [2c]` now names the class when a
+never-reported id is also unimplemented, so the next session is told to stop
+investigating a broken collector and go delete a label instead.
+
+**`tests` and the caches are excluded from the corpus on the merits.** A
+collector named only by a test that asserts something about it has still not
+been built, and `.pytest_cache/v/cache/nodeids` mentions nearly every id in the
+repo — counting it would let a deleted collector vouch for itself until someone
+cleared a cache.
+
+**PROVED BY MUTATION, and the mutation caught a real defect in the guard.**
+Restoring the deleted `meta{}` line must red the test. On the first run it did
+NOT: the new function's own docstring in `source_inventory.py` spelled
+`earnings_ingest` while narrating the incident, and `source_inventory.py` is
+inside the corpus it searches, so **the label vouched for itself through the
+guard written to catch it.** A guard that names its own counter-example cannot
+fire on it. The narrative moved to the test docstring and to this entry, both
+outside the corpus; the id is now deliberately absent from every file the scan
+reads, and the module says so where the next editor will see it. Re-run: the
+mutation fails with `['earnings_ingest'] is not false`, and reverting it passes
+10/10. Two further cases pin the guard against going vacuous — a synthetic
+registry naming an id that appears nowhere must be caught, and an unreadable
+registry must raise rather than return an empty "nothing is missing".
 
 ## 2026-08-29 - a job-board reading is an observation, not a report (2.20.151)
 

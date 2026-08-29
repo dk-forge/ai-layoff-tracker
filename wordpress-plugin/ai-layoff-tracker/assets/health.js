@@ -48,7 +48,6 @@
     eurofound_erm: ['Eurofound ERM restructuring announcements', 'Daily', 'European Union', 'Official monitor dataset'],
     company_watchlist: ['Targeted sweep of large employers with no current-year entry', 'Daily, rotating slice', 'Worldwide', 'Licensed news API'],
     supplemental_news: ['Non-English / global news expansion (NewsData.io · Marketaux · Finnhub)', 'Daily', 'Worldwide (Europe-weighted)', 'Licensed news APIs'],
-    earnings_ingest: ['Earnings-call transcripts, sieved for layoff/restructuring language', 'Daily, after calls', 'US-listed + major global tickers', 'Transcript API'],
     warn_custom_states: ['Custom-scraper WARN states (drift watchdog)', 'Daily', 'United States', 'State labor-agency notices'],
     context_enrichment: ['Existing source-linked records', 'Daily evidence-only', 'Internal', 'Evidence re-read'],
     reason_backfill: ['Untagged non-WARN records; reason tags only', 'Daily evidence-only', 'Internal', 'Stored-excerpt classification'],
