@@ -1,5 +1,118 @@
 # Tech Log
 
+## 2026-08-29 - a job-board reading is an observation, not a report (2.20.151)
+
+**What the owner read.** The daily talent edition of 2026-08-28, "30 hiring
+signals". Four sentences about the same rows, in one email:
+
+    "Some signals are job-board scans, where a rise means the employer listed
+     more active postings than our previous scan, not that it confirmed new
+     openings."
+    "... the signals naming the most jobs first ..."
+    "Databricks's job board listed 23 more active postings in London than our
+     previous scan (23 jobs, United Kingdom, Greenhouse, August 28, 2026)"
+    "Each headline is quoted as its source published it, in that source's own
+     language."
+
+The first says a posting delta is not confirmed hiring. The second and third
+relabel those deltas "jobs", the third contradicting its own headline four
+words later. The fourth is a statement about PROVENANCE that is false for a
+job-board row: that sentence is composed by the talent tracker's own
+`collectors/ats_boards.py` out of two readings of the board, and nobody
+published it. It is the worst of the four, because it is the paragraph that
+tells a journalist how to cite the list.
+
+A fifth, in the same message: "0 of the 30 are verified against a primary
+document. The rest are published indications we have not confirmed."
+
+**Measured before changing anything**, on the committed talent database over
+the window the edition covered (27 rows there against the live 30):
+
+    9 of 27 carry signal_direction 'hiring'; 17 'neutral', 1 'comp_shift'
+    all 9 of those are ats_boards readings - zero reported hiring announcements
+    10 of 27 are readings of the employers' own Greenhouse/Ashby/Lever boards
+    0 carry confidence 'verified'
+    16 carry a funding amount
+    over the week to 2026-08-23: 215 hiring of 1,075
+
+**The root cause is one thing, not five.** The composer treated every talent
+row as a report somebody published. Two classes reach it and they differ in
+three places a reader can check: the COUNT (a net rise in postings a board
+displayed is not N jobs), the DATE (the collector stamps the day it READ the
+board; nobody published on it), and WHO WROTE THE HEADLINE.
+
+**The definition already existed and the email never saw it.** The talent
+repo's `pipeline/count_meaning.py` (merged there as #93 after its own
+editorial review) classifies exactly this, and separates the two axes the
+"verified" sentence had collapsed: WHO PUBLISHED IT versus WHAT IT
+ESTABLISHES. `daily_digest.py` there renders it properly. Neither is on the
+path that composes the subscriber email: that is `alt_digest_compose_talent()`
+in this repo's `includes/subscribe.php`, and no workflow runs `daily_digest.py`
+at all. The fix had to be brought to the composer.
+
+**What changed**, all in `alt_digest_compose_talent()` and three new helpers:
+
+- `alt_digest_talent_is_scan($row)` - the one question, asked once, mirroring
+  `count_meaning._is_job_board` (the `ats_boards` collector, or a source naming
+  itself a job board). Not `confidence`: a board reading is honestly
+  `reported`, and so is most news. Different axes.
+- `alt_digest_postings_phrase()` - "23 more postings listed" on a board row;
+  `alt_digest_jobs_phrase()` still governs a reported row. The label is fixed,
+  not the caveat.
+- The row date reads "board read August 28, 2026" on a board row.
+- The caption is DERIVED from the rows it sits over, three branches. An
+  all-reported list keeps the old sentence BYTE FOR BYTE, and a test pins that:
+  the old wording was true for those rows, and rewriting it for every list
+  would have swapped one piece of fixed prose around variable data for another.
+- The "verified" sentence stops binning the remainder. "Verified" still means a
+  filed document and the COUNT IS UNCHANGED - promoting a board reading into it
+  would overstate our own measurement as a figure the employer filed. What was
+  untrue was the description of the rest. No count of board rows is printed:
+  `/talent/v1/aggregate` exposes no collector split and no collector filter, so
+  the only way to get one would be to tally the 40 sampled `/query` rows and
+  publish a partial count as a whole one.
+- `alt_digest_talent_basis()` - one definition of the date basis, read by both
+  the window figure and the year-to-date figure, which each carried their own
+  copy of "counted by the date the source published".
+- A MEASURED hiring share: one more `/aggregate` call, `direction=hiring`, same
+  three guards as "Other talent activity" (array_key_exists so a null is not a
+  zero, a failed call prints nothing because UNKNOWN is not zero, a total equal
+  to the headline is the dropped-filter signature and is suppressed).
+
+**What was NOT done, and why.** The subject line and the headline count are
+unchanged. Both are correct counts of signals, both were settled with the owner
+byte for byte, and renaming a published unit is a product decision a composer
+does not take on its own. The answer to an unstated mix is to state the mix,
+measured - not to widen the unit note until a funding round is a hiring signal.
+The daily window (yesterday and today) is also unchanged: it is deliberate,
+documented on `alt_digest_window`, and the real defect underneath the "window
+is imprecise" complaint was the date BASIS, which is fixed above.
+
+**Class:** derived-value-typed-by-hand
+**Guard:** railway/tests/test_digest_talent_observation.py
+
+**Why that class and not `two-copies-drifted`, which it also resembles.** Four
+separate sentences here were facts ABOUT THE ROWS, typed once into copy instead
+of read off them: "each headline is quoted as its source published it", "the
+signals naming the most jobs first", "(23 jobs)", and "the rest are published
+indications we have not confirmed". Every one was true when it was written,
+over a list of news rows, and every one went false as the row mix changed - the
+`ats_boards` collector shipped and the daily edition became mostly board
+readings. Nothing reported it, because prose that has gone stale still renders.
+The drift reading is real too (`pipeline/count_meaning.py` in the talent repo
+is the definition, and this composer had grown an implicit second one), and it
+is recorded here so a later count can go either way. But the shape that let it
+ship is the typed-not-derived one, and the fix is the same shape in reverse:
+the caption is now built from the rows it sits over.
+
+**Proved by mutation.** `railway/tests/test_digest_talent_observation.py`, 20
+tests. Each fix reverted in turn reddens exactly its own assertions: the
+postings phrase (2), the board-read date (1), the derived caption (3), the
+verified remainder (3), the hiring-direction line (1), the date basis (2). The
+full `test_digest*` suite is otherwise green; `test_digest_dst_slot` carries 4
+errors that are already on main.
+
+
 ## 2026-08-28 - the digest footer carries a postal address (2.20.150)
 
 **What.** CAN-SPAM 15 U.S.C. 7704(a)(5) requires a commercial message to carry

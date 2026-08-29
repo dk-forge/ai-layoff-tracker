@@ -3480,6 +3480,82 @@ function alt_digest_jobs_phrase($n) {
 }
 
 /**
+ * "23 more postings listed". The unit a JOB-BOARD READING actually carries.
+ *
+ * THE DEFECT, READ IN THE DELIVERED EDITION OF 2026-08-28. Every row in that
+ * day's ranked list was a job-board reading, and every one of them was printed
+ * with alt_digest_jobs_phrase: "Databricks's job board listed 23 more active
+ * postings in London than our previous scan (23 jobs, United Kingdom, ...)".
+ * The headline said what the number was and the parenthesis beside it said
+ * something else, in the same line, four words apart.
+ *
+ * A NET RISE IN LISTED POSTINGS IS NOT 23 JOBS. It is the difference between
+ * two readings of the employer's own board: old postings expire while new ones
+ * appear, so the delta is a measurement of what the board displayed, never a
+ * count of roles the employer opened and never a hire. The collector that
+ * produces these rows says so in its own body text; the email said "jobs".
+ *
+ * THE SAME SENTENCE THE SAME EMAIL ALREADY CARRIED, CONTRADICTED. The unit
+ * note two blocks up already told the reader that a rise on a job board "means
+ * the employer listed more active postings than our previous scan, not that it
+ * confirmed new openings" - and then the ranking relabelled those increases as
+ * jobs. A caveat that the copy beneath it contradicts is worse than no caveat.
+ * The fix is the label, not a wider caveat.
+ */
+function alt_digest_postings_phrase($n) {
+    return alt_digest_count($n, 'more posting listed', 'more postings listed');
+}
+
+/**
+ * IS THIS TALENT ROW A READING WE TOOK, OR A REPORT SOMEBODY PUBLISHED?
+ *
+ * The two classes need different words for three separate things in this
+ * email - the count, the date, and who wrote the headline - so the question is
+ * asked once, here, and the three callers read the answer.
+ *
+ * THE DEFINITION IS THE SIBLING REPO'S AND THIS MIRRORS IT. The talent tracker
+ * decides what a headcount MEANS in `pipeline/count_meaning.py`, whose
+ * `_is_job_board()` is exactly this test: the `ats_boards` collector, or a
+ * source that names itself a job board. Both halves are needed and neither is
+ * redundant. The collector name is the reliable one and is on every row
+ * /talent/v1/query returns; the source-name check is the belt and braces for a
+ * row that reaches us through some other path already calling itself a board.
+ *
+ * IT IS NOT `confidence`. A board reading is stored `reported`, honestly, and
+ * so are most news stories - the tier says how strong the evidence is, not who
+ * published it. Those are different axes and collapsing them is the mistake
+ * this whole change exists to undo.
+ */
+function alt_digest_talent_is_scan($row) {
+    $row = (array) $row;
+    if (strtolower(trim((string) ($row['collector'] ?? ''))) === 'ats_boards') {
+        return true;
+    }
+    return (bool) preg_match('/\bjob board\b/i',
+                             (string) ($row['source_name'] ?? ''));
+}
+
+/**
+ * THE DATE BASIS OF EVERY TALENT FIGURE, IN ONE PLACE.
+ *
+ * The window figure and the year-to-date figure each carried their own copy of
+ * "counted by the date the source published", and both were wrong in the same
+ * way: a job-board reading has no publication date, because nobody published
+ * it. The collector stamps the day it read the board, and the window selects
+ * on that stamp.
+ *
+ * THIS IS A BASIS, NOT A CAVEAT, which is why it is unconditional. It states
+ * what the date on a row IS for each of the two kinds of row the table holds,
+ * exactly as the layoff section's "counted by the date the cuts take effect"
+ * does. It is not a hedge bolted on to excuse a figure, and it must not become
+ * one: if the mix ever needs stating, state the mix, measured.
+ */
+function alt_digest_talent_basis() {
+    return 'counted by the date the source published, or for a job-board '
+         . 'reading the date we read the board';
+}
+
+/**
  * A COUNT AND THE NOUN IT GOVERNS, AGREEING. The general case of the above.
  *
  * WHY THIS IS A FUNCTION AND NOT A HABIT. The owner read a delivered digest
@@ -6575,7 +6651,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
       caveat is the same fault as a fixed one. If that endpoint ever ships a
       placed/unplaced split, use alt_digest_geo_scope() here too.
     */
-    $scope = $range . ', worldwide, counted by the date the source published.';
+    $scope = $range . ', worldwide, ' . alt_digest_talent_basis() . '.';
     /*
       THE UNIT SITS UNDER THE FIGURE, NOT ABOVE IT, and this is not cosmetic.
 
@@ -6672,10 +6748,104 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
               the sentence a sceptical reader met most often.
             */
             . alt_digest_verb($verified_n, 'is', 'are')
-            . ' verified against a primary document. The rest are published '
-            . 'indications we have not confirmed.';
+            /*
+              WHAT THE REST ARE, WITHOUT PUTTING THEM ALL IN ONE BIN.
+
+              THE DEFECT. This closed "The rest are published indications we
+              have not confirmed", and on the daily edition of 2026-08-28 the
+              figure in front of it was ZERO - so the sentence said that
+              nothing in the email was evidence of anything. Ten of that day's
+              rows were readings of the employers' OWN careers boards. A
+              Greenhouse or Ashby board is the employer publishing, first hand;
+              calling it an unconfirmed indication is not a caution, it is a
+              wrong statement about where the fact came from.
+
+              TWO AXES, NOT ONE, and conflating them is the whole fault. WHO
+              PUBLISHED IT (the employer itself, or somebody reporting on it)
+              and WHAT IT ESTABLISHES (a filed figure, or a measurement we
+              took) are independent. A first-party board reading is
+              first-party AND unfiled, both true at once, and a sentence with
+              one bin cannot hold that.
+
+              THE FIGURE IS NOT WIDENED TO RESCUE THE WORD. "Verified" still
+              means a filed primary document and the count in front of it is
+              unchanged - promoting a board reading into it would overstate our
+              own measurement as a figure the employer filed. What changes is
+              the description of the remainder, which was simply untrue.
+
+              NO COUNT IS ADDED HERE, deliberately. /talent/v1/aggregate
+              exposes no collector split and no collector filter, so the only
+              way to count the board rows would be to tally the 40 sampled
+              /query rows and print the result as if it covered the window.
+              That is a partial count published as a whole one. The classes
+              are named; the split stays unstated because it is unmeasured.
+            */
+            . ' verified against a primary document, which here means a filed '
+            . 'one. The rest are of two kinds: news reports we have not '
+            . 'independently confirmed, and readings of employers\' own job '
+            . 'boards. A board reading is first-party, but it is our '
+            . 'measurement rather than a figure the employer filed.';
     $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
     $text .= $detail . "\n";
+
+    /*
+      HOW MANY OF THEM ARE ABOUT HIRING AT ALL, MEASURED.
+
+      THE DEFECT. The edition is headed "N hiring signals" and the count is
+      every signal in the window. Measured on the live database over the daily
+      window of 2026-08-27/28: 9 of 27 rows carry signal_direction 'hiring',
+      17 are 'neutral' and 1 is 'comp_shift'. Over the week 2026-08-17 to
+      2026-08-23 it is 215 of 1,075. So the majority of a "hiring signals"
+      count is funding rounds, leadership moves and site news.
+
+      THE ANSWER IS A MEASUREMENT, NOT A REDEFINITION. The unit note above
+      already says a hiring signal is "one sourced employer update", which is
+      a true description of what is counted and also the shape of caveat this
+      file is not allowed to lean on: a definition wide enough to make a
+      funding round a hiring signal has rescued the label by widening it. So
+      the composer asks the endpoint the question instead and prints the
+      answer. The reader gets the mix, not a permissive gloss on the word.
+
+      THE HEADLINE COUNT AND THE SUBJECT LINE ARE UNCHANGED. Both are correct
+      counts of signals, they were settled with the owner, and renaming a
+      published unit is a product decision this composer does not get to take
+      on its own. What it can do is stop leaving the mix to be inferred.
+
+      SAME SHAPE, SAME GUARDS AS "OTHER TALENT ACTIVITY" BELOW, for the same
+      reasons spelled out there: array_key_exists rather than isset so a null
+      is not read as a zero, a failed call prints NO line because an endpoint
+      that cannot answer is UNKNOWN, and a total equal to the headline is the
+      signature of a filter the endpoint ignored and is suppressed. What that
+      last guard gives up is a window in which every single signal states a
+      hiring direction; the observed shares are 33% and 20%, so it is not a
+      window this data produces, and a suppressed true line costs a line while
+      a headline-in-disguise costs a number.
+    */
+    $dreq = new WP_REST_Request('GET', '/talent/v1/aggregate');
+    $dreq->set_param('since', $from);
+    $dreq->set_param('until', $to);
+    $dreq->set_param('include', 'fresh');
+    $dreq->set_param('direction', 'hiring');
+    $dres = rest_do_request($dreq);
+    if ($dres && !$dres->is_error()) {
+        $ddata = (array) $dres->get_data();
+        if (array_key_exists('total', $ddata)
+            && (int) $ddata['total'] !== $total) {
+            $hiring_n = (int) $ddata['total'];
+            // THE LINE CARRIES ITS OWN WINDOW, like every other figure line
+            // here: lifted out on its own it is still true and still says
+            // what it covers. See tests/test_digest_scope_rules.py.
+            $mix = alt_digest_number($hiring_n) . ' of the ' . $totalf
+                 . ' signals listed ' . $span . ' '
+                 . alt_digest_verb($hiring_n, 'states', 'state')
+                 . ' a direction of hiring. The rest are other employer '
+                 . 'activity in the same window: funding, leadership, pay and '
+                 . 'site news. That activity names no roles, and this tracker '
+                 . 'follows it because it tends to come before hiring.';
+            $html .= '<p data-alt="note">' . esc_html($mix) . '</p>';
+            $text .= $mix . "\n";
+        }
+    }
 
     /*
       ASK FOR MORE THAN FIVE, BECAUSE THE FIVE THAT ARRIVE ARE THE WRONG FIVE.
@@ -6747,9 +6917,57 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
               costs three words and stops the caption gesturing at an internal
               detail nobody outside this repo can check.
             */
-            $caption = $range . ', the signals naming the most jobs first, then '
-                     . 'newest first. Each headline is quoted as its source '
-                     . 'published it, in that source\'s own language.';
+            /*
+              THE CAPTION IS DERIVED FROM THE ROWS IT SITS OVER, and until now
+              it made two claims that were false for a whole class of them.
+
+              THE PROVENANCE CLAIM IS THE SERIOUS ONE. "Each headline is quoted
+              as its source published it, in that source's own language" was
+              printed unconditionally. A job-board row's headline is not a
+              quotation of anything: nobody published it. The talent tracker's
+              own collector COMPOSES that sentence out of two readings of the
+              board ("...listed 23 more active postings in London than our
+              previous scan"). On the delivered edition of 2026-08-28 every
+              single row in this list was a board reading, so the email made a
+              false statement about the provenance of 100% of what it showed -
+              in a paragraph whose job is to tell a journalist how to cite it.
+
+              AND THE ORDERING CLAIM NAMED THE WRONG UNIT. "the signals naming
+              the most jobs first" over a list of postings deltas is the same
+              relabelling the row parentheses were doing.
+
+              FIXED PROSE AROUND VARIABLE DATA IS WHAT BROKE IT, so the fix is
+              not a wider sentence that covers both cases at once. The rows are
+              in hand, they are counted, and the caption says what is actually
+              in the list - the same rule the undated-rows note below follows.
+              A list of reported rows keeps the old sentence byte for byte,
+              because for those rows it was always true.
+            */
+            $scan_n = 0;
+            foreach ($rows as $ranked) {
+                if (alt_digest_talent_is_scan($ranked)) $scan_n++;
+            }
+            $reported_n = count($rows) - $scan_n;
+            if ($scan_n === 0) {
+                $order = 'the signals naming the most jobs first, then newest '
+                       . 'first.';
+                $prov = 'Each headline is quoted as its source published it, '
+                      . 'in that source\'s own language.';
+            } elseif ($reported_n === 0) {
+                $order = 'the signals listing the most postings first, then '
+                       . 'newest first.';
+                $prov = 'Each line is our own description of what the '
+                      . 'employer\'s job board listed on two dates, not a '
+                      . 'headline anyone published.';
+            } else {
+                $order = 'the signals naming the most jobs or postings first, '
+                       . 'then newest first.';
+                $prov = 'A news headline is quoted as its source published it, '
+                      . 'in that source\'s own language. A job-board line is '
+                      . 'our own description of what the employer\'s board '
+                      . 'listed on two dates, not a headline anyone published.';
+            }
+            $caption = $range . ', ' . $order . ' ' . $prov;
             $html .= '<h3>Biggest hiring signals</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>'
                    . '<ul>';
@@ -6790,7 +7008,18 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 */
                 $facts = array();
                 $jobs = isset($row['headcount']) ? (int) $row['headcount'] : 0;
-                if ($jobs > 0) $facts[] = alt_digest_jobs_phrase($jobs);
+                /*
+                  AND THE UNIT THAT NUMBER IS IN. A board reading's headcount
+                  is a net rise in postings the employer's board DISPLAYED
+                  between two of our scans, which is not 23 jobs and is not a
+                  hire. See alt_digest_postings_phrase for the delivered line
+                  that contradicted itself inside four words.
+                */
+                $is_scan = alt_digest_talent_is_scan($row);
+                if ($jobs > 0) {
+                    $facts[] = $is_scan ? alt_digest_postings_phrase($jobs)
+                                        : alt_digest_jobs_phrase($jobs);
+                }
                 /*
                   WHERE, WHICH THIS LIST DID NOT SAY UNTIL 2026-08-20.
 
@@ -6816,7 +7045,18 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 // carries no date prints no date.
                 $outlet = trim((string) ($row['source_name'] ?? ''));
                 if ($outlet !== '') $facts[] = $outlet;
-                if ($when !== '') { $facts[] = $when; } else { $undated++; }
+                /*
+                  A DATE MEANS TWO DIFFERENT THINGS ON THE TWO KINDS OF ROW,
+                  and printing them identically made one of them a claim we
+                  cannot support. A news row's date is when the outlet
+                  PUBLISHED. A job-board row was never published, and the
+                  collector stamps the day it READ the board - so a bare date
+                  there says an outlet published something on a day nobody
+                  published anything. Naming the act costs three characters.
+                */
+                if ($when !== '') {
+                    $facts[] = $is_scan ? ('board read ' . $when) : $when;
+                } else { $undated++; }
                 /*
                   THE HEADLINE IS A LINK, and until 2026-08-20 it was the only
                   list in this email that was not.
@@ -7027,8 +7267,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
         if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
             $ytd_total = (int) (((array) $ytd_res->get_data())['total'] ?? 0);
             if ($ytd_total > 0) {
-                $ytd_scope = $ytd_range
-                           . ', worldwide, counted by the date the source published.';
+                $ytd_scope = $ytd_range . ', worldwide, '
+                           . alt_digest_talent_basis() . '.';
                 // "2026 YTD", the year first, matching the layoff section. A
                 // reader scanning headings meets the year before the
                 // abbreviation, which is the same principle the month-first

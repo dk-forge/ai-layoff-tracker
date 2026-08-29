@@ -6,6 +6,19 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-08-29): 2.20.151 — the talent digest stops calling a
+  job-board reading a report.** The baton was read as FREE by `ops_status [0]`
+  on origin/main and this session took it. The daily talent edition of
+  2026-08-28 said a posting delta is not confirmed hiring and then ranked those
+  deltas as "jobs", and claimed every headline was "quoted as its source
+  published it" over a list in which 100% of the rows were sentences our own
+  collector composed. Plugin file touched: `includes/subscribe.php` (three new
+  helpers plus `alt_digest_compose_talent`), and `ai-layoff-tracker.php`
+  (version only). Rest is `railway/tests/test_digest_talent_observation.py` and
+  TECHLOG. The subject line and the headline count are deliberately UNCHANGED —
+  see TECHLOG for why the mix is stated rather than the unit renamed.
+  **Re-read main immediately before merging and take the next patch after it if
+  this lost a race.** Full write-up in TECHLOG 2026-08-29.
 - **VERSION CLAIMED (2026-08-28): 2.20.149 — the GDELT work ledger now
   survives the container that writes it.** The baton was read as FREE by
   `ops_status [0]` on origin/main and this session took it. The cross-run
