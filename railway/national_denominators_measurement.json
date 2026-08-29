@@ -10,7 +10,7 @@
     "pl_group_layoffs",
     "is_hopuppsagnir"
   ],
-  "measured_at": "2026-08-21T16:55:12Z",
+  "measured_at": "2026-08-29T00:35:05Z",
   "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
   "slices": {
     "ee_collective_redundancy_notices": {
@@ -46,7 +46,7 @@
         "label": "2025-07..2026-06",
         "to": "2026-06-30"
       },
-      "period_age_days": 52,
+      "period_age_days": 60,
       "publisher_updated": "2026-08-07T10:04:45.938Z",
       "robots": "avaandmed.eesti.ee and andmed.eesti.ee both serve no robots.txt (404). tootukassa.ee allows the statistics path with Crawl-delay: 10, and is not fetched by this collector",
       "secondary": {
@@ -94,7 +94,7 @@
         "label": "2025-07..2026-06",
         "to": "2026-06-30"
       },
-      "period_age_days": 52,
+      "period_age_days": 60,
       "publisher_updated": "2026-08-17T23:00:00.000Z",
       "robots": "ons.gov.uk serves no robots.txt (404) — no directive to obey",
       "secondary": {
@@ -153,7 +153,7 @@
         "label": "2024/25",
         "to": "2025-03-31"
       },
-      "period_age_days": 508,
+      "period_age_days": 516,
       "publisher_updated": null,
       "robots": "datavis.nisra.gov.uk serves no readable robots.txt. nisra.gov.uk's wildcard block names admin paths only. The XLSX is NOT fetched either way — the HTML report carries the same figures and a previous assessment recorded an xlsx disallow",
       "secondary": {
@@ -225,7 +225,7 @@
         "label": "2025",
         "to": "2025-12-31"
       },
-      "period_age_days": 233,
+      "period_age_days": 241,
       "publisher_updated": "20260611T154255",
       "robots": "apiservice.mol.gov.tw returns an F5 'Request Rejected' page for /robots.txt itself, so no directive could be read. The data endpoints answer 200 to our own identifying agent string under an explicit open-data licence, and no block aimed at agents was found. Recorded as PERMITTED WITH THE ROBOTS FILE UNREADABLE — if that ever becomes a 403 to this agent it is a refusal and stays one. statfy.mol.gov.tw was unreachable and its robots.txt has never been read: treat as NOT permitted",
       "secondary": {
