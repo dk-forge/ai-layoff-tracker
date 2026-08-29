@@ -1,5 +1,35 @@
 # Tech Log
 
+## 2026-08-29 - the operator set a timeout variable and nothing read it
+
+**What.** After the GDELT throttle finding (#238) the owner set `GDELT_PREFER_BQ=1`
+and a query-timeout variable on the Railway cron. The first is read at
+`gdelt.py:1534` and takes effect. The second read nothing: `timeout=30` was a
+hardcoded literal in the request at `gdelt.py:1260`.
+
+**Why it matters more than the seconds do.** This is the silent no-op again, in
+the one place where it is worst - the person acting believed they had acted, and
+no surface would ever have told them otherwise. A wrong timeout at least
+produces a symptom; a setting nobody reads produces a false belief.
+
+**Fix.** `QUERY_TIMEOUT_SECONDS`, read from `GDELT_QUERY_TIMEOUT` and CLAMPED to
+5..90 like every other knob in that file. The default stays 30, so this commit
+changes no behaviour by itself.
+
+**Why clamped rather than free.** The two failure modes point opposite ways.
+30s sits BELOW the endpoint's measured answering latency (19.8-75s+, measured
+2026-08-29), so some windows are abandoned by our own clock rather than by
+GDELT. But `QUERY_ATTEMPTS` is 5, so a 90s ceiling is already 7.5 minutes on one
+window before backoff - and run 33094996142 self-cancelled at 45 minutes. An
+unbounded value would trade one silent failure for a louder one.
+
+**Verification.** Six cases, mutation-confirmed: restoring the hardcoded `30`
+fails `test_the_request_actually_uses_it`, which exists because a constant that
+is declared and not used is this defect wearing a fix.
+
+**Class:** silent-stop
+**Guard:** railway/tests/test_gdelt_ledger_persistence.py
+
 ## 2026-08-29 - GDELT refuses at HTTP 200, so a throttle read as a broken parser
 
 `ops_status [2]` had gdelt DEGRADED at `queries=12 answered=5 abandoned=7`, and
