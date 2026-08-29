@@ -683,7 +683,23 @@ QUERY_BACKOFF_SECONDS = max(1, min(120, int(os.environ.get("GDELT_QUERY_BACKOFF_
 # QUERY_ATTEMPTS(5) x 90s is already 7.5 minutes for a single window before
 # backoff, and the backfill's own deadline has to survive it. The default is
 # unchanged, so this commit alters no behaviour by itself.
-QUERY_TIMEOUT_SECONDS = max(5, min(90, int(os.environ.get("GDELT_QUERY_TIMEOUT", "30"))))
+def _clamped_query_timeout(raw=None):
+    """Seconds to wait for ONE query, clamped. Pure, so it is testable WITHOUT
+    reloading this module.
+
+    That matters: the first version of this test reloaded the module to observe
+    the constant, which rebuilt `_THROTTLE_BODY_RX` -- and `gdelt_backfill`
+    imports that object BY REFERENCE, so the identity assertion pinning the two
+    to one definition started failing on main. A test that reloads a module
+    other modules hold references into breaks them, and the breakage lands
+    somewhere else entirely.
+    """
+    if raw is None:
+        raw = os.environ.get("GDELT_QUERY_TIMEOUT", "30")
+    return max(5, min(90, int(raw)))
+
+
+QUERY_TIMEOUT_SECONDS = _clamped_query_timeout()
 
 # --- Window coverage: bisection, the work ledger, and the run verdict --------
 #
