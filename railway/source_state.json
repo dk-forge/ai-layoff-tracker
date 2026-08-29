@@ -2,7 +2,7 @@
   "sources": {
     "warn:AK": {
       "label": "AK WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-09-04",
       "observations": 6,
       "last_verdict": "UNKNOWN",
@@ -10,11 +10,11 @@
       "frontier": "2026-09-04",
       "frontier_advanced_at": "2026-08-20",
       "state": "UNKNOWN",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:AL": {
       "label": "AL WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-20",
       "rate_per_year": 35.53,
       "rate_long_run_per_year": 26.94,
@@ -23,12 +23,12 @@
       "span_days": 1084,
       "rate_basis_days": 339,
       "last_verdict": "PASS",
-      "last_reason": "8d quiet, under the 14d floor",
-      "p0": 0.458984,
+      "last_reason": "9d quiet, under the 14d floor",
+      "p0": 0.416411,
       "frontier": "2026-08-20",
       "frontier_advanced_at": "2026-08-23",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:AR": {
       "label": "Arkansas WARN",
@@ -40,26 +40,26 @@
     },
     "warn:AZ": {
       "label": "AZ WARN",
-      "last_checked": "2026-08-28",
-      "max_effective": "2026-08-21",
-      "rate_per_year": 48.0,
-      "rate_long_run_per_year": 50.38,
-      "cadence_days": 19,
-      "observations": 152,
-      "span_days": 1094,
-      "rate_basis_days": 365,
+      "last_checked": "2026-08-29",
+      "max_effective": "2026-08-04",
+      "rate_per_year": 4.29,
+      "rate_long_run_per_year": 4.29,
+      "cadence_days": 109,
+      "observations": 12,
+      "span_days": 935,
+      "rate_basis_days": 935,
       "last_verdict": "PASS",
-      "last_reason": "7d quiet, under the 14d floor",
-      "p0": 0.398301,
+      "last_reason": "25d quiet is ordinary at its recent 4.29/yr (p=0.745, needs p<0.05)",
+      "p0": 0.745399,
       "frontier": "2026-08-21",
       "frontier_advanced_at": "2026-08-25",
       "state": "HEALTHY",
-      "observation_seq": 9,
-      "frontier_receded_at": "2026-08-26"
+      "observation_seq": 10,
+      "frontier_receded_at": "2026-08-29"
     },
     "warn:CA": {
       "label": "CA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-02-01",
       "rate_per_year": 972.0,
       "rate_long_run_per_year": 1427.0,
@@ -73,11 +73,11 @@
       "frontier": "2027-02-01",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:CO": {
       "label": "CO WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-13",
       "rate_per_year": 61.1,
       "rate_long_run_per_year": 61.1,
@@ -91,11 +91,11 @@
       "frontier": "2026-10-13",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:CT": {
       "label": "CT WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-28",
       "rate_per_year": 28.99,
       "rate_long_run_per_year": 28.99,
@@ -104,16 +104,16 @@
       "span_days": 277,
       "rate_basis_days": 277,
       "last_verdict": "PASS",
-      "last_reason": "0d quiet, under the 14d floor",
-      "p0": 1.0,
+      "last_reason": "1d quiet, under the 14d floor",
+      "p0": 0.923648,
       "frontier": "2026-08-28",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:DC": {
       "label": "DC WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-02",
       "rate_per_year": 17.43,
       "rate_long_run_per_year": 19.71,
@@ -127,24 +127,24 @@
       "frontier": "2026-10-02",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:DE": {
       "label": "DE WARN",
-      "last_checked": "2026-08-28",
-      "max_effective": "2026-08-10",
-      "observations": 5,
+      "last_checked": "2026-08-29",
+      "max_effective": "2026-06-29",
+      "observations": 4,
       "last_verdict": "UNKNOWN",
-      "last_reason": "only 5 observation(s) on 5 distinct date(s) in the 1095d window",
+      "last_reason": "only 4 observation(s) on 4 distinct date(s) in the 1095d window",
       "frontier": "2026-08-10",
       "frontier_advanced_at": "2026-08-20",
       "state": "UNKNOWN",
-      "observation_seq": 9,
-      "frontier_receded_at": "2026-08-24"
+      "observation_seq": 10,
+      "frontier_receded_at": "2026-08-29"
     },
     "warn:FL": {
       "label": "FL WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-15",
       "rate_per_year": 271.23,
       "rate_long_run_per_year": 271.58,
@@ -158,11 +158,11 @@
       "frontier": "2026-10-15",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:GA": {
       "label": "GA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-26",
       "rate_per_year": 96.0,
       "rate_long_run_per_year": 80.07,
@@ -171,12 +171,12 @@
       "span_days": 1094,
       "rate_basis_days": 365,
       "last_verdict": "PASS",
-      "last_reason": "2d quiet, under the 14d floor",
-      "p0": 0.590948,
+      "last_reason": "3d quiet, under the 14d floor",
+      "p0": 0.45428,
       "frontier": "2026-08-26",
       "frontier_advanced_at": "2026-08-27",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:GU": {
       "label": "Guam WARN",
@@ -188,7 +188,7 @@
     },
     "warn:IA": {
       "label": "IA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-02-28",
       "rate_per_year": 88.48,
       "rate_long_run_per_year": 88.76,
@@ -202,11 +202,11 @@
       "frontier": "2027-02-28",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:ID": {
       "label": "ID WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-09",
       "rate_per_year": 8.77,
       "rate_long_run_per_year": 11.89,
@@ -220,11 +220,11 @@
       "frontier": "2026-10-09",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:IL": {
       "label": "IL WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-25",
       "rate_per_year": 129.35,
       "rate_long_run_per_year": 128.47,
@@ -233,16 +233,16 @@
       "span_days": 1091,
       "rate_basis_days": 364,
       "last_verdict": "PASS",
-      "last_reason": "3d quiet, under the 14d floor",
-      "p0": 0.345366,
+      "last_reason": "4d quiet, under the 14d floor",
+      "p0": 0.242311,
       "frontier": "2026-08-25",
       "frontier_advanced_at": "2026-08-27",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:IN": {
       "label": "IN WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-13",
       "rate_per_year": 37.0,
       "rate_long_run_per_year": 38.33,
@@ -251,16 +251,16 @@
       "span_days": 1095,
       "rate_basis_days": 365,
       "last_verdict": "PASS",
-      "last_reason": "15d quiet is ordinary at its recent 37.0/yr (p=0.219, needs p<0.05)",
-      "p0": 0.218592,
+      "last_reason": "16d quiet is ordinary at its recent 37.0/yr (p=0.198, needs p<0.05)",
+      "p0": 0.19752,
       "frontier": "2026-08-13",
       "frontier_advanced_at": "2026-08-25",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:KS": {
       "label": "KS WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-05-01",
       "rate_per_year": 13.22,
       "rate_long_run_per_year": 13.22,
@@ -269,16 +269,16 @@
       "span_days": 276,
       "rate_basis_days": 276,
       "last_verdict": "PASS",
-      "last_reason": "119d quiet is within this source's own cadence (1.25x its 120d 90th-pct gap)",
-      "p0": 0.013432,
+      "last_reason": "120d quiet is within this source's own cadence (1.25x its 120d 90th-pct gap)",
+      "p0": 0.012955,
       "frontier": "2026-05-01",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:KY": {
       "label": "KY WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-09",
       "rate_per_year": 43.91,
       "rate_long_run_per_year": 43.91,
@@ -292,30 +292,30 @@
       "frontier": "2026-10-09",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:LA": {
       "label": "LA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-03-31",
       "rate_per_year": 8.02,
-      "rate_long_run_per_year": 14.08,
+      "rate_long_run_per_year": 15.15,
       "cadence_days": 61,
-      "observations": 42,
-      "span_days": 1063,
+      "observations": 32,
+      "span_days": 747,
       "rate_basis_days": 364,
       "slowed": true,
       "last_verdict": "PASS",
-      "last_reason": "0d quiet, under the 14d floor [SLOWED: recent 8.02/yr against a long-run 14.08/yr]",
+      "last_reason": "0d quiet, under the 14d floor [SLOWED: recent 8.02/yr against a long-run 15.15/yr]",
       "p0": 1.0,
       "frontier": "2027-03-31",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:MA": {
       "label": "MA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-12-31",
       "rate_per_year": 82.0,
       "rate_long_run_per_year": 77.28,
@@ -329,11 +329,11 @@
       "frontier": "2026-12-31",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:MD": {
       "label": "MD WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-11-30",
       "rate_per_year": 129.0,
       "rate_long_run_per_year": 114.44,
@@ -347,30 +347,30 @@
       "frontier": "2026-11-30",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:ME": {
       "label": "ME WARN",
-      "last_checked": "2026-08-28",
-      "max_effective": "2026-08-04",
+      "last_checked": "2026-08-29",
+      "max_effective": "2026-01-13",
       "rate_per_year": 6.64,
       "rate_long_run_per_year": 6.64,
       "cadence_days": 145,
-      "observations": 20,
+      "observations": 6,
       "span_days": 1044,
       "rate_basis_days": 1044,
-      "last_verdict": "PASS",
-      "last_reason": "24d quiet is ordinary at its recent 6.64/yr (p=0.646, needs p<0.05)",
+      "last_verdict": "UNKNOWN",
+      "last_reason": "only 6 observation(s) on 5 distinct date(s) in the 1095d window",
       "p0": 0.646228,
       "frontier": "2026-08-04",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9,
-      "frontier_receded_at": "2026-08-23"
+      "observation_seq": 10,
+      "frontier_receded_at": "2026-08-29"
     },
     "warn:MI": {
       "label": "MI WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-01-14",
       "rate_per_year": 36.4,
       "rate_long_run_per_year": 51.74,
@@ -387,11 +387,11 @@
       "attempts": 0,
       "tried": [],
       "recovered_at": "2026-08-20",
-      "observation_seq": 10
+      "observation_seq": 11
     },
     "warn:MN": {
       "label": "MN WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-07",
       "rate_per_year": 82.12,
       "rate_long_run_per_year": 81.78,
@@ -400,23 +400,23 @@
       "span_days": 366,
       "rate_basis_days": 360,
       "last_verdict": "FAIL",
-      "last_reason": "21d with no newer record: p=0.00887 at its recent 82.12/yr, past 1.25x its own 15d 90th-pct gap",
-      "p0": 0.008873,
+      "last_reason": "22d with no newer record: p=0.00709 at its recent 82.12/yr, past 1.25x its own 15d 90th-pct gap",
+      "p0": 0.007086,
       "frontier": "2026-08-07",
       "frontier_advanced_at": "2026-08-25",
       "state": "BROKEN",
-      "observation_seq": 9,
+      "observation_seq": 10,
       "attempts": 0,
       "tried": [],
       "recovered_at": "2026-08-25",
       "advisory": "quiet",
-      "days_dark": 21,
+      "days_dark": 22,
       "first_detected": "2026-08-28",
       "classification": "drift"
     },
     "warn:MO": {
       "label": "MO WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-03-28",
       "rate_per_year": 23.25,
       "rate_long_run_per_year": 36.4,
@@ -430,11 +430,11 @@
       "frontier": "2027-03-28",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:MS": {
       "label": "MS WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-06-30",
       "rate_per_year": 22.0,
       "rate_long_run_per_year": 22.45,
@@ -443,18 +443,18 @@
       "span_days": 1057,
       "rate_basis_days": 365,
       "last_verdict": "QUIET",
-      "last_reason": "59d with no newer record: p=0.0285 at its recent 22.0/yr. Uncommon but not evidence of a break (that needs p<0.01); this source may simply not be filing",
-      "p0": 0.028548,
+      "last_reason": "60d with no newer record: p=0.0269 at its recent 22.0/yr. Uncommon but not evidence of a break (that needs p<0.01); this source may simply not be filing",
+      "p0": 0.026878,
       "frontier": "2026-06-30",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9,
+      "observation_seq": 10,
       "advisory": "quiet",
-      "days_dark": 59
+      "days_dark": 60
     },
     "warn:MT": {
       "label": "MT WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-07-21",
       "rate_per_year": 7.14,
       "rate_long_run_per_year": 6.39,
@@ -463,16 +463,16 @@
       "span_days": 1085,
       "rate_basis_days": 358,
       "last_verdict": "PASS",
-      "last_reason": "38d quiet is ordinary at its recent 7.14/yr (p=0.476, needs p<0.05)",
-      "p0": 0.475522,
+      "last_reason": "39d quiet is ordinary at its recent 7.14/yr (p=0.466, needs p<0.05)",
+      "p0": 0.46631,
       "frontier": "2026-07-21",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:NC": {
       "label": "NC WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-12-31",
       "rate_per_year": 55.33,
       "rate_long_run_per_year": 55.33,
@@ -486,11 +486,11 @@
       "frontier": "2027-12-31",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:ND": {
       "label": "ND WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-01-15",
       "rate_per_year": 4.46,
       "rate_long_run_per_year": 4.46,
@@ -499,16 +499,16 @@
       "span_days": 900,
       "rate_basis_days": 900,
       "last_verdict": "PASS",
-      "last_reason": "225d quiet is ordinary at its recent 4.46/yr (p=0.064, needs p<0.05)",
-      "p0": 0.063972,
+      "last_reason": "226d quiet is ordinary at its recent 4.46/yr (p=0.063, needs p<0.05)",
+      "p0": 0.063195,
       "frontier": "2026-01-15",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:NE": {
       "label": "NE WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-26",
       "rate_per_year": 11.44,
       "rate_long_run_per_year": 12.26,
@@ -517,12 +517,12 @@
       "span_days": 1072,
       "rate_basis_days": 351,
       "last_verdict": "PASS",
-      "last_reason": "2d quiet, under the 14d floor",
-      "p0": 0.939239,
+      "last_reason": "3d quiet, under the 14d floor",
+      "p0": 0.910258,
       "frontier": "2026-08-26",
       "frontier_advanced_at": "2026-08-28",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:NH": {
       "label": "New Hampshire WARN",
@@ -534,7 +534,7 @@
     },
     "warn:NJ": {
       "label": "NJ WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-12-31",
       "rate_per_year": 127.0,
       "rate_long_run_per_year": 108.1,
@@ -548,11 +548,11 @@
       "frontier": "2026-12-31",
       "frontier_advanced_at": "2026-08-28",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:NM": {
       "label": "NM WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-06-30",
       "rate_per_year": 3.72,
       "rate_long_run_per_year": 3.72,
@@ -561,16 +561,16 @@
       "span_days": 980,
       "rate_basis_days": 980,
       "last_verdict": "PASS",
-      "last_reason": "59d quiet is ordinary at its recent 3.72/yr (p=0.548, needs p<0.05)",
-      "p0": 0.54809,
+      "last_reason": "60d quiet is ordinary at its recent 3.72/yr (p=0.543, needs p<0.05)",
+      "p0": 0.542533,
       "frontier": "2026-06-30",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:NV": {
       "label": "NV WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2028-08-25",
       "rate_per_year": 6.21,
       "rate_long_run_per_year": 6.21,
@@ -584,11 +584,11 @@
       "frontier": "2028-08-25",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:NY": {
       "label": "NY WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-03-31",
       "rate_per_year": 177.0,
       "rate_long_run_per_year": 166.67,
@@ -602,11 +602,11 @@
       "frontier": "2027-03-31",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:OH": {
       "label": "OH WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-07-01",
       "rate_per_year": 24.33,
       "rate_long_run_per_year": 67.73,
@@ -621,7 +621,7 @@
       "frontier": "2027-07-01",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:OK": {
       "label": "Oklahoma WARN",
@@ -633,7 +633,7 @@
     },
     "warn:OR": {
       "label": "OR WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-02-28",
       "rate_per_year": 62.72,
       "rate_long_run_per_year": 65.06,
@@ -647,11 +647,11 @@
       "frontier": "2027-02-28",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:PA": {
       "label": "PA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-26",
       "rate_per_year": 60.16,
       "rate_long_run_per_year": 60.89,
@@ -665,7 +665,7 @@
       "frontier": "2026-10-26",
       "frontier_advanced_at": "2026-08-27",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:PR": {
       "label": "Puerto Rico WARN",
@@ -677,7 +677,7 @@
     },
     "warn:RI": {
       "label": "RI WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-28",
       "rate_per_year": 9.46,
       "rate_long_run_per_year": 9.46,
@@ -686,16 +686,16 @@
       "span_days": 1042,
       "rate_basis_days": 1042,
       "last_verdict": "PASS",
-      "last_reason": "0d quiet, under the 14d floor",
-      "p0": 1.0,
+      "last_reason": "1d quiet, under the 14d floor",
+      "p0": 0.974415,
       "frontier": "2026-08-28",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:SC": {
       "label": "SC WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-12-22",
       "rate_per_year": 42.76,
       "rate_long_run_per_year": 43.99,
@@ -709,11 +709,11 @@
       "frontier": "2026-12-22",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:SD": {
       "label": "SD WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-10",
       "rate_per_year": 5.86,
       "rate_long_run_per_year": 5.86,
@@ -722,16 +722,16 @@
       "span_days": 1058,
       "rate_basis_days": 1058,
       "last_verdict": "PASS",
-      "last_reason": "18d quiet is ordinary at its recent 5.86/yr (p=0.749, needs p<0.05)",
-      "p0": 0.749022,
+      "last_reason": "19d quiet is ordinary at its recent 5.86/yr (p=0.737, needs p<0.05)",
+      "p0": 0.737093,
       "frontier": "2026-08-10",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:TN": {
       "label": "TN WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-31",
       "rate_per_year": 67.18,
       "rate_long_run_per_year": 40.93,
@@ -745,17 +745,17 @@
       "frontier": "2026-08-31",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:TX": {
       "label": "TX WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-09-30",
       "observations": 658,
       "last_verdict": "PASS",
       "last_reason": "0d quiet, under the 14d floor",
       "state": "HEALTHY",
-      "observation_seq": 9,
+      "observation_seq": 10,
       "rate_per_year": 182.0,
       "rate_long_run_per_year": 219.2,
       "cadence_days": 7,
@@ -767,7 +767,7 @@
     },
     "warn:UT": {
       "label": "UT WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-10-30",
       "rate_per_year": 17.0,
       "rate_long_run_per_year": 18.33,
@@ -781,11 +781,11 @@
       "frontier": "2026-10-30",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:VA": {
       "label": "VA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-11-30",
       "rate_per_year": 69.0,
       "rate_long_run_per_year": 51.66,
@@ -799,7 +799,7 @@
       "frontier": "2026-11-30",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:VI": {
       "label": "US Virgin Islands WARN",
@@ -811,26 +811,26 @@
     },
     "warn:VT": {
       "label": "VT WARN",
-      "last_checked": "2026-08-28",
-      "max_effective": "2026-06-17",
+      "last_checked": "2026-08-29",
+      "max_effective": "2026-01-30",
       "rate_per_year": 10.03,
       "rate_long_run_per_year": 6.19,
       "cadence_days": 148,
-      "observations": 16,
+      "observations": 4,
       "span_days": 884,
       "rate_basis_days": 364,
-      "last_verdict": "PASS",
-      "last_reason": "72d quiet is ordinary at its recent 10.03/yr (p=0.138, needs p<0.05)",
+      "last_verdict": "UNKNOWN",
+      "last_reason": "only 4 observation(s) on 4 distinct date(s) in the 1095d window",
       "p0": 0.138274,
       "frontier": "2026-06-17",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9,
-      "frontier_receded_at": "2026-08-27"
+      "observation_seq": 10,
+      "frontier_receded_at": "2026-08-29"
     },
     "warn:WA": {
       "label": "WA WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-12-31",
       "rate_per_year": 99.0,
       "rate_long_run_per_year": 98.32,
@@ -844,11 +844,11 @@
       "frontier": "2026-12-31",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:WI": {
       "label": "WI WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2027-02-28",
       "rate_per_year": 49.13,
       "rate_long_run_per_year": 67.98,
@@ -862,11 +862,11 @@
       "frontier": "2027-02-28",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:WV": {
       "label": "WV WARN",
-      "last_checked": "2026-08-28",
+      "last_checked": "2026-08-29",
       "max_effective": "2026-08-19",
       "rate_per_year": 5.12,
       "rate_long_run_per_year": 5.12,
@@ -875,12 +875,12 @@
       "span_days": 856,
       "rate_basis_days": 856,
       "last_verdict": "PASS",
-      "last_reason": "9d quiet, under the 14d floor",
-      "p0": 0.881397,
+      "last_reason": "10d quiet, under the 14d floor",
+      "p0": 0.86912,
       "frontier": "2026-08-19",
       "frontier_advanced_at": "2026-08-22",
       "state": "HEALTHY",
-      "observation_seq": 9
+      "observation_seq": 10
     },
     "warn:WY": {
       "label": "Wyoming WARN",
