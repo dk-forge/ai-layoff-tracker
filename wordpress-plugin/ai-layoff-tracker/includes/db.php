@@ -698,6 +698,147 @@ function alt_normalize_company_ws($name) {
     return $clean === null ? trim($name) : trim($clean);
 }
 
+/**
+ * AN EPITHET IS NOT AN EMPLOYER, AND "Unknown" IS NOT AN EMPLOYER EITHER.
+ *
+ * Nothing checked that `company` named a company. The extractor skips a row
+ * only when the name is EMPTY (extractor.py:1298), so whatever the headline
+ * called the employer was stored and published as an employer identity. On
+ * 2026-08-29 the live table held, among others:
+ *
+ *   177321  "Automaker Giant"    50,000  news/bronze  2026-03-10  country ''
+ *   177407  "Unknown"               160  news/bronze
+ *   177128  "Unknown"               100  news/bronze
+ *   177318  "Unknown"                60  news/bronze
+ *   176813  "Auto-parts giant"      572  news/bronze
+ *   176621  "DTC storage firm"      100  news/bronze
+ *   178707  "Social media giant"     75  news/bronze
+ *
+ * The 50,000 row was the WORST case and the reason this exists: it was the
+ * largest 2026 event on the public `leaders` list, cited to a Google News
+ * INDEX record rather than an article, with no country — and the tracker
+ * separately holds "Volkswagen Group", 50,000, the same 2026-03-10, from a
+ * named DW report. One event, published twice, once anonymously.
+ *
+ * A name like this is not merely ugly. It is unverifiable (a reader cannot
+ * check "Automaker Giant" against anything), it is undedupable (`company_key`
+ * can never match the identified row, so superset dedup cannot relate them),
+ * and it cannot be corrected, because there is no employer to correct it
+ * against. Such a row must not be stored at all.
+ *
+ * The rule is a CLOSED VOCABULARY, not a heuristic, for the reason
+ * countries and industries are (CLAUDE.md): a freeform guess on an employer
+ * name is how a real company gets deleted. Two ways in, both narrow:
+ *
+ *   1. The name IS a null sentinel ("unknown", "n/a", "undisclosed", ...).
+ *   2. EVERY word in a MULTI-WORD name is a generic descriptor.
+ *
+ * The multi-word requirement is load-bearing and deliberate. "Carrier" is a
+ * real employer (Carrier Global) with five live rows, one of them a legally
+ * filed WARN notice; a single generic word is ambiguous and is KEPT. Two or
+ * more generic words in a row is not a company, it is a periphrasis. Equally,
+ * one non-generic token is enough to pass: "Google parent" resolves to a real
+ * employer and stays.
+ *
+ * Guard: railway/tests/test_employer_identity_gate.py, which runs this
+ * function on every name above plus the real employers it must never touch.
+ */
+function alt_anonymous_employer_sentinels() {
+    return array(
+        'unknown', 'unknown company', 'unknown employer', 'n/a', 'na', 'none',
+        'null', 'undisclosed', 'undisclosed company', 'undisclosed employer',
+        'not disclosed', 'not specified', 'not stated', 'unnamed',
+        'unnamed company', 'unnamed employer', 'anonymous', 'confidential',
+        'various', 'multiple companies', 'tbd', 'unspecified',
+    );
+}
+
+/**
+ * DELIBERATELY SHORT. Every word here is one a journalist writes INSTEAD of a
+ * name; none is a word that carries identity on its own.
+ *
+ * The first draft of this list was three times longer and included 'public',
+ * 'national', 'global', 'company', 'group', 'bank' and 'corporation'. The
+ * KEEP half of test_employer_identity_gate.py rejected it on the spot: those
+ * words build real employers — Public Storage, National Grid, Volkswagen
+ * Group, Deutsche Bank — and an over-broad vocabulary deletes a real company,
+ * which is a worse defect than the one this gate exists to fix. Any word that
+ * plausibly ends a real registered name was cut, even at the cost of letting
+ * a rarer periphrasis through. Under-blocking is recoverable; a silently
+ * deleted employer is not.
+ *
+ * ADDING A WORD HERE REQUIRES ADDING A REAL EMPLOYER TO THAT TEST'S KEEP LIST
+ * THAT PROVES THE WORD IS STILL SAFE.
+ */
+function alt_generic_employer_words() {
+    return array(
+        // descriptor heads a headline uses in place of a name
+        'giant', 'firm', 'maker', 'retailer', 'chain', 'manufacturer',
+        'conglomerate', 'multinational', 'automaker', 'carmaker', 'supermarket',
+        'grocer', 'startup', 'outfit', 'major',
+        // sector modifiers that only ever qualify one of the above
+        'tech', 'technology', 'social', 'media', 'auto', 'automotive', 'parts',
+        'online', 'digital', 'dtc', 'ecommerce', 'telecom', 'telecoms',
+        'pharma', 'pharmaceutical', 'semiconductor', 'chip', 'chips',
+        'streaming', 'gaming', 'retail', 'storage', 'logistics', 'aerospace',
+    );
+}
+
+/**
+ * A legal-entity suffix is positive proof of an identity, and it OVERRIDES the
+ * generic-word rule. "The GIANT Company, LLC." is a real live WARN employer
+ * built entirely from vocabulary words; the "LLC" is what says so.
+ */
+function alt_employer_legal_suffixes() {
+    return array(
+        'llc', 'llp', 'lp', 'inc', 'incorporated', 'ltd', 'limited', 'plc',
+        'corp', 'corporation', 'co', 'company', 'gmbh', 'ag', 'sa', 'sas',
+        'nv', 'bv', 'ab', 'as', 'oy', 'spa', 'srl', 'kk', 'pte', 'pty',
+        'jsc', 'ojsc', 'pjsc', 'sarl', 'kg', 'se', 'aps', 'doo', 'dd',
+    );
+}
+
+/**
+ * True when $name cannot be an employer identity. See the block comment above.
+ */
+function alt_is_anonymous_employer($name) {
+    $n = alt_normalize_company_ws($name);
+    if ($n === '') return true;                       // empty was never admissible
+
+    // Lowercase for comparison; keep it ASCII-insensitive but do NOT strip
+    // accents, because a diacritic is part of a real name, not noise.
+    $lower = function_exists('mb_strtolower') ? mb_strtolower($n, 'UTF-8') : strtolower($n);
+
+    // 1. Null sentinels, matched on the WHOLE name only. A company legitimately
+    //    called "Various Eateries plc" (LSE: VARE) must survive, so this never
+    //    matches a substring.
+    $bare = trim(preg_replace('/[^a-z0-9\/ ]+/u', ' ', $lower));
+    $bare = trim(preg_replace('/\s+/u', ' ', (string) $bare));
+    if (in_array($bare, alt_anonymous_employer_sentinels(), true)) return true;
+
+    // 2. Every word generic, and at least two words. Hyphens split ("Auto-parts
+    //    giant" is three words), because a headline hyphenates a compound
+    //    modifier and a company rarely does across a generic pair.
+    $words = preg_split('/[\s\-\x{2010}-\x{2015}]+/u', $bare, -1, PREG_SPLIT_NO_EMPTY);
+    if (!is_array($words) || count($words) < 2) return false;
+
+    // A legal-entity suffix anywhere in the name is positive proof of identity
+    // and ends the enquiry. See alt_employer_legal_suffixes().
+    foreach ($words as $w) {
+        if (in_array($w, alt_employer_legal_suffixes(), true)) return false;
+    }
+
+    $generic = alt_generic_employer_words();
+    $skip = array('the', 'a', 'an', 'and', 'of', 'for', 'in', 'at', 'to', 's');
+    $significant = 0;
+    foreach ($words as $w) {
+        if (in_array($w, $skip, true)) continue;
+        $significant++;
+        if (!in_array($w, $generic, true)) return false;   // one real token is enough
+    }
+    return $significant >= 2;
+}
+
 function alt_db_upsert(array $row) {
     global $wpdb;
     $table = alt_db_table();
@@ -744,6 +885,15 @@ function alt_db_upsert(array $row) {
 
     // Editorially suppressed entries never come back through an import.
     if (alt_is_suppressed($data['dedup_hash'])) {
+        return 0;
+    }
+
+    // An epithet or a null sentinel is not an employer identity, and a row
+    // without one is unverifiable, undedupable and uncorrectable. Blocked at
+    // the single write choke point so no collector can reintroduce it — the
+    // same placement, and the same reason, as alt_normalize_company_ws above.
+    // See alt_is_anonymous_employer().
+    if (alt_is_anonymous_employer($data['company'])) {
         return 0;
     }
 

@@ -403,6 +403,27 @@ function alt_normalize_country($name) {
         'prc' => 'China', 'mainland china' => 'China',
         'korea' => 'South Korea', 'south korea' => 'South Korea',
         'republic of korea' => 'South Korea',
+        // Endonym/exonym pairs. The key-cleaner above strips every non-ASCII
+        // letter, so 'Türkiye' arrives here as 'trkiye' and matched NOTHING —
+        // it fell through to the raw-passthrough and became its own country
+        // beside 'Turkey'. Live on 2026-08-29: Türkiye 2,200 jobs and Turkey
+        // 1,696, two labels for one country, both separately selectable in
+        // /facets. Both spellings of each pair are mapped, including the
+        // ASCII-stripped form of the accented one, because the stripped form
+        // is the only thing this function ever sees of it.
+        // Direction is the ENDONYM, matching country_coverage.ALIASES and the
+        // register's own key ('Türkiye' is in REGISTER; 'Turkey' is not), so
+        // the register and the normalizer canonicalize the same way.
+        //
+        // ONLY the pair that is actually split live is mapped here. The wider
+        // diacritic problem is real — 'Côte d'Ivoire' vs 'Ivory Coast',
+        // 'Curaçao' vs 'Curacao' would split the same way — but neither has a
+        // live row, and inventing a canonical label the coverage register has
+        // never classified would trade this defect for an unclassified country
+        // in CountryCoverageInvariant. The closed ISO-3166 registry that fixes
+        // the whole class is specified in docs/TECHLOG.md 2026-08-29.
+        'turkey' => 'Türkiye', 'trkiye' => 'Türkiye', 'turkiye' => 'Türkiye',
+        'republic of turkiye' => 'Türkiye', 'republic of trkiye' => 'Türkiye',
         // Regions / multi-country phrases: one honest bucket, no double counting
         'global' => 'Multiple countries', 'worldwide' => 'Multiple countries',
         'international' => 'Multiple countries', 'europe' => 'Multiple countries',

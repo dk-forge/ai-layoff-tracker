@@ -1043,7 +1043,7 @@ $alt_hero_basis  = 'counted by filing date';
         <?php /* One methodology link out of this section, not two. It ended with
                  "How we check ourselves →" and then "See the full methodology →"
                  pointing at two different destinations for the same question. */ ?>
-        <p class="alt-why-quality">Every figure links to a primary source, and every correction and merge is disclosed in the <a href="#alt-corrections">open log</a>. Nothing is quietly edited. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count &rarr;</a></p>
+        <p class="alt-why-quality">Every figure links to the document or report it came from: a filing, an employer statement, or a named source report. Every correction and merge is disclosed in the <a href="#alt-corrections">open log</a>. Nothing is quietly edited. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">How we count &rarr;</a></p>
         </div>
     </section>
 
@@ -1522,7 +1522,7 @@ $alt_hero_basis  = 'counted by filing date';
         <summary>Known gaps &amp; why the country count changes</summary>
         <div class="alt-method-body">
             <p>The full directory of every pipeline, the SEC, all state WARN registries with live links, Eurofound ERM, and the news index, lives on the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data Sources page</a>. The disclosures below cover what is <em>not</em> yet included.</p>
-            <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. GDELT already searches every country on earth in 65+ languages, so a country appears the moment a credible outlet there covers a qualifying layoff. As layoffs occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable layoffs exist, not a padded list.</p>
+            <p><b>Why the country count grows over time.</b> The number of countries is not a setting we can raise; it reflects where large, press-covered layoffs have actually happened in our window. Our GDELT queries carry no country restriction and read 65+ languages. A country can appear as soon as an allowlisted outlet covers a qualifying layoff there. That is not the same as watching every country equally. Discovery is a rotating, capped sample of a reviewed outlet list. A country with no allowlisted outlet stays invisible to it, whatever happens there. As layoffs occur and as we add more trusted local outlets, the count rises on its own. This is honest by design: we show the countries where verifiable layoffs exist, not a padded list.</p>
             <p><b>Known gaps, stated plainly.</b> We do not yet operate direct connectors for Canada SEDAR+, UK RNS, ASX, TDnet/EDINET, NSE/BSE, HKEXnews, SGXNet, SENS, DART or TASE. We maintain them as official-source research candidates. We will name one as live only after a stable public interface, tests and source-health monitoring exist for it. A few countries also publish official per-company redundancy records we do not ingest yet, including Belgium's FPS Employment collective-dismissal reports, Italy's weekly CIGS decree lists, and Sweden's varsel statistics. Most countries, including Germany and Mexico, treat employer identity in redundancy filings as confidential, so press coverage through GDELT in local languages is the primary source there. Layoffs too small for any press coverage, any WARN threshold, or the ERM threshold of 100 jobs will not appear in any tracker, including this one.</p>
         </div>
     </details>
@@ -1575,7 +1575,7 @@ $alt_hero_basis  = 'counted by filing date';
                 <li id="log-2026-07-15-s3"><b>2026-07-15: Ideal US Talent Systems RI corrected from 9,891 to 2.</b> The Rhode Island notice states the company-wide figure, but only 2 RI employees are affected. The per-state filings for DC, GA, IL and VA are already separate entries. Counting the company-wide total under RI double-counted the layoff. <a class="alt-log-anchor" href="#log-2026-07-15-s3" aria-label="Link to this correction">#</a></li>
                 <li id="log-2026-07-15-s4"><b>2026-07-15: Ten non-layoffs removed.</b> These were SEC-filing extraction mistakes. Some were severance dollar figures and job-cut percentages misread as headcounts. Some were WARN Act boilerplate clauses from acquisition agreements. Three were duplicate rows of one Meta story carrying wrong dates. <a class="alt-log-anchor" href="#log-2026-07-15-s4" aria-label="Link to this correction">#</a></li>
             </ul>
-            <p>Spotted something off? Every entry links to its primary source so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and they get priority.</p>
+            <p>Spotted something off? Every entry links to the source it came from, whether that is a filing, an employer statement, or a named source report, so you can check us. Send corrections through the <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a> and they get priority.</p>
         </div>
     </details>
     </section>
@@ -1665,7 +1665,7 @@ $alt_hero_basis  = 'counted by filing date';
     <div class="alt-journalist">
         <div class="alt-journalist-text">
             <strong>Built for journalists &amp; researchers</strong>
-            <p>Free to use with attribution to <strong>asktherecruiter.com</strong>. Every figure links to a primary source. Query the full dataset live through our API, and reach the editors at <a href="<?php echo esc_url(home_url('/contact/')); ?>">our contact page</a>, where corrections get priority.</p>
+            <p>Free to use with attribution to <strong>asktherecruiter.com</strong>. Every figure links to the source it came from: a filing, an employer statement, or a named source report. Query the full dataset live through our API, and reach the editors at <a href="<?php echo esc_url(home_url('/contact/')); ?>">our contact page</a>, where corrections get priority.</p>
         </div>
         <code class="alt-journalist-api"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
     </div>

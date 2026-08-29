@@ -188,7 +188,7 @@ function alt_report_seo_description($desc) {
     if ($id['kind'] === 'archive') {
         return 'Every AskTheRecruiter job cuts report, by month, quarter and year. '
              . 'Each one is a standalone, citable page built from verified layoffs '
-             . 'with a primary source behind every number.';
+             . 'with a filing, an employer statement, or a named source report behind every number.';
     }
     if ($label === '') return $desc;
     return 'Verified job cuts recorded in ' . $label . ': totals by company, industry, '

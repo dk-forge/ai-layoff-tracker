@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.153
+ * Version: 2.20.154
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.153');
+define('ALT_VERSION', '2.20.154');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -178,7 +178,7 @@ function alt_dataset_jsonld() {
         'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $now, 'dateModified' => $now,
         'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
         'variableMeasured' => array(
-            array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a primary source document behind each figure.'),
+            array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a filing, an employer statement, or a named source report behind each figure.'),
             array('@type' => 'PropertyValue', 'name' => 'AI-attributed job cuts', 'description' => 'Layoffs the employer named AI or automation as a cause, with a supporting quote on file.'),
             array('@type' => 'PropertyValue', 'name' => 'Announced job cuts', 'description' => 'Company plans at announcement stage, in a separate labeled tier.'),
         ),
@@ -1412,7 +1412,7 @@ function alt_seo_head() {
 
     $page_url = $alt_tracker_url;
     $title = 'AI Layoff Tracker: Live Data on Jobs Lost to AI & Automation';
-    $desc  = 'A continuously updated tracker of verified layoffs worldwide, all industries and causes, flagging which ones companies attribute to AI. Filter by country, US state, industry, or period. Sourced from SEC filings, state WARN notices, and credible news globally, with the exact quote and primary source link for every entry.';
+    $desc  = 'A continuously updated tracker of verified layoffs worldwide, all industries and causes, flagging which ones companies attribute to AI. Filter by country, US state, industry, or period. Sourced from SEC filings, state WARN notices, and credible news globally, with the exact quote and a link to the source behind every entry.';
 
     $schema = array(
         '@context'            => 'https://schema.org',
@@ -1826,7 +1826,7 @@ function alt_faq_items() {
     $f = function ($v) { return number_format((float) $v); };
     return array(
         array('What is the AI Layoff Tracker?',
-            'A free, continuously updated layoff tracker covering verified job cuts worldwide across all industries and causes. It flags which layoffs companies explicitly attribute to AI or automation. Every entry links to a primary source: a SEC 8-K filing, a US state WARN notice, or a named news outlet with the exact quote.'),
+            'A free, continuously updated layoff tracker covering verified job cuts worldwide across all industries and causes. It flags which layoffs companies explicitly attribute to AI or automation. Every entry links to the source it came from: a SEC 8-K filing, a US state WARN notice, or a named news outlet with the exact quote. A filing and a WARN notice are primary sources; a news report is not, and it is labelled as a source report rather than dressed up as one.'),
         // The basis wording here is not decoration. This answer is the one that
         // ships as FAQPage JSON-LD, and a search engine quotes it with none of
         // the page around it, so it has to carry its own basis the way the
@@ -1860,7 +1860,7 @@ function alt_faq_items() {
         array('What is the difference between "verified" and "announced" job cuts?',
             'Verified cuts have a filing or independently reported source behind them: a WARN notice, an SEC filing, or a named outlet\'s report of cuts taking place. Announced cuts are company plans reported at announcement stage, tracked in their own labeled tier and never mixed into the verified totals, because announced plans can shrink, stretch over years, or partially happen through attrition.'),
         array('How do I report an error?',
-            'Use the contact page and corrections get priority. Every entry links to its primary source, so you can check any number against the underlying document.'),
+            'Use the contact page and corrections get priority. Every entry links to the source it came from, so you can check any number against the document or report behind it.'),
     );
 }
 

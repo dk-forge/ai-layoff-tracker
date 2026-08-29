@@ -1657,6 +1657,129 @@ class CountryCoverageInvariant:
                       pending=(state == UNKNOWN and measurement is None))
 
 
+class CountryIdentityInvariant:
+    """One country has ONE published label.
+
+    WHAT IT ASSERTS. That no two country labels in the LIVE aggregate name the
+    same country. The alias table is `country_coverage.ALIASES` — imported, not
+    copied, so "which spellings are the same country" has exactly one
+    definition in this repo.
+
+    THE FAILURE IT EXISTS TO CATCH, measured live on 2026-08-29:
+
+        China                          17,790 jobs
+        People's Republic of China          2
+        South Korea                     3,987
+        Korea                           1,197
+        Türkiye                         2,200
+        Turkey                          1,696
+
+    Six labels, three countries. Every one of these is separately selectable in
+    /facets, so a reader filtering to Korea sees 1,197 of 5,184 jobs and no
+    warning that the rest is filed under another spelling. The country chart,
+    the country pages, the newsletter's per-country lines and the coverage
+    measurement all split the same way.
+
+    WHY THIS IS NOT ALREADY CAUGHT, which is the point. `alt_normalize_country`
+    gained the China and Korea aliases on 2026-08-19 and the split SURVIVED,
+    because normalizing new input does nothing to rows already stored and
+    `/cleanup` — the idempotent migration route written for exactly this — was
+    never dispatched afterwards. `country_coverage.py` DOES see the duplication
+    and deliberately reports it as `vocabulary_duplicates` rather than absorbing
+    it, but reporting is not alarming: `CountryCoverageInvariant` passes,
+    because both spellings resolve through ALIASES to one classified entry.
+    Nothing in the repo failed. That is the "reported but never alarmed" shape,
+    and it let a fixed normalizer sit ten days from the data it fixed.
+
+    HOW TO CLEAR A FAILURE. Do NOT edit the alias table to make this quiet, and
+    do NOT delete rows. Two steps, in order: teach `alt_normalize_country`
+    (includes/api.php) the spelling if it does not know it, then dispatch the
+    `Normalize data (country + industry)` workflow, which re-runs the normalizer
+    over every stored value and is idempotent. The check goes green because the
+    data was fixed, which is the only way it is allowed to go green.
+
+    MISSING DATA. No `map_countries` block, or an unreadable aggregate ->
+    UNKNOWN, never a pass.
+    """
+
+    key = "country_identity"
+    label = "One country has one published label"
+    reads_live_data = True
+
+    def run(self, ctx):
+        try:
+            import country_coverage
+        except ImportError:                                  # pragma: no cover - path fallback
+            sys.path.insert(0, str(HERE))
+            import country_coverage
+
+        payload, bad_state, why, err = _fetch_aggregate(ctx, {})
+        if bad_state:
+            ctx.errors[self.key] = err
+            # `error` is not decoration: Result.transport reads it to tell "this
+            # environment cannot reach the site" from "the site answered and
+            # answered wrongly". Dropping it makes an offline run look like a
+            # real finding.
+            return Result(self, bad_state, detail=why, error=err,
+                          pending=_excusable(err))
+
+        rows = (payload or {}).get("map_countries")
+        if not isinstance(rows, list) or not rows:
+            return Result(self, UNKNOWN, detail=(
+                "no `map_countries` block in the aggregate response, so the stored "
+                "country vocabulary was NOT read. That is unmeasured, not clean"))
+
+        # label -> jobs, keeping the label exactly as stored.
+        # `map_countries` rows are positional: [label, jobs, entries, ...]. A
+        # dict shape is accepted too so a future response change degrades to
+        # UNKNOWN rather than to a silent pass over zero labels.
+        seen = {}
+        for row in rows:
+            if isinstance(row, dict):
+                name = (row.get("country") or row.get("name") or "").strip()
+                raw_jobs = row.get("jobs", row.get("value"))
+            elif isinstance(row, (list, tuple)) and row:
+                name = str(row[0] or "").strip()
+                raw_jobs = row[1] if len(row) > 1 else 0
+            else:
+                continue
+            if not name:
+                continue
+            try:
+                seen[name] = int(raw_jobs or 0)
+            except (TypeError, ValueError):
+                seen[name] = 0
+
+        if not seen:
+            return Result(self, UNKNOWN, detail=(
+                "`map_countries` carried no readable country labels — unmeasured"))
+
+        groups = {}
+        for label, jobs in seen.items():
+            groups.setdefault(country_coverage.canonical(label), []).append((label, jobs))
+
+        split = {c: v for c, v in groups.items() if len(v) > 1}
+        if split:
+            parts = []
+            for canon in sorted(split):
+                members = sorted(split[canon], key=lambda lj: -lj[1])
+                parts.append("%s = %s" % (
+                    canon,
+                    " + ".join("%s (%s jobs)" % (l, format(j, ",")) for l, j in members)))
+            return Result(self, FAIL, detail=(
+                "%d countr%s published under more than one label: %s. A reader "
+                "filtering to either spelling sees part of the country. Fix the "
+                "normalizer if it does not know the spelling, then dispatch the "
+                "'Normalize data (country + industry)' workflow — never by "
+                "editing the alias table"
+                % (len(split), "y is" if len(split) == 1 else "ies are", "; ".join(parts))),
+                observed=len(split))
+
+        return Result(self, PASS, detail=(
+            "%d country label(s) live, each naming a distinct country"
+            % len(seen)), observed=0)
+
+
 class ErmProvenanceInvariant:
     """A published ERM row still carries the country it was imported with.
 
@@ -2073,6 +2196,13 @@ INVARIANTS = (
     # figure and no floor — it asserts that no country is sitting in the data
     # unclassified and that no classification has aged past its expiry.
     CountryCoverageInvariant(),
+    # CountryCoverageInvariant asks whether every country is CLASSIFIED. This
+    # one asks whether every country is ONE country: it fails when two live
+    # labels name the same place, which the coverage register can see but
+    # deliberately never alarms on (it resolves both through ALIASES and
+    # passes). That gap let the 2026-08-19 normalizer fix sit ten days away
+    # from the rows it fixed.
+    CountryIdentityInvariant(),
     # And this one asks a third question neither of those can: has a row that is
     # ALREADY published been quietly re-scored since it was imported? It reads
     # each ERM row's own import-time excerpt back out of the published text, so
