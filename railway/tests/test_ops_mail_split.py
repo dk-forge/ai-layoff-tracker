@@ -914,12 +914,50 @@ class ADarkSourceUsesTheSameDedupContract(unittest.TestCase):
         _subject, body = self.SA.build([self.ROWS[0]])
         self.assertIn("do not change the freshness threshold", body)
 
-    def test_an_unavailable_source_never_reaches_the_mailer(self):
-        """WY is not public by statute. Mailing about it monthly is how the
-        whole channel gets filtered."""
+    def test_wy_is_still_a_human_classified_exemption(self):
+        """WY is not public by statute, and that is a HUMAN's ruling. If it
+        ever leaves UNAVAILABLE it must be because somebody decided to, so this
+        reads the committed ledger on purpose. It is the only thing here that
+        does."""
         import source_freshness
         ledger = source_freshness.load_ledger()
         self.assertEqual(ledger["sources"]["warn:WY"]["state"],
                          source_freshness.UNAVAILABLE)
-        self.assertEqual(
-            [r["key"] for r in source_freshness.broken(ledger)], [])
+
+    def test_an_unavailable_source_never_reaches_the_mailer(self):
+        """Mailing about WY monthly is how the whole channel gets filtered.
+
+        Exercised END TO END on a fixture — judge -> broken() -> announce() —
+        because the mailer's input is `source_freshness.broken(ledger)` and the
+        question is whether an exempt source can get into that list.
+
+        Until 2026-08-29 this read the COMMITTED ledger and asserted it held no
+        BROKEN source AT ALL. That is a fact about the WARN registers, not about
+        the mailer: `warn:MN` was judged BROKEN on 2026-08-28 — correctly, and
+        its own alarm is supposed to fire — and reddened main on every branch.
+        The expectation is DERIVED here, so a real dark source cannot masquerade
+        as a defect in this contract.
+        """
+        import source_freshness as SF
+        ledger = {"sources": {"warn:WY": {
+            "label": "Wyoming WARN", "state": SF.UNAVAILABLE,
+            "classification": SF.POLICY,
+            "unavailable_reason": "notices are not public by statute",
+            "unavailable_reviewer": "test", "unavailable_since": "2026-08-19"}}}
+        SF.record(ledger, "warn:WY", profile={"max_effective": "2024-01-01"},
+                  verdict=SF.FAIL, reason="900d with no newer record",
+                  classification=SF.DRIFT, p0=0.0)
+        self.assertEqual(ledger["sources"]["warn:WY"]["state"], SF.UNAVAILABLE,
+                         "a machine re-broke a human's exemption")
+        rows = SF.broken(ledger)
+        self.assertEqual([r["key"] for r in rows], [],
+                         "an exempt source reached the mailer's input list")
+
+        sends = []
+        with _Ledger(), mock.patch.object(opsmail, "send_once", _sent(sends)):
+            with mock.patch.object(alert_state, "commit_enabled",
+                                   lambda: False):
+                ok, claimed, _note = self.SA.announce(rows)
+        self.assertFalse(ok)
+        self.assertEqual(sends, [])
+        self.assertEqual(claimed, [])

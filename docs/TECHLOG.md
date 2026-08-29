@@ -1,5 +1,66 @@
 # Tech Log
 
+## 2026-08-29 - a real dark source reddened main, because a guard typed the whole ledger
+
+**main went RED and nothing was broken in the code.** `Tests` failed on
+`test_an_unavailable_source_never_reaches_the_mailer`
+(`railway/tests/test_ops_mail_split.py`) with
+
+    AssertionError: Lists differ: ['warn:MN'] != []
+
+**It was a STATE TRANSITION, not a regression.** No code commit is implicated.
+`cafc774` ("warn: per-state baselines + source freshness 2026-08-28T23:39Z") is
+a bot DATA commit touching only `railway/source_state.json` and
+`railway/warn_state_baselines.json`; before it the committed ledger held zero
+BROKEN sources, after it exactly one:
+
+    git show 'cafc774~1:railway/source_state.json'  ->  []
+    git show 'cafc774:railway/source_state.json'    ->  ['warn:MN']
+
+MN's own row explains itself: `21d with no newer record: p=0.00887 at its
+recent 82.12/yr, past 1.25x its own 15d 90th-pct gap`, `first_detected`
+2026-08-28, `classification` drift. **That judgement is correct and its alarm
+is supposed to fire.** MN went dark for 53 days once already and was recovered
+on 2026-08-24 via `sources/warn_mn_letters.py`; it has stopped again.
+Nothing here quiets it, and nothing here touches `source_state.json`,
+`source_freshness.py` or any threshold.
+
+**The defect is in the test's premise.** It was written to pin one thing — an
+UNAVAILABLE source (WY, not public by statute) must never reach the dark-source
+mailer — and it asserted that by reading the LIVE COMMITTED ledger and typing
+the expected answer for the whole file: `broken(ledger) == []`. That is a fact
+about what the 50-odd WARN registers happened to be publishing on the day it
+was written, not a fact about the mailer. Every real dark source anywhere in
+the country would therefore reappear as a failure of a contract it has nothing
+to do with — on every branch at once, since it reads committed data, and while
+the mailer was working perfectly.
+
+**What changed** (`railway/tests/test_ops_mail_split.py` only):
+
+- The expectation is DERIVED and exercised END TO END on a fixture ledger:
+  judge (`source_freshness.record` with a FAIL verdict) -> selector
+  (`broken()`, which is literally the mailer's input at `warn_import.py:922`)
+  -> mailer (`source_alert.announce`). WY stays UNAVAILABLE, is absent from
+  `broken()`, and no message is sent and no cause claimed.
+- The one thing that legitimately belongs on live data is split into its own
+  test, `test_wy_is_still_a_human_classified_exemption`: WY's state is a
+  HUMAN's ruling, so if it ever leaves UNAVAILABLE that should have to be
+  deliberate.
+
+The new form is strictly stronger than the old, which could not have caught
+either half: the old assertion passes unchanged if a machine re-breaks WY on a
+day nothing else is dark.
+
+**Mutation-proved, both halves, with the fix reverted after each:**
+
+- delete `if entry.get("state") == UNAVAILABLE: return entry` from
+  `source_freshness.record` -> FAIL, `'BROKEN' != 'UNAVAILABLE'`
+- widen `broken()` to `state not in (BROKEN, UNAVAILABLE)` -> FAIL,
+  `['warn:WY'] != []`
+
+**Class:** derived-value-typed-by-hand
+**Guard:** railway/tests/test_ops_mail_split.py
+
 ## 2026-08-29 - a job-board reading is an observation, not a report (2.20.151)
 
 **What the owner read.** The daily talent edition of 2026-08-28, "30 hiring
