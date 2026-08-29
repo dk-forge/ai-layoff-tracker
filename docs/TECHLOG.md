@@ -1,5 +1,126 @@
 # Tech Log
 
+## 2026-08-29 - GDELT refuses at HTTP 200, so a throttle read as a broken parser
+
+`ops_status [2]` had gdelt DEGRADED at `queries=12 answered=5 abandoned=7`, and
+the question asked was why seven of twelve windows are abandoned. Two answers,
+and the first one is that the premise moved.
+
+### The abandonment rate is not new, and it is not 7-of-12. It became VISIBLE.
+
+Read off the public `/source-runs` telemetry, every gdelt run that has ever
+published reach numbers:
+
+| run (UTC) | queries | answered | abandoned | returned | status |
+|---|---|---|---|---|---|
+| 2026-08-21 22:13 | 2 | 1 | 1 | 900 | **ok** |
+| 2026-08-22 22:14 | 2 | 1 | 1 | 900 | **ok** |
+| 2026-08-23 22:12 | 2 | 1 | 1 | 900 | **ok** |
+| 2026-08-24 22:13 | 2 | 1 | 1 | 900 | **ok** |
+| 2026-08-25 22:12 | 2 | 1 | 1 | 900 | **ok** |
+| 2026-08-27 22:33 | 12 | 5 | 7 | 7339 | degraded |
+| 2026-08-28 22:10 | 3 | 1 | 2 | 7183 | degraded |
+
+`ops_status [2d]`: *over 7 measured run(s): 7 with a capped query, 7 with an
+abandoned window.* **The public API has abandoned the broad window on 100% of
+measured runs**, including the five that reported **ok**.
+
+Those five read `ok` because of the early return #223 removed: the public API
+abandoned the broad window, the BigQuery mirror recovered it, and
+`pull_gdelt_between` **returned before issuing a single sweep**
+(`return _fetch_trusted(bq_articles)`, gdelt.py:955 at 5bf416c^). Two queries a
+run, one of them abandoned, zero rotating sweeps, and a green health row. So
+the 08-27 jump to twelve queries is not a regression — it is the first run that
+actually attempted the work, and `7 abandoned` is the first honest count of a
+failure that had been total and silent for at least a week. The 08-28 drop back
+to three is the outage breaker (3d5c94a) working exactly as designed: broad
+abandoned, one sweep abandoned, remaining seven recorded `queued` with no
+attempt spent.
+
+**Do not read `12 -> 3` as recovery.** It is the same dead endpoint, described
+more cheaply.
+
+### Why the windows are abandoned: GDELT signals failure at HTTP 200.
+
+Measured 2026-08-29 against the live endpoint, production query shape (the
+941-character broad `QUERY`, `maxrecords=250`, 36-hour window), single address,
+>=5s spacing. The DOC 2.0 API does not reliably use status codes. The non-JSON
+responses observed were:
+
+    HTTP 200  "Your query was too short or too long."
+    HTTP 200  "Please limit requests to one every 5 seconds."
+    HTTP 429  "Please limit requests to one every 5 seconds."
+
+and the latency on the requests that did answer ran **19.8s to 75s+**, against
+our `timeout=30`.
+
+The first body is **not a statement about the query.** The identical query was
+refused and then accepted, twice, minutes apart, with a short control query
+succeeding throughout. Shortening the vocabulary was tested and the boundary
+does not reproduce (16 terms refused, 24 accepted, 26 refused, 48 both).
+It is a load-shed message wearing a validation message's words.
+
+`resp.raise_for_status()` passes on a 200. `resp.json()` then raised
+`JSONDecodeError`, the generic `except` recorded `last_error = "Expecting value:
+line 1 column 1 (char 0)"`, and `saw_rate_limit` stayed **False**. The behaviour
+was survivable. The **information** was wrong, in all three places that exist to
+tell throttled from broken:
+
+1. `gdelt_reach` published `rate_limited=0` on a throttled run. Telling
+   throttled from broken is the entire reason that module exists, and it was
+   structurally blind to the throttle signal this endpoint actually sends.
+2. The `RuntimeError` raised for a fully-abandoned broad window quoted a JSON
+   parser at the reader instead of the server's own sentence.
+3. `gdelt_backfill._is_upstream_throttle` greps the error text for `429` /
+   `rate limit` / `timeout`. A `JSONDecodeError` matches none of them, so an
+   upstream throttle **raised** — a red run and a breakage email no human can
+   act on, which is precisely what that function's own comment says it exists
+   to prevent.
+
+### What changed, and what deliberately did not.
+
+`sources/gdelt._upstream_text_signal` classifies a non-JSON body as `throttle`
+or `upstream` and hands back the server's sentence verbatim.
+`_is_upstream_throttle` imports `_THROTTLE_BODY_RX` rather than keeping a second
+copy of the wordings, so there is ONE definition of "the server told us to slow
+down".
+
+**No threshold was widened. No retry was added. No second was added.**
+`QUERY_ATTEMPTS` is still 5, `REQUEST_DELAY` still 5.0, `QUERY_BACKOFF_SECONDS`
+still 40, and `test_costs_nothing_extra` pins the request count and the exact
+sleep schedule so a later change cannot buy quiet with patience — CLAUDE.md is
+explicit that patience is not the answer to a shared rate limit, and the
+measurement agrees: we are already spaced 5s + a 20-75s response time apart, so
+we are not the cause of our own throttling.
+
+Two things were measured and deliberately **not** acted on, because both trade
+coverage for quiet and the call is the owner's:
+
+- **`timeout=30` sits below the endpoint's response-time distribution.** Raising
+  it would recover some windows and would also multiply the wall-clock that
+  already ran run 33094996142 into its 45-minute ceiling. Not changed.
+- **`GDELT_PREFER_BQ` is unset for the live cron**, so every run spends five
+  futile attempts on the public broad window before falling to the mirror that
+  then answers. The mirror returned **7183** articles where the public API caps
+  at **250**. Turning it on for the live cron would skip the futile attempts
+  outright, but it also changes which index the broad tier reads from. Flagged,
+  not flipped.
+
+### Still UNKNOWN
+
+Whether #232/#233 made the work ledger live in production **cannot be confirmed
+from this session**: `/tracker-meta` is keyed and this checkout holds no
+`WP_API_KEY` (verified: HTTP 403 `alt_forbidden`). The 2026-08-28 22:10 run is
+not diagnostic either way — the outage breaker set `api_down`, which skips
+`_retry_pending_slots` entirely, so that run would look identical with a live
+ledger and a dead one. The committed `gdelt_work_ledger.json` is still 18 bytes,
+which is expected and proves nothing (the Railway cron cannot commit).
+**This is UNKNOWN, not a pass.** The first diagnostic run is the next one whose
+broad window survives long enough to reach the retry walk.
+
+**Class:** guard-went-vacuous
+**Guard:** railway/tests/test_gdelt_throttle_classification.py
+
 ## 2026-08-29 - a real dark source reddened main, because a guard typed the whole ledger
 
 **main went RED and nothing was broken in the code.** `Tests` failed on
