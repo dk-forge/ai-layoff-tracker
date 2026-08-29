@@ -138,6 +138,77 @@ def uncollected_jurisdictions():
     return tuple(j for j in US_JURISDICTIONS if j not in have)
 
 
+#: Directories that cannot vouch for a collector's existence.
+#:
+#: `__pycache__` / `.pytest_cache` are build residue —
+#: `.pytest_cache/v/cache/nodeids` mentions almost every id in the repo, so
+#: counting it would let a deleted collector keep vouching for itself until
+#: somebody cleared a cache.
+#:
+#: `tests` is excluded on the merits, not for convenience: a collector named
+#: ONLY by a test that asserts something about it has still not been built, and
+#: the test asserting this very property necessarily spells its own fixture id.
+_NOT_CODE = {"__pycache__", ".pytest_cache", ".git", "node_modules", "tests"}
+
+
+def _implementation_corpus():
+    """Every byte of code that could plausibly name a collector.
+
+    railway/ (the modules that run and the workflows' entry points) plus
+    .github/workflows/ (the schedules that run them). Read as text, searched
+    for the literal id — deliberately the WEAKEST possible test of existence,
+    because the finding it has to survive is "no hit anywhere at all".
+    """
+    roots = [HERE, os.path.join(os.path.dirname(HERE), ".github", "workflows")]
+    blob = []
+    for root in roots:
+        for dirpath, dirnames, files in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in _NOT_CODE]
+            for name in files:
+                if not name.endswith((".py", ".yml", ".yaml", ".json", ".csv")):
+                    continue
+                try:
+                    with open(os.path.join(dirpath, name),
+                              encoding="utf-8", errors="ignore") as fh:
+                        blob.append(fh.read())
+                except OSError:
+                    continue
+    return "\n".join(blob)
+
+
+def unimplemented_collectors(path=HEALTH_JS):
+    """Declared on the public health page, but named by NO code in this repo.
+
+    THE DEFECT THIS IS FOR
+    ----------------------
+    `never_reported` catches a collector that exists and is silent. This
+    catches the one underneath it: a collector that was never built, whose
+    label was written anyway.
+
+    One collector was declared in `meta{}` in 2.19.84 with a full description
+    ending "Transcript API", and no module, no workflow and no `cron.py` line
+    ever followed — the transcript endpoint it needed turned out to be
+    paid-only and the intent was dropped the same week, but the label stayed.
+    For thirteen months every session was told a collector had never reported,
+    which was true and which no amount of investigating a collector could ever
+    resolve, because there was no collector. (Its id is deliberately NOT spelled
+    anywhere in this module: naming it here would put it in the corpus below and
+    make the label vouch for itself. The story is in the test and in TECHLOG,
+    both outside the corpus. Found by mutating this very guard.)
+
+    A `meta{}` entry is a promise on a public surface. This makes the promise
+    cost something: the id must be named by at least one file that runs.
+
+    Raises ValueError when the declaration cannot be read, for the same reason
+    `never_reported` does — an empty registry would answer "nothing is missing".
+    """
+    declared = declared_collectors(path)
+    if not declared:
+        raise ValueError(f"could not read the collector registry from {path}")
+    corpus = _implementation_corpus()
+    return tuple(i for i in declared if i not in corpus)
+
+
 def summary(health, path=HEALTH_JS):
     """The thirty-second picture: watched, reporting, never looked at."""
     out = {"jurisdictions": len(US_JURISDICTIONS),
@@ -149,6 +220,11 @@ def summary(health, path=HEALTH_JS):
     except ValueError as exc:
         out["never_reported"] = None          # UNKNOWN, never an empty pass
         out["never_reported_error"] = str(exc)
+    try:
+        out["unimplemented"] = list(unimplemented_collectors(path))
+    except ValueError as exc:
+        out["unimplemented"] = None           # UNKNOWN, never an empty pass
+        out["unimplemented_error"] = str(exc)
     out["reporting_collectors"] = len(reporting_collectors(health))
     return out
 

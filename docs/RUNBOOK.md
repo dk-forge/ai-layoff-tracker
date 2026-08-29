@@ -78,7 +78,7 @@ repo → Settings → Actions → Secrets, exact name):
 | `COMPANIES_HOUSE_API_KEY_UK` | distress-watchlist (UK insolvency) | HTTP Basic (key as username) |
 | `EDINET_API_KEY_JP` | foreign-filings (Japan) | Low yield; extractor guards protect quality |
 | `OPENDART_API_KEY_KR` | foreign-filings (Korea) | Low yield; `list_disclosures` needs (start,end) dates |
-| ~~`FMP_API_KEY`~~ | (dropped) | Transcripts are paid-only (HTTP 402) — earnings ingest removed |
+| ~~`FMP_API_KEY`~~ | (dropped) | Transcripts are paid-only (HTTP 402, Ultimate tier) — earnings ingest removed. Re-checked 2026-08-29: still Ultimate at FMP, Premium at Finnhub, and no other key we hold serves transcripts. The stray `earnings_ingest` health-page label was deleted then (TECHLOG 2026-08-29); **do not re-declare it without a key that can actually reach transcripts.** |
 
 Every dormant source ships DORMANT and exits clean when its key is absent, so
 adding a key is the only step to activate it. First run each in `dry_run=1` and

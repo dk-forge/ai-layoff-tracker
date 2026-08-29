@@ -342,7 +342,23 @@ the end check.
   the inventory from what SHOULD exist (56 US jurisdictions; the `meta{}`
   registry in `assets/health.js`) and diffs it against the live ledger;
   `ops_status [2c]` prints it. On 2026-08-19 two declared collectors had NEVER
-  reported: `earnings_ingest` and `digest_weekly`.
+  reported; both are now closed, and the second one closed differently from how
+  anyone expected.
+  **A DECLARED COLLECTOR THAT WAS NEVER BUILT IS NOT A BROKEN COLLECTOR.** The
+  last never-reported id had no module, no workflow and no `cron.py` line: the
+  transcript ingest it named was dropped for HTTP 402 in the SAME batch that
+  added its `meta{}` label (2.19.84), and only the label survived. Thirteen
+  months of a true, unresolvable signal, because "the collector does not run"
+  and "it runs and never reports" were the only two branches offered and the
+  real one was missing. `source_inventory.unimplemented_collectors()` now
+  requires every declared id to be named by at least one file under `railway/`
+  or `.github/workflows/` — the weakest possible test of existence, free for a
+  real collector and impossible for a promise. A `meta{}` entry is a public
+  claim that something exists; do not write one before the collector.
+  **Do NOT close a never-reported finding by adding an "acknowledged" list to
+  `source_inventory.py`** — a healer may fix a collector but never the judge,
+  and silencing a true signal about an unkept promise is exactly that. Build it,
+  or delete the label and record why in TECHLOG.
 - **Source health is not data integrity.** "Did the collector run?" and "is what it produced correct?" are different questions, and for months only the first was on the dashboard. Live invariants live in `railway/data_integrity.py` and are imported by the test, ops_status and the digest — ONE definition. Never let a check resolve to a silent pass: PASS / FAIL / **UNKNOWN** are three distinct states and absence of a signal is not a pass.
   **The email digest is the same lesson in a fourth state.** Its relay credential was rejected for three days while every scheduled run was green, because the credential was only ever exercised by a real delivery and nobody was due — so `0 sent of 0 eligible` was true, complete, and said nothing. Every run now does a LOGIN with no message after it (`Transport.verify()`), and the `digest_mailer` health row carries `credential=<STATE>`, read at session start by `ops_status [4c]`. Four states, not two: **ABSENT** (nothing armed) is green, **REJECTED** is a red run a human clears by rotating a secret, **UNKNOWN** (relay unreachable) is never a pass and never a fault. Do not collapse ABSENT into REJECTED — a missing key must stay a state — and do not read a 4xx or a dropped connection as REJECTED, which would send the owner to rotate a working secret.
 - **A headline FAIL is closed by a human, never by the calendar.** A failing

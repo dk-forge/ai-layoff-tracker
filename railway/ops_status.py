@@ -1410,6 +1410,13 @@ def main():
             print("        Absent is not green. Either the collector does not "
                   "run, or it runs and never reports.")
             issues.append(f"{len(_never)} collector(s) declared but never reported")
+            _unbuilt = _inv.get("unimplemented") or ()
+            _both = [i for i in _never if i in _unbuilt]
+            if _both:
+                print("        Of those, NO CODE IN THIS REPO names "
+                      f"{', '.join(_both)} — the label is a promise nobody "
+                      "built. Do not investigate it as a broken collector; "
+                      "either build it or drop the meta{} entry.")
         else:
             print(f"    every one of the {_inv['declared_collectors']} declared "
                   f"collectors has reported at least once.")

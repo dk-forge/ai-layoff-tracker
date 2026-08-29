@@ -278,5 +278,77 @@ class SourceRegistryParityTest(unittest.TestCase):
             f"KNOWN_UNLABELLED: {both}. Remove them from KNOWN_UNLABELLED."))
 
 
+class EveryDeclaredCollectorHasCodeBehindIt(unittest.TestCase):
+    """The other direction, which was open for thirteen months.
+
+    Everything above guards reporter -> label: a collector that POSTs health
+    must be described. Nothing guarded label -> reporter, so a label could be
+    written for a collector that was never built, and that is what happened.
+
+    `earnings_ingest` was added to `meta{}` in 2.19.84 (2026-07-21, "surface the
+    4 new collectors on both public pages") describing daily earnings-call
+    transcripts. In the SAME batch the transcript ingest was dropped, because
+    the transcript endpoint answered HTTP 402 — paid-only. The module was never
+    written, no workflow ever ran it, `cron.py` never referenced it. The label
+    outlived the intent, and `source_inventory.never_reported` correctly
+    reported a collector with no health row at every session start for thirteen
+    months. That signal was TRUE and unresolvable: no amount of investigating a
+    broken collector can fix a collector that does not exist.
+
+    The bar here is the weakest one that still closes the class: the id must be
+    named by at least one file that runs. Passing it is nearly free for a real
+    collector and impossible for a label with nothing behind it.
+    """
+
+    def test_no_meta_label_names_a_collector_that_does_not_exist(self):
+        import sys
+        sys.path.insert(0, RAILWAY)
+        import source_inventory
+
+        orphans = source_inventory.unimplemented_collectors()
+        self.assertFalse(sorted(orphans), (
+            f"These ids are declared in meta{{}} in assets/health.js but are "
+            f"named by NO python module, workflow or data file in this repo: "
+            f"{sorted(orphans)}. A meta{{}} entry is a public promise that a "
+            f"collector exists, and the inventory will report it NEVER REPORTED "
+            f"forever because there is nothing to report. Either build the "
+            f"collector, or delete the label and record the decision in "
+            f"docs/TECHLOG.md."))
+
+    def test_the_scan_can_actually_fail(self):
+        """A guard that cannot fail has not been tested.
+
+        Feeds the real function a registry containing one id that certainly
+        appears nowhere, and requires it to be named. Without this, deleting
+        the corpus walk would leave a permanently-green test.
+        """
+        import sys
+        import tempfile
+        sys.path.insert(0, RAILWAY)
+        import source_inventory
+
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,
+                                         encoding="utf-8") as fh:
+            fh.write("  const meta = {\n"
+                     "    edgar: ['a real one'],\n"
+                     "    zzz_never_built_collector: ['a label with no code'],\n"
+                     "  };\n")
+            path = fh.name
+        try:
+            orphans = source_inventory.unimplemented_collectors(path)
+            self.assertEqual(orphans, ("zzz_never_built_collector",))
+        finally:
+            os.unlink(path)
+
+    def test_an_unreadable_registry_is_unknown_not_a_pass(self):
+        import sys
+        sys.path.insert(0, RAILWAY)
+        import source_inventory
+
+        with self.assertRaises(ValueError):
+            source_inventory.unimplemented_collectors(
+                os.path.join(RAILWAY, "no-such-health.js"))
+
+
 if __name__ == "__main__":
     unittest.main()
