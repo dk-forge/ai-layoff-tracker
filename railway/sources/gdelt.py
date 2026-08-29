@@ -968,6 +968,80 @@ def _retry_delay(response, attempt):
     return min(180, max(QUERY_BACKOFF_SECONDS * (attempt + 1), hinted)) + random.uniform(0, 3)
 
 
+# --- GDELT signals overload with HTTP 200 and a sentence -------------------
+#
+# MEASURED 2026-08-29, production query shape (broad QUERY, maxrecords=250,
+# 36h window), from a single address at >=5s spacing. The DOC 2.0 API does not
+# reliably use status codes. Of the responses that were not usable JSON, the
+# bodies observed were:
+#
+#     HTTP 200  "Your query was too short or too long."
+#     HTTP 200  "Please limit requests to one every 5 seconds."
+#     HTTP 429  "Please limit requests to one every 5 seconds."
+#
+# The first is NOT a statement about the query. The identical 941-character
+# query was rejected and then accepted, twice, minutes apart, with a short
+# control query succeeding throughout — so it is a load-shed message wearing a
+# validation message's words. Do not "fix" it by shortening the vocabulary:
+# that was tested (16 terms rejected, 24 terms accepted, 26 rejected) and the
+# boundary does not reproduce.
+#
+# WHY THIS MATTERS MORE THAN IT LOOKS. `resp.raise_for_status()` passes on a
+# 200, `resp.json()` then raises `JSONDecodeError`, and the generic `except`
+# below recorded `last_error = "Expecting value: line 1 column 1 (char 0)"`
+# with `saw_rate_limit` still False. Three things followed, all of them wrong
+# information rather than wrong behaviour:
+#
+#   1. `gdelt_reach` recorded `rate_limited=0` on a throttled run. Telling
+#      "throttled" from "broken" is the entire reason that module exists, and
+#      it was blind to the throttle signal this endpoint actually sends.
+#   2. The RuntimeError raised for a fully-abandoned broad window quoted a JSON
+#      parser at the reader instead of the server's own sentence.
+#   3. `gdelt_backfill._is_upstream_throttle` greps the error text for "429" /
+#      "rate limit" / "timeout". A JSONDecodeError matches none of them, so an
+#      upstream throttle RAISED — a red run and a breakage email that no human
+#      can act on, which is precisely what that function's comment says it
+#      exists to prevent.
+#
+# This classifier changes no cadence and issues no extra request: the retry
+# schedule, QUERY_ATTEMPTS and REQUEST_DELAY are untouched. It only reads the
+# sentence the server already sent. A longer backoff is deliberately NOT the
+# answer here (see CLAUDE.md); the answer is to stop discarding the diagnosis.
+_THROTTLE_BODY_RX = re.compile(
+    r"limit\s+requests|one\s+every\s+\d+\s*sec|rate\s*limit|too\s+many\s+requests",
+    re.I)
+# A short non-JSON body is an error message; a long one is a page we should not
+# try to summarise into a health `detail` capped at 240 characters.
+_MAX_SIGNAL_BODY = 200
+
+
+def _upstream_text_signal(body):
+    """Classify a non-JSON GDELT body. Returns (kind, message) or None.
+
+    kind is "throttle" when the server told us to slow down (in any of the
+    status codes it says it under), else "upstream" for any other plain-text
+    refusal. None means the body looks like the JSON we asked for.
+    """
+    text = body or ""
+    # Sniff the first non-space characters only. A good response is a
+    # half-megabyte of JSON and this runs on every successful query; stripping
+    # or splitting the whole body to learn it starts with `{` would copy it
+    # twice for nothing. The expensive normalisation below is reached only by
+    # bodies already known NOT to be the JSON we asked for.
+    head = text[:64].lstrip()
+    if not head or head[0] in "{[":
+        return None
+    message = " ".join(text.split())[:_MAX_SIGNAL_BODY]
+    if _THROTTLE_BODY_RX.search(message):
+        # The message is passed through VERBATIM, not rewritten into words a
+        # downstream matcher happens to grep for. `_THROTTLE_BODY_RX` is the
+        # one definition of "the server told us to slow down", and
+        # gdelt_backfill._is_upstream_throttle imports THIS regex rather than
+        # keeping a second list that can drift out of agreement with it.
+        return "throttle", message
+    return "upstream", message
+
+
 def _strip_html(markup):
     text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", markup)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -1191,6 +1265,19 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
                 print(f"GDELT 429 (attempt {attempt + 1}/{QUERY_ATTEMPTS}), retrying after {delay:.0f}s")
                 continue
             resp.raise_for_status()
+            # A 200 is not an answer. GDELT refuses in plain text at 200 as
+            # readily as at 429 (see _upstream_text_signal); parsing that as
+            # JSON threw away the diagnosis and left a throttle looking like a
+            # broken parser. Cadence is unchanged — this classifies, it does
+            # not wait longer or ask again.
+            signal = _upstream_text_signal(resp.text)
+            if signal:
+                kind, message = signal
+                if kind == "throttle":
+                    saw_rate_limit = True
+                last_error = f"HTTP {resp.status_code} {message}"
+                print(f"GDELT {kind} body (attempt {attempt + 1}/{QUERY_ATTEMPTS}): {message}")
+                continue
             articles = resp.json().get("articles", []) or []
             break
         except Exception as e:

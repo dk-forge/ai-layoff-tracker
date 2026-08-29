@@ -15,7 +15,7 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
-from sources.gdelt import pull_gdelt_between
+from sources.gdelt import pull_gdelt_between, _THROTTLE_BODY_RX
 from extractor import extract_layoff_data
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
@@ -42,6 +42,16 @@ def _is_upstream_throttle(exc):
     """True when the third party throttled or timed out on us, rather than the
     collector being broken."""
     text = str(exc).lower()
+    # ONE definition of "the server told us to slow down". GDELT sends that
+    # message at HTTP 200 as readily as at 429, and until 2026-08-29 it reached
+    # this function as a JSONDecodeError ("Expecting value: line 1 column 1"),
+    # matched nothing in the list below, and turned an upstream throttle into a
+    # RED RUN — the exact outcome the docstring above says this prevents.
+    # Importing the collector's regex rather than copying its words is
+    # deliberate: a second list here would drift out of agreement with the
+    # first, silently, and in the direction of raising again.
+    if _THROTTLE_BODY_RX.search(text):
+        return True
     return any(m in text for m in ("429", "rate limit", "too many requests",
                                    "timed out", "timeout", "503", "502", "504"))
 
