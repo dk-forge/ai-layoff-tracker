@@ -13,7 +13,7 @@ $alt_warn_phrase = function_exists('alt_warn_states_phrase') ? alt_warn_states_p
 <main class="alt-wrap alt-method-page">
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>Methodology &amp; sources</h1>
-  <p class="alt-lead"><span class="alt-lead-text">How we collect, verify, classify and count every number on this tracker. We wrote it for journalists and researchers who need to check a figure before they cite it. We estimate nothing into existence. Every published number traces back to a primary source.</span></p>
+  <p class="alt-lead"><span class="alt-lead-text">How we collect, verify, classify and count every number on this tracker. We wrote it for journalists and researchers who need to check a figure before they cite it. We estimate nothing into existence. Every published number traces back to the source it came from, and that source is labelled for what it is: a filing, an employer statement, or a named source report.</span></p>
   <p><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">&larr; Back to the tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/ai-quotes/')); ?>"><?php echo esc_html(alt_page_link_label('page-ai-quotes.php', 'AI layoffs, in the employer\'s own words')); ?></a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a></p>
 
   <?php /*

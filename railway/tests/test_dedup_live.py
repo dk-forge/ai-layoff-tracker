@@ -335,6 +335,17 @@ class InvariantCoverage(unittest.TestCase):
         "erm_provenance": ("test_erm_provenance_check", "WiredIntoTheOneRegistry"),
         "rolling_recall_fresh": ("test_rolling_recall", "WiredIntoTheOneRegistry"),
         "country_coverage_fresh": ("test_country_coverage", "WiredIntoTheOneRegistry"),
+        # Delegated rather than claimed by a live _assert BECAUSE IT IS
+        # CURRENTLY FAILING LIVE, on purpose: three countries are published
+        # under two labels each (see TECHLOG 2026-08-29). A live claim here
+        # would redden every push in the unit suite for a data defect that a
+        # single /cleanup dispatch clears, and it would say nothing a unit
+        # suite can act on. The arming is proved offline instead, on the
+        # recorded 2026-08-29 vocabulary, and the LIVE reading is
+        # data-integrity.yml, daily, exit 2 on FAIL — which is where a
+        # published-number defect belongs.
+        "country_identity": ("test_country_identity",
+                             "TheInvariantFailsOnASplitIdentity"),
     }
 
     @staticmethod

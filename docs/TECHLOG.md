@@ -1,5 +1,189 @@
 # Tech Log
 
+## 2026-08-29 - an epithet is not an employer, and one country had two labels (2.20.154)
+
+An external adversarial review returned NO-GO. Six findings; four verified, two
+substantially rejected. Everything below is measured against the LIVE API on
+2026-08-29, not against the reviewer's numbers, several of which were wrong.
+
+### 1. "Automaker Giant", 50,000 jobs, published
+
+The largest 2026 row on the public `leaders` list was an employer called
+**Automaker Giant**: 50,000 jobs, no country, cited to a Google News INDEX
+record rather than an article, `announced=false` so it counted as an executed
+layoff. The tracker separately held **Volkswagen Group**, 50,000, the same
+2026-03-10, from a named DW report, `announced=true`. One event, published
+twice, once anonymously, and the anonymous copy was the one on the leaderboard.
+
+It was not alone. A sweep of 705 live rows found `Unknown` published as an
+employer three times (ids 177407/177128/177318), plus `Auto-parts giant`,
+`DTC storage firm` and `Social media giant`. The extractor skips a row only
+when the name is EMPTY (`extractor.py:1298`); nothing ever asked whether the
+name was a company. `Unknown` is the extractor's own null sentinel, stored and
+served as an identity.
+
+Such a row is unverifiable (a reader cannot check "Automaker Giant" against
+anything), undedupable (`company_key` can never match the identified row, so
+superset dedup cannot relate the two 50,000s) and uncorrectable (there is no
+employer to correct it against).
+
+**Fix.** `alt_is_anonymous_employer()` in `includes/db.php`, called from
+`alt_db_upsert` - the single write choke point every source funnels through,
+beside `alt_normalize_company_ws` and for the same reason. It is a CLOSED
+VOCABULARY, not a heuristic, exactly as countries and industries are.
+
+**The vocabulary is short on purpose, and the test is why.** The first draft
+included `public`, `national`, `group`, `company`, `bank` and `corporation`.
+The KEEP half of the new test rejected it immediately on **Public Storage** -
+an S&P 500 company built from two vocabulary words. Every word that plausibly
+ends a real registered name was then cut, at the cost of letting a rarer
+periphrasis through, because under-blocking is recoverable and a silently
+deleted employer is not. A legal-entity suffix (LLC, plc, GmbH, ...) overrides
+the rule outright, which is what keeps the real WARN employer "The GIANT
+Company, LLC." Two further guards: a single generic word is always kept
+("Carrier" is Carrier Global and has a filed WARN notice), and one non-generic
+token is enough to pass ("Google parent").
+
+**The seven live rows are NOT removed by this commit.** The gate stops new
+ones. Clearing the published ones is a numeric change, which governance says
+needs a human sign-off, and the tool already exists:
+
+    WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py \
+        --ids 177321,177407,177128,177318,176813,176621,178707 \
+        --action trash --reason "employer identity unresolved: an epithet or a \
+        null sentinel, not a company (TECHLOG 2026-08-29)" --apply
+
+`--action trash` also SUPPRESSES each dedup hash, so the nightly re-scrape
+cannot resurrect them.
+
+**On the reviewer's proposed 5,000+ review gate.** Rejected as specified. It
+would hold back every large legitimate row behind a queue that records no
+completion, and the defect is not size - `Social media giant` is 75 jobs and
+just as unverifiable. The reviewer was right that `db.php:3932`
+(`alt_api_review_queue`) excludes nothing from publication; its own methodology
+text says so. Identity is the admissible gate; size is not.
+
+### 3. One country, two published labels
+
+Confirmed live, and worse than the reviewer's figures (his Korea 550 / Turkey
+100 were invented; the real split is larger):
+
+    China                          17,790 jobs
+    People's Republic of China          2
+    South Korea                     3,987
+    Korea                           1,197
+    Türkiye                         2,200
+    Turkey                          1,696
+
+Six labels, three countries, all six separately selectable in `/facets`.
+
+**Two different failures, which is why there are two fixes.** Türkiye was never
+in `alt_normalize_country` at all: the key-cleaner strips every non-ASCII
+letter, so it arrived as `trkiye`, matched nothing, and fell through the
+raw-passthrough to become its own country. China and Korea WERE fixed, on
+2026-08-19 - and the split survived, because normalizing new input does nothing
+to rows already stored and `/cleanup`, the idempotent migration route written
+for exactly this, was never dispatched afterwards. The normalizer sat ten days
+away from the data it fixed.
+
+**Nothing failed on any of it.** `country_coverage.py` SEES the duplication and
+deliberately reports it as `vocabulary_duplicates` rather than absorbing it, and
+`CountryCoverageInvariant` passes, because both spellings resolve through
+`ALIASES` to one classified entry. Reporting is not alarming. That is the gap.
+
+**Fix.** `CountryIdentityInvariant` (`data_integrity.py`) FAILS on live data
+carrying two labels for one country, importing `country_coverage.ALIASES` so
+"same country" has one definition. Plus the Türkiye aliases in
+`alt_normalize_country`, canonicalizing to the ENDONYM to match the register
+(`Türkiye` is a REGISTER key; `Turkey` is not).
+
+**This invariant is RED right now, deliberately.** It clears in one dispatch of
+the `Normalize data (country + industry)` workflow, which re-runs the normalizer
+over every stored value. Do NOT clear it by editing the alias table. It is
+claimed via `InvariantCoverage.DELEGATED` rather than a live `_assert`, so a
+published-data defect reddens `data-integrity.yml` daily rather than every push.
+
+**Deliberately left with a spec.** The closed ISO-3166 registry the reviewer
+asked for is NOT built. Only Türkiye is mapped, because only Türkiye is split
+live; `Côte d'Ivoire`/`Ivory Coast` and `Curaçao`/`Curacao` would split the same
+way but have no live rows, and inventing a canonical label the coverage register
+has never classified trades this defect for an unclassified country in
+`CountryCoverageInvariant`. The full fix is one ISO-backed table shared by the
+normalizer, the register, `/facets` and the digest, with a miss returning
+UNKNOWN-and-hold instead of the raw string. That is a larger slice than this and
+is not half-built here.
+
+### 4. Copy that promised what the data does not hold
+
+`alt_source_link_label()` already refuses, by name and under test, to call a
+news report or a Google News redirect a primary source. Eight pieces of copy in
+five files told the reader the opposite in the blanket form - "Every figure
+links to a primary source" - over a corpus about half of which is news. On
+2026-08-29 the largest 2026 row was cited to the one thing that function
+refuses to call primary, under a page carrying that promise.
+
+Separately, `page-tracker.php:1525` said GDELT "searches every country on earth
+in 65+ languages". Discovery is a rotating, capped sample against a reviewed
+outlet allowlist; a country with no allowlisted outlet is invisible to it. The
+same file already said so 250 lines earlier, so the page contradicted itself.
+
+**Fix.** Both claims restated in the tracker's own honest vocabulary: a filing,
+an employer statement, or a named source report. `test_source_promise_copy.py`
+fails on the blanket promise returning to any reader-facing surface, and on any
+claim that GDELT watches every country. Saying an 8-K IS a primary source stays
+allowed - it is true; the universal quantifier was the false half.
+
+### 5 and 6. Substantially rejected
+
+**5 - "stale source-verification audit".** REJECTED. The numbers are right
+(44/50 = 88.0%, 33 unverifiable) but the audit is monthly, ran 2026-08-01, and
+the declared ceiling is 35 days in both `ops_status.py:105` and
+`health_digest.py:66`. At 28 days it is not stale, and `ops_status [2]` prints
+STALE with a non-zero exit if it ever becomes so. The Google News "0 of 150"
+is real but is the collector's OWN self-reported measurement: Google News serves
+opaque redirect tokens, `robots.txt` forbids following them, and the number is
+deliberately counted rather than papered over. Publisher identity is still
+stored in `source_name`.
+
+**6 - 320px mobile.** Two of five claims verified, and the root cause is
+something the reviewer did not find. There is NO header menu control on a
+citation page (a sweep of all 268 elements for a 4-8px box returned zero), and
+"Why two figures" is not on that page at all - it is on the tracker page, where
+it measures 124.72 x 40 and its ~40 is a HEIGHT, already allowlisted by
+`test_tap_targets.py:248`. What IS true: two H1 elements, and a brand link
+337.45px wide in a 320px viewport, overflowing by 17.45px (currently clipped,
+not scrollable, by an existing `overflow-x:hidden`).
+
+The cause is that `single-layoff.php:5` calls `get_header()` under a BLOCK theme
+with no `header.php`, so WordPress falls through to core's deprecated
+`theme-compat/header.php`. That emits the stray `<h1>` brand, unstyled, and the
+real site header never renders - so roughly 1,800 citation pages have no site
+navigation at all. **Not fixed here, and deliberately not:** replacing
+`get_header()` needs a live WordPress to verify and this session has none.
+Specified rather than guessed at.
+
+**Verification.** Six mutations, each confirmed to redden the named test:
+removing the `alt_db_upsert` gate call and restoring the over-broad vocabulary
+both fail `test_employer_identity_gate.py`; removing the Türkiye aliases and
+neutering the split detection both fail `test_country_identity.py`; restoring
+either the "primary source" promise or the "every country on earth" claim fails
+`test_source_promise_copy.py`. `style_check.py` clean, 0 findings.
+
+**Class:** novel - a stored value that is syntactically fine and semantically
+not an identity at all ("Automaker Giant", "Unknown", `Turkey` beside
+`Türkiye`). Every existing slug describes a MECHANISM that stopped or drifted;
+this is a mechanism working perfectly on input that was never a fact. The
+nearest neighbours miss: `derived-value-typed-by-hand` is about staleness,
+`two-copies-drifted` is about divergence, and both of these values were correct
+the moment they were written and never became stale or diverged. If this shape
+recurs it is a candidate for a seventeenth iron rule: A FREEFORM IDENTITY IS
+NOT A FACT - normalize it through a closed vocabulary or refuse it, the rule
+that already governs countries and industries and never governed employers.
+
+**Guard:** railway/tests/test_employer_identity_gate.py,
+railway/tests/test_country_identity.py,
+railway/tests/test_source_promise_copy.py
+
 ## 2026-08-29 - the operator set a timeout variable and nothing read it
 
 **What.** After the GDELT throttle finding (#238) the owner set `GDELT_PREFER_BQ=1`

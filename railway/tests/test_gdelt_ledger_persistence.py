@@ -420,55 +420,46 @@ class TheQueryTimeoutIsConfigurableAndBOUNDED(unittest.TestCase):
     """An operator who sets an env var must change something.
 
     `timeout=30` was a hardcoded literal until 2026-08-29. The owner set a
-    Railway variable for it that day and it did nothing -- the silent no-op
-    this repo keeps finding, in the one place where the person acting believes
-    they have acted.
+    Railway variable for it that day and it did nothing -- the silent no-op in
+    the one place where it is worst, because the person acting believed they
+    had acted.
 
-    It is CLAMPED rather than free because the two failure modes point in
-    opposite directions: 30s sits below the endpoint's measured answering
-    latency (19.8-75s on 2026-08-29) so windows are abandoned by our own clock,
-    while an unbounded wait multiplies the wall clock of a run that has already
-    self-cancelled at 45 minutes (run 33094996142).
+    NOTE ON HOW THIS IS TESTED. The first version reloaded the module to read
+    the constant back. That rebuilt `_THROTTLE_BODY_RX`, which `gdelt_backfill`
+    imports BY REFERENCE to keep one definition of the throttle vocabulary --
+    so the identity assertion pinning those two together began failing on main,
+    in a different file, for a reason that looked nothing like the cause. The
+    clamp is a pure function now and is tested directly.
     """
 
-    @staticmethod
-    def _reload(value=None):
-        import importlib
-        saved = os.environ.get("GDELT_QUERY_TIMEOUT")
-        if value is None:
-            os.environ.pop("GDELT_QUERY_TIMEOUT", None)
-        else:
-            os.environ["GDELT_QUERY_TIMEOUT"] = value
-        try:
-            return importlib.reload(gdelt).QUERY_TIMEOUT_SECONDS
-        finally:
-            if saved is None:
-                os.environ.pop("GDELT_QUERY_TIMEOUT", None)
-            else:
-                os.environ["GDELT_QUERY_TIMEOUT"] = saved
-            importlib.reload(gdelt)
-
     def test_the_default_is_unchanged(self):
-        self.assertEqual(self._reload(None), 30)
+        self.assertEqual(gdelt._clamped_query_timeout("30"), 30)
 
     def test_an_operator_setting_it_actually_changes_it(self):
-        self.assertEqual(self._reload("75"), 75)
+        self.assertEqual(gdelt._clamped_query_timeout("75"), 75)
 
     def test_it_is_clamped_above(self):
         # QUERY_ATTEMPTS(5) x the ceiling must stay inside a run's budget.
-        self.assertEqual(self._reload("6000"), 90)
+        self.assertEqual(gdelt._clamped_query_timeout("6000"), 90)
 
     def test_it_is_clamped_below(self):
         # A 0 would make every query fail instantly and look like an outage.
-        self.assertEqual(self._reload("0"), 5)
+        self.assertEqual(gdelt._clamped_query_timeout("0"), 5)
 
-    def test_a_nonsense_value_does_not_take_the_ingest_down(self):
+    def test_a_nonsense_value_does_not_pass_silently(self):
         with self.assertRaises(ValueError):
-            self._reload("soon")
+            gdelt._clamped_query_timeout("soon")
+
+    def test_the_live_constant_is_built_from_it(self):
+        self.assertEqual(gdelt.QUERY_TIMEOUT_SECONDS,
+                         gdelt._clamped_query_timeout())
 
     def test_the_request_actually_uses_it(self):
         import inspect
-        src = inspect.getsource(gdelt)
-        self.assertIn("timeout=QUERY_TIMEOUT_SECONDS", src,
+        self.assertIn("timeout=QUERY_TIMEOUT_SECONDS", inspect.getsource(gdelt),
                       "the constant exists but the request still hardcodes a "
                       "number, which is the defect wearing a fix")
+
+
+if __name__ == "__main__":
+    unittest.main()

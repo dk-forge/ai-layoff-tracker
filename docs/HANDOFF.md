@@ -6,6 +6,24 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-08-29): 2.20.154 - an epithet is not an employer, and
+  one country had two labels.** The baton was read as FREE by `ops_status [0]`
+  on origin/main and this session took it. Work is the verified half of an
+  external adversarial review: an employer-identity gate at `alt_db_upsert`
+  (the live table published "Automaker Giant" at 50,000 jobs and `Unknown`
+  three times), a `CountryIdentityInvariant` that FAILS on two labels for one
+  country, Türkiye added to `alt_normalize_country`, and eight pieces of copy
+  that promised a primary source for every figure. Plugin files touched:
+  `includes/db.php`, `includes/api.php`, `includes/report-seo.php`,
+  `templates/page-tracker.php`, `templates/page-methodology.php`,
+  `templates/page-report.php`, and `ai-layoff-tracker.php` (version only).
+  Rest is `railway/data_integrity.py`, three new tests, one updated
+  (`test_dedup_live.py`) and TECHLOG. **Two follow-ups need the owner and a
+  key, and neither is done here:** dispatch `Normalize data (country +
+  industry)` to clear the country split, and run `apply_correction.py` over the
+  seven anonymous-employer ids. Both commands are in TECHLOG 2026-08-29.
+  **Re-read main immediately before merging and take the next patch after it if
+  this lost a race.** Full write-up in TECHLOG 2026-08-29.
 - **VERSION CLAIMED (2026-08-29): 2.20.152 — a declared collector that was
   never built is retired, and the class is closed.** The baton was read as FREE
   by `ops_status [0]` on origin/main and this session took it. `[2c]` had
