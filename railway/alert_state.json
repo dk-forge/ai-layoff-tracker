@@ -51,7 +51,13 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {},
-  "updated_at": "2026-08-28T17:59:45+00:00",
+  "open": {
+    "tests:main:7a3940d9a0bada5e": {
+      "first": 1788001539,
+      "last": 1788001539,
+      "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['warn:MN'] != []"
+    }
+  },
+  "updated_at": "2026-08-29T11:05:39+00:00",
   "version": 1
 }
