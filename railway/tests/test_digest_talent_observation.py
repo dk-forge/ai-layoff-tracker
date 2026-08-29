@@ -230,10 +230,26 @@ class TheHeadlineCountStatesItsOwnMix(unittest.TestCase):
 
     def test_the_headline_unit_is_not_redefined_to_cover_the_mix(self):
         """The answer to a mislabelled count is a measurement, not a gloss
-        wide enough to make a funding round a hiring signal."""
+        wide enough to make a funding round a hiring signal.
+
+        UPDATED 2026-08-29, AND THE RULE IT HOLDS IS UNCHANGED. This used to
+        assert "1,332 new hiring signals", because the alternative on the table
+        in August was WIDENING the definition of a hiring signal until a
+        funding round fitted inside it, and that had to be refused. The owner
+        then asked for the third option neither of those was: keep the
+        definition exactly as narrow as it is, and stop putting the narrow word
+        on a count that is not all hiring. So the assertion moves from "the
+        label is unchanged" to "the label is not a gloss", which is what the
+        docstring always said.
+        """
         text = edition([dict(REPORTED)],
                        talent_cat_direction_hiring={"total": 9})
-        self.assertIn("1,332 new hiring signals", text)
+        # The unit is NOT widened: nothing calls this mixed count hiring.
+        self.assertNotIn("1,332 new hiring signals", text)
+        # It is narrowed to a noun that is true of every row in it.
+        self.assertIn("1,332 new talent and employer-activity signals", text)
+        # And the measurement that proves the point is still printed.
+        self.assertIn("9 of the 1,332 signals", text)
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
