@@ -51,7 +51,13 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {},
-  "updated_at": "2026-08-29T11:32:36+00:00",
+  "open": {
+    "tests:main:70aafff348e9bf2c": {
+      "first": 1788009596,
+      "last": 1788009596,
+      "subject": "CI RED: Tests \u2014 AssertionError: re.compile('limit\\\\s+requests|one\\\\s+every\\\\s+\\\\d+\\\\s*sec|rate\\\\s*limit|too\\\\s+many\\\\s+requests', re.IGNORECASE) is not re.compile('limit\\\\s+request"
+    }
+  },
+  "updated_at": "2026-08-29T13:19:56+00:00",
   "version": 1
 }
