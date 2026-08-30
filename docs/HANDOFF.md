@@ -909,9 +909,16 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** FREE
-- **HOLDER:** -
-- **SINCE:** 2026-08-28
+- **STATUS:** HELD
+- **HOLDER:** local (Claude Code session, 2026-08-30)
+- **SINCE:** 2026-08-30
+- **WORKING ON (2026-08-30):** `ops_status [2f]`'s own blind spot. It prints
+  `UNREGISTERED railway/deferral_ledger.json` and
+  `UNREGISTERED railway/warn_state_baselines.json` at every session start and
+  nothing fails on it, so the "absent is not green" hole `state_liveness.py`
+  exists to close is open in `state_liveness.py` itself. Declaring both and
+  adding the test that fails on the next undeclared one. **No plugin file is
+  touched and no version is claimed.**
 - **RELEASED (2026-08-28): 2.20.148 — the three unclassified corpus arrivals
   each got the answer they needed.** Turkey = an ALIAS to the classified
   'Türkiye' entry (spelling split, reported as vocabulary duplicate). Ukraine
