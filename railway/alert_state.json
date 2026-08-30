@@ -67,11 +67,6 @@
       "last": 1788123883,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,514,296 jobs / 65,252 entries"
     },
-    "live-data-integrity-check:main:c1cce901d3eb3923": {
-      "first": 1788033480,
-      "last": 1788033480,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: verdict SUPPRESSED, baseline deliberately NOT advanced (recording an unjudged reading is the same laundering as recording a "
-    },
     "source-archive-backfill:main:cd9358076e48d00b": {
       "first": 1788089469,
       "last": 1788089469,
@@ -93,6 +88,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - the ai_all_time incident is[103 chars]the'] != []"
     }
   },
-  "updated_at": "2026-08-30T21:06:29+00:00",
+  "updated_at": "2026-08-30T21:07:07+00:00",
   "version": 1
 }
