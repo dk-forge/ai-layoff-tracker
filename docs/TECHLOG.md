@@ -26,6 +26,14 @@ counts PLANNED dismissals under wartime territorial limits.
 Backlog entry removed the session after it was added; no plugin file
 touched, no version consumed.
 
+**Class:** novel - not a defect: this closes a backlog research item (a
+country classification), and none of the vocabulary's failure shapes fit
+work that didn't fail. Tagged anyway because the convention applies to every
+entry on or after CUTOFF, not only incident postmortems.
+
+**Guard:** none - no code changed (register data only); the register's own
+shape is already covered by `railway/tests/test_country_coverage.py`.
+
 ## 2026-08-30 - the registry that reports unregistered files did not fail on one
 
 **What.** `railway/state_liveness.py` exists to close one hole: "absent from a
