@@ -57,11 +57,6 @@
       "last": 1788113846,
       "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
     },
-    "source-archive-backfill:main:cd9358076e48d00b": {
-      "first": 1788089469,
-      "last": 1788089469,
-      "subject": "CI RED: Source-archive backfill \u2014 RuntimeError: archive backfill could not persist 500 record(s) to /archive-record (all flushes failed this run); reporting degraded"
-    },
     "tests:live.data:4c51a688fc18dee4": {
       "first": 1788122694,
       "last": 1788122694,
@@ -78,6 +73,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - the ai_all_time incident is[103 chars]the'] != []"
     }
   },
-  "updated_at": "2026-08-30T21:07:10+00:00",
+  "updated_at": "2026-08-30T22:00:13+00:00",
   "version": 1
 }
