@@ -120,6 +120,24 @@
     }
   ],
   "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {},
-  "written_at": "2026-08-19T02:46:37Z"
+  "open": {
+    "ai_all_time": {
+      "baseline_at_open": {
+        "captured_at": "2026-08-29T01:06:25Z",
+        "entries": 93,
+        "jobs": 234869,
+        "recorded_in": "2026-08-29T01:07:26Z"
+      },
+      "detail": "Worldwide jobs, all time minus AI-attributed jobs, all time moved -39,292 jobs on +10 entries. A row can only arrive with its jobs or leave with its jobs, so nothing that arrived or left moved these 39,292 jobs into AI-attributed jobs, all time: rows that were ALREADY PUBLISHED were re-scored across the boundary between these two slices. This is true however many entries arrived, which is why the movement guard's allowance cannot see it. Check the last reconcile-supersets run, any country/AI relabel job, and the corrections log",
+      "label": "AI-attributed jobs, all time",
+      "observed_at_open": {
+        "captured_at": "2026-08-30T19:58:41Z",
+        "entries": 94,
+        "jobs": 243869
+      },
+      "opened_at": "2026-08-30T19:59:40Z",
+      "slice": "ai_all_time"
+    }
+  },
+  "written_at": "2026-08-30T19:59:40Z"
 }
