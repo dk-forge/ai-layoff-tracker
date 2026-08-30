@@ -62,6 +62,11 @@
       "last": 1788120001,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
     },
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1788123883,
+      "last": 1788123883,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,514,296 jobs / 65,252 entries"
+    },
     "live-data-integrity-check:main:c1cce901d3eb3923": {
       "first": 1788033480,
       "last": 1788033480,
@@ -83,6 +88,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - Ukraine is classified from live sources, and comes OFF the'] != []"
     }
   },
-  "updated_at": "2026-08-30T20:46:49+00:00",
+  "updated_at": "2026-08-30T21:04:43+00:00",
   "version": 1
 }
