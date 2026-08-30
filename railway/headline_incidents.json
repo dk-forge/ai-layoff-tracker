@@ -117,17 +117,30 @@
       },
       "reviewed_by": "dak (adjudicated; findings independently re-verified in a Claude Code session 2026-08-19)",
       "slice": "us_all_time"
-    }
-  ],
-  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {
-    "ai_all_time": {
+    },
+    {
+      "affected_row_ids": [
+        "70557",
+        "177321",
+        "177407",
+        "177128",
+        "177318",
+        "176813",
+        "176621",
+        "178707",
+        "61639",
+        "63922",
+        "63937",
+        "70615",
+        "178793"
+      ],
       "baseline_at_open": {
         "captured_at": "2026-08-29T01:06:25Z",
         "entries": 93,
         "jobs": 234869,
         "recorded_in": "2026-08-29T01:07:26Z"
       },
+      "closed_at": "2026-08-30T21:03:42Z",
       "detail": "Worldwide jobs, all time minus AI-attributed jobs, all time moved -39,292 jobs on +10 entries. A row can only arrive with its jobs or leave with its jobs, so nothing that arrived or left moved these 39,292 jobs into AI-attributed jobs, all time: rows that were ALREADY PUBLISHED were re-scored across the boundary between these two slices. This is true however many entries arrived, which is why the movement guard's allowance cannot see it. Check the last reconcile-supersets run, any country/AI relabel job, and the corrections log",
       "label": "AI-attributed jobs, all time",
       "observed_at_open": {
@@ -136,8 +149,17 @@
         "jobs": 243869
       },
       "opened_at": "2026-08-30T19:59:40Z",
+      "reason": "Two independent legitimate causes, no bad data. (1) AI side, exact to the row and the second: the whole +9,000/+1 move is row 70557 British American Tobacco, 9,000 jobs, updated 2026-08-29T22:19:56Z by the nightly news cron - /changed-rows shows it as the ONLY row that changed in 22:00-00:30. The un-edited row re-ingested through the dedup-hash UPDATE branch with new employer-attributed AI framing ('BAT signals possible job cuts from AI plan'), the same quote the dry-run ai-evidence-sweep independently surfaced as would-upgrade that morning (run 33223858795). Standard extraction path, speaker rule satisfied. (2) Complement side, worldwide -30,292/+11: the owner-signed 2026-08-29 17:41 apply-correction trashed 7 epithet rows (TECHLOG 2026-08-29; headlined by Automaker Giant 50,000, whose named twin Volkswagen 50,000 remains), dedupe-llm merged 5 duplicate rows out of the sum (runs 33266449579, 33327074766), reconcile-supersets added +240 excluded, against ordinary arrivals on ~23 gross entries. RESIDUAL STATED: the 12 removed rows' individual job values are not publicly recoverable (/changed-rows documents deletions-not-covered and the merge path stamps no updated_at), so the complement is explained to the mover, not to the job; every mover is owner-signed or logged automation operating as designed. Instrumentation gap noted for follow-up: dedupe merges do not restamp updated_at.",
+      "replacement_baseline": {
+        "captured_at": "2026-08-30T21:03:42Z",
+        "entries": 94,
+        "jobs": 243869
+      },
+      "reviewed_by": "dak (close delegated in-session 2026-08-30; traced and written by Claude Code)",
       "slice": "ai_all_time"
     }
-  },
-  "written_at": "2026-08-30T19:59:40Z"
+  ],
+  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
+  "open": {},
+  "written_at": "2026-08-30T21:03:42Z"
 }

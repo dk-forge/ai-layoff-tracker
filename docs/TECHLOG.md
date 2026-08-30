@@ -1,5 +1,31 @@
 # Tech Log
 
+## 2026-08-30 - the ai_all_time incident is traced to the row and closed (no version)
+
+**What.** The sticky headline incident opened 2026-08-30T19:59Z (complement
+moved -39,292 on +10 entries) is closed with the cause named. AI side, exact:
+row 70557 (British American Tobacco, 9,000) re-ingested by the nightly news
+cron at 2026-08-29T22:19:56Z with new employer-attributed AI framing and was
+re-scored ai_explicit by the standard dedup-hash UPDATE path - /changed-rows
+shows it as the ONLY row that changed in that whole window, and the dry-run
+ai-evidence-sweep had independently surfaced the same quote that morning.
+Complement side: the owner-signed 08-29 trash of 7 epithet rows (Automaker
+Giant 50,000 et al.), 5 dedupe-llm merges and +240 reconcile exclusions
+against ordinary arrivals. Residual stated in the ledger: removed rows'
+individual values are not publicly recoverable, so the complement closes to
+the mover, not to the job.
+
+**New tool.** `.github/workflows/trace-changed-rows.yml` - dispatch-only,
+read-only wrapper over the keyed /changed-rows, printing a compact
+public-dataset-shaped line per row, so a headline move can be traced from a
+session without the key. It is how 70557 was isolated (window 22:00-00:30,
+total_in_window=1).
+
+**Follow-up noted, not done.** Dedupe merges do not restamp updated_at on the
+merged rows, so a merge is invisible to /changed-rows; the 17:40-18:10 trace
+around a logged 3-row merge returned zero rows. Worth a stamp in the merge
+path so removals-by-merge become traceable.
+
 ## 2026-08-30 - Ukraine is classified from live sources, and comes OFF the backlog (no version)
 
 **What.** The 2026-08-28 acknowledgment promised the research; it is done.

@@ -909,10 +909,13 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** local
-- **WORKING ON (2026-08-30):** trace + close the ai_all_time headline incident
-  (adds a read-only trace-changed-rows dispatch workflow; no plugin file).
+- **STATUS:** FREE
+- **HOLDER:** -
+- **RELEASED (2026-08-30): NO VERSION CONSUMED - ai_all_time incident traced
+  and closed** (row 70557 BAT re-scored by the nightly cron; owner-signed
+  trashes + dedupe merges explain the complement). New read-only
+  trace-changed-rows dispatch workflow. TECHLOG 2026-08-30. NEXT: consider
+  stamping updated_at in the dedupe merge path so merges are traceable.
 - **SINCE:** 2026-08-30
 - **RELEASED (2026-08-30): no version claimed - the registry that reports
   unregistered files did not fail on one.** `ops_status [2f]` had printed
