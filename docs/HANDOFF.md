@@ -909,8 +909,10 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** FREE
-- **HOLDER:** -
+- **STATUS:** HELD
+- **HOLDER:** local
+- **WORKING ON (2026-08-30):** trace + close the ai_all_time headline incident
+  (adds a read-only trace-changed-rows dispatch workflow; no plugin file).
 - **SINCE:** 2026-08-30
 - **RELEASED (2026-08-30): no version claimed - the registry that reports
   unregistered files did not fail on one.** `ops_status [2f]` had printed

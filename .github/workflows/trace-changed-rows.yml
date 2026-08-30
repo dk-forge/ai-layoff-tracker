@@ -1,0 +1,66 @@
+name: Trace changed rows (headline forensics)
+
+# Read-only ops probe: calls the keyed /changed-rows endpoint so a headline
+# move can be traced to the rows that caused it (the endpoint was built for
+# exactly this after 2026-08-08, when a move had to be reported UNKNOWN).
+# Dispatch-only, GET-only, writes nothing anywhere.
+#
+# The run log is PUBLIC (public repo), so the output is deliberately COMPACT
+# and limited to fields the public dataset already serves per row (id,
+# company, jobs, country, ai flags, change kind). That matches the site's
+# public-audit stance (the corrections log already discloses removals); what
+# stays out of the log is the endpoint's full row shape, which is not part of
+# the published dataset contract.
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'ISO-8601 UTC instant, e.g. 2026-08-29T01:06:25Z'
+        required: true
+      until:
+        description: 'ISO-8601 UTC instant (default: now)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch and summarize changed rows
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          IN_SINCE: ${{ github.event.inputs.since }}
+          IN_UNTIL: ${{ github.event.inputs.until }}
+        run: |
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, os, urllib.parse, urllib.request
+          base = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/changed-rows"
+          params = {"since": os.environ["IN_SINCE"]}
+          if os.environ.get("IN_UNTIL", "").strip():
+              params["until"] = os.environ["IN_UNTIL"].strip()
+          req = urllib.request.Request(
+              base + "?" + urllib.parse.urlencode(params),
+              headers={"X-Layoff-API-Key": os.environ["WP_API_KEY"],
+                       "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+          with urllib.request.urlopen(req, timeout=120) as r:
+              d = json.load(r)
+          rows = d.get("rows") or d.get("data") or []
+          print(f"changed rows {params['since']} .. {params.get('until','now')}: "
+                f"{len(rows)} row(s)")
+          keep = ("id", "company_name", "job_count", "country", "state",
+                  "ai_explicit", "ai_causation", "source_type", "status",
+                  "change", "post_status", "updated_at", "announced")
+          for row in rows:
+              print(json.dumps({k: row.get(k) for k in keep if k in row},
+                               ensure_ascii=False))
+          extra = {k: v for k, v in d.items()
+                   if not isinstance(v, list) and k not in ("rows", "data")}
+          if extra:
+              print("meta:", json.dumps(extra, ensure_ascii=False))
+          PY
