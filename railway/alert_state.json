@@ -86,8 +86,13 @@
       "first": 1788122809,
       "last": 1788122809,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - Ukraine is classified from live sources, and comes OFF the'] != []"
+    },
+    "tests:main:d97bfe83e2286972": {
+      "first": 1788123989,
+      "last": 1788123989,
+      "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - the ai_all_time incident is[103 chars]the'] != []"
     }
   },
-  "updated_at": "2026-08-30T21:04:43+00:00",
+  "updated_at": "2026-08-30T21:06:29+00:00",
   "version": 1
 }
