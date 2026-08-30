@@ -71,8 +71,13 @@
       "first": 1788089469,
       "last": 1788089469,
       "subject": "CI RED: Source-archive backfill \u2014 RuntimeError: archive backfill could not persist 500 record(s) to /archive-record (all flushes failed this run); reporting degraded"
+    },
+    "tests:live.data:4c51a688fc18dee4": {
+      "first": 1788122694,
+      "last": 1788122694,
+      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-08-30T19:59:40Z): Worldwide jobs, all"
     }
   },
-  "updated_at": "2026-08-30T20:44:52+00:00",
+  "updated_at": "2026-08-30T20:44:54+00:00",
   "version": 1
 }
