@@ -909,16 +909,30 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** local (Claude Code session, 2026-08-30)
+- **STATUS:** FREE
+- **HOLDER:** -
 - **SINCE:** 2026-08-30
-- **WORKING ON (2026-08-30):** `ops_status [2f]`'s own blind spot. It prints
+- **RELEASED (2026-08-30): no version claimed - the registry that reports
+  unregistered files did not fail on one.** `ops_status [2f]` had printed
   `UNREGISTERED railway/deferral_ledger.json` and
-  `UNREGISTERED railway/warn_state_baselines.json` at every session start and
-  nothing fails on it, so the "absent is not green" hole `state_liveness.py`
-  exists to close is open in `state_liveness.py` itself. Declaring both and
-  adding the test that fails on the next undeclared one. **No plugin file is
-  touched and no version is claimed.**
+  `UNREGISTERED railway/warn_state_baselines.json` at every session start with
+  every run green, because `unregistered_state_files()` rendered to stdout and
+  no test read it. Both declared (the deferral ledger EVENT_DRIVEN, like the
+  alert outbox - twelve quiet days there is the best news it can carry, and a
+  mutation proves that without the exemption it reads STALE), and
+  `test_state_liveness.py` now fails on the next undeclared file. **No plugin
+  file touched, nothing deployed.** TECHLOG 2026-08-30.
+  **NEXT, and it needs the owner:** `headline_containment` is FAILING live
+  (`ops_status [3]`), diagnosed but NOT closed - see the handover notes below
+  and TECHLOG. The alarm is real arithmetic: the AI slice took on Chevron row
+  132815 (9,000 jobs, and that row carries NO layoff_date and NO country),
+  while `worldwide_all_time` is still pinned at its PRE-correction
+  2026-08-29T01:06Z baseline because the 19:57Z run could not judge worldwide's
+  movement (baseline 18.8h old, under one ingest cycle) and the containment
+  group hold pinned all three slices with it. The 7-row anonymous-employer
+  correction of 17:41Z therefore sits inside the baseline window. Closing it is
+  `--close-incident ai_all_time` with a reviewer, the row IDs and an asserted
+  replacement baseline - an owner action, not a session one.
 - **RELEASED (2026-08-28): 2.20.148 — the three unclassified corpus arrivals
   each got the answer they needed.** Turkey = an ALIAS to the classified
   'Türkiye' entry (spelling split, reported as vocabulary duplicate). Ukraine

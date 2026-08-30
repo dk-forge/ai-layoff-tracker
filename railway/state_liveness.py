@@ -88,6 +88,8 @@ WATCHED_FILES = (
     "railway/gdelt_work_ledger.json",
     "railway/backup_state.json",
     "railway/curated_probe_state.json",
+    "railway/deferral_ledger.json",
+    "railway/warn_state_baselines.json",
 )
 
 # STALENESS IS THE WRONG LENS FOR AN EVENT-DRIVEN FILE, and the first cut of
@@ -105,6 +107,11 @@ EVENT_DRIVEN = frozenset({
     "railway/alert_state.json",
     "railway/alert_outbox.json",
     "railway/headline_incidents.json",
+    # A deferral is a host call that was never answered. Written only when one
+    # happens, and again when it resolves -- so a long gap here means every
+    # job got an answer, which is the best thing this file can report. Only
+    # NEVER_USED can apply, exactly as for the outbox above.
+    "railway/deferral_ledger.json",
 })
 
 # Never call a file stale below this, whatever its own history says. A file

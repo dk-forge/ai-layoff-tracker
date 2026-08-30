@@ -1,5 +1,63 @@
 # Tech Log
 
+## 2026-08-30 - the registry that reports unregistered files did not fail on one
+
+**What.** `railway/state_liveness.py` exists to close one hole: "absent from a
+registry" must not read as "no problem". It closes it for MECHANISMS -
+`unregistered_state_files()` walks every committed `*_state`/`ledger`/`outbox`/
+`incidents` JSON under `railway/` and names anything `WATCHED_FILES` omits -
+and it did not close it for ITSELF. The finding was rendered to stdout by
+`render()` and read by nothing: no test called `unregistered_state_files()`,
+and `problems()` (the only thing that sets a non-zero exit) considers
+`NEVER_USED` alone, which an unregistered file can never reach because it is
+never judged.
+
+So `ops_status [2f]` printed
+
+    UNREGISTERED railway/deferral_ledger.json
+    UNREGISTERED railway/warn_state_baselines.json
+
+at the top of every session, and every run of every workflow stayed green. Two
+mechanisms - the deferral ledger that counts host calls nobody answered, and
+the per-state WARN high-water floors that are the only thing standing between
+a PARTIAL scraper collapse and a green tripwire - had nothing checking whether
+they were still being written.
+
+**Fix.** Both declared. `warn_state_baselines.json` is a heartbeat (the WARN
+import rewrites it every run, 20 commits) and takes the ordinary cadence
+judgment. `deferral_ledger.json` is declared EVENT_DRIVEN, for the reason the
+module already gives for `alert_outbox.json`: it is written when a host call
+defers and again when one resolves, so a long gap there means every job got an
+answer, which is the best news that file can carry. Measured, not assumed - a
+mutation that registers it WITHOUT the event-driven exemption reports
+`STALE deferral_ledger.json: unchanged for 12d against its own 90% gap of
+2.0d`, which is an alarm manufactured out of good news on the one module
+written to stop that happening.
+
+Then the loop closed:
+`test_state_liveness.TheRegistryItselfIsChecked.test_every_committed_state_file_is_DECLARED`
+asserts `unregistered_state_files() == []`, so the NEXT undeclared file reddens
+CI instead of being scrolled past. The comment on it says the one repair that
+must not happen - widening the name match in `unregistered_state_files()` would
+hide the next file rather than the current one, which is fixing the judge.
+
+**Verification, by mutation.** Removing `railway/warn_state_baselines.json`
+from `WATCHED_FILES` fails
+`test_every_committed_state_file_is_DECLARED`, naming the file. Removing
+`railway/deferral_ledger.json` from `EVENT_DRIVEN` (while leaving it watched)
+turns twelve healthy quiet days into `STALE` in `[2f]`. `style_check.py` clean,
+0 findings. No plugin file touched, so no version bumped and nothing deployed.
+
+**Class:** absent-read-as-ok - two mechanisms were missing from the registry
+that decides what gets looked at, so "nobody checks this file" read as "this
+file is fine". The twist worth recording is WHERE it happened: in the module
+written to close exactly this shape, one level up. The finding was computed and
+even printed; what was absent was any assertion on it, and a finding nobody
+fails on is free to be true forever. Not `guard-went-vacuous` - the guard was
+not vacuous, it was unread.
+
+**Guard:** railway/tests/test_state_liveness.py
+
 ## 2026-08-29 - an epithet is not an employer, and one country had two labels (2.20.154)
 
 An external adversarial review returned NO-GO. Six findings; four verified, two

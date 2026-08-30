@@ -130,6 +130,22 @@ class TheRegistryItselfIsChecked(unittest.TestCase):
         for path in sl.unregistered_state_files():
             self.assertNotIn("/tests/", path)
 
+    def test_every_committed_state_file_is_DECLARED(self):
+        # The hole this module exists to close, one level up, was open in the
+        # module itself. `unregistered_state_files()` rendered its finding to
+        # stdout and nothing read it, so `ops_status [2f]` printed
+        # UNREGISTERED for railway/deferral_ledger.json and
+        # railway/warn_state_baselines.json at every session start and every
+        # run stayed green. A finding nobody fails on is a finding that gets
+        # scrolled past. Declare the file in WATCHED_FILES (and in EVENT_DRIVEN
+        # if silence there is the healthy state); do NOT answer this by
+        # widening the name match in unregistered_state_files(), which would
+        # hide the next one instead of the current one.
+        stray = sl.unregistered_state_files()
+        self.assertEqual(stray, [],
+                         f"mechanism state in no registry, so nothing checks "
+                         f"whether it is still written: {stray}")
+
     def test_the_live_repo_has_no_NEVER_USED_state_file(self):
         # The end-to-end read. If this fails, a mechanism in THIS repo shipped
         # and has never once written its own state.
