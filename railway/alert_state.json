@@ -57,6 +57,11 @@
       "last": 1788113846,
       "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
     },
+    "live-data-integrity-check:main:a3cde0067ab8e2ac": {
+      "first": 1788120001,
+      "last": 1788120001,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
+    },
     "live-data-integrity-check:main:c1cce901d3eb3923": {
       "first": 1788033480,
       "last": 1788033480,
@@ -68,6 +73,6 @@
       "subject": "CI RED: Source-archive backfill \u2014 RuntimeError: archive backfill could not persist 500 record(s) to /archive-record (all flushes failed this run); reporting degraded"
     }
   },
-  "updated_at": "2026-08-30T18:17:26+00:00",
+  "updated_at": "2026-08-30T20:00:01+00:00",
   "version": 1
 }
