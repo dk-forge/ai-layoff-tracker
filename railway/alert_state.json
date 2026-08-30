@@ -56,8 +56,13 @@
       "first": 1788033480,
       "last": 1788033480,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: verdict SUPPRESSED, baseline deliberately NOT advanced (recording an unjudged reading is the same laundering as recording a "
+    },
+    "source-archive-backfill:main:cd9358076e48d00b": {
+      "first": 1788089469,
+      "last": 1788089469,
+      "subject": "CI RED: Source-archive backfill \u2014 RuntimeError: archive backfill could not persist 500 record(s) to /archive-record (all flushes failed this run); reporting degraded"
     }
   },
-  "updated_at": "2026-08-29T19:58:00+00:00",
+  "updated_at": "2026-08-30T11:31:09+00:00",
   "version": 1
 }
