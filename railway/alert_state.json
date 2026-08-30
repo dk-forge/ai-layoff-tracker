@@ -57,11 +57,6 @@
       "last": 1788113846,
       "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
     },
-    "live-data-integrity-check:main:aa0eaf87db8c4614": {
-      "first": 1788123883,
-      "last": 1788123883,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,514,296 jobs / 65,252 entries"
-    },
     "source-archive-backfill:main:cd9358076e48d00b": {
       "first": 1788089469,
       "last": 1788089469,
@@ -83,6 +78,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - the ai_all_time incident is[103 chars]the'] != []"
     }
   },
-  "updated_at": "2026-08-30T21:07:08+00:00",
+  "updated_at": "2026-08-30T21:07:10+00:00",
   "version": 1
 }
