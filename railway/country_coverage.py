@@ -1305,6 +1305,22 @@ ACKNOWLEDGED_BACKLOG = {
       "reached. NEAR-MISSES REJECTED: SSO unemployment-benefit claim counts are "
       "claimants, and s.75 suspension notices are not dismissals."
       ),
+    'Costa Rica': ("2026-08-30",
+      "ARRIVED IN THE CORPUS 2026-08-30 (one news row, id 178867, Hospital "
+      "Clinica Biblica via nacion.com) and is acknowledged the same day. "
+      "WHAT IS OUTSTANDING: whether any collective-dismissal NOTIFICATION "
+      "duty exists — a first search surfaced none, and Costa Rica may be a "
+      "second Brazil (no regime at all), but that must be ESTABLISHED, not "
+      "assumed, to the standard Brazil's entry set. Leads for whoever picks "
+      "it up: the consolidated Codigo de Trabajo is a PDF on mtss.go.cr "
+      "(the ministry's own host — check robots before fetching); the only "
+      "MTSS-notification rule found so far is the fallback DELIVERY of an "
+      "individual dismissal letter a worker refuses (10 days), which is not "
+      "disclosure; contract SUSPENSIONS need MTSS authorisation (a "
+      "different instrument — the Spanish EXTINCION/SUSPENSION trap "
+      "applies); and Ley 9832 (2020) was a temporary COVID working-hour "
+      "reduction procedure, a near-miss to reject by name."
+      ),
     'Vietnam': ("2026-08-18",
       "REGIME ESTABLISHED, PUBLICATION UNKNOWN FOR AN ENVIRONMENT REASON. "
       "Labour Code 45/2019/QH14 art. 42 (obligations on structural, "
