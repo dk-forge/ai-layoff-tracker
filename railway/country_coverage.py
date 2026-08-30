@@ -1305,20 +1305,6 @@ ACKNOWLEDGED_BACKLOG = {
       "reached. NEAR-MISSES REJECTED: SSO unemployment-benefit claim counts are "
       "claimants, and s.75 suspension notices are not dismissals."
       ),
-    'Ukraine': ("2026-08-28",
-      "ARRIVED IN THE CORPUS 2026-08-28 (one news row, id 178665, layoff date "
-      "2026-08-12) and is acknowledged the same day, unresearched. WHAT IS "
-      "OUTSTANDING: whether Ukraine's labour law carries a collective-"
-      "redundancy notification duty and to whom. The obvious starting points "
-      "for whoever picks this up: the Code of Labour Laws (KZpP) and the Law "
-      "'On Employment of the Population' — mass-dismissal notification to the "
-      "State Employment Service (Derzhavna sluzhba zainiatosti) is REPORTED in "
-      "secondary sources but has not been read in the primary text, thresholds "
-      "and lead times unverified, and no publication of any aggregate has been "
-      "looked for. Wartime derogations to labour law (the 2022 martial-law "
-      "labour acts) may suspend or alter the duty and must be checked against "
-      "the current text, not a pre-war summary."
-      ),
     'Vietnam': ("2026-08-18",
       "REGIME ESTABLISHED, PUBLICATION UNKNOWN FOR AN ENVIRONMENT REASON. "
       "Labour Code 45/2019/QH14 art. 42 (obligations on structural, "
@@ -2525,6 +2511,50 @@ REGISTER = {
         "cite": (
                    "https://www.iskur.gov.tr/kurumsal/istatistikler/"),
         "assessed": "2026-08-18",
+    },
+    'Ukraine': {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": (
+                   "Masove vyvilnennia — Law 'On Employment of the Population' No "
+                   "5067-VI (2012) art. 48 defines mass dismissal; art. 50(3)(4) "
+                   "obliges the employer to submit information on a planned mass "
+                   "dismissal (form 4-PN) to the territorial body of the State "
+                   "Employment Service no later than TWO MONTHS before the dismissal "
+                   "(30 days for civil servants). SOURCE QUALITY, stated plainly: "
+                   "zakon.rada.gov.ua, the official consolidated-text host, serves "
+                   "'User-agent: * / Disallow: /' and is REFUSED, not routed around. "
+                   "The text was read on protocol.ua (robots-permitted consolidated "
+                   "copy showing currency to Law 2253-IX of 2022-05-12), so the "
+                   "wording is a step from primary — the thresholds and the duty are "
+                   "corroborated by the Service's own 4-PN guidance on dcz.gov.ua, "
+                   "and form 4-PN remains mandatory in 2026 per practitioner "
+                   "guidance, so the wartime labour acts did not repeal the duty"),
+        "authority": "Derzhavna sluzhba zainiatosti (State Employment Service)",
+        "threshold": ("within ONE MONTH: 10+ workers at employers of 20-100; 10%+ at "
+                      "101-300; 30+ at 301-1,000; 3%+ above 1,000 — a sliding scale, "
+                      "so like Sweden's the covered population differs from the "
+                      "98/59/EC floor and must never be summed with EU figures"),
+        "aggregate": ("PUBLISHED, monthly, machine-readable — through 2024 where this "
+                      "session could verify. The Service's 'Sytuaciia na "
+                      "zareiestrovanomu rynku pratsi ta diialnist DSZ' monthly XLSX "
+                      "carries 'Informatsiia shchodo zaplanovanoho masovoho "
+                      "vyvilnennia pratsivnykiv' (the 4-PN tally). Verified live "
+                      "2026-08-30: the 03/2024 file downloads as a real xlsx and "
+                      "holds the row; the archive on old.dcz.gov.ua (robots-open "
+                      "Drupal) runs 2020-2024 monthly. CAVEAT: 2025+ publication "
+                      "moved to the successor beta site dcz.gov.ua, an Angular SPA "
+                      "this session could not render, and the old host's 2025 links "
+                      "in the sibling series answered HTML-not-xlsx — so continuity "
+                      "past 2024 is UNKNOWN, not absent. A [3e] denominator build "
+                      "must first settle where 2025 landed, and should mind that "
+                      "4-PN counts are PLANNED dismissals (warned workers), not "
+                      "executed ones, and that occupied-territory coverage is "
+                      "necessarily partial in wartime"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-08-30",
+        "cite": "https://old.dcz.gov.ua/analitics/68",
+        "data_url": ("https://old.dcz.gov.ua/sites/default/files/infofiles/"
+                     "sytuaciya_na_zareyestr_rp_ta_diyalnist_dsz_03_2024_0.xlsx"),
     },
     'Israel': {
         "class": REGIME_NO_AGGREGATE,

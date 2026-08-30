@@ -1,5 +1,31 @@
 # Tech Log
 
+## 2026-08-30 - Ukraine is classified from live sources, and comes OFF the backlog (no version)
+
+**What.** The 2026-08-28 acknowledgment promised the research; it is done.
+Ukraine enters the register as REGIME_WITH_AGGREGATE: Law 'On Employment of
+the Population' No 5067-VI art. 48 (mass-dismissal thresholds on a sliding
+scale: 10+ at 20-100 staff; 10%+ at 101-300; 30+ at 301-1,000; 3%+ above)
+and art. 50(3)(4) (form 4-PN to the territorial State Employment Service
+body, two months ahead), still mandatory in 2026.
+
+**The aggregate is real and was READ, not recalled.** The Service's monthly
+'Sytuaciia na zareiestrovanomu rynku pratsi' XLSX carries the planned
+mass-dismissal tally; the 03/2024 file was downloaded live and holds the
+row. The archive on old.dcz.gov.ua (robots-open) runs 2020-2024 monthly.
+
+**Two limits recorded rather than papered over.** (1) zakon.rada.gov.ua
+serves 'User-agent: * / Disallow: /' - the PRIMARY statute host refuses all
+agents, so the text was read on a robots-permitted consolidated copy
+(protocol.ua, currency to Law 2253-IX 2022) and the entry says so. (2) 2025+
+publication moved to the successor dcz.gov.ua beta SPA this session could
+not render, so aggregate continuity past 2024 is UNKNOWN, not absent - a
+future [3e] denominator build must settle that first, and must remember 4-PN
+counts PLANNED dismissals under wartime territorial limits.
+
+Backlog entry removed the session after it was added; no plugin file
+touched, no version consumed.
+
 ## 2026-08-30 - the registry that reports unregistered files did not fail on one
 
 **What.** `railway/state_liveness.py` exists to close one hole: "absent from a
