@@ -61,13 +61,8 @@
       "first": 1788113846,
       "last": 1788113846,
       "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
-    },
-    "tests:live.data:4c51a688fc18dee4": {
-      "first": 1788122694,
-      "last": 1788122694,
-      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-08-30T19:59:40Z): Worldwide jobs, all"
     }
   },
-  "updated_at": "2026-08-31T19:09:35+00:00",
+  "updated_at": "2026-08-31T19:18:29+00:00",
   "version": 1
 }
