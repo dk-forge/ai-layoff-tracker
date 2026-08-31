@@ -62,17 +62,12 @@
       "last": 1788122694,
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-08-30T19:59:40Z): Worldwide jobs, all"
     },
-    "tests:main:7d8b16a261feb149": {
-      "first": 1788122809,
-      "last": 1788122809,
-      "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - Ukraine is classified from live sources, and comes OFF the'] != []"
-    },
     "tests:main:d97bfe83e2286972": {
       "first": 1788123989,
       "last": 1788123989,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - the ai_all_time incident is[103 chars]the'] != []"
     }
   },
-  "updated_at": "2026-08-31T13:53:10+00:00",
+  "updated_at": "2026-08-31T13:55:21+00:00",
   "version": 1
 }
