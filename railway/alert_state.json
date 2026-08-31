@@ -57,11 +57,6 @@
       "last": 1788113846,
       "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
     },
-    "plugin-version-collision:main:19773c9b7a700ef8": {
-      "first": 1788178446,
-      "last": 1788178446,
-      "subject": "CI RED: Plugin version collision \u2014 plugin version collision: 1 plugin file(s) changed and ALT_VERSION did not move above the previous main tip (2.20.155 at 961e2623, still 2.20.155"
-    },
     "tests:live.data:4c51a688fc18dee4": {
       "first": 1788122694,
       "last": 1788122694,
@@ -78,6 +73,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-08-30 - the ai_all_time incident is[103 chars]the'] != []"
     }
   },
-  "updated_at": "2026-08-31T12:14:07+00:00",
+  "updated_at": "2026-08-31T13:53:10+00:00",
   "version": 1
 }
