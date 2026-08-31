@@ -4301,7 +4301,7 @@ function alt_api_changed_rows(WP_REST_Request $r) {
     $page_params[] = $limit + 1;   // one extra row is how we know there is a next page
     $sql = "SELECT id, company, job_count, job_count_max, layoff_date, announcement_date,
                    country, employer_country, state, source_type, source_name, source_url,
-                   superset_of, updated_at
+                   superset_of, ai_explicit, ai_causation, updated_at
             FROM $table
             WHERE $page_where
             ORDER BY updated_at ASC, id ASC
@@ -4335,6 +4335,14 @@ function alt_api_changed_rows(WP_REST_Request $r) {
             'source_name'       => (string) $row['source_name'],
             'source_url'        => (string) $row['source_url'],
             'superset_of'       => (int) $row['superset_of'],
+            // 2026-08-31 — added because the endpoint could not answer the
+            // question it was built for. A headline_containment failure asks
+            // "did rows cross the AI boundary", and the forensics workflow
+            // asks for exactly these two fields; without them it printed
+            // `null` for every row and the only readable answer was WHICH
+            // rows moved, never WHETHER their AI attribution was what moved.
+            'ai_explicit'       => ((int) $row['ai_explicit'] === 1),
+            'ai_causation'      => (string) $row['ai_causation'],
             'updated_at'        => str_replace(' ', 'T', (string) $row['updated_at']) . 'Z',
             // The three memberships that decide whether this row is inside a
             // headline, computed the same way the headline computes them:

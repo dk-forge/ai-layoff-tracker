@@ -40,27 +40,90 @@ jobs:
           [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
           python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
           import json, os, urllib.parse, urllib.request
+          from collections import Counter
+
+          # 2026-08-31 — this step was rewritten because it could not answer
+          # the question it exists for. Three defects, all silent:
+          #
+          #  1. ONE request, `next_cursor` ignored. The endpoint caps a page at
+          #     200 and hands back a cursor; this read page one and printed a
+          #     count that looked like a total. On the 2026-08-29 containment
+          #     failure it reported "200 row(s)" for a window whose real answer
+          #     was "200 and an unknown number more".
+          #  2. It asked for `status`, `change`, `post_status` and `announced`,
+          #     none of which this endpoint has ever returned, and for
+          #     `company_name` when the field is `company`. Every row printed
+          #     nulls, so the output looked like "nothing changed about these
+          #     rows" when it meant "I asked for fields that do not exist".
+          #  3. It printed rows and no arithmetic. A containment failure is a
+          #     question about SUMS, and a human was left adding up JSON.
           base = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/changed-rows"
-          params = {"since": os.environ["IN_SINCE"]}
+          params = {"since": os.environ["IN_SINCE"], "limit": "1000"}
           if os.environ.get("IN_UNTIL", "").strip():
               params["until"] = os.environ["IN_UNTIL"].strip()
-          req = urllib.request.Request(
-              base + "?" + urllib.parse.urlencode(params),
-              headers={"X-Layoff-API-Key": os.environ["WP_API_KEY"],
-                       "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
-          with urllib.request.urlopen(req, timeout=120) as r:
-              d = json.load(r)
-          rows = d.get("rows") or d.get("data") or []
+          hdrs = {"X-Layoff-API-Key": os.environ["WP_API_KEY"],
+                  "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
+
+          rows, meta, cursor, pages = [], {}, None, 0
+          while True:
+              q = dict(params)
+              if cursor:
+                  q["cursor"] = cursor
+              req = urllib.request.Request(base + "?" + urllib.parse.urlencode(q),
+                                           headers=hdrs)
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  d = json.load(r)
+              rows.extend(d.get("rows") or d.get("data") or [])
+              meta = {k: v for k, v in d.items() if not isinstance(v, list)}
+              pages += 1
+              cursor = d.get("next_cursor")
+              # A guard, not a limit: 60 pages at 1000 is 60k rows, past which
+              # something is wrong with the window rather than the data.
+              if not cursor or pages >= 60:
+                  break
+
+          total = meta.get("total_in_window")
           print(f"changed rows {params['since']} .. {params.get('until','now')}: "
-                f"{len(rows)} row(s)")
-          keep = ("id", "company_name", "job_count", "country", "state",
-                  "ai_explicit", "ai_causation", "source_type", "status",
-                  "change", "post_status", "updated_at", "announced")
-          for row in rows:
-              print(json.dumps({k: row.get(k) for k in keep if k in row},
-                               ensure_ascii=False))
-          extra = {k: v for k, v in d.items()
-                   if not isinstance(v, list) and k not in ("rows", "data")}
-          if extra:
-              print("meta:", json.dumps(extra, ensure_ascii=False))
+                f"{len(rows)} row(s) over {pages} page(s); endpoint says "
+                f"total_in_window={total}")
+          if total is not None and len(rows) < total:
+              # Loud, because a silent truncation reads as a complete answer.
+              print(f"::warning::TRUNCATED — walked {len(rows)} of {total}. "
+                    f"Every figure below is a floor, not a total.")
+
+          # The arithmetic a containment failure actually asks for.
+          def s(pred):
+              sel = [r for r in rows if pred(r)]
+              return len(sel), sum(int(r.get("job_count") or 0) for r in sel)
+
+          n_all, j_all = s(lambda r: True)
+          n_cnt, j_cnt = s(lambda r: r.get("counted_in_totals") is True)
+          n_sup, j_sup = s(lambda r: r.get("counted_in_totals") is False)
+          n_ai,  j_ai  = s(lambda r: r.get("ai_explicit") is True)
+          print("")
+          print("| slice | rows | jobs |")
+          print("|---|---:|---:|")
+          print(f"| all changed | {n_all:,} | {j_all:,} |")
+          print(f"| counted in totals | {n_cnt:,} | {j_cnt:,} |")
+          print(f"| EXCLUDED as superset members | {n_sup:,} | {j_sup:,} |")
+          print(f"| ai_explicit | {n_ai:,} | {j_ai:,} |")
+          print("")
+          print("`EXCLUDED as superset members` is the first thing to read when a")
+          print("headline SHRANK: a row that becomes a member leaves the totals")
+          print("carrying its jobs, which looks like a loss and is a dedup.")
+          print("")
+          for label, key in (("source_type", "source_type"),
+                             ("ai_causation", "ai_causation"),
+                             ("country", "country")):
+              c = Counter(r.get(key) for r in rows).most_common(8)
+              print(f"by {label}: " + ", ".join(f"{k}={v}" for k, v in c))
+          print("")
+          print("largest rows by job_count:")
+          for r in sorted(rows, key=lambda r: -(int(r.get("job_count") or 0)))[:12]:
+              print(json.dumps({k: r.get(k) for k in (
+                  "id", "company", "job_count", "country", "source_type",
+                  "ai_explicit", "ai_causation", "counted_in_totals",
+                  "superset_of", "updated_at")}, ensure_ascii=False))
+          print("")
+          print("meta:", json.dumps(meta, ensure_ascii=False))
           PY

@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /Listing/Rules-and-Guidance/Listing-Rules-Contingency/*
+Disallow: /-/media/HKEX-Market/Listing/Rules-and-Guidance/Listing-Rules-Contingency/*
+Disallow: Listing/Rules-and-Guidance/Interpretation-and-Guidance-contingency/*
+Disallow: /-/media/HKEX-Market/Listing/Rules-and-Guidance/Interpretation-and-Guidance-Contingency/*
