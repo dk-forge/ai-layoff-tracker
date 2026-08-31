@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "ci-noise-report:main:0a79d2da393eb3cf": {
+      "first": 1788203374,
+      "last": 1788203374,
+      "subject": "CI RED: CI noise report \u2014 WP_SITE_URL / WP_API_KEY are not set \u2014 the noise report was NOT sent."
+    },
     "data-quality-report-anomaly-flags:main:a64871edd79f060e": {
       "first": 1788113846,
       "last": 1788113846,
@@ -63,6 +68,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-08-30T19:59:40Z): Worldwide jobs, all"
     }
   },
-  "updated_at": "2026-08-31T13:55:23+00:00",
+  "updated_at": "2026-08-31T19:09:35+00:00",
   "version": 1
 }
