@@ -26,6 +26,19 @@ merged rows, so a merge is invisible to /changed-rows; the 17:40-18:10 trace
 around a logged 3-row merge returned zero rows. Worth a stamp in the merge
 path so removals-by-merge become traceable.
 
+**Class:** novel - the containment guard fired correctly on data that was
+correct. It subtracts two published headlines, and a reconcile-supersets run
+moves jobs out of one of them for an entirely legitimate reason, so a benign
+dedup and a real re-scoring are indistinguishable from the two totals alone.
+Not `guard-went-vacuous` - the guard was not silent, it was loudly wrong. Not
+`two-copies-drifted` - there was one copy and it was right. The vocabulary has
+no entry for "a true observation the guard could not attribute", and this is
+that.
+
+**Guard:** railway/tests/test_headline_containment.py - the DedupIsNotARescoring
+class, added 2026-08-31 with the fix that lets the invariant subtract measured
+superset exclusions and judge the residual (2.20.156).
+
 ## 2026-08-30 - Ukraine is classified from live sources, and comes OFF the backlog (no version)
 
 **What.** The 2026-08-28 acknowledgment promised the research; it is done.

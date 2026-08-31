@@ -309,6 +309,30 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     </tbody>
   </table></div>
   <p class="alt-muted">Two honest caveats. (1) The phrase &ldquo;restructuring around AI&rdquo; is sometimes PR cover for ordinary cost-cutting. The <b>broad</b> tier records the framing. It does not verify the cause. (2) Companies rarely say &ldquo;replaced by AI&rdquo; outright, so the strict measure is deliberately conservative. The broad measure exists precisely to show the wider, looser universe alongside it. <b>We always report the two separately and never add them together.</b></p>
+  <h2 id="alt-src-reference">Good reference sites (not sources we ingest)</h2>
+  <p>Independent work we read and recommend. <b>None of it feeds this tracker.</b> No number on this site comes from any of them, and nothing below is counted, merged or reconciled with our figures. They measure different things from different data, which is exactly why they are worth your time alongside ours.</p>
+  <div class="alt-health-table-wrap"><table class="alt-sources-table">
+    <thead><tr><th>Site</th><th>What it measures</th><th>Why it differs from us</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/" rel="noopener nofollow" target="_blank">Stanford Digital Economy Lab: Canaries Dashboard</a></td>
+        <td>Employment levels in AI-exposed occupations since November 2022, from ADP payroll records: about 25,000 firms and 730+ occupations, updated monthly, United States only.</td>
+        <td>They measure <b>employment change</b> across occupations. We count <b>individual announced job cuts</b> an employer attributed to AI. Theirs is payroll data read from the top down; ours is individually verified cuts counted from the bottom up. They state plainly that their result is correlation, not causation.</td>
+      </tr>
+      <tr>
+        <td><a href="https://www.hiringlab.org/" rel="noopener nofollow" target="_blank">Indeed Hiring Lab</a></td>
+        <td>The US Job Postings Index and the share of postings mentioning AI, published as open data under CC BY 4.0.</td>
+        <td>Job <b>postings</b> are hiring demand. We count <b>cuts</b>. The two move for different reasons and neither predicts the other. Their index also appears as a labelled backdrop on our sibling talent tracker, where it is likewise never summed into our own figures.</td>
+      </tr>
+      <tr>
+        <td><a href="https://economicgraph.linkedin.com/" rel="noopener nofollow" target="_blank">LinkedIn Economic Graph</a></td>
+        <td>Workforce reports on hiring rates, skills shifts and labour-market trends, drawn from LinkedIn member and job data. Monthly, several countries.</td>
+        <td>Member-reported profile and hiring activity, not layoff announcements. Its population is people who use LinkedIn, which is a different universe from the employers who file a notice or publish a statement.</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <p class="alt-muted">Why we name them at all: a reader checking our numbers should be able to find the other serious measurements quickly, including ones that may disagree with us. We link them because they are good, not because they agree.</p>
+
   <p class="alt-muted" style="margin-top:8px">Tip: click any column header to sort a table.</p>
 </main>
 <style>
