@@ -56,13 +56,8 @@
       "first": 1788203374,
       "last": 1788203374,
       "subject": "CI RED: CI noise report \u2014 WP_SITE_URL / WP_API_KEY are not set \u2014 the noise report was NOT sent."
-    },
-    "data-quality-report-anomaly-flags:main:a64871edd79f060e": {
-      "first": 1788113846,
-      "last": 1788113846,
-      "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
     }
   },
-  "updated_at": "2026-08-31T19:18:29+00:00",
+  "updated_at": "2026-08-31T20:37:23+00:00",
   "version": 1
 }
