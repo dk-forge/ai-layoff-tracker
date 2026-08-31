@@ -102,10 +102,27 @@ def _slice_of(url):
     return "worldwide_all_time"
 
 
-def _feed(observations):
+def _feed(observations, excluded=None):
+    """Stub /aggregate.
+
+    `excluded` is the superset-member block the live endpoint publishes
+    (2.20.156).  Default: every slice reports ZERO exclusions, unchanged from
+    its baseline — so dedup explains nothing and every historical reading below
+    is judged on its full movement, exactly as it was before the block existed.
+    That default is what makes these tests evidence that accounting for dedup
+    did not weaken the guard: a real re-scoring still FAILS.
+
+    Pass a dict to model a reconcile-supersets run.  Pass `False` to model a
+    build that predates the block, which must read UNKNOWN and never PASS.
+    """
     def fetch(url, timeout):
-        o = observations[_slice_of(url)]
-        return json.dumps({"totals": {"jobs": o["jobs"], "entries": o["entries"]}}).encode()
+        name = _slice_of(url)
+        o = observations[name]
+        body = {"totals": {"jobs": o["jobs"], "entries": o["entries"]}}
+        if excluded is not False:
+            e = (excluded or {}).get(name, {"jobs": 0, "entries": 0})
+            body["excluded"] = {"jobs": e["jobs"], "entries": e["entries"]}
+        return json.dumps(body).encode()
     return fetch
 
 
@@ -116,14 +133,101 @@ AT_0810 = datetime(2026, 8, 10, 19, 36, 59, tzinfo=timezone.utc)
 AT_TODAY = datetime(2026, 8, 12, 5, 0, 0, tzinfo=timezone.utc)
 
 
-def _run(observations, baseline_slices, now=AT_0810, pairs=None):
-    """(Result, ctx) for one reading against one committed baseline."""
+def _run(observations, baseline_slices, now=AT_0810, pairs=None, excluded=None):
+    """(Result, ctx) for one reading against one committed baseline.
+
+    Baselines gain `excluded_jobs`/`excluded_entries` of 0 unless the caller
+    set them, mirroring what the recorder stores from 2.20.156 on.
+    """
     tmp = Path(tempfile.mkdtemp()) / "headline_baseline.json"
+    if excluded is not False:
+        baseline_slices = {
+            k: ({"excluded_jobs": 0, "excluded_entries": 0} | v)
+            if isinstance(v, dict) else v
+            for k, v in baseline_slices.items()
+        }
     tmp.write_text(json.dumps({"slices": baseline_slices}), encoding="utf-8")
-    ctx = di.Ctx(_feed(observations), 5, "cb")
+    ctx = di.Ctx(_feed(observations, excluded), 5, "cb")
     inv = di.ContainmentInvariant(baseline_path=tmp, now=now,
                                   pairs=pairs or di.CONTAINMENTS)
     return inv.run(ctx), ctx
+
+
+class DedupIsNotARescoring(unittest.TestCase):
+    """2026-08-31 — the 2026-08-29 false FAIL, and why it was false.
+
+    This check subtracts two published headlines and called any divergence a
+    re-scoring of already-published rows. There is a second, entirely correct
+    way for a complement to move without rows: /reconcile-supersets folds a row
+    into a more complete row for the same event, and its jobs leave the
+    headline because they were being counted twice.
+
+    On 2026-08-29 it read -39,292 jobs as wrong data on a live public surface.
+    It was 416 rows carrying 120,883 jobs becoming members, plus two rows
+    totalling 9,030 jobs gaining ai_explicit (#243). Nothing was wrong. The
+    guard was not too tight or too loose; it could not see the exclusion,
+    because nothing published it.
+
+    The fix subtracts a MEASURED exclusion and judges the remainder. It is not
+    a tolerance and widens with nothing. The tests above prove it did not cost
+    the guard its teeth: every historical incident there still FAILS, because
+    those days moved no exclusions and the residual is the whole movement.
+    """
+
+    def test_a_dedup_run_that_explains_the_move_passes(self):
+        # Worldwide loses 120,000 jobs; every one of them left because a row
+        # became a superset member. Rows go UP, which is the shape that used
+        # to read as proof of re-scoring.
+        obs = {k: dict(v) for k, v in OBS_TODAY.items()}
+        obs["worldwide_all_time"]["jobs"] -= 120000
+        obs["worldwide_all_time"]["entries"] += 11
+        res, _ = _run(obs, BASE_TODAY, now=AT_TODAY,
+                      excluded={"worldwide_all_time": {"jobs": 120000, "entries": 416}})
+        self.assertEqual(res.state, di.PASS, res.detail)
+        self.assertIn("dedup explains it", res.detail)
+
+    def test_a_dedup_run_does_not_excuse_movement_beyond_it(self):
+        # Same run, but 100,000 jobs more left than dedup can account for.
+        # The residual is what is judged, and it is over the floor.
+        obs = {k: dict(v) for k, v in OBS_TODAY.items()}
+        obs["worldwide_all_time"]["jobs"] -= 220000
+        obs["worldwide_all_time"]["entries"] += 11
+        res, _ = _run(obs, BASE_TODAY, now=AT_TODAY,
+                      excluded={"worldwide_all_time": {"jobs": 120000, "entries": 416}})
+        self.assertEqual(res.state, di.FAIL, res.detail)
+        self.assertIn("unexplained", res.detail)
+
+    def test_an_unreported_exclusion_is_UNKNOWN_and_never_a_pass(self):
+        # A build predating the `excluded` block cannot distinguish dedup from
+        # re-scoring. Assuming zero is precisely what produced the false FAIL,
+        # and assuming "probably dedup" would be the same error with the sign
+        # flipped. Neither. UNKNOWN.
+        obs = {k: dict(v) for k, v in OBS_TODAY.items()}
+        obs["worldwide_all_time"]["jobs"] -= 120000
+        obs["worldwide_all_time"]["entries"] += 11
+        res, _ = _run(obs, BASE_TODAY, now=AT_TODAY, excluded=False)
+        self.assertEqual(res.state, di.UNKNOWN, res.detail)
+        self.assertNotEqual(res.state, di.PASS)
+
+    def test_exclusions_leaving_the_subset_do_not_count_as_the_superset_s(self):
+        # Only the SUPERSET's exclusions can explain the complement falling.
+        # An exclusion inside the subset moves both sides and explains nothing,
+        # so a subset-only dedup must not buy silence for a real move.
+        #
+        # SCOPED TO ONE PAIR DELIBERATELY. Written unscoped first, and a
+        # mutation (`exc_sup - exc_sub` -> `exc_sup + exc_sub`) left it GREEN:
+        # `res` rolls up every pair, the AI pair failed for its own unrelated
+        # reason, and the assertion was satisfied by a failure it was not
+        # testing. A roll-up assertion cannot prove anything about one pair's
+        # arithmetic.
+        obs = {k: dict(v) for k, v in OBS_TODAY.items()}
+        obs["worldwide_all_time"]["jobs"] -= 120000
+        obs["worldwide_all_time"]["entries"] += 11
+        res, _ = _run(obs, BASE_TODAY, now=AT_TODAY,
+                      pairs=(("us_all_time", "worldwide_all_time"),),
+                      excluded={"us_all_time": {"jobs": 120000, "entries": 416}})
+        self.assertEqual(res.state, di.FAIL, res.detail)
+        self.assertIn("unexplained", res.detail)
 
 
 class TheIncidentItWasWrittenFor(unittest.TestCase):
@@ -342,6 +446,14 @@ class ItCannotLaunderItself(unittest.TestCase):
     def _record(self, observations, baseline_slices, now=AT_0810):
         d = Path(tempfile.mkdtemp())
         bpath, ipath = d / "baseline.json", d / "incidents.json"
+        # Baselines carry the exclusion figures the recorder stores from
+        # 2.20.156 on, at zero: these fixtures model a re-scoring, and a
+        # reconcile-supersets run must not be implied where none happened.
+        baseline_slices = {
+            k: ({"excluded_jobs": 0, "excluded_entries": 0} | v)
+            if isinstance(v, dict) else v
+            for k, v in baseline_slices.items()
+        }
         bpath.write_text(json.dumps({"slices": baseline_slices}), encoding="utf-8")
         ipath.write_text(json.dumps({"open": {}, "closed": []}), encoding="utf-8")
         ctx = di.Ctx(_feed(observations), 5, "cb")

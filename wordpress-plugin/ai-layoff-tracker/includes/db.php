@@ -5919,6 +5919,19 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     // largest-single-rows list or the repeat-rounds (frequency) view, which are
     // row-level and would lose real site-level detail if members were hidden.
     $where_dd = $where . ' AND superset_of = 0';
+    // The complement of $where_dd: the rows this filter set EXCLUDES because
+    // they were folded into a more complete row for the same event. Same
+    // WHERE, same params, inverted on one predicate, so `totals` and
+    // `excluded` are two halves of one population and can be subtracted.
+    //
+    // 2026-08-31 — published because `headline_containment` could not see it.
+    // That invariant subtracts two published headlines and calls a divergence
+    // a re-scoring. But a reconcile-supersets run moves jobs OUT of a headline
+    // for an entirely correct reason, and nothing in the payload said so: on
+    // 2026-08-29 it read -30,292 worldwide jobs as wrong data when 416 rows
+    // carrying 120,883 jobs had simply become members (#243). The guard was
+    // not too loose or too tight; it was blind to a quantity nobody exposed.
+    $where_ex = $where . ' AND superset_of <> 0';
 
     /*
       TODAY, AS THE PAGE MEANS IT.
@@ -6017,6 +6030,16 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 MIN(CASE WHEN $date_col > '2000-01-01' THEN $date_col END) min_date,
                 MAX($date_col) max_date
          FROM $table WHERE $where_dd", $params));
+
+    // WHAT THIS HEADLINE LEAVES OUT, in the headline's own units.
+    //
+    // Same WHERE and the same params as `totals`, inverted on the one
+    // predicate that separates them. `totals` + `excluded` is the whole
+    // population this filter set matches, so a consumer can subtract them and
+    // know the difference is dedup rather than loss.
+    $excluded = $wpdb->get_row(alt_db_prep(
+        "SELECT COUNT(*) entries, COALESCE(SUM(job_count),0) jobs
+         FROM $table WHERE $where_ex", $params));
 
     // ONE ROW'S CONTRIBUTION TO THIS HEADLINE.
     //
@@ -6364,6 +6387,17 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'headline_jobs'           => (int) $totals->jobs,
             'headline_entries'        => (int) $totals->entries,
             'basis' => 'Largest single superset-deduped row in this exact filter set, with the headline it contributes to. Same WHERE, same params, one response: a share computed from these two numbers cannot mix scopes.',
+        ),
+        // Rows this filter set matched and then EXCLUDED as superset members.
+        // Published so a consumer can tell a dedup from a loss: when a
+        // headline falls, this block says how much of the fall was jobs being
+        // counted once instead of twice. `headline_containment` reads it and,
+        // when it is absent, reports UNKNOWN rather than assuming zero — a
+        // build that predates this cannot be judged on a figure it never sent.
+        'excluded' => array(
+            'jobs'    => (int) $excluded->jobs,
+            'entries' => (int) $excluded->entries,
+            'basis'   => 'Rows matching this exact filter set that /reconcile-supersets folded into a more complete row for the same event (superset_of <> 0). Same WHERE and params as totals, inverted on that one predicate: totals + excluded is the whole matched population, so their difference is dedup, never loss.',
         ),
         'totals' => array(
             'jobs'       => (int) $totals->jobs,

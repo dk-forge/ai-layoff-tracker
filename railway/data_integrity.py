@@ -1321,9 +1321,23 @@ class ContainmentInvariant:
             return None, _out(bad_state, f"{h.label}: {why}", pending=_excusable(err))
         totals = (payload or {}).get("totals") or {}
         try:
-            return {"jobs": int(totals["jobs"]), "entries": int(totals["entries"])}, None
+            reading = {"jobs": int(totals["jobs"]), "entries": int(totals["entries"])}
         except (KeyError, TypeError, ValueError):
             return None, _out(UNKNOWN, f"{h.label}: unusable totals {totals!r}")
+        # The jobs this filter set matched and then excluded as superset
+        # members. Read separately and left ABSENT when the payload has no
+        # `excluded` block, so `_one` can tell "no exclusions" (0) apart from
+        # "this build does not report exclusions" (missing) — the second is
+        # UNKNOWN, never a pass. Mirrors how headline_concentration treats a
+        # missing concentration block.
+        exc = (payload or {}).get("excluded")
+        if isinstance(exc, dict):
+            try:
+                reading["excluded_jobs"] = int(exc["jobs"])
+                reading["excluded_entries"] = int(exc["entries"])
+            except (KeyError, TypeError, ValueError):
+                pass    # malformed block reads as absent, not as zero
+        return reading, None
 
     def _one(self, ctx, sub, sup, slices):
         problem = containment_problem(sub, sup)
@@ -1406,15 +1420,74 @@ class ContainmentInvariant:
             return _out(PASS, f"{shown} — jobs and rows moved together, so rows explain it")
         if abs(d_jobs) <= CONTAINMENT_FLOOR_JOBS:
             return _out(PASS, f"{shown}, under the {CONTAINMENT_FLOOR_JOBS:,} floor")
-        moved_in = "into" if d_jobs < 0 else "out of"
+
+        # ── DEDUP IS NOT A RE-SCORING ────────────────────────────────────────
+        #
+        # Everything above treats a complement that moved without rows as proof
+        # that published rows were re-scored across the boundary. There is a
+        # second, entirely correct way for it to happen: /reconcile-supersets
+        # folds a row into a more complete row for the same event, and its jobs
+        # leave the headline because they were being counted twice.
+        #
+        # On 2026-08-29 this check read -39,292 as wrong data. It was 416 rows
+        # carrying 120,883 jobs becoming members, plus two rows totalling 9,030
+        # jobs gaining ai_explicit (#243). Nothing was wrong; the guard could
+        # not see the exclusion because nobody published it.
+        #
+        # So subtract what dedup explains and judge the REMAINDER. This is not
+        # a tolerance and does not widen with anything: it is a measured
+        # quantity, read from the same payload as the headline it modifies, in
+        # the headline's own units. If it cannot be measured the answer is
+        # UNKNOWN — an unreported exclusion must never be assumed to be zero,
+        # because zero is the assumption that produced the false FAIL.
+        have_exc = all("excluded_jobs" in d
+                       for d in (now[sub.name], now[sup.name],
+                                 priors[sub.name], priors[sup.name]))
+        if not have_exc:
+            missing_now = not ("excluded_jobs" in now[sub.name]
+                               and "excluded_jobs" in now[sup.name])
+            where = ("the live /aggregate carries no `excluded` block, so the running "
+                     "build predates it" if missing_now else
+                     "a recorded baseline predates the `excluded` block, so the recorder "
+                     "had nothing to store")
+            return _out(UNKNOWN,
+                        f"{shown}, and this cannot be judged: {where}. A complement can move "
+                        f"without rows because published rows were re-scored, OR because "
+                        f"/reconcile-supersets folded rows into their supersets and their jobs "
+                        f"stopped being counted twice. Those look identical from two headlines "
+                        f"alone. Treating the exclusion as zero is what made this check report "
+                        f"a correct dedup as wrong data on 2026-08-29 (#243), so it reports "
+                        f"UNKNOWN instead. The next recorder run after 2.20.156 re-arms it",
+                        pending=True)
+
+        # Jobs that left the SUPERSET as dedup, minus those that left the
+        # subset the same way: the part of the complement's move that dedup
+        # already accounts for, in the same signed direction as d_jobs.
+        exc_sup = now[sup.name]["excluded_jobs"] - int(priors[sup.name]["excluded_jobs"])
+        exc_sub = now[sub.name]["excluded_jobs"] - int(priors[sub.name]["excluded_jobs"])
+        dedup_moved = -(exc_sup - exc_sub)
+        residual = d_jobs - dedup_moved
+
+        if abs(residual) <= CONTAINMENT_FLOOR_JOBS:
+            return _out(PASS,
+                        f"{shown}, and dedup explains it: superset exclusions moved "
+                        f"{dedup_moved:+,} jobs over the same window ({exc_sup:+,} excluded "
+                        f"from {sup.label}, {exc_sub:+,} from {sub.label}), leaving a residual "
+                        f"of {residual:+,} under the {CONTAINMENT_FLOOR_JOBS:,} floor. Jobs "
+                        f"leaving a headline because they stopped being counted twice is the "
+                        f"superset model working")
+
+        moved_in = "into" if residual < 0 else "out of"
         return _out(FAIL,
-                    f"{shown}. A row can only arrive with its jobs or leave with its jobs, so "
-                    f"nothing that arrived or left moved these {abs(d_jobs):,} jobs {moved_in} "
-                    f"{sub.label}: rows that were ALREADY PUBLISHED were re-scored across the "
-                    f"boundary between these two slices. This is true however many entries "
-                    f"arrived, which is why the movement guard's allowance cannot see it. "
-                    f"Check the last reconcile-supersets run, any country/AI relabel job, and "
-                    f"the corrections log")
+                    f"{shown}. Superset exclusions account for {dedup_moved:+,} of that, "
+                    f"leaving {residual:+,} jobs unexplained. A row can only arrive with its "
+                    f"jobs or leave with its jobs, and dedup has been subtracted, so nothing "
+                    f"that arrived, left, or was folded moved these {abs(residual):,} jobs "
+                    f"{moved_in} {sub.label}: rows that were ALREADY PUBLISHED were re-scored "
+                    f"across the boundary between these two slices. This is true however many "
+                    f"entries arrived, which is why the movement guard's allowance cannot see "
+                    f"it. Check any country/AI relabel job and the corrections log — "
+                    f"reconcile-supersets is already accounted for above")
 
 
 class DenominatorProvenanceInvariant:
