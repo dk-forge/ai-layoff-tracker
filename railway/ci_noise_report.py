@@ -38,6 +38,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import ci_alert
+import opsmail
 
 #: Conclusions that count as failures — the same set ci_alert reacts to.
 FAILED = frozenset({"failure", "timed_out", "startup_failure"})
@@ -238,15 +239,18 @@ def main(argv=None) -> int:
     if args.dry_run:
         return 0
 
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    key = os.environ.get("WP_API_KEY", "")
-    if not (site and key):
-        print("::error::WP_SITE_URL / WP_API_KEY are not set — the noise "
-              "report was NOT sent.")
+    # The credential is RESEND_API_KEY, same as ci_alert.py's own main(): mail
+    # moved to Resend on 2026-08-19 and post_alert() below ignores site/key
+    # entirely now (see its docstring). WP_SITE_URL / WP_API_KEY are not read
+    # here, and nothing sets them any more — the workflow passes
+    # RESEND_API_KEY / OPS_MAIL_FROM / OPS_MAIL_TO.
+    if not opsmail.configured():
+        print("::error::RESEND_API_KEY is not set — the noise report was "
+              "NOT sent.")
         return 1
 
     payload = {"subject": subject, "body": body, "dedupe_key": dedupe_key}
-    ok, note, transient = ci_alert.post_alert(site, key, payload)
+    ok, note, transient = ci_alert.post_alert("", "", payload)
     print(f"noise report {dedupe_key}: {note}")
     if ok:
         return 0
