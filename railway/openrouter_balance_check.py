@@ -47,6 +47,29 @@ THRESHOLD = float(os.environ.get("ALERT_THRESHOLD") or "10")
 # whatever the pipelines actually do: a quiet week stretches it, a backfill
 # sprint shortens it, and neither needs this number retuned.
 RUNWAY_DAYS = float(os.environ.get("ALERT_RUNWAY_DAYS") or "10")
+
+# AN ABSOLUTE FLOOR IS MEANINGLESS AGAINST A CAP SMALLER THAN THE FLOOR.
+#
+# 2026-09-01: this repo's key carries a $10/MONTH limit and THRESHOLD is $10,
+# so `key_remaining` can never exceed the floor. `binding < THRESHOLD` became
+# true at the first cent of spend and stayed true for the rest of the month.
+# The alert was not reporting a low balance, it was reporting that the cap
+# equals the floor -- every month, forever, with $58.23 sitting untouched in
+# the account behind it.
+#
+# An alarm that cannot stop firing is one a reader learns to delete, and this
+# one guards the moment all AI enrichment stops. So the floor is now chosen
+# per CEILING rather than applied to both:
+#
+#   * ACCOUNT BALANCE keeps the absolute floor. An account is a pool that can
+#     be any size, and "under $10 left" is a real, scale-free statement.
+#   * A KEY CAP gets a FRACTION of its own limit. A cap is a policy the owner
+#     set; what matters is how much of THIS month's allowance is gone, not how
+#     it compares to a number chosen for a different quantity.
+#
+# Runway is untouched and still fires independently -- it answers "how fast",
+# which no level can, and it is the half that caught the 2026-08-02 case.
+KEY_FLOOR_FRACTION = float(os.environ.get("ALERT_KEY_FLOOR_FRACTION") or "0.2")
 HISTORY = os.path.join(os.path.dirname(__file__), "openrouter_balance_history.json")
 # Enough readings to see through one noisy day, few enough to react inside a
 # week. Averaging the whole file would hide a sprint that started yesterday.
@@ -161,6 +184,28 @@ def _runway(rows):
     return (last["balance"] / burn), burn
 
 
+def floor_for(binding, balance, key_limit):
+    """The floor that applies to whichever ceiling actually binds.
+
+    Pure, and extracted so it can be TESTED. The first version of the fix left
+    this inline in ``main`` and the test mirrored the arithmetic instead of
+    calling it -- which passed happily when the fix was mutated away, because
+    it was checking a copy rather than the shipped code. A test that cannot
+    fail is the same defect as an alarm that cannot stop.
+
+    Returns ``(floor, note)``; the note is reader-facing and goes in the mail.
+
+    ``key_limit is None`` means the key reports no cap at all -- the unlimited
+    case -- so only the account can bind and the absolute floor is right.
+    """
+    if binding == balance or key_limit is None:
+        return THRESHOLD, f"floor ${THRESHOLD:,.0f}"
+    floor = key_limit * KEY_FLOOR_FRACTION
+    return floor, (f"floor ${floor:,.2f}, which is "
+                   f"{KEY_FLOOR_FRACTION:.0%} of this key's "
+                   f"${key_limit:,.0f} cap")
+
+
 def main():
     if not OR_KEY:
         print("OPENROUTER_API_KEY not set; skipping (nothing to check)")
@@ -188,6 +233,8 @@ def main():
     ceilings = [c for c in (balance, key_left) if c is not None]
     binding = min(ceilings)
     which = "account balance" if binding == balance else "this key's spend cap"
+    key_limit = _num(keyinfo.get("limit"))
+    floor, floor_note = floor_for(binding, balance, key_limit)
     print(f"account balance={balance} key_remaining={key_left} binding={binding} ({which})")
 
     days_left, burn = (None, None)
@@ -199,10 +246,10 @@ def main():
         print(f"runway: {days_left:.1f} days at ${burn:,.2f}/day "
               f"(warn under {RUNWAY_DAYS:.0f})")
 
-    low = binding < THRESHOLD
+    low = binding < floor
     short = days_left is not None and days_left < RUNWAY_DAYS
     if low or short:
-        headline = (f"{which} is ${binding:,.2f} (floor ${THRESHOLD:,.0f})" if low
+        headline = (f"{which} is ${binding:,.2f} ({floor_note})" if low
                     else f"{days_left:.1f} days of credit left at ${burn:,.2f}/day")
         body = f"OpenRouter needs attention: {headline}.\n\n"
         if balance is not None:
