@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "ci-noise-report:main:0a79d2da393eb3cf": {
-      "first": 1788203374,
-      "last": 1788203374,
-      "subject": "CI RED: CI noise report \u2014 WP_SITE_URL / WP_API_KEY are not set \u2014 the noise report was NOT sent."
-    }
-  },
-  "updated_at": "2026-08-31T20:37:23+00:00",
+  "open": {},
+  "updated_at": "2026-09-01T19:26:10+00:00",
   "version": 1
 }
