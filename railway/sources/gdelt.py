@@ -1370,7 +1370,15 @@ def _collect_mirror(start, end):
     """
     from source_registry import discovery_terms as _terms
     arts, complete = gdelt_bq.query_window_walk(start, end, _terms())
-    gdelt_reach.current().note_query("mirror", len(arts), gdelt_bq.MIRROR_LIMIT)
+    # SAY whether coverage was lost; do not let note_query infer it. The walk
+    # already knows -- `complete` is false only when it hit MAX_PAGES -- and
+    # MIRROR_LIMIT is a PAGE size, so the "returned >= max_records" inference
+    # reads a full first page as a truncated answer. That is why every mirror
+    # run since 2026-08-26 reported a binding cap on a window it had walked to
+    # the bottom. The limit is still passed because it is a true fact about the
+    # request and [2d] prints it.
+    gdelt_reach.current().note_query("mirror", len(arts), gdelt_bq.MIRROR_LIMIT,
+                                     truncated=not complete)
     return arts, ("complete" if complete else "partial")
 
 

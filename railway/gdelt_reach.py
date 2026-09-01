@@ -178,17 +178,41 @@ class Reach:
     # -- recording ---------------------------------------------------------
 
     def note_query(self, label, returned, max_records,
-                   abandoned=False, rate_limited=False):
+                   abandoned=False, rate_limited=False, truncated=None):
         """One GDELT window request outcome.
 
         `returned is None` means the window was ABANDONED -- it is not zero.
         Zero is "GDELT answered and there was nothing"; abandoned is "we never
         found out". Collapsing them is exactly the silence this module exists
         to remove.
+
+        `truncated` is the caller SAYING whether coverage was lost, and it wins
+        over the inference below whenever it is supplied. The inference --
+        "returned as many rows as the ceiling allows, so there was probably
+        more" -- is only sound when the ceiling bounds THE ANSWER. It bounds the
+        public DOC 2.0 API's answer (`maxrecords=250`, one request, no paging),
+        and it stopped bounding the BigQuery mirror's on 2026-08-26, when #223
+        made MIRROR_LIMIT a PAGE size and gave the mirror a deterministic
+        (date, url) walk to exhaustion. gdelt_bq.query_window_walk has computed
+        the real answer ever since, and _collect_mirror threw it away and let
+        this line guess instead.
+
+        The guess was wrong every run for six days. Five runs to 2026-08-25
+        returned exactly 900 and were genuinely truncated by the old bare
+        LIMIT; every run after the walk landed returned a non-round number far
+        above 900 -- 7339, 7183, 5415, 3594, 5123, against a real ceiling of
+        40 pages x 900 = 36,000 -- and each still reported `capped=1`. So
+        ops_status [2d] told ten sessions running that "coverage below the cut
+        was never offered" about windows that had been walked to the bottom.
+        Half of the "10 of 10 runs had a capped query" line was fiction, on the
+        same report as the real, unfixed abandoned-window signal beside it.
         """
         if label not in QUERY_LABELS:
             raise LeakGuard(f"unknown query label: not in the frozen vocabulary")
-        capped = returned is not None and max_records and returned >= max_records
+        if truncated is None:
+            capped = returned is not None and max_records and returned >= max_records
+        else:
+            capped = bool(truncated)
         with self._lock:
             self.queries.append({
                 "label": label,

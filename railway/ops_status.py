@@ -1212,8 +1212,8 @@ def gdelt_reach_lines(runs):
     ]
     if latest["cap"]:
         lines.append(
-            f"  CAP BINDING: {latest['cap']} quer(ies) returned exactly maxrecords."
-            " Coverage below the cut was never offered.")
+            f"  CAP BINDING: {latest['cap']} quer(ies) were TRUNCATED at their"
+            " ceiling. Coverage below the cut was never offered.")
     if latest["aband"]:
         lines.append(
             f"  WINDOW LOST: {latest['aband']} quer(ies) abandoned after retries."

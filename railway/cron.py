@@ -334,7 +334,23 @@ def run():
             entries += pulled
             if source == "press_releases":
                 configured = reviewed_feed_count()
-                if configured:
+                broken = list(getattr(pull_press_releases, "last_failures", []))
+                if configured and broken:
+                    # CONFIGURED IS NOT COLLECTED. A reviewed feed whose
+                    # publisher moved or removed it answers with something that
+                    # is not a feed, and until 2026-09-01 that showed up on no
+                    # surface: this branch reported "ok, N configured" whether
+                    # N feeds worked or one did. Re-pointing a feed is an
+                    # ADMISSION decision (owner_domain + terms_url +
+                    # reviewed_at), so the collector cannot heal itself here --
+                    # it can only stop hiding it.
+                    report_source_health(
+                        source, "degraded", len(pulled),
+                        f"{configured - len(broken)}/{configured} reviewed feed(s) "
+                        f"answered; not a feed any more: "
+                        + "; ".join(broken)[:300],
+                    )
+                elif configured:
                     report_source_health(
                         source, "ok", len(pulled),
                         f"{configured} reviewed company-owned/exchange feed(s) configured",

@@ -158,16 +158,30 @@ def pull_press_releases(days_back=3):
     out = []
     feeds = _feeds()
     failed = []
+    # Read by cron.py to report health. A reviewed feed that no longer answers
+    # with a feed is a REAL coverage loss, and before this it left nothing on
+    # any surface but a print line: the health note said "N feed(s) configured"
+    # whether N of them worked or none did. Configured is not collected.
+    pull_press_releases.last_failures = []
     for feed in feeds:
         try:
             response = requests.get(feed["url"], headers=UA, timeout=30)
             response.raise_for_status()
-            payload = response.content
+            # PARSING IS PART OF READING A FEED, so it belongs inside this
+            # feed's isolation. It used to sit below the `except`, and a feed
+            # that answers 200 with an HTML body -- Intel's /feed now redirects
+            # to a newsroom landing page -- raised ET.ParseError straight out
+            # of this function. One publisher's silent format change therefore
+            # ended the WHOLE collector: the other reviewed feeds' items were
+            # never read, and the only trace was a health note reading
+            # "syntax error: line 1, column 0" with no feed named. Materialise
+            # the generator here so a malformed body is this feed's failure.
+            items = list(_items(response.content))
         except Exception as exc:
             failed.append(f"{feed['name']}: {exc.__class__.__name__}: {exc}")
             print(f"Press-release feed failed (continuing): {feed['name']}: {exc}")
             continue
-        for title, url, description, published in _items(payload):
+        for title, url, description, published in items:
             text = f"{title} {description}".strip()
             if not url or not any(term in text.lower() for term in terms):
                 continue
@@ -203,6 +217,7 @@ def pull_press_releases(days_back=3):
                 "country": feed.get("country"),
                 "employer_country": feed.get("employer_country") or feed.get("country"),
             })
+    pull_press_releases.last_failures = list(failed)
     if feeds and failed and len(failed) == len(feeds):
         raise RuntimeError(
             "All reviewed press-release feeds failed: " + " | ".join(failed)
@@ -213,3 +228,9 @@ def pull_press_releases(days_back=3):
         + (f"; failed: {'; '.join(failed)}" if failed else "")
     )
     return out
+
+
+# A caller that reads this before the first run must see an empty list rather
+# than an AttributeError. Mirrors the `last_error` attribute cron.py already
+# reads off the news collectors.
+pull_press_releases.last_failures = []
