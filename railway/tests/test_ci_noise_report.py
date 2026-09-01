@@ -173,14 +173,12 @@ class MainTests(unittest.TestCase):
             (cnr.fetch_runs, cnr.attach_job_counts, cnr._now,
              cnr.ci_alert.fetch_failed_log,
              cnr.ci_alert.extract_cause, cnr.ci_alert.post_alert) = self._orig
-        for name in ("WP_SITE_URL", "WP_API_KEY"):
-            import os
-            os.environ.pop(name, None)
+        import os
+        os.environ.pop("RESEND_API_KEY", None)
 
     def _main(self, argv, **env):
         import os
-        for name in ("WP_SITE_URL", "WP_API_KEY"):
-            os.environ.pop(name, None)
+        os.environ.pop("RESEND_API_KEY", None)
         os.environ.update(env)
         buf = io.StringIO()
         with redirect_stdout(buf):
@@ -189,7 +187,7 @@ class MainTests(unittest.TestCase):
 
     def test_a_quiet_week_posts_nothing_and_says_so(self):
         self._patch([_run(1, "Tests", "success")])
-        code, out = self._main([], WP_SITE_URL="https://x", WP_API_KEY="k")
+        code, out = self._main([], RESEND_API_KEY="k")
         self.assertEqual(code, 0)
         self.assertEqual(self.sent, [], "no noise means NO post")
         self.assertIn("quiet week", out)
@@ -197,7 +195,7 @@ class MainTests(unittest.TestCase):
     def test_a_noisy_week_posts_exactly_one_alert(self):
         runs = [_run(i, "Tests", "failure") for i in range(1, 5)]
         self._patch(runs, {str(i): "same cause" for i in range(1, 5)})
-        code, _out = self._main([], WP_SITE_URL="https://x", WP_API_KEY="k")
+        code, _out = self._main([], RESEND_API_KEY="k")
         self.assertEqual(code, 0)
         self.assertEqual(len(self.sent), 1, "one summary, never one per run")
         self.assertIn("3 noisy run(s)", self.sent[0]["subject"])
@@ -205,18 +203,21 @@ class MainTests(unittest.TestCase):
     def test_dry_run_posts_nothing_even_when_noisy(self):
         runs = [_run(i, "Tests", "failure") for i in (1, 2)]
         self._patch(runs, {"1": "x", "2": "x"})
-        code, out = self._main(["--dry-run"],
-                               WP_SITE_URL="https://x", WP_API_KEY="k")
+        code, out = self._main(["--dry-run"], RESEND_API_KEY="k")
         self.assertEqual(code, 0)
         self.assertEqual(self.sent, [])
         self.assertIn("--- subject ---", out)
 
     def test_noise_with_no_credentials_is_loud_not_silent(self):
+        """No WP_SITE_URL/WP_API_KEY fallback: mail moved to Resend on
+        2026-08-19, and RESEND_API_KEY is the only credential this path
+        reads now (see opsmail.configured())."""
         runs = [_run(i, "Tests", "failure") for i in (1, 2)]
         self._patch(runs, {"1": "x", "2": "x"})
         code, out = self._main([])
         self.assertEqual(code, 1)
         self.assertIn("NOT sent", out)
+        self.assertIn("RESEND_API_KEY", out)
 
     def test_an_unreachable_gh_is_unknown_never_a_quiet_week(self):
         """PASS, FAIL and UNKNOWN are three states: 'could not read the run
@@ -303,7 +304,9 @@ class StdlibOnlyTests(unittest.TestCase):
     def test_the_reporter_needs_no_venv(self):
         """Like ci_alert.py: a reporting path must not be breakable by a
         dependency resolution failure. ci_alert itself is already held to
-        this bar by test_ci_alert."""
+        this bar by test_ci_alert. opsmail is the same kind of exception —
+        it is the local, stdlib-only Resend transport (see its own module
+        docstring), not a pip dependency."""
         import ast
         tree = ast.parse((Path(cnr.__file__)).read_text())
         imported = {
@@ -316,7 +319,8 @@ class StdlibOnlyTests(unittest.TestCase):
             if isinstance(node, ast.ImportFrom) and node.level == 0
         }
         self.assertEqual(
-            imported - set(sys.stdlib_module_names) - {"ci_alert"}, set())
+            imported - set(sys.stdlib_module_names) - {"ci_alert", "opsmail"},
+            set())
 
 
 if __name__ == "__main__":
