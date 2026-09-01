@@ -920,8 +920,21 @@ def _report_run_cost():
         window_dates = {r["date"] for r in window}
         mine = sum(float(e.get("cost_usd") or 0) for e in _ledger
                    if str(e.get("date", "")) in window_dates) / days
+    # 2026-09-01 — "this ACCOUNT", not "this key". The trackers hold SEPARATE
+    # OpenRouter keys (AI Layoff Site, Talent Intelligence, and the sandbox
+    # each have their own) which draw on one shared account balance. The old
+    # wording read as one key shared between repos and sent a session looking
+    # for a key that does not exist. The comment above always said "account";
+    # only this line said "key".
+    #
+    # The distinction is operational, not pedantic: BOTH limits bind
+    # independently. A topped-up account does nothing if the KEY's own cap is
+    # spent, which is exactly what happened on 2026-09-01 -- $58.23 sitting in
+    # the account behind a $10/MONTH cap on this repo's own key, with
+    # enrichment four days from stopping and the balance unreachable.
     print(f"    burn        ${per_day:,.2f}/day over the last {days}d "
-          f"(${spent:,.2f} total) — ACCOUNT-WIDE, both trackers bill this key")
+          f"(${spent:,.2f} total) — ACCOUNT-WIDE; the trackers hold separate "
+          f"keys that draw on one shared balance")
     if mine is None:
         print("    of which     UNKNOWN — this repo's ledger could not be read, "
               "so none of the account burn is attributed. Not a pass.")
