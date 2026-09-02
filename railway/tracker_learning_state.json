@@ -143,6 +143,11 @@
       "rules": 2,
       "unknown": 0,
       "unmatched": 4
+    },
+    {
+      "date": "2026-09-02",
+      "method": "m4",
+      "state": "unknown"
     }
   ],
   "quiet_runs": 1
