@@ -1,5 +1,72 @@
 # Tech Log
 
+## 2026-09-02 - two collectors were failing in the two ways this repo keeps finding (no version)
+
+**What.** `ops_status` reported four ACTION items. Two were real defects, and
+each was a shape already named in CLAUDE.md, arriving somewhere new.
+
+**press_releases: a dead feed cannot be deleted, only retired.** 2 of the 5
+reviewed feeds stopped being feeds. Intel's newsroom answers HTTP 200 with the
+same 538KB HTML landing page on `/feed`, `/feed/`, `/rss.xml` and
+`/feeds/all.rss`, and that page declares no RSS or Atom link anywhere; Intel
+retired the feed. Micron's IR host moved behind a Cloudflare bot challenge that
+answers 403 "Just a moment" to every candidate path from a non-browser client -
+unreachable, not moved, and getting past it is bot-detection evasion, which
+this collector will not do.
+
+Neither can be re-pointed, so the collector reported DEGRADED on every run with
+no fix available. The cheap answer is to delete both entries, which makes the
+collector green by making a real coverage loss invisible: the note would read a
+clean "3 configured" as though it had always been 3. A dead feed is now RETIRED
+IN PLACE - skipped when collecting, still carried in the registry, still NAMED
+on the health note every run. Retirement costs a reason and a date, and a
+half-retirement raises, which is what stops it becoming a switch for quieting a
+feed that still answers.
+
+**gdelt: the deadline existed and the daily collector never passed it.**
+`pull_gdelt_between` grew a `deadline` for one specific death (run
+33094996142, 2026-08-27: the broad slot cleared in seconds, then ten rotating
+sweeps hit the throttled public API one after another, each patient with its
+own QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS and no clock, until the job was
+killed with a sweep still retrying). It was wired into `gdelt_backfill.py` and
+nowhere else. `cron.py` - the collector that actually feeds the tracker - kept
+calling it unbounded.
+
+It has been dying of it, and the evidence was already in the repo.
+`railway-cron` wrote NO end-of-run record to `spend_jobs.json` on 2026-08-19,
+2026-08-26 or 2026-08-27 while writing one on 2026-08-30, which is this repo's
+own discriminator for a process that died rather than a health POST that was
+dropped; each of those dates carries an orphaned gdelt `running` note with no
+terminal note after it.
+
+That is worse than losing three runs, because a killed run reports nothing, so
+the ledger keeps the stale `running` - which carries a FRESH `checked_at` and
+counts toward "N source(s) OK". Three runs lost with every surface green, which
+is the failure `run_completion.py` was built for, doing its job.
+
+**Not fixed, deliberately.** The fourth ACTION item, `archive_backfill`'s
+orphan, is not a defect: run 33306716390 (2026-08-30 10:32Z) died in a
+Bluehost 502 storm against `/archive-record`. It failed loudly, which is
+correct for a data-changing job, and its terminal health POST could not land
+because the host it reports to was down. Later runs succeeded. There is nothing
+here to repair.
+
+**Left measured rather than guessed.** gdelt's remaining `abandoned=1` is the
+30s `GDELT_QUERY_TIMEOUT` default sitting below the endpoint's measured
+answering latency (19.8-75s+, 2026-08-29). Raising it was unsafe while nothing
+bounded the run; now that a deadline does, it is merely a trade - fewer
+abandoned windows against a worst case where one pathological window eats
+5 x (timeout + backoff) of a 900s budget. That is a measurement, not a guess,
+and the next several surviving runs are the ones that can make it. Do not raise
+the default without reading them.
+
+**Class:** both recurrences. "Configured is not collected" (the feed registry
+counting entries rather than answers) and "configured but off" (a safety net
+built, tested, and wired into one caller of two). The second is the more
+expensive of the two, because the parameter existing makes the call site look
+finished.
+
+
 ## 2026-08-30 - the ai_all_time incident is traced to the row and closed (no version)
 
 **What.** The sticky headline incident opened 2026-08-30T19:59Z (complement
