@@ -205,12 +205,50 @@ def edgar_cik(source_url):
     return int(match.group(1)) if match else None
 
 
+#: The forms only a FOREIGN PRIVATE ISSUER files, and the periodic forms only
+#: a domestic registrant files. Which set a filer's history shows is the
+#: filer's own statement of its status, made to the SEC, on every filing.
+_FOREIGN_ISSUER_FORMS = {"6-K", "20-F", "40-F"}
+_DOMESTIC_PERIODIC_FORMS = {"10-K", "10-Q"}
+
+
+def foreign_private_issuer(record):
+    """True when the filer reports to EDGAR as a foreign private issuer.
+
+    Read from the filing history, not from the address block. Deutsche Bank
+    AG's EDGAR "business address" is 1 Columbus Circle, New York: its US legal
+    department, the address a foreign issuer gives for service, listed under
+    a NY state code with `isForeignLocation` unset. The record carries no
+    state of incorporation at all. Read as a principal business address that
+    is "United States", and on 2026-09-02 the dry run of this very tool
+    proposed exactly that write for row 178900. What the same record states
+    unambiguously is 22 Forms 6-K and two 20-Fs and not one 10-K or 10-Q,
+    which is what a foreign private issuer files and what a domestic
+    registrant never does.
+
+    A filer with no filing history in the record is not called foreign: an
+    absent signal is UNKNOWN, and the address block then decides as before.
+    """
+    if not isinstance(record, dict):
+        return False
+    forms = ((record.get("filings") or {}).get("recent") or {}).get("form") or []
+    seen = {str(form or "").strip().upper() for form in forms}
+    return bool(seen & _FOREIGN_ISSUER_FORMS) and not (seen & _DOMESTIC_PERIODIC_FORMS)
+
+
 def edgar_domicile(record):
     """``(country, basis, stated)`` from a filer's EDGAR record, or None.
 
     Primary basis is the filer's principal business address, which is what a
     registrant reports as its principal executive offices. A US state code
-    there IS the United States; any other stated country is that country.
+    there IS the United States for a domestic registrant; any other stated
+    country is that country.
+
+    A US address on a FOREIGN private issuer's record is not its domicile. It
+    is the US agent for service (`foreign_private_issuer`), and the row keeps
+    its blank rather than acquiring the one country the filer demonstrably is
+    not seated in. The incorporation fallback below does not rescue it either:
+    such records carry no state of incorporation.
 
     The state of incorporation is a FALLBACK for filers with no business
     address on file, and only when it names somewhere that an employer is
@@ -223,6 +261,8 @@ def edgar_domicile(record):
     code = str(business.get("stateOrCountry") or "").strip().upper()
     described = str(business.get("stateOrCountryDescription") or "").strip()
     if code in _US_STATE_CODES:
+        if foreign_private_issuer(record):
+            return None
         return "United States", "principal business address", described or code
     if code and described and described.upper() != code:
         return described, "principal business address", described

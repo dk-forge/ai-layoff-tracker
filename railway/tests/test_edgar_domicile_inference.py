@@ -19,22 +19,40 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from employer_domicile_backfill import (  # noqa: E402
-    build_edgar_items, edgar_cik, edgar_domicile,
+    build_edgar_items, edgar_cik, edgar_domicile, foreign_private_issuer,
 )
 
 
-def record(business_code=None, business_desc=None, inc_code="", inc_desc=""):
+def record(business_code=None, business_desc=None, inc_code="", inc_desc="", forms=()):
     addresses = {}
     if business_code is not None or business_desc is not None:
         addresses["business"] = {
             "stateOrCountry": business_code,
             "stateOrCountryDescription": business_desc,
         }
-    return {
+    out = {
         "addresses": addresses,
         "stateOfIncorporation": inc_code,
         "stateOfIncorporationDescription": inc_desc,
     }
+    if forms:
+        out["filings"] = {"recent": {"form": list(forms)}}
+    return out
+
+
+#: Deutsche Bank AG's record as data.sec.gov returned it on 2026-09-02: a New
+#: York business address (its US legal department, the agent for service), no
+#: state of incorporation, and a filing history of 22 Forms 6-K and two 20-Fs
+#: with not one 10-K or 10-Q. Row 178900 is a 6-K about cuts at a German bank,
+#: and the dry run of the backfill proposed "United States" for it.
+DEUTSCHE_BANK = record("NY", "NY", "", "", forms=["6-K"] * 22 + ["20-F"] * 2)
+
+#: Two domestic registrants whose records also carry a blank or thin
+#: incorporation field, copied the same day. Their histories are 10-K/10-Q/8-K,
+#: and they must keep resolving to the United States: the foreign-issuer test
+#: reads the forms, never the emptiness of a field.
+BILL_HOLDINGS = record("CA", "CA", "", "", forms=["10-K"] * 7 + ["10-Q"] * 20 + ["8-K"] * 76)
+BRINKS = record("VA", "VA", "VA", "VA", forms=["10-K"] * 5 + ["10-Q"] * 14 + ["8-K"] * 60)
 
 
 #: id -> (company, EDGAR record as returned live, expected employer_country).
@@ -101,6 +119,58 @@ class DomicileFromTheFilersOwnRecord(unittest.TestCase):
     def test_no_usable_evidence_returns_none_rather_than_a_default(self):
         for rec in (None, {}, record(None, None, "", ""), record("", "", "", "")):
             self.assertIsNone(edgar_domicile(rec))
+
+
+class AForeignIssuersUsAgentIsNotItsDomicile(unittest.TestCase):
+    """The 2026-09-02 near miss, pinned on the record that produced it.
+
+    The address block of a foreign private issuer can carry a US state code
+    with nothing in it saying "agent": Deutsche Bank's says NY and its
+    `isForeignLocation` is null. The only thing on the record that states the
+    filer's status is its filing history, and that is what decides.
+    """
+
+    def test_deutsche_bank_is_not_placed_in_the_united_states(self):
+        self.assertTrue(foreign_private_issuer(DEUTSCHE_BANK))
+        self.assertIsNone(edgar_domicile(DEUTSCHE_BANK))
+
+    def test_a_domestic_registrant_with_a_blank_incorporation_still_resolves(self):
+        # The discriminator is the forms, never the blank field: BILL Holdings
+        # has the same empty stateOfIncorporation and is Californian.
+        self.assertFalse(foreign_private_issuer(BILL_HOLDINGS))
+        self.assertEqual(edgar_domicile(BILL_HOLDINGS)[0], "United States")
+        self.assertFalse(foreign_private_issuer(BRINKS))
+        self.assertEqual(edgar_domicile(BRINKS)[0], "United States")
+
+    def test_a_record_with_no_filing_history_is_unknown_not_foreign(self):
+        # Absent evidence is UNKNOWN. The address block then decides as before,
+        # which is what every LIVE_FILERS record (no `filings` key) relies on.
+        self.assertFalse(foreign_private_issuer(record("CA", "CA")))
+        self.assertFalse(foreign_private_issuer({}))
+        self.assertFalse(foreign_private_issuer(None))
+
+    def test_an_issuer_that_has_become_domestic_is_read_as_domestic(self):
+        # A filer with 6-Ks in its past and 10-Ks in its present reports as a
+        # domestic registrant now; only a history with NO domestic periodic
+        # form is foreign.
+        transitioned = record("NY", "NY", "DE", "DE", forms=["6-K", "20-F", "10-K", "10-Q"])
+        self.assertFalse(foreign_private_issuer(transitioned))
+        self.assertEqual(edgar_domicile(transitioned)[0], "United States")
+
+    def test_a_foreign_issuer_with_a_foreign_address_still_resolves_abroad(self):
+        # The gate is only on the US-address branch. Klarna's stated Swedish
+        # or British offices are the filer's own statement and stay accepted.
+        klarna = record("X0", "United Kingdom", "X0", "United Kingdom", forms=["6-K", "20-F"])
+        self.assertTrue(foreign_private_issuer(klarna))
+        self.assertEqual(edgar_domicile(klarna)[0], "United Kingdom")
+
+    def test_build_items_leaves_the_row_blank_rather_than_placing_it(self):
+        rows = [{"id": 178900, "company_name": "DEUTSCHE BANK AKTIENGESELLSCHAFT",
+                 "source_type": "8K", "employer_country": "",
+                 "source_url": "https://www.sec.gov/Archives/edgar/data/1159508/000115950825000005/db20250130991.htm"}]
+        items, unresolved = build_edgar_items(rows, fetcher=lambda cik: DEUTSCHE_BANK)
+        self.assertEqual(items, [])
+        self.assertEqual([u[0] for u in unresolved], [178900])
 
 
 class BuildItems(unittest.TestCase):
