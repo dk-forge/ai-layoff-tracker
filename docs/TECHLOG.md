@@ -1,5 +1,109 @@
 # Tech Log
 
+## 2026-09-02 - the GDELT article fetch never asked robots.txt and called itself Chrome (2.20.160, branch, not merged)
+
+**The defect.** `sources.gdelt._fetch_article` read the BODY of every
+allowlisted GDELT hit with a bare `requests.get`, `User-Agent` set to
+`BROWSER_UA` (Chrome on macOS), and consulted nothing first. That is 738
+outlets in 180 countries, every run. The rest of the repo already knew
+better: `cron.py` describes the regional and national feed paths as
+"robots-checked", `curated_probe.py` is built so no robots.txt is engaged,
+and `country_coverage.REFUSAL_LEDGER` states the rule in one line, read
+robots.txt BEFORE the first content request on any new host. This one path
+skipped it, so a publisher that said no in robots.txt was never asked. The
+ledger's doctrine is that a refusal is recorded and honoured, never routed
+around, and a path that never asks routes around by omission.
+
+**Two things, separable, both fixed.**
+
+1. CONSULT. New `railway/robots_gate.py`. `RobotsGate.verdict(url)` reads
+   the host's robots.txt once (cached per host for 24h, one in-flight read
+   shared across the fetch workers, so a run of N bodies from H hosts makes
+   at most H robots requests and a refusing host costs ONE) and answers
+   ALLOW / DISALLOW / UNKNOWN for the agent we actually send. Only ALLOW
+   permits the body request. 200 is parsed for our token, else `*`; 404 and
+   410 are "no rules" (a reachable answer, RFC 9309 agrees); 401 and 403 on
+   the robots file itself are a REFUSAL, because the ledger already rules
+   that a server refusing our identifying agent is refusing us and a browser
+   string to get past it would be spoofing; everything else (5xx, timeout,
+   transport error, a file over 500 KiB, a `/robots.txt` that redirects to an
+   HTML homepage, which nikkei.com and folha.uol.com.br do at the apex) is
+   UNKNOWN, and UNKNOWN is not permission. `Crawl-delay` is honoured through
+   `pace()`, capped at 30s so a hostile value cannot stall the pool.
+2. IDENTIFY. The request that does go out carries
+   `robots_gate.PUBLISHER_UA`, `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`,
+   the identifying string with a contact URL. The string sent to
+   asktherecruiter.com's own endpoints is UNCHANGED (set at each call site
+   in `cron.py` and `sources/gdelt.py`; ModSecurity there blocks
+   `python-requests`, not an honest name, so the two directions now carry
+   the same identifying string). `BROWSER_UA` survives for ONE purpose, the
+   GDELT DOC API query, whose throttle behaviour was measured and tuned
+   under it; changing that is a separate measured decision and is flagged
+   for the owner, not folded into this change.
+
+**A disallowed article is not an error and its row survives.** `_fetch_article`
+raises `RobotsRefused(state, note)` before any request to the article URL is
+built; `_fetch_trusted` hands the GDELT metadata row on headline-only (title,
+outlet, date came from GDELT's index, nothing reached the publisher), the way
+the Google News path already hands on a paywalled headline, and counts it under
+its own reach reason,
+`robots_disallowed` or `robots_unknown` (two new entries in
+`gdelt_reach.REASONS`, kept apart because a refusal we read and a file we
+could not read are different facts), so the gdelt health `detail` shows
+`robots_disallowed=N robots_unknown=M` alongside `fetch_failed`, plus a
+`headline_only=` total; `kept` keeps its meaning (body read) and these rows are
+subtracted from `dropped`. The health
+ledger stays nameless (`assert_nameless` still holds); the HOSTS are named
+in the run log by `RobotsGate.report_lines`, each refused one tagged
+"candidate for country_coverage.REFUSAL_LEDGER; owner decides". Nothing is
+added to the ledger by code.
+
+**Proven by mutation.** `tests/test_robots_gate.py` (27 tests). With the
+`gate.verdict` check deleted from `_fetch_article`, seven tests fail (the
+article request goes out under DISALLOW and under UNKNOWN, and the reach
+reasons and headline-only rows are not recorded). With the publisher request switched back to
+`BROWSER_UA`, one test fails. Both restored. Also pinned: 404 is ALLOW, 403
+is DISALLOW, 5xx and a redirect-to-homepage are UNKNOWN, a group for
+another agent does not bind us, `User-agent: ailayofftracker` binds on our
+first token, 50 URLs on one host is one robots request, a refusing host and
+an unreachable host are each asked once, six concurrent workers share one
+in-flight read, TTL expiry asks again, Crawl-delay is capped.
+
+**What the allowlist looks like through the gate (one-off audit, root path
+only, robots.txt requests only, from the owner's Mac under Python 3.9 with
+LibreSSL, so the SSLError rows are this machine, not the runner).** 738
+hosts: 617 allow, 84 refuse, 37 unknown. The 84 split two ways. Eighteen
+publish a blanket or named `Disallow: /` that binds us (abqjournal.com,
+barrons.com, civil.ge, finance.si, kommersant.ru, laprensagrafica.com,
+lorientlejour.com, marketwatch.com, mvariety.com, news.com.au, reuters.com,
+seznamzpravy.cz, skynews.com.au, theaustralian.com.au, theregister.com,
+thetimes.co.uk, thetimes.com, wsj.com); reuters
+and theregister were re-read by hand and end in `User-agent: * / Disallow:
+/`. Sixty-six return HTTP 403 to the identifying agent on the robots file
+itself (a Cloudflare-class wall in most cases: benzinga, businesswire, the
+Crain's titles, chicagotribune, japantimes, moneycontrol, ndtv, politico,
+news.sky.com, publico.pt, usinenouvelle and others). Under the ledger's own
+doctrine both are refusals. **These are listed for the owner in the branch
+report and the audit file; NONE was added to `REFUSAL_LEDGER`.** Two
+consequences the owner should weigh before merging: about 11% of the
+allowlist will now yield metadata-only rows (the GDELT title still enters
+the pipeline, the body does not), and the 403 group may differ on a Railway
+egress IP from what this Mac saw; the run log's `GDELT robots REFUSED`
+lines are the production measurement.
+
+**Not touched, on purpose, and reported.** `sources/regional_feeds.py`,
+`national_feeds.py` and `local_news.py` also send a browser `UA` to
+publishers; their "robots-checked" claim is a wiring-time hand check, not a
+runtime one. Same defect, different paths, other agents active nearby;
+separate change. `gdelt_reach.REASONS` was touched (two additive entries)
+while other agents work on country attribution in the same module; nothing
+else there changed.
+
+**Plugin surface.** Sources page, GDELT row: one added sentence stating that
+robots.txt is checked under our own named agent before any article is read,
+that a refusal is honoured and counted, and that an unreadable robots.txt is
+treated as a refusal. No cadence typed, no em-dash. Version 2.20.160.
+
 ## 2026-09-02 - reviewed outlet candidates for Spain, France and Turkey (2.20.159, branch, awaiting owner approval)
 
 **The measurement this answers.** The worldwide-coverage audit below found the

@@ -128,7 +128,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>GDELT news index</b></td><td>Worldwide discovery; coverage varies by country</td>
-        <td>Global news in 65+ languages, searched<?php echo esc_html($alt_cad_sp); ?>. Allowlist of trusted outlets only, never open-web crawling.</td>
+        <td>Global news in 65+ languages, searched<?php echo esc_html($alt_cad_sp); ?>. Allowlist of trusted outlets only, never open-web crawling. Before any article is read, the publisher's robots.txt is checked under our own named agent (AiLayoffTracker, with a contact address). A refusal is honoured and counted, never worked around, and a robots.txt we cannot read is treated as a refusal.</td>
         <td>Verified (named report)</td>
         <td><a href="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/" target="_blank" rel="noopener">About GDELT &#8599;</a></td>
       </tr>

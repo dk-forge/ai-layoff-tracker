@@ -1574,6 +1574,45 @@ far more than collection did.
 - Employers who withhold headcounts. In H1 2026 media, only one US event had a
   public number; the rest deliberately withheld. That cell cannot go green.
 
+## The GDELT run log says a publisher REFUSED us (robots gate)
+
+Since 2.20.160 every GDELT article body is read only after the host's
+robots.txt has been consulted under our own identifying agent
+(`robots_gate.PUBLISHER_UA`, `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`).
+The gdelt health `detail` carries `robots_disallowed=N` (the file said no, or
+the server refused the file itself to our agent) and `robots_unknown=M` (the
+file could not be read; not permission, so not fetched). The run log names
+the hosts:
+
+```
+GDELT robots: 412 host(s) consulted, 412 robots.txt request(s), 31 refused, 9 unreadable
+GDELT robots REFUSED example.com: robots.txt disallows the whole host for AiLayoffTracker (candidate for country_coverage.REFUSAL_LEDGER; owner decides)
+GDELT robots UNKNOWN other.example: robots.txt unreachable (ConnectTimeout); treated as not allowed
+```
+
+**What to do with a REFUSED host.** Nothing automatic; the answer is no and it
+is already being honoured. The row still exists from GDELT's metadata (title,
+outlet, date) and goes through the same extraction as before, with less text.
+If the host is a real loss, the owner may record it in
+`country_coverage.REFUSAL_LEDGER` with the nature and an `alternative`, and
+`tests/test_reviewed_outlets.py` will then refuse the allowlist entry, which is
+the correct order: the ledger is the record, the allowlist follows it. **Never**
+answer a refusal by changing the agent string, adding a browser header, or
+routing through a proxy or archive to read the same body. A 403 on the robots
+file itself is a refusal too, by the ledger's own doctrine.
+
+**What to do with an UNKNOWN host.** Usually nothing: a timeout is that day's
+weather and the next run asks again (the cache is per process). A host that is
+UNKNOWN for a week is either down for good or refusing our egress at the
+network layer; read its robots.txt by hand from a browser and decide. Do not
+change `_NO_FILE_STATUSES` or `_REFUSED_STATUSES` to make an UNKNOWN read as
+ALLOW; absence of a signal is not a pass anywhere in this repo.
+
+**The cost is bounded.** One robots request per host per run, however many
+articles; a refusing host is asked once and then never in that run. If the
+`robots.txt request(s)` figure ever exceeds `host(s) consulted`, the cache is
+broken and `tests/test_robots_gate.py` should already be red.
+
 ## A tracker learning email arrived (rules to apply)
 
 `tracker_diff.py --learn` runs daily inside `tracker-diff.yml` and is the

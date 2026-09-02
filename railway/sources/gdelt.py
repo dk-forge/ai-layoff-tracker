@@ -21,6 +21,7 @@ import requests
 from sources import gdelt_bq
 
 import gdelt_reach
+import robots_gate
 import run_slice
 
 from source_registry import discovery_terms
@@ -700,8 +701,19 @@ TRUSTED_DOMAINS = {
     # --- 2026-09-02 reviewed outlets: END
 }
 
+# Sent to the GDELT DOC API only. Until 2026-09-02 this string also went to
+# every publisher whose article body this collector read, with no robots.txt
+# consulted first; that path now identifies itself as `robots_gate.PUBLISHER_UA`
+# and asks before it reads (see `_fetch_article`). The GDELT API keeps this
+# string because its throttle behaviour was measured and tuned under it
+# (QUERY_ATTEMPTS, QUERY_BACKOFF_SECONDS); changing it is a separate,
+# measured decision. Our OWN host takes the identifying string too, set where
+# each call is made, because ModSecurity there blocks `python-requests`, not
+# an honest name.
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+# One gate per process: one robots.txt request per publisher host per run.
+ROBOTS = robots_gate.RobotsGate()
 
 REQUEST_DELAY = 5.0       # GDELT asks for gentle use; 429s under load, so pace well below the shared limit
 RAW_TEXT_LIMIT = 3000
@@ -1153,9 +1165,37 @@ def window_article_markup(markup):
     return text[:RAW_TEXT_LIMIT]
 
 
-def _fetch_article(url):
-    """Fetch an article and return a text window centered on the layoff mention."""
-    resp = requests.get(url, headers={"User-Agent": BROWSER_UA}, timeout=25)
+class RobotsRefused(Exception):
+    """The publisher's robots.txt does not permit this read (or could not be
+    read, which is not permission). Carries `state` (robots_gate.DISALLOW or
+    UNKNOWN) and the gate's note. Not an error: the GDELT row still exists
+    from its metadata; only the body is withheld."""
+
+    def __init__(self, state, note):
+        super().__init__(note)
+        self.state = state
+        self.note = note
+
+
+def _fetch_article(url, gate=None):
+    """Fetch an article and return a text window centered on the layoff mention.
+
+    ASKS FIRST. The host's robots.txt is consulted for the agent we actually
+    send (`robots_gate.PUBLISHER_UA`, identifying, with a contact URL) and the
+    body is requested only on an explicit ALLOW. DISALLOW and UNKNOWN both
+    raise `RobotsRefused` before any request to the article URL is built;
+    an unreadable robots.txt is not permission. The request that does go out
+    carries the SAME identifying string, never `BROWSER_UA`: a directive
+    addressed to us cannot be honoured by a client that hides its name.
+    `tests/test_robots_gate.py` proves by mutation that a disallowed URL is
+    never requested.
+    """
+    gate = gate or ROBOTS
+    state, note = gate.verdict(url)
+    if state != robots_gate.ALLOW:
+        raise RobotsRefused(state, note)
+    gate.pace(url)
+    resp = requests.get(url, headers={"User-Agent": robots_gate.PUBLISHER_UA}, timeout=25)
     resp.raise_for_status()
     return window_article_markup(resp.text)
 
@@ -1783,6 +1823,32 @@ def _fetch_trusted(articles):
             # dead publisher from serially blocking an entire global window.
             time.sleep(0.2)
             text = _fetch_article(url)
+        except RobotsRefused as refusal:
+            # Not a failure. The publisher was asked and said no, or could
+            # not be asked; either way the body was never requested. Counted
+            # under its own reason so the health detail shows it, and the
+            # host is named in the run log (robots_gate.report_lines) for the
+            # owner to consider for REFUSAL_LEDGER. Never added from here.
+            reach.note(dom, "robots_disallowed"
+                       if refusal.state == robots_gate.DISALLOW else "robots_unknown")
+            # The row still exists: GDELT's own index supplied the title,
+            # outlet and date, and no request reached the publisher. It is
+            # handed on headline-only, exactly as the Google News path hands
+            # on a paywalled headline. An empty title is nothing to hand on.
+            title = (a.get("title") or "").strip()
+            if not title:
+                return None
+            return {
+                "_reach_cc": gdelt_reach.country_of(dom),
+                "source_type": "news",
+                "source_name": dom,
+                "verification_level": "bronze",
+                "raw_text": title,
+                "source_url": url,
+                "company_name": None,
+                "ticker": None,
+                "filing_date": _seen_to_iso(a.get("seendate")),
+            }
         except Exception as e:
             print(f"GDELT fetch error {url}: {e}")
             reach.note(dom, "fetch_failed")
@@ -1813,5 +1879,7 @@ def _fetch_trusted(articles):
 
     print(f"GDELT: {len(articles)} matched, {len(candidates)} trusted, {len(results)} fetched")
     for line in reach.report_lines():
+        print(line)
+    for line in ROBOTS.report_lines(prefix="GDELT robots"):
         print(line)
     return results

@@ -82,12 +82,22 @@ REASONS = (
     "not_allowlisted",  # domain is not in TRUSTED_DOMAINS
     "duplicate_url",    # same URL already seen inside this run
     "fetch_failed",     # the publisher would not serve the article
+    # Two robots.txt outcomes, kept apart on purpose (PASS / FAIL / UNKNOWN):
+    # a refusal we read and honoured is not the same fact as a file we could
+    # not read, and both mean the body was NOT requested (railway/robots_gate.py).
+    "robots_disallowed",  # robots.txt refuses our agent for this host or path
+    "robots_unknown",   # robots.txt unreadable (timeout, 5xx); not permission
     "empty_text",       # served, but stripped to nothing
     "already_ingested", # filter_already_seen: this URL was read on a past run
     "gate_no",          # the cheap pre-extraction headline gate said no
     "budget_stop",      # the per-run spend brake was closed
     "not_an_event",     # extraction ran and produced no layoff record
 )
+# The two robots reasons are NOT drops: the GDELT metadata row (title, outlet,
+# date) is still handed to the pipeline headline-only, the way the Google
+# News path already works. `kept` keeps its meaning (body read); these are
+# reported as `headline_only` and subtracted from `dropped`.
+HEADLINE_ONLY = ("robots_disallowed", "robots_unknown")
 
 # Query slots, by ROLE not by text: the segment/native/euphemism rotations
 # change every run and their terms must never reach a public string.
@@ -97,7 +107,7 @@ _PUBLIC_WORDS = frozenset(REASONS) | frozenset(QUERY_LABELS) | frozenset({
     "queries", "returned", "capped", "cap", "abandoned", "rate_limited",
     "answered", "countries", "reasons", "totals", "candidates", "trusted",
     "kept", "dropped", "unknown_country", "by_country", "by_reason",
-    "by_label", "max_records", "source", "gdelt", "reach",
+    "by_label", "max_records", "source", "gdelt", "reach", "headline_only",
 })
 _CC_RX = re.compile(r"^[a-z]{2}$")
 
@@ -269,7 +279,9 @@ class Reach:
             "returned": sum(q["returned"] for q in answered),
             "candidates": seen,
             "kept": by_reason.get("kept", 0),
-            "dropped": seen - by_reason.get("kept", 0),
+            "headline_only": sum(by_reason.get(r, 0) for r in HEADLINE_ONLY),
+            "dropped": seen - by_reason.get("kept", 0)
+                       - sum(by_reason.get(r, 0) for r in HEADLINE_ONLY),
             "unknown_country": sum(self._by_country.get(_UNKNOWN_CC, {}).values()),
         }
 
@@ -313,6 +325,8 @@ class Reach:
         head = (f"returned={t['returned']} queries={t['queries']} "
                 f"answered={t['answered']} abandoned={t['abandoned']} "
                 f"capped={t['capped']} kept={t['kept']} dropped={t['dropped']}")
+        if t["headline_only"]:
+            head += f" headline_only={t['headline_only']}"
         by_reason = self.by_reason()
         reasons = " ".join(f"{r}={by_reason[r]}"
                            for r in REASONS if r != "kept" and by_reason.get(r))
@@ -346,7 +360,8 @@ class Reach:
             f"{t['abandoned']} ABANDONED, {t['capped']} hit maxrecords, "
             f"{t['returned']} article(s) returned",
             f"GDELT reach: {t['candidates']} candidate(s) -> "
-            f"{t['kept']} kept, {t['dropped']} dropped "
+            f"{t['kept']} kept, {t['headline_only']} headline-only (robots), "
+            f"{t['dropped']} dropped "
             f"({t['unknown_country']} of them from a generic TLD, country unknown)",
         ]
         for label in QUERY_LABELS:
