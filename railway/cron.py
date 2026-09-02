@@ -3,6 +3,7 @@ AI Layoff Tracker — Main Cron Script
 Runs 2x daily: 9 AM ET + 5 PM ET (see railway.toml for the schedule)
 """
 import os
+import time
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -65,6 +66,25 @@ import spend
 GATE_MODE = (os.environ.get("ALT_GATE_MODE", "live") or "").strip().lower()
 if GATE_MODE not in ("off", "shadow", "live"):
     GATE_MODE = "live"
+
+
+def _gdelt_run_budget_seconds(raw=None):
+    """Wall-clock seconds the daily gdelt collector may spend, clamped.
+
+    Pure, so it is testable without reloading a module other modules hold
+    references into (the mistake `_clamped_query_timeout` documents).
+
+    The floor is 120s because anything less cannot clear the broad slot and
+    would defer every sweep forever; the ceiling is 3600s because a daily job
+    that runs longer than an hour is the unbounded run this replaces.
+    """
+    if raw is None:
+        raw = os.environ.get("GDELT_RUN_BUDGET_SECONDS", "900")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 900
+    return max(120, min(3600, value))
 
 
 def _mark_phase(phase):
@@ -453,7 +473,31 @@ def run():
         # reset here rather than inside the collector because a backfill
         # sweep calls pull_gdelt_between many times and one run is one ledger.
         gdelt_reach.reset()
-        pulled = pull_gdelt_between(now - timedelta(hours=36), now)
+        # THE DEADLINE EXISTS AND THIS CALLER NEVER PASSED IT.
+        # `pull_gdelt_between` grew a `deadline` for exactly this failure (run
+        # 33094996142: the broad slot cleared in seconds, then ten rotating
+        # sweeps hit the throttled public API one after another, each patient
+        # with its own QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS and no clock),
+        # and it was wired into gdelt_backfill.py only. The daily collector,
+        # the one that actually feeds the tracker, still ran unbounded.
+        #
+        # It has been dying of it. `railway-cron` wrote no end-of-run record to
+        # spend_jobs.json on 2026-08-19, 2026-08-26 or 2026-08-27, which is
+        # this repo's own discriminator for a process that died rather than a
+        # health POST that was dropped, and each of those dates has an orphaned
+        # gdelt `running` note with no terminal note after it. A killed run
+        # reports NOTHING, so the ledger keeps the stale `running` -- which
+        # carries a fresh checked_at and counts toward "N source(s) OK".
+        #
+        # Deferral is cheap here and death is not: the deadline is consulted
+        # before STARTING a sweep, never mid-query, and a sweep not attempted
+        # stays a ledger slot the next run retries. So the budget is set
+        # conservatively. Worst case we defer a sweep; best case the run
+        # survives to write the terminal note that says so.
+        pulled = pull_gdelt_between(
+            now - timedelta(hours=36), now,
+            deadline=time.monotonic() + _gdelt_run_budget_seconds(),
+        )
         for e in pulled:
             e.setdefault("_collector", "gdelt")
         entries += pulled
