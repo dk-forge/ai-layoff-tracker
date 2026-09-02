@@ -60,11 +60,20 @@ abandoned windows against a worst case where one pathological window eats
 and the next several surviving runs are the ones that can make it. Do not raise
 the default without reading them.
 
-**Class:** both recurrences. "Configured is not collected" (the feed registry
-counting entries rather than answers) and "configured but off" (a safety net
-built, tested, and wired into one caller of two). The second is the more
-expensive of the two, because the parameter existing makes the call site look
-finished.
+**Class:** started-not-finished - the gdelt half is the canonical shape: three
+runs posted `running`, died, and posted no terminal note, so the ledger's stale
+`running` carried a fresh `checked_at` and counted toward "N source(s) OK". The
+press-feed half is `ran-but-brought-nothing` wearing a registry: the count was
+of entries admitted, never of entries that answered. Both are recurrences, and
+the second is the more expensive, because a `deadline` parameter existing makes
+the call site that never passes it look finished.
+
+**Guard:** railway/tests/test_gdelt_run_budget.py - asserts on the CALL SITE
+(the daily collector must pass `deadline=`), which is the thing that regressed
+while the parameter itself existed and was tested. Plus
+railway/tests/test_press_feed_retirement.py for the retirement record. Both
+mutation-proved: dropping the kwarg, and dropping the both-fields requirement,
+each fail with the specific assertion named.
 
 
 ## 2026-08-30 - the ai_all_time incident is traced to the row and closed (no version)
