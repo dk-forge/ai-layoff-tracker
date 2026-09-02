@@ -70,7 +70,8 @@ SMALL_ROW = {"id": 900001, "company_name": "Acme Widgets", "industry": "Retail",
 def _flag(row, field, suggested):
     return {"id": row["id"], "field": field,
             "current": row["country"] if field == "country" else row["industry"],
-            "suggested": suggested, "why": "the company is American"}
+            "suggested": suggested,
+            "why": "the excerpt places the cut at its Ohio plant"}
 
 
 class Harness:
@@ -207,7 +208,7 @@ class BigCountryRelabelIsHeld(unittest.TestCase):
         # The model can return an id that was never in the sample. Absence of a
         # job count is UNKNOWN, and UNKNOWN is not "small enough to edit".
         ghost = {"id": 777777, "field": "country", "current": "Multiple countries",
-                 "suggested": "United States", "why": "hallucinated row"}
+                 "suggested": "United States", "why": "the excerpt names a Detroit plant"}
         h = Harness(newest=[SMALL_ROW], biggest=[], flags=[ghost])
         h.run()
         self.assertNotIn(777777, h.edited_ids)

@@ -75,7 +75,8 @@ def _fake_adjudicate(votes_by_company):
 def _flag(row, field, suggested):
     return {"id": row["id"], "field": field,
             "current": row["country"] if field == "country" else row["industry"],
-            "suggested": suggested, "why": "model reasoning"}
+            "suggested": suggested,
+            "why": "the excerpt places the cut at its Ohio plant"}
 
 
 class Harness:

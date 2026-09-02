@@ -1191,6 +1191,38 @@ no queue to drain and nothing is lost if a mail fails to send. That also means
 an unread hold cannot rot into a stale to-do: if it stops being proposed, it
 stops being raised.
 
+**What a suggestion must be before it can be held at all** (since 2026-09-02,
+`filter_flags()`; each gate's drops are counted and named in the run summary
+under "Discarded N ... flag(s)"):
+
+1. **In the vocabulary.** An industry suggestion must name one of the labels
+   in `alt_industry_vocabulary()` (mirrored as `extractor.INDUSTRY_VOCABULARY`);
+   a country suggestion must be a real country or "Multiple countries". The
+   classifier never mints a label: "Banking", "Airline", "Public
+   Administration" are discarded, not folded, because a synonym for the label
+   a row already carries is not a mismatch. If the mail names a label you
+   cannot find in the tracker's filter dropdown, that is this gate failing;
+   do not add the label.
+2. **Not a repeat.** The same (row, field, value) is listed once however many
+   times the model returned it. On 2026-09-02 one row was mailed four times.
+3. **Not a no-op.** The value the row already carries is not a change.
+4. **A reason with something in it.** The stated reason must contain a word
+   that is not the company's name (or its initials), not the current or
+   proposed label (or a reader alias such as "USA" or "Swiss"), and not the
+   ERM importer's own excerpt template. "The excerpt mentions 'Ministerul
+   Administratiei si Internelor (Romania)', suggesting multiple countries" is
+   discarded: it restates the row. This is a gate on the REASON, not a
+   judgement on the row; a real mismatch with a lazy reason is re-proposed
+   tomorrow, usually with a better one.
+
+The confirmation pass is keyed by (row, field), so agreeing with a row's
+country flag no longer confirms its industry flag as well.
+
+**Do not answer a quiet spot-check by loosening any of these.** A run that
+discards everything and holds nothing is a run that found nothing worth a
+person's time, which is the common case. The 5,000-job bound and the guarded
+worldwide labels are untouched by all four gates.
+
 **An announced plan may have later executed / been filed**
 1. Inspect the public `/announcement-lifecycle-candidates` queue. It is only a narrow, read-only lead: exact company/count/country plus a source-evidenced announcement date and a later record within 365 days.
 2. Compare every retained source report for both events; confirm the scope, geography and timeline describe the same underlying cut.
