@@ -381,6 +381,276 @@ def _summarize_noop_flags(noops):
                             f"\"{f.get('suggested')}\"" for f in noops))
 
 
+# --------------------------------------------------------------------------
+# What a suggestion must be before it is judged, held or mailed
+# --------------------------------------------------------------------------
+# On 2026-09-02 the run mailed the owner 24 HELD relabels. Seven of the nine
+# distinct industry suggestions named a label that does not exist ("Public
+# Administration", "Courier & Delivery", "Cinema & Movie", "Airline",
+# "Banking", "Agrochemicals"): every one is either a no-op after
+# alt_normalize_industry() or, written raw, a near-duplicate in the public
+# filter dropdown, which is exactly what the closed vocabulary exists to
+# prevent. One row appeared four times and another three, because the model
+# repeated itself and nothing keyed the list. And most reasons restated the
+# company's name: a Romanian interior ministry was proposed as "Multiple
+# countries" because the excerpt mentions Romania.
+#
+# Nothing was written that night, because the 5,000-job bound held. These
+# three filters fix the SUGGESTER, not the bound, and they run BEFORE the
+# confirmation pass so a second model call is not spent agreeing with a label
+# that cannot be stored. Every drop is counted and named in the run summary;
+# a discarded suggestion is never silently gone.
+
+#: The one non-country label a country field may carry. alt_normalize_country()
+#: folds every vague region ("Global", "Europe", "India and US") to this, so it
+#: IS the stored vocabulary alongside the real countries.
+MULTI_COUNTRY_LABEL = "Multiple countries"
+
+#: Words a reason may contain without saying anything about the row. Three
+#: kinds, and none of them can evidence a label:
+#:   * the reason template itself and its connective tissue ("the excerpt
+#:     mentions ... suggesting ... as the primary industry");
+#:   * the words every layoff row carries ("employees", "jobs", "restructuring");
+#:   * the ERM importer's own excerpt boilerplate (erm_import.py writes
+#:     "<type> at <company> (<country>): N announced job losses. Recorded by the
+#:     European Restructuring Monitor (Eurofound), factsheet N."), which is OUR
+#:     template around the stored label, not the source's words.
+#: Frozen on purpose: adding a word here widens what counts as evidence-free,
+#: and that is a judgement, not a tuning.
+_REASON_NOISE = frozenset("""
+the a an and or of to in at on for by with from as is are was were be been being
+has have had do does did not no nor but if then than that this these those it its
+they them their there here which who whom whose what when where why how all any
+each some such more most other another same own very can could would should may
+might will shall just also only into over under about after before between out up
+per via one two three
+excerpt excerpts mention mentions mentioned mentioning specifies specify specified
+states state stated stating says say said suggests suggest suggesting suggested
+indicates indicate indicating indicated implies imply implying implied appears
+appear seems seem likely clearly clear rather primary main mainly industry
+industries sector country countries label labels current currently value field
+entity company companies firm group grupo corporation corp inc ltd plc llc ag sa
+se nv gmbh holdings holding name named called known better involved involve based
+headquartered headquarters
+employee employees worker workers staff people personnel workforce position
+positions job jobs role roles cut cuts cutting layoff layoffs laid off redundancy
+redundancies loss losses announced announce announcement plan plans planned
+restructuring restructure internal closure bankruptcy recorded european monitor
+eurofound factsheet filed effective affected act warn notice
+multiple global worldwide international
+""".split())
+
+#: Corporate-suffix words that are part of a name, never evidence.
+_NAME_NOISE = frozenset("inc ltd plc llc ag sa se nv gmbh corp corporation group grupo co the".split())
+
+
+def _tokens(text):
+    """Lower-cased word tokens of three or more letters, digits excluded.
+    Unicode-aware so a Spanish or Romanian reason keeps its words."""
+    import re
+    return [t for t in re.findall(r"[^\W\d_]+", str(text or "").casefold()) if len(t) >= 3]
+
+
+def industry_vocabulary():
+    """The closed set of industry labels, as extractor.py mirrors it from
+    alt_industry_rules() (tests/test_industry_backfill.py pins the two lists
+    to each other). Read at call time so a test can replace it."""
+    from extractor import INDUSTRY_VOCABULARY
+    return tuple(INDUSTRY_VOCABULARY)
+
+
+def canonical_industry(value):
+    """The vocabulary's own spelling of `value`, or '' if it is not in it.
+
+    Deliberately NOT alt_normalize_industry(): that keyword map exists to fold
+    a source's freeform sector ("Airline", "Banking") onto the taxonomy at
+    import time. A classifier that PROPOSES "Banking" for a row already
+    labelled "Finance & Insurance" has not found a mismatch, it has found a
+    synonym, and folding it here would turn that into a no-op /edit and a line
+    of the owner's attention. A suggestion is accepted only when it names a
+    label that exists, spelled as a match on letters and case.
+    """
+    wanted = _norm_label(value)
+    if not wanted:
+        return ""
+    for label in industry_vocabulary():
+        if _norm_label(label) == wanted:
+            return label
+    return ""
+
+
+def canonical_country(value):
+    """The stored spelling of a country suggestion, or '' if it is not one.
+
+    Real countries resolve through extractor._canonical_country (the repo's
+    one COUNTRIES list plus the reader aliases: "USA", "Swiss"), and the one
+    non-country label the field may carry is MULTI_COUNTRY_LABEL. Anything
+    else ("Europe", "Bavaria", "EMEA") is not a value this field can hold.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if _norm_label(raw) == _norm_label(MULTI_COUNTRY_LABEL):
+        return MULTI_COUNTRY_LABEL
+    from extractor import _canonical_country
+    return _canonical_country(raw) or ""
+
+
+def canonical_suggestion(field, value):
+    if field == "industry":
+        return canonical_industry(value)
+    if field == "country":
+        return canonical_country(value)
+    return ""
+
+
+def dedupe_flags(flags):
+    """Split flags into (first occurrence of each, repeats).
+
+    The model is asked for a list and nothing keyed it: on 2026-09-02 it
+    returned 84 flags for 29 sampled rows, one of them four times over, and
+    the confirmation pass, the hold path and the mail carried every copy. The
+    key is (id, field, suggested value): the same proposal twice is one
+    proposal, and a DIFFERENT suggestion for the same row and field is kept,
+    because two disagreeing answers are information the owner should see.
+    """
+    kept, repeats, seen = [], [], set()
+    for f in flags:
+        key = (f.get("id"), f.get("field"), _norm_label(f.get("suggested")))
+        if key in seen:
+            repeats.append(f)
+        else:
+            seen.add(key)
+            kept.append(f)
+    return kept, repeats
+
+
+def drop_off_vocabulary_flags(flags):
+    """Split flags into (in-vocabulary, rewritten to the stored spelling;
+    off-vocabulary, discarded). The classifier may not mint a label, and a
+    label it did not mint is stored exactly as the vocabulary spells it."""
+    kept, dropped = [], []
+    for f in flags:
+        canonical = canonical_suggestion(f.get("field"), f.get("suggested"))
+        if canonical:
+            kept.append({**f, "suggested": canonical})
+        else:
+            dropped.append(f)
+    return kept, dropped
+
+
+def _label_tokens(field, label):
+    """Every token by which a reason can merely repeat `label`: the label's
+    own words plus, for a country, the reader aliases ("usa", "swiss")."""
+    toks = set(_tokens(label))
+    if field == "country":
+        from extractor import _COUNTRY_ALIASES
+        for country, aliases in _COUNTRY_ALIASES.items():
+            if _norm_label(country) == _norm_label(label):
+                for alias in aliases:
+                    toks.update(_tokens(alias))
+    return toks
+
+
+def reason_evidence(flag, company):
+    """The words of a suggestion's stated reason that are EVIDENCE: what is
+    left after removing the row's own name, the label it carries, the label
+    proposed, and the words every reason and every row contains.
+
+    "The excerpt mentions 'United Parcel Service, better known as UPS',
+    suggesting multiple countries might be involved" leaves nothing: the
+    quote is the company's name and the rest is the template. "...the recent
+    merger of the Swiss banks Credit Suisse and UBS" leaves "merger", "banks",
+    "credit", "suisse": something a person could check. An acronym spelled by
+    the initials of the company's name ("UPS") is part of the name.
+    """
+    name_tokens = set(_tokens(company)) - _NAME_NOISE
+    initials = "".join(t[0] for t in _tokens(company) if t not in _NAME_NOISE)
+    strip = set(_REASON_NOISE) | name_tokens
+    strip |= _label_tokens(flag.get("field"), flag.get("current"))
+    strip |= _label_tokens(flag.get("field"), flag.get("suggested"))
+    if len(initials) >= 2:
+        strip.add(initials)
+    return [t for t in _tokens(flag.get("why")) if t not in strip]
+
+
+def drop_evidence_free_flags(flags, names_by_id):
+    """Split flags into (reasons that cite something, reasons that only
+    restate the row). A suggestion whose reason names nothing beyond the
+    entity itself is not actionable and must not reach the owner's inbox:
+    on 2026-09-02 a Romanian interior ministry was proposed as "Multiple
+    countries" because its excerpt says "(Romania)"."""
+    kept, dropped = [], []
+    for f in flags:
+        if reason_evidence(f, names_by_id.get(f.get("id"), "")):
+            kept.append(f)
+        else:
+            dropped.append(f)
+    return kept, dropped
+
+
+def _summarize_dropped(label, flags, why):
+    """A discarded suggestion is counted and named in the run log, never
+    silently gone."""
+    if flags:
+        summary(f"Discarded {len(flags)} {label} flag(s), {why}: "
+                + ", ".join(f"row {f.get('id')} {f.get('field')} "
+                            f"\"{f.get('suggested')}\"" for f in flags))
+
+
+def filter_flags(flags, names_by_id, current_by_id):
+    """Every gate a proposed relabel passes before it costs a confirmation
+    call or a line of anyone's attention. Returns (kept, counts) where counts
+    is {"repeat": n, "off_vocabulary": n, "noop": n, "evidence_free": n}.
+
+    Order matters. Repeats first, so a copy is not counted three more times
+    by the gates below. Vocabulary next, because it REWRITES the suggestion
+    to the stored spelling and the no-op check must compare that spelling to
+    the row ("USA" for a "United States" row is a no-op, not a change).
+    Evidence last, on what is left.
+    """
+    kept, repeats = dedupe_flags(flags)
+    kept, off_vocab = drop_off_vocabulary_flags(kept)
+    kept, noops = drop_noop_flags(kept, current_by_id)
+    kept, evidence_free = drop_evidence_free_flags(kept, names_by_id)
+    _summarize_dropped("repeated", repeats,
+                       "the same proposal already listed once in this reply")
+    _summarize_dropped("off-vocabulary", off_vocab,
+                       "the proposed label is not in the closed vocabulary the "
+                       "field can hold (a classifier never mints a label)")
+    _summarize_noop_flags(noops)
+    _summarize_dropped("evidence-free", evidence_free,
+                       "the stated reason names nothing beyond the row's own "
+                       "name and labels")
+    counts = {"repeat": len(repeats), "off_vocabulary": len(off_vocab),
+              "noop": len(noops), "evidence_free": len(evidence_free)}
+    return kept, counts
+
+
+def confirmed_flags(flags, replies):
+    """The flags the confirmation pass agreed with, keyed by (id, field).
+
+    Until 2026-09-02 agreement was a set of ids, and a row in the sample
+    carries an industry AND a country flag, so "agree" on either confirmed
+    both. The reply is asked to carry `field`; a reply without one is honoured
+    only when the id has a single flag, and is otherwise ambiguous, which is
+    not agreement.
+    """
+    by_id = {}
+    for f in flags:
+        by_id.setdefault(f.get("id"), []).append(f)
+    agreed = set()
+    for item in replies or []:
+        if not isinstance(item, dict) or not item.get("agree"):
+            continue
+        rid, field = item.get("id"), item.get("field")
+        if field in ("industry", "country"):
+            agreed.add((rid, field))
+        elif len(by_id.get(rid, [])) == 1:
+            agreed.add((rid, by_id[rid][0].get("field")))
+    return [f for f in flags if (f.get("id"), f.get("field")) in agreed]
+
+
 def screen(confirmed, jobs_by_id):
     """Split confirmed relabels into (edits to apply, [(flag, why held)])."""
     edits, held = [], []
@@ -464,7 +734,7 @@ def post_hold_alert(held, jobs_by_id, names_by_id=None):
         summary("_The held relabels could not be mailed: RESEND_API_KEY is not "
                 "configured. They are listed above and will be re-raised tomorrow._")
         return
-    ids = ".".join(sorted(str(f["id"]) for f, _ in held))
+    ids = ".".join(sorted({str(f["id"]) for f, _ in held}))
     if not ops_notify.notify(
             f"{len(held)} label relabel(s) HELD for review, not applied",
             _hold_body(held, jobs_by_id, names_by_id),
@@ -652,7 +922,7 @@ def post_panel_hold_alert(still_held, jobs_by_id, names_by_id=None):
                 "not configured. They are listed above and will be re-raised "
                 "tomorrow._")
         return
-    ids = ".".join(sorted(str(f["id"]) for f, _ in still_held))
+    ids = ".".join(sorted({str(f["id"]) for f, _ in still_held}))
     if not ops_notify.notify(
             f"{len(still_held)} label relabel(s) HELD by the panel, not applied",
             _panel_hold_body(still_held, jobs_by_id, names_by_id),
@@ -712,10 +982,10 @@ def _dry_run_armed():
                        and f.get("id") and f.get("suggested")]
         current_by_id = {r["id"]: {"industry": r["industry"], "country": r["country"]}
                          for r in sample}
-        label_flags, noops = drop_noop_flags(label_flags, current_by_id)
-        if noops:
-            print(f"dropped {len(noops)} no-op flag(s) proposing the value the row "
-                  f"already carries: {[f.get('id') for f in noops]}")
+        # The same gates main() applies (filter_flags prints its counts
+        # through summary(), which is stdout here).
+        label_flags, dropped = filter_flags(label_flags, names_by_id, current_by_id)
+        print(f"dropped before confirmation: {dropped}")
         if not label_flags:
             print("no label mismatches flagged; nothing to adjudicate.")
             return 0
@@ -723,10 +993,10 @@ def _dry_run_armed():
                           "For each, answer whether the SUGGESTED value is clearly more accurate than CURRENT. "
                           "For a country label, judge WHERE THE JOBS WERE CUT, not where the company is "
                           "headquartered: a worldwide restructuring at an American company is not United States. "
-                          'Reply STRICT JSON {"confirm":[{"id":..,"agree":true|false}]}.\n\n'
+                          'Reply STRICT JSON {"confirm":[{"id":..,"field":"industry|country","agree":true|false}]}, '
+                          "one item per proposed correction.\n\n"
                           + json.dumps(label_flags, ensure_ascii=False))
-        agreed = {i["id"] for i in ask_model(confirm_prompt).get("confirm", []) if i.get("agree")}
-        confirmed = [f for f in label_flags if f["id"] in agreed]
+        confirmed = confirmed_flags(label_flags, ask_model(confirm_prompt).get("confirm", []))
         edits, held = screen(confirmed, jobs_by_id)
         print(f"\nsmall fixes screen() would auto-apply (no panel): "
               f"{[e['id'] for e in edits]}")
@@ -844,8 +1114,10 @@ def main():
     label_flags = [f for f in flags if f.get("field") in ("industry", "country") and f.get("id") and f.get("suggested")]
     current_by_id = {r["id"]: {"industry": r["industry"], "country": r["country"]}
                      for r in sample}
-    label_flags, noops = drop_noop_flags(label_flags, current_by_id)
-    _summarize_noop_flags(noops)
+    # Repeats, minted labels, no-ops and name-only reasons are discarded HERE,
+    # before the confirmation call is spent and before anything can be held
+    # or mailed. Each drop is counted in the run summary (filter_flags).
+    label_flags, _dropped = filter_flags(label_flags, names_by_id, current_by_id)
     if not label_flags:
         clear_hold_alert()
         return 0
@@ -859,10 +1131,10 @@ def main():
                           "For each, answer whether the SUGGESTED value is clearly more accurate than CURRENT. "
                           "For a country label, judge WHERE THE JOBS WERE CUT, not where the company is "
                           "headquartered: a worldwide restructuring at an American company is not United States. "
-                          'Reply STRICT JSON {"confirm":[{"id":..,"agree":true|false}]}.\n\n'
+                          'Reply STRICT JSON {"confirm":[{"id":..,"field":"industry|country","agree":true|false}]}, '
+                          "one item per proposed correction.\n\n"
                           + json.dumps(label_flags, ensure_ascii=False))
-        agreed = {item["id"] for item in ask_model(confirm_prompt).get("confirm", []) if item.get("agree")}
-        confirmed = [f for f in label_flags if f["id"] in agreed]
+        confirmed = confirmed_flags(label_flags, ask_model(confirm_prompt).get("confirm", []))
         if not confirmed:
             summary("No proposed label changes were confirmed by the second pass.")
             clear_hold_alert()

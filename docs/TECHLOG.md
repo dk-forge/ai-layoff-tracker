@@ -104,6 +104,97 @@ robots.txt is checked under our own named agent before any article is read,
 that a refusal is honoured and counted, and that an unreadable robots.txt is
 treated as a refusal. No cadence typed, no em-dash. Version 2.20.160.
 
+## 2026-09-02 - the classification spot-check proposed labels that do not exist (no version, branch)
+
+**Class:** wrong-scope-or-key (a flag list with no key, a confirmation keyed on id alone; the minted labels and the empty reasons are gates that did not exist). No data written. **Guard:**
+`tests/test_spotcheck_suggestion_filters.py`.
+
+**What arrived.** Run 33666038578 (data-quality, 18:19 UTC) mailed the owner
+"24 label relabel(s) HELD for review, not applied". The panel was armed but the
+per-run spend ceiling stopped it before its first vote, so the mail was the
+bare hold notice with the model's own reasons. Nothing was written: every one
+of the 24 was at or above the 5,000-job bound (36,000 to 60,000 jobs each) or
+had an UNKNOWN size. The bound did its job. The mail did not:
+
+* **Seven of the nine distinct industry suggestions named a label that is not
+  in `alt_industry_rules()`**: "Public Administration" (whose own code comment
+  says it belongs with Government & Nonprofit), "Courier & Delivery", "Cinema
+  & Movie", "Airline" twice, "Banking" twice, "Agrochemicals". Written raw,
+  each is a near-duplicate in the public filter dropdown, exactly what
+  `alt_normalize_industry` exists to prevent; folded, each is a no-op edit.
+  Nothing on the Python side checked a suggestion against the vocabulary
+  `industry_backfill.py` has mirrored since it was written.
+* **The mail repeated itself.** 84 flags for 29 sampled rows. Grupo
+  Volkswagen (176988) was listed four times, "178002" three times, and nothing
+  keyed the list, so every copy went through the confirmation call, the hold
+  path and the mail. 178002 is not a row: Cheminova is 179002, and the model
+  garbled the id, which is why that line carried no company name and an
+  UNKNOWN size.
+* **Most reasons restated the row.** "The excerpt mentions 'United Parcel
+  Service, better known as UPS', suggesting multiple countries might be
+  involved." Row 111762, a Romanian interior ministry, was proposed as
+  "Multiple countries" because its excerpt says "(Romania)". The four ERM rows
+  were proposed off "Multiple countries" on a quote of the ERM importer's own
+  template around the stored label.
+* **Confirmation was a set of ids.** A sampled row carries an industry flag
+  and a country flag, and `agreed = {item["id"] ...}` confirmed both on
+  either. Found by reading, not by the mail; it explains why every row's two
+  flags were "confirmed" together.
+
+**What changed** (`railway/daily_classification_spotcheck.py`, `filter_flags`).
+Four gates run before the confirmation call, so a second model call is not
+spent on a label that cannot be stored, and each gate's drops are counted and
+named in the run summary:
+
+1. repeats, keyed (id, field, value); a DIFFERENT value for the same row and
+   field is kept, because two disagreeing answers are information;
+2. vocabulary: industry through `extractor.INDUSTRY_VOCABULARY` (the mirror of
+   `alt_industry_vocabulary()` that `tests/test_industry_backfill.py` pins to
+   api.php), country through `extractor._canonical_country` plus the one
+   non-country label "Multiple countries". A match is rewritten to the stored
+   spelling; a synonym is discarded, not folded;
+3. the existing no-op gate, now after the rewrite so "USA" on a "United
+   States" row reads as the no-op it is;
+4. evidence: the reason must keep a word after removing the company name and
+   its initials, the current and proposed labels and their reader aliases
+   ("USA", "Swiss"), the reason template, the words every layoff row carries,
+   and the ERM importer's excerpt boilerplate. The word lists are frozen; a
+   wider list is a judgement about what counts as evidence, not a tuning.
+
+`confirmed_flags` keys agreement by (id, field); the confirm prompt asks for
+`field`, and a reply without one is honoured only when the id has a single
+flag. The dedupe key for the hold alarm is built from the SET of ids.
+
+**Tonight's 24 through the gates:** 24 lines are 19 proposals (5 repeats); 11
+survive the vocabulary (8 minted, every country suggestion was in it); 11
+survive the no-op gate; **3 survive the evidence gate**: UBS 70199 country
+"Multiple countries" -> "Switzerland" (cites the Credit Suisse merger), Grupo
+Volkswagen 176988 country "Germany" -> "Multiple countries" and industry
+"Automotive" -> "Manufacturing" (both cite the Spanish excerpt). The evidence
+gate alone, on the 19, drops 14. All three survivors are above the bound and
+would still be HELD; the mail would say 3, and name each row once.
+
+**Substance, for the owner (not applied, and nothing here should be):** GM
+113529 "Manufacturing" -> "Automotive" was right in substance and is the one
+casualty of the evidence gate (its reason quoted only ERM boilerplate); it
+returns the day the model gives a reason. VW 176988 "Automotive" ->
+"Manufacturing" is wrong. VW 176988 "Germany" -> "Multiple countries" is
+plausible from the Spanish source ("el automóvil alemán", the German car
+industry, not one company) and is worth a read of the source. UBS 70199
+"Multiple countries" -> "Switzerland" is the nationality bait: the row's own
+excerpt says the cuts span the merged bank, and 70739 in the same corpus says
+"in Switzerland and abroad"; leave it. Every other suggestion was a minted
+label or a restatement of the row.
+
+**Proved by mutation** (each guard broken in turn, the named tests red,
+restored byte-identical): the vocabulary gate returning its input unchanged
+(9 tests red), the repeat gate returning no repeats (6), the evidence gate
+always finding a word (8), and confirmation by id alone (2).
+
+**Not changed, on purpose:** `AUTO_APPLY_MAX_JOBS`, `GUARDED_COUNTRY_LABELS`,
+`guard_edits`, the sample, the model, the panel. No plugin surface moved, so no
+version bump.
+
 ## 2026-09-02 - reviewed outlet candidates for Spain, France and Turkey (2.20.159, branch, awaiting owner approval)
 
 **The measurement this answers.** The worldwide-coverage audit below found the
