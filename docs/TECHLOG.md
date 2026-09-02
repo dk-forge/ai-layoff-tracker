@@ -1,6 +1,12 @@
 # Tech Log
 
-## 2026-09-02 - the GDELT article fetch never asked robots.txt and called itself Chrome (2.20.160, branch, not merged)
+## 2026-09-02 - the GDELT article fetch never asked robots.txt and called itself Chrome (2.20.160)
+
+**Class:** absent-read-as-ok - no robots.txt was ever consulted on this path, and
+the absence of an answer was treated as permission; three sibling paths and a
+"robots-checked" comment made the gap invisible.
+**Guard:** railway/tests/test_robots_gate.py (27 tests, mutation-proved: seven
+fail with the verdict check deleted, one with the browser string restored).
 
 **The defect.** `sources.gdelt._fetch_article` read the BODY of every
 allowlisted GDELT hit with a bare `requests.get`, `User-Agent` set to
@@ -104,7 +110,7 @@ robots.txt is checked under our own named agent before any article is read,
 that a refusal is honoured and counted, and that an unreadable robots.txt is
 treated as a refusal. No cadence typed, no em-dash. Version 2.20.160.
 
-## 2026-09-02 - the classification spot-check proposed labels that do not exist (no version, branch)
+## 2026-09-02 - the classification spot-check proposed labels that do not exist (no version)
 
 **Class:** wrong-scope-or-key (a flag list with no key, a confirmation keyed on id alone; the minted labels and the empty reasons are gates that did not exist). No data written. **Guard:**
 `tests/test_spotcheck_suggestion_filters.py`.
