@@ -59,12 +59,62 @@ def _feeds():
     for index, feed in enumerate(_registry_feeds() + env_feeds, start=1):
         if not isinstance(feed, dict):
             raise RuntimeError(f"Reviewed feed entry {index} must be an object")
+        if _validate_retirement(feed, index):
+            continue
         validated = _validate_feed(feed, index)
         if validated["url"] in seen_urls:
             continue  # env override duplicating a registry entry
         seen_urls.add(validated["url"])
         accepted.append(validated)
     return accepted
+
+
+def _validate_retirement(feed, index=1):
+    """True when this entry is a RETIRED feed, kept as the record of a loss.
+
+    A publisher can stop publishing. Intel's newsroom answers 200 with HTML on
+    every feed path and declares no feed anywhere in the page; Micron's IR host
+    went behind a bot challenge that returns 403 to any non-browser client, and
+    working around that is not something this collector will ever do. Deleting
+    the entry would make the collector green by making the coverage loss
+    invisible, which is the failure this registry exists to prevent, so a dead
+    feed is RETIRED IN PLACE: skipped when collecting, still carried in the
+    file, still counted on the health note.
+
+    Retirement is a human admission decision in a reviewed commit, exactly like
+    admission was, so it must carry a reason and a date. It is deliberately NOT
+    a switch a healer can reach for: a feed that still answers must never be
+    retired to quiet a note about it.
+    """
+    retired_at = str(feed.get("retired_at", "")).strip()
+    reason = str(feed.get("retired_reason", "")).strip()
+    if not retired_at and not reason:
+        return False
+    if not retired_at or not reason:
+        raise RuntimeError(
+            f"Reviewed feed entry {index} is half-retired; a retirement needs "
+            f"BOTH retired_at and retired_reason"
+        )
+    try:
+        when = datetime.strptime(retired_at, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise RuntimeError(
+            f"Reviewed feed entry {index} retired_at must be YYYY-MM-DD"
+        ) from exc
+    if when > datetime.now(timezone.utc).date():
+        raise RuntimeError(
+            f"Reviewed feed entry {index} retired_at cannot be in the future"
+        )
+    return True
+
+
+def retired_feeds():
+    """Reviewed feeds that have been retired, so a loss can still be reported."""
+    out = []
+    for index, feed in enumerate(_registry_feeds(), start=1):
+        if isinstance(feed, dict) and _validate_retirement(feed, index):
+            out.append(feed)
+    return out
 
 
 def _validate_feed(feed, index=1):

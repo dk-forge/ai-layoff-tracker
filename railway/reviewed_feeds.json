@@ -10,7 +10,9 @@
       "reviewed_at": "2026-07-18",
       "country": "United States",
       "employer_country": "United States",
-      "ticker": "INTC"
+      "ticker": "INTC",
+      "retired_at": "2026-09-02",
+      "retired_reason": "Intel retired its newsroom RSS. /feed, /feed/, /rss.xml and /feeds/all.rss all answer HTTP 200 with the same 538KB HTML landing page, and that page declares no RSS or Atom link anywhere. There is no feed to re-point to."
     },
     {
       "name": "SAP News Center",
@@ -54,7 +56,9 @@
       "reviewed_at": "2026-07-18",
       "country": "United States",
       "employer_country": "United States",
-      "ticker": "MU"
+      "ticker": "MU",
+      "retired_at": "2026-09-02",
+      "retired_reason": "investors.micron.com moved behind a Cloudflare bot challenge: every candidate feed path answers 403 \"Just a moment\" to a non-browser client. Getting past that is bot-detection evasion, which this collector will not do. Unreachable, not moved."
     }
   ]
 }

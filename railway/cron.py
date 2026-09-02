@@ -15,7 +15,11 @@ from sources.google_news import pull_google_news
 from sources.local_news import pull_local_news
 from sources.regional_feeds import pull_regional_feeds
 from sources.national_feeds import pull_national_feeds
-from sources.press_releases import pull_press_releases, reviewed_feed_count
+from sources.press_releases import (
+    pull_press_releases,
+    retired_feeds as retired_press_feeds,
+    reviewed_feed_count,
+)
 from sources.warn_mn_letters import pull_mn_warn_letters
 import extractor
 import gdelt_reach
@@ -351,9 +355,20 @@ def run():
                         + "; ".join(broken)[:300],
                     )
                 elif configured:
+                    # A RETIRED FEED IS A COVERAGE LOSS AND STAYS ON THE NOTE.
+                    # Retiring Intel and Micron on 2026-09-02 took this
+                    # collector from 3/5-answering to a clean 3, and a clean 3
+                    # with nothing else said would read as though it had always
+                    # been 3. Name what we no longer read, every run.
+                    retired = retired_press_feeds()
+                    suffix = (
+                        f"; {len(retired)} retired (no longer published): "
+                        + ", ".join(f["name"] for f in retired)
+                    ) if retired else ""
                     report_source_health(
                         source, "ok", len(pulled),
-                        f"{configured} reviewed company-owned/exchange feed(s) configured",
+                        f"{configured} reviewed company-owned/exchange feed(s) "
+                        f"configured{suffix}"[:300],
                     )
                 else:
                     # This is a visible coverage limitation, not an empty
