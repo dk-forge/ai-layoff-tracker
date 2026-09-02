@@ -292,6 +292,76 @@ test.
 the approval. Then read one post-merge gdelt run's `not_allowlisted` domains
 for es/fr/tr and compare against the 32.
 
+## 2026-09-02 - the blank-country rows, sorted by cause, and the one tool that would have placed a German bank in New York (no version)
+
+**Class:** absent-read-as-ok - a null `isForeignLocation` and an empty state of
+incorporation on the EDGAR record were read as "domestic" rather than "never
+said", so a foreign private issuer's US agent address resolved to its seat.
+No data written; the dry run caught it.
+**Guard:** railway/tests/test_edgar_domicile_inference.py (Deutsche Bank's
+record pinned verbatim: None with the guard, United States without it; BILL
+Holdings still resolves) and railway/tests/test_blank_country_census.py.
+
+**The brief.** 93 news rows carry no job-location country. A row with no
+country is invisible to every country and region filter, and the unplaced
+rows skew non-US, so the blank bucket makes coverage read more US-centric
+than it is. Find out why each is blank, place what a signal already in hand
+can place deterministically, guess nothing, and price the rest.
+
+**Measured live, 2026-09-02** (`railway/blank_country_census.py`, read-only,
+no key, no model; the whole population is 100 rows, 93 news and 7 SEC):
+
+| cause | rows | what moves it |
+|---|---|---|
+| (b) deterministic: a US state code, or a WARN / federal notice from a US government host | **0** | Legacy row repair `--only country` (nothing to do) |
+| filing: an 8-K/6-K whose excerpt does not say where the cuts were | 7 | Employer domicile backfill writes `employer_country` only; the filing venue is not the job location |
+| (c) news with a fetchable body | 32 | Blank-country source re-read, one metered evidence-quoted read each, about $0.01 for all 32 at the live per-row rates |
+| (a) news whose stored URL is a dead `news.google.com` redirect | 61 | nothing; no spend moves this, and Wayback never held an RSS redirect |
+
+Of the 100, 15 already carry an `employer_country` and are reachable under
+`country_basis=any`, the front-end default; **85 are reachable by no country
+filter at all.** The Google News edition, the publisher's ccTLD and a country
+named in the excerpt were each measured and each refused as a placement: six
+excerpts name exactly one country, and five of the six name the OUTLET (Times
+of Suriname on an Amazon cut, Business News Nigeria, Euronews Albania,
+Business Insider Japan on Starbucks). The sixth is "Radio-Canada". The
+extractor was told to return null when the source does not state where, the
+excerpts confirm it obeyed, and the blank is the rule working. So the
+deterministic placement count for job-location country is zero, and that is
+the honest number, not a shortfall.
+
+**The defect the measurement found instead.** The dry run of
+`employer_domicile_backfill.py`, the tool that makes the 7 filings findable,
+proposed `employer_country = United States` for row 178900, **Deutsche Bank
+AG**, a 6-K about cuts at a German bank. `edgar_domicile()` reads the filer's
+EDGAR business address, and Deutsche Bank's is 1 Columbus Circle, New York:
+its US legal department, the address a foreign private issuer gives for
+service, under a plain NY state code with `isForeignLocation` null and no
+state of incorporation on the record at all. The address block cannot tell
+an agent from a seat. What the same record states unambiguously is 22 Forms
+6-K and two 20-Fs and not one 10-K or 10-Q, which is what a foreign private
+issuer files and what a domestic registrant never does. `foreign_private_issuer()`
+now reads the filing history, and a US address on a foreign issuer's record
+returns None: the row keeps its blank rather than acquiring the one country
+the filer demonstrably is not seated in. BILL Holdings, which carries the same
+empty incorporation field and files 10-Ks, still resolves to the United
+States: the discriminator is the forms, never the emptiness of a field, and a
+record with no filing history is UNKNOWN rather than foreign.
+`tests/test_edgar_domicile_inference.py` pins Deutsche Bank's record verbatim;
+with the guard removed it resolves to `('United States', 'principal business
+address', 'NY')`, with it to None. This is the same class the tool's own
+docstring warns about (Klarna, ING, Vasta, Brightstar, SLB on 2026-08-18) one
+layer deeper: those were caught by the address block, this one is inside it.
+
+**What was deliberately NOT done.** No row was written. No model was called
+($0.00). Nothing was placed from an edition, a ccTLD, an outlet name or an
+excerpt. No threshold moved. The Sources page and `health.js` are untouched
+because no source or metric changed. The three dispatches are the owner's:
+the domicile backfill (now safe for row 178900; 7 filings become findable),
+the source re-read on the 32 readable rows (dry run first, then name the ids,
+per the workflow's own rule after the Zepz and Cineverse writes of
+2026-08-19), and nothing at all for the 61 dead redirects.
+
 ## 2026-09-02 - worldwide coverage audit: the news net asked its non-English half in English (2.20.158)
 
 **The question.** Is this a worldwide tracker, or a US/English tracker with
