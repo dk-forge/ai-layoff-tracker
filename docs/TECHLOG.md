@@ -1,13 +1,13 @@
 # Tech Log
 
-## 2026-09-02 - two collectors were failing in the two ways this repo keeps finding (no version)
+## 2026-09-02 - a dead feed cannot be deleted, only retired (no version)
 
-**What.** `ops_status` reported four ACTION items. Two were real defects, and
-each was a shape already named in CLAUDE.md, arriving somewhere new.
+**What.** `ops_status` reported four ACTION items. Two were real defects, each
+a shape already named in CLAUDE.md, arriving somewhere new. This entry is the
+first: press_releases.
 
-**press_releases: a dead feed cannot be deleted, only retired.** 2 of the 5
-reviewed feeds stopped being feeds. Intel's newsroom answers HTTP 200 with the
-same 538KB HTML landing page on `/feed`, `/feed/`, `/rss.xml` and
+2 of the 5 reviewed feeds stopped being feeds. Intel's newsroom answers HTTP
+200 with the same 538KB HTML landing page on `/feed`, `/feed/`, `/rss.xml` and
 `/feeds/all.rss`, and that page declares no RSS or Atom link anywhere; Intel
 retired the feed. Micron's IR host moved behind a Cloudflare bot challenge that
 answers 403 "Just a moment" to every candidate path from a non-browser client -
@@ -23,7 +23,16 @@ on the health note every run. Retirement costs a reason and a date, and a
 half-retirement raises, which is what stops it becoming a switch for quieting a
 feed that still answers.
 
-**gdelt: the deadline existed and the daily collector never passed it.**
+**Class:** absent-read-as-ok - the cheap fix would have let a dead feed's
+absence from real collection read as "3 configured, no problem" instead of
+"never looked at again".
+**Guard:** railway/tests/test_press_feed_retirement.py
+
+## 2026-09-02 - the deadline existed and the daily gdelt collector never passed it (no version)
+
+**What.** The second of the two real ACTION items from the same `ops_status`
+run (see the press_releases entry above for the first).
+
 `pull_gdelt_between` grew a `deadline` for one specific death (run
 33094996142, 2026-08-27: the broad slot cleared in seconds, then ten rotating
 sweeps hit the throttled public API one after another, each patient with its
@@ -60,11 +69,11 @@ abandoned windows against a worst case where one pathological window eats
 and the next several surviving runs are the ones that can make it. Do not raise
 the default without reading them.
 
-**Class:** both recurrences. "Configured is not collected" (the feed registry
-counting entries rather than answers) and "configured but off" (a safety net
-built, tested, and wired into one caller of two). The second is the more
-expensive of the two, because the parameter existing makes the call site look
-finished.
+**Class:** two-copies-drifted - the deadline guard exists in `pull_gdelt_between`
+and was wired into `gdelt_backfill.py`'s call, but `cron.py`'s call - the one
+that actually feeds the tracker - was never updated to pass it, so the two call
+sites diverged and the unguarded one is the one that runs daily.
+**Guard:** railway/tests/test_gdelt_run_budget.py::test_cron_passes_a_deadline_to_pull_gdelt_between
 
 
 ## 2026-08-30 - the ai_all_time incident is traced to the row and closed (no version)
