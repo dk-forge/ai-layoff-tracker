@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:main:3dd1be8cbb76cb84": {
-      "first": 1788337149,
-      "last": 1788337149,
-      "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: ['2026-09-02 - two collectors were failing in the two ways this repo keep'] != []"
-    }
-  },
-  "updated_at": "2026-09-02T08:19:10+00:00",
+  "open": {},
+  "updated_at": "2026-09-02T08:40:18+00:00",
   "version": 1
 }
