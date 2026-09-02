@@ -50,6 +50,9 @@ RINGS = (
     ("sources/gdelt.py", "SEGMENT_TERMS", "SEGMENT_QUERIES_PER_RUN"),
     ("sources/gdelt.py", "NATIVE_TERMS", "NATIVE_QUERIES_PER_RUN"),
     ("sources/gdelt.py", "EUPHEMISM_TERMS", "EUPHEMISM_QUERIES_PER_RUN"),
+    # The euro sweep was a fifth ring that rotated on `tm_yday % 4`, outside
+    # this table and outside the guard below, until 2026-09-02.
+    ("sources/gdelt.py", "EURO_TERMS", "EURO_QUERIES_PER_RUN"),
     ("sources/google_news.py", "GOOGLE_NEWS_LOCALES", "LOCALES_PER_RUN"),
     ("sources/newsapi.py", "SEGMENT_TERMS", "SEGMENT_QUERIES_PER_RUN"),
 )
@@ -196,7 +199,11 @@ class RotationCoversRing(unittest.TestCase):
     def test_no_collector_hand_rolls_a_run_counter(self):
         """The arithmetic lives in one file, or it drifts back."""
         offenders = []
-        pattern = re.compile(r"tm_yday\s*\*\s*\d|hour\s*<\s*17|hour\s*//\s*12")
+        # `tm_yday % N` is the same defect as `tm_yday * N`: a slice index
+        # derived from the calendar rather than from the run counter. The euro
+        # sweep in sources/gdelt.py carried exactly that until 2026-09-02, and
+        # the first version of this pattern walked past it.
+        pattern = re.compile(r"tm_yday\s*[*%]\s*[\dl(]|hour\s*<\s*17|hour\s*//\s*12")
         for root, _dirs, files in os.walk(RAILWAY):
             if "__pycache__" in root or f"{os.sep}tests" in root:
                 continue

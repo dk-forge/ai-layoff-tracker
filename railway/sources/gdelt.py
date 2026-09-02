@@ -1247,6 +1247,22 @@ EUPHEMISM_TERMS = (
 )
 NATIVE_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_NATIVE_QUERIES", "2"))))
 EUPHEMISM_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_EUPHEMISM_QUERIES", "2"))))
+# Standalone EUROPEAN-LANGUAGE sweep: works-council-driven cuts (a Spanish ERE,
+# German Stellenabbau, French plan social) surface in national business press
+# before/without English coverage, and European HQs never file an SEC 8-K.
+# One language per run. This ring picked its slice with `tm_yday % 4` until
+# 2026-09-02 -- a hand-rolled run counter the ring guard did not catch because
+# its pattern looked for `tm_yday * N`. At one run a day it happened to step by
+# one; at any other cadence it would repeat or skip. It is a ring like the
+# other three now: `run_slice.rotate`, read by tests/test_rotation_covers_ring.
+# Toggle: GDELT_EURO_SWEEP=0 (kept) or GDELT_EURO_QUERIES=0.
+EURO_TERMS = (
+    '"Stellenabbau" OR "Entlassungen" OR "Arbeitsplätze streichen"',
+    '"plan social" OR "licenciements" OR "suppressions de postes"',
+    '"expediente de regulación de empleo" OR "despidos colectivos"',
+    '"licenziamenti" OR "esuberi"',
+)
+EURO_QUERIES_PER_RUN = max(0, min(4, int(os.environ.get("GDELT_EURO_QUERIES", "1"))))
 
 
 def _segment_queries_for_now():
@@ -1369,7 +1385,14 @@ def _collect_mirror(start, end):
     "complete" unless the walk hit its page ceiling (then "partial").
     """
     from source_registry import discovery_terms as _terms
-    arts, complete = gdelt_bq.query_window_walk(start, end, _terms())
+    from sources.native_layoff_terms import mirror_title_terms
+    # The mirror matches ORIGINAL-language page titles, and until 2026-09-02 the
+    # regex held only the English vocabulary: a "Stellenabbau" headline reached
+    # the pipeline only if GDELT's theme tagger had also filed it under
+    # UNEMPLOYMENT. The native phrases ride the same scan (the regex grows, the
+    # partition filter does not), so this costs bytes nothing and candidates
+    # something -- which the allowlist and the gate then judge as usual.
+    arts, complete = gdelt_bq.query_window_walk(start, end, _terms() + mirror_title_terms())
     # SAY whether coverage was lost; do not let note_query infer it. The walk
     # already knows -- `complete` is false only when it hit MAX_PAGES -- and
     # MIRROR_LIMIT is a PAGE size, so the "returned >= max_records" inference
@@ -1478,19 +1501,11 @@ def _planned_sweeps():
                      "(theme:WB_2806_DISMISSAL_PROCEDURES OR "
                      "theme:WB_2790_LABOR_REDUNDANCY OR "
                      "theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"))
-    # Standalone EUROPEAN-LANGUAGE sweep: works-council-driven cuts (a Spanish
-    # ERE, German Stellenabbau, French plan social) surface in national business
-    # press before/without English coverage, and European HQs never file an SEC
-    # 8-K. One language per run. Toggle: GDELT_EURO_SWEEP=0.
-    if os.environ.get("GDELT_EURO_SWEEP", "1") != "0":
-        euro_queries = (
-            '"Stellenabbau" OR "Entlassungen" OR "Arbeitsplätze streichen"',
-            '"plan social" OR "licenciements" OR "suppressions de postes"',
-            '"expediente de regulación de empleo" OR "despidos colectivos"',
-            '"licenziamenti" OR "esuberi"',
-        )
-        eq = euro_queries[datetime.now(timezone.utc).timetuple().tm_yday % len(euro_queries)]
-        plan.append(("euro", eq))
+    # Standalone EUROPEAN-LANGUAGE sweep (see EURO_TERMS): one language per run,
+    # stepped by run_slice.rotate like every other ring here.
+    if os.environ.get("GDELT_EURO_SWEEP", "1") != "0" and EURO_QUERIES_PER_RUN:
+        for eq in run_slice.rotate(EURO_TERMS, EURO_QUERIES_PER_RUN):
+            plan.append(("euro", eq))
     return plan
 
 
@@ -1635,20 +1650,28 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     # sweeps, all of which are queued, none lost; not tripping costs the whole
     # run, ledger included. The run still reports degraded either way.
     api_down = False
+    out_of_time = False
     for family, query in _planned_sweeps():
         # TWO INDEPENDENT BRAKES, in this order, because they answer different
         # questions and a run can hit either. The WALL CLOCK asks "is there time
-        # left?" and breaks out entirely — a throttled-but-answering API can burn
-        # the whole timeout-minutes budget one slow request at a time (#231). The
-        # OUTAGE BREAKER asks "is the endpoint answering at all?" and queues the
-        # remaining slots so they are retried next run rather than spending
-        # attempts against a dead host. Deadline first: when time is gone there is
-        # no point recording state for slots we will not reach this run.
+        # left?" — a throttled-but-answering API can burn the whole
+        # timeout-minutes budget one slow request at a time (#231). The OUTAGE
+        # BREAKER asks "is the endpoint answering at all?". BOTH queue the
+        # remaining slots. The deadline branch used to `break` with a log line
+        # promising "ledger retries them next run", and nothing had written
+        # them to the ledger: a sweep the clock skipped was simply gone, and
+        # on every daily run from 2026-08-30 to 2026-09-01 that was every sweep
+        # (queries=2: the broad slot and the mirror, no native, euro or theme
+        # query ever issued). Queueing is a ledger write and no request, so it
+        # is affordable exactly when time is not.
         if deadline is not None and time.monotonic() >= deadline:
-            print(f"GDELT sweep collection past its wall-time budget before {family}; "
-                  "remaining sweeps not attempted this run (ledger retries them next run)")
+            if not out_of_time:
+                print(f"GDELT sweep collection past its wall-time budget before {family}; "
+                      "remaining sweeps queued in the ledger for the next run")
+                out_of_time = True
+            done_keys.add(_record_slot(ledger, family, query, start, end, "queued", []))
             incomplete.append(f"{family}:deadline")
-            break
+            continue
         if api_down:
             done_keys.add(_record_slot(ledger, family, query, start, end, "queued", []))
             incomplete.append(f"{family}:queued")

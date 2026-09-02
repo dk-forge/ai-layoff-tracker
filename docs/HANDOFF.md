@@ -6,6 +6,18 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-02): 2.20.158 - worldwide coverage audit; the news
+  net asked its non-English half in English.** The baton was read as FREE by
+  `ops_status [0]` on origin/main. Work done in a separate worktree branch and
+  PUSHED AS A BRANCH, not merged: the owner merges. Plugin files touched:
+  `templates/page-sources.php` (the Google News row stops claiming each
+  market was searched in its own language) and `ai-layoff-tracker.php`
+  (version only). Rest is `railway/sources/native_layoff_terms.py` (new),
+  `sources/google_news.py`, `sources/gdelt.py`,
+  `tests/test_worldwide_vocabulary.py` (new), `tests/test_rotation_covers_ring.py`
+  and TECHLOG. No source id added or removed, so `assets/health.js meta{}` is
+  unchanged. **Re-read main immediately before merging and take the next
+  patch after it if this lost a race.** Full write-up in TECHLOG 2026-09-02.
 - **VERSION CLAIMED (2026-08-29): 2.20.154 - an epithet is not an employer, and
   one country had two labels.** The baton was read as FREE by `ops_status [0]`
   on origin/main and this session took it. Work is the verified half of an

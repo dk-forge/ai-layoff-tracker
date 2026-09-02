@@ -164,6 +164,24 @@ def _locales_for_now():
     return [us] + run_slice.rotate(rest, LOCALES_PER_RUN)
 
 
+def queries_for_edition(locale, english_queries):
+    """The discovery queries to put to ONE edition, in that edition's language.
+
+    `locale` is a GOOGLE_NEWS_LOCALES row (code, hl, gl, ceid). An English
+    edition (`hl` en-*) gets the English vocabulary handed in; every other
+    edition gets `sources.native_layoff_terms.google_news_queries(hl)`, and an
+    edition whose language has no vocabulary there gets NOTHING -- an empty
+    list, so the caller issues no request. Asking it in English was measured
+    to return the worldwide English feed (sources/local_news.py, 2026-08-13):
+    a paid re-read of the US pull, not that country's news.
+    """
+    from sources import native_layoff_terms as _native
+    hl = locale[1] if len(locale) > 1 else ""
+    if _native.is_english_hl(hl):
+        return list(english_queries)
+    return list(_native.google_news_queries(hl))
+
+
 def _clean(text):
     """Strip tags/entities, collapse whitespace."""
     text = re.sub(r"<[^>]+>", " ", text or "")
@@ -260,7 +278,12 @@ def pull_google_news(queries=None, company_names=None):
             qs.insert(0, f'"{c}" (layoffs OR "job cuts" OR "lays off" OR restructuring)')
 
     # Each query runs against the US edition plus a rotating slice of national
-    # editions, so the same vocabulary surfaces LOCAL outlets in local languages.
+    # editions. An edition is asked IN ITS OWN LANGUAGE: the English vocabulary
+    # on a non-English edition was measured (sources/local_news.py, 2026-08-13)
+    # to return the worldwide English feed, i.e. paid duplicates of the US
+    # pull, and until 2026-09-02 that is what 34 of the 45 editions got. The
+    # per-language sets live in sources/native_layoff_terms; an edition whose
+    # language has no set there is SKIPPED, never asked in English.
     # Company-targeted queries (inserted at the front) stay US-only: a chase is
     # for one named employer, and fanning it across editions would spend the cap
     # on duplicates of the same story.
@@ -273,7 +296,7 @@ def pull_google_news(queries=None, company_names=None):
     # for the new bankruptcy tag) executed zero times on every run.
     jobs = [(qs[i], locales[0]) for i in range(n_company)]
     for loc in locales:
-        for q in qs[n_company:]:
+        for q in queries_for_edition(loc, qs[n_company:]):
             jobs.append((q, loc))
 
     results, seen = [], set()

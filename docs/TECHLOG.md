@@ -1,5 +1,149 @@
 # Tech Log
 
+## 2026-09-02 - worldwide coverage audit: the news net asked its non-English half in English (2.20.158)
+
+**The question.** Is this a worldwide tracker, or a US/English tracker with
+worldwide branding? Answered by measurement from a worktree with no keys: the
+public `/query`, `/aggregate` and `/source-runs`, the committed ledgers, and
+the collectors' own source. No paid call, no dormant source armed, no refused
+host touched (one control request to the GDELT DOC API, which timed out; the
+production broad query was connection-reset in 0.3s, so that endpoint is dark
+from here as it is from Railway).
+
+**What the tracker actually holds (2026-09-02).** 65,389 entries. By source:
+WARN ~42,700 (US only), ERM 19,477 (30 European countries, Eurofound's
+structured monitor), 8-K ~1,900 (US), news 1,141. The news path is the ONLY
+path that can reach a country outside the US and the EU/EEA/UK, and it holds
+1,141 rows: 474 United States (41.5%), 131 Multiple countries, 93 with NO
+country at all, then United Kingdom 86, India 78, Australia 50, Canada 42,
+Germany 27, Ireland 16, Brazil 13, Singapore 11. Every non-US country with more
+than a handful of news rows is anglophone. 53 rows (4.6%) cite an outlet that
+is likely non-English; 202 rows cite a `news.google.com` redirector and hide
+their outlet entirely, and by `source_name` roughly 20 of those are
+non-English, so the honest figure is 5-7%. Asia outside India, Africa, Latin
+America and the Middle East are single digits each. **The coverage is
+narrower than the branding: worldwide in vocabulary, US-and-anglophone in
+rows, with Europe carried by ERM rather than by our own discovery.** The
+methodology page already says this plainly (`#m-coverage`); the Sources page
+did not, and now does.
+
+**The five leads, verified or killed.**
+
+1. *TRUSTED_DOMAINS skew.* 706 domains (718 literals with duplicates),
+   182 countries by the generator's own attribution, 461 on a generic TLD.
+   The largest bucket, "Global & multi-region English press" (164), is about
+   122 US outlets plus UK/CA/IN/AU. Roughly 148 domains are US (21%), and by a
+   country-plus-comment heuristic about 448 (63%) are English-language outlets
+   and at most 258 (37%) non-English. That is a skew, not a wall: the
+   allowlist's SHAPE is not the reason non-English rows are rare (see 4).
+2. *Language vocabulary and rotation.* Native terms existed in THREE places
+   and reached production through NONE of them on the path that runs.
+   `gdelt.NATIVE_TERMS` (14, precision-selected) and the euro sweep go through
+   the public DOC API, which abandoned the broad window on 100% of measured
+   runs since 2026-08-19; the BigQuery mirror that actually answers matched
+   ORIGINAL-language page titles against the ENGLISH `discovery_terms()` only.
+   `google_news.DISCOVERY_QUERIES` are five English strings put to 45 editions,
+   34 of them non-English, although `sources/local_news.py` measured on
+   2026-08-13 that an English query on `hl=de&gl=CH` returns the worldwide
+   English feed. Only `local_news` (25 markets) asked in the right language,
+   and it shares almost no market with the 45 editions. The euro sweep also
+   rotated on `tm_yday % 4` -- a hand-rolled run counter the ring guard's
+   `tm_yday * N` pattern walked past; at one run a day it happened to step by
+   one. `discovery_terms()` sits at exactly its 48-term ceiling with the two
+   Spanish and two Portuguese market terms last in line: the next English term
+   added silently drops "despidos".
+3. *Per-country disclosure backlog.* 16 countries, each with a dated,
+   sourced note. Read all sixteen: none hides a reachable countable register.
+   Thirteen are "statute verified, publication unknown" (China's ministry is
+   behind an anti-bot challenge and was never attempted; India is a
+   permission regime; Czechia's leads are regional PDFs whose diacritics a
+   hand extraction drops), three lean NO_REGIME on secondary evidence and are
+   deliberately unrecorded until a primary text is read. Left as is: closing
+   any of them from here would be classification by recollection, the exact
+   thing `country_coverage.py` forbids.
+4. *The gate drop rate.* The 94% is two different gates and neither is a
+   language filter. Last run: 7,219 returned, 667 kept, 6,552 dropped, of
+   which **6,510 were `not_allowlisted`** (99.4% of drops); fetch failures 40.
+   Then, of the 660 allowlisted candidates the run extracted, the paid
+   headline gate said NO to 613 and 7 rows were stored, against 117 of 130 for
+   Google News. So the mirror's `V2Themes LIKE '%UNEMPLOYMENT%'` clause pulls
+   broad unemployment coverage that is mostly not a layoff event, and the
+   allowlist drops nine in ten of what came back. Per country the allowlist
+   keeps de 79/867, it 19/410, es 2/244, fr 0/39, tr 0/50, uk 5/91, and the
+   generic-TLD bucket 392/3,679: Spain, France and Turkey are dropped almost
+   entirely, Germany at the average. WHICH domains are dropped is nameless by
+   construction in the public telemetry and is NOT MEASURABLE from a
+   keyless environment; it lives in the Railway run log only.
+5. *Per-employer registers.* The four are as recorded (US state WARN, Quebec,
+   Mazowieckie, Illes Balears) with `PER_EMPLOYER_SWEPT` naming what was
+   walked. Nothing reachable was found missed; the one open lead the file
+   itself names (Italian provinces below Lombardia) stays a lead.
+
+**And a sixth, found on the way: every rotating sweep was skipped and lost.**
+`ops_status [2d]` reads `queries=2 answered=1 abandoned=1` on every daily run
+from 2026-08-30 to 2026-09-01: the public broad window abandoned, the mirror
+answered, and NOT ONE native, euro, euphemism, segment or theme query was
+issued. The 900s deadline that saved the run from dying (TECHLOG 2026-09-02,
+first entry) is consumed by the broad attempt plus the mirror walk, the
+deadline branch then `break`s with a log line promising "ledger retries them
+next run", and nothing wrote them to the ledger. Deferred in the log,
+gone in fact.
+
+**Fixes (this branch, offline-tested, every guard mutation-proved).**
+- `railway/sources/native_layoff_terms.py` (new): ONE table of layoff
+  vocabulary per language, with provenance per language. de/fr/es/it/nl/pl/
+  sv/pt/zh from gdelt's precision-selected ring, ar/fr/es/pt/ru/tr from
+  `local_news_markets`, ja/ko from `layoff_language` strong tiers, and
+  da/no/fi/cs/ro/hu/th/vi NEW and labelled as not precision-sampled.
+- `sources/google_news.py`: `queries_for_edition()` puts each edition's OWN
+  language to it; an English edition keeps `DISCOVERY_QUERIES`; a language
+  with no vocabulary is SKIPPED, never asked in English. Budget-neutral:
+  `MAX_ITEMS` still caps the run.
+- `sources/gdelt.py`: the mirror's title regex now carries the native
+  phrases (same scan, same bytes); the euro sweep is `EURO_TERMS` +
+  `EURO_QUERIES_PER_RUN` stepped by `run_slice.rotate` and listed in the ring
+  test; a sweep the deadline skips is recorded `queued` (0 attempts) exactly
+  like one the outage breaker skips.
+- `tests/test_worldwide_vocabulary.py` (new) and the ring guard widened to
+  `tm_yday % N`. Mutations: native phrases dropped from the mirror call;
+  deadline branch back to `break`; euro back to `tm_yday % 4`; euro ring
+  shipped disabled; Google News back to English everywhere; a language
+  removed from the table; a gdelt native term removed from the table. Seven
+  mutations, seven failures, all restored.
+- Sources page: the Google News row no longer claims each market was
+  searched in its own language; it says which 11 were and that the other 34
+  are now. Version 2.20.158.
+
+**Not fixed, and why.**
+- The public GDELT DOC API is dark from Railway and from here. Nothing in
+  this repo can fix that; the sweeps will queue until it answers. What was
+  fixed is that they now queue instead of vanish, and that the mirror carries
+  the native vocabulary meanwhile.
+- The daily run's 900s budget cannot hold a broad attempt, a mirror walk and
+  a dead-API sweep. Preferring the mirror for the broad slot (as the backfill
+  already does with `GDELT_PREFER_BQ=1`) would give the sweeps their time
+  back, but that is a Railway environment change and a BigQuery quota call,
+  which is the owner's.
+- Which non-allowlisted domains carry the dropped German, Spanish and
+  French candidates is only in the Railway run log. That reading is the next
+  step for the allowlist, and it needs the log, not a guess.
+- 93 news rows carry no country. They are invisible to every per-country
+  figure above. A separate defect, noted here, not touched.
+
+**Needs the owner.** (1) Decide `GDELT_PREFER_BQ=1` on the Railway cron, or a
+larger `GDELT_RUN_BUDGET_SECONDS`, after reading a few post-merge runs of
+`[2d]`. (2) Read one Railway gdelt run log for the `not_allowlisted` domains
+per country before adding any outlet. (3) Watch `spend_jobs.json` per-source
+rows for `google_news` for a month: the new-language terms are discovery
+terms that the gate and extractor judge, and that ledger is what prunes a
+noisy one.
+
+**Class:** ran-but-brought-nothing, three times: a vocabulary that existed
+and was never issued on the path that runs, an edition that was read and
+returned the wrong feed, and a sweep that was deferred in the log and lost in
+fact. **Guard:** `tests/test_worldwide_vocabulary.py`, plus the widened
+`test_no_collector_hand_rolls_a_run_counter`.
+
 ## 2026-09-02 - two collectors were failing in the two ways this repo keeps finding (no version)
 
 **What.** `ops_status` reported four ACTION items. Two were real defects, and
