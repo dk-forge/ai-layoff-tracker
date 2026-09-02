@@ -655,6 +655,49 @@ TRUSTED_DOMAINS = {
     "westfaironline.com",                                     # Westchester/Fairfield business
     "kvrr.com", "wwnytv.com",                                 # Fargo / Watertown TV news
     "recorder.com",                                           # Greenfield Recorder (MA)
+    # --- 2026-09-02 reviewed outlets: BEGIN
+    # The worldwide-coverage audit (TECHLOG 2026-09-02) measured the allowlist
+    # keeping 2 of 244 Spanish candidates, 0 of 39 French and 0 of 50 Turkish
+    # after the native-vocabulary fix landed, so those three are allowlist
+    # failures, not language failures. Every domain between BEGIN and END is a
+    # REVIEWED claim in railway/reviewed_outlets.json (outlet, language,
+    # standing, caveat, date) and tests/test_reviewed_outlets.py fails on a
+    # domain here that the registry does not argue for, on a registry entry
+    # the allowlist does not carry, and on any allowlist domain that matches a
+    # host in country_coverage.REFUSAL_LEDGER. Additive only.
+    "efe.com",                   # Spain - Agencia EFE (state news agency, the wire)
+    "europapress.es",            # Spain - Europa Press (largest private agency)
+    "rtve.es",                   # Spain - RTVE (public broadcaster)
+    "abc.es",                    # Spain - ABC (national daily of record)
+    "larazon.es",                # Spain - La Razon (national daily)
+    "elconfidencial.com",        # Spain - El Confidencial (digital daily, companies desk)
+    "elespanol.com",             # Spain - El Espanol (digital daily; Invertia rides the suffix)
+    "eldiario.es",               # Spain - elDiario.es (digital daily, labour desk)
+    "elperiodico.com",           # Spain - El Periodico de Catalunya (Barcelona)
+    "lavozdegalicia.es",         # Spain - La Voz de Galicia (largest regional daily)
+    "elcorreo.com",              # Spain - El Correo (Basque industrial belt)
+    "francetvinfo.fr",           # France - franceinfo (public broadcaster)
+    "bfmtv.com",                 # France - BFM TV / BFM Business
+    "ouest-france.fr",           # France - Ouest-France (largest-circulation daily)
+    "leparisien.fr",             # France - Le Parisien / Aujourd'hui en France
+    "la-croix.com",              # France - La Croix (national daily)
+    "lepoint.fr",                # France - Le Point (carries the AFP economy wire)
+    "challenges.fr",             # France - Challenges (business weekly)
+    "capital.fr",                # France - Capital (business magazine)
+    "usinenouvelle.com",         # France - L'Usine Nouvelle (industrial trade press, plant-level PSEs)
+    "rfi.fr",                    # France - RFI (public international broadcaster)
+    "lavoixdunord.fr",           # France - La Voix du Nord (Hauts-de-France industry)
+    "aa.com.tr",                 # Turkey - Anadolu Ajansi (state news agency, the wire)
+    "trthaber.com",              # Turkey - TRT Haber (public broadcaster)
+    "bloomberght.com",           # Turkey - Bloomberg HT (business broadcaster)
+    "ekonomim.com",              # Turkey - Dunya / Ekonomim (business daily; dunya.com is its old host)
+    "hurriyet.com.tr",           # Turkey - Hurriyet (largest daily; Turkish edition)
+    "haberturk.com",             # Turkey - Haberturk (news channel, economy desk)
+    "sozcu.com.tr",              # Turkey - Sozcu (largest opposition daily)
+    "t24.com.tr",                # Turkey - T24 (independent digital daily)
+    "evrensel.net",              # Turkey - Evrensel (labour daily; union-aligned)
+    "dha.com.tr",                # Turkey - DHA (largest private domestic agency)
+    # --- 2026-09-02 reviewed outlets: END
 }
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "

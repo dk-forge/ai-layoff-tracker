@@ -1,0 +1,274 @@
+{
+  "_comment": "Versioned registry of REVIEWED additions to the GDELT news allowlist (sources/gdelt.py TRUSTED_DOMAINS). It mirrors the admission discipline of reviewed_feeds.json: an entry is a reviewed claim with a standing, a reviewer and a date, never a scraped guess. A domain being public is not enough; each entry says WHY the outlet is national press of record, a wire, a public broadcaster, the business press, or the regional daily of an industrial region where collective dismissals are reported first. Review evidence, 2026-09-02 (Claude review pass, offline): NO outlet page, robots.txt or feed was fetched, by rule; standing is argued from what each publication is, and every domain was checked against the refusal ledger in railway/country_coverage.py (REFUSAL_LEDGER), which tests/test_reviewed_outlets.py re-checks on every run. Merging the change that adds a domain here is the owner's approval of that claim. Additive only: existing allowlist entries are never removed or reordered from here.",
+  "reviewed_at": "2026-09-02",
+  "reviewer": "Claude review pass, offline, no fetch",
+  "admitted_in": "2.20.159",
+  "outlets": [
+    {
+      "domain": "efe.com",
+      "outlet": "Agencia EFE",
+      "country": "Spain",
+      "language": "es",
+      "kind": "wire service",
+      "standing": "Spain's state-owned national news agency, founded 1939, and the largest Spanish-language wire. Its economy desk files every ERE (expediente de regulacion de empleo) announcement and the national and regional dailies syndicate it, so admitting the wire admits the report at its origin rather than one outlet's rewrite.",
+      "caveat": "State-owned. The exact host GDELT records for its articles was not checked; efe.com is the agency's own public site."
+    },
+    {
+      "domain": "europapress.es",
+      "outlet": "Europa Press",
+      "country": "Spain",
+      "language": "es",
+      "kind": "wire service",
+      "standing": "The largest private news agency in Spain. Its economy service is the highest-volume reporter of ERE filings and works-council negotiations, and it is syndicated by national and regional titles alike, which is why a Spanish layoff usually appears here first."
+    },
+    {
+      "domain": "rtve.es",
+      "outlet": "RTVE",
+      "country": "Spain",
+      "language": "es",
+      "kind": "public broadcaster",
+      "standing": "The statutory public broadcaster (Corporacion RTVE), with a national news operation whose economy desk reports collective dismissals nationwide."
+    },
+    {
+      "domain": "abc.es",
+      "outlet": "ABC",
+      "country": "Spain",
+      "language": "es",
+      "kind": "national daily",
+      "standing": "National daily of record founded 1903 (Vocento). With El Pais, El Mundo and La Razon it is one of Spain's four national general dailies; the other three were already listed or are added here."
+    },
+    {
+      "domain": "larazon.es",
+      "outlet": "La Razon",
+      "country": "Spain",
+      "language": "es",
+      "kind": "national daily",
+      "standing": "The fourth of Spain's national general dailies (Grupo Planeta), with an economy section that carries ERE and restructuring coverage; listed so the national general press is complete rather than three-quarters present."
+    },
+    {
+      "domain": "elconfidencial.com",
+      "outlet": "El Confidencial",
+      "country": "Spain",
+      "language": "es",
+      "kind": "national digital daily",
+      "standing": "Spain's leading digital-native daily, with a companies desk that regularly breaks restructuring and ERE news before the print titles carry it."
+    },
+    {
+      "domain": "elespanol.com",
+      "outlet": "El Espanol (with Invertia)",
+      "country": "Spain",
+      "language": "es",
+      "kind": "national digital daily",
+      "standing": "Among the largest Spanish news sites by audience. Its business supplement Invertia (invertia.elespanol.com, admitted by this suffix) reports corporate restructuring and listed-company workforce cuts."
+    },
+    {
+      "domain": "eldiario.es",
+      "outlet": "elDiario.es",
+      "country": "Spain",
+      "language": "es",
+      "kind": "national digital daily",
+      "standing": "Major independent digital daily with a dedicated economy and labour desk, among the most-read Spanish news sites.",
+      "caveat": "Editorially left of centre; balances ABC and La Razon. The extractor judges the article text, not the outlet's line."
+    },
+    {
+      "domain": "elperiodico.com",
+      "outlet": "El Periodico de Catalunya",
+      "country": "Spain",
+      "language": "es",
+      "kind": "regional daily",
+      "standing": "Prensa Iberica's flagship daily in Barcelona. Catalonia is Spain's largest industrial region (automotive, chemicals, pharma) and its plant closures and EREs are reported here first."
+    },
+    {
+      "domain": "lavozdegalicia.es",
+      "outlet": "La Voz de Galicia",
+      "country": "Spain",
+      "language": "es",
+      "kind": "regional daily",
+      "standing": "The largest regional daily in Spain by circulation. Galicia's automotive cluster around Vigo and its shipyards are among the country's most ERE-prone employers, and their cuts run here before the Madrid titles."
+    },
+    {
+      "domain": "elcorreo.com",
+      "outlet": "El Correo",
+      "country": "Spain",
+      "language": "es",
+      "kind": "regional daily",
+      "standing": "The Basque Country's leading daily (Vocento, Bilbao). The Basque industrial belt of steel, machine tools and automotive components produces a steady flow of collective-dismissal reporting that is local news first."
+    },
+    {
+      "domain": "francetvinfo.fr",
+      "outlet": "franceinfo",
+      "country": "France",
+      "language": "fr",
+      "kind": "public broadcaster",
+      "standing": "The public broadcaster's news service (France Televisions with Radio France), national news with a full economy desk that reports plans sociaux (PSE) and plant closures.",
+      "caveat": "A migration to franceinfo.fr has been announced by the broadcaster; only the long-standing host is listed, because the new one could not be verified without fetching."
+    },
+    {
+      "domain": "bfmtv.com",
+      "outlet": "BFM TV and BFM Business",
+      "country": "France",
+      "language": "fr",
+      "kind": "national broadcaster",
+      "standing": "France's leading 24-hour news channel and, through BFM Business on the same host, its leading business channel. Its economy desk covers PSE announcements and restructurings daily."
+    },
+    {
+      "domain": "ouest-france.fr",
+      "outlet": "Ouest-France",
+      "country": "France",
+      "language": "fr",
+      "kind": "regional daily of national reach",
+      "standing": "The largest-circulation daily in France, regional in base and national in reach. Industrial closures in the west (agri-food, automotive, shipbuilding) are reported here first and often only here."
+    },
+    {
+      "domain": "leparisien.fr",
+      "outlet": "Le Parisien / Aujourd'hui en France",
+      "country": "France",
+      "language": "fr",
+      "kind": "national daily",
+      "standing": "National daily (the Aujourd'hui en France edition is distributed nationwide) with an economy desk that reports restructurings across the Paris region, France's largest employment basin."
+    },
+    {
+      "domain": "la-croix.com",
+      "outlet": "La Croix",
+      "country": "France",
+      "language": "fr",
+      "kind": "national daily",
+      "standing": "National daily (Bayard), one of France's national general dailies, with regular labour and social-affairs reporting on collective redundancies."
+    },
+    {
+      "domain": "lepoint.fr",
+      "outlet": "Le Point",
+      "country": "France",
+      "language": "fr",
+      "kind": "national newsmagazine",
+      "standing": "Leading national newsmagazine whose site carries the AFP economy wire in full, so a PSE dispatch appears here even when the print dailies pass on it."
+    },
+    {
+      "domain": "challenges.fr",
+      "outlet": "Challenges",
+      "country": "France",
+      "language": "fr",
+      "kind": "business weekly",
+      "standing": "The leading French business weekly; corporate restructuring, closures and headcount reductions are its core beat."
+    },
+    {
+      "domain": "capital.fr",
+      "outlet": "Capital",
+      "country": "France",
+      "language": "fr",
+      "kind": "business magazine",
+      "standing": "Business monthly (Prisma Media) whose site is one of the highest-volume French economy news sites, wire-backed, and reports layoffs at named employers daily."
+    },
+    {
+      "domain": "usinenouvelle.com",
+      "outlet": "L'Usine Nouvelle",
+      "country": "France",
+      "language": "fr",
+      "kind": "industrial trade press",
+      "standing": "The industrial trade weekly of record, published since 1891. It reports factory-level PSEs and closures plant by plant, most of which never reach the national dailies; for a layoff tracker it is the single highest-value French title."
+    },
+    {
+      "domain": "rfi.fr",
+      "outlet": "RFI",
+      "country": "France",
+      "language": "fr",
+      "kind": "public broadcaster",
+      "standing": "Public international broadcaster (France Medias Monde, sister of the already listed france24.com), with French-language economy reporting on France and on francophone Africa, where the regional feeds are thin."
+    },
+    {
+      "domain": "lavoixdunord.fr",
+      "outlet": "La Voix du Nord",
+      "country": "France",
+      "language": "fr",
+      "kind": "regional daily",
+      "standing": "Leading daily of Hauts-de-France, the region carrying the largest share of French automotive and steel employment, where plant cuts are reported locally days before any national title."
+    },
+    {
+      "domain": "aa.com.tr",
+      "outlet": "Anadolu Ajansi",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "wire service",
+      "standing": "The national news agency and the wire behind most Turkish reporting; company and factory news is filed here first and syndicated by every national and regional title. The repo's own Turkey market table already names Anadolu.",
+      "caveat": "State-owned. Balanced by Sozcu, T24 and Evrensel below."
+    },
+    {
+      "domain": "trthaber.com",
+      "outlet": "TRT Haber",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "public broadcaster",
+      "standing": "News channel and site of the statutory public broadcaster TRT. Its provincial bureaus report factory closures and regional dismissals, and ministry statements on collective layoffs are carried here in full, which makes it the public-service counterpart of the state wire.",
+      "caveat": "State broadcaster."
+    },
+    {
+      "domain": "bloomberght.com",
+      "outlet": "Bloomberg HT",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "business broadcaster",
+      "standing": "The leading Turkish business and finance channel; listed-company news and corporate restructuring are its core beat. Named in the repo's Turkey market table."
+    },
+    {
+      "domain": "ekonomim.com",
+      "outlet": "Dunya (Ekonomim)",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "business daily",
+      "standing": "Turkey's business daily of record, Dunya Gazetesi, which moved its site to ekonomim.com. The already listed dunya.com is the old host, kept because nothing is removed from here; the repo's Turkey market table and source catalogue already name Ekonomim.",
+      "caveat": "Whether dunya.com still resolves or redirects was not checked."
+    },
+    {
+      "domain": "hurriyet.com.tr",
+      "outlet": "Hurriyet",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "national daily",
+      "standing": "The largest mainstream national daily. Only its English edition (hurriyetdailynews.com) was listed, so its Turkish-language reporting, where the plant-level detail is, was never admitted.",
+      "caveat": "Demiroren group, government-aligned."
+    },
+    {
+      "domain": "haberturk.com",
+      "outlet": "Haberturk",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "national broadcaster",
+      "standing": "Major national news channel and site with a strong economy desk that reports named-employer workforce cuts."
+    },
+    {
+      "domain": "sozcu.com.tr",
+      "outlet": "Sozcu",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "national daily",
+      "standing": "The highest-circulation opposition daily and among the top two Turkish papers overall; carries dismissals that government-aligned titles underplay. Named in the repo's Turkey market table.",
+      "caveat": "Opposition-aligned; balances the state and pro-government entries."
+    },
+    {
+      "domain": "t24.com.tr",
+      "outlet": "T24",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "national digital daily",
+      "standing": "Leading independent digital newspaper, one of the most-read news sites in Turkey and named in the repo's own Turkey market table; it carries dismissal reporting that the government-aligned print titles pass on."
+    },
+    {
+      "domain": "evrensel.net",
+      "outlet": "Evrensel",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "national daily (labour)",
+      "standing": "A national daily whose beat is labour: plant-level dismissals and union disputes are its lead stories, which is exactly the reporting a layoff tracker needs and the reporting other titles carry least.",
+      "caveat": "Left-wing and union-aligned. The count and employer are read from the article text and judged by the extractor, not taken from the outlet's framing."
+    },
+    {
+      "domain": "dha.com.tr",
+      "outlet": "Demiroren Haber Ajansi (DHA)",
+      "country": "Turkey",
+      "language": "tr",
+      "kind": "wire service",
+      "standing": "The largest private domestic news agency, with regional bureaus that report factory closures in Bursa, Kocaeli and Izmir before the national desks pick them up.",
+      "caveat": "Demiroren group."
+    }
+  ]
+}

@@ -1,5 +1,96 @@
 # Tech Log
 
+## 2026-09-02 - reviewed outlet candidates for Spain, France and Turkey (2.20.159, branch, awaiting owner approval)
+
+**The measurement this answers.** The worldwide-coverage audit below found the
+allowlist keeping 2 of 244 Spanish candidates, 0 of 39 French and 0 of 50
+Turkish after the native-vocabulary fix, against Germany 79/867 and Italy
+19/410. The vocabulary now reaches production, so those three are ALLOWLIST
+failures: real coverage from outlets `TRUSTED_DOMAINS` does not name. The
+dropped domains themselves live only in the Railway run log, unreadable from
+a worktree, so this list was built from the other direction: what the
+national press of each country IS.
+
+**What was done.** 32 outlets proposed, 11 Spain, 11 France, 10 Turkey, each
+a national daily of record, a wire, a public broadcaster, the business press,
+the industrial trade press, or the regional daily of an industrial region
+where collective dismissals are reported first. Every one is a REVIEWED
+claim in the new `railway/reviewed_outlets.json` (outlet, country, language,
+kind, standing, caveat, reviewer, date), mirroring the admission discipline
+`reviewed_feeds.json` uses for press feeds. They sit in one marked block at
+the end of `TRUSTED_DOMAINS` (`2026-09-02 reviewed outlets: BEGIN/END`),
+additive, nothing removed or reordered. The country table regenerated: 180
+countries, 738 outlets (was 706). Sources page copy is derived from that
+partial and needed no edit; `assets/health.js` `meta{}` is unchanged because
+no collector id changed, only the allowlist one collector consults.
+
+**The guard, and its proof.** `tests/test_reviewed_outlets.py` fails on a
+domain inside the reviewed block that the registry does not argue for, on a
+registry entry the allowlist does not carry, on an empty or one-clause
+standing, an unknown country or a future date, on a registry entry already
+admitted by a parent domain, and on ANY `TRUSTED_DOMAINS` entry that equals,
+sits under or sits above a host in `country_coverage.REFUSAL_LEDGER`. That
+last one makes the refusal ledger binding on the allowlist by construction
+rather than by one session's memory. Seven mutations, seven failures, files
+restored byte-identical: a refused host in the allowlist, a child of a
+refused wildcard host, an unargued domain in the block, a registry domain
+deleted from the allowlist, an emptied standing, an unknown country, and a
+subdomain of an existing entry. The floor also caught two thin standings on
+the first run (TRT Haber, T24), which were rewritten as arguments.
+
+**Refusal ledger.** Every candidate was checked against it; no hit. The
+ledger's Spanish and French hosts are government (datos.comunidad.madrid,
+dares.travail-emploi.gouv.fr, legifrance.gouv.fr), none is a newsroom.
+
+**Rejected, and why.** Spain: cincodias.elpais.com (already admitted by the
+elpais.com suffix), 20minutos.es (free general daily), cadenaser.com (radio,
+largely wire), vozpopuli.com and lainformacion.com (smaller business
+digitals; a later pass can argue them), the sports dailies. France:
+boursorama.com (a bank portal republishing AFP and Reuters in full, high
+volume but not a newsroom), afp.com (the wire publishes little of its file on
+its own site and the report arrives through subscribers; left out rather
+than guessed), 20minutes.fr, europe1.fr and rtl.fr (thin text), linforme.com
+(young, paywalled, reach unverified). Turkey: sabah.com.tr and
+milliyet.com.tr (Daily Sabah already carries Sabah in English; one Demiroren
+title is enough beside DHA), bianet.org (rights-focused, thinner on
+corporate), birgun.net and gazeteduvar.com.tr (Sozcu and T24 carry the
+opposition balance), patronlardunyasi.com (editorial standard unverifiable
+without reading it), ntv.com.tr (general; Haberturk and Bloomberg HT hold
+the slot).
+
+**What could NOT be established without fetching, by rule.** (1) Whether any
+candidate's robots.txt refuses AI agents: `gdelt._fetch_article` reads
+article bodies with a browser UA and consults no robots file, so an
+allowlisted outlet's page IS requested on a hit; that is pre-existing
+behaviour for all 706 entries and is not changed here, but it means "allowlist
+only, never crawled" is not literally true for the article body, and a
+robots pass over the 32 would be the next honest step before or after
+merge. (2) Whether the host GDELT records matches the one listed (efe.com
+after the agency's site move; francetvinfo.fr against the announced
+franceinfo.fr migration; ekonomim.com against the listed dunya.com, which is
+Dunya's OLD host and may no longer resolve). (3) Whether any of the 32 is
+among the domains the run log actually dropped; the log is the only place
+that is written, and the owner's step (2) in the audit entry still stands.
+(4) Reach: no Spanish, French or Turkish rows will appear until a run after
+merge, and `[2d]` shows the sweeps still queue behind the dark public API.
+
+**Class:** absent-read-as-ok - three countries' national press was absent
+from the allowlist and every surface read that as "no problem": a candidate
+the gate drops produces no error, no health row and no log line outside the
+Railway run log, so 99% drop rates sat unread until the audit computed them
+per country. **Guard:** `railway/tests/test_reviewed_outlets.py` for the
+admission discipline and the refusal ledger (an unargued domain, a registry
+claim the allowlist does not carry, a refused host). The GAP itself has no
+guard here and this entry does not pretend otherwise: the per-country
+kept/candidate ratio lives in the run log and is nameless in public
+telemetry by design, so the honest next guard is a per-country drop RATE in
+`gdelt_reach` telemetry (a ratio carries no name) with a floor, not this
+test.
+
+**Needs the owner.** Approve or prune the registry and merge; the merge is
+the approval. Then read one post-merge gdelt run's `not_allowlisted` domains
+for es/fr/tr and compare against the 32.
+
 ## 2026-09-02 - worldwide coverage audit: the news net asked its non-English half in English (2.20.158)
 
 **The question.** Is this a worldwide tracker, or a US/English tracker with
