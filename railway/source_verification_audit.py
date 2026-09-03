@@ -37,6 +37,20 @@ try:
 except Exception:
     OpenAI = None
 
+# THE AUDIT MODEL. This is a company/jobs/date fact check against a fetched
+# source -- the same kind of correctness question extraction answers -- so it
+# tracks extractor.MODEL rather than carrying its own opinion. Until
+# 2026-09-03 this was a bare "deepseek/deepseek-chat" literal: a fifth
+# undocumented DeepSeek call site, on a model the owner had ruled out months
+# earlier on EU compliance grounds. Falls back to the same default extractor.py
+# uses if extractor is not importable, so this file degrades the same way the
+# OpenAI import above does rather than reintroducing a private default.
+try:
+    import extractor
+    AUDIT_MODEL = extractor.MODEL
+except Exception:                   # pragma: no cover - import guard, mirrors OpenAI above
+    AUDIT_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
+
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
@@ -90,8 +104,8 @@ def _verify(row, text):
             "Answer with the one word, then a short reason.\n\n"
             f"SOURCE:\n{text[:4000]}"
         )
-        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
-            model="deepseek/deepseek-chat",
+        resp = spend.metered_call(AUDIT_MODEL, lambda: client.chat.completions.create(
+            model=AUDIT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0, max_tokens=80,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),

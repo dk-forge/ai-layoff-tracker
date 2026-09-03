@@ -1,5 +1,123 @@
 # Tech Log
 
+## 2026-09-03 - DeepSeek was still wired into six live call sites; the panel error on Grupo Volkswagen is why anyone looked
+
+**Class:** two-copies-drifted - a compliance decision made once (the owner's
+DeepSeek ruling, EU grounds, months ago) was never enforced as one gate, so it
+had to be re-applied by hand at six separate call sites, one of which
+(`ai_evidence_sweep.py`, `process_tips.py`, `source_verification_audit.py`)
+nobody had even connected to the two documented AI-causation call sites
+CLAUDE.md names.
+**Guard:** railway/tests/test_no_deepseek_default.py (10 tests: seven read
+each live module's own model-choosing attribute with every OPENROUTER_* env
+var scrubbed, so a locally-exported variable cannot hide a bad default; one is
+a static sweep for a hardcoded literal outside the two documented exceptions,
+catching a call site that never reads a shared attribute at all; one pins the
+two exception workflows to `workflow_dispatch` only, so gaining a `schedule:`
+trigger reds the build the same day it happens. All three shapes were proven
+by mutation - reintroducing the old default, planting a raw literal, and
+adding a schedule trigger each failed the suite, then were reverted).
+
+**The trigger.** The owner forwarded a HELD-relabel email for row 176988
+(Grupo Volkswagen, country "Germany" -> "Multiple countries", 60,000 jobs):
+"Panel tally: no verdict. Panel error: 429 - deepseek/deepseek-chat is
+temporarily rate-limited upstream ... `limit_source:
+upstream_provider_shared_pool`". Two things were wrong at once: the panel
+(`adjudication_panel.py`, armed 2026-08-27) was calling a model the owner had
+ruled out months earlier, and the mail that reached him did not say a provider
+outage and a real judgment are different things.
+
+**Compliance: six call sites, four different fixes, and two deliberate
+exceptions.**
+
+- `extractor.CLASSIFY_MODEL` (industry, roles, reason tags, domicile - the
+  high-volume classify path) -> `google/gemini-2.5-flash-lite`. Not a blind
+  swap: this is the one model this project has actually measured on layoff
+  text (the 2026-08-06/07 gold sets against extraction), where it beat
+  deepseek-chat on cost by 0.387x at equal accuracy, so the replacement is
+  cheaper per row than what it replaces, not merely compliant.
+  `dedupe_llm.MODEL` (cross-source dedup, daily `dedupe-llm.yml` cron) got the
+  same default for the same reason - it is a second, deliberately
+  hand-maintained copy (the module is stdlib-only, cannot import extractor),
+  and it had quietly never moved off deepseek-chat since the 2026-08-07
+  extraction swap ("unmeasured surfaces stay put until something measures
+  them" - true, but not a carve-out from a compliance ruling).
+  `daily_classification_spotcheck.SPOTCHECK_MODEL` (the flag + confirm passes
+  behind the held-relabel queue, `data-quality.yml` daily) got the same
+  default too - a THIRD independent DeepSeek call site in that one script,
+  separate from the panel it feeds.
+- `ai_evidence_sweep.py` (daily AI-quote hunt), `process_tips.py` (tip
+  second-pass confirmation, daily) and `source_verification_audit.py`
+  (monthly source re-verification) all hardcoded a bare
+  `"deepseek/deepseek-chat"` literal that answered to neither
+  `extractor.MODEL` nor `CLASSIFY_MODEL` - three more undocumented DeepSeek
+  call sites CLAUDE.md's "AI-causation is correctness-critical, always MODEL"
+  rule did not even know existed, because they never went through a shared
+  constant at all. Fixed by importing `extractor.MODEL`: each is a
+  correctness question (does the employer name AI; does this source support
+  this company/count/date) close enough to extraction's own correctness bar
+  that it should move WITH extractor.MODEL, not carry a private opinion.
+- `adjudication_panel._DEFAULT_PANEL_MODELS` (the held-relabel panel) ->
+  `anthropic/claude-haiku-4.5`, the owner's stated preference (Haiku or
+  Gemini) for the slot that had to move. Gemini already holds a seat in this
+  panel, and doubling a family is the exact failure the panel's own diversity
+  rule exists to prevent (a wrong reading correlated across two members of one
+  lineage), so Haiku, not a second Gemini. UNVERIFIED AT WRITE TIME: a live
+  DOGE dry-run on 2026-08-26 404'd on `anthropic/claude-3.5-haiku` ("No
+  endpoints found") - this OpenRouter account did not have Anthropic enabled a
+  week earlier, and no key was available in this session to re-check. If it is
+  still gated, every panel call to it errors, and - because of the fix below -
+  that now reads correctly as PANEL ERRORED / UNKNOWN rather than a silent
+  false hold. Confirm Anthropic is enabled (OpenRouter provider settings)
+  before relying on AUTO_APPLY from this panel, or override via
+  `ALT_PANEL_MODELS`.
+- **Two deliberate exceptions, both documented, both narrowed by a test.**
+  `ab_ai_causation.py`'s `AIC_LABELLERS` and `ab_extraction_models.py`'s
+  `DEFAULT_MODELS` both still name `deepseek/deepseek-chat` as the PRE-SWAP
+  INCUMBENT in a recorded historical comparison - renaming it there would
+  falsify what was measured, not fix anything. Both workflows are
+  `workflow_dispatch`-only and were already never scheduled;
+  `TheDocumentedExceptionsStayNarrow` in the new guard test fails the build
+  the day either gains a `schedule:` trigger, so "a human explicitly asked for
+  a historical comparison" cannot quietly become "DeepSeek runs on a timer".
+
+**The panel: errored is not held (2026-09-03).** "The panel errored and
+reached no verdict" and "the panel deliberated and declined" used to arrive as
+the same HELD email - `daily_classification_spotcheck.post_panel_hold_alert`
+mailed one subject line (`"N label relabel(s) HELD by the panel, not
+applied"`) whether every vote actually ran or every vote errored out, and the
+body's only signal was a "Panel tally: no verdict" buried next to a real
+"Panel tally: 3-0". New `_split_errored()` divides `still_held` into `errored`
+(verdict is `None` - the panel could not reach a verdict on this row at all)
+and `judged` (verdict is a real `PanelVerdict` - three models actually voted
+and declined). The subject line now says which: `"N ... HELD by the panel + M
+PANEL ERROR (no verdict), not applied"` when both kinds are present in one
+run, and a distinct "PANEL ERRORED, no verdict reached" subject when only
+errors are present. The body renders them in separate sections
+(`_panel_error_body` vs `_panel_hold_body`), and the errored section says
+outright that nothing was voted on and nothing was auto-applied from it. This
+is never allowed to auto-apply anything either way - an errored panel is
+UNKNOWN, and UNKNOWN never becomes an APPLY by default, same as everywhere
+else PASS/FAIL/UNKNOWN is enforced in this repo.
+
+**The retry that was not there.** OpenRouter's own 429 text says "Retry
+shortly, or route to another provider"; the panel made exactly one attempt per
+vote and gave up, so one transient squeeze on a shared upstream pool cost the
+whole row its judgment. `adjudication_panel._default_call_model` now calls
+`spend.metered_call(..., attempts=3, retry_sleep=5.0)` - the sanctioned shape
+(CLAUDE.md): every attempt re-reads the spend brake AND performs a fresh
+request (gate -> request -> meter, each try), never a retry loop inside the
+callable, which would let one gate read cover several charges.
+`tests/test_one_request_per_metered_call.py`'s sweep already covers this file
+and stayed green, confirming the retry is expressed the sanctioned way.
+
+**What did not change.** The VW relabel itself was not touched - 60,000 jobs
+is far above the 5,000-job unattended bound (docs/RUNBOOK.md, the 2026-08-08
+forensics: an unattended relabel of this shape put 92,000 jobs into the
+published US headline for four days), and this incident's job was the panel
+and the model, not the row. No plugin/WordPress surface changed, so no
+`ALT_VERSION` bump was needed.
+
 ## 2026-09-03 - the Chile 500 row gives Uber's 3,300 its evidence back, through a route that did not exist (2.20.162)
 
 **Class:** wrong-scope-or-key - the count-blind fuzzy merge (fixed in 2.20.161)

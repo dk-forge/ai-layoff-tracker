@@ -18,7 +18,7 @@ egress fully.**
 | `edd.ca.gov` | CA WARN annual-PDF backfill source |
 | `cdnjs.cloudflare.com`, `cdn.jsdelivr.net` | Self-host the chart/table JS libs (DataTables, Chart.js) instead of CDN |
 | `newsdata.io`, `api.marketaux.com`, `finnhub.io` | Dry-run the supplemental news providers |
-| `openrouter.ai` | DeepSeek extraction (only if running ingest from the session, not just the cron) |
+| `openrouter.ai` | LLM extraction/classification (google/gemini-2.5-flash-lite by default; not DeepSeek, which is off-limits repo-wide on compliance grounds - only if running ingest from the session, not just the cron) |
 
 Leave everything else blocked. `ops_status.py` detects a still-blocked host and
 exits 3 with guidance (not a false outage).

@@ -54,6 +54,22 @@ try:
 except Exception:
     OpenAI = None
 
+# AI-CAUSATION MODEL. This sweep decides ai_explicit exactly like the two
+# places CLAUDE.md already names (extractor.py's full extraction and
+# classify_ai_evidence()): "AI-causation is correctness-critical", so it uses
+# extractor.MODEL, never the cheaper classify-path model. Until 2026-09-03 it
+# used a bare "deepseek/deepseek-chat" literal that answered to neither name --
+# a third, undocumented AI-causation call site on a model the owner had ruled
+# out months earlier on EU compliance grounds. Importing extractor.MODEL both
+# fixes the compliance problem and closes that gap: this sweep now moves with
+# the one AI-causation model everywhere else, instead of carrying its own
+# frozen copy.
+try:
+    import extractor
+    AI_CAUSATION_MODEL = extractor.MODEL
+except Exception:                   # pragma: no cover - import guard, mirrors OpenAI above
+    AI_CAUSATION_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
+
 # Google News RSS, not NewsAPI. NewsAPI was retired 2026-07-25, and this sweep
 # kept querying it six times per event, printing "0 unique articles" every
 # single time -- wasted HTTP on a corpse, found by the 2026-08-02 per-job cost
@@ -139,8 +155,8 @@ def _ai_quote(company, text):
             "etc. do NOT count), answer exactly NONE.\n\n"
             f"TEXT:\n{text[:4500]}"
         )
-        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
-            model="deepseek/deepseek-chat",
+        resp = spend.metered_call(AI_CAUSATION_MODEL, lambda: client.chat.completions.create(
+            model=AI_CAUSATION_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0, max_tokens=120,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),
@@ -178,8 +194,8 @@ def _second_pass_agrees(company, quote):
                         # `attempts=`, which re-reads the brake and
                         # meters each try.
                         max_retries=0)
-        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
-            model="deepseek/deepseek-chat",
+        resp = spend.metered_call(AI_CAUSATION_MODEL, lambda: client.chat.completions.create(
+            model=AI_CAUSATION_MODEL,
             messages=[{"role": "user", "content": (
                 "Answer only yes or no. Does this sentence show the EMPLOYER "
                 f"naming AI or automation as a reason for {company}'s job cuts "

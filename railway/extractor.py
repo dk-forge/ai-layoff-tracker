@@ -3,9 +3,15 @@ LLM extraction + classification.
 
 Extraction runs on google/gemini-2.5-flash-lite via OpenRouter (changed
 2026-08-07 from deepseek/deepseek-chat; see MODEL below for the two gold sets
-that decided it). Classification still runs on deepseek/deepseek-chat, on
-purpose: nothing has measured it. Both are one environment variable away from
-anything else.
+that decided it). Classification moved off deepseek/deepseek-chat to the same
+model on 2026-09-03 -- not a benchmark result, a COMPLIANCE one: the owner
+ruled DeepSeek unusable on EU grounds, and that rule has no "unmeasured
+surface" exception. google/gemini-2.5-flash-lite is not a blind swap either:
+it is the one model this project HAS measured on layoff text (the 2026-08-06/07
+gold sets), and it already beat deepseek-chat on cost there (0.387x), so the
+high-volume classify path (context, domicile, reason tags, industry, roles)
+gets a model that is cheaper per row than the one it replaces, not merely
+compliant. Both are one environment variable away from anything else.
 
 OpenRouter serves the OpenAI-compatible chat-completions API, so this module
 uses the openai SDK with a base_url override — the anthropic SDK cannot talk
@@ -43,19 +49,30 @@ import spend
 # Rollback is one environment variable and no deploy: OPENROUTER_MODEL.
 MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
 
-# THE CLASSIFIER, WHICH NOTHING HAS MEASURED, AND WHICH THEREFORE DOES NOT MOVE.
+# THE CLASSIFIER. A BENCHMARK NEVER MOVED IT; COMPLIANCE DID (2026-09-03).
 #
 # Industry, roles, reason tags and context: "pick one label from a fixed list"
 # over up to 6,000 characters, and the bulk of the call volume. Until 2026-08-07
 # this defaulted to MODEL, so an extraction benchmark would have silently moved
 # a classifier that benchmark never looked at -- three surfaces changed by a
-# measurement of one. The default is now written out, so the extraction swap
-# above leaves it exactly where it was and moving it needs its own A/B against
-# its own answer key. Pinned by tests/test_extraction_model_choice.py.
+# measurement of one. The default was then written out so the extraction swap
+# would leave it exactly where it was, pinned to deepseek/deepseek-chat, until
+# its own A/B against its own answer key earned a move.
+#
+# That is still the right process for a discretionary swap, and this was not
+# one: the owner ruled DeepSeek unusable months ago on EU grounds, and "we
+# have not benchmarked its replacement for THIS surface yet" is not a carve-out
+# from a compliance ruling. The default moves to google/gemini-2.5-flash-lite
+# -- the one model this project has actually measured on layoff text (the
+# 2026-08-06/07 gold sets against extraction), where it beat deepseek-chat on
+# cost by 0.387x at equal accuracy. A dedicated classify-path A/B against its
+# own answer key is still open work, same as before; what changed is which
+# model holds the seat while that measurement doesn't exist.
+# Pinned by tests/test_extraction_model_choice.py.
 #
 # The correctness-critical calls (full extraction, AI-causation) always use
 # MODEL, never this.
-CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", "deepseek/deepseek-chat")
+CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", "google/gemini-2.5-flash-lite")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "45"))
 
