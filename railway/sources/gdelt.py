@@ -1457,7 +1457,8 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
     return articles, saw_rate_limit, last_error
 
 
-def _collect_window(query, start, end, max_records, reach_label, floor=MIN_BISECT_WINDOW):
+def _collect_window(query, start, end, max_records, reach_label,
+                    floor=MIN_BISECT_WINDOW, deadline=None):
     """Query one window via the public API, BISECTING it when it caps.
 
     Returns (articles, status, saw_rate_limit, last_error):
@@ -1471,6 +1472,21 @@ def _collect_window(query, start, end, max_records, reach_label, floor=MIN_BISEC
     drops the tail with no trace. Splitting until each half returns under the cap
     walks the WHOLE window instead. Overlap at the split point is harmless: the
     trusted-domain gate dedupes by URL downstream.
+
+    `deadline` (an absolute `time.monotonic()` cutoff) bounds THE BISECTION, and
+    it has to, because the bisection is the fan-out. `pull_gdelt_between`'s
+    wall-clock budget was consulted for the first time at the top of the
+    rotating-sweeps loop, and the BROAD slot runs before that loop: a capped 36h
+    window splits to the 1h floor across up to 127 sub-windows, each spending
+    its own QUERY_ATTEMPTS x backoff (~9 min when the API is throttling), so the
+    phase that preceded the first deadline read is also the phase with the
+    largest worst case — hours against a 900s budget. Even a clean full split
+    spends 127 x REQUEST_DELAY = ~10.6 min of pacing sleep alone.
+
+    Read BEFORE STARTING a half, never mid-query, exactly as the sweep loop
+    does. A window whose halves the clock skipped returns "partial", which is
+    already a first-class ledger status that `_retry_pending_slots` picks up on
+    a later run — deferred coverage, never lost coverage, and never a raise.
     """
     articles, saw_rl, err = _query_window(query, start, end, max_records, reach_label)
     if articles is None:
@@ -1483,9 +1499,16 @@ def _collect_window(query, start, end, max_records, reach_label, floor=MIN_BISEC
         print(f"GDELT [{reach_label}] window capped at floor "
               f"{_win_stamp(start)}..{_win_stamp(end)}: keeping newest {len(articles)}, PARTIAL")
         return articles, "partial", saw_rl, err
+    if deadline is not None and time.monotonic() >= deadline:
+        print(f"GDELT [{reach_label}] window capped at "
+              f"{_win_stamp(start)}..{_win_stamp(end)} but past its wall-time "
+              "budget: the split is deferred to a later run, PARTIAL")
+        return articles, "partial", saw_rl, err
     mid = start + span / 2
-    left, ls, _, _ = _collect_window(query, start, mid, max_records, reach_label, floor)
-    right, rs, _, _ = _collect_window(query, mid, end, max_records, reach_label, floor)
+    left, ls, _, _ = _collect_window(query, start, mid, max_records, reach_label,
+                                     floor, deadline)
+    right, rs, _, _ = _collect_window(query, mid, end, max_records, reach_label,
+                                      floor, deadline)
     combined = list(articles)  # keep the capped parent page too; dedup is downstream
     if left:
         combined.extend(left)
@@ -1571,7 +1594,8 @@ def _rebuild_query(slot):
     return slot.get("query_text")
 
 
-def _run_sweep_slot(ledger, family, query, start, end, max_records, collected, incomplete):
+def _run_sweep_slot(ledger, family, query, start, end, max_records, collected,
+                    incomplete, deadline=None):
     """Run one non-broad slot: never raises, records the outcome, retried later.
 
     A rate-limited or capped sweep does NOT fail the run — it is skipped with a
@@ -1582,7 +1606,8 @@ def _run_sweep_slot(ledger, family, query, start, end, max_records, collected, i
     Returns the slot's status ("abandoned" / "partial" / "complete") so the
     caller's outage breaker can see a dead public API (see pull_gdelt_between).
     """
-    arts, status, _saw_rl, err = _collect_window(query, start, end, max_records, family)
+    arts, status, _saw_rl, err = _collect_window(query, start, end, max_records,
+                                                 family, deadline=deadline)
     if arts is None:
         print(f"GDELT {family} skipped ({err}): {query[-60:]}")
         _record_slot(ledger, family, query, start, end, "failed", [])
@@ -1627,7 +1652,8 @@ def _planned_sweeps():
     return plan
 
 
-def _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys):
+def _retry_pending_slots(ledger, end, max_records, collected, incomplete,
+                         done_keys, deadline=None):
     """Re-issue unfinished slots from prior runs (cursor persists between runs).
 
     Bounded to MAX_RETRY_SLOTS_PER_RUN, oldest-incomplete first, only within the
@@ -1659,7 +1685,7 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_k
             continue
         print(f"GDELT retry pending slot {key} (attempt {int(slot.get('attempts', 0)) + 1})")
         status = _run_sweep_slot(ledger, family, query, ws, we, max_records,
-                                 collected, incomplete)
+                                 collected, incomplete, deadline=deadline)
         if status == "abandoned":
             # Same outage breaker as the planned sweeps: a slot abandoned after
             # every attempt means the public API is not answering, and grinding
@@ -1691,6 +1717,13 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     off part-way; a skipped sweep is simply not attempted this run and stays
     (or becomes) a ledger slot that the next run retries — no coverage is lost,
     only deferred.
+
+    It is also consulted before starting each BISECTION half (`_collect_window`).
+    It has to be: the BROAD slot runs BEFORE the sweep loop, so until 2026-09-03
+    the first deadline read came after the phase with the largest worst case —
+    a fully capped 36h window splits into up to 127 sub-windows, each with its
+    own retry schedule, which is hours against a 900s budget. A budget first
+    read only after the unbounded phase is not a budget.
     """
     global _LAST_RUN_INCOMPLETE
     _LAST_RUN_INCOMPLETE = False
@@ -1719,7 +1752,8 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
             broad_articles = None
 
     if broad_articles is None:
-        arts, status, saw_rl, err = _collect_window(QUERY, start, end, max_records, "broad")
+        arts, status, saw_rl, err = _collect_window(QUERY, start, end, max_records,
+                                                    "broad", deadline=deadline)
         if status == "abandoned":
             # The public API abandoned the WHOLE window. Try the mirror to
             # RECOVER it — and if it recovers, CONTINUE with the sweeps rather
@@ -1796,7 +1830,7 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
             continue
         before = set(ledger["slots"])
         status = _run_sweep_slot(ledger, family, query, start, end, max_records,
-                                 collected, incomplete)
+                                 collected, incomplete, deadline=deadline)
         done_keys |= (set(ledger["slots"]) - before)
         done_keys.add(_slot_key(family, query, start, end))
         if status == "abandoned":
@@ -1814,7 +1848,8 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
         print("GDELT pending-slot retries skipped this run: the public API is "
               "not answering, and the slots stay pending for a later run")
     else:
-        _retry_pending_slots(ledger, end, max_records, collected, incomplete, done_keys)
+        _retry_pending_slots(ledger, end, max_records, collected, incomplete,
+                             done_keys, deadline=deadline)
 
     _LAST_RUN_INCOMPLETE = bool(incomplete)
     if incomplete:
