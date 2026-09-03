@@ -100,7 +100,7 @@ class OnlyLettersPastTheMonthlyCutoffAreEmitted(unittest.TestCase):
         allowed = {"8K", "warn", "press_release", "news", "erm", "federal_rif"}
         for r in MNL.pull_mn_warn_letters(_report=False):
             self.assertTrue(r["raw_text"].strip())
-            self.assertEqual(r["_collector"], "mn_warn_letters")
+            self.assertEqual(r["_collector"], "warn_mn_letters")
             self.assertIn(r["source_type"], allowed)
             self.assertEqual(r["state"], "MN")
 

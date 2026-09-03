@@ -6,6 +6,29 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-04): 2.20.167 - one Minnesota WARN-letters
+  collector was reporting under two source ids.** The baton was read as FREE by
+  `ops_status [0]` on origin/main and this session took it, in its own
+  worktree. Work done in a branch and PUSHED, not merged: the owner merges.
+  `cron.py` registered the collector as `mn_warn_letters` while
+  `sources/warn_mn_letters.py` posted its own terminal note as
+  `warn_mn_letters`, so one collector wrote two ledger rows per run since
+  2026-08-24 - counted twice in `ops_status [2]`'s OK total and shown
+  unlabelled on the public Health page. `warn_mn_letters` is canonical.
+  **2.20.166 was skipped deliberately**: an in-flight sibling worktree
+  (`spend-overshoot-reporting`) had already bumped to it locally, unpushed.
+  **The `alt_retired_sources()` date for the abandoned id is 2026-09-06 and
+  must not precede the merge** - a run POSTed after it un-masks the row by
+  design, and the collector only stops posting under the old id once this
+  merges and deploys. If the merge slips past 2026-09-06, advance that date in
+  `includes/db.php` in the same change. Plugin files touched:
+  `includes/db.php` and `ai-layoff-tracker.php` (version only). No source id
+  added or removed and the canonical id was chosen so `assets/health.js meta{}`
+  needs no change. Rest is `railway/cron.py`,
+  `railway/sources/warn_mn_letters.py`,
+  `railway/tests/test_one_health_id_per_collector.py` (new, mutation-proven),
+  `railway/tests/test_warn_mn_letters.py` and TECHLOG. Full write-up in TECHLOG
+  2026-09-04 (2.20.167). Baton released.
 - **VERSION CLAIMED (2026-09-04): 2.20.164 - reviewed outlet candidates for
   Netherlands, Italy, Germany and UK, worst kept/seen first.** The baton was
   read as FREE by `ops_status [0]` on origin/main and this session took it,

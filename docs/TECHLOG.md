@@ -89,6 +89,92 @@ from ops_status.py.
 
 **Cost of the investigation: $0.00.** Forensics on committed ledgers only; no
 model call was made.
+## 2026-09-04 - one Minnesota WARN-letters collector was reporting under two source ids (2.20.167)
+
+**Class:** wrong-scope-or-key (one thing, two names -- so every consumer keyed
+on the name counted it twice and neither half could see the other)
+**Guard:** railway/tests/test_one_health_id_per_collector.py
+
+**What was wrong.** The single Minnesota per-company WARN-letters collector
+posted source health twice on every run, under two different ids. `cron.py`
+registered it in the collector loop as `mn_warn_letters`; the module itself,
+`sources/warn_mn_letters.py`, posted its own terminal note as
+`warn_mn_letters`. Both landed one second apart with identical counts --
+2026-09-03T22:05:56Z and :57Z, `ok 5` each -- and the append-only
+`/source-runs` telemetry shows the split running back to the collector's first
+day, 2026-08-24. Neither id had more history than the other.
+
+Nothing was red anywhere, and the damage was in three places:
+
+  1. **The OK count was inflated.** `ops_status [2]` counts ledger rows, so one
+     collector was two of the "39 source(s) OK" -- the number a human reads to
+     decide whether the fleet is healthy. Not cosmetic: it is the denominator
+     the whole fleet is judged by.
+  2. **The public Health page carried an unlabelled row**, because only
+     `warn_mn_letters` has a `meta{}` entry in `assets/health.js`.
+  3. **A latent overwrite was hidden BY the split.** cron's generic terminal
+     note is a blind `ok` with an empty detail. Written to the same key it
+     would have erased the collector's own note -- including the `degraded` the
+     collector posts when discovery fails outright (CDX and the seed both
+     unreachable). Two keys meant neither write clobbered the other, so merging
+     the ids without also fixing this would have converted a duplicate-count
+     bug into a masked-breakage bug.
+
+**Why `source_inventory.py` did not catch it.** It asks "which declared
+collectors never report?" and diffs the declared side (health.js `meta{}`,
+`warn.ALL_STATES`, the custom registries) against the live ledger. A duplicate
+is an EXTRA ledger row, not a missing declaration, so the inventory read 39
+declarations all reporting and said nothing. That is the right answer to the
+question it asks; this is a different question.
+
+**The fix.** `warn_mn_letters` is canonical, on four grounds: it is the id
+`health.js meta{}` already declares publicly; it matches the module filename
+and the `warn_*` prefix every sibling WARN collector uses (`warn_us`,
+`warn_custom_states`, `warn_custom_legacy`, `warn_quebec`, `warn_hi_ocr`,
+`warn_mazowieckie`); it carries the only INFORMATIVE ledger rows (cron's were
+all empty-detail); and neither id had longer history, so no history is
+sacrificed by choosing it. `cron.py` now registers `warn_mn_letters`, the
+module's `_collector` attribution tag matches, and a new cron branch lets the
+collector own its terminal note instead of overwriting it.
+
+**Retiring the abandoned id took the full three steps**, since skipping the
+third silently voids the second: (1) dropped from `cron.py`; (2) added to
+`alt_retired_sources()` in db.php so the frozen row cannot age into a false
+stale alarm; (3) no remaining path posts under it -- `sources/warn_mn_letters.py`
+was the only other writer and it already used the canonical id. **The
+retirement date is 2026-09-06, deliberately AHEAD of today**, because
+`alt_source_health_masked()` un-masks any row whose last run postdates the
+retirement, and the collector only stops posting under the old id once this
+branch is merged and deployed. If the merge slips past that date, advance it.
+
+**Cost of the choice, named.** The `_collector` spend-attribution key moves
+with the id, so `railway/spend_jobs.json` keeps ~14 days of rows under
+`mn_warn_letters` that will age out of the `[2a]` 14-day window rather than
+migrate. That is a cost table, not a correctness invariant.
+
+**The guard.** `tests/test_one_health_id_per_collector.py` resolves each
+`(id, callable)` in cron's collector loop to the `sources/*.py` behind it
+(following the thin local adapters too) and fails if that module posts health
+under any literal id other than the registered one. It is deliberately narrow
+in one direction only: SEVERAL collectors sharing ONE id stays legal and
+untouched, because that shape is normal here; only one collector wearing
+several ids fails. Exactly one cron-loop module owns its own health note
+today, and a third test asserts the resolver actually REACHES it -- a clean
+zero from a scan that never reached a live subject is worthless (CLAUDE.md,
+"a scan shares its target's blind spot").
+
+**Mutation-proven, not assumed.** Re-registering the collector as
+`mn_warn_letters` makes the guard fail with
+`cron registers 'mn_warn_letters' -> sources/warn_mn_letters.py also posts
+under ['warn_mn_letters']`; restoring the rename returns it to green.
+
+**Surfaces.** `assets/health.js meta{}` already declared `warn_mn_letters` and
+needed no change -- the canonical id was chosen partly so the public label
+stays correct. The Sources page row ("Minnesota per-company WARN letters")
+describes the collector, not the id, and is unchanged and still accurate. After
+deploy the Health page shows one Minnesota letters row instead of two, and the
+`[2]` OK total falls by one to its true value.
+
 
 ## 2026-09-03 - email accuracy audit: link_check.py's broken-page alert had no dedupe_key
 
