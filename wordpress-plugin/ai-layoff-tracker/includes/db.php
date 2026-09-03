@@ -5496,6 +5496,16 @@ function alt_api_tracker_meta(WP_REST_Request $r) {
         if (isset($in['ceiling_usd']) && is_numeric($in['ceiling_usd'])) {
             $rec['ceiling_usd'] = round((float) $in['ceiling_usd'], 6);
         }
+        // The DEAREST single call of the run, which is the exact width of the
+        // honest overshoot allowance: the gate is read BEFORE a request and
+        // metered AFTER, so the call that crosses the ceiling still lands and
+        // is billed. Without this figure a railway-cron overshoot can only be
+        // reported as UNKNOWN, because "the last call crossed" and "a call
+        // landed past the ceiling" are indistinguishable from the total alone.
+        // See spend.judge_overshoot().
+        if (isset($in['max_call_usd']) && is_numeric($in['max_call_usd'])) {
+            $rec['max_call_usd'] = round((float) $in['max_call_usd'], 6);
+        }
         if (isset($in['complete'])) {
             $rec['complete'] = (bool) $in['complete'];
         }

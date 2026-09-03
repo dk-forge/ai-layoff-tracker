@@ -741,49 +741,69 @@ def _report_run_cost():
                 # authorised ALT_RUN_CEILING_USD override (edgar-history-sweep
                 # offers one as a workflow input on purpose), and comparing
                 # that run to the table's named number reports a brake failure
-                # where an operator made a deliberate one-off decision. Entries
-                # written before ceiling_usd existed have no such record, so
-                # they fall back to the named ceiling — the old behaviour, and
-                # the reason the message says which basis it used.
-                worst, basis = None, None
+                # where an operator made a deliberate one-off decision. A run
+                # that recorded no ceiling of its own is judged against
+                # NOTHING: it is UNKNOWN, collected below and printed, never
+                # compared to the table's current number.
+                # The verdict is spend.judge_overshoot()'s, not this file's,
+                # so ops_status, the tests and the digest all read an overshoot
+                # the same way. FOUR states, and they are not the same news:
+                #
+                #   structural  the call that crossed the ceiling still landed
+                #               and was billed. metered_call reads the gate
+                #               BEFORE a request and meters AFTER, so this is
+                #               every guard working exactly as designed. It is
+                #               NOT an ACTION item and must never be printed as
+                #               "the brake is not holding" -- that reading sent
+                #               a session hunting a bug that was not there
+                #               (2026-09-03, data-quality; see judge_overshoot).
+                #   bypass      a call landed while the run was already at or
+                #               past its ceiling. No correctly gated run can do
+                #               that, so this IS the alarm and stays one.
+                #   uncertain   over, and the entry records no dearest call, so
+                #               the two cannot be told apart. UNKNOWN, printed,
+                #               never a pass and never an accusation.
+                #   unrecorded  no ceiling of its own -- see below.
+                worst_bypass = worst_structural = None
+                uncertain: list = []
                 for e in entries:
+                    verdict, why = _spend.judge_overshoot(e)
                     cost = float(e.get("cost_usd") or 0)
-                    own = e.get("ceiling_usd")
-                    # Judge a run ONLY against the ceiling it RECORDED running
-                    # under — never against the table's CURRENT named number
-                    # when the run recorded none of its own. An unrecorded
-                    # entry cannot be proven to have overshot: it may have run
-                    # under an operator's authorised one-off override (
-                    # edgar-history-sweep offers a per-dispatch run_ceiling_usd
-                    # input on purpose — the $0.2721 run on 2026-08-12 ran under
-                    # an authorised $0.40, not the named $0.150), or it may
-                    # simply predate ceiling recording (added 2026-08-14). Either
-                    # way, asserting a brake failure on it is a false alarm in
-                    # the one place that must only ever report real ones, and a
-                    # false ACTION item is exactly how a real overshoot later
-                    # goes unread. Unrecorded is UNKNOWN — collected and PRINTED
-                    # below, never silent, never an ACTION. Since 2026-08-14
-                    # every run records its ceiling (pinned by
-                    # tests/test_spend_ceiling_is_recorded.py), so an unrecorded
-                    # entry is a pre-fix relic that ages out of the window on its
-                    # own. This subsumes the old railway-cron case (no named AND
-                    # no recorded ceiling): it too recorded none, so it too is
-                    # UNKNOWN, by the same rule rather than a separate branch.
-                    if own is None:
+                    if verdict == _spend.OVERSHOOT_UNRECORDED:
                         unjudged.setdefault(job, [0, 0.0])
                         unjudged[job][0] += 1
                         unjudged[job][1] = max(unjudged[job][1], cost)
-                        continue
-                    ran_under = float(own)
-                    if cost <= ran_under * 1.25:
-                        continue
-                    if worst is None or cost > worst:
-                        worst, basis = cost, ran_under
-                if worst is not None:
+                    elif verdict == _spend.OVERSHOOT_BYPASS:
+                        if worst_bypass is None or cost > worst_bypass[0]:
+                            worst_bypass = (cost, why)
+                    elif verdict == _spend.OVERSHOOT_STRUCTURAL:
+                        if worst_structural is None or cost > worst_structural[0]:
+                            worst_structural = (cost, why)
+                    elif verdict == _spend.OVERSHOOT_UNCERTAIN:
+                        # A LEGACY entry (no max_call_usd) is printed but is
+                        # deliberately NOT added to `unverified`, exactly as
+                        # the unrecorded-ceiling bucket below is not an ACTION.
+                        # It is a pre-2026-09-03 relic that ages out of the
+                        # window on its own, and two weeks of exit 3 over a run
+                        # nobody can audit erodes the audit the same way a
+                        # false ACTION does. An entry that DOES record its
+                        # dearest call and is still unjudgeable is a shape
+                        # nothing explains, so that one counts.
+                        uncertain.append((cost, why,
+                                          e.get("max_call_usd") is not None))
+                if worst_bypass is not None:
                     problems.append(
-                        f"{job} spent ${worst:.3f} in one run, past its "
-                        f"${basis:.3f} ceiling (the ceiling that run ran under) "
-                        f"— the per-job brake is not holding")
+                        f"{job} BYPASSED its per-run brake: {worst_bypass[1]}")
+                if worst_structural is not None:
+                    print(f"      {'└─ ' + job:26} LAST-CALL overshoot, not a "
+                          f"brake failure, NO ACTION:")
+                    print(f"      {'':26}    {worst_structural[1]}")
+                for cost, why, countable in sorted(uncertain, reverse=True)[:1]:
+                    print(f"      {'└─ ' + job:26} overshoot UNKNOWN:")
+                    print(f"      {'':26}    {why}")
+                    if countable:
+                        unverified.append(
+                            f"whether {job}'s overshoot is structural")
             if unjudged:
                 # UNKNOWN, printed. Deliberately NOT an ACTION item: a run
                 # nobody can audit is not evidence of an overshoot, and putting

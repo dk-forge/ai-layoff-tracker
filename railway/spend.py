@@ -378,7 +378,7 @@ JOB_RUN_CEILINGS_USD = {
     "reclassify-legacy-ai":    0.005,  # daily    COUNTED <=5 reads
     "company-watchlist":       0.030,  # daily    THROTTLE of MODELLED $0.055
     "supplemental-news":       0.030,  # daily    THROTTLE of MODELLED $0.06
-    "data-quality":            0.005,  # daily    COUNTED ~2 calls
+    "data-quality":            0.005,  # daily    COUNTED ~2 calls, see below
     "process-tips":            0.010,  # daily    COUNTED usually 0 tips
     "hi-warn-import":          0.015,  # daily    COUNTED few new notices
     "hi-warn-dryrun":          0.015,  # manual   same probe, dry
@@ -396,6 +396,28 @@ JOB_RUN_CEILINGS_USD = {
     # that answers at length does not silently truncate the run.
     "ab-ai-causation":         0.150,  # manual   see railway/ab_ai_causation.py
 }
+
+# DATA-QUALITY STAYS AT $0.005, and the measurement is written down here so the
+# next session does not re-derive it (2026-09-03, over the 24 paying runs in
+# railway/spend_jobs.json between 2026-08-04 and 2026-09-02):
+#
+#   median run   $0.0011      21 of 24 runs at or under $0.0020
+#   mean run     $0.0016      dearest three: $0.0055, $0.0055, $0.0068
+#   calls/run    1-2 (5 once, when the adjudication panel fired)
+#
+# So "COUNTED ~2 calls" is right for 21 runs in 24 and the ceiling is NOT
+# mis-sized. The tail is not more calls, it is a LONGER ANSWER: the three dear
+# runs carry 4,001 / 4,892 / 5,332 completion tokens against a 200-650 norm,
+# and no run outside them exceeds 1,010. Raising the ceiling would buy a
+# rambling model twice as much rope and truncate anyway, which is exactly the
+# "answer a guard by widening it" this repo forbids. The tail's real handle is
+# a max_tokens bound on the spot-check request (it sets none), and that is NOT
+# done here: nobody has measured what a legitimate reply's ceiling is, and a
+# cap that cuts a valid reply turns a cost question into a correctness one.
+# Left as a MEASURED, UNTAKEN option rather than a quiet bump.
+#
+# The three dear runs are also what ops_status [2a] used to report as "the
+# per-job brake is not holding". They are not: see judge_overshoot().
 
 # ---------------------------------------------------------------------------
 # COMMITTED vs DISCRETIONARY — who gets paid first
@@ -536,7 +558,21 @@ _prices_fetched = False
 
 # The current process's exact meter.
 _run = {"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
-        "completion_tokens": 0, "cached_prompt_tokens": 0}
+        "completion_tokens": 0, "cached_prompt_tokens": 0,
+        # The DEAREST single call this run made. Not a statistic: it is the
+        # exact width of the honest overshoot bound. metered_call reads the
+        # gate BEFORE a request and meters AFTER, so a run stops at the first
+        # call whose completion takes cumulative spend to or past the ceiling
+        # -- and that call has already landed and been billed. Formally, if
+        # S_k is cumulative spend after call k, the gate permits call k+1 only
+        # while S_k < ceiling, so the final spend obeys
+        #     S_final = S_(final-1) + c_final < ceiling + max(c)
+        # ALWAYS, with every guard working exactly as designed. A run that
+        # breaks that inequality is the only shape a real bypass can take
+        # (some call landed while the run was already at or past its ceiling),
+        # which is why this number, and not a percentage pad, is what
+        # ops_status [2a] judges an overshoot against. See judge_overshoot().
+        "max_call_usd": 0.0}
 _run_ceiling_tripped = False
 
 # Per-source attribution for the meter. cron.py (and any batch caller) names
@@ -678,6 +714,8 @@ def record_usage(model, usage) -> float:
         cost = prompt_tokens * p_rate + completion_tokens * c_rate
     _run["cost_usd"] += cost
     _run["calls"] += 1
+    if cost > _run["max_call_usd"]:
+        _run["max_call_usd"] = cost
     _run["prompt_tokens"] += prompt_tokens
     _run["completion_tokens"] += completion_tokens
     _run["cached_prompt_tokens"] += cached
@@ -971,12 +1009,14 @@ def run_truncation() -> str | None:
 def reset_run_meter() -> None:
     """Test-only: clear the process meter."""
     global _run_ceiling_tripped, _carried_usd, _meter_tag, _truncation
-    global _month_class_cache
+    global _month_class_cache, _carried_max_usd
     _month_class_cache = None
     _run.update({"cost_usd": 0.0, "calls": 0, "prompt_tokens": 0,
-                 "completion_tokens": 0, "cached_prompt_tokens": 0})
+                 "completion_tokens": 0, "cached_prompt_tokens": 0,
+                 "max_call_usd": 0.0})
     _run_ceiling_tripped = False
     _carried_usd = None
+    _carried_max_usd = None
     _meter_tag = None
     _truncation = None
     _by_tag.clear()
@@ -1003,6 +1043,12 @@ def reset_run_meter() -> None:
 # behaviour, never worse), and if it cannot be written nothing raises. A meter
 # must never break the job it measures.
 _carried_usd: float | None = None
+#: The dearest single call EARLIER attempts of this same logical run made.
+#: Carried for the same reason the cost is: the overshoot bound
+#: (cost < ceiling + dearest call) is a statement about the whole logical run,
+#: so a bound computed from one attempt's calls would be too narrow and would
+#: report a retried run as a bypass.
+_carried_max_usd: float | None = None
 
 
 def _run_state_path() -> str | None:
@@ -1020,29 +1066,58 @@ def _run_state_path() -> str | None:
     return os.path.join(tmp, f"alt_run_spend_{run_id}_{attempt}_{job}.json")
 
 
+def _read_carried() -> None:
+    """Load the carried cost AND the carried dearest call, together, once."""
+    global _carried_usd, _carried_max_usd
+    _carried_usd, _carried_max_usd = 0.0, 0.0
+    path = _run_state_path()
+    if not path:
+        return
+    try:
+        with open(path) as fh:
+            state = json.load(fh)
+        _carried_usd = float(state.get("cost_usd") or 0.0)
+        _carried_max_usd = float(state.get("max_call_usd") or 0.0)
+    except (OSError, ValueError, TypeError, AttributeError):
+        # unreadable: fall back to a fresh meter (the old behaviour, never
+        # worse). A carried max of 0.0 only ever WIDENS this run's own max,
+        # never narrows it, so a lost file cannot manufacture a bypass verdict.
+        _carried_usd, _carried_max_usd = 0.0, 0.0
+
+
 def carried_run_cost_usd() -> float:
     """What earlier attempts of this same logical run already spent."""
-    global _carried_usd
-    if _carried_usd is not None:
-        return _carried_usd
-    _carried_usd = 0.0
-    path = _run_state_path()
-    if path:
-        try:
-            with open(path) as fh:
-                _carried_usd = float(json.load(fh).get("cost_usd") or 0.0)
-        except (OSError, ValueError, TypeError, AttributeError):
-            _carried_usd = 0.0  # unreadable: fall back to a fresh meter
+    if _carried_usd is None:
+        _read_carried()
     return _carried_usd
+
+
+def carried_run_max_call_usd() -> float:
+    """The dearest single call earlier attempts of this logical run made."""
+    if _carried_max_usd is None:
+        _read_carried()
+    return _carried_max_usd
+
+
+def logical_run_max_call_usd() -> float:
+    """The dearest single call this LOGICAL run made, attempts included."""
+    return max(_run["max_call_usd"], carried_run_max_call_usd())
 
 
 def _persist_run_cost() -> None:
     path = _run_state_path()
     if not path:
         return
+    # Compute BEFORE opening. `open(path, "w")` truncates, and both figures
+    # read the carried state -- so building them inside the `with` could make
+    # the FIRST such read hit a file this very call had just emptied, and
+    # answer 0.0. That silently narrows both the brake's carried spend and the
+    # overshoot bound to this attempt alone.
+    state = {"cost_usd": round(logical_run_cost_usd(), 8),
+             "max_call_usd": round(logical_run_max_call_usd(), 8)}
     try:
         with open(path, "w") as fh:
-            json.dump({"cost_usd": round(logical_run_cost_usd(), 8)}, fh)
+            json.dump(state, fh)
     except (OSError, TypeError, ValueError):
         pass  # best effort; never break the job
 
@@ -1366,6 +1441,13 @@ def record_job_run(items: int | None = None, stored: int | None = None,
         # one place that reports real overshoot is how real overshoot stops
         # being read.
         "ceiling_usd": round(effective_run_ceiling_usd(), 6),
+        # The dearest single call, which is what makes an overshoot readable.
+        # Without it a reader sees only "spent more than the ceiling" and has
+        # to guess whether the brake failed or the last call simply crossed
+        # the line, and the guess used to be a flat 25% pad in ops_status [2a]
+        # -- a number with no relationship to what one call costs. See
+        # judge_overshoot() and _run["max_call_usd"].
+        "max_call_usd": round(logical_run_max_call_usd(), 6),
     }
     # A run stopped early is not a run that finished. `complete` is always
     # written, both ways, so a reader never has to infer completeness from the
@@ -1410,6 +1492,134 @@ def record_job_run(items: int | None = None, stored: int | None = None,
         except Exception:
             pass
     return entry
+
+
+# --------------------------------------------------------------------------
+# Reading an overshoot: the last call crossing is not the brake failing
+# --------------------------------------------------------------------------
+#
+# WHAT WENT WRONG (measured 2026-09-03, ledger runs 31954949506, 32385942510
+# and 33666038578). ops_status [2a] reported:
+#
+#   "data-quality spent $0.007 in one run, past its $0.005 ceiling (the ceiling
+#    that run ran under) - the per-job brake is not holding"
+#
+# The brake WAS holding. Every one of those three runs is the last-call
+# crossing, which metered_call's contract makes unavoidable and says so in its
+# own docstring ("a run can still only overshoot its ceiling by a single call,
+# which is the honest bound"). The clearest of the three is 2026-08-16: ONE
+# call, $0.00552 against a $0.005 ceiling. A single call cannot bypass a gate
+# -- the first gate read sees $0.00 spent and MUST permit it -- so that run is
+# a brake working perfectly and a message accusing it of failing.
+#
+# That is the same defect class as a health note reading "scheme changed" when
+# a feed merely carried a bad character: the observation is real, the
+# diagnosis is invented, and it sends a human to hunt a bug that is not there.
+# A false ACTION item in the one place that reports real overshoot is how a
+# real overshoot later goes unread.
+#
+# WHY THE OLD TEST COULD NOT TELL THEM APART. It was `cost <= ceiling * 1.25`:
+# a flat 25% pad, chosen against nothing. One call is not 25% of a ceiling. For
+# data-quality ("COUNTED ~2 calls") one call is ~50% of it, and on 2026-08-16 a
+# single long completion cost 110% of it. So the pad absorbed two of the three
+# structural overshoots and reported the third as a brake failure, purely on
+# how long the model happened to answer.
+#
+# THE HONEST BOUND, derived rather than chosen. metered_call reads the gate
+# before a request and meters after. Let S_k be cumulative spend after call k.
+# The gate permits call k+1 only while S_k < ceiling, so the run stops at the
+# first k with S_k >= ceiling, and therefore
+#
+#     S_final = S_(final-1) + c_final  <  ceiling + max(c)
+#
+# ALWAYS, with every guard working exactly as designed. Breaking that
+# inequality is the ONLY shape a real bypass can take: some call landed while
+# the run was already at or past its ceiling. So `max_call_usd` (recorded since
+# 2026-09-03) is the exact width of the allowance, and the verdict is exact in
+# both directions -- no pad, no tolerance, nothing to widen.
+#
+# LEGACY ENTRIES carry no max_call_usd. They are not silently passed: the mean
+# call (cost / calls) is a PROVEN LOWER BOUND on the dearest call, so
+# `cost < ceiling + cost/calls` still PROVES structural (it proves the real
+# bound a fortiori). When even that does not hold, the dearest call is
+# unknown, the verdict is UNCERTAIN, and it says exactly what would settle it.
+# UNCERTAIN is never a pass and never an accusation. It is self-clearing:
+# entries written from 2026-09-03 record their own dearest call.
+
+#: Verdicts judge_overshoot can return. Four states, not two.
+OVERSHOOT_OK = "ok"                  # within the ceiling it ran under
+OVERSHOOT_STRUCTURAL = "structural"  # the last call crossed; the brake held
+OVERSHOOT_BYPASS = "bypass"          # a call landed at or past the ceiling
+OVERSHOOT_UNCERTAIN = "uncertain"    # over, and the dearest call is unknown
+OVERSHOOT_UNRECORDED = "unrecorded"  # the run recorded no ceiling of its own
+
+
+def judge_overshoot(entry: dict) -> tuple[str, str]:
+    """Judge ONE ledger entry's cost against the ceiling THAT RUN ran under.
+
+    Returns (verdict, one-line reason). This is the single definition, shared
+    by ops_status [2a], the health digest and the tests, so "did this run
+    overshoot, and does it mean anything" has one answer everywhere.
+
+    Never raises: a malformed entry is UNRECORDED, not a crash and not a pass.
+    """
+    try:
+        cost = float(entry.get("cost_usd") or 0)
+    except (TypeError, ValueError):
+        cost = 0.0
+    own = entry.get("ceiling_usd")
+    if own is None:
+        return (OVERSHOOT_UNRECORDED,
+                "the run recorded no ceiling of its own, so there is nothing "
+                "to judge it against (UNKNOWN, not a pass)")
+    try:
+        ceiling = float(own)
+    except (TypeError, ValueError):
+        return (OVERSHOOT_UNRECORDED,
+                "the run's recorded ceiling is not a number (UNKNOWN, not a pass)")
+    if cost <= ceiling:
+        return (OVERSHOOT_OK, f"${cost:.4f} within the ${ceiling:.3f} it ran under")
+
+    dearest, basis = entry.get("max_call_usd"), "its dearest single call"
+    try:
+        dearest = float(dearest) if dearest is not None else None
+    except (TypeError, ValueError):
+        dearest = None
+    if not dearest:
+        try:
+            calls = int(entry.get("calls") or 0)
+        except (TypeError, ValueError):
+            calls = 0
+        if calls > 0:
+            # The mean is <= the max, so proving the bound with the mean proves
+            # it with the max. It cannot DISprove it, which is why failing this
+            # branch is UNCERTAIN rather than a bypass.
+            dearest = cost / calls
+            basis = ("its mean call (no dearest-call figure recorded; the mean "
+                     "is a proven lower bound on the dearest)")
+        else:
+            return (OVERSHOOT_UNCERTAIN,
+                    f"${cost:.4f} against ${ceiling:.3f}, and the entry records "
+                    f"no call count, so the size of one call is UNKNOWN")
+
+    if cost < ceiling + dearest:
+        return (OVERSHOOT_STRUCTURAL,
+                f"${cost:.4f} against ${ceiling:.3f}: the call that crossed the "
+                f"line still landed and was billed. Within ${ceiling:.3f} + "
+                f"${dearest:.4f} ({basis}), which is the honest bound a gate "
+                f"read BEFORE a request and metered AFTER can hold to")
+    if entry.get("max_call_usd") is None:
+        return (OVERSHOOT_UNCERTAIN,
+                f"${cost:.4f} against ${ceiling:.3f}, more than ${dearest:.4f} "
+                f"past it, and this entry records no dearest-call figure. "
+                f"UNKNOWN, not a pass and not an accusation: the run's own "
+                f"max_call_usd (recorded from 2026-09-03) is what settles it")
+    return (OVERSHOOT_BYPASS,
+            f"${cost:.4f} against ${ceiling:.3f} with a dearest call of "
+            f"${dearest:.4f}: more than one call landed at or past the "
+            f"ceiling, which no correctly gated run can do. Some paid call is "
+            f"bypassing spend.metered_call, or a metered callable is making "
+            f"more than one request behind a single gate read")
 
 
 def parse_ledger_lines(text: str) -> list[dict]:
@@ -1614,7 +1824,8 @@ def harvest_railway_runs() -> list[dict]:
                  ("job", "date", "cost_usd", "calls", "prompt_tokens",
                   "completion_tokens", "cached_prompt_tokens", "items",
                   "stored", "changed", "run_id", "sources", "gate_mode",
-                  "gate_false_drops", "truncated", "complete", "ceiling_usd")
+                  "gate_false_drops", "truncated", "complete", "ceiling_usd",
+                  "max_call_usd")
                  if rec.get(k) is not None}
         entry.setdefault("job", "railway-cron")
         out.append(entry)

@@ -1,5 +1,95 @@
 # Tech Log
 
+## 2026-09-04 - spend: "the per-job brake is not holding" was the last call crossing (2.20.166)
+
+**Class:** wrong-scope-or-key (an alarm keyed on the wrong quantity: a flat
+percentage pad rather than what one call costs. True observation, invented
+diagnosis - the same shape as a health note reading "scheme changed" for a
+feed that merely carried a bad character)
+**Guard:** railway/tests/test_overshoot_is_read_correctly.py
+
+**The finding.** `ops_status [2a]` reported:
+
+    data-quality spent $0.007 in one run, past its $0.005 ceiling (the ceiling
+    that run ran under) - the per-job brake is not holding
+
+**The verdict: no brake failure exists.** `daily_classification_spotcheck.py`
+makes its paid calls through `spend.metered_call` with `attempts=1` inside the
+callable and `attempts=2` outside (the correct 2026-08-18 shape), over raw
+urllib -- there is no OpenAI SDK client in that job, so the `max_retries=0`
+rule has nothing to bind there; the panel path it can arm
+(`adjudication_panel.py`) does build one and does set `max_retries=0`.
+The three over-ceiling runs in the ledger are the LAST CALL CROSSING:
+
+| run | date | calls | cost | ceiling | complete |
+|---|---|---|---|---|---|
+| 31954949506 | 2026-08-16 | **1** | $0.005520 | $0.005 | no, truncated |
+| 32385942510 | 2026-08-20 | 2 | $0.005504 | $0.005 | yes |
+| 33666038578 | 2026-09-02 | 2 | $0.006785 | $0.005 | no, truncated |
+
+The 2026-08-16 run settles it on its own: ONE call, over the whole ceiling. A
+single call cannot bypass a gate, because the first gate read sees $0.00 spent
+and must permit it. The 2026-09-02 run made exactly the two calls the job makes
+(flag pass + confirm pass; no `sources` breakdown, so the panel did not fire),
+and the brake then stopped the run, which is what `truncated` records.
+
+**The defect was the message.** A false ACTION item in the one place that
+reports real overshoot is how a real overshoot later goes unread. The test
+behind it was `cost <= ceiling * 1.25` -- a flat pad chosen against nothing.
+One call is not 25% of a ceiling: for data-quality it is ~50%, and on
+2026-08-16 a single long completion was 110% of it. The pad absorbed two of the
+three and accused the third, on nothing but how long the model happened to
+answer.
+
+**Fix: the bound is derived, not chosen.** `metered_call` reads the gate before
+a request and meters after, so with S_k the cumulative spend after call k, the
+gate permits call k+1 only while S_k < ceiling, and therefore
+
+    S_final = S_(final-1) + c_final  <  ceiling + max(c)
+
+always. Breaking that inequality is the only shape a real bypass can take.
+`spend.judge_overshoot()` is now the one definition (ops_status, digest, tests)
+and returns four states: `ok`, `structural` (printed, no action), `bypass`
+(ACTION, and it names the two causes worth hunting), `uncertain` (over, with no
+dearest-call figure -- UNKNOWN, printed, added to `unverified`), `unrecorded`
+(unchanged). `record_job_run()` now writes `max_call_usd`, carried across
+retried attempts, and it travels the Railway road: db.php's `add_spend_run`
+whitelist and `harvest_railway_runs()`, both halves, per
+`tests/test_spend_ceiling_is_recorded.py`.
+
+**Swept the whole committed ledger with the new judgement: 372 entries, 190
+ok, 141 unrecorded (pre-2026-08-14 relics), 39 structural, 2 uncertain, ZERO
+bypasses.** The two uncertain are ai-evidence-sweep, $0.0151 against $0.015 --
+0.7% over, with a mean call too small to prove the bound either way. They
+resolve on their own once those runs record a dearest call.
+
+**Latent bug found while proving it.** `_persist_run_cost()` built its JSON
+payload INSIDE `with open(path, "w")`, which truncates first -- so a carried
+read that happened to be the first one would hit a file this very call had
+just emptied and answer 0.0, silently narrowing the brake's carried spend to
+one attempt. Values are now computed before the file is opened.
+
+**The ceiling is NOT raised, and the arithmetic is written into
+`JOB_RUN_CEILINGS_USD`.** Over the 24 paying runs 2026-08-04..2026-09-02:
+median $0.0011, mean $0.0016, 21 of 24 at or under $0.0020. "COUNTED ~2 calls"
+is right. The tail is not more calls but a longer answer -- the three dear runs
+carry 4,001 / 4,892 / 5,332 completion tokens against a 200-650 norm, and no
+other run exceeds 1,010. A bigger ceiling buys a rambling model twice the rope
+and truncates anyway. The real handle is a `max_tokens` bound on the spot-check
+request (it sets none); left MEASURED and UNTAKEN, because nobody has measured
+what a legitimate reply needs and a cap that cuts a valid reply turns a cost
+question into a correctness one.
+
+**Proved by mutation.** A synthetic 10-call $0.020 run under a $0.005 ceiling
+with a $0.002 dearest call is reported as `data-quality BYPASSED its per-run
+brake`; restoring the ledger returns [2a] to zero problems. The boundary test
+moves only the dearest call ($0.0050 -> structural, $0.0030 -> bypass) on an
+identical total, which a pad-based test cannot do. `1.25` is asserted absent
+from ops_status.py.
+
+**Cost of the investigation: $0.00.** Forensics on committed ledgers only; no
+model call was made.
+
 ## 2026-09-03 - email accuracy audit: link_check.py's broken-page alert had no dedupe_key
 
 **Class:** wrong-scope-or-key (a dedup with no scope at all is the same shape

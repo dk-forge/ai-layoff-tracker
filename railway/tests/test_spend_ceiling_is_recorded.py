@@ -206,15 +206,29 @@ class UnjudgeableRunsAreNotPasses(unittest.TestCase):
         the named ceiling cannot creep back in and re-manufacture the
         edgar-history-sweep false alarm (an authorised $0.40 override reported
         against the named $0.150)."""
-        self.assertIn('own = e.get("ceiling_usd")', self.OPS)
-        # own is the ONLY basis; there is no `else ceiling` fallback that would
-        # judge an unrecorded run against a number it may not have run under.
-        self.assertIn("ran_under = float(own)", self.OPS)
-        self.assertNotIn(
-            "ran_under = float(own) if own is not None else ceiling", self.OPS,
-            "the named-ceiling fallback is back: an unrecorded run judged "
-            "against the table's current number re-creates the false brake "
-            "alarm this closed")
+        # Pinned BEHAVIOURALLY since 2026-09-03, when the judgement moved into
+        # spend.judge_overshoot() so ops_status, the digest and the tests read
+        # an overshoot the same way. The property is unchanged: an entry with
+        # no ceiling of its own is UNRECORDED, whatever the table currently
+        # says, so the edgar-history-sweep false alarm (an authorised $0.40
+        # override reported against the named $0.150) cannot come back.
+        named = spend.JOB_RUN_CEILINGS_USD["edgar-history-sweep"]
+        e = {"job": "edgar-history-sweep", "date": "2026-08-12",
+             "cost_usd": named * 2, "calls": 200}
+        verdict, why = spend.judge_overshoot(e)
+        self.assertEqual(
+            verdict, spend.OVERSHOOT_UNRECORDED,
+            "a run that recorded no ceiling was judged against one anyway")
+        self.assertIn("UNKNOWN", why)
+        self.assertEqual(
+            spend.judge_overshoot(dict(e, ceiling_usd=named * 3))[0],
+            spend.OVERSHOOT_OK,
+            "a run under an authorised override must be judged against THAT "
+            "override, not the table's named number")
+        self.assertIn(
+            "judge_overshoot", self.OPS,
+            "ops_status [2a] stopped delegating to the one definition and is "
+            "judging overshoot with a rule of its own again")
 
 
 if __name__ == "__main__":
