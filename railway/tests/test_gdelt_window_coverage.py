@@ -383,6 +383,79 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
                          "a sweep started after the deadline had already passed")
         self.assertEqual(gdelt.last_run_status(), "degraded")
 
+    def test_the_broad_slot_bisection_is_inside_the_budget(self):
+        """The defect the 2026-09-03 read found: the wall-clock budget's FIRST
+        read was at the top of the rotating-sweeps loop, and the BROAD slot runs
+        before that loop. A capped 36h window bisects to the 1h floor across up
+        to 127 sub-windows, each with its own QUERY_ATTEMPTS x backoff, so the
+        phase that preceded the first deadline read had the largest worst case:
+        hours against a 900s budget.
+
+        Proved by mutation, not by going green: the SAME capped window splits
+        without a deadline and stops splitting with one, and the run still ends
+        `degraded` with a partial slot the ledger will retry — deferred, never
+        lost, never a raise."""
+        now = [0.0]
+        windows = []
+
+        def fake_query(query, start, end, mr, label="broad"):
+            windows.append((label, start, end))
+            if label != "broad":
+                return [], False, None
+            # Always capped -> the caller bisects. Each sub-query burns time,
+            # exactly as a throttled retry schedule does.
+            now[0] += 400.0
+            return [_article(f"broad-{len(windows)}")] * mr, False, None
+
+        with patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps", lambda: []), \
+             patch.object(gdelt.time, "monotonic", lambda: now[0]):
+            gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path,
+                deadline=500.0)
+        bounded = [w for w in windows if w[0] == "broad"]
+
+        windows.clear()
+        now[0] = 0.0
+        with patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps", lambda: []), \
+             patch.object(gdelt.time, "monotonic", lambda: now[0]):
+            gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path)
+        unbounded = [w for w in windows if w[0] == "broad"]
+
+        self.assertGreater(len(unbounded), len(bounded),
+                           "the deadline did not bound the broad-slot bisection")
+        # A query in flight is never cut off mid-window, so the count is not 1:
+        # the parent (400s) and the two halves it had time to start (800s,
+        # 1200s) all complete, and each of THOSE declines to split further. 3
+        # against 127 is the whole point — the bound is on starting new work.
+        self.assertEqual(len(bounded), 3)
+        self.assertEqual(len(unbounded), 127)
+        self.assertEqual(gdelt.last_run_status(), "degraded")
+
+    def test_a_deferred_split_is_recorded_partial_not_failed(self):
+        """A window the clock declined to split must stay retriable work. If it
+        were recorded complete the coverage would be silently lost; if it raised
+        the run would die of its own safety valve."""
+        now = [0.0]
+
+        def fake_query(query, start, end, mr, label="broad"):
+            now[0] += 400.0
+            return ([_article("broad-1")] * mr if label == "broad" else []), False, None
+
+        with patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps", lambda: []), \
+             patch.object(gdelt.time, "monotonic", lambda: now[0]):
+            gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path,
+                deadline=500.0)
+        with open(self.ledger_path, encoding="utf-8") as fh:
+            slots = json.load(fh)["slots"]
+        broad = [v for v in slots.values() if v.get("family") == "broad"]
+        self.assertTrue(broad, "the broad slot was not recorded at all")
+        self.assertEqual([v["status"] for v in broad], ["partial"])
+
     def test_no_deadline_means_unbounded_as_before(self):
         started = []
 
