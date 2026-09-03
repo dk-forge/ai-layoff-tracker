@@ -39,7 +39,7 @@ merge. Read "two merges claimed one plugin version" below before answering one.
 | data-quality | Mondays 16:00 UTC + manual | Anomaly report: WARN notices ≥5K, same-company multi-state filings, weak links — READ THIS WEEKLY |
 | survey-reconcile | monthly + manual | Compares the strict US AI-primary announcement metric against the latest official announcement-survey report; fails if variance exceeds 10% |
 | reclassify-legacy-ai | daily + manual | Re-reads linked sources for a bounded batch of legacy AI flags; never deletes rows |
-| reason-backfill | daily 04:40 UTC + manual | Tags untagged non-WARN rows from their STORED excerpt only (fixed vocabulary; ERM template rows map from Eurofound's recorded type, freeform rows via DeepSeek). Writes via /edit (pins rows). Inputs: model_batch, deterministic_cap, dry_run |
+| reason-backfill | daily 04:40 UTC + manual | Tags untagged non-WARN rows from their STORED excerpt only (fixed vocabulary; ERM template rows map from Eurofound's recorded type, freeform rows via `extractor.CLASSIFY_MODEL`, default `google/gemini-2.5-flash-lite`, moved off DeepSeek 2026-09-03). Writes via /edit (pins rows). Inputs: model_batch, deterministic_cap, dry_run |
 | enrich-roles | daily 04:23 UTC + manual | Bounded role-category extraction from already-stored row text (roles/excerpt/quotes, no external fetches); fills only blank role_categories, marks evidence-silent rows `unknown` so the queue drains |
 | historical-news-sweep | daily + manual | Rotates through one 14-day global GDELT history window per day; dedup makes retries safe |
 | announcement-lifecycle-review | daily + manual | Read-only summary of exact-count, source-supported announcement-to-later-record candidates; never auto-merges or changes sources |
@@ -56,8 +56,11 @@ merge. Read "two merges claimed one plugin version" below before answering one.
 | digest-send | 6:00 AM ET daily + 7:30 AM ET Mondays (four cron lines, two per slot; the DST guard in `railway/digest_slot.py` makes the wrong-offset tick a free no-op that exits 0) + manual | **The email digest's sending half.** Pulls the due recipients from the keyed `/digest-recipients`, relays through the transport chosen by `DIGEST_TRANSPORT`, records counts to `digest_mailer`, and a weekly pass additionally stamps `digest_weekly` (ceiling 9d = its 7-day cadence + 2 of slack) so a weekly slot that stops firing cannot hide behind the daily pass's row. `ops_status.py` [4c] reads it and raises an issue. **DORMANT: `dryrun` by default, so it prints the exact email and sends nothing, exit 0.** Arming it is three owner steps, see "The email digest: arming the sender". Inputs: dry_run, freq, limit |
 | tracker-diff | dormant BY DESIGN (owner decision 2026-07-28) | Optional gap-chase against a private feed. Competitor tracking is handled by the LOCAL benchmark instead; this loop is not needed, exits green on schedule, and nobody should be asked to enable it |
 
-The advisory DeepSeek spot-check inside `data-quality` retries temporary
-network/model failures and writes an explicit warning to the Actions summary
+The advisory classification spot-check inside `data-quality`
+(`daily_classification_spotcheck.SPOTCHECK_MODEL`, default
+`google/gemini-2.5-flash-lite` since 2026-09-03, was DeepSeek) retries
+temporary network/model failures and writes an explicit warning to the Actions
+summary
 without failing the whole report. A failed attempted automatic correction still
 fails loudly, because that is a data-changing operation.
 
@@ -3074,7 +3077,7 @@ then walk `getBoundingClientRect()` and `paddingLeft` from a paragraph up to
 - GDELT DOC 2.0 API: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ (keyless; ~gentle rate limits, 429s happen)
 - SEC EDGAR full-text search: https://efts.sec.gov/LATEST/search-index?q= (declare a User-Agent per SEC policy)
 - Extraction model: `google/gemini-2.5-flash-lite` via OpenRouter (openai SDK, `base_url` override) — see `railway/extractor.py`.
-  Classification is PINNED separately to `deepseek/deepseek-chat` (`OPENROUTER_CLASSIFY_MODEL`); it no longer follows `OPENROUTER_MODEL`.
+  Classification is PINNED separately to `google/gemini-2.5-flash-lite` (`OPENROUTER_CLASSIFY_MODEL`; it no longer follows `OPENROUTER_MODEL`. Was `deepseek/deepseek-chat` until 2026-09-03 - moved off it on compliance grounds, not a benchmark result; see docs/TECHLOG.md, "DeepSeek was still wired into six live call sites").
   Swapped 2026-08-07 against the news-path gold set (`docs/recall-reference-sets/news-corroborated-2026-08.goldset.json`), 30/30 at 0.388x cost.
   NOTE: if `OPENROUTER_MODEL` is pinned in the Railway environment, the code default does NOT reach the main cron - change it there too.
 - Comparable trackers for editorial judgment: technology-sector trackers (crowdsourced), announcement-survey monthly reports, WARN databases by ProPublica/USA Today

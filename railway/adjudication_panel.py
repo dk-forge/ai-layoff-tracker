@@ -52,14 +52,29 @@ invariant in data_integrity.py; nothing here votes on a count.
 SPEND (CLAUDE.md, non-negotiable)
 ---------------------------------
 Every model call goes through `spend.metered_call(make_call, ...)`, and the
-`make_call` performs EXACTLY ONE request. The OpenAI/OpenRouter client is built
-with `max_retries=0`, because the SDK's default of 2 re-POSTs from inside the
-callable on a timeout -- and a timed-out completion may already have been
-generated and billed, a charge no ledger, ceiling or $/row figure ever sees.
-Retry, if ever wanted, belongs on `metered_call(attempts=N)`, which re-reads
-the brake and meters every try. A budget stop raises `spend.PaidReadsOff`,
-which this module lets PROPAGATE: a panel that could not afford to ask has
-reached NO verdict, and callers must not read the exception as a REJECT.
+`make_call` performs EXACTLY ONE request per attempt. The OpenAI/OpenRouter
+client is built with `max_retries=0`, because the SDK's default of 2 re-POSTs
+from inside the callable on a timeout -- and a timed-out completion may
+already have been generated and billed, a charge no ledger, ceiling or $/row
+figure ever sees. Retry is `metered_call(attempts=3, retry_sleep=5.0)`, which
+re-reads the brake and meters EVERY try, never a loop inside the callable
+(2026-09-03: a shared-upstream-pool 429 on one vote used to cost the whole row
+its verdict; see `_default_call_model`). A budget stop raises
+`spend.PaidReadsOff`, which this module lets PROPAGATE: a panel that could not
+afford to ask has reached NO verdict, and callers must not read the exception
+as a REJECT.
+
+ERRORED IS NOT HELD (2026-09-03)
+---------------------------------
+A model call that raises after every retry attempt is exhausted is an ERROR,
+not a REJECT and not a judged HOLD: the panel did not decide anything about
+that vote, it failed to ask. `adjudicate()` lets a non-PaidReadsOff exception
+from `caller()` propagate exactly like a budget stop, and callers (see
+`daily_classification_spotcheck.adjudicate_held`) must keep those two UNKNOWN
+outcomes distinguishable from a real HOLD_FOR_REVIEW verdict in whatever they
+tell a human -- "the panel deliberated and declined" and "the panel could not
+reach a verdict" are different states, and collapsing them into one "HELD"
+notice is what let a provider outage read as a judgment on 2026-09-03.
 
 Usage:
     python3 railway/adjudication_panel.py --demo            # DOGE fixture
@@ -96,14 +111,33 @@ except Exception:                   # pragma: no cover - import guard
 # false claim -- the whole design is to make a wrong reading UNLIKELY to be
 # unanimous. Override with ALT_PANEL_MODELS (comma-separated), keeping them on
 # three distinct families.
-# Three families the tracker's OpenRouter key can actually reach today. The key
-# has no Anthropic access (a live DOGE dry-run on 2026-08-26 404'd on
-# anthropic/claude-3.5-haiku: "No endpoints found"), so Claude is left out until
-# Anthropic is enabled on the account; swap it in via ALT_PANEL_MODELS then.
-# Google + DeepSeek + OpenAI are still three distinct lineages.
+# Three families the tracker's OpenRouter key can actually reach today.
+#
+# DeepSeek was here until 2026-09-03. It is now off-limits everywhere in this
+# repo: the owner ruled DeepSeek unusable months ago on EU grounds, and the
+# panel is not exempt just because its diversity requirement makes a
+# replacement harder to pick. The slot moves to anthropic/claude-haiku-4.5, the
+# owner's stated preference (Haiku or Gemini) for the model that had to go --
+# Gemini already holds a seat here, and doubling a family is the exact failure
+# this file's diversity rule exists to prevent (a wrong reading correlated
+# across two members of one lineage).
+#
+# UNVERIFIED AT WRITE TIME. A live DOGE dry-run on 2026-08-26 404'd on
+# anthropic/claude-3.5-haiku ("No endpoints found") -- this OpenRouter account
+# did not have Anthropic enabled a week before this change, and nothing here
+# re-checked that before shipping (no key was available to test with). If it
+# is still gated, every held relabel's panel call to this model will error,
+# and after 2026-09-03 that reads correctly as PANEL ERRORED / UNKNOWN in the
+# owner's inbox (see post_panel_hold_alert), not as a false HOLD_FOR_REVIEW --
+# so the failure mode is visible and actionable rather than silent, but it is
+# still a failure mode. Before relying on AUTO_APPLY from this panel, confirm
+# Anthropic is enabled on the account (OpenRouter privacy/provider settings)
+# or override via ALT_PANEL_MODELS with a reachable third family (e.g. a
+# mistralai/* model, also on this key's catalog).
+# Google + Anthropic + OpenAI are three distinct lineages.
 _DEFAULT_PANEL_MODELS = (
     "google/gemini-2.5-flash-lite",   # Google
-    "deepseek/deepseek-chat",         # DeepSeek
+    "anthropic/claude-haiku-4.5",     # Anthropic
     "openai/gpt-4o-mini",             # OpenAI
 )
 
@@ -312,6 +346,24 @@ def _default_call_model(model: str, system: str, user: str,
     timeout = int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35"))
     spend.set_meter_context(PANEL_SOURCE)
     try:
+        # RETRY, VIA metered_call(attempts=, retry_sleep=), NEVER A LOOP HERE.
+        #
+        # The incident this fixes (2026-09-03): row 176988 (Grupo Volkswagen,
+        # 60,000 jobs) reached NO verdict because deepseek/deepseek-chat's
+        # single attempt hit "429 ... engine_overloaded ...
+        # limit_source: upstream_provider_shared_pool" -- OpenRouter's own
+        # error text says "Retry shortly, or route to another provider", and
+        # the panel made exactly one attempt and gave up, so one transient
+        # 429 from a shared upstream pool cost the row its whole judgment.
+        #
+        # attempts=3 means metered_call re-reads the spend brake AND performs
+        # a fresh request on every attempt (gate -> request -> meter, each
+        # try) -- never a retry loop inside this lambda, which would let one
+        # gate read cover several charges. A 429 on a shared pool is the
+        # textbook transient case attempts= exists for; retry_sleep backs off
+        # linearly (5s, 10s) so a brief upstream squeeze has room to clear
+        # without turning three quick failures into a fourth vote nobody
+        # asked the brake about.
         resp = spend.metered_call(
             model,
             lambda: client.chat.completions.create(
@@ -321,6 +373,7 @@ def _default_call_model(model: str, system: str, user: str,
                 temperature=0, max_tokens=300, timeout=timeout,
             ),
             what=f"panel vote from {model}",
+            attempts=3, retry_sleep=5.0,
         )
     finally:
         spend.set_meter_context(None)

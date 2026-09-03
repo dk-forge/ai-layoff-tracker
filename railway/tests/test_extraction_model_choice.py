@@ -16,6 +16,15 @@ Both are legitimate decisions. Neither was being made on purpose, and that is
 what this file fixes: the extraction model moves because two gold sets say it
 may, and the two unmeasured surfaces stay put until something measures them.
 
+2026-09-03: both unmeasured surfaces moved anyway, off deepseek/deepseek-chat,
+because the owner's compliance ruling against DeepSeek (EU grounds, months
+old) is not conditional on a surface having its own benchmark. They now share
+`extractor.MODEL`'s already-measured default (google/gemini-2.5-flash-lite) --
+the nearest thing to "no opinion yet" this project has, since it is the one
+model actually scored on this project's layoff text and it beat deepseek-chat
+on cost at equal accuracy. A dedicated classify-path / dedup-path A/B is still
+open work; UNMEASURED_SURFACE_MODEL names what holds the seat until it exists.
+
 A note on the pre-extraction gate: `GATE_MODEL` has always had its own default
 and is deliberately untouched here.
 """
@@ -33,7 +42,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # corroborated news set (2026-08-07): level on accuracy, 0.387x the price.
 MEASURED_EXTRACTION_MODEL = "google/gemini-2.5-flash-lite"
 # What the unmeasured surfaces keep until they have a benchmark of their own.
-UNMEASURED_SURFACE_MODEL = "deepseek/deepseek-chat"
+# Was deepseek/deepseek-chat until 2026-09-03; moved off it on compliance
+# grounds (owner's DeepSeek ruling, EU), not because a benchmark ran. Both
+# unmeasured surfaces now share the one model this project HAS measured on
+# layoff text, so the value is identical to MEASURED_EXTRACTION_MODEL -- kept
+# as a separate name because the two constants mean different things (one is
+# earned by a gold set, one is a placeholder that happens to be the same
+# model) and a future classify/dedup A/B may move this one without touching
+# extraction.
+UNMEASURED_SURFACE_MODEL = "google/gemini-2.5-flash-lite"
 
 _MODEL_ENV = ("OPENROUTER_MODEL", "OPENROUTER_CLASSIFY_MODEL", "OPENROUTER_GATE_MODEL")
 

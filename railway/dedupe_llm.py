@@ -8,12 +8,15 @@ a news "Meta 8,000"; (2) the same event reported more than 30 days apart, or
 under a name variant ("Meta" vs "Meta Platforms"), slips the fuzzy window.
 
 This pass groups entries by normalized company, forms candidate clusters of
-similar job counts within a 120-day window, and asks DeepSeek which entries
-are the SAME event reported multiple times versus genuinely distinct layoffs
-(Meta cut 11,000 in 2022, 10,000 in 2023 and 8,000 in 2026 — same company,
-different events). For each confirmed group it keeps ONE canonical entry and
-moves every duplicate's source report onto that event before removing the
-extra row. The public event-source endpoint therefore retains every receipt.
+similar job counts within a 120-day window, and asks an LLM (default
+google/gemini-2.5-flash-lite, see MODEL below; DeepSeek until 2026-09-03 --
+moved off it on compliance grounds, not a benchmark, see MODEL's own comment)
+which entries are the SAME event reported multiple times versus genuinely
+distinct layoffs (Meta cut 11,000 in 2022, 10,000 in 2023 and 8,000 in 2026 —
+same company, different events). For each confirmed group it keeps ONE
+canonical entry and moves every duplicate's source report onto that event
+before removing the extra row. The public event-source endpoint therefore
+retains every receipt.
 
 Canonical preference: a verified entry over an announced one; then the
 earliest date; then the most authoritative source (SEC/WARN/ERM over news).
@@ -37,6 +40,19 @@ import spend
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
 OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+
+# THE DEDUP JUDGE. Deliberately a second copy of extractor.MODEL's default,
+# not an import: this module is stdlib-only on purpose (no openai SDK), and a
+# copy that quietly drifted from extractor.py used to be the point (kept an
+# "unmeasured surface" from moving just because an extraction benchmark did).
+# Moved off deepseek/deepseek-chat on 2026-09-03 -- COMPLIANCE, not a
+# benchmark: the owner ruled DeepSeek unusable months ago on EU grounds, and
+# an unmeasured surface does not get an exception from that. Set to the same
+# model extractor.py's classify path now defaults to, for the same reason
+# (the one model actually measured on this project's layoff text, and cheaper
+# than what it replaces). tests/test_extraction_model_choice.py pins this
+# default via the request this module actually builds.
+MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 MAX_CLUSTERS = int(os.environ.get("DEDUPE_MAX_CLUSTERS") or 60)
 WINDOW_DAYS = 120
@@ -225,7 +241,7 @@ def ask_llm(group):
               '{"events":[[id,id,...],[id,...]]} covering every id exactly once.\n\n'
               + json.dumps(payload, ensure_ascii=False))
     req = urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",
-        data=json.dumps({"model": os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat"),
+        data=json.dumps({"model": MODEL,
                          "messages": [{"role": "user", "content": prompt}],
                          "response_format": {"type": "json_object"}}).encode(),
         headers={"Authorization": "Bearer " + OR_KEY, "Content-Type": "application/json", "User-Agent": UA})
@@ -237,7 +253,7 @@ def ask_llm(group):
             # cluster that trips the ceiling on the first is three charges past
             # the line, for one budget check.
             out = spend.metered_call(
-                os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-chat"),
+                MODEL,
                 lambda: json.load(urllib.request.urlopen(req, timeout=150)),
                 what="an LLM dedup review")
             c = out["choices"][0]["message"]["content"]

@@ -58,7 +58,7 @@ railway/
   sources/google_news.py     FREE keyless layoff-headline discovery (Google News RSS) — leads the news sweep (NewsAPI is effectively dead)
   sources/claims.py          Keyless FRED puller (national ICSA/CCSA + 50 states) for the /claims macro backdrop; claims_import.py POSTs it daily
   extractor.py               Extraction prompt + post-processing; source-quote guard and AI causal taxonomy.
-                             MODEL=google/gemini-2.5-flash-lite, CLASSIFY_MODEL=deepseek/deepseek-chat (pinned, does NOT follow MODEL)
+                             MODEL=google/gemini-2.5-flash-lite, CLASSIFY_MODEL=google/gemini-2.5-flash-lite (pinned separately, does NOT follow MODEL; moved off deepseek/deepseek-chat 2026-09-03 - compliance, not a benchmark)
   source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
   sources/press_releases.py  Opt-in official company IR/newsroom RSS/Atom collector
   survey_reconcile.py        Monthly like-for-like US AI-announcement benchmark check

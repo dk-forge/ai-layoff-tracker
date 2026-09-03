@@ -37,6 +37,7 @@ from urllib.parse import urlparse
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import extractor
 from extractor import extract_layoff_data, classify_industry  # noqa: F401  (extractor warms shared config)
 from wp_poster import post_to_wordpress
 from sources.newsapi import TRUSTED_DOMAINS
@@ -178,8 +179,16 @@ def _second_pass_confirms(company, jobs, text):
         # it was ungated: main() checks the brake once, then each tip costs an
         # extraction plus this, so the ceiling was read once per run for two
         # calls per tip.
-        resp = spend.metered_call("deepseek/deepseek-chat", lambda: client.chat.completions.create(
-            model="deepseek/deepseek-chat",
+        #
+        # Model: extractor.MODEL, not a private literal. Until 2026-09-03 this
+        # was a bare "deepseek/deepseek-chat" -- a fourth undocumented DeepSeek
+        # call site, verifying the same company/job-count facts extraction
+        # already verified, on a model the owner had ruled out months earlier
+        # on EU compliance grounds. This is a confirmation of what extraction
+        # found, the closest thing this file has to "correctness-critical", so
+        # it tracks extractor.MODEL rather than picking its own default.
+        resp = spend.metered_call(extractor.MODEL, lambda: client.chat.completions.create(
+            model=extractor.MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0, max_tokens=4,
             timeout=int(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "35")),

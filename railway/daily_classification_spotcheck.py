@@ -65,6 +65,16 @@ import spend
 API = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
+#: The flag-pass / confirm-pass model (see ask_model()). Was a bare
+#: "deepseek/deepseek-chat" literal until 2026-09-03 -- a THIRD independent
+#: DeepSeek call site this script made every day (data-quality.yml), on top of
+#: the panel's own (adjudication_panel.PANEL_MODELS) and separate from either.
+#: Moved off it on the same compliance grounds as the rest of the repo (the
+#: owner's DeepSeek ruling, EU, months old): google/gemini-2.5-flash-lite is
+#: the one model this project has actually measured on layoff text and it
+#: already beat deepseek-chat on cost, so this is not a blind substitution.
+SPOTCHECK_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
+
 #: Wall-clock budget for this whole script, in seconds. The SCRIPT owns its
 #: deadline (the Wayback archiver's pattern): it finishes cleanly with what it
 #: has and says what it skipped, instead of running into the workflow's
@@ -128,7 +138,7 @@ HOLD_ALERT_SCOPE = "relabel-hold"
 # unattended (>= 5,000 jobs, an unreadable size, or off a guarded worldwide
 # country label) is HELD and mailed to the owner as a bare notice. When the
 # panel is armed, each such held relabel is routed to THREE independent models
-# (Google + DeepSeek + OpenAI, see adjudication_panel.PANEL_MODELS) that must
+# (Google + Anthropic + OpenAI, see adjudication_panel.PANEL_MODELS) that must
 # each APPROVE/REJECT and QUOTE the row's own evidence, and the verdict routes:
 #
 #   AUTO_APPLY  (unanimous, every vote cited, size KNOWN and < 5,000 jobs)
@@ -290,10 +300,10 @@ def ask_model(prompt):
     if not key:
         raise RuntimeError("OPENROUTER_API_KEY is not configured")
     response = spend.metered_call(
-        "deepseek/deepseek-chat",
+        SPOTCHECK_MODEL,
         lambda: request_json(
             "https://openrouter.ai/api/v1/chat/completions",
-            {"model": "deepseek/deepseek-chat", "messages": [{"role": "user", "content": prompt}],
+            {"model": SPOTCHECK_MODEL, "messages": [{"role": "user", "content": prompt}],
              "response_format": {"type": "json_object"}},
             # This is an advisory daily sample, not a batch job. Keep its outage
             # budget bounded so a slow provider cannot hold the whole report open.
@@ -878,26 +888,76 @@ def log_panel_decisions(applied, rejected):
             summary(line)
 
 
-def _panel_hold_body(still_held, jobs_by_id, names_by_id=None):
+def _split_errored(still_held):
+    """Split still_held into (errored, judged).
+
+    An errored item's verdict is None: the panel made every retry attempt and
+    still could not reach a verdict on it (a provider outage, a rate limit
+    that outlasted the retries, an unreachable model). A judged item's verdict
+    is a real PanelVerdict (HOLD_FOR_REVIEW, or an unreadable-size AUTO_APPLY
+    the caller downgraded to a hold): three models were actually asked and the
+    panel actively declined to clear it.
+
+    These are DIFFERENT STATES (2026-09-03). "The panel errored and reached no
+    verdict" and "the panel deliberated and declined" used to arrive as the
+    same HELD email, and that conflation is exactly what made the 2026-09-03
+    incident readable as a judgment on Grupo Volkswagen's country label: the
+    mail said "Panel tally: no verdict. Panel error: 429 ..." in the same
+    breath as a real held relabel, with nothing in the subject line telling
+    the owner which kind of mail he was reading. An errored panel is UNKNOWN,
+    not a hold, and must say so on its own -- and it must never be read as
+    grounds to apply anything either; see adjudicate_held's docstring.
+    """
+    errored = [(f, v) for f, v in still_held if v is None]
+    judged = [(f, v) for f, v in still_held if v is not None]
+    return errored, judged
+
+
+def _panel_error_body(errored, jobs_by_id, names_by_id=None):
+    """The UNKNOWN-state section: the panel was never actually asked (or could
+    not finish asking) about these rows. No tally, no votes, no verdict --
+    only a bare error and a suggestion that is neither approved nor rejected.
+    Written separately from `_panel_hold_body` on purpose: mixing them under
+    one "HELD" heading is the defect this fixes (see `_split_errored`).
+    """
     names_by_id = names_by_id or {}
-    lines = ["The daily classification spot-check ran each held relabel past the "
-             "three-model adjudication panel. The changes below were NOT applied: "
-             "the panel did not clear them for an unattended write. Each carries "
-             "the panel's tally, every model's cited reason, and a one-click "
-             "command to apply it through the corrections path.\n"]
-    for f, verdict in still_held:
+    lines = [
+        "The panel could not reach a verdict on these -- every retry attempt "
+        "errored (a provider outage or a rate limit that outlasted the "
+        "retries is the usual cause; see the error text on each row). This is "
+        "NOT a judgment: no model actually voted, so there is nothing here "
+        "to disagree with, and nothing was auto-applied. The relabel is "
+        "queued and will be retried on tomorrow's run.\n"]
+    for f, _v in errored:
         rid = f["id"]
         jobs = jobs_by_id.get(rid)
         company = names_by_id.get(rid, "")
-        tally = verdict.approve_tally if verdict is not None else "no verdict"
+        lines.append(
+            f"UNKNOWN (panel errored) row {rid} {company} ({f.get('field')}): "
+            f"\"{f.get('current')}\" -> \"{f.get('suggested')}\", "
+            + (f"{int(jobs):,} jobs" if isinstance(jobs, int) else "job count UNKNOWN")
+            + f". Error: {f.get('_panel_error', 'unknown error')}.")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _panel_hold_body(judged, jobs_by_id, names_by_id=None):
+    names_by_id = names_by_id or {}
+    lines = ["The daily classification spot-check ran each held relabel past the "
+             "three-model adjudication panel. The changes below were NOT applied: "
+             "the panel actively did not clear them for an unattended write. "
+             "Each carries the panel's tally, every model's cited reason, and a "
+             "one-click command to apply it through the corrections path.\n"]
+    for f, verdict in judged:
+        rid = f["id"]
+        jobs = jobs_by_id.get(rid)
+        company = names_by_id.get(rid, "")
         head = (f"HELD row {rid} {company} ({f.get('field')}): "
                 f"\"{f.get('current')}\" -> \"{f.get('suggested')}\", "
                 + (f"{int(jobs):,} jobs" if isinstance(jobs, int) else "job count UNKNOWN")
-                + f". Panel tally: {tally}.")
-        if verdict is not None and verdict.is_headline_mover:
+                + f". Panel tally: {verdict.approve_tally}.")
+        if verdict.is_headline_mover:
             head += " Headline-mover (>= 5,000 jobs): never auto-applied."
-        if f.get("_panel_error"):
-            head += f" Panel error: {f['_panel_error']}."
         lines.append(head)
         lines.extend(_panel_vote_lines(verdict))
         lines.append("  To apply it (writes the public corrections log):")
@@ -914,6 +974,13 @@ def post_panel_hold_alert(still_held, jobs_by_id, names_by_id=None):
     operational mail leaves by. Same dedup shape and scope as the bare notice
     (one open cause per set of held ids, cleared by clear_hold_alert), so the
     only thing that changed is that the mail now carries the panel's reasoning.
+
+    Splits ERRORED (no verdict reached) from JUDGED (the panel actually voted
+    and declined) before writing anything, and says so distinctly in both the
+    subject and the body -- see `_split_errored`. One mail, because the dedup
+    key is still one set of held ids and the owner should not get two emails
+    for one run; but a reader must be able to tell a provider outage from a
+    real hold at a glance, starting with the subject line.
     """
     if not still_held:
         return
@@ -922,10 +989,24 @@ def post_panel_hold_alert(still_held, jobs_by_id, names_by_id=None):
                 "not configured. They are listed above and will be re-raised "
                 "tomorrow._")
         return
+    errored, judged = _split_errored(still_held)
+    if errored and judged:
+        subject = (f"{len(judged)} label relabel(s) HELD by the panel + "
+                   f"{len(errored)} PANEL ERROR (no verdict), not applied")
+    elif errored:
+        subject = (f"{len(errored)} label relabel(s): PANEL ERRORED, no verdict "
+                   "reached, not applied")
+    else:
+        subject = f"{len(judged)} label relabel(s) HELD by the panel, not applied"
+    body_parts = []
+    if errored:
+        body_parts.append(_panel_error_body(errored, jobs_by_id, names_by_id))
+    if judged:
+        body_parts.append(_panel_hold_body(judged, jobs_by_id, names_by_id))
+    body = "\n\n".join(body_parts)
     ids = ".".join(sorted({str(f["id"]) for f, _ in still_held}))
     if not ops_notify.notify(
-            f"{len(still_held)} label relabel(s) HELD by the panel, not applied",
-            _panel_hold_body(still_held, jobs_by_id, names_by_id),
+            subject, body,
             dedupe_key=f"{HOLD_ALERT_SCOPE}:{ids}"[:160],
             what="panel-vetted held-relabel notice"):
         summary("_The panel-held relabels could not be mailed. They are listed "
@@ -1195,9 +1276,9 @@ def main():
             result = request_json(API + "edit", {
                 "edits": edits,
                 "reason": ("Automated classification audit: a label mismatch flagged by a model "
-                           "and re-checked by a second pass of the same model (DeepSeek). Applied "
-                           "only to entries below " + f"{AUTO_APPLY_MAX_JOBS:,}" + " jobs; larger "
-                           "relabels are held for a person to review."),
+                           "and re-checked by a second pass of the same model (" + SPOTCHECK_MODEL
+                           + "). Applied only to entries below " + f"{AUTO_APPLY_MAX_JOBS:,}"
+                           + " jobs; larger relabels are held for a person to review."),
             }, {"X-Layoff-API-Key": key}, attempts=3, timeout=90)
             applied = result.get("edited", [])
             summary(f"**Auto-applied {len(applied)} re-checked label fix(es)** on entries below "
