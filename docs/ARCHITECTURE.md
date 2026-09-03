@@ -26,6 +26,7 @@
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed) · /claims (jobless-claims backdrop, macro context) │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup /source-health(POST) /alert(emails owner on breakage) │
   │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate /reconcile-supersets(dedup) /claims-ingest /trash │
+  │           /edit /merge-events /move-source-reports (corrections: reason required, public corrections-log entry)                  │
   │           /changed-rows (GET; rows whose updated_at falls in a window, for tracing a headline move to its rows) │
   │   PUBLIC /event/{layoff-row-id}/sources (all retained reports for one event)          │
   │   KEYED   /subscriber-stats (digest audience, COUNTS ONLY, never an address)          │

@@ -11,16 +11,16 @@ on:
         description: "Table row id(s), comma-separated (the id the /query API returns)"
         required: true
       action:
-        description: "trash (count unsupported by its source) or edit (fix a field)"
+        description: "trash (count unsupported by its source), edit (fix a field), move-sources (reattach source links to the row whose event they describe), add (store a row the ingest lost, through /add and every guard on it)"
         required: true
         default: trash
         type: choice
-        options: [trash, edit]
+        options: [trash, edit, move-sources, add]
       reason:
         description: "Why, in plain words. Recorded permanently."
         required: true
       fields:
-        description: 'edit only: JSON of fields, e.g. {"job_count": 4500}'
+        description: 'edit: JSON of fields, e.g. {"job_count": 4500}. move-sources: {"to_id": N, "urls": [...]} (ids = the ONE row the links leave). add: the entry JSON (company_name, job_count, layoff_date, country, industry, source_url, source_name, excerpt ...; ids = 0)'
         required: false
         default: ""
       verify_company:

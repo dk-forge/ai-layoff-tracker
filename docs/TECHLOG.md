@@ -1,5 +1,65 @@
 # Tech Log
 
+## 2026-09-03 - the Chile 500 row gives Uber's 3,300 its evidence back, through a route that did not exist (2.20.162)
+
+**Class:** wrong-scope-or-key - the count-blind fuzzy merge (fixed in 2.20.161)
+had already written its mistake into the source-report table, and no
+correction route was keyed on a source report; every one was keyed on a row.
+**Guard:** railway/tests/test_move_source_reports.py (16 tests: the route is
+keyed, refuses an empty reason, never moves a row's own citation, reports a
+missing link instead of skipping it, inserts before it deletes; the driver's
+dry run POSTs nothing, refuses a link the from-row does not hold before any
+write, and reads a server shortfall as a red run; `add` derives the extractor's
+dedup hash by executing both formulas).
+
+**The state on the live row, read from `/event/178973/sources`.** Sixteen
+source reports on the event of "Uber, 500, Chile, 2026-08-31". Three are df.cl
+and say "Uber elimina mas de 500 puestos en Chile" (the row's own citation and
+two more). Thirteen, observed 2026-09-02 22:26 to 22:38 UTC, all describe the
+global cut: Times of India, Business Today, marketscreener, "Latest news from
+Azerbaijan" and Al Bayan through the Google News redirector, and
+moneycontrol.com, livemint.com (x2), businesstoday.in, hindustantimes.com,
+elperiodico.com, bbc.co.uk and bbc.com directly. Every one of the thirteen
+carries "3,300" in its stored excerpt except the two BBC copies, which say
+"3,000 job cuts as part of major restructure"; none is ambiguous. The Chile
+row's own facts (500, Chile, 2026-08-31, df.cl) are correct and untouched.
+
+**Why a new route.** `additional_sources` is not a column. It is rendered from
+`wp_alt_source_reports` by event id (`alt_attach_event_sources`), so `/edit`'s
+field allowlist cannot reach it, `/trash` would drop a correct row, and
+`/merge-events` only ever folds reports IN. The one sanctioned shape for a
+published-data change is `apply-correction.yml` (dispatch-only, dry run unless
+`apply` is ticked, reason recorded, before/after shown, public corrections-log
+entry), so the fix extends that shape rather than opening a side door:
+
+- `/move-source-reports` (keyed): `from_id`, `to_id`, `urls`, `reason`. Moves
+  the named reports from one row's event to the other's. Refuses the from-row's
+  own `source_url` (that is an `/edit` of the citation, which pins and
+  suppresses), reports a URL it does not hold under `not_found`, inserts on the
+  target before deleting from the source, and appends `corrected ... sources
+  reattributed: N report link(s) moved from row A to row B` to the public log.
+- `apply_correction.py --action move-sources`: dry run reads both events off
+  the public route and prints every report as MOVE or stay with its stored
+  excerpt, refuses before any write if a requested link is not held, fails
+  loudly on any server shortfall, prints both events after.
+- `apply_correction.py --action add`: the lost event cannot self-heal. The
+  seen-URL pre-check counts retained source reports as seen, so all thirteen
+  URLs are burned for the ingest; only a NEW article could store the row, and
+  whether one arrives is not a plan. `add` sends the entry through `/add`, the
+  door every collector uses, so the exact-hash, suppression, count-aware fuzzy
+  and rebadge guards all run; the dedup hash is derived as `extractor.py`
+  derives it. The dry run prints the row as it will be sent and the worldwide
+  headline before and after.
+
+**The headline.** Storing the row moves the worldwide all-time total by
++3,300 on +1 entry. `headline_movement`'s worldwide floor is 25,000 jobs per
+elapsed day and its allowance is `|delta entries| x base mean x 12`, so the
+guard's own arithmetic does not read a single 3,300-job row as an unexplained
+move, and no incident was expected to open. That is the guard reading a
+self-explaining row correctly, not the guard being bypassed; nothing in
+`data_integrity.py`, `headline_baseline.json` or `headline_incidents.json` was
+edited by hand. The outcome section below records what it actually said.
+
 ## 2026-09-03 - Uber's 3,300 was read fourteen times and stored zero times: the same-company merge never looked at the count (2.20.161, branch, not merged)
 
 **Class:** wrong-scope-or-key - the fuzzy dedup was keyed on company + a 30-day
