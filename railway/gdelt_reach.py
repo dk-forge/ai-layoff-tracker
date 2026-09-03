@@ -101,13 +101,19 @@ HEADLINE_ONLY = ("robots_disallowed", "robots_unknown")
 
 # Query slots, by ROLE not by text: the segment/native/euphemism rotations
 # change every run and their terms must never reach a public string.
-QUERY_LABELS = ("broad", "segment", "native", "euphemism", "theme", "euro", "mirror")
+QUERY_LABELS = ("broad", "segment", "native", "euphemism", "theme", "euro", "mirror", "raw")
 
 _PUBLIC_WORDS = frozenset(REASONS) | frozenset(QUERY_LABELS) | frozenset({
     "queries", "returned", "capped", "cap", "abandoned", "rate_limited",
     "answered", "countries", "reasons", "totals", "candidates", "trusted",
     "kept", "dropped", "unknown_country", "by_country", "by_reason",
     "by_label", "max_records", "source", "gdelt", "reach", "headline_only",
+    # The published-files path (sources/gdelt_raw.py): how many files the
+    # window held, how many were read, and the NEWEST FILE STAMP consumed as
+    # an integer, so the freshness claim is a measured number and not a
+    # sentence. A stamp is digits; free text still cannot pass.
+    "files_expected", "files_read", "pending", "gaps", "failed", "skipped",
+    "newest", "lag_minutes",
 })
 _CC_RX = re.compile(r"^[a-z]{2}$")
 
@@ -178,6 +184,7 @@ class Reach:
     def __init__(self):
         self.queries = []            # [{label, returned, max_records, capped, abandoned, rate_limited}]
         self._by_country = {}        # cc -> {reason: count}
+        self._raw = None             # published-files facts, see note_raw_feed
         # `_fetch_trusted` records `kept` / `fetch_failed` / `empty_text` from
         # inside a ThreadPoolExecutor, so the counters are touched by up to
         # GDELT_FETCH_WORKERS threads at once. A read-modify-write on a plain
@@ -233,6 +240,26 @@ class Reach:
                 "rate_limited": bool(rate_limited),
             })
 
+    def note_raw_feed(self, *, files_expected, files_read, pending, gaps, failed,
+                      skipped, newest, lag_minutes):
+        """The published-files read of the broad window, as numbers.
+
+        `newest` is the newest 15-minute file stamp actually CONSUMED
+        (YYYYMMDDHHMMSS, kept as an integer so it passes assert_nameless) and
+        `lag_minutes` its distance from the window's end. This is the
+        freshness claim, measured per run: a mirror that lagged its partition
+        by a day looked identical to a live read until this was recorded.
+        None for `newest` means no file was read, which is not zero lag.
+        """
+        with self._lock:
+            self._raw = {
+                "files_expected": int(files_expected), "files_read": int(files_read),
+                "pending": int(pending), "gaps": int(gaps), "failed": int(failed),
+                "skipped": int(skipped),
+                "newest": int(newest) if newest else None,
+                "lag_minutes": None if lag_minutes is None else int(lag_minutes),
+            }
+
     def note(self, domain, reason, count=1):
         """Attribute `count` candidates from `domain` to one outcome."""
         if reason not in REASONS:
@@ -287,12 +314,32 @@ class Reach:
 
     def summary(self):
         """The whole run as a nameless structure. Raises LeakGuard otherwise."""
-        return assert_nameless({
+        out = {
             "totals": self.totals(),
             "by_reason": self.by_reason(),
             "by_label": self._by_label(),
             "by_country": {cc: dict(r) for cc, r in self._by_country.items()},
-        })
+        }
+        if self._raw is not None:
+            out["raw"] = dict(self._raw)
+        return assert_nameless(out)
+
+    def raw_detail(self):
+        """The published-files facts as `key=value` words, or '' when the
+        broad slot did not go through the files this run."""
+        r = self._raw
+        if not r:
+            return ""
+        parts = [f"raw_files={r['files_read']}/{r['files_expected']}"]
+        if r["newest"]:
+            s = str(r["newest"])
+            parts.append(f"raw_newest={s[0:4]}-{s[4:6]}-{s[6:8]}T{s[8:10]}:{s[10:12]}Z")
+        if r["lag_minutes"] is not None:
+            parts.append(f"raw_lag_min={r['lag_minutes']}")
+        for key in ("pending", "gaps", "failed", "skipped"):
+            if r[key]:
+                parts.append(f"raw_{key}={r[key]}")
+        return " ".join(parts)
 
     def _by_label(self):
         out = {}
@@ -331,6 +378,11 @@ class Reach:
         reasons = " ".join(f"{r}={by_reason[r]}"
                            for r in REASONS if r != "kept" and by_reason.get(r))
         parts = [head]
+        # Freshness next, before the drop reasons: which file GDELT had
+        # published and we consumed is the fact a lagging source hides.
+        raw = self.raw_detail()
+        if raw:
+            parts.append(raw)
         if reasons:
             parts.append(reasons)
         line = "; ".join(parts)
@@ -371,6 +423,8 @@ class Reach:
                     f"GDELT reach [{label}]: {slot['queries']} quer(ies), "
                     f"{slot['returned']} returned, {slot['capped']} capped, "
                     f"{slot['abandoned']} abandoned")
+        if s.get("raw"):
+            lines.append(f"GDELT reach [raw]: {self.raw_detail()}")
         for cc, reasons_map in sorted(
                 s["by_country"].items(),
                 key=lambda kv: (-sum(kv[1].values()), kv[0])):

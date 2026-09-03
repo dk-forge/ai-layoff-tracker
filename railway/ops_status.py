@@ -1160,6 +1160,12 @@ def _print_wrapped(text, width=86, indent="        "):
 _REACH_RX = re.compile(
     r"returned=(\d+) queries=(\d+) answered=(\d+) abandoned=(\d+) "
     r"capped=(\d+) kept=(\d+) dropped=(\d+)")
+# The published-files freshness facts (gdelt_reach.raw_detail): which file
+# GDELT had published and the run consumed, and how far behind the window's
+# end that was. Absent means the broad slot went through the mirror or the
+# query API that run, whose lag is not measured -- UNKNOWN, not fresh.
+_RAW_RX = re.compile(
+    r"raw_files=(\d+)/(\d+)(?: raw_newest=(\S+))?(?: raw_lag_min=(\d+))?")
 
 
 def gdelt_reach_lines(runs):
@@ -1192,9 +1198,11 @@ def gdelt_reach_lines(runs):
         m = _REACH_RX.search(str(r.get("detail") or ""))
         if m:
             ret, q, ans, aband, cap, kept, drop = (int(g) for g in m.groups())
+            raw = _RAW_RX.search(str(r.get("detail") or ""))
             parsed.append({"at": r.get("attempted_at"), "q": q, "ans": ans,
                            "aband": aband, "cap": cap, "ret": ret,
-                           "kept": kept, "drop": drop})
+                           "kept": kept, "drop": drop,
+                           "raw": raw.groups() if raw else None})
     if not parsed:
         return ([
             "reach UNKNOWN - no run in this window recorded what GDELT returned.",
@@ -1210,6 +1218,15 @@ def gdelt_reach_lines(runs):
         f"{latest['ans']} answered, {latest['ret']} article(s) returned",
         f"  kept {latest['kept']}, dropped {latest['drop']}",
     ]
+    if latest.get("raw"):
+        read, expected, newest, lag = latest["raw"]
+        lines.append(
+            f"  FRESHNESS: published files read {read}/{expected}, newest consumed "
+            f"{newest or 'none'}, {lag + ' min' if lag else 'unknown'} behind the window end")
+    else:
+        lines.append(
+            "  FRESHNESS UNKNOWN: the broad slot did not go through the published"
+            " files this run (mirror or query API); their lag is not measured.")
     if latest["cap"]:
         lines.append(
             f"  CAP BINDING: {latest['cap']} quer(ies) were TRUNCATED at their"

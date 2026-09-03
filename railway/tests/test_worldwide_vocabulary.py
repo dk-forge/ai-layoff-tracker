@@ -179,6 +179,11 @@ class ClockSkippedSweepsAreQueuedNotLost(unittest.TestCase):
         self._fetch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
         self._fetch.start()
         self.addCleanup(self._fetch.stop)
+        # The published-files path is first in preference since 2026-09-03 and
+        # is pinned in test_gdelt_raw_feed.py; keep this test off the network.
+        self._raw = patch.object(gdelt, "_raw_feed_applies", lambda s, e: False)
+        self._raw.start()
+        self.addCleanup(self._raw.stop)
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         tmp.write('{"slots": {}}')
         tmp.close()

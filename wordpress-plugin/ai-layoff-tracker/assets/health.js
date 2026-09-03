@@ -42,7 +42,7 @@
     local_news: ['Local-language market sweep, searching each market in its own words', CRON, '25 markets', 'Google News national editions'],
     regional_feeds: ['Regional news feeds covering low-volume countries: RNZ Pacific, Pacific Island Times, Financial Afrik, Jeune Afrique, Caribbean News Global', CRON, 'Pacific · Francophone Africa · Caribbean', 'Publisher RSS feeds'],
     national_feeds: ['One verified national publisher per mid-sized economy. Egypt, Colombia, Ethiopia, Kazakhstan, Ghana, Pakistan, Jordan, Iraq, Jamaica, Nepal, Papua New Guinea, Paraguay, Serbia and Peru', CRON, '14 countries', 'Publisher RSS feeds'],
-    gdelt: ['Worldwide multilingual news discovery', CRON, 'Worldwide', 'Open news-index API'],
+    gdelt: ['Worldwide multilingual news discovery', CRON, 'Worldwide', 'Open news-index files, with mirror and API fallbacks'],
     gdelt_historical: ['Worldwide historical news recovery', 'Daily, success-anchored', 'Worldwide', 'Open news-index API'],
     press_releases: ['Reviewed company-controlled IR/newsroom feeds', CRON, 'Per reviewed company (US · DE)', 'Company RSS/Atom feeds'],
     eurofound_erm: ['Eurofound ERM restructuring announcements', 'Daily', 'European Union', 'Official monitor dataset'],

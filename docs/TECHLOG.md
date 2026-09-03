@@ -1,5 +1,143 @@
 # Tech Log
 
+## 2026-09-03 - GDELT is read from its published index files; the query API is dead and the mirror lags (2.20.162)
+
+**Class:** absent-read-as-ok - the broad window came from a mirror whose lag
+no surface recorded, so "the run answered" was read as "the run was current";
+the previous entry bounds that lag at under seven hours for one story and
+calls its exact value UNKNOWN, and nothing before this change could say
+which file GDELT had published and we had consumed.
+**Guard:** railway/tests/test_gdelt_raw_feed.py (28 tests, mutation-proved,
+see below), plus the unchanged test_robots_gate, test_gdelt_window_coverage
+and test_worldwide_vocabulary.
+
+**What this is NOT.** The Uber 3,300 miss of 2026-09-02 (previous entry) was
+NOT the mirror's lag: GDELT's files carried the story at 12:00 UTC, the mirror
+returned it by 22:07, and the fuzzy dedup swallowed it fourteen times. That
+was the leading hypothesis when this work was scoped and it died on evidence.
+What survives is the rest of the case: a query API that answers nothing, a
+mirror that spends quota and whose lag is unmeasured, and a native vocabulary
+that the mirror's SQL could not match through HTML entities.
+
+**The state of the three ways to read GDELT, measured 2026-09-03.**
+
+1. The public DOC query API (`api.gdeltproject.org/api/v2/doc/doc`) has
+   abandoned the broad window on 100% of runs since 2026-08-19 and answered
+   HTTP 000 after a 45 s timeout from the owner's machine. Dead, for us.
+2. The BigQuery mirror (`gdelt-bq.gdeltv2.gkg_partitioned`, `GDELT_PREFER_BQ=1`
+   on the Railway cron since 2026-09-02) answers, but filters on
+   `_PARTITIONTIME`, so the freshest part of a 36h window can sit outside
+   the partition when the run reads it, and it spends a 1 TB/month quota at
+   up to 30 GB a query. Its lag was never recorded anywhere; the one bound
+   on file is "under seven hours" for one story (previous entry).
+3. GDELT publishes the SAME GKG records as static files every 15 minutes on
+   a CDN (`data.gdeltproject.org/gdeltv2/`), no key, no quota. Verified from
+   this machine: `lastupdate.txt` answered HTTP 200 in 0.19 s at 10:37 UTC
+   naming a file stamped 10:30; the 10:45 file (5.46 MB) downloaded in 0.88 s;
+   parsed, it held 1,318 rows of 27 tab-separated columns, every row with a
+   `<PAGE_TITLE>` in `V2ExtrasXML` (column 27), `SourceCommonName` as the
+   domain, `V2Themes` carrying `UNEMPLOYMENT` on 14 rows. The worldwide set is
+   TWO feeds: `*.gkg.csv.zip` is English-source only (1,318 rows, all `eng`);
+   `*.translation.gkg.csv.zip` is every other language (the 09:00 file:
+   12.75 MB, 3,262 rows, zho 434 / tur 273 / rus 268 / deu 255 / ita 246 /
+   spa 235 / ell 165 / vie 147, ORIGINAL-language titles). The translation
+   titles are HTML-entity encoded on disk (a Hindi PayPal-layoff headline
+   reads `&#x915;&#x930;...`), which the mirror's `REGEXP_CONTAINS` never
+   unescaped, so the native vocabulary of 2.20.158 could not match those
+   through the mirror and can through the files.
+
+**Publication lag, measured.** The English file is on the CDN BEFORE its
+stamp: at 10:37 UTC `lastupdate.txt` named the 10:45 file and it downloaded,
+and `Last-Modified` ran about ten minutes ahead of the stamp on every
+English file probed (the stamp is the end of the slot), so English lag
+against the clock is effectively zero and `lag_minutes` clamps at 0. The
+translation file lands five to forty-five minutes AFTER its stamp, out of
+order: at 10:38 UTC the 09:45 translation file existed, 10:00 and 10:30 did
+not, then 10:15 appeared before 10:00 did.
+`masterfilelist-translation.txt` already listed all three with sizes and
+MD5s while they 404'd. So a 404 near the window's end is a file not yet
+published, not a gap, and the module says which.
+
+**Cost, measured on a real 36h window (2026-09-01 22:30 to 2026-09-03 10:30).**
+145 slots x 2 feeds = 290 files (HEAD on every one, 7.4 s); 695 MB English +
+1,271 MB translation = 1,966 MB. A 24-file, 126.7 MB sample with four workers,
+download and parse included, ran at 17.7 MB/s effective, so the whole window
+is ~110 s of wall clock from this machine, against the daily run's 900 s
+`GDELT_RUN_BUDGET_SECONDS`. That is free of quota and NOT free of bandwidth:
+about 2 GB a day. A live smoke through the real module over a 90-minute
+window (14 files, 10 read, 4 translation files pending, newest 10:45, lag
+3 min) returned 310 candidate rows, 35 on the allowlist, 134 with non-ASCII
+titles, in 4.4 s; no article was fetched and nothing was posted.
+
+**What was built.** `railway/sources/gdelt_raw.py` (new). A window is
+enumerated by NAME (quarter-hour stamps, both feeds), never from the 127 MB
+master list. Each file is fetched under the identifying `AiLayoffTracker/1.0`
+string, opened from memory and read line by line through a text wrapper
+(the 40 MB decompressed CSV is never held whole; four workers hold four zips
+at most), and a row is a candidate on EXACTLY the mirror's definition:
+`UNEMPLOYMENT` in `V2Themes` OR `gdelt_bq.title_pattern` (the one regex, over
+`discovery_terms()` plus `native_layoff_terms.mirror_title_terms()`) on the
+HTML-unescaped, lowercased title. Outcomes per file: read, PENDING (404
+within `PUBLICATION_LAG` = 2h of the window end), GAP (an older 404, asked
+twice), FAILED (transport/5xx after two attempts), SKIPPED (the run deadline
+passed). Pending leaves the window complete; any gap, failure or skip makes
+it PARTIAL, recorded in the ledger as such; zero files read raises and the
+caller falls through.
+
+`sources/gdelt.py`: the broad slot's preference order is now **published
+files -> BigQuery mirror -> public query API**. `_raw_feed_applies` gates on
+`GDELT_RAW_FEED` (on unless `0`) and on a horizon (`GDELT_RAW_FEED_HORIZON_DAYS`,
+7, clamped 1-30): a backfill window from 2024 is the same 2 GB per window and
+the mirror serves history under quota, so old windows skip the files. When
+the files raise, the mirror is tried whenever it is configured, then the API;
+a PARTIAL file read keeps its rows and is recorded partial like a mirror walk
+that hit its page ceiling. Everything after the broad slot is untouched: the
+rotating sweeps, the outage breaker, the deadline, the ledger, and the single
+exit through `_fetch_trusted`, which is where `TRUSTED_DOMAINS`, the robots
+gate before any article body (2.20.160), same-run dedup and `gdelt_reach`
+counting live. The files supply metadata only, so nothing about the body
+path changed.
+
+**The freshness claim is now a recorded number.** `gdelt_reach` gained a
+`raw` label and `note_raw_feed(...)`: files expected and read, pending, gaps,
+failed, skipped, the NEWEST FILE STAMP CONSUMED as an integer, and its lag
+in minutes from the window end. It rides `summary()` through
+`assert_nameless` (integers and frozen words only), and the health `detail`
+now reads, after the headline facts ops_status already parses,
+`raw_files=286/290 raw_newest=2026-09-03T21:45Z raw_lag_min=15 raw_pending=4`.
+`ops_status [2d]` prints `FRESHNESS: published files read N/M, newest
+consumed <stamp>, K min behind the window end`, and when a run went through
+the mirror or the API instead it prints `FRESHNESS UNKNOWN`, because a lag
+nobody measured is not zero.
+
+**Proven by mutation** (each restored before commit):
+- theme clause deleted from `gdelt_raw.matcher` -> `test_unemployment_theme_hit_without_a_vocabulary_word` fails;
+- `html.unescape` removed from `iter_rows` -> `test_the_title_is_html_unescaped_before_matching` fails;
+- `PUBLICATION_LAG` distinction removed (every 404 a gap) -> `test_a_404_inside_the_publication_lag_is_pending_not_a_gap` fails;
+- deadline check removed from `read_window` -> `test_the_deadline_stops_fetching_and_the_rest_is_skipped` fails;
+- raw path moved AFTER the mirror in `pull_gdelt_between` -> `test_files_first_neither_mirror_nor_api_is_asked` fails;
+- native phrases dropped from `_collect_raw_feed` -> `test_the_files_get_the_english_and_native_vocabulary` fails;
+- `raw_detail` removed from `health_detail` -> the two freshness tests and `test_ops_status_reads_the_freshness_back` fail.
+
+**Plugin surface.** Sources page, GDELT row: one added sentence saying the
+published index files are read directly (both feeds), that each run records
+the newest file it consumed, and that the mirror and query service are
+fallbacks. No cadence typed (GDELT's 15-minute rhythm is deliberately not
+stated as ours). `assets/health.js` gdelt channel label:
+"Open news-index files, with mirror and API fallbacks". Version 2.20.162
+(main was at 2.20.161 when this branch was cut; re-check before merging).
+
+**Not done, and why.** The rotating sweeps still go to the dead query API
+and queue every run; the files could carry the theme sweep for free (the
+WB_2806/2790/2792 themes are in the same column) but that is a widening of
+the broad slot's definition and is left for a measured decision. Sweeps
+against the API cost the run their retry schedule; with the files clearing
+the broad slot in ~2 minutes, the sweeps now have the budget they were
+starved of, and they will still get nothing until the API answers.
+`GDELT_PREFER_BQ` stays honoured and is now redundant for a live window.
+The Railway egress rate is not this machine's; the first production run's
+`raw_lag_min` and the run log's `GDELT raw feed:` line are the measurement.
+
 ## 2026-09-03 - Uber's 3,300 was read fourteen times and stored zero times: the same-company merge never looked at the count (2.20.161, branch, not merged)
 
 **Class:** wrong-scope-or-key - the fuzzy dedup was keyed on company + a 30-day

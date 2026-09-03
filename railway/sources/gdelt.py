@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from sources import gdelt_bq
+from sources import gdelt_raw
 
 import gdelt_reach
 import robots_gate
@@ -1488,6 +1489,47 @@ def _collect_mirror(start, end):
     return arts, ("complete" if complete else "partial")
 
 
+def _raw_feed_applies(start, end):
+    """Whether the broad slot for [start, end] goes to the published files first.
+
+    On by default, off with GDELT_RAW_FEED=0, and only for windows that start
+    inside `gdelt_raw.HORIZON`: a live 36h window is ~2 GB of files, a 2024
+    backfill window is the same per window and the mirror already serves
+    history under quota. Split out so a test can pin the preference order
+    without touching the network.
+    """
+    return gdelt_raw.enabled() and gdelt_raw.within_horizon(start)
+
+
+def _collect_raw_feed(start, end, deadline=None):
+    """Read the window from GDELT's published index files. Returns (articles, status).
+
+    Same candidate semantics as the mirror (UNEMPLOYMENT theme OR the shared
+    title regex, native phrases included), no key, no quota, and the freshest
+    slice of the window is on the CDN minutes after it happens instead of
+    waiting for a BigQuery partition. The newest file stamp actually consumed
+    is recorded in the reach ledger and printed in the health detail, so a
+    future lag is visible rather than assumed away. A run that reads no file
+    at all raises, and the caller falls through to the mirror.
+    """
+    from source_registry import discovery_terms as _terms
+    from sources.native_layoff_terms import mirror_title_terms
+    arts, report = gdelt_raw.read_window(
+        start, end, _terms() + mirror_title_terms(), deadline=deadline)
+    lag = gdelt_raw.lag_minutes(report["newest"], end)
+    reach = gdelt_reach.current()
+    reach.note_query("raw", len(arts), 0, truncated=(report["status"] != "complete"))
+    reach.note_raw_feed(
+        files_expected=report["files_expected"], files_read=report["files_read"],
+        pending=report["pending"], gaps=report["gaps"], failed=report["failed"],
+        skipped=report["skipped"], newest=report["newest"], lag_minutes=lag)
+    print(f"GDELT raw feed: {report['files_read']}/{report['files_expected']} file(s) read, "
+          f"{report['candidates']} candidate row(s), {len(arts)} distinct URL(s); "
+          f"newest {report['newest']} (lag {lag} min); pending={report['pending']} "
+          f"gaps={report['gaps']} failed={report['failed']} skipped={report['skipped']}")
+    return arts, report["status"]
+
+
 def _span_of(articles):
     """(oldest, newest) GDELT seendate over a set of articles, or (None, None)."""
     stamps = sorted(a.get("seendate") for a in articles if a.get("seendate"))
@@ -1671,10 +1713,30 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     prefer_bq = os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
 
     # --- BROAD slot (health-bearing) -------------------------------------
+    #
+    # PREFERENCE ORDER (2026-09-03): published files -> BigQuery mirror ->
+    # public query API. The files are the same GKG records the other two
+    # carry, on a CDN, minutes behind the clock, with no key and no quota
+    # (sources/gdelt_raw.py). The mirror lags its partition and spends quota;
+    # the query API has answered nothing since 2026-08-19. A raw read that
+    # raises (nothing readable at all) falls to the mirror when one is
+    # configured, then to the query API; a raw read that is PARTIAL keeps
+    # what it read and is recorded partial, like a mirror walk that hit its
+    # page ceiling. Windows older than gdelt_raw.HORIZON skip the files.
     broad_articles = None
     broad_status = None
     broad_cap = False
-    if gdelt_bq.available() and prefer_bq:
+    raw_attempted = False
+    if _raw_feed_applies(start, end):
+        raw_attempted = True
+        try:
+            broad_articles, broad_status = _collect_raw_feed(start, end, deadline)
+            broad_cap = broad_status != "complete"
+        except Exception as e:
+            print(f"GDELT raw feed failed ({e}); falling back to the mirror or public API")
+            broad_articles = None
+
+    if broad_articles is None and gdelt_bq.available() and (prefer_bq or raw_attempted):
         try:
             broad_articles, broad_status = _collect_mirror(start, end)
             broad_cap = broad_status != "complete"

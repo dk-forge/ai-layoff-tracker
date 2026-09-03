@@ -6,6 +6,17 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-03): 2.20.162 - GDELT read from its published
+  index files; query API dead, mirror lags.** Worktree branch, PUSHED AS A
+  BRANCH, not merged: the owner merges. Plugin files touched:
+  `templates/page-sources.php` (GDELT row, one sentence), `assets/health.js`
+  (gdelt channel label) and `ai-layoff-tracker.php` (version only). Rest is
+  `railway/sources/gdelt_raw.py` (new), `sources/gdelt.py` (broad-slot
+  preference order), `gdelt_reach.py` (raw label + freshness facts),
+  `ops_status.py` ([2d] FRESHNESS line), `tests/test_gdelt_raw_feed.py` (new),
+  two setUp patches in existing GDELT tests, TECHLOG and ARCHITECTURE. Main
+  was at 2.20.161 when cut; **re-read main immediately before merging and
+  take the next patch after it if this lost a race.**
 - **VERSION CLAIMED (2026-09-02): 2.20.158 - worldwide coverage audit; the news
   net asked its non-English half in English.** The baton was read as FREE by
   `ops_status [0]` on origin/main. Work done in a separate worktree branch and

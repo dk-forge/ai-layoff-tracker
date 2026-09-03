@@ -137,6 +137,12 @@ class RunLevelBehaviour(unittest.TestCase):
         self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
         self._fetch_patch.start()
         self.addCleanup(self._fetch_patch.stop)
+        # These tests pin the mirror/query-API machinery; the published-files
+        # path (first in preference since 2026-09-03) has its own tests in
+        # test_gdelt_raw_feed.py and would otherwise reach the network here.
+        self._raw_patch = patch.object(gdelt, "_raw_feed_applies", lambda s, e: False)
+        self._raw_patch.start()
+        self.addCleanup(self._raw_patch.stop)
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         tmp.write('{"slots": {}}')
         tmp.close()
@@ -352,6 +358,12 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
         self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
         self._fetch_patch.start()
         self.addCleanup(self._fetch_patch.stop)
+        # These tests pin the mirror/query-API machinery; the published-files
+        # path (first in preference since 2026-09-03) has its own tests in
+        # test_gdelt_raw_feed.py and would otherwise reach the network here.
+        self._raw_patch = patch.object(gdelt, "_raw_feed_applies", lambda s, e: False)
+        self._raw_patch.start()
+        self.addCleanup(self._raw_patch.stop)
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         tmp.write('{"slots": {}}')
         tmp.close()

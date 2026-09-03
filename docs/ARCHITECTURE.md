@@ -67,6 +67,7 @@ railway/
   canonical_event_migrate.py Resumable legacy event/source-report migration (no LLM)
   historical-news-sweep.yml  Daily rotating 14-day historical GDELT recovery window
   announcement-lifecycle-review.yml Daily read-only exact-match lifecycle lead summary
+  sources/gdelt_raw.py         GDELT's published 15-minute GKG files (English + translation feeds), no key, no quota; FIRST choice for the broad window since 2026-09-03, then gdelt_bq.py (BigQuery mirror), then the public query API
   sources/{edgar,gdelt,newsapi,warn,companies_house}.py
   warn_import.py             nationwide WARN → /bulk (batches of 1000; WARN_PURGE for clean reload); per-state drift tripwires
                              for generic + new + legacy custom scrapers, floored by railway/warn_state_baselines.json
