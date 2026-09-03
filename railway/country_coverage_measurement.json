@@ -158,7 +158,7 @@
       "cite": "https://laws-lois.justice.gc.ca/eng/acts/L-2/section-212.html",
       "class": "regime_no_aggregate",
       "entries": 80,
-      "jobs": 129854,
+      "jobs": 129925,
       "regime": "Group termination \u2014 Canada Labour Code s.212(1) for federally regulated employers, verified verbatim against the Justice Laws consolidation, PLUS separate provincial regimes: Ontario ESA Form 1, and Quebec's Loi sur les normes du travail RLRQ c. N-1.1 artt. 84.0.1 and 84.0.4, verified against LegisQuebec",
       "state": "not_measurable",
       "stored_name": "Canada",
@@ -715,14 +715,6 @@
       "stored_name": "Portugal",
       "threshold": "2 workers in a firm under 50, or 5 in a firm of 50+, within 3 months"
     },
-    "Quebec": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
-      "entries": 0,
-      "jobs": 71,
-      "state": "unknown",
-      "stored_name": "Quebec"
-    },
     "Romania": {
       "age_days": 15,
       "aggregate": "PUBLISHED, and read directly out of the source on 2026-08-19 rather than taken from a search summary: ANOFM's Raport de activitate pentru anul 2024 reports collective dismissals ESTIMATED by employers at 16,007 persons for 2024 against 9,600 actually dismissed (59.97% of the estimate), and states the comparison runs over 2009-2024. THE GAP BETWEEN THE TWO NUMBERS IS THE POINT: a notified intention is not a dismissal, and Romania publishes both, which most countries do not. railway/national_denominators.py holds it NOT BUILDABLE \u2014 annual, PDF only, and the month-by-month detail sits inside the report, so it would cost a PDF dependency in a hash-pinned lock for one country",
@@ -988,7 +980,7 @@
       "stored_name": "Vietnam"
     }
   },
-  "countries_in_scope": 73,
+  "countries_in_scope": 72,
   "exactly_measurable": [
     "Belgium",
     "Bulgaria",
@@ -1022,7 +1014,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-03T19:47:25Z",
+  "measured_at": "2026-09-03T22:06:00Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1696,7 +1688,7 @@
     "refused": 6,
     "regime_no_aggregate": 25,
     "regime_with_aggregate": 21,
-    "unassessed": 17
+    "unassessed": 16
   },
   "unassessed": [
     "Bosnia and Herzegovina",
@@ -1712,13 +1704,10 @@
     "Morocco",
     "New Zealand",
     "Pakistan",
-    "Quebec",
     "South Korea",
     "Thailand",
     "Vietnam"
   ],
-  "undeclared": [
-    "Quebec"
-  ],
+  "undeclared": [],
   "vocabulary_duplicates": []
 }
