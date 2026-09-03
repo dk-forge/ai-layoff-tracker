@@ -44,6 +44,9 @@ on:
 # The endpoint fills blank rows idempotently, but two overlapping runs would
 # waste model calls racing the same rotation slice.
 
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
 jobs:
   backfill:
     runs-on: ubuntu-latest
@@ -126,3 +129,12 @@ jobs:
           done
           echo "::error::still failing after 3 attempts - a real failure, worth a look"
           exit 1
+
+      # A deferral nobody counts is a silently green job. Free on a healthy
+      # run: no open deferral touches no file, so there is no diff, no commit
+      # and no push.
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: industry-backfill

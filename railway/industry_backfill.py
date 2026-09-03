@@ -53,6 +53,7 @@ from datetime import date, datetime, timezone
 
 import requests
 
+import host_call
 from extractor import (
     classify_industry, INDUSTRY_VOCABULARY, CreditsExhaustedError,
     spend_deferral_count, spend_deferred_since,
@@ -63,6 +64,7 @@ from source_health import report_source_health, require_running_note
 
 JOB = "industry-backfill"
 
+JOB = "industry-backfill"
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
@@ -440,9 +442,13 @@ def main():
         print("INDUSTRY_VOCABULARY is empty — refusing to run")
         return 1
     if not DRY_RUN:
-        # First thing the job does, before anything is scanned or written. A
-        # host that never answered defers; a host that REFUSED the write still
-        # raises, because a wrong key is settled and fails identically tomorrow.
+        # A host that never answered (transient 5xx / timeout) defers rather
+        # than raising: this is the exact "collector started is not the
+        # collector finished" shape CLAUDE.md warns about, and treating a
+        # transient outage as a hard failure here used to fail this job on
+        # every 504 from the shared host with nothing ever attempted. A host
+        # that REFUSED the write (bad/missing key) still raises, because that
+        # is settled and fails identically tomorrow.
         code = require_running_note(
             JOB, "industry_backfill",
             "bounded company+excerpt industry classification in progress")
@@ -452,6 +458,9 @@ def main():
         run()
         host_call.clear(JOB)
         return 0
+    except host_call.Deferred as exc:
+        # Raised only before any work is read/classified/written.
+        return host_call.defer(JOB, str(exc), source="industry_backfill")
     except CreditsExhaustedError as exc:
         # BILLING, not a code fault: the LLM provider is out of credits, so every
         # call 402s. Retrying/paging is useless — record a distinct, actionable

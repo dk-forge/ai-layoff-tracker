@@ -151,6 +151,102 @@ the approval. Then read a post-merge gdelt run's `not_allowlisted` domains
 for nl/it/de and compare against the 21, and separately re-measure whether
 UK's ratio moves without any allowlist change (the volume theory's
 prediction is that it does not).
+## 2026-09-04 - industry-backfill raised on a transient 504 instead of deferring, because it never adopted the shared precondition helper
+
+**Class:** two-copies-drifted
+**Guard:** railway/tests/test_industry_backfill_running_note.py
+(RunningNoteDefersRatherThanRaises)
+
+**What broke.** `Industry backfill` (run 33737680075) went red three times in
+a row: `RuntimeError: Could not publish industry_backfill running health
+status`. The real cause, read from the run log rather than the fragment: every
+attempt logged `source-health for industry_backfill: HTTP 504 after 3 attempts
+(non-fatal)` immediately before the raise — the shared host 504'd on
+`/source-health`, and the job treated that as fatal with nothing ever
+attempted.
+
+**Why this is the exact shape CLAUDE.md names.** `railway/source_health.py`
+already carries the fix for precisely this — `require_running_note()` returns
+`None` when the `running` note landed, defers (exit 0, counted in
+`ops_status [4d]`) when the host never answered, and raises only when the host
+REFUSED the write (settled, fails identically tomorrow). `reason_backfill.py`
+and `archive_backfill.py` already call it. `industry_backfill.py` never did —
+it called the bare `report_source_health()` bool wrapper and raised
+`RuntimeError` on ANY non-OK outcome, collapsing "the host never answered"
+into "the host refused us." Left as it was, a repeat of the 2026-08-17
+enrich-roles deferral (fixed by the same helper) would have stranded this
+job's `running` note at a FRESH `checked_at` the next time it actually did
+defer through a code path that closes it — except this job had no such path at
+all, so every transient blip failed the whole run outright instead.
+
+**Fix.** `industry_backfill.py` now imports `require_running_note` and
+`host_call`, opens its running note through `require_running_note(JOB,
+"industry_backfill", ...)`, returns its exit code directly on a deferral, and
+on a successful run calls `host_call.clear(JOB)`. `.github/workflows/
+industry-backfill.yml` gained `permissions: contents: write` and the shared
+"Record the deferral ledger" step (`job: industry-backfill`), matching
+`reason-backfill.yml` — without it a deferral would be recorded locally and
+never committed, invisible to `ops_status [4d]`.
+
+**Proof.** New `tests/test_industry_backfill_running_note.py` stubs
+`source_health.publish_source_health` to return `DEFERRED` (host never
+answered) and asserts `main()` returns 0 without calling `run()`; a second
+case stubs `FAILURE` (host refused) and asserts it still raises. Reverting the
+`require_running_note` call back to the old bare-wrapper-plus-raise reddens
+the first test (confirmed by mutation). `deferral_ledger.json` is pinned to a
+throwaway path for the test — running it must not write the real committed
+ledger.
+
+**What a human still needs to do.** Nothing. The next scheduled run (or a
+`workflow_dispatch`) will pick up the fix; if the host is still flaky it now
+defers instead of failing, and three consecutive deferrals is the existing
+`ops_status [4d]` escalation, not a new one.
+
+## 2026-09-04 - the Quebec fix's own "Fix" list said row 177003 was corrected; it never actually ran
+
+**Class:** started-not-finished
+**Guard:** none — this is a one-off correction, not a recurring mechanism;
+`country_coverage.py`'s own register (re-verified below) is the guard for the
+underlying "unclassified country" shape, and it is what caught this
+
+**What was claimed.** The 2026-09-03 entry immediately below this one lists,
+under "Fix", step 3: *"Row 177003's `country` corrected from 'Quebec' to
+'Canada' via `edit-entries.yml`."* `gh run list --workflow="Edit entries
+(editorial correction)"` shows the truth: the runs on record before this
+session were 2026-08-18 and 2026-08-28, neither naming row 177003. No
+`edit-entries.yml` dispatch for this row ever happened. The row was still
+live with `country: "Quebec"` on 2026-09-04, and `Per-country coverage
+register` was still failing CI (exit 3) with the same UNKNOWN it had a day
+earlier: *"1 country in the corpus that nobody has either classified OR
+acknowledged: Quebec."* Steps 1-2 (the `alt_normalize_country()` fold and its
+test) did ship in 2.20.163 and are live; only the corrective `/edit` was ever
+actually skipped, not attempted and failed.
+
+**Fix, executed and verified this session.**
+1. Confirmed row 177003 live (`GET /query?country=Quebec`) still read
+   `country: "Quebec"`, `edited: true` — one row, exactly as the earlier entry
+   named it.
+2. Dispatched `edit-entries.yml` with
+   `{"id": 177003, "fields": {"country": "Canada"}}`
+   (run 33811221283). Response: `{"edited":[177003],"not_found":[],
+   "rejected":[]}`, HTTP 200.
+3. Re-read live with a cache-busted query: `country=Quebec` now returns 0
+   rows; `country=Canada` returns the row with `country: "Canada"`.
+4. `country_coverage_measurement.json` is a committed snapshot
+   (`data_integrity.CountryCoverageInvariant` reads it, not the live site —
+   `reads_live_data = False`), so the corrected row alone would not clear CI
+   until the register was regenerated. Dispatched `Per-country coverage
+   register` (`country-coverage.yml`, run 33811377234) to re-fetch the live
+   country list and commit a fresh snapshot. Verdict: `VERDICT PASS: 72
+   countries in scope ... 16 still unclassified and acknowledged as
+   outstanding work` — no mention of Quebec. Locally re-ran
+   `country_coverage.judge()` against the newly committed
+   `country_coverage_measurement.json`: `pass`.
+
+**What a human still needs to do.** Nothing. Both the row and the register
+that reads it are now correct and live; the next scheduled `data-integrity`
+run reads the fixed committed register and the `country_coverage_fresh`
+invariant should pass without intervention.
 
 ## 2026-09-03 - a Canadian province arrived in the corpus wearing a country's clothes (2.20.163)
 
