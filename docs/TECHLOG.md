@@ -1,5 +1,46 @@
 # Tech Log
 
+## 2026-09-03 - email accuracy audit: link_check.py's broken-page alert had no dedupe_key
+
+**Class:** wrong-scope-or-key (a dedup with no scope at all is the same shape
+as a dedup keyed on the wrong thing -- it cannot recognise "still the same
+cause")
+**Guard:** railway/tests/test_link_check.py
+
+**What was wrong.** Owner-requested audit of every email either tracker can
+send ("check all emails thoroughly, make sure they're reporting accurately").
+Fourteen distinct senders across the two repos were enumerated (roughly what
+the owner expected was nine); most already carry a `dedupe_key` or
+`resolve_scope` through `ops_notify.notify`/`resolve`, following the standing
+rule (one cause, one email, RECOVERED once). `railway/link_check.py`'s
+broken-public-page alert did not. Its own comment called this "the cadence it
+always used," but `link-check.yml` runs daily, so a public page down for a
+week mailed the owner the same "N tracker page(s) returning errors" report
+seven times -- the same shape CLAUDE.md already names ("an alarm that fires
+eight times in an afternoon is one he learns to filter"), spread across days
+instead of hours.
+
+**Fix.** `_email()` now accepts and forwards `dedupe_key`; `main()` builds one
+from `LINK_CHECK_SCOPE` plus the sorted set of broken paths, so the same
+broken page across runs is recognised as the same open cause and a different
+combination of broken pages reads as a new one. A clean run now calls a new
+`_resolve()` (silent when nothing was open), so a recovered outage gets the
+one RECOVERED-shaped notice instead of just going quiet. Proved by mutation:
+`tests/test_link_check.py::test_mutation_missing_dedupe_key_is_caught`
+reverts `_email` to the pre-fix call shape and asserts the key is absent,
+confirming the rest of the suite would have caught the regression.
+
+**Audit scope and other findings, not code-fixed here (judgement calls for
+the owner, or already addressed by same-day commit 6a777ce).** Full
+inventory, "wired or orphaned," dedup behaviour and leak risk for every
+sender in both repos, plus the best available answer on where the talent
+tracker's mailed reader digest is actually generated (not in that
+repository -- see its own `docs/HANDOVER.md`, 2026-09-03 entry, and the lead
+recorded there pointing at `talent/v1/feed`'s unfiltered, unclassified rows),
+were reported to the owner directly rather than filed here, since no other
+defect met the "unambiguously wrong" bar for an unreviewed change to a live
+alerting path.
+
 ## 2026-09-03 - a Canadian province arrived in the corpus wearing a country's clothes (2.20.163)
 
 **Class:** novel - closest is the "United States (NJ)" normalizer gap

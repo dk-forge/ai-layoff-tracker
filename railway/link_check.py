@@ -58,15 +58,39 @@ def _status(url, headers, timeout=25):
         return 0
 
 
-def _email(subject, body):
+#: One open cause: "some public page is down". Keyed on the SET of broken
+#: paths so a different combination of pages reads as a new cause, mirroring
+#: `HOLD_ALERT_SCOPE` in daily_classification_spotcheck.py. Until 2026-09-03
+#: this alarm carried no dedupe_key at all -- "the cadence it always used" was
+#: itself the defect the standing rule (CLAUDE.md: one cause, one email) exists
+#: to catch, not a reason to keep it: link-check.yml runs daily, so an outage
+#: lasting a week mailed the owner the same broken-page report seven times,
+#: which is exactly the "eight identical emails in one afternoon" shape this
+#: repo has already paid for once, just spread across days instead of hours.
+LINK_CHECK_SCOPE = "link-check:public-pages"
+
+
+def _email(subject, body, dedupe_key=""):
     """Through the one operational sender, not the site's `/alert` route.
 
     That route calls bare `wp_mail()`, which the Brevo plugin rewrites to the
     reader newsletter's identity, so a broken-link alarm arrived looking like
-    something the owner had subscribed to. The cadence is unchanged: this is
-    the undeduped shape it always used.
+    something the owner had subscribed to.
     """
-    ops_notify.notify(subject, body, what="broken-link alert")
+    ops_notify.notify(subject, body, dedupe_key=dedupe_key, what="broken-link alert")
+
+
+def _resolve():
+    """Clear the open cause on a run that found every public page healthy.
+
+    Silent when nothing was open (see ops_notify.resolve), so this is safe to
+    call on every clean run rather than only after a prior failure.
+    """
+    ops_notify.resolve(
+        LINK_CHECK_SCOPE, "Tracker public page(s) recovered",
+        "Every public page on the AI Layoff Tracker answered 200 on this run. "
+        "Whatever page outage was previously reported has cleared.",
+        what="broken-link recovery notice")
 
 
 def _report(status, entries, detail):
@@ -142,11 +166,15 @@ def main():
         for path, code in broken_pages:
             lines.append(f"  HTTP {code}  {SITE}{path}")
         lines.append("\nThis is a live-site problem. Check the deploy and the page's shortcode.")
-        _email(f"{len(broken_pages)} tracker page(s) returning errors", "\n".join(lines))
+        ids = ".".join(sorted(path.strip("/") for path, _ in broken_pages))
+        dedupe_key = f"{LINK_CHECK_SCOPE}:{ids}"[:160]
+        _email(f"{len(broken_pages)} tracker page(s) returning errors", "\n".join(lines),
+               dedupe_key=dedupe_key)
         _report("degraded", len(broken_pages), detail)
         print("::error::broken public page(s) detected")
         return 1
 
+    _resolve()
     _report("ok", sampled - broken_src, detail)
     if rot >= 25 and broken_list:
         # Not an alert (expected), but surface a notice so a spike is visible.
