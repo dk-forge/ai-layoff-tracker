@@ -1,5 +1,116 @@
 # Tech Log
 
+## 2026-09-03 - reviewed outlet candidates for Netherlands, Italy, Germany and UK, worst kept/seen first (2.20.164, branch, awaiting owner approval)
+
+**Class:** absent-read-as-ok - four more countries' national press was thin
+or absent from the allowlist and every surface read that as "no problem": a
+dropped candidate produces no error, no health row and no log line outside
+the Railway run log, so a 4.2% kept/seen ratio for Italy sat unread until the
+run's own health detail was measured. Same shape the 2026-09-02 Spain/France/
+Turkey entry named; not a new slug.
+**Guard:** `railway/tests/test_reviewed_outlets.py` for the admission
+discipline and the refusal ledger, now generalised (see below) to check every
+dated reviewed-outlets block instead of only 2026-09-02's. The GAP itself
+(the per-country drop ratio) still has no guard: it lives in the run log and
+is nameless in public telemetry by design, so the honest next step remains
+the per-country drop-rate floor the 2026-09-02 entry already proposed and
+this entry does not repeat.
+
+**The measurement this answers.** The 2026-09-03 22:00 gdelt run's own health
+detail: `returned=7816 kept=847 dropped=6915 headline_only=54`,
+`not_allowlisted=6900` (99.8% of every drop). Per-country kept/seen: Italy
+19/448 (4.2%), UK 12/221 (5.4%), Germany 84/991 (8.5%), `zz` 444/3636 (12.2%),
+Spain 84/375 (22.4%) — Spain reads high only because 11 Spanish outlets
+landed the night before (2.20.159); same pipeline, same day, one list
+changed, which is the proof the allowlist and not the collector is the
+binding constraint. `railway/generate_country_table.py` on the pre-change
+allowlist counted the outlets behind each ratio: Netherlands held only 3
+(`nrc.nl`, `volkskrant.nl`, `fd.nl`) despite EU-wide ERM coverage riding the
+same country; Italy 4; Germany 8; UK 16 (already broad general + trade press,
+so its low ratio looks like candidate volume, not allowlist thinness — no UK
+outlets proposed here for that reason). The concrete miss that triggered the
+pass: "DNB schrapt 290 banen" (De Nederlandsche Bank, 290 jobs), the first
+result on our own Dutch Google News query, carried by two outlets neither
+allowlisted, with `nos.nl` (public broadcaster) and `nu.nl` (top-traffic
+digital daily) both absent from the Dutch entries.
+
+**What was done.** 21 outlets proposed: 8 Netherlands, 5 Italy, 5 Germany, 3
+UK national reach that the Times/Telegraph/Guardian/BBC set did not cover
+(Daily Mail, ITV News, Channel 4 News). Each is a REVIEWED claim appended to
+`railway/reviewed_outlets.json` (outlet, country, language, kind, standing,
+caveat where relevant), in a new marked block
+(`2026-09-03 reviewed outlets: BEGIN/END`) at the end of `TRUSTED_DOMAINS`,
+additive, nothing removed or reordered. UK was measured worst by ratio but
+not proposed against, because its allowlist is already deep (16 outlets
+spanning general, business and trade press) and the drop looks volume-shaped
+rather than allowlist-shaped — a claim this entry states rather than proves,
+since the per-domain `not_allowlisted` breakdown lives only in the Railway
+run log. Country table regenerated: 180 countries, 759 outlets (was 738).
+Sources page copy derives from that partial and needed no edit;
+`assets/health.js` `meta{}` is unchanged because no collector id changed,
+only the allowlist gdelt already consults.
+
+**The guard, and its proof.** `tests/test_reviewed_outlets.py` previously
+scanned only the literal `2026-09-02` BEGIN/END markers, so a second dated
+block would have sat next to it unaudited — the exact "absent read as no
+problem" shape this file exists to catch. `_block_domains()` now matches
+EVERY `# --- YYYY-MM-DD reviewed outlets: BEGIN/END` pair by pattern, not by
+one hardcoded date, so this and every future pass gets the same check for
+free. Proved by mutation: added an unregistered domain
+(`unregistered-mutant-test.example`) inside the new 2026-09-03 block,
+confirmed `test_every_domain_in_the_reviewed_block_is_in_the_registry` failed
+naming it, reverted, confirmed the file is byte-identical to before the
+mutation and the suite is green again.
+
+**Refusal ledger.** All 21 candidates checked against
+`country_coverage.REFUSAL_LEDGER` programmatically (the same
+`refusal_collisions()` helper the test uses): no hit. Every ledger host that
+mentions the Netherlands, Italy, Germany or UK is a government or legal
+source (`uwv.nl`, `cliclavoro.gov.it`, `nisra.gov.uk`), never a newsroom.
+
+**Likely headline-only.** None of the 21 was fetched, by rule, so which would
+land in the robots-disallowed tier (2.20.160) is unmeasured. The public
+broadcasters (`nos.nl`, `rainews.it`, `itv.com`, `channel4.com`) and the
+business/financial titles with paywalls (`wiwo.de`, `manager-magazin.de`,
+`milanofinanza.it`) are the outlets most likely to gate an AI agent; a
+robots pass over the 21 is the same open next step the 2026-09-02 entry
+named for its 32 and was not done here either.
+
+**Rejected, and why.** Netherlands: `nieuws.nl` and `banken.nl` (the two
+outlets that carried the DNB story) — neither reads as a national paper of
+record or a distinct newsroom rather than an aggregator, and admitting them
+on the strength of one story is exactly the "scraped guess" this registry
+exists to refuse; the broader nets (`nos.nl`, `nu.nl`) are proposed instead
+on the expectation they would also carry a central-bank layoff story. Italy:
+`affaritaliani.it` (standing as a distinct newsroom versus aggregation
+unclear without reading it), `ilgiornale.it` and `libero.it` (already three
+Milan/Rome-based general dailies listed; stopped there). Germany:
+`boersen-zeitung.de` (financial daily of record but paywall depth
+unverifiable without a fetch), `ntv.com`/`dpa.com` (the wire's own site
+publishes little of its file; same reasoning the 2026-09-02 entry gave for
+`afp.com`). UK: no candidates proposed at all — see above.
+
+**The `zz` bucket.** 3,636 of the run's 7,816 candidates (46.5%) resolve to
+no country. `railway/gdelt_reach.py country_of()` derives country from a
+domain's ccTLD ONLY, by design (documented in that module): a domain ending
+in a generic or vanity TLD (`.com`, `.net`, `.org`, and a short list of
+sold-as-vanity two-letter TLDs like `.io`/`.tv`/`.co`) reports `zz` rather
+than guess. That means `zz` is not one thing: it mixes candidates from
+outlets nobody has reviewed with candidates from outlets THIS registry
+already reviews and trusts — `elpais.com`, `efe.com`, `nos.nl`, `nu.nl` and
+most of tonight's own additions all end in a generic TLD and would report
+`zz` for reach-measurement purposes despite being correctly attributed to a
+country in `TRUSTED_DOMAINS` and in `reviewed_outlets.json`. Fixing that
+requires a domain-to-country map independent of ccTLD, which is out of scope
+here by instruction — this entry only reports the bucket's size and shape,
+it does not touch attribution.
+
+**Needs the owner.** Approve or prune the registry and merge; the merge is
+the approval. Then read a post-merge gdelt run's `not_allowlisted` domains
+for nl/it/de and compare against the 21, and separately re-measure whether
+UK's ratio moves without any allowlist change (the volume theory's
+prediction is that it does not).
+
 ## 2026-09-03 - a Canadian province arrived in the corpus wearing a country's clothes (2.20.163)
 
 **Class:** novel - closest is the "United States (NJ)" normalizer gap

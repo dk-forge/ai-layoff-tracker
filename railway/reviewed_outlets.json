@@ -1,8 +1,8 @@
 {
-  "_comment": "Versioned registry of REVIEWED additions to the GDELT news allowlist (sources/gdelt.py TRUSTED_DOMAINS). It mirrors the admission discipline of reviewed_feeds.json: an entry is a reviewed claim with a standing, a reviewer and a date, never a scraped guess. A domain being public is not enough; each entry says WHY the outlet is national press of record, a wire, a public broadcaster, the business press, or the regional daily of an industrial region where collective dismissals are reported first. Review evidence, 2026-09-02 (Claude review pass, offline): NO outlet page, robots.txt or feed was fetched, by rule; standing is argued from what each publication is, and every domain was checked against the refusal ledger in railway/country_coverage.py (REFUSAL_LEDGER), which tests/test_reviewed_outlets.py re-checks on every run. Merging the change that adds a domain here is the owner's approval of that claim. Additive only: existing allowlist entries are never removed or reordered from here.",
-  "reviewed_at": "2026-09-02",
+  "_comment": "Versioned registry of REVIEWED additions to the GDELT news allowlist (sources/gdelt.py TRUSTED_DOMAINS). It mirrors the admission discipline of reviewed_feeds.json: an entry is a reviewed claim with a standing, a reviewer and a date, never a scraped guess. A domain being public is not enough; each entry says WHY the outlet is national press of record, a wire, a public broadcaster, the business press, or the regional daily of an industrial region where collective dismissals are reported first. Review evidence, 2026-09-02 (Claude review pass, offline): NO outlet page, robots.txt or feed was fetched, by rule; standing is argued from what each publication is, and every domain was checked against the refusal ledger in railway/country_coverage.py (REFUSAL_LEDGER), which tests/test_reviewed_outlets.py re-checks on every run. Merging the change that adds a domain here is the owner's approval of that claim. Additive only: existing allowlist entries are never removed or reordered from here. Second pass, 2026-09-03 (Claude review pass, offline, no fetch): the 2026-09-02 run's own health detail measured Italy 4.2%, UK 5.4% and Germany 8.5% kept/seen against Spain's 22.4% the SAME day its outlets landed, proof the allowlist is the binding constraint outside the anglophone press. Triggered by a concrete miss: 'DNB schrapt 290 banen' (De Nederlandsche Bank, 290 jobs), carried by two unlisted Dutch outlets while the Netherlands admitted only 3. `reviewed_at`/`reviewer` below now describe the LATEST pass; entries carry no per-entry date, so a reader wanting which pass added a given domain should cross-reference the dated BEGIN/END block in sources/gdelt.py that names it.",
+  "reviewed_at": "2026-09-03",
   "reviewer": "Claude review pass, offline, no fetch",
-  "admitted_in": "2.20.159",
+  "admitted_in": "2.20.164",
   "outlets": [
     {
       "domain": "efe.com",
@@ -269,6 +269,177 @@
       "kind": "wire service",
       "standing": "The largest private domestic news agency, with regional bureaus that report factory closures in Bursa, Kocaeli and Izmir before the national desks pick them up.",
       "caveat": "Demiroren group."
+    },
+    {
+      "domain": "nos.nl",
+      "outlet": "NOS",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "public broadcaster",
+      "standing": "The Dutch public broadcaster's news service, the country's most-cited general news source; its business desk covers collective dismissals and works-council notifications nationwide, and it is the outlet the 2026-09-03 DNB miss (290 jobs, De Nederlandsche Bank) named as absent."
+    },
+    {
+      "domain": "nu.nl",
+      "outlet": "NU.nl",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "national digital daily",
+      "standing": "Among the highest-traffic Dutch news sites, wire-backed (ANP) rolling news with an economy section; the second outlet the 2026-09-03 DNB miss named as absent from the allowlist."
+    },
+    {
+      "domain": "telegraaf.nl",
+      "outlet": "De Telegraaf",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "national daily",
+      "standing": "The largest-circulation Dutch daily (DPG Media), with a dedicated economy section (Telegraaf Financieel) that reports corporate restructuring and job cuts."
+    },
+    {
+      "domain": "trouw.nl",
+      "outlet": "Trouw",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "national daily",
+      "standing": "National daily of record (DPG Media) with regular labour and social-affairs coverage of collective dismissals."
+    },
+    {
+      "domain": "ad.nl",
+      "outlet": "Algemeen Dagblad",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "national daily",
+      "standing": "One of the largest Dutch dailies by readership (DPG Media), with regional business desks that report plant-level cuts before the national titles do."
+    },
+    {
+      "domain": "rtlnieuws.nl",
+      "outlet": "RTL Nieuws",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "national broadcaster",
+      "standing": "The Netherlands' leading commercial broadcaster's news service, with an economy desk (RTL Z content runs here) that reports named-employer workforce cuts daily."
+    },
+    {
+      "domain": "bnr.nl",
+      "outlet": "BNR Nieuwsradio",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "business broadcaster",
+      "standing": "The Netherlands' only dedicated business and financial news radio station; corporate restructuring and layoffs are its core beat, comparable to the role Bloomberg HT plays for Turkey in this registry."
+    },
+    {
+      "domain": "anp.nl",
+      "outlet": "ANP",
+      "country": "Netherlands",
+      "language": "nl",
+      "kind": "wire service",
+      "standing": "Algemeen Nederlands Persbureau, the Dutch national news agency; its economy wire is syndicated by nearly every Dutch title (NU.nl included), so admitting it admits Dutch layoff reports at their point of origin."
+    },
+    {
+      "domain": "ansa.it",
+      "outlet": "ANSA",
+      "country": "Italy",
+      "language": "it",
+      "kind": "wire service",
+      "standing": "Italy's largest and oldest news agency (a cooperative of the major publishers), the wire behind most Italian corporate and labour reporting; company and factory news is filed here first and syndicated nationwide.",
+      "caveat": "Standing verified as a publisher's cooperative, not state-owned; distinct from the state broadcaster RAI also added here."
+    },
+    {
+      "domain": "rainews.it",
+      "outlet": "RAI News",
+      "country": "Italy",
+      "language": "it",
+      "kind": "public broadcaster",
+      "standing": "The news service of Italy's statutory public broadcaster (RAI), with a national economy desk that reports collective dismissals and plant closures.",
+      "caveat": "State broadcaster; balanced by ANSA (publisher cooperative) and the independent dailies already listed."
+    },
+    {
+      "domain": "ilfattoquotidiano.it",
+      "outlet": "Il Fatto Quotidiano",
+      "country": "Italy",
+      "language": "it",
+      "kind": "national daily",
+      "standing": "A major independent national daily with a dedicated economy desk that regularly covers corporate restructuring, distinct editorially from the four already-listed titles."
+    },
+    {
+      "domain": "ilmessaggero.it",
+      "outlet": "Il Messaggero",
+      "country": "Italy",
+      "language": "it",
+      "kind": "national daily",
+      "standing": "Rome's paper of record and among Italy's highest-circulation dailies, with an economy section covering the capital region's large public and private employers."
+    },
+    {
+      "domain": "milanofinanza.it",
+      "outlet": "MilanoFinanza",
+      "country": "Italy",
+      "language": "it",
+      "kind": "financial daily",
+      "standing": "A financial daily focused on listed companies and corporate news, complementing Il Sole 24 Ore's broader business coverage the way Expansion complements El Pais for Spain in this registry."
+    },
+    {
+      "domain": "ntv.de",
+      "outlet": "n-tv",
+      "country": "Germany",
+      "language": "de",
+      "kind": "business broadcaster",
+      "standing": "A leading German 24-hour news channel with a strong business desk (RTL Group); named-employer restructuring and workforce cuts are reported here daily."
+    },
+    {
+      "domain": "wiwo.de",
+      "outlet": "WirtschaftsWoche",
+      "country": "Germany",
+      "language": "de",
+      "kind": "business weekly",
+      "standing": "Germany's leading business weekly (Handelsblatt Media Group); corporate restructuring, closures and headcount reductions are its core beat."
+    },
+    {
+      "domain": "manager-magazin.de",
+      "outlet": "Manager Magazin",
+      "country": "Germany",
+      "language": "de",
+      "kind": "business magazine",
+      "standing": "A leading German business monthly (Spiegel Group) that reports executive and corporate decisions, including restructuring and layoffs, at named companies."
+    },
+    {
+      "domain": "tagesspiegel.de",
+      "outlet": "Der Tagesspiegel",
+      "country": "Germany",
+      "language": "de",
+      "kind": "national daily",
+      "standing": "Berlin's national daily of record, with a business section covering the capital region's large employers and federal-level economic policy affecting collective dismissals."
+    },
+    {
+      "domain": "rp-online.de",
+      "outlet": "Rheinische Post",
+      "country": "Germany",
+      "language": "de",
+      "kind": "regional daily",
+      "standing": "The leading daily of North Rhine-Westphalia, Germany's most populous state and its largest industrial employment base (steel, chemicals, automotive supply); plant-level cuts are reported here first, the same role La Voix du Nord plays for France in this registry."
+    },
+    {
+      "domain": "dailymail.co.uk",
+      "outlet": "Daily Mail",
+      "country": "United Kingdom",
+      "language": "en",
+      "kind": "national daily",
+      "standing": "The UK's highest-reach news site by audience (DMG Media); its business desk covers major-employer layoffs, and admitting it closes a gap where the Times, Telegraph and Guardian were already listed but the single largest UK news readership was not.",
+      "caveat": "Tabloid editorial style; the extractor judges the article text for facts, not the outlet's framing."
+    },
+    {
+      "domain": "itv.com",
+      "outlet": "ITV News",
+      "country": "United Kingdom",
+      "language": "en",
+      "kind": "national broadcaster",
+      "standing": "The news service of the UK's leading commercial public-service broadcaster, with regional bureaus that report factory and office closures across England, Scotland, Wales and Northern Ireland."
+    },
+    {
+      "domain": "channel4.com",
+      "outlet": "Channel 4 News",
+      "country": "United Kingdom",
+      "language": "en",
+      "kind": "public broadcaster",
+      "standing": "A statutory public-service broadcaster's national news operation, distinct editorially from the BBC and ITV already listed, with regular business and economy coverage."
     }
   ]
 }

@@ -6,6 +6,20 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-04): 2.20.164 - reviewed outlet candidates for
+  Netherlands, Italy, Germany and UK, worst kept/seen first.** The baton was
+  read as FREE by `ops_status [0]` on origin/main and this session took it,
+  in its own worktree. Work done in a branch and PUSHED, not merged: the
+  owner merges (same pattern the 2026-09-02 coverage-audit entry used). 21
+  outlets added to `railway/reviewed_outlets.json` and a new marked block in
+  `sources/gdelt.py` TRUSTED_DOMAINS (`2026-09-03 reviewed outlets`), plus a
+  generalisation of `tests/test_reviewed_outlets.py` so it checks every
+  dated reviewed-outlets block, not only 2026-09-02's. Plugin files touched:
+  `ai-layoff-tracker.php` (version only) and the generated
+  `templates/partials/country-sources-table.php` /
+  `templates/partials/scan-scope.php`. No source id added or removed, so
+  `assets/health.js meta{}` is unchanged. Full write-up in TECHLOG
+  2026-09-03 (2.20.164). Baton released.
 - **VERSION CLAIMED (2026-09-03): 2.20.162 - the 13 reports of Uber's global
   3,300 are moved off the Chile 500 row and onto their own row.** The baton
   was read as FREE by `ops_status [0]` on origin/main (2.20.161 already merged)
