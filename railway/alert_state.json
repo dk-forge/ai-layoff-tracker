@@ -61,13 +61,8 @@
       "first": 1788465840,
       "last": 1788465840,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,575,190 jobs / 65,424 entries"
-    },
-    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
-      "first": 1788464872,
-      "last": 1788464872,
-      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     }
   },
-  "updated_at": "2026-09-03T20:04:00+00:00",
+  "updated_at": "2026-09-03T22:06:15+00:00",
   "version": 1
 }
