@@ -419,6 +419,33 @@ function alt_normalize_country($name) {
         }
     }
 
+    /*
+      A CANADIAN PROVINCE IS NOT A COUNTRY, and this function only guarded
+      against US states until 2026-09-03. Row 177003 (St-Jerome Auto-Depot,
+      Quebec collective-dismissal notice, edited=true) carried country
+      "Quebec": the collector hard-codes country => "Canada" for every row it
+      posts, so the value was overwritten later through /edit, the one path a
+      human drives — the exact shape of the 2026-08-18 North Carolina defect,
+      one country wider. Nothing caught it at write time because "Quebec" is
+      an unknown single value and the unmapped-country rule returns it
+      unchanged. It surfaced instead in country_coverage.py: the live corpus
+      held a "country" nobody had classified, because there is no disclosure
+      regime to classify for a province. Provinces and territories fold to
+      "Canada" the same way US states fold to "United States"; there is no
+      Canadian analogue to the Georgia collision (no province shares a name
+      with a sovereign country), so the list folds unconditionally.
+    */
+    static $ca_provinces = null;
+    if ($ca_provinces === null) {
+        $ca_provinces = array_flip(array(
+            'alberta', 'british columbia', 'manitoba', 'new brunswick',
+            'newfoundland and labrador', 'northwest territories',
+            'nova scotia', 'nunavut', 'ontario', 'prince edward island',
+            'quebec', 'saskatchewan', 'yukon',
+        ));
+    }
+    if (isset($ca_provinces[$k])) return 'Canada';
+
     $map = array(
         'us' => 'United States', 'usa' => 'United States', 'united states' => 'United States',
         'united states of america' => 'United States', 'america' => 'United States',
