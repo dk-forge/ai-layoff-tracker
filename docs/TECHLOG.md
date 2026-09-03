@@ -60,6 +60,38 @@ self-explaining row correctly, not the guard being bypassed; nothing in
 `data_integrity.py`, `headline_baseline.json` or `headline_incidents.json` was
 edited by hand. The outcome section below records what it actually said.
 
+**What was done, in order, every step through `apply-correction.yml`.**
+PR #249 merged as c382249 and deployed as 2.20.162 (reader check PASS, build
+7978248d50c3e031; the new route answered 403 keyless where a missing route
+answers 404). Then four dispatches, runs 33748974545 / 33749050917 /
+33749270194 / 33749331348:
+
+1. `add`, dry run: printed the row (Uber, 3,300, 2026-09-02, Multiple
+   countries, Technology, livemint.com, hash 5dfefd664922b6212c859d7d58781bfa)
+   and the headline 20,616,745 over 65,413 entries -> 20,620,045 over 65,414.
+2. `add`, apply: `/add` answered 201; stored as **row 179072** (event 151805,
+   permalink `/layoff/uber-2026-09-02/`); headline read back 20,620,045 over
+   65,414. `data_integrity.py` afterwards: `headline_movement` PASS, worldwide
+   "+54,490 jobs on +25 entries over 1.0d, within what the rows that changed
+   carry"; no incident opened, none closed, nothing edited.
+3. `move-sources`, dry run: 16 reports on row 178973 printed as 3 stay (df.cl,
+   all three say "500 puestos en Chile") and 13 MOVE (every excerpt says
+   3,300 / 3.300 / 3300, the BBC pair "3,000"); row 179072 held 1.
+4. `move-sources`, apply: `moved` = 13, `not_found` = `refused` = none. After:
+   row 178973 holds 3 reports (public `additional_sources` = 2 beyond its own
+   citation), row 179072 holds 13 (its own livemint citation plus 12; the
+   moved livemint copy collapsed into it by `report_key`). The public
+   corrections log carries "2 entries corrected (sources reattributed: 13
+   report link(s) moved from row 178973 to row 179072)" with the reason.
+
+Row 178973 keeps 500 / Chile / 2026-08-31 / df.cl, `edited` still false: its
+count, date and country were never touched, so its dedup hash is unchanged
+and no purge or re-import was needed. Row 179072 carries `employer_country`
+empty (no stored excerpt states the domicile; `/enrich-context` fills it on
+its own schedule) and `ai_causation = context_only`, which is what this
+pipeline itself read on the livemint and BBC copies. PayPal India (~600 into
+"PayPal, 160, Ireland", same run) is the same shape and is NOT done here.
+
 ## 2026-09-03 - Uber's 3,300 was read fourteen times and stored zero times: the same-company merge never looked at the count (2.20.161, branch, not merged)
 
 **Class:** wrong-scope-or-key - the fuzzy dedup was keyed on company + a 30-day

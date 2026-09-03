@@ -14,8 +14,9 @@ holder, so the start-of-session ritual surfaces it automatically.
   `move-sources` and an `add` action in `railway/apply_correction.py` (dry run
   by default, reason recorded in the public corrections log), the workflow
   choices, a test file and TECHLOG. Plugin files touched: `includes/db.php`
-  and `ai-layoff-tracker.php` (version only). **Re-read main immediately
-  before merging and take the next patch after it if this lost a race.**
+  and `ai-layoff-tracker.php` (version only). MERGED as c382249 (PR #249),
+  deployed, and the correction APPLIED: row 179072 created, 13 links moved off
+  178973. Baton released; write-up in TECHLOG 2026-09-03 (2.20.162).
 - **VERSION CLAIMED (2026-09-02): 2.20.158 - worldwide coverage audit; the news
   net asked its non-English half in English.** The baton was read as FREE by
   `ops_status [0]` on origin/main. Work done in a separate worktree branch and
