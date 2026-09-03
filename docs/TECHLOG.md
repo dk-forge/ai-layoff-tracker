@@ -1,5 +1,98 @@
 # Tech Log
 
+## 2026-09-03 - Uber's 3,300 was read fourteen times and stored zero times: the same-company merge never looked at the count (2.20.161, branch, not merged)
+
+**Class:** wrong-scope-or-key - the fuzzy dedup was keyed on company + a 30-day
+window and nothing else, so it could not tell a restatement from a different,
+larger event.
+**Guard:** railway/tests/test_fuzzy_dedup_count.py (10 tests, mutation-proved:
+six mutations, each killed - compat call removed, ratio made vacuous, rule
+inverted, call site drops the count, 409 stops naming the row, client stops
+printing the reason).
+
+**The miss.** Uber announced ~3,300 cuts on 2026-09-02, first indexed by
+Google News at 11:34 UTC (Economic Times), Bloomberg at 14:26 UTC. The 22:07
+UTC Railway run did not store it; `/query?q=Uber` showed 24 rows, newest a
+500-job Chile row dated 2026-08-31. The leading hypothesis going in was a
+BigQuery mirror lag: the public DOC API is dark (HTTP 000 after 45s, abandoned
+on every run since 2026-08-19), the run's broad window came from
+`gdelt-bq.gdeltv2.gkg_partitioned`, and a same-day story might not yet sit in
+a queryable partition at 22:00. **That hypothesis is dead.** Every stage was
+checked with evidence, not inference:
+
+1. **GDELT's own index had it early.** The raw 15-minute GKG files on
+   `data.gdeltproject.org` (reachable; the API host is not) list
+   economictimes.indiatimes.com at the **12:00 UTC** slot, techcrunch.com at
+   13:00, timesofindia at 13:30, livemint at 14:30, businesstoday.in and
+   hindustantimes at 15:00. Roughly 30 minutes after first publication.
+2. **The mirror returned it.** The run's Railway log (deployment `ee32699c`,
+   "BigQuery mirror recovered 7816 article(s)") shows the pipeline read
+   "Uber" at least nineteen times: five extractions died of malformed model
+   JSON (the head of each response reads `"company_name": "Uber", ...
+   "job_count": 3300`), one was rejected for a count not verbatim in the
+   source (punchng.com, 3,400), and **fourteen were extracted, POSTed and
+   answered `409` - `= Skipped duplicate at server: Uber`.** So the mirror
+   lag for this story is bounded at **under 7 hours** (a row GDELT stamped
+   15:00 UTC was in the 22:07 result) and the allowlist, the robots gate, the
+   headline gate and the extractor all passed it. The mirror's exact lag
+   remains UNKNOWN; BigQuery credentials exist only in GitHub secrets and
+   nothing was queried from here.
+3. **The stage that lost it is `alt_fuzzy_dupe_exists` in api.php.** "Same
+   normalized company within +/-30 days" with no look at the count. Row
+   178973, "Uber, 500, Chile, 2026-08-31" (a df.cl story about Uber Chile),
+   was in the window, so every one of the fourteen 3,300-job reports was
+   attached to it as a source report and the event counted zero. The proof
+   is on the live row: its `additional_sources` holds 15 links and 13 of
+   them are the global story - bbc.com, bbc.co.uk, businesstoday.in,
+   livemint.com (x2), moneycontrol.com, hindustantimes.com, elperiodico.com,
+   marketscreener.com, Times of India, Business Today and two more via the
+   Google News redirector.
+
+**Not one row.** The same run's other twelve 409'd companies were audited
+against our live rows and the news index (read-only, no model): PayPal India
+(~600, "nearly a quarter of the India workforce") went into "PayPal, 160,
+Ireland, 2026-08-31" the same way. Amazon 121, Zomato 250, Swiss Life 600,
+Oracle 12,000, Volkswagen, Verizon, Porsche, Microsoft, NetApp, Granja Tres
+Arroyos were genuine repeats. **Two of twelve distinct companies in one run,
+about 3,900 jobs, lost to a rule whose stated purpose is "a slightly
+different count".** The rate over all runs is UNKNOWN, because until this
+change a fuzzy 409 said nothing about which row absorbed the report, and
+that is the second half of the fix.
+
+**The fix (branch `fix/fuzzy-dedup-count-disparity`, 2.20.161, not merged).**
+
+- `alt_fuzzy_count_compatible($incoming, $existing)`: an incoming report at
+  least `ALT_FUZZY_DISTINCT_RATIO` (3) times the existing row's count is a
+  distinct event and is stored. **One-sided on purpose.** A smaller report
+  arriving after a known total still merges, because that is usually a
+  country or site slice of it ("layoffs hit 91 jobs in Washington state" on
+  the Zillow 500 event), and posting slices next to their total is the
+  double-count the superset pass exists to undo. Unknown counts on either
+  side merge as before. `alt_fuzzy_dupe_exists` gained a `$job_count`
+  argument, skips a same-company candidate whose count the report dwarfs,
+  and `/add` passes the count.
+- The 409 now names the row: message gains ` Matched row N (count, date).`
+  and `data` carries `matched_row` / `matched_count` / `matched_date`.
+  `wp_poster.py` prints the server's message, so the run log reads
+  `= Skipped duplicate at server: Uber (3300) - ... Matched row 178973 (500,
+  2026-08-31).` and the next swallowed event is diagnosable from one line.
+- ARCHITECTURE.md's dedup line states the ratio and the one-sidedness.
+
+**What it costs.** Nothing measurable: one `get_post_meta` read per
+same-company candidate inside a lookup that already reads `company_name`
+for each, and one more `get_post_meta` pair on a 409. No model call, no new
+request, no workflow.
+
+**What it does not do.** It does not touch the 13 reports already attached
+to row 178973, does not add the Uber row by hand, and does not re-run
+anything. After deploy the next daily run stores the first NEW trusted
+article about the cut (the 36h window still covers coverage from 09-03; the
+already-ingested URLs are skipped by the seen-URL pre-check and stay where
+they are). Whether the Chile 500 row should then become a member of the
+3,300 event is a superset question for the reconcile pass, not this rule.
+The mirror's lag is still worth measuring on a day with credentials in
+scope; nothing here needed the public API, and nothing revives it.
+
 ## 2026-09-02 - the GDELT article fetch never asked robots.txt and called itself Chrome (2.20.160)
 
 **Class:** absent-read-as-ok - no robots.txt was ever consulted on this path, and

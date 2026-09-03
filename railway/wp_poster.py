@@ -6,6 +6,24 @@ import os
 import requests
 
 
+def _server_message(resp):
+    """The server's own one-line reason for a 409, or "" if it sent none.
+
+    WP_Error bodies are {"code", "message", "data": {...}}; the fuzzy branch
+    also puts matched_row / matched_count / matched_date in `data`. Only the
+    message is printed, and it is capped so a surprising body cannot flood
+    the run log.
+    """
+    try:
+        body = resp.json()
+    except Exception:
+        return ""
+    if not isinstance(body, dict):
+        return ""
+    msg = body.get("message")
+    return str(msg)[:200] if msg else ""
+
+
 def post_to_wordpress(entry):
     """POST a layoff entry to the WordPress custom post type.
 
@@ -73,8 +91,14 @@ def post_to_wordpress(entry):
             return "posted"
         if resp.status_code == 409:
             # Server-side dedup caught it (race with the pre-check, or the
-            # pre-check failed open) — not an error worth alerting on
-            print(f"= Skipped duplicate at server: {company}")
+            # pre-check failed open) — not an error worth alerting on. Print
+            # the server's reason: since 2.20.161 a fuzzy 409 names the row
+            # that absorbed the report (id, count, date), which is the only
+            # way to tell a repeat of a known event from a distinct one that
+            # was swallowed (Uber 3,300 into a 500-job row, 2026-09-02).
+            reason = _server_message(resp)
+            print(f"= Skipped duplicate at server: {company}"
+                  + (f" ({job_count}) - {reason}" if reason else ""))
             return "duplicate"
 
         print(f"x Failed: {company} — {resp.status_code} — {resp.text[:300]}")

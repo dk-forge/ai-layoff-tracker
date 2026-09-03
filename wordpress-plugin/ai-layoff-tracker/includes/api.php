@@ -242,11 +242,42 @@ function alt_canonical_company($stripped_key) {
  * True if a published entry already exists for the same company (normalized)
  * within ~30 days of $date — i.e. probably the same event from another outlet.
  */
+// The same-company fuzzy merge exists for "a different outlet reporting the
+// same company's layoff with a slightly different count/date". Until 2.20.161
+// it never looked at the count, so it also merged a DIFFERENT, much larger
+// event into whatever same-company row happened to be in the window. On
+// 2026-09-02 Uber's 3,300 global cut (BBC, Business Today, Times of India,
+// Livemint, El Periodico and nine more, fourteen 409s in one run) was attached
+// as source reports to "Uber, 500, Chile, 2026-08-31" and counted zero; PayPal
+// India (~600) went the same way into "PayPal, 160, Ireland". An incoming
+// report at least this many times the existing row's count is a bigger event,
+// not a restatement of the known one. The rule is deliberately one-sided: a
+// SMALLER report arriving after a known event still merges, because that is
+// usually a country or site slice of the total ("layoffs hit 91 jobs in
+// Washington state" on the Zillow 500 event), and posting slices next to
+// their total is the double-count the superset pass exists to undo.
+if (!defined('ALT_FUZZY_DISTINCT_RATIO')) define('ALT_FUZZY_DISTINCT_RATIO', 3);
+
+/**
+ * True when an incoming report's count is compatible with an existing row's,
+ * i.e. the two could be the same event told twice. Zero or unknown counts on
+ * either side are compatible (no count is no evidence of a different event).
+ */
+function alt_fuzzy_count_compatible($incoming_count, $existing_count) {
+    $in = (int) $incoming_count;
+    $ex = (int) $existing_count;
+    if ($in <= 0 || $ex <= 0) return true;
+    return $in < $ex * ALT_FUZZY_DISTINCT_RATIO;
+}
+
 /**
  * Same-event fuzzy match: returns the matching post ID (truthy) when the same
- * company already has a published entry within ±30 days, else 0.
+ * company already has a published entry within ±30 days whose count is
+ * compatible with $job_count (see alt_fuzzy_count_compatible), else 0.
+ * A same-company row whose count the incoming report dwarfs is NOT a match:
+ * that is a distinct, larger event and it must be stored.
  */
-function alt_fuzzy_dupe_exists($company, $date) {
+function alt_fuzzy_dupe_exists($company, $date, $job_count = 0) {
     if ($company === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         return 0;
     }
@@ -264,9 +295,13 @@ function alt_fuzzy_dupe_exists($company, $date) {
         )),
     ));
     foreach ($ids as $id) {
-        if (alt_company_key((string) get_post_meta($id, 'company_name', true)) === $key) {
-            return (int) $id;
+        if (alt_company_key((string) get_post_meta($id, 'company_name', true)) !== $key) {
+            continue;
         }
+        if (!alt_fuzzy_count_compatible($job_count, get_post_meta($id, 'job_count', true))) {
+            continue;   // same employer, a much smaller known row: a different event
+        }
+        return (int) $id;
     }
     return 0;
 }
@@ -1138,12 +1173,22 @@ function alt_api_add($request) {
     // WARN notices are exempt: one company can legitimately file several within
     // 30 days (e.g. separate store closures), so they rely on the exact hash.
     $incoming_source = sanitize_text_field($meta_in['source_type'] ?? '');
-    if ($incoming_source !== 'warn' && ($match_id = alt_fuzzy_dupe_exists($company, $layoff_date))) {
+    if ($incoming_source !== 'warn' && ($match_id = alt_fuzzy_dupe_exists($company, $layoff_date, $job_count))) {
         global $wpdb;
         $existing_row = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . alt_db_table() . " WHERE post_id = %d", $match_id));
         if ($existing_row && function_exists('alt_event_register_report_for_layoff')) {
             alt_event_register_report_for_layoff($existing_row, $meta_in);
         }
+        // Name the row that absorbed this report. Fourteen "Skipped duplicate
+        // at server: Uber" lines on 2026-09-02 said nothing about WHICH Uber
+        // row, and the answer (a 500-job Chile row) was the whole finding.
+        $matched = array(
+            'matched_row'   => $existing_row,
+            'matched_count' => (int) get_post_meta($match_id, 'job_count', true),
+            'matched_date'  => (string) get_post_meta($match_id, 'layoff_date', true),
+        );
+        $matched_note = sprintf(' Matched row %d (%s, %s).',
+            $matched['matched_row'], number_format_i18n($matched['matched_count']), $matched['matched_date']);
         // Don't discard information with the duplicate: if the incoming report
         // carries an explicit AI attribution the existing entry lacks (common
         // when a WARN filing landed first and the news explains WHY), graft the
@@ -1161,9 +1206,11 @@ function alt_api_add($request) {
             }
             if (function_exists('alt_db_sync_post')) alt_db_sync_post($match_id);
             alt_flush_caches();
-            return new WP_Error('alt_duplicate', 'Same-company entry exists; AI attribution merged into it.', array('status' => 409));
+            return new WP_Error('alt_duplicate', 'Same-company entry exists; AI attribution merged into it.' . $matched_note,
+                array_merge(array('status' => 409), $matched));
         }
-        return new WP_Error('alt_duplicate', 'A same-company entry within ~30 days already exists.', array('status' => 409));
+        return new WP_Error('alt_duplicate', 'A same-company entry within ~30 days already exists.' . $matched_note,
+            array_merge(array('status' => 409), $matched));
     }
 
     // Zombie/rebadge guard: content farms republish OLD layoffs stamped with a

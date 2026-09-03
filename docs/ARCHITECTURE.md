@@ -93,7 +93,11 @@ automatable or licensed for reuse.
 - **Verification tiers:** `gold`=SEC EDGAR 8-K/6-K, `warn`=state WARN notice, `silver`=press release/Eurofound ERM, `bronze`=news.
 - **Market registry:** a named official system is a *candidate* until it has a stable public interface, a tested connector and source-health reporting. Only `live_sources` are coverage claims; all other countries remain discovery-only.
 - **Dedup:** exact = md5(company+date+count). Fuzzy = same normalized company within ±30 days blocks
-  a second *news* entry. The daily deep scan rotates through all bounded candidate clusters (with exact-count
+  a second *news* entry, **unless the incoming count is ≥ 3× the existing row's** (`ALT_FUZZY_DISTINCT_RATIO`,
+  `alt_fuzzy_count_compatible`): that is a distinct, larger event and is stored (Uber 3,300 vs a 500-job Chile
+  row, 2026-09-02). One-sided on purpose: a smaller report after a known total still merges as a slice. A fuzzy
+  409 names the row that absorbed the report (`matched_row`/`matched_count`/`matched_date`) and the poster
+  prints it. The daily deep scan rotates through all bounded candidate clusters (with exact-count
   repeats prioritized), and merges confirmed reports into one canonical event while retaining every source link.
   **WARN is exempt from fuzzy + cluster dedup** — its hash also includes city+state.
 - **Superset dedup** (`alt_reconcile_supersets`, `superset_of` column, daily `reconcile-supersets.yml`): the fuzzy
