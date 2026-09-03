@@ -1152,6 +1152,36 @@ else the next import re-creates it). 3. Remove/correct data: single entries →
 in the site's corrections log (templates/page-tracker.php) + TECHLOG. Counts are part of
 the dedup hash — corrected counts need the purge path, plain re-import duplicates.
 
+**A row holds another event's source links (its facts are right, its evidence is wrong)**
+
+The shape: `/query` shows a row whose `additional_sources` describe a different
+event (a different count, usually much larger) than the row itself. Until
+2.20.161 the same-company fuzzy merge attached any report within 30 days
+whatever its count, so "Uber, 500, Chile" held thirteen reports of Uber's
+global 3,300 (TECHLOG 2026-09-03). The row is correct; do not trash or edit it.
+
+1. **Read the stored excerpts, not the domains.** `curl -s
+   "$API/event/<row id>/sources?cb=$RANDOM"` returns every retained report
+   with its excerpt. Classify each URL by what its excerpt says. A URL you
+   cannot place stays where it is.
+2. **Make sure the row the links belong to exists.** If the event was never
+   stored (every one of its URLs is already a retained report, so the seen-URL
+   pre-check will skip them forever), create it through the same dispatch with
+   `action=add` and `fields=<entry JSON>`: it goes through `/add` and every
+   guard on it, and the dry run prints the row and the headline before/after.
+3. **Move the links, dry run first.** `Apply a signed-off correction` with
+   `action=move-sources`, `ids=<the row the links leave>`,
+   `fields={"to_id": <row they belong to>, "urls": [...]}`, `apply=false`.
+   The dry run prints every report on both rows as MOVE or stay with its
+   excerpt and refuses if a URL is not held. Then `apply=true`. The reason is
+   appended verbatim to the public corrections log as
+   `corrected (sources reattributed: N report link(s) moved from row A to row B)`.
+4. **Re-read both rows** with a cache buster and check `data_integrity.py`:
+   a new row moves the worldwide headline by its count, and `headline_movement`
+   judges that on its own arithmetic. If it FAILS, that is the guard working:
+   close the incident with `--close-incident` naming both row ids, never by
+   editing a JSON.
+
 **A label relabel was HELD (you got "N label relabel(s) HELD for review, not applied")**
 
 The daily classification spot-check (`railway/daily_classification_spotcheck.py`,

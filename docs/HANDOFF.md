@@ -6,6 +6,16 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-03): 2.20.162 - the 13 reports of Uber's global
+  3,300 are moved off the Chile 500 row and onto their own row.** The baton
+  was read as FREE by `ops_status [0]` on origin/main (2.20.161 already merged)
+  and this session took it, in its own worktree. Owner-authorised live
+  correction of row 178973: a keyed `/move-source-reports` route (db.php), a
+  `move-sources` and an `add` action in `railway/apply_correction.py` (dry run
+  by default, reason recorded in the public corrections log), the workflow
+  choices, a test file and TECHLOG. Plugin files touched: `includes/db.php`
+  and `ai-layoff-tracker.php` (version only). **Re-read main immediately
+  before merging and take the next patch after it if this lost a race.**
 - **VERSION CLAIMED (2026-09-02): 2.20.158 - worldwide coverage audit; the news
   net asked its non-English half in English.** The baton was read as FREE by
   `ops_status [0]` on origin/main. Work done in a separate worktree branch and

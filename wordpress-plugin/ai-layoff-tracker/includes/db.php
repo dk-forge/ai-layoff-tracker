@@ -1620,6 +1620,16 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_merge_events',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected: move named source reports from one row's event to
+    // another's. The inverse of the fuzzy merge for the case it got wrong:
+    // until 2.20.161 a same-company report within 30 days was attached
+    // whatever its count, so "Uber, 500, Chile" held 13 reports of the global
+    // 3,300. Requires `reason`; appends to the public corrections log.
+    register_rest_route('layoffs/v1', '/move-source-reports', array(
+        'methods'  => 'POST',
+        'callback' => 'alt_api_move_source_reports',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Key-protected: drop table-only WARN rows ahead of a clean re-import.
     // (Corrected counts change the dedup hash, so upsert alone would leave the
     // old wrong rows behind as duplicates.) CPT-backed rows are untouched.
@@ -4670,6 +4680,82 @@ function alt_api_merge_events(WP_REST_Request $r) {
     }
     if (!empty($out['merged_rows'])) {
         alt_log_correction('merged', $out['merged_rows'], $reason ?: 'Confirmed duplicate sources merged into canonical event');
+        if (function_exists('alt_flush_caches')) alt_flush_caches();
+    }
+    return rest_ensure_response($out);
+}
+
+/**
+ * Move named source reports from one row's event to another row's event.
+ *
+ * A source report is evidence FOR an event. When the same-company fuzzy merge
+ * attached a report to the wrong row (pre-2.20.161 it never read the count),
+ * the row's facts are right and only the attached evidence is wrong, and no
+ * other route can put that right: /edit has no source field, /trash drops the
+ * row, /merge-events only ever folds reports IN. This moves them, by URL, to
+ * the row whose event they describe. Rules:
+ *   - `reason` is required and goes to the public corrections log, so a
+ *     reattribution is disclosed exactly like an edit or a removal.
+ *   - the from-row's own primary `source_url` is never moved (that is the
+ *     row's citation; changing it is an /edit of source_url, which pins and
+ *     suppresses like any other field correction).
+ *   - a URL not attached to the from-row is reported under `not_found`, never
+ *     silently skipped: the caller fails loudly on it.
+ *   - insert on the target BEFORE deleting from the source, so a failure half
+ *     way leaves a duplicate report (harmless, INSERT IGNORE on re-run) and
+ *     never a lost one.
+ */
+function alt_api_move_source_reports(WP_REST_Request $r) {
+    global $wpdb;
+    $table = alt_db_table();
+    $reports = alt_source_reports_table();
+    $reason = trim((string) $r->get_param('reason'));
+    if ($reason === '') {
+        return new WP_Error('alt_bad_request', 'reason is required.', array('status' => 400));
+    }
+    $from_id = (int) $r->get_param('from_id');
+    $to_id = (int) $r->get_param('to_id');
+    $urls = array_values(array_filter(array_map('trim', array_map('strval', (array) $r->get_param('urls'))), 'strlen'));
+    if (!$from_id || !$to_id || $from_id === $to_id) {
+        return new WP_Error('alt_bad_request', 'from_id and to_id must be two different row ids.', array('status' => 400));
+    }
+    if (!$urls) {
+        return new WP_Error('alt_bad_request', 'urls must name at least one source report to move.', array('status' => 400));
+    }
+    $from = $wpdb->get_row($wpdb->prepare("SELECT id, source_url FROM $table WHERE id = %d", $from_id), ARRAY_A);
+    $to = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE id = %d", $to_id), ARRAY_A);
+    if (!$from || !$to) {
+        return new WP_Error('alt_not_found', 'from_id or to_id does not exist.', array('status' => 404));
+    }
+    $from_event = alt_event_for_layoff($from_id);
+    $to_event = alt_event_for_layoff($to_id);
+    if (!$from_event || !$to_event || $from_event === $to_event) {
+        return new WP_Error('alt_bad_request', 'the two rows must belong to two different events.', array('status' => 400));
+    }
+
+    $out = array('from_id' => $from_id, 'to_id' => $to_id, 'moved' => array(), 'not_found' => array(), 'refused' => array());
+    foreach ($urls as $url) {
+        if ($url === (string) $from['source_url']) {
+            $out['refused'][] = $url;   // the row's own citation: an /edit of source_url, not a move
+            continue;
+        }
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, source_name, source_type, verification_level, source_url, excerpt, ai_causation, ai_language
+               FROM $reports WHERE event_id = %d AND source_url = %s", $from_event, $url), ARRAY_A) ?: array();
+        if (!$rows) {
+            $out['not_found'][] = $url;
+            continue;
+        }
+        foreach ($rows as $rep) {
+            alt_event_add_report($to_event, $rep);
+            $wpdb->delete($reports, array('id' => (int) $rep['id']));
+        }
+        $out['moved'][] = $url;
+    }
+
+    if ($out['moved']) {
+        alt_log_correction('corrected', array($from_id, $to_id), $reason,
+            sprintf('sources reattributed: %d report link(s) moved from row %d to row %d', count($out['moved']), $from_id, $to_id));
         if (function_exists('alt_flush_caches')) alt_flush_caches();
     }
     return rest_ensure_response($out);
