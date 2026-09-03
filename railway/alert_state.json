@@ -51,7 +51,13 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {},
-  "updated_at": "2026-09-02T21:35:26+00:00",
+  "open": {
+    "industry-backfill:main:1a0c978f3cd3cb00": {
+      "first": 1788427262,
+      "last": 1788427262,
+      "subject": "CI RED: Industry backfill \u2014 RuntimeError: Could not publish industry_backfill running health status"
+    }
+  },
+  "updated_at": "2026-09-03T09:21:02+00:00",
   "version": 1
 }
