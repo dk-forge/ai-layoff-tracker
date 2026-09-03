@@ -2,8 +2,10 @@
 
 ## 2026-09-04 - spend: "the per-job brake is not holding" was the last call crossing (2.20.166)
 
-**Class:** true observation, invented diagnosis (the same shape as a health
-note reading "scheme changed" for a feed that merely carried a bad character)
+**Class:** wrong-scope-or-key (an alarm keyed on the wrong quantity: a flat
+percentage pad rather than what one call costs. True observation, invented
+diagnosis - the same shape as a health note reading "scheme changed" for a
+feed that merely carried a bad character)
 **Guard:** railway/tests/test_overshoot_is_read_correctly.py
 
 **The finding.** `ops_status [2a]` reported:

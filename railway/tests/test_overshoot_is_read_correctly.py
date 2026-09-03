@@ -27,11 +27,12 @@ mutation tests below are the point of the file -- a guard that has only ever
 seen one shape of input has not been shown to discriminate.
 """
 import json
+import os
 import sys
+import tempfile
 import types
+import unittest
 from pathlib import Path
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.modules.setdefault("openai", types.SimpleNamespace())
@@ -52,133 +53,161 @@ def entry(**kw):
     return base
 
 
-# ---------------------------------------------------------------- the verdict
+class TheVerdict(unittest.TestCase):
 
-def test_within_the_ceiling_is_ok():
-    assert spend.judge_overshoot(entry())[0] == spend.OVERSHOOT_OK
+    def test_within_the_ceiling_is_ok(self):
+        self.assertEqual(spend.judge_overshoot(entry())[0], spend.OVERSHOOT_OK)
 
+    def test_a_single_call_over_the_ceiling_is_structural_not_a_failure(self):
+        """The 2026-08-16 run, from the committed ledger. One call, $0.00552 of
+        a $0.005 ceiling. No gate can prevent the FIRST call of a run."""
+        v, why = spend.judge_overshoot(
+            entry(date="2026-08-16", calls=1, cost_usd=0.00552))
+        self.assertEqual(v, spend.OVERSHOOT_STRUCTURAL, why)
+        self.assertNotIn("brake", why.lower())
 
-def test_a_single_call_over_the_ceiling_is_structural_not_a_failure():
-    """The 2026-08-16 run, from the committed ledger. One call, $0.00552 of a
-    $0.005 ceiling. No gate can prevent the FIRST call of a run."""
-    v, why = spend.judge_overshoot(
-        entry(date="2026-08-16", calls=1, cost_usd=0.00552))
-    assert v == spend.OVERSHOOT_STRUCTURAL, why
-    assert "brake" not in why.lower()
+    def test_the_run_that_raised_the_alarm_is_structural(self):
+        """Run 33666038578: 2 calls, $0.006785 of $0.005, truncated after."""
+        v, why = spend.judge_overshoot(entry(calls=2, cost_usd=0.006785))
+        self.assertEqual(v, spend.OVERSHOOT_STRUCTURAL, why)
 
-
-def test_the_run_that_raised_the_alarm_is_structural():
-    """Run 33666038578: 2 calls, $0.006785 of $0.005, truncated afterwards."""
-    v, _ = spend.judge_overshoot(entry(calls=2, cost_usd=0.006785))
-    assert v == spend.OVERSHOOT_STRUCTURAL
-
-
-def test_no_committed_ledger_entry_is_a_bypass():
-    """The forensic sweep, kept live. If a real bypass ever lands, this fails."""
-    ledger = json.loads(
-        (ROOT / "railway/spend_jobs.json").read_text(encoding="utf-8"))
-    bad = [(e.get("date"), e.get("job"), spend.judge_overshoot(e)[1])
-           for e in ledger["entries"]
-           if spend.judge_overshoot(e)[0] == spend.OVERSHOOT_BYPASS]
-    assert bad == [], f"a run spent past what a correctly gated run can: {bad}"
-
-
-# --------------------------------------------------- MUTATION: the alarm works
-
-def test_a_real_bypass_is_still_an_alarm():
-    """MUTATION. Ten calls of $0.002 under a $0.005 ceiling is $0.020 -- the
-    shape of a paid call that never reached the gate. The bound
-    (ceiling + dearest call = $0.007) is broken, so this is an ALARM and the
-    message must name the two causes worth hunting."""
-    v, why = spend.judge_overshoot(
-        entry(calls=10, cost_usd=0.020, max_call_usd=0.002))
-    assert v == spend.OVERSHOOT_BYPASS, why
-    assert "metered_call" in why and "one request" in why
+    def test_no_committed_ledger_entry_is_a_bypass(self):
+        """The forensic sweep of 2026-09-03, kept live. If a real bypass ever
+        lands in the committed ledger, this is what says so."""
+        ledger = json.loads(
+            (ROOT / "railway/spend_jobs.json").read_text(encoding="utf-8"))
+        bad = [(e.get("date"), e.get("job"), spend.judge_overshoot(e)[1])
+               for e in ledger["entries"]
+               if spend.judge_overshoot(e)[0] == spend.OVERSHOOT_BYPASS]
+        self.assertEqual(
+            bad, [], "a run spent past what a correctly gated run can: "
+                     f"{bad}")
 
 
-def test_the_bound_is_the_dearest_call_not_a_percentage():
-    """MUTATION on the boundary. Same total, same ceiling; only the dearest
-    call moves. A pad-based test cannot tell these apart and this one must."""
-    over = entry(calls=4, cost_usd=0.0090)
-    assert spend.judge_overshoot(
-        dict(over, max_call_usd=0.0050))[0] == spend.OVERSHOOT_STRUCTURAL
-    assert spend.judge_overshoot(
-        dict(over, max_call_usd=0.0030))[0] == spend.OVERSHOOT_BYPASS
+class TheAlarmStillFires(unittest.TestCase):
+    """MUTATION. A guard that has only ever seen one shape of input has not
+    been shown to discriminate."""
+
+    def test_a_real_bypass_is_still_an_alarm(self):
+        """Ten calls of $0.002 under a $0.005 ceiling is $0.020 -- the shape of
+        a paid call that never reached the gate. The bound (ceiling + dearest
+        call = $0.007) is broken, so this is an ALARM, and the message must
+        name the two causes worth hunting."""
+        v, why = spend.judge_overshoot(
+            entry(calls=10, cost_usd=0.020, max_call_usd=0.002))
+        self.assertEqual(v, spend.OVERSHOOT_BYPASS, why)
+        self.assertIn("metered_call", why)
+        self.assertIn("one request", why)
+
+    def test_the_bound_is_the_dearest_call_not_a_percentage(self):
+        """The boundary. Same total, same ceiling; only the dearest call moves.
+        A pad-based test cannot tell these apart and this one must."""
+        over = entry(calls=4, cost_usd=0.0090)
+        self.assertEqual(
+            spend.judge_overshoot(dict(over, max_call_usd=0.0050))[0],
+            spend.OVERSHOOT_STRUCTURAL)
+        self.assertEqual(
+            spend.judge_overshoot(dict(over, max_call_usd=0.0030))[0],
+            spend.OVERSHOOT_BYPASS)
+
+    def test_the_old_flat_percentage_pad_is_gone(self):
+        """The pad is what mis-read all three data-quality runs. Its absence
+        from ops_status is part of the fix, not an incidental cleanup."""
+        self.assertNotIn(
+            "1.25", OPS_SRC,
+            "ops_status [2a] is judging an overshoot against a percentage pad "
+            "again. The bound is the run's dearest call; a pad has no "
+            "relationship to what one call costs")
 
 
-def test_the_old_flat_percentage_pad_is_gone():
-    """The pad is what mis-read all three data-quality runs. Its absence from
-    ops_status is part of the fix, not an incidental cleanup."""
-    assert "1.25" not in OPS_SRC, (
-        "ops_status [2a] is judging an overshoot against a percentage pad "
-        "again. The bound is the run's dearest call; a pad has no "
-        "relationship to what one call costs")
+class UnknownStaysUnknown(unittest.TestCase):
+
+    def test_an_unprovable_overshoot_is_uncertain_never_a_pass(self):
+        v, why = spend.judge_overshoot(entry(calls=200, cost_usd=0.020))
+        self.assertEqual(v, spend.OVERSHOOT_UNCERTAIN, why)
+        self.assertIn("UNKNOWN", why)
+
+    def test_a_run_with_no_recorded_ceiling_is_unrecorded(self):
+        e = entry(cost_usd=9.0)
+        e.pop("ceiling_usd")
+        self.assertEqual(spend.judge_overshoot(e)[0],
+                         spend.OVERSHOOT_UNRECORDED)
+
+    def test_a_malformed_entry_does_not_raise_and_does_not_pass(self):
+        self.assertEqual(spend.judge_overshoot({})[0],
+                         spend.OVERSHOOT_UNRECORDED)
+        self.assertEqual(
+            spend.judge_overshoot({"cost_usd": "x", "ceiling_usd": "y"})[0],
+            spend.OVERSHOOT_UNRECORDED)
+
+    def test_a_legacy_uncertain_run_does_not_make_the_session_exit_three(self):
+        """A pre-2026-09-03 relic that cannot be judged is PRINTED, never a
+        verdict. Two weeks of exit 3 over a run nobody can audit erodes the
+        audit exactly as a false ACTION does -- the same reason [2a]'s
+        unrecorded-ceiling bucket is printed and not an ACTION. It is
+        self-clearing: the UNCERTAIN branch is reachable only for an entry
+        with no max_call_usd."""
+        src = OPS_SRC[OPS_SRC.index("OVERSHOOT_UNCERTAIN"):]
+        self.assertIn(
+            'e.get("max_call_usd") is not None', src,
+            "[2a] stopped distinguishing a legacy unjudgeable run from one "
+            "that records its dearest call and is still unjudgeable")
 
 
-# ------------------------------------------------------- UNKNOWN stays UNKNOWN
+class TheMeterRecordsTheWidth(unittest.TestCase):
 
-def test_an_unprovable_overshoot_is_uncertain_never_a_pass():
-    v, why = spend.judge_overshoot(entry(calls=200, cost_usd=0.020))
-    assert v == spend.OVERSHOOT_UNCERTAIN, why
-    assert "UNKNOWN" in why
+    def setUp(self):
+        self._env = {k: os.environ.get(k)
+                     for k in ("ALT_RUN_SPEND_FILE", "ALT_JOB")}
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        os.environ["ALT_RUN_SPEND_FILE"] = str(Path(self.tmp.name) / "run.json")
+        os.environ.pop("ALT_JOB", None)
+        self.addCleanup(self._restore)
+        spend.reset_run_meter()
+        self.addCleanup(spend.reset_run_meter)
 
+    def _restore(self):
+        for k, v in self._env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
-def test_a_run_with_no_recorded_ceiling_is_unrecorded():
-    e = entry(cost_usd=9.0)
-    e.pop("ceiling_usd")
-    assert spend.judge_overshoot(e)[0] == spend.OVERSHOOT_UNRECORDED
+    def test_the_meter_records_the_dearest_call_not_the_mean(self):
+        spend.record_usage("deepseek/deepseek-chat",
+                           {"prompt_tokens": 100, "completion_tokens": 10})
+        spend.record_usage("deepseek/deepseek-chat",
+                           {"prompt_tokens": 100000, "completion_tokens": 10000})
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            e = spend.record_job_run(job="data-quality", run_id="local-test")
+        self.assertGreater(e["max_call_usd"], 0)
+        self.assertLess(e["max_call_usd"], e["cost_usd"],
+                        "two calls, so the dearest is not the total")
+        self.assertGreater(e["max_call_usd"], e["cost_usd"] / e["calls"],
+                           "that is the mean, not the dearest")
 
+    def test_the_dearest_call_survives_a_retried_attempt(self):
+        """The bound is a statement about the whole LOGICAL run. A second
+        attempt that only makes cheap calls must not narrow it and turn a
+        retried structural overshoot into a reported bypass.
 
-def test_a_malformed_entry_does_not_raise_and_does_not_pass():
-    assert spend.judge_overshoot({})[0] == spend.OVERSHOOT_UNRECORDED
-    assert spend.judge_overshoot(
-        {"cost_usd": "x", "ceiling_usd": "y"})[0] == spend.OVERSHOOT_UNRECORDED
-
-
-# ------------------------------------------------- the meter records the width
-
-@pytest.fixture
-def meter(tmp_path, monkeypatch):
-    monkeypatch.setenv("ALT_RUN_SPEND_FILE", str(tmp_path / "run.json"))
-    monkeypatch.delenv("ALT_JOB", raising=False)
-    spend.reset_run_meter()
-    yield
-    spend.reset_run_meter()
-
-
-def test_the_meter_records_the_dearest_call_not_the_mean(meter, capsys):
-    spend.record_usage("deepseek/deepseek-chat",
-                       {"prompt_tokens": 100, "completion_tokens": 10})
-    spend.record_usage("deepseek/deepseek-chat",
-                       {"prompt_tokens": 100000, "completion_tokens": 10000})
-    e = spend.record_job_run(job="data-quality", run_id="local-test")
-    capsys.readouterr()
-    assert e["max_call_usd"] > 0
-    assert e["max_call_usd"] < e["cost_usd"], "two calls, so the max is not the total"
-    assert e["max_call_usd"] > e["cost_usd"] / e["calls"], "that is the mean, not the max"
-
-
-def test_the_dearest_call_survives_a_retried_attempt(meter):
-    """The bound is a statement about the whole LOGICAL run. A second attempt
-    that only makes cheap calls must not narrow it and turn a retried
-    structural overshoot into a reported bypass."""
-    spend.record_usage("deepseek/deepseek-chat",
-                       {"prompt_tokens": 100000, "completion_tokens": 10000})
-    dear = spend.logical_run_max_call_usd()
-    assert dear > 0
-    spend.reset_run_meter()          # a fresh process: the retry
-    spend.record_usage("deepseek/deepseek-chat",
-                       {"prompt_tokens": 10, "completion_tokens": 1})
-    assert spend.logical_run_max_call_usd() == pytest.approx(dear)
+        This is also the regression test for _persist_run_cost() building its
+        payload INSIDE `with open(path, "w")`: open truncates, so the first
+        carried read landing there answered 0.0 and silently narrowed both the
+        carried spend and this bound to one attempt."""
+        spend.record_usage("deepseek/deepseek-chat",
+                           {"prompt_tokens": 100000, "completion_tokens": 10000})
+        dear = spend.logical_run_max_call_usd()
+        self.assertGreater(dear, 0)
+        spend.reset_run_meter()          # a fresh process: the retry
+        spend.record_usage("deepseek/deepseek-chat",
+                           {"prompt_tokens": 10, "completion_tokens": 1})
+        self.assertAlmostEqual(spend.logical_run_max_call_usd(), dear)
+        self.assertAlmostEqual(spend.carried_run_cost_usd(), dear)
 
 
-def test_a_legacy_uncertain_run_does_not_make_the_session_exit_three():
-    """A pre-2026-09-03 relic that cannot be judged is PRINTED, never a
-    verdict. Two weeks of exit 3 over a run nobody can audit erodes the audit
-    exactly as a false ACTION does -- the same reason the unrecorded-ceiling
-    bucket in [2a] is printed and not an ACTION. It is self-clearing: the
-    UNCERTAIN branch is reachable only for an entry with no max_call_usd."""
-    src = OPS_SRC[OPS_SRC.index("OVERSHOOT_UNCERTAIN"):]
-    assert 'e.get("max_call_usd") is not None' in src, (
-        "[2a] stopped distinguishing a legacy unjudgeable run from one that "
-        "records its dearest call and is still unjudgeable")
+if __name__ == "__main__":
+    unittest.main()
