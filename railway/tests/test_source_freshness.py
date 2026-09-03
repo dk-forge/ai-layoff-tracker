@@ -791,6 +791,117 @@ class OutOfBandDatesKeepAStateHonest(unittest.TestCase):
         self.assertNotIn("classification", cleared["sources"]["warn:MN"])
 
 
+class TheFrontierReadCanSeeAnUpcomingWarnDate(unittest.TestCase):
+    """The defect that made `warn:MN` read DARK on 2026-09-02 at p=0.00216 while
+    the collector was working and the rows were live.
+
+    `/query`'s default sort is `(layoff_date IS NULL) ASC,
+    (layoff_date > CURDATE()) ASC, layoff_date DESC` — a deliberate reader-facing
+    rule that sends FUTURE-effective rows to the END. A WARN notice is
+    future-effective by law (60 days' notice), so the exact class of row that
+    proves a WARN source is alive is the class the first page cannot contain:
+    Pearson's Candy (2026-09-28) and Revol Greens (2026-10-04) sat at index 85
+    and 86 of an 88-row result that db_frontier_dates read 30 rows of.
+
+    Proved by MUTATION, not by going green: the same stub answers the old
+    single-page read with a stale frontier and the new two-read one with the
+    upcoming tail, and the SAME scrape flips DARK -> not-dark on that difference.
+    """
+
+    PAST = ["2026-08-07", "2026-08-04", "2026-08-03", "2026-07-01"]
+    UPCOMING = ["2026-10-04", "2026-09-28"]
+
+    def setUp(self):
+        os.environ["WP_SITE_URL"] = "https://example.invalid/blog"
+        self.addCleanup(lambda: os.environ.pop("WP_SITE_URL", None))
+        self.calls = []
+
+    def _server(self):
+        """Stands in for /query, ordering EXACTLY as db.php does: future last."""
+        class Resp:
+            status_code = 200
+
+            def __init__(self, rows):
+                self._rows = rows
+
+            def json(self):
+                return {"data": [{"layoff_date": d} for d in self._rows]}
+
+        def get(url, params=None, headers=None, timeout=None):
+            params = params or {}
+            self.calls.append(dict(params))
+            rows = self.PAST + self.UPCOMING          # future sorts LAST
+            frm = params.get("from")
+            if frm:
+                rows = [d for d in rows if d >= frm]
+                rows.sort(reverse=True)
+            return Resp(rows[:int(params.get("per_page") or 25)])
+        return get
+
+    def test_a_single_page_read_cannot_see_the_upcoming_tail(self):
+        # The bug, pinned. Reading only the first page — which is what the old
+        # code did — truncates before the future rows and the frontier is stale.
+        import unittest.mock as mock
+        with mock.patch("warn_import.requests.get", side_effect=self._server()):
+            page = W.db_frontier_dates(
+                {"MN"}, limit=len(self.PAST),
+                today=datetime.date(2026, 9, 2))["MN"]
+            first_page_only = [d for d in page if d in self.PAST]
+        self.assertEqual(max(first_page_only), "2026-08-07")
+
+    def test_the_upcoming_tail_is_asked_for_by_name(self):
+        import unittest.mock as mock
+        with mock.patch("warn_import.requests.get", side_effect=self._server()):
+            dates = W.db_frontier_dates({"MN"}, limit=len(self.PAST),
+                                        today=datetime.date(2026, 9, 2))["MN"]
+        self.assertEqual(max(dates), "2026-10-04")
+        # Two reads, and the second one carries the date bound. Without `from`
+        # the server has no way to surface a row the default order buries.
+        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(self.calls[1].get("from"), "2026-09-02")
+
+    def test_a_failing_tail_read_does_not_discard_the_page(self):
+        """Best-effort, independently. If the upcoming call dies the past-dated
+        page must still stand — degrading to the old behaviour, never to {}."""
+        import unittest.mock as mock
+        calls = {"n": 0}
+        server = self._server()
+
+        def flaky(*a, **kw):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise OSError("connection reset")
+            return server(*a, **kw)
+        with mock.patch("warn_import.requests.get", side_effect=flaky):
+            self.assertEqual(
+                max(W.db_frontier_dates({"MN"}, limit=len(self.PAST),
+                                        today=datetime.date(2026, 9, 2))["MN"]),
+                "2026-08-07")
+
+    def test_the_upcoming_date_is_what_clears_the_false_dark(self):
+        """End to end on the real thing: MN's frozen monthly scrape, judged on
+        2026-09-02. Folding ONLY what the first page can see leaves MN dark;
+        folding the upcoming tail the fix recovers clears it. If a future edit
+        makes both branches agree, this test fails and says which."""
+        import tempfile
+        fixture = load_fixture()
+        entries = [{"state": "MN", "layoff_date": d} for d in fixture["MN"]]
+        on = datetime.date(2026, 9, 2)
+
+        def dark(extra):
+            tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False,
+                                              mode="w")
+            tmp.write('{"sources": {}}')
+            tmp.close()
+            self.addCleanup(lambda: os.unlink(tmp.name))
+            return W.assess_state_freshness(
+                entries, {"MN"}, today=on, ledger_path=tmp.name,
+                extra_dates_by_state={"MN": extra})[1]
+
+        self.assertIn("MN", dark(self.PAST))
+        self.assertNotIn("MN", dark(self.PAST + self.UPCOMING))
+
+
 class DbFrontierDatesNeverSinksTheImport(unittest.TestCase):
     """db_frontier_dates is best-effort: any failure falls back to the scrape's
     own dates (the old behaviour), never a crash that would sink a good import.

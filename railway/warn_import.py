@@ -318,7 +318,12 @@ def detect_generic_state_drift(counts, expected, baselines=None, *,
     return sorted(drift)
 
 
-def db_frontier_dates(states, *, limit=30):
+# /query caps per_page at 200. A state's UPCOMING WARN rows are a handful, so
+# one page always holds them; the cap is a bound, not a guess.
+UPCOMING_PAGE = 200
+
+
+def db_frontier_dates(states, *, limit=30, today=None):
     """Newest WARN `layoff_date`s already in the DB per state — best-effort.
 
     The only channel from an OUT-OF-BAND collector (Railway cron) to this run's
@@ -327,16 +332,45 @@ def db_frontier_dates(states, *, limit=30):
     actually holds and fold those dates into the freshness series, which is what
     keeps `warn:MN` honest once the monthly scrape alone has gone stale.
 
+    TWO reads per state, and the second one is the whole point. `/query`'s
+    default sort is documented in db.php as newest-first, but its ORDER BY is
+    `(layoff_date IS NULL) ASC, (layoff_date > CURDATE()) ASC, layoff_date DESC`
+    — a deliberate READER-facing choice that pushes FUTURE-effective rows to the
+    very END of the result set, so a skimming reporter does not mistake a
+    2026-12-31 plan for today's news. A fresh WARN notice is future-effective by
+    law (60 days' notice), so the one class of row that proves a WARN source is
+    alive is precisely the class the first page structurally cannot contain. On
+    2026-09-02 that read `warn:MN` DARK at p=0.00216 while the letters collector
+    was working perfectly and the DB already held Pearson's Candy (effective
+    2026-09-28) and Revol Greens (2026-10-04) — they sat at index 85 and 86 of
+    an 88-row result the caller was reading 30 rows of. So the upcoming tail is
+    fetched EXPLICITLY with `from=<today>` rather than hoped for.
+
     Never raises. A freshness read that sinks a successful import has cost more
     than the gap it finds; on any failure the state falls back to this scrape's
     own dates (the pre-existing behaviour), so the worst case is the old bug,
-    never a crash or a lost import.
+    never a crash or a lost import. The upcoming read is independently
+    best-effort: if it fails, the past-dated read still stands.
     """
     out = {}
     wp = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
     if not wp:
         return out
+    today = today or source_freshness.today_utc()
     headers = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
+
+    def _dates(st, params):
+        """Layoff dates from one /query page, or [] on any failure."""
+        resp = requests.get(f"{wp}/wp-json/layoffs/v1/query",
+                            params=dict(params, state=st),
+                            headers=headers, timeout=30)
+        if resp.status_code != 200:
+            print(f"db_frontier_dates({st}): HTTP {resp.status_code}, skipped")
+            return []
+        payload = resp.json()
+        rows = (payload.get("data") if isinstance(payload, dict) else payload)
+        return [r.get("layoff_date") for r in (rows or []) if r.get("layoff_date")]
+
     for st in states:
         try:
             # `/query` returns rows newest-first under a "data" key. We do NOT
@@ -351,17 +385,15 @@ def db_frontier_dates(states, *, limit=30):
             # this key. The `_OUT_OF_BAND_STATES` gate is what keeps this narrow:
             # a state whose WARN comes ONLY through its register is never read
             # this way, so news about it can never stand in for a dead register.
-            resp = requests.get(
-                f"{wp}/wp-json/layoffs/v1/query",
-                params={"state": st, "per_page": limit},
-                headers=headers, timeout=30)
-            if resp.status_code != 200:
-                print(f"db_frontier_dates({st}): HTTP {resp.status_code}, skipped")
-                continue
-            payload = resp.json()
-            rows = (payload.get("data") if isinstance(payload, dict) else payload)
-            dates = [r.get("layoff_date") for r in (rows or [])
-                     if r.get("layoff_date")]
+            dates = _dates(st, {"per_page": limit})
+            # The upcoming tail, asked for by name. `from=<today>` selects the
+            # rows the default page order buries, and it is a SEPARATE
+            # best-effort call: a failure here must not discard the page above.
+            try:
+                dates += _dates(st, {"per_page": UPCOMING_PAGE,
+                                     "from": today.isoformat()})
+            except Exception as exc:                               # noqa: BLE001
+                print(f"db_frontier_dates({st}) upcoming tail skipped: {exc}")
             if dates:
                 out[st.upper()] = dates
         except Exception as exc:                                   # noqa: BLE001
