@@ -56,8 +56,13 @@
       "first": 1788427262,
       "last": 1788427262,
       "subject": "CI RED: Industry backfill \u2014 RuntimeError: Could not publish industry_backfill running health status"
+    },
+    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
+      "first": 1788464872,
+      "last": 1788464872,
+      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     }
   },
-  "updated_at": "2026-09-03T11:10:57+00:00",
+  "updated_at": "2026-09-03T19:47:53+00:00",
   "version": 1
 }
