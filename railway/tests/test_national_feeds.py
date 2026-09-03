@@ -298,6 +298,93 @@ class RelevanceFilterTests(unittest.TestCase):
         """The trailing-junk trim must not soften the changed-scheme guard."""
         items, is_feed = nf._parse_items("<!doctype html><html><body>x</body></html>")
         self.assertFalse(is_feed)
+
+    # ---- A BARE AMPERSAND IS NOT A SCHEME CHANGE -------------------------
+    # MEASURED 2026-09-03 on the live wired feed: kathmandupost.com/rss
+    # answered HTTP 200 with 40 real items, one titled "Q&A: How Nepal can
+    # still identify those who died in the flood". The "&" begins no XML
+    # reference, so the strict parse failed, the collector said "200 but the
+    # body is not an RSS feed - scheme changed", and Nepal collected nothing
+    # while every reader of that note was sent to fix a URL that was correct.
+
+    def test_the_live_kathmandu_post_defect_is_read_not_refused(self):
+        """The exact byte sequence the publisher serves, escaped down to the
+        one character that mattered."""
+        body = rss(("Q&A: How Nepal can still identify those who died",
+                    "https://kathmandupost.com/interviews/a",
+                    "Mill lays off 400 workers in Birgunj & Nepalgunj."))
+        items, shape, _detail = nf.parse_feed(body)
+        self.assertEqual(shape, "repaired")
+        self.assertEqual(len(items), 1)
+
+    def test_a_repaired_feed_still_carries_the_publisher_s_own_text(self):
+        """Escaping is not editing: "&amp;" unescapes back to "&", so the item
+        that reaches build_raw is the one the publisher meant to send."""
+        body = rss(("Q&A on the mill", "https://example.org/a",
+                    "400 redundancies at Smith & Sons."))
+        items, _shape, _d = nf.parse_feed(body)
+        self.assertEqual(items[0]["title"], "Q&A on the mill")
+        self.assertIn("Smith & Sons", items[0]["description"])
+
+    def test_a_bare_ampersand_feed_collects_and_does_not_degrade(self):
+        """Read through the whole collector, because the health note is what
+        broke, not the parser in isolation."""
+        body = rss(("Q&A: mill lays off 400 workers", "https://example.org/a",
+                    "400 redundancies confirmed at the plant."))
+        with patch.dict(os.environ, {"NATIONAL_FEEDS": "kathmandu_post"},
+                        clear=False):
+            rows, stats = nf.pull_national_feeds(
+                fetch=lambda u, timeout: (200, body))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(stats["kathmandu_post"]["errors"], 0)
+        self.assertEqual(stats["kathmandu_post"]["repaired"], 1)
+        self.assertIsNone(nf.pull_national_feeds.last_error)
+        self.assertEqual(nf.health_verdict(nf.pull_national_feeds.failures)[0],
+                         "ok")
+
+    def test_an_ampersand_inside_cdata_is_left_alone(self):
+        """"&" is legal literal text inside CDATA; escaping there would put
+        "&amp;" into the reader's excerpt."""
+        body = rss(("Q&A: mill cuts staff", "https://example.org/a", "d"),
+                   content="400 jobs cut at Smith & Sons.")
+        items, shape, _d = nf.parse_feed(body)
+        self.assertEqual(shape, "repaired")
+        self.assertIn("Smith & Sons", items[0]["content"])
+
+    def test_a_structurally_broken_feed_is_still_refused(self):
+        """The escape is one lexical rule, not a leniency knob: an unclosed
+        tag is still malformed and still an error. Abidjan.net stays refused."""
+        items, shape, _d = nf.parse_feed(
+            "<?xml version='1.0'?><rss version='2.0'><channel><item>"
+            "<title>x</title></channel></rss>")
+        self.assertEqual(items, [])
+        self.assertEqual(shape, "malformed")
+
+    def test_a_malformed_feed_is_never_reported_as_a_scheme_change(self):
+        """The two failures send a human to two different places: a scheme
+        change means OUR url is wrong, a malformed document means the
+        PUBLISHER's is. Reporting the second as the first cost six weeks."""
+        broken = ("<?xml version='1.0'?><rss version='2.0'><channel><item>"
+                  "<title>x</title></channel></rss>")
+        with patch.dict(os.environ, {"NATIONAL_FEEDS": "kursiv_kz"},
+                        clear=False):
+            rows, stats = nf.pull_national_feeds(
+                fetch=lambda u, timeout: (200, broken))
+        self.assertEqual(rows, [])
+        self.assertGreater(stats["kursiv_kz"]["errors"], 0)
+        note = nf.health_verdict(nf.pull_national_feeds.failures)[1]
+        self.assertIn("IS an RSS document", note)
+        self.assertNotIn("scheme changed", note)
+
+    def test_an_html_page_can_never_be_repaired_into_a_feed(self):
+        """An HTML page is full of bare ampersands. The escape must not turn
+        the changed-scheme guard into a way of passing one."""
+        for page in ("<!doctype html><html><body>Tom & Jerry & co</body></html>",
+                     "<html><head><title>a & b</title></head></html>"):
+            with self.subTest(page=page[:30]):
+                items, shape, _d = nf.parse_feed(page)
+                self.assertEqual(items, [])
+                self.assertEqual(shape, "not_feed")
         self.assertEqual(items, [])
 
     def test_an_english_feed_does_not_widen_into_other_vocabularies(self):

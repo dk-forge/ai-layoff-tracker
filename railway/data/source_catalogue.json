@@ -2061,8 +2061,8 @@
    "status": "wired",
    "collector": "national_feeds",
    "feed_url": "https://kathmandupost.com/rss",
-   "probed": "2026-08-14",
-   "evidence": "HTTP 200, RSS, 40 items; robots.txt carries an empty Disallow (nothing barred). The /money/rss desk path serves HTML, so the site-level feed is the one wired",
+   "probed": "2026-09-03",
+   "evidence": "HTTP 200, RSS, 40 items; robots.txt carries an empty Disallow (nothing barred). The /money/rss desk path serves HTML, so the site-level feed is the one wired. Re-probed 2026-09-03: one item title carries a bare ampersand, which a strict XML parser must reject; the feed is read through the escape described in the collector and the URL is unchanged",
    "note": ""
   },
   {

@@ -30,7 +30,12 @@ says why, not an omission. The short version, so nobody re-probes from memory:
     Iraq Business News    40 items, ~630-char descriptions
     Jamaica Gleaner       10 items, the paper's own business desk feed
     The Kathmandu Post    40 items. The /money/rss desk path serves HTML; the
-                         site-level feed is the one that parses.
+                         site-level /rss is the one that parses. Re-probed
+                         2026-09-03: still 200, still RSS, still 40 items, but
+                         one item title carries a bare "&" ("Q&A: ..."), which
+                         a conforming parser must reject. Read through the
+                         bare-ampersand escape in regional_feeds; the URL was
+                         never wrong.
     Post-Courier (PG)     10 items shipping FULL article text (~6.6k chars)
     ABC Color Economia    33 items, via the publisher's arc outbound feed
     Biznis.rs (RS)        50 items, ~1,260-char descriptions
@@ -102,7 +107,11 @@ individual-dismissal words, the same trap French "licenciement" and Russian
 VOLUME FLOORS: none on candidates. A national feed honestly produces no layoff
 story most weeks. The floor is on the FEED: a non-200, an unparseable body, or
 a 200 that is not an RSS document is a counted error that sets last_error, so
-a dead URL fails loudly while a quiet week stays quiet.
+a dead URL fails loudly while a quiet week stays quiet. Those last two are
+reported SEPARATELY as of 2026-09-03 - "not an RSS document" means our URL is
+now wrong, "an RSS document that is not well-formed" means the publisher's is
+- because for six weeks this collector said the first about the second and
+Nepal went dark over an unescaped ampersand.
 
 Nothing here writes a row. Every kept candidate becomes a raw dict with
 raw_text set and goes through extract_layoff_data -> post_to_wordpress like
@@ -126,8 +135,12 @@ from sources.local_news import is_aggregator
 # English collective-layoff vocabulary is also ONE definition, shared with the
 # regional feeds. A correction to the English terms must land in both places
 # at the same time or the two collectors disagree about what a layoff story is.
+# `parse_feed` is the ONE definition of "is this body a feed, and if not,
+# which kind of not": a scheme change is ours to fix, a malformed document is
+# the publisher's, and reporting the second as the first is what cost Nepal
+# six weeks (see FEED_SHAPES in regional_feeds).
 from sources.regional_feeds import (EN_PATTERNS, EN_TERMS, PAIRED_TERMS,
-                                    trim_trailing_junk)
+                                    parse_feed, trim_trailing_junk)
 
 # requests is imported LAZILY inside the default fetcher, so tests and the
 # dry-run planner can import this module without the dependency and without
@@ -385,35 +398,11 @@ def _iso_date(pubdate):
 
 
 def _parse_items(xml_text):
-    """Returns (items, is_feed). is_feed is False when the body is not an RSS
-    document at all - the changed-scheme shape (an HTML page at a former feed
-    path, which is exactly what Citi Business News, Georgia Today, Enterprise
-    and half the refused candidates serve). A VALID channel with zero items is
-    ([], True): a quiet feed is honest absence, not breakage."""
-    out = []
-    try:
-        # Bytes outside the document (a Cloudflare beacon tag after </rss>,
-        # which The Kathmandu Post's wired feed began serving on 2026-08-17)
-        # are dropped first. See trim_trailing_junk: it removes what is outside
-        # the document and repairs nothing inside it.
-        root = ET.fromstring(trim_trailing_junk(xml_text))
-    except Exception:
-        return out, False
-    if root.tag.split("}")[-1] != "rss" or root.find("channel") is None:
-        return out, False
-    for item in root.iter("item"):
-        def _t(tag):
-            el = item.find(tag)
-            return el.text if el is not None and el.text else ""
-        enc = item.find(_CONTENT_NS)
-        out.append({
-            "title": _t("title"),
-            "link": _t("link"),
-            "description": _t("description"),
-            "published": _t("pubDate"),
-            "content": (enc.text if enc is not None and enc.text else ""),
-        })
-    return out, True
+    """(items, is_feed) - the two-state view of the shared `parse_feed`, kept
+    for callers that only need "could we read it?". The collector itself uses
+    parse_feed, because a health note has to name WHICH failure this was."""
+    items, shape, _detail = parse_feed(xml_text)
+    return items, shape in ("ok", "repaired")
 
 
 def build_raw(feed, item):
@@ -537,7 +526,7 @@ def pull_national_feeds(feeds=None, fetch=None):
     pull_national_feeds.failures = []
     picked = tuple(feeds) if feeds else armed_feeds()
     stats = {f.key: {"fetched": 0, "aggregator": 0, "dropped": 0,
-                     "kept": 0, "errors": 0} for f in picked}
+                     "kept": 0, "errors": 0, "repaired": 0} for f in picked}
     if not picked:
         print("national_feeds: DORMANT (NATIONAL_FEEDS=off, or the armed set "
               "is empty), so no request was made and nothing was spent. "
@@ -572,12 +561,30 @@ def pull_national_feeds(feeds=None, fetch=None):
             _fail(feed, classify_failure(status), f"HTTP {status}")
             time.sleep(GAP)
             continue
-        items, is_feed = _parse_items(body)
-        if not is_feed:
+        items, shape, detail = parse_feed(body)
+        if shape == "not_feed":
             _fail(feed, "broke",
                   "200 but the body is not an RSS feed - scheme changed?")
             time.sleep(GAP)
             continue
+        if shape == "malformed":
+            # An RSS document we cannot read is the PUBLISHER's defect, and
+            # saying "scheme changed" about it sends a session to rewrite a
+            # URL that is correct. Named separately, and still an error.
+            _fail(feed, "broke",
+                  f"200 and the body IS an RSS document, but its XML is not "
+                  f"well-formed and no bare-ampersand escape recovers it "
+                  f"({detail})")
+            time.sleep(GAP)
+            continue
+        if shape == "repaired":
+            # Read, not silently: a feed whose only defect is an unescaped "&"
+            # is collected (the alternative is losing a country over one
+            # character) and counted, so the run report says so. It is NOT a
+            # degrade - a permanently amber source is noise that hides the
+            # real breakage this collector exists to report.
+            st["repaired"] = st.get("repaired", 0) + 1
+            print(f"national_feeds: {feed.key}: {detail}")
         for it in items:
             st["fetched"] += 1
             if st["kept"] >= MAX_PER_FEED:
@@ -611,7 +618,7 @@ if __name__ == "__main__":
         st = stats[key]
         print(f"{key}: fetched={st['fetched']} kept={st['kept']} "
               f"dropped={st['dropped']} aggregator={st['aggregator']} "
-              f"errors={st['errors']}")
+              f"errors={st['errors']} repaired={st.get('repaired', 0)}")
     n = len(rows)
     print(f"candidates this run: {n} -> ${n * COST_PER_CANDIDATE_USD:.4f} "
           f"if every one were new (seen_urls dedup makes repeats free)")

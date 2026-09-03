@@ -303,9 +303,11 @@ def trim_trailing_junk(xml_text):
     national-feeds collector counted that feed as an error and the whole
     collector degraded, on a feed whose channel parses perfectly.
 
-    Anything wrong INSIDE the document still fails, which is the property that
-    matters: Abidjan.net's malformed body and an HTML page at a former feed
-    path are still refusals, and we still never hand-repair a broken feed.
+    Anything STRUCTURALLY wrong inside the document still fails, which is the
+    property that matters: Abidjan.net's malformed body and an HTML page at a
+    former feed path are still refusals. The one and only lexical exception is
+    a bare ampersand, which has exactly one reading and is escaped only after
+    a strict parse has already failed; see escape_bare_ampersands.
     """
     if isinstance(xml_text, bytes):
         end = xml_text.rfind(b"</rss>")
@@ -314,18 +316,80 @@ def trim_trailing_junk(xml_text):
     return xml_text[:end + 6] if end != -1 else xml_text
 
 
-def _parse_items(xml_text):
-    """Returns (items, is_feed). is_feed is False when the body is not an RSS
-    document at all - the changed-scheme shape (an HTML page at a former feed
-    path), which the caller must count as an error. A VALID channel with zero
-    items is ([], True): a quiet feed is honest absence, not breakage."""
-    out = []
+# A bare "&" is the ONE defect an XML parser can read only one way.
+#
+# MEASURED 2026-09-03: The Kathmandu Post's wired /rss answered HTTP 200 with a
+# real RSS document whose 12th item title is "Q&A: How Nepal can still identify
+# those who died in the flood". The "&" begins no reference, so a conforming
+# parser must reject the document at that byte, and the collector reported
+# "200 but the body is not an RSS feed - scheme changed" for six weeks about a
+# feed whose scheme had not changed at all. Nepal collected nothing over one
+# character, and the health note sent every reader of it to the wrong problem.
+#
+# This is NOT the leniency knob the module refuses. XML defines exactly what
+# may follow an "&" (a named, decimal or hex reference, terminated by ";");
+# an "&" that begins none of those is a literal ampersand and there is no
+# second reading. Escaping it changes no text: the parser unescapes "&amp;"
+# back to "&", so the item reaching build_raw is byte-identical to the one the
+# publisher meant to send. Compare Abidjan.net, which is still refused: its
+# invalid token is not a bare ampersand, nothing here rescues it, and a
+# structural defect (an unclosed tag, a stray "<") still fails. It is applied
+# ONLY after a strict parse has already failed, so a well-formed feed never
+# touches it, and it can never turn an HTML page into a feed because the
+# root-tag check runs afterwards either way.
+#
+# CDATA sections and comments are left alone: "&" is legal literal text
+# inside both, and escaping there would put "&amp;" into the reader's text.
+_BARE_AMP = re.compile(r"&(?!#[0-9]+;|#[xX][0-9a-fA-F]+;|[A-Za-z_][\w.\-]*;)")
+_XML_VERBATIM = re.compile(r"<!\[CDATA\[.*?\]\]>|<!--.*?-->", re.DOTALL)
+
+
+def escape_bare_ampersands(xml_text):
+    """Escape every "&" that begins no XML reference, outside CDATA/comments."""
+    text = xml_text.decode("utf-8", "replace") if isinstance(
+        xml_text, bytes) else str(xml_text or "")
+    out, pos = [], 0
+    for m in _XML_VERBATIM.finditer(text):
+        out.append(_BARE_AMP.sub("&amp;", text[pos:m.start()]))
+        out.append(m.group(0))
+        pos = m.end()
+    out.append(_BARE_AMP.sub("&amp;", text[pos:]))
+    return "".join(out)
+
+
+#: The four shapes a 200 body can take, kept apart because they send a human
+#: to four different places. "not_feed" is the publisher's scheme changing (an
+#: HTML page at a former feed path) and the URL here is now wrong; "malformed"
+#: is a real feed document we cannot read and is the PUBLISHER's defect, not
+#: ours; "repaired" is a feed that carried bare ampersands and was read anyway;
+#: "ok" is a feed, however few items it holds.
+FEED_SHAPES = ("ok", "repaired", "malformed", "not_feed")
+
+
+def parse_feed(xml_text):
+    """Returns (items, shape, detail). ONE definition, shared by both feed
+    collectors, so "is this a feed?" cannot be answered two ways.
+
+    A VALID channel with zero items is ([], "ok"): a quiet feed is honest
+    absence, not breakage.
+    """
+    trimmed = trim_trailing_junk(xml_text)
+    shape, detail = "ok", ""
     try:
-        root = ET.fromstring(trim_trailing_junk(xml_text))
-    except Exception:
-        return out, False
+        root = ET.fromstring(trimmed)
+    except Exception as first:
+        try:
+            root = ET.fromstring(escape_bare_ampersands(trimmed))
+        except Exception:
+            head = (trimmed.decode("utf-8", "replace") if isinstance(
+                trimmed, bytes) else str(trimmed or "")).lstrip()[:400].lower()
+            looks_like_a_feed = "<rss" in head or "<feed" in head
+            return ([], "malformed" if looks_like_a_feed else "not_feed",
+                    str(first))
+        shape, detail = "repaired", "bare ampersand(s) escaped before parsing"
     if root.tag.split("}")[-1] != "rss" or root.find("channel") is None:
-        return out, False
+        return [], "not_feed", f"root <{root.tag.split('}')[-1]}>"
+    out = []
     for item in root.iter("item"):
         def _t(tag):
             el = item.find(tag)
@@ -338,7 +402,15 @@ def _parse_items(xml_text):
             "published": _t("pubDate"),
             "content": (enc.text if enc is not None and enc.text else ""),
         })
-    return out, True
+    return out, shape, detail
+
+
+def _parse_items(xml_text):
+    """(items, is_feed) - the two-state view of parse_feed, kept for callers
+    that only need "could we read it?". Use parse_feed when the ANSWER has to
+    name which kind of failure it was."""
+    items, shape, _detail = parse_feed(xml_text)
+    return items, shape in ("ok", "repaired")
 
 
 def build_raw(feed, item):
