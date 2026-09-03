@@ -189,5 +189,48 @@ class TheGuardCostsNoRealCountry(unittest.TestCase):
         self.assertEqual(out["Kiribati"], "Kiribati")
 
 
+CA_PROVINCES = (
+    "Alberta", "British Columbia", "Manitoba", "New Brunswick",
+    "Newfoundland and Labrador", "Northwest Territories", "Nova Scotia",
+    "Nunavut", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan",
+    "Yukon",
+)
+
+
+@unittest.skipUnless(PHP, "php is not on PATH")
+class NoCanadianProvinceSurvivesAsACountry(unittest.TestCase):
+    """THE SUCCESSOR CASE, LIVE 2026-09-03: row 177003 (St-Jerome Auto-Depot,
+    Quebec collective-dismissal notice) carried country "Quebec". The
+    collector hard-codes country => "Canada"; the value arrived through /edit,
+    the same human-driven path as the North Carolina defect above, one
+    country wider. Nothing at write time caught it because "Quebec" is an
+    unmapped single value; it surfaced instead in country_coverage.py, whose
+    per-country register reported an UNKNOWN because a "country" had entered
+    the corpus with no disclosure regime to classify — there is none, because
+    it is not a country.
+    """
+
+    def test_every_province_folds_to_canada(self):
+        out = normalize(CA_PROVINCES)
+        for province in CA_PROVINCES:
+            with self.subTest(province=province):
+                self.assertEqual(out[province], "Canada")
+
+    def test_the_one_the_register_actually_saw(self):
+        self.assertEqual(normalize(("Quebec",))["Quebec"], "Canada")
+
+    def test_case_and_spacing_do_not_get_a_province_through(self):
+        out = normalize(("quebec", "  QUEBEC  ", "New  Brunswick",
+                         "prince edward island"))
+        for value in out:
+            with self.subTest(value=value):
+                self.assertEqual(out[value], "Canada")
+
+    def test_canada_itself_and_real_countries_are_left_alone(self):
+        out = normalize(("Canada", "Brazil"))
+        self.assertEqual(out["Canada"], "Canada")
+        self.assertEqual(out["Brazil"], "Brazil")
+
+
 if __name__ == "__main__":
     unittest.main()

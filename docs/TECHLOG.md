@@ -1,5 +1,62 @@
 # Tech Log
 
+## 2026-09-03 - a Canadian province arrived in the corpus wearing a country's clothes (2.20.163)
+
+**Class:** novel - closest is the "United States (NJ)" normalizer gap
+(2026-08-28), but INCIDENT_CLASSES.md has no slug yet for a subnational value
+passing a normalizer's unmapped-single-country passthrough; a second instance
+of the same shape is a candidate for one, not invented here.
+**Guard:** railway/tests/test_country_is_not_a_state.py
+(NoCanadianProvinceSurvivesAsACountry)
+
+**What broke.** `Per-country coverage register` (schedule, main) went red,
+exit 3: `country_coverage.judge()` reported UNKNOWN naming one country in the
+corpus with no classification and no acknowledgment: **Quebec**. Read from
+the actual run log (33798469968), step "Classify every country in the
+corpus" — `VERDICT UNKNOWN: 1 country in the corpus that nobody has either
+classified OR acknowledged: Quebec`.
+
+**Confirmed live.** `/aggregate` returns `["Quebec", 71, ...]` as its own
+country row, distinct from `["Canada", 129854, ...]`. `/query?country=Quebec`
+returns exactly one row: id 177003, St-Jerome Auto-Depot, source "Quebec
+collective dismissal (MESS)", `edited: true`. `railway/sources/quebec.py`
+hard-codes `country: "Canada"` on every row it posts (`_entry()`, line ~208),
+so the value was not written that way by the collector — it was overwritten
+afterward through `/edit`, the one path a human drives. Same shape as the
+2026-08-18 North Carolina defect and its 2026-08-28 "United States (NJ)"
+successor: `alt_normalize_country()` only ever guarded US states, so an
+unmapped single value — a real place, wrong kind of place — passed through
+its "never lose data" fallback unchanged.
+
+**Why this is not a `country_coverage.py` problem to solve.** The register
+did exactly its job: a value entered the corpus's `country` column that
+nobody had either classified (no disclosure regime exists to research for a
+province) or acknowledged as backlog, and it reported UNKNOWN rather than
+silently passing. Widening the register — adding Quebec to `NOT_A_COUNTRY`,
+or to `ACKNOWLEDGED_BACKLOG`, or downgrading the verdict — would have been
+exactly the "healer fixes the judge" move CLAUDE.md forbids. The defect is
+upstream, in the data and in the normalizer that let a bad value stand.
+
+**Fix.**
+1. `alt_normalize_country()` (wordpress-plugin/ai-layoff-tracker/includes/api.php)
+   gains a Canadian-provinces/territories fold to "Canada", mirroring the
+   US-states block. No Georgia-style collision exists (no province shares a
+   name with a sovereign country), so the fold is unconditional.
+2. `railway/tests/test_country_is_not_a_state.py` gains
+   `NoCanadianProvinceSurvivesAsACountry` (13 provinces/territories fold,
+   case/spacing variants fold, "Canada" and real countries are left alone).
+   Mutation-verified: reverting the new `if` to a no-op reddened the new
+   tests (14 failures) before the fix was restored.
+3. Row 177003's `country` corrected from "Quebec" to "Canada" via
+   `edit-entries.yml` (reason: this incident; logged there per its own
+   requirement).
+
+**What a human still needs to do.** None — this is a closed data defect, not
+a legitimate UNKNOWN. The register's own verdict clears once the corpus no
+longer holds a bare "Quebec" row and the deploy carrying the normalizer guard
+is live; re-run `python3 railway/country_coverage.py --write` (or wait for the
+next scheduled run) to confirm.
+
 ## 2026-09-03 - the Chile 500 row gives Uber's 3,300 its evidence back, through a route that did not exist (2.20.162)
 
 **Class:** wrong-scope-or-key - the count-blind fuzzy merge (fixed in 2.20.161)
