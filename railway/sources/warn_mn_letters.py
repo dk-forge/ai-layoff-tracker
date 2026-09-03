@@ -248,7 +248,7 @@ def pull_mn_warn_letters(limit=None, _report=True):
             "company_name": _company_from_url(url),
             "filing_date": ld.isoformat() if ld else "",
             "raw_text": text.strip(),
-            "_collector": "mn_warn_letters",
+            "_collector": "warn_mn_letters",
         })
     if not urls:
         _health("degraded", 0, "no letter URLs from CDX or the seed list "

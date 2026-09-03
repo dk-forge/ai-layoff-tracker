@@ -346,7 +346,13 @@ def run():
         # gate -> extract -> post path here. The collector emits only letters
         # dated after the newest monthly report, so a letter and its monthly-
         # report twin cannot both be counted (see sources/warn_mn_letters.py).
-        ("mn_warn_letters", pull_mn_warn_letters),
+        # ONE COLLECTOR, ONE ID. Registered here as "mn_warn_letters" until
+        # 2026-09-04 while sources/warn_mn_letters.py posted its own terminal
+        # note as "warn_mn_letters" -- so a single collector wrote TWO ledger
+        # rows every run, was counted twice in ops_status [2]'s "N source(s)
+        # OK", and showed on the public Health page under an id with no
+        # meta{} label. See tests/test_one_health_id_per_collector.py.
+        ("warn_mn_letters", pull_mn_warn_letters),
     ):
         try:
             report_source_health(source, "running", 0, "collection in progress")
@@ -459,6 +465,17 @@ def run():
                     print(f"::warning::{source} degraded: {err}")
                 else:
                     report_source_health(source, "ok", len(pulled))
+            elif source == "warn_mn_letters":
+                # THE COLLECTOR ALREADY POSTED ITS OWN TERMINAL NOTE, and the
+                # generic one below would erase it. This branch is not cosmetic:
+                # sources/warn_mn_letters.py reports 'degraded' when discovery
+                # itself failed (CDX and the seed both unreachable), and a
+                # blind `ok` written one second later would turn a real
+                # breakage into a healthy row with an empty detail. That is
+                # exactly what the two-id split was hiding -- the two writes
+                # landed on different keys, so neither overwrote the other and
+                # nobody noticed the collision was there.
+                pass
             else:
                 report_source_health(source, "ok", len(pulled))
         except Exception as e:

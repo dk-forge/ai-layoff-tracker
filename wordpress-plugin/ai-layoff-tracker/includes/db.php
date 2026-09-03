@@ -2438,6 +2438,20 @@ function alt_retired_sources() {
         'edinet_jp' => array('2026-07-24', 'Retired 2026-07-24. Japan filing probe ingested zero layoff rows; Japan is covered through worldwide news. Client kept, re-runnable on demand.'),
         'opendart_kr' => array('2026-07-24', 'Retired 2026-07-24. South Korea filing probe ingested zero layoff rows; South Korea is covered through worldwide news. Client kept, re-runnable on demand.'),
         'cvm_br' => array('2026-07-24', 'Retired 2026-07-24. Brazil filing probe ingested zero layoff rows; Brazil is covered through worldwide news. Client kept, re-runnable on demand.'),
+        // NOT a retired collector -- a DUPLICATE ID for a live one. From
+        // 2026-08-24 to 2026-09-04 the single Minnesota WARN-letters collector
+        // posted health twice a run: cron.py registered it as 'mn_warn_letters'
+        // and sources/warn_mn_letters.py posted its own terminal note as
+        // 'warn_mn_letters'. One collector, two ledger rows: counted twice in
+        // ops_status [2]'s "N source(s) OK" and shown on the public Health page
+        // under an id with no meta{} label. The collector now reports only as
+        // 'warn_mn_letters' (which is the id health.js meta{} already declares).
+        // This masks the frozen row so it cannot age into a false "stale" alarm.
+        // THE DATE MUST NOT PRECEDE THE MERGE: a run POSTed after it un-masks
+        // the row by design, and this branch is merged by the owner. If the
+        // merge slips past this date, advance it to the merge date -- the
+        // collector stops posting under this id only once the merge deploys.
+        'mn_warn_letters' => array('2026-09-06', 'Duplicate id, retired 2026-09-04. The Minnesota per-company WARN letters collector reported under two ids; it now reports only as warn_mn_letters. No coverage was lost and nothing was retired: this row is the abandoned half of a double-write.'),
     );
 }
 
