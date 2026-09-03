@@ -56,8 +56,13 @@
       "first": 1788427262,
       "last": 1788427262,
       "subject": "CI RED: Industry backfill \u2014 RuntimeError: Could not publish industry_backfill running health status"
+    },
+    "tests:live.data:240a9bbebb4867de": {
+      "first": 1788428423,
+      "last": 1788428423,
+      "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 504 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-03T09:21:02+00:00",
+  "updated_at": "2026-09-03T09:40:23+00:00",
   "version": 1
 }
