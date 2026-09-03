@@ -699,6 +699,41 @@ TRUSTED_DOMAINS = {
     "evrensel.net",              # Turkey - Evrensel (labour daily; union-aligned)
     "dha.com.tr",                # Turkey - DHA (largest private domestic agency)
     # --- 2026-09-02 reviewed outlets: END
+    # --- 2026-09-03 reviewed outlets: BEGIN
+    # Worldwide-outlet-depth audit, 2026-09-03 (TECHLOG): the 2026-09-02 run's
+    # own health detail read it 4.2%, uk 5.4%, de 8.5% kept/seen, against es
+    # 22.4% the SAME day the Spanish additions landed — proof the allowlist,
+    # not the collector, is the binding constraint. The concrete miss that
+    # triggered this pass: "DNB schrapt 290 banen" (De Nederlandsche Bank),
+    # carried on Nieuws.nl and Banken.nl, neither allowlisted, with the
+    # Netherlands then admitting only 3 outlets. Every domain between BEGIN
+    # and END is a REVIEWED claim in railway/reviewed_outlets.json (outlet,
+    # language, standing, caveat, date) and tests/test_reviewed_outlets.py
+    # fails on a domain here the registry does not argue for, on a registry
+    # entry the allowlist does not carry, and on any allowlist domain that
+    # matches a host in country_coverage.REFUSAL_LEDGER. Additive only.
+    "nos.nl",                    # Netherlands - NOS (public broadcaster)
+    "nu.nl",                     # Netherlands - NU.nl (highest-traffic digital daily)
+    "telegraaf.nl",              # Netherlands - De Telegraaf (largest-circulation daily)
+    "trouw.nl",                  # Netherlands - Trouw (national daily)
+    "ad.nl",                     # Netherlands - Algemeen Dagblad (national-regional daily)
+    "rtlnieuws.nl",              # Netherlands - RTL Nieuws (commercial broadcaster)
+    "bnr.nl",                    # Netherlands - BNR Nieuwsradio (business/financial radio)
+    "anp.nl",                    # Netherlands - ANP (national wire service)
+    "ansa.it",                   # Italy - ANSA (state-linked national wire)
+    "rainews.it",                # Italy - RAI News (public broadcaster)
+    "ilfattoquotidiano.it",      # Italy - Il Fatto Quotidiano (national daily)
+    "ilmessaggero.it",           # Italy - Il Messaggero (national daily, Rome)
+    "milanofinanza.it",          # Italy - MilanoFinanza (financial daily)
+    "ntv.de",                    # Germany - n-tv (business/news broadcaster)
+    "wiwo.de",                   # Germany - WirtschaftsWoche (business weekly)
+    "manager-magazin.de",        # Germany - Manager Magazin (business magazine)
+    "tagesspiegel.de",           # Germany - Der Tagesspiegel (national daily, Berlin)
+    "rp-online.de",              # Germany - Rheinische Post (NRW industrial belt)
+    "dailymail.co.uk",           # United Kingdom - Daily Mail (highest-reach national)
+    "itv.com",                   # United Kingdom - ITV News (public commercial broadcaster)
+    "channel4.com",              # United Kingdom - Channel 4 News (public broadcaster)
+    # --- 2026-09-03 reviewed outlets: END
 }
 
 # Sent to the GDELT DOC API only. Until 2026-09-02 this string also went to

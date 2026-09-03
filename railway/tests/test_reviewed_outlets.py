@@ -41,8 +41,17 @@ from sources.gdelt import TRUSTED_DOMAINS  # noqa: E402
 
 REGISTRY = os.path.join(RAILWAY, "reviewed_outlets.json")
 GDELT_SRC = os.path.join(RAILWAY, "sources", "gdelt.py")
-BEGIN = "# --- 2026-09-02 reviewed outlets: BEGIN"
-END = "# --- 2026-09-02 reviewed outlets: END"
+# Every dated reviewed-outlets pass writes its own "# --- YYYY-MM-DD reviewed
+# outlets: BEGIN" / "...: END" pair (2026-09-02 was the first, 2026-09-03 the
+# second). A guard hardcoded to one date's markers only ever re-checks that
+# one pass; a later block would sit unaudited right next to it, which is
+# exactly the gap a "systematic, worst-country-first" review is supposed to
+# close. So this matches EVERY such block by pattern, not by a literal date.
+BLOCK_RX = re.compile(
+    r"# --- (\d{4}-\d{2}-\d{2}) reviewed outlets: BEGIN(.*?)"
+    r"# --- \1 reviewed outlets: END",
+    re.DOTALL,
+)
 
 REQUIRED = ("domain", "outlet", "country", "language", "kind", "standing")
 
@@ -53,13 +62,14 @@ def _registry():
 
 
 def _block_domains(text=None):
-    """Domains literally written between the BEGIN and END markers."""
+    """Domains literally written inside ANY dated reviewed-outlets block."""
     if text is None:
         with open(GDELT_SRC, encoding="utf-8") as fh:
             text = fh.read()
-    start = text.index(BEGIN)
-    stop = text.index(END, start)
-    return re.findall(r'"([a-z0-9.\-]+)"', text[start:stop])
+    doms = []
+    for _date, body in BLOCK_RX.findall(text):
+        doms.extend(re.findall(r'"([a-z0-9.\-]+)"', body))
+    return doms
 
 
 def ledger_hosts(ledger=REFUSAL_LEDGER):
