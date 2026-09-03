@@ -40,6 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.modules.setdefault("openai", SimpleNamespace())
 
 import extractor  # noqa: E402
+import host_call  # noqa: E402
 import spend  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,8 +118,8 @@ class _IndustryCase(_BudgetCase):
                      for n in range(20)]
         self._orig = {name: getattr(ib, name) for name in
                       ("fetch_candidates", "post_fills", "report_source_health",
-                       "classify_deterministic", "classify_industry",
-                       "SITE", "KEY")}
+                       "require_running_note", "classify_deterministic",
+                       "classify_industry", "SITE", "KEY")}
         self.addCleanup(self._restore_module)
         # main() refuses to start without these; they are read at import.
         ib.SITE, ib.KEY = "https://example.invalid/blog", "k"
@@ -127,6 +128,13 @@ class _IndustryCase(_BudgetCase):
         ib.classify_deterministic = lambda name: None
         self.health = []
         ib.report_source_health = lambda *a, **k: self.health.append((a, k)) or True
+        # main()'s precondition write, stubbed for the same reason
+        # report_source_health is: these tests are about the budget guard, not
+        # the health ledger or a live host. None means "the note landed".
+        ib.require_running_note = lambda *a, **k: None
+        real_clear = host_call.clear
+        host_call.clear = lambda *a, **k: None
+        self.addCleanup(lambda: setattr(host_call, "clear", real_clear))
         self.posted = []
         ib.post_fills = lambda items: (self.posted.extend(items)
                                        or ([i["id"] for i in items], [], []))

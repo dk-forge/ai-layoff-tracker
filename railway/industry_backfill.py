@@ -57,8 +57,11 @@ from extractor import (
     classify_industry, INDUSTRY_VOCABULARY, CreditsExhaustedError,
     spend_deferral_count, spend_deferred_since,
 )
+import host_call
 import spend
-from source_health import report_source_health
+from source_health import report_source_health, require_running_note
+
+JOB = "industry-backfill"
 
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
@@ -437,11 +440,17 @@ def main():
         print("INDUSTRY_VOCABULARY is empty — refusing to run")
         return 1
     if not DRY_RUN:
-        if not report_source_health("industry_backfill", "running", 0,
-                                    "bounded company+excerpt industry classification in progress"):
-            raise RuntimeError("Could not publish industry_backfill running health status")
+        # First thing the job does, before anything is scanned or written. A
+        # host that never answered defers; a host that REFUSED the write still
+        # raises, because a wrong key is settled and fails identically tomorrow.
+        code = require_running_note(
+            JOB, "industry_backfill",
+            "bounded company+excerpt industry classification in progress")
+        if code is not None:
+            return code
     try:
         run()
+        host_call.clear(JOB)
         return 0
     except CreditsExhaustedError as exc:
         # BILLING, not a code fault: the LLM provider is out of credits, so every

@@ -215,6 +215,10 @@ class ReasonBackfill(_JobCase):
     module, job = "reason_backfill", "reason-backfill"
 
 
+class IndustryBackfill(_JobCase):
+    module, job = "industry_backfill", "industry-backfill"
+
+
 class ClaimsImport(_JobCase):
     module, job = "claims_import", "claims-import"
 
