@@ -14,6 +14,7 @@ import re
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from itertools import islice
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -1697,7 +1698,8 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete,
             break
 
 
-def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH, deadline=None):
+def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH,
+                       deadline=None, max_candidates=None):
     """Return raw layoff-news entries (trusted domains) filed in [start, end].
 
     Every planned unit of work (the broad window plus each rotating sweep) is a
@@ -1856,12 +1858,57 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
         print(f"GDELT run has {len(incomplete)} incomplete slot(s): "
               f"{', '.join(sorted(set(incomplete)))} -> health degraded")
     _save_work_ledger(ledger, ledger_path)
-    return _fetch_trusted(collected)
+    return _fetch_trusted(collected, max_candidates=max_candidates)
 
 
-def _fetch_trusted(articles):
+def _fetch_trusted(articles, max_candidates=None):
     """Trusted-domain gate + concurrent article fetch, shared by both the
-    BigQuery-mirror and public-API paths."""
+    BigQuery-mirror and public-API paths.
+
+    THIS IS THE FAN-OUT, and until 2026-09-04 it was the one phase of the run
+    with no bound of any kind. Every other phase grew a clock: `_query_window`
+    has its attempt schedule, the sweep loop and the bisection consult
+    `deadline` (#253). Collection then handed its whole `collected` list here
+    and this function issued ONE HTTP GET per trusted, deduped candidate,
+    however many that was.
+
+    Run 33860668098 (2026-09-04) is the measurement. The BigQuery mirror
+    matched 35,175 articles for a single 2021 week, the trusted gate kept a few
+    thousand of them, and the fetch ran from 10:12:44 to the 45-minute ceiling
+    at 10:40 without ever returning - 629 fetch errors logged and still going.
+    The caller had asked for TEN. The seven runs before it show the growth
+    plainly, trusted candidates against wall time:
+
+        2502 -> 18.3m   2417 -> 17.7m   2860 -> 23.4m   3528 -> 27.5m
+        3342 -> 22.4m   3365 -> 22.2m   3658 -> 39.2m   (35,175 matched) -> killed
+
+    It grows because the historical cursor is walking forward into busier news
+    months, not because anything broke. So the ceiling was never the defect.
+
+    `max_candidates` is the bound, and it is DEMAND-DRIVEN: candidates are
+    fetched in waves of FETCH_WORKERS and the loop stops as soon as it holds
+    that many USABLE entries. Counting successes rather than attempts matters
+    because roughly a fifth of these fetches fail by design (403/404/429 from
+    publishers -- 3,658 trusted produced 3,000 fetched on 2026-09-03). A cap
+    that truncated the candidate LIST to 10 would hand the extractor about 8,
+    quietly reducing the sweep's yield; a cap that stops at 10 usable entries
+    hands it exactly the 10 it asks for.
+
+    It is None by DEFAULT, and the live collector deliberately does not set it.
+    `max_records` is a PER-QUERY GDELT ceiling and `collected` is the union of
+    a dozen queries, so max_records is not "what the caller can use" and must
+    never be reused as this cap: the live run of 2026-09-02 held 916 trusted
+    candidates and kept 847 of them against a max_records of 250, so binding
+    the two together would silently cut the primary worldwide collector by
+    about 70% while every surface stayed green. Only `gdelt_backfill` passes
+    a cap, from BACKFILL_MAX_ARTICLES, because only there is the surplus
+    provably discarded: its extraction loop stops at `max_articles` considered
+    and the cursor advances regardless, so on 2026-09-04 the run fetched about
+    3,000 article bodies to use 10 and threw the rest away unread.
+
+    Candidates the cap never reached are recorded under `candidate_cap` rather
+    than vanishing, so the reach columns still add up to the returned count.
+    """
     reach = gdelt_reach.current()
     candidates, seen = [], set()
     for a in articles:
@@ -1940,14 +1987,38 @@ def _fetch_trusted(articles):
         }
 
     results = []
+    attempted = 0
     with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
-        futures = [pool.submit(fetch_candidate, candidate) for candidate in candidates]
-        for future in as_completed(futures):
-            entry = future.result()
-            if entry:
-                results.append(entry)
+        if max_candidates is None:
+            futures = [pool.submit(fetch_candidate, c) for c in candidates]
+            attempted = len(futures)
+            for future in as_completed(futures):
+                entry = future.result()
+                if entry:
+                    results.append(entry)
+        else:
+            # One wave in flight at a time, so the decision to stop is taken
+            # on real results rather than on a guess about the failure rate.
+            # A wave already submitted is always drained -- those requests are
+            # spent, and discarding their answers would be the one thing worse
+            # than fetching them.
+            pending = iter(candidates)
+            while len(results) < max_candidates:
+                wave = list(islice(pending, FETCH_WORKERS))
+                if not wave:
+                    break
+                attempted += len(wave)
+                for future in as_completed(
+                        [pool.submit(fetch_candidate, c) for c in wave]):
+                    entry = future.result()
+                    if entry:
+                        results.append(entry)
 
-    print(f"GDELT: {len(articles)} matched, {len(candidates)} trusted, {len(results)} fetched")
+    for _a, _url, dom in candidates[attempted:]:
+        reach.note(dom, "candidate_cap")
+
+    print(f"GDELT: {len(articles)} matched, {len(candidates)} trusted, "
+          f"{attempted} attempted, {len(results)} fetched")
     for line in reach.report_lines():
         print(line)
     for line in ROBOTS.report_lines(prefix="GDELT robots"):

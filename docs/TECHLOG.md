@@ -1,5 +1,71 @@
 # Tech Log
 
+## 2026-09-04 - gdelt: the fetch fan-out was the one phase with no bound, and the cap must not be `max_records`
+
+**Class:** unbounded-growth (a phase whose work scales with the upstream match
+set rather than with what the caller asked for; it grew past a ceiling that was
+correctly sized for everything else in the job)
+**Guard:** railway/tests/test_gdelt_fetch_fanout.py
+
+**The finding.** Run 33860668098 (`Historical global news sweep`, 2026-09-04
+09:54Z) was killed by `timeout-minutes: 45` after 45.5 minutes. The trend
+across the eight consecutive runs rules out a mis-sized ceiling - it grows, it
+does not spike:
+
+| date | 08-28 | 08-29 | 08-30 | 08-31 | 09-01 | 09-02 | 09-03 | 09-04 |
+|---|---|---|---|---|---|---|---|---|
+| minutes | 18.3 | 17.7 | 23.4 | 27.5 | 22.4 | 22.2 | 39.2 | **killed at 45** |
+| trusted candidates | 2502 | 2417 | 2860 | 3528 | 3342 | 3365 | 3658 | (35,175 matched) |
+
+**Collection was already bounded; the phase after it was not.** #253 threaded a
+wall-clock `deadline` through `_collect_window`, `_run_sweep_slot` and
+`_retry_pending_slots`, and the log shows it working exactly as designed: one
+abandoned sweep, remaining sweeps queued, pending retries skipped, all by
+10:12:44. Then `pull_gdelt_between` handed its whole `collected` list to
+`_fetch_trusted`, which issued ONE HTTP GET per trusted candidate with no clock
+and no count. That loop ran from 10:12:44 to the ceiling at 10:40, logged 629
+fetch errors, and never returned to its caller. `BACKFILL_DEADLINE_SECONDS=600`
+could not fire because it is read in `gdelt_backfill`'s extraction loop, which
+is only reached after `_fetch_trusted` returns.
+
+**The surplus is provably discarded.** The extraction loop stops at
+`BACKFILL_MAX_ARTICLES` considered - **10** - and the cursor advances
+regardless. So the run downloaded roughly 3,000 article bodies in order to read
+10 and throw the rest away unread. Capping the fetch loses no coverage because
+that coverage was already being discarded; it grows because the historical
+cursor is walking forward into busier news months, not because anything broke.
+
+**The cap is demand-driven, and it is NOT `max_records`.** Two things this
+change deliberately does not do:
+
+- *It does not count attempts.* About a fifth of these fetches fail by
+  publisher design (403/404/429): 3,658 trusted produced 3,000 fetched on
+  2026-09-03. A cap truncating the candidate LIST to 10 hands the extractor
+  about 8 and quietly shrinks the sweep's yield. `_fetch_trusted` fetches in
+  waves of `FETCH_WORKERS` and stops on 10 USABLE results.
+- *It does not bind the cap to `max_records`.* `max_records` is a PER-QUERY
+  GDELT ceiling and `collected` is the union of a dozen queries, so it is not
+  "what the caller can use". The live collector's own telemetry for 2026-09-02
+  reads `returned=7816 ... kept=847`, i.e. 916 trusted candidates against a
+  `max_records` of 250. Reusing `max_records` as the fetch cap would have cut
+  the primary worldwide collector by about 70% while every surface stayed
+  green. `max_candidates` is its own parameter, defaults to unbounded, and is
+  passed by `gdelt_backfill` alone - and there only when
+  `BACKFILL_MAX_ARTICLES` is set, because the workflow promises a manual
+  backfill stays uncapped and `remaining` falls back to 250.
+
+Candidates the cap never reached are recorded under a new `candidate_cap` reach
+reason, so gdelt_reach's "every candidate lands in exactly one outcome"
+invariant still holds.
+
+**The ceiling was not raised.** 45 minutes stays, and the arithmetic now sits
+beside it in the workflow.
+
+**Proved by mutation.** Removing the bound walks all 5,000 candidates
+(`5000 not less than or equal to 14`) and loses the `candidate_cap`
+accounting; counting attempts instead of results delivers 6 where 10 were asked
+for; reusing `max_records` as the cap reddens the live-path guard.
+
 ## 2026-09-04 - spend: "the per-job brake is not holding" was the last call crossing (2.20.166)
 
 **Class:** wrong-scope-or-key (an alarm keyed on the wrong quantity: a flat
