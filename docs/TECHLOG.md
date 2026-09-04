@@ -53,6 +53,42 @@ red. A separate `fired` flag was tried first and its removal survived every
 test, because the drain already makes a second signal a no-op; the flag was
 deleted rather than kept as a second mechanism nothing pins. Green with the
 fix restored.
+## 2026-09-05 - the Railway cron container was replaced under a running collector by a ledger commit (branch)
+
+**Class:** started-not-finished
+
+**What broke.** `ops_status [2e]` listed five orphaned runs: gdelt (2026-08-26,
+2026-09-03), gdelt_historical (2026-08-27, 2026-09-04), archive_backfill
+(2026-08-30), each with a `running` note and no terminal one. `spend_jobs.json`
+holds no end-of-run record for any of them, so the processes died; the
+`railway-cron` job's last harvested record is 2026-09-02.
+
+**Cause for the Railway runs, read from `railway deployment list`.** The cron
+service redeployed on every commit to main: 20 deployments in the 24 hours to
+2026-09-04T21:38Z, sixteen of them bot ledger commits (`alert: claim`,
+`defer:`, `coverage:`, `learn:`, the data-integrity baseline). The 2026-09-03
+22:05Z gdelt run was replaced at 23:39Z by the deploy of #255, 94 minutes in.
+A container swap is not a crash, so nothing raised; the run stopped and the
+next night's start overwrote its `running` note. The 2026-08-26 gdelt orphan
+has the same shape but the CLI returns only the last 20 deployments, so it is
+not proven. **The other three are a different mechanism**: `gdelt_historical`
+and `archive_backfill` run on GitHub Actions, not Railway; the 2026-09-04
+09:55Z gdelt_historical run matches the `historical-global-news-sweep` alert
+raised at 10:40Z, a red run that never reached its terminal note. Those stay
+under [2e]'s own runbook and are not closed by this change.
+
+**Fix.** `railway/railway.toml` gains `[build] watchPatterns` limited to what
+the container executes (.py, the locks, the toml, `data/`). Ledger JSON no
+longer triggers a build. Merged only after the 2026-09-05 22:00Z run had
+finished, because the fix is itself a deploy.
+
+**Guard:** none. Railway's watch evaluation is not visible to a test; the
+check is manual and written into the toml comment: the next .py merge must
+produce a deployment, the next bot JSON commit must not. If both hold, `[2e]`
+should show no new orphan whose start precedes a deployment.
+
+**Not done.** The GitHub-run orphans (gdelt_historical x2, archive_backfill)
+are named above and not fixed here; the 2026-08-26 Railway orphan is unproven.
 
 ## 2026-09-04 - the two daily editions: every figure reproduced, five sentences around them did not (2.20.168, branch, awaiting owner review)
 
