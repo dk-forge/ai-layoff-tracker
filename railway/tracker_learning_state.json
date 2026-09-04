@@ -158,7 +158,25 @@
       "date": "2026-09-04",
       "method": "m4",
       "state": "unknown"
+    },
+    {
+      "candidates": 112,
+      "causes": {
+        "not_wired": 78,
+        "unclassified": 5,
+        "vocabulary_gap": 13
+      },
+      "date": "2026-09-04",
+      "dropped": 0,
+      "independent_recall_pct": 14.3,
+      "matched": 16,
+      "method": "m5",
+      "recall_high_pct": 22.0,
+      "recall_low_pct": 9.0,
+      "rules": 13,
+      "unknown": 4,
+      "unmatched": 96
     }
   ],
-  "quiet_runs": 1
+  "quiet_runs": 0
 }
