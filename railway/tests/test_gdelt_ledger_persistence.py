@@ -341,7 +341,16 @@ class ARunThatDIESKeepsWhatItLearned(LedgerPersistenceBase):
     """
 
     def _record(self, ledger, key_suffix):
-        start = gdelt.datetime(2026, 8, 28, tzinfo=gdelt.timezone.utc)
+        # Anchored to the clock, not to a calendar date. The mid-run sync
+        # below posts `_pruned_slots(...)`, which drops any slot whose
+        # `window_end` is more than LEDGER_RETRY_HORIZON (14 days) old -- so a
+        # hard-coded window makes these assertions count 1 for a fortnight and
+        # 0 forever after. The identical bomb in test_gdelt_window_coverage
+        # went off on 2026-09-04 and read as five regressions on an unrelated
+        # open PR; this one was due on 2026-09-11.
+        start = (gdelt.datetime.now(gdelt.timezone.utc)
+                 .replace(hour=0, minute=0, second=0, microsecond=0)
+                 - gdelt.timedelta(days=4))
         end = start + gdelt.timedelta(hours=12)
         gdelt._record_slot(ledger, "segment", f"q-{key_suffix}", start, end,
                            "failed", [])

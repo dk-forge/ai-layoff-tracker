@@ -29,12 +29,40 @@ import gdelt_reach  # noqa: E402
 from sources import gdelt, gdelt_bq  # noqa: E402
 
 
-W_START = datetime(2026, 8, 20, 0, 0, tzinfo=timezone.utc)
+# THE FIXTURE WINDOW IS ANCHORED TO THE CLOCK, NEVER TO A CALENDAR DATE.
+#
+# The subject of most of this file is the work LEDGER, and the ledger prunes
+# itself by wall-clock age: `_pruned_slots` drops any slot whose `window_end`
+# is more than `LEDGER_RETRY_HORIZON` (14 days) behind `datetime.now()`, and it
+# does so inside `_save_work_ledger` -- i.e. between the run these tests make
+# and the file they then read back. A hard-coded window therefore does not test
+# a stable thing: it tests one thing for fourteen days and then reads an empty
+# ledger forever.
+#
+# That is not hypothetical. This block used to read 2026-08-20 + 36h, so
+# `window_end` was 2026-08-21T12:00Z and every slot in it aged out at
+# 2026-09-04T12:00Z. Five tests went red that afternoon -- the broad-slot
+# recording, both outage-breaker tests, the cross-run pending retry and the
+# deferred split -- with no code change behind any of them, and they landed on
+# an unrelated open PR where they read as that PR's regressions.
+#
+# So the window is derived: it starts four midnights back and ends 36 hours
+# later, which is always in the PAST (nothing here should exercise a
+# future-dated window) and always about twelve days INSIDE the horizon, with
+# room for the tests below that push `W_END` out by an hour or two. Do not
+# answer a repeat of this by widening LEDGER_RETRY_HORIZON -- that constant is
+# production behaviour these tests exist to hold, not a test knob.
+_TODAY = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0,
+                                            microsecond=0)
+W_START = _TODAY - timedelta(days=4)
 W_END = W_START + timedelta(hours=36)
+# Kept consistent with the window for the same reason.
+_SEENDATE = (W_START + timedelta(hours=12)).strftime("%Y%m%dT%H%M%SZ")
 
 
-def _article(url, seendate="20260820T120000Z"):
-    return {"url": url, "domain": "reuters.com", "title": "layoffs", "seendate": seendate}
+def _article(url, seendate=None):
+    return {"url": url, "domain": "reuters.com", "title": "layoffs",
+            "seendate": seendate or _SEENDATE}
 
 
 class Bisection(unittest.TestCase):
@@ -474,6 +502,48 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
                 W_START, W_END, max_records=5, ledger_path=self.ledger_path)
 
         self.assertEqual(started, ["segment", "native"])
+
+
+class TheFixtureWindowOutlivesTheLedgerHorizon(unittest.TestCase):
+    """One named failure instead of five mysterious ones.
+
+    Most of this file asserts on a ledger that `_save_work_ledger` prunes by
+    wall-clock age on the way to disk. When the fixture window drifts past
+    `LEDGER_RETRY_HORIZON` every one of those tests reads an empty ledger and
+    fails on its own subject -- the broad slot, the outage breaker, the
+    cross-run retry, the deferred split -- saying nothing about the real cause.
+    That is exactly how 2026-09-04 played out, on a PR that had not touched any
+    of it.
+
+    So the fixture's own margin is asserted here, first and by name. If this
+    one fails, move the anchor; do not touch LEDGER_RETRY_HORIZON, which is the
+    production behaviour the rest of the file exists to hold.
+    """
+
+    def test_the_window_is_not_near_the_prune_horizon(self):
+        age = datetime.now(timezone.utc) - W_END
+        self.assertGreater(
+            age, timedelta(0),
+            "the fixture window must be in the PAST: these tests stand in for "
+            "a completed collection run, not a future-dated one")
+        self.assertLess(
+            age, gdelt.LEDGER_RETRY_HORIZON - timedelta(days=7),
+            "the fixture window is drifting toward the ledger's prune horizon "
+            "-- every ledger assertion in this file is about to read an empty "
+            "ledger. Re-anchor W_START, do not widen LEDGER_RETRY_HORIZON")
+
+    def test_the_anchor_is_derived_from_the_clock(self):
+        """A hard-coded window passes the margin check today and fails it
+        silently later; the point is that it cannot be hard-coded at all."""
+        import inspect
+        src = inspect.getsource(sys.modules[__name__])
+        head = src.split("class ", 1)[0]
+        self.assertIn("datetime.now(timezone.utc)", head,
+                      "the fixture window must be derived from the clock")
+        self.assertNotRegex(
+            head.replace("datetime.now(timezone.utc)", ""),
+            r"datetime\(\s*\d{4}\s*,",
+            "no absolute date literal may anchor the fixture window")
 
 
 if __name__ == "__main__":
