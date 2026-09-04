@@ -23,10 +23,10 @@ the container executes (.py, the locks, the toml, `data/`). Ledger JSON no
 longer triggers a build. Merged only after the 2026-09-05 22:00Z run had
 finished, because the fix is itself a deploy.
 
-**Guard.** None automated yet: Railway's watch evaluation is not visible to a
-test. The check is manual and written into the toml comment: the next .py
-merge must produce a deployment, the next bot JSON commit must not. If both
-hold, `[2e]` should show no new orphan whose start precedes a deployment.
+**Guard:** none. Railway's watch evaluation is not visible to a test; the
+check is manual and written into the toml comment: the next .py merge must
+produce a deployment, the next bot JSON commit must not. If both hold, `[2e]`
+should show no new orphan whose start precedes a deployment.
 
 **Not done.** The three older orphans could not be matched to a deployment
 because the CLI returns only the last 20; same shape, not proven.
