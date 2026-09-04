@@ -1,5 +1,36 @@
 # Tech Log
 
+## 2026-09-05 - five collector runs never finished because a deploy replaced the container under them (branch)
+
+**Class:** started-not-finished
+
+**What broke.** `ops_status [2e]` listed five orphaned runs: gdelt (2026-08-26,
+2026-09-03), gdelt_historical (2026-08-27, 2026-09-04), archive_backfill
+(2026-08-30), each with a `running` note and no terminal one. `spend_jobs.json`
+holds no end-of-run record for any of them, so the processes died; the
+`railway-cron` job's last harvested record is 2026-09-02.
+
+**Cause, read from `railway deployment list`.** The cron service redeployed on
+every commit to main: 20 deployments in the 24 hours to 2026-09-04T21:38Z, and
+sixteen of them were bot ledger commits (`alert: claim`, `defer:`, `coverage:`,
+`learn:`, the data-integrity baseline). The 2026-09-03 22:05Z gdelt run was
+replaced at 23:39Z by the deploy of #255, 94 minutes in. A container swap is
+not a crash, so nothing raised; the run simply stopped and the next night's
+start overwrote its `running` note.
+
+**Fix.** `railway/railway.toml` gains `[build] watchPatterns` limited to what
+the container executes (.py, the locks, the toml, `data/`). Ledger JSON no
+longer triggers a build. Merged only after the 2026-09-05 22:00Z run had
+finished, because the fix is itself a deploy.
+
+**Guard.** None automated yet: Railway's watch evaluation is not visible to a
+test. The check is manual and written into the toml comment: the next .py
+merge must produce a deployment, the next bot JSON commit must not. If both
+hold, `[2e]` should show no new orphan whose start precedes a deployment.
+
+**Not done.** The three older orphans could not be matched to a deployment
+because the CLI returns only the last 20; same shape, not proven.
+
 ## 2026-09-04 - the two daily editions: every figure reproduced, five sentences around them did not (2.20.168, branch, awaiting owner review)
 
 **Class:** derived-value-typed-by-hand (four of five), plus one
