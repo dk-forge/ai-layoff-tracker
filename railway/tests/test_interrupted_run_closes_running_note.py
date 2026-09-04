@@ -19,8 +19,9 @@ the platform, so the exit is still 143 / killed-by-SIGTERM.
 PROVEN BY A REAL PROCESS, NOT BY ASSERTION. The subprocess tests start a fake
 ledger on localhost, run a child that posts real notes to it, send it a real
 SIGTERM, and read what the ledger received and how the child exited. The child
-stands a tiny `requests` shim (urllib) in `sys.modules` so the test needs no
-third-party package and every POST is visible to the fake ledger. Mutations
+takes `requests` from the shared `_requests_stub.install()` and points its
+`post` at urllib inside that child only, so the test needs no third-party
+package and every POST is visible to the fake ledger. Mutations
 that redden this file: dropping the open-set clear on a normal terminal note
 (the "nothing after ok" test), dropping the request timeout in the handler
 (the hang test), dropping the re-raise (the exit-status tests), dropping the
@@ -120,7 +121,7 @@ class _FakeLedger:
 # The collector under test: posts the notes it is told to, says READY, then
 # waits to be killed, exactly like a collector mid-sweep.
 CHILD = textwrap.dedent("""
-    import json, sys, time, types, urllib.error, urllib.request
+    import json, sys, time, urllib.error, urllib.request
 
     class _Resp:
         def __init__(self, code):
@@ -138,10 +139,13 @@ CHILD = textwrap.dedent("""
         except urllib.error.HTTPError as e:
             return _Resp(e.code)
 
-    shim = types.ModuleType("requests")
-    shim.post = _post
-    sys.modules["requests"] = shim
+    # The ONE installer (tests/_requests_stub.py), never a private stub in the
+    # process-global slot. This is a fresh subprocess, so pointing its `post`
+    # at urllib is safe and makes every note visible to the fake ledger
+    # whether or not the real `requests` is installed.
     sys.path.insert(0, sys.argv[1])
+    from tests import _requests_stub
+    _requests_stub.install().post = _post
     import source_health
 
     for source, status in json.loads(sys.argv[2]):
