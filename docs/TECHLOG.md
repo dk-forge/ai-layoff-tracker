@@ -1,5 +1,59 @@
 # Tech Log
 
+## 2026-09-05 - a killed collector now answers its own `running` note (branch, PR, awaiting review)
+
+**Class:** started-not-finished
+**Guard:** railway/tests/test_interrupted_run_closes_running_note.py
+(SigtermAfterRunningPostsOneDegradedNote, NormalFinishLeavesNothingForTheHandler,
+HandlerPostingIsBounded, HandlerPostFailureIsNotARaise, HandlerInProcess);
+mutation-proven, see below
+
+**What.** `ops_status [2e]` reported five collector runs that posted `running`
+and never a terminal note: gdelt 2026-08-26 and 2026-09-03, gdelt_historical
+2026-08-27 and 2026-09-04, archive_backfill 2026-08-30. Each left a `running`
+row with a FRESH `checked_at` that counted toward "N source(s) OK" and reset
+its own staleness clock (the shape the 2026-08-20 iron rule describes).
+
+**Cause, two mechanisms, one signal.** (1) The Railway cron service
+(`railway/railway.toml`, `python cron.py`, 22:00Z) was redeployed on every
+commit to main, bot ledger commits included; a deploy during the run REPLACES
+the container mid-collection. PR #261 stops the ledger-commit redeploys but
+not what happens when a container is replaced. (2) The GitHub-run collectors
+(`gdelt_backfill.py` under `historical-news-sweep.yml` / `gdelt-backfill.yml`,
+`archive_backfill.py`) are CANCELLED by `timeout-minutes` or a concurrency
+group; the 2026-09-04 09:54Z "Historical global news sweep" run ended
+`cancelled`. Both platforms deliver SIGTERM, wait a short grace (Railway
+~10s, GitHub ~7.5s) and SIGKILL. Nothing handled it, so the process died
+with its note open.
+
+**Fix, in one place.** `railway/source_health.py` keeps the set of sources
+whose `running` note LANDED and has not been answered (registered after the
+ledger accepted it, cleared after the ledger accepted an `ok`/`degraded`), and
+installs one SIGTERM/SIGINT handler on the first `running` note. The handler
+drains the set, posts one bounded `degraded` note per open run (`interrupted:
+SIGTERM before the run finished (container replaced or job cancelled)`, one
+attempt, 3s timeout, 5s total budget, a failure prints one line), then
+restores SIG_DFL and re-raises so the platform still sees killed-by-SIGTERM
+(143). A second signal finds the set drained and posts nothing.
+`run_completion` already reads `degraded` as a finish, so `[2e]` closes.
+Every collector that posts through `report_source_health` /
+`require_running_note` gets this for free; no call site changed. `spend` is
+untouched: writing the interruption into the end-of-run record would be a
+second host call inside the grace window and a change to the harvest shape,
+which is not trivial. The note's own detail is now the discriminator.
+
+**Mutation proof.** Each mutation was applied to `source_health.py`, the
+module run, then reverted: (a) drop the open-set clear on a terminal note ->
+NormalFinishLeavesNothingForTheHandler red, 3 tests; (b) drop the request
+timeout in the handler -> HandlerPostingIsBounded red (child outlived the
+grace); (c) drop the re-raise -> the exit-status assertions red (11 tests); (d) drop
+the drain of the open set inside the handler -> the double-signal test red;
+(e) register a `running` before the ledger accepted it -> the not-landed test
+red. A separate `fired` flag was tried first and its removal survived every
+test, because the drain already makes a second signal a no-op; the flag was
+deleted rather than kept as a second mechanism nothing pins. Green with the
+fix restored.
+
 ## 2026-09-04 - the two daily editions: every figure reproduced, five sentences around them did not (2.20.168, branch, awaiting owner review)
 
 **Class:** derived-value-typed-by-hand (four of five), plus one
