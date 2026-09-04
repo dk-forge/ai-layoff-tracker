@@ -299,6 +299,18 @@ clean. Do not simplify it back to a single call.
 sized to avoid convicting a run that is still in flight (one hour, ~8x the
 slowest single collector), not to wait out a collector that keeps dying.
 
+**Since 2026-09-05 a run killed from the outside answers its own note.**
+`source_health.py` posts `degraded` with detail `interrupted: SIGTERM before
+the run finished (container replaced or job cancelled)` on SIGTERM/SIGINT, so
+a kill no longer shows in `[2e]` at all; it shows on the Health page and in
+`/source-runs` as that `degraded` row. When you see one: for `railway-cron`
+collectors check `railway deployment list` for a deploy overlapping 22:00Z (a
+container replaced mid-run); for `gdelt_historical` / `archive_backfill` look
+for a `cancelled` GitHub run on that date (a `timeout-minutes` or concurrency
+cancel). A `running` STILL orphaned after this date means the process died
+harder than SIGTERM (OOM, SIGKILL with no grace) or the note itself was
+refused; the run log's one `exiting anyway` line says which.
+
 **A COLLECTOR WENT DARK** (`ops_status [2b]`, or an email whose subject is
 `United States - <State> WARN`)
 
