@@ -32,6 +32,27 @@
 
 [build]
 builder = "NIXPACKS"
+# Redeploy this service only when something it RUNS changes. Until 2026-09-05
+# every commit to main rebuilt and replaced the cron container, and most
+# commits to main are the bots' ledger writes (alert claims, baselines, defer
+# notes, learn points: 20 deployments in the 24h to 2026-09-04T21:38Z). A
+# replacement that lands during the 22:00Z run kills the collector mid-flight
+# with no terminal health note: the 2026-09-03 gdelt run died 94 minutes in,
+# at the 23:39Z deploy of #255, and ops_status [2e] counted five such orphans.
+# The container reads railway.toml (run_slice) and its own code; every ledger
+# JSON is written and read by GitHub jobs, never here, so JSON is left out.
+# Patterns are listed both repo-relative and service-root-relative on purpose:
+# whichever base Railway applies, a code change still deploys and a ledger
+# commit still does not. Verify after merging: the next .py merge must show a
+# deployment in `railway deployment list`; the next bot JSON commit must not.
+watchPatterns = [
+  "**/*.py", "railway/**/*.py",
+  "requirements.lock", "railway/requirements.lock",
+  "requirements.txt", "railway/requirements.txt",
+  "railway.toml", "railway/railway.toml",
+  "nixpacks.toml", "railway/nixpacks.toml",
+  "data/**", "railway/data/**",
+]
 
 [deploy]
 startCommand = "python cron.py"
