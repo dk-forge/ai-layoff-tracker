@@ -61,8 +61,13 @@
       "first": 1788465840,
       "last": 1788465840,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,575,190 jobs / 65,424 entries"
+    },
+    "national-denominators-measurement:main:ee973e4020d0a49c": {
+      "first": 1788548457,
+      "last": 1788548457,
+      "subject": "CI RED: National denominators measurement \u2014 a declared country could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."
     }
   },
-  "updated_at": "2026-09-04T10:40:28+00:00",
+  "updated_at": "2026-09-04T19:00:57+00:00",
   "version": 1
 }
