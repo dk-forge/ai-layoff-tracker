@@ -52,17 +52,12 @@
     }
   ],
   "open": {
-    "industry-backfill:main:1a0c978f3cd3cb00": {
-      "first": 1788427262,
-      "last": 1788427262,
-      "subject": "CI RED: Industry backfill \u2014 RuntimeError: Could not publish industry_backfill running health status"
-    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1788465840,
       "last": 1788465840,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,575,190 jobs / 65,424 entries"
     }
   },
-  "updated_at": "2026-09-03T22:06:15+00:00",
+  "updated_at": "2026-09-04T09:10:25+00:00",
   "version": 1
 }
