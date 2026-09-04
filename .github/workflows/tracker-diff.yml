@@ -15,12 +15,18 @@ name: Tracker-diff discovery tripwire
 # — mailed to the owner as paste-ready lines, plus the independent-recall
 # figure that is supposed to trend up as those rules are adopted.
 #
-# COST: $0.00 per run. One keyless GDELT query (bounded to two attempts so it
-# can never sit on the shared endpoint the ingest needs) and up to
-# TRACKER_LEARN_MAX_CANDIDATES reads of our OWN public /query. No model is
-# called on any path and none may ever be added: the step is run with
-# ALT_PAID_READS=off and without OPENROUTER_API_KEY, so a future paid call
-# fails rather than quietly spends.
+# COST: $0.00 in model spend per run, and no model may ever be added: the step
+# is run with ALT_PAID_READS=off and without OPENROUTER_API_KEY, so a future
+# paid call fails rather than quietly spends. The corpus read is the
+# collector's own BigQuery mirror query (GDELT_PREFER_BQ=1 below, the same
+# two env lines the collector workflows pass): one query of the collector's
+# shape over the same 36h window, so it scans the same daily partitions the
+# collector's broad slot already scans, under the same 30 GB per-query cap,
+# inside the sandbox's free 1 TB/month. Then up to TRACKER_LEARN_MAX_CANDIDATES
+# reads of our OWN public /query. Without the credentials it falls back to one
+# keyless GDELT DOC query (bounded to two attempts) -- which is the read that
+# went UNKNOWN on 2026-09-02/03/04, because that endpoint now answers 429 in
+# seconds to every caller, GitHub's runners and a home Mac alike.
 #
 # Diffs competitor tracker feeds against our data; anything they list that we
 # lack becomes a company-targeted primary-source query -> extractor -> add. We
@@ -147,6 +153,14 @@ jobs:
           # paid reads are off, so a model call added to this path in future
           # fails loudly instead of quietly spending.
           ALT_PAID_READS: 'off'
+          # The reference universe is the collector's own pre-gate corpus, and
+          # since 2026-09-02 the public DOC API answers 429 to anyone, so it is
+          # read where the collector reads it: the BigQuery mirror. Exactly the
+          # two lines gdelt-backfill.yml and historical-news-sweep.yml pass.
+          # Absent the secret the loop falls back to the DOC read and reports
+          # UNKNOWN honestly, as it did for those three days.
+          GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}
+          GDELT_PREFER_BQ: '1'
         run: python tracker_diff.py --learn
       - name: Commit the learning trend
         run: |

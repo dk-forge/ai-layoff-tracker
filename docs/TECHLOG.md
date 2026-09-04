@@ -1,5 +1,84 @@
 # Tech Log
 
+## 2026-09-04 - the learning loop read its corpus from an endpoint that now refuses everyone; it reads the collector's mirror instead (m5)
+
+**Class:** recurrence (a monitor depending on a shared upstream the thing it
+monitors had already left)
+**Guard:** railway/tests/test_learn_corpus_mirror.py,
+railway/tests/test_own_api_required.py
+
+**The finding.** `tracker_diff.py --learn` reported `state: unknown` on
+2026-09-02, 09-03 and 09-04: "the reference corpus could not be read
+(upstream)". Honest, and blind for three days. Its reference universe was one
+keyless GDELT DOC API request, and that endpoint now answers HTTP 429 within
+12-15 seconds to every caller - GitHub's shared runners and this Mac alike,
+even at 6-second spacing - with a body telling high-traffic users to move to
+the ngrams dataset. No runner change fixes that. The daily collector was not
+affected because it reads the same universe from the BigQuery mirror when
+`GDELT_PREFER_BQ=1` (the backfill and historical-sweep workflows pass it with
+`GCP_BIGQUERY_CREDENTIALS_JSON`); `tracker-diff.yml` passed neither.
+
+**What changed.**
+- `sources/gdelt.py`: the mirror read that `_collect_mirror` did inline is now
+  `mirror_corpus(start, end) -> (articles, complete)`, the one definition of
+  the collector's pre-gate universe on the mirror (discovery vocabulary plus
+  native phrases, title-or-UNEMPLOYMENT-theme, walked to completion).
+  `_collect_mirror` wraps it and keeps the reach note; `prefer_mirror()` is the
+  one reader of `GDELT_PREFER_BQ`. Pure refactor for the collector: every
+  gdelt test passes unchanged, and `mirror_corpus` prints nothing, because
+  the loop that now calls it has a nameless stdout.
+- `tracker_diff.py`: `_learn_mirror` reads `gdelt.mirror_corpus` when the flag
+  is set and credentials exist, newest first so the candidate cap samples the
+  same end of the window `sortby=datedesc` did; otherwise, or on any mirror
+  failure, the DOC read runs exactly as before. A mirror failure prints the
+  exception's CLASS name only. `_learn_corpus` returns the method with the
+  corpus, and `learn_run` stamps it before any render.
+- `tracker-diff.yml`: the learn step carries the same two env lines the
+  collector workflows carry. Still no OpenRouter key on that step, still
+  `ALT_PAID_READS=off`, so model spend stays $0.00 by construction. `runs-on`
+  stays `ubuntu-latest`: it is clock-triggered (a self-hosted job with no
+  runner QUEUES silently, and travel is when it matters) and this repo is
+  public, so hosted minutes cost nothing.
+
+**The denominator moved, and the tag says so.** The mirror cannot express the
+DOC query. The DOC API matches the vocabulary against article TEXT and returns
+at most 250 records of an ANCHOR slice (its query-length limit forced the
+slice); the GKG mirror has no text column, so it matches the WHOLE vocabulary
+against the page TITLE, or the UNEMPLOYMENT theme, and walks the window to
+completion. Neither is a rewrite of the other, so a mirror-read point is
+method `m5` and a DOC-read point stays `m4` (`LEARN_METHOD_MIRROR`). The
+committed trend already carries `method` per point; independent recall is
+trended within a method, never across the splice, and nothing scales one to
+the other. The rotating slice does not exist on the mirror (the whole
+vocabulary went in one query), so `explored` reads 0 on an m5 point.
+
+**Cost.** One query of the collector's own shape over the learn window (36h,
+the same as the collector's daily broad window), so it touches the same two
+to three daily partitions and the same columns, under the same 30 GB
+`maximum_bytes_billed` cap. Bytes scanned do not depend on the regex, so the
+learn run costs the mirror what the collector's broad slot already costs it
+each day: the daily mirror scan roughly doubles, inside the sandbox's free
+1 TB/month. The measured per-query figure lives in the BigQuery job history,
+not in this repo; no credential exists on this machine to read it. Zero
+model calls on any path, before and after.
+
+**Second, smaller, same family: an unset `WP_SITE_URL` read as an outage.**
+`company_watchlist.already_have`, `tracker_diff._our_rows` and
+`curated_probe.our_rows` all built their URL from the env var and, when it was
+unset, requested `/wp-json/...` on an EMPTY host, swallowed the exception and
+returned their "could not read" value. Today that made a held item (27 rows
+live) score UNKNOWN in the curated probe as "our own API did not answer".
+`railway/own_api.py` (`require_site_url`, `SiteNotConfigured`) is now called
+OUTSIDE each lookup's network try; `curated_probe.main` catches it and exits 2
+with `NOT RUN` and the variable's name, never an item's. Absence of
+configuration is not absence of an answer.
+
+**Proved by mutation, all restored:** printing `e` instead of its class
+(marker reached stdout); returning `m4` from the mirror branch; the inline
+`os.environ.get` read back in `our_rows`; `require_site_url()` moved inside the
+try in `already_have` and in `_our_rows`; the flag line dropped from the
+workflow; a `print` added to `mirror_corpus`. Seven mutations, seven failures.
+
 ## 2026-09-04 - NISRA: the report URL was built from today's month, and a soft-404 read as a broken chart
 
 **Class:** wrong-scope-or-key (a fetch keyed on the calendar rather than on

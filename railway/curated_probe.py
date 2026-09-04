@@ -130,6 +130,7 @@ from datetime import date, datetime, timezone
 import requests
 
 import ops_notify
+from own_api import SiteNotConfigured, require_site_url
 
 # ONE DEFINITION, IMPORTED RATHER THAN COPIED. These are the pure, tested
 # judgement functions the daily learning loop already uses: what headcount a
@@ -394,9 +395,13 @@ def our_rows(token, timeout=30):
     made. None is UNKNOWN and leaves the denominator — an API blip must never be
     recorded as a miss, nor as a find. This is a read of our OWN public API and
     it is free; there is no paid call anywhere in this module."""
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    if not (site and token):
+    if not token:
         return None
+    # OUTSIDE the try, on purpose. An unset WP_SITE_URL raises its own message
+    # (own_api.SiteNotConfigured); inside the try it requested an empty host,
+    # was swallowed, and scored a held item UNKNOWN as "our own API did not
+    # answer" (2026-09-04). Absence of configuration is not absence of an answer.
+    site = require_site_url()
     try:
         r = requests.get(f"{site}/wp-json/layoffs/v1/query",
                          params={"company": token, "per_page": 50},
@@ -990,7 +995,14 @@ def main(argv=None):
     if "--help" in argv or "-h" in argv:
         print(__doc__)
         return 0
-    run()
+    try:
+        run()
+    except SiteNotConfigured as e:
+        # Loud and distinct: the probe judged nothing, and it says why in its
+        # own words rather than as N items of "our own API did not answer".
+        # The message names an env var and a URL, never an item.
+        print(f"curated-probe: NOT RUN -- {e}")
+        return 2
     return 0
 
 
