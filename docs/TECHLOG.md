@@ -2,7 +2,7 @@
 
 ## 2026-09-04 - a fixture window aged past the ledger's prune horizon, and five tests read as another PR's regressions
 
-**Class:** time-bomb-fixture (a test whose subject prunes by wall-clock age,
+**Class:** novel (a test whose subject prunes by wall-clock age,
 pinned to a hard-coded calendar date: correct for a fortnight, silently empty
 after)
 **Guard:** railway/tests/test_gdelt_window_coverage.py,
