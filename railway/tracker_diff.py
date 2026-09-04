@@ -36,6 +36,7 @@ from datetime import date
 import requests
 
 from company_watchlist import already_have, query_for, DAYS_BACK
+from own_api import require_site_url
 from sources.newsapi import pull_news_articles
 from sources.google_news import pull_google_news
 from sources.edgar import search_company_filings
@@ -676,10 +677,26 @@ def main(argv=None):
 # outlet we do not trust, a country we do not cover, a language we have no
 # native term for.
 #
-# WHAT THIS COSTS: nothing. One extra GDELT ArtList query (keyless, the same
-# endpoint the ingest already calls) plus one read per candidate against our
-# OWN public /query. No model is called on any path and none may ever be added
-# here — see the cost note in tracker-learn.yml.
+# WHAT THIS COSTS: no model, ever. The corpus is read the way the collector
+# reads its own: from the BigQuery mirror when `GDELT_PREFER_BQ` is set and
+# credentials exist (`gdelt.mirror_corpus`, one query of the collector's own
+# shape over the same window, so it scans the same partitions the collector's
+# broad slot already scans each day, inside the sandbox's free 1 TB/month and
+# under the same 30 GB per-query cap), else one keyless GDELT ArtList query
+# (the endpoint the ingest used to share, which since 2026-09-02 answers 429
+# in seconds to anyone). Plus one read per candidate against our OWN public
+# /query. No model is called on any path and none may ever be added here — see
+# the cost note in tracker-diff.yml.
+#
+# THE TWO READS ARE NOT THE SAME UNIVERSE, and the method tag says which one a
+# point came from. The DOC API matches the vocabulary against article TEXT and
+# returns at most 250 records of an anchor slice of the vocabulary (its query
+# length limit); the mirror has no text column, so it matches the WHOLE
+# vocabulary (plus the native phrases) against the page TITLE, or the
+# UNEMPLOYMENT theme, and walks the window to completion. One cannot be
+# rewritten as the other. So a mirror-read run is `m5`, a DOC-read run stays
+# `m4`, and independent recall is trended within a method, never across the
+# splice. Do not "fix" the discontinuity by scaling one to the other.
 #
 # WHAT IT NEVER DOES: it never stores a row (a discovery signal is not
 # evidence), never fetches an article page (so no robots.txt, paywall or bot
@@ -722,8 +739,12 @@ LEARN_HISTORY_MAX = 180
 # say; it steps down to Mondays and steps straight back up on the first rule.
 LEARN_QUIET_RUNS = max(2, int(os.environ.get("TRACKER_LEARN_QUIET_RUNS", "3")))
 # The measurement method is versioned so a trend line can never silently splice
-# two different definitions of the same percentage.
+# two different definitions of the same percentage. `m4` is the public DOC API
+# read (text match, anchor slice, 250-record cap); `m5` is the BigQuery mirror
+# read (title-or-theme match, whole vocabulary, walked to completion). Same
+# question, different denominator -- see the header note.
 LEARN_METHOD = "m4"
+LEARN_METHOD_MIRROR = "m5"
 
 # WHY WE MISSED IT — the post-mortem taxonomy, and the ONLY thing about a miss
 # that is ever written down here. The item that taught the lesson stays in the
@@ -915,10 +936,52 @@ def _learn_fetch(query, start, end):
     return [], 0, "unknown"
 
 
+def _learn_mirror(start, end):
+    """The reference corpus from the BigQuery mirror: the collector's OWN
+    pre-gate universe, read by the collector's own function. Returns
+    (articles, state) where state is None (read) or "unknown" (the mirror did
+    not answer, or is not configured). It is never "ours": the mirror refuses
+    nothing about our vocabulary, and a credential or quota fault is not a
+    verdict about this code.
+
+    The read is `sources.gdelt.mirror_corpus`, not a copy of its query, so the
+    learning loop's universe IS the collector's and cannot drift from it. The
+    articles are returned newest first, so the candidate cap samples the same
+    end of the window the DOC read sampled with `sortby=datedesc`.
+
+    Nothing about an article is printed here. The one line stdout gets on a
+    failure is the exception's CLASS name, which cannot spell a name.
+    """
+    from sources import gdelt
+    try:
+        from sources import gdelt_bq
+        if not gdelt_bq.available():
+            print("tracker-learn: mirror preferred but no BigQuery credentials "
+                  "in scope; reading the public API instead")
+            return [], "unknown"
+        articles, complete = gdelt.mirror_corpus(start, end)
+    except Exception as e:                       # noqa: BLE001 -- class name only
+        print(f"tracker-learn: mirror read failed ({type(e).__name__}); "
+              "reading the public API instead")
+        return [], "unknown"
+    if not complete:
+        print("tracker-learn: mirror walk hit its page ceiling; the corpus is "
+              "the walked part only")
+    articles = sorted(articles, key=lambda a: str(a.get("seendate") or ""),
+                      reverse=True)
+    return articles, None
+
+
 def _learn_corpus(window_hours=None):
-    """The layoff-news corpus BEFORE our trusted-domain gate, from the GDELT
-    API we already call. Returns (anchor, rotating, dropped, error). Never
-    fetches an article page.
+    """The layoff-news corpus BEFORE our trusted-domain gate, read the way the
+    collector reads its own. Returns (anchor, rotating, dropped, error, method).
+    Never fetches an article page.
+
+    When the mirror is preferred (`gdelt.prefer_mirror()`) and answers, it IS
+    the corpus: the whole vocabulary in one walked query, so there is nothing
+    left to rotate through and `rotating` is empty. The method is `m5`. When it
+    is not preferred, or did not answer, the public DOC API is read as before
+    under `m4`; a mirror failure never ends the run on its own.
 
     TWO SLICES, AND THE SPLIT IS THE POINT. Independent recall is only a trend
     if its denominator is comparable between runs, so it is measured on the
@@ -938,14 +1001,19 @@ def _learn_corpus(window_hours=None):
         terms = ()
     end = datetime.now(timezone.utc)
     start = end - timedelta(hours=window_hours or LEARN_WINDOW_HOURS)
+    from sources import gdelt
+    if gdelt.prefer_mirror():
+        mirrored, state = _learn_mirror(start, end)
+        if state is None:
+            return mirrored, [], 0, None, LEARN_METHOD_MIRROR
     anchor, dropped, state = _learn_fetch(learn_query(terms, None), start, end)
     if state:
-        return [], [], 0, state
+        return [], [], 0, state, LEARN_METHOD
     # The exploring half is best-effort: it widens what the rules can see and
     # must never decide whether the run happened.
     rotating, dropped_r, _state = _learn_fetch(
         learn_query(terms, _date.today()), start, end)
-    return anchor, rotating, dropped + dropped_r, None
+    return anchor, rotating, dropped + dropped_r, None, LEARN_METHOD
 
 
 def learn_query(terms, today):
@@ -1042,9 +1110,13 @@ def _our_rows(token, timeout=30):
     """Rows we already hold for an employer token, or None when the lookup
     could not be made. None is UNKNOWN and is excluded from the denominator —
     an API blip must never be recorded as a miss (or as a find)."""
-    site = os.environ.get("WP_SITE_URL", "").rstrip("/")
-    if not (site and token):
+    if not token:
         return None
+    # OUTSIDE the try, on purpose: an unset WP_SITE_URL is a configuration
+    # fault and raises its own message. Inside it, an empty host would be
+    # requested, fail, and read as "our own API did not answer" -- an outage
+    # that never happened (2026-09-04, a held item scored UNKNOWN this way).
+    site = require_site_url()
     try:
         r = requests.get(f"{site}/wp-json/layoffs/v1/query",
                          params={"company": token, "per_page": 50},
@@ -1512,7 +1584,10 @@ def learn_run(today=None):
         return facts
     facts["cadence"] = "daily"
 
-    anchor, rotating, dropped, err = _learn_corpus()
+    anchor, rotating, dropped, err, method = _learn_corpus()
+    # Which universe this point was measured against -- see LEARN_METHOD. Set
+    # before any render so the UNKNOWN and FAIL points carry it too.
+    facts["method"] = method
     if err == "ours":
         # The host answered and refused OUR query. That is a defect here, not an
         # outage, and it is the one case that should page somebody.

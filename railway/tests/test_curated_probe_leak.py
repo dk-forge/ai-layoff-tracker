@@ -714,14 +714,22 @@ class NoPaidCallsAndNoFetching(unittest.TestCase):
                                  f"{banned!r} — that is a content request to an outlet")
 
     def test_site_is_only_ever_our_configured_host(self):
+        """`site` comes from WP_SITE_URL: read directly, or through
+        `own_api.require_site_url()`, whose only source is that variable and
+        which raises rather than yield an empty host (2026-09-04)."""
         import ast
+        seen = 0
         for node in ast.walk(self._tree()):
             if isinstance(node, ast.Assign) and any(
                     isinstance(t, ast.Name) and t.id == "site" for t in node.targets):
+                seen += 1
                 literals = {n.value for n in ast.walk(node.value)
                             if isinstance(n, ast.Constant) and isinstance(n.value, str)}
-                self.assertIn("WP_SITE_URL", literals,
-                              "`site` is assigned from something other than WP_SITE_URL")
+                via_helper = (isinstance(node.value, ast.Call)
+                              and getattr(node.value.func, "id", None) == "require_site_url")
+                self.assertTrue("WP_SITE_URL" in literals or via_helper,
+                                "`site` is assigned from something other than WP_SITE_URL")
+        self.assertGreater(seen, 0, "no `site` assignment found to check")
 
 
 if __name__ == "__main__":

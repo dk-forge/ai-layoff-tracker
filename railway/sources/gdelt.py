@@ -1519,12 +1519,32 @@ def _collect_window(query, start, end, max_records, reach_label,
     return combined, status, saw_rl, err
 
 
-def _collect_mirror(start, end):
-    """Walk the BigQuery mirror to completion. Returns (articles, status).
+def prefer_mirror():
+    """Is the BigQuery mirror PREFERRED over the public DOC API for this run?
 
-    Deterministic (date, url) pagination, so a capped window is walked page by
-    page instead of losing everything past the first 900 rows. status is
-    "complete" unless the walk hit its page ceiling (then "partial").
+    Read from `GDELT_PREFER_BQ` in one place, so the collector and the learning
+    loop (`tracker_diff --learn`, whose reference universe is this collector's
+    own pre-gate corpus) cannot drift on what the flag means. Preference is not
+    availability: `gdelt_bq.available()` says whether credentials exist.
+    """
+    return os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
+
+
+def mirror_corpus(start, end):
+    """The collector's candidate universe for [start, end] from the BigQuery
+    mirror, BEFORE the trusted-domain gate. Returns (articles, complete).
+
+    This is the one definition of "what our net could see" on the mirror: the
+    shared discovery vocabulary plus the native-language phrases, matched on the
+    page title or the UNEMPLOYMENT theme, walked to completion by deterministic
+    (date, url) pages (see gdelt_bq.query_window_walk). `_collect_mirror` wraps
+    it for the collector and adds the reach note; `tracker_diff._learn_mirror`
+    reads it for the learning loop, which is why it carries no instrumentation
+    of its own and prints nothing -- the learning loop's stdout is nameless by
+    construction, and a print here would be a second sink.
+
+    `complete` is False only when the walk hit its page ceiling, so a caller can
+    say "partial" as a fact rather than infer it from a row count.
     """
     from source_registry import discovery_terms as _terms
     from sources.native_layoff_terms import mirror_title_terms
@@ -1534,7 +1554,17 @@ def _collect_mirror(start, end):
     # UNEMPLOYMENT. The native phrases ride the same scan (the regex grows, the
     # partition filter does not), so this costs bytes nothing and candidates
     # something -- which the allowlist and the gate then judge as usual.
-    arts, complete = gdelt_bq.query_window_walk(start, end, _terms() + mirror_title_terms())
+    return gdelt_bq.query_window_walk(start, end, _terms() + mirror_title_terms())
+
+
+def _collect_mirror(start, end):
+    """Walk the BigQuery mirror to completion. Returns (articles, status).
+
+    Deterministic (date, url) pagination, so a capped window is walked page by
+    page instead of losing everything past the first 900 rows. status is
+    "complete" unless the walk hit its page ceiling (then "partial").
+    """
+    arts, complete = mirror_corpus(start, end)
     # SAY whether coverage was lost; do not let note_query infer it. The walk
     # already knows -- `complete` is false only when it hit MAX_PAGES -- and
     # MIRROR_LIMIT is a PAGE size, so the "returned >= max_records" inference
@@ -1738,7 +1768,7 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     # PREFERRED for historical sweeps (GDELT_PREFER_BQ=1 in those workflows —
     # bounded windows, where shared-endpoint 429s actually lose data) and is
     # the FALLBACK for live pulls when the public API abandons a window.
-    prefer_bq = os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
+    prefer_bq = prefer_mirror()
 
     # --- BROAD slot (health-bearing) -------------------------------------
     broad_articles = None
