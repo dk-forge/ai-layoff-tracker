@@ -2,16 +2,6 @@
   "entries": [
     {
       "consecutive": 1,
-      "first_deferred_at": "2026-09-03T08:10:45+00:00",
-      "job": "reclassify-legacy-ai",
-      "last_deferred_at": "2026-09-03T08:10:45+00:00",
-      "last_key": "33731862068:1",
-      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/33731862068",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
       "first_deferred_at": "2026-09-03T08:17:21+00:00",
       "job": "enrich-context",
       "last_deferred_at": "2026-09-03T08:17:21+00:00",
@@ -72,8 +62,19 @@
       "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/33384773902",
       "resolved_at": "2026-09-01T09:30:14+00:00",
       "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-09-03T08:10:45+00:00",
+      "job": "reclassify-legacy-ai",
+      "last_deferred_at": "2026-09-03T08:10:45+00:00",
+      "last_key": "33731862068:1",
+      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/33731862068",
+      "resolved_at": "2026-09-04T08:05:02+00:00",
+      "state": "resolved"
     }
   ],
-  "updated_at": "2026-09-03T09:11:57+00:00",
+  "updated_at": "2026-09-04T08:05:02+00:00",
   "version": 1
 }
