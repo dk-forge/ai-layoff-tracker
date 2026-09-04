@@ -1856,12 +1856,27 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
         print(f"GDELT run has {len(incomplete)} incomplete slot(s): "
               f"{', '.join(sorted(set(incomplete)))} -> health degraded")
     _save_work_ledger(ledger, ledger_path)
-    return _fetch_trusted(collected)
+    return _fetch_trusted(collected, max_candidates=max_records)
 
 
-def _fetch_trusted(articles):
+def _fetch_trusted(articles, max_candidates=None):
     """Trusted-domain gate + concurrent article fetch, shared by both the
-    BigQuery-mirror and public-API paths."""
+    BigQuery-mirror and public-API paths.
+
+    `max_candidates` bounds how many URLs are actually FETCHED — separate from
+    the collection phase's own `deadline`/`max_records`, because the BigQuery
+    mirror walks a window "to completion" regardless of either (run
+    33860668098, 2026-09-04: a single busy week matched 35,175 articles via
+    the mirror; this function fetched full text for every trusted, deduped one
+    of them, one request at a time, and the job hit its 45-minute
+    timeout-minutes ceiling 27+ minutes into that loop having never returned
+    to the caller, which had asked for a candidate cap of 10). Collection stays
+    unbounded on purpose (the mirror's comprehensive match set feeds the
+    ledger/health bookkeeping above); only the expensive per-URL network fetch
+    is capped, to exactly the number of candidates the caller can ever use.
+    `None` preserves the old unbounded behaviour for callers (tests) that
+    don't pass it.
+    """
     reach = gdelt_reach.current()
     candidates, seen = [], set()
     for a in articles:
@@ -1885,6 +1900,12 @@ def _fetch_trusted(articles):
             continue
         seen.add(url)
         candidates.append((a, url, dom))
+
+    trusted_count = len(candidates)
+    if max_candidates is not None and len(candidates) > max_candidates:
+        for a, url, dom in candidates[max_candidates:]:
+            reach.note(dom, "candidate_cap")
+        candidates = candidates[:max_candidates]
 
     def fetch_candidate(candidate):
         a, url, dom = candidate
@@ -1947,7 +1968,7 @@ def _fetch_trusted(articles):
             if entry:
                 results.append(entry)
 
-    print(f"GDELT: {len(articles)} matched, {len(candidates)} trusted, {len(results)} fetched")
+    print(f"GDELT: {len(articles)} matched, {trusted_count} trusted, {len(results)} fetched")
     for line in reach.report_lines():
         print(line)
     for line in ROBOTS.report_lines(prefix="GDELT robots"):

@@ -134,7 +134,7 @@ class RunLevelBehaviour(unittest.TestCase):
         gdelt._LAST_RUN_INCOMPLETE = False
         # Return the collected list unchanged: these tests exercise window
         # collection, not the trust gate or the article fetch (both need network).
-        self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
+        self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts, max_candidates=None: list(arts))
         self._fetch_patch.start()
         self.addCleanup(self._fetch_patch.stop)
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
@@ -349,7 +349,7 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
     def setUp(self):
         gdelt_reach.reset()
         gdelt._LAST_RUN_INCOMPLETE = False
-        self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
+        self._fetch_patch = patch.object(gdelt, "_fetch_trusted", lambda arts, max_candidates=None: list(arts))
         self._fetch_patch.start()
         self.addCleanup(self._fetch_patch.stop)
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)

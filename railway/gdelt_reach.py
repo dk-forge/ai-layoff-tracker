@@ -92,6 +92,7 @@ REASONS = (
     "gate_no",          # the cheap pre-extraction headline gate said no
     "budget_stop",      # the per-run spend brake was closed
     "not_an_event",     # extraction ran and produced no layoff record
+    "candidate_cap",    # trusted, deduped, but past this run's fetch cap; never requested
 )
 # The two robots reasons are NOT drops: the GDELT metadata row (title, outlet,
 # date) is still handed to the pipeline headline-only, the way the Google
