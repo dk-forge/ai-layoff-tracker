@@ -32,6 +32,7 @@ from extractor import extract_layoff_data
 import spend
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
+from own_api import require_site_url
 
 SITE = (os.environ.get("WP_SITE_URL") or "").rstrip("/")
 UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
@@ -132,10 +133,16 @@ def _token(company):
 def already_have(company):
     """Word-boundary check against our data — do we already carry a current-year
     entry for this company? A lookup failure returns True (skip), so an API blip
-    never triggers a blind re-add; the poster's dedup is the final backstop."""
+    never triggers a blind re-add; the poster's dedup is the final backstop.
+
+    An UNSET `WP_SITE_URL` is not a lookup failure and is raised as itself
+    (`own_api.SiteNotConfigured`) BEFORE any request: with it inside the try,
+    an empty host was requested, the exception was swallowed, and the caller
+    read a configuration fault as "our own API did not answer"."""
+    site = require_site_url()
     try:
         resp = requests.get(
-            f"{SITE}/wp-json/layoffs/v1/query",
+            f"{site}/wp-json/layoffs/v1/query",
             params={"company": company, "years": str(date.today().year), "per_page": 25},
             headers=UA, timeout=30)
         rows = resp.json().get("data", []) if resp.status_code == 200 else []
