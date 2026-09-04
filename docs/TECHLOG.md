@@ -2,7 +2,7 @@
 
 ## 2026-09-04 - the learning loop read its corpus from an endpoint that now refuses everyone; it reads the collector's mirror instead (m5)
 
-**Class:** recurrence (a monitor depending on a shared upstream the thing it
+**Class:** novel (a monitor depending on a shared upstream the thing it
 monitors had already left)
 **Guard:** railway/tests/test_learn_corpus_mirror.py,
 railway/tests/test_own_api_required.py
