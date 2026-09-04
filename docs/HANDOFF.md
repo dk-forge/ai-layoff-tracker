@@ -6,6 +6,20 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-04): 2.20.168 - accuracy audit of both daily
+  editions; every figure reproduced, five sentences around them did not.**
+  The baton was read as FREE by `ops_status [0]` on origin/main and this
+  session took it, on a branch in the main checkout (no worktree: the Mac is
+  shared with four runners and low on disk). Work done in a branch
+  (`digest-accuracy-audit`) and PUSHED, not merged: the owner merges. Plugin
+  files touched: `includes/subscribe.php` (talent composer + Indeed block) and
+  `ai-layoff-tracker.php` (version only). Rest is `railway/digest_layout.py`,
+  `railway/digest_send.py`, `railway/tests/test_digest_accuracy_audit.py`
+  (new, mutation-proven), `railway/tests/test_digest_talent_observation.py`
+  (one expectation) and TECHLOG. No source id added or removed, so
+  `assets/health.js meta{}` needs no change. A sibling change in the talent
+  repo (branch `daily-digest-no-em-dash`) is independent. Full write-up in
+  TECHLOG 2026-09-04 (2.20.168). Baton released.
 - **VERSION CLAIMED (2026-09-04): 2.20.167 - one Minnesota WARN-letters
   collector was reporting under two source ids.** The baton was read as FREE by
   `ops_status [0]` on origin/main and this session took it, in its own

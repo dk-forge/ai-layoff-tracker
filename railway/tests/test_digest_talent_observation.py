@@ -247,7 +247,10 @@ class TheHeadlineCountStatesItsOwnMix(unittest.TestCase):
         # The unit is NOT widened: nothing calls this mixed count hiring.
         self.assertNotIn("1,332 new hiring signals", text)
         # It is narrowed to a noun that is true of every row in it.
-        self.assertIn("1,332 new talent and employer-activity signals", text)
+        # "new" left the unit line on 2026-09-04: the daily window covers
+        # yesterday and today, so half of a daily count is not new. See
+        # test_digest_accuracy_audit.
+        self.assertIn("1,332 talent and employer-activity signals", text)
         # And the measurement that proves the point is still printed.
         self.assertIn("9 of the 1,332 signals", text)
 
@@ -262,8 +265,12 @@ class TheDateBasisAdmitsTheReadingsItCounts(unittest.TestCase):
         cls.text = edition([dict(SCAN), dict(REPORTED)])
 
     def test_the_window_figure_names_both_bases(self):
-        self.assertIn("counted by the date the source published, or for a "
-                      "job-board reading the date we read the board",
+        # Reworded 2026-09-04 to name the third branch the SQL takes (an
+        # undated news row is placed by its capture date), see
+        # test_digest_accuracy_audit. Still ONE sentence on both figures.
+        self.assertIn("counted by the date the source published, or, for a "
+                      "job-board reading or a source that carries no date, "
+                      "the day we captured it",
                       self.text)
 
     def test_the_year_to_date_figure_names_the_same_two(self):
@@ -271,8 +278,8 @@ class TheDateBasisAdmitsTheReadingsItCounts(unittest.TestCase):
         old clause, so a fix applied to one would have left the other saying
         something else about the same table."""
         ytd = self.text.split("2026 YTD", 1)[1]
-        self.assertIn("or for a job-board reading the date we read the board",
-                      ytd)
+        self.assertIn("or, for a job-board reading or a source that carries "
+                      "no date, the day we captured it", ytd)
 
 
 if __name__ == "__main__":
