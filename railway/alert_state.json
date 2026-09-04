@@ -52,12 +52,17 @@
     }
   ],
   "open": {
+    "historical-global-news-sweep:main:02e1171867db1c03": {
+      "first": 1788518428,
+      "last": 1788518428,
+      "subject": "CI SELF-TIMEOUT: Historical global news sweep \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 45m0s"
+    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1788465840,
       "last": 1788465840,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,575,190 jobs / 65,424 entries"
     }
   },
-  "updated_at": "2026-09-04T09:10:25+00:00",
+  "updated_at": "2026-09-04T10:40:28+00:00",
   "version": 1
 }
