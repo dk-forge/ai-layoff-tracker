@@ -82,8 +82,22 @@ def run():
             # 2026-08-27). Same run-wide deadline, passed to the phase that
             # actually blocks.
             deadline = (started_at + deadline_seconds) if deadline_seconds else None
+            # `max_candidates` bounds the FETCH FAN-OUT, and it is a different
+            # question from `max_records` (a per-query GDELT ceiling) even
+            # though this caller derives both from `remaining`. The extraction
+            # loop below stops at `max_articles` considered and the cursor
+            # advances regardless, so every body fetched past that number is
+            # downloaded and thrown away unread: on 2026-09-04 that was ~3,000
+            # fetched to use 10, and it is what killed the run at the
+            # workflow's 45-minute ceiling. Passed ONLY here -- the live
+            # collector has no such surplus and must stay unbounded. NOT
+            # `remaining`, which falls back to 250 when uncapped: a manual
+            # backfill with no BACKFILL_MAX_ARTICLES discards nothing and the
+            # workflow promises it stays uncapped, so it passes None.
             entries = pull_gdelt_between(w_start, w_end, max_records=min(250, remaining),
-                                          deadline=deadline)
+                                          deadline=deadline,
+                                          max_candidates=(max_articles - considered)
+                                          if max_articles else None)
             # Same-URL re-reads cost LLM tokens and yield nothing new; the
             # shared pre-check drops them before extraction (fails open).
             try:

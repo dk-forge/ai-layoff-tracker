@@ -91,6 +91,29 @@ jobs:
     # the run finish (worst case ~1 abandoned sweep + BQ broad + the 600s
     # extraction deadline, ~30 min). 45 keeps >30% headroom over that worst
     # case and stays the last-resort backstop, never the thing that ends a run.
+    #
+    # NOT RAISED on 2026-09-04, when run 33860668098 was killed here at 45.5
+    # minutes. The eight-run trend GREW rather than spiked - 18.3, 17.7, 23.4,
+    # 27.5, 22.4, 22.2, 39.2, then the kill - and a growing job outruns any
+    # ceiling, so a bigger number buys days. The growth was all in ONE phase:
+    # sources/gdelt.py `_fetch_trusted` fetched one article body per trusted
+    # candidate (2,502 -> 3,658 over those runs, and 35,175 mirror matches on
+    # the failing run) to hand BACKFILL_MAX_ARTICLES=10 of them to the
+    # extractor. That phase now takes `max_candidates` and stops at 10 usable
+    # entries, so the arithmetic under this ceiling is:
+    #
+    #   collection  <= BACKFILL_DEADLINE_SECONDS (600s), plus at most one
+    #                 in-flight query, which is never cut mid-flight:
+    #                 GDELT_QUERY_ATTEMPTS=6 x GDELT_QUERY_BACKOFF_SECONDS=90
+    #                 compounded to ~820s on the failing run ...... ~24 min
+    #   fetch       10 usable results in waves of GDELT_FETCH_WORKERS=4,
+    #               25s read timeout worst case ..................... <2 min
+    #   extraction  <= 10 calls x OPENROUTER_TIMEOUT_SECONDS=45 ...... <8 min
+    #   checkout + hash-verified install ............................ ~2 min
+    #                                                          total  ~36 min
+    #
+    # 45 is the backstop over that ~36, not a target. If a run reaches it
+    # again, find the phase that grew - do not raise this number.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5

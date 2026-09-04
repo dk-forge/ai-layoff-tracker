@@ -176,7 +176,8 @@ class ClockSkippedSweepsAreQueuedNotLost(unittest.TestCase):
         gdelt_reach.reset()
         gdelt._LAST_RUN_INCOMPLETE = False
         self.gdelt = gdelt
-        self._fetch = patch.object(gdelt, "_fetch_trusted", lambda arts: list(arts))
+        self._fetch = patch.object(gdelt, "_fetch_trusted",
+                                    lambda arts, max_candidates=None: list(arts))
         self._fetch.start()
         self.addCleanup(self._fetch.stop)
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)

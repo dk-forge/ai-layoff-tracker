@@ -92,6 +92,12 @@ REASONS = (
     "gate_no",          # the cheap pre-extraction headline gate said no
     "budget_stop",      # the per-run spend brake was closed
     "not_an_event",     # extraction ran and produced no layoff record
+    # The fetch fan-out stopped: the caller already held every candidate it
+    # could use (railway/sources/gdelt.py, _fetch_trusted's max_candidates).
+    # A drop, but not a FAULT -- nothing refused us and nothing broke. It is
+    # here so the columns still add up to the returned count when a bounded
+    # run leaves candidates unattempted.
+    "candidate_cap",
 )
 # The two robots reasons are NOT drops: the GDELT metadata row (title, outlet,
 # date) is still handed to the pipeline headline-only, the way the Google

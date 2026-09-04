@@ -1,5 +1,147 @@
 # Tech Log
 
+## 2026-09-04 - a fixture window aged past the ledger's prune horizon, and five tests read as another PR's regressions
+
+**Class:** novel (a test whose subject prunes by wall-clock age,
+pinned to a hard-coded calendar date: correct for a fortnight, silently empty
+after)
+**Guard:** railway/tests/test_gdelt_window_coverage.py,
+`TheFixtureWindowOutlivesTheLedgerHorizon`
+
+**The finding.** Five tests in `test_gdelt_window_coverage.py` went red in CI
+run 33889979367 (group `rest-2`) on PR #257 - the broad-slot recording, both
+outage-breaker tests, the cross-run pending retry and the deferred split. They
+were reported as regressions from #257's fetch fan-out cap. **They are not.**
+`origin/main` at the same moment fails all five identically, and every one of
+them fails on its own subject with no mention of a clock:
+
+    self.assertTrue(broad, "the broad slot was not recorded at all")
+    AssertionError: [] is not true
+
+**The slots WERE recorded. They were then pruned before the test read them.**
+`_pruned_slots` drops any slot whose `window_end` is more than
+`LEDGER_RETRY_HORIZON` (14 days) behind `datetime.now()`, and it runs inside
+`_save_work_ledger` - i.e. between the run these tests make and the file they
+read back. The module's fixture window was `datetime(2026, 8, 20)` + 36h, so
+`window_end` was 2026-08-21T12:00Z and every slot in it aged out at
+**2026-09-04T12:00Z**. The run that "failed" started after that. The logs said
+so plainly and in order, and nobody read past the assertion:
+
+    GDELT run has 1 incomplete slot(s): broad:partial -> health degraded
+    GDELT work ledger: dropping aged-out incomplete slot broad|7ea059d8ce|...
+
+**Proved by mutation, twice.** Widening only `LEDGER_RETRY_HORIZON` to 1400
+days turns all five green with #257's code untouched - so the fan-out cap is
+not implicated. Re-introducing the hard-coded `datetime(2026, 8, 20)` anchor
+reddens the new guard.
+
+**Why the diagnosis went wrong, which is the more useful half.** The author of
+#257 checked for regressions by comparing local `--group rest` / `rest-2` totals
+against a clean `origin/main` worktree and got "delta to base zero". The
+comparison could not have found this: it ran both branches at the same instant,
+so a clock-driven failure is present on both sides and cancels. On top of that
+the greedy split reshuffles when a module is added, so the totals compared were
+the UNION of two groups, and 14 pre-existing local-only environment failures
+(no pandas, no openai) were in the baseline. Five real-looking failures hid
+inside that noise, and the one thing that would have exposed them - running the
+five named tests on `origin/main` - is one command. **A delta against a
+same-instant baseline cannot see a time bomb; a named run on the base branch
+can.**
+
+**The fix is to anchor the fixture, not to widen the horizon.**
+`LEDGER_RETRY_HORIZON` is production behaviour that this very file exists to
+hold; making it bigger to keep the tests quiet would have deleted the guard to
+save the fixture. `W_START` is now derived from the clock - four midnights back,
+ending 36 hours later - which is always in the past and always about twelve days
+inside the horizon, with room for the tests that push `W_END` out an hour or two.
+
+**One sibling bomb was found and defused before it went off.**
+`test_gdelt_ledger_persistence.py` anchored its mid-run sync fixture at
+`datetime(2026, 8, 28)` + 12h and asserts on the PRUNED slot map that the sync
+posts; it was due to start failing on **2026-09-11**. Anchored the same way.
+`test_worldwide_vocabulary.py` carries a hard-coded window too but is genuinely
+insulated - it patches `_save_work_ledger` out and asserts on the unpruned dict
+- so it was left alone.
+
+**The guard is named so the next one is one failure, not five.** It asserts the
+fixture window is in the past and more than seven days clear of the prune
+horizon, and that the anchor is derived from the clock rather than any absolute
+date literal. It fires a week BEFORE the ledger assertions would start reading
+empty, and its message says re-anchor `W_START` and do not touch
+`LEDGER_RETRY_HORIZON`.
+
+**Unrelated to #257's own change, which stands.** The fan-out cap, its
+`candidate_cap` reach accounting and `test_gdelt_fetch_fanout.py` are unmodified
+here; the only edits are the two fixture anchors, the new guard, and the
+`_fetch_trusted` patch signatures #257 already had to update.
+
+
+## 2026-09-04 - gdelt: the fetch fan-out was the one phase with no bound, and the cap must not be `max_records`
+
+**Class:** unbounded-growth (a phase whose work scales with the upstream match
+set rather than with what the caller asked for; it grew past a ceiling that was
+correctly sized for everything else in the job)
+**Guard:** railway/tests/test_gdelt_fetch_fanout.py
+
+**The finding.** Run 33860668098 (`Historical global news sweep`, 2026-09-04
+09:54Z) was killed by `timeout-minutes: 45` after 45.5 minutes. The trend
+across the eight consecutive runs rules out a mis-sized ceiling - it grows, it
+does not spike:
+
+| date | 08-28 | 08-29 | 08-30 | 08-31 | 09-01 | 09-02 | 09-03 | 09-04 |
+|---|---|---|---|---|---|---|---|---|
+| minutes | 18.3 | 17.7 | 23.4 | 27.5 | 22.4 | 22.2 | 39.2 | **killed at 45** |
+| trusted candidates | 2502 | 2417 | 2860 | 3528 | 3342 | 3365 | 3658 | (35,175 matched) |
+
+**Collection was already bounded; the phase after it was not.** #253 threaded a
+wall-clock `deadline` through `_collect_window`, `_run_sweep_slot` and
+`_retry_pending_slots`, and the log shows it working exactly as designed: one
+abandoned sweep, remaining sweeps queued, pending retries skipped, all by
+10:12:44. Then `pull_gdelt_between` handed its whole `collected` list to
+`_fetch_trusted`, which issued ONE HTTP GET per trusted candidate with no clock
+and no count. That loop ran from 10:12:44 to the ceiling at 10:40, logged 629
+fetch errors, and never returned to its caller. `BACKFILL_DEADLINE_SECONDS=600`
+could not fire because it is read in `gdelt_backfill`'s extraction loop, which
+is only reached after `_fetch_trusted` returns.
+
+**The surplus is provably discarded.** The extraction loop stops at
+`BACKFILL_MAX_ARTICLES` considered - **10** - and the cursor advances
+regardless. So the run downloaded roughly 3,000 article bodies in order to read
+10 and throw the rest away unread. Capping the fetch loses no coverage because
+that coverage was already being discarded; it grows because the historical
+cursor is walking forward into busier news months, not because anything broke.
+
+**The cap is demand-driven, and it is NOT `max_records`.** Two things this
+change deliberately does not do:
+
+- *It does not count attempts.* About a fifth of these fetches fail by
+  publisher design (403/404/429): 3,658 trusted produced 3,000 fetched on
+  2026-09-03. A cap truncating the candidate LIST to 10 hands the extractor
+  about 8 and quietly shrinks the sweep's yield. `_fetch_trusted` fetches in
+  waves of `FETCH_WORKERS` and stops on 10 USABLE results.
+- *It does not bind the cap to `max_records`.* `max_records` is a PER-QUERY
+  GDELT ceiling and `collected` is the union of a dozen queries, so it is not
+  "what the caller can use". The live collector's own telemetry for 2026-09-02
+  reads `returned=7816 ... kept=847`, i.e. 916 trusted candidates against a
+  `max_records` of 250. Reusing `max_records` as the fetch cap would have cut
+  the primary worldwide collector by about 70% while every surface stayed
+  green. `max_candidates` is its own parameter, defaults to unbounded, and is
+  passed by `gdelt_backfill` alone - and there only when
+  `BACKFILL_MAX_ARTICLES` is set, because the workflow promises a manual
+  backfill stays uncapped and `remaining` falls back to 250.
+
+Candidates the cap never reached are recorded under a new `candidate_cap` reach
+reason, so gdelt_reach's "every candidate lands in exactly one outcome"
+invariant still holds.
+
+**The ceiling was not raised.** 45 minutes stays, and the arithmetic now sits
+beside it in the workflow.
+
+**Proved by mutation.** Removing the bound walks all 5,000 candidates
+(`5000 not less than or equal to 14`) and loses the `candidate_cap`
+accounting; counting attempts instead of results delivers 6 where 10 were asked
+for; reusing `max_records` as the cap reddens the live-path guard.
+
 ## 2026-09-04 - spend: "the per-job brake is not holding" was the last call crossing (2.20.166)
 
 **Class:** wrong-scope-or-key (an alarm keyed on the wrong quantity: a flat
