@@ -203,9 +203,16 @@ def _get(url, timeout=90):
         _reraise_tls(exc)
 
 
-def fetch_bytes(url, get=None, cache=True):
+def fetch_bytes(url, get=None, cache=True, accept=None):
     """One request. Cached on disk so a re-run in the same day does not re-hit a
-    statistics office that is doing us a favour by publishing at all."""
+    statistics office that is doing us a favour by publishing at all.
+
+    `accept(body) -> bool` decides whether a body is worth keeping. A body it
+    rejects is still returned to the caller, so the caller can say WHY it is
+    wrong, but it is never written to the cache: datavis.nisra.gov.uk answers
+    a not-yet-published report with an HTTP 200 placeholder, and a cached
+    placeholder would make the same day's re-run fail without a request.
+    """
     get = get or _get
     if not cache:
         return get(url)
@@ -215,7 +222,8 @@ def fetch_bytes(url, get=None, cache=True):
     if path.exists():
         return path.read_bytes()
     body = get(url)
-    path.write_bytes(body)
+    if accept is None or accept(body):
+        path.write_bytes(body)
     return body
 
 
@@ -598,18 +606,91 @@ def estonia_series(today=None, get=None):
 # periods align, which `combine()` checks and which the GB monthly / NI
 # financial-year shapes currently do not.
 #
-# THE XLSX IS NOT FETCHED. The figures are read out of the HTML report, whose
-# charts carry their data as base64 CSV data: URIs — the same numbers, on a host
-# that does not disallow them.
-NI_REPORT = ("https://datavis.nisra.gov.uk/economy-and-labour-market/"
-             "labour-market-report-{month}-{year}.html")
+# NO DATA FILE IS FETCHED, AND NONE MAY BE. NISRA publishes the same figures as
+# `lmr-redundancy-tables-<month>-<year>.xlsx` and inside `ODS-tables-<month>-
+# <year>.zip`, and www.nisra.gov.uk's robots.txt says, under `User-agent: *`,
+# `Disallow: /*.xlsx`, `/*.ods` and `/*.zip` (re-read 2026-09-04). That is a
+# refusal aimed at every agent including ours, it is recorded in
+# `country_coverage.REFUSAL_LEDGER`, and the ledger's own ruling names the HTML
+# report as the permitted alternative. The figures are read out of that report,
+# whose charts carry their data as base64 CSV data: URIs — the same numbers.
+#
+# THE REPORT IS DISCOVERED, NEVER DERIVED FROM THE CALENDAR (2026-09-04). The
+# first cut built `labour-market-report-<this month>-<this year>.html` from
+# `date.today()`. NISRA publishes each month's report mid-month, and for a
+# report that does not exist yet datavis.nisra.gov.uk answers HTTP 200 with a
+# hosting placeholder titled "Unavailable" ("FILES are in the process of being
+# uploaded"), so on the first Friday of September the collector read a soft-404
+# as "the chart no longer embeds its data" and the run went red. The month is
+# now taken from NISRA's own redundancies page, which lists the reports it has
+# actually released, and the placeholder is recognised by name and reported as
+# NOT PUBLISHED rather than as a broken chart. Two www.nisra.gov.uk pages are
+# read on the way; both are HTML, both are `Allow` under that robots file.
+NI_SITE = "https://www.nisra.gov.uk"
+NI_REDUNDANCIES_PAGE = NI_SITE + "/statistics/work-pay-and-benefits/redundancies"
 NI_HEADER = '"Year","Proposed","Confirmed"'
+NI_MONTHS = ("january", "february", "march", "april", "may", "june", "july",
+             "august", "september", "october", "november", "december")
+_NI_PUBLICATION_LINK = re.compile(
+    r'href="((?:https?://www\.nisra\.gov\.uk)?/publications/'
+    r'labour-market-report-([a-z]+)-(\d{4}))/?"', re.I)
+_NI_DATAVIS_LINK = re.compile(
+    r'href="(https://datavis\.nisra\.gov\.uk/[^"]*labour-market-report-'
+    r'([a-z]+)-(\d{4})\.html)"', re.I)
 
 
-def ni_report_url(today=None):
-    """NISRA publishes one report per month, named for that month."""
-    today = today or date.today()
-    return NI_REPORT.format(month=today.strftime("%B").lower(), year=today.year)
+class NiNotPublished(ValueError):
+    """datavis served its 'Unavailable' placeholder where a report should be.
+    The report is not at that address (yet). Not a layout change."""
+
+
+def ni_is_placeholder(html):
+    """The StreamOn hosting page datavis.nisra.gov.uk serves, with HTTP 200, for
+    a report that has not been uploaded. Recognised by its own words so that it
+    can never be mistaken for a report whose chart lost its data."""
+    head = re.sub(r"\s+", "", html[:6000].lower())
+    return ("<title>unavailable</title>" in head
+            or "intheprocessofbeinguploaded" in re.sub(r"\s+", "", html.lower()))
+
+
+def ni_listed_reports(html):
+    """{(year, month): url} for every monthly Labour Market Report a NISRA page
+    links, whether as a www.nisra.gov.uk publication page or directly as the
+    datavis report. Month is 1..12."""
+    found = {}
+    for pattern in (_NI_PUBLICATION_LINK, _NI_DATAVIS_LINK):
+        for m in pattern.finditer(html):
+            month = m.group(2).lower()
+            if month not in NI_MONTHS:
+                continue
+            key = (int(m.group(3)), NI_MONTHS.index(month) + 1)
+            url = urllib.parse.urljoin(NI_SITE + "/", m.group(1))
+            # A publication page outranks a direct datavis link for the same
+            # month only in that it is the page NISRA itself publishes; either
+            # leads to the same report.
+            found.setdefault(key, url)
+    return found
+
+
+def ni_latest_publication(html):
+    """(url, (year, month)) of the NEWEST report NISRA lists. Raises when the
+    page lists none, because a page that has stopped listing reports is a
+    moved or restructured page, not an empty month."""
+    found = ni_listed_reports(html)
+    if not found:
+        raise ValueError("no labour-market-report link on the NISRA redundancies "
+                         "page — the page moved or was restructured")
+    key = max(found)
+    return found[key], key
+
+
+def ni_report_link(html):
+    """The datavis report URL a www.nisra.gov.uk publication page links."""
+    m = _NI_DATAVIS_LINK.search(html)
+    if not m:
+        raise ValueError("the NISRA publication page carries no datavis report link "
+                         "— the report moved off datavis.nisra.gov.uk or the page changed")
+    return m.group(1)
 
 
 def parse_ni(html):
@@ -621,6 +702,10 @@ def parse_ni(html):
     is returned with `rolling=True` and it is never measured against, because a
     denominator whose period cannot be stated is not a denominator.
     """
+    if ni_is_placeholder(html):
+        raise NiNotPublished("datavis.nisra.gov.uk served its 'Unavailable' placeholder "
+                             "(HTTP 200) instead of the report — not published at that "
+                             "address")
     for blob in re.findall(r'base64,([A-Za-z0-9+/=]{100,})"', html):
         try:
             body = b64decode(blob)
@@ -644,9 +729,26 @@ def parse_ni(html):
                      "no longer embeds its data, or the report moved")
 
 
+def _ni_text(url, get=None, accept=None):
+    return fetch_bytes(url, get=get, accept=accept).decode("utf-8", "replace")
+
+
 def ni_series(today=None, get=None):
-    url = ni_report_url(today)
-    html = fetch_bytes(url, get=get).decode("utf-8", "replace")
+    """`today` is accepted for the registry's uniform call shape and is NOT used
+    to choose the report: the month comes from what NISRA has published."""
+    landing = _ni_text(NI_REDUNDANCIES_PAGE, get=get)
+    listed_url, (year, month) = ni_latest_publication(landing)
+    if "datavis.nisra.gov.uk" in listed_url:
+        url = listed_url
+    else:
+        url = ni_report_link(_ni_text(listed_url, get=get))
+    html = _ni_text(url, get=get, accept=lambda body: not ni_is_placeholder(
+        body[:8000].decode("utf-8", "replace")))
+    if ni_is_placeholder(html):
+        raise NiNotPublished(
+            f"NISRA lists the {NI_MONTHS[month - 1]} {year} report but datavis served its "
+            f"'Unavailable' placeholder (HTTP 200) at {url} — not published at that "
+            f"address yet, so no series was read. Not a layout change")
     rows = [r for r in parse_ni(html) if not r["rolling"] and r["proposed"] is not None]
     if not rows:
         raise ValueError("every NISRA row is the rolling twelve-month window")
@@ -659,7 +761,8 @@ def ni_series(today=None, get=None):
         "unit": WORKERS,
         "secondary": {"unit": WORKERS, "value": latest["confirmed"],
                       "label": "confirmed redundancies (GB has no counterpart)"},
-        "publisher_updated": None,
+        "publisher_updated": f"{year:04d}-{month:02d}",
+        "report_release": f"{NI_MONTHS[month - 1]} {year}",
         "source_url": url,
         "rounding": "figures are rounded to the nearest 10; totals from fewer "
                     "than 3 businesses are suppressed",
@@ -772,16 +875,24 @@ SERIES = {
             "measured 177% on the first run). The denominator is read and kept fresh "
             "so that this becomes measurable the day rows carry a UK region"),
         "licence": "accredited official statistics, Open Government Licence",
-        "robots": ("datavis.nisra.gov.uk serves no readable robots.txt. "
-                   "nisra.gov.uk's wildcard block names admin paths only. The XLSX "
-                   "is NOT fetched either way — the HTML report carries the same "
-                   "figures and a previous assessment recorded an xlsx disallow"),
+        "robots": ("www.nisra.gov.uk's robots.txt disallows '/*.xlsx', '/*.ods' and "
+                   "'/*.zip' for every agent (re-read 2026-09-04), so the redundancy "
+                   "workbook and the ODS bundle are refused to us and are NOT fetched; "
+                   "the refusal is recorded in country_coverage.REFUSAL_LEDGER, whose "
+                   "ruling names the HTML report as the alternative. The two "
+                   "www.nisra.gov.uk HTML pages read to find the latest report are "
+                   "'Allow' under the same file. datavis.nisra.gov.uk serves no "
+                   "readable robots.txt: /robots.txt answers HTTP 200 with the host's "
+                   "HTML 'Unavailable' placeholder, which robots_gate reads as UNKNOWN"),
         "caveats": [
             "a SEPARATE regime from GB, never a substitute for it. NI is the only "
             "part of the UK that publishes CONFIRMED redundancies as well as "
             "proposed, so no UK-wide confirmed figure exists",
             "the final row of the published series is labelled as a financial year "
             "but is the rolling twelve months to the report month — it is excluded",
+            "the report read is the newest one NISRA's redundancies page lists, never "
+            "the calendar month: a report that is not yet uploaded is served as an "
+            "HTTP 200 'Unavailable' placeholder and is reported as NOT PUBLISHED",
             "rounded to the nearest 10; totals from fewer than 3 businesses withheld",
             "our country vocabulary has no NI split, so this slice's numerator is "
             "the whole UK. It is reported as an UPPER-BOUND-ONLY comparison",
