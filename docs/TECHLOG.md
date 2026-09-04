@@ -1,5 +1,80 @@
 # Tech Log
 
+## 2026-09-04 - NISRA: the report URL was built from today's month, and a soft-404 read as a broken chart
+
+**Class:** wrong-scope-or-key (a fetch keyed on the calendar rather than on
+what the publisher had released; the HTTP 200 placeholder it hit was then
+misread as a layout change)
+**Guard:** railway/tests/test_national_denominators.py,
+`TheNorthernIrelandReportIsDiscoveredNotDerived`
+
+**The finding.** `National denominators measurement` run 33908842002 (Friday
+2026-09-04 19:00Z) exited 3, red CI, one email: `[UNKNOWN]
+ni_proposed_redundancies ... no redundancy series found in the NISRA report -
+the chart no longer embeds its data, or the report moved`. Neither was true.
+The chart still embeds its data (Figure 3, a base64 CSV `data:` URI,
+`"Year","Proposed","Confirmed"`, 2010/11 to a rolling 2025/26) and the report
+has not moved. `ni_report_url()` templated
+`labour-market-report-<this month>-<this year>.html` from `date.today()`, so on
+the first Friday of September it asked datavis.nisra.gov.uk for
+`labour-market-report-september-2026.html`, which NISRA will publish in the
+middle of the month. datavis answers a page that does not exist with **HTTP
+200** and a 2.6 KB hosting placeholder titled "Unavailable" ("FILES are in the
+process of being uploaded. Please try again shortly"), and `parse_ni` found no
+series in it and reported the one cause it knew.
+
+It had never run in the first half of a month: the slice landed 2026-08-18 and
+the four runs since fell on the 19th, 21st, 29th and today. It would have
+failed the same way every month, for roughly two weeks each. The RUNBOOK's own
+row for `could not read the denominator` says "every collector resolves its
+filename through the publisher's own index rather than templating it"; this
+one did not.
+
+**What NISRA offers, and what robots allows.** The publication page for each
+month links `lmr-redundancy-tables-<month>-<year>.xlsx` and an
+`ODS-tables-<month>-<year>.zip`. www.nisra.gov.uk's robots.txt says, under
+`User-agent: *`, `Disallow: /*.xlsx`, `/*.xls`, `/*.ods` and `/*.zip`
+(re-read today; `robots_gate.RobotsGate` answers DISALLOW for the workbook
+path). That refusal was already in `country_coverage.REFUSAL_LEDGER`, whose
+ruling names the datavis HTML report as the alternative. So the data file is
+NOT preferred here: it is refused to our agent and stays unfetched. The two
+www.nisra.gov.uk HTML pages the repair reads are `Allow`. datavis itself
+serves the same HTML placeholder at `/robots.txt` (HTTP 200, text/html), which
+the gate reads as UNKNOWN; the slice's `robots` note now says so in those
+words. Units are unchanged: workers, proposed redundancies by financial year
+(April to March), rounded to the nearest 10, with confirmed redundancies as
+the secondary figure, so the series stays comparable.
+
+**Fix.** Discovery replaces derivation. `ni_series` reads NISRA's own
+redundancies page (`/statistics/work-pay-and-benefits/redundancies`), takes the
+NEWEST `labour-market-report-<month>-<year>` it lists (August 2026 today, as
+the run itself confirmed live: 2,980 proposed and 2,370 confirmed for
+2024/25), follows that publication page to the datavis report link it carries
+(the link, not a template: the yearly index spells one month
+`February-2026.html`), and reads the same Figure 3 series as before.
+`ni_is_placeholder()` recognises the hosting page by its own words and raises
+`NiNotPublished`, a distinct `ValueError`, so the slice's detail says "not
+published at that address" rather than "the chart no longer embeds its data".
+`fetch_bytes(accept=...)` returns a rejected body but never writes it to the
+day's cache, so a placeholder cannot make the same day's re-run fail without a
+request. `today` is still accepted by `ni_series` for the registry's uniform
+call shape and is not used to choose anything.
+
+**Guard.** Four fixtures cut verbatim from the live source today
+(`railway/tests/fixtures/nisra_*`): the Figure 3 download row with the
+neighbouring figure's CSV as a decoy, the redundancies landing page, the
+August publication page, and the placeholder. The tests fail on zero rows
+from the real download row, on a report URL that varies with `today`, on the
+placeholder being read as a series, on the placeholder being cached, and on
+the slice describing it as anything but not-published. Proven by mutation:
+changing `NI_HEADER` reds the row test, choosing `min` instead of `max` in
+`ni_latest_publication` reds the discovery tests.
+
+**Cost:** $0.00. Three HTML requests per weekly run instead of one, no model on
+any path.
+
+---
+
 ## 2026-09-04 - a fixture window aged past the ledger's prune horizon, and five tests read as another PR's regressions
 
 **Class:** novel (a test whose subject prunes by wall-clock age,

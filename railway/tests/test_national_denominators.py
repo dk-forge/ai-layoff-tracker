@@ -35,6 +35,7 @@ The five that matter most:
 """
 import json
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from datetime import date
@@ -309,6 +310,155 @@ class TheCommittedMeasurementParses(unittest.TestCase):
     def test_it_is_valid_json_on_disk(self):
         if nd.MEASUREMENT_PATH.exists():
             json.loads(nd.MEASUREMENT_PATH.read_text(encoding="utf-8"))
+
+
+class TheNorthernIrelandReportIsDiscoveredNotDerived(unittest.TestCase):
+    """2026-09-04, run 33908842002: the collector built the report URL from
+    date.today()'s month. NISRA had not published September yet, datavis
+    answered the missing page with an HTTP 200 'Unavailable' placeholder, and
+    the parser reported "the chart no longer embeds its data". Every fixture
+    here is the live source's shape as fetched that day, so the next format
+    change reds this file rather than a Friday cron.
+    """
+
+    FIXTURES = Path(__file__).resolve().parent / "fixtures"
+    LANDING_URL = nd.NI_REDUNDANCIES_PAGE
+    PUBLICATION_URL = "https://www.nisra.gov.uk/publications/labour-market-report-august-2026"
+    REPORT_URL = ("https://datavis.nisra.gov.uk/economy-and-labour-market/"
+                  "labour-market-report-august-2026.html")
+
+    @classmethod
+    def setUpClass(cls):
+        read = lambda name: (cls.FIXTURES / name).read_text(encoding="utf-8")  # noqa: E731
+        cls.LANDING = read("nisra_redundancies_landing_2026-09-04.html")
+        cls.PUBLICATION = read("nisra_lmr_publication_august_2026.html")
+        cls.FIGURE3 = read("nisra_datavis_lmr_figure3_august_2026.html")
+        cls.PLACEHOLDER = read("nisra_datavis_unavailable_placeholder.html")
+
+    def setUp(self):
+        # Never touch the real on-disk cache from a test, and make "was it
+        # cached?" a question the test can answer.
+        self._tmp = tempfile.TemporaryDirectory()
+        self._patch = unittest.mock.patch.object(nd, "_CACHE", Path(self._tmp.name))
+        self._patch.start()
+
+    def tearDown(self):
+        self._patch.stop()
+        self._tmp.cleanup()
+
+    def _get(self, report=None):
+        """A fake transport serving the fixtures by URL and recording every
+        request. `report` overrides the datavis body."""
+        served = {self.LANDING_URL: self.LANDING, self.PUBLICATION_URL: self.PUBLICATION,
+                  self.REPORT_URL: self.FIGURE3 if report is None else report}
+        requested = []
+
+        def get(url):
+            requested.append(url)
+            if url not in served:
+                raise AssertionError(f"unexpected request: {url}")
+            return served[url].encode("utf-8")
+        get.requested = requested
+        return get
+
+    # -- the parser against the CURRENT source shape -------------------------
+
+    def test_the_live_download_row_parses_to_rows_not_zero(self):
+        rows = nd.parse_ni(self.FIGURE3)
+        self.assertGreater(len(rows), 0)
+        self.assertEqual(rows[0]["financial_year"], "2010/11")
+        settled = [r for r in rows if not r["rolling"]]
+        self.assertEqual(settled[-1], {"financial_year": "2024/25", "proposed": 2980,
+                                       "confirmed": 2370, "rolling": False})
+        self.assertEqual(rows[-1]["financial_year"], "2025/26")
+        self.assertTrue(rows[-1]["rolling"])
+
+    def test_the_neighbouring_figures_data_is_not_read_as_redundancies(self):
+        # The fixture carries Figure 2's CSV first, by design. Every row that
+        # comes back must be a financial year with two integer-or-None cells.
+        for row in nd.parse_ni(self.FIGURE3):
+            self.assertRegex(row["financial_year"], r"^\d{4}/\d{2}$")
+            for k in ("proposed", "confirmed"):
+                self.assertTrue(row[k] is None or isinstance(row[k], int), row)
+
+    # -- discovery ------------------------------------------------------------
+
+    def test_the_newest_listed_report_is_chosen(self):
+        url, key = nd.ni_latest_publication(self.LANDING)
+        self.assertEqual(key, (2026, 8))
+        self.assertEqual(url, self.PUBLICATION_URL)
+        self.assertEqual(sorted(nd.ni_listed_reports(self.LANDING)),
+                         [(2026, 4), (2026, 5), (2026, 6), (2026, 7), (2026, 8)])
+
+    def test_a_directly_linked_datavis_report_is_also_understood(self):
+        # NISRA's yearly index links January and February 2026 straight to
+        # datavis, one of them capitalised. Casing in the URL is preserved.
+        html = ('<a href="https://datavis.nisra.gov.uk/economy-and-labour-market/'
+                'labour-market-report-February-2026.html">Feb</a>'
+                '<a href="/publications/labour-market-report-january-2026">Jan</a>')
+        url, key = nd.ni_latest_publication(html)
+        self.assertEqual(key, (2026, 2))
+        self.assertIn("labour-market-report-February-2026.html", url)
+
+    def test_the_publication_page_names_the_datavis_report(self):
+        self.assertEqual(nd.ni_report_link(self.PUBLICATION), self.REPORT_URL)
+
+    def test_a_page_listing_no_report_raises_rather_than_guessing(self):
+        with self.assertRaises(ValueError):
+            nd.ni_latest_publication("<html><body>Redundancies</body></html>")
+        with self.assertRaises(ValueError):
+            nd.ni_report_link("<html><body>no datavis link</body></html>")
+
+    # -- the collector end to end --------------------------------------------
+
+    def test_the_series_is_read_from_the_discovered_report(self):
+        get = self._get()
+        series = nd.ni_series(today=date(2026, 9, 4), get=get)
+        self.assertEqual(series["value"], 2980)
+        self.assertEqual(series["period"]["label"], "2024/25")
+        self.assertEqual(series["secondary"]["value"], 2370)
+        self.assertEqual(series["source_url"], self.REPORT_URL)
+        self.assertEqual(series["publisher_updated"], "2026-08")
+        self.assertEqual(get.requested, [self.LANDING_URL, self.PUBLICATION_URL,
+                                         self.REPORT_URL])
+
+    def test_the_report_does_not_depend_on_todays_date(self):
+        # The defect: today's month chose the URL. Two dates in different
+        # months and years must read the very same report.
+        urls = set()
+        for today in (date(2026, 9, 4), date(2026, 12, 25), date(2027, 3, 1)):
+            get = self._get()
+            urls.add(nd.ni_series(today=today, get=get)["source_url"])
+            self.assertNotIn("september", " ".join(get.requested))
+        self.assertEqual(urls, {self.REPORT_URL})
+
+    def test_a_placeholder_is_not_published_and_is_not_a_broken_chart(self):
+        self.assertTrue(nd.ni_is_placeholder(self.PLACEHOLDER))
+        self.assertFalse(nd.ni_is_placeholder(self.FIGURE3))
+        with self.assertRaises(nd.NiNotPublished) as ctx:
+            nd.parse_ni(self.PLACEHOLDER)
+        self.assertNotIn("no longer embeds", str(ctx.exception))
+        with self.assertRaises(nd.NiNotPublished) as ctx:
+            nd.ni_series(get=self._get(report=self.PLACEHOLDER))
+        self.assertIn("not published", str(ctx.exception))
+        self.assertIn(self.REPORT_URL, str(ctx.exception))
+
+    def test_a_placeholder_is_never_cached(self):
+        with self.assertRaises(nd.NiNotPublished):
+            nd.ni_series(get=self._get(report=self.PLACEHOLDER))
+        cached = {p.name for p in Path(self._tmp.name).iterdir()}
+        self.assertEqual(len(cached), 2, cached)          # the two nisra.gov.uk pages
+        self.assertFalse(any("datavis" in name for name in cached), cached)
+        # ...so the next attempt in the same day asks again and gets the report.
+        get = self._get()
+        self.assertEqual(nd.ni_series(get=get)["value"], 2980)
+        self.assertEqual(get.requested, [self.REPORT_URL])
+
+    def test_the_slice_reports_the_placeholder_as_unknown_with_its_own_words(self):
+        slice_ = nd.measure_series("ni_proposed_redundancies", today=date(2026, 9, 4),
+                                   get=self._get(report=self.PLACEHOLDER))
+        self.assertEqual(slice_["state"], UNKNOWN)
+        self.assertIn("NiNotPublished", slice_["detail"])
 
 
 if __name__ == "__main__":
