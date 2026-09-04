@@ -2,7 +2,7 @@
 
 ## 2026-09-04 - the two daily editions: every figure reproduced, five sentences around them did not (2.20.168, branch, awaiting owner review)
 
-**Class:** fixed-prose-around-variable-data (four of five), plus one
+**Class:** derived-value-typed-by-hand (four of five), plus one
 attribution error
 **Guard:** railway/tests/test_digest_accuracy_audit.py (mutation-proven: each
 fix reverted in turn reddens its test); railway/tests/test_digest_talent_observation.py
