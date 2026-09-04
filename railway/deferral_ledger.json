@@ -2,16 +2,6 @@
   "entries": [
     {
       "consecutive": 1,
-      "first_deferred_at": "2026-09-03T09:01:57+00:00",
-      "job": "enrich-roles",
-      "last_deferred_at": "2026-09-03T09:01:57+00:00",
-      "last_key": "33736469441:1",
-      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/33736469441",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
       "first_deferred_at": "2026-09-03T09:11:57+00:00",
       "job": "reason-backfill",
       "last_deferred_at": "2026-09-03T09:11:57+00:00",
@@ -74,8 +64,19 @@
       "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/33732420024",
       "resolved_at": "2026-09-04T08:12:25+00:00",
       "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-09-03T09:01:57+00:00",
+      "job": "enrich-roles",
+      "last_deferred_at": "2026-09-03T09:01:57+00:00",
+      "last_key": "33736469441:1",
+      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/33736469441",
+      "resolved_at": "2026-09-04T08:55:52+00:00",
+      "state": "resolved"
     }
   ],
-  "updated_at": "2026-09-04T08:12:25+00:00",
+  "updated_at": "2026-09-04T08:55:52+00:00",
   "version": 1
 }
