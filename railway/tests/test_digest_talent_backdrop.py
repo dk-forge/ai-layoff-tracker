@@ -128,7 +128,7 @@ class TheTalentBackdropRenders(unittest.TestCase):
         # neutral noun is the one that is true either way. What this test is
         # about is that the section renders its own figure at all, so it asks
         # for the paragraph rather than for a particular word in it.
-        self.assertIn('<p data-alt="unit">new ', self.section["html"])
+        self.assertIn('<p data-alt="unit">', self.section["html"])
         self.assertIn(" signals</p>", self.section["html"])
 
     def test_the_block_heading_is_present_once(self):

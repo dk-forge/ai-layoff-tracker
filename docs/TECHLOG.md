@@ -1,5 +1,85 @@
 # Tech Log
 
+## 2026-09-04 - the two daily editions: every figure reproduced, five sentences around them did not (2.20.168, branch, awaiting owner review)
+
+**Class:** derived-value-typed-by-hand (four of five), plus one
+attribution error
+**Guard:** railway/tests/test_digest_accuracy_audit.py (mutation-proven: each
+fix reverted in turn reddens its test); railway/tests/test_digest_talent_observation.py
+updated for the unit line
+
+**What was audited.** Both reader-facing daily editions, against the owner's
+bar that every number a subscriber sees is one the tracker can back up. There
+is ONE generator: `alt_digest_compose_layoff` and `alt_digest_compose_talent`
+in `includes/subscribe.php`, relayed by `railway/digest_send.py` over Brevo
+SMTP. The "Talent Intelligence Tracker daily edition" the owner forwarded IS
+the talent section of this digest (the talent repo's `daily_digest.py` is an
+offline renderer wired to no workflow; Mailjet is only the signup iframe). The
+"Send email digest" run at 14:50Z on 2026-09-04 was the DST no-op tick; the
+13:52Z run sent send_id=61 to the one due recipient, talent section only, so
+no layoff daily was delivered today. The most recent delivered layoff edition
+is the weekly of 2026-08-31 (Week 35).
+
+**Every figure reproduced.** The talent edition of 2026-09-04 (108 signals,
+107 companies, 0 verified, 20 hiring, 38 leadership, 27 funding, 12 pay, YTD
+25,076) matches `/talent/v1/aggregate` live to the digit. The forwarded
+2026-09-03 edition (111, 110, 8, 8, 52, 28, 18) reads 207, 205, 9, 18, 103, 54,
+20 live one day later - and reproduces EXACTLY when the live `/query` rows for
+that window are filtered on their own `captured_at` <= the send time. The
+Indeed figures (101.91 SA index on 2026-08-21; 6.28% AI share on 2026-07-31;
++1.91 vs baseline; 0.00 and +0.33 month-on-month) match Hiring Lab's published
+CSVs, both licensed CC BY 4.0 (README and LICENSE in both repos). The Week 35
+layoff edition's settled figures (Qantas 1,822; states 757/653/425/282/194;
+reasons 802/461/373; AI YTD 62,953 = 12% of 515,692) match live; the
+provisional ones rose exactly as the edition said they would (6,509 -> 7,538
+verified worldwide; 77 -> 89 entries). Em-dashes: 0 in every rendered edition
+read, 0 in the generators, 0 in 315 live rows - but nothing guarded it.
+
+**What was wrong, and the fix.**
+1. *"Biggest hiring signals ... Beacon Park Boats: Jobs and holidays saved
+   after business rescued from administration (30 jobs ...)".* The row is
+   `signal_direction` neutral, `headcount_scope` affected: 30 existing jobs
+   kept. The composer ranked and printed every headcount as "N jobs".
+   `alt_digest_talent_roles_named()` now returns a figure only when the row
+   states new_roles + hiring; a row stating otherwise ranks and prints as
+   having no jobs figure; a row stating neither keeps today's behaviour.
+2. *"108 new talent and employer-activity signals".* The daily window is
+   yesterday AND today (deliberate, `alt_digest_window`), so every signal
+   dated yesterday is in two editions. "new" is gone from the unit line and
+   the lede; the figure is unchanged. The subject never said "new".
+3. *"counted by the date the source published, or for a job-board reading the
+   date we read the board"* omitted the branch the SQL takes for a news row
+   with no date (4 of the 108 rows); and the undated-rows note said "We do not
+   substitute the day we captured it" when the window had. Both reworded to
+   what the query does.
+4. No provisional statement. The talent section now carries one, and the
+   daily pair additionally states the overlap - earned by the window shape,
+   not the tier, as 2.20.144 did for the week label.
+5. *"Source: Indeed Hiring Lab Job Postings Tracker (CC BY 4.0). Index as of
+   ... AI share as of ..."* credited the AI series to the wrong dataset (it is
+   the AI Tracker). The source line names each series; "seasonally adjusted"
+   rides with the level (the CSV publishes SA and NSA); and the baseline and
+   month-earlier comparisons are declared as our arithmetic, which the licence
+   asks and the docblock had claimed the footer already did.
+6. Guard: `alt_digest_plain_dashes()` on quoted headlines and outlets, and
+   `digest_layout.plain_dashes()` on every part, subject, preheader and kicker
+   at the relay.
+
+**Two live-data observations, NOT fixed here (data corrections are the
+owner's).** (a) Rows 178891 and 178924 are the same Chilean SAG cut of 400,
+both dated 2026-08-30, from two Google News URLs; the Week 35 edition listed
+one, the live aggregate now counts Chile at 800. (b) In Week 35 the
+WARN-sourced verified total (3,371 then, 3,428 now) exceeds the US-located
+verified total (3,361): WARN is US-only, so some WARN rows carry no country or
+a non-US one. Both are data-integrity questions for the corrections path.
+
+**UNVERIFIABLE, stated as such.** The 2026-09-03 YTD figure (24,896) cannot be
+re-derived without a captured_at filter on `/aggregate`; live YTD to that date
+is 25,057 and the direction is consistent. "Of the 32 complete weeks of 2026
+measured to August 16, 16 recorded none" and "Technology is number 15, at
+0.2%" in the Week 35 edition were not re-derived (the second has moved).
+
+$0.00 spent: no model call, no email sent, no transport config touched.
 ## 2026-09-04 - the learning loop read its corpus from an endpoint that now refuses everyone; it reads the collector's mirror instead (m5)
 
 **Class:** novel (a monitor depending on a shared upstream the thing it

@@ -3536,6 +3536,61 @@ function alt_digest_talent_is_scan($row) {
 }
 
 /**
+ * THE HEADCOUNT A ROW MAY WEAR AS "JOBS", READ FROM WHAT THE ROW SAYS IT IS.
+ *
+ * THE DEFECT, IN THE DELIVERED EDITION OF 2026-09-04. Under the heading
+ * "Biggest hiring signals", the fifth row read "Beacon Park Boats: Jobs and
+ * holidays saved after business rescued from administration (30 jobs, United
+ * Kingdom, BusinessLive, September 3, 2026)". The talent tracker stores that
+ * row with signal_direction 'neutral' and headcount_scope 'affected': thirty
+ * EXISTING jobs kept, not thirty roles named. The composer ranked and printed
+ * every headcount as "N jobs" regardless, so a rescue wore the words the unit
+ * note had just promised meant "the roles named in that update".
+ *
+ * THE RULE HONOURS WHAT THE ROW STATES AND INVENTS NOTHING. A headcount is
+ * roles named when the row's scope is 'new_roles' and its direction is
+ * 'hiring'. A row that carries a DIFFERENT scope ('affected',
+ * 'total_workforce', 'single_site') or a different direction ('neutral',
+ * 'displacement', 'comp_shift') has told us its figure is not roles named, so
+ * it ranks as a row with no jobs figure and prints none. A row that carries
+ * NEITHER field is unknown and keeps the behaviour every existing fixture
+ * pins: the live API always sends both, so the unknown shape is a legacy one
+ * and not a live one. Job-board readings are 'hiring' + 'new_roles' by
+ * construction and are unaffected.
+ *
+ * Both the ranking (alt_digest_talent_rank) and the printed parenthesis read
+ * this, so a row cannot be placed by a figure it is then not allowed to show.
+ */
+function alt_digest_talent_roles_named($row) {
+    $row = (array) $row;
+    $jobs = isset($row['headcount']) ? (int) $row['headcount'] : 0;
+    if ($jobs <= 0) return 0;
+    $scope = strtolower(trim((string) ($row['headcount_scope'] ?? '')));
+    if ($scope !== '' && $scope !== 'new_roles') return 0;
+    $direction = strtolower(trim((string) ($row['signal_direction'] ?? '')));
+    if ($direction !== '' && $direction !== 'hiring') return 0;
+    return $jobs;
+}
+
+/**
+ * NO EM-DASH REACHES A READER, INCLUDING ONE QUOTED FROM A SOURCE.
+ *
+ * Every string this file types is already free of them (the ban is a house
+ * rule, and grep holds it at zero), but a headline is quoted as the outlet
+ * wrote it and an outlet may write one. The rule the owner set is zero in the
+ * rendered edition, not zero in our own copy, so the boundary is where a
+ * source's text becomes our text. Measured on 2026-09-04: 0 of 315 rows in
+ * the two most recent daily windows carried one, so this is a guard and not
+ * a repair. The relay's renderer (railway/digest_layout.plain_dashes) holds
+ * the same rule for the message as sent, so the in-WordPress fallback sender
+ * and the public archive are covered here and the relayed email is covered
+ * twice.
+ */
+function alt_digest_plain_dashes($s) {
+    return preg_replace('/\s*\x{2014}\s*/u', ' - ', (string) $s);
+}
+
+/**
  * THE DATE BASIS OF EVERY TALENT FIGURE, IN ONE PLACE.
  *
  * The window figure and the year-to-date figure each carried their own copy of
@@ -3551,8 +3606,17 @@ function alt_digest_talent_is_scan($row) {
  * one: if the mix ever needs stating, state the mix, measured.
  */
 function alt_digest_talent_basis() {
-    return 'counted by the date the source published, or for a job-board '
-         . 'reading the date we read the board';
+    /*
+      THE SENTENCE IS THE SQL, READ ALOUD. The talent endpoints window on
+      COALESCE(published_date, DATE(captured_at)), so a signal whose source
+      carries no date is placed by the day we captured it. Measured on the
+      delivered edition of 2026-09-04: 4 of its 108 rows were news reports with
+      no published date, and the sentence said all 108 were counted by the date
+      the source published. A basis that omits one of its own branches is a
+      wrong statement about the rows it covers, however few they are.
+    */
+    return 'counted by the date the source published, or, for a job-board '
+         . 'reading or a source that carries no date, the day we captured it';
 }
 
 /**
@@ -3896,7 +3960,7 @@ function alt_digest_talent_rank($rows, $limit) {
             $latin = preg_match_all('/\p{Latin}/u', $head);
             if ($letters > 0 && $latin < 0.5 * $letters) continue;
         }
-        $jobs = isset($r['headcount']) ? (int) $r['headcount'] : 0;
+        $jobs = alt_digest_talent_roles_named($r);
         // The endpoint's position is the tiebreak, so a row we cannot rank
         // keeps exactly the standing the tracker itself gave it.
         $keyed[] = array($jobs > 0 ? 1 : 0, $jobs, -$index, $row);
@@ -4479,6 +4543,12 @@ function alt_digest_indeed_block() {
     $n_asof   = alt_digest_date_range($national['as_of'] ?? '', $national['as_of'] ?? '');
     $n_month  = is_array($national['month_ago'] ?? null) ? $national['month_ago'] : array();
     $src_name = trim((string) ($national['source_name'] ?? '')) ?: 'Indeed Hiring Lab';
+    // The AI share is a DIFFERENT dataset with its own name (the sibling's
+    // build_indeed_index.py writes one into each block); the organisation
+    // behind both is the top-level `source`. See the source line below.
+    $ai_src   = trim((string) ($ai['source_name'] ?? ''));
+    $org      = trim((string) ($data['source'] ?? '')) ?: 'Indeed Hiring Lab';
+    $sa       = !empty($national['seasonally_adjusted']);
 
     $share    = isset($ai['share_pct']) && is_numeric($ai['share_pct']) ? (float) $ai['share_pct'] : null;
     $ai_asof  = alt_digest_date_range($ai['as_of'] ?? '', $ai['as_of'] ?? '');
@@ -4493,7 +4563,11 @@ function alt_digest_indeed_block() {
       renders only when the source carried the figure, and the "up/down vs a
       month earlier" clause only when it carried a month-ago reading.
     */
-    $index_txt = 'The Indeed US Job Postings Index (' . $baseline . ') stood at '
+    // "Seasonally adjusted" rides with the level when the data says so: the
+    // published CSV carries an SA and an NSA column (106.42 NSA against 101.91
+    // SA on 2026-08-21), so a bare level names neither.
+    $index_txt = 'The Indeed US Job Postings Index (' . $baseline
+               . ($sa ? ', seasonally adjusted' : '') . ') stood at '
                . number_format($index, 2, '.', ',')
                . ($n_asof !== '' ? ' as of ' . $n_asof : '');
     if ($vs_base !== null) {
@@ -4513,6 +4587,7 @@ function alt_digest_indeed_block() {
 
     // The AI-share sentence, only when the AI series is present at all.
     $share_txt = '';
+    $a_sig = null;
     if ($share !== null) {
         $share_txt = 'AI-related terms appeared in ' . number_format($share, 2, '.', ',')
                    . '% of US postings' . ($ai_asof !== '' ? ' as of ' . $ai_asof : '');
@@ -4525,16 +4600,42 @@ function alt_digest_indeed_block() {
         $share_txt .= '.';
     }
 
-    $context = 'External context from ' . $src_name . ', not the tracker\'s own '
+    $context = 'External context from ' . $org . ', not the tracker\'s own '
              . 'records. These figures describe the whole US labour market and are '
              . 'not counted in the totals above.';
 
     // The source/as-of line. Names the licence and both "as of" dates, because
     // the AI series lags the index by a few weeks and a reader has to see how
     // current each half of the backdrop is.
-    $source_line = 'Source: ' . $src_name . ' (CC BY 4.0).'
-                 . ($n_asof !== '' ? ' Index as of ' . $n_asof . '.' : '')
-                 . ($share !== null && $ai_asof !== '' ? ' AI share as of ' . $ai_asof . '.' : '');
+    /*
+      EACH SERIES NAMED BY ITS OWN SOURCE, because they are two datasets. The
+      index is Hiring Lab's Job Postings Tracker and the AI share is Hiring
+      Lab's AI Tracker. This line used to attribute both to whichever name the
+      NATIONAL block carried, so the delivered edition of 2026-09-04 read
+      "Source: Indeed Hiring Lab Job Postings Tracker ... AI share as of July
+      31" and credited the AI series to the wrong dataset. CC BY 4.0 asks for
+      attribution to the work used; the wrong work is not attribution.
+
+      AND THE ARITHMETIC IS OURS, SAID SO. The licence also asks that changes
+      be indicated. The level and the share are printed as published; the
+      "points above the baseline" and "from a month earlier" clauses are our
+      subtraction on the published series, and the docblock above claimed the
+      footer said so when it did not. Now it does, and only when a comparison
+      was actually printed.
+    */
+    if ($share !== null && $ai_src !== '' && strcasecmp($ai_src, $src_name) !== 0) {
+        $source_line = 'Sources: ' . $src_name . ' for the index and ' . $ai_src
+                     . ' for the AI share, both published by ' . $org
+                     . ' under CC BY 4.0.';
+    } else {
+        $source_line = 'Source: ' . $src_name . ' (CC BY 4.0).';
+    }
+    $source_line .= ($n_asof !== '' ? ' Index as of ' . $n_asof . '.' : '')
+                  . ($share !== null && $ai_asof !== '' ? ' AI share as of ' . $ai_asof . '.' : '');
+    if ($vs_base !== null || $n_sig !== null || $a_sig !== null) {
+        $source_line .= ' The comparisons against the baseline and against a '
+                      . 'month earlier are our own arithmetic on the published series.';
+    }
 
     $html = '<h3>Jobs in: US hiring demand</h3>'
           . '<p data-alt="note">' . esc_html($context) . '</p>'
@@ -6794,8 +6895,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     $html = '<h2>Talent Intelligence Tracker</h2>'
           . '<p data-alt="stat">' . esc_html($totalf) . '</p>'
           . '<p data-alt="unit">'
-          . esc_html(alt_digest_verb($total, 'new ' . $signal_noun,
-                                             'new ' . $signal_noun . 's'))
+          . esc_html(alt_digest_verb($total, $signal_noun, $signal_noun . 's'))
           . '</p>'
           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
     /*
@@ -6848,7 +6948,15 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                . 'listed more active postings than our previous scan, not that '
                . 'it confirmed new openings.';
     $html .= '<p data-alt="note">' . esc_html($unit_note) . '</p>';
-    $lede = alt_digest_count($total, 'new ' . $signal_noun) . ', ' . $scope;
+    /*
+      NOT "NEW". A daily edition covers yesterday and today (alt_digest_window,
+      deliberate), so every signal dated yesterday was also in yesterday's
+      edition, and "108 new signals" was a claim the window could not support
+      for roughly half of them. The subject line never said "new"; the unit
+      line and this lede did. The figure is unchanged: it is the count of
+      signals dated in the window, which is what it always was.
+    */
+    $lede = alt_digest_count($total, $signal_noun) . ', ' . $scope;
     // The same rule as the layoff section, same reason. This lede happens to
     // fit today; composing the snippet anyway means it keeps fitting when
     // somebody adds a clause to the body, which is exactly how the other one
@@ -6918,6 +7026,31 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
             . 'measurement rather than a figure the employer filed.';
     $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
     $text .= $detail . "\n";
+
+    /*
+      PROVISIONAL, AND THE LAYOFF SECTION HAS SAID SO FOR WEEKS. Measured on
+      2026-09-04 by re-reading the previous edition's window (2026-09-02 to
+      2026-09-03) one day after it was sent: the edition said 111 signals from
+      110 companies; the same window read 207 from 205, because the collectors
+      keep capturing signals for days after the date they carry. Every figure
+      in the edition was right when it was read (the 111 reproduces exactly
+      from the rows' own captured_at stamps), and a reader who opened the link
+      a day later met a number nearly twice as large with nothing in the email
+      saying that would happen. The overlap sentence is EARNED BY THE WINDOW,
+      not granted by the tier: it prints only for the two-day daily pair, the
+      way a week label is earned only by a Monday-to-Sunday span (2.20.144).
+    */
+    $ft_p = strtotime($from . ' 00:00:00 UTC');
+    $tt_p = strtotime($to . ' 00:00:00 UTC');
+    $provisional = 'Figures for this window are provisional: signals keep '
+                 . 'arriving for days after the date they carry, so the '
+                 . 'tracker will show more for the same dates later.';
+    if ($ft_p !== false && $tt_p !== false && ($tt_p - $ft_p) === DAY_IN_SECONDS) {
+        $provisional .= ' A daily edition covers yesterday and today, so a '
+                      . 'signal dated yesterday was also in yesterday\'s edition.';
+    }
+    $html .= '<p data-alt="note">' . esc_html($provisional) . '</p>';
+    $text .= $provisional . "\n";
 
     /*
       THE MEASURED HIRING SHARE, PRINTED WHERE IT ALWAYS WAS. The reading
@@ -7114,6 +7247,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 } else {
                     $line = $co . ': ' . $head;
                 }
+                $line = alt_digest_plain_dashes($line);
                 if ($line === '') continue;
                 // The signal's own publication date, which is also what the
                 // since/until window selects on. Some signals reach us with
@@ -7130,7 +7264,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                   jobs", so it is omitted rather than printed as a measurement.
                 */
                 $facts = array();
-                $jobs = isset($row['headcount']) ? (int) $row['headcount'] : 0;
+                $jobs = alt_digest_talent_roles_named($row);
                 /*
                   AND THE UNIT THAT NUMBER IS IN. A board reading's headcount
                   is a net rise in postings the employer's board DISPLAYED
@@ -7166,7 +7300,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 // derived from the URL and never guessed: a row that carries
                 // no source name prints no source, in the same way a row that
                 // carries no date prints no date.
-                $outlet = trim((string) ($row['source_name'] ?? ''));
+                $outlet = alt_digest_plain_dashes(trim((string) ($row['source_name'] ?? '')));
                 if ($outlet !== '') $facts[] = $outlet;
                 /*
                   A DATE MEANS TWO DIFFERENT THINGS ON THE TWO KINDS OF ROW,
@@ -7251,10 +7385,11 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 // same carelessness as "1 jobs" and lands on the same reader.
                 $basis = ($undated === 1)
                     ? ('One signal listed ' . $span . ' shows no date, because the '
-                       . 'source carries none. We do not substitute the day we captured it.')
+                       . 'source carries none; the window placed it by the day we '
+                       . 'captured it.')
                     : ($undated . ' signals listed ' . $span . ' show no date, because '
-                       . 'the source carries none. We do not substitute the day we '
-                       . 'captured them.');
+                       . 'the source carries none; the window placed them by the day '
+                       . 'we captured them.');
                 $html .= '<p data-alt="note">' . esc_html($basis) . '</p>';
                 $text .= $basis . "\n";
             }

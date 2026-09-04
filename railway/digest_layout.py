@@ -316,6 +316,24 @@ _STYLE_ATTR = re.compile(r"\s*style\s*=\s*(\"[^\"]*\"|'[^']*')", re.I)
 _DEAD_ATTR = re.compile(r"\s*(class|id)\s*=\s*(\"[^\"]*\"|'[^']*')", re.I)
 _VARIANT_ATTR = re.compile(r"\s*data-alt\s*=\s*\"([^\"]*)\"", re.I)
 
+EM_DASH = "\u2014"
+
+
+def plain_dashes(text) -> str:
+    """No em-dash reaches a reader, whatever a quoted headline carried.
+
+    The house rule is zero em-dashes in anything a reader sees, and every
+    string this repo types already obeys it. A section's text is not all
+    ours: the talent block quotes headlines as their outlets wrote them, and
+    an outlet may write an em-dash. This is the last hand the message passes
+    through before the relay, so it is where the rule is made true of the
+    whole message rather than of our part of it. A spaced hyphen is the
+    replacement the rest of the copy already uses for the same job. It
+    produces no number and changes no figure, which is this module's standing
+    rule.
+    """
+    return re.sub(r"\s*\u2014\s*", " - ", str(text or ""))
+
 
 def restyle(fragment: str) -> str:
     """Put every rule this fragment relies on onto the element itself.
@@ -1252,7 +1270,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
     """The whole message. Inline styles only, tables only, no style block."""
     rows = []
     for index, part in enumerate(parts):
-        section_html = part[1]
+        section_html = plain_dashes(part[1])
         padding = "22px 28px 8px" if index else "24px 28px 8px"
         rows.append(_cell(restyle(section_html), padding=padding,
                           top_rule=bool(index)))
@@ -1282,7 +1300,8 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
     padding = "&zwnj;&nbsp;" * 60
     hidden = (f'<div style="display:none;max-height:0;max-width:0;'
               f'overflow:hidden;opacity:0;font-size:1px;line-height:1px;'
-              f'color:{PAGE_BG};mso-hide:all;">{escape(preheader)}{padding}</div>')
+              f'color:{PAGE_BG};mso-hide:all;">'
+              f'{escape(plain_dashes(preheader))}{padding}</div>')
 
     return (
         "<!doctype html>"
@@ -1292,7 +1311,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         '<meta name="color-scheme" content="light dark">'
         '<meta name="supported-color-schemes" content="light dark">'
-        f"<title>{escape(subject)}</title>"
+        f"<title>{escape(plain_dashes(subject))}</title>"
         "</head>"
         f'<body style="margin:0;padding:0;background-color:{PAGE_BG};'
         f'color:{INK};font-family:{FONT};">'
@@ -1307,7 +1326,8 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
           f'max-width:{WIDTH_PX}px;border-collapse:collapse;'
           f'background-color:{CARD_BG};border:1px solid {RULE};'
           f'border-radius:10px;">'
-        + _cell(_masthead(kicker, notice), padding="24px 28px 18px")
+        + _cell(_masthead(plain_dashes(kicker), plain_dashes(notice)),
+                padding="24px 28px 18px")
         + "".join(rows)
         + "</table></td></tr></table></body></html>")
 
@@ -1355,16 +1375,16 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     thin = "-" * TEXT_WIDTH
     head = [BRAND.upper()]
     if kicker:
-        head.append(kicker)
+        head.append(plain_dashes(kicker))
     # THE SAME SENTENCE AS THE HTML PART, FROM THE SAME PLACE. A text reader is
     # owed the explanation for exactly the same reason.
     if notice:
-        head.append(notice)
+        head.append(plain_dashes(notice))
     body = []
     for index, part in enumerate(parts):
         if index:
             body.append(thin)
-        body.append(_reflow(part_text(part)))
+        body.append(_reflow(plain_dashes(part_text(part))))
     # THE SAME SENTENCES AS THE HTML PART, FROM THE SAME PLACE. For a text
     # only client and for every screen reader fallback this IS the message, so
     # it may not be a shorter or older version of what everyone else was told.
