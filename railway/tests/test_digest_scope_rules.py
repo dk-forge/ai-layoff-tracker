@@ -1575,9 +1575,9 @@ class TheDominantEventIsSurfacedUpTop(unittest.TestCase):
         text = compose(fixture)["text"]
         line = [l for l in text.splitlines() if l.startswith("One entry dominated")]
         self.assertTrue(line, "the sole AI driver was not surfaced")
-        self.assertIn("account for all of the week's AI-attributed cuts", line[0])
-        self.assertIn("This week's AI attribution came from a single employer",
-                      text)
+        self.assertIn("account for all of the AI-attributed cuts in that window",
+                      line[0])
+        self.assertIn("the AI attribution came from a single employer", text)
 
     def test_the_share_never_mixes_tiers(self):
         """An ANNOUNCED entry sits outside the verified headline, so its share is

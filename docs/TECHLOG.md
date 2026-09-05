@@ -1,3 +1,82 @@
+## 2026-09-06 - the nine editions composed from live payloads: every figure reproduced, the talent section had never archived, and two sentences were typed (2.20.171, branch, PR)
+
+**Class:** silent-stop (the archive), derived-value-typed-by-hand (the two sentences)
+**Guard:** railway/tests/test_digest_nine_editions.py (each fix reverted in
+turn reddens its test: the allowlist keys, the dominance sentence, the caption
+count); railway/tests/test_digest_scope_rules.py updated for the reworded AI
+driver sentence
+
+**What was done.** All nine reader-facing editions (daily, weekly, monthly x
+layoff, talent, articles) were composed through the real composers in
+`railway/tests/fixtures/digest_compose_harness.php` against payloads fetched
+live on 2026-09-06 from `/layoffs/v1/aggregate`, `/talent/v1/aggregate`,
+`/talent/v1/query` and `/wp/v2/posts`, over the composers' own windows
+(daily 2026-09-05/06, weekly 2026-08-24 to 30, month to date 2026-09-01 to 05),
+with the tier passed as the fourth argument the way `alt_edition_capture`
+passes it. Eight composed; weekly articles returned null because no post was
+published in Week 35, which is the documented "no section" branch and not a
+fault. Zero em-dashes in every html and text part. Every tracker link
+carries `date_basis`. The #259 sentences hold on every tier where they apply.
+
+**Every figure reproduced.** Worldwide verified = `jobs - announced_jobs` on
+all three tiers (1,444; 7,738; 75,562); the US figure is the verified column
+of the United States tuple; the regions sum to the worldwide figure (weekly
+3,361+1,822+1,234+857+70+394; monthly 7,916+59,039+1,444+815+98+3,600+2,650);
+source-type lines sum to it; the industry lines plus "more below" plus "no
+industry" sum to it; YTD 607,014 / 525,495 / 605,625 and the AI shares 11% /
+12% / 11%; the talent headline, verified, hiring and the three category counts
+match their own filtered calls on every tier (14/0/4/3/2/2; 629/222/134/
+363/130/16; 504/41/54/250/109/46); the biggest-cuts five match the leaders.
+The monthly masthead and the Indeed backdrop land on the monthly layoff
+section and nowhere else; the backdrop sits on the daily and weekly talent
+sections. The Indeed figures were fed from the sibling plugin's shipped seed
+(index 101.79 as of 2026-08-14), because the live option has no public route;
+whether production holds a fresher reading is UNKNOWN from here.
+
+**What was wrong, and the fix.**
+1. *The talent section has never archived.* `alt_edition_public_safe` refuses
+   any query key off its allowlist, and the talent links carry `since`,
+   `until`, `pillar` and `funding`, none of which was listed. 2.20.169
+   unlinked the off-host sources and said the talent section archived again;
+   on the live composition it was refused at the next rule on all three tiers,
+   to error_log, exactly as before, and the guard for 2.20.169 had only fed
+   the layoff section through the gate. The four keys the talent URL builder
+   mints are on the list now; `direction`, a real filter no link carries,
+   stays refused and the test says so.
+2. *"This week the worldwide total is one employer's story"* on the daily of
+   2026-09-05/06 (Jaguar Land Rover, 73% of the announced-inclusive total).
+   The dominance block composes for every tier and both interpretation
+   sentences, and the "of the week's AI-attributed cuts" clause, were typed as
+   a week. They carry the window now.
+3. *"The 3 newest of 12 posts we published on September 5 and 6, 2026"* when
+   the blog published 43 that day. The query stops at 12 and the caption
+   printed the ceiling as the count. A second ids-only query with no ceiling
+   counts the window; the caption uses it and stays a floor when a fetched row
+   is refused. Both harness `get_posts` stubs now honour `numberposts` and
+   `fields => 'ids'`; the compose harness returned every fixture post whatever
+   the ceiling said, which is why no earlier articles test could see this.
+
+**What went out this week (from the "Send email digest" runs, 2026-08-30 to
+09-05).** One daily every day, to one eligible recipient (two on 09-05),
+talent section only until 09-05 when articles joined it; the layoff section
+composed every day and reached nobody because no eligible recipient holds
+that list. The weekly of 08-31 (Week 35) composed layoff and talent and sent
+to 0 eligible. No monthly went out and none is scheduled: the workflow has
+daily and weekly crons only and `digest_slot` schedules no monthly tick until
+the tier is armed. The 11:00 UTC twin of every daily printed "this tick is not
+ours today ... Nothing was read, built, sent or stamped."
+
+**Live-data observations, NOT fixed here (corrections are the owner's).**
+(a) Volkswagen appears twice in the month to date: "Volkswagen (VW)" 50,000
+announced on 09-04 and "Volkswagen" 50,000 verified on 09-03, so Germany reads
+100,000 all-tier. (b) Jaguar Land Rover's 4,000 announced cuts of 09-05 are
+stored with country United States. (c) The SAG pair of 08-30 (TECHLOG
+2026-09-04) is still two rows. (d) "Of the 32 complete weeks of 2026 measured
+to August 16, 16 recorded none" remains a dated, typed sentence in every
+edition; it is true as dated and not re-derived here.
+
+$0.00 spent: no model call, no email sent.
+
 ## 2026-09-05 - security review: a fork could run a shell holding RESEND_API_KEY, and four public-route hardenings (2.20.170, branch, PR)
 
 **Class:** novel

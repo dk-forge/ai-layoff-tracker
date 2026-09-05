@@ -251,7 +251,20 @@ function alt_edition_allowed_query_keys() {
     return array('from', 'to', 'date_basis', 'country', 'country_basis', 'state',
                  'industry', 'sources', 'reasons', 'roles', 'company', 'keyword',
                  'min_jobs', 'q', 'years', 'quarters', 'months', 'ai', 'period',
-                 'scope', 'view', 'page', 'sort');
+                 'scope', 'view', 'page', 'sort',
+                 /*
+                   THE TALENT SECTION'S OWN KEYS. alt_digest_talent_url() mints
+                   exactly these four beside `company`: the window is `since` and
+                   `until` (the talent plugin's spelling, not `from` and `to`),
+                   and "Other talent activity" narrows by `pillar` or `funding`.
+                   Until 2.20.171 none of the four was here, so every talent
+                   section composed since the category links landed was refused
+                   at this rule and no daily, weekly or monthly archive has ever
+                   carried one. 2.20.169 unlinked the off-host sources and said
+                   the talent section archived again; it reached this rule next
+                   and stopped there, in error_log, like before.
+                 */
+                 'since', 'until', 'pillar', 'funding');
 }
 
 /**

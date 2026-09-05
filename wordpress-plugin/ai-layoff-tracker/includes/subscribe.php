@@ -4244,7 +4244,7 @@ function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
     if ($ai_driver) {
         $all_or_most = ($jobs >= (int) $ai_verified_jobs) ? 'all' : 'most';
         $event .= ', and account for ' . $all_or_most
-                . ' of the week\'s AI-attributed cuts';
+                . ' of the AI-attributed cuts in that window';
     }
     $event .= '.';
 
@@ -4252,12 +4252,17 @@ function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
     // What changed this week beyond the numbers: whether the total is one
     // employer's decision or a broad shift. Three cases, each read off the same
     // two facts the event line used.
+    // THE WINDOW, NOT "THIS WEEK". This block is composed for all three
+    // tiers, and until 2.20.171 both sentences were typed as a week: a daily
+    // edition dominated by one announcement read "This week the worldwide
+    // total is one employer's story" over a two-day window (2026-09-05/06,
+    // live). $range is the window the event line already names.
     if ($concentrated) {
-        $interp = 'This week the worldwide total is one employer\'s story '
-                . 'rather than a broad shift across many.';
+        $interp = 'Over ' . $range . ', the worldwide total is one employer\'s '
+                . 'story rather than a broad shift across many.';
     } elseif ($ai_driver) {
-        $interp = 'This week\'s AI attribution came from a single employer, '
-                . 'not a broad shift across many.';
+        $interp = 'Over ' . $range . ', the AI attribution came from a single '
+                . 'employer, not a broad shift across many.';
     } else {
         $interp = '';
     }
@@ -7783,13 +7788,41 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
     ));
     if (!is_array($posts) || !$posts) return null;
 
+    /*
+      THE TRUE TOTAL IS COUNTED, NOT READ OFF THE CEILING. The query above
+      stops at 12, and the caption below says "The 3 newest of N posts". On
+      2026-09-05 the blog published 43 posts and the composed daily read "of
+      12": the fetch ceiling printed as the count of what we published. This
+      second query carries the same window and no ceiling, and asks for ids
+      only, so it costs a count and not 43 bodies. When it cannot answer the
+      caption falls back to what was fetched, which is a floor and never more
+      than the truth.
+    */
+    $all_ids = get_posts(array(
+        'post_type'           => 'post',
+        'post_status'         => 'publish',
+        'numberposts'         => -1,
+        'fields'              => 'ids',
+        'has_password'        => false,
+        'ignore_sticky_posts' => true,
+        'suppress_filters'    => false,
+        'date_query'          => array(array(
+            'column'    => 'post_date_gmt',
+            'after'     => $from,
+            'before'    => $to . ' 23:59:59',
+            'inclusive' => true,
+        )),
+    ));
+    $published = is_array($all_ids) ? count($all_ids) : null;
+
     $surface = home_url('/ai-layoff-tracker/');
     $items = array();
+    $skipped = 0;
     foreach ($posts as $post) {
         $title = wp_strip_all_tags(get_the_title($post));
         $link = (string) get_permalink($post);
-        if ($title === '' || !alt_digest_link_allowed($link)) continue;
-        if (strpos($link, $surface) === 0) continue;   // a surface, not an article
+        if ($title === '' || !alt_digest_link_allowed($link)) { $skipped++; continue; }
+        if (strpos($link, $surface) === 0) { $skipped++; continue; }   // a surface, not an article
         /*
           THE STANDFIRST, AND WHY THE FALLBACK IS NOT A GUESS.
 
@@ -7864,6 +7897,12 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       with figures. "Newest first" is what it is.
     */
     $found = count($items);
+    // The counted total, less whatever the loop refused among the fetched
+    // rows. A refusal past the ceiling cannot be seen, so this is exact when
+    // nothing was refused and a floor otherwise; it is never above the truth.
+    if ($published !== null && ($published - $skipped) > $found) {
+        $found = $published - $skipped;
+    }
     $items = array_slice($items, 0, 3);
     $range = alt_digest_date_range($from, $to);
     // The prepositional form, because every clause here ends in the window.
