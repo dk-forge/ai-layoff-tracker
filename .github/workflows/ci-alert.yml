@@ -67,7 +67,14 @@ jobs:
     # The name check is a recursion guard. GitHub does not re-trigger
     # workflow_run for a run this token started, but a loop here would mail in
     # a loop, and that is not a failure mode worth discovering empirically.
+    # FORK BOUNDARY (2026-09-05). `workflows: ['*']` also fires for a fork's
+    # pull_request run, and this job holds WP_API_KEY, RESEND_API_KEY and a
+    # contents:write token. The run's workflow NAME and HEAD BRANCH are the
+    # fork author's to choose, so they never enter a shell as `${{ }}` text
+    # (they ride in `env:` below and are quoted) and a run from another
+    # repository is not admitted at all.
     if: >-
+      github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.name != 'CI failure alert' &&
       contains(fromJSON('["failure","timed_out","startup_failure","cancelled","success"]'),
                github.event.workflow_run.conclusion)
@@ -127,14 +134,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json
+          WR_RUN_ID: ${{ github.event.workflow_run.id }}
+          WR_NAME: ${{ github.event.workflow_run.name }}
+          WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WR_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_EVENT: ${{ github.event.workflow_run.event }}
+          WR_URL: ${{ github.event.workflow_run.html_url }}
         run: |
           python3 railway/ci_alert.py \
-            --run-id     "${{ github.event.workflow_run.id }}" \
-            --workflow   "${{ github.event.workflow_run.name }}" \
-            --conclusion "${{ github.event.workflow_run.conclusion }}" \
-            --branch     "${{ github.event.workflow_run.head_branch }}" \
-            --event      "${{ github.event.workflow_run.event }}" \
-            --run-url    "${{ github.event.workflow_run.html_url }}"
+            --run-id     "$WR_RUN_ID" \
+            --workflow   "$WR_NAME" \
+            --conclusion "$WR_CONCLUSION" \
+            --branch     "$WR_BRANCH" \
+            --event      "$WR_EVENT" \
+            --run-url    "$WR_URL"
 
       # Only does anything when the step above could not deliver. `!cancelled()`
       # rather than the default success gate, because the envelope is worth
