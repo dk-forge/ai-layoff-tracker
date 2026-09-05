@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.169
+ * Version: 2.20.170
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.169');
+define('ALT_VERSION', '2.20.170');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -262,7 +262,7 @@ function alt_next_step_tool_url() {
 
 function alt_output_jsonld($blocks) {
     foreach ((array) $blocks as $b) {
-        echo '<script type="application/ld+json">' . wp_json_encode($b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+        echo '<script type="application/ld+json">' . wp_json_encode($b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
     }
 }
 
@@ -1450,7 +1450,7 @@ function alt_seo_head() {
         ),
     );
 
-    echo "\n<script type=\"application/ld+json\">" . wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    echo "\n<script type=\"application/ld+json\">" . wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 
     // FAQ rich results + the same Q/A rendered server-side on the page (so
     // crawlers and LLM bots see real numbers without executing JavaScript).
@@ -1465,7 +1465,7 @@ function alt_seo_head() {
             );
         }, alt_faq_items()),
     );
-    echo "<script type=\"application/ld+json\">" . wp_json_encode($faq_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    echo "<script type=\"application/ld+json\">" . wp_json_encode($faq_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 
     // Defer plain meta/OG tags to a dedicated SEO plugin when one is active.
     // The live page was emitting TWO og:description tags (theirs at 184 chars,
