@@ -121,15 +121,20 @@ function get_posts($args = array()) {
     usort($pool, function ($a, $b) {
         return strcmp((string) ($b->post_date_gmt ?? ''), (string) ($a->post_date_gmt ?? ''));
     });
+    // `fields => 'ids'` answers with ids and `numberposts => -1` lifts the
+    // ceiling, as the real function does: the composer counts the window that
+    // way since 2.20.171, and a stub that ignored either would hand the count
+    // query the ceiling back.
+    $ids_only = (($args['fields'] ?? '') === 'ids');
     $found = array();
-    foreach ($pool as $p) {
+    foreach ($pool as $i => $p) {
         if (($p->post_type ?? 'post') !== $type) continue;
         if (($p->post_status ?? 'publish') !== $status) continue;
         $when = (string) ($p->post_date_gmt ?? '');
         if ($after !== '' && $when < $after) continue;
         if ($before !== '' && $when > $before) continue;
-        $found[] = $p;
-        if (count($found) >= $limit) break;
+        $found[] = $ids_only ? ($p->ID ?? ($i + 1)) : $p;
+        if ($limit > 0 && count($found) >= $limit) break;
     }
     return $found;
 }

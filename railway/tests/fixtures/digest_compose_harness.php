@@ -289,6 +289,14 @@ function rest_do_request($req) {
   list spanning two months. A stub that is more generous than the function it
   stands in for makes the assertion about the wrong thing.
 */
+/*
+  THE CEILING IS HONOURED TOO, and so is `fields => 'ids'`. This stub returned
+  every fixture post whatever `numberposts` said, so a caption that printed the
+  fetch ceiling as the number of posts published could never be caught here:
+  the stub was kinder than get_posts(), which stops at the ceiling. It now
+  stops where production stops, and answers an ids-only query with ids, which
+  is how the composer counts what it did not fetch.
+*/
 function get_posts($args = array()) {
     global $FIXTURE;
     $after = '';
@@ -297,11 +305,15 @@ function get_posts($args = array()) {
         $after = substr((string) ($clause['after'] ?? ''), 0, 10);
         $before = substr((string) ($clause['before'] ?? ''), 0, 10);
     }
+    $limit = (int) ($args['numberposts'] ?? 5);
+    $ids_only = (($args['fields'] ?? '') === 'ids');
     $out = array();
-    foreach (($FIXTURE['posts'] ?? array()) as $p) {
+    foreach (($FIXTURE['posts'] ?? array()) as $i => $p) {
         $day = substr((string) ($p['date'] ?? ''), 0, 10);
         if ($after !== '' && $day !== '' && $day < $after) continue;
         if ($before !== '' && $day !== '' && $day > $before) continue;
+        if ($limit > 0 && count($out) >= $limit) break;
+        if ($ids_only) { $out[] = $i + 1; continue; }
         $o = new stdClass();
         $o->post_title = (string) ($p['title'] ?? '');
         $o->post_excerpt = (string) ($p['excerpt'] ?? '');
