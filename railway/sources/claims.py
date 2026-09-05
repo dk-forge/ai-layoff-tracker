@@ -1,5 +1,5 @@
 """
-US unemployment-insurance (UI) claims puller — MACRO CONTEXT layer.
+US unemployment-insurance (UI) claims puller, the MACRO CONTEXT layer.
 
 WHAT THIS IS
 ------------
@@ -10,9 +10,9 @@ backs a *background macro-context* layer on the AI Layoff Tracker: monthly bars
 state, drawn BEHIND our documented layoff counts.
 
 Series pulled (all weekly, seasonally adjusted, published by US DOL/ETA):
-  - ICSA  — national INITIAL claims (a weekly FLOW: new filings that week)
-  - CCSA  — national CONTINUED claims (a weekly STOCK: people still claiming)
-  - <ST>ICLAIMS — per-state initial claims where a keyless CSV resolves
+  - ICSA: national INITIAL claims (a weekly FLOW: new filings that week)
+  - CCSA: national CONTINUED claims (a weekly STOCK: people still claiming)
+  - <ST>ICLAIMS: per-state initial claims where a keyless CSV resolves
                   (e.g. CAICLAIMS, TXICLAIMS, NYICLAIMS). NOTE: the state
                   ICLAIMS family on FRED is NOT seasonally adjusted (NSA).
 
@@ -40,7 +40,7 @@ own axis / visual layer with an explicit "context, not our data" label.
 
 Dependencies: `requests` + stdlib only (csv, datetime, io). No API key, no
 secrets. Fail-soft: network / parse errors are captured into an "errors" list
-and the function returns whatever it managed to fetch — it never raises.
+and the function returns whatever it managed to fetch; it never raises.
 """
 import csv
 import io
@@ -212,7 +212,7 @@ def build_claims_payload(months_back=DEFAULT_MONTHS_BACK, include_states=True,
       "series": {"initial": "ICSA", "continued": "CCSA",
                  "state_pattern": "<ST>ICLAIMS"},
       "meta": {
-        "label": "Macro context — US unemployment-insurance claims. "
+        "label": "Macro context: US unemployment-insurance claims. "
                  "Not layoffs we verified; never summed into tracker counts.",
         "aggregation": {"initial": "monthly sum (flow)",
                         "continued": "monthly average (stock)"},
@@ -265,7 +265,7 @@ def build_claims_payload(months_back=DEFAULT_MONTHS_BACK, include_states=True,
         },
         "meta": {
             "label": (
-                "Macro context — US unemployment-insurance claims. "
+                "Macro context: US unemployment-insurance claims. "
                 "Not layoffs we verified; never summed into tracker counts."
             ),
             "aggregation": {
@@ -287,11 +287,11 @@ if __name__ == "__main__":
     payload = build_claims_payload()
 
     nat = payload["national"]
-    print("\nNational INITIAL claims (ICSA) — monthly SUM, last 6 months:")
+    print("\nNational INITIAL claims (ICSA), monthly SUM, last 6 months:")
     for pt in nat.get("initial", [])[-6:]:
         print(f"  {pt['month']}: {pt['value']:>12,}")
 
-    print("\nNational CONTINUED claims (CCSA) — monthly AVG, last 6 months:")
+    print("\nNational CONTINUED claims (CCSA), monthly AVG, last 6 months:")
     for pt in nat.get("continued", [])[-6:]:
         print(f"  {pt['month']}: {pt['value']:>12,}")
 
