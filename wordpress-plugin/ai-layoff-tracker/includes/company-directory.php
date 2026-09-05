@@ -470,7 +470,7 @@ function alt_company_directory_dataset_schema() {
     if ($data['countries']) {
         $node['spatialCoverage'] = array_values($data['countries']);
     }
-    echo '<script type="application/ld+json">' . wp_json_encode($node, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    echo '<script type="application/ld+json">' . wp_json_encode($node, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 }
 add_action('wp_head', 'alt_company_directory_dataset_schema', 22);
 
@@ -493,7 +493,7 @@ function alt_company_directory_breadcrumbs() {
             array('@type' => 'ListItem', 'position' => 3, 'name' => $data['company']['display_name'] . ' layoffs', 'item' => $data['url']),
         ),
     );
-    echo '<script type="application/ld+json">' . wp_json_encode($crumbs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    echo '<script type="application/ld+json">' . wp_json_encode($crumbs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 }
 add_action('wp_head', 'alt_company_directory_breadcrumbs', 21);
 

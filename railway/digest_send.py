@@ -90,7 +90,7 @@ import digest_slot
 import http_retry
 from digest_transport import (ABSENT, OK, REJECTED, UNKNOWN,  # noqa: F401
                               CredentialCheck, DigestPolicyError, Message,
-                              TransportError, resolve_transport,
+                              TransportError, _scrub, resolve_transport,
                               sender_identity)
 
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
@@ -577,12 +577,12 @@ def send_all(payload: dict, transport, from_addr: str, reply_to: str,
                 time.sleep(1.5)
                 transport.send(message)
             except Exception as retry_exc:  # noqa: BLE001
-                print(f"::warning::delivery failed for {label}: {retry_exc}")
-                failures.append((label, f"transport: {retry_exc}"))
+                print(f"::warning::delivery failed for {label}: {_scrub(retry_exc)}")
+                failures.append((label, f"transport: {_scrub(retry_exc)}"))
                 continue
         except Exception as exc:  # noqa: BLE001
-            print(f"::warning::unexpected failure for {label}: {exc}")
-            failures.append((label, f"unexpected: {exc}"))
+            print(f"::warning::unexpected failure for {label}: {_scrub(exc)}")
+            failures.append((label, f"unexpected: {_scrub(exc)}"))
             continue
         sent_ids.append(int(recipient.get("id") or 0))
         if transport.sends and PAUSE_SECONDS > 0:

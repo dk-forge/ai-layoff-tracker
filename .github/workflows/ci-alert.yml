@@ -127,14 +127,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json
+          # workflow_run fires for a fork PR's own run too, and a fork chooses
+          # its workflow's `name:` and its branch name. Interpolating either
+          # with ${{ }} INSIDE `run:` pastes attacker text into a shell that
+          # holds RESEND_API_KEY and a contents:write token. Read them from
+          # env, where the shell sees a value and never a command
+          # (tests/test_workflow_script_injection.py).
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_WORKFLOW: ${{ github.event.workflow_run.name }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
         run: |
           python3 railway/ci_alert.py \
-            --run-id     "${{ github.event.workflow_run.id }}" \
-            --workflow   "${{ github.event.workflow_run.name }}" \
-            --conclusion "${{ github.event.workflow_run.conclusion }}" \
-            --branch     "${{ github.event.workflow_run.head_branch }}" \
-            --event      "${{ github.event.workflow_run.event }}" \
-            --run-url    "${{ github.event.workflow_run.html_url }}"
+            --run-id     "$RUN_ID" \
+            --workflow   "$RUN_WORKFLOW" \
+            --conclusion "$RUN_CONCLUSION" \
+            --branch     "$RUN_BRANCH" \
+            --event      "$RUN_EVENT" \
+            --run-url    "$RUN_URL"
 
       # Only does anything when the step above could not deliver. `!cancelled()`
       # rather than the default success gate, because the envelope is worth

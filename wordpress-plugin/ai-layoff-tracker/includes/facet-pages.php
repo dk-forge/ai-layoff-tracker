@@ -622,7 +622,7 @@ function alt_facet_breadcrumbs() {
             array('@type' => 'ListItem', 'position' => 3, 'name' => $dims[$data['dim']]['crumb'], 'item' => $data['url']),
             array('@type' => 'ListItem', 'position' => 4, 'name' => alt_facet_heading($data), 'item' => $data['url']),
         ),
-    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 }
 add_action('wp_head', 'alt_facet_breadcrumbs', 21);
 
@@ -654,7 +654,7 @@ function alt_facet_dataset_schema() {
     } elseif ($data['dim'] === 'state') {
         $node['spatialCoverage'] = $data['display'] . ', United States';
     }
-    echo '<script type="application/ld+json">' . wp_json_encode($node, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "</script>\n";
+    echo '<script type="application/ld+json">' . wp_json_encode($node, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 }
 add_action('wp_head', 'alt_facet_dataset_schema', 22);
 
