@@ -50,6 +50,27 @@ names (dormant).
 
 # Tech Log
 
+## 2026-09-05 - the CI alert and self-heal listeners admitted a fork's run with the fork's own text in their shell (branch)
+
+**Class:** wrong-scope-or-key
+
+**What broke.** `ci-alert.yml` listens to every completed run, including a
+fork's pull_request run of `tests`, and its job holds WP_API_KEY,
+RESEND_API_KEY and a contents:write token. The run's workflow name and head
+branch were spliced into `run:` as `${{ }}` text; both are the fork author's
+to choose. `self-heal.yml` gated on `head_branch == 'main'`, which a fork's
+own main satisfies, and then ran an agent with write tokens over a log the
+fork author wrote. Found by the sibling tracker's security review the same
+day; the file is shared by design.
+
+**Fix.** Both jobs now require
+`github.event.workflow_run.head_repository.full_name == github.repository`.
+The six workflow_run fields ride in `env:` and are quoted in the shell.
+
+**Guard:** `railway/tests/test_workflow_run_fork_boundary.py` (both listeners
+carry the same-repository condition; no workflow_run listener splices a name
+or branch into a run: block).
+
 ## 2026-09-05 - the public edition archive dropped the layoff and talent sections for eleven days and said so only in error_log (2.20.169, branch)
 
 **Class:** silent-stop

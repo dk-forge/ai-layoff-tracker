@@ -67,7 +67,10 @@ jobs:
     # The name check is a recursion guard. GitHub does not re-trigger
     # workflow_run for a run this token started, but a loop here would mail in
     # a loop, and that is not a failure mode worth discovering empirically.
+    # FORK BOUNDARY (2026-09-05): a fork's pull_request run also completes here;
+    # only this repository's own runs are admitted (see test_workflow_run_fork_boundary).
     if: >-
+      github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.name != 'CI failure alert' &&
       contains(fromJSON('["failure","timed_out","startup_failure","cancelled","success"]'),
                github.event.workflow_run.conclusion)
