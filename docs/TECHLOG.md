@@ -1,5 +1,35 @@
 # Tech Log
 
+## 2026-09-05 - the committed GDELT work ledger was a dead copy: the cron kept the ledger on the host and nothing brought it back (branch)
+
+**Class:** two-copies-drifted
+
+**What broke.** `ops_status [2f]` reported `railway/gdelt_work_ledger.json`
+NEVER_USED: one commit ever (2026-08-26, the one that added it), past the
+10-day grace, and `tests/test_state_liveness.py` failed on main for the same
+reason. Since 2026-08-28 the live cron reads and writes the ledger of
+unfinished GDELT windows through the keyed `/tracker-meta` endpoint, because an
+ephemeral container keeps no file, and the module comment says the file is
+"KEPT as well, because it is what a local run, a test and a reviewer read".
+Nothing wrote it. A reviewer read an empty ledger while the host held 77 slots
+after the 2026-09-04 22:00Z run.
+
+**Fix.** `railway/gdelt_ledger_harvest.py` reads through the same loader the
+cron uses (file unioned with the host copy) and writes the file without pushing
+back, so a stale checkout can never overwrite the host. The daily
+balance/harvest workflow runs it and commits the file with the other ledgers.
+An unreadable host leaves the file byte-identical and prints UNKNOWN, exit 0:
+a file that stops changing is the honest signal and `state_liveness` reads it;
+a red run for a host hiccup would only mail the owner about the thing it
+monitors. This PR carries the first real harvest, run against the live host.
+
+**Guard:** `railway/tests/test_gdelt_ledger_harvest.py` (the file gains the
+live slots; the script never pushes to the host; output carries counts and no
+slot key; an unreadable host changes nothing and says UNKNOWN; the workflow
+runs the step with the host credentials and commits the file). Mutation:
+removing the save call reddens the first test; removing the file from the
+workflow's `git add` reddens the last.
+
 ## 2026-09-05 - a killed collector now answers its own `running` note (branch, PR, awaiting review)
 
 **Class:** started-not-finished
