@@ -16,7 +16,8 @@
  * argv[1] = absolute path to includes/subscribe.php
  * argv[2] = absolute path to includes/digest-archive.php
  * argv[3] = absolute path to a JSON file: {"docs": {"name": "<document>"},
- *           "slugs": [[freq, from, to], ...]}
+ *           "slugs": [[freq, from, to], ...],
+ *           "rewrite": {"name": {"html": ..., "text": ...}}}  (publishable copy)
  * stdout  = {"docs": {"name": {"ok": bool, "rule": str}}, "slugs": [...]}
  */
 
@@ -87,6 +88,11 @@ $in = json_decode(file_get_contents($argv[3]), true);
 $out = array('docs' => array(), 'slugs' => array());
 foreach ((array) ($in['docs'] ?? array()) as $name => $doc) {
     $out['docs'][$name] = alt_edition_public_safe((string) $doc);
+}
+foreach ((array) ($in['rewrite'] ?? array()) as $name => $pair) {
+    $copy = alt_edition_publishable_copy((string) ($pair['html'] ?? ''), (string) ($pair['text'] ?? ''));
+    $copy['gate'] = alt_edition_public_safe($copy['html'] . "\n" . $copy['text']);
+    $out['rewrite'][$name] = $copy;
 }
 foreach ((array) ($in['slugs'] ?? array()) as $triple) {
     $out['slugs'][] = alt_edition_slug($triple[0], $triple[1], $triple[2]);

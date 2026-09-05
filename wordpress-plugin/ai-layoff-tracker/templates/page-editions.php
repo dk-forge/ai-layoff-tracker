@@ -90,7 +90,7 @@ alt_render_page_header();
     <p class="alt-ed-note">This page is the edition exactly as it was composed and sent. The figures were
     read once, for the window above, and they have not been updated since. Filings and notices keep arriving,
     so the live tracker will now show larger numbers for the same window, and a correction can lower one.
-    Every link below names the date basis it was counted on.</p>
+    Every link below names the date basis it was counted on. Links to other sites appear here as the outlet's address in plain text; the email carried them as links.</p>
 
     <?php foreach ($alt_stream_labels as $alt_key => $alt_label) :
         if (empty($alt_ed['sections'][$alt_key])) continue;

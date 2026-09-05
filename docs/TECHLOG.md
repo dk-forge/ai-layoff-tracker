@@ -1,5 +1,42 @@
 # Tech Log
 
+## 2026-09-05 - the public edition archive dropped the layoff and talent sections for eleven days and said so only in error_log (2.20.169, branch)
+
+**Class:** silent-stop
+
+**What broke.** The daily edition page for 2026-09-05 showed one section, "From
+the blog", for a send whose log said three were composed (articles, layoff,
+talent). No archived daily since 2026-08-25 carries the layoff section and none
+has ever carried the talent section. `alt_edition_capture` fails closed per
+section and writes one `error_log` line, which no surface, test or ops_status
+section reads.
+
+**Cause, reproduced locally.** The compose harness fed today's real API
+payloads through the real composers and the real gate: both sections were
+refused with `a link points off our own host`. Commit 4f96b1b (2026-08-20)
+gave each hiring signal a link and 1312f95 (2026-08-25, after that day's send)
+gave each biggest cut a source link; both point at outlets. The gate is an
+allowlist of our own hosts and paths by design (privacy), so the two features
+and the archive could not both hold, and the archive lost quietly.
+
+**Fix.** `alt_edition_publishable_copy()` makes the copy the archive stores:
+an off-host anchor becomes its own text followed by the outlet host in
+parentheses ("Source (swissinfo.ch)"), a bare off-host URL in the text version
+becomes its host, our own links are untouched. Capture judges that copy with
+the unchanged gate. The email is unchanged. The page's provenance note says
+that links to other sites appear as plain text here.
+
+**Guard:** `railway/tests/test_edition_archive_offhost_links.py` (the real
+composed section with an off-host source link passes the gate as a copy; the
+anchor is unlinked and names the outlet; our own links are byte-identical; an
+address and a token are still refused; a section with no links is byte
+identical; capture calls the copy before the gate, read from the source).
+
+**Not done.** Editions already sent since 2026-08-26 are not re-archived: an
+edition is captured at compose time and never recomposed (the file header's
+rule), so those days stay as they were published, which for the archive is
+the blog section alone. The first complete daily is 2026-09-06.
+
 ## 2026-09-05 - the committed GDELT work ledger was a dead copy: the cron kept the ledger on the host and nothing brought it back (branch)
 
 **Class:** two-copies-drifted

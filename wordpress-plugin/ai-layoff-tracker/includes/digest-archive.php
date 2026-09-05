@@ -322,6 +322,53 @@ function alt_edition_is_filtered_view($path) {
  *      document: an email address, and a run of 32 or more hex characters
  *      (the click hash is 32, an unsubscribe token is 64).
  */
+/**
+ * The copy of a section the archive may publish: off-host links unlinked.
+ *
+ * On 2026-08-20 the talent section gained a link per hiring signal and on
+ * 2026-08-25 the layoff section gained a source link per biggest cut. Both
+ * point at other sites, and the gate below admits no host but our own, so
+ * from those dates every daily edition archived the blog section alone and
+ * said so only in error_log. The reader page showed one section and no notice;
+ * ops_status has no view of a WordPress error_log.
+ *
+ * The gate stays exactly as strict: it still judges what is stored, and what
+ * is stored is this copy. An off-host anchor becomes its own text followed by
+ * the outlet's host in parentheses, so the archive still says WHERE a figure
+ * came from without publishing a link to it; a bare off-host URL in the text
+ * version becomes that host. Links on our own host are untouched. The email
+ * itself is not changed by this; only the archived copy is.
+ */
+function alt_edition_publishable_copy($html, $text) {
+    $hosts = function_exists('alt_digest_link_hosts') ? alt_digest_link_hosts() : array();
+    $host_of = function ($url) {
+        $h = wp_parse_url(rtrim(html_entity_decode((string) $url, ENT_QUOTES, 'UTF-8'), '.,;'), PHP_URL_HOST);
+        return is_string($h) ? strtolower(preg_replace('/^www\./', '', $h)) : '';
+    };
+    $off_host = function ($url) use ($hosts, $host_of) {
+        $h = $host_of($url);
+        return $h !== '' && !in_array($h, $hosts, true) && !in_array('www.' . $h, $hosts, true);
+    };
+    $html = preg_replace_callback(
+        '#<a\s[^>]*href\s*=\s*"([^"]*)"[^>]*>(.*?)</a>#is',
+        function ($m) use ($off_host, $host_of) {
+            if (!$off_host($m[1])) return $m[0];
+            $label = trim(wp_strip_all_tags($m[2]));
+            $host = $host_of($m[1]);
+            if ($label === '') return esc_html($host);
+            return stripos($label, $host) !== false
+                ? esc_html($label) : esc_html($label) . ' (' . esc_html($host) . ')';
+        },
+        (string) $html);
+    $text = preg_replace_callback(
+        '#https?://[^\s"<>\)]+#i',
+        function ($m) use ($off_host, $host_of) {
+            return $off_host($m[0]) ? $host_of($m[0]) : $m[0];
+        },
+        (string) $text);
+    return array('html' => (string) $html, 'text' => (string) $text);
+}
+
 function alt_edition_public_safe($doc) {
     $doc = (string) $doc;
     if ($doc === '') return array('ok' => false, 'rule' => 'empty document');
@@ -482,6 +529,9 @@ function alt_edition_capture($freq, $from, $to, $send_id = 0) {
         // extra argument (PHP permits it).
         $part = $fn($from, $to, 0, $freq);
         if (!is_array($part) || empty($part['html']) || empty($part['text'])) continue;
+        // The archive publishes a COPY with off-host links unlinked (see
+        // alt_edition_publishable_copy); the gate judges that copy, unchanged.
+        $part = alt_edition_publishable_copy($part['html'], $part['text']);
         $check = alt_edition_public_safe($part['html'] . "\n" . $part['text']);
         if (!$check['ok']) {
             // Fail closed, and say which RULE refused it, never what tripped it.
