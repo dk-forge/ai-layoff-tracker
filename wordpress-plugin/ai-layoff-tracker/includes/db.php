@@ -1236,12 +1236,22 @@ function alt_boundary_pattern($term, $syntax = null) {
     return $pattern;
 }
 
+if (!defined('ALT_FREETEXT_MAX_CHARS')) define('ALT_FREETEXT_MAX_CHARS', 200);
+
 /**
  * One free-text clause: the LIKE we already ran, plus the boundary regex when
  * the term supports one. Appends to $params by reference and returns SQL.
  */
 function alt_freetext_clause(array $columns, $term, array &$params) {
     global $wpdb;
+    // A free-text term drives a leading-wildcard LIKE plus a REGEXP over up to
+    // five columns of the whole table; an unbounded term is an unbounded
+    // anonymous scan. No company, keyword or query is longer than this.
+    // `?q[]=x` arrives as an array, and esc_like() on an array was an
+    // unauthenticated HTTP 500 on the hottest route (2026-09-05): fold it to
+    // one string so the filter still applies and nothing throws.
+    if (is_array($term)) $term = implode(' ', array_filter($term, 'is_scalar'));
+    $term = mb_substr((string) $term, 0, ALT_FREETEXT_MAX_CHARS);
     $like = '%' . $wpdb->esc_like($term) . '%';
     $ors = array();
     foreach ($columns as $c) { $ors[] = "$c LIKE %s"; $params[] = $like; }
@@ -5759,14 +5769,32 @@ function alt_figure_cache_key($name) {
 }
 
 /**
+ * THE ONLY PARAMS THAT MAY SHAPE A CACHE KEY. The key used to be every query
+ * param except `_` and `cb`, so an unknown name (`?x=<random>`) was a fresh
+ * key every time: a cold /aggregate compute (8-19s) AND a new 30-minute row in
+ * wp_options per request, from one anonymous loop (security review
+ * 2026-09-05). A param no cached route reads cannot change the answer, so it
+ * must not change the key. Pinned by tests/test_cached_route_params.py, which
+ * fails on a get_param() literal in a cached route that this list omits.
+ */
+function alt_cached_route_param_names() {
+    return array_merge(alt_filter_param_names(), array(
+        'date_basis', 'country_basis', 'except',            // reinterpret filters
+        'page', 'per_page', 'sort', 'dir',                  // /query
+        'after_id', 'limit',                                // /facets
+        'include',                                          // /aggregate
+        'window_months',                                    // /conversion
+    ));
+}
+
+/**
  * Micro-cache for the public read endpoints. Nearly every visitor issues the
  * identical default requests, so a 5-minute transient keyed by (params + data
  * version) collapses thousands of MySQL round-trips into one. Any write bumps
  * alt_data_ver (see alt_flush_caches), instantly orphaning stale entries.
  */
 function alt_api_cached($tag, WP_REST_Request $r, $compute) {
-    $params = $r->get_query_params();
-    unset($params['_'], $params['cb']); // cache-buster noise
+    $params = array_intersect_key($r->get_query_params(), array_flip(alt_cached_route_param_names()));
     ksort($params);
     $key = 'altq_' . md5($tag . '|' . (int) get_option('alt_data_ver', 1) . '|' . wp_json_encode($params));
 

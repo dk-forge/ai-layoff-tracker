@@ -1,3 +1,53 @@
+## 2026-09-05 - security review: a fork could run a shell holding RESEND_API_KEY, and four public-route hardenings (2.20.170, branch, PR)
+
+**Class:** novel
+
+**What was found.** A 360 review of the plugin's REST routes, rendered pages,
+CI, ops mail and the nameless paths. One launch-blocker and five cheap
+should-fixes are in this change; the rest is listed in the PR.
+
+**The launch-blocker.** `.github/workflows/ci-alert.yml` listens on
+`workflow_run: workflows: ['*']`, which also fires for a fork pull request's
+own run, and its alert step pasted `${{ github.event.workflow_run.name }}` and
+`.head_branch` straight into a `run:` line. A fork chooses its workflow's
+`name:` and its branch name, and the step holds `RESEND_API_KEY` and a
+`contents: write` GITHUB_TOKEN. The mitigation was only the repository's
+first-time-contributor approval gate. The six event values now enter through
+`env:` and the shell reads `"$RUN_WORKFLOW"`; the expression is substituted
+before the shell parses the line, so quoting could never have helped. Not a
+class in the vocabulary: the shape is untrusted text reaching an interpreter.
+
+**The should-fixes.** (1) `alt_api_cached` keyed the micro-cache on every query
+param except `_` and `cb`, so `?x=<random>` forced a cold /aggregate compute
+(8-19 s) and wrote a new 30-minute wp_options row per request; the key is now
+a whitelist (`alt_cached_route_param_names`) pinned to what the cached routes
+read. (2) A free-text term is capped at `ALT_FREETEXT_MAX_CHARS` (200) before
+it becomes a leading-wildcard LIKE plus a REGEXP over five columns. (3)
+`/query?q[]=x` was an unauthenticated HTTP 500 (esc_like on an array),
+reproduced live; the array folds to one string. (4) Seven JSON-LD blocks were
+encoded without `JSON_HEX_TAG`, so a `</script>` in a company name would have
+closed the block; the writers strip tags today, but the sink no longer depends
+on it. (5) `digest_send.py` printed two provider exceptions unscrubbed, and a
+Brevo 5xx string can carry the recipient address.
+
+**Guard:** `railway/tests/test_workflow_script_injection.py` (scans every
+`run:` block in every workflow and composite action for an attacker-writable
+event field; reds the original ci-alert step verbatim; env: is the allowed
+place) and `railway/tests/test_public_route_hardening.py` (the cache key is
+built from the whitelist only and the whitelist covers every get_param() the
+cached routes and alt_db_where read; the cap sits before esc_like; every
+`application/ld+json` sink carries JSON_HEX_TAG; the send loop scrubs). Proved
+by mutation: restoring main's ci-alert.yml turns the scanner red at the
+original line.
+
+**Not done, listed in the PR.** `main` has no branch protection; lftp deploys
+with `ssl:verify-certificate no`; `shivammathur/setup-php@v2` is tag-pinned in
+the job that holds the FTP secret; the Railway build installs from
+`requirements.txt` floors, outside the hash-pin policy; every per-IP limiter
+reads `REMOTE_ADDR` behind Cloudflare and needs a live check; the alert mail's
+paste line is built from untrusted log text; chase-mode `tracker_diff` prints
+names (dormant).
+
 # Tech Log
 
 ## 2026-09-05 - the CI alert and self-heal listeners admitted a fork's run with the fork's own text in their shell (branch)

@@ -67,12 +67,8 @@ jobs:
     # The name check is a recursion guard. GitHub does not re-trigger
     # workflow_run for a run this token started, but a loop here would mail in
     # a loop, and that is not a failure mode worth discovering empirically.
-    # FORK BOUNDARY (2026-09-05). `workflows: ['*']` also fires for a fork's
-    # pull_request run, and this job holds WP_API_KEY, RESEND_API_KEY and a
-    # contents:write token. The run's workflow NAME and HEAD BRANCH are the
-    # fork author's to choose, so they never enter a shell as `${{ }}` text
-    # (they ride in `env:` below and are quoted) and a run from another
-    # repository is not admitted at all.
+    # FORK BOUNDARY (2026-09-05): a fork's pull_request run also completes here;
+    # only this repository's own runs are admitted (see test_workflow_run_fork_boundary).
     if: >-
       github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.name != 'CI failure alert' &&
@@ -134,20 +130,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ALERT_ENVELOPE: ${{ runner.temp }}/undelivered_alert.json
-          WR_RUN_ID: ${{ github.event.workflow_run.id }}
-          WR_NAME: ${{ github.event.workflow_run.name }}
-          WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          WR_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          WR_EVENT: ${{ github.event.workflow_run.event }}
-          WR_URL: ${{ github.event.workflow_run.html_url }}
+          # workflow_run fires for a fork PR's own run too, and a fork chooses
+          # its workflow's `name:` and its branch name. Interpolating either
+          # with ${{ }} INSIDE `run:` pastes attacker text into a shell that
+          # holds RESEND_API_KEY and a contents:write token. Read them from
+          # env, where the shell sees a value and never a command
+          # (tests/test_workflow_script_injection.py).
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_WORKFLOW: ${{ github.event.workflow_run.name }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
         run: |
           python3 railway/ci_alert.py \
-            --run-id     "$WR_RUN_ID" \
-            --workflow   "$WR_NAME" \
-            --conclusion "$WR_CONCLUSION" \
-            --branch     "$WR_BRANCH" \
-            --event      "$WR_EVENT" \
-            --run-url    "$WR_URL"
+            --run-id     "$RUN_ID" \
+            --workflow   "$RUN_WORKFLOW" \
+            --conclusion "$RUN_CONCLUSION" \
+            --branch     "$RUN_BRANCH" \
+            --event      "$RUN_EVENT" \
+            --run-url    "$RUN_URL"
 
       # Only does anything when the step above could not deliver. `!cancelled()`
       # rather than the default success gate, because the envelope is worth
