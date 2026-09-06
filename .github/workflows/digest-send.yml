@@ -30,10 +30,11 @@ name: Send email digest
 # every scheduled run had an empty list. The mailer's health row now carries
 # `credential=<STATE>` beside the send counts, and ops_status reads it.
 #
-# TWO SLOTS, FOUR CRON LINES, AND EXACTLY ONE SEND PER SLOT PER DAY.
+# THREE SLOTS, SIX CRON LINES, AND EXACTLY ONE SEND PER SLOT PER DAY.
 #
-#   daily   6:00 AM Eastern, seven days a week
-#   weekly  7:30 AM Eastern, Mondays
+#   daily    6:00 AM Eastern, seven days a week
+#   weekly   7:30 AM Eastern, Mondays
+#   monthly  9:00 AM Eastern, the 1st of the month (armed 2026-09-06)
 #
 # The owner asked for those two wall-clock times (2026-08-19). The week runs
 # Monday to Sunday, so Monday morning is the first moment the week it looks
@@ -43,9 +44,21 @@ name: Send email digest
 # earns its send, because the digest prints `AI-attributed cuts: 0` and that
 # is a reading, not a silence.
 #
-# WHY FOUR CRON LINES FOR TWO SLOTS: DAYLIGHT SAVING.
+# THE MONTHLY SLOT IS THE SIGNUP'S OWN PROMISE READ AS A WALL CLOCK. The
+# confirm panel says "Monthly editions go out at the start of each month,
+# covering the month so far" (subscribe.php alt_digest_cadence_sentence), and
+# the tier composed correctly for twelve days while no schedule carried it, so
+# the promise was true of the code and false of the inbox. 9:00 rather than
+# 6:00 or 7:30 for the weekly's reason: a 1st that is also a Monday already
+# carries two editions, and a subscriber on every tier must not get two in one
+# minute. The public monthly opt-in (alt_digest_offer_monthly) armed in the
+# same change, because a slot nobody can subscribe to and an offer no slot
+# fulfils are the same defect from two sides.
+#
+# WHY SIX CRON LINES FOR THREE SLOTS: DAYLIGHT SAVING.
 # GitHub cron is UTC and has no notion of DST. 6:00 Eastern is 10:00 UTC under
-# EDT and 11:00 UTC under EST; 7:30 Eastern is 11:30 UTC and 12:30 UTC. Both
+# EDT and 11:00 UTC under EST; 7:30 Eastern is 11:30 UTC and 12:30 UTC; 9:00
+# Eastern is 13:00 UTC and 14:00 UTC. Both
 # candidates are scheduled and railway/digest_slot.py decides which one is the
 # real slot today, from `github.event.schedule` (below) rather than from the
 # wall clock, so a run GitHub delays by an hour still knows which slot it is.
@@ -82,6 +95,10 @@ on:
     # 7:30 AM Eastern Monday - the weekly look-back. Same pairing.
     - cron: '30 11 * * 1'   # 07:30 EDT (Mar-Nov)
     - cron: '30 12 * * 1'   # 07:30 EST (Nov-Mar)
+    # 9:00 AM Eastern on the 1st - the monthly edition, month to date. Same
+    # pairing; the 1st in UTC at these hours is still the 1st in New York.
+    - cron: '0 13 1 * *'    # 09:00 EDT (Mar-Nov)
+    - cron: '0 14 1 * *'    # 09:00 EST (Nov-Mar)
   workflow_dispatch:
     inputs:
       dry_run:
@@ -93,7 +110,7 @@ on:
         required: false
         default: ''
       freq:
-        description: 'daily, weekly, or blank for auto (both tiers on Mondays)'
+        description: 'daily, weekly, monthly, or blank for auto (daily every day, plus weekly on Mondays and monthly on the 1st)'
         required: false
         default: ''
       limit:

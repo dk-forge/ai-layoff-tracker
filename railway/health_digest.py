@@ -59,6 +59,10 @@ MAX_AGE_DAYS = {
     # every morning, so it is green whatever the weekly tier does. Mirrored by
     # ops_status.WEEKLY_DIGEST_MAX_AGE_DAYS, which reads the same row.
     "digest_weekly": 9,
+    # digest_monthly: the MONTHLY digest slot, armed 2026-09-06 (9:00 AM ET on
+    # the 1st). 31 (longest month) + 4 days of slack, the source_audit
+    # derivation. Mirrored by ops_status.MONTHLY_DIGEST_MAX_AGE_DAYS.
+    "digest_monthly": 35,
     # source_audit: MONTHLY (source-verification-audit.yml, `0 13 1 * *`), and
     # nothing else posts under that id. 31 (longest month) + 4 days of slack, so
     # one missed run is reported on day 35 instead of a healthy 31-day-old run

@@ -6,6 +6,21 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-06): 2.20.172 - the monthly digest slot, which
+  the signup promised and no cron line carried.** The tier composed correctly
+  (2.20.171 verified all three monthly editions from live payloads) while
+  `digest_slot.SEND_TIMES` and `digest-send.yml` scheduled only daily and
+  weekly, so no monthly edition could ever go out. Added the one missing slot
+  (9:00 AM Eastern on the 1st, both DST cron candidates), a day-of-month field
+  in the slot table, the `digest_monthly` liveness row and its ops_status
+  reading, and armed the public monthly opt-in in the same change. Work done
+  in a worktree (`/private/tmp/wt-monthly`), branch `digest-monthly-slot`,
+  PUSHED not merged: the owner merges. Plugin files touched:
+  `includes/subscribe.php` (offer default, the Monthly radio, comments) and
+  `ai-layoff-tracker.php` (version only); `assets/health.js meta{}` gained
+  `digest_monthly`, its new health id. Full write-up in TECHLOG 2026-09-06
+  (2.20.172), including the one product ruling left OPEN (what "the month so
+  far" means on the 1st). Baton released.
 - **VERSION CLAIMED (2026-09-04): 2.20.168 - accuracy audit of both daily
   editions; every figure reproduced, five sentences around them did not.**
   The baton was read as FREE by `ops_status [0]` on origin/main and this

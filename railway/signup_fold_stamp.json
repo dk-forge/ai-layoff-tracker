@@ -1,7 +1,7 @@
 {
   "_comment": "What the signup's copy was when the phone fold was last measured, and what it measured. Written by railway/signup_fold.py --record; read by railway/tests/test_signup_fold_stamp.py. Never edit by hand: a stamp nobody measured is worse than no stamp.",
-  "copy_chars": 904,
-  "copy_sha256": "97436cd52b52a960bfea9ef5f301615409b19902d49faf1dc35f953dd8b9f389",
+  "copy_chars": 912,
+  "copy_sha256": "5f3c2d94da868b5167c01109987e43b0c34772ded558607cae97f60e8504bea5",
   "figures": {
     "blog@375x812": {
       "headroom_px": 95.2,
@@ -38,24 +38,7 @@
       "screen_px": 896
     },
     "tracker@375x812": {
-      "headroom_px": 121.8,
-      "parts": {
-        "email row": 70,
-        "field": 44,
-        "frequency": 68,
-        "heading": 29,
-        "intro": 151.8,
-        "lists": 172,
-        "privacy": 44,
-        "section": 715.8,
-        "submit": 44,
-        "tracking note": 0
-      },
-      "reach_px": 690.2,
-      "screen_px": 812
-    },
-    "tracker@414x896": {
-      "headroom_px": 205.7,
+      "headroom_px": 121.7,
       "parts": {
         "email row": 70,
         "field": 44,
@@ -69,11 +52,28 @@
         "tracking note": 0
       },
       "reach_px": 690.3,
+      "screen_px": 812
+    },
+    "tracker@414x896": {
+      "headroom_px": 206.4,
+      "parts": {
+        "email row": 70,
+        "field": 44,
+        "frequency": 68,
+        "heading": 29,
+        "intro": 151.8,
+        "lists": 172,
+        "privacy": 44,
+        "section": 715.8,
+        "submit": 44,
+        "tracking note": 0
+      },
+      "reach_px": 689.6,
       "screen_px": 896
     }
   },
-  "measured_at_utc": "2026-08-19T21:14Z",
-  "measured_on": "2026-08-19",
+  "measured_at_utc": "2026-09-06T06:41Z",
+  "measured_on": "2026-09-06",
   "measured_on_platform": "darwin",
   "required_headroom_px": 80.0
 }

@@ -32,8 +32,11 @@ DAILY_EDT = "0 10 * * *"
 DAILY_EST = "0 11 * * *"
 WEEKLY_EDT = "30 11 * * 1"
 WEEKLY_EST = "30 12 * * 1"
+MONTHLY_EDT = "0 13 1 * *"
+MONTHLY_EST = "0 14 1 * *"
+ALL_CRONS = (DAILY_EDT, DAILY_EST, WEEKLY_EDT, WEEKLY_EST, MONTHLY_EDT, MONTHLY_EST)
 
-# The four lines exactly as digest-send.yml carries them. If that file changes,
+# The six lines exactly as digest-send.yml carries them. If that file changes,
 # this list has to change with it and the parity test below says so.
 WORKFLOW = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", "..", ".github", "workflows", "digest-send.yml"))
@@ -44,13 +47,12 @@ def tier(cron, iso_date):
     return digest_slot.tier_for_cron(cron, datetime.date(y, m, d))[0]
 
 
-class TheWorkflowSchedulesBothCandidatesForBothSlots(unittest.TestCase):
-    def test_all_four_cron_lines_are_present(self):
+class TheWorkflowSchedulesBothCandidatesForEverySlot(unittest.TestCase):
+    def test_all_six_cron_lines_are_present(self):
         import re
         text = open(WORKFLOW, encoding="utf-8").read()
         crons = re.findall(r"^\s*-\s*cron:\s*'([^']+)'", text, re.M)
-        self.assertEqual(sorted(crons),
-                         sorted([DAILY_EDT, DAILY_EST, WEEKLY_EDT, WEEKLY_EST]),
+        self.assertEqual(sorted(crons), sorted(ALL_CRONS),
                          "the DST guard only works if BOTH candidate ticks for "
                          "each slot are actually scheduled. One of them missing "
                          "means no digest at all for half the year.")
@@ -58,7 +60,7 @@ class TheWorkflowSchedulesBothCandidatesForBothSlots(unittest.TestCase):
     def test_every_scheduled_line_resolves_to_a_tier_on_some_day_of_the_year(self):
         """No cron line may be dead. A tick that never matches is a typo."""
         day = datetime.date(2026, 1, 1)
-        for cron in (DAILY_EDT, DAILY_EST, WEEKLY_EDT, WEEKLY_EST):
+        for cron in ALL_CRONS:
             hits = sum(1 for i in range(365)
                        if digest_slot.tier_for_cron(cron, day + datetime.timedelta(days=i))[0])
             self.assertGreater(hits, 0, f"cron '{cron}' never sends anything")
@@ -91,6 +93,30 @@ class TheDaylightSavingBoundary(unittest.TestCase):
         # 2026-10-26 is the Monday before the change, still EDT.
         self.assertEqual(tier(WEEKLY_EDT, "2026-10-26"), "weekly")
         self.assertIsNone(tier(WEEKLY_EST, "2026-10-26"))
+
+    def test_the_monthly_slot_on_the_fall_back_day_itself(self):
+        """2026-11-01 is BOTH the fall-back Sunday and the 1st of a month.
+
+        The clocks go back at 02:00 local, so by 13:00 UTC New York is already
+        on EST: 13:00 UTC is 08:00 EST (an hour early, must skip) and 14:00 UTC
+        is 09:00 EST (the slot, must send). The 1st of October, still EDT, is
+        the other way round. Both sides, both ticks, on the one date where the
+        monthly slot meets the transition.
+        """
+        self.assertEqual(tier(MONTHLY_EST, "2026-11-01"), "monthly",
+                         "14:00 UTC is 09:00 EST on 2026-11-01 and must send")
+        self.assertIsNone(tier(MONTHLY_EDT, "2026-11-01"),
+                          "13:00 UTC is 08:00 EST on 2026-11-01 - an hour early "
+                          "- and must skip; letting it through mails the "
+                          "monthly twice")
+        self.assertEqual(tier(MONTHLY_EDT, "2026-10-01"), "monthly")
+        self.assertIsNone(tier(MONTHLY_EST, "2026-10-01"))
+        # 2027-03-01 is before the spring-forward (2027-03-14): EST.
+        self.assertEqual(tier(MONTHLY_EST, "2027-03-01"), "monthly")
+        self.assertIsNone(tier(MONTHLY_EDT, "2027-03-01"))
+        # 2027-04-01 is after it: EDT.
+        self.assertEqual(tier(MONTHLY_EDT, "2027-04-01"), "monthly")
+        self.assertIsNone(tier(MONTHLY_EST, "2027-04-01"))
 
     def test_the_spring_boundary_too(self):
         """2027-03-14 is the spring-forward. The same pairing must hold."""
@@ -129,14 +155,38 @@ class ExactlyOneTickSendsOnEveryDayOfTheYear(unittest.TestCase):
             self.assertEqual(len(fired), want,
                              f"{d}: {len(fired)} weekly tick(s) fired, want {want}")
 
-    def test_a_daily_tick_never_resolves_to_the_weekly_tier_or_the_reverse(self):
+    def test_the_monthly_slot_fires_exactly_once_on_the_first_and_never_otherwise(self):
+        """The 1st of every month, once; every other day of the month, never.
+
+        The cron lines are day-of-month 1, so on other days these ticks do not
+        exist; the guard must still refuse them if they did (a hand-set
+        DIGEST_CRON, or a workflow edit that widened the day field).
+        """
         day = datetime.date(2026, 6, 1)
+        firsts = 0
         for i in range(400):
             d = day + datetime.timedelta(days=i)
-            for c in (DAILY_EDT, DAILY_EST):
-                self.assertNotEqual(digest_slot.tier_for_cron(c, d)[0], "weekly")
-            for c in (WEEKLY_EDT, WEEKLY_EST):
-                self.assertNotEqual(digest_slot.tier_for_cron(c, d)[0], "daily")
+            fired = [c for c in (MONTHLY_EDT, MONTHLY_EST)
+                     if digest_slot.tier_for_cron(c, d)[0] == "monthly"]
+            want = 1 if d.day == 1 else 0
+            firsts += want
+            self.assertEqual(len(fired), want,
+                             f"{d}: {len(fired)} monthly tick(s) fired, want {want}")
+        self.assertEqual(firsts, 14, "400 days from 2026-06-01 hold 14 firsts")
+
+    def test_no_tick_resolves_to_another_slots_tier(self):
+        day = datetime.date(2026, 6, 1)
+        pairs = {"daily": (DAILY_EDT, DAILY_EST),
+                 "weekly": (WEEKLY_EDT, WEEKLY_EST),
+                 "monthly": (MONTHLY_EDT, MONTHLY_EST)}
+        for i in range(400):
+            d = day + datetime.timedelta(days=i)
+            for own, crons in pairs.items():
+                for c in crons:
+                    got = digest_slot.tier_for_cron(c, d)[0]
+                    self.assertIn(got, (own, None),
+                                  f"{d}: cron '{c}' resolved to {got!r}, "
+                                  f"which is not its own {own} slot")
 
 
 class TheGuardIsJudgedOnTheSCHEDULEDTimeNotTheClock(unittest.TestCase):
@@ -229,6 +279,24 @@ class TheSlotDecisionsPrecedence(unittest.TestCase):
             digest_send.slot_decision({}, monday + datetime.timedelta(days=1))[0],
             ("daily",))
 
+    def test_no_cron_on_the_first_adds_the_monthly_after_the_others(self):
+        # 2026-06-01 is a Monday and the 1st: all three, in send order.
+        self.assertEqual(digest_send.slot_decision({}, datetime.date(2026, 6, 1))[0],
+                         ("daily", "weekly", "monthly"))
+        # 2026-10-01 is a Thursday and the 1st.
+        self.assertEqual(digest_send.slot_decision({}, datetime.date(2026, 10, 1))[0],
+                         ("daily", "monthly"))
+
+    def test_an_explicit_monthly_freq_forces_that_tier_on_any_day(self):
+        freqs, skip = digest_send.slot_decision(
+            {"DIGEST_FREQ": "monthly", "DIGEST_CRON": DAILY_EST},
+            datetime.date(2026, 10, 31))
+        self.assertEqual(freqs, ("monthly",))
+        self.assertFalse(skip)
+
+    def test_the_forceable_tiers_are_exactly_the_scheduled_ones(self):
+        self.assertEqual(digest_send.TIERS, ("daily", "weekly", "monthly"))
+
     def test_an_unreadable_cron_falls_forward_and_never_skips(self):
         """An unreadable schedule must not become a missed edition.
 
@@ -292,6 +360,48 @@ class TheWeeklySlotHasItsOwnLivenessRow(unittest.TestCase):
             lines, bad = ops_status.weekly_digest_lines(absent)
             self.assertFalse(bad)
             self.assertIn("UNKNOWN", " ".join(lines))
+
+    def test_a_completed_monthly_pass_stamps_digest_monthly_and_nothing_else(self):
+        with mock.patch("source_health.report_source_health") as rep:
+            digest_send._record_monthly_liveness(
+                {"detail": "monthly: 3 sent of 3 eligible", "not_sent": "",
+                 "code": 0, "sent": 3, "preview": False, "test": False})
+        rep.assert_called_once()
+        self.assertEqual(rep.call_args[0][0], "digest_monthly")
+        self.assertEqual(rep.call_args[0][1], "ok")
+        for flag in ("preview", "test"):
+            with mock.patch("source_health.report_source_health") as rep:
+                digest_send._record_monthly_liveness(
+                    {"detail": "", "not_sent": "", "code": 0, "sent": 1,
+                     "preview": flag == "preview", "test": flag == "test"})
+            rep.assert_not_called()
+
+    def test_ops_status_fails_on_a_stale_monthly_row_and_absence_is_unknown(self):
+        import ops_status
+        stale = (datetime.datetime.now(datetime.timezone.utc)
+                 - datetime.timedelta(days=40)).isoformat()
+        fresh = (datetime.datetime.now(datetime.timezone.utc)
+                 - datetime.timedelta(days=30)).isoformat()
+        lines, bad = ops_status.monthly_digest_lines(
+            {"digest_monthly": {"status": "ok", "checked_at": stale, "detail": "x"}})
+        self.assertTrue(bad, "a monthly slot 40 days silent must raise an issue")
+        self.assertIn("STALE", " ".join(lines))
+        lines, bad = ops_status.monthly_digest_lines(
+            {"digest_monthly": {"status": "ok", "checked_at": fresh, "detail": "x"}})
+        self.assertFalse(bad, "a 30-day-old monthly row is a healthy month")
+        for absent in ({}, None, {"digest_monthly": {"status": "ok"}}):
+            lines, bad = ops_status.monthly_digest_lines(absent)
+            self.assertFalse(bad)
+            self.assertIn("UNKNOWN", " ".join(lines))
+
+    def test_the_ceiling_matches_the_monthly_cadence_in_both_monitors(self):
+        import ops_status
+        import health_digest
+        self.assertEqual(ops_status.MONTHLY_DIGEST_MAX_AGE_DAYS, 35)
+        self.assertEqual(health_digest.MAX_AGE_DAYS["digest_monthly"], 35)
+        self.assertGreater(health_digest.MAX_AGE_DAYS["digest_monthly"], 31,
+                           "a ceiling tighter than the longest month is "
+                           "permanent noise, not a monitor")
 
     def test_the_ceiling_matches_the_weekly_cadence_in_both_monitors(self):
         import ops_status
