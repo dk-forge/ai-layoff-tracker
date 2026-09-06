@@ -1,52 +1,52 @@
 {
-  "plugin_version": "2.20.154",
-  "recorded_at": "2026-08-30T12:15:54Z",
+  "plugin_version": "2.20.173",
+  "recorded_at": "2026-09-06T11:23:13Z",
   "schema_version": 1,
   "tables": {
     "archive": {
-      "bytes": 1119379,
+      "bytes": 1144782,
       "date_range": null,
-      "rows": 25639,
-      "sha256": "ee827a447430663285301ab34dccaca92bb7bf24cc3ba783dd090a8534f11c23"
+      "rows": 25823,
+      "sha256": "b7d7adfb688d1ba9db6d51ffa446a66035262a60b523353d32018ad6d538a179"
     },
     "company_directory": {
-      "bytes": 1151926,
+      "bytes": 1155584,
       "date_range": null,
-      "rows": 39304,
-      "sha256": "92a1cf6aa6e3b76bd606bff8810a21ab470cdfacd1dc38952b51596fe780425b"
+      "rows": 39402,
+      "sha256": "d4a2d277097bdeb60766b0705e5202d0766e5d0f1e7d340b3bfcf0d3d4163bb2"
     },
     "digest_editions": {
-      "bytes": 12809,
+      "bytes": 13384,
       "date_range": null,
-      "rows": 9,
-      "sha256": "f7c81c84f037e9d12ba60691558914d2d1abac39afd228d3400b05d5e2f3f13c"
+      "rows": 10,
+      "sha256": "f4aed08bab2bd75365fabc1ab7777b49b8de3fcdf3bc1e5a6b68afb204bfb4bf"
     },
     "digest_links": {
-      "bytes": 6618,
+      "bytes": 12743,
       "date_range": null,
-      "rows": 190,
-      "sha256": "8bce14d71aa3196f72a7c9a852a4960aa7183519af173c03383673228f695fff"
+      "rows": 376,
+      "sha256": "a03c237b8e97dba085b4cbfe54951ea6d8824005fc7cc7fc2966871d9af630e6"
     },
     "digest_sends": {
-      "bytes": 254,
+      "bytes": 336,
       "date_range": null,
-      "rows": 14,
-      "sha256": "1967f5ad56e12bd262b1a95389521685856322a21d78476a7d32e18ba668f3df"
+      "rows": 22,
+      "sha256": "14c6122b4d3525b8eb0d80932a1bccec59a9ba9d546e5c2e83b41eaf4914ba1b"
     },
     "events": {
-      "bytes": 2911370,
+      "bytes": 2919004,
       "date_range": null,
-      "rows": 105408,
-      "sha256": "04368c448f8d4125096d793a59d5caaaa604a3ec76cabbd577735a2d9d763157"
+      "rows": 105658,
+      "sha256": "2a84a015e3a0d80f84ddd4dcddad19a7d92793ae93192e36d2e71413bbdf62a9"
     },
     "layoffs": {
-      "bytes": 5899786,
+      "bytes": 5961412,
       "date_range": [
         "2002-01-03",
         "2028-08-25"
       ],
-      "rows": 65668,
-      "sha256": "a81d106aa726f92c954362d8e17dcaaba9f8a786434039ba2de3a6a699e69c6e"
+      "rows": 65912,
+      "sha256": "3b977532114ad7e6ae3638ca1d66d7823fa65058b6ec598005a2ec7f46351775"
     },
     "post_claps": {
       "bytes": 58,
@@ -55,16 +55,16 @@
       "sha256": "6a530db61823dd94f9aea38895687ea39e395955b37a632808fac37e00c8cfea"
     },
     "source_reports": {
-      "bytes": 13175244,
+      "bytes": 13286618,
       "date_range": null,
-      "rows": 132495,
-      "sha256": "82f6a44f43cdd4c5f38db80f70d49ae71ad4738b374ae35a2d13544689ae7f51"
+      "rows": 132929,
+      "sha256": "f8b33ba0cdd624937cf72fc1565562dec1cc43c1a3b2e4697c4283196adec142"
     },
     "source_runs": {
-      "bytes": 73956,
+      "bytes": 81102,
       "date_range": null,
-      "rows": 4570,
-      "sha256": "18c7c9491d3deedd5a4e396dbfcae9809763916a7ce6899f3afcf91d705a2523"
+      "rows": 4916,
+      "sha256": "b645b5d225d3fcbe6747c9c8798e22dbceb5d97960c22416f8290829b9af397f"
     },
     "warn_transparency": {
       "bytes": 20,
@@ -73,7 +73,7 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },
-  "took_seconds": 296,
-  "total_bytes": 24351420,
-  "total_rows": 373299
+  "took_seconds": 307,
+  "total_bytes": 24575043,
+  "total_rows": 375050
 }
