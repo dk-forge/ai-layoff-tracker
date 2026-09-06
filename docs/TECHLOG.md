@@ -1,3 +1,110 @@
+## 2026-09-06 - #243: the -39,292 was twelve departing rows, and the fix that closed it had never been wired to anything (branch, PR)
+
+**Class:** guard-went-vacuous
+**Guard:** railway/tests/test_headline_containment.py
+(`TheRecorderStoresWhatTheCheckSubtracts`, `WhatTheMinusThirtyNineTwoNineTwoActuallyWas`)
+
+**What #243 actually was, settled.** The issue's title is right and the
+arithmetic is not in dispute. Against the 2026-08-29T01:06Z baseline, the AI
+slice rose 9,000 jobs on +1 entry and the worldwide slice FELL 30,292 on +11.
+The complement moved -39,292, of which 30,292 was never in the AI slice at all.
+The closed `ai_all_time` incident names both halves: the AI +9,000 is one row,
+70557 British American Tobacco, re-ingested 2026-08-29T22:19:56Z with
+employer-attributed AI framing, and the worldwide -30,292 is seven rows trashed
+by the owner's signed 2026-08-29 17:41 correction (headlined by one of 50,000),
+five rows merged out by dedupe-llm, and ordinary arrivals. **Twelve rows left
+carrying their jobs against roughly twenty-three that arrived.** No wrong number
+was ever on the public surface, and the incident was correctly closed by a human
+on 2026-08-30.
+
+**So the check was wrong, and not in the way ab4714f assumed.** The FAIL text
+said "A row can only arrive with its jobs or leave with its jobs, so nothing
+that arrived or left moved these 39,292 jobs". It inferred that from
+Δentries = +10. **Δentries is the difference of two gross flows and bounds
+neither.** Twelve out and twenty-three in reports +11; the twelve can carry any
+number of jobs at all. The check saw ten and reasoned as though ten rows had
+changed. Thirty-five had.
+
+**The number ab4714f was built on was a different quantity.** That commit
+subtracts a measured superset-exclusion delta before judging, on the stated
+finding that the -39,292 "was 416 rows carrying 120,883 jobs becoming members".
+`jobs_excluded` in a reconcile-supersets run is the STANDING POOL, not that
+run's delta, and the sibling field `changes` is what the run re-marked:
+
+| run | when | jobs_excluded | changes |
+|---|---|---:|---:|
+| 33224262318 | 2026-08-29T00:41Z | 120,763 | 0 |
+| 33271008361 | 2026-08-29T19:30Z | 120,643 | 1 |
+| 33330828111 | 2026-08-30T19:25Z | 120,883 | 3 |
+
+Four rows across the whole window; the pool moved **+120 jobs**. Dedup explains
+120 of the 39,292 and the residual is -39,172, so that branch did not clear
+#243 and never could have. Taking 120,883 for the delta would have left +81,591,
+the same FAIL with the sign flipped. Both are pinned as tests now, so nobody
+re-derives this from the summary.
+
+**And the branch could not run at all.** 2.20.156 taught the check to read
+/aggregate's new `excluded` block live. Nothing taught `record_baseline` to
+STORE it, and a delta needs two readings. `have_exc` was therefore False on
+every production run: the committed baseline of 2026-09-05 carries only
+`jobs`, `entries`, `captured_at`, `recorded_in`. The subtraction was
+unreachable and **the FAIL under it was unreachable with it**, so for six days
+`headline_containment` could not report a finding on the branch it exists for.
+It has been PASSing on `same_direction` throughout, which is why nothing said
+so. Replayed against the real committed baseline, the #243 readings resolve to
+UNKNOWN, not to the PASS the commit describes.
+
+Every existing dedup test passed because each builds its own baseline dict and
+injects `excluded_jobs` by hand - the helper's comment even said "mirroring what
+the recorder stores from 2.20.156 on", which the recorder did not. A fixture
+that supplies the field production omits is the guard sharing its target's blind
+spot.
+
+**What changed.**
+
+1. `_read_exclusions()` is now the ONE reader of the `excluded` block.
+   `MovementInvariant` puts it on `observed`, `record_baseline` commits it,
+   `ContainmentInvariant` subtracts it. A subtraction whose two sides are parsed
+   by two pieces of code is a subtraction waiting to compare different things.
+2. **ABSENT stays absent.** A build that reports no exclusion records no key,
+   never a 0. Writing 0 there would arm the subtraction with a measurement
+   nobody took, which is the assume-zero error one layer down. Pinned by a test
+   that fails on exactly that shortcut.
+3. The finding **states the decomposition**: both component deltas beside the
+   complement, so a reader sees a shrinking superset without subtracting two
+   numbers that are not in front of them. This is #243's second finding, and its
+   measured cost was the first twenty minutes of that investigation spent
+   looking for an AI relabel sweep.
+4. The FAIL **stops asserting a mechanism it cannot establish**. It offers both
+   (re-scoring, or departures larger than arrivals), says why the net entry
+   count rules out neither, and orders the places to look with the corrections
+   log first, because that is what it was on 2026-08-29.
+
+No threshold moved. `CONTAINMENT_FLOOR_JOBS` is 25,000, unchanged; no allowance,
+floor or age ceiling was widened. The verdict is unchanged in every case the
+suite covers except the one that was structurally unreachable.
+
+**Proven by mutation, four ways.** Dropping the carry into `observed` errors
+`test_the_recorder_commits_the_exclusion_pool_it_read` and fails the end-to-end
+round trip; defaulting a missing exclusion to 0 fails the absent-is-not-zero
+test; dropping the decomposition fails `test_the_finding_names_which_half_moved`;
+restoring the old single-mechanism sentence verbatim fails
+`test_it_does_not_assert_a_mechanism_it_cannot_establish`. That last negative
+assertion was written literal first and a one-capital-letter mutation left it
+GREEN, so it matches case-insensitively and says why.
+
+**The honest ceiling.** This check still cannot tell re-scoring from gross churn.
+Only superset folding is measurable from the payload, so only it is subtracted;
+the rest is a finding for a human, now stated as an observation rather than as a
+mechanism. Making it distinguish the other two needs per-row data the two
+headlines do not carry, and any "allowance for churn" would be the widening this
+module exists to refuse.
+
+**Left open, deliberately.** A dedupe-llm merge restamps no `updated_at`, so
+`/changed-rows` cannot show it. That instrumentation gap was noted at the
+2026-08-30 close and is why the 2026-08-29 complement is explained to the mover
+and not to the job. It is named in the new FAIL text so the next reader does not
+spend the time looking for rows the endpoint structurally cannot return.
 ## 2026-09-06 - an abandoned GDELT window said THAT it was lost and never WHY, and the missing half was about to be paid for (branch, PR)
 
 **Class:** novel

@@ -811,6 +811,33 @@ def _fetch_aggregate(ctx, params):
         return None, UNKNOWN, f"could not reach the live API ({e})", e
 
 
+def _read_exclusions(payload, into):
+    """Copy /aggregate's `excluded` block onto a reading, or leave it ABSENT.
+
+    The jobs a filter set matched and then excluded as superset members.
+    ONE definition, because two readers of this block is how the two halves of
+    a mechanism drift apart: `ContainmentInvariant` subtracts it, and
+    `MovementInvariant` is what puts it in `observed` for `record_baseline` to
+    commit. A subtraction whose two sides are parsed by two different pieces of
+    code is a subtraction waiting to compare different things.
+
+    ABSENT IS NOT ZERO, and that distinction is the whole point. A build
+    predating the block, or a malformed one, leaves both keys off, so a caller
+    can tell "nothing was folded" (0) from "this build cannot say" (missing).
+    The second must read UNKNOWN; assuming zero there is what made the check
+    report a correct dedup as wrong data on 2026-08-29 (#243).
+    """
+    exc = (payload or {}).get("excluded")
+    if isinstance(exc, dict):
+        try:
+            into["excluded_jobs"] = int(exc["jobs"])
+            into["excluded_entries"] = int(exc["entries"])
+        except (KeyError, TypeError, ValueError):
+            into.pop("excluded_jobs", None)      # malformed reads as absent,
+            into.pop("excluded_entries", None)   # never as zero
+    return into
+
+
 class ConcentrationInvariant:
     """No single row may carry a published headline.
 
@@ -1033,6 +1060,13 @@ class MovementInvariant:
         except (TypeError, ValueError):
             return _out(UNKNOWN, f"non-numeric totals: {totals!r}")
         observed = {"jobs": jobs, "entries": entries, "captured_at": _utc_now_iso()}
+        # The standing superset-member pool for this exact filter set, carried
+        # so `record_baseline` can COMMIT it. `headline_containment` subtracts
+        # today's pool from the recorded one, so the recorded one has to exist:
+        # 2.20.156 taught the check to read the block live and nothing taught
+        # the recorder to store it, which left the subtraction unreachable and
+        # the containment FAIL branch with it. See _read_exclusions.
+        _read_exclusions(payload, observed)
         if jobs <= 0:
             return _out(FAIL, "the headline is 0 jobs — the rows are gone or the filter "
                               "path broke", observed=observed)
@@ -1147,11 +1181,23 @@ class MovementInvariant:
 #     Δjobs and Δentries always move in the SAME direction.
 #
 # When they do not — C loses jobs while gaining rows, or gains jobs while
-# losing them — no arrival and no departure explains it. Jobs were re-scored
-# across the boundary between two published slices. On 2026-08-10 the
-# complement of the US slice read -78,299 jobs on +10 entries, which is that
-# condition exactly, and it is that condition whatever the US slice's own entry
-# count happened to be.
+# losing them — something moved jobs that the ROW COUNT does not show. On
+# 2026-08-10 the complement of the US slice read -78,299 jobs on +10 entries,
+# which is that condition exactly, and it is that condition whatever the US
+# slice's own entry count happened to be.
+#
+# WHAT THAT CONDITION DOES NOT ESTABLISH, and used to claim it did. This read
+# "jobs were re-scored across the boundary", as a fact, until 2026-09-06. It is
+# one of three, and Δentries cannot separate them, because Δentries is the
+# DIFFERENCE of two gross flows and bounds neither. A window in which twelve
+# rows leave and twenty-three arrive reports +11, and the twelve can carry any
+# number of jobs at all. That is #243: the -39,292 of 2026-08-29 was seven rows
+# trashed by a signed correction (one of them 50,000 jobs) plus five merged by
+# dedupe-llm, against ordinary arrivals — a data story, correctly published,
+# that this check announced as a re-scoring. The three are re-scoring, gross
+# churn, and superset folding; only the third is measurable from the payload,
+# so only the third is subtracted. The rest is a finding for a human, stated as
+# an observation rather than as a mechanism.
 #
 # WHY IT NEEDS NO PARTIAL-CYCLE EXEMPTION, unlike MovementInvariant. A row
 # arriving mid-cycle pushes the complement TOWARDS agreement (it adds jobs and
@@ -1340,18 +1386,12 @@ class ContainmentInvariant:
         except (KeyError, TypeError, ValueError):
             return None, _out(UNKNOWN, f"{h.label}: unusable totals {totals!r}")
         # The jobs this filter set matched and then excluded as superset
-        # members. Read separately and left ABSENT when the payload has no
-        # `excluded` block, so `_one` can tell "no exclusions" (0) apart from
-        # "this build does not report exclusions" (missing) — the second is
-        # UNKNOWN, never a pass. Mirrors how headline_concentration treats a
-        # missing concentration block.
-        exc = (payload or {}).get("excluded")
-        if isinstance(exc, dict):
-            try:
-                reading["excluded_jobs"] = int(exc["jobs"])
-                reading["excluded_entries"] = int(exc["entries"])
-            except (KeyError, TypeError, ValueError):
-                pass    # malformed block reads as absent, not as zero
+        # members, left ABSENT when the payload has no `excluded` block so
+        # `_one` can tell "no exclusions" (0) apart from "this build does not
+        # report exclusions" (missing) — the second is UNKNOWN, never a pass.
+        # Read through the SAME helper MovementInvariant records with, so the
+        # two sides of the subtraction cannot be parsed differently.
+        _read_exclusions(payload, reading)
         return reading, None
 
     def _one(self, ctx, sub, sup, slices):
@@ -1425,8 +1465,21 @@ class ContainmentInvariant:
                   - (now[sub.name]["jobs"] - int(priors[sub.name]["jobs"])))
         d_entries = ((now[sup.name]["entries"] - int(priors[sup.name]["entries"]))
                      - (now[sub.name]["entries"] - int(priors[sub.name]["entries"])))
+        # SAY WHICH HALF MOVED. The complement is a subtraction, and a reader
+        # handed only its result cannot tell a growing subset from a shrinking
+        # superset. #243 is the measured cost of that: -39,292 was reported as
+        # a number, the alert named re-scoring as the mechanism, and the first
+        # twenty minutes of the investigation went looking for an AI relabel
+        # sweep. The superset had fallen 30,292 and the subset had risen 9,000,
+        # so three quarters of the movement was never in the subset at all.
+        sub_d_jobs = now[sub.name]["jobs"] - int(priors[sub.name]["jobs"])
+        sup_d_jobs = now[sup.name]["jobs"] - int(priors[sup.name]["jobs"])
+        sub_d_entries = now[sub.name]["entries"] - int(priors[sub.name]["entries"])
+        sup_d_entries = now[sup.name]["entries"] - int(priors[sup.name]["entries"])
         shown = (f"{sup.label} minus {sub.label} moved {d_jobs:+,} jobs on "
-                 f"{d_entries:+,} entries")
+                 f"{d_entries:+,} entries ({sup.label} {sup_d_jobs:+,} jobs on "
+                 f"{sup_d_entries:+,} entries; {sub.label} {sub_d_jobs:+,} jobs on "
+                 f"{sub_d_entries:+,} entries)")
 
         if d_jobs == 0:
             return _out(PASS, f"{shown} — the complement's jobs did not move")
@@ -1444,10 +1497,25 @@ class ContainmentInvariant:
         # folds a row into a more complete row for the same event, and its jobs
         # leave the headline because they were being counted twice.
         #
-        # On 2026-08-29 this check read -39,292 as wrong data. It was 416 rows
-        # carrying 120,883 jobs becoming members, plus two rows totalling 9,030
-        # jobs gaining ai_explicit (#243). Nothing was wrong; the guard could
-        # not see the exclusion because nobody published it.
+        # CORRECTED 2026-09-06, BECAUSE THE NUMBER THIS WAS BUILT ON WAS A
+        # DIFFERENT QUANTITY. This block was written saying the 2026-08-29
+        # -39,292 "was 416 rows carrying 120,883 jobs becoming members". It was
+        # not. `jobs_excluded` in a reconcile-supersets run is the STANDING
+        # POOL, not that run's delta, and the run logs give the pool either
+        # side of the window: 120,763 at 2026-08-29T00:41Z (run 33224262318,
+        # changes=0) and 120,883 at 2026-08-30T19:25Z (run 33330828111,
+        # changes=3). Four rows were re-marked across the whole window and the
+        # pool moved +120 jobs. Subtracting a measured +120 from -39,292 leaves
+        # -39,172, so this branch does not clear #243 and never could have;
+        # #243 was twelve departing rows, and the FAIL text below is where that
+        # is now said. Taking 120,883 for the delta would have left +81,591 —
+        # the same FAIL with the sign flipped.
+        #
+        # THE MECHANISM IS STILL REAL AND STILL WORTH SUBTRACTING. A large
+        # reconcile pass genuinely does move a complement with no row leaving:
+        # /reconcile-supersets folds a row into a more complete row for the
+        # same event, and its jobs stop being counted twice. The guard could
+        # not see that because nobody published it.
         #
         # So subtract what dedup explains and judge the REMAINDER. This is not
         # a tolerance and does not widen with anything: it is a measured
@@ -1463,16 +1531,19 @@ class ContainmentInvariant:
                                and "excluded_jobs" in now[sup.name])
             where = ("the live /aggregate carries no `excluded` block, so the running "
                      "build predates it" if missing_now else
-                     "a recorded baseline predates the `excluded` block, so the recorder "
-                     "had nothing to store")
+                     "a recorded baseline carries no exclusion figure, so there is nothing "
+                     "to subtract today's pool from")
             return _out(UNKNOWN,
                         f"{shown}, and this cannot be judged: {where}. A complement can move "
-                        f"without rows because published rows were re-scored, OR because "
+                        f"without rows because published rows were re-scored, OR because rows "
+                        f"left carrying more jobs than the rows that arrived, OR because "
                         f"/reconcile-supersets folded rows into their supersets and their jobs "
-                        f"stopped being counted twice. Those look identical from two headlines "
-                        f"alone. Treating the exclusion as zero is what made this check report "
-                        f"a correct dedup as wrong data on 2026-08-29 (#243), so it reports "
-                        f"UNKNOWN instead. The next recorder run after 2.20.156 re-arms it",
+                        f"stopped being counted twice. The third is measurable and the other "
+                        f"two are not, so it is subtracted before the remainder is judged — "
+                        f"and an exclusion nobody reported must never be read as zero, which "
+                        f"would subtract a measurement nobody took. UNKNOWN, which is not a "
+                        f"pass. The next data-integrity.yml recorder run stores both sides "
+                        f"and re-arms this",
                         pending=True)
 
         # Jobs that left the SUPERSET as dedup, minus those that left the
@@ -1492,17 +1563,34 @@ class ContainmentInvariant:
                         f"leaving a headline because they stopped being counted twice is the "
                         f"superset model working")
 
+        # WHAT THIS FINDING IS, AND WHAT IT IS NOT. Until 2026-09-06 this line
+        # named ONE mechanism — "rows that were ALREADY PUBLISHED were
+        # re-scored across the boundary" — and named it as fact. It cannot be
+        # established from two headline readings, and on 2026-08-29 it was
+        # wrong: the complement fell because TWELVE rows left carrying their
+        # jobs (seven trashed by a signed correction, headlined by one of
+        # 50,000, and five merged by dedupe-llm) against roughly twenty-three
+        # arrivals. The check saw the NET +10 entries and reasoned as though
+        # ten rows had changed; thirty-five had. A net entry count is the
+        # difference of two gross flows and bounds neither of them, so
+        # "nothing that arrived or left could carry this" never followed.
+        # State the observation, list the mechanisms, let the human pick.
         moved_in = "into" if residual < 0 else "out of"
         return _out(FAIL,
                     f"{shown}. Superset exclusions account for {dedup_moved:+,} of that, "
-                    f"leaving {residual:+,} jobs unexplained. A row can only arrive with its "
-                    f"jobs or leave with its jobs, and dedup has been subtracted, so nothing "
-                    f"that arrived, left, or was folded moved these {abs(residual):,} jobs "
-                    f"{moved_in} {sub.label}: rows that were ALREADY PUBLISHED were re-scored "
-                    f"across the boundary between these two slices. This is true however many "
-                    f"entries arrived, which is why the movement guard's allowance cannot see "
-                    f"it. Check any country/AI relabel job and the corrections log — "
-                    f"reconcile-supersets is already accounted for above")
+                    f"leaving {residual:+,} jobs unexplained by dedup and moving "
+                    f"{moved_in} {sub.label} against the direction the complement's own rows "
+                    f"moved. TWO mechanisms produce this and these readings cannot tell them "
+                    f"apart: rows that were ALREADY PUBLISHED re-scored across the boundary, "
+                    f"or the rows that LEFT carried more jobs than the rows that arrived — "
+                    f"{d_entries:+,} is a NET figure and bounds neither gross flow, so a "
+                    f"handful of large departures hides inside it. Both are invisible to the "
+                    f"movement guard, which judges each slice alone and never sees a move "
+                    f"that cancels between two. Check, in this order: the corrections log and "
+                    f"anything trashed in this window, the dedupe-llm merge runs (a merge "
+                    f"restamps no updated_at, so /changed-rows will not show it), then any "
+                    f"country/AI relabel job. reconcile-supersets is already accounted for "
+                    f"above")
 
 
 class DenominatorProvenanceInvariant:
@@ -2612,6 +2700,16 @@ def record_baseline(ctx, report, path=None, incidents_path=None, headlines=HEADL
         slices[name] = {"jobs": observed["jobs"], "entries": observed["entries"],
                         "captured_at": observed["captured_at"],
                         BASELINE_EPOCH_KEY: epoch}
+        # The standing superset-member pool, WHEN THE LIVE BUILD REPORTED ONE.
+        # headline_containment subtracts this from today's pool to learn what
+        # dedup explains, so an entry without it leaves that check UNKNOWN —
+        # which is the honest reading of a baseline taken from a build that
+        # could not say. Omitted rather than defaulted to 0 for the same
+        # reason _read_exclusions omits it: a zero here would be a measurement
+        # nobody took, and the check would subtract it as though somebody had.
+        for k in ("excluded_jobs", "excluded_entries"):
+            if k in observed:
+                slices[name][k] = int(observed[k])
         notes.append(f"{name}: recorded {observed['jobs']:,} jobs / "
                      f"{observed['entries']:,} entries")
     payload = {
