@@ -1882,6 +1882,76 @@ lines below the headcount floor were being counted as coverage misses. The
 denominator admits only items with a parseable headcount and employer; the
 lesson histogram is deliberately wider.
 
+## "Would we find them if we searched every major city?" (the city recall sweep)
+
+`railway/city_recall_sweep.py` is the THIRD recall probe and the same kind of
+thing as the other two: a measurement, never a source. The learning loop reads
+GDELT before our allowlist; the curated probe reads what the owner pastes; this
+one reads the Google News RSS index for `layoffs "<city>"` across the 120
+largest metropolitan areas, in each country's own edition and, where
+`sources/native_layoff_terms` has a vocabulary for the language, in that
+country's own words with the city in its own script.
+
+**Why the city axis is worth its own probe.** It is the one query dimension
+neither other universe ever varies, and it is the first one a reader varies.
+GDELT surfaces what GDELT indexes and a curated digest surfaces what its editor
+reads; a city name reaches the local business press directly.
+
+```bash
+WP_SITE_URL=https://asktherecruiter.com/blog python3 railway/city_recall_sweep.py
+# our host unreachable? The coverage half does not need it:
+python3 railway/city_recall_sweep.py --index-only
+python3 railway/city_recall_sweep.py --limit 3        # smoke test
+```
+
+**It costs nothing and there is deliberately NO workflow.** One index read per
+(city, language) at 5 s spacing, plus one read of our OWN `/query` per employer
+token, memoised. No model on any path. No article page is ever fetched: outlet
+identity comes from the index's own `<source>` element, so no publisher
+robots.txt, paywall or bot wall is engaged. The named output is a file under
+gitignored `scratchpad/`, and **a runner that could write that file is the
+leak**. This is run by hand, like the private benchmark.
+
+**Read the two halves separately, because they fail independently.**
+
+| half | what it answers | what it needs |
+|---|---|---|
+| verdicts (`held` / `missed` / `unknown`) | do we already hold this event? | our own `/query` |
+| net coverage (`outlet_unwired`, `vocab_unmatched`) | is this outlet in `TRUSTED_DOMAINS`, is this phrasing in `discovery_terms()`? | nothing but the index |
+
+The second is a fact about OUR NET and is computed for every judged headline,
+not only for the misses: "we do not read this host" stays true whether or not
+we caught the event through some other outlet. That separation is why an
+unreachable host does not cost you the sweep.
+
+**Our own host refusing is UNKNOWN, and the run stops asking.** `HostBreaker`
+trips after `CITY_SWEEP_HOST_FAIL_LIMIT` consecutive failed `/query` reads, the
+run stops querying, `host_unreachable` is reported and every later verdict is
+UNKNOWN. It exists because the first full run (2026-09-06) met a site-wide HTTP
+409 bot challenge on `/blog` and would otherwise have walked 120 cities into it
+and reported the silence as if it had looked. **A run with
+`host_unreachable true` has no comparable recall figure** - triage the host
+(`ops_status [1]`), then re-run. Do not answer it by raising the limit.
+
+**What to do with the findings.** the same two documented paths as the
+learning email, and nothing new:
+
+| finding | the change |
+|---|---|
+| `outlet_unwired` repeats from one outlet in one country | review it; if it is an editorial newsroom, add it to `sources/gdelt.py` `TRUSTED_DOMAINS` |
+| `vocab_unmatched` repeats on one phrasing | add the wording to `source_registry.GLOBAL_TERMS`, or the native phrase to `sources/native_layoff_terms.PHRASES_BY_LANG` |
+
+**Never wire an aggregator or another layoff tracker**, however many times it
+appears. And never put a name from the sweep into the repo, a commit, a PR or a
+fixture: the named file stays in `scratchpad/`, exactly like the curated
+probe's report.
+
+**A word the sweep counts but does not judge: `native_parsed`.** Those verdicts
+came through this module's own non-English headcount pattern rather than
+`tracker_diff.headline_jobs`, which reads English nouns only. It is a weaker
+read and it is counted separately so it can never be mistaken for the
+English-grade number.
+
 ## The coverage figure is UNKNOWN (ops_status `[3c]`)
 
 `[3c] MEASURED COVERAGE` prints a band per slice. If a slice says **UNKNOWN**,

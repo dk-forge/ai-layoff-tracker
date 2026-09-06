@@ -328,17 +328,42 @@ def outlet_suggestions(wins, trusted_domains):
     return out[:10]
 
 
+# A word boundary is a claim about a script that writes spaces. `\b` sits
+# between a word character and a non-word character, and every CJK character is
+# a word character, so `\b裁员\b` can match only if the term is surrounded by
+# punctuation — which in Chinese and Japanese it essentially never is. The
+# boundary rule below therefore made `vocab_hit` return False for EVERY Chinese
+# and Japanese headline, whatever the vocabulary held (measured 2026-09-06: 34
+# of 39 CJK headlines that "matched no term" contain one of our own native
+# phrases verbatim). That is worse than a missed match, because `classify_miss`
+# and `curated_probe.diagnose` both read this function: every CJK story was
+# being filed as `vocabulary_gap`, and the fix for a vocabulary gap is to add a
+# term we already have.
+#
+# So the boundary is applied per EDGE and only where it means something: an
+# ASCII word character at the edge of a term keeps `\b`, anything else does not.
+# That preserves the 2026-07-25 lesson exactly — "RIF" inside "tariff" and
+# "sacked" inside "ransacked" are ASCII on both edges and are still bounded —
+# while letting a scriptless term match the way that script is written.
+_ASCII_WORDISH = re.compile(r"[A-Za-z0-9_]")
+
+
+def _term_pattern(term):
+    """A compiled matcher for one vocabulary term, bounded where bounding means
+    something. Pure, so the boundary rule is tested rather than trusted."""
+    lowered = term.lower()
+    left = r"\b" if _ASCII_WORDISH.match(lowered[0]) else ""
+    right = r"\b" if _ASCII_WORDISH.match(lowered[-1]) else ""
+    return re.compile(left + re.escape(lowered) + right)
+
+
 def vocab_hit(text, terms):
     """True when any discovery term appears in the text. A resolved win whose
     headline matches NO term is the sharpest learning signal we get: that story
     was invisible to our broad sweep and only a targeted chase found it — its
     wording belongs in the vocabulary."""
     low = " " + re.sub(r"\s+", " ", str(text or "").lower()) + " "
-    # WORD boundaries, not substrings: "RIF" lives inside "tariff", "sacked"
-    # inside "ransacked" — plain substring matching made almost every headline
-    # a false hit and silently suppressed the whole signal (audit 2026-07-25).
-    return any(t and re.search(r"\b" + re.escape(t.lower()) + r"\b", low)
-               for t in (terms or []))
+    return any(t and _term_pattern(t).search(low) for t in (terms or []))
 
 
 def _email_recall_gap(missing, recall_pct, n_total):

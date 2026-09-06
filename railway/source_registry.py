@@ -56,6 +56,16 @@ GLOBAL_TERMS = (
     # discovery stays inside the monthly LLM budget instead of flooding extraction.
     "rightsizing", "workforce optimization", "workforce rebalancing",
     "job eliminations", "voluntary separation", "organizational simplification",
+    # Verb-form gap, the second of the same shape (2026-09-06, city recall
+    # sweep). "cut jobs" was added on 2026-08-24 because the vocabulary held the
+    # noun and the gerund but not the base form. The identical hole was still
+    # open on the OTHER layoff verb: "laid off" (past participle) was here,
+    # "lays off" / "lay off" / "laying off" were not, although "X lays off 250
+    # employees" is the single most common layoff headline in the English
+    # press. Measured over 260 headlines carrying a headcount from a 120-city
+    # index sweep, 159 matched no term at all and these three close 49 of them.
+    # Layoff-specific and low-noise, like "cut jobs" and unlike a bare "cut".
+    "lay off", "lays off", "laying off",
 )
 
 
@@ -104,9 +114,18 @@ def discovery_terms() -> tuple[str, ...]:
         terms.extend(market.terms)
     # GDELT queries become less reliable when needlessly huge; the ceiling is a
     # deliberate cap (36 -> 42 on 2026-07-19 for dialect synonyms; 42 -> 48 on
-    # 2026-07-25 for the low-noise corporate euphemisms) and the global terms
-    # occupy the most valuable slots.
-    return tuple(dict.fromkeys(terms))[:48]
+    # 2026-07-25 for the low-noise corporate euphemisms; 48 -> 51 on 2026-09-06
+    # for the layoff verb forms) and the global terms occupy the most valuable
+    # slots.
+    #
+    # RAISE THIS DELIBERATELY OR NOT AT ALL. The unique count sat at EXACTLY 48
+    # before the 2026-09-06 addition, so three new global terms would have
+    # pushed three market terms off the end silently: the truncation is at the
+    # tail, the tail is whichever market MARKETS happens to iterate last, and
+    # nothing anywhere would have reported a market losing its vocabulary.
+    # `tests/test_source_registry_parity.py` now fails when the cap is reached,
+    # so a future addition has to make this decision on purpose too.
+    return tuple(dict.fromkeys(terms))[:51]
 
 
 def coverage_manifest() -> list[dict[str, object]]:
