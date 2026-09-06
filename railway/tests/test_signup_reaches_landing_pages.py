@@ -1058,6 +1058,43 @@ class EveryControlInTheSignupClearsTheFloor(_Swept):
             "%d neighbouring pair(s) in the signup under %.0fpx apart:\n  %s"
             % (len(bad), GAP_MIN, "\n  ".join(bad[:20])))
 
+    def test_the_frequency_choices_clear_the_floor_WHEN_THEY_WRAP(self):
+        """The 2026-09-06 defect, forced rather than waited for.
+
+        The frequency labels were laid out for a pair on one line, spaced by a
+        RIGHT margin only. A third choice (Monthly, arriving with the monthly
+        digest slot) broke that line at 375px in the runner's font stack and
+        not in this machine's, so the pair the layout wrapped sat 0.0px apart
+        and the guard above was green on macOS and red on Linux. A floor that
+        depends on which font measured it is not a floor.
+
+        So this asserts the same 8px on a width narrow enough that the choices
+        MUST wrap in any font, which makes the wrapped case a measurement here
+        rather than a thing CI happens to notice. 240px is not a phone anybody
+        holds; it is the smallest width the sweep can still read, and the
+        vertical gap it measures is the one a 375px phone gets when the reader
+        raises the text size.
+        """
+        rows = [r for r in self.swept(240)["rows"]
+                if r.get("field") == "freq" and not sweep_is_off_screen(r)]
+        self.assertGreaterEqual(
+            len(rows), 3,
+            "the sweep found %d frequency control(s) at 240px, so whether they "
+            "wrap safely is UNKNOWN rather than fine" % len(rows))
+        tops = sorted({round(r["y"], 1) for r in rows})
+        self.assertGreater(
+            len(tops), 1,
+            "the frequency choices did not wrap even at 240px, so this test "
+            "measured the single-line case the test above already covers")
+        bad = ["%.1fpx apart: %s  |  %s" % (dist, sweep_describe(a),
+                                            sweep_describe(b))
+               for dist, a, b in sweep_adjacent_pairs(rows)
+               if dist < GAP_MIN - 0.2]
+        self.assertEqual(
+            [], bad,
+            "%d wrapped frequency pair(s) under %.0fpx apart:\n  %s"
+            % (len(bad), GAP_MIN, "\n  ".join(bad)))
+
     def test_the_guard_fails_on_the_component_as_it_was(self):
         """The half that makes every assertion above evidence. With this
         change's rules replaced by the ones they succeeded, the block has to

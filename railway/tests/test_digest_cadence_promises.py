@@ -16,15 +16,17 @@ sentences disagree. A slot move now reds CI instead of shipping a stale
 promise, and the sentences stay sentences.
 
 AND THE MONTHLY PROMISE MUST NOT RENDER WHILE THE TIER IS UNWIRED.
-alt_digest_cadence_sentence already carries "Monthly editions go out at the
-start of each month" for the day the tier is armed. SEND_TIMES schedules no
-monthly tick and alt_digest_monthly_enabled() ships false, so no reader may
-meet that sentence yet: alt_digest_accepted_freq refuses to STORE an
-unoffered monthly (a hand-crafted POST is the only way to ask for one - the
-form shows weekly/daily radios only), which is what keeps the confirm panel's
-promise and the schedule telling one story. Both directions are held here:
-the coercion while dormant, and the pass-through once the offer filter is on
-- so arming later is flipping the filter beside the new slot, not a rewrite.
+alt_digest_cadence_sentence carries "Monthly editions go out at the start of
+each month". From 2026-08-25 to 2026-09-06 SEND_TIMES scheduled no monthly
+tick and alt_digest_monthly_enabled() shipped false, so no reader could meet
+that sentence: alt_digest_accepted_freq refuses to STORE an unoffered monthly,
+which is what keeps the confirm panel's promise and the schedule telling one
+story. On 2026-09-06 the slot (the 1st, 9:00 Eastern) and the offer armed in
+one change. Both directions are still held here, with the filter FORCED each
+way rather than read from its shipped default: the coercion with the offer
+off, the pass-through with it on, and the shipped default must agree with
+whether SEND_TIMES carries a monthly slot. The "start of each month" wording
+is derived the way the weekly's weekday is: from the slot's day-of-month.
 
 The gate/behaviour cases run the real PHP by extraction and SKIP without php
 on PATH, which is not a pass. The fact checks are pure source reads and
@@ -85,7 +87,14 @@ def _cadence_sentences():
 
 def _tiers():
     """{tier: weekday-or-None} out of digest_slot.SEND_TIMES."""
-    return {tier: weekday for tier, weekday in digest_slot.SEND_TIMES.values()}
+    return {tier: weekday for tier, weekday, _monthday
+            in digest_slot.SEND_TIMES.values()}
+
+
+def _monthdays():
+    """{tier: day-of-month-or-None} out of digest_slot.SEND_TIMES."""
+    return {tier: monthday for tier, _weekday, monthday
+            in digest_slot.SEND_TIMES.values()}
 
 
 class TheTypedSentencesMatchTheSchedule(unittest.TestCase):
@@ -129,6 +138,38 @@ class TheTypedSentencesMatchTheSchedule(unittest.TestCase):
         sentence = _cadence_sentences()["daily"]
         for name in WEEKDAY_NAMES:
             self.assertNotIn(name, sentence)
+
+    def test_the_monthly_promise_names_the_start_of_the_month(self):
+        """"start of each month" is true only of a slot on the 1st.
+
+        Derived, not typed: if SEND_TIMES moves the monthly tick to the 15th
+        this reds, and the sentence has to change in the same commit.
+        """
+        monthdays = _monthdays()
+        self.assertIn("monthly", monthdays, "no monthly slot in digest_slot.py")
+        self.assertEqual(monthdays["monthly"], 1,
+                         "the monthly slot is not on the 1st any more, so "
+                         "'at the start of each month' in "
+                         "alt_digest_cadence_sentence is a stale promise")
+        self.assertIsNone(_tiers()["monthly"],
+                          "the monthly slot gained a weekday restriction; "
+                          "a 1st that is not that weekday would never send")
+        sentence = _cadence_sentences()["monthly"]
+        self.assertIn("start of each month", sentence)
+        self.assertIn("month so far", sentence)
+        for name in WEEKDAY_NAMES:
+            self.assertNotIn(name, sentence)
+
+    def test_the_monthly_radio_is_gated_on_the_offer(self):
+        """The form may only show Monthly through alt_digest_monthly_enabled()."""
+        src = _source()
+        radio = re.search(r"<input type=\"radio\" name=\"alt_freq\" value=\"monthly\">",
+                          src)
+        self.assertTrue(radio, "no Monthly radio in the signup form")
+        before = src[max(0, radio.start() - 200):radio.start()]
+        self.assertIn("alt_digest_monthly_enabled()", before,
+                      "the Monthly radio renders unconditionally; disarming "
+                      "the tier would leave it offered")
 
     def test_the_monthly_slot_and_the_monthly_offer_arm_together(self):
         """The dormant-tier invariant, in both directions.
@@ -175,14 +216,15 @@ class TheIntakeIsWiredThroughTheGate(unittest.TestCase):
 
 
 _GATE_RUNNER = r"""
-// $argv[3] is 'on' to force the offer filter true, anything else leaves the
-// shipped default in charge.
+// $argv[3] is 'on' to force the offer filter true, 'off' to force it false,
+// anything else leaves the shipped default in charge.
 function apply_filters($tag, $value) {
-    global $FORCE_ON;
-    if ($FORCE_ON && $tag === 'alt_digest_offer_monthly') return true;
+    global $FORCE;
+    if ($FORCE === 'on'  && $tag === 'alt_digest_offer_monthly') return true;
+    if ($FORCE === 'off' && $tag === 'alt_digest_offer_monthly') return false;
     return $value;
 }
-$FORCE_ON = (($argv[3] ?? '') === 'on');
+$FORCE = ($argv[3] ?? '');
 $src = file_get_contents($argv[1]);
 foreach (explode(',', $argv[2]) as $name) {
     if (!preg_match('/\nfunction ' . preg_quote($name, '/') . '\s*\(.*?\n\}/s',
@@ -206,6 +248,8 @@ _GATE_FNS = ("alt_digest_valid_freq", "alt_digest_monthly_enabled",
 
 
 def run_gate(force_on):
+    """force_on: True forces the offer on, False forces it OFF, None leaves
+    the shipped default in charge."""
     handle = tempfile.NamedTemporaryFile("w", suffix=".php", delete=False,
                                          encoding="utf-8")
     try:
@@ -213,7 +257,7 @@ def run_gate(force_on):
         handle.close()
         run = subprocess.run([PHP, handle.name, SUBSCRIBE,
                               ",".join(_GATE_FNS),
-                              "on" if force_on else "off"],
+                              {True: "on", False: "off"}.get(force_on, "")],
                              capture_output=True, text=True, timeout=60)
     finally:
         os.unlink(handle.name)
@@ -240,13 +284,21 @@ class TheMonthlyPromiseWaitsForTheOffer(unittest.TestCase):
         self.assertNotIn("start of each month", out["sentence"])
 
     def test_arming_the_offer_lets_monthly_through_with_its_promise(self):
-        # The other direction, so arming later is a filter flip and not a
+        # The other direction, so disarming later is a filter flip and not a
         # rewrite: with the offer on, monthly stores as monthly and the
         # sentence is the monthly one.
         out = run_gate(force_on=True)
         self.assertEqual(out["accepted_monthly"], "monthly")
         self.assertIn("start of each month", out["sentence"])
         self.assertIn("month so far", out["sentence"])
+
+    def test_the_shipped_default_matches_the_schedule(self):
+        """The real filter default, run rather than regex-read: it must
+        store monthly exactly when SEND_TIMES schedules a monthly slot."""
+        out = run_gate(force_on=None)
+        armed = "monthly" in _tiers()
+        self.assertEqual(out["accepted_monthly"],
+                         "monthly" if armed else "weekly")
 
 
 if __name__ == "__main__":

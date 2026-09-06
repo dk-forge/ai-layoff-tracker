@@ -38,7 +38,7 @@ Env:
   RESEND_API_KEY                   required only for resend
   DIGEST_SMTP_HOST/_PORT/_USER/_PASSWORD    required only for smtp
   DIGEST_FROM, DIGEST_REPLY_TO     identity on the verified domain
-  DIGEST_FREQ                      daily | weekly | auto (default auto).
+  DIGEST_FREQ                      daily | weekly | monthly | auto (default auto).
                                    auto sends daily every day and weekly as
                                    well on a Monday, as two passes in one run.
                                    Naming a tier forces that one, on any day,
@@ -134,6 +134,12 @@ def _today():
     return datetime.datetime.now(datetime.timezone.utc).date()
 
 
+# The tiers this sender knows, read from the schedule rather than typed twice:
+# a slot digest_slot.py schedules is a tier DIGEST_FREQ may force, and nothing
+# else is. Order is the order they are sent on a day that carries several.
+TIERS = tuple(dict.fromkeys(entry[0] for entry in digest_slot.SEND_TIMES.values()))
+
+
 def resolve_freqs(env=None, today=None) -> tuple:
     """Which tiers run today, in the order they are sent.
 
@@ -158,10 +164,18 @@ def resolve_freqs(env=None, today=None) -> tuple:
     """
     env = os.environ if env is None else env
     choice = (env.get("DIGEST_FREQ") or "auto").strip().lower()
-    if choice in {"daily", "weekly"}:
+    if choice in TIERS:
         return (choice,)
     today = today or _today()
-    return ("daily", "weekly") if today.isoweekday() == 1 else ("daily",)
+    freqs = ["daily"]
+    if today.isoweekday() == 1:
+        freqs.append("weekly")
+    # The 1st of the month adds the monthly edition, mirroring the scheduled
+    # 9:00 Eastern slot (digest_slot.SEND_TIMES) so a manual run on the 1st
+    # and the cron agree about what the day carries.
+    if today.day == 1:
+        freqs.append("monthly")
+    return tuple(freqs)
 
 
 def slot_decision(env=None, today=None):
@@ -206,7 +220,7 @@ def slot_decision(env=None, today=None):
     fallback direction is always "the sender keeps working".
     """
     env = os.environ if env is None else env
-    if (env.get("DIGEST_FREQ") or "").strip().lower() in {"daily", "weekly"}:
+    if (env.get("DIGEST_FREQ") or "").strip().lower() in TIERS:
         return resolve_freqs(env=env, today=today), ""
 
     cron = (env.get("DIGEST_CRON") or "").strip()
@@ -466,7 +480,8 @@ def _kicker(payload: dict) -> str:
     freq = str(payload.get("freq") or "").strip().lower()
     # "Edition" rather than "digest", because the word a masthead uses is the
     # word a reader takes for what this is.
-    tier = {"weekly": "Weekly edition", "daily": "Daily edition"}.get(freq, "Edition")
+    tier = {"weekly": "Weekly edition", "daily": "Daily edition",
+            "monthly": "Monthly edition"}.get(freq, "Edition")
     return f"{tier}, {phrase}"
 
 
@@ -620,28 +635,19 @@ def _record_health(status: str, entries: int, detail: str) -> None:
 # fallback quietly covers the send, readers are fine and this repo still has a
 # broken schedule, and that is worth an issue rather than a silence.
 WEEKLY_LIVENESS_ROW = "digest_weekly"
+# The monthly tier's row, for the same reason and with a ceiling sized to its
+# own cadence (31 days + 4 of slack; ops_status.MONTHLY_DIGEST_MAX_AGE_DAYS and
+# health_digest.MAX_AGE_DAYS agree). Armed 2026-09-06.
+MONTHLY_LIVENESS_ROW = "digest_monthly"
+LIVENESS_ROWS = {"weekly": WEEKLY_LIVENESS_ROW, "monthly": MONTHLY_LIVENESS_ROW}
 
 
 def _record_weekly_liveness(outcome: dict) -> None:
-    """Stamp the weekly tier's own row. Only a real pass counts as one.
-
-    A preview and a nominated test send are excluded for the same reason they
-    are excluded from the mailer's row: neither is an edition anybody received,
-    and a row they refreshed would let a manual run hide a schedule that had
-    stopped. `_run_tier` already leaves `detail` empty for both, so the test is
-    simply "did this pass produce a ledger entry".
-    """
-    if outcome.get("preview") or outcome.get("test"):
-        print("digest: the weekly liveness row was NOT stamped - a preview or "
-              "a nominated test send is not an edition that went out.")
+    """Stamp the weekly tier's own row. Only a real pass counts as one."""
+    reading = _slot_liveness_reading("weekly", outcome)
+    if reading is None:
         return
-    not_sent = outcome.get("not_sent") or ""
-    detail = outcome.get("detail") or ""
-    if not (not_sent or detail):
-        # No pass happened at all (no route, no subscriber table). Recording
-        # `ok` here would claim a weekly edition that was never attempted.
-        return
-    healthy = not not_sent and outcome.get("code") == 0
+    status, count, detail = reading
     try:
         from source_health import report_source_health
         # The id is written as a LITERAL and not as WEEKLY_LIVENESS_ROW on
@@ -650,12 +656,50 @@ def _record_weekly_liveness(outcome: dict) -> None:
         # finds account for itself on the public health page. A variable here
         # would pass that test by being invisible to it, which is not passing.
         assert WEEKLY_LIVENESS_ROW == "digest_weekly"
-        report_source_health(
-            "digest_weekly", "ok" if healthy else "degraded",
-            int(outcome.get("sent") or 0),
-            (not_sent or detail)[:240])
+        report_source_health("digest_weekly", status, count, detail)
     except Exception as exc:  # noqa: BLE001
         print(f"(weekly liveness health post skipped: {exc})")
+
+
+def _record_monthly_liveness(outcome: dict) -> None:
+    """Stamp the monthly tier's own row. Same rules as the weekly one."""
+    reading = _slot_liveness_reading("monthly", outcome)
+    if reading is None:
+        return
+    status, count, detail = reading
+    try:
+        from source_health import report_source_health
+        # Literal id, for the registry-parity sweep (see the weekly twin).
+        assert MONTHLY_LIVENESS_ROW == "digest_monthly"
+        report_source_health("digest_monthly", status, count, detail)
+    except Exception as exc:  # noqa: BLE001
+        print(f"(monthly liveness health post skipped: {exc})")
+
+
+def _slot_liveness_reading(freq: str, outcome: dict):
+    """(status, count, detail) for one non-daily tier's own row, or None.
+
+    None means "stamp nothing", and it is returned for a preview, a nominated
+    test send, and a pass that never happened (no route, no subscriber table).
+    A preview and a test send are excluded for the same reason they are
+    excluded from the mailer's row: neither is an edition anybody received,
+    and a row they refreshed would let a manual run hide a schedule that had
+    stopped. `_run_tier` already leaves `detail` empty for both, so the test is
+    simply "did this pass produce a ledger entry". Recording `ok` for a pass
+    that never happened would claim an edition that was never attempted.
+    """
+    if outcome.get("preview") or outcome.get("test"):
+        print(f"digest: the {freq} liveness row was NOT stamped - a preview or "
+              "a nominated test send is not an edition that went out.")
+        return None
+    not_sent = outcome.get("not_sent") or ""
+    detail = outcome.get("detail") or ""
+    if not (not_sent or detail):
+        return None
+    healthy = not not_sent and outcome.get("code") == 0
+    return ("ok" if healthy else "degraded",
+            int(outcome.get("sent") or 0),
+            (not_sent or detail)[:240])
 
 
 def health_reading(credential, transport, details, failed_rows, not_sent=()):
@@ -1086,8 +1130,9 @@ def main() -> int:
         return 2
 
     if len(freqs) > 1:
-        print("digest: it is a Monday, so both tiers go out from this one "
-              "run, as two separate passes. One cron, one job, two sends.")
+        print(f"digest: {len(freqs)} tiers go out from this one run "
+              f"({', '.join(freqs)}), as separate passes. One job, one send "
+              f"per tier.")
 
     raw = os.environ.get("DIGEST_LIMIT", "").strip()
     remaining = int(raw) if raw.isdigit() else None
@@ -1105,6 +1150,8 @@ def main() -> int:
         outcome = _run_tier(freq, transport, from_addr, reply_to, remaining)
         if freq == "weekly":
             _record_weekly_liveness(outcome)
+        elif freq == "monthly":
+            _record_monthly_liveness(outcome)
         codes.append(outcome["code"])
         sent_rows += outcome["sent"]
         failed_rows += outcome["failed"]

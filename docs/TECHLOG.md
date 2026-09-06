@@ -1,3 +1,101 @@
+## 2026-09-06 - the monthly tier composed for twelve days and no monthly edition was ever sent: the slot the signup promised did not exist (2.20.172, branch, PR)
+
+**Class:** absent-read-as-ok
+**Guard:** railway/tests/test_digest_dst_slot.py and
+railway/tests/test_digest_cadence_promises.py (four mutations reverted in
+turn redden them: dropping the two monthly cron lines, moving the slot off
+the 1st, removing the day-of-month refusal in `tier_for_cron`, and moving the
+slot hour so the DST twin claims the day); railway/tests/
+test_signup_reaches_landing_pages.py for the third radio's tap floor
+
+**What was wrong.** The monthly digest tier was complete. `alt_digest_valid_freq`
+accepted it, `alt_digest_monthly_window` framed the month to date, the composer
+built the masthead, the Indeed backdrop and all three sections, and 2.20.171
+verified all nine editions from live payloads including the three monthly ones.
+The confirm panel's own sentence says "Monthly editions go out at the start of
+each month, covering the month so far" (`alt_digest_cadence_sentence`,
+subscribe.php). No monthly edition has ever gone out, and none could have:
+`digest_slot.SEND_TIMES` carried two entries and `digest-send.yml` four cron
+lines, all of them daily or weekly. The tier was true of the code and false of
+the inbox.
+
+Nothing said so, and that is the shape. The dormant-feature invariant held
+correctly and consistently - the offer filter shipped false, the intake gate
+refused to store an unoffered monthly, and
+`test_the_monthly_slot_and_the_monthly_offer_arm_together` pinned both sides at
+false - so every surface read green while agreeing the tier did not exist.
+`ops_status [4c]` asked whether the WEEKLY slot had run and had no question to
+ask about a monthly one, because there was no `digest_monthly` row and an
+absent row was not read as "never looked at". A tier missing from the schedule
+is missing from every check that iterates the schedule.
+
+**What was done.** The one missing slot, in the daily's own wall-clock
+convention. `SEND_TIMES` entries carry a third field, a required day of month:
+`(9, 0) -> ("monthly", None, 1)`. Two cron lines, the DST pair the other slots
+already use: `0 13 1 * *` (09:00 EDT) and `0 14 1 * *` (09:00 EST). 13:00 and
+14:00 UTC on the 1st are still the 1st in New York, so the UTC cron date and
+the Eastern date `tier_for_cron` judges never disagree. `tier_for_cron` refuses
+a tick whose Eastern day of month is not 1, which the cron lines already
+guarantee and which a hand-set `DIGEST_CRON` or a widened day field does not.
+Every other day of the month is a no-op that exits 0 having read, built, sent
+and stamped nothing.
+
+9:00 rather than 6:00 or 7:30 for the weekly's own reason: a 1st that falls on
+a Monday carries all three editions, and a subscriber on every tier must not
+receive two in one minute. `resolve_freqs` adds monthly on the 1st so a manual
+run and the cron agree about what a day carries, and `digest_send.TIERS` is derived
+from `SEND_TIMES` rather than typed, so a forceable `DIGEST_FREQ` value is
+exactly a scheduled slot.
+
+The public opt-in armed in the same change (`alt_digest_offer_monthly` now
+defaults true, the Monthly radio renders behind
+`alt_digest_monthly_enabled()`), because a slot nobody can subscribe to and an
+offer no slot fulfils are the same defect from two sides. The intake gate is
+unchanged and still coerces an unoffered monthly to weekly, so disarming the
+tier remains one filter flip. The phone fold was re-measured against the
+three-choice form (`railway/signup_fold.py --record`).
+
+**And the absence is now a question that gets asked.** `digest_monthly` is a
+liveness row stamped only by a completed monthly pass, never by a preview or a
+nominated test send, with the weekly row's exact rules factored into
+`_slot_liveness_reading`. `ops_status.monthly_digest_lines` reads it as PASS /
+FAIL / UNKNOWN: the ceiling is 35 days (the longest month plus 4 of slack, the
+`source_audit` derivation, mirrored in `health_digest.MAX_AGE_DAYS`), a
+degraded pass is reported and does not raise, and an absent row before the
+first send is UNKNOWN and says "not established, which is not a pass" rather
+than green. `digest_mailer` cannot stand in for it: the daily pass refreshes
+that row every morning.
+
+**AND THE THIRD RADIO BROKE THE TAP FLOOR ON THE RUNNER AND NOT ON THIS
+MACHINE.** The frequency labels were laid out for a PAIR that "stays on ONE
+line", spaced by a right margin only. Three of them do not fit 375px in the
+runner's font stack: `Weekly` 85.1 and `Monthly` 91.1 landed at (40,4199) and
+(40,4243), a wrapped row 0.0px under the one above it, which is exactly the
+mis-tap the 8px adjacency floor exists to prevent, reached by the layout the
+floor was written for. `test_no_two_neighbouring_controls_are_closer_than_8px`
+was GREEN on macOS, where the same three labels fit the line, and red on
+Linux CI. A floor that depends on which font measured it is not a floor.
+
+The fix is 8px BELOW each label as well as 16px beside it, in the component
+(`includes/subscribe.php`) and in the rule that restates it for tracker phone
+widths (`assets/layoffs.css`), because horizontal margin cannot space a line
+the layout decides to break. The guard is a new test that forces the wrap at
+240px rather than waiting for a font to force it: reverting the bottom margin
+reddens it here, on macOS, where the older test cannot see the defect at all.
+The cost is 8px of phone-fold budget, measured rather than assumed and
+recorded (`railway/signup_fold.py --record`): the tightest surface, the blog
+post at 375x812, goes from 95.2px of headroom to 87.2px against a required
+80.0px. That is real headroom and it is thinner than it was; the next thing
+added to this form should be measured before it is written.
+
+**One thing is deliberately NOT settled.** On the 1st, `alt_digest_monthly_window`
+clamps `to` up to `from`, so the first edition of a month covers the 1st alone,
+provisional, and the dateline says so. Whether "the month so far" read at 9:00
+on the 1st should instead mean the month just completed is a product ruling,
+and it is open. It must not be settled by quietly moving `from` back a month in
+the window function; the promise on the signup panel and the window would then
+disagree with each other in the way this entry is about.
+
 ## 2026-09-06 - the nine editions composed from live payloads: every figure reproduced, the talent section had never archived, and two sentences were typed (2.20.171, branch, PR)
 
 **Class:** silent-stop (the archive), derived-value-typed-by-hand (the two sentences)

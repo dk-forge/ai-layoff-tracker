@@ -219,48 +219,50 @@ function alt_digest_lists() {
  * accepted value everywhere the enum is read - stored, windowed, composed and
  * archived - so the machinery is coherent the moment a monthly send is made.
  *
- * THE SCHEDULED MONTHLY TICK IS NOT YET ARMED (see the note on
- * alt_digest_monthly_window and the PR that introduced it): digest_slot.py and
- * digest-send.yml still schedule only the daily and weekly slots, and the
- * public form only OFFERS monthly when alt_digest_monthly_enabled() is filtered
- * on. Accepting the value here does not send anything on its own; it means that
- * a manual send, the render harness, or the eventual monthly cron all agree on
- * the same window and the same columns rather than silently coercing to weekly.
+ * THE SCHEDULED MONTHLY TICK WAS ARMED ON 2026-09-06: digest_slot.py and
+ * digest-send.yml carry it at 9:00 AM Eastern on the 1st, and the public form
+ * offers it because alt_digest_monthly_enabled() flipped in the same change.
+ * Between 2026-08-25 and then only the daily and weekly slots were scheduled,
+ * and this enum accepted a value no job fulfilled so that a manual send, the
+ * render harness and the eventual cron would agree on one window and one set
+ * of columns rather than silently coercing to weekly.
  */
 function alt_digest_valid_freq($f) {
     return in_array($f, array('daily', 'weekly', 'monthly'), true) ? $f : 'weekly';
 }
 
 /*
- * Is the MONTHLY option offered on the public signup form yet?
+ * Is the MONTHLY option offered on the public signup form?
  *
- * Ships FALSE, on purpose, and this is the codebase's standing dormant-feature
- * pattern (a feature is armed by a reviewed code change, never by data quietly
- * appearing - see digest-send.yml's "arming is a code change" note and
- * alt_edition_tier_indexable). The whole monthly pipeline - validation, window,
- * period, last-sent column, composer, Indeed backdrop, methodology - is built
- * and testable while this is false, so a reader can never pick a cadence that
- * no scheduled job fulfils. Flip the filter to true in the SAME change that
- * arms the monthly tick in digest_slot.py / digest-send.yml, not before.
+ * Shipped FALSE from 2026-08-25 to 2026-09-06 under the codebase's standing
+ * dormant-feature pattern (a feature is armed by a reviewed code change, never
+ * by data quietly appearing - see digest-send.yml's "arming is a code change"
+ * note and alt_edition_tier_indexable), while the whole monthly pipeline -
+ * validation, window, period, last-sent column, composer, Indeed backdrop,
+ * methodology - was built and tested behind it. Flipped TRUE on 2026-09-06 in
+ * the SAME change that armed the monthly tick (digest_slot.py SEND_TIMES and
+ * the two `1 * *` cron lines in digest-send.yml): a reader may now pick a
+ * cadence a scheduled job fulfils, and tests/test_digest_cadence_promises.py
+ * fails if either side is ever flipped without the other.
  */
 function alt_digest_monthly_enabled() {
-    return (bool) apply_filters('alt_digest_offer_monthly', false);
+    return (bool) apply_filters('alt_digest_offer_monthly', true);
 }
 
 /*
  * The frequency a SIGNUP may actually STORE, as opposed to the enum the
  * machinery accepts. 'monthly' is a valid value everywhere the enum is read
  * (window, columns, composer) so a manual send and the render harness work,
- * but the public form does not offer it until alt_digest_monthly_enabled()
- * is on and digest_slot.py schedules no monthly tick until then. A
- * hand-crafted POST carrying alt_freq=monthly before arming would therefore
- * store a cadence no scheduled job fulfils AND put the confirm panel's
- * monthly promise (alt_digest_cadence_sentence) in front of a reader for a
- * send the schedule cannot make. So an unoffered monthly coerces to the
- * form's own default, weekly - the intake gate that keeps the promise and
- * the schedule telling one story. tests/test_digest_cadence_promises.py
- * holds both directions: the coercion while dormant, and the pass-through
- * once the offer filter is on.
+ * but it is only STORABLE while alt_digest_monthly_enabled() is on. While the
+ * offer was off (2026-08-25 to 2026-09-06) a hand-crafted POST carrying
+ * alt_freq=monthly would have stored a cadence no scheduled job fulfilled AND
+ * put the confirm panel's monthly promise (alt_digest_cadence_sentence) in
+ * front of a reader for a send the schedule could not make. So an unoffered
+ * monthly coerces to the form's own default, weekly - the intake gate that
+ * keeps the promise and the schedule telling one story, and the gate to use
+ * again if the tier is ever disarmed. tests/test_digest_cadence_promises.py
+ * holds both directions: the coercion with the offer forced off, and the
+ * pass-through with it on.
  */
 function alt_digest_accepted_freq($f) {
     $f = alt_digest_valid_freq($f);
@@ -531,13 +533,14 @@ function alt_digest_cadence_sentence($freq) {
     }
     if ($freq === 'monthly') {
         // The monthly edition covers the month so far and goes out at the start
-        // of each month. This sentence is only ever shown to somebody who could
-        // pick monthly, which the form does not offer until the monthly tick is
-        // armed (alt_digest_monthly_enabled) - and since 2.20.146 that is
-        // structural, not just the form's radios: alt_digest_accepted_freq
-        // refuses to STORE an unoffered monthly, so no receipt can carry the
-        // freq that selects this branch while the tier is dormant. It cannot
-        // promise a send the schedule will not make.
+        // of each month: the 1st, 9:00 AM Eastern, since 2026-09-06
+        // (railway/digest_slot.py SEND_TIMES, which
+        // tests/test_digest_cadence_promises.py reads to hold "start of each
+        // month" true). This sentence is only ever shown to somebody who could
+        // pick monthly, and since 2.20.146 that is structural, not just the
+        // form's radios: alt_digest_accepted_freq refuses to STORE an
+        // unoffered monthly, so if the tier is ever disarmed again no receipt
+        // can carry the freq that selects this branch.
         return 'Monthly editions go out at the start of each month, covering the month so far, so your first one arrives with the next edition.';
     }
     return 'Weekly digests go out on Monday mornings, so your first one arrives on the next Monday.';
@@ -771,14 +774,26 @@ function alt_digest_subscribe_form($context = '') {
         display: flex; align-items: center; gap: 10px;
         min-height: 44px; margin: 0; font-size: 14px;
     }
-    /* The frequency pair stays on ONE line, so this is inline-flex on the
-       labels rather than a flex column on the fieldset: a <legend> is a flex
-       item like any other and turning the fieldset into a row would seat
-       "How often for the digests?" beside the two choices. 16px between them
-       clears the 8px adjacency floor twice over. */
+    /* Inline-flex on the LABELS rather than a flex column on the fieldset: a
+       <legend> is a flex item like any other and turning the fieldset into a
+       row would seat "How often for the digests?" beside the choices. 16px
+       between them clears the 8px adjacency floor twice over.
+
+       THE BOTTOM MARGIN IS THE ROW GAP, AND IT IS NOT DECORATION. This said
+       "the frequency pair stays on ONE line" while there were two choices,
+       and on 2026-09-06 a third (Monthly) arrived with the monthly slot.
+       Three 44px labels do not fit 375px in the runner's font stack: Weekly
+       85.1 and Monthly 91.1 landed at (40,4199) and (40,4243), a WRAPPED row
+       0.0px below the one above it, which is exactly the mis-tap the 8px
+       floor exists to prevent, arrived at by the rule meant to prevent it.
+       Horizontal margin alone cannot space a line the layout decides to
+       break, so the label carries 8px BELOW it as well and the wrap is safe
+       at any width and in any font. It costs 8px of the phone-fold budget on
+       a single-line render, which is measured rather than assumed:
+       railway/signup_fold.py --record, and the stamp holds the figure. */
     .alt-digest-freq label {
         display: inline-flex; align-items: center; gap: 10px;
-        min-height: 44px; margin: 0 16px 0 0; font-size: 14px;
+        min-height: 44px; margin: 0 16px 8px 0; font-size: 14px;
     }
     /* A 13px box in a flex row is a flex item, and flex items shrink. */
     .alt-digest-lists input, .alt-digest-freq input { flex: none; }
@@ -974,14 +989,18 @@ function alt_digest_subscribe_form($context = '') {
                 <legend>How often for the digests?</legend>
                 <label><input type="radio" name="alt_freq" value="weekly" checked> Weekly</label>
                 <label><input type="radio" name="alt_freq" value="daily"> Daily</label>
-                <?php /* No Monthly radio yet. The monthly EDITION is built
-                          (window, compose, the "jobs in" backdrop) but its
-                          scheduled send is not armed, and a reader must never
-                          be offered a cadence no job fulfils. The public
-                          opt-in and the monthly cron slot arm together in one
-                          reviewed change; until then the form is exactly the
-                          two-choice form it has always been, and the phone
-                          fold measured against it still holds. */ ?>
+                <?php /* The Monthly radio and the monthly cron slot armed
+                          together on 2026-09-06 (digest_slot.py SEND_TIMES,
+                          digest-send.yml), because a reader must never be
+                          offered a cadence no job fulfils. It is gated on
+                          alt_digest_monthly_enabled() so that disarming the
+                          tier is one flip that removes the offer, refuses
+                          the store and keeps the promise off the panel. The
+                          phone fold was re-measured against the three-choice
+                          form (railway/signup_fold.py --record). */ ?>
+                <?php if (alt_digest_monthly_enabled()) : ?>
+                <label><input type="radio" name="alt_freq" value="monthly"> Monthly</label>
+                <?php endif; ?>
             </fieldset>
 
             <div class="alt-digest-row">
@@ -2514,10 +2533,15 @@ function alt_digest_window($freq, $now = null) {
  * would invert the window, so `to` is clamped up to `from`. That yields a
  * single-day window on the 1st (the month's first, still provisional), which is
  * the only honest reading of "this month so far" on day one and never an
- * inverted or empty range. In practice the monthly tick is not meant to fire on
- * the 1st for a same-month brief; the clamp is a safety floor, not the intended
- * operating point, and it is documented so a later reader does not mistake it
- * for one.
+ * inverted or empty range.
+ *
+ * THE SCHEDULED TICK DOES FIRE ON THE 1ST (9:00 AM Eastern, armed 2026-09-06),
+ * because that is the wall-clock reading of the signup's promise "at the start
+ * of each month", and on that day this clamp IS the operating point: the
+ * edition covers the 1st alone, provisional, and the dateline says so. Whether
+ * "month so far" on the 1st should instead mean the month just completed is a
+ * product ruling recorded as open in TECHLOG 2026-09-06 (monthly slot); do not
+ * settle it by silently moving `from` back a month here.
  *
  * Returns array($from, $to) as Y-m-d, both inclusive.
  */

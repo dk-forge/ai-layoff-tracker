@@ -3,7 +3,10 @@
 WHY THIS FILE EXISTS AT ALL.
 
 The owner asked for the daily digest at 6:00 AM Eastern every day and the
-weekly look-back at 7:30 AM Eastern on Mondays. GitHub cron is UTC and knows
+weekly look-back at 7:30 AM Eastern on Mondays. The monthly edition (armed
+2026-09-06) goes out at 9:00 AM Eastern on the 1st of the month, the wall clock
+reading of the signup's own promise "at the start of each month". GitHub cron
+is UTC and knows
 nothing about daylight saving, so a single fixed cron line is correct for
 about eight months of the year and quietly an hour wrong for the other four.
 On 2026-11-01 a `0 10 * * *` line stops being 6:00 AM in New York and becomes
@@ -16,9 +19,12 @@ THE MECHANISM.
 
 Both candidate UTC hours are scheduled, and this module decides which of them
 is the real one TODAY. 6:00 ET is 10:00 UTC under EDT and 11:00 UTC under EST;
-7:30 ET is 11:30 UTC under EDT and 12:30 UTC under EST. Exactly one of each
-pair lands on the intended wall clock on any given date, so exactly one tick
-sends and the other exits 0 having done nothing at all.
+7:30 ET is 11:30 UTC under EDT and 12:30 UTC under EST; 9:00 ET is 13:00 UTC
+under EDT and 14:00 UTC under EST. Exactly one of each pair lands on the
+intended wall clock on any given date, so exactly one tick sends and the other
+exits 0 having done nothing at all. The monthly pair is day-of-month 1 in UTC,
+and 13:00 or 14:00 UTC on the 1st is still the 1st in New York, so the UTC
+cron date and the Eastern date this module judges never disagree for it.
 
 IT JUDGES THE SCHEDULED TIME, NOT THE CLOCK, AND THAT IS THE WHOLE POINT.
 
@@ -58,7 +64,8 @@ ZONE = ZoneInfo(ZONE_NAME)
 
 # THE SCHEDULE, AS A WALL CLOCK, IN ONE PLACE.
 #
-#   (hour, minute) in New York -> (tier, required ISO weekday or None)
+#   (hour, minute) in New York -> (tier, required ISO weekday or None,
+#                                   required day of month or None)
 #
 # Daily is SEVEN DAYS A WEEK on purpose. A day with no AI-attributed cuts still
 # earns its send: the digest prints `AI-attributed cuts: 0`, which is a
@@ -70,9 +77,19 @@ ZONE = ZoneInfo(ZONE_NAME)
 # would review a week that is still running. 7:30 rather than 6:00 so that a
 # subscriber who takes both tiers does not receive two emails in the same
 # minute on a Monday.
+#
+# Monthly is THE 1ST OF THE MONTH because that is what the signup promises
+# ("Monthly editions go out at the start of each month", subscribe.php
+# alt_digest_cadence_sentence), and tests/test_digest_cadence_promises.py
+# derives that sentence's truth from the day-of-month written here. 9:00
+# rather than 6:00 or 7:30 for the weekly's own reason: a subscriber who takes
+# every tier must not receive two editions in the same minute, and a 1st that
+# falls on a Monday already carries the other two. The window it composes is
+# the site's (alt_digest_monthly_window): the month the tick is in, to date.
 SEND_TIMES = {
-    (6, 0): ("daily", None),
-    (7, 30): ("weekly", 1),   # 1 = Monday, ISO
+    (6, 0): ("daily", None, None),
+    (7, 30): ("weekly", 1, None),    # 1 = Monday, ISO
+    (9, 0): ("monthly", None, 1),    # the 1st of the month
 }
 
 
@@ -127,12 +144,21 @@ def tier_for_cron(cron: str, on_date: datetime.date | None = None):
             f"Eastern. The other scheduled tick is the one that sends today. "
             f"Nothing was read, built, sent or stamped.")
 
-    tier, weekday = entry
+    tier, weekday, monthday = entry
     if weekday is not None and local.isoweekday() != weekday:
         return None, (
             f"this tick is not ours today: cron '{cron}' is {utc_txt}, which is "
             f"{local_txt} in {ZONE_NAME}, and the {tier} tier goes out on a "
             f"Monday. Nothing was read, built, sent or stamped.")
+    if monthday is not None and local.day != monthday:
+        # The cron line is already day-of-month 1, so this branch is only
+        # reached by a hand-set DIGEST_CRON or a workflow edit; it refuses
+        # rather than trusting that the line was right.
+        return None, (
+            f"this tick is not ours today: cron '{cron}' is {utc_txt}, which is "
+            f"{local_txt} in {ZONE_NAME} on day {local.day} of the month, and "
+            f"the {tier} tier goes out on the {monthday}st. Nothing was read, "
+            f"built, sent or stamped.")
 
     return tier, (
         f"this tick is the {tier} slot: cron '{cron}' is {utc_txt}, which is "
