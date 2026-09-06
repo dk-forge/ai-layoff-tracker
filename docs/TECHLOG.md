@@ -128,7 +128,23 @@ held/missed verdict in this run is UNKNOWN and the recall figure is NOT
 comparable with a complete one. The sweep would have walked 120 cities into
 that wall making several hundred more reads and reported the silence as though
 it had looked; `HostBreaker` now trips after five consecutive failed `/query`
-reads, stops asking, and says so. The net-coverage half was separated from the
+reads, stops asking, and says so.
+
+**And the breaker's first act was a false alarm, which is worth recording
+because of what it coincided with.** `our_rows` counted a FAILURE whenever it
+returned None, including the two cases where it never asked anything: an
+`--index-only` run passes an empty site, and a headline with no employer
+candidate passes an empty token. So the index-only run reported
+`host_unreachable True` and printed "our own /query stopped answering mid-run"
+having made no request at all. The host was genuinely refusing that afternoon
+(curl and `ops_status [1]`, independently), and that is precisely the hazard: a
+false alarm which coincides with a real fault reads as confirmation of it, and
+the flag's own evidence was worthless while looking like the strongest signal in
+the run. A breaker measures REQUESTS, not intentions; an UNKNOWN with no request
+behind it is still UNKNOWN and is not an outage. The index half is now memoised
+to an opt-in gitignored file as well, so recovering the verdict half never costs
+another ~190 index reads at the exact moment the right response to a challenged
+host is fewer requests. The net-coverage half was separated from the
 verdict half for the same reason and answered fine without the host: "this
 outlet is not in our allowlist" and "no discovery term matches this wording"
 are facts about OUR NET, true whatever the verdict, so they are computed for
