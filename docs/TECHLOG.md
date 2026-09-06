@@ -19,11 +19,14 @@ against the UI it feeds.
    country, employer_country, state, reasons, roles and company_key. It never
    honoured it for `sources`: the block reading that param carried no `$except`
    test at all, so `$topN('source_type', 'sources')` was handed a WHERE that
-   still contained the source filter. Confirmed live 2026-09-06:
-   `/aggregate?sources=warn&include=source_types` returns exactly one bar. With
-   a source selected, the "By data source" card said 100% warn and offered no
-   route back to the other sources. Nothing errored, because a filter applied to
-   the chart of itself is still a valid query.
+   still contained the source filter. With a source selected, the "By data
+   source" card can only draw the source you already chose, and offers no route
+   back to the others. Nothing errored, because a filter applied to the chart of
+   itself is still a valid query. **Proven offline, not live:** the session that
+   found it had its live budget cut short by two ModSecurity 406s on hostile-`q`
+   probes and stopped requesting under its own pacing rule, so the on-page
+   render of this card is UNVERIFIED and the evidence is the absent `$except`
+   test plus the guard, which is RED on the unfixed code.
 
 2. **The reason vocabulary, retyped and two tags behind.**
    `alt_allowed_reason_tags()` (cpt.php) is the one definition: `extractor.py`
