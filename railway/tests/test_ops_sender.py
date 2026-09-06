@@ -361,6 +361,10 @@ class EveryJobThatMailsCarriesTheKeyThatLetsItMail(unittest.TestCase):
         "process_tips.py": "process-tips.yml",
         "daily_classification_spotcheck.py": "data-quality.yml",
         "tracker_diff.py": "tracker-diff.yml",
+        # warn_import.py fires source_alert.announce for a BROKEN state. It
+        # was absent from this map and from its workflow's env for 18 days:
+        # the one mail this map exists to guarantee never left.
+        "warn_import.py": "warn-import.yml",
     }
 
     def test_the_sender_override_travels_with_the_key(self):

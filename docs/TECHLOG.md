@@ -1,3 +1,89 @@
+## 2026-09-06 - the timeouts/self-heal/self-adjust audit: a short scrape closed a real outage, and the email that would have said so was never wired (branch, PR)
+
+**Class:** absent-read-as-ok (the missing relay key), guard-went-vacuous (the
+shrunken-history PASS), unbounded-growth (the closed-incident trail)
+**Guard:** railway/tests/test_shrunken_history_never_clears_broken.py;
+railway/tests/test_ops_sender.py (warn-import.yml added to the map);
+railway/tests/test_deadline_below_workflow_timeout.py;
+railway/tests/test_every_outbound_call_has_a_timeout.py;
+railway/tests/test_collector_backoff.py;
+railway/tests/test_headline_guards.py (TheClosedIncidentTrailIsBounded);
+railway/tests/test_self_heal.py (five judges added to FORBIDDEN)
+
+**What this was.** An eight-question sweep of the whole "a source breaks, the
+machine notices, tells someone and repairs itself" story: timeouts, wall-clock
+deadlines, SIGTERM, the breakage chain, the judge guard, 429 backoff, host
+outages, and ledger caps. Six answered PASS on the evidence. Two did not, and
+they turned out to be the same incident seen from two ends.
+
+**warn:MN, 2026-08-22 to 2026-09-05.** The chain is health row, freshness
+verdict, alert mail, self-heal PR. The first two links fired: `source_state.json`
+records MN BROKEN from 2026-08-22, nothing newer than 2026-07-01, p=1.3e-05
+against its own recent 78.77/yr. The third did not, and could not.
+`source_alert.enabled()` is `ops_notify.configured()`, which is False without
+`RESEND_API_KEY`, and `warn-import.yml` has not passed that key since the Resend
+move on 2026-08-19. So the one job that judges 51 collectors was the one job that
+could not tell anybody, for eighteen days, with every surface green. It is now in
+the job's env and in `test_ops_sender.py`'s map, which reddens on its removal.
+
+**And the reason nobody noticed the silence is the second bug.** MN did not sit
+BROKEN. It flapped: BROKEN 08-28 to 08-31, HEALTHY 09-01, BROKEN 09-02 to 09-03.
+Nothing arrived in that window; `max_effective` reads 2026-08-07 throughout. What
+changed on 09-01 was how much of Minnesota's own history the collector brought
+back. That run measured **30 observations over 204 days**; the runs on either
+side of it measured **87 over 366**. The fitted rate fell 86.18/yr to 51.89/yr
+and the 90th-percentile gap moved 15d to 26d, so 25 days dark landed inside
+1.25x of 26; p0 rose 0.00346 to 0.02861. Verdict PASS, and PASS is the one
+verdict that closes an open incident.
+
+Note which gate did it. p0 was still under `ALPHA_QUIET`, so the rarity gate
+held; the CADENCE gate let it through. Both quantities are fitted from the same
+history, which is why the guard covers both branches and not the obvious one.
+
+This is the Kansas lesson inverted. There the certainty came from the
+denominator; here the reprieve did. p0 = exp(-(rate/365) * dark), so a smaller
+history can only raise p0, which can only move a verdict towards a pass: a short
+scrape is a one-way door out of BROKEN and nothing has to go wrong at the source
+to open it. Had the relay key been present, the owner would have had a RECOVERED
+notice and then a fresh dark-source alarm for an outage that never paused. The
+two defects hid each other.
+
+**The fix refuses the comparison, it does not move a threshold.**
+`source_freshness.judge()` takes the previous reading and, when this run measured
+under `COMPARABLE_OBSERVATION_SHARE` (0.75) of the observations behind it,
+returns UNKNOWN naming both counts. `record()` already guarantees UNKNOWN never
+clears BROKEN, so the guard reuses a tested rule instead of inventing a state.
+No threshold widened, no state written, nothing silenced. The "it published
+recently" PASS is deliberately NOT guarded: it never consults the fit, which is
+why 2026-09-04 still reads PASS as a genuine recovery (a 2026-10-04 notice, zero
+days dark) even though the observation count halved again that day. Reverting
+the guard, guarding only the p0 branch, or extending it to the recent-publication
+branch each redden a different test.
+
+**Deadlines.** Every scheduled workflow carries `timeout-minutes` and every
+in-process deadline's DEFAULT sits below it. Five of eleven CEILINGS did not:
+`ai_evidence_sweep` could reach 60min under a 27min kill, `reason_backfill` 30min
+under 27min, and `archive_sources`, `company_watchlist` and
+`daily_classification_spotcheck` were unbounded. Nothing was broken today; each
+was one `vars` entry from a job that could never finish cleanly. The ceilings are
+clamped, every default is unchanged, and the guard derives both sides from the
+tree so a new deadline or a lowered `timeout-minutes` is covered without a list.
+
+**What already held.** Zero outbound calls without a timeout (the paid clients
+pass one per request, which the new guard now pins, because the OpenAI SDK
+default is 600s). SIGTERM writes a terminal health note (#262). The deferral
+ledger escalates at three, the outbox holds rather than loses, RECOVERED fires
+once. Four of five committed ledgers were capped; `headline_incidents.json`'s
+`closed` list was not, and now keeps 100, with a test that the cap can never
+reach an `open` incident, because a sticky FAIL erased automatically is the
+2026-08-22 bug with a new cause.
+
+**Owner decision, not taken here.** MN currently reads HEALTHY on 44 of 87
+observations. The collector returning a variable slice of a state's history is
+the underlying fault; this branch stops that from being read as good news, but
+does not fix the collector. Whether the shrinkage is upstream or in the scrape is
+open. Separately, `warn:MS` is QUIET at p=0.0176 (67d, 22.0/yr): correctly
+advisory, correctly not emailed, and it may simply not be filing.
 ## 2026-09-06 - two hand-typed copies of a vocabulary, both inside /aggregate: the source-type chart drew only the source you had filtered to, and the reasons doughnut could never draw two of its own tags (2.20.173, branch, PR)
 
 **Class:** two-copies-drifted

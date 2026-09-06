@@ -42,7 +42,9 @@ BATCH = max(1, int(os.environ.get("WATCHLIST_BATCH", "60")))
 # at any watchlisted company surfaces within days. (Backfilling OLDER misses is a
 # separate path — GDELT / direct add — since free NewsAPI can't reach them.)
 DAYS_BACK = max(7, min(28, int(os.environ.get("WATCHLIST_DAYS_BACK", "28"))))
-DEADLINE = max(60, int(os.environ.get("WATCHLIST_DEADLINE_SECONDS", "900")))
+# Clamped to 5100s (85min) against company-watchlist.yml's 90 minute
+# timeout-minutes; see ai_evidence_sweep.py for why the ceiling exists.
+DEADLINE = max(60, min(5100, int(os.environ.get("WATCHLIST_DEADLINE_SECONDS", "900"))))
 # HOW MANY COMPANY-TARGETED NEWS QUERIES ONE RUN MAY SEND.
 #
 # One query per company is what this collector is FOR, and it is also the

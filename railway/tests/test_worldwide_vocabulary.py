@@ -89,7 +89,13 @@ class EveryEditionIsAskedInItsOwnLanguage(unittest.TestCase):
             status_code = 200
             text = "<rss><channel></channel></rss>"
 
-        def fake_get(url, headers=None, timeout=None):
+        def fake_get(url, params=None, headers=None, timeout=None, **_kw):
+            # `params` and the tail kwargs exist because the collector now goes
+            # through http_retry.get_with_retry, which calls the injected get
+            # exactly as it calls requests.get. A double narrower than the real
+            # function raised TypeError on every attempt, the retry read that as
+            # transient, and the test failed with an empty URL list rather than
+            # with the German query it is actually about.
             urls.append(url)
             return _Resp()
 

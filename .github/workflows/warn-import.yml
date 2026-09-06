@@ -121,6 +121,16 @@ jobs:
           # the LLM is down, so it can never reduce coverage. NC excluded.
           WARN_LLM_FALLBACK: '1'
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # The dark-source alarm (source_alert.announce, fired from inside
+          # warn_import.py when source_freshness returns a BROKEN state) sends
+          # through ops_notify, which is silent without this key. It was
+          # missing from this job from the Resend move (2026-08-19) until
+          # 2026-09-06: warn:MN went BROKEN on 2026-08-24 (54d dark, run
+          # 32735381121 printed the finding) and no email left, because
+          # ops_notify.configured() read False here. tests/test_ops_sender.py
+          # now names this job.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
         run: |
           for attempt in 1 2 3; do
             python warn_import.py && exit 0

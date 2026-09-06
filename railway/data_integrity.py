@@ -490,6 +490,18 @@ def load_incidents(path=None):
             "closed": list(data.get("closed") or [])}
 
 
+#: How many CLOSED headline incidents the ledger keeps. `open` is NEVER trimmed
+#: (a sticky FAIL is the whole point of this file); this bounds only the audit
+#: trail behind it. Until 2026-09-06 `closed` was appended to and never cut, the
+#: one committed ledger here with no cap and no horizon: alert_state keeps
+#: MAX_CLOSED=100, alert_outbox and deferral_ledger keep HISTORY_KEPT settled
+#: entries, spend trims to LEDGER_KEEP_DAYS=60. Growth is slow, because closing
+#: one takes a human, so this is a bound rather than a rescue. 100 matches
+#: alert_state deliberately: two ledgers with the same job should not need two
+#: numbers remembered.
+MAX_CLOSED_INCIDENTS = 100
+
+
 LEDGER_NOTE = (
     "Open headline incidents, read by data_integrity.MovementInvariant. A slice "
     "listed under `open` reports FAIL regardless of what today's numbers say — "
@@ -504,10 +516,13 @@ LEDGER_NOTE = (
 
 def save_incidents(ledger, path=None):
     p = Path(path or INCIDENTS_PATH)
+    closed = list(ledger.get("closed") or [])
     payload = {"note": LEDGER_NOTE,
                "written_at": _utc_now_iso(),
                "open": ledger.get("open") or {},
-               "closed": ledger.get("closed") or []}
+               # Newest kept: the trail is read backwards from an incident that
+               # just closed, and an old close is the one nobody asks about.
+               "closed": closed[-MAX_CLOSED_INCIDENTS:]}
     p.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 

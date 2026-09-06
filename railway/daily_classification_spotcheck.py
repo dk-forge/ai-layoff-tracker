@@ -94,7 +94,9 @@ SPOTCHECK_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-li
 #: times the healthy runtime — room for a slow provider, not for a hang —
 #: and together with the ~40 s of earlier steps it keeps the job's worst
 #: case near 7 minutes, comfortably inside the workflow's 10-minute ceiling.
-DEADLINE_SECONDS = int(os.environ.get("ALT_SPOTCHECK_DEADLINE", "360"))
+# Clamped to 480s (8min) against data-quality.yml's 10 minute
+# timeout-minutes; see ai_evidence_sweep.py for why the ceiling exists.
+DEADLINE_SECONDS = max(60, min(480, int(os.environ.get("ALT_SPOTCHECK_DEADLINE", "360"))))
 
 #: A confirmed relabel on a row of this many jobs or more is HELD for a human,
 #: never applied unattended.

@@ -266,7 +266,11 @@ jobs:
               The judge of whether a SOURCE is healthy, and its state ledger
               (you may fix a collector, never the thing that decides a
               collector is broken): railway/source_freshness.py,
-              railway/source_state.json.
+              railway/source_state.json. The other judges, for the same
+              reason (a clock or a threshold you could move to turn a red
+              green): railway/run_completion.py, railway/source_inventory.py,
+              railway/run_slice.py, railway/railway.toml,
+              wordpress-plugin/ai-layoff-tracker/data/ingest-schedule.json.
               The hash-pinned locks: railway/requirements.lock,
               railway/requirements-min.lock. The baton: docs/HANDOFF.md. The
               healer itself: .github/workflows/self-heal.yml,

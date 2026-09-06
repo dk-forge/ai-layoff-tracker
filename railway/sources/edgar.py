@@ -21,6 +21,8 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
+import http_retry
+
 EDGAR_FTS_URL = "https://efts.sec.gov/LATEST/search-index"
 SEC_ARCHIVES_BASE = "https://www.sec.gov/Archives/edgar/data"
 
@@ -58,6 +60,32 @@ KEYWORDS = [
 ]
 
 REQUEST_DELAY_SECONDS = 0.11  # stays under SEC's 10 req/s limit
+
+
+#: EDGAR's throttle is a 403 ("Undeclared Automated Tool" / too many requests),
+#: not a 429, so the shared transient set is widened for this host only.
+EDGAR_TRANSIENT = frozenset({403})
+
+
+def _get(url, params=None, attempts=3):
+    """One EDGAR read that survives a throttle and a 5xx blip.
+
+    Goes through http_retry.get_with_retry (Retry-After honoured, capped) with
+    this module's own `requests.get`, so the pacing, the UA and any test patch
+    on `edgar.requests.get` all still apply. Returns the response; raises
+    RuntimeError when every attempt was transient so the caller's existing
+    except-and-drop path fires INSTEAD of a silent `continue` on a throttle
+    that was never retried.
+    """
+    time.sleep(REQUEST_DELAY_SECONDS)
+    resp = http_retry.get_with_retry(
+        url, params=params, headers=_headers(), attempts=attempts, timeout=30,
+        backoff=5, transient=EDGAR_TRANSIENT,
+        get=lambda *a, **k: requests.get(*a, **k))
+    if resp is None:
+        raise RuntimeError(f"EDGAR: transient answer on every one of {attempts} "
+                           f"attempts for {url}")
+    return resp
 RAW_TEXT_LIMIT = 3000
 MAX_DOC_BYTES = 500_000  # bound tag-stripping work on huge filings
 
@@ -152,8 +180,7 @@ def _headcount_index(text):
 def _fetch_filing_text(url):
     """Fetch a filing document and return a text window centered on the first
     layoff keyword, so the relevant passage survives the length cap."""
-    time.sleep(REQUEST_DELAY_SECONDS)
-    resp = requests.get(url, headers=_headers(), timeout=30)
+    resp = _get(url)
     resp.raise_for_status()
     text = _strip_html(resp.text[:MAX_DOC_BYTES])
     lowered = text.lower()
@@ -225,8 +252,7 @@ def _exhibit_urls(index_url):
 
     Returns them in EXHIBIT_TYPES order so the most specific type is read first.
     """
-    time.sleep(REQUEST_DELAY_SECONDS)
-    resp = requests.get(index_url, headers=_headers(), timeout=30)
+    resp = _get(index_url)
     resp.raise_for_status()
     origin = re.match(r"(?i)^(https?://[^/]+)", index_url)
     origin = origin.group(1) if origin else ""
@@ -252,8 +278,7 @@ def _fetch_exhibit_text(url):
     layoff exhibit that phrases its count in a way this does not recognise is
     still read — just not centred.
     """
-    time.sleep(REQUEST_DELAY_SECONDS)
-    resp = requests.get(url, headers=_headers(), timeout=30)
+    resp = _get(url)
     resp.raise_for_status()
     text = _strip_html(resp.text[:MAX_DOC_BYTES])
     idx = _headcount_index(text)
@@ -315,8 +340,7 @@ def _search_keyword(keyword, start, end):
                 "forms": form,
                 "from": page * PAGE_SIZE,
             }
-            time.sleep(REQUEST_DELAY_SECONDS)
-            resp = requests.get(EDGAR_FTS_URL, params=params, headers=_headers(), timeout=30)
+            resp = _get(EDGAR_FTS_URL, params=params)
             resp.raise_for_status()
             payload = resp.json().get("hits", {})
             page_hits = payload.get("hits", [])
@@ -358,8 +382,7 @@ def search_company_filings(company, days_back=120, max_hits=6):
             "forms": "8-K",
         }
         try:
-            time.sleep(REQUEST_DELAY_SECONDS)
-            resp = requests.get(EDGAR_FTS_URL, params=params, headers=_headers(), timeout=30)
+            resp = _get(EDGAR_FTS_URL, params=params)
             if resp.status_code != 200:
                 continue
             for hit in resp.json().get("hits", {}).get("hits", [])[:max_hits]:

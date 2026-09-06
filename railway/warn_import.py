@@ -468,7 +468,12 @@ def assess_state_freshness(entries, attempted, *, errored=(), collapsed=(),
             continue
         profile = source_freshness.cadence_profile(dates_by_state.get(st, []),
                                                    today=today)
-        verdict = source_freshness.judge(profile, today=today)
+        verdict = source_freshness.judge(
+            profile, today=today,
+            # The previous reading, so a rate-dependent PASS fitted to a
+            # SHRUNKEN history reads UNKNOWN instead of closing an open
+            # incident. See source_freshness._incomparable_history.
+            prior=ledger.get("sources", {}).get(key))
         kind = None
         if verdict["verdict"] == source_freshness.FAIL:
             kind = source_freshness.classify(

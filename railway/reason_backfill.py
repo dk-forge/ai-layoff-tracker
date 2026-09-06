@@ -91,7 +91,10 @@ DETERMINISTIC_CAP = max(0, min(1000, int(os.environ.get("REASON_BACKFILL_DETERMI
 # for that scan, so a merely 2x-slow host would start truncating healthy work.
 # 3 x 419s = 1257s, rounded up to the whole minute, absorbs a 3x-slow host end
 # to end and is still far under the workflow ceiling derived from it.
-DEADLINE_SECONDS = max(60, min(1800, int(os.environ.get("REASON_BACKFILL_DEADLINE_SECONDS", "1260"))))
+# Ceiling lowered from 1800s to 1500s (25min) on 2026-09-06:
+# reason-backfill.yml allows 27 minutes, so the old ceiling sat above the
+# kill. See ai_evidence_sweep.py for why the ceiling exists.
+DEADLINE_SECONDS = max(60, min(1500, int(os.environ.get("REASON_BACKFILL_DEADLINE_SECONDS", "1260"))))
 # Budget held back from the scan and the model loop so the writes always run.
 # A full deterministic flush is ceil(400 / EDIT_BATCH) = 10 chunks, measured at
 # a few seconds total; 240s covers two chunks stalling to the 120s /edit
