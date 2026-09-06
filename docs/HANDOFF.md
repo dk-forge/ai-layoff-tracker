@@ -6,6 +6,23 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **NO VERSION CLAIMED (2026-09-06): #243 - headline_containment could not
+  report a finding, and the -39,292 was never an AI reclassification.** The
+  baton was read as FREE by `ops_status [0]` on origin/main and this session
+  took it, in its own worktree (`/private/tmp/wt-243`, branch
+  `fix/headline-containment-243`). **No plugin file is touched and no version
+  is claimed** - the change is `railway/data_integrity.py`,
+  `railway/tests/test_headline_containment.py` and TECHLOG only, so the
+  version-collision workflow has nothing to collide with and a second session
+  may bump freely. Two findings: 2.20.156's dedup subtraction was never wired
+  to `record_baseline`, so its branch and the FAIL under it were unreachable on
+  every production run since 2026-08-31; and the figure that commit was built
+  on (120,883) is the STANDING exclusion pool, not the window's delta, which
+  was +120. The #243 incident itself was correctly closed by a human on
+  2026-08-30 and stays closed - nothing here reopens it and no `--close-incident`
+  is warranted. No source id added or removed, so `assets/health.js meta{}`
+  needs no change. PUSHED, not merged: the owner merges. Full write-up in
+  TECHLOG 2026-09-06. Baton released.
 - **VERSION CLAIMED (2026-09-06): 2.20.174 - the subscriber list and its
   consent records had exactly one copy, on the host being migrated.** The baton
   was read as FREE by `ops_status [0]` on origin/main and this session took it,

@@ -514,6 +514,170 @@ class ItCannotLaunderItself(unittest.TestCase):
                          OBS_TODAY["worldwide_all_time"]["jobs"], notes)
 
 
+class TheRecorderStoresWhatTheCheckSubtracts(unittest.TestCase):
+    """2026-09-06 — the dedup subtraction had no recorded side to subtract from.
+
+    2.20.156 taught `headline_containment` to read /aggregate's `excluded`
+    block and subtract the exclusion delta before judging. It did not teach
+    `record_baseline` to STORE that figure, and a delta needs two readings. So
+    `have_exc` was False on every production run, that branch returned UNKNOWN,
+    and the FAIL below it became unreachable: the guard could not report a
+    finding at all. Six days of it, with the committed baseline of 2026-09-05
+    still carrying only jobs / entries / captured_at / recorded_in.
+
+    Every test in the classes above builds its own baseline dict and puts the
+    exclusion keys in by hand, which is exactly why none of them saw it. These
+    drive the REAL recorder and read back what it actually wrote.
+    """
+
+    def _record(self, observations, baseline_slices, excluded=None, now=AT_TODAY):
+        """Run the real Movement + Containment + record_baseline, return the file."""
+        d = Path(tempfile.mkdtemp())
+        bpath, ipath = d / "baseline.json", d / "incidents.json"
+        bpath.write_text(json.dumps({"slices": baseline_slices}), encoding="utf-8")
+        ipath.write_text(json.dumps({"open": {}, "closed": []}), encoding="utf-8")
+        ctx = di.Ctx(_feed(observations, excluded), 5, "cb")
+        movement = di.MovementInvariant(headlines=di.HEADLINES, baseline_path=bpath,
+                                        incidents_path=ipath, now=now)
+        containment = di.ContainmentInvariant(baseline_path=bpath, now=now)
+        report = di.Report([movement.run(ctx), containment.run(ctx)])
+        di.record_baseline(ctx, report, path=bpath, incidents_path=ipath)
+        return bpath, json.loads(bpath.read_text())["slices"]
+
+    def test_the_recorder_commits_the_exclusion_pool_it_read(self):
+        """Without this the check has nothing to subtract from, ever."""
+        _, slices = self._record(
+            OBS_TODAY, {},
+            excluded={"worldwide_all_time": {"jobs": 120763, "entries": 414},
+                      "us_all_time": {"jobs": 103990, "entries": 415}})
+        self.assertEqual(slices["worldwide_all_time"]["excluded_jobs"], 120763)
+        self.assertEqual(slices["worldwide_all_time"]["excluded_entries"], 414)
+        self.assertEqual(slices["us_all_time"]["excluded_jobs"], 103990)
+        self.assertEqual(slices["ai_all_time"]["excluded_jobs"], 0)
+
+    def test_a_build_reporting_no_exclusion_records_none_rather_than_zero(self):
+        """ABSENT and 0 are different facts, and only one is a measurement.
+
+        The lazy version of the fix above writes 0 whenever the block is
+        missing. That arms the subtraction with a number nobody took, and the
+        check then subtracts it confidently — the same assume-zero error it was
+        written to remove, one layer further down.
+        """
+        _, slices = self._record(OBS_TODAY, {}, excluded=False)
+        for name in ("worldwide_all_time", "us_all_time", "ai_all_time"):
+            self.assertNotIn("excluded_jobs", slices[name])
+            self.assertNotIn("excluded_entries", slices[name])
+
+    def test_a_recorded_baseline_arms_the_subtraction_end_to_end(self):
+        """THE LOAD-BEARING TEST: judge against the RECORDER'S OWN output.
+
+        Every other dedup test hands the check a baseline the test itself
+        wrote. This one records one the way production does and then asks the
+        check to use it, which is the step that was missing and the only step
+        that proves the two halves of the mechanism meet.
+        """
+        bpath, _ = self._record(
+            OBS_TODAY, {},
+            excluded={"worldwide_all_time": {"jobs": 120763, "entries": 414}})
+
+        after = {k: dict(v) for k, v in OBS_TODAY.items()}
+        after["worldwide_all_time"]["jobs"] -= 120000   # a big reconcile pass
+        after["worldwide_all_time"]["entries"] += 11    # and ordinary arrivals
+        pool_after = {"worldwide_all_time": {"jobs": 240763, "entries": 830}}
+
+        ctx = di.Ctx(_feed(after, pool_after), 5, "cb")
+        res = di.ContainmentInvariant(baseline_path=bpath, now=AT_TODAY).run(ctx)
+        self.assertEqual(res.state, di.PASS, res.detail)
+        self.assertIn("dedup explains it", res.detail)
+
+
+class WhatTheMinusThirtyNineTwoNineTwoActuallyWas(unittest.TestCase):
+    """2026-09-06 — #243, re-derived from the run logs instead of from a summary.
+
+    ab4714f closed #243 saying the 2026-08-29 movement "was 416 rows carrying
+    120,883 jobs becoming members". That is the STANDING POOL, not the window's
+    delta. `jobs_excluded` in a reconcile-supersets run is cumulative, and its
+    sibling field `changes` is how many rows that run actually re-marked:
+
+        2026-08-29T00:41Z  run 33224262318  jobs_excluded=120,763  changes=0
+        2026-08-29T19:30Z  run 33271008361  jobs_excluded=120,643  changes=1
+        2026-08-30T19:25Z  run 33330828111  jobs_excluded=120,883  changes=3
+
+    Four rows across the whole window, and the pool moved +120 jobs. Dedup
+    explains 120 of the 39,292, so the finding stands and that branch never
+    could have cleared it. What did move it is in the closed incident: twelve
+    rows LEFT (seven trashed by the owner's signed 2026-08-29 correction,
+    headlined by one of 50,000, and five merged by dedupe-llm) against roughly
+    twenty-three arrivals, which nets to the +10 entries the check saw.
+    """
+
+    E0829 = "2026-08-29T01:07:26Z"
+    # railway/headline_incidents.json, the closed ai_all_time incident's
+    # `baseline_at_open`, plus the worldwide reading from the issue's table.
+    BASE = {
+        "ai_all_time": {"jobs": 234869, "entries": 93,
+                        "captured_at": "2026-08-29T01:06:25Z", "recorded_in": E0829,
+                        "excluded_jobs": 0, "excluded_entries": 0},
+        "worldwide_all_time": {"jobs": 20544588, "entries": 65241,
+                               "captured_at": "2026-08-29T01:06:25Z",
+                               "recorded_in": E0829,
+                               "excluded_jobs": 120763, "excluded_entries": 414},
+    }
+    OBS = {"ai_all_time": {"jobs": 243869, "entries": 94},
+           "worldwide_all_time": {"jobs": 20514296, "entries": 65252}}
+    POOL = {"worldwide_all_time": {"jobs": 120883, "entries": 416},
+            "ai_all_time": {"jobs": 0, "entries": 0}}
+    AT = datetime(2026, 8, 30, 19, 58, 41, tzinfo=timezone.utc)
+
+    # Scoped to the one pair, for the reason the mutation note further up
+    # records: a roll-up assertion can be satisfied by a failure it is not
+    # testing.
+    PAIR = (("ai_all_time", "worldwide_all_time"),)
+
+    def _judge(self):
+        return _run(self.OBS, {k: dict(v) for k, v in self.BASE.items()},
+                    now=self.AT, pairs=self.PAIR, excluded=self.POOL)[0]
+
+    def test_the_true_exclusion_delta_does_not_clear_it(self):
+        res = self._judge()
+        self.assertEqual(res.state, di.FAIL, res.detail)
+        self.assertIn("-120 of that", res.detail)   # what dedup actually explains
+        self.assertIn("-39,172", res.detail)        # the residual that remains
+
+    def test_the_finding_names_which_half_moved(self):
+        """#243's second finding: the alert pointed the investigation at AI.
+
+        -39,292 on its own reads as a subset problem. It was not: worldwide
+        fell 30,292 while the AI slice rose 9,000, so three quarters of the
+        movement was never in the AI slice at all. A reader must not have to
+        subtract two numbers that are not in front of them.
+        """
+        res = self._judge()
+        self.assertIn("-39,292", res.detail)
+        self.assertIn("-30,292", res.detail)
+        self.assertIn("+9,000", res.detail)
+
+    def test_it_does_not_assert_a_mechanism_it_cannot_establish(self):
+        """A net entry count is the difference of two gross flows.
+
+        The old text stated re-scoring as fact, and on this very day that was
+        wrong. Both mechanisms have to be offered, and the reason +10 entries
+        does not rule out the second has to be on the page.
+
+        The negative is matched case-insensitively on purpose. Written with a
+        literal assertNotIn first, and a mutation that restored the old claim
+        with one capital letter changed left it GREEN — a negative assertion on
+        an exact string tests the string, not the claim.
+        """
+        res = self._judge()
+        self.assertIn("TWO mechanisms", res.detail)
+        self.assertIn("LEFT carried more jobs", res.detail)
+        self.assertIn("NET figure", res.detail)
+        # The old sentence's spine: departures ruled out by fiat.
+        self.assertNotIn("that arrived, left, or was folded moved these",
+                         res.detail.lower())
+
+
 class ItIsInTheOneRegistry(unittest.TestCase):
 
     def test_the_invariant_is_registered(self):
