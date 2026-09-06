@@ -18,8 +18,11 @@ name: Weekly off-host backup
 # names the same set) plus a pinned column allowlist that fails the run on any
 # column nobody has reviewed. The value scanner is depth and not the boundary,
 # and it proves itself against a seeded positive control before its clean
-# result is believed. A private destination for the subscriber table is an
-# owner decision that has not been made; docs/RECOVERY.md states the options.
+# result is believed. This exclusion is PERMANENT and is not a gap: the
+# subscriber table has its own off-host copy through /subscriber-backup, which
+# seals it to a public key before the host answers and lands only on the
+# owner's machine, never in a release and never in an artifact. It is DISARMED
+# until he ships a recipient key. docs/RECOVERY.md section 2.
 #
 # WHY WEEKLY AND NOT DAILY
 # ------------------------

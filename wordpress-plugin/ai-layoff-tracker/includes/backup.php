@@ -170,8 +170,10 @@ function alt_backup_forbidden_tables() {
             'Personal data: email addresses, consent records, and two live '
             . 'tokens (confirm_token, unsub_token). The backup artifact is '
             . 'published to a PUBLIC repository, so this table can never be in '
-            . 'it. A private destination is an owner decision that has not been '
-            . 'made; see docs/RECOVERY.md.',
+            . 'it, and this exclusion is permanent. Its own off-host copy is the '
+            . '/subscriber-backup route, which seals the table to a public key '
+            . 'BEFORE it answers and is DISARMED until a recipient key is '
+            . 'deployed; see docs/RECOVERY.md section 2.',
     );
 }
 

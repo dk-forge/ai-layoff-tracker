@@ -1,3 +1,94 @@
+## 2026-09-06 - the subscriber list and its consent records had exactly one copy, on the host being migrated (branch, PR)
+
+**Class:** novel
+**Guard:** railway/tests/test_subscriber_backup_leak.py;
+railway/tests/test_subscriber_backup_crypto.py;
+.github/workflows/subscriber-backup-drill.yml
+
+**What this was.** `backup-export.yml` walks every table the plugin owns to a
+GitHub Release and excludes `wp_alt_subscribers`, correctly and structurally:
+this repository is PUBLIC and that table holds addresses, consent records and
+two live tokens. The exclusion was right and it was complete. Its CONSEQUENCE
+was never closed: the list and the consent records existed in exactly one
+place, a shared Bluehost account whose renewal notice arrived today, with a
+host migration planned within weeks. A migration is precisely when a
+single-copy table gets lost, and a consent record has legal weight, so losing
+it is worse than losing the address it belongs to.
+
+RECOVERY.md had named four options and said "do not implement any of these
+without the owner choosing one" since the export shipped. This implements the
+third and leaves it DISARMED, which is the part of that instruction that
+actually binds: nothing is armed and nothing can run until he ships a key.
+
+**The shape.** A separate keyed route, `GET /subscriber-backup`, with a
+different contract from `/backup-table`: it has no mode that returns rows. It
+reads the pinned columns, gzips JSON Lines, and encrypts to a PUBLIC key
+deployed with the plugin. AES-256-CBC under a per-container key, wrapped
+RSA-OAEP, encrypt-then-MAC. **The host writes a backup it cannot itself read**,
+and neither can a runner, this repository, or whatever moves the file next.
+
+`/backup-table` still 400s on the subscriber table and
+`alt_backup_forbidden_tables()` still names it. That boundary is complete
+BECAUSE it is a name allowlist over a finite set, and widening it would have
+made the personal-data boundary a property of what the caller asked for. A test
+reads `alt_backup_tables()` and fails if the name ever appears inside it.
+
+**Why there is no scheduled workflow, and why that is not laziness.** A public
+repository's release assets and Actions artifacts are downloadable by anyone. A
+scheduled job holding this ciphertext would publish the sealed consent records
+of every subscriber, permanently and unretractably, and rest the whole
+guarantee on RSA-4096 never breaking. Ciphertext is a reason to relax about a
+USB stick. It is not a reason to publish. So the backup is a LOCAL command, the
+same ruling `curated_probe.py` records for the same class of reason, and the
+only workflow shipped is an offline drill on synthetic rows. A test fails on
+any `subscriber-backup` workflow that gains a schedule, a host key, or an
+artifact upload.
+
+**The round trip is executed, not asserted.** `--selftest` runs the PRODUCTION
+PHP sealer - which is why the sealer is a pure function in its own include
+rather than living inside the route - opens the container with `openssl` and a
+throwaway private key, and compares byte for byte. Then four negative controls,
+because a detector only ever seen to pass is indistinguishable from one that
+does nothing: a flipped ciphertext byte must be REFUSED (CBC is malleable; an
+edited container that decrypts to something plausible is worse than one that
+fails), the wrong private key must not open it, a foreign recipient must be
+caught by the fingerprint check, and no plaintext value may survive into the
+container. All five ran green locally and in CI.
+
+**Two defects the tests found before the code shipped.**
+
+`status` was in the nameless vocabulary as the mode label, and `status` is also
+a subscriber COLUMN. The vocabulary that named the mode could therefore have
+named a value. `test_the_column_names_are_not_printable_words` walks every
+column against the allowlist; the mode is now `probe` and the collision cannot
+come back silently.
+
+The status route called its COUNT `$rows`, so a structural test asking "does any
+response carry `$rows`" could not distinguish a count from the data. It is
+`$row_count` now. The rename is the point: a guard that reads the source needs
+the source to mean one thing.
+
+**Stdout is nameless by construction.** `assert_nameless` is an allowlist of
+numbers, ISO dates, hex digests and frozen label words, exactly as in
+`tracker_diff.py` and `curated_probe.py`, so an address cannot be SPELLED by
+anything printed. The leak test runs the whole loop - seal, pull, verify, open -
+over rows stuffed with invented addresses and tokens, asserts none reach stdout
+or the stored container, and then asserts they DID reach the plaintext file the
+operator explicitly named, so the leak assertions are not vacuous.
+
+**What is still UNKNOWN, and is not being rounded to a pass.** The container
+opens to the exact rows. Loading them back INTO a `wp_alt_subscribers` on a
+fresh install has not been drilled, because there is no throwaway WordPress
+here - the same gap `backup-restore-drill.yml` records for its own insert path.
+RECOVERY.md names it rather than letting the round trip stand in for it.
+
+**Class note.** `novel` because none of the sixteen fits. This is not a
+mechanism that stopped, or a guard that went vacuous, or a value read as OK
+because it was absent. It is a correct exclusion whose consequence was written
+down, agreed, and then left open for as long as the thing it protected had
+nowhere else to live. If that shape recurs, "an exclusion is not a plan" is the
+rule it wants.
+
 ## 2026-09-06 - the timeouts/self-heal/self-adjust audit: a short scrape closed a real outage, and the email that would have said so was never wired (branch, PR)
 
 **Class:** absent-read-as-ok (the missing relay key), guard-went-vacuous (the

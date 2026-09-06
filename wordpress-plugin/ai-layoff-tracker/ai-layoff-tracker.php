@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version: 2.20.173
+ * Version: 2.20.174
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.173');
+define('ALT_VERSION', '2.20.174');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -88,6 +88,18 @@ if (is_readable($alt_subscribe_placements)) {
 $alt_backup = ALT_PLUGIN_DIR . 'includes/backup.php';
 if (is_readable($alt_backup)) {
     require_once $alt_backup;
+}
+// The ONE route that may read wp_alt_subscribers, and it can only ever emit
+// ciphertext sealed to a public key the owner holds the private half of. It is
+// the off-host copy of the consent records, which existed nowhere but this host
+// until 2.20.174, and it is DISARMED until a recipient key is deployed.
+// GUARDED with is_readable for the same reason as the file above: this file is
+// NEW, so the deploy that introduces it can land this main file first, and a
+// hard require of a not-yet-uploaded include fatals the ENTIRE plugin. Its
+// absence must degrade to "those two routes 404", never to a white screen.
+$alt_subscriber_backup = ALT_PLUGIN_DIR . 'includes/subscriber-backup.php';
+if (is_readable($alt_subscriber_backup)) {
+    require_once $alt_subscriber_backup;
 }
 // Read-only, keyed access to the Rank Math 404 log and redirect table, so the
 // question "which links are dead and what is generating redirect traffic" can

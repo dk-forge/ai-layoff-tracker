@@ -1,0 +1,80 @@
+name: Subscriber backup drill
+
+# THE ROUND TRIP, PROVED, WITHOUT TOUCHING A SUBSCRIBER.
+#
+# It runs the PRODUCTION sealer (includes/subscriber-backup-seal.php) over
+# synthetic rows, opens the container with openssl and a throwaway private key,
+# and compares byte for byte. Then the four negative controls: a flipped
+# ciphertext byte must be refused, the wrong key must not open it, a foreign
+# recipient must be noticed, and the plaintext must not survive into the
+# container. A detector only ever seen to pass is not a detector.
+#
+# WHY THIS JOB IS OFFLINE, AND WHY THERE IS NO SCHEDULED SIBLING
+# --------------------------------------------------------------
+# This repository is PUBLIC, and a public repository's release assets and
+# Actions artifacts are downloadable by anyone. So no job here may HOLD the
+# sealed subscriber backup, encrypted or not: publishing the ciphertext of
+# every consent record, permanently and unretractably, to rest the whole
+# guarantee on RSA-4096 never breaking is not a trade worth making for a table
+# of a few hundred rows. Ciphertext is a reason to relax about a USB stick. It
+# is not a reason to publish.
+#
+# The real backup is therefore a LOCAL command the owner runs, for the same
+# class of reason the hand-fed recall probe is local: a runner that can hold
+# the sensitive half is the leak. (That module is deliberately not named here:
+# a guard forbids its name in any workflow file, and the guard is right to,
+# because a substring cannot tell a comment from an invocation.)
+#
+#     python3 railway/subscriber_backup.py --pull
+#
+# This job never reaches the host, holds no key, needs no secret, and uploads
+# nothing. It is safe here precisely because it is synthetic.
+#
+# Free: no pip install, no model call, no paid read. Stdlib Python, the php and
+# openssl already on the runner image.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'railway/subscriber_backup.py'
+      - 'railway/tests/test_subscriber_backup_*.py'
+      - 'wordpress-plugin/ai-layoff-tracker/includes/subscriber-backup*.php'
+
+concurrency:
+  group: subscriber-backup-drill-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # UNKNOWN is not a pass. If the image ever stops shipping one of these,
+      # the drill must say so here rather than reporting green on a round trip
+      # it never ran.
+      - name: The tools the drill needs must be present
+        run: |
+          set -euo pipefail
+          command -v php     || { echo "::error::no php on the runner; the drill cannot run"; exit 1; }
+          command -v openssl || { echo "::error::no openssl on the runner; the drill cannot run"; exit 1; }
+          php -r 'if (!function_exists("openssl_public_encrypt")) { fwrite(STDERR, "php has no openssl extension\n"); exit(1); }'
+
+      - name: Seal with the production PHP, open with openssl, compare
+        working-directory: railway
+        run: python3 subscriber_backup.py --selftest | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: The guards that keep it safe to run at all
+        working-directory: railway
+        run: |
+          python3 -m unittest -v \
+            tests.test_subscriber_backup_crypto \
+            tests.test_subscriber_backup_leak

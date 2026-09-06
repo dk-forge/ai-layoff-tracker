@@ -46,6 +46,7 @@ import json
 import os as _os
 import re
 import sys
+import time
 import uuid
 from pathlib import Path
 import urllib.error
@@ -2098,6 +2099,45 @@ def main():
         print(f"    UNKNOWN — could not read the backup baseline ({exc}).")
         print("    THIS IS NOT A PASS.")
         unverified.append("whether the off-host backup is current")
+
+    # [9b] The other half of the backup story, and the half that had none.
+    #
+    # The public export cannot carry wp_alt_subscribers and must not, so the
+    # addresses and the CONSENT RECORDS lived only on the host. This section is
+    # deliberately shaped like [6]: it reads DATES off a LOCAL directory and
+    # never a name, never a count. There is no committed state file, because a
+    # subscriber count committed to a public repository is still a fact about a
+    # personal-data table, which is the reason /backup-manifest refuses to
+    # report one.
+    print("\n[9b] SUBSCRIBER BACKUP  (local, sealed; addresses + consent records)")
+    try:
+        import subscriber_backup
+
+        if not subscriber_backup.PUBLIC_KEY_PATH.exists():
+            print("    DISARMED — no recipient key at")
+            print(f"    {subscriber_backup.PUBLIC_KEY_PATH.relative_to(REPO_ROOT)}")
+            print("    The consent records still exist only on the host. This is a")
+            print("    KNOWN OPEN GAP, not a fault, and arming it is the owner's")
+            print("    step: docs/RUNBOOK.md 'back up the subscriber list'.")
+        else:
+            dest = subscriber_backup.DEFAULT_DEST
+            sealed = sorted(dest.glob("*.sealed.json")) if dest.is_dir() else []
+            if not sealed:
+                print("    UNKNOWN — armed, but no sealed backup on THIS machine.")
+                print("    That is not a pass: it may be on another one. Run")
+                print("    `python3 railway/subscriber_backup.py --pull` to be sure.")
+                unverified.append("whether the subscriber list has an off-host copy")
+            else:
+                newest = max(f.stat().st_mtime for f in sealed)
+                age = int((time.time() - newest) / 86400)
+                print(f"    {len(sealed)} sealed copy/copies, newest {age}d old")
+                if age > 45:
+                    print("    STALE — the newest local copy predates a month and a half.")
+                    issues.append("the subscriber backup has not been pulled")
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        print(f"    UNKNOWN — could not read the subscriber backup state ({exc}).")
+        print("    THIS IS NOT A PASS.")
+        unverified.append("whether the subscriber list has an off-host copy")
 
     # [10] A row whose citation cannot be verified is the one defect this
     #      product cannot absorb, and until now the only archive signal any
