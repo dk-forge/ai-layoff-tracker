@@ -1417,6 +1417,11 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
     articles = None
     last_error = None
     saw_rate_limit = False
+    # A plain-text refusal that is NOT a throttle ("your query was too short or
+    # too long", an upstream error page). It is recorded separately because it
+    # is DETERMINISTIC: unlike a 429 it will not answer on the next attempt, and
+    # unlike a timeout it is not fixed by waiting longer.
+    saw_refusal = False
     delay = REQUEST_DELAY
     for attempt in range(QUERY_ATTEMPTS):
         time.sleep(delay)
@@ -1441,6 +1446,8 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
                 kind, message = signal
                 if kind == "throttle":
                     saw_rate_limit = True
+                else:
+                    saw_refusal = True
                 last_error = f"HTTP {resp.status_code} {message}"
                 print(f"GDELT {kind} body (attempt {attempt + 1}/{QUERY_ATTEMPTS}): {message}")
                 continue
@@ -1454,7 +1461,8 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
     # there was nothing" and "we never found out" are different days.
     gdelt_reach.current().note_query(
         reach_label, None if articles is None else len(articles),
-        max_records, abandoned=articles is None, rate_limited=saw_rate_limit)
+        max_records, abandoned=articles is None, rate_limited=saw_rate_limit,
+        refused=saw_refusal)
     return articles, saw_rate_limit, last_error
 
 

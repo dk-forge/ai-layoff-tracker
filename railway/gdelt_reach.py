@@ -111,6 +111,7 @@ QUERY_LABELS = ("broad", "segment", "native", "euphemism", "theme", "euro", "mir
 
 _PUBLIC_WORDS = frozenset(REASONS) | frozenset(QUERY_LABELS) | frozenset({
     "queries", "returned", "capped", "cap", "abandoned", "rate_limited",
+    "refused",
     "answered", "countries", "reasons", "totals", "candidates", "trusted",
     "kept", "dropped", "unknown_country", "by_country", "by_reason",
     "by_label", "max_records", "source", "gdelt", "reach", "headline_only",
@@ -194,7 +195,8 @@ class Reach:
     # -- recording ---------------------------------------------------------
 
     def note_query(self, label, returned, max_records,
-                   abandoned=False, rate_limited=False, truncated=None):
+                   abandoned=False, rate_limited=False, truncated=None,
+                   refused=False):
         """One GDELT window request outcome.
 
         `returned is None` means the window was ABANDONED -- it is not zero.
@@ -237,6 +239,7 @@ class Reach:
                 "capped": bool(capped),
                 "abandoned": bool(abandoned or returned is None),
                 "rate_limited": bool(rate_limited),
+                "refused": bool(refused),
             })
 
     def note(self, domain, reason, count=1):
@@ -282,6 +285,7 @@ class Reach:
             "abandoned": sum(1 for q in self.queries if q["abandoned"]),
             "capped": sum(1 for q in answered if q["capped"]),
             "rate_limited": sum(1 for q in self.queries if q["rate_limited"]),
+            "refused": sum(1 for q in self.queries if q.get("refused")),
             "returned": sum(q["returned"] for q in answered),
             "candidates": seen,
             "kept": by_reason.get("kept", 0),
@@ -333,6 +337,20 @@ class Reach:
                 f"capped={t['capped']} kept={t['kept']} dropped={t['dropped']}")
         if t["headline_only"]:
             head += f" headline_only={t['headline_only']}"
+        # WHY a window was abandoned, not just THAT it was. Both counters were
+        # already measured and both were dropped before publication, so the
+        # only durable record of a lost window said nothing about its cause --
+        # and "our own clock gave up" and "the server refused us" call for
+        # opposite responses (raise the timeout; do NOT raise the timeout).
+        # Spent whenever a window was LOST, zeros included, and otherwise only
+        # when non-zero. The zeros have to be published or a reader cannot tell
+        # "this run saw no throttle" from "this run predates these counters",
+        # and inferring a cause from a missing field is how an absence becomes
+        # a verdict. A clean run still costs no characters.
+        if t["abandoned"] or t["rate_limited"]:
+            head += f" rate_limited={t['rate_limited']}"
+        if t["abandoned"] or t["refused"]:
+            head += f" refused={t['refused']}"
         by_reason = self.by_reason()
         reasons = " ".join(f"{r}={by_reason[r]}"
                            for r in REASONS if r != "kept" and by_reason.get(r))
@@ -364,7 +382,8 @@ class Reach:
             "GDELT reach: "
             f"{t['queries']} quer(ies), {t['answered']} answered, "
             f"{t['abandoned']} ABANDONED, {t['capped']} hit maxrecords, "
-            f"{t['returned']} article(s) returned",
+            f"{t['returned']} article(s) returned "
+            f"({t['rate_limited']} throttled, {t['refused']} refused upstream)",
             f"GDELT reach: {t['candidates']} candidate(s) -> "
             f"{t['kept']} kept, {t['headline_only']} headline-only (robots), "
             f"{t['dropped']} dropped "
