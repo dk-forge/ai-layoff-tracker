@@ -4,75 +4,75 @@
   "copy_sha256": "5f3c2d94da868b5167c01109987e43b0c34772ded558607cae97f60e8504bea5",
   "figures": {
     "blog@375x812": {
-      "headroom_px": 95.2,
+      "headroom_px": 87.2,
       "parts": {
         "email row": 70,
         "field": 44,
-        "frequency": 68,
+        "frequency": 76,
         "heading": 24.7,
         "intro": 225,
         "lists": 214.5,
         "privacy": 44,
-        "section": 862.4,
+        "section": 870.4,
         "submit": 44,
         "tracking note": 0
       },
-      "reach_px": 716.8,
+      "reach_px": 724.8,
       "screen_px": 812
     },
     "blog@414x896": {
-      "headroom_px": 244.2,
+      "headroom_px": 236.2,
       "parts": {
         "email row": 70,
         "field": 44,
-        "frequency": 68,
+        "frequency": 76,
         "heading": 24.7,
         "intro": 202.5,
         "lists": 172,
         "privacy": 44,
-        "section": 776.4,
+        "section": 784.4,
         "submit": 44,
         "tracking note": 0
       },
-      "reach_px": 651.8,
+      "reach_px": 659.8,
       "screen_px": 896
     },
     "tracker@375x812": {
-      "headroom_px": 121.7,
+      "headroom_px": 113.7,
       "parts": {
         "email row": 70,
         "field": 44,
-        "frequency": 68,
+        "frequency": 76,
         "heading": 29,
         "intro": 151.8,
         "lists": 172,
         "privacy": 44,
-        "section": 715.8,
+        "section": 723.8,
         "submit": 44,
         "tracking note": 0
       },
-      "reach_px": 690.3,
+      "reach_px": 698.3,
       "screen_px": 812
     },
     "tracker@414x896": {
-      "headroom_px": 206.4,
+      "headroom_px": 198.4,
       "parts": {
         "email row": 70,
         "field": 44,
-        "frequency": 68,
+        "frequency": 76,
         "heading": 29,
         "intro": 151.8,
         "lists": 172,
         "privacy": 44,
-        "section": 715.8,
+        "section": 723.8,
         "submit": 44,
         "tracking note": 0
       },
-      "reach_px": 689.6,
+      "reach_px": 697.6,
       "screen_px": 896
     }
   },
-  "measured_at_utc": "2026-09-06T06:41Z",
+  "measured_at_utc": "2026-09-06T07:03Z",
   "measured_on": "2026-09-06",
   "measured_on_platform": "darwin",
   "required_headroom_px": 80.0

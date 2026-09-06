@@ -5,7 +5,8 @@
 railway/tests/test_digest_cadence_promises.py (four mutations reverted in
 turn redden them: dropping the two monthly cron lines, moving the slot off
 the 1st, removing the day-of-month refusal in `tier_for_cron`, and moving the
-slot hour so the DST twin claims the day)
+slot hour so the DST twin claims the day); railway/tests/
+test_signup_reaches_landing_pages.py for the third radio's tap floor
 
 **What was wrong.** The monthly digest tier was complete. `alt_digest_valid_freq`
 accepted it, `alt_digest_monthly_window` framed the month to date, the composer
@@ -64,6 +65,28 @@ degraded pass is reported and does not raise, and an absent row before the
 first send is UNKNOWN and says "not established, which is not a pass" rather
 than green. `digest_mailer` cannot stand in for it: the daily pass refreshes
 that row every morning.
+
+**AND THE THIRD RADIO BROKE THE TAP FLOOR ON THE RUNNER AND NOT ON THIS
+MACHINE.** The frequency labels were laid out for a PAIR that "stays on ONE
+line", spaced by a right margin only. Three of them do not fit 375px in the
+runner's font stack: `Weekly` 85.1 and `Monthly` 91.1 landed at (40,4199) and
+(40,4243), a wrapped row 0.0px under the one above it, which is exactly the
+mis-tap the 8px adjacency floor exists to prevent, reached by the layout the
+floor was written for. `test_no_two_neighbouring_controls_are_closer_than_8px`
+was GREEN on macOS, where the same three labels fit the line, and red on
+Linux CI. A floor that depends on which font measured it is not a floor.
+
+The fix is 8px BELOW each label as well as 16px beside it, in the component
+(`includes/subscribe.php`) and in the rule that restates it for tracker phone
+widths (`assets/layoffs.css`), because horizontal margin cannot space a line
+the layout decides to break. The guard is a new test that forces the wrap at
+240px rather than waiting for a font to force it: reverting the bottom margin
+reddens it here, on macOS, where the older test cannot see the defect at all.
+The cost is 8px of phone-fold budget, measured rather than assumed and
+recorded (`railway/signup_fold.py --record`): the tightest surface, the blog
+post at 375x812, goes from 95.2px of headroom to 87.2px against a required
+80.0px. That is real headroom and it is thinner than it was; the next thing
+added to this form should be measured before it is written.
 
 **One thing is deliberately NOT settled.** On the 1st, `alt_digest_monthly_window`
 clamps `to` up to `from`, so the first edition of a month covers the 1st alone,

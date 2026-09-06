@@ -774,14 +774,26 @@ function alt_digest_subscribe_form($context = '') {
         display: flex; align-items: center; gap: 10px;
         min-height: 44px; margin: 0; font-size: 14px;
     }
-    /* The frequency pair stays on ONE line, so this is inline-flex on the
-       labels rather than a flex column on the fieldset: a <legend> is a flex
-       item like any other and turning the fieldset into a row would seat
-       "How often for the digests?" beside the two choices. 16px between them
-       clears the 8px adjacency floor twice over. */
+    /* Inline-flex on the LABELS rather than a flex column on the fieldset: a
+       <legend> is a flex item like any other and turning the fieldset into a
+       row would seat "How often for the digests?" beside the choices. 16px
+       between them clears the 8px adjacency floor twice over.
+
+       THE BOTTOM MARGIN IS THE ROW GAP, AND IT IS NOT DECORATION. This said
+       "the frequency pair stays on ONE line" while there were two choices,
+       and on 2026-09-06 a third (Monthly) arrived with the monthly slot.
+       Three 44px labels do not fit 375px in the runner's font stack: Weekly
+       85.1 and Monthly 91.1 landed at (40,4199) and (40,4243), a WRAPPED row
+       0.0px below the one above it, which is exactly the mis-tap the 8px
+       floor exists to prevent, arrived at by the rule meant to prevent it.
+       Horizontal margin alone cannot space a line the layout decides to
+       break, so the label carries 8px BELOW it as well and the wrap is safe
+       at any width and in any font. It costs 8px of the phone-fold budget on
+       a single-line render, which is measured rather than assumed:
+       railway/signup_fold.py --record, and the stamp holds the figure. */
     .alt-digest-freq label {
         display: inline-flex; align-items: center; gap: 10px;
-        min-height: 44px; margin: 0 16px 0 0; font-size: 14px;
+        min-height: 44px; margin: 0 16px 8px 0; font-size: 14px;
     }
     /* A 13px box in a flex row is a flex item, and flex items shrink. */
     .alt-digest-lists input, .alt-digest-freq input { flex: none; }

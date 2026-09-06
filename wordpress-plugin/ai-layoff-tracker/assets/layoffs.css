@@ -4282,18 +4282,24 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
         gap: 10px;
         min-height: 44px;
     }
-    /* The frequency pair takes the same 44px and keeps its line, which is the
-       component's own rule restated in the file that was overruling it. A
-       block-level label is the full width of the fieldset, so two of them
-       stack edge to edge with 0px between: that is the mis-tap this section
-       exists to prevent, arrived at by the rule meant to prevent it. Side by
-       side with 16px of margin they are two clear targets on one row. */
+    /* The frequency choices take the same 44px and keep their line where the
+       line holds, which is the component's own rule restated in the file that
+       was overruling it. A block-level label is the full width of the
+       fieldset, so two of them stack edge to edge with 0px between: that is
+       the mis-tap this section exists to prevent, arrived at by the rule
+       meant to prevent it. Side by side with 16px of margin they are clear
+       targets on one row -- and when a third choice does not fit that row
+       (Monthly, 2026-09-06) the 8px below carries the wrap. */
     .alt-digest-freq label {
         display: inline-flex;
         align-items: center;
         gap: 10px;
         min-height: 44px;
-        margin-right: 16px;
+        /* 16px beside, 8px below. The bottom margin is the ROW gap for the
+           line the layout breaks when three choices do not fit 375px, which
+           they stopped doing when the Monthly radio arrived on 2026-09-06.
+           Same rule, same reason, as the component's own (subscribe.php). */
+        margin: 0 16px 8px 0;
     }
 
     /* --- 6. A card headline is a link the width of the card ----------- */
