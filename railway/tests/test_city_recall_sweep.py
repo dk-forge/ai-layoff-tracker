@@ -29,6 +29,7 @@ Names in the fixture are fictional on purpose, for the reason
 `test_curated_probe_leak` records.
 """
 import io
+import json
 import os
 import pathlib
 import sys
@@ -267,3 +268,107 @@ class HostRefusal(unittest.TestCase):
             crs.our_rows("Hollowmere", "https://example.invalid/blog",
                          cache=cache, breaker=breaker, sleep=lambda s: None)
         self.assertEqual(cache, {})
+
+
+class BreakerMeasuresRequests(unittest.TestCase):
+    """A BREAKER COUNTS REQUESTS, NOT INTENTIONS.
+
+    `our_rows` recorded a failure whenever it returned None, including the two
+    cases where it never asked anything: `--index-only` passes an empty site,
+    and a headline with no employer candidate passes an empty token. So the
+    first index-only run tripped the breaker on its first item and reported
+    `host_unreachable True` plus "our own /query stopped answering mid-run"
+    having made no request at all (2026-09-06). An UNKNOWN with no request
+    behind it is still UNKNOWN, but it is not an outage, and saying it is sends
+    the next session to triage a host that was never asked.
+    """
+
+    def test_index_only_makes_no_request_and_reports_no_outage(self):
+        def exploding_get(*a, **kw):
+            raise AssertionError("index-only must not touch our host")
+
+        out = pathlib.Path(tempfile.mkdtemp()) / "city-recall-test.txt"
+        buf = io.StringIO()
+        with patch.object(crs.requests, "get", exploding_get), redirect_stdout(buf):
+            facts, _named = crs.run("", out, fetch=_fake_fetch, sleep=lambda s: None,
+                                    cities=CITIES, today=date(2026, 9, 6))
+        self.assertFalse(facts["host_unreachable"])
+        self.assertNotIn("stopped answering", buf.getvalue())
+        # Every verdict is still UNKNOWN: not asking is not a pass.
+        self.assertEqual(facts["unknown"], facts["judged"])
+        self.assertEqual(facts["held"], 0)
+        self.assertEqual(facts["missed"], 0)
+
+    def test_an_empty_token_does_not_count_against_the_host(self):
+        breaker = crs.HostBreaker()
+        for _ in range(crs.HOST_FAIL_LIMIT + 3):
+            crs.our_rows("", "https://example.invalid/blog",
+                         breaker=breaker, sleep=lambda s: None)
+        self.assertFalse(breaker.tripped)
+
+    def test_a_real_failed_request_still_trips_it(self):
+        """The fix must not disarm the breaker it is narrowing."""
+        breaker = crs.HostBreaker()
+
+        def refusing_get(url, params=None, headers=None, timeout=None):
+            return _FakeResponse(409, {})
+
+        with patch.object(crs.requests, "get", refusing_get):
+            for _ in range(crs.HOST_FAIL_LIMIT):
+                crs.our_rows("Hollowmere", "https://example.invalid/blog",
+                             breaker=breaker, sleep=lambda s: None)
+        self.assertTrue(breaker.tripped)
+
+
+class IndexCache(unittest.TestCase):
+    """THE INDEX HALF MUST SURVIVE THE HOST HALF FAILING.
+
+    A sweep is ~190 index reads and ~300 reads of our own `/query`, and only
+    the second kind can meet a bot challenge. When one did, the only way back
+    to the answer was to walk all ~190 index reads again to reach the reads
+    that had actually failed: 190 requests spent re-learning what we already
+    knew, at the moment the right response to a challenged host is to make
+    fewer requests, not more.
+    """
+
+    def _run(self, cache_path, fetch):
+        out = pathlib.Path(tempfile.mkdtemp()) / "city-recall-test.txt"
+        buf = io.StringIO()
+        with patch.object(crs.requests, "get", _fake_get), redirect_stdout(buf):
+            facts, _named = crs.run("https://example.invalid/blog", out, fetch=fetch,
+                                    sleep=lambda s: None, cities=CITIES,
+                                    today=date(2026, 9, 6),
+                                    index_cache_path=cache_path)
+        return facts
+
+    def test_a_second_run_reads_the_index_zero_times(self):
+        cache_path = pathlib.Path(tempfile.mkdtemp()) / "idx.json"
+        first = []
+        second = []
+        self._run(cache_path, lambda q, ed: (first.append(q), _fake_fetch(q, ed))[1])
+        self.assertTrue(first)
+        facts = self._run(cache_path, lambda q, ed: (second.append(q), _fake_fetch(q, ed))[1])
+        self.assertEqual(second, [], "the cached index was re-fetched")
+        self.assertEqual(facts["index_reused"], facts["queries"])
+        self.assertEqual(facts["judged"], facts["queries"] and facts["judged"])
+
+    def test_the_cache_is_ignored_when_it_was_gathered_for_another_window(self):
+        """A 14-day cache must not silently answer a 30-day question."""
+        cache_path = pathlib.Path(tempfile.mkdtemp()) / "idx.json"
+        self._run(cache_path, _fake_fetch)
+        blob = json.loads(cache_path.read_text())
+        blob["window_days"] = crs.WINDOW_DAYS + 1
+        cache_path.write_text(json.dumps(blob))
+        self.assertEqual(crs.load_index_cache(cache_path), {})
+
+    def test_an_absent_or_corrupt_cache_is_empty_not_an_error(self):
+        missing = pathlib.Path(tempfile.mkdtemp()) / "nope.json"
+        self.assertEqual(crs.load_index_cache(missing), {})
+        corrupt = pathlib.Path(tempfile.mkdtemp()) / "bad.json"
+        corrupt.write_text("{not json")
+        self.assertEqual(crs.load_index_cache(corrupt), {})
+        self.assertEqual(crs.load_index_cache(None), {})
+
+    def test_no_cache_path_means_no_file_and_no_reuse(self):
+        facts = self._run(None, _fake_fetch)
+        self.assertEqual(facts["index_reused"], 0)

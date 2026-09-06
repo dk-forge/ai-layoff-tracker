@@ -39,6 +39,7 @@ runner that can write the named file is the leak.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pathlib
 import re
@@ -286,7 +287,7 @@ def employer_candidates(title, city_words, vocab_words):
 # the sweep would have made several hundred more reads into that wall and
 # reported 120 cities of UNKNOWN as if it had looked. It had not. So:
 # consecutive failed reads trip `HostBreaker`, the run stops asking, and the
-# summary says `host unreachable` — UNKNOWN is recorded as UNKNOWN and is
+# summary says `host unreachable`: UNKNOWN is recorded as UNKNOWN and is
 # never rounded to a miss or to a pass.
 HOST_FAIL_LIMIT = max(2, int(os.environ.get("CITY_SWEEP_HOST_FAIL_LIMIT", "5")))
 HOST_GAP_SECONDS = max(0.0, float(os.environ.get("CITY_SWEEP_HOST_GAP_SECONDS", "1")))
@@ -317,18 +318,27 @@ def our_rows(token, site, timeout=30, cache=None, breaker=None, sleep=time.sleep
         return cache[token]
     if breaker is not None and breaker.tripped:
         return None
+    # A BREAKER MEASURES REQUESTS, NOT INTENTIONS. When no request is
+    # attempted -- `--index-only` passes an empty site, and a headline with no
+    # employer candidate passes an empty token -- there is nothing to record.
+    # Counting those as failures tripped the breaker on the very first item of
+    # an index-only run, so that run reported `host_unreachable True` and
+    # printed "our own /query stopped answering mid-run" having never asked it
+    # anything (2026-09-06). An UNKNOWN with no request behind it must not be
+    # dressed up as an outage.
+    if not site or not token:
+        return None
     rows = None
-    if site and token:
-        try:
-            r = requests.get(f"{site}/wp-json/layoffs/v1/query",
-                             params={"company": token, "per_page": 50},
-                             headers=UA, timeout=timeout)
-            if r.status_code == 200:
-                rows = r.json().get("data") or []
-        except Exception:
-            rows = None
-        if HOST_GAP_SECONDS:
-            sleep(HOST_GAP_SECONDS)
+    try:
+        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+                         params={"company": token, "per_page": 50},
+                         headers=UA, timeout=timeout)
+        if r.status_code == 200:
+            rows = r.json().get("data") or []
+    except Exception:
+        rows = None
+    if HOST_GAP_SECONDS:
+        sleep(HOST_GAP_SECONDS)
     if breaker is not None:
         breaker.record(rows is not None)
     if cache is not None and rows is not None:
@@ -353,7 +363,7 @@ _PUBLIC_WORDS = frozenset(VERDICTS) | frozenset(TIERS) | frozenset({
 _PUBLIC_KEYS = frozenset(VERDICTS) | frozenset(TIERS) | frozenset({
     "date", "method", "window_days", "cities", "queries", "index_errors",
     "world_edition_cities", "items", "with_headcount", "native_parsed",
-    "host_unreachable", "outlet_unwired", "vocab_unmatched",
+    "host_unreachable", "index_reused", "outlet_unwired", "vocab_unmatched",
     "judged", "by_country", "by_city", "held_pct", "miss_tiers", "no_results",
 })
 _ISO2_RX = re.compile(r"^[A-Z]{2}$")
@@ -489,6 +499,54 @@ def _tally(bucket, rec):
         bucket[rec["tier"]] += 1
 
 
+# ---------------------------------------------------------------------------
+# THE INDEX HALF IS THE EXPENSIVE HALF AND IT MUST SURVIVE THE HOST HALF
+# FAILING. A full sweep is ~190 index reads and ~300 reads of our own /query,
+# and only the second kind can meet a bot challenge on `/blog`. On 2026-09-06
+# it did: the host went to HTTP 409 mid-run, every verdict became UNKNOWN, and
+# the only way to get the answer back was to walk all ~190 index reads a second
+# time to reach the reads that had actually failed. That is 190 requests spent
+# re-learning something we already knew, at a moment when the correct response
+# to a challenged host is to make FEWER requests, not more.
+#
+# So the index is memoised to a file, keyed by (query, edition) and stamped
+# with the window it was gathered for. A re-run reads it and spends its whole
+# request budget on the half that failed. The file carries HEADLINES, so it is
+# a name-bearing sink: it lives under `scratchpad/` (gitignored) with the named
+# worklist, never in the repo, and it is never the default -- an unasked-for
+# cache is a stale answer waiting to be believed.
+def load_index_cache(path):
+    """Cached index items keyed 'query\x00hl\x00gl\x00ceid', or {} when the
+    file is absent, unreadable, or was gathered for a different window."""
+    if not path:
+        return {}
+    try:
+        blob = json.loads(pathlib.Path(path).read_text())
+    except Exception:
+        return {}
+    if not isinstance(blob, dict) or blob.get("window_days") != WINDOW_DAYS:
+        return {}
+    entries = blob.get("entries")
+    return entries if isinstance(entries, dict) else {}
+
+
+def save_index_cache(path, entries):
+    if not path:
+        return
+    try:
+        pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(path).write_text(json.dumps(
+            {"window_days": WINDOW_DAYS, "method": METHOD,
+             "saved": datetime.now(timezone.utc).date().isoformat(),
+             "entries": entries}))
+    except Exception:
+        pass
+
+
+def cache_key(query, ed):
+    return "\x00".join([query, ed[0], ed[1], ed[2]])
+
+
 def fetch_index(query, ed, timeout=30):
     """One RSS index read. Returns (items, error) where error is '' or a
     short transport label. Never raises."""
@@ -501,8 +559,11 @@ def fetch_index(query, ed, timeout=30):
     return _parse_items(r.text), ""
 
 
-def run(site, out_path, fetch=fetch_index, sleep=time.sleep, cities=CITIES, today=None):
+def run(site, out_path, fetch=fetch_index, sleep=time.sleep, cities=CITIES, today=None,
+        index_cache_path=None):
     today = today or date.today()
+    index_cache = load_index_cache(index_cache_path)
+    index_hits = 0
     from sources.gdelt import TRUSTED_DOMAINS
     from source_registry import discovery_terms
     trusted = {d.lower() for d in TRUSTED_DOMAINS}
@@ -517,7 +578,7 @@ def run(site, out_path, fetch=fetch_index, sleep=time.sleep, cities=CITIES, toda
              "held": 0, "missed": 0, "unknown": 0,
              "outlet_unwired": 0, "vocab_unmatched": 0,
              "miss_tiers": {t: 0 for t in TIERS},
-             "host_unreachable": False,
+             "host_unreachable": False, "index_reused": 0,
              "by_country": {}, "by_city": {}}
     breaker = HostBreaker()
     named = []          # the PRIVATE list: every judged record, with its city
@@ -535,8 +596,15 @@ def run(site, out_path, fetch=fetch_index, sleep=time.sleep, cities=CITIES, toda
         kb = facts["by_country"].setdefault(iso2, _bucket())
         for q, ed, lang in queries_for_city(city):
             facts["queries"] += 1
-            items, err = fetch(q, ed)
-            sleep(GAP_SECONDS)
+            ck = cache_key(q, ed)
+            if ck in index_cache:
+                items, err = index_cache[ck], ""
+                index_hits += 1
+            else:
+                items, err = fetch(q, ed)
+                sleep(GAP_SECONDS)
+                if not err:
+                    index_cache[ck] = items
             if err:
                 facts["index_errors"] += 1
                 cb["index_errors"] += 1
@@ -579,6 +647,8 @@ def run(site, out_path, fetch=fetch_index, sleep=time.sleep, cities=CITIES, toda
                 if rec["tier"]:
                     facts["miss_tiers"][rec["tier"]] += 1
 
+    save_index_cache(index_cache_path, index_cache)
+    facts["index_reused"] = index_hits
     facts["host_unreachable"] = bool(breaker.tripped)
     decided = facts["held"] + facts["missed"]
     facts["held_pct"] = round(100.0 * facts["held"] / decided, 1) if decided else None
@@ -654,8 +724,14 @@ def main(argv=None):
                     help="read the news index and report NET COVERAGE only. Makes no "
                          "request to our own host, so every verdict is UNKNOWN by "
                          "construction and is reported as UNKNOWN. Use when the host "
-                         "is unreachable (ops_status [1]) — the outlet and vocabulary "
+                         "is unreachable (ops_status [1]): the outlet and vocabulary "
                          "findings do not depend on it.")
+    ap.add_argument("--index-cache", default=None,
+                    help="memoise the news index to this file and reuse it on a re-run. "
+                         "The file carries HEADLINES, so it must live under scratchpad/ "
+                         "(gitignored). Use it when a run may have to be repeated: the "
+                         "index half costs ~190 requests and does not need re-reading "
+                         "just because our own host stopped answering.")
     args = ap.parse_args(argv)
     site = "" if args.index_only else os.environ.get("WP_SITE_URL", "").rstrip("/")
     if args.index_only:
@@ -668,7 +744,7 @@ def main(argv=None):
     today = date.today()
     out = args.out or (REPO / "scratchpad" / f"city-recall-{today.isoformat()}.txt")
     cities = CITIES[:args.limit] if args.limit else CITIES
-    run(site, out, cities=cities, today=today)
+    run(site, out, cities=cities, today=today, index_cache_path=args.index_cache)
     return 0
 
 

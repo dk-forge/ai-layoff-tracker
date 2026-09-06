@@ -123,7 +123,7 @@ def discovery_terms() -> tuple[str, ...]:
     # pushed three market terms off the end silently: the truncation is at the
     # tail, the tail is whichever market MARKETS happens to iterate last, and
     # nothing anywhere would have reported a market losing its vocabulary.
-    # `tests/test_source_registry_parity.py` now fails when the cap is reached,
+    # `tests/test_worldwide_vocabulary.py` now fails when the cap is reached,
     # so a future addition has to make this decision on purpose too.
     return tuple(dict.fromkeys(terms))[:51]
 
