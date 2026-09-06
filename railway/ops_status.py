@@ -1226,6 +1226,11 @@ def _print_wrapped(text, width=86, indent="        "):
 _REACH_RX = re.compile(
     r"returned=(\d+) queries=(\d+) answered=(\d+) abandoned=(\d+) "
     r"capped=(\d+) kept=(\d+) dropped=(\d+)")
+# The CAUSE of an abandoned window, published since 2026-09-06. Both counters
+# are optional and spent only when non-zero, so they are read separately and
+# their absence means "this run reported none", never "this run did not say".
+_REACH_THROTTLE_RX = re.compile(r"rate_limited=(\d+)")
+_REACH_REFUSED_RX = re.compile(r"refused=(\d+)")
 
 
 def gdelt_reach_lines(runs):
@@ -1258,9 +1263,15 @@ def gdelt_reach_lines(runs):
         m = _REACH_RX.search(str(r.get("detail") or ""))
         if m:
             ret, q, ans, aband, cap, kept, drop = (int(g) for g in m.groups())
+            detail = str(r.get("detail") or "")
+            rl = _REACH_THROTTLE_RX.search(detail)
+            rf = _REACH_REFUSED_RX.search(detail)
             parsed.append({"at": r.get("attempted_at"), "q": q, "ans": ans,
                            "aband": aband, "cap": cap, "ret": ret,
-                           "kept": kept, "drop": drop})
+                           "kept": kept, "drop": drop,
+                           "throttled": int(rl.group(1)) if rl else 0,
+                           "refused": int(rf.group(1)) if rf else 0,
+                           "cause_published": bool(rl or rf)})
     if not parsed:
         return ([
             "reach UNKNOWN - no run in this window recorded what GDELT returned.",
@@ -1284,6 +1295,30 @@ def gdelt_reach_lines(runs):
         lines.append(
             f"  WINDOW LOST: {latest['aband']} quer(ies) abandoned after retries."
             " That slice of the day has no trace. -> RUNBOOK 'a data source broke'")
+        # THAT a window was lost and WHY it was lost are different facts, and
+        # until 2026-09-06 only the first was published. They point opposite
+        # ways: a throttled or refused query is the server declining, and
+        # waiting longer per attempt does not answer it, so reading a lost
+        # window as "our timeout is too low" was a guess the data never made.
+        if latest["throttled"] or latest["refused"]:
+            cause = []
+            if latest["throttled"]:
+                cause.append(f"{latest['throttled']} throttled by GDELT (HTTP 429"
+                             " or a slow-down body)")
+            if latest["refused"]:
+                cause.append(f"{latest['refused']} refused upstream (a plain-text"
+                             " rejection, which retrying does not fix)")
+            lines.append("    CAUSE: " + "; ".join(cause) +
+                         ". Not our request timeout.")
+        elif latest["cause_published"]:
+            lines.append(
+                "    CAUSE: the run recorded no throttle and no upstream"
+                " refusal, so the window ran out our own clock or the"
+                " connection failed.")
+        else:
+            lines.append(
+                "    CAUSE UNKNOWN: this run predates the cause counters. Not a"
+                " timeout and not a throttle -- unmeasured, which is neither.")
     lines.append(
         f"over {len(parsed)} measured run(s): {capped_runs} with a capped query, "
         f"{aband_runs} with an abandoned window")
