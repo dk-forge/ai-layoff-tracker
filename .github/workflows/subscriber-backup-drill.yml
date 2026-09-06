@@ -19,8 +19,11 @@ name: Subscriber backup drill
 # of a few hundred rows. Ciphertext is a reason to relax about a USB stick. It
 # is not a reason to publish.
 #
-# The real backup is therefore a LOCAL command the owner runs, exactly as
-# curated_probe.py is local for the same class of reason:
+# The real backup is therefore a LOCAL command the owner runs, for the same
+# class of reason the hand-fed recall probe is local: a runner that can hold
+# the sensitive half is the leak. (That module is deliberately not named here:
+# a guard forbids its name in any workflow file, and the guard is right to,
+# because a substring cannot tell a comment from an invocation.)
 #
 #     python3 railway/subscriber_backup.py --pull
 #
