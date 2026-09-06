@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:live.data:240a9bbebb4867de": {
-      "first": 1788677791,
-      "last": 1788677791,
-      "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 409 \u2014 server regression, not a blip"
-    }
-  },
-  "updated_at": "2026-09-06T06:56:32+00:00",
+  "open": {},
+  "updated_at": "2026-09-06T07:09:30+00:00",
   "version": 1
 }
