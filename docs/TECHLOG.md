@@ -84,6 +84,32 @@ the underlying fault; this branch stops that from being read as good news, but
 does not fix the collector. Whether the shrinkage is upstream or in the scrape is
 open. Separately, `warn:MS` is QUIET at p=0.0176 (67d, 22.0/yr): correctly
 advisory, correctly not emailed, and it may simply not be filing.
+## 2026-09-06 - a collector whose first run is still ahead was reported as never reporting (branch)
+
+**Class:** absent-read-as-ok
+
+**What broke.** The monthly digest slot was armed on 2026-09-06 and first
+fires 9:00 ET on 2026-10-01. From the moment it was declared, `[2c] SOURCE
+INVENTORY` reported `digest_monthly` under NEVER REPORTED and ACTION NEEDED
+carried "1 collector(s) declared but never reported" for 25 days.
+
+**Why that is worse than it looks.** The inventory exists because a declared
+collector that never reports is invisible otherwise; the 2026-05 case sat in a
+list for thirteen months. A line that is known to be wrong for most of a month
+teaches the reader to skip the list, which is the same failure by a slower
+route.
+
+**Fix.** `source_inventory.NOT_YET_DUE` maps a declared collector to the date
+its first run is due. Before that date it is reported as a separate UNKNOWN
+line naming the reason; on and after it, the collector is judged like any
+other with no exemption at all. Absence is still never a pass, and the map is
+dated rather than open-ended so it cannot become a permanent silencer.
+
+**Guard:** `railway/tests/test_inventory_not_yet_due.py` (the exemption holds
+before the date and lapses on it; a collector with no entry is never exempt;
+every entry carries a real ISO date; the two lists never overlap; an empty
+exemption map fails rather than passing vacuously).
+
 ## 2026-09-06 - two hand-typed copies of a vocabulary, both inside /aggregate: the source-type chart drew only the source you had filtered to, and the reasons doughnut could never draw two of its own tags (2.20.173, branch, PR)
 
 **Class:** two-copies-drifted

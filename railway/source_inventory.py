@@ -33,6 +33,8 @@ added later is inventoried by construction rather than by somebody remembering
 to add it here. `tests/test_source_freshness.py` pins that: a new id in the
 health page's registry is a new inventory row the same day.
 """
+
+import datetime as _dt
 import json
 import os
 import re
@@ -119,6 +121,30 @@ def reporting_collectors(health):
                         if isinstance(v, dict)))
 
 
+#: Declared collectors whose FIRST run is scheduled for a date that has not
+#: arrived yet. A monthly slot armed on the 6th cannot have a health row until
+#: the 1st, and calling that "never reported" hands the owner a red action item
+#: for 25 days, which is how a real never-reported collector learns to hide in
+#: a list nobody reads. The entry carries the date the first run is due; on and
+#: after that date the collector is judged like any other, with no exemption.
+#: Absence stays UNKNOWN either way. It is never a pass.
+NOT_YET_DUE = {
+    # The monthly digest slot was armed 2026-09-06 and first fires 9:00 ET on
+    # 2026-10-01 (railway/digest_send.py SEND_TIMES).
+    "digest_monthly": "2026-10-01",
+}
+
+
+def not_yet_due(collector, today=None):
+    """True while a declared collector's first scheduled run is still ahead."""
+    due = NOT_YET_DUE.get(collector)
+    if not due:
+        return False
+    if today is None:
+        today = _dt.date.today().isoformat()
+    return str(today) < due
+
+
 def never_reported(health, path=HEALTH_JS):
     """Declared but never seen in the health ledger. The fourth state.
 
@@ -129,7 +155,17 @@ def never_reported(health, path=HEALTH_JS):
     declared = declared_collectors(path)
     if not declared:
         raise ValueError(f"could not read the collector registry from {path}")
-    return tuple(sorted(set(declared) - set(reporting_collectors(health))))
+    missing = set(declared) - set(reporting_collectors(health))
+    return tuple(sorted(c for c in missing if not not_yet_due(c)))
+
+
+def awaiting_first_run(health, path=HEALTH_JS, today=None):
+    """Declared, silent, and legitimately so: the first run is still ahead."""
+    declared = declared_collectors(path)
+    if not declared:
+        raise ValueError(f"could not read the collector registry from {path}")
+    missing = set(declared) - set(reporting_collectors(health))
+    return tuple(sorted(c for c in missing if not_yet_due(c, today=today)))
 
 
 def uncollected_jurisdictions():
@@ -217,8 +253,10 @@ def summary(health, path=HEALTH_JS):
            "declared_collectors": len(declared_collectors(path))}
     try:
         out["never_reported"] = list(never_reported(health, path))
+        out["awaiting_first_run"] = list(awaiting_first_run(health, path))
     except ValueError as exc:
         out["never_reported"] = None          # UNKNOWN, never an empty pass
+        out["awaiting_first_run"] = None
         out["never_reported_error"] = str(exc)
     try:
         out["unimplemented"] = list(unimplemented_collectors(path))

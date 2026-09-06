@@ -1478,6 +1478,12 @@ def main():
         print(f"    {_inv['jurisdictions_collected']} of {_inv['jurisdictions']} "
               f"US jurisdictions have a WARN collector; no public register in: "
               f"{', '.join(_inv['jurisdictions_uncollected'])}")
+        _waiting = _inv.get("awaiting_first_run") or ()
+        if _waiting:
+            print(f"    UNKNOWN   {len(_waiting)} declared collector(s) have no health "
+                  f"row yet because their first run is still ahead: {', '.join(_waiting)}")
+            print("        Not a pass and not a fault. The date each one becomes "
+                  "judgeable is in source_inventory.NOT_YET_DUE.")
         _never = _inv.get("never_reported")
         if _never is None:
             print(f"    UNKNOWN: {_inv.get('never_reported_error')}")
