@@ -224,8 +224,8 @@ FORBIDDEN_TABLES: Dict[str, str] = {
     "alt_subscribers": (
         "Personal data: email addresses, consent records, and two live tokens "
         "(confirm_token, unsub_token). The artifact is published to a PUBLIC "
-        "repository. A private destination is an owner decision that has not "
-        "been made; docs/RECOVERY.md states the options."
+        "repository, so this table can never be in it and this exclusion is "
+        "permanent. " + "Its own off-host copy is /subscriber-backup, which seals the table to a public key BEFORE it answers, lands only on the owner's machine, and is DISARMED until he ships a key; docs/RECOVERY.md section 2."
     ),
 }
 

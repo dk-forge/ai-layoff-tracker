@@ -6,6 +6,25 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-06): 2.20.174 - the subscriber list and its
+  consent records had exactly one copy, on the host being migrated.** The baton
+  was read as FREE by `ops_status [0]` on origin/main and this session took it,
+  in its own worktree (`/Users/dakotta/Projects/.wt-subbackup`, branch
+  `subscriber-backup`). The weekly export excludes `wp_alt_subscribers`
+  correctly and permanently; its consequence was never closed. Added a separate
+  keyed route that seals the whole table to a PUBLIC key BEFORE the host
+  answers, so the host writes a backup it cannot itself read, plus a local
+  puller, an executed round-trip drill and the leak guards. **SHIPPED
+  DISARMED**: no recipient key is committed, so the route answers 503 and reads
+  the table not at all. Arming is the owner's step and is in RUNBOOK "back up
+  the subscriber list". **There is deliberately no scheduled workflow** - a
+  public repo's artifacts and releases are downloadable by anyone, so nothing
+  on a timer may hold this ciphertext. Plugin files touched:
+  `includes/subscriber-backup.php` and `includes/subscriber-backup-seal.php`
+  (both new), `includes/backup.php` (one stale comment), `ai-layoff-tracker.php`
+  (version + the guarded include). No source id added or removed, so
+  `assets/health.js meta{}` needs no change. Full write-up in TECHLOG
+  2026-09-06. Baton released.
 - **VERSION CLAIMED (2026-09-06): 2.20.172 - the monthly digest slot, which
   the signup promised and no cron line carried.** The tier composed correctly
   (2.20.171 verified all three monthly editions from live payloads) while

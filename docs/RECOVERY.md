@@ -72,17 +72,71 @@ it. This is enforced structurally, not by filtering: the plugin's
 else, `railway/backup_tables.py` names the same set on the other side, and a
 test asserts the two agree.
 
-**So the subscriber list has no backup at all today.** That is a real gap and it
-is the owner's decision to close, not a session's. The options:
+**The subscriber list now has an off-host copy, and it is built the only way
+that keeps the exclusion above true: the host seals it before it answers.**
 
-| Option | What it costs | What it risks |
-|---|---|---|
-| **Do nothing** | Nothing. | The list is lost with the host. Subscribers must re-confirm from scratch, and the consent records are gone, which matters if consent is ever questioned. |
-| **A private GitHub repo** | A second repo. Actions minutes there are **billed**, unlike these public ones. | A private repo is not an appropriate long-term store for consent records, and it puts personal data somewhere backed up by GitHub rather than by a processor there is an agreement with. |
-| **Encrypted artifact, key held off-platform** | A new secret, and a key that must not be lost. | An encrypted blob nobody can decrypt is not a backup. This only works if the key restore is drilled too. |
-| **Bluehost's own database backup** | Nothing new. | Same host, so it does not survive the host. |
+`GET /subscriber-backup` is a separate keyed route with a different contract
+from `/backup-table`. It has no mode that returns rows. It reads the table,
+serialises the pinned columns as JSON Lines, gzips them, and encrypts the
+result to a **public** key deployed with the plugin. The response carries
+ciphertext, a wrapped content key, an IV and a MAC, and nothing else. So the
+host writes a backup it cannot itself read, and so does anything that moves the
+file afterwards.
 
-Do not implement any of these without the owner choosing one.
+| | |
+|---|---|
+| **What is sealed** | every column of `wp_alt_subscribers`, tokens included. A partial consent record is worse than none. |
+| **How** | AES-256-CBC under a fresh per-container key, wrapped RSA-OAEP to the recipient, encrypt-then-MAC with HMAC-SHA256. `openssl`, which the host, this Mac and a runner all already have, so the hash-pinned lock has nothing new to vouch for. |
+| **Where the ciphertext lands** | a local directory outside this checkout, `~/Backups/atr-subscribers` by default. `subscriber_backup.py` REFUSES any destination inside the repository. |
+| **Who can open it** | the holder of the private key, which is the owner and nobody else. Not the host, not a runner, not this repository. |
+| **Armed?** | **No.** No recipient key is committed, so the route answers 503 and reads the table not at all. |
+
+**There is deliberately no scheduled workflow, and that is the same ruling
+`curated_probe.py` records.** A public repository's release assets and Actions
+artifacts are downloadable by anyone. A scheduled job would publish the sealed
+consent records of every subscriber, permanently and unretractably, and rest
+the entire guarantee on RSA-4096 never breaking. Ciphertext is a reason to
+relax about a USB stick; it is not a reason to publish. The backup is a local
+command, and the only workflow in the repository is an **offline drill** on
+synthetic rows.
+
+**The round trip is executed, not asserted.** `subscriber_backup.py --selftest`
+runs the production PHP sealer over synthetic rows, opens the container with
+`openssl` and a throwaway private key, and compares byte for byte, then proves
+four negative controls: a flipped ciphertext byte is refused, the wrong private
+key does not open it, a foreign recipient is noticed, and no plaintext value
+survives into the container. It runs in CI on every change to any of the files
+involved.
+
+### Arming it (the owner's step, and only his)
+
+```bash
+# 1. The keypair. The private half never leaves this machine and never enters
+#    this repository or any runner.
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 \
+    -out ~/.ssh/atr-subscriber-backup.key
+chmod 600 ~/.ssh/atr-subscriber-backup.key
+openssl pkey -in ~/.ssh/atr-subscriber-backup.key -pubout \
+    -out wordpress-plugin/ai-layoff-tracker/data/subscriber-backup.pub.pem
+
+# 2. Commit the PUBLIC half and deploy it. Bump the plugin version as usual.
+# 3. Then, and only then:
+python3 railway/subscriber_backup.py --status     # armed, and to which key
+python3 railway/subscriber_backup.py --pull       # -> ~/Backups/atr-subscribers/
+python3 railway/subscriber_backup.py --open ~/Backups/atr-subscribers/<file> \
+    --key ~/.ssh/atr-subscriber-backup.key        # prove THIS file opens
+```
+
+**Back up the private key somewhere you would still have after losing this
+Mac.** An encrypted blob nobody can decrypt is not a backup, and that is the
+one failure mode this design cannot detect for you.
+
+### What is still open
+
+| Gap | State |
+|---|---|
+| The restore INTO a fresh install | The container opens to the exact rows, proved. Loading them back needs a `wp_alt_subscribers` INSERT, which is a `mysql <` of the JSON Lines through a small script and has **not** been drilled against a live table. Same open gap the layoff-row drill records for its own insert path, and for the same reason: there is no throwaway WordPress. |
+| Cadence | Manual. Nothing runs on a timer, by decision above. |
 
 **`wp_rank_math_redirections`** is Rank Math's table, not this plugin's, and is
 not in the automated export. It is readable through the existing keyed
@@ -172,7 +226,7 @@ is worse off than one who knew the boundary.
 | **WordPress pages** | **14 pages** | Same as above. |
 | **Uploads and media** | **2,171 media items** | **Nothing.** A WXR export records the URLs, not the files. Restoring media needs the `wp-content/uploads` directory, which exists only on the host and in Bluehost's own backups. |
 | **The WordPress install** | theme, other plugins, `wp_options` | **Nothing in this repo.** `wp_options` holds the plugin's API key, the dataset-release ledger and the editorial suppression list, none of which are exported. The plugin's own code IS in this repo under `wordpress-plugin/`. |
-| **The subscriber list** | see section 2 | **Nothing.** By decision, pending the owner's choice. |
+| **The subscriber list** | see section 2 | **A sealed local copy, once armed.** DISARMED today: no recipient key is deployed, so nothing has been pulled and the consent records still exist only on the host. Arming is in section 2. |
 | **Anything ingested since the last Sunday** | up to 7 days | Partly. WARN and news rows are re-derivable by re-running the collectors against their sources, at some cost and with some loss. LLM-extracted rows would be re-extracted, and re-extraction is not guaranteed to reproduce the same classification. |
 
 The honest summary: **the tracker's DATA can be reimaged from GitHub. The BLOG
@@ -326,8 +380,11 @@ Adjudicate it like this, which is what happened the first time it fired:
    repo's Actions secrets.
 7. Re-run the derived passes per **3c**.
 8. Rank Math redirects: re-import through Rank Math.
-9. Subscribers: gone, unless the owner has chosen a destination since this was
-   written. They must opt in again.
+9. Subscribers: restore from the newest sealed copy in `~/Backups/atr-subscribers`
+   if the backup was armed (section 2). Open it with
+   `subscriber_backup.py --open <file> --key <private> --out <path>` and load the
+   JSON Lines into `wp_alt_subscribers`. If it was never armed, they are gone and
+   must opt in again.
 10. Verify: `python3 railway/ops_status.py`, then the four surfaces named in
     `CLAUDE.md`.
 

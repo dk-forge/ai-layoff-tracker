@@ -3092,6 +3092,81 @@ moving prose back up into the intro is not a neutral edit.
 **Do not answer a fold failure by raising 812.** It is an iPhone viewport, not
 a preference.
 
+## Back up the subscriber list (addresses + consent records)
+
+**State today: DISARMED.** `ops_status.py [9b]` says so at session start, and it
+will keep saying so until the owner does the four steps below. That is a known
+open gap, not a fault, and it is deliberately his call: it involves a private
+key that must not be lost.
+
+**Why this is not part of the weekly export.** The weekly job publishes to a
+GitHub Release in a PUBLIC repository, so `wp_alt_subscribers` can never be in
+it, and the exclusion is structural on both sides. The subscriber backup is a
+separate route with a separate promise: **the host seals it before it answers**,
+so nothing that touches the file afterwards can read it. Full design in
+docs/RECOVERY.md section 2.
+
+### Arming it
+
+```bash
+# 1. Generate the keypair. The PRIVATE half never leaves this machine, never
+#    enters the repository, and never enters a runner.
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 \
+    -out ~/.ssh/atr-subscriber-backup.key
+chmod 600 ~/.ssh/atr-subscriber-backup.key
+
+# 2. Put the PUBLIC half where the plugin ships it from.
+openssl pkey -in ~/.ssh/atr-subscriber-backup.key -pubout \
+    -out wordpress-plugin/ai-layoff-tracker/data/subscriber-backup.pub.pem
+
+# 3. Bump the plugin Version: and ALT_VERSION, commit, merge. The deploy
+#    workflow FTPS-uploads it. Verify the deploy is green before step 4.
+
+# 4. Prove it, then use it.
+python3 railway/subscriber_backup.py --status
+python3 railway/subscriber_backup.py --pull
+python3 railway/subscriber_backup.py --open ~/Backups/atr-subscribers/<newest> \
+    --key ~/.ssh/atr-subscriber-backup.key
+```
+
+**Then back up the private key somewhere that survives losing this Mac.** A
+password manager entry is fine. An encrypted blob nobody can decrypt is not a
+backup, and that is the one failure this design cannot detect for you.
+
+### Running it, once armed
+
+`python3 railway/subscriber_backup.py --pull`. It writes one sealed file per run
+to `~/Backups/atr-subscribers`, mode 0600. It refuses any destination inside the
+checkout. Run it before the host migration and after any large signup week.
+
+### Restoring
+
+`--open <file> --key <private> --out <path>` writes JSON Lines of every column
+of `wp_alt_subscribers`. Loading them back into a fresh install is a MySQL
+insert and is **not drilled** - the same open gap the layoff-row restore drill
+records for its own insert path, and for the same reason: there is no throwaway
+WordPress here.
+
+### Things that will look like a problem and are not
+
+- **`--status` returns 503 `alt_sbk_disarmed`.** Correct. No key is deployed, so
+  the route does not read the table at all.
+- **`--verify` says PASS and you want to know if it really opens.** It does not
+  answer that, on purpose, and it says so. Only `--open` does.
+- **The drill workflow says UNKNOWN.** The runner had no `php` or no `openssl`.
+  UNKNOWN is not a pass; look at why the image changed.
+
+### Things that are a problem
+
+- **`--status` says the host is sealing to a key this repository does not vouch
+  for.** The public key on the host is not the one committed here. Either a
+  deploy raced, or somebody changed it. Do not pull until it matches: a backup
+  sealed to an unknown recipient is one nobody can open.
+- **`alt_sbk_unpinned_column`.** The subscriber table gained a column nobody has
+  reviewed. Read the schema first. Then add it to `alt_sbk_columns()` and to
+  `COLUMNS` in `railway/subscriber_backup.py`, which a test asserts agree. Do
+  not widen the check.
+
 ## The blog reading surface (and how to move it out of this plugin)
 
 **What ships today.** `wordpress-plugin/ai-layoff-tracker/assets/blog-reading.css`
