@@ -1,3 +1,63 @@
+## 2026-09-06 - two hand-typed copies of a vocabulary, both inside /aggregate: the source-type chart drew only the source you had filtered to, and the reasons doughnut could never draw two of its own tags (2.20.173, branch, PR)
+
+**Class:** two-copies-drifted
+**Guard:** railway/tests/test_slicer_and_reason_vocabulary.py (reverting either
+fix reddens it: restoring the unconditional `$sources` read fails
+`test_every_excepted_dimension_is_read_by_the_query_builder` with
+`['sources']`; restoring the ten-tag literal fails
+`test_aggregate_breakdown_covers_every_canonical_tag` with `['bankruptcy',
+'federal_workforce']`. Both were RED on unfixed main before the fix landed.)
+
+**What was wrong.** Two defects, one shape, both in
+`alt_api_aggregate_compute()`, both found offline by reading `includes/db.php`
+against the UI it feeds.
+
+1. **A slicer that rendered its own dimension.** Every bar list is built through
+   `$topN($col, $except)`, and `$except` names the dimension the chart draws so
+   `alt_db_where()` can drop it from the WHERE. That is what makes a chart a
+   pivot rather than a mirror. `alt_db_where()` honoured it for date, industry,
+   country, employer_country, state, reasons, roles and company_key. It never
+   honoured it for `sources`: the block reading that param carried no `$except`
+   test at all, so `$topN('source_type', 'sources')` was handed a WHERE that
+   still contained the source filter. With a source selected, the "By data
+   source" card can only draw the source you already chose, and offers no route
+   back to the others. Nothing errored, because a filter applied to the chart of
+   itself is still a valid query. **Proven offline, not live:** the session that
+   found it had its live budget cut short by two ModSecurity 406s on hostile-`q`
+   probes and stopped requesting under its own pacing rule, so the on-page
+   render of this card is UNVERIFIED and the evidence is the absent `$except`
+   test plus the guard, which is RED on the unfixed code.
+
+2. **The reason vocabulary, retyped and two tags behind.**
+   `alt_allowed_reason_tags()` (cpt.php) is the one definition: `extractor.py`
+   emits against it, `/add` validates against it, the tracker page's Reasons
+   dropdown is built from it, `layoffs.js` labels all of it. The reasons
+   breakdown in db.php kept a literal copy of ten of its twelve tags, missing
+   `bankruptcy` and `federal_workforce`. Both are real and populated
+   (`reasons=bankruptcy` returned 27 entries on 2026-09-06). So the doughnut
+   could never draw those slices and its slices did not sum to the rows they
+   were drawn from, and a reader who selected "Bankruptcy / insolvency" got a
+   correctly filtered table beside a chart still insisting no such reason
+   existed. Neither surface reported anything, because an absent slice looks
+   exactly like a slice worth zero.
+
+**The fix.** `$sources` reads `$except === 'sources'` like every sibling
+dimension. `$reason_tags` reads `alt_allowed_reason_tags()` instead of
+restating it. The guard's first check is general rather than about `sources`:
+it fails for ANY dimension a caller excepts that `alt_db_where()` does not
+honour, so the next slicer added cannot repeat this. It also fails on a Reasons
+dropdown option that the canonical vocabulary does not accept, which is the same
+drift pointed the other way.
+
+**What was checked and was fine.** In the same pass, 30 single filter values
+across every family and 10 two-filter combinations were verified live against
+`/query` and `/aggregate`: every first-page row satisfied its filter, and
+`aggregate.totals.entries + aggregate.excluded.entries == query.total` held in
+all 40 cases (the two differ by design - totals carries `superset_of = 0`, and
+the `excluded` block is exactly the complement). All six sort keys work in both
+directions. The UI sends 19 filter params and `alt_filter_param_names()` accepts
+all 19, so no UI control is silently dropped.
+
 ## 2026-09-06 - the monthly tier composed for twelve days and no monthly edition was ever sent: the slot the signup promised did not exist (2.20.172, branch, PR)
 
 **Class:** absent-read-as-ok
