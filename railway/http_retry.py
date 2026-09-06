@@ -39,31 +39,83 @@ except ImportError:  # pragma: no cover - exercised on the stdlib-only runners
 TRANSIENT = {408, 429, 500, 502, 503, 504, 520, 521, 522, 524}
 DEFAULT_UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 
+#: The longest a single `Retry-After` may hold a run. A throttling host that
+#: asks for an hour is asking the NEXT run to come back, not this one, and a
+#: collector under a workflow `timeout-minutes` cannot sleep that long without
+#: dying with its `running` note open. Honour the header up to this, then let
+#: the attempt count decide.
+RETRY_AFTER_CAP_SECONDS = 120
 
-def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backoff=5):
-    """GET that survives transient 5xx.
+#: The sleep get_with_retry waits with. A module-level name so a test can
+#: record the retry waits without also catching a collector's pacing sleeps.
+_sleep = time.sleep
+
+
+def retry_after_seconds(resp, cap=RETRY_AFTER_CAP_SECONDS):
+    """Seconds a 429/503 asked us to wait, capped, or None when it did not say.
+
+    Only the delta-seconds form is read. The HTTP-date form is rare on the
+    hosts this repo reads and mis-parsing a date into a huge sleep is worse
+    than falling back to the linear backoff.
+    """
+    try:
+        raw = (resp.headers or {}).get("Retry-After")
+    except AttributeError:  # a stub without headers
+        return None
+    if raw is None:
+        return None
+    try:
+        secs = float(str(raw).strip())
+    except ValueError:
+        return None
+    if secs < 0:
+        return None
+    return min(secs, float(cap))
+
+
+def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backoff=5,
+                   *, transient=None, get=None, sleep=None):
+    """GET that survives transient 5xx and a throttle.
 
     Returns the response, or None when every attempt failed transiently, so the
     caller can decide between "continue with what I have" and "this is a real
     outage". Never raises on transport errors.
+
+    A 429 (or any transient answer) that carries `Retry-After` is waited out for
+    that long, capped at RETRY_AFTER_CAP_SECONDS; otherwise the linear backoff
+    applies. Until 2026-09-06 the header was ignored, and the two collectors
+    that most often meet a throttle (SEC EDGAR full-text search, Google News
+    RSS) did not retry at all: one 429 dropped that keyword or that edition
+    for the run, with no error, no health row and no ledger slot.
+
+    `transient` widens the retried set for a host whose throttle wears a
+    different status (EDGAR answers 403 to an over-eager reader). `get` lets a
+    collector pass its own module-level `requests.get`, so a test that patches
+    `collector.requests.get` keeps seeing every attempt. `sleep` is for tests.
     """
-    if requests is None:  # pragma: no cover - a caller mistake, not a host fault
-        raise RuntimeError("get_with_retry needs `requests`; the stdlib-only "
-                           "path is call_with_retry/post_with_retry")
+    if get is None:
+        if requests is None:  # pragma: no cover - a caller mistake, not a host fault
+            raise RuntimeError("get_with_retry needs `requests`; the stdlib-only "
+                               "path is call_with_retry/post_with_retry")
+        get = requests.get
+    sleep = sleep or _sleep
+    retried = set(TRANSIENT) | set(transient or ())
+    exc_types = (requests.RequestException,) if requests is not None else (OSError,)
 
     for attempt in range(attempts):
         try:
-            r = requests.get(url, params=params, headers=headers or DEFAULT_UA,
-                             timeout=timeout)
-            if r.status_code not in TRANSIENT:
+            r = get(url, params=params, headers=headers or DEFAULT_UA,
+                    timeout=timeout)
+            if r.status_code not in retried:
                 return r
             if attempt < attempts - 1:
-                time.sleep(backoff * (attempt + 1))
+                asked = retry_after_seconds(r)
+                sleep(asked if asked is not None else backoff * (attempt + 1))
                 continue
             return None
-        except requests.RequestException:
+        except exc_types:
             if attempt < attempts - 1:
-                time.sleep(backoff * (attempt + 1))
+                sleep(backoff * (attempt + 1))
                 continue
             return None
     return None

@@ -172,6 +172,19 @@ FORBIDDEN = (
     # for five months). HEALTHY/BROKEN/UNAVAILABLE is a human's call.
     "railway/source_freshness.py",
     "railway/source_state.json",
+    # The other judges, added 2026-09-06 after an audit found them healable.
+    # run_completion's GRACE decides whether a collector that started also
+    # finished (CLAUDE.md: "do not answer a repeat by widening GRACE");
+    # source_inventory decides whether a declared collector ever reported
+    # (CLAUDE.md: "a healer may fix a collector but never the judge");
+    # run_slice and the cron schedule decide which query slice a run owns, and
+    # a stride change is how half a vocabulary went unissued for six days.
+    # Each is a threshold or a clock a healer could move to turn a red green.
+    "railway/run_completion.py",
+    "railway/source_inventory.py",
+    "railway/run_slice.py",
+    "railway/railway.toml",
+    "wordpress-plugin/ai-layoff-tracker/data/ingest-schedule.json",
     # The session baton.
     "docs/HANDOFF.md",
     # The healer itself — its workflow, its gate and guard, and the test that

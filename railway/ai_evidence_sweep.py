@@ -93,7 +93,11 @@ TIMEOUT = 40
 # all 20 events and is the new max. 1022 x 1.25 = 1278s, rounded up to the
 # whole minute. Below this the sweep would truncate runs that finish today --
 # safely now, and reported, but truncation is still lost throughput.
-DEADLINE_SECONDS = max(60, min(3600, int(os.environ.get("AI_SWEEP_DEADLINE_SECONDS") or "1320")))
+# The ceiling is 1500s (25min) because ai-evidence-sweep.yml allows the job
+# 27 minutes. A deadline that can be raised past its own workflow's
+# timeout-minutes is not a deadline: the run is killed mid-flight instead of
+# stopping itself and reporting. Raise the workflow first, then this.
+DEADLINE_SECONDS = max(60, min(1500, int(os.environ.get("AI_SWEEP_DEADLINE_SECONDS") or "1320")))
 STARTED_AT = time.monotonic()
 
 

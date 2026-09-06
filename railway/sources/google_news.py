@@ -45,6 +45,8 @@ from email.utils import parsedate_to_datetime
 
 import requests
 
+import http_retry
+
 import run_slice
 from sources.google_news_url import resolve as resolve_article_url
 
@@ -311,7 +313,20 @@ def pull_google_news(queries=None, company_names=None):
             break
         taken_this_q = 0
         try:
-            r = requests.get(_rss_url(q, loc[1], loc[2], loc[3]), headers=UA, timeout=30)
+            # A 429 or a 5xx is retried (Retry-After honoured, capped) before
+            # this (query, edition) slice is given up. Until 2026-09-06 one
+            # throttled answer dropped the slice for the run with no signal,
+            # and run_slice's rotation meant the same slice did not come back
+            # for a full walk of the ring.
+            r = http_retry.get_with_retry(
+                _rss_url(q, loc[1], loc[2], loc[3]), headers=UA, attempts=3,
+                timeout=30, backoff=GAP if GAP > 0 else 5,
+                get=lambda *a, **k: requests.get(*a, **k))
+            if r is None:
+                errors += 1
+                pull_google_news.last_error = "throttled or 5xx on every attempt"
+                time.sleep(GAP)
+                continue
             if r.status_code != 200:
                 errors += 1
                 pull_google_news.last_error = f"HTTP {r.status_code}"

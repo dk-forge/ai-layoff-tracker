@@ -72,7 +72,10 @@ PER_URL_TIMEOUT = int(os.environ.get("ARCHIVE_URL_TIMEOUT") or "45")
 # The workflow allows 60, which is that plus checkout, pip and the runner's own
 # overhead. If the URL list grows past ~68, this stops being a full sweep and
 # starts being a rotation, which is exactly what the cursor below is for.
-DEADLINE_SECONDS = int(os.environ.get("ARCHIVE_DEADLINE_SECONDS") or str(50 * 60))
+# Clamped to 3300s (55min) against archive-sources.yml's 60 minute
+# timeout-minutes. Unclamped until 2026-09-06, so one env var could put the
+# run past the point the runner kills it.
+DEADLINE_SECONDS = max(60, min(3300, int(os.environ.get("ARCHIVE_DEADLINE_SECONDS") or str(50 * 60))))
 
 # WHERE A TRUNCATED SWEEP RESUMES, WITHOUT KEEPING ANY STATE.
 #

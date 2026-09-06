@@ -148,6 +148,11 @@ MIN_SPAN_DAYS = 180            # a rate fitted to a few weeks is not a rate
 MIN_RATE_OBSERVATIONS = 8      # too few in the trailing year -> use the long run
 MIN_RATE_SPAN_DAYS = 120       # ditto
 SLOWDOWN_RATIO = 0.6           # recent below this share of the long run = SLOWED
+#: A rate-dependent PASS is only trustworthy if this run measured a history
+#: comparable to the one the last reading used. Below this share of the previous
+#: observation count the fit is not comparable and the verdict is UNKNOWN.
+#: See _incomparable_history.
+COMPARABLE_OBSERVATION_SHARE = 0.75
 
 #: PASS and QUIET are both "not broken". QUIET says the source is quieter than
 #: its own recent rate would predict but not past the evidence bar that opens an
@@ -275,7 +280,49 @@ def days_dark(profile, today=None):
     return max(0, (today - newest).days)
 
 
-def judge(profile, today=None):
+def _incomparable_history(profile, prior):
+    """Why this run's history cannot be compared with the last one, or None.
+
+    A rate is a count over a window, and every verdict except "it published
+    recently" is a statement about that rate. So a run that measured a SMALLER
+    history than the previous reading is not a fresher opinion about the same
+    question: it is a different, weaker question, and it is biased in exactly
+    one direction. p0 = exp(-(rate/365) * dark), so halving the fitted rate can
+    only raise p0, which can only move a verdict TOWARDS a pass.
+
+    warn:MN paid for this on 2026-09-01. It had been BROKEN since 2026-08-28
+    with nothing new since 2026-08-07. That run measured 30 observations over
+    204 days where the run before it and the run after it both measured 87 over
+    366; the fitted rate fell from 86.18/yr to 51.89/yr; p0 rose from 0.00346 to
+    0.02861, crossing ALPHA_QUIET; the verdict read PASS, and a PASS is the one
+    verdict that closes an open incident. Nothing had arrived. The next day it
+    was BROKEN again at p=0.00216. Six days of a real outage were reported as a
+    recovery and a fresh break, and the only thing that changed was how much of
+    Minnesota's own history the collector happened to bring back.
+
+    This is the Kansas lesson pointed the other way. There the certainty came
+    from the denominator; here the reprieve does. Note what this is NOT: it does
+    not widen a threshold, move a state, or silence anything. It refuses to read
+    a shrunken denominator as good news, and UNKNOWN already never clears
+    BROKEN (see record()).
+    """
+    if not prior:
+        return None
+    try:
+        was = int(prior.get("observations") or 0)
+        now = int(profile.get("observations") or 0)
+    except (TypeError, ValueError):
+        return None
+    if was < MIN_OBSERVATIONS or now >= was * COMPARABLE_OBSERVATION_SHARE:
+        return None
+    return (f"history shrank: this run measured {now} observation(s) over "
+            f"{profile.get('span_days')}d where the last reading used {was} over "
+            f"{prior.get('span_days')}d. A rate fitted to a smaller history can "
+            f"only move the verdict towards a pass, so this is UNKNOWN, not a "
+            f"clean bill")
+
+
+def judge(profile, today=None, prior=None):
     """PASS / FAIL / UNKNOWN for one source, plus the numbers that decided it.
 
     Takes a PROFILE, not raw dates, so that the run that fetches the data and a
@@ -302,10 +349,25 @@ def judge(profile, today=None):
         out["verdict"] = PASS
         out["reason"] = f"{dark}d quiet, under the {MIN_DARK_DAYS}d floor"
     elif p0 >= ALPHA_QUIET:
+        # Both of the next two PASSes are RATE-DEPENDENT: one reads p0, the
+        # other the cadence quantile, and both are fitted from this run's
+        # history. If that history shrank, neither is comparable with the
+        # reading it would be overturning. The "published recently" PASS above
+        # is not guarded, because it does not consult the fit at all.
+        incomparable = _incomparable_history(profile, prior)
+        if incomparable:
+            out["verdict"] = UNKNOWN
+            out["reason"] = incomparable
+            return out
         out["verdict"] = PASS
         out["reason"] = (f"{dark}d quiet is ordinary at its recent {rate}/yr "
                          f"(p={p0:.3f}, needs p<{ALPHA_QUIET})")
     elif dark <= cadence_bar:
+        incomparable = _incomparable_history(profile, prior)
+        if incomparable:
+            out["verdict"] = UNKNOWN
+            out["reason"] = incomparable
+            return out
         out["verdict"] = PASS
         out["reason"] = (f"{dark}d quiet is within this source's own cadence "
                          f"({CADENCE_MARGIN}x its {cadence}d 90th-pct gap)")

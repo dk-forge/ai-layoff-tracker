@@ -634,3 +634,55 @@ class RegistryWiring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheClosedIncidentTrailIsBounded(unittest.TestCase):
+    """Every committed ledger here has a cap or a horizon. This one had neither.
+
+    alert_state keeps MAX_CLOSED=100, alert_outbox and deferral_ledger keep
+    HISTORY_KEPT settled entries, spend trims to LEDGER_KEEP_DAYS=60.
+    headline_incidents.json appended to `closed` and never cut. It grows slowly,
+    because a close needs a reviewer, so this is a bound and not a rescue.
+
+    The half that actually matters is the second test. `open` is a STICKY FAIL:
+    a slice listed there reports FAIL until a human closes it, and it exists
+    because two correct guards agreed to erase a real incident on 2026-08-22. A
+    cap that could reach `open` would be that bug with a new cause, so the trim
+    is pinned to the audit trail and tested away from the incidents themselves.
+    """
+
+    def _ledger(self, n_closed, n_open=0):
+        return {"open": {f"slice-{i}": {"label": f"L{i}", "detail": "d",
+                                        "baseline": {}, "observed": {}}
+                         for i in range(n_open)},
+                "closed": [{"name": f"c{i}", "closed_at": f"2026-01-{i % 28 + 1:02d}"}
+                           for i in range(n_closed)]}
+
+    def _roundtrip(self, ledger):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "incidents.json"
+            di.save_incidents(ledger, path=path)
+            return di.load_incidents(path=path)
+
+    def test_the_closed_trail_stops_at_the_cap(self):
+        cap = di.MAX_CLOSED_INCIDENTS
+        back = self._roundtrip(self._ledger(cap + 40))
+        self.assertEqual(len(back["closed"]), cap)
+
+    def test_it_keeps_the_newest_closes_not_the_oldest(self):
+        cap = di.MAX_CLOSED_INCIDENTS
+        back = self._roundtrip(self._ledger(cap + 5))
+        names = [c["name"] for c in back["closed"]]
+        self.assertEqual(names[-1], f"c{cap + 4}")
+        self.assertNotIn("c0", names, "the trim dropped the wrong end")
+
+    def test_a_trail_under_the_cap_is_untouched(self):
+        back = self._roundtrip(self._ledger(3))
+        self.assertEqual(len(back["closed"]), 3)
+
+    def test_no_cap_can_ever_reach_an_open_incident(self):
+        """An open incident is a sticky FAIL. Nothing automatic may drop one."""
+        cap = di.MAX_CLOSED_INCIDENTS
+        back = self._roundtrip(self._ledger(cap * 3, n_open=cap * 2))
+        self.assertEqual(len(back["open"]), cap * 2,
+                         "the closed-history cap trimmed OPEN incidents")
