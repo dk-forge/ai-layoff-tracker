@@ -1386,7 +1386,15 @@ function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
     // source_type values every /query row exposes (news/8K/warn/press_release).
     // Matching only the tier column made sources=news silently return 0 rows
     // (super test 2026-07-15).
-    $sources = array_filter(array_map('sanitize_text_field', explode(',', (string) $r->get_param('sources'))));
+    // `except === 'sources'` is the slicer contract every other dimension here
+    // already keeps: the chart that DRAWS source types must not be narrowed by
+    // the source filter, or it renders one bar at 100% and there is no way back
+    // to the others. This test was missing from the day $topN('source_type',
+    // 'sources') shipped, and nothing errored, because a filter applied to the
+    // chart of itself is still a valid query.
+    $sources = ($except === 'sources')
+        ? array()
+        : array_filter(array_map('sanitize_text_field', explode(',', (string) $r->get_param('sources'))));
     if ($sources) {
         $ph = implode(',', array_fill(0, count($sources), '%s'));
         $where[] = "(verification_level IN ($ph) OR source_type IN ($ph))";
@@ -6282,8 +6290,18 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     }
 
     // Reason breakdown (9 fixed tags → one SUM each)
-    $reason_tags = array('ai_automation','possible_ai','revenue_decline','restructuring',
-        'merger_acquisition','offshoring','product_discontinuation','cost_reduction','macroeconomic','closure');
+    // READ, NEVER RETYPED. alt_allowed_reason_tags() is the one definition (the
+    // extractor writes to it, /add validates against it, the page's dropdown is
+    // built from it). This was a literal copy of it and had fallen two tags
+    // behind — `bankruptcy` and `federal_workforce` were stored on real rows,
+    // offered in the Reasons dropdown and labelled in layoffs.js, and could
+    // never appear in this breakdown, so the doughnut's slices did not sum to
+    // the rows they were drawn from.
+    $reason_tags = function_exists('alt_allowed_reason_tags')
+        ? alt_allowed_reason_tags()
+        : array('ai_automation','possible_ai','revenue_decline','restructuring',
+                'merger_acquisition','offshoring','product_discontinuation','cost_reduction',
+                'macroeconomic','closure','bankruptcy','federal_workforce');
     list($rw, $rp) = alt_db_where($r, 'reasons');
     $reasons = array();
     /*
