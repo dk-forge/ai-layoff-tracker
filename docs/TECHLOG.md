@@ -1,3 +1,63 @@
+## 2026-09-06 - an abandoned GDELT window said THAT it was lost and never WHY, and the missing half was about to be paid for (branch, PR)
+
+**Class:** novel
+**Guard:** railway/tests/test_gdelt_reach.py::WhyTheWindowWasLost
+
+**What this was.** The gdelt row has read `degraded` on every run since
+2026-08-28, with `queries=3 answered=1 abandoned=2` and a work ledger holding
+63 slots queued at `attempts=0`. The obvious reading was our own clock:
+`QUERY_TIMEOUT_SECONDS` defaults to 30, the module comment beside it records a
+measured answering latency of 19.8 to 75+ seconds, and the variable is set in no
+workflow. Raise the timeout, recover the windows.
+
+That reading was never supported by anything published. `gdelt_reach` has
+counted `rate_limited` per query since the module shipped, `_query_window` has
+classified a plain-text refusal apart from a throttle since the throttle
+classifier landed, and BOTH were dropped before `health_detail()` built the line
+that goes to `/source-runs`, the health page and `ops_status [2d]`. So the only
+durable record of a lost window carried the fact and not its cause, and the two
+causes call for opposite responses: a window our clock abandoned is recovered by
+waiting longer, and a window GDELT refused is not recovered by waiting at all.
+
+The distinction is a spending decision. Recovering windows means more articles,
+which means more paid extraction, so a session that guessed the cause would have
+been guessing with the owner's money.
+
+**What changed.** `rate_limited` and `refused` are published. They are spent
+whenever a window was abandoned, ZEROS INCLUDED, and otherwise only when
+non-zero: a clean run costs no characters, and a reader can tell "this run saw
+no throttle" from "this run predates these counters". `ops_status [2d]` prints
+the cause under WINDOW LOST, and prints CAUSE UNKNOWN rather than a verdict for
+a run recorded before today. Reading a missing field as evidence of a timeout
+would have been the same mistake one layer up.
+
+`_query_window` now records a non-throttle plain-text refusal as `refused`. It
+was already classifying that body and already printing it; it simply never told
+the ledger, so a deterministic rejection and a timeout arrived identical.
+
+**Measurement, not behaviour.** No extra request, no change to the retry
+schedule, no change to `QUERY_TIMEOUT_SECONDS`, `QUERY_ATTEMPTS` or
+`REQUEST_DELAY`, and nothing armed. The next scheduled run says which cause it
+is, and the owner decides from a number instead of an inference.
+
+**What the arithmetic already says.** Sixteen probes against the DOC API from
+one machine answered or refused in 10.3 to 19.8 seconds, none above 20, and
+fifteen of the sixteen were HTTP 429 asking for one request every five seconds
+- which is exactly the pace `REQUEST_DELAY` sets. A 429 arrives well inside a 30
+second ceiling, so a timeout raise would recover approximately nothing. That is
+one machine on one afternoon and it is not the production path, which is why
+this commit publishes the counter instead of acting on the probe.
+
+**The stall is structural and is NOT the timeout.** Seven consecutive runs are
+identical: the broad slot completes, the first segment sweep abandons, and
+`api_down` queues the remaining nine sweeps AND skips every pending-slot retry.
+Nothing has drained the queue since 2026-08-28, so the 63 slots are not waiting,
+they are ageing toward the 14 day horizon that drops them with one stdout line.
+The breaker infers a dead endpoint from one abandoned sweep in a run where the
+broad window was answered seconds earlier. Fixing that issues up to nine more
+sweeps a day, which is more extraction and therefore the owner's call; it is
+written up for him and deliberately not shipped here.
+
 ## 2026-09-06 - the subscriber list and its consent records had exactly one copy, on the host being migrated (branch, PR)
 
 **Class:** novel

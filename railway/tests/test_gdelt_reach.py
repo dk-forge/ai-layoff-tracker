@@ -14,8 +14,14 @@ reviewer:
 import os
 import sys
 import unittest
+from datetime import datetime, timezone
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+
+def _DT(*a):
+    return datetime(*a, tzinfo=timezone.utc)
 
 import gdelt_reach  # noqa: E402
 
@@ -196,6 +202,108 @@ class OpsStatusReadsItBack(unittest.TestCase):
             [{"status": "ok", "detail": ""}, {"status": "running", "detail": "x"}])
         self.assertTrue(unmeasured)
         self.assertIn("UNKNOWN", lines[0])
+
+
+class WhyTheWindowWasLost(unittest.TestCase):
+    """THAT a window was abandoned and WHY are different facts.
+
+    Both causes were measured from the first day of this module and neither
+    was ever published, so the only durable record of a lost window -- the
+    /source-runs history the health page and ops_status [2d] read -- could not
+    tell "the server refused us" from "our own clock gave up". They call for
+    opposite responses, and the second one costs money: recovering a window
+    means more articles and more paid extraction.
+    """
+
+    def _run(self, **kw):
+        r = gdelt_reach.Reach()
+        r.note_query("broad", 40, 250)
+        r.note_query("segment", None, 250, abandoned=True, **kw)
+        r.note("a.de", "kept", 10)
+        return r
+
+    def _read(self, r):
+        import ops_status
+        lines, unmeasured = ops_status.gdelt_reach_lines(
+            [{"status": "degraded", "attempted_at": "2026-09-05T22:27:58+00:00",
+              "detail": r.health_detail()}])
+        self.assertFalse(unmeasured)
+        return " ".join(lines)
+
+    def test_a_throttled_window_says_so(self):
+        detail = self._run(rate_limited=True).health_detail()
+        self.assertIn("rate_limited=1", detail)
+        blob = self._read(self._run(rate_limited=True))
+        self.assertIn("throttled by GDELT", blob)
+        self.assertIn("Not our request timeout", blob)
+
+    def test_an_upstream_refusal_says_so(self):
+        detail = self._run(refused=True).health_detail()
+        self.assertIn("refused=1", detail)
+        self.assertIn("refused upstream", self._read(self._run(refused=True)))
+
+    def test_a_lost_window_publishes_its_zeros(self):
+        """Zeros are the whole point: without them a reader cannot tell a run
+        that saw no throttle from a run that never counted one."""
+        detail = self._run().health_detail()
+        self.assertIn("rate_limited=0", detail)
+        self.assertIn("refused=0", detail)
+        blob = self._read(self._run())
+        self.assertIn("ran out our own clock", blob)
+
+    def test_a_clean_run_spends_no_characters_on_them(self):
+        r = gdelt_reach.Reach()
+        r.note_query("broad", 40, 250)
+        r.note("a.de", "kept", 10)
+        detail = r.health_detail()
+        self.assertNotIn("rate_limited=", detail)
+        self.assertNotIn("refused=", detail)
+
+    def test_a_run_predating_the_counters_is_unknown_not_a_timeout(self):
+        """The trap this whole module exists to avoid, in its newest shape: an
+        old detail line carries no cause, and reading its absence as 'no
+        throttle, therefore our clock' invents the very verdict a session
+        would spend money on."""
+        import ops_status
+        legacy = ("returned=6314 queries=3 answered=1 abandoned=2 capped=0 "
+                  "kept=734 dropped=5526 headline_only=54")
+        lines, unmeasured = ops_status.gdelt_reach_lines(
+            [{"status": "degraded", "attempted_at": "2026-09-05T22:27:58+00:00",
+              "detail": legacy}])
+        self.assertFalse(unmeasured)
+        blob = " ".join(lines)
+        self.assertIn("CAUSE UNKNOWN", blob)
+        self.assertNotIn("ran out our own clock", blob)
+
+    def test_the_cause_counters_are_nameless(self):
+        gdelt_reach.assert_nameless(
+            self._run(rate_limited=True, refused=True).summary())
+
+    def test_the_collector_records_a_plain_text_refusal(self):
+        """Wiring: `_query_window` classifies the body already. Before this it
+        set `rate_limited` for a throttle and recorded NOTHING for any other
+        refusal, so a deterministic rejection was indistinguishable from a
+        timeout in the one place a human reads."""
+        from sources import gdelt as G
+
+        class _Resp:
+            status_code = 200
+            text = "Your query was too short or too long."
+
+            def raise_for_status(self):
+                pass
+
+        gdelt_reach.reset()
+        with mock.patch.object(G.time, "sleep"), \
+                mock.patch.object(G.requests, "get", return_value=_Resp()):
+            articles, rl, err = G._query_window(
+                "q", _DT(2026, 9, 5), _DT(2026, 9, 6), 250, reach_label="segment")
+        self.assertIsNone(articles)
+        self.assertFalse(rl)
+        t = gdelt_reach.current().totals()
+        self.assertEqual(t["abandoned"], 1)
+        self.assertEqual(t["rate_limited"], 0)
+        self.assertEqual(t["refused"], 1)
 
 
 if __name__ == "__main__":
