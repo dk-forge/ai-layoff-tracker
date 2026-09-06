@@ -84,6 +84,196 @@ the underlying fault; this branch stops that from being read as good news, but
 does not fix the collector. Whether the shrinkage is upstream or in the scrape is
 open. Separately, `warn:MS` is QUIET at p=0.0176 (67d, 22.0/yr): correctly
 advisory, correctly not emailed, and it may simply not be filing.
+## 2026-09-06 - the monthly tier composed for twelve days and no monthly edition was ever sent: the slot the signup promised did not exist (2.20.172, branch, PR)
+
+**Class:** absent-read-as-ok
+**Guard:** railway/tests/test_digest_dst_slot.py and
+railway/tests/test_digest_cadence_promises.py (four mutations reverted in
+turn redden them: dropping the two monthly cron lines, moving the slot off
+the 1st, removing the day-of-month refusal in `tier_for_cron`, and moving the
+slot hour so the DST twin claims the day); railway/tests/
+test_signup_reaches_landing_pages.py for the third radio's tap floor
+
+**What was wrong.** The monthly digest tier was complete. `alt_digest_valid_freq`
+accepted it, `alt_digest_monthly_window` framed the month to date, the composer
+built the masthead, the Indeed backdrop and all three sections, and 2.20.171
+verified all nine editions from live payloads including the three monthly ones.
+The confirm panel's own sentence says "Monthly editions go out at the start of
+each month, covering the month so far" (`alt_digest_cadence_sentence`,
+subscribe.php). No monthly edition has ever gone out, and none could have:
+`digest_slot.SEND_TIMES` carried two entries and `digest-send.yml` four cron
+lines, all of them daily or weekly. The tier was true of the code and false of
+the inbox.
+
+Nothing said so, and that is the shape. The dormant-feature invariant held
+correctly and consistently - the offer filter shipped false, the intake gate
+refused to store an unoffered monthly, and
+`test_the_monthly_slot_and_the_monthly_offer_arm_together` pinned both sides at
+false - so every surface read green while agreeing the tier did not exist.
+`ops_status [4c]` asked whether the WEEKLY slot had run and had no question to
+ask about a monthly one, because there was no `digest_monthly` row and an
+absent row was not read as "never looked at". A tier missing from the schedule
+is missing from every check that iterates the schedule.
+
+**What was done.** The one missing slot, in the daily's own wall-clock
+convention. `SEND_TIMES` entries carry a third field, a required day of month:
+`(9, 0) -> ("monthly", None, 1)`. Two cron lines, the DST pair the other slots
+already use: `0 13 1 * *` (09:00 EDT) and `0 14 1 * *` (09:00 EST). 13:00 and
+14:00 UTC on the 1st are still the 1st in New York, so the UTC cron date and
+the Eastern date `tier_for_cron` judges never disagree. `tier_for_cron` refuses
+a tick whose Eastern day of month is not 1, which the cron lines already
+guarantee and which a hand-set `DIGEST_CRON` or a widened day field does not.
+Every other day of the month is a no-op that exits 0 having read, built, sent
+and stamped nothing.
+
+9:00 rather than 6:00 or 7:30 for the weekly's own reason: a 1st that falls on
+a Monday carries all three editions, and a subscriber on every tier must not
+receive two in one minute. `resolve_freqs` adds monthly on the 1st so a manual
+run and the cron agree about what a day carries, and `digest_send.TIERS` is derived
+from `SEND_TIMES` rather than typed, so a forceable `DIGEST_FREQ` value is
+exactly a scheduled slot.
+
+The public opt-in armed in the same change (`alt_digest_offer_monthly` now
+defaults true, the Monthly radio renders behind
+`alt_digest_monthly_enabled()`), because a slot nobody can subscribe to and an
+offer no slot fulfils are the same defect from two sides. The intake gate is
+unchanged and still coerces an unoffered monthly to weekly, so disarming the
+tier remains one filter flip. The phone fold was re-measured against the
+three-choice form (`railway/signup_fold.py --record`).
+
+**And the absence is now a question that gets asked.** `digest_monthly` is a
+liveness row stamped only by a completed monthly pass, never by a preview or a
+nominated test send, with the weekly row's exact rules factored into
+`_slot_liveness_reading`. `ops_status.monthly_digest_lines` reads it as PASS /
+FAIL / UNKNOWN: the ceiling is 35 days (the longest month plus 4 of slack, the
+`source_audit` derivation, mirrored in `health_digest.MAX_AGE_DAYS`), a
+degraded pass is reported and does not raise, and an absent row before the
+first send is UNKNOWN and says "not established, which is not a pass" rather
+than green. `digest_mailer` cannot stand in for it: the daily pass refreshes
+that row every morning.
+
+**AND THE THIRD RADIO BROKE THE TAP FLOOR ON THE RUNNER AND NOT ON THIS
+MACHINE.** The frequency labels were laid out for a PAIR that "stays on ONE
+line", spaced by a right margin only. Three of them do not fit 375px in the
+runner's font stack: `Weekly` 85.1 and `Monthly` 91.1 landed at (40,4199) and
+(40,4243), a wrapped row 0.0px under the one above it, which is exactly the
+mis-tap the 8px adjacency floor exists to prevent, reached by the layout the
+floor was written for. `test_no_two_neighbouring_controls_are_closer_than_8px`
+was GREEN on macOS, where the same three labels fit the line, and red on
+Linux CI. A floor that depends on which font measured it is not a floor.
+
+The fix is 8px BELOW each label as well as 16px beside it, in the component
+(`includes/subscribe.php`) and in the rule that restates it for tracker phone
+widths (`assets/layoffs.css`), because horizontal margin cannot space a line
+the layout decides to break. The guard is a new test that forces the wrap at
+240px rather than waiting for a font to force it: reverting the bottom margin
+reddens it here, on macOS, where the older test cannot see the defect at all.
+The cost is 8px of phone-fold budget, measured rather than assumed and
+recorded (`railway/signup_fold.py --record`): the tightest surface, the blog
+post at 375x812, goes from 95.2px of headroom to 87.2px against a required
+80.0px. That is real headroom and it is thinner than it was; the next thing
+added to this form should be measured before it is written.
+
+**One thing is deliberately NOT settled.** On the 1st, `alt_digest_monthly_window`
+clamps `to` up to `from`, so the first edition of a month covers the 1st alone,
+provisional, and the dateline says so. Whether "the month so far" read at 9:00
+on the 1st should instead mean the month just completed is a product ruling,
+and it is open. It must not be settled by quietly moving `from` back a month in
+the window function; the promise on the signup panel and the window would then
+disagree with each other in the way this entry is about.
+## 2026-09-06 - "would we find them if we searched every major city?": a 120-city index sweep, and the two things it found were ours (branch, PR)
+
+**Class:** novel (the probe), guard-went-vacuous (the CJK boundary rule)
+**Guard:** `railway/tests/test_city_recall_sweep.py` (the probe: a poisoned run,
+the no-fetch pin, the host breaker); `railway/tests/test_worldwide_vocabulary.py`
+(both vocabulary defects, each reverted in turn reddens its test)
+
+**The question.** If you searched "layoffs" plus every major city in the world,
+would we be finding them? `railway/city_recall_sweep.py` answers it the way the
+other two recall probes answer theirs: it is a MEASUREMENT, never a source. It
+reads the Google News RSS index for `layoffs "<city>"` over the 120 largest
+metropolitan areas, in each country's own edition and, where
+`sources/native_layoff_terms` has a vocabulary for the language, in that
+country's own words with the city in its own script. Judgement is IMPORTED from
+`tracker_diff` rather than copied, so "did we hold this?" keeps one definition
+across all three probes. $0.00: no model on any path, and no article page is
+ever fetched, so no publisher robots.txt, paywall or bot wall is engaged. There
+is deliberately no workflow: a runner that could write the named file is the
+leak, so this is hand-run like the private benchmark.
+
+**The run.** 120 cities, 191 index queries, 0 index errors, 1,384 unique
+headlines in a 14-day window, 260 carrying a parseable headcount (81 of those
+through this module's own non-English pattern, counted separately because it is
+a weaker read than the English one). 63 city-language queries returned nothing
+at all, which is a real answer and not an error.
+
+**Our own host was refusing the whole time, and that is the first finding.**
+`/blog` answered every route with an HTTP 409 bot challenge to our identifying
+UA (`ops_status [1]` UNREACHABLE, a sibling session already triaging). So every
+held/missed verdict in this run is UNKNOWN and the recall figure is NOT
+comparable with a complete one. The sweep would have walked 120 cities into
+that wall making several hundred more reads and reported the silence as though
+it had looked; `HostBreaker` now trips after five consecutive failed `/query`
+reads, stops asking, and says so.
+
+**And the breaker's first act was a false alarm, which is worth recording
+because of what it coincided with.** `our_rows` counted a FAILURE whenever it
+returned None, including the two cases where it never asked anything: an
+`--index-only` run passes an empty site, and a headline with no employer
+candidate passes an empty token. So the index-only run reported
+`host_unreachable True` and printed "our own /query stopped answering mid-run"
+having made no request at all. The host was genuinely refusing that afternoon
+(curl and `ops_status [1]`, independently), and that is precisely the hazard: a
+false alarm which coincides with a real fault reads as confirmation of it, and
+the flag's own evidence was worthless while looking like the strongest signal in
+the run. A breaker measures REQUESTS, not intentions; an UNKNOWN with no request
+behind it is still UNKNOWN and is not an outage. The index half is now memoised
+to an opt-in gitignored file as well, so recovering the verdict half never costs
+another ~190 index reads at the exact moment the right response to a challenged
+host is fewer requests. The net-coverage half was separated from the
+verdict half for the same reason and answered fine without the host: "this
+outlet is not in our allowlist" and "no discovery term matches this wording"
+are facts about OUR NET, true whatever the verdict, so they are computed for
+every judged headline and not only for misses.
+
+**Finding 1: `vocab_hit` could never match a Chinese or Japanese headline.** A
+word boundary is a claim about a script that writes spaces. Every CJK character
+is a word character, so `\b裁员\b` needs punctuation on both sides and
+essentially never matches: `vocab_hit` returned False for EVERY zh and ja
+headline whatever the vocabulary held. 34 of the 39 CJK headlines this run
+scored as "matching no term" contain one of our OWN native phrases verbatim.
+This is not a missed match, it is a manufactured one: `classify_miss` and
+`curated_probe.diagnose` both read this function, so every CJK story was being
+filed as `vocabulary_gap`, and the prescription for a vocabulary gap is to add a
+term we already have. The boundary is now applied per EDGE and only where it
+means something, so the 2026-07-25 lesson (`RIF` inside "tariff", `sacked`
+inside "ransacked", both ASCII on both edges) is preserved exactly and pinned
+in both directions.
+
+**Finding 2: the commonest layoff headline in English matched no term.** The
+vocabulary held "laid off" but not "lays off", "lay off" or "laying off",
+although "X lays off 250 employees" is the standard form. Of the 159 headlines
+matching no term at all, these three close 49. This is the SECOND time the same
+shape has been found: "cut jobs" was added on 2026-08-24 because the base verb
+form was missing while the noun and the gerund were present. A third instance
+would be worth an iron rule about verb families.
+
+**And the cap was one term from silently eating a market.** `discovery_terms()`
+truncates at a hard `[:48]` and the unique count was EXACTLY 48, so three new
+global terms would have pushed three MARKET terms off the tail, at whichever
+market `MARKETS` iterates last, with nothing anywhere reporting it. The cap is
+raised to 51 deliberately and `test_worldwide_vocabulary` now fails when the
+count reaches it, so the next addition has to make the decision on purpose.
+
+**What was deliberately NOT done.** 205 of the 260 judged headlines came from
+outlets `TRUSTED_DOMAINS` does not admit, and 31 hosts appear twice or more. Not
+one was wired. The RUNBOOK's outlet rule asks for a domain that carried 2+
+layoff stories WE DO NOT HOLD, and with the host refusing, "we do not hold it"
+could not be established for a single one of them: an outlet lesson that is
+wrong about the one thing it claims is how this channel gets filtered. The
+ranked candidates are in the gitignored local worklist for the owner, pending a
+re-run once `/blog` answers. An aggregator or a competing tracker is never
+wired however often it appears, and no name from the sweep is in this repo.
 
 ## 2026-09-06 - the nine editions composed from live payloads: every figure reproduced, the talent section had never archived, and two sentences were typed (2.20.171, branch, PR)
 

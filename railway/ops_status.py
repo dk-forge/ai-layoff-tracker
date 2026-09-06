@@ -1166,6 +1166,51 @@ def weekly_digest_lines(health):
     return [f"weekly slot OK - last weekly pass {age}d ago: {detail}"], False
 
 
+MONTHLY_DIGEST_MAX_AGE_DAYS = 35
+
+
+def monthly_digest_lines(health):
+    """Has the monthly digest slot actually run? (lines, raises_an_issue).
+
+    The weekly's reasoning, one tier over: the monthly slot (9:00 Eastern on
+    the 1st, armed 2026-09-06) stamps `digest_monthly` only when a monthly
+    pass completed, and `digest_mailer` cannot stand in for it because the
+    daily pass refreshes that row every morning. Ceiling = 31 days (the
+    longest month) + 4 of slack, the same derivation as `source_audit`, so one
+    missed 1st is reported on the 5th of the following month rather than a
+    healthy 30-day-old row reading STALE for most of every month.
+
+    PASS / FAIL / UNKNOWN, and only FAIL raises. Before the first monthly pass
+    has ever run the row is absent, which is UNKNOWN and says so.
+    """
+    if not isinstance(health, dict):
+        return ["monthly slot UNKNOWN - the health endpoint could not be read, so",
+                "          whether the monthly digest ran is not established here."], False
+    row = health.get("digest_monthly")
+    if not isinstance(row, dict):
+        return (["monthly slot UNKNOWN - no digest_monthly health row yet. The first",
+                 "          monthly pass (the 1st, 9:00 ET, armed 2026-09-06) writes it;",
+                 "          until then this says 'not established', which is not a pass."], False)
+    try:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(
+            str(row.get("checked_at")).replace("Z", "+00:00"))).days
+    except Exception:
+        return (["monthly slot UNKNOWN - the digest_monthly row carries no readable",
+                 "          timestamp, so its age could not be established."], False)
+    detail = str(row.get("detail") or "")[:110]
+    if age > MONTHLY_DIGEST_MAX_AGE_DAYS:
+        return ([f"monthly slot STALE - the monthly digest has not completed a pass in",
+                 f"          {age}d (ceiling {MONTHLY_DIGEST_MAX_AGE_DAYS}d = the longest month + 4 of slack).",
+                 f"          Either the 1st's 9:00 ET slot stopped firing, or it ran and",
+                 f"          failed. Check the 'Send email digest' runs on the 1st and the",
+                 f"          send log. There is NO in-WordPress fallback for this tier.",
+                 f"          last: {detail}"], True)
+    if str(row.get("status")) == "degraded":
+        return ([f"monthly slot DEGRADED - last pass {age}d ago did not send cleanly:",
+                 f"          {detail}"], False)
+    return [f"monthly slot OK - last monthly pass {age}d ago: {detail}"], False
+
+
 def _print_wrapped(text, width=86, indent="        "):
     """One slice per line, wrapped, so a multi-slice verdict stays readable."""
     import textwrap
@@ -1913,6 +1958,13 @@ def main():
         print(f"    {line}")
     if _wk_bad:
         issues.append("the weekly digest slot has not run within its cadence")
+    # And the monthly tier, armed 2026-09-06 (the 1st, 9:00 ET), for the same
+    # reason. Its row is absent until the first pass, which is UNKNOWN.
+    _mo_lines, _mo_bad = monthly_digest_lines(health)
+    for line in _mo_lines:
+        print(f"    {line}")
+    if _mo_bad:
+        issues.append("the monthly digest slot has not run within its cadence")
 
     # 4d. Did anything decline to run at all because the host was unreachable?
     #
