@@ -17,8 +17,11 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORKFLOWS = os.path.join(HERE, "..", "..", ".github", "workflows")
 SAME_REPO = "github.event.workflow_run.head_repository.full_name == github.repository"
+# Anywhere inside one expression, not only as the whole expression: the
+# sibling tracker's copy carried `${{ github.event.workflow_run.name || 'manual' }}`
+# and the whole-expression form let it through (found 2026-09-06).
 UNTRUSTED_IN_RUN = re.compile(
-    r"\$\{\{\s*github\.event\.workflow_run\.(name|head_branch|display_title)\s*\}\}")
+    r"\$\{\{[^}]*github\.event\.workflow_run\.(name|head_branch|display_title)\b")
 
 
 def _read(name):
