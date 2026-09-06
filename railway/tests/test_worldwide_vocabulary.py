@@ -231,3 +231,72 @@ class ClockSkippedSweepsAreQueuedNotLost(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScriptAwareBoundaries(unittest.TestCase):
+    """A WORD BOUNDARY IS A CLAIM ABOUT A SCRIPT THAT WRITES SPACES.
+
+    `tracker_diff.vocab_hit` bounded every term with `\\b`. Every CJK character
+    is a word character, so `\\b裁员\\b` needs punctuation on both sides and
+    essentially never matched: `vocab_hit` returned False for EVERY Chinese and
+    Japanese headline no matter what the vocabulary held (city recall sweep,
+    2026-09-06: 34 of 39 CJK headlines "matching no term" contain one of our own
+    native phrases verbatim). `classify_miss` and `curated_probe.diagnose` both
+    read it, so each of those stories was filed as `vocabulary_gap` and the
+    prescription was to add a term already in `PHRASES_BY_LANG`.
+
+    Both directions are pinned here, because the fix must not undo the reason
+    the boundaries were added on 2026-07-25.
+    """
+
+    def test_cjk_terms_match_the_way_the_script_is_written(self):
+        from tracker_diff import vocab_hit
+        self.assertTrue(vocab_hit("大众汽车拟裁员5万人", ["裁员"]))
+        self.assertTrue(vocab_hit("ＶＷ、人員削減計１０万人", ["人員削減"]))
+        self.assertTrue(vocab_hit("パナソニック、希望退職を募集", ["希望退職"]))
+
+    def test_our_own_native_vocabulary_matches_cjk_headlines(self):
+        """The end-to-end claim: the shipped vocabulary, not a fixture term."""
+        from tracker_diff import vocab_hit
+        vocab = [p for phrases in native.PHRASES_BY_LANG.values() for p in phrases]
+        for headline in ("大众汽车拟裁员5万人 为史上最大重组计划",
+                         "ＶＷ、人員削減計１０万人…５万人追加",
+                         "現代自、500人規模の希望退職を実施"):
+            self.assertTrue(vocab_hit(headline, vocab), headline)
+
+    def test_the_2026_07_25_boundary_lesson_is_intact(self):
+        """ASCII terms stay bounded: RIF inside tariff, sacked inside ransacked."""
+        from tracker_diff import vocab_hit
+        self.assertFalse(vocab_hit("tariff talks resume", ["RIF"]))
+        self.assertFalse(vocab_hit("looters ransacked the shop", ["sacked"]))
+        self.assertTrue(vocab_hit("a RIF was announced today", ["RIF"]))
+        self.assertTrue(vocab_hit("300 staff were sacked", ["sacked"]))
+
+    def test_the_layoff_verb_forms_are_searchable(self):
+        """"X lays off 250 employees" is the commonest layoff headline there is
+        and matched no discovery term until 2026-09-06."""
+        from source_registry import discovery_terms
+        from tracker_diff import vocab_hit
+        terms = discovery_terms()
+        for headline in ("Zomato lays off 250 employees",
+                         "Firm to lay off 300 staff in Dublin",
+                         "Retailer is laying off 900 workers"):
+            self.assertTrue(vocab_hit(headline, terms), headline)
+
+    def test_the_discovery_cap_is_not_silently_truncating(self):
+        """The cap sat at EXACTLY the unique-term count before 2026-09-06, so
+        the next global term would have pushed a MARKET's vocabulary off the
+        tail with nothing reporting it. Raising the cap must stay a decision."""
+        from source_registry import GLOBAL_TERMS, MARKETS, discovery_terms
+        every = list(GLOBAL_TERMS)
+        for market in MARKETS.values():
+            every.extend(market.terms)
+        unique = list(dict.fromkeys(every))
+        self.assertEqual(
+            len(discovery_terms()), len(unique),
+            "discovery_terms() is truncating: %d unique terms, %d returned. "
+            "Raise the cap deliberately (and say why) or drop a term."
+            % (len(unique), len(discovery_terms())))
+        for market in MARKETS.values():
+            for term in market.terms:
+                self.assertIn(term, discovery_terms(), (market.iso2, term))

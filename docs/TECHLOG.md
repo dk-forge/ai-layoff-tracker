@@ -95,6 +95,99 @@ on the 1st should instead mean the month just completed is a product ruling,
 and it is open. It must not be settled by quietly moving `from` back a month in
 the window function; the promise on the signup panel and the window would then
 disagree with each other in the way this entry is about.
+## 2026-09-06 - "would we find them if we searched every major city?": a 120-city index sweep, and the two things it found were ours (branch, PR)
+
+**Class:** novel (the probe), guard-went-vacuous (the CJK boundary rule)
+**Guard:** `railway/tests/test_city_recall_sweep.py` (the probe: a poisoned run,
+the no-fetch pin, the host breaker); `railway/tests/test_worldwide_vocabulary.py`
+(both vocabulary defects, each reverted in turn reddens its test)
+
+**The question.** If you searched "layoffs" plus every major city in the world,
+would we be finding them? `railway/city_recall_sweep.py` answers it the way the
+other two recall probes answer theirs: it is a MEASUREMENT, never a source. It
+reads the Google News RSS index for `layoffs "<city>"` over the 120 largest
+metropolitan areas, in each country's own edition and, where
+`sources/native_layoff_terms` has a vocabulary for the language, in that
+country's own words with the city in its own script. Judgement is IMPORTED from
+`tracker_diff` rather than copied, so "did we hold this?" keeps one definition
+across all three probes. $0.00: no model on any path, and no article page is
+ever fetched, so no publisher robots.txt, paywall or bot wall is engaged. There
+is deliberately no workflow: a runner that could write the named file is the
+leak, so this is hand-run like the private benchmark.
+
+**The run.** 120 cities, 191 index queries, 0 index errors, 1,384 unique
+headlines in a 14-day window, 260 carrying a parseable headcount (81 of those
+through this module's own non-English pattern, counted separately because it is
+a weaker read than the English one). 63 city-language queries returned nothing
+at all, which is a real answer and not an error.
+
+**Our own host was refusing the whole time, and that is the first finding.**
+`/blog` answered every route with an HTTP 409 bot challenge to our identifying
+UA (`ops_status [1]` UNREACHABLE, a sibling session already triaging). So every
+held/missed verdict in this run is UNKNOWN and the recall figure is NOT
+comparable with a complete one. The sweep would have walked 120 cities into
+that wall making several hundred more reads and reported the silence as though
+it had looked; `HostBreaker` now trips after five consecutive failed `/query`
+reads, stops asking, and says so.
+
+**And the breaker's first act was a false alarm, which is worth recording
+because of what it coincided with.** `our_rows` counted a FAILURE whenever it
+returned None, including the two cases where it never asked anything: an
+`--index-only` run passes an empty site, and a headline with no employer
+candidate passes an empty token. So the index-only run reported
+`host_unreachable True` and printed "our own /query stopped answering mid-run"
+having made no request at all. The host was genuinely refusing that afternoon
+(curl and `ops_status [1]`, independently), and that is precisely the hazard: a
+false alarm which coincides with a real fault reads as confirmation of it, and
+the flag's own evidence was worthless while looking like the strongest signal in
+the run. A breaker measures REQUESTS, not intentions; an UNKNOWN with no request
+behind it is still UNKNOWN and is not an outage. The index half is now memoised
+to an opt-in gitignored file as well, so recovering the verdict half never costs
+another ~190 index reads at the exact moment the right response to a challenged
+host is fewer requests. The net-coverage half was separated from the
+verdict half for the same reason and answered fine without the host: "this
+outlet is not in our allowlist" and "no discovery term matches this wording"
+are facts about OUR NET, true whatever the verdict, so they are computed for
+every judged headline and not only for misses.
+
+**Finding 1: `vocab_hit` could never match a Chinese or Japanese headline.** A
+word boundary is a claim about a script that writes spaces. Every CJK character
+is a word character, so `\b裁员\b` needs punctuation on both sides and
+essentially never matches: `vocab_hit` returned False for EVERY zh and ja
+headline whatever the vocabulary held. 34 of the 39 CJK headlines this run
+scored as "matching no term" contain one of our OWN native phrases verbatim.
+This is not a missed match, it is a manufactured one: `classify_miss` and
+`curated_probe.diagnose` both read this function, so every CJK story was being
+filed as `vocabulary_gap`, and the prescription for a vocabulary gap is to add a
+term we already have. The boundary is now applied per EDGE and only where it
+means something, so the 2026-07-25 lesson (`RIF` inside "tariff", `sacked`
+inside "ransacked", both ASCII on both edges) is preserved exactly and pinned
+in both directions.
+
+**Finding 2: the commonest layoff headline in English matched no term.** The
+vocabulary held "laid off" but not "lays off", "lay off" or "laying off",
+although "X lays off 250 employees" is the standard form. Of the 159 headlines
+matching no term at all, these three close 49. This is the SECOND time the same
+shape has been found: "cut jobs" was added on 2026-08-24 because the base verb
+form was missing while the noun and the gerund were present. A third instance
+would be worth an iron rule about verb families.
+
+**And the cap was one term from silently eating a market.** `discovery_terms()`
+truncates at a hard `[:48]` and the unique count was EXACTLY 48, so three new
+global terms would have pushed three MARKET terms off the tail, at whichever
+market `MARKETS` iterates last, with nothing anywhere reporting it. The cap is
+raised to 51 deliberately and `test_worldwide_vocabulary` now fails when the
+count reaches it, so the next addition has to make the decision on purpose.
+
+**What was deliberately NOT done.** 205 of the 260 judged headlines came from
+outlets `TRUSTED_DOMAINS` does not admit, and 31 hosts appear twice or more. Not
+one was wired. The RUNBOOK's outlet rule asks for a domain that carried 2+
+layoff stories WE DO NOT HOLD, and with the host refusing, "we do not hold it"
+could not be established for a single one of them: an outlet lesson that is
+wrong about the one thing it claims is how this channel gets filtered. The
+ranked candidates are in the gitignored local worklist for the owner, pending a
+re-run once `/blog` answers. An aggregator or a competing tracker is never
+wired however often it appears, and no name from the sweep is in this repo.
 
 ## 2026-09-06 - the nine editions composed from live payloads: every figure reproduced, the talent section had never archived, and two sentences were typed (2.20.171, branch, PR)
 
