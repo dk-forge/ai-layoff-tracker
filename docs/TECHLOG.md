@@ -1,3 +1,46 @@
+## 2026-09-06 — a throttle read as an outage, and the work queue stopped draining
+
+**Class:** silent-stop
+**Guard:** railway/tests/test_gdelt_throttle_is_not_an_outage.py
+
+`railway/gdelt_work_ledger.json` held 77 slots: 7 complete, 7 failed, and **63
+QUEUED at `attempts=0`**, untouched since 2026-08-28. Seven consecutive runs
+were byte-identical in shape: one broad slot complete, one segment sweep
+failed, nine sweeps queued without an attempt spent. The oldest queued slots
+were ageing toward the 14-day horizon that drops them, around 2026-09-11. No
+error, no health row, no log line counted any of it.
+
+**Cause: one flag with two meanings.** `pull_gdelt_between` set `api_down` on
+the first abandoned sweep, and `api_down` both queues the remaining planned
+sweeps AND skips `_retry_pending_slots` entirely. So the backlog could only
+drain on a run where nothing abandoned, and every run abandoned. Self
+reinforcing.
+
+**The diagnosis was wrong on the facts.** 15 of 16 probes on 2026-09-06 came
+back HTTP 429 "one every 5 seconds", every response inside 20 seconds. The
+endpoint was answering throughout; it was asking us to slow down, which is the
+opposite of unreachable. `_collect_window` had carried that distinction all
+along and `_run_sweep_slot` discarded it before the caller could see it.
+
+**Fix.** `_run_sweep_slot` returns `(status, saw_rate_limit)`. An abandoned
+sweep trips the outage breaker only when there was NO throttle signal. A
+throttled sweep still queues the remaining planned sweeps, because the
+wall-clock argument for that is unchanged and correct, but no longer claims the
+endpoint is dark, so the pending-slot walk still runs while the deadline
+allows. Measured runs finish with 400-700s of a 900s budget unused. The walk's
+own brake is deliberately NOT softened: inside the walk one abandoned slot
+still stops it, whatever the cause.
+
+**Not done:** a hand-authored timeout change. An earlier hypothesis was that
+`GDELT_QUERY_TIMEOUT=30` sat below the endpoint's answering latency. The
+measurement refuted it (every response inside 20s), the env change made on
+Railway was reverted the same day, and nothing was spent on it. Recorded
+because the wrong fix was live for about two hours.
+
+**Proven by mutation, three ways.** Treating a throttle as an outage again,
+dropping the outage brake entirely, and discarding the throttle signal in the
+helper each redden exactly one test and no other.
+
 ## 2026-09-06 - #243: the -39,292 was twelve departing rows, and the fix that closed it had never been wired to anything (branch, PR)
 
 **Class:** guard-went-vacuous

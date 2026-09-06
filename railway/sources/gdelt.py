@@ -1642,16 +1642,23 @@ def _run_sweep_slot(ledger, family, query, start, end, max_records, collected,
     DOES mark the run degraded (visible on the health page), because a planned
     slot that did not complete is a coverage gap, not a green day.
 
-    Returns the slot's status ("abandoned" / "partial" / "complete") so the
-    caller's outage breaker can see a dead public API (see pull_gdelt_between).
+    Returns (status, saw_rate_limit): the slot's status ("abandoned" /
+    "partial" / "complete") and whether the server ASKED US TO SLOW DOWN
+    rather than failing to answer.
+
+    The caller needs both, and used to get only the first. An abandoned slot
+    can mean two opposite things: the endpoint is dark, or the endpoint is
+    answering 429. Treating the second as the first stalled the work queue for
+    nine days (see pull_gdelt_between). `_collect_window` has always carried
+    this signal; it was discarded here.
     """
-    arts, status, _saw_rl, err = _collect_window(query, start, end, max_records,
-                                                 family, deadline=deadline)
+    arts, status, saw_rl, err = _collect_window(query, start, end, max_records,
+                                                family, deadline=deadline)
     if arts is None:
         print(f"GDELT {family} skipped ({err}): {query[-60:]}")
         _record_slot(ledger, family, query, start, end, "failed", [])
         incomplete.append(f"{family}:abandoned")
-        return "abandoned"
+        return "abandoned", saw_rl
     cap_hit = status != "complete"
     print(f"GDELT {family} {query[-48:]}: {len(arts)} article(s)"
           + (" (capped -> bisected, PARTIAL)" if cap_hit else ""))
@@ -1660,7 +1667,7 @@ def _run_sweep_slot(ledger, family, query, start, end, max_records, collected,
                  "complete" if status == "complete" else "partial", arts, cap_hit=cap_hit)
     if status != "complete":
         incomplete.append(f"{family}:partial")
-    return status
+    return status, saw_rl
 
 
 def _planned_sweeps():
@@ -1723,16 +1730,21 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete,
         if not query:
             continue
         print(f"GDELT retry pending slot {key} (attempt {int(slot.get('attempts', 0)) + 1})")
-        status = _run_sweep_slot(ledger, family, query, ws, we, max_records,
-                                 collected, incomplete, deadline=deadline)
+        status, _saw_rl = _run_sweep_slot(ledger, family, query, ws, we,
+                                          max_records, collected, incomplete,
+                                          deadline=deadline)
         if status == "abandoned":
-            # Same outage breaker as the planned sweeps: a slot abandoned after
-            # every attempt means the public API is not answering, and grinding
-            # the remaining pending slots through the full retry schedule is
-            # what ran the 2026-08-27 sweep into its workflow ceiling. The
-            # untouched slots simply stay pending; a later run resumes them.
-            print("GDELT public API unreachable; leaving the remaining pending "
-                  "slots for a later run")
+            # Same brake as the planned sweeps, and DELIBERATELY not softened
+            # the way that one was. There, a throttle no longer trips the
+            # outage breaker, because the whole point is to reach this walk.
+            # Here we are already inside the walk, spending attempts on the
+            # backlog, so one abandoned slot is reason enough to stop for this
+            # run whatever the cause: grinding the rest through the full retry
+            # schedule is what ran the 2026-08-27 sweep into its workflow
+            # ceiling. The untouched slots simply stay pending and a later run
+            # resumes them, which costs a day, not a slot.
+            print("GDELT stopping the pending-slot walk after an abandoned "
+                  "slot; the remaining slots stay pending for a later run")
             break
 
 
@@ -1842,6 +1854,7 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     # sweeps, all of which are queued, none lost; not tripping costs the whole
     # run, ledger included. The run still reports degraded either way.
     api_down = False
+    throttled = False
     out_of_time = False
     for family, query in _planned_sweeps():
         # TWO INDEPENDENT BRAKES, in this order, because they answer different
@@ -1864,20 +1877,46 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
             done_keys.add(_record_slot(ledger, family, query, start, end, "queued", []))
             incomplete.append(f"{family}:deadline")
             continue
-        if api_down:
+        if api_down or throttled:
             done_keys.add(_record_slot(ledger, family, query, start, end, "queued", []))
             incomplete.append(f"{family}:queued")
             continue
         before = set(ledger["slots"])
-        status = _run_sweep_slot(ledger, family, query, start, end, max_records,
-                                 collected, incomplete, deadline=deadline)
+        status, saw_rate_limit = _run_sweep_slot(
+            ledger, family, query, start, end, max_records,
+            collected, incomplete, deadline=deadline)
         done_keys |= (set(ledger["slots"]) - before)
         done_keys.add(_slot_key(family, query, start, end))
         if status == "abandoned":
-            api_down = True
-            print(f"GDELT public API unreachable (a sweep abandoned after "
-                  f"{QUERY_ATTEMPTS} attempts); queueing the remaining sweeps "
-                  f"for the next run instead of grinding into the workflow ceiling")
+            # A THROTTLE IS NOT AN OUTAGE, and conflating them stalled the
+            # queue for nine days. `api_down` queues the remaining sweeps AND
+            # skips the pending-slot retry, so the backlog could only drain on
+            # a run where nothing abandoned. Every run abandoned, so it never
+            # drained: 63 slots sat at attempts=0 from 2026-08-28, ageing
+            # toward the 14-day horizon that drops them. Measured 2026-09-06,
+            # 15 of 16 probes came back HTTP 429 "one every 5 seconds", every
+            # response inside 20s. The endpoint was answering the whole time;
+            # it was telling us to slow down.
+            #
+            # So the outage breaker now trips only on silence. A throttled
+            # sweep still queues the REMAINING PLANNED sweeps, because the
+            # wall-clock argument for that is unchanged and correct, but it no
+            # longer claims the endpoint is dark, so the retry walk below still
+            # runs while the deadline allows. That walk is paced by
+            # REQUEST_DELAY and bounded by the same deadline, and the measured
+            # runs finish with 400-700s of a 900s budget unused.
+            if saw_rate_limit:
+                throttled = True
+                print(f"GDELT throttled (a sweep abandoned after "
+                      f"{QUERY_ATTEMPTS} attempts, the server asked us to slow "
+                      f"down); queueing the remaining sweeps, but the endpoint "
+                      f"is answering so pending slots are still retried")
+            else:
+                api_down = True
+                print(f"GDELT public API unreachable (a sweep abandoned after "
+                      f"{QUERY_ATTEMPTS} attempts with no reply); queueing the "
+                      f"remaining sweeps for the next run instead of grinding "
+                      f"into the workflow ceiling")
 
     # --- Pick up unfinished work from earlier runs ------------------------
     # Same two brakes on the retry walk. Either one alone is a reason to stop:
