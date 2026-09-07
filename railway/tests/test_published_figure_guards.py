@@ -204,14 +204,15 @@ def press_html(total="484,468", split="", stamp=None, extra=""):
 def split_sentence(to_date, later, total, year=2026):
     """The reconciling sentence db.php and layoffs.js both print, verbatim."""
     return (f"<p>{to_date:,} have taken effect as of Aug 4, 2026. The other "
-            f"{later:,} are on notices already filed for effective dates later in "
-            f"{year}. Together they make the {total:,} total for {year}.</p>")
+            f"{later:,} have effective dates after Aug 4, 2026. Together they "
+            f"make the {total:,} total for {year}.</p>")
 
 
 def split_short(to_date, later, total, year=2026):
     """alt_period_split_short() — the compressed form the HOME page prints."""
-    return (f"<p>{to_date:,} have taken effect. The other {later:,} are filed for "
-            f"effective dates later in {year}. Together, {total:,}.</p>")
+    return (f"<p>{to_date:,} have taken effect as of Aug 4, 2026. The other "
+            f"{later:,} have effective dates after Aug 4, 2026. Together, "
+            f"{total:,}.</p>")
 
 
 def cross_sentence(home_total, this_total, year=2026):

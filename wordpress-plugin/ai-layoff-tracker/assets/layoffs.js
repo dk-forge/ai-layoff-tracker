@@ -1603,7 +1603,7 @@
     function asOfLabel(t) {
         var iso = (t && t.as_of) || '';
         var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-        if (!m) return 'today';
+        if (!m) return '';
         return MONTHS[parseInt(m[2], 10) - 1] + ' ' + parseInt(m[3], 10) + ', ' + m[1];
     }
 
@@ -1621,10 +1621,10 @@
         toDate = Math.max(0, toDate | 0);
         calendar = Math.max(0, calendar | 0);
         var later = Math.max(0, calendar - toDate);
-        if (later <= 0) return '';
+        if (later <= 0 || !asOf) return '';
         return fmt(toDate) + ' have taken effect as of ' + asOf
             + '. The other ' + fmt(later)
-            + ' are on notices already filed for effective dates later in ' + period
+            + ' have effective dates after ' + asOf
             + '. Together they make the ' + fmt(calendar) + ' total for ' + period + '.';
     }
 
@@ -1632,13 +1632,13 @@
     // character. This is the version the first screen carries: two parts, the
     // whole, and the period, in one line. See the PHP docblock for why it is
     // compressed rather than removed, and why it is not behind a disclosure.
-    function periodSplitShort(toDate, calendar, period) {
+    function periodSplitShort(toDate, calendar, asOf) {
         toDate = Math.max(0, toDate | 0);
         calendar = Math.max(0, calendar | 0);
         var later = Math.max(0, calendar - toDate);
-        if (later <= 0) return '';
-        return fmt(toDate) + ' have taken effect. The other ' + fmt(later)
-            + ' are filed for effective dates later in ' + period
+        if (later <= 0 || !asOf) return '';
+        return fmt(toDate) + ' have taken effect as of ' + asOf
+            + '. The other ' + fmt(later) + ' have effective dates after ' + asOf
             + '. Together, ' + fmt(calendar) + '.';
     }
 
@@ -1684,7 +1684,7 @@
             // still runs (periodSplitSentence, above) on the press page, where a
             // reader is deliberately looking up how to cite a figure.
             var split = haveToDate
-                ? periodSplitShort(verifiedToDate, verifiedJ, period) : '';
+                ? periodSplitShort(verifiedToDate, verifiedJ, asOfLabel(t)) : '';
             asOfEl.textContent = split;
             // The sentence now sits inside a labelled wrapper ("In this
             // figure: ..."), so an empty split has to hide the LABEL too or

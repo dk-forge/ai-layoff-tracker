@@ -1278,20 +1278,22 @@ class CrossSurfaceAgreementInvariant:
     # because this check does the subtraction itself; matching the prose without
     # checking the arithmetic would let any sentence excuse any pair of figures.
     SPLIT = re.compile(
-        r"([\d,]+) have taken effect as of [^.]+\. The other ([\d,]+) are on notices "
-        r"already filed for effective dates later in (\d{4})\. Together they make the "
-        r"([\d,]+) total for \3\.", re.I)
+        r"(?P<td>[\d,]+) have taken effect as of (?P<asof>[^.]+)\. The other "
+        r"(?P<later>[\d,]+) have effective dates after (?P=asof)\. Together they "
+        r"make the (?P<total>[\d,]+) total for [^.]+\.", re.I)
 
     # THE SAME RECONCILIATION, COMPRESSED, which is what the home page actually
     # prints. alt_period_split_short() in db.php and periodSplitShort() in
-    # layoffs.js drop the as-of date because the cite line below the hero already
-    # stamps it. Reading only the long form meant the home page was scored as
+    # layoffs.js retain the as-of cutoff so a completed filing month cannot be
+    # misread as saying all later effective dates fall inside that month.
+    # Reading only the long form meant the home page was scored as
     # printing NO reconciling sentence at all while it was printing one, so the
     # check would have failed the page for a defect it did not have the moment
     # the basis question stopped failing first.
     SPLIT_SHORT = re.compile(
-        r"([\d,]+) have taken effect\. The other ([\d,]+) are filed for effective "
-        r"dates later in (\d{4})\. Together, ([\d,]+)\.", re.I)
+        r"(?P<td>[\d,]+) have taken effect as of (?P<asof>[^.]+)\. The other "
+        r"(?P<later>[\d,]+) have effective dates after (?P=asof)\. Together, "
+        r"(?P<total>[\d,]+)\.", re.I)
 
     # alt_basis_cross_sentence() in db.php: the press page naming the home page's
     # headline and the basis behind it. This is the claim that went stale, so it
@@ -1570,8 +1572,8 @@ class CrossSurfaceAgreementInvariant:
         for pat in (self.SPLIT, self.SPLIT_SHORT):
             m = pat.search(text)
             if m:
-                return (self._n(m.group(1)), self._n(m.group(2)),
-                        self._n(m.group(4)))
+                return (self._n(m.group("td")), self._n(m.group("later")),
+                        self._n(m.group("total")))
         return None
 
     @staticmethod

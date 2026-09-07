@@ -6,6 +6,42 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VERSION CLAIMED (2026-09-07): 2.20.176 - source-backed count integrity and
+  the false Applied Aerospace 4,320-worker row.** Codex read the baton as FREE
+  on `main` (`ae759cf`) and took it in the isolated worktree
+  `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`,
+  branch `codex/top3-source-integrity`. Main advanced during the work to
+  `776cde1` and claimed 2.20.175, so the branch was rebased before final
+  verification and this change took the next patch. Live reproduction: the
+  August 2026 US headline is 36,273 and names row **177216**, Applied
+  Aerospace, at 4,320; the linked SEC exhibit's 4,320 is a
+  dollar-denominated restructuring-cost line (table in thousands), not a
+  worker count, and the filing states no absolute affected headcount. The
+  correction tool's read-only dry run found that exact row and proposed a
+  signed `trash`; it wrote nothing.
+
+  **Branch work complete, release gates still open.** Both extraction and the
+  WordPress `/add` door now require an explicit worker/job context for an 8-K
+  count, with the Applied filing pinned as a regression. The completed-period
+  explanation now compares effective dates with the aggregate's own `as_of`
+  date instead of implying they fall inside the selected filing month. The
+  tracker OpenRouter allowance is a hard policy of $10/month with paid reads
+  degrading at 90%; all free feeds and all configured local-language markets
+  remain armed. The committed September 1-6 ledger is $1.360991, about
+  $6.80/month at the same daily rate; a busier month can defer paid candidates
+  rather than pretend $10 guarantees unlimited same-day depth. The final test
+  discovery contains 4,545 tests; complete-run exceptions and their direct
+  clearing checks, plus mobile/browser evidence, are recorded in TECHLOG.
+
+  **No live correction, push, merge, deploy, or top-three publication claim
+  has been made.** Before release: owner signs off the row-177216 correction;
+  apply it only through `apply_correction.py --apply`, deploy/merge 2.20.176,
+  read back the corrected August US totals, refresh the competitor benchmark,
+  and require seven clean runs plus fourteen clean days for the GDELT recovery
+  claim. Baton released for the owner; do not reuse 2.20.176.
+  Local note: `stash@{0}` is the pre-rebase duplicate created to move this
+  work onto `776cde1`; the clean committed branch at `cf6e866` supersedes it.
+  Compare before dropping if cleanup is desired.
 - **NO VERSION CLAIMED (2026-09-06): #243 - headline_containment could not
   report a finding, and the -39,292 was never an AI reclassification.** The
   baton was read as FREE by `ops_status [0]` on origin/main and this session

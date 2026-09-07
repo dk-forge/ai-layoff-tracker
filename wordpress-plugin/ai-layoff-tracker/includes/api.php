@@ -1150,6 +1150,76 @@ function alt_api_alert($request) {
     return new WP_REST_Response(array('ok' => (bool) $sent, 'sent' => (bool) $sent), 200);
 }
 
+/**
+ * Whether an SEC evidence excerpt proves that $job_count counts people/jobs.
+ *
+ * A digit appearing in an earnings exhibit is not enough. In August 2026 the
+ * value 4,320 from an "integration and restructuring costs" table was accepted
+ * as 4,320 layoffs. This server-side gate is intentionally limited to 8-K
+ * submissions and mirrors the extractor's English SEC guard. Other source
+ * types include multilingual reporting and must not be forced through an
+ * English-only vocabulary.
+ */
+function alt_count_has_headcount_context($job_count, $text) {
+    $job_count = max(0, (int) $job_count);
+    $text = preg_replace('/\s+/u', ' ', (string) $text);
+    if ($job_count < 1 || trim($text) === '') return false;
+
+    $grouped = number_format($job_count, 0, '.', ',');
+    $variants = array(
+        (string) $job_count,
+        $grouped,
+        str_replace(',', ' ', $grouped),
+        str_replace(',', '.', $grouped),
+        str_replace(',', "\xC2\xA0", $grouped),
+        str_replace(',', "\xE2\x80\xAF", $grouped),
+        str_replace(',', "\xE2\x80\x89", $grouped),
+    );
+    if ($job_count >= 1000 && $job_count % 1000 === 0) {
+        $variants[] = (string) ($job_count / 1000) . 'k';
+    }
+    $variants = array_values(array_unique($variants));
+    usort($variants, function ($a, $b) { return strlen($b) - strlen($a); });
+    $count = '(?:' . implode('|', array_map(function ($v) {
+        return preg_quote($v, '~');
+    }, $variants)) . ')';
+    $sep = '[., \x{00A0}\x{202F}\x{2009}]';
+    $exact = '(?<![\d.,])' . $count . '(?![\d])(?!' . $sep . '\d{3})';
+    $noun = '(?:employees?|employee\s+positions?|positions?|roles?|jobs?|workers?|staff(?:ers)?|colleagues|personnel|associates|people|team\s+members?|full-time\s+equivalents?|FTEs?)';
+    $words = '(?:(?:[A-Za-z][A-Za-z-]{1,20}|and)\s+){0,4}';
+    $action = '(?:lay(?:ing)?\s+off|laid\s+off|job\s+cuts?|workforce\s+reductions?|reductions?\s+in\s+force|eliminat(?:e|es|ed|ing)|terminat(?:e|es|ed|ing)|dismiss(?:es|ed|ing)?|mak(?:e|es|ing)\s+redundant|cut(?:s|ting)?)';
+
+    if (!preg_match_all('~' . $exact . '~iu', $text, $matches, PREG_OFFSET_CAPTURE)) {
+        return false;
+    }
+    foreach ($matches[0] as $found) {
+        $literal = $found[0];
+        $offset = $found[1];
+        $before = substr($text, max(0, $offset - 90), min(90, $offset));
+        $after = substr($text, $offset + strlen($literal), 90);
+
+        // Currency immediately bound to the occurrence, or cost/expense prose
+        // leading into it, defeats an action word elsewhere in the sentence.
+        $money = preg_match('~[$\x{20AC}\x{00A3}\x{00A5}]\s*$~u', $before)
+            || preg_match('~^\s*(?:million|billion|thousand)?\s*(?:dollars?|USD|EUR|GBP)\b~i', $after)
+            || preg_match('~\b(?:costs?|charges?|expenses?|revenue|sales)\b[^.;]{0,35}$~i', $before);
+        if ($money) continue;
+
+        if (preg_match('~^\s*(?!%|percent\b)' . $words . $noun . '\b~i', $after)) {
+            return true;
+        }
+        if (preg_match('~\b(?:' . $noun . '|workforce|headcount|staffing|employee\s+base)\b'
+            . '[^.;]{0,40}\b(?:by|affecting|impacting)\s+'
+            . '(?:approximately|about|roughly|up\s+to|nearly|around|\x{007E})?\s*$~iu', $before)) {
+            return true;
+        }
+        if (preg_match('~\b' . $action . '\b~i', $before . $literal . $after)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function alt_api_add($request) {
     $meta_in = $request->get_param('meta');
     if (!is_array($meta_in)) {
@@ -1269,6 +1339,16 @@ function alt_api_add($request) {
     $source_type = sanitize_text_field($meta_in['source_type'] ?? '');
     if (!in_array($source_type, alt_allowed_source_types(), true)) {
         $source_type = 'news';
+    }
+    if ($source_type === '8K') {
+        $count_evidence = sanitize_textarea_field($meta_in['excerpt'] ?? '');
+        if (!alt_count_has_headcount_context($job_count, $count_evidence)) {
+            return new WP_Error(
+                'alt_count_evidence_missing',
+                '8-K excerpt must contain job_count in explicit worker/job context.',
+                array('status' => 422)
+            );
+        }
     }
 
     $tags_in = $meta_in['reason_tags'] ?? array();

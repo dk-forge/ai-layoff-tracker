@@ -184,7 +184,7 @@ class NeitherSurfaceBuildsItsOwnWording(unittest.TestCase):
     absence of the hand-written string the call replaced.
     """
 
-    PHRASE = "are on notices already filed for effective dates later in"
+    PHRASE = "have effective dates after"
 
     def test_the_wording_lives_only_in_the_helper(self):
         self.assertIn(self.PHRASE, DB_PHP, "the helper no longer owns the wording")

@@ -3345,10 +3345,10 @@ function alt_period_split_sentence($to_date, $calendar, $as_of, $period) {
     $later    = max(0, $calendar - $to_date);
     // Nothing ahead means nothing to reconcile, and a sentence explaining a
     // zero remainder is noise. Callers hide the line on an empty string.
-    if ($later <= 0) return '';
+    if ($later <= 0 || trim((string) $as_of) === '') return '';
     return number_format($to_date) . ' have taken effect as of ' . $as_of
         . '. The other ' . number_format($later)
-        . ' are on notices already filed for effective dates later in ' . $period
+        . ' have effective dates after ' . $as_of
         . '. Together they make the ' . number_format($calendar) . ' total for ' . $period . '.';
 }
 
@@ -3359,9 +3359,10 @@ function alt_period_split_sentence($to_date, $calendar, $as_of, $period) {
  * meets. It still earns its place on the press page, where somebody is
  * deliberately looking up how to cite a figure. On the home page it needs to
  * carry the arithmetic in one line: the two parts, the whole, and the period
- * they belong to. The as-of date is dropped here and only here, because the
- * cite line a few pixels below already stamps it and printing it twice on one
- * screen is what made this note read as boilerplate.
+ * they belong to. The as-of date stays in this compressed form because a
+ * completed filing month can contain cuts effective after that month. Without
+ * the cutoff, "later in Aug 2026" wrongly tells the reader those cuts happen
+ * in August.
  *
  * IT IS MORE VALUABLE UNDER THE FILED-BASIS DEFAULT, NOT LESS. On the filing
  * basis the headline counts notices by the day they were filed, so the gap
@@ -3374,13 +3375,13 @@ function alt_period_split_sentence($to_date, $calendar, $as_of, $period) {
  * Twinned character for character by periodSplitShort() in layoffs.js and
  * pinned by railway/tests/test_headline_total_agreement.py.
  */
-function alt_period_split_short($to_date, $calendar, $period) {
+function alt_period_split_short($to_date, $calendar, $as_of) {
     $to_date  = max(0, (int) $to_date);
     $calendar = max(0, (int) $calendar);
     $later    = max(0, $calendar - $to_date);
-    if ($later <= 0) return '';
-    return number_format($to_date) . ' have taken effect. The other ' . number_format($later)
-        . ' are filed for effective dates later in ' . $period
+    if ($later <= 0 || trim((string) $as_of) === '') return '';
+    return number_format($to_date) . ' have taken effect as of ' . $as_of
+        . '. The other ' . number_format($later) . ' have effective dates after ' . $as_of
         . '. Together, ' . number_format($calendar) . '.';
 }
 
@@ -6117,7 +6118,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
       labels say different things. The bucket key says WHEN THIS WAS COUNTED,
       so it follows the view's basis. `to_date` says WHAT HAS ALREADY HAPPENED,
       and the sentence this repo publishes from it is literally "N have taken
-      effect. The other M are filed for effective dates later in <period>"
+      effect as of <cutoff>. The other M have effective dates after <cutoff>"
       (alt_period_split_short, rendered verbatim by the hero, the press page and
       renderStats). "Taken effect" is an effective-date claim in any view. Move
       to_date onto the filed basis and that sentence starts describing filings
