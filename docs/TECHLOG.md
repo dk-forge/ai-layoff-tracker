@@ -97,6 +97,18 @@ effective-date distinction. Version 2.20.176 supplies the missing visible
 reconciliation on the home hero, but it is not live until this branch is
 published and merged. Do not close that incident from the local tests.
 
+**Release completion.** Dakota explicitly authorized publication and
+deployment. PR `#280` passed its version guard, both comparison guards and all
+four test shards, then squash-merged as `5079ef5`. WordPress deployment run
+`34152960119` passed the upload, origin API check, reader-visible version/build
+gate, subscriber-route probes and light/dark readability check. A fresh
+post-deploy `data_integrity.py` read passed **20/20** invariants. The prior
+cross-surface failure is therefore closed: the live home and press figures now
+state and reconcile their distinct filing-date and effective-date bases.
+Version 2.20.176 is live; its code release is complete. The competitor,
+regional-recall and GDELT-duration requirements above remain evidence gates and
+must not be restated as completed engineering work.
+
 ## 2026-09-06 — a throttle read as an outage, and the work queue stopped draining
 
 **Class:** silent-stop
