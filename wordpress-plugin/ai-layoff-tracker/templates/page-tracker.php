@@ -153,6 +153,71 @@ $alt_hero_basis  = 'counted by filing date';
       bug: a page that needs a start-here list has failed to be self-evident.
     */
     ?>
+    <?php
+    /*
+      THE TRUST STRIP, ABOVE THE FIGURE (owner request 2026-09-07).
+
+      2.20.x moved the whole data strip below the results, and the reasoning
+      held for most of it: a reader met four link groups and a status panel
+      before they met a single layoff. But it moved two different things as
+      one. The EXPORT and CITE rows really are questions you ask after looking
+      ("how do I take this away"), and they stay below. FRESHNESS and COVERAGE
+      are questions you ask before you believe anything ("is this current, and
+      how much ground does it cover"), and a stranger who cannot answer them in
+      the first second does not trust the number underneath.
+
+      So Roo, the next-collection time, the year/all-time pairs and the
+      coverage ribbon sit here, above the headline. Element IDs are unchanged
+      (#alt-next-top and the rest), so renderStatus() and renderStats() in
+      layoffs.js keep writing them wherever they are.
+    */
+    $alt_cov = alt_coverage_counts();
+    $alt_cov_first = !empty($alt_cov['first']) ? date_i18n('M Y', strtotime($alt_cov['first'])) : '';
+    ?>
+    <section class="alt-datastrip alt-datastrip-top" aria-label="How current this is, and what it covers">
+        <aside class="alt-fresh" aria-label="Freshness">
+            <?php echo function_exists('alt_render_status_header') ? alt_render_status_header() : ''; ?>
+            <?php if ($alt_next_ts) : ?>
+            <span class="alt-fresh-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
+            <?php endif; ?>
+            <?php if ($alt_sv !== null) : ?>
+            <?php /* The headline total and the AI figure live in the hero and are
+                     deliberately NOT repeated here: the same number twice, once at
+                     72px and once at 20px, invites the reader to wonder which of
+                     the two is the real one. */ ?>
+            <?php
+            /* YEAR AND ALL-TIME PAIRS (owner request 2026-08-14, matching the
+               talent tracker's glance strip). The year figures come from the
+               same bootstrap aggregate as the tiles; the all-time figures are
+               one cached COUNT query. The headline jobs total is still NOT
+               repeated here, for the reason above: entries, companies and
+               countries are the record's shape, not a second headline. */
+            $alt_at = get_transient(alt_figure_cache_key('fresh_alltime'));
+            if (!is_array($alt_at)) {
+                global $wpdb; $alt_att = alt_db_table();
+                $alt_at = $wpdb->get_row(
+                    "SELECT COUNT(*) e, COUNT(DISTINCT company_key) co,
+                            COUNT(DISTINCT NULLIF(country,'')) c
+                     FROM $alt_att WHERE superset_of=0", ARRAY_A) ?: array();
+                set_transient(alt_figure_cache_key('fresh_alltime'), $alt_at, HOUR_IN_SECONDS);
+            }
+            $alt_yr_label = current_time('Y');
+            ?>
+            <div class="alt-fresh-stats">
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies · <?php echo esc_html($alt_yr_label); ?></i></span>
+                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['co'] ?? 0)); ?></b><i>companies · all time</i></span>
+                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries · <?php echo esc_html($alt_yr_label); ?></i></span>
+                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['c'] ?? 0)); ?></b><i>countries · all time</i></span>
+                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['e'] ?? 0)); ?></b><i>entries · all time</i></span>
+            </div>
+            <?php endif; ?>
+        </aside>
+        <p class="alt-ribbon">
+            <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['us_states']; ?></b> US states<?php echo !empty($alt_cov['dc']) ? ' + DC' : ''; ?></span>
+            <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
+        </p>
+    </section>
+
     <header class="alt-hero">
         <div class="alt-hero-main">
             <?php /* THE FIGURE THE PAGE EXISTS TO PUBLISH, at the top of the first
@@ -1289,51 +1354,8 @@ $alt_hero_basis  = 'counted by filing date';
       #alt-export-csv-top and the rest), so renderStatus(), renderStats() and
       the export-href plumbing in layoffs.js keep writing all of them.
     */
-    $alt_cov = alt_coverage_counts();
-    $alt_cov_first = !empty($alt_cov['first']) ? date_i18n('M Y', strtotime($alt_cov['first'])) : '';
     ?>
-    <section class="alt-datastrip" aria-label="How current this is, and how to cite it">
-        <aside class="alt-fresh" aria-label="Freshness">
-            <?php echo function_exists('alt_render_status_header') ? alt_render_status_header() : ''; ?>
-            <?php if ($alt_next_ts) : ?>
-            <span class="alt-fresh-next" id="alt-next-top">Next update <?php echo esc_html(gmdate('M j, H:i', $alt_next_ts)); ?> UTC</span>
-            <?php endif; ?>
-            <?php if ($alt_sv !== null) : ?>
-            <?php /* The headline total and the AI figure live in the hero and are
-                     deliberately NOT repeated here: the same number twice, once at
-                     72px and once at 20px, invites the reader to wonder which of
-                     the two is the real one. */ ?>
-            <?php
-            /* YEAR AND ALL-TIME PAIRS (owner request 2026-08-14, matching the
-               talent tracker's glance strip). The year figures come from the
-               same bootstrap aggregate as the tiles; the all-time figures are
-               one cached COUNT query. The headline jobs total is still NOT
-               repeated here, for the reason above: entries, companies and
-               countries are the record's shape, not a second headline. */
-            $alt_at = get_transient(alt_figure_cache_key('fresh_alltime'));
-            if (!is_array($alt_at)) {
-                global $wpdb; $alt_att = alt_db_table();
-                $alt_at = $wpdb->get_row(
-                    "SELECT COUNT(*) e, COUNT(DISTINCT company_key) co,
-                            COUNT(DISTINCT NULLIF(country,'')) c
-                     FROM $alt_att WHERE superset_of=0", ARRAY_A) ?: array();
-                set_transient(alt_figure_cache_key('fresh_alltime'), $alt_at, HOUR_IN_SECONDS);
-            }
-            $alt_yr_label = current_time('Y');
-            ?>
-            <div class="alt-fresh-stats">
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('companies')); ?></b><i>companies · <?php echo esc_html($alt_yr_label); ?></i></span>
-                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['co'] ?? 0)); ?></b><i>companies · all time</i></span>
-                <span class="alt-fresh-stat"><b><?php echo esc_html($alt_stat('countries')); ?></b><i>countries · <?php echo esc_html($alt_yr_label); ?></i></span>
-                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['c'] ?? 0)); ?></b><i>countries · all time</i></span>
-                <span class="alt-fresh-stat"><b><?php echo number_format((int) ($alt_at['e'] ?? 0)); ?></b><i>entries · all time</i></span>
-            </div>
-            <?php endif; ?>
-        </aside>
-        <p class="alt-ribbon">
-            <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['us_states']; ?></b> US states<?php echo !empty($alt_cov['dc']) ? ' + DC' : ''; ?></span>
-            <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
-        </p>
+    <section class="alt-datastrip" aria-label="How to cite this and take it away">
         <p class="alt-citeline">
             <?php if ($alt_sv !== null) : ?>
             <?php /* "so far, as of <today>" is a TO-DATE claim, so it quotes the

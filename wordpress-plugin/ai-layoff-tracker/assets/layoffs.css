@@ -3442,10 +3442,22 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     display: grid; gap: 10px 18px; align-items: start;
     margin: 22px 0 4px;
 }
+/* 2026-09-07 -- THE STRIP IS NOW TWO STRIPS, so the grid is stated per shape
+   instead of assuming one. The top strip carries the freshness card and the
+   coverage ribbon, above the figure, because "is this current and what does it
+   cover" is asked BEFORE a reader believes a number. The lower strip carries
+   the cite and export rows, below the data, because "how do I take this away"
+   is asked after. `span 4` was correct when four lines sat beside the card and
+   is wrong for either shape now: the top strip has one line beside it, and the
+   lower strip has no card at all. */
 @media (min-width: 860px) {
-    .alt-datastrip { grid-template-columns: 320px minmax(0, 1fr); }
-    .alt-datastrip .alt-fresh { grid-row: 1 / span 4; }
+    .alt-datastrip-top { grid-template-columns: 320px minmax(0, 1fr); }
+    .alt-datastrip-top .alt-fresh { grid-row: auto; }
 }
+/* No freshness card down here any more, so one full-width column. Without this
+   the cite line would be squeezed into the 320px track the card used to fill. */
+.alt-datastrip:not(.alt-datastrip-top) { grid-template-columns: minmax(0, 1fr); }
+.alt-datastrip-top { margin: 0 0 18px; }
 .alt-datastrip > p { margin: 0; min-width: 0; }
 /* Every child clips its own overflow, so a long ribbon or a wide status row
    shrinks instead of widening the page. */
