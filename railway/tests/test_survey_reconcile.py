@@ -61,6 +61,20 @@ class SurveyReconcileTests(unittest.TestCase):
         self.assertIn('SURVEY_FAIL_ON_GAP", "").lower()', worker)
         self.assertIn("return 2 if outside and fail_on_gap else 0", worker)
 
+    def test_current_year_runs_dormant_when_feed_is_unset(self):
+        # Both competitor secrets are optional and both are unset in this repo
+        # today. The docstring and the workflow YAML both promise "dormant"
+        # (nothing to compare) in that case, not a crash trying to fetch an
+        # empty-string feed URL.
+        import importlib
+        os.environ.pop("SURVEY_FEED_URL", None)
+        os.environ.pop("SURVEY_BENCHMARK_JSON", None)
+        importlib.reload(subject)
+        try:
+            self.assertEqual(subject.reports_for_year(subject.date.today().year), [])
+        finally:
+            importlib.reload(subject)
+
 
 if __name__ == "__main__":
     unittest.main()

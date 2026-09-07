@@ -184,16 +184,21 @@ def survey_all_cut_totals(url, reference_month, page_text=None):
 def reports_for_year(year):
     reports = [dict(item) for item in HISTORICAL_REPORTS.get(year, ())]
     known_months = {item["reference_month"] for item in reports}
-    # The rolling feed is intentionally only used for the current year.  A
+    is_current_year = year == date.today().year
+    # The rolling feed is intentionally only used for the current year, and
+    # only when SURVEY_FEED_URL is actually set — unset is the documented
+    # dormant state (nothing to compare), not a fetch of an empty URL.  A
     # manual historical run without a reviewed source manifest fails rather
     # than accidentally benchmarking the current report against another year.
-    if year == date.today().year:
+    if is_current_year and FEED:
         latest = latest_report()
         if latest["reference_month"] not in known_months:
             monthly, ytd = survey_ai_totals(latest["benchmark_url"], latest["reference_month"])
             latest.update({"ai_jobs_month": monthly, "ai_jobs_ytd": ytd})
             reports.append(latest)
     if not reports:
+        if is_current_year and not FEED:
+            return []
         raise RuntimeError(f"No reviewed Survey report manifest exists for {year}")
     return sorted(reports, key=lambda item: item["reference_month"])
 
