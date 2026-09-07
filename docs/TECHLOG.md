@@ -36,12 +36,15 @@ execute the PHP helper itself, assert route ordering, replay the exact Applied
 excerpt end to end, accept real “800 positions” evidence, and reject currency,
 expense and unrelated-number cases.
 
-**The live correction is staged, not taken.** The public API read identified
-row 177216. A read-only `apply_correction.py` dry run found that row and printed
-the intended signed trash reason. It wrote nothing. The owner must approve the
-production correction; after it is applied, the August US headline and every
-derived tile must be read back and reconciled. No replacement count is valid,
-because the filing provides none.
+**The live correction was applied after explicit owner approval.** The public
+API read identified row 177216 and a read-only dry run first printed the exact
+target. GitHub Actions run `34152073226` then executed the signed `trash` on
+2026-09-07: post 9530 was trashed, canonical event 149949 was removed as an
+orphan, the hash was suppressed, `not_found` was empty, and the tool read row
+177216 back as gone. A fresh public query returned zero Applied Aerospace rows.
+The corrected August US filing-date aggregate is 31,953 verified plus 5,123
+announced, 37,076 combined, over 320 entries and 242 companies. No replacement
+count was inserted because the filing provides none.
 
 **The date explanation used the selected period as if it were “today.”** For a
 completed August filing-date view, it said the not-yet-effective portion was
@@ -84,6 +87,15 @@ and production observation. It also does not close the existing GDELT proof
 window: require seven consecutive clean runs and fourteen clean days after
 deployment. No code change can honestly turn those measurements into facts
 before they occur.
+
+**Production state after the correction, before the code deploy.** A fresh
+20-invariant live read passed 19 and still failed cross-surface agreement: the
+home hero showed 608,731 verified 2026 cuts while the press page showed 604,525,
+a 4,206 gap. Both fell by 4,320 after the correction, proving the correction
+reached the shared data; the residual is the pre-existing filing-date versus
+effective-date distinction. Version 2.20.176 supplies the missing visible
+reconciliation on the home hero, but it is not live until this branch is
+published and merged. Do not close that incident from the local tests.
 
 ## 2026-09-06 — a throttle read as an outage, and the work queue stopped draining
 

@@ -30,9 +30,26 @@ holder, so the start-of-session ritual surfaces it automatically.
   CI, separate genuine collector observability gaps from stale declarations,
   complete all code/test/documentation improvements possible here, prepare the
   exact live correction/deploy sequence, and keep claims below what production
-  evidence supports. If this session stops, resume from this paragraph and do
-  not assume any production write occurred merely because a dry run passed.
-- **VERSION CLAIMED (2026-09-07): 2.20.176 - source-backed count integrity and
+  evidence supports. This was the pre-correction checkpoint; the timestamped
+  production state immediately below supersedes it.
+
+  **PRODUCTION CORRECTION COMPLETE; CODE DEPLOY BLOCKED ON EXPLICIT GITHUB
+  PUBLICATION APPROVAL.** The signed correction workflow run `34152073226`
+  succeeded: post 9530 / row 177216 / event 149949 was removed, its hash was
+  suppressed, and the tool read the row back as gone. The public API then
+  returned zero Applied Aerospace rows and the corrected August US filing-date
+  totals: 31,953 verified + 5,123 announced = 37,076, 320 entries, 242
+  companies. The next live integrity read passed 19/20; only cross-surface
+  agreement remains (home 608,731 vs press 604,525, gap 4,206) because live is
+  still 2.20.175 and lacks this branch's visible reconciliation sentence.
+  Attempting to push `codex/top3-source-integrity` was blocked by the execution
+  safety layer: Dakota must explicitly authorize publishing this private
+  repository's branch to GitHub. **No push occurred.** Current local commits
+  after rebasing onto `c5c96b0`: `58f8f75` (the 2.20.176 code) plus the current
+  documentation commit once written. After explicit approval, push the branch,
+  open/verify the PR, merge only with green CI, wait for the non-cancellable
+  deploy, verify live 2.20.176 and rerun `data_integrity.py`.
+- **SUPERSEDED CHECKPOINT — VERSION CLAIMED (2026-09-07): 2.20.176 - source-backed count integrity and
   the false Applied Aerospace 4,320-worker row.** Codex read the baton as FREE
   on `main` (`ae759cf`) and took it in the isolated worktree
   `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`,
