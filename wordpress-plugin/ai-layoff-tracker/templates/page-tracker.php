@@ -90,6 +90,17 @@ if ($alt_t) {
 $alt_stat = function ($k) use ($alt_sv) {
     return $alt_sv === null ? '…' : number_format($alt_sv[$k]);
 };
+$alt_as_of = '';
+if ($alt_sv !== null) {
+    // Use the aggregate's cutoff, not the browser/server clock. Noon UTC keeps
+    // a date-only value on the same calendar day in WordPress timezones.
+    $alt_as_of_iso = substr((string) ($alt_t['as_of'] ?? ''), 0, 10);
+    $alt_as_of_ts = preg_match('/^\d{4}-\d{2}-\d{2}$/', $alt_as_of_iso)
+        ? strtotime($alt_as_of_iso . ' 12:00:00 UTC') : false;
+    // An unreadable cutoff is UNKNOWN. Do not replace it with the server's
+    // current date and thereby attach a made-up boundary to cached totals.
+    $alt_as_of = $alt_as_of_ts ? wp_date('M j, Y', $alt_as_of_ts) : '';
+}
 // The bootstrap scope is always the current year (see
 // alt_tracker_bootstrap_payload), so the period stamps are knowable here too.
 /*
@@ -398,8 +409,8 @@ $alt_hero_basis  = 'counted by filing date';
                      differ". Under the filing-basis default this line is worth
                      MORE than it was: it is the arithmetic that lets a
                      journalist quote either figure correctly. */ ?>
-            <?php $alt_split = ($alt_sv !== null && function_exists('alt_period_split_short'))
-                ? alt_period_split_short($alt_sv['to-date'], $alt_sv['total'], $alt_period)
+            <?php $alt_split = ($alt_sv !== null && $alt_as_of !== '' && function_exists('alt_period_split_short'))
+                ? alt_period_split_short($alt_sv['to-date'], $alt_sv['total'], $alt_as_of)
                 : ''; ?>
             <p class="alt-hero-figure-asof" id="alt-hero-asof-wrap"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><b class="alt-hero-asof-label">In this figure:</b> <span id="alt-hero-asof"><?php echo esc_html($alt_split); ?></span> <a class="alt-hero-asof-more" href="#alt-basis-explainer">Why two figures</a></p>
         </div>

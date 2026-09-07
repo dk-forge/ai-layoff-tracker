@@ -203,7 +203,7 @@ Response format:
   "employer_country_evidence": "exact source phrase supporting employer domicile, or null",
   "state": "2-letter US state abbreviation (e.g. CA, TX, NY) if the source states a US location for the cuts, otherwise null",
   "roles": "the specific roles, teams, or departments affected, exactly as stated in the source (e.g. 'customer service and engineering'), or null if not stated",
-  "excerpt": "2-3 sentence excerpt from the source that confirms the layoff. Exact text from source.",
+  "excerpt": "2-3 sentence excerpt copied exactly from the source that confirms the layoff AND contains the exact job_count beside words showing it is a worker/job count. Never return a financial-table figure as job_count.",
   "reason_tags": ["array", "of", "tags"],
   "ai_causation": "primary_cause|contributing_cause|selection_or_operations|context_only|explicitly_denied|unknown",
   "ai_explicit": true or false,
@@ -590,6 +590,76 @@ def _count_in_text(job_count, raw_text):
         if only_dateish and not near_noun:
             return False
     return True
+
+
+def _count_has_headcount_context(job_count, text):
+    """True only when an SEC count is visibly a count of people or positions.
+
+    A literal-number check is necessary but not sufficient for financial
+    filings: Applied Aerospace's earnings exhibit contained ``4,320`` as a
+    restructuring-cost figure (the table was in thousands), and the model
+    promoted it to 4,320 job cuts.  This deliberately English-only guard is
+    used for 8-K evidence excerpts, not multilingual news.  It requires the
+    exact number to sit beside a headcount noun, or a tightly bounded workforce
+    reduction phrase, and refuses currency-bound occurrences.
+    """
+    if not text or not job_count:
+        return False
+    n = int(job_count)
+    grouped = f"{n:,}"
+    variants = {
+        str(n), grouped, grouped.replace(",", " "), grouped.replace(",", "."),
+        grouped.replace(",", " "), grouped.replace(",", " "),
+        grouped.replace(",", " "),
+    }
+    if n % 1000 == 0 and n >= 1000:
+        variants.update({f"{n // 1000}k", f"{n // 1000}K"})
+    count = r"(?:" + "|".join(
+        re.escape(v) for v in sorted(variants, key=len, reverse=True)) + r")"
+    sep = r"[.,    ]"
+    exact = rf"(?<![\d.,]){count}(?![\d])(?!{sep}\d{{3}})"
+    noun = (r"employees?|employee\s+positions?|positions?|roles?|jobs?|workers?|"
+            r"staff(?:ers)?|colleagues|personnel|associates|people|team\s+members?|"
+            r"full-time\s+equivalents?|FTEs?")
+    words = r"(?:[A-Za-z][A-Za-z-]{1,20}\s+|and\s+){0,4}"
+
+    # The strongest receipt: the figure itself is adjacent to what it counts.
+    if re.search(rf"{exact}\s*(?!%|\s*percent)\s+{words}(?:{noun})\b", text, re.I):
+        return True
+    if re.search(rf"\b(?:{noun}|workforce|headcount|staffing|employee\s+base)\b"
+                 rf"[^.;\r\n]{{0,40}}?\b(?:by|affecting|impacting)\s+"
+                 rf"(?:approximately|about|roughly|up\s+to|nearly|around|~)?\s*{exact}",
+                 text, re.I):
+        return True
+
+    # Some filings say only "will lay off 500". Admit that compact wording,
+    # but never when the same occurrence is presented as money/cost/expense.
+    action = (r"lay(?:ing)?\s+off|laid\s+off|job\s+cuts?|workforce\s+reductions?|"
+              r"reductions?\s+in\s+force|eliminat(?:e|es|ed|ing)|"
+              r"terminat(?:e|es|ed|ing)|dismiss(?:es|ed|ing)?|"
+              r"mak(?:e|es|ing)\s+redundant|cut(?:s|ting)?")
+    for match in re.finditer(exact, text, re.I):
+        start, end = match.span()
+        clause_start = max(text.rfind(".", 0, start), text.rfind(";", 0, start),
+                           text.rfind("\n", 0, start)) + 1
+        stops = [p for p in (text.find(".", end), text.find(";", end),
+                             text.find("\n", end)) if p >= 0]
+        clause_end = min(stops) if stops else len(text)
+        clause = text[clause_start:clause_end]
+        local_start = start - clause_start
+        local_end = end - clause_start
+        near = clause[max(0, local_start - 70):min(len(clause), local_end + 70)]
+        occurrence = clause[max(0, local_start - 35):min(len(clause), local_end + 35)]
+        money = (
+            re.search(rf"[$€£¥]\s*{count}", occurrence, re.I)
+            or re.search(rf"{count}\s*(?:million|billion|thousand)?\s*"
+                         r"(?:dollars?|USD|EUR|GBP)\b", occurrence, re.I)
+            or re.search(rf"\b(?:costs?|charges?|expenses?|revenue|sales)\b"
+                         rf"[^.;\r\n]{{0,35}}{count}", occurrence, re.I)
+        )
+        if not money and re.search(rf"\b(?:{action})\b", near, re.I):
+            return True
+    return False
 
 
 def _coerce_job_count(value):
@@ -1295,6 +1365,23 @@ TEXT:
         print(f"Extraction rejected: job_count {job_count} not found verbatim in source "
               f"(model likely derived it) — source: {raw_entry.get('source_url')}")
         return None
+    # SEC earnings exhibits contain dense tables full of dates, shares and
+    # dollar amounts. A matching sequence of digits is not evidence that the
+    # number counts workers. Require the model's verbatim receipt to contain
+    # the selected figure in explicit headcount context. This is restricted to
+    # English-language 8-Ks; applying it to multilingual news would trade the
+    # integrity fix for a large, silent global-recall loss.
+    if raw_entry.get("source_type") == "8K":
+        excerpt = extracted.get("excerpt")
+        if not _quote_is_supported(excerpt, raw_text):
+            print(f"Extraction rejected: 8-K excerpt is not verbatim source evidence "
+                  f"— source: {raw_entry.get('source_url')}")
+            return None
+        if not _count_has_headcount_context(job_count, excerpt):
+            print(f"Extraction rejected: 8-K job_count {job_count} lacks explicit "
+                  f"headcount context in its evidence excerpt — source: "
+                  f"{raw_entry.get('source_url')}")
+            return None
     extracted["job_count"] = job_count
     # Range upper bound: store it too so a query can report the "announced
     # intentions" framing (upper) or our conservative executed floor (job_count),

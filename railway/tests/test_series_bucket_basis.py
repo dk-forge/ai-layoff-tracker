@@ -286,8 +286,8 @@ class TheDecisionsThatWereMadeOnPurpose(unittest.TestCase):
         """REGRESSION BAR, and it passes on the pre-fix tree by design.
 
         to_date answers "what has already taken effect". alt_period_split_short
-        renders it as "N have taken effect. The other M are filed for effective
-        dates later in <period>", verbatim on the hero, the press page and in
+        renders it as "N have taken effect as of <cutoff>. The other M have
+        effective dates after <cutoff>", verbatim on the hero, the press page and in
         renderStats. Put it on the filing basis and that sentence starts
         describing filings while keeping the word "effect": a correct number
         under a wrong label, which is the exact defect the basis work exists to

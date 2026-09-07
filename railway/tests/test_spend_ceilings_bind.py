@@ -213,7 +213,7 @@ class TheMonthlyCapRefusesToStartPaidWork(_SpendCase):
         """The cap is the owner's, and it is a policy in a diff."""
         src = (ROOT / "railway/spend.py").read_text()
         self.assertNotIn("ALT_MONTHLY_ALLOWANCE", src)
-        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 14.0)
+        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 10.0)
 
     def test_the_two_repos_allowances_sum_to_the_stated_total(self):
         """Both halves of one total, and neither derived from a share.
@@ -233,24 +233,21 @@ class TheMonthlyCapRefusesToStartPaidWork(_SpendCase):
             "again — edit BOTH literals or neither",
         )
 
-    def test_the_allowance_leaves_room_for_the_local_language_discovery(self):
-        """The raise to $14.00 exists to pay for sources/local_news.py.
+    def test_the_owner_cap_wins_over_a_ceiling_bound_local_news_month(self):
+        """All markets stay armed, but a $10 maximum is still a maximum.
 
         142 countries held nothing because every search phrase was English
         while 45 editions were configured with local UI languages. The fix is
-        priced at $5.14/month for 25 markets capped at 12 candidates each. If a
-        later session lowers the allowance without lowering that cap, the
-        markets stop being affordable and the countries go dark again quietly.
+        priced at $5.14/month for 25 markets capped at 12 candidates each. That
+        worst-case plus the older committed estimate is $10.06. The six-cent
+        excess must defer visibly under the common brake, not be hidden by
+        disarming countries or raising Dakota's cap.
         """
         committed = 4.92          # measured committed path, railway/spend.py
         local_news_at_cap = 5.14  # 25 markets x 12 candidates, measured dry run
-        self.assertGreaterEqual(
-            spend.MONTHLY_ALLOWANCE_USD, committed + local_news_at_cap,
-            f"${spend.MONTHLY_ALLOWANCE_USD:.2f} does not cover the committed "
-            f"path (${committed:.2f}) plus local-language discovery at its cap "
-            f"(${local_news_at_cap:.2f}), so arming the 25 markets would starve "
-            "the collectors that keep the tracker current",
-        )
+        self.assertEqual(spend.MONTHLY_ALLOWANCE_USD, 10.0)
+        self.assertLess(spend.MONTHLY_ALLOWANCE_USD, committed + local_news_at_cap)
+        self.assertEqual(spend.STOP_AT_FRACTION, 0.9)
 
 
 class TheSweepCannotMistakeABudgetStopForAVerdict(unittest.TestCase):

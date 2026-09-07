@@ -183,7 +183,7 @@ USER_AGENT = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 # So the split is no longer derived, on either side. Both halves are literals
 # of one stated total, because a share only bounds a total if somebody enforces
 # the denominator, and across two repos with separate keys nobody can.
-MONTHLY_TARGET_COMBINED_USD = 22.0   # the owner's stated total, both trackers
+MONTHLY_TARGET_COMBINED_USD = 18.0   # $10 here + sibling's separate $8 policy
 SIBLING_ALLOWANCE_USD = 8.0          # talent-intelligence-tracker, same literal there
 #
 # WHAT $7.00 COSTS, said plainly rather than discovered later: the committed
@@ -192,22 +192,21 @@ SIBLING_ALLOWANCE_USD = 8.0          # talent-intelligence-tracker, same literal
 # throttle, not a stop (see DISCRETIONARY_JOBS below), and it is the owner's
 # trade to revisit — raising this constant is the lever, and it is his.
 #
-# WHAT $14.00 BUYS, said plainly rather than discovered later: the committed
-# path measures $4.92/month, so ~$9.08/month is left for discretionary work.
-# That is what funds the local-language discovery in sources/local_news.py,
-# priced at $5.14/month for 25 markets capped at 12 candidates each, and it is
-# the reason the raise happened: 142 countries held nothing because every
-# search phrase was English, and the fix costs money per candidate article.
-# The regional feeds (sources/regional_feeds.py, 2026-08-14) ride the same
-# discretionary slice at a cap-bound worst case of $0.95/month (measured pass
-# rate on wiring day: 0 of 97 items), so 4.92 + 5.14 + 0.95 still fits.
+# THE $10 OWNER CAP (2026-09-07, INTERIM UNTIL A FULL CLEAN MONTH). September
+# 1-6's committed ledger projects
+# roughly $6-7/month at the present workload, with every local-language market
+# armed. The old $14 policy therefore bought unused worst-case burst room, not
+# measured current coverage. At an unusually busy ceiling-bound month, the 90%
+# brake below may defer paid candidates; their URLs remain UNMARKED and return
+# on a later run. Free WARN, SEC, ERM and national feeds never stop. That is the
+# honest trade: preserve every source and enforce the owner's maximum, while
+# reporting delayed depth instead of pretending a $10 cap guarantees infinite
+# same-day paid throughput.
 #
-# THIS NUMBER IS STILL INTERIM, and the word is load-bearing. It rests on
-# eleven days of this repo's ledger and one clean day of the sibling's. It is
-# NOT derived from a share any more, so moving it does not silently move the
-# other side - but the other side's literal must be edited to match, or the
-# pair stops summing to MONTHLY_TARGET_COMBINED_USD and nothing will notice.
-MONTHLY_ALLOWANCE_USD = 14.0
+# This is this tracker's own OpenRouter policy. Railway hosting is outside it.
+# The sibling tracker has a separate literal above solely so account-wide ops
+# can still reconcile the two policies; it does not consume this $10.
+MONTHLY_ALLOWANCE_USD = 10.0
 
 # Stop with headroom left, so a long batch cannot overshoot mid-run.
 STOP_AT_FRACTION = 0.9

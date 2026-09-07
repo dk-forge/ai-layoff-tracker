@@ -1,3 +1,102 @@
+## 2026-09-07 - an SEC dollar figure became 4,320 workers; completed-month copy compared dates to the wrong boundary; the $10 owner cap was still $14 (2.20.176, branch)
+
+**Class:** novel
+**Guard:** railway/tests/test_count_parsing_guards.py
+
+This is `novel` because the existing vocabulary has no class for “the cited
+digits exist but name a different unit.” Additional guards for the copy and
+budget halves are `railway/tests/test_published_figure_guards.py`,
+`railway/tests/test_spend_ceilings_bind.py`, `railway/tests/test_spend_guard.py`
+and `railway/tests/test_spend_ledger.py`.
+
+**The published count is not in its cited source.** The live public query on
+2026-09-07 returned row 177216, Applied Aerospace & Defense, at 4,320 workers,
+gold/SEC-verified, sourced to the company's 2026-08-12 earnings exhibit. That
+exhibit labels the relevant table “in thousands”; 4,320 is restructuring cost,
+or $4.320 million. Its prose mentions reductions in force but gives no absolute
+number of people. The stored excerpt contains no 4,320 at all. This is therefore
+not a debatable classification: the row's numerical claim is unsupported by
+the source it cites.
+
+The model prompt already said never to use money as a worker count. The
+deterministic admission check did less: `_count_in_text` proved only that the
+same digits appeared somewhere in the input. A financial table can satisfy
+that while referring to dollars. `extractor._count_has_headcount_context` now
+admits an 8-K count only when that exact figure is tied to employees, jobs,
+positions, workers or a tightly bounded layoff action, and rejects monetary
+contexts. The source excerpt must also be verbatim for 8-Ks. This check is
+deliberately scoped to English SEC evidence; applying the English noun list to
+multilingual news would buy precision by silently deleting world recall.
+
+The same invariant now exists independently at the WordPress `/add` boundary.
+That second door matters: a future collector, correction utility or stale
+deployed extractor must not be able to bypass the extraction-layer check. It
+returns HTTP 422 `alt_count_evidence_missing` before `wp_insert_post`. Tests
+execute the PHP helper itself, assert route ordering, replay the exact Applied
+excerpt end to end, accept real “800 positions” evidence, and reject currency,
+expense and unrelated-number cases.
+
+**The live correction was applied after explicit owner approval.** The public
+API read identified row 177216 and a read-only dry run first printed the exact
+target. GitHub Actions run `34152073226` then executed the signed `trash` on
+2026-09-07: post 9530 was trashed, canonical event 149949 was removed as an
+orphan, the hash was suppressed, `not_found` was empty, and the tool read row
+177216 back as gone. A fresh public query returned zero Applied Aerospace rows.
+The corrected August US filing-date aggregate is 31,953 verified plus 5,123
+announced, 37,076 combined, over 320 entries and 242 companies. No replacement
+count was inserted because the filing provides none.
+
+**The date explanation used the selected period as if it were “today.”** For a
+completed August filing-date view, it said the not-yet-effective portion was
+“filed for effective dates later in August 1 to August 31.” Those events were
+filed in August; their effective dates can be after August. Both server and
+client wording now compare effective dates with the payload's own `as_of`
+date: “have taken effect as of [date]” and “have effective dates after [date].”
+The browser clock is not used, so a cached snapshot cannot silently move the
+denominator boundary.
+
+**The tracker now enforces the owner's $10 OpenRouter maximum.** The previous
+policy constant was $14. It is now $10 and the graceful stop remains at 90%,
+leaving provider headroom. Free WARN, SEC, ERM and national feeds continue;
+paid candidates are returned UNMARKED and retried, and every configured
+local-language market remains armed. The committed September 1-6 ledger totals
+$1.360991, which is about $6.80 over 30 days at that observed daily rate. That
+is evidence that the present workload fits, not a promise that every future
+month will: an unusually busy month can hit the cap and delay paid depth.
+
+**Verification.** After rebasing onto current `origin/main` (`776cde1`), PHP
+lint passed for the plugin entrypoint, API, database helpers and tracker
+template; JavaScript syntax check passed; `git diff --check` passed. The focused
+branch-relevant set passed 284 tests. Full discovery ran all 4,544 tests and
+found five exceptions: two TECHLOG-format failures introduced by this entry,
+which were corrected, and three federal-RIF errors because the normal local
+venv omitted that workflow's declared `pandas`/`pyarrow` dependencies. The
+three federal tests then passed with those pinned classes installed in a
+temporary test directory, alongside the corrected TECHLOG tests and the whole
+branch-relevant set. A second 12-minute all-in-one discovery was not repeated;
+every failure from the complete run was reproduced and cleared directly.
+The final discovery count is 4,545 after adding the unknown-cutoff regression.
+Browser measurements found no page bleed at 375px or 1280px; at 375px the
+comparison board intentionally scrolls inside its own 318px region, and at
+1280px it does not scroll.
+
+**Not proved by this branch.** It does not establish top-three rank, complete
+country recall, or “100% coverage.” Those need a fresh competitor benchmark,
+human-labelled event-recall samples by region, high-impact-row source audits,
+and production observation. It also does not close the existing GDELT proof
+window: require seven consecutive clean runs and fourteen clean days after
+deployment. No code change can honestly turn those measurements into facts
+before they occur.
+
+**Production state after the correction, before the code deploy.** A fresh
+20-invariant live read passed 19 and still failed cross-surface agreement: the
+home hero showed 608,731 verified 2026 cuts while the press page showed 604,525,
+a 4,206 gap. Both fell by 4,320 after the correction, proving the correction
+reached the shared data; the residual is the pre-existing filing-date versus
+effective-date distinction. Version 2.20.176 supplies the missing visible
+reconciliation on the home hero, but it is not live until this branch is
+published and merged. Do not close that incident from the local tests.
+
 ## 2026-09-06 — a throttle read as an outage, and the work queue stopped draining
 
 **Class:** silent-stop

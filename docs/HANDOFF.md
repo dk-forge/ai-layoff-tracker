@@ -6,6 +6,85 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RESUMED / HELD by Codex (2026-09-07): production completion and top-three
+  evidence pass for 2.20.176.** Dakota explicitly approved continuing after
+  the local source-integrity commit. Starting point after the latest origin
+  refresh is clean rebased commit `58f8f75`
+  on `codex/top3-source-integrity`; nothing from that commit was pushed,
+  merged, deployed or applied live when this continuation began. Read-only
+  `ops_status.py` at resume was first run inside the network-blocked sandbox;
+  its “39 collectors never reported” line was an unreadable live ledger, not a
+  production fact. The required unrestricted re-run established that all 40
+  due collectors have reported at least once and current main CI is green. It
+  also established facts the release must not hide: 16 represented-country
+  disclosure regimes are still unclassified; the only measured non-US
+  official-total shares are Taiwan 0%, UK 15.8%-26.2% and Estonia 23.6%; five
+  old collector starts have no matching finish; GDELT has abandoned windows on
+  all 15 measured runs; and live `figures_agree_across_surfaces` is FAILING
+  (home 613,051 vs press 608,845, with the home reconciliation absent). This
+  tracker projects $7.11/month under its new $10 cap while the shared
+  OpenRouter account is burning about $29/month, principally
+  unattributed/other-tracker activity.
+  The local private competitor benchmark is absent on this machine, so its
+  current ranking evidence is UNKNOWN. **Next safe steps:** refresh origin and
+  CI, separate genuine collector observability gaps from stale declarations,
+  complete all code/test/documentation improvements possible here, prepare the
+  exact live correction/deploy sequence, and keep claims below what production
+  evidence supports. This was the pre-correction checkpoint; the timestamped
+  production state immediately below supersedes it.
+
+  **PRODUCTION CORRECTION COMPLETE; CODE DEPLOY BLOCKED ON EXPLICIT GITHUB
+  PUBLICATION APPROVAL.** The signed correction workflow run `34152073226`
+  succeeded: post 9530 / row 177216 / event 149949 was removed, its hash was
+  suppressed, and the tool read the row back as gone. The public API then
+  returned zero Applied Aerospace rows and the corrected August US filing-date
+  totals: 31,953 verified + 5,123 announced = 37,076, 320 entries, 242
+  companies. The next live integrity read passed 19/20; only cross-surface
+  agreement remains (home 608,731 vs press 604,525, gap 4,206) because live is
+  still 2.20.175 and lacks this branch's visible reconciliation sentence.
+  Attempting to push `codex/top3-source-integrity` was blocked by the execution
+  safety layer: Dakota must explicitly authorize publishing this private
+  repository's branch to GitHub. **No push occurred.** Current local commits
+  after rebasing onto `c5c96b0`: `58f8f75` (the 2.20.176 code) plus the current
+  documentation commit once written. After explicit approval, push the branch,
+  open/verify the PR, merge only with green CI, wait for the non-cancellable
+  deploy, verify live 2.20.176 and rerun `data_integrity.py`.
+- **SUPERSEDED CHECKPOINT — VERSION CLAIMED (2026-09-07): 2.20.176 - source-backed count integrity and
+  the false Applied Aerospace 4,320-worker row.** Codex read the baton as FREE
+  on `main` (`ae759cf`) and took it in the isolated worktree
+  `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`,
+  branch `codex/top3-source-integrity`. Main advanced during the work to
+  `776cde1` and claimed 2.20.175, so the branch was rebased before final
+  verification and this change took the next patch. Live reproduction: the
+  August 2026 US headline is 36,273 and names row **177216**, Applied
+  Aerospace, at 4,320; the linked SEC exhibit's 4,320 is a
+  dollar-denominated restructuring-cost line (table in thousands), not a
+  worker count, and the filing states no absolute affected headcount. The
+  correction tool's read-only dry run found that exact row and proposed a
+  signed `trash`; it wrote nothing.
+
+  **Branch work complete, release gates still open.** Both extraction and the
+  WordPress `/add` door now require an explicit worker/job context for an 8-K
+  count, with the Applied filing pinned as a regression. The completed-period
+  explanation now compares effective dates with the aggregate's own `as_of`
+  date instead of implying they fall inside the selected filing month. The
+  tracker OpenRouter allowance is a hard policy of $10/month with paid reads
+  degrading at 90%; all free feeds and all configured local-language markets
+  remain armed. The committed September 1-6 ledger is $1.360991, about
+  $6.80/month at the same daily rate; a busier month can defer paid candidates
+  rather than pretend $10 guarantees unlimited same-day depth. The final test
+  discovery contains 4,545 tests; complete-run exceptions and their direct
+  clearing checks, plus mobile/browser evidence, are recorded in TECHLOG.
+
+  **No live correction, push, merge, deploy, or top-three publication claim
+  has been made.** Before release: owner signs off the row-177216 correction;
+  apply it only through `apply_correction.py --apply`, deploy/merge 2.20.176,
+  read back the corrected August US totals, refresh the competitor benchmark,
+  and require seven clean runs plus fourteen clean days for the GDELT recovery
+  claim. Baton released for the owner; do not reuse 2.20.176.
+  Local note: `stash@{0}` is the pre-rebase duplicate created to move this
+  work onto `776cde1`; the clean committed branch at `58f8f75` supersedes it.
+  Compare before dropping if cleanup is desired.
 - **NO VERSION CLAIMED (2026-09-06): #243 - headline_containment could not
   report a finding, and the -39,292 was never an AI reclassification.** The
   baton was read as FREE by `ops_status [0]` on origin/main and this session

@@ -620,8 +620,9 @@ class TheStructuredDataTotalNamesItsOwnBasis(unittest.TestCase):
 
 PHP_SHORT_HARNESS = r"""<?php
 %s
-echo alt_period_split_short(24754, 33817, 'Jul 2026'), "\n";
-echo alt_period_split_short(100, 100, '2026'), "\n";
+echo alt_period_split_short(24754, 33817, 'Aug 11, 2026'), "\n";
+echo alt_period_split_short(100, 100, 'Aug 11, 2026'), "\n";
+echo alt_period_split_short(24754, 33817, ''), "\n";
 """
 
 
@@ -643,14 +644,14 @@ def _php_fn(name):
 
 class TheReconciliationIsCompressedAndStillVisible(unittest.TestCase):
 
-    EXPECTED = ("24,754 have taken effect. The other 9,063 are filed for "
-                "effective dates later in Jul 2026. Together, 33,817.")
+    EXPECTED = ("24,754 have taken effect as of Aug 11, 2026. The other 9,063 "
+                "have effective dates after Aug 11, 2026. Together, 33,817.")
 
     def test_the_js_helper_produces_the_line(self):
         got = jsrun.run(
             ["periodSplitShort"],
             "function fmt(n) { return Number(n).toLocaleString('en-US'); }\n",
-            "periodSplitShort(24754, 33817, 'Jul 2026')")
+            "periodSplitShort(24754, 33817, 'Aug 11, 2026')")
         self.assertEqual(got, self.EXPECTED)
 
     @unittest.skipUnless(PHP, "php binary not available")
@@ -666,6 +667,16 @@ class TheReconciliationIsCompressedAndStillVisible(unittest.TestCase):
         self.assertEqual(lines[1], "",
                          "a zero remainder must render nothing, not a sentence "
                          "explaining that nothing is left over")
+        self.assertEqual(lines[2], "",
+                         "an unknown as-of cutoff must hide the explanation, not "
+                         "substitute the current date")
+
+    def test_the_js_helper_refuses_an_unknown_cutoff(self):
+        got = jsrun.run(
+            ["periodSplitShort"],
+            "function fmt(n) { return Number(n).toLocaleString('en-US'); }\n",
+            "periodSplitShort(24754, 33817, '')")
+        self.assertEqual(got, "")
 
     def test_it_carries_all_three_numbers(self):
         """Asserted against what the HELPER produces, not against this file's
@@ -675,7 +686,7 @@ class TheReconciliationIsCompressedAndStillVisible(unittest.TestCase):
         got = jsrun.run(
             ["periodSplitShort"],
             "function fmt(n) { return Number(n).toLocaleString('en-US'); }\n",
-            "periodSplitShort(24754, 33817, 'Jul 2026')")
+            "periodSplitShort(24754, 33817, 'Aug 11, 2026')")
         for n, what in (("24,754", "the part already in effect"),
                         ("9,063", "the remainder still ahead"),
                         ("33,817", "the total the two make")):
@@ -687,7 +698,7 @@ class TheReconciliationIsCompressedAndStillVisible(unittest.TestCase):
         compressed helper in it."""
         pre = "function fmt(n) { return Number(n).toLocaleString('en-US'); }\n"
         short = jsrun.run(["periodSplitShort"], pre,
-                          "periodSplitShort(24754, 33817, 'Jul 2026')")
+                          "periodSplitShort(24754, 33817, 'Aug 11, 2026')")
         full = jsrun.run(["periodSplitSentence"], pre,
                          "periodSplitSentence(24754, 33817, 'Aug 11, 2026', 'Jul 2026')")
         self.assertLess(len(short), len(full),

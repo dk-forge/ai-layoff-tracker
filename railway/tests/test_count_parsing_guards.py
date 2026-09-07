@@ -9,9 +9,13 @@
 3. Extractor: "17% of its staff" was stored as 17 jobs (Intuit).
 """
 import sys
+import json
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Pure-guard tests do not create API clients or make network calls.
@@ -23,8 +27,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _requests_stub import install as _install_requests  # noqa: E402
 _install_requests()
 
-from extractor import _percent_only_mention, _count_in_text
+from extractor import (
+    _count_has_headcount_context,
+    _count_in_text,
+    _percent_only_mention,
+    extract_layoff_data,
+)
 from sources.warn import _count_col
+
+ROOT = Path(__file__).resolve().parents[2]
+API_PHP = (ROOT / "wordpress-plugin/ai-layoff-tracker/includes/api.php").read_text()
+PHP = shutil.which("php")
+
+
+def _php_function(name):
+    start = API_PHP.index("function %s(" % name)
+    brace = API_PHP.index("{", start)
+    depth = 0
+    for i in range(brace, len(API_PHP)):
+        if API_PHP[i] == "{":
+            depth += 1
+        elif API_PHP[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return API_PHP[start:i + 1]
+    raise AssertionError("unbalanced PHP function %s" % name)
 
 
 class WarnCountColumnTests(unittest.TestCase):
@@ -131,6 +158,133 @@ class CountInTextVerbatimGuardTests(unittest.TestCase):
         for n, text in self.ACCEPT:
             self.assertTrue(_count_in_text(n, text),
                             f"should ACCEPT {n} in {text!r}")
+
+
+class SecHeadcountContextGuardTests(unittest.TestCase):
+    """An SEC digit match is not a headcount receipt.
+
+    Applied Aerospace's 2026-08-12 exhibit labelled its financial table "in
+    thousands" and reported 4,320 as integration/restructuring COSTS. The old
+    verbatim guard saw the digits and published 4,320 job cuts. These fixtures
+    pin the semantic distinction the public source promise requires.
+    """
+
+    def test_rejects_applied_aerospace_restructuring_cost(self):
+        excerpt = (
+            "(in thousands, except percentages) Three Months Ended June 30, 2026. "
+            "Integration and restructuring costs(2) $ 7,253 $ 1,234 $ 4,320 $ 806."
+        )
+        self.assertTrue(_count_in_text(4320, excerpt),
+                        "the regression only exists because the digits are present")
+        self.assertFalse(_count_has_headcount_context(4320, excerpt))
+
+    def test_rejects_money_even_when_a_reduction_phrase_is_nearby(self):
+        self.assertFalse(_count_has_headcount_context(
+            4320, "A reduction in force produced restructuring costs of $ 4,320."))
+        self.assertFalse(_count_has_headcount_context(
+            500, "The workforce reduction resulted in costs of 500 million dollars."))
+
+    def test_accepts_common_sec_headcount_wording(self):
+        accepted = [
+            (800, "The plan will affect approximately 800 roles."),
+            (4000, "Workforce reductions of approximately 4,000 - 6,000 employees are expected."),
+            (250, "The company expects to reduce its workforce by approximately 250."),
+            (500, "The company will lay off 500."),
+            (500, "The plan eliminates 500 salaried and hourly positions."),
+            (46, "The action affects 46 team members."),
+        ]
+        for count, excerpt in accepted:
+            self.assertTrue(_count_has_headcount_context(count, excerpt), excerpt)
+
+    def test_rejects_unrelated_exact_numbers(self):
+        rejected = [
+            (2026, "The program is expected to conclude in 2026."),
+            (500, "The company has 500 customers."),
+            (300, "Revenue increased by 300 basis points."),
+            (1200, "The facility contains 1,200 square feet."),
+        ]
+        for count, excerpt in rejected:
+            self.assertFalse(_count_has_headcount_context(count, excerpt), excerpt)
+
+
+class SecExtractorIntegrationTests(unittest.TestCase):
+    """Exercise the production extraction decision, not only its helper."""
+
+    @staticmethod
+    def _response(count, excerpt):
+        payload = {
+            "is_layoff_event": True,
+            "company_name": "Applied Aerospace & Defense, Inc.",
+            "job_count": count,
+            "job_count_max": count,
+            "layoff_date": "2026-08-12",
+            "excerpt": excerpt,
+            "reason_tags": ["restructuring"],
+            "ai_causation": "unknown",
+            "ai_explicit": False,
+            "confidence": 90,
+            "announced": False,
+        }
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content=json.dumps(payload)))])
+
+    def _extract(self, raw_text, count, excerpt):
+        raw = {
+            "raw_text": raw_text,
+            "source_type": "8K",
+            "source_name": "SEC EDGAR",
+            "source_url": "https://www.sec.gov/Archives/edgar/data/example.htm",
+            "filing_date": "2026-08-12",
+            "verification_level": "gold",
+        }
+        with patch("extractor.spend.paid_reads_enabled", return_value=True), \
+             patch("extractor.spend.metered_call",
+                   return_value=self._response(count, excerpt)):
+            return extract_layoff_data(raw)
+
+    def test_production_extractor_rejects_the_applied_cost_row(self):
+        excerpt = ("(in thousands, except percentages) Integration and "
+                   "restructuring costs(2) $ 7,253 $ 1,234 $ 4,320 $ 806.")
+        self.assertIsNone(self._extract(excerpt, 4320, excerpt))
+
+    def test_production_extractor_accepts_a_verbatim_worker_count(self):
+        excerpt = "The company expects the reduction to affect approximately 800 roles."
+        out = self._extract(excerpt, 800, excerpt)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["job_count"], 800)
+
+
+@unittest.skipUnless(PHP, "php binary not available")
+class WordpressSecHeadcountContextGuardTests(unittest.TestCase):
+    """The receiving API must enforce the same invariant independently."""
+
+    def _php_guard(self, count, excerpt):
+        code = (_php_function("alt_count_has_headcount_context")
+                + "\necho json_encode(alt_count_has_headcount_context(%d, %s));" %
+                (count, json.dumps(excerpt)))
+        proc = subprocess.run([PHP, "-r", code], capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def test_api_guard_rejects_the_applied_aerospace_cost(self):
+        excerpt = ("(in thousands, except percentages) Integration and "
+                   "restructuring costs(2) $ 7,253 $ 1,234 $ 4,320 $ 806.")
+        self.assertFalse(self._php_guard(4320, excerpt))
+
+    def test_api_guard_accepts_real_headcount_evidence(self):
+        for count, excerpt in (
+            (800, "The plan will affect approximately 800 roles."),
+            (250, "The company will reduce its workforce by approximately 250."),
+            (500, "The company will lay off 500."),
+        ):
+            self.assertTrue(self._php_guard(count, excerpt), excerpt)
+
+    def test_add_route_rejects_before_creating_a_post(self):
+        body = _php_function("alt_api_add")
+        gate = body.index("alt_count_has_headcount_context")
+        insert = body.index("wp_insert_post")
+        self.assertLess(gate, insert)
+        self.assertIn("alt_count_evidence_missing", body)
 
 class WhitespaceShapeGuardTests(unittest.TestCase):
     """Whitespace was the blind spot in both number guards (found 2026-07-30).
