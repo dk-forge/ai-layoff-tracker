@@ -342,13 +342,35 @@ class BlockOrderTests(unittest.TestCase):
 class NothingWasDeletedTests(unittest.TestCase):
     """Shorter first screen, same page. Every moved block is still rendered."""
 
-    def test_the_moved_blocks_all_survive_below_the_data(self):
+    def test_the_moved_blocks_all_survive_and_sit_where_they_belong(self):
+        """The guarantee is SURVIVAL. Position is how it is enforced, and 2.20.175
+        gave two of these four a different place on purpose.
+
+        The original move sent the whole strip below the data because a reader
+        met four link groups and a status panel before they met a layoff. That
+        was right about export and citation, which answer "how do I take this
+        away" and are asked AFTER looking. It was wrong about freshness and
+        coverage, which answer "is this current, and how much ground does it
+        cover" and are asked BEFORE a stranger believes any number. The owner
+        asked for those back on 2026-09-07 and they now sit above the figure.
+
+        So each block is pinned to the side of the data it is meant to be on,
+        which is stricter than the old blanket rule: an accidental move of any
+        of the four now fails, in either direction.
+        """
         cards = at(TEMPLATE, 'id="alt-cards"')
-        for moved in ('class="alt-fresh"', 'class="alt-ribbon"', 'class="alt-citeline"',
-                      'class="alt-lead"'):
-            self.assertGreater(at(TEMPLATE, moved), cards,
-                               "%s was dropped from the page instead of moved" % moved)
+        for below in ('class="alt-citeline"', 'class="alt-lead"'):
+            self.assertGreater(at(TEMPLATE, below), cards,
+                               "%s was dropped from the page instead of moved" % below)
+        for above in ('class="alt-fresh"', 'class="alt-ribbon"'):
+            pos = at(TEMPLATE, above)
+            self.assertGreater(pos, 0, "%s was dropped from the page" % above)
+            self.assertLess(pos, cards,
+                            "%s belongs ABOVE the data since 2.20.175: it is the "
+                            "trust signal a reader needs before believing the "
+                            "figure, not a take-it-away link" % above)
         self.assertIn("alt-datastrip", TEMPLATE)
+        self.assertIn("alt-datastrip-top", TEMPLATE)
         self.assertIn("scan-scope.php", TEMPLATE_RAW)
 
     def test_every_element_the_front_end_writes_still_exists(self):
