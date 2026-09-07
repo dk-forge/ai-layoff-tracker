@@ -3457,7 +3457,21 @@ figure.alt-soundbite figcaption.alt-sb-actions,
 /* No freshness card down here any more, so one full-width column. Without this
    the cite line would be squeezed into the 320px track the card used to fill. */
 .alt-datastrip:not(.alt-datastrip-top) { grid-template-columns: minmax(0, 1fr); }
-.alt-datastrip-top { margin: 0 0 18px; }
+.alt-datastrip-top { margin: 0 0 14px; }
+/* ON A PHONE THE STAT PAIRS STAY OUT OF THE FIRST SCREEN, and this is a
+   design point before it is a test point. At 375px the five year/all-time
+   pairs stack into five rows of numbers ABOVE the headline figure, which
+   pushes the hero's own actions past the fold: the digest route, pinned by
+   tests/test_digest_route_is_findable.py after it was measured fifty screens
+   down on 2026-08-14, ended 816px into an 812px screen. Freshness and
+   coverage are the trust signal a stranger needs first; the shape of the
+   record is a detail they want after. So below the two-column breakpoint the
+   top strip carries Roo, the live status, the next collection time and the
+   coverage ribbon, and the pairs appear once the layout is wide enough to put
+   them BESIDE the figure rather than in front of it. */
+@media (max-width: 859px) {
+    .alt-datastrip-top .alt-fresh-stats { display: none; }
+}
 .alt-datastrip > p { margin: 0; min-width: 0; }
 /* Every child clips its own overflow, so a long ribbon or a wide status row
    shrinks instead of widening the page. */
