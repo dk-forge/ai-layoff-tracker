@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "tests:live.data:eacb9ee45de18437": {
-      "first": 1788711356,
-      "last": 1788711356,
-      "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 502 \u2014 server regression, not a blip"
-    }
-  },
-  "updated_at": "2026-09-06T16:15:56+00:00",
+  "open": {},
+  "updated_at": "2026-09-07T13:17:47+00:00",
   "version": 1
 }
