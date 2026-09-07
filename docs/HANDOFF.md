@@ -6,6 +6,32 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RESUMED / HELD by Codex (2026-09-07): production completion and top-three
+  evidence pass for 2.20.176.** Dakota explicitly approved continuing after
+  the local source-integrity commit. Starting point after the latest origin
+  refresh is clean rebased commit `58f8f75`
+  on `codex/top3-source-integrity`; nothing from that commit was pushed,
+  merged, deployed or applied live when this continuation began. Read-only
+  `ops_status.py` at resume was first run inside the network-blocked sandbox;
+  its “39 collectors never reported” line was an unreadable live ledger, not a
+  production fact. The required unrestricted re-run established that all 40
+  due collectors have reported at least once and current main CI is green. It
+  also established facts the release must not hide: 16 represented-country
+  disclosure regimes are still unclassified; the only measured non-US
+  official-total shares are Taiwan 0%, UK 15.8%-26.2% and Estonia 23.6%; five
+  old collector starts have no matching finish; GDELT has abandoned windows on
+  all 15 measured runs; and live `figures_agree_across_surfaces` is FAILING
+  (home 613,051 vs press 608,845, with the home reconciliation absent). This
+  tracker projects $7.11/month under its new $10 cap while the shared
+  OpenRouter account is burning about $29/month, principally
+  unattributed/other-tracker activity.
+  The local private competitor benchmark is absent on this machine, so its
+  current ranking evidence is UNKNOWN. **Next safe steps:** refresh origin and
+  CI, separate genuine collector observability gaps from stale declarations,
+  complete all code/test/documentation improvements possible here, prepare the
+  exact live correction/deploy sequence, and keep claims below what production
+  evidence supports. If this session stops, resume from this paragraph and do
+  not assume any production write occurred merely because a dry run passed.
 - **VERSION CLAIMED (2026-09-07): 2.20.176 - source-backed count integrity and
   the false Applied Aerospace 4,320-worker row.** Codex read the baton as FREE
   on `main` (`ae759cf`) and took it in the isolated worktree
@@ -40,7 +66,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   and require seven clean runs plus fourteen clean days for the GDELT recovery
   claim. Baton released for the owner; do not reuse 2.20.176.
   Local note: `stash@{0}` is the pre-rebase duplicate created to move this
-  work onto `776cde1`; the clean committed branch at `cf6e866` supersedes it.
+  work onto `776cde1`; the clean committed branch at `58f8f75` supersedes it.
   Compare before dropping if cleanup is desired.
 - **NO VERSION CLAIMED (2026-09-06): #243 - headline_containment could not
   report a finding, and the -39,292 was never an AI reclassification.** The
