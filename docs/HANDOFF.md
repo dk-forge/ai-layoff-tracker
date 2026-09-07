@@ -6,6 +6,22 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Codex (2026-09-07): complete top-three TDD program.** Dakota
+  explicitly authorized the full program, including code, tests, documentation,
+  pushes, merges and production verification. Worktree:
+  `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
+  branch: `codex/top3-tdd`; starting point: `origin/main` at `4c310d0`.
+  Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
+  20/20 data-integrity invariants pass; all 40 declared due collectors have
+  reported. Work must begin with the two red scheduled workflows
+  (`Cross-source dedup`, HTTP 503; `Reconcile US AI announcements with Survey`,
+  empty URL), then GDELT's abandoned windows, before product work. Remaining
+  measured program gates: six orphaned run starts, 16 unclassified country
+  regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,
+  the citation-page fallback header, and an unavailable local-only competitor
+  benchmark. The $10 tracker allowance projects $7.11/month; shared-account
+  spend outside this repo remains out of scope. Use red-test-first changes,
+  green CI, SHA-matched deploys, live read-back, and keep this baton current.
 - **SHIPPED / BATON RELEASED by Codex (2026-09-07): 2.20.176 source-backed
   headcounts, date-basis copy and the $10 tracker cap are live.** Dakota
   explicitly authorized publishing the private branch, merging after green CI
