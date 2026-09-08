@@ -32,6 +32,7 @@ Pure stdlib, no keys, read-only.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import ssl
 import sys
@@ -50,12 +51,23 @@ PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 
 @dataclass(frozen=True)
 class Requirement:
-    """One record that must exist, and what makes it the right record."""
+    """One record that must exist, and what makes it the right record.
+
+    ``sha256`` pins the key material of a record whose VALUE matters, not just
+    its presence. A DKIM key is the case: the record can be present, well
+    formed, and still be the wrong key, at which point every message it signs
+    fails. A pinned fingerprint turns that into a FAIL instead of a mystery.
+
+    A deliberate key rotation will fail this check. That is the intent: the
+    rotation is then confirmed by a human and the pin updated with --pin,
+    rather than a silent swap nobody notices.
+    """
 
     name: str
     kind: str
     must_contain: str
     why: str
+    sha256: str = ""
 
 
 #: The protected set. Each entry is here because something breaks quietly
@@ -82,6 +94,17 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "include:spf.brevo.com",
         "The reader digest sends through Brevo. Losing this quarantines the "
         "subscriber newsletter, not the spammers.",
+    ),
+    Requirement(
+        "default._domainkey.asktherecruiter.com",
+        "TXT",
+        "p=MIIBIjANBgkq",
+        "The HOST's outbound signing key, for mail sent by the site itself. "
+        "Confirmed on 2026-09-08 to have survived the hosting migration intact "
+        "(cPanel validates it against the private key the new server holds), "
+        "which is why it was NOT replaced. Its Cloudflare comment field wrongly "
+        "says 'resend'; go by the selector, never the comment.",
+        "b43de228b49f358e",
     ),
     Requirement(
         "_dmarc.asktherecruiter.com",
@@ -116,9 +139,28 @@ def check_one(req: Requirement) -> tuple[str, str]:
     if not records:
         return FAIL, "no record published"
     joined = " ".join(records)
-    if req.must_contain.lower() in joined.lower():
-        return PASS, ""
-    return FAIL, f"published but missing {req.must_contain!r}"
+    if req.must_contain.lower() not in joined.lower():
+        # A placeholder counts as missing, and says so in those words. On
+        # 2026-09-08 a sibling domain was found publishing the literal string
+        # "p=REPLACE_WITH_BLUEHOST_KEY", so its mail had never once been
+        # signed. The host's own validator called that "problems exist".
+        if "replace_with" in joined.lower() or "your_key" in joined.lower():
+            return FAIL, "record is an unfilled PLACEHOLDER, not a key"
+        return FAIL, f"published but missing {req.must_contain!r}"
+    if req.sha256:
+        actual = _key_fingerprint(joined)
+        if actual != req.sha256:
+            return FAIL, (
+                f"key CHANGED: pinned {req.sha256}, published {actual}. "
+                f"If this was a deliberate rotation, re-pin with --pin"
+            )
+    return PASS, ""
+
+
+def _key_fingerprint(record: str) -> str:
+    """A short, stable fingerprint of a DKIM record's key material."""
+    key = record.replace(" ", "").split("p=", 1)[-1]
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
 def report() -> int:
@@ -141,5 +183,20 @@ def report() -> int:
     return worst
 
 
+def pin() -> int:
+    """Print the fingerprint of every pinned record, for --pin after a
+    deliberate rotation. Prints; never edits the file itself, because a pin
+    that updates itself protects nothing."""
+    for req in REQUIREMENTS:
+        if not req.sha256:
+            continue
+        records, err = _resolve(req.name, req.kind)
+        if not records:
+            print(f"    {req.name}: could not read ({err or 'no record'})")
+            continue
+        print(f"    {req.name}: {_key_fingerprint(' '.join(records))}")
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(report())
+    sys.exit(pin() if "--pin" in sys.argv else report())
