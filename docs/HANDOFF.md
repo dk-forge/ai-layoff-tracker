@@ -59,7 +59,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 
   **Current red-first batch (P0 data integrity):** branch
   `codex/top3-dedup-integrity` is rebased onto current `origin/main` at
-  `711b65b`; implementation commit `adb32dc` is one commit ahead.
+  `84bc8e1`; the rebased implementation commits are `0781655` and `637c1d3`.
   A fresh live audit also found `headline_containment` failing after the eight
   reviewed merges in dedup run `34204171256`; those rows are now enumerated in
   its log. Treat the live number as wrong until the 41,575-job net movement is
@@ -86,7 +86,11 @@ holder, so the start-of-session ritual surfaces it automatically.
   would otherwise execute zero. Main independently merged that canonical repair
   in PR `#288`, so the rebase retained it rather than duplicating a second test
   harness. The unittest runner executes 8/8 and the 83-test affected set is
-  green; this release remains red until the updated PR reruns clean.
+  green. After the rebase, PR `#289` run `34270355326` passed all four full
+  shards (`rest`, `rest-2`, `rendered-1`, `rendered-2`); both comparison guards
+  and the version guard also passed. Main then advanced by PR `#290`'s
+  Cloudflare-52x integrity repair; that non-overlapping incident record and
+  code are retained in the current rebase, whose fresh CI is still required.
   Still required: green CI/merge/deploy, dry-run and apply the
   correction, move Dow/Stellantis report links, and live integrity read-back.
   Remaining

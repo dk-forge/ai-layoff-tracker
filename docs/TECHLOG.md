@@ -131,7 +131,12 @@ this alone would make the module import but execute **zero** tests: unittest
 does not discover free functions. Main independently merged the canonical
 `TestCase` conversion in PR `#288`; the rebase retained that implementation,
 the unittest runner executes all 8 guards, and the affected 83-test set passes.
-The first run stays recorded as red; the updated run must be green before merge.
+The first run stays recorded as red. After rebasing onto `aaa1278`, PR `#289`
+run `34270355326` passed all four full-suite shards; its two comparison guards
+and version guard passed as well. Main subsequently advanced by PR `#290`'s
+Cloudflare-52x integrity repair; the current `84bc8e1` rebase retains both
+incident records and requires one fresh CI run before merge. Production
+correction gates remain after that.
 
 ## 2026-09-08 - one Bluehost browser handshake broke every host client differently (workflow-only, branch)
 
