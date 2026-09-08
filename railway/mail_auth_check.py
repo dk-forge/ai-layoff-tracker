@@ -107,6 +107,17 @@ REQUIREMENTS: tuple[Requirement, ...] = (
         "b43de228b49f358e",
     ),
     Requirement(
+        "brevo2._domainkey.asktherecruiter.com",
+        "TXT",
+        "p=",
+        "The reader newsletter's DKIM key, published as a CNAME into Brevo. "
+        "PROVEN load-bearing by Google's DMARC aggregate report for 2026-09-07: "
+        "every Brevo message passed DMARC on this selector and FAILED SPF "
+        "alignment (envelope domain gg.d.sender-sib.com), so DKIM is the only "
+        "thing carrying the subscriber digest. Lose it and enforcement "
+        "quarantines the readers' mail, not a spammer's.",
+    ),
+    Requirement(
         "_dmarc.asktherecruiter.com",
         "TXT",
         "v=DMARC1",
