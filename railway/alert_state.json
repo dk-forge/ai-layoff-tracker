@@ -52,12 +52,17 @@
     }
   ],
   "open": {
+    "mailbox-janitor:main:147a366b787e9eb0": {
+      "first": 1788879925,
+      "last": 1788879925,
+      "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
+    },
     "tests:main:84c6c760add42cf9": {
       "first": 1788874108,
       "last": 1788874108,
       "subject": "CI RED: Tests \u2014 ModuleNotFoundError: No module named 'pytest'"
     }
   },
-  "updated_at": "2026-09-08T15:04:09+00:00",
+  "updated_at": "2026-09-08T15:05:25+00:00",
   "version": 1
 }
