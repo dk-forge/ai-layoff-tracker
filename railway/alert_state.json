@@ -57,12 +57,17 @@
       "last": 1788857418,
       "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.177/e6548e7b14d5d541 after 600s. The origin may be correct while a shared cache serves a superseded build,"
     },
+    "deploy-wordpress-plugin:main:9d5276030025b73c": {
+      "first": 1788857687,
+      "last": 1788857687,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+    },
     "tests:main:7ba8f6d0b4896be7": {
       "first": 1788856966,
       "last": 1788856966,
       "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-08T08:50:19+00:00",
+  "updated_at": "2026-09-08T08:54:47+00:00",
   "version": 1
 }
