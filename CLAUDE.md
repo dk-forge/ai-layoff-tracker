@@ -116,6 +116,23 @@ still:
 
 **Cloud/remote sessions:** read [docs/CLOUD-SESSION.md](docs/CLOUD-SESSION.md) — it is the fully self-contained operating guide (local memories don't travel to the cloud; that doc carries everything). ops_status.py also prints the **handoff baton** — if another session HOLDS it, do NOT edit ([docs/HANDOFF.md](docs/HANDOFF.md)).
 
+**THREE DAILY CHECKS GUARD MAIL AND NOTIFICATIONS, AND THEY REPORT THEMSELVES.**
+Added 2026-09-08 with the hosting migration. `mail-auth-watch.yml` re-reads the
+protected DNS records our own mail rests on (the DKIM keys are pinned by
+fingerprint, so a silent swap is a FAIL, not a pass). `dmarc-report-check.yml`
+reads the report mailbox over IMAP and emails ONCE, through ops_notify's
+dedupe, when enforcement becomes safe. `mailbox-janitor.yml` sweeps the two
+notification mailboxes, escalates what matters and clears past a 14-day
+window. All three are free (public repo) and land in `ops_status [4]` when red.
+
+**Do NOT add "check the mailboxes" to the session ritual.** On 2026-09-08 that
+mailbox held 2,106 unread messages and every problem in it -- a schema error, a
+clipped model id, a crashing cron -- was ALREADY FIXED, some months earlier.
+All three were settled in minutes from Sentry and the GitHub API, which serve
+the same facts as structured data. An email is a lagging, lossy copy of a
+signal we already have; the mailbox is swept so it cannot fill and reject mail,
+and so anything genuinely NEW is escalated. It is not a place to go looking.
+
 ## Read these before changing anything
 | Doc | What it holds |
 |---|---|
