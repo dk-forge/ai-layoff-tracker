@@ -1,3 +1,40 @@
+## 2026-09-08 - optional meant broken, and a deploy collision looked like failed dedup
+
+**Class:** novel
+**Guard:** `railway/tests/test_survey_reconcile.py`, `railway/tests/test_job_deferrals.py`
+
+This is `novel` because the existing vocabulary has no class for collapsing
+intentional absence, transient unavailability and hard refusal into one red
+state; it is the inverse of `absent-read-as-ok`, not an instance of it.
+
+Two red scheduled workflows represented different failures and therefore need
+different truthful outcomes.
+
+The Survey reconciliation is deliberately dormant when its private feed and
+reviewed historical manifest are not configured. The workflow said that; the
+worker did not. It called `requests.get("")`, raised `MissingSchema`, and made
+intentional absence indistinguishable from a broken configured comparator. The
+worker now returns a machine-readable `ABSENT` result without any fetch when
+both inputs are empty. A non-empty but unusable manifest remains non-zero, so a
+bad secret cannot turn into a silent pass.
+
+Cross-source dedup failed while WordPress returned HTTP 503 during deployment
+maintenance. Its first host read used a private retry loop rather than the
+repository's shared host-call policy, so it could neither write the deferral
+ledger nor distinguish a restarting host from a real refusal. The read now uses
+`host_call.get_json`; `main()` records a transient deferral and exits zero, but
+still exits non-zero for a 403 or another non-transient answer. The workflow has
+`contents: write` and always commits the deferral ledger. The third consecutive
+deferral therefore remains red under the shared policy: tolerance cannot become
+an unlimited silent stop.
+
+TDD proof first reproduced the empty-URL fetch, the unrecorded 503 failure and
+the missing workflow ledger step. After the change, five focused checks passed,
+including malformed-config and 403 counterexamples. The broader affected set
+passed **216 tests, 435 subtests**, with two intentional skips. `git diff
+--check` passed. No plugin file, source registry, published entry or live total
+changed, so there is no WordPress version or data migration in this batch.
+
 ## 2026-09-07 - an SEC dollar figure became 4,320 workers; completed-month copy compared dates to the wrong boundary; the $10 owner cap was still $14 (2.20.176, branch)
 
 **Class:** novel

@@ -34,6 +34,8 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 from unittest import mock
 
@@ -138,6 +140,11 @@ class _JobCase(unittest.TestCase):
                 payload = {}
             return _Response(status, payload, body)
 
+        def urlopen(request, *a, **kw):
+            url = getattr(request, "full_url", str(request))
+            raise urllib.error.HTTPError(
+                url, status, body, {}, io.BytesIO(body.encode()))
+
         # `create=True` because sibling test modules install a SimpleNamespace
         # stand-in for `requests` in sys.modules, and under `unittest discover`
         # whichever ran first is the module this one gets.
@@ -146,6 +153,7 @@ class _JobCase(unittest.TestCase):
                 mock.patch.object(requests, "post", respond, create=True), \
                 mock.patch.object(requests, "RequestException", Exception,
                                   create=True), \
+                mock.patch.object(urllib.request, "urlopen", urlopen), \
                 mock.patch.object(http_retry, "requests", requests), \
                 mock.patch("time.sleep", lambda _s: None), \
                 mock.patch.object(http_retry.time, "sleep", lambda _s: None):
@@ -255,6 +263,11 @@ class SurveyReconcile(_JobCase):
                "ai_jobs_month": 100, "ai_jobs_ytd": 1000}]})}
 
 
+class DedupeLLM(_JobCase):
+    """The daily deep scan must survive the deploy maintenance window too."""
+    module, job = "dedupe_llm", "dedupe-llm"
+
+
 class PartialImportsStayLoud(unittest.TestCase):
     """The fail-loud rule, stated where it is easiest to get wrong.
 
@@ -335,6 +348,7 @@ class TheWorkflowsRecordWhatWasDeferred(unittest.TestCase):
         "canonical-event-migrate.yml": "canonical-event-migrate",
         "erm-import.yml": "erm-import",
         "survey-reconcile.yml": "survey-reconcile",
+        "dedupe-llm.yml": "dedupe-llm",
         "reason-backfill.yml": "reason-backfill",
     }
 
@@ -381,6 +395,7 @@ class TheWorkflowsRecordWhatWasDeferred(unittest.TestCase):
             "canonical-event-migrate.yml": "canonical_event_migrate",
             "erm-import.yml": "erm_import",
             "survey-reconcile.yml": "survey_reconcile",
+            "dedupe-llm.yml": "dedupe_llm",
             "reason-backfill.yml": "reason_backfill",
         }
         for name, module_name in modules.items():

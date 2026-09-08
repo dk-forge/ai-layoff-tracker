@@ -307,6 +307,25 @@ def _run():
     year = int(os.environ.get("BENCHMARK_YEAR") or date.today().year)
     allowed = float(os.environ.get("SURVEY_ALLOWED_VARIANCE") or "0.10")
     fail_on_gap = os.environ.get("SURVEY_FAIL_ON_GAP", "").lower() in {"1", "true", "yes"}
+    # This comparator is intentionally optional because its source data must
+    # stay in repository secrets.  An unconfigured optional job is ABSENT, not
+    # a request to fetch an empty URL.  Test the raw secret as well as the
+    # parsed manifest: a non-empty but malformed secret must continue to fail
+    # loudly below instead of being mistaken for intentional dormancy.
+    historical_configured = bool(os.environ.get("SURVEY_BENCHMARK_JSON", "").strip())
+    if not FEED.strip() and not historical_configured:
+        print(json.dumps({
+            "year": year,
+            "state": "ABSENT",
+            "reports_retained": 0,
+            "coverage_alert": False,
+            "reason": ("SURVEY_FEED_URL and SURVEY_BENCHMARK_JSON are not "
+                       "configured; optional reconciliation is dormant"),
+        }, indent=2))
+        return 0
+    if historical_configured and not HISTORICAL_REPORTS:
+        print("SURVEY_BENCHMARK_JSON is configured but contains no usable report manifest")
+        return 1
     payloads = [payload_for_report(site, report, allowed) for report in reports_for_year(year)]
     for payload in payloads:
         publish_record(site, payload)
