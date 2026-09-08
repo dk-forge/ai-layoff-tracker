@@ -130,6 +130,8 @@ jobs:
           # ops_notify.configured() read False here. tests/test_ops_sender.py
           # now names this job.
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
           OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
         run: |
           for attempt in 1 2 3; do
