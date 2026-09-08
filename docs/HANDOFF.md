@@ -10,19 +10,29 @@ holder, so the start-of-session ritual surfaces it automatically.
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
   `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/top3-tdd`; starting point: `origin/main` at `4c310d0`.
+  current branch: `codex/top3-citation`; initial starting point was
+  `origin/main` at `4c310d0`.
   Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
   20/20 data-integrity invariants pass; all 40 declared due collectors have
   reported. Work must begin with the two red scheduled workflows
   (`Cross-source dedup`, HTTP 503; `Reconcile US AI announcements with Survey`,
   empty URL), then GDELT's abandoned windows, before product work. **First TDD
-  batch is complete locally:** the optional benchmark now reports `ABSENT`
+  batch is shipped and production-proved:** the optional benchmark now reports `ABSENT`
   without a fetch when both private inputs are unconfigured, while malformed
   configuration stays red; dedup now uses the shared host-call deferral policy,
   distinguishes transient 503 from a hard 403, and its workflow always commits
   the ledger. Five focused checks and the broader affected set passed (216
-  tests, 435 subtests, two skips). Not yet pushed or production-proved; next is
-  PR/CI, dispatch both workflows, read back ops status, then citation pages.
+  tests, 435 subtests, two skips). PR `#283` merged as `cc74402`; post-merge
+  runs `34204173750` and `34204171256` both passed. The former printed explicit
+  `ABSENT`; the latter reviewed 60 of 123 candidate clusters, merged eight
+  duplicate rows and skipped/deferred zero, with the ledger step green.
+
+  **Citation-page TDD is complete locally on 2.20.177:** the last direct
+  `get_header()` route now uses the shared real block-theme shell, its record is
+  a semantic `<main>` with one template-owned H1, the 257-test related static
+  surface passed, and all 44 rendered phone/desktop tests passed with PHP lint.
+  Not yet pushed, deployed or live-verified. Next: PR/CI, SHA-matched deploy,
+  then measure real navigation/H1/320px geometry before moving to GDELT.
   Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
   regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,

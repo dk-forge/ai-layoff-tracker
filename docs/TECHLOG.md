@@ -1,3 +1,33 @@
+## 2026-09-08 - citation pages used WordPress's legacy fallback instead of the site's header (2.20.177, branch)
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_facet_pages.py`
+
+The individual source-citation template was the last plugin-routed content page
+still calling `get_header()` and `get_footer()` directly. On this site's block
+theme there is no `header.php`, so core fell through to its legacy theme-compat
+shim. The measured live result was not cosmetic: roughly 1,800 citation pages
+had no real site navigation, a stray site-name H1 above the entry H1, and a
+337.45px brand link inside a 320px viewport. Company and facet pages had already
+fixed the same failure through `alt_render_page_header()` and
+`alt_render_page_footer()`; the entry template was a second route that drifted.
+
+The entry template now uses that shared shell. Block themes receive their real
+header and footer template parts while classic themes retain their normal
+`get_header()`/`get_footer()` path. Its record content is now a semantic
+`<main>` with exactly one template-owned H1. `wp_head()` and `wp_footer()` still
+run, so the SEO plugin, canonical metadata, assets and scripts keep their normal
+hooks. The fix changes no data and no citation wording.
+
+TDD first extended the shell invariant to the citation template and reproduced
+the failure. After the change, the related non-browser surface passed 257 tests
+with 21 intentional skips and 31 subtests. The rendered phone/desktop surface
+then passed all **44 tests** with Chrome access, including 375px citation tap
+targets, signup fit, contrast and overflow checks. Both changed PHP files linted
+cleanly and `git diff --check` passed. Production navigation, one-H1 and 320px
+geometry remain release gates; this entry records a branch result, not a live
+claim.
+
 ## 2026-09-08 - optional meant broken, and a deploy collision looked like failed dedup
 
 **Class:** novel
@@ -34,6 +64,15 @@ including malformed-config and 403 counterexamples. The broader affected set
 passed **216 tests, 435 subtests**, with two intentional skips. `git diff
 --check` passed. No plugin file, source registry, published entry or live total
 changed, so there is no WordPress version or data migration in this batch.
+
+**Production proof.** PR `#283` passed the version guard, both comparison
+checks and all four test shards, then squash-merged as `cc74402`. Manual Survey
+run `34204173750` succeeded and printed the explicit `ABSENT` state with zero
+reports and no fetch. Manual dedup run `34204171256` succeeded over 21,757
+entries and 123 candidate clusters: 60 were reviewed, eight duplicate rows were
+merged, zero clusters were skipped, zero batches were deferred, and the
+deferral ledger step completed with no pending record. Both former red paths
+therefore have direct post-fix production evidence.
 
 ## 2026-09-07 - an SEC dollar figure became 4,320 workers; completed-month copy compared dates to the wrong boundary; the $10 owner cap was still $14 (2.20.176, branch)
 

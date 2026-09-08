@@ -23,6 +23,7 @@ API_PHP = (PLUGIN / "includes/api.php").read_text()
 BOOTSTRAP = (PLUGIN / "ai-layoff-tracker.php").read_text()
 COMPANY = (PLUGIN / "includes/company-directory.php").read_text()
 COMPANY_TEMPLATE = (PLUGIN / "templates/page-company-directory.php").read_text()
+ENTRY_TEMPLATE = (PLUGIN / "templates/single-layoff.php").read_text()
 LAYOFFS_JS = (PLUGIN / "assets/layoffs.js").read_text()
 
 
@@ -465,12 +466,17 @@ class DocumentShellTests(unittest.TestCase):
     the body content.
     """
 
-    def test_both_templates_use_the_shared_shell(self):
-        for template in (TEMPLATE, COMPANY_TEMPLATE):
+    def test_every_plugin_routed_content_page_uses_the_shared_shell(self):
+        for template in (TEMPLATE, COMPANY_TEMPLATE, ENTRY_TEMPLATE):
             self.assertIn("alt_render_page_header();", template)
             self.assertIn("alt_render_page_footer();", template)
             self.assertNotIn("\nget_header();", template)
             self.assertNotIn("get_footer(); ?>", template)
+
+    def test_entry_content_has_one_primary_heading_inside_main(self):
+        self.assertEqual(ENTRY_TEMPLATE.count("<h1"), 1)
+        self.assertIn('<main class="alt-wrap alt-single">', ENTRY_TEMPLATE)
+        self.assertIn("</main>", ENTRY_TEMPLATE)
 
     def test_block_themes_get_the_real_header_and_footer_parts(self):
         self.assertIn("block_template_part('header');", BOOTSTRAP)

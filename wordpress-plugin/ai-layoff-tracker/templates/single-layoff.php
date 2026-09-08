@@ -2,7 +2,7 @@
 /** Single layoff entry page, /blog/layoff/{company}-{date}. */
 if (!defined('ABSPATH')) exit;
 
-get_header();
+alt_render_page_header();
 
 $id = get_the_ID();
 $e  = function_exists('alt_entry_to_array') ? alt_entry_to_array($id) : array();
@@ -24,7 +24,7 @@ $cite = sprintf(
     $e['source_name'] ?: 'see link'
 );
 ?>
-<div class="alt-wrap alt-single">
+<main class="alt-wrap alt-single">
     <a class="alt-back" href="<?php echo esc_url($tracker); ?>">← All layoffs</a>
 
     <h1 class="alt-single-title">
@@ -105,6 +105,5 @@ $cite = sprintf(
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('entry'); ?>
-</div>
-<?php
-get_footer();
+</main>
+<?php alt_render_page_footer(); ?>
