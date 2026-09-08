@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "apply-a-signed-off-correction:main:b8426f299208ae51": {
+      "first": 1788897798,
+      "last": 1788897798,
+      "subject": "CI RED: Apply a signed-off correction \u2014 restore failed: HTTP 404 {\"code\":\"rest_no_route\",\"message\":\"No route was found matching the URL and request method.\",\"data\":{\"status\":404}}"
+    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1788879925,
       "last": 1788879925,
@@ -63,6 +68,6 @@
       "subject": "CI RED: Mailbox janitor \u2014 The mailbox could not be read. UNKNOWN, not a pass."
     }
   },
-  "updated_at": "2026-09-08T16:10:52+00:00",
+  "updated_at": "2026-09-08T20:03:18+00:00",
   "version": 1
 }
