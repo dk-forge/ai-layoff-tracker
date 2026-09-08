@@ -67,6 +67,11 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "deploy-wordpress-plugin:main:04c6efdddc7c8fbc": {
+      "first": 1788908535,
+      "last": 1788908535,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.179/4b9648229ee116f4 after 600s. The origin may be correct while a shared cache serves a superseded build,"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -88,6 +93,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: Worldwide jobs, all time: -46,400 jobs over 1.0d on -2 entries (20,691,203 -> 20,644,803). The rows th"
     }
   },
-  "updated_at": "2026-09-08T20:39:45+00:00",
+  "updated_at": "2026-09-08T23:02:15+00:00",
   "version": 1
 }
