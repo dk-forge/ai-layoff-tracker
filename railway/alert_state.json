@@ -71,8 +71,13 @@
       "first": 1788880314,
       "last": 1788880314,
       "subject": "CI RED: Mailbox janitor \u2014 The mailbox could not be read. UNKNOWN, not a pass."
+    },
+    "tests:live.data:7771c627fc3b103d": {
+      "first": 1788898203,
+      "last": 1788898203,
+      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: Worldwide jobs, all time: -46,400 jobs over 1.0d on -2 entries (20,691,203 -> 20,644,803). The rows th"
     }
   },
-  "updated_at": "2026-09-08T20:09:49+00:00",
+  "updated_at": "2026-09-08T20:10:04+00:00",
   "version": 1
 }
