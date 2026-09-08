@@ -33,6 +33,9 @@ WHAT IS PINNED HERE.
     log decidable: it means the route did not resolve, never that the token
     was rejected.
   * and the LIVE routes answer. Unreachable SKIPS loudly; a 404 FAILS.
+  * a Cloudflare 52x is UNKNOWN, because the edge never got an answer out of
+    the origin and so nothing was ever asked about the route. Bounded: an
+    origin TLS failure (525/526) is a durable misconfiguration and stays FAIL.
 
 The live half skips rather than passes when the site cannot be reached, and
 `ops_status.py [1c]` makes the opposite call on the same result, reporting
@@ -149,6 +152,43 @@ class TheClassifierCannotSmoothOverAFailure(unittest.TestCase):
         result, _ = self._check_against({("POST", "unsubscribe"): (503, "", b"")})
         self.assertEqual(UNKNOWN, result.verdict)
         self.assertIn("503", result.detail)
+
+    def test_a_cloudflare_522_is_unknown_not_fail(self):
+        # 2026-09-08: the site moved to a new origin behind Cloudflare and one
+        # Tests run read `HTTP 522: the route did not answer.` The origin had
+        # timed out for a few seconds during the cutover; the routes were
+        # answering 302 before and after. A 52x is minted by the EDGE, so
+        # WordPress never saw the request and the response is not a statement
+        # about the route at all. Calling that FAIL blames a healthy route for
+        # a transport blip.
+        result, _ = self._check_against({("GET", "confirm"): (522, "", b"")})
+        self.assertEqual(UNKNOWN, result.verdict)
+        self.assertFalse(result.ok)
+        self.assertIn("522", result.detail)
+        self.assertIn("NOT a pass", result.detail)
+
+    def test_every_edge_to_origin_status_is_unknown_on_every_probe(self):
+        # 520/521/523/524 are the same fact as 522 and arrive from the same
+        # hop, so none of them may resolve differently.
+        for status in (520, 521, 522, 523, 524):
+            for key in (("GET", "confirm"), ("GET", "unsubscribe"),
+                        ("POST", "unsubscribe")):
+                result, _ = self._check_against({key: (status, "", b"")})
+                self.assertEqual(UNKNOWN, result.verdict,
+                                 f"{key} answering {status} did not read UNKNOWN")
+                self.assertIn(str(status), result.detail)
+
+    def test_an_origin_tls_failure_is_still_a_hard_failure(self):
+        # THE BOUND ON THE ABOVE. 525 and 526 are the Cloudflare-to-origin TLS
+        # handshake: a durable misconfiguration a human has to clear, not a
+        # blip that clears itself. The 2026-09-08 move to Full (strict) with an
+        # Origin CA certificate is exactly what can produce one, and a
+        # subscriber route that is dark for days because a certificate expired
+        # must not sit behind a skip.
+        for status in (525, 526):
+            result, _ = self._check_against({("GET", "confirm"): (status, "", b"")})
+            self.assertEqual(FAIL, result.verdict,
+                             f"an origin TLS failure ({status}) stopped being loud")
 
     def test_the_healthy_shape_passes_and_probes_every_route(self):
         result, calls = self._check_against({})

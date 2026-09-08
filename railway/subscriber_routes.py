@@ -44,7 +44,10 @@ A fresh one is drawn per run so that no shared cache in front of the site can
 answer a later probe from an earlier verdict.
 
 PASS / FAIL / UNKNOWN ARE THREE STATES. A probe that could not be made is
-UNKNOWN, never a pass. Absence of a signal is not a pass (CLAUDE.md).
+UNKNOWN, never a pass. Absence of a signal is not a pass (CLAUDE.md). That
+covers a socket that never opened, the deploy's own 503, and the Cloudflare
+52x family, which is the same fact one hop further out: the edge could not get
+an answer out of the origin, so nothing here was ever asked about the route.
 
 NOTHING IDENTIFYING IS READ, SENT OR PRINTED. The probe token is ours, no
 address is involved, no key is needed, and no response body is echoed.
@@ -66,6 +69,28 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 TIMEOUT_S = 25
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
+
+# Cloudflare mints these itself when it could not get a response out of the
+# origin at all: 520 unknown error, 521 origin refused, 522 connection timed
+# out, 523 origin unreachable, 524 origin timed out after connecting. The
+# request never reached WordPress, so the answer says nothing whatsoever ABOUT
+# the route. It is the same fact as a socket error one hop closer to us, which
+# this module already calls UNKNOWN, and it is uniform across every path on the
+# domain rather than specific to one. A route that is genuinely broken still
+# returns an origin status, so nothing real can hide behind this.
+#
+# DELIBERATELY NOT 525/526. Those are the Cloudflare-to-origin TLS handshake:
+# a durable server misconfiguration a human has to clear, not a blip. After the
+# 2026-09-08 move to ChemiCloud behind Full (strict) with an Origin CA
+# certificate, they are the single most likely real defect here, so they keep
+# failing loudly.
+_EDGE_TO_ORIGIN = {520, 521, 522, 523, 524}
+
+
+def _edge_detail(status):
+    return (f"HTTP {status}: Cloudflare could not get an answer out of the origin, "
+            "so no request reached the route. This is NOT a verdict on the route.")
+
 
 # 64 characters, drawn from an alphabet that is deliberately NOT hex. A minted
 # token is 64 hex characters, so no draw from this alphabet can ever equal one.
@@ -182,6 +207,8 @@ def check(site=SITE, token=None):
         elif status == 503:
             probes.append(Probe(label, UNKNOWN,
                                 "HTTP 503: site is in its deploy maintenance window."))
+        elif status in _EDGE_TO_ORIGIN:
+            probes.append(Probe(label, UNKNOWN, _edge_detail(status)))
         elif status >= 400:
             probes.append(Probe(label, FAIL, f"HTTP {status}: the route did not answer."))
         else:
@@ -212,6 +239,8 @@ def check(site=SITE, token=None):
         elif status == 503:
             probes.append(Probe(label, UNKNOWN,
                                 "HTTP 503: site is in its deploy maintenance window."))
+        elif status in _EDGE_TO_ORIGIN:
+            probes.append(Probe(label, UNKNOWN, _edge_detail(status)))
         else:
             probes.append(Probe(label, FAIL,
                                 f"HTTP {status}: a provider needs a bare 2xx here and may "
@@ -228,6 +257,8 @@ def check(site=SITE, token=None):
         if status == 503:
             probes.append(Probe(label, UNKNOWN,
                                 "HTTP 503: site is in its deploy maintenance window."))
+        elif status in _EDGE_TO_ORIGIN:
+            probes.append(Probe(label, UNKNOWN, _edge_detail(status)))
         elif status >= 400:
             probes.append(Probe(label, FAIL,
                                 f"HTTP {status}: a link already sent to a real address "
