@@ -16,11 +16,10 @@ from __future__ import annotations
 
 import io
 import json
+import unittest
 import urllib.error
 
-import pytest
-
-from railway.corrections_reader import (
+from corrections_reader import (
     REMOVING_ACTIONS,
     DisclosedRemovals,
     fetch_removals,
@@ -49,89 +48,85 @@ def _opener(payload, status=200):
     return _open
 
 
-def test_only_removing_actions_are_counted() -> None:
-    """Enrichment and field corrections do not remove jobs from the corpus.
+class TheLogNarrowsButNeverClears(unittest.TestCase):
 
-    Mutation guard: drop the REMOVING_ACTIONS filter and this fails, because
-    the 51 enriched and 3 corrected rows join the total and the guard starts
-    pointing at a backfill job as the cause of a headline drop.
-    """
-    r = fetch_removals("https://example.test/blog", "2026-09-07", opener=_opener(_LOG))
-    assert r.consulted is True
-    assert r.rows == 9, "expected 8 merged + 1 removed, not the enrichment rows"
-    assert {e["action"] for e in r.entries} <= REMOVING_ACTIONS
+    def test_only_removing_actions_are_counted(self) -> None:
+        """Enrichment and field corrections do not remove jobs from the corpus.
 
+        Mutation guard: drop the REMOVING_ACTIONS filter and this fails, because
+        the 51 enriched and 3 corrected rows join the total and the guard starts
+        pointing at a backfill job as the cause of a headline drop.
+        """
+        r = fetch_removals("https://example.test/blog", "2026-09-07", opener=_opener(_LOG))
+        assert r.consulted is True
+        assert r.rows == 9, "expected 8 merged + 1 removed, not the enrichment rows"
+        assert {e["action"] for e in r.entries} <= REMOVING_ACTIONS
 
-def test_an_unreachable_log_is_unknown_and_never_an_all_clear() -> None:
-    """The whole failure family this repo keeps digging out of.
+    def test_an_unreachable_log_is_unknown_and_never_an_all_clear(self) -> None:
+        """The whole failure family this repo keeps digging out of.
 
-    Mutation guard: make the except branch return consulted=True and this
-    fails, because a network blip would then read as "nothing was removed".
-    """
-    def _boom(req, timeout=None):
-        raise urllib.error.URLError("no route to host")
+        Mutation guard: make the except branch return consulted=True and this
+        fails, because a network blip would then read as "nothing was removed".
+        """
+        def _boom(req, timeout=None):
+            raise urllib.error.URLError("no route to host")
 
-    r = fetch_removals("https://example.test/blog", "2026-09-07", opener=_boom)
-    assert r.consulted is False
-    assert r.rows == 0
-    text = r.summary().lower()
-    assert "unknown" in text
-    assert "no removal" not in text, (
-        "an unreadable log must not be worded like an empty one"
-    )
+        r = fetch_removals("https://example.test/blog", "2026-09-07", opener=_boom)
+        assert r.consulted is False
+        assert r.rows == 0
+        text = r.summary().lower()
+        assert "unknown" in text
+        assert "no removal" not in text, (
+            "an unreadable log must not be worded like an empty one"
+        )
 
+    def test_an_empty_window_says_so_positively(self) -> None:
+        """Distinct from unreachable: here we DID look, and there was nothing."""
+        r = fetch_removals("https://example.test/blog", "2026-09-07",
+                           opener=_opener({"entries": []}))
+        assert r.consulted is True
+        assert "discloses NO removal" in r.summary()
 
-def test_an_empty_window_says_so_positively() -> None:
-    """Distinct from unreachable: here we DID look, and there was nothing."""
-    r = fetch_removals("https://example.test/blog", "2026-09-07",
-                       opener=_opener({"entries": []}))
-    assert r.consulted is True
-    assert "discloses NO removal" in r.summary()
+    def test_the_summary_never_claims_to_explain_the_move(self) -> None:
+        """It offers a candidate. The log holds rows, not job counts, so it cannot
+        do the arithmetic and must not sound as though it did."""
+        text = fetch_removals("https://example.test/blog", "2026-09-07",
+                              opener=_opener(_LOG)).summary()
+        assert "CANDIDATE" in text
+        assert "not a verdict" in text
+        for overclaim in ("explains the move", "accounts for", "therefore", "resolved"):
+            assert overclaim not in text.lower()
 
+    def test_the_disclosed_reason_reaches_the_reader(self) -> None:
+        """The point is that a human reads the cause without further digging."""
+        text = fetch_removals("https://example.test/blog", "2026-09-07",
+                              opener=_opener(_LOG)).summary()
+        assert "cross-source dedup" in text
+        assert "Source-verification audit" in text
 
-def test_the_summary_never_claims_to_explain_the_move() -> None:
-    """It offers a candidate. The log holds rows, not job counts, so it cannot
-    do the arithmetic and must not sound as though it did."""
-    text = fetch_removals("https://example.test/blog", "2026-09-07",
-                          opener=_opener(_LOG)).summary()
-    assert "CANDIDATE" in text
-    assert "not a verdict" in text
-    for overclaim in ("explains the move", "accounts for", "therefore", "resolved"):
-        assert overclaim not in text.lower()
+    def test_a_garbled_response_is_unknown_not_empty(self) -> None:
+        def _junk(req, timeout=None):
+            class _R(io.BytesIO):
+                def __enter__(self): return self
+                def __exit__(self, *a): return False
+            return _R(b"<html>not json</html>")
 
+        r = fetch_removals("https://example.test/blog", "2026-09-07", opener=_junk)
+        assert r.consulted is False
+        assert "unknown" in r.summary().lower()
 
-def test_the_disclosed_reason_reaches_the_reader() -> None:
-    """The point is that a human reads the cause without further digging."""
-    text = fetch_removals("https://example.test/blog", "2026-09-07",
-                          opener=_opener(_LOG)).summary()
-    assert "cross-source dedup" in text
-    assert "Source-verification audit" in text
+    def test_both_removing_actions_are_recognised(self) -> None:
+        for action in sorted(REMOVING_ACTIONS):
+            with self.subTest(action=action):
+                payload = {"entries": [{"date": "2026-09-08", "action": action,
+                                        "count": 2, "reason": "x"}]}
+                assert fetch_removals("https://e.test/blog", "2026-09-07",
+                                      opener=_opener(payload)).rows == 2
 
-
-def test_a_garbled_response_is_unknown_not_empty() -> None:
-    def _junk(req, timeout=None):
-        class _R(io.BytesIO):
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
-        return _R(b"<html>not json</html>")
-
-    r = fetch_removals("https://example.test/blog", "2026-09-07", opener=_junk)
-    assert r.consulted is False
-    assert "unknown" in r.summary().lower()
-
-
-@pytest.mark.parametrize("action", sorted(REMOVING_ACTIONS))
-def test_both_removing_actions_are_recognised(action: str) -> None:
-    payload = {"entries": [{"date": "2026-09-08", "action": action, "count": 2,
-                            "reason": "x"}]}
-    assert fetch_removals("https://e.test/blog", "2026-09-07",
-                          opener=_opener(payload)).rows == 2
-
-
-def test_a_negative_or_absent_count_cannot_inflate_the_total() -> None:
-    payload = {"entries": [
-        {"date": "2026-09-08", "action": "merged", "count": -5, "reason": "x"},
-        {"date": "2026-09-08", "action": "removed", "reason": "x"},
-    ]}
-    assert fetch_removals("https://e.test/blog", "2026-09-07",
-                          opener=_opener(payload)).rows == 0
+    def test_a_negative_or_absent_count_cannot_inflate_the_total(self) -> None:
+        payload = {"entries": [
+            {"date": "2026-09-08", "action": "merged", "count": -5, "reason": "x"},
+            {"date": "2026-09-08", "action": "removed", "reason": "x"},
+        ]}
+        assert fetch_removals("https://e.test/blog", "2026-09-07",
+                              opener=_opener(payload)).rows == 0
