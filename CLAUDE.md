@@ -172,9 +172,22 @@ still:
 4. **Self-running loop:** every source (news, WARN, SEC, ERM, + dormant ones — supplemental
    news, distress/bankruptcy, foreign filings) funnels into the SAME `extract_layoff_data`
    → `post_to_wordpress` pipeline, so all guards apply once. `report_source_health(...)`
-   feeds a ledger; the weekly **`health_digest.py`** emails info@asktherecruiter.com (via
+   feeds a ledger; the weekly **`health_digest.py`** emails the owner (via
    Resend since 2026-08-19, not the host it reports on) when a scraper breaks, with a
    **paste-ready fix instruction**.
+   **OPERATIONAL MAIL GOES TO `dak@dakotta.com`, NOT `info@asktherecruiter.com`,
+   AND THAT IS DELIBERATE (2026-09-08).** Two reasons, and neither is
+   preference. The alarm must not be reachable only through the thing it
+   monitors: sending alerts ABOUT asktherecruiter.com TO a mailbox ON
+   asktherecruiter.com restores exactly the dependency the 2026-08-19 move to
+   Resend removed, and the hosting migration made that concrete when that
+   mailbox went dark mid-cutover. Second, `info@` is a published contact
+   address that also receives newsletter and reader mail, so alarms arrived
+   filed among things that are not alarms — which is how an alert channel
+   stops being read. The destination is the repo variable `OPS_MAIL_TO`,
+   consumed by ci-alert, alert-drain, health-digest, ci-noise-report and
+   opsmail-selftest; `opsmail.DEFAULT_TO` remains the old address only as a
+   fallback for a checkout with no variable set. Do not "restore" it.
    So the human loop is: get email → paste one line here → fix the one scraper. Full
    "add a source / tune it / fix a breakage" guide is in **docs/RUNBOOK.md**.
 
