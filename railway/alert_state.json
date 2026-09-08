@@ -56,13 +56,8 @@
       "first": 1788857790,
       "last": 1788857790,
       "subject": "CI RED: Extract affected-role categories \u2014 requests.exceptions.HTTPError: 409 Client Error: Conflict for url: https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?roles_missin"
-    },
-    "tests:main:7ba8f6d0b4896be7": {
-      "first": 1788856966,
-      "last": 1788856966,
-      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-08T09:14:17+00:00",
+  "updated_at": "2026-09-08T09:15:59+00:00",
   "version": 1
 }
