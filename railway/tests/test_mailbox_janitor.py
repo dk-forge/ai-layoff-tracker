@@ -54,10 +54,22 @@ class _Conn:
     def select(self, box): return ("OK", [b"1"])
     def search(self, c, t): return ("OK", [b" ".join(self.map)])
 
-    def fetch(self, num, spec):
-        if num in self.unreadable:
-            return ("NO", None)
-        return ("OK", [(b"1", self.map[num])])
+    def fetch(self, spec, fields):
+        """Emulate a BATCHED fetch: "1,2,3" in, interleaved tuples out.
+
+        Real IMAP returns (b"<num> (BODY[...] {size}", payload) tuples with a
+        bare b")" separator between them, and the message id is only
+        recoverable from that metadata prefix. The double has to reproduce that
+        shape or the test proves nothing about the parsing.
+        """
+        nums = [n.encode() for n in spec.split(",")]
+        out = []
+        for n in nums:
+            if n in self.unreadable:
+                continue
+            out.append((b"%s (BODY[HEADER] {%d}" % (n, len(self.map[n])), self.map[n]))
+            out.append(b")")
+        return ("OK", out)
 
     def store(self, num, flags, value):
         self.deleted.append(num); return ("OK", [b""])
@@ -156,10 +168,8 @@ def test_a_dropped_connection_mid_sweep_deletes_nothing(monkeypatch) -> None:
     quietly. So a truncated sweep reports what it saw and deletes none of it.
     """
     class _Dropping(_Conn):
-        def fetch(self, num, spec):
-            if num == b"2":
-                raise OSError("EOF occurred in violation of protocol")
-            return super().fetch(num, spec)
+        def fetch(self, spec, fields):
+            raise OSError("EOF occurred in violation of protocol")
 
     msgs = [_msg("Run failed", "notifications@github.com", 40) for _ in range(3)]
     conn = _Dropping(msgs)

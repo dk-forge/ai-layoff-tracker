@@ -117,33 +117,52 @@ def sweep(host: str, user: str, password: str, retain_days: int,
             ids = (data[0] or b"").split()[:limit]
             total = len(ids)
             broke_early = False
-            for num in ids:
-                # A long single-session sweep of a mailbox with thousands of
-                # messages gets its connection dropped: measured as
-                # "EOF occurred in violation of protocol" against a mailbox of
-                # 2,106. A partial sweep is genuinely useful (the next run
-                # continues, and the retention window means nothing is lost),
-                # so a mid-sweep disconnect ends the loop and reports what was
-                # gathered rather than throwing the whole run away.
+            # ONE batched FETCH per chunk, not one per message. Measured
+            # 2026-09-08: fetching 400 messages individually had the server
+            # close the connection ("EOF occurred in violation of protocol")
+            # before the sweep finished, twice. A batched fetch of only the
+            # three header fields this needs is one round trip per hundred
+            # messages instead of one per message.
+            CHUNK = 100
+            fields = "(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])"
+            for i in range(0, len(ids), CHUNK):
+                chunk = ids[i:i + CHUNK]
+                spec = b",".join(chunk).decode()
                 try:
-                    typ, raw = m.fetch(num, "(BODY.PEEK[HEADER])")
+                    typ, raw = m.fetch(spec, fields)
                 except (imaplib.IMAP4.error, OSError, ssl.SSLError):
                     broke_early = True
                     break
-                if typ != "OK" or not raw or not raw[0]:
-                    unreadable += 1
+                if typ != "OK" or not raw:
+                    unreadable += len(chunk)
                     continue
-                msg = email.message_from_bytes(raw[0][1])
-                subject = str(msg.get("Subject") or "")
-                sender = str(msg.get("From") or "")
-                label = _classify(subject, sender)
-                classes[label] += 1
-                if _ESCALATE.search(subject) and len(escalate) < 25:
-                    escalate.append(subject[:120])
-                age = _age_days(msg, now)
-                # Undated, or newer than the window: leave it alone.
-                if age is not None and age > retain_days:
-                    deletable.append(num)
+                # A batched FETCH interleaves (metadata, bytes) tuples with
+                # bare separators. Pair each payload back to its message id
+                # from the metadata prefix, which is the only reliable link.
+                parsed = 0
+                for item in raw:
+                    if not isinstance(item, tuple) or len(item) < 2:
+                        continue
+                    meta = item[0] if isinstance(item[0], (bytes, bytearray)) else b""
+                    mnum = meta.split(b" ", 1)[0].strip() if meta else b""
+                    if not mnum.isdigit():
+                        continue
+                    parsed += 1
+                    msg = email.message_from_bytes(item[1])
+                    subject = str(msg.get("Subject") or "")
+                    sender = str(msg.get("From") or "")
+                    classes[_classify(subject, sender)] += 1
+                    if _ESCALATE.search(subject) and len(escalate) < 25:
+                        escalate.append(subject[:120])
+                    age = _age_days(msg, now)
+                    if age is not None and age > retain_days:
+                        deletable.append(mnum)
+                # Messages the server was asked for and did not return are
+                # UNREADABLE, not absent. Batching hides them unless the count
+                # is reconciled, and an unreadable message must never be
+                # deleted or quietly forgotten.
+                if parsed < len(chunk):
+                    unreadable += len(chunk) - parsed
             removed = 0
             if broke_early:
                 # Do not delete on a truncated pass. The counts are partial and
