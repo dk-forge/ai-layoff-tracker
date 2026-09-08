@@ -284,6 +284,61 @@ jobs:
             rm -f .maintenance;
           " || echo "maintenance flag already clear (or unreachable); WP self-clears it after 10 minutes"
 
+      # 2026-09-09: FOUR GREEN DEPLOYS SHIPPED NOTHING.  Live sat at 2.20.175
+      # (deployed 2026-09-07 15:17) while 2.20.176, .177, .178 and .179 each
+      # reported success and each logged "Transferring file" for every file in
+      # the plugin.  Nothing in this repo noticed, because every check that
+      # reads a version reads it from the LIVE SITE: `reader_freshness.py`
+      # proves the readers and the origin agree with each other, and
+      # `ops_status [1]` prints what the origin says.  Both are internally
+      # coherent while the repository and the origin disagree, which is the one
+      # comparison nobody was making.
+      #
+      # So read the bytes back off the server we just wrote to, and compare
+      # them to the bytes in this checkout.  A mirror that reports success into
+      # a host nobody reads cannot survive this step.  It also prints the
+      # RESOLVED ADDRESS of FTP_HOST -- an IP from public DNS, not a secret --
+      # because "which machine did this land on" is the first question when it
+      # fails, and the value of the secret itself is never printed.
+      - name: Verify the bytes we just wrote are the bytes we meant to write
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
+        run: |
+          set -euo pipefail
+          LOCAL_VER="$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" \
+            wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
+            | grep -oE '[0-9.]+$')"
+          echo "This checkout builds plugin $LOCAL_VER"
+          echo "FTP_HOST resolves to: $(getent hosts "$FTP_HOST" | awk '{print $1}' | paste -sd, - || echo 'UNRESOLVED')"
+
+          rm -f readback.php
+          timeout 90 lftp -c "
+            set cmd:fail-exit true;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 1;
+            set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            get -O . \"$REMOTE_DIR/ai-layoff-tracker.php\" -o readback.php;
+          "
+          REMOTE_VER="$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" readback.php | grep -oE '[0-9.]+$' || echo NONE)"
+          rm -f readback.php
+          echo "The server now holds plugin $REMOTE_VER"
+          if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
+            echo "::error::The upload reported success and did NOT land. This \
+              checkout is $LOCAL_VER; the file read back off the FTPS target is \
+              $REMOTE_VER. Either the mirror is writing to a host that no longer \
+              serves the site (check the resolved address printed above against \
+              the live origin), or the write is being reverted. Do NOT treat a \
+              green mirror as a deploy."
+            exit 1
+          fi
+          echo "Read-back matches: the server holds the file this commit built."
+
       - name: Verify the deployed tracker API
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog

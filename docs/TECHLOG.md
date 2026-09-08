@@ -1,3 +1,54 @@
+## 2026-09-09 - four green deploys shipped nothing, and every check that could have noticed was reading the wrong pair
+
+**Class:** guard-went-vacuous
+**Guard:** `.github/workflows/deploy-plugin.yml` step "Verify the bytes we just wrote are the bytes we meant to write"
+
+Live is plugin **2.20.175**, uploaded 2026-09-07 15:17. Since then 2.20.176,
+2.20.177, 2.20.178 and 2.20.179 each ran the deploy workflow, each reported
+success, and each logged `Transferring file` for every file in the plugin. The
+site never moved.
+
+**Nothing in this repo could have caught it, and the reason is worth stating
+precisely.** Every version check here reads its version FROM THE LIVE SITE.
+`reader_freshness.py` compares the bare-URL render against `/status` and proves
+the readers and the origin agree with each other. `ops_status [1]` prints what
+the origin says it is. Both were green and both were correct: the origin is
+perfectly coherent at 2.20.175. The comparison nobody was making is between the
+REPOSITORY and the origin, and a guard that cannot fail on a whole class of
+failure is vacuous for that class whether or not it ever worked.
+
+That is also how the 2.20.33 build-stamp lesson generalises and was not
+generalised. Back then a version string matched while the body was older, so
+the fix was to hash the body and compare version AND build. Both halves of that
+comparison still come off the same server.
+
+**What this cost, beyond four unshipped versions.** `/corrections` shipped in
+2.20.178 specifically so `data_integrity` could ask whether a disclosed removal
+explains a headline move. It is not live, so tonight's -46,400 incident reads
+`the corrections log could not be consulted (unreachable: HTTP Error 404)` and
+resolves to UNKNOWN. A guard was built, merged, reported as done, and has never
+once been able to answer.
+
+**The root cause is UNKNOWN and is deliberately not guessed here.** The mirror
+transfers every file and the pre-flight guard finds both `wp-config.php` and an
+existing `ai-layoff-tracker.php` at the target, so it is reaching *a* WordPress
+install that has this plugin. Whether that install is the one serving the site
+is exactly what nothing measured. The hosting migration on 2026-09-08 is the
+obvious suspect and does not fit cleanly: 2.20.176 failed to land on 2026-09-07
+20:46, before the cutover.
+
+**The fix reads the bytes back off the server it just wrote to** and fails the
+deploy when they are not the bytes in the checkout. It also prints the resolved
+ADDRESS of `FTP_HOST` (an IP from public DNS, never the secret's value),
+because "which machine did this land on" is the first question when it fails.
+A mirror that reports success into a host nobody reads cannot survive this
+step.
+
+Do NOT answer a future failure of this step by removing it, by comparing the
+live site to itself again, or by trusting `Transferring file`. A transfer log
+is the client's account of what it sent, not the server's account of what it
+kept.
+
 ## 2026-09-08 - a Cloudflare 52x was read as the origin answering, and reddened a live-data alarm
 
 **Class:** novel
