@@ -107,6 +107,7 @@ MAX_AGE = {"edgar": 2, "news_catchup": 9, "google_news": 2, "regional_feeds": 2,
 
 
 import mail_auth_check  # noqa: E402
+import orphaned_secrets  # noqa: E402
 
 
 def _get(url, browser=False):
@@ -2072,6 +2073,17 @@ def main():
         print(f"\n[4f] MAIL AUTH RECORDS  UNKNOWN: {exc}")
     if mail_state == 2:
         unverified.append("mail auth records")
+
+    # [11] A credential nobody reads. Sandbox issue #722: Denmark CVR
+    # credentials were registered and the collector never built, and nothing
+    # noticed for five days because every existing guard looks from the other
+    # direction (a declared collector with no code, not a credential with no
+    # collector).
+    try:
+        if orphaned_secrets.report() == 2:
+            unverified.append("orphaned secrets")
+    except Exception as exc:
+        print(f"\n[11] ORPHANED SECRETS  UNKNOWN: {exc}")
 
     print("[7] RENDERED CONTRAST  python3 railway/contrast_audit.py")
     print("      -> what the page RENDERS AS in both themes, not which version")
