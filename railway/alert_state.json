@@ -62,12 +62,17 @@
       "last": 1788857687,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "extract-affected-role-categories:main:a85a3f80b66b3f53": {
+      "first": 1788857790,
+      "last": 1788857790,
+      "subject": "CI RED: Extract affected-role categories \u2014 requests.exceptions.HTTPError: 409 Client Error: Conflict for url: https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?roles_missin"
+    },
     "tests:main:7ba8f6d0b4896be7": {
       "first": 1788856966,
       "last": 1788856966,
       "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-08T08:54:47+00:00",
+  "updated_at": "2026-09-08T08:56:30+00:00",
   "version": 1
 }
