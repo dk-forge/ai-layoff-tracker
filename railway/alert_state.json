@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "deploy-wordpress-plugin:main:04c6efdddc7c8fbc": {
-      "first": 1788857418,
-      "last": 1788857418,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.177/e6548e7b14d5d541 after 600s. The origin may be correct while a shared cache serves a superseded build,"
-    },
     "deploy-wordpress-plugin:main:9d5276030025b73c": {
       "first": 1788857687,
       "last": 1788857687,
@@ -73,6 +68,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-08T08:56:30+00:00",
+  "updated_at": "2026-09-08T09:14:14+00:00",
   "version": 1
 }
