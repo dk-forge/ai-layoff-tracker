@@ -6,7 +6,7 @@ source. Published corrections governance says a numeric change ALWAYS needs a
 human sign-off, so this is deliberately a manual, dispatch-only tool: it never
 runs on a schedule and it refuses to do anything without a written reason.
 
-Four actions, matching the four things a review can conclude:
+Five actions, matching the things a review can conclude:
 
     trash        - the row's number is not supported by its source at all (the
                    count belongs to a different event, or the source states no
@@ -27,6 +27,10 @@ Four actions, matching the four things a review can conclude:
                    suppression list, the count-aware fuzzy merge, the rebadge
                    guard. --fields is the entry JSON; the dedup hash is derived
                    here exactly as extractor.py derives it, never typed.
+    restore-merged - source-proven rows that /merge-events removed incorrectly.
+                   Unlike add, this requires the ORIGINAL source-specific hash
+                   and succeeds only when that hash is still suppressed with a
+                   `merged:` reason. The server inserts first, then unsuppresses.
 
 Every path fails loudly (non-zero exit) on any not-found or rejected id, so a
 correction that silently did nothing can never be reported as applied.
@@ -42,6 +46,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -181,6 +186,45 @@ def run_move_sources(site, key, ids, fields, reason, apply):
 
 
 ADD_REQUIRED = ("company_name", "job_count", "layoff_date", "source_url", "source_name")
+RESTORE_REQUIRED = ADD_REQUIRED + ("dedup_hash", "original_id")
+
+
+def run_restore_merged(site, key, entries, reason, apply):
+    if not isinstance(entries, list) or not entries:
+        return _fail("restore-merged needs --fields to be a non-empty JSON array")
+    for pos, entry in enumerate(entries, 1):
+        if not isinstance(entry, dict):
+            return _fail(f"restore entry {pos} is not an object")
+        missing = [field for field in RESTORE_REQUIRED if not entry.get(field)]
+        if missing:
+            return _fail(f"restore entry {pos} missing {', '.join(missing)}")
+        if not re.fullmatch(r"[a-fA-F0-9]{32}", str(entry["dedup_hash"])):
+            return _fail(f"restore entry {pos} has an invalid dedup_hash")
+
+    jobs = sum(int(entry["job_count"]) for entry in entries)
+    print(f"{'APPLY' if apply else 'DRY RUN'}: restore-merged — {reason}")
+    print(f"  {len(entries)} source-proven row(s), {jobs:,} jobs total")
+    for entry in entries:
+        print(f"    old id={entry['original_id']}  {entry['company_name']}  "
+              f"{int(entry['job_count']):,}  {entry['layoff_date']}  "
+              f"{entry.get('country') or '(country blank)'}  {entry['dedup_hash']}")
+    if not apply:
+        print("DRY RUN — nothing written. Re-run with --apply to commit.")
+        return 0
+    if not key:
+        return _fail("WP_API_KEY required to apply")
+    r = requests.post(f"{site}/wp-json/layoffs/v1/restore-merged-rows",
+                      json={"entries": entries, "reason": reason},
+                      headers={"X-Layoff-API-Key": key, **UA}, timeout=TIMEOUT)
+    if r.status_code != 200:
+        return _fail(f"restore failed: HTTP {r.status_code} {r.text[:400]}")
+    out = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    print("response:", json.dumps(out, indent=2)[:4000])
+    rejected = list(out.get("rejected") or [])
+    restored = list(out.get("restored") or [])
+    if rejected or len(restored) != len(entries) or int(out.get("jobs_restored") or 0) != jobs:
+        return _fail(f"restore was incomplete: restored={len(restored)}/{len(entries)}, rejected={rejected}")
+    return 0
 
 
 def run_add(site, key, fields, reason, apply):
@@ -238,7 +282,7 @@ def run_add(site, key, fields, reason, apply):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ids", required=True, help="comma-separated table row ids (0 for add)")
-    ap.add_argument("--action", required=True, choices=("trash", "edit", "move-sources", "add"))
+    ap.add_argument("--action", required=True, choices=("trash", "edit", "move-sources", "add", "restore-merged"))
     ap.add_argument("--reason", required=True, help="why (recorded on the suppression list / corrections log)")
     ap.add_argument("--fields", default="", help='edit: JSON of fields; move-sources: {"to_id", "urls"}; add: the entry JSON')
     ap.add_argument("--verify-company", default="", help="company filter used to show before/after")
@@ -256,7 +300,7 @@ def main():
 
     ids = [int(x) for x in a.ids.replace(" ", "").split(",") if x]
     fields = {}
-    if a.action in ("edit", "move-sources", "add"):
+    if a.action in ("edit", "move-sources", "add", "restore-merged"):
         try:
             fields = json.loads(a.fields or "{}")
         except ValueError as exc:
@@ -269,6 +313,8 @@ def main():
         return run_move_sources(site, key, ids, fields, a.reason, a.apply)
     if a.action == "add":
         return run_add(site, key, fields, a.reason, a.apply)
+    if a.action == "restore-merged":
+        return run_restore_merged(site, key, fields, a.reason, a.apply)
 
     before = _rows_for(site, a.verify_company)
     print(f"{'APPLY' if a.apply else 'DRY RUN'}: {a.action} {ids} — {a.reason}")

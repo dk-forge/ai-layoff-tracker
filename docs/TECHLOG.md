@@ -55,6 +55,72 @@ Everything else keeps its old meaning: 503 is still the deploy maintenance
 window, a socket error is still transport, and an ordinary origin status (404,
 500) still reddens the push, because there the site really did answer.
 
+## 2026-09-08 - the dedup model collapsed five distinct structured records (2.20.179, branch)
+
+**Class:** wrong-scope-or-key - the fuzzy candidate key ignored structured event identity
+**Guard:** `railway/tests/test_dedupe_window.py`, `railway/tests/test_move_source_reports.py`
+
+This corrects the conclusion in the later entry below that the September 8
+headline drop was simply a good 50,000-worker Volkswagen dedup plus seven small
+good merges. The Volkswagen, UiPath and Sprava zeleznic merges were supported.
+Five of the other rows were not duplicates and must be restored:
+
+    removed   keeper                 why they are distinct
+    179170    HHS 15 / 2026-06       HHS 13 / 2026-07 is a separate OPM agency-month
+    177083    Treasury 16 / 2026-04  Treasury 15 / 2026-06 is a separate OPM agency-month
+    177379    USAID 31 / 2025-05     USAID 25 / 2025-08 is a separate OPM agency-month
+    61050     Dow 138 / Spain        Eurofound 300539 is Dow 110 / Germany
+    61941     Stellantis 200/Termoli Eurofound 202925 is 265/Cassino, and explicitly
+                                      refers to the separate 200/Termoli programme
+
+The five false removals total **428 jobs**. Four rows were recovered byte for
+byte from the privacy-scanned September 6 off-host backup. The missing new HHS
+row was reconstructed from the current OPM parquet files through the production
+importer itself: 13 `SH` (RIF) separations, effective 2026-07, source-specific
+hash `900054cf98565dce9e539434cb0cf5da`. The exact five-row source-derived
+payload, including original ids and hashes, is committed at
+`railway/correction_specs/2026-09-08-false-dedup-merges.json`.
+
+The cause was deterministic candidate generation handing an unsafe question to
+the model. It grouped all non-WARN source types, including `federal_rif`, on
+company/count/date alone; it did not compare countries or Eurofound factsheet
+identity. The prompt could not repair evidence it was never given: country,
+source type and URL were omitted from its payload; all three now accompany the
+excerpt for the candidates that survive the deterministic gates. Three tests reproduced the live Treasury, Dow
+and Stellantis shapes and failed before code changed. The candidate gate now:
+
+- excludes every federal RIF row both at fetch and pair level, because each row
+  is already an agency-month observation, not an outlet report;
+- refuses two specific, different countries while leaving blank/worldwide
+  geography eligible for review;
+- refuses two ERM rows carrying different Eurofound factsheet ids;
+- checks a new row against every member already in a cluster so an unknown-
+  geography report cannot bridge France and Germany into one model prompt.
+
+Counterexamples pin that ERM plus news for the same Czech plan still clusters
+and that unknown plus a specific country remains eligible. Merge logs now print
+both rows' counts, dates, countries, source types and URLs. `/merge-events`
+returns the complete before-state pair and `net_jobs_removed`, rather than only
+the deleted id.
+
+Restoration is deliberately narrower than an undelete. The new keyed
+`/restore-merged-rows` route accepts only a source-proven hash still suppressed
+with a `merged:` reason. It inserts while suppression remains armed, reads the
+row back, and only then removes that exact suppression. Editorial removals and
+ordinary corrections cannot pass the gate. It preserves editor pins and derived
+role state, logs the restored rows publicly, and returns every new id. The
+manual correction workflow exposes this as `restore-merged`, remains a dry run
+by default, and fails if even one row or job is missing from the response.
+
+Proof so far: 75 focused checks pass; the broader affected set passes 163 tests,
+254 subtests and two intentional skips. An outside-sandbox full run reached
+4,588 passes, 31 skips and 3,001 subtests; its five failures were one missing
+local dependency and four stale test-harness globals, each repaired and rerun
+green. CI remains the required clean one-shot gate. PHP lint, JSON validation,
+Python compile and `git diff --check` pass. **Not live yet:** merge, SHA-matched deploy,
+dry run, signed apply, source-report reattribution and live integrity read-back
+remain mandatory release gates.
+
 ## 2026-09-08 - one Bluehost browser handshake broke every host client differently (workflow-only, branch)
 
 **Class:** novel

@@ -105,7 +105,9 @@ class ModelChoiceTests(unittest.TestCase):
             def read(self): return b'{"choices":[{"message":{"content":"{}"}}]}'
 
         def _urlopen(req, timeout=None):
-            captured["model"] = json.loads(req.data)["model"]
+            body = json.loads(req.data)
+            captured["model"] = body["model"]
+            captured["prompt"] = body["messages"][0]["content"]
             return _Resp()
 
         clean = {k: v for k, v in os.environ.items() if k not in _MODEL_ENV}
@@ -113,8 +115,12 @@ class ModelChoiceTests(unittest.TestCase):
                 mock.patch.object(dedupe_llm.urllib.request, "urlopen", _urlopen):
             dedupe_llm.ask_llm([{"id": 1, "company_name": "Acme", "job_count": 5,
                                  "layoff_date": "2026-08-01", "source_name": "x",
+                                 "source_type": "erm", "country": "France",
+                                 "source_url": "https://example.test/factsheet/1",
                                  "excerpt": "Acme cut 5 jobs."}])
         self.assertEqual(captured.get("model"), UNMEASURED_SURFACE_MODEL)
+        for evidence in ("France", "erm", "https://example.test/factsheet/1"):
+            self.assertIn(evidence, captured.get("prompt", ""))
 
 
 if __name__ == "__main__":

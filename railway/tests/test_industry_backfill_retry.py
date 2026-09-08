@@ -6,6 +6,7 @@ import is loading it) used to abort the whole run, so the job failed daily and
 the backlog never drained. These tests pin the recovery semantics.
 """
 import os
+import re
 import sys
 import types
 
@@ -40,7 +41,8 @@ class _FakeRequests:
 
 def _load(sequence):
     fake = _FakeRequests(sequence)
-    ns = {"requests": fake, "time": types.SimpleNamespace(sleep=lambda *_: None), "UA": {}}
+    ns = {"requests": fake, "re": re,
+          "time": types.SimpleNamespace(sleep=lambda *_: None), "UA": {}}
     exec(compile(_BODY, "industry_backfill_slice", "exec"), ns)
     return ns["get_with_retry"], fake
 
