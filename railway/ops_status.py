@@ -106,6 +106,9 @@ MAX_AGE = {"edgar": 2, "news_catchup": 9, "google_news": 2, "regional_feeds": 2,
            "source_audit": 35}
 
 
+import mail_auth_check  # noqa: E402
+
+
 def _get(url, browser=False):
     req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA if browser else UA,
                                                "Accept": "application/json"})
@@ -2057,6 +2060,19 @@ def main():
     # page from one whose paragraphs are 1.06:1, which is exactly what shipped
     # on 2026-08-10. Not run inline: it needs a browser, and this script is
     # stdlib-only and must work anywhere. A red run shows up in [4] on its own.
+    # [4f] The records that make our own mail deliverable. Added 2026-09-08,
+    # while a hosting migration was being planned: the plan correctly replaced
+    # the old host's DKIM key and did not know that operational alerting aligns
+    # through two OTHER records nobody had written down. A pruned DNS record is
+    # an alarm that cannot report its own silence.
+    try:
+        mail_state = mail_auth_check.report()
+    except Exception as exc:  # never let a check break the status run
+        mail_state = 3
+        print(f"\n[4f] MAIL AUTH RECORDS  UNKNOWN: {exc}")
+    if mail_state == 2:
+        unverified.append("mail auth records")
+
     print("[7] RENDERED CONTRAST  python3 railway/contrast_audit.py")
     print("      -> what the page RENDERS AS in both themes, not which version")
     print("         it is. Runs daily (Rendered contrast audit) and on deploy.")
