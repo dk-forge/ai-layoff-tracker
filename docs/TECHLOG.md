@@ -1,3 +1,38 @@
+## 2026-09-08 - the deploy gate treated Bluehost's browser handshake as a broken tracker API (workflow-only, branch)
+
+**Class:** novel
+**Guard:** `railway/tests/test_deploy_reaches_readers.py`
+
+This is `novel` because the existing vocabulary has no class for a verified
+upstream replacing a normal response with a deterministic browser handshake.
+
+Citation release `2.20.177` exposed a failure outside the plugin. Deployment
+run `34205614447` uploaded the release successfully, but its first attempt later
+failed waiting for the old cached reader build and its second attempt stopped at
+the earlier origin-API check. Five retries all received HTTP 409 and the body:
+`document.cookie = "humans_21909=1"; document.location.reload(true)`. A direct
+request with that exact cookie returned HTTP 200 and the current integrity JSON.
+The application was healthy; Bluehost had placed its deterministic browser
+handshake in front of automation that had previously reached the route directly.
+
+Two tests were red before implementation. One replays the measured HTTPError and
+requires the verifier to repeat the same URL with the challenge's narrow cookie.
+The other pins the separate curl origin probe, which runs before that Python
+verifier. `reader_freshness._open()` now handles only HTTP 409 bodies assigning
+`humans_<digits>=1`; every other status and every other body is still raised.
+The workflow's integrity curl carries the measured `humans_21909=1` cookie.
+This is not a general challenge bypass and it does not accept arbitrary response
+text as a header. The whole reader-freshness module now passes 51 tests and
+`git diff --check` is clean. A green post-merge deploy remains the production
+gate for this branch.
+
+The citation release itself is live despite the red workflow bookkeeping. The
+bare tracker page serves `2.20.177/e6548e7b14d5d541`. On the live Volkswagen
+citation page the real AskTheRecruiter navigation and footer render, the document
+has exactly one H1, and a 320px browser measured page/body scroll widths of 320px
+with a 224px brand link. Those are the production gates left open in the prior
+entry; they are now directly proved.
+
 ## 2026-09-08 - citation pages used WordPress's legacy fallback instead of the site's header (2.20.177, branch)
 
 **Class:** two-copies-drifted

@@ -308,8 +308,28 @@ def grace_seconds(cache_control):
 
 
 def _open(url, ua, timeout=40):
-    req = urllib.request.Request(url, headers={"User-Agent": ua})
-    return urllib.request.urlopen(req, timeout=timeout)
+    headers = {"User-Agent": ua}
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        # Bluehost's human gate does not use Set-Cookie. It returns HTTP 409
+        # with a tiny script assigning a short-lived `humans_N=1` cookie, then
+        # reloads the same URL. Measured during deploy 34205614447 on
+        # 2026-09-08: the origin and reader were healthy, but both automated
+        # release probes stayed behind this deterministic browser handshake.
+        # Replay only that narrow value; never turn arbitrary response text
+        # into a request header.
+        if exc.code != 409:
+            raise
+        body = exc.read(8192).decode("utf-8", "replace")
+        exc.close()
+        found = re.search(r'document\.cookie\s*=\s*["\'](humans_\d+=1)["\']', body)
+        if not found:
+            raise
+        retry = urllib.request.Request(
+            url, headers={**headers, "Cookie": found.group(1)})
+        return urllib.request.urlopen(retry, timeout=timeout)
 
 
 def reader_view(url=PAGE_URL, timeout=40):
