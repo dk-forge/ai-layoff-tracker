@@ -30,8 +30,23 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           set -uo pipefail
-          echo "FTP_HOST resolves to: $(getent hosts "$FTP_HOST" | awk '{print $1}' | paste -sd, - || echo UNRESOLVED)"
-          echo "The live origin is 162.19.222.172 (ChemiCloud, per the 2026-09-08 migration)."
+          # Do NOT print the resolved address: on the first run it came back
+          # masked, which is itself evidence -- GitHub masks a secret's value,
+          # so FTP_HOST resolving to a masked string means FTP_HOST IS that
+          # literal address. Compare it instead and print only the verdict.
+          LIVE_ORIGIN=$(getent hosts asktherecruiter.com | awk '{print $1}' | head -1)
+          echo "asktherecruiter.com resolves to: $LIVE_ORIGIN (Cloudflare proxy)"
+          echo "The ChemiCloud origin recorded on 2026-09-08 is 162.19.222.172"
+          FTP_IP=$(getent hosts "$FTP_HOST" | awk '{print $1}' | head -1)
+          if [ -z "$FTP_IP" ]; then
+            echo "FTP_HOST does not resolve at all"
+          elif [ "$FTP_IP" = "162.19.222.172" ]; then
+            echo "VERDICT: FTP_HOST points at the CURRENT ChemiCloud origin."
+          else
+            echo "VERDICT: FTP_HOST does NOT point at 162.19.222.172."
+            echo "         The deploy is writing to a different machine from the one"
+            echo "         that serves the site. That is the whole defect."
+          fi
           echo
           echo "== FTP home =="
           lftp -c "
