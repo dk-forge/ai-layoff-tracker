@@ -53,11 +53,35 @@ _CLASSES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("cpanel/system", re.compile(r"cpanel|lfd|exim|quota", re.I)),
 )
 
-#: Words that mean "a human should look at this", regardless of class. Kept
-#: deliberately short: a list that matches everything reports nothing.
+#: Classes that ALWAYS deserve a human, decided from the measured traffic
+#: rather than guessed.
+#:
+#: MEASURED 2026-09-08 on 400 real messages: 251 github run-failures, 62
+#: unclassified, 48 railway build failures, 34 railway deploy crashes, 4
+#: dependabot, 1 cpanel. The first escalation rule matched the word "main",
+#: which GitHub puts in EVERY notification subject ("Run failed: Frontend CI -
+#: main"), so all 251 CI failures escalated and the report said nothing. That
+#: is the exact defect its own test warned about, and a synthetic fixture let
+#: it ship.
+#:
+#: GitHub outcomes are deliberately NOT here. They are available as structured
+#: data from the API, they are already watched, and an email about them is a
+#: worse copy of a signal we have.
+_ESCALATE_CLASSES: frozenset[str] = frozenset({
+    "railway: deploy crashed",   # a service is down; nothing else watches this
+    "cpanel/system",             # disk, quota, security on the host itself
+    "other",                     # unclassified means a shape we have not seen
+})
+
+#: Words alarming enough to escalate whatever class they arrive in. Kept
+#: deliberately narrow and free of anything that appears in routine subjects:
+#: no "main", no "production", no "failed", all of which are ambient noise in
+#: this stream.
 _ESCALATE = re.compile(
-    r"\b(production|prod)\b|\bmain\b|payment|stripe|charge|refund|"
-    r"data loss|corrupt|breach|unauthori[sz]ed|quota exceeded|disk full",
+    r"payment|stripe|charge(?:back)?|refund|"
+    r"data loss|corrupt|breach|unauthori[sz]ed|"
+    r"quota exceeded|disk full|out of (?:disk|space|memory)|"
+    r"certificate (?:expir|invalid)|suspend",
     re.I,
 )
 
@@ -99,7 +123,7 @@ def sweep(host: str, user: str, password: str, retain_days: int,
     secrets = [password]
     now = datetime.now(timezone.utc)
     classes: Counter[str] = Counter()
-    escalate: list[str] = []
+    escalate_counts: dict[str, int] = {}
     deletable: list[bytes] = []
     unreadable = 0
     total = 0
@@ -151,9 +175,13 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                     msg = email.message_from_bytes(item[1])
                     subject = str(msg.get("Subject") or "")
                     sender = str(msg.get("From") or "")
-                    classes[_classify(subject, sender)] += 1
-                    if _ESCALATE.search(subject) and len(escalate) < 25:
-                        escalate.append(subject[:120])
+                    label = _classify(subject, sender)
+                    classes[label] += 1
+                    if label in _ESCALATE_CLASSES or _ESCALATE.search(subject):
+                        # Collapse duplicates: 16 copies of one subject is one
+                        # finding, and printing it 16 times buries the others.
+                        key = re.sub(r"\s+", " ", subject[:110]).strip()
+                        escalate_counts[key] = escalate_counts.get(key, 0) + 1
                     age = _age_days(msg, now)
                     if age is not None and age > retain_days:
                         deletable.append(mnum)
@@ -184,7 +212,9 @@ def sweep(host: str, user: str, password: str, retain_days: int,
         return UNKNOWN, {}, _scrub(exc, secrets)
 
     findings = {
-        "total": total, "classes": classes, "escalate": escalate,
+        "total": total, "classes": classes,
+        "escalate": [f"x{n:<4} {sub}" for sub, n in
+                     sorted(escalate_counts.items(), key=lambda kv: -kv[1])[:15]],
         "unreadable": unreadable, "eligible": len(deletable),
         "removed": 0 if dry_run else removed, "dry_run": dry_run,
         "retain_days": retain_days, "partial": broke_early,

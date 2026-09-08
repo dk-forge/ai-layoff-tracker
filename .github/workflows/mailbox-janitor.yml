@@ -37,9 +37,19 @@ permissions:
 
 jobs:
   sweep:
-    name: Sweep the notification mailbox
+    name: Sweep ${{ matrix.label }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: sandbox
+            user_secret: JANITOR_SANDBOX_USER
+            pass_secret: JANITOR_SANDBOX_PASSWORD
+          - label: production
+            user_secret: JANITOR_PRODUCTION_USER
+            pass_secret: JANITOR_PRODUCTION_PASSWORD
     steps:
       - uses: actions/checkout@v5
 
@@ -47,14 +57,15 @@ jobs:
         id: sweep
         env:
           JANITOR_IMAP_HOST: ${{ secrets.JANITOR_IMAP_HOST }}
-          JANITOR_IMAP_USER: ${{ secrets.JANITOR_IMAP_USER }}
-          JANITOR_IMAP_PASSWORD: ${{ secrets.JANITOR_IMAP_PASSWORD }}
+          JANITOR_IMAP_USER: ${{ secrets[matrix.user_secret] }}
+          JANITOR_IMAP_PASSWORD: ${{ secrets[matrix.pass_secret] }}
           JANITOR_RETAIN_DAYS: '14'
           # Scheduled runs are live. Manual runs default to a dry run.
           JANITOR_DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run && 'true' || 'false') }}
         run: |
           set +e
-          python3 railway/mailbox_janitor.py | tee /tmp/janitor.txt
+          echo "### mailbox: ${{ matrix.label }}" > /tmp/janitor.txt
+          python3 railway/mailbox_janitor.py | tee -a /tmp/janitor.txt
           echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Publish

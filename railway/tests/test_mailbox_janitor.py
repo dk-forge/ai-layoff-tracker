@@ -179,3 +179,48 @@ def test_a_dropped_connection_mid_sweep_deletes_nothing(monkeypatch) -> None:
     assert f["partial"] is True
     assert "PARTIAL" in detail
     assert conn.deleted == [], "a truncated sweep must not delete on partial counts"
+
+
+def test_the_real_subjects_that_broke_escalation_do_not_escalate(monkeypatch) -> None:
+    """THE regression guard, written from live traffic rather than invention.
+
+    The first escalation rule matched the word "main". GitHub puts the branch
+    in every notification subject, so all 251 CI failures in a 400-message
+    sample escalated and the report said nothing. A synthetic fixture (a
+    dependency bump) passed the "routine noise" test and let it ship.
+
+    These are verbatim subjects from the real mailbox.
+    """
+    real = [
+        "[dk-forge/asktherecruiter-sandbox] Run failed: Frontend CI - main",
+        "[dk-forge/asktherecruiter-sandbox] Run failed: Backend Architecture Gate - main",
+        "[dk-forge/asktherecruiter-sandbox] Run failed: Production E2E Gate - main",
+        "Build failed - ATR-Sandbox",
+    ]
+    conn = _Conn([_msg(s, "notifications@github.com", 30) for s in real])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert f["escalate"] == [], (
+        f"CI outcomes must not escalate; they are watched via the API. Got: "
+        f"{f['escalate']}"
+    )
+
+
+def test_a_crashed_deployment_escalates_even_with_a_dull_subject(monkeypatch) -> None:
+    """The signal genuinely not covered anywhere else. It escalates on its
+    CLASS, so it does not depend on alarming words appearing in the subject."""
+    conn = _Conn([_msg("Deployment crashed", "railway@railway.app", 30)])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert len(f["escalate"]) == 1
+
+
+def test_repeats_of_one_subject_collapse_to_one_finding(monkeypatch) -> None:
+    """16 copies of one subject is one finding. Printing it 16 times buries
+    everything else, which is how a report becomes unreadable."""
+    conn = _Conn([_msg("Deployment crashed", "railway@railway.app", 30)
+                  for _ in range(16)])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert len(f["escalate"]) == 1
+    assert "x16" in f["escalate"][0]
