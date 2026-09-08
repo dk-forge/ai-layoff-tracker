@@ -94,7 +94,7 @@ def _classify(subject: str, sender: str) -> str:
 
 
 def sweep(host: str, user: str, password: str, retain_days: int,
-          dry_run: bool, limit: int = 2000) -> tuple[str, dict, str]:
+          dry_run: bool, limit: int = 400) -> tuple[str, dict, str]:
     """Return (state, findings, detail). Never raises, never leaks."""
     secrets = [password]
     now = datetime.now(timezone.utc)
@@ -116,8 +116,20 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                 return UNKNOWN, {}, "mailbox search failed"
             ids = (data[0] or b"").split()[:limit]
             total = len(ids)
+            broke_early = False
             for num in ids:
-                typ, raw = m.fetch(num, "(BODY.PEEK[HEADER])")
+                # A long single-session sweep of a mailbox with thousands of
+                # messages gets its connection dropped: measured as
+                # "EOF occurred in violation of protocol" against a mailbox of
+                # 2,106. A partial sweep is genuinely useful (the next run
+                # continues, and the retention window means nothing is lost),
+                # so a mid-sweep disconnect ends the loop and reports what was
+                # gathered rather than throwing the whole run away.
+                try:
+                    typ, raw = m.fetch(num, "(BODY.PEEK[HEADER])")
+                except (imaplib.IMAP4.error, OSError, ssl.SSLError):
+                    broke_early = True
+                    break
                 if typ != "OK" or not raw or not raw[0]:
                     unreadable += 1
                     continue
@@ -133,6 +145,11 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                 if age is not None and age > retain_days:
                     deletable.append(num)
             removed = 0
+            if broke_early:
+                # Do not delete on a truncated pass. The counts are partial and
+                # a delete decision taken on partial information is the kind of
+                # thing that quietly removes the wrong thing.
+                deletable = []
             if deletable and not dry_run:
                 for num in deletable:
                     try:
@@ -151,9 +168,10 @@ def sweep(host: str, user: str, password: str, retain_days: int,
         "total": total, "classes": classes, "escalate": escalate,
         "unreadable": unreadable, "eligible": len(deletable),
         "removed": 0 if dry_run else removed, "dry_run": dry_run,
-        "retain_days": retain_days,
+        "retain_days": retain_days, "partial": broke_early,
     }
-    return OK, findings, f"{total} message(s) read"
+    note = " (PARTIAL: the server closed the connection mid-sweep; the next run continues)" if broke_early else ""
+    return OK, findings, f"{total} message(s) listed{note}"
 
 
 def main() -> int:

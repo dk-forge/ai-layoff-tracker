@@ -145,3 +145,27 @@ def test_the_observed_traffic_classifies_rather_than_falling_to_other() -> None:
     assert _classify("Run failed: Backend Architecture Gate", "notifications@github.com") == "github: run failed"
     assert _classify("Build failed - ATR-Sandbox", "railway@railway.app") == "railway: build failed"
     assert _classify("Deployment crashed", "railway@railway.app") == "railway: deploy crashed"
+
+
+def test_a_dropped_connection_mid_sweep_deletes_nothing(monkeypatch) -> None:
+    """MEASURED 2026-09-08: a single-session sweep of a 2,106-message mailbox
+    had its connection closed ("EOF occurred in violation of protocol").
+
+    A partial pass is still useful, but its counts are partial, and a delete
+    decision taken on partial information is how the wrong thing gets removed
+    quietly. So a truncated sweep reports what it saw and deletes none of it.
+    """
+    class _Dropping(_Conn):
+        def fetch(self, num, spec):
+            if num == b"2":
+                raise OSError("EOF occurred in violation of protocol")
+            return super().fetch(num, spec)
+
+    msgs = [_msg("Run failed", "notifications@github.com", 40) for _ in range(3)]
+    conn = _Dropping(msgs)
+    _patch(conn, monkeypatch)
+    state, f, detail = sweep("h", "u", "pw", retain_days=14, dry_run=False)
+    assert state == OK
+    assert f["partial"] is True
+    assert "PARTIAL" in detail
+    assert conn.deleted == [], "a truncated sweep must not delete on partial counts"
