@@ -1763,6 +1763,16 @@ function alt_register_query_routes() {
     register_rest_route('layoffs/v1', '/quality-status', array(
         'methods' => 'GET', 'callback' => 'alt_api_quality_status', 'permission_callback' => '__return_true',
     ));
+    // The corrections trail as DATA. It already renders in full on the tracker
+    // page, so this discloses nothing new; it makes the same facts readable by
+    // a machine. Added 2026-09-08 because headline_containment could see that
+    // ~42,000 jobs had left the corpus and could not see WHY: a merge
+    // hard-deletes its duplicate, leaving no updated_at, so /changed-rows is
+    // blind to exactly the event that moves a headline most. The cause was
+    // disclosed here the whole time and the guard had no way to read it.
+    register_rest_route('layoffs/v1', '/corrections', array(
+        'methods' => 'GET', 'callback' => 'alt_api_corrections', 'permission_callback' => '__return_true',
+    ));
     register_rest_route('layoffs/v1', '/dataset-releases', array(
         'methods' => 'GET', 'callback' => 'alt_api_dataset_releases', 'permission_callback' => '__return_true',
     ));
@@ -2747,6 +2757,42 @@ function alt_api_historical_gdelt_cursor_post(WP_REST_Request $r) {
     if (!$next) return new WP_Error('alt_bad_request', 'next_start must be a valid YYYY-MM-DD date.', array('status' => 400));
     update_option('alt_historical_gdelt_cursor', array('next_start' => $next, 'updated_at' => gmdate('c')), false);
     return alt_api_historical_gdelt_cursor_get();
+}
+
+/**
+ * The corrections log, newest first, as JSON.
+ *
+ * Same entries the on-page "Data notes & corrections log" renders, in the same
+ * order, with no field the page does not already show. `since` (YYYY-MM-DD)
+ * trims to a window; absent, the whole retained log is returned. The log keeps
+ * the most recent 200 entries, so a caller asking for a window older than that
+ * gets what survives and `truncated` says the cap was reached.
+ */
+function alt_api_corrections(WP_REST_Request $r) {
+    $log = get_option('alt_corrections_log');
+    $log = is_array($log) ? $log : array();
+    $since = trim((string) $r->get_param('since'));
+    $out = array();
+    foreach ($log as $entry) {
+        $date = (string) ($entry['date'] ?? '');
+        if ($since !== '' && $date < $since) continue;
+        $out[] = array(
+            'date'   => $date,
+            'action' => (string) ($entry['action'] ?? ''),
+            'count'  => max(0, (int) ($entry['count'] ?? 0)),
+            'reason' => (string) ($entry['reason'] ?? ''),
+            'detail' => (string) ($entry['detail'] ?? ''),
+        );
+    }
+    $out = array_reverse($out);
+    return rest_ensure_response(array(
+        'generated_at' => gmdate('c'),
+        'since'        => $since !== '' ? $since : null,
+        'entries'      => $out,
+        'returned'     => count($out),
+        'retained'     => count($log),
+        'truncated'    => count($log) >= 200,
+    ));
 }
 
 /** Public quality and change-reporting status for researchers and operations. */

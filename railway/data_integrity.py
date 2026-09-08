@@ -1288,6 +1288,30 @@ def containment_groups(pairs=CONTAINMENTS):
     return {name: frozenset(members) for name, members in groups.items()}
 
 
+def _disclosed_removals_line(since_iso):
+    """What the site itself disclosed was removed in this window.
+
+    Added 2026-09-08. The message above spent an hour of a human's time saying
+    "two mechanisms and I cannot tell them apart" when the actual cause -- a
+    Bloomberg duplicate of the Volkswagen 50,000 event, merged away after five
+    days of double-counting -- was published in the corrections log the whole
+    time. A merge hard-deletes its duplicate, so /changed-rows is blind to the
+    single event most likely to move a headline.
+
+    This NARROWS, it never CLEARS. The log records how many rows were removed,
+    never how many jobs they carried, so it cannot arithmetically explain a
+    move and must not be allowed to look as though it did. A failing check
+    still fails, and an unreadable log reads UNKNOWN rather than "nothing was
+    removed".
+    """
+    try:
+        from corrections_reader import fetch_removals
+    except ImportError:  # running from the repo root rather than railway/
+        from railway.corrections_reader import fetch_removals
+    since = str(since_iso or "")[:10] or "1970-01-01"
+    return fetch_removals(BASE.rsplit("/wp-json/", 1)[0], since).summary()
+
+
 def containment_problem(sub, sup):
     """None if `sub` is structurally a subset of `sup`, else why it is not.
 
@@ -1590,7 +1614,7 @@ class ContainmentInvariant:
                     f"anything trashed in this window, the dedupe-llm merge runs (a merge "
                     f"restamps no updated_at, so /changed-rows will not show it), then any "
                     f"country/AI relabel job. reconcile-supersets is already accounted for "
-                    f"above")
+                    f"above. " + _disclosed_removals_line(priors[sup.name].get("captured_at")))
 
 
 class DenominatorProvenanceInvariant:
