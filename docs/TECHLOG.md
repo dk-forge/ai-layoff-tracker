@@ -121,6 +121,18 @@ Python compile and `git diff --check` pass. **Not live yet:** merge, SHA-matched
 dry run, signed apply, source-report reattribution and live integrity read-back
 remain mandatory release gates.
 
+The first PR `#289` CI run supplied the clean one-shot counterexample the local
+environment could not: shard `rest-2` ran 2,219 tests and failed only while
+importing `test_corrections_reader`, because that recent test used
+`pytest.mark.parametrize` even though the hash-locked CI environment is
+deliberately unittest-only. The test keeps the same two action cases in a plain
+loop and no longer imports an undeclared package. A second red check proved that
+this alone would make the module import but execute **zero** tests: unittest
+does not discover free functions. Main independently merged the canonical
+`TestCase` conversion in PR `#288`; the rebase retained that implementation,
+the unittest runner executes all 8 guards, and the affected 83-test set passes.
+The first run stays recorded as red; the updated run must be green before merge.
+
 ## 2026-09-08 - one Bluehost browser handshake broke every host client differently (workflow-only, branch)
 
 **Class:** novel

@@ -78,7 +78,16 @@ holder, so the start-of-session ritual surfaces it automatically.
   clean one-shot gate. The exact payload is committed under
   `railway/correction_specs/`. Version 2.20.179 adds an insert-first,
   merge-suppression-only restoration endpoint and complete merge before-state
-  output. Still required: green CI/merge/deploy, dry-run and apply the
+  output. PR `#289` first ran three green shards and one red shard: all 2,219
+  tests in that shard ran except `test_corrections_reader`, whose recent
+  `pytest.mark.parametrize` import was incompatible with the repository's
+  locked unittest-only CI environment. The test now expresses the same two
+  cases as a dependency-free `TestCase`; a red count check proved the old shape
+  would otherwise execute zero. Main independently merged that canonical repair
+  in PR `#288`, so the rebase retained it rather than duplicating a second test
+  harness. The unittest runner executes 8/8 and the 83-test affected set is
+  green; this release remains red until the updated PR reruns clean.
+  Still required: green CI/merge/deploy, dry-run and apply the
   correction, move Dow/Stellantis report links, and live integrity read-back.
   Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
