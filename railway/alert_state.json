@@ -51,13 +51,7 @@
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],
-  "open": {
-    "cross-source-dedup-daily-deep-scan:main:e15c6de91a14431f": {
-      "first": 1788806919,
-      "last": 1788806919,
-      "subject": "CI RED: Cross-source dedup (daily deep scan) \u2014 urllib.error.HTTPError: HTTP Error 503: Service Unavailable"
-    }
-  },
-  "updated_at": "2026-09-08T08:23:15+00:00",
+  "open": {},
+  "updated_at": "2026-09-08T08:28:14+00:00",
   "version": 1
 }
