@@ -55,6 +55,16 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Pin signed corrections to the WordPress origin
+        run: |
+          set -euo pipefail
+          # Public /blog traffic crosses the Railway reverse proxy. Corrections
+          # are writes to WordPress and must not depend on that proxy's route
+          # registry or cache. Resolve the documented origin alias, then pin the
+          # ordinary hostname so requests keeps full TLS verification and SNI.
+          ORIGIN_IP="$(getent ahostsv4 mail.asktherecruiter.com | awk 'NR == 1 {print $1}')"
+          [ -n "$ORIGIN_IP" ] || { echo "::error::Could not resolve the WordPress origin"; exit 1; }
+          echo "$ORIGIN_IP asktherecruiter.com" | sudo tee -a /etc/hosts >/dev/null
       - name: Apply correction
         # Inputs go through env, never straight into the shell line: a reason is
         # free text (quotes, apostrophes, backticks) and interpolating it into

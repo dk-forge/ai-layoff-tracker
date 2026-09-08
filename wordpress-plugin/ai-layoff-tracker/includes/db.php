@@ -1638,14 +1638,6 @@ function alt_register_query_routes() {
         'callback' => 'alt_api_merge_events',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
-    // Key-protected inverse of /merge-events for a source-proven false merge.
-    // It accepts only hashes whose existing suppression reason begins
-    // "merged:"; editorial removals and corrections cannot be resurrected.
-    register_rest_route('layoffs/v1', '/restore-merged-rows', array(
-        'methods'  => 'POST',
-        'callback' => 'alt_api_restore_merged_rows',
-        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
-    ));
     // Key-protected: move named source reports from one row's event to
     // another's. The inverse of the fuzzy merge for the case it got wrong:
     // until 2.20.161 a same-company report within 30 days was attached
@@ -4793,7 +4785,7 @@ function alt_api_merge_events(WP_REST_Request $r) {
  * successful read-back is the exact hash unsuppressed. A failed insert therefore
  * leaves imports blocked, never half-restores an unknown row.
  */
-function alt_api_restore_merged_rows(WP_REST_Request $r) {
+function alt_api_restore_merged_rows_legacy_unused(WP_REST_Request $r) {
     global $wpdb;
     $reason = trim((string) $r->get_param('reason'));
     if ($reason === '') {

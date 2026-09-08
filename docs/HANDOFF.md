@@ -10,7 +10,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
   `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  current branch: `codex/top3-dedup-integrity`; initial starting point was
+  current branch: `codex/top3-restore-route`; initial starting point was
   `origin/main` at `4c310d0`.
   Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
   20/20 data-integrity invariants pass; all 40 declared due collectors have
@@ -91,8 +91,35 @@ holder, so the start-of-session ritual surfaces it automatically.
   and the version guard also passed. Main then advanced by PR `#290`'s
   Cloudflare-52x integrity repair; that non-overlapping incident record and
   code are retained in the current rebase, whose fresh CI is still required.
-  Still required: green CI/merge/deploy, dry-run and apply the
-  correction, move Dow/Stellantis report links, and live integrity read-back.
+  PR `#289` ultimately merged as `fe7e98b`; deploy `34271567276` passed its
+  existing checks and readers served 2.20.179. Dry run `34272357642` then
+  printed exactly 5 rows / 428 jobs and wrote nothing. The signed apply run
+  `34272468974` failed safely with HTTP 404 before any row was written: the
+  public namespace proved `/restore-merged-rows` was absent even though the
+  deploy log proved `includes/db.php` was retransferred. Current follow-up
+  branch `codex/top3-restore-route` is rebased onto `origin/main` `2793f68` and
+  claims 2.20.180. It loads the correction endpoint from a newly named guarded
+  include, which forces compilation past stale host bytecode, and makes the
+  deploy verify the route itself. Red first: 9 failures. The first full CI then
+  exposed a PHP redeclaration risk in the attempted compatibility copy; a new
+  red contract requires a fresh, uniquely named callback and no shipped
+  declaration of the old callback in `db.php`. Stale 2.20.179 bytecode can now
+  coexist with the new include without a fatal. The focused collision and
+  restoration checks pass locally. CI also exposed that the Cloudflare-52x
+  unit test inherited today's committed sticky incident; its edge fixture now
+  uses a clean temporary incident ledger, while production still reads and
+  preserves the real one. Both rendered shards and all non-live guards are
+  green; the remaining `rest` failure is the canonical open production incident
+  this route is needed to repair. Manual deploy `34275294788` uploaded every
+  file but failed its new route gate: the public Railway proxy returned a stale
+  72-route registry while a direct TLS-verified read of the documented Bluehost
+  origin returned 74 routes including `restore-merged-rows`. No correction ran.
+  Deploy verification and the manual signed-correction workflow now resolve
+  `mail.asktherecruiter.com` and pin `asktherecruiter.com` to that origin, keeping
+  normal hostname and certificate verification while bypassing only the stale
+  proxy for administrative operations. Still
+  required: green CI/merge/deploy, apply the correction, move Dow/Stellantis
+  report links, and live integrity read-back.
   Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
   regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,

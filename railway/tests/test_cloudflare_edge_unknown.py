@@ -36,6 +36,7 @@ WHAT IS PINNED HERE, IN BOTH DIRECTIONS.
     nothing from here), so drift is what this asserts against.
 """
 import sys
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
@@ -154,7 +155,24 @@ class NothingFailsOnAnEdgeBlip(unittest.TestCase):
     def _report(self, status):
         def fetch(url, timeout):
             raise _http(status)
-        return di.check_all(fetch=fetch)
+        # This test is about a transport-only run, not today's committed
+        # operations ledger. Once a real sticky incident is open, the default
+        # MovementInvariant quite correctly remains FAIL even when every fetch
+        # 52x's. Give that invariant a clean temporary ledger so the fixture is
+        # hermetic and can still prove that the edge response creates no new
+        # data failure.
+        with tempfile.TemporaryDirectory() as td:
+            incident_path = Path(td) / "headline_incidents.json"
+            invariants = [
+                di.MovementInvariant(
+                    headlines=inv.headlines,
+                    baseline_path=inv.baseline_path,
+                    incidents_path=incident_path,
+                    now=inv.now,
+                ) if isinstance(inv, di.MovementInvariant) else inv
+                for inv in di.INVARIANTS
+            ]
+            return di.check_all(fetch=fetch, invariants=invariants)
 
     def test_an_edge_blip_produces_no_failure_and_no_bare_unknown(self):
         for status in EDGE:

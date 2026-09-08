@@ -35,8 +35,11 @@ HERE = os.path.dirname(__file__)
 RAILWAY = os.path.abspath(os.path.join(HERE, ".."))
 ROOT = os.path.abspath(os.path.join(RAILWAY, ".."))
 DB = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker", "includes", "db.php")
+RESTORE = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker", "includes", "restore-merged.php")
+PLUGIN_MAIN = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker", "ai-layoff-tracker.php")
 EXTRACTOR = os.path.join(RAILWAY, "extractor.py")
 WORKFLOW = os.path.join(ROOT, ".github", "workflows", "apply-correction.yml")
+DEPLOY_WORKFLOW = os.path.join(ROOT, ".github", "workflows", "deploy-plugin.yml")
 RESTORE_SPEC = os.path.join(RAILWAY, "correction_specs", "2026-09-08-false-dedup-merges.json")
 
 if RAILWAY not in sys.path:
@@ -56,8 +59,8 @@ def _handler():
 
 
 def _restore_handler():
-    m = re.search(r"\nfunction alt_api_restore_merged_rows\(.*?\n\}", _read(DB), re.S)
-    assert m, "alt_api_restore_merged_rows is not in db.php"
+    m = re.search(r"\nfunction alt_api_restore_merged_rows_fresh\(.*?\n\}", _read(RESTORE), re.S)
+    assert m, "alt_api_restore_merged_rows_fresh is not in the fresh restore include"
     return m.group(0)
 
 
@@ -108,12 +111,30 @@ class MergeAuditRules(unittest.TestCase):
 
 
 class RestoreMergedHandlerRules(unittest.TestCase):
+    def test_fresh_include_is_guarded_from_the_plugin_entrypoint(self):
+        main = _read(PLUGIN_MAIN)
+        self.assertIn("includes/restore-merged.php", main)
+        self.assertRegex(main, r"is_readable\(\$alt_restore_merged\)[\s\S]*?require_once",
+                         "a half-landed FTP deploy must never fatal the whole plugin")
+
     def test_route_is_key_protected(self):
-        src = _read(DB)
+        src = _read(RESTORE)
         m = re.search(r"register_rest_route\('layoffs/v1', '/restore-merged-rows', array\((.*?)\)\);", src, re.S)
         self.assertIsNotNone(m, "restore route not registered")
         self.assertIn("alt_api_permission", m.group(1))
-        self.assertIn("alt_api_restore_merged_rows", m.group(1))
+        self.assertIn("alt_api_restore_merged_rows_fresh", m.group(1))
+        self.assertNotIn("'/restore-merged-rows'", _read(DB),
+                         "only the fresh include may register this route")
+
+    def test_fresh_handler_has_one_declaration_in_the_plugin(self):
+        plugin_php = "\n".join(
+            _read(os.path.join(folder, name))
+            for folder, _, names in os.walk(os.path.dirname(PLUGIN_MAIN))
+            for name in names if name.endswith(".php")
+        )
+        self.assertEqual(1, len(re.findall(r"function alt_api_restore_merged_rows_fresh\(", plugin_php)))
+        self.assertNotRegex(_read(DB), r"function alt_api_restore_merged_rows\(",
+                            "the shipped db include must not redeclare the correction handler")
 
     def test_only_a_merge_suppression_can_be_restored(self):
         h = _restore_handler()
@@ -149,6 +170,23 @@ class RestoreMergedHandlerRules(unittest.TestCase):
         h = _restore_handler()
         self.assertIn("array_key_exists('role_categories', $e)", h)
         self.assertIn("alt_db_pack_tags($e['role_categories'])", h)
+
+    def test_deploy_fails_when_the_route_did_not_register(self):
+        workflow = _read(DEPLOY_WORKFLOW)
+        self.assertIn("restore-merged-rows", workflow)
+        self.assertRegex(workflow, r"wp-json/layoffs/v1[\s\S]*?restore-merged-rows")
+
+    def test_deploy_checks_the_admin_route_on_the_wordpress_origin(self):
+        workflow = _read(DEPLOY_WORKFLOW)
+        self.assertIn("mail.asktherecruiter.com", workflow)
+        self.assertRegex(workflow, r"--resolve [^\n]*asktherecruiter\.com:443")
+
+    def test_signed_corrections_pin_the_hostname_to_the_wordpress_origin(self):
+        workflow = _read(WORKFLOW)
+        pin = workflow.index("mail.asktherecruiter.com")
+        apply = workflow.index("python3 railway/apply_correction.py")
+        self.assertLess(pin, apply)
+        self.assertIn("/etc/hosts", workflow)
 
 
 class DedupHashParity(unittest.TestCase):

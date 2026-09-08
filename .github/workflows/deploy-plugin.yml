@@ -65,6 +65,13 @@ jobs:
       - name: Lint every plugin PHP file before upload
         run: |
           set -euo pipefail
+          # /blog is publicly reverse-proxied through Railway. On 2026-09-08
+          # that proxy exposed 72 stale routes while the Bluehost origin exposed
+          # the freshly deployed 74. Administrative route verification belongs
+          # on the origin we just wrote. mail.asktherecruiter.com resolves to
+          # that origin; --resolve preserves the public hostname and TLS SNI.
+          ORIGIN_IP="$(getent ahostsv4 mail.asktherecruiter.com | awk 'NR == 1 {print $1}')"
+          [ -n "$ORIGIN_IP" ] || { echo "::error::Could not resolve the WordPress origin"; exit 1; }
           find wordpress-plugin/ai-layoff-tracker -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
 
@@ -296,10 +303,22 @@ jobs:
           # step below is the one that speaks for readers.
           curl --fail --show-error --silent --retry 4 --retry-all-errors \
             --retry-delay 5 --max-time 30 \
+            --resolve "asktherecruiter.com:443:$ORIGIN_IP" \
             --cookie 'humans_21909=1' \
             -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
             "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
             | python3 -c 'import json, sys; payload = json.load(sys.stdin); assert "canonical_events" in payload; print("Live tracker API verified.")'
+          # Version 2.20.179 proved that a fresh entrypoint/version can coexist
+          # with stale bytecode for a long-lived include: db.php transferred,
+          # but its new correction route never registered. Verify the route
+          # contract itself so a green deploy can no longer miss that class.
+          curl --fail --show-error --silent --retry 4 --retry-all-errors \
+            --retry-delay 5 --max-time 30 \
+            --resolve "asktherecruiter.com:443:$ORIGIN_IP" \
+            --cookie 'humans_21909=1' \
+            -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+            "$WP_SITE_URL/wp-json/layoffs/v1?deploy_check=$GITHUB_RUN_ID" \
+            | python3 -c 'import json, sys; routes = json.load(sys.stdin).get("routes", {}); assert "/layoffs/v1/restore-merged-rows" in routes; print("Restoration route verified.")'
 
       # The check that measures the surface a reader actually gets: the BARE
       # url, a browser User-Agent, no cache buster. Every deploy check before
