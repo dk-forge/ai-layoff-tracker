@@ -59,8 +59,19 @@ def _scrub(text: str, secrets: list[str]) -> str:
     return out
 
 
-def fetch(host: str, user: str, password: str, limit: int = 20) -> tuple[str, list[str], str]:
-    """Return (state, saved report paths, detail). Never raises, never leaks."""
+def fetch(host: str, user: str, password: str, limit: int = 0) -> tuple[str, list[str], str]:
+    """Return (state, saved report paths, detail). Never raises, never leaks.
+
+    ``limit`` caps messages per run; 0 means read DMARC_MAX_PER_RUN, default
+    200. The default is high on purpose: the first run against a mailbox that
+    has been filling unread for months has a backlog to drain, and a cap of a
+    handful would take weeks to clear it while the mailbox kept growing.
+    """
+    if not limit:
+        try:
+            limit = int(os.environ.get("DMARC_MAX_PER_RUN", "200"))
+        except ValueError:
+            limit = 200
     secrets = [password]
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="dmarc-"))
     saved: list[str] = []
@@ -78,8 +89,9 @@ def fetch(host: str, user: str, password: str, limit: int = 20) -> tuple[str, li
             if typ != "OK":
                 return UNKNOWN, [], "mailbox search failed"
             ids = (data[0] or b"").split()[-limit:]
+            harvested: list[bytes] = []
             for num in ids:
-                typ, raw = m.fetch(num, "(RFC822)")
+                typ, raw = m.fetch(num, "(BODY.PEEK[])")
                 if typ != "OK" or not raw or not raw[0]:
                     continue
                 msg = email.message_from_bytes(raw[0][1])
@@ -93,12 +105,55 @@ def fetch(host: str, user: str, password: str, limit: int = 20) -> tuple[str, li
                     dest = tmp / pathlib.Path(name).name
                     dest.write_bytes(payload)
                     saved.append(str(dest))
+                    if num not in harvested:
+                        harvested.append(num)
+            # A mailbox nobody empties fills up, and a full mailbox rejects
+            # mail, which would silently end this check. Clearing happens ONLY
+            # for messages whose attachment we actually wrote to disk: a
+            # message we could not read stays unread and untouched, so a parse
+            # failure is retried and stays visible rather than being destroyed
+            # by the thing that failed to understand it.
+            if harvested:
+                cleared = _clear(m, harvested)
+                detail_suffix = f", {cleared} cleared from the mailbox"
+            else:
+                detail_suffix = ""
         return (OK if saved else UNKNOWN), saved, (
-            f"{len(saved)} report(s) fetched" if saved
+            f"{len(saved)} report(s) fetched" + detail_suffix if saved
             else "no unread report attachments found"
         )
     except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
         return UNKNOWN, [], _scrub(exc, secrets)
+
+
+def _clear(conn, nums: list[bytes]) -> int:
+    """Delete the messages we successfully harvested, and expunge.
+
+    The owner noticed his mailboxes filling up. A DMARC mailbox receives a
+    report from every large receiver every day, forever, and a full mailbox
+    REJECTS incoming mail -- which would end this check silently, from a cause
+    that looks nothing like a broken check.
+
+    Deleting is safe here in a way it would not be elsewhere: these are
+    machine-generated reports, each superseded daily, the verdict is preserved
+    in the workflow run summary, and the mailbox is dedicated to robots. Only
+    messages whose attachment reached disk are touched.
+
+    A server that refuses the delete is not an error worth failing the run
+    over: the reports were still read and judged, and the next run retries.
+    """
+    done = 0
+    for num in nums:
+        try:
+            conn.store(num, "+FLAGS", "\\Deleted")
+            done += 1
+        except Exception:
+            continue
+    try:
+        conn.expunge()
+    except Exception:
+        pass
+    return done
 
 
 def main() -> int:
