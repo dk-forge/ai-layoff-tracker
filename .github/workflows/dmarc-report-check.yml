@@ -1,0 +1,69 @@
+# Read the DMARC aggregate reports and say whether enforcement is safe yet.
+#
+# WHY UNATTENDED. dmarc_report.py answered this well on 2026-09-08, but only
+# because the owner happened to notice an attachment in his inbox and hand over
+# the path. A check that needs a person to spot an email is a check that stops
+# happening. The reports are machine-generated XML mailed daily by every large
+# receiver to the address in the DMARC record's rua=; point that at a mailbox
+# this job can read and the loop closes.
+#
+# FREE: public repository, unmetered Actions. IMAP plus XML parsing, seconds.
+#
+# THE CREDENTIAL. DMARC_IMAP_* must be a DEDICATED mailbox whose only
+# correspondents are report robots. On cPanel the same password usually works
+# for SMTP, so a leak can send as well as read; a mailbox holding nothing else
+# bounds that. Never point this at info@ or at a person's mailbox. The password
+# is scrubbed from any error before it can reach this public run log.
+#
+# FOUR STATES. ABSENT is green and says it is not armed. REJECTED is red and a
+# human rotates the secret. UNKNOWN is red because a check that could not run
+# is not a pass. A failing sender is red. Only "read the reports and every
+# observed sender passes" is green.
+
+name: DMARC report check
+
+on:
+  schedule:
+    - cron: '10 8 * * *'   # 08:10 UTC daily, after mail-auth-watch
+  workflow_dispatch:
+
+concurrency:
+  group: dmarc-report-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Judge the latest DMARC aggregate reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch and judge
+        id: judge
+        env:
+          DMARC_IMAP_HOST: ${{ secrets.DMARC_IMAP_HOST }}
+          DMARC_IMAP_USER: ${{ secrets.DMARC_IMAP_USER }}
+          DMARC_IMAP_PASSWORD: ${{ secrets.DMARC_IMAP_PASSWORD }}
+          # Only used to mail the one-time "you can tighten now" notice.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+        run: |
+          set +e
+          python3 railway/dmarc_fetch.py | tee /tmp/dmarc.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the verdict
+        run: cat /tmp/dmarc.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on a failing sender, a rejected login, or an unreadable check
+        run: |
+          case "${{ steps.judge.outputs.code }}" in
+            0) echo "Green: either not armed, or every observed sender passes." ;;
+            2) echo "::error::DMARC: a sender would be quarantined, or the mailbox login was REFUSED. See the job summary."; exit 1 ;;
+            *) echo "::error::DMARC reports could not be read. That is UNKNOWN, not a pass."; exit 1 ;;
+          esac

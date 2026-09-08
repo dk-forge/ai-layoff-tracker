@@ -49,18 +49,21 @@ def _ts(value: str | None) -> str:
         return "?"
 
 
-def report(paths: list[str]) -> int:
-    """0 = every observed sender survives enforcement. 2 = at least one does not."""
+def analyse(paths: list[str]) -> dict:
+    """Parse reports into {total, failing, senders, selectors, windows, policies}.
+
+    Split out so an unattended caller can ask "is the new host's own mail in
+    here yet" without re-parsing or screen-scraping report()'s output.
+    """
     total = failing = 0
     senders: dict[tuple, dict] = {}
     windows: list[str] = []
     policies: set[str] = set()
-
+    selectors: set[str] = set()
     for raw in paths:
         path = pathlib.Path(raw)
         if not path.exists():
-            print(f"  MISSING  {path}")
-            return 3
+            continue
         for doc in _xml_documents(path):
             root = ET.fromstring(doc)
             meta = root.find("report_metadata")
@@ -69,7 +72,8 @@ def report(paths: list[str]) -> int:
                 windows.append(f"{_ts(rng.findtext('begin'))} .. {_ts(rng.findtext('end'))}")
             pol = root.find("policy_published")
             if pol is not None:
-                policies.add(f"p={pol.findtext('p')} adkim={pol.findtext('adkim')} aspf={pol.findtext('aspf')}")
+                policies.add(f"p={pol.findtext('p')} adkim={pol.findtext('adkim')} "
+                             f"aspf={pol.findtext('aspf')}")
             for rec in root.findall("record"):
                 row = rec.find("row")
                 ev = row.find("policy_evaluated")
@@ -80,25 +84,38 @@ def report(paths: list[str]) -> int:
                     count = 0
                 dkim = (ev.findtext("dkim") or "").lower()
                 spf = (ev.findtext("spf") or "").lower()
-                # DMARC passes when EITHER aligned mechanism passes. A record
-                # failing both is mail that enforcement would act on.
                 survives = dkim == "pass" or spf == "pass"
-                selectors = sorted({
+                passing = sorted({
                     f"{d.findtext('selector')}@{d.findtext('domain')}"
                     for d in (auth.findall("dkim") if auth is not None else [])
                     if (d.findtext("result") or "") == "pass"
                 })
-                key = (row.findtext("source_ip"), tuple(selectors), survives)
+                selectors.update(passing)
+                key = (row.findtext("source_ip"), tuple(passing), survives)
                 e = senders.setdefault(key, {"count": 0, "dkim": dkim, "spf": spf})
                 e["count"] += count
                 total += count
                 if not survives:
                     failing += count
+    return {"total": total, "failing": failing, "senders": senders,
+            "selectors": sorted(selectors), "windows": sorted(set(windows)),
+            "policies": sorted(policies)}
+
+
+def report(paths: list[str]) -> int:
+    """0 = every observed sender survives enforcement. 2 = at least one does not."""
+    for raw in paths:
+        if not pathlib.Path(raw).exists():
+            print(f"  MISSING  {raw}")
+            return 3
+    a = analyse(paths)
+    total, failing, senders = a["total"], a["failing"], a["senders"]
+    windows, policies = a["windows"], a["policies"]
 
     print("DMARC AGGREGATE REPORT")
-    for w in sorted(set(windows)):
+    for w in windows:
         print(f"  window   {w} UTC")
-    for p in sorted(policies):
+    for p in policies:
         print(f"  policy   {p}")
     print(f"  messages {total}\n")
 
