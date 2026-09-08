@@ -52,12 +52,17 @@
     }
   ],
   "open": {
+    "dmarc-report-check:main:27939f9597a6c6c5": {
+      "first": 1788879684,
+      "last": 1788879684,
+      "subject": "CI RED: DMARC report check \u2014 DMARC reports could not be read. That is UNKNOWN, not a pass."
+    },
     "tests:main:84c6c760add42cf9": {
       "first": 1788874108,
       "last": 1788874108,
       "subject": "CI RED: Tests \u2014 ModuleNotFoundError: No module named 'pytest'"
     }
   },
-  "updated_at": "2026-09-08T13:49:33+00:00",
+  "updated_at": "2026-09-08T15:01:24+00:00",
   "version": 1
 }
