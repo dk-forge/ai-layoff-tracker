@@ -17,6 +17,9 @@ on:
         required: false
         default: '60'
 
+permissions:
+  contents: write
+
 jobs:
   dedupe:
     runs-on: ubuntu-latest
@@ -52,3 +55,8 @@ jobs:
         run: |
           cd railway
           python dedupe_llm.py
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: dedupe-llm

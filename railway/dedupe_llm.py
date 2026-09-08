@@ -34,9 +34,11 @@ from datetime import date
 import urllib.request
 from collections import defaultdict
 
+import host_call
 from source_health import report_source_health
 import spend
 
+JOB = "dedupe-llm"
 SITE = os.environ.get("WP_SITE_URL", "").rstrip("/")
 KEY = os.environ.get("WP_API_KEY", "")
 OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
@@ -102,17 +104,12 @@ def pair_window_days(lo, hi):
 
 
 def api(path):
-    # shared hosting throws transient 5xx under sustained paging; retry
-    for attempt in range(4):
-        try:
-            req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/{path}",
-                                         headers={"User-Agent": UA})
-            return json.load(urllib.request.urlopen(req, timeout=90))
-        except Exception as e:
-            if attempt == 3:
-                raise
-            print(f"  api retry {attempt+1}: {e}")
-            time.sleep(15 * (attempt + 1))
+    # Use the shared host-call policy so deploy maintenance becomes a counted
+    # deferral while refusals, missing routes and malformed success bodies stay
+    # real failures.
+    return host_call.get_json(
+        f"{SITE}/wp-json/layoffs/v1/{path}",
+        headers={"User-Agent": UA}, timeout=90)
 
 
 def norm_company(name):
@@ -278,9 +275,10 @@ def canonical(group):
     ))[0]
 
 
-def main():
+def _run():
     if not (SITE and KEY and OR_KEY):
-        print("WP_SITE_URL / WP_API_KEY / OPENROUTER_API_KEY required"); sys.exit(1)
+        print("WP_SITE_URL / WP_API_KEY / OPENROUTER_API_KEY required")
+        return 1
 
     # A total fetch failure is a real problem (exit non-zero). Everything after
     # is resilient: each company cluster is handled on its own, and one bad
@@ -305,7 +303,7 @@ def main():
         print("paid reads are OFF (spend ceiling) — skipping the LLM dedup "
               "review this run; the rotation resumes on the next schedule")
         spend.record_job_run(items=0, changed=0)
-        return
+        return 0
 
     merges, skipped = [], 0
     for group in clusters:
@@ -376,8 +374,19 @@ def main():
 
     # Only fail the run if literally nothing could be processed.
     if clusters and not merges and skipped == len(clusters):
-        sys.exit(1)
+        return 1
+    return 0
+
+
+def main():
+    """Defer transient WordPress downtime without concealing real failures."""
+    try:
+        code = _run()
+    except host_call.Deferred as exc:
+        return host_call.defer(JOB, str(exc), source="dedupe_llm")
+    host_call.clear(JOB)
+    return code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

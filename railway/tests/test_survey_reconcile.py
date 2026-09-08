@@ -32,6 +32,32 @@ class SurveyReconcileTests(unittest.TestCase):
         for banned in ("chal" + "lengergray", "chal" + "lenger,"):
             self.assertNotIn(banned, src.lower())
 
+    def test_unconfigured_optional_benchmark_reports_absent_without_fetching(self):
+        """An intentionally dormant benchmark is ABSENT, not a broken URL."""
+        with patch.dict(os.environ, {
+                "WP_SITE_URL": "https://asktherecruiter.com/blog",
+                "BENCHMARK_YEAR": "2026",
+                "SURVEY_BENCHMARK_JSON": ""}, clear=False), \
+                patch.object(subject, "FEED", ""), \
+                patch.object(subject, "HISTORICAL_REPORTS", {}), \
+                patch.object(subject.requests, "get",
+                             side_effect=AssertionError("dormant job fetched an empty URL"),
+                             create=True):
+            self.assertEqual(subject._run(), 0)
+
+    def test_malformed_config_does_not_turn_into_dormancy(self):
+        """A configured but unusable manifest is an operator error."""
+        with patch.dict(os.environ, {
+                "WP_SITE_URL": "https://asktherecruiter.com/blog",
+                "BENCHMARK_YEAR": "2026",
+                "SURVEY_BENCHMARK_JSON": "not-json"}, clear=False), \
+                patch.object(subject, "FEED", ""), \
+                patch.object(subject, "HISTORICAL_REPORTS", {}), \
+                patch.object(subject.requests, "get",
+                             side_effect=AssertionError("invalid config fetched an empty URL"),
+                             create=True):
+            self.assertNotEqual(subject._run(), 0)
+
     def test_loads_the_manifest_from_the_secret_when_present(self):
         import importlib
         os.environ["SURVEY_BENCHMARK_JSON"] = (

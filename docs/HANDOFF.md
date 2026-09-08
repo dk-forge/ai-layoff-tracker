@@ -15,7 +15,15 @@ holder, so the start-of-session ritual surfaces it automatically.
   20/20 data-integrity invariants pass; all 40 declared due collectors have
   reported. Work must begin with the two red scheduled workflows
   (`Cross-source dedup`, HTTP 503; `Reconcile US AI announcements with Survey`,
-  empty URL), then GDELT's abandoned windows, before product work. Remaining
+  empty URL), then GDELT's abandoned windows, before product work. **First TDD
+  batch is complete locally:** the optional benchmark now reports `ABSENT`
+  without a fetch when both private inputs are unconfigured, while malformed
+  configuration stays red; dedup now uses the shared host-call deferral policy,
+  distinguishes transient 503 from a hard 403, and its workflow always commits
+  the ledger. Five focused checks and the broader affected set passed (216
+  tests, 435 subtests, two skips). Not yet pushed or production-proved; next is
+  PR/CI, dispatch both workflows, read back ops status, then citation pages.
+  Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
   regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,
   the citation-page fallback header, and an unavailable local-only competitor
