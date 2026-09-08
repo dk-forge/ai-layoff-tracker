@@ -1,0 +1,72 @@
+# Read the notification mailbox, escalate what matters, clear what is stale.
+#
+# errornotifications-sandbox@ held 2,106 messages growing at ~31/day, never
+# read, and buried in them exactly ONE live problem. A mailbox nobody empties
+# eventually rejects mail, and a mailbox nobody reads is where signals go to
+# die.
+#
+# THIS IS NOT MONITORING. Almost everything in there duplicates a signal
+# available better elsewhere; the right fix is to stop sending most of it.
+# This keeps the mailbox bounded and makes sure anything genuinely new is
+# surfaced rather than joining the pile.
+#
+# FREE: public repository, unmetered Actions.
+#
+# DRY RUN IS THE DEFAULT for manual dispatch, so the first look at a mailbox
+# with 2,000 real messages in it deletes nothing. The scheduled run is live and
+# only ever touches messages older than the retention window.
+
+name: Mailbox janitor
+
+on:
+  schedule:
+    - cron: '50 8 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report only, delete nothing'
+        type: boolean
+        default: true
+
+concurrency:
+  group: mailbox-janitor
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: Sweep the notification mailbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Sweep
+        id: sweep
+        env:
+          JANITOR_IMAP_HOST: ${{ secrets.JANITOR_IMAP_HOST }}
+          JANITOR_IMAP_USER: ${{ secrets.JANITOR_IMAP_USER }}
+          JANITOR_IMAP_PASSWORD: ${{ secrets.JANITOR_IMAP_PASSWORD }}
+          JANITOR_RETAIN_DAYS: '14'
+          # Scheduled runs are live. Manual runs default to a dry run.
+          JANITOR_DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run && 'true' || 'false') }}
+        run: |
+          set +e
+          python3 railway/mailbox_janitor.py | tee /tmp/janitor.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        run: cat /tmp/janitor.txt >> "$GITHUB_STEP_SUMMARY"
+
+      # Exit 2 means something matched the escalation vocabulary
+      # (production / main / payment / data loss). That is the whole point of
+      # reading this mailbox, so it goes red and ci-alert emails the cause.
+      - name: Fail when something needs a human, or the mailbox is unreadable
+        run: |
+          case "${{ steps.sweep.outputs.code }}" in
+            0) echo "Swept. Nothing matched the escalation vocabulary." ;;
+            2) echo "::error::Something in the notification mailbox needs a human, or the login was refused. See the job summary."; exit 1 ;;
+            *) echo "::error::The mailbox could not be read. UNKNOWN, not a pass."; exit 1 ;;
+          esac
