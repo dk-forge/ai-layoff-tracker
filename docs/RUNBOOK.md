@@ -229,6 +229,55 @@ Skip, do not cancel, and do not start. In order of what it saves:
 
 ## "X is broken" playbooks
 
+### The deploy is green and the site does not move
+
+**Symptom.** The deploy workflow succeeds, the mirror logs `Transferring file`
+for every file, and `/status` keeps reporting the previous version. Every check
+in this repo stays green, because they all read their version FROM THE LIVE
+SITE and the live site is internally coherent at the old build.
+
+**First, tell the three cases apart. Do not guess between them.**
+
+1. Read the deploy's step **"Verify the bytes we just wrote are the bytes we
+   meant to write."** If it FAILS, the upload did not land: a permission, a
+   path or a disk. If it PASSES while the origin still serves the old version,
+   go to 2 -- the write landed somewhere.
+2. Ask whether it landed on the machine that serves the site:
+
+   ```bash
+   gh workflow run ftp-target-probe.yml     # read-only, writes nothing
+   ```
+
+   It prints a verdict comparing `FTP_HOST`'s resolved address against the
+   origin, lists the FTP home, and reports which candidate trees hold the
+   plugin and at what version. It never prints a credential.
+3. If `FTP_HOST` DOES point at the origin and the bytes are there, only then is
+   it a cache: check `Last-Modified` on a static plugin asset, which bypasses
+   both the page cache and opcache.
+
+   ```bash
+   curl -sI -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+     "https://asktherecruiter.com/blog/wp-content/plugins/ai-layoff-tracker/assets/health.js?cb=$RANDOM" \
+     | grep -iE 'last-modified|cf-cache-status'
+   ```
+
+   A `Last-Modified` older than the deploy with `cf-cache-status: MISS` means
+   the ORIGIN holds the old file, not an edge. That is not a cache problem.
+
+**The one that has actually happened (2026-09-09).** `FTP_HOST` is a literal
+address, and the hosting move repointed DNS without moving it, so four deploys
+wrote a complete, correct plugin onto the old server. The fix is the owner's:
+point `FTP_HOST` at **`blogorigin.asktherecruiter.com`**, which is DNS-only,
+already resolves to the live host, and follows the origin if it moves again.
+`FTP_USERNAME` / `FTP_PASSWORD` belong to the old account and may also need
+rotating. A session must not guess or set credentials.
+
+**Do not** answer this by widening the reader-wait window, by comparing the
+live site to itself, or by trusting the mirror's transfer log. A transfer log
+is the client's account of what it sent, not the server's account of what it
+kept.
+
+
 **A COLLECTOR RUN NEVER FINISHED** (`ops_status [2e]`)
 
 `cron.py` posts a `running` note before each collector and an `ok`/`degraded`

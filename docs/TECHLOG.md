@@ -1,4 +1,4 @@
-## 2026-09-09 - four green deploys shipped nothing, and every check that could have noticed was reading the wrong pair
+## 2026-09-09 - four green deploys shipped nothing: FTP_HOST still points at the old server
 
 **Class:** guard-went-vacuous
 **Guard:** `.github/workflows/deploy-plugin.yml` step "Verify the bytes we just wrote are the bytes we meant to write"
@@ -46,13 +46,43 @@ The timeline agrees. `Last-Modified` Sun 13:18 UTC is 15:18 CEST, which is when
 2.20.176 deploy at 20:46 the same evening -- earlier than the 2026-09-08 date
 recorded for the hosting move, which is worth correcting in that record.
 
-**This needs the owner and cannot be fixed from here.** Either `FTP_HOST` /
-`FTP_USERNAME` point at the old account, or the FTP home is the account root
-while the live docroot is a subdirectory (`public_html/blog/...`), so the
-relative `wp-content/plugins/...` reaches a stale copy.
-`.github/workflows/ftp-target-probe.yml` is a read-only, dispatch-only probe
-that lists the candidate trees and reports which hold the plugin and at what
-version. It writes nothing and prints no credential.
+**ROOT CAUSE, MEASURED: `FTP_HOST` does not point at the machine that serves
+the site.** The probe compares the resolved address against the origin rather
+than printing it, and reports `FTP_HOST does NOT point at 162.19.222.172`. That
+origin was verified independently, not taken from this doc:
+`blogorigin.asktherecruiter.com` and `mail.asktherecruiter.com` both resolve to
+`162.19.222.172`, whose reverse is `rs7-fra.serverhostgroup.com`, the
+ChemiCloud host. The apex resolves to Cloudflare, so it cannot be used for
+this.
+
+A detail worth keeping: the FIRST version of the probe printed the resolved
+address and GitHub rendered it as `***`. GitHub masks a secret's VALUE, so an
+address that comes back masked means **`FTP_HOST` is that literal address** - a
+hardcoded IP, which is exactly the kind of constant a DNS migration cannot
+move. The probe now compares and prints only a verdict.
+
+Everything else follows. The FTP home is a complete WordPress root (its own
+`wp-config.php`, `wp-admin/`, `wp-content/`, `wp-includes/`), which is why the
+pre-flight guard passes: it looks for `wp-config.php` and an existing
+`ai-layoff-tracker.php` relative to that home, and the OLD server's copy has
+both. Only one candidate path holds the plugin, at 2.20.179, and no
+`public_html` exists in that tree at all. So the mirror writes a real,
+complete, correct deploy - onto a machine nobody reads.
+
+**The owner has to rotate the secret; a session must not guess or set
+credentials.** The durable fix is to point `FTP_HOST` at a HOSTNAME that
+follows the origin rather than an address that does not:
+`blogorigin.asktherecruiter.com` is DNS-only (not Cloudflare-proxied) and
+already resolves to the live host, so a future move carries the deploy with it.
+`FTP_USERNAME` and `FTP_PASSWORD` may also need to change - they are the old
+account's - and that is unknown from here. After rotating, the read-back step
+and the reader check together prove it landed; do not accept a green mirror as
+evidence.
+
+**Also worth correcting elsewhere:** the hosting move is recorded as
+2026-09-08, and the served asset's `Last-Modified` of Sun 13:18 UTC (15:18
+CEST, when 2.20.175 was cut) puts the split between then and the 2.20.176
+deploy at 20:46 that same evening.
 
 **The fix reads the bytes back off the server it just wrote to** and fails the
 deploy when they are not the bytes in the checkout. It also prints the resolved
