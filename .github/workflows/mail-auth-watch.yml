@@ -1,0 +1,84 @@
+# Daily guard on the DNS records our own mail deliverability rests on.
+#
+# WHY THIS EXISTS. On 2026-09-08 the hosting migration moved mail to a new
+# provider. The migration plan correctly replaced the old host's DKIM key and
+# did not know that operational alerting aligns through two OTHER records
+# nobody had written down (send.asktherecruiter.com and resend._domainkey), or
+# that the reader newsletter rests entirely on brevo2._domainkey. Google's
+# aggregate report for 2026-09-07 proved the last one: every Brevo message
+# passed DMARC on DKIM and FAILED SPF alignment, so DKIM is the only thing
+# holding the subscriber digest up.
+#
+# Lose one of those records while tidying DNS, tighten DMARC, and our own mail
+# is quarantined with no error anywhere, because a quarantined message is a
+# successful send from the sender's side. That is an alarm that cannot report
+# its own silence, which is the failure this repository keeps designing out.
+#
+# FREE: this repository is public, so Actions minutes are unmetered. The job is
+# DNS lookups over DoH and finishes in seconds.
+#
+# WHAT IT DOES NOT DO. It does not judge whether DMARC can be tightened to
+# p=quarantine. That question is only answerable from an aggregate report,
+# which arrives as an email attachment this runner cannot read, and it is
+# reported as UNKNOWN rather than assumed. Use railway/dmarc_report.py on a
+# saved report for that.
+
+name: Mail auth watch
+
+on:
+  schedule:
+    - cron: '40 7 * * *'   # 07:40 UTC daily, clear of the data jobs
+  workflow_dispatch:
+
+concurrency:
+  group: mail-auth-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Protected mail-auth records still published
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the protected record set
+        id: check
+        run: |
+          set +e
+          python3 railway/mail_auth_check.py | tee /tmp/mail_auth.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Report the DMARC policy as it stands (advisory, never a failure)
+        run: |
+          POLICY=$(curl -sS --max-time 15 \
+            -H 'Accept: application/dns-json' \
+            'https://dns.google/resolve?name=_dmarc.asktherecruiter.com&type=TXT' \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(a.get("data","").strip(chr(34)) for a in (d.get("Answer") or [])) or "NO RECORD")' \
+            || echo "UNKNOWN (lookup failed)")
+          {
+            echo "DMARC policy: $POLICY"
+            echo ""
+            echo "Enforcement readiness is NOT judged here: it needs an aggregate"
+            echo "report, which is an email attachment this runner cannot read."
+            echo "Run railway/dmarc_report.py against a saved report for that."
+            echo ""
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the record verdict
+        run: cat /tmp/mail_auth.txt >> "$GITHUB_STEP_SUMMARY"
+
+      # A missing record is a red run, which ci-alert.yml turns into one email
+      # naming the cause. UNKNOWN (exit 3) is also red: a check that could not
+      # run is not a pass, and a DNS outage must not read as a clean bill of
+      # health.
+      - name: Fail if a protected record is gone or could not be read
+        run: |
+          case "${{ steps.check.outputs.code }}" in
+            0) echo "All protected records present." ;;
+            2) echo "::error::A protected mail-auth record is MISSING or CHANGED. Our own mail is at risk once DMARC is enforced. See the job summary."; exit 1 ;;
+            *) echo "::error::The protected records could not be checked. That is UNKNOWN, not a pass."; exit 1 ;;
+          esac
