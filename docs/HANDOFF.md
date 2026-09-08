@@ -10,7 +10,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
   `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  current branch: `codex/top3-deploy-gate`; initial starting point was
+  current branch: `codex/top3-gdelt`; initial starting point was
   `origin/main` at `4c310d0`.
   Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
   20/20 data-integrity invariants pass; all 40 declared due collectors have
@@ -36,7 +36,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   `scrollWidth=320`, `bodyScroll=320`, with a 224px brand link. Readers serve
   `2.20.177/e6548e7b14d5d541`.
 
-  **Current red-first batch:** deploy run `34205614447` uploaded those bytes,
+  **Deployment gate repair is shipped:** deploy run `34205614447` uploaded those bytes,
   but both attempts failed before reader verification because Bluehost returned
   HTTP 409 with `document.cookie = "humans_21909=1"` to the origin API probe.
   Replaying the exact cookie returned HTTP 200 and the full integrity payload;
@@ -44,9 +44,22 @@ holder, so the start-of-session ritual surfaces it automatically.
   reproduced both paths. `reader_freshness._open()` now recognizes only the
   narrow `humans_<digits>=1` challenge and retries the same URL, while the curl
   origin probe carries the known host cookie. Focused module: 51 tests green.
-  This branch is not yet pushed or merged; run broader gates, PR/CI and a green
-  end-to-end deploy before starting GDELT.
-  Remaining
+  PR `#285` merged as `8702df5`; its post-merge deploy `34208685515` passed
+  every step in 1m46s, including origin integrity JSON, the exact reader build,
+  subscriber links and both rendered themes.
+
+  **Current red-first batch:** the same HTTP 409 handshake independently broke
+  `Extract affected-role categories` at run `34207201742`. The shared
+  `http_retry` transport now recognizes and replays only the exact
+  `humans_<digits>=1` challenge for both requests GETs and stdlib GET/POSTs;
+  arbitrary 409s remain hard failures. Three focused tests were red first and
+  all 23 host-call tests pass. This branch is not yet pushed or merged; after a
+  green CI merge, rerun the failed role workflow and prove its alert closes.
+  A fresh live audit also found `headline_containment` failing after the eight
+  reviewed merges in dedup run `34204171256`; those rows are now enumerated in
+  its log. Treat the live number as wrong until the 41,575-job net movement is
+  reconciled to those removals and ordinary arrivals. Do not start GDELT edits
+  before that P0 is closed. Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
   regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,
   and an unavailable local-only competitor

@@ -1,7 +1,7 @@
-## 2026-09-08 - the deploy gate treated Bluehost's browser handshake as a broken tracker API (workflow-only, branch)
+## 2026-09-08 - one Bluehost browser handshake broke every host client differently (workflow-only, branch)
 
 **Class:** novel
-**Guard:** `railway/tests/test_deploy_reaches_readers.py`
+**Guard:** `railway/tests/test_deploy_reaches_readers.py`, `railway/tests/test_host_call_deferral.py`
 
 This is `novel` because the existing vocabulary has no class for a verified
 upstream replacing a normal response with a deterministic browser handshake.
@@ -21,10 +21,23 @@ The other pins the separate curl origin probe, which runs before that Python
 verifier. `reader_freshness._open()` now handles only HTTP 409 bodies assigning
 `humans_<digits>=1`; every other status and every other body is still raised.
 The workflow's integrity curl carries the measured `humans_21909=1` cookie.
-This is not a general challenge bypass and it does not accept arbitrary response
-text as a header. The whole reader-freshness module now passes 51 tests and
-`git diff --check` is clean. A green post-merge deploy remains the production
-gate for this branch.
+text as a header. The whole reader-freshness module passed 51 tests and
+`git diff --check` was clean. PR `#285` passed both comparison guards, the
+version guard and all four test shards, then merged as `8702df5`. Post-merge
+deployment `34208685515` passed end to end in 1m46s: PHP lint, minification,
+FTPS upload, the formerly blocked origin API check, exact reader version/build,
+subscriber confirm/unsubscribe routes and both rendered themes.
+
+The same upstream change was not confined to deploys. `Extract affected-role
+categories` run `34207201742` failed its first paginated host read with the same
+HTTP 409. Fixing each worker independently would recreate the drift this repo's
+shared transport exists to prevent. `http_retry.human_challenge_cookie()` is now
+the one definition used by both requests GETs and stdlib GET/POSTs. On the exact
+measured challenge it replays the same request once with the narrow cookie; an
+arbitrary 409 remains a hard failure and is not retried. Three tests first
+reproduced the requests path, the stdlib path and the arbitrary-409
+counterexample. All 23 host-call tests pass locally. PR/CI and a successful
+rerun of the role workflow remain the production gates for this second half.
 
 The citation release itself is live despite the red workflow bookkeeping. The
 bare tracker page serves `2.20.177/e6548e7b14d5d541`. On the live Volkswagen
