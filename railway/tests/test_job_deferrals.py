@@ -198,6 +198,25 @@ class EnrichRoles(_JobCase):
     """The job that actually broke."""
     module, job = "enrich_roles", "enrich-roles"
 
+    def test_a_409_bot_wall_defers_and_exits_zero(self):
+        """2026-09-08: `city_recall_sweep.py` had already named this two days
+        earlier -- "a site-wide HTTP 409 bot challenge on /blog (every route,
+        not only /query)" -- but the shared retry set still treated 409 as a
+        settled refusal, so `get_json`'s `raise_for_status()` raised straight
+        past the one `except host_call.Deferred` in `main()` and the run died
+        with an uncaught HTTPError instead of deferring like a 503 does."""
+        code = self.run_against(
+            409, "<script>document.cookie = \"humans_21909=1\"</script>")
+        self.assertEqual(
+            code, 0,
+            f"{self.job}: our own edge bot-walling a GET is not a job that "
+            f"failed\n{self.output}")
+        pending = deferral_ledger.pending(deferral_ledger.load(self.ledger))
+        self.assertEqual(
+            [e["job"] for e in pending], [self.job],
+            f"{self.job}: a deferral nobody counts is a silently green job"
+            f"\n{self.output}")
+
 
 class EnrichContext(_JobCase):
     module, job = "enrich_context", "enrich-context"

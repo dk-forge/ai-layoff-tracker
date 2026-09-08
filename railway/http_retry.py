@@ -36,7 +36,21 @@ except ImportError:  # pragma: no cover - exercised on the stdlib-only runners
 
 # Transient: worth retrying. Anything else (401/403/404) is a real answer the
 # caller must handle, and retrying it just wastes the run's deadline.
-TRANSIENT = {408, 429, 500, 502, 503, 504, 520, 521, 522, 524}
+#
+# 409 joined 2026-09-08. Every route this module's callers read or write
+# through (see the module docstring: GET /query, /aggregate, /facets, /tips,
+# and the POST routes behind host_call.post_json) never emits 409 as an
+# application-level answer -- the app's own real 409s (dedup conflicts on
+# /add, the immutable-quarterly-report guard) are answered by callers that
+# talk to `requests` directly and never pass through this module, so widening
+# this set cannot mask one of those. What DOES send our own host a 409 is the
+# edge in front of it: city_recall_sweep.py already documented "a site-wide
+# HTTP 409 bot challenge on /blog (every route, not only /query)" on
+# 2026-09-06, and `enrich_roles` met the identical wall on GET /query two days
+# later and crashed instead of deferring, because 409 fell through
+# `get_with_retry` as a first-try "real" answer and `raise_for_status()` then
+# raised past the one `except host_call.Deferred` in `main()`.
+TRANSIENT = {408, 409, 429, 500, 502, 503, 504, 520, 521, 522, 524}
 DEFAULT_UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
 
 #: The longest a single `Retry-After` may hold a run. A throttling host that
