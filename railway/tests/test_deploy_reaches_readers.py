@@ -27,8 +27,11 @@ prose near the wrong code.
 import re
 import sys
 import unittest
+from io import BytesIO
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
+from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -163,6 +166,36 @@ class ReaderFreshnessMeasuresTheReaderSurface(unittest.TestCase):
         for token in ("cb=", "uuid", "?", "time()"):
             self.assertNotIn(token, src,
                              f"reader_view() must not add {token!r} to the reader's URL")
+
+    def test_host_human_challenge_is_replayed_with_its_narrow_cookie(self):
+        """Measured 2026-09-08: Bluehost answered the deploy probes with HTTP
+        409 plus a one-line humans_N=1 cookie challenge. A browser immediately
+        replays that same URL with the named cookie; the verifier must do the
+        same without accepting an arbitrary Set-Cookie-shaped value."""
+        challenge = HTTPError(
+            "https://example.test/status", 409, "Conflict", {},
+            BytesIO(b'<script>document.cookie = "humans_21909=1"; document.location.reload(true)</script>'),
+        )
+        response = mock.MagicMock()
+        with mock.patch.object(reader_freshness.urllib.request, "urlopen",
+                               side_effect=[challenge, response]) as opened:
+            self.assertIs(reader_freshness._open("https://example.test/status", "test-agent"),
+                          response)
+
+        replay = opened.call_args_list[1].args[0]
+        self.assertEqual(replay.get_header("Cookie"), "humans_21909=1")
+
+    def test_origin_api_gate_carries_the_hosts_human_cookie(self):
+        """The integrity endpoint is probed by curl before reader_freshness.
+        It must not fail a healthy deploy on the same deterministic challenge."""
+        body = re.sub(r"^\s*#.*$", "", DEPLOY_YML, flags=re.M)
+        step = re.search(
+            r"- name: Verify the deployed tracker API\n(.*?)(?=\n\s+- name:)",
+            body,
+            flags=re.S,
+        )
+        self.assertIsNotNone(step)
+        self.assertRegex(step.group(1), r"--cookie\s+['\"]humans_\d+=1['\"]")
 
     # The shapes below are the LIVE page's, read from
     # https://asktherecruiter.com/blog/ai-layoff-tracker/ on 2026-08-06 with a

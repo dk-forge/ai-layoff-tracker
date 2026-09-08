@@ -10,7 +10,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
   `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  current branch: `codex/top3-citation`; initial starting point was
+  current branch: `codex/top3-deploy-gate`; initial starting point was
   `origin/main` at `4c310d0`.
   Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
   20/20 data-integrity invariants pass; all 40 declared due collectors have
@@ -27,16 +27,29 @@ holder, so the start-of-session ritual surfaces it automatically.
   `ABSENT`; the latter reviewed 60 of 123 candidate clusters, merged eight
   duplicate rows and skipped/deferred zero, with the ledger step green.
 
-  **Citation-page TDD is complete locally on 2.20.177:** the last direct
+  **Citation-page TDD is shipped and live on 2.20.177:** the last direct
   `get_header()` route now uses the shared real block-theme shell, its record is
   a semantic `<main>` with one template-owned H1, the 257-test related static
   surface passed, and all 44 rendered phone/desktop tests passed with PHP lint.
-  Not yet pushed, deployed or live-verified. Next: PR/CI, SHA-matched deploy,
-  then measure real navigation/H1/320px geometry before moving to GDELT.
+  PR `#284` merged as `29185ca`; the live Volkswagen citation page now has the
+  real navigation and footer, exactly one H1, and at 320px measures
+  `scrollWidth=320`, `bodyScroll=320`, with a 224px brand link. Readers serve
+  `2.20.177/e6548e7b14d5d541`.
+
+  **Current red-first batch:** deploy run `34205614447` uploaded those bytes,
+  but both attempts failed before reader verification because Bluehost returned
+  HTTP 409 with `document.cookie = "humans_21909=1"` to the origin API probe.
+  Replaying the exact cookie returned HTTP 200 and the full integrity payload;
+  this was a human-gate challenge, not a tracker API failure. Two new tests first
+  reproduced both paths. `reader_freshness._open()` now recognizes only the
+  narrow `humans_<digits>=1` challenge and retries the same URL, while the curl
+  origin probe carries the known host cookie. Focused module: 51 tests green.
+  This branch is not yet pushed or merged; run broader gates, PR/CI and a green
+  end-to-end deploy before starting GDELT.
   Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
   regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,
-  the citation-page fallback header, and an unavailable local-only competitor
+  and an unavailable local-only competitor
   benchmark. The $10 tracker allowance projects $7.11/month; shared-account
   spend outside this repo remains out of scope. Use red-test-first changes,
   green CI, SHA-matched deploys, live read-back, and keep this baton current.

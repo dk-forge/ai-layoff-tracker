@@ -296,6 +296,7 @@ jobs:
           # step below is the one that speaks for readers.
           curl --fail --show-error --silent --retry 4 --retry-all-errors \
             --retry-delay 5 --max-time 30 \
+            --cookie 'humans_21909=1' \
             -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
             "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
             | python3 -c 'import json, sys; payload = json.load(sys.stdin); assert "canonical_events" in payload; print("Live tracker API verified.")'
