@@ -45,6 +45,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from dmarc_report import analyse, report as judge_reports  # noqa: E402
 
 ABSENT, OK, REJECTED, UNKNOWN = "ABSENT", "OK", "REJECTED", "UNKNOWN"
+#: Reachable, authenticated, and holding no new report. On a freshly
+#: created mailbox that is the CORRECT answer, not a fault: reports arrive
+#: daily and the first has not been sent yet. Distinguished from UNKNOWN
+#: because a login that succeeded proves more than one that never ran.
+EMPTY = "EMPTY"
 
 #: Only these arrive as DMARC aggregate reports.
 _ATTACHMENT = re.compile(r"\.(zip|gz|xml)$", re.IGNORECASE)
@@ -118,7 +123,7 @@ def fetch(host: str, user: str, password: str, limit: int = 0) -> tuple[str, lis
                 detail_suffix = f", {cleared} cleared from the mailbox"
             else:
                 detail_suffix = ""
-        return (OK if saved else UNKNOWN), saved, (
+        return (OK if saved else EMPTY), saved, (
             f"{len(saved)} report(s) fetched" + detail_suffix if saved
             else "no unread report attachments found"
         )
@@ -174,6 +179,13 @@ def main() -> int:
         print("  and update the DMARC_IMAP_PASSWORD secret. This is RED on purpose:")
         print("  a rejected credential that reads green is how a check dies quietly.")
         return 2
+    if state == EMPTY:
+        print("  The mailbox is reachable and the login works, and it holds no new")
+        print("  report. On a newly created mailbox that is expected: receivers send")
+        print("  these once a day. Enforcement readiness is still UNANSWERED, and this")
+        print("  run does not claim otherwise. If this persists for several days the")
+        print("  reports have stopped arriving and the rua= address needs checking.")
+        return 0
     if state != OK:
         print("  Could not read any report. That is UNKNOWN, not a pass: nothing")
         print("  here established that enforcement is safe.")

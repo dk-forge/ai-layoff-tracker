@@ -18,7 +18,7 @@ import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from dmarc_fetch import ABSENT, OK, REJECTED, UNKNOWN, _clear, _scrub, fetch  # noqa: E402
+from dmarc_fetch import ABSENT, EMPTY, OK, REJECTED, UNKNOWN, _clear, _scrub, fetch  # noqa: E402
 
 
 class _Conn:
@@ -116,11 +116,16 @@ def test_a_message_we_could_not_read_is_never_deleted(monkeypatch) -> None:
     )
 
 
-def test_nothing_is_deleted_when_nothing_was_harvested(monkeypatch) -> None:
+def test_an_empty_mailbox_is_EMPTY_not_UNKNOWN(monkeypatch) -> None:
+    """A login that SUCCEEDED and found nothing proves more than one that never
+    ran. A newly created report mailbox is legitimately empty until the first
+    daily report arrives, and failing on that would cry wolf every day. It is
+    still not a pass: readiness stays unanswered and the run says so."""
     conn = _conn_with([None])
     _patched(conn, monkeypatch)
     state, saved, _ = fetch("h", "u", "pw")
-    assert state == UNKNOWN
+    assert state == EMPTY
+    assert state != UNKNOWN, "an empty mailbox is not an unreadable one"
     assert saved == []
     assert conn.deleted == []
     assert conn.expunged is False
