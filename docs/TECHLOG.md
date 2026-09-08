@@ -1,3 +1,60 @@
+## 2026-09-08 - a Cloudflare 52x was read as the origin answering, and reddened a live-data alarm
+
+**Class:** novel
+**Guard:** `railway/tests/test_cloudflare_edge_unknown.py`
+
+`novel` again, and deliberately: this is the SECOND entry today whose shape is
+"an intermediary produced the response, and the code attributed it to the
+application". The other was Bluehost's browser handshake arriving as an HTTP 409
+that five deploy retries read as the route failing. A shape that recurs after
+being called novel is exactly the candidate for a seventeenth iron rule that
+`docs/INCIDENT_CLASSES.md` says it is, so it is recorded as novel a second time
+rather than filed under a class it does not fit.
+
+`railway/data_integrity.py` rested on one sentence, written in three places:
+"An HTTPError means the site DID answer". It was true while WordPress was the
+only thing on this domain that could mint a status. The 2026-09-08 move to
+ChemiCloud behind Cloudflare ended that. The edge mints 520/521/522/523/524
+ITSELF when it cannot get a response out of the origin: the request never
+reached WordPress, nothing was read, and the status is not a statement about the
+data at all.
+
+The consequence is a false alarm on the one channel that must not have any.
+`_excusable()` gates whether the unit suite skips or reddens a push, and
+`Result.transport` is what `ops_status [3]` reads to tell "the site could not be
+reached" (exit 3, honest and non-alarming) from "the site ANSWERED and answered
+wrongly on the parameterised path a reader uses" (exit 2, a human). Both read a
+52x as an answer, so a transient edge blip would publish a data-integrity
+alarm, which per CLAUDE.md is supposed to mean a wrong number is already on a
+public surface. `railway/published_figures.py:_why_unreachable()` had the same
+defect in its wording, reporting "live site returned HTTP 522" for a page that
+was never rendered.
+
+This was not a prediction. The identical assumption in
+`railway/subscriber_routes.py` reddened the Tests workflow on 2026-09-08 and was
+fixed there the same day. These three sites are the rest of it, found by asking
+where else the sentence was written rather than waiting for each one to fire.
+
+`_EDGE_TO_ORIGIN = {520, 521, 522, 523, 524}` is now module-level in
+data_integrity, and `published_figures` reads it back out of there through the
+existing lazy `_di()` rather than keeping a second copy. `subscriber_routes`
+keeps its own, on purpose, because that module is standalone stdlib and imports
+nothing from here; the new test asserts the two sets are identical so the copy
+cannot drift.
+
+**The bound is the point, and it is tested in both directions.** 525 and 526 are
+deliberately NOT in the set. They are the Cloudflare-to-origin TLS handshake, a
+durable misconfiguration a human has to clear, and after the move to Full
+(strict) with an Origin CA certificate they are the single most likely real
+defect on this domain. Four mutations were run before this was believed:
+emptying the set fails 6 tests, widening it to 525/526 fails 7, reverting only
+`Result.transport` fails 2, and reverting only the `published_figures` wording
+fails 1. Reverting nothing passes 16.
+
+Everything else keeps its old meaning: 503 is still the deploy maintenance
+window, a socket error is still transport, and an ordinary origin status (404,
+500) still reddens the push, because there the site really did answer.
+
 ## 2026-09-08 - one Bluehost browser handshake broke every host client differently (workflow-only, branch)
 
 **Class:** novel

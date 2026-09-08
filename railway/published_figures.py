@@ -381,9 +381,20 @@ def _get_html(ctx, url):
 
 
 def _why_unreachable(e):
+    """Why a figure could not be read. Never a verdict on the figure.
+
+    A Cloudflare 52x is minted by the EDGE because it could not get a response
+    out of the origin, so the page was never rendered and no number was read.
+    The set lives in data_integrity (_EDGE_TO_ORIGIN) so there is ONE definition
+    of "the origin never answered" behind every live check here; 525/526 are
+    deliberately outside it, being a durable origin TLS misconfiguration rather
+    than a blip.
+    """
     if isinstance(e, urllib.error.HTTPError):
         if e.code == 503:
             return "site is in its deploy maintenance window (HTTP 503)"
+        if e.code in _di()._EDGE_TO_ORIGIN:
+            return _di()._edge_detail(e.code)
         return f"live site returned HTTP {e.code}"
     return f"could not reach the live site ({e})"
 
