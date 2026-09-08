@@ -77,6 +77,8 @@ EXACT_WINDOW_DAYS = int(os.environ.get("DEDUPE_EXACT_WINDOW_DAYS") or 1095)  # ~
 WIDE_WINDOW_MIN_COUNT = int(os.environ.get("DEDUPE_WIDE_WINDOW_MIN_COUNT") or 250)
 WIDE_WINDOW_SIMILARITY = 0.95
 SRC_RANK = {"8K": 3, "warn": 3, "press_release": 2, "erm": 2, "news": 1}
+UNKNOWN_COUNTRIES = {"", "unknown", "multiple countries", "world", "worldwide"}
+ERM_FACTSHEET_RX = re.compile(r"/restructuring-events/detail/(\d+)(?:[/?#]|$)", re.I)
 
 
 def pair_window_days(lo, hi):
@@ -140,7 +142,10 @@ def fetch_all():
     # 40K+, which the shared host can't paginate without throwing 500s.
     rows, page = [], 1
     while True:
-        d = api(f"query?sources=news,8K,press_release,erm,federal_rif&per_page=200&page={page}&sort=id&dir=asc")
+        # Federal RIF rows are agency-month aggregates. Two rows for the same
+        # agency are distinct observations even when the counts are similar,
+        # so they must never enter a fuzzy cross-outlet dedup pass.
+        d = api(f"query?sources=news,8K,press_release,erm&per_page=200&page={page}&sort=id&dir=asc")
         rows += d["data"]
         if page * 200 >= d["total"] or not d["data"]:
             break
@@ -149,10 +154,39 @@ def fetch_all():
     return rows
 
 
+def _erm_factsheet_id(row):
+    if str(row.get("source_type") or "").lower() != "erm":
+        return ""
+    match = ERM_FACTSHEET_RX.search(str(row.get("source_url") or ""))
+    return match.group(1) if match else ""
+
+
+def pair_can_be_same_event(a, b):
+    """Hard evidence gates applied before any probabilistic merge judgment."""
+    source_types = {str(a.get("source_type") or "").lower(),
+                    str(b.get("source_type") or "").lower()}
+    if "federal_rif" in source_types:
+        return False
+
+    country_a = str(a.get("country") or "").strip().lower()
+    country_b = str(b.get("country") or "").strip().lower()
+    if (country_a not in UNKNOWN_COUNTRIES and country_b not in UNKNOWN_COUNTRIES
+            and country_a != country_b):
+        return False
+
+    factsheet_a = _erm_factsheet_id(a)
+    factsheet_b = _erm_factsheet_id(b)
+    if factsheet_a and factsheet_b and factsheet_a != factsheet_b:
+        return False
+    return True
+
+
 def candidate_clusters(rows):
     """Same normalized company + job counts within 25% + dates within window."""
     by_co = defaultdict(list)
     for r in rows:
+        if str(r.get("source_type") or "").lower() == "federal_rif":
+            continue
         by_co[norm_company(r["company_name"])].append(r)
     clusters = []
     for co, items in by_co.items():
@@ -169,7 +203,13 @@ def candidate_clusters(rows):
                     continue
                 hi = max(a["job_count"], b["job_count"]) or 1
                 lo = min(a["job_count"], b["job_count"])
-                if lo / hi >= 0.75 and days_between(a["layoff_date"] or "", b["layoff_date"] or "") <= pair_window_days(lo, hi):
+                # Compare with every row already in the cluster: an unknown-
+                # geography report may pair with France OR Germany, but must
+                # never bridge those two known-different events into one LLM
+                # prompt where the model could merge all three.
+                compatible = all(pair_can_be_same_event(existing, b) for existing in group)
+                if (compatible and lo / hi >= 0.75
+                        and days_between(a["layoff_date"] or "", b["layoff_date"] or "") <= pair_window_days(lo, hi)):
                     group.append(b)
                     used.add(b["id"])
             if len(group) > 1:
@@ -229,6 +269,9 @@ def select_candidate_clusters(clusters, limit=MAX_CLUSTERS, today=None):
 def ask_llm(group):
     payload = [{"id": r["id"], "company": r["company_name"], "jobs": r["job_count"],
                 "date": r["layoff_date"], "source": r["source_name"],
+                "source_type": r.get("source_type") or "",
+                "country": r.get("country") or "",
+                "source_url": r.get("source_url") or "",
                 "excerpt": (r["excerpt"] or "")[:180]} for r in group]
     prompt = ("These layoff-tracker entries are all the same company. Some are the SAME layoff "
               "event reported by different outlets or sources; others are DISTINCT layoffs at "
@@ -324,8 +367,17 @@ def _run():
                 if duplicate_ids:
                     merges.append({"keeper_id": keep["id"], "duplicate_ids": duplicate_ids})
                     for i in duplicate_ids:
-                        print(f"  dup: id {i} ({by_id[i]['source_name'][:18]}) -> keep {keep['id']} "
-                              f"({keep['company_name']} {keep['job_count']} {keep['layoff_date']})")
+                        duplicate = by_id[i]
+                        print(
+                            "  dup: "
+                            f"id {i} ({duplicate['company_name']} {duplicate['job_count']} "
+                            f"{duplicate['layoff_date']} {duplicate.get('country') or '(country blank)'} "
+                            f"{duplicate.get('source_type') or '(type blank)'} "
+                            f"{duplicate.get('source_url') or '(URL blank)'}) -> "
+                            f"keep {keep['id']} ({keep['company_name']} {keep['job_count']} "
+                            f"{keep['layoff_date']} {keep.get('country') or '(country blank)'} "
+                            f"{keep.get('source_type') or '(type blank)'} "
+                            f"{keep.get('source_url') or '(URL blank)'})")
         except Exception as e:  # one company's cluster failing must not abort the run
             skipped += 1
             print(f"  skipped cluster {group[0]['company_name'][:24]}: {e}")
@@ -345,7 +397,7 @@ def _run():
         try:
             req = urllib.request.Request(f"{SITE}/wp-json/layoffs/v1/merge-events",
                 data=json.dumps({"merges": batch,
-                    "reason": "Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by DeepSeek"}).encode(),
+                    "reason": "Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by the configured adjudication model"}).encode(),
                 headers={"X-Layoff-API-Key": KEY, "Content-Type": "application/json", "User-Agent": UA})
             res = json.load(urllib.request.urlopen(req, timeout=90))
             merged += len(res.get("merged_rows", []))

@@ -11,16 +11,16 @@ on:
         description: "Table row id(s), comma-separated (the id the /query API returns)"
         required: true
       action:
-        description: "trash (count unsupported by its source), edit (fix a field), move-sources (reattach source links to the row whose event they describe), add (store a row the ingest lost, through /add and every guard on it)"
+        description: "trash, edit, move-sources, add, or restore-merged (reinsert source-proven rows removed by a false merge)"
         required: true
         default: trash
         type: choice
-        options: [trash, edit, move-sources, add]
+        options: [trash, edit, move-sources, add, restore-merged]
       reason:
         description: "Why, in plain words. Recorded permanently."
         required: true
       fields:
-        description: 'edit: JSON of fields, e.g. {"job_count": 4500}. move-sources: {"to_id": N, "urls": [...]} (ids = the ONE row the links leave). add: the entry JSON (company_name, job_count, layoff_date, country, industry, source_url, source_name, excerpt ...; ids = 0)'
+        description: 'edit: JSON object. move-sources: {"to_id": N, "urls": [...]}. add: entry object. restore-merged: array of original source-proven entry objects including original_id and dedup_hash.'
         required: false
         default: ""
       verify_company:

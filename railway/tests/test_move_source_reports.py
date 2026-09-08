@@ -37,6 +37,7 @@ ROOT = os.path.abspath(os.path.join(RAILWAY, ".."))
 DB = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker", "includes", "db.php")
 EXTRACTOR = os.path.join(RAILWAY, "extractor.py")
 WORKFLOW = os.path.join(ROOT, ".github", "workflows", "apply-correction.yml")
+RESTORE_SPEC = os.path.join(RAILWAY, "correction_specs", "2026-09-08-false-dedup-merges.json")
 
 if RAILWAY not in sys.path:
     sys.path.insert(0, RAILWAY)
@@ -51,6 +52,12 @@ def _read(path):
 def _handler():
     m = re.search(r"\nfunction alt_api_move_source_reports\(.*?\n\}", _read(DB), re.S)
     assert m, "alt_api_move_source_reports is not in db.php"
+    return m.group(0)
+
+
+def _restore_handler():
+    m = re.search(r"\nfunction alt_api_restore_merged_rows\(.*?\n\}", _read(DB), re.S)
+    assert m, "alt_api_restore_merged_rows is not in db.php"
     return m.group(0)
 
 
@@ -85,6 +92,63 @@ class HandlerRules(unittest.TestCase):
         h = _handler()
         self.assertIn("$from_id === $to_id", h)
         self.assertIn("$from_event === $to_event", h)
+
+
+class MergeAuditRules(unittest.TestCase):
+    def test_merge_response_keeps_both_rows_facts(self):
+        src = _read(DB)
+        m = re.search(r"\nfunction alt_api_merge_events\(.*?\n\}", src, re.S)
+        self.assertIsNotNone(m)
+        h = m.group(0)
+        self.assertIn("merged_records", h)
+        for field in ("id", "company", "job_count", "layoff_date", "country",
+                      "source_type", "source_name", "source_url", "dedup_hash"):
+            self.assertIn(f"'{field}'", h)
+        self.assertIn("net_jobs_removed", h)
+
+
+class RestoreMergedHandlerRules(unittest.TestCase):
+    def test_route_is_key_protected(self):
+        src = _read(DB)
+        m = re.search(r"register_rest_route\('layoffs/v1', '/restore-merged-rows', array\((.*?)\)\);", src, re.S)
+        self.assertIsNotNone(m, "restore route not registered")
+        self.assertIn("alt_api_permission", m.group(1))
+        self.assertIn("alt_api_restore_merged_rows", m.group(1))
+
+    def test_only_a_merge_suppression_can_be_restored(self):
+        h = _restore_handler()
+        self.assertIn("alt_suppressed_hashes", h)
+        self.assertRegex(h, r"strpos\(\$suppression_reason, 'merged:'\) !== 0")
+        self.assertIn("$out['rejected'][]", h)
+
+    def test_restore_is_insert_first_then_unsuppress(self):
+        h = _restore_handler()
+        self.assertIn("alt_db_upsert($row, true)", h)
+        self.assertIn("unset($suppressed[$hash])", h)
+        self.assertLess(h.index("alt_db_upsert($row, true)"), h.index("unset($suppressed[$hash])"))
+        self.assertLess(h.index("alt_event_register_report_for_layoff"), h.index("unset($suppressed[$hash])"))
+
+    def test_any_followup_write_failure_rolls_back_before_unsuppressing(self):
+        h = _restore_handler()
+        self.assertIn("=== false", h)
+        self.assertIn("source report could not be registered", h)
+        self.assertIn("merge suppression could not be cleared", h)
+        self.assertGreaterEqual(h.count("$wpdb->delete($table, array('id' => $id))"), 3)
+
+    def test_restore_is_publicly_logged_with_exact_rows(self):
+        h = _restore_handler()
+        self.assertIn("alt_log_correction('restored'", h)
+        self.assertIn("restored_rows", h)
+
+    def test_restore_preserves_an_editor_pin(self):
+        h = _restore_handler()
+        self.assertIn("!empty($e['edited'])", h)
+        self.assertIn("$restore_state['edited'] = 1", h)
+
+    def test_restore_preserves_derived_role_state(self):
+        h = _restore_handler()
+        self.assertIn("array_key_exists('role_categories', $e)", h)
+        self.assertIn("alt_db_pack_tags($e['role_categories'])", h)
 
 
 class DedupHashParity(unittest.TestCase):
@@ -244,10 +308,68 @@ class AddDriver(unittest.TestCase):
         self.assertNotEqual(rc, 0)
 
 
+class RestoreMergedDriver(unittest.TestCase):
+    ENTRIES = [{
+        "original_id": 61941, "company_name": "Stellantis", "job_count": 265,
+        "layoff_date": "2025-06-11", "country": "Italy", "source_type": "erm",
+        "source_name": "European Restructuring Monitor (Eurofound)",
+        "source_url": "https://apps.eurofound.europa.eu/restructuring-events/detail/202925",
+        "dedup_hash": "48b8253bfe2925d6f70230e75229ba7c",
+    }]
+
+    def test_dry_run_writes_nothing_and_shows_exact_hash(self):
+        out = io.StringIO()
+        with mock.patch.object(ac.requests, "post", side_effect=AssertionError("dry run POSTed")), \
+             redirect_stdout(out):
+            rc = ac.run_restore_merged("https://x", "key", self.ENTRIES, "audit", False)
+        self.assertEqual(rc, 0)
+        self.assertIn("48b8253bfe2925d6f70230e75229ba7c", out.getvalue())
+
+    def test_apply_requires_every_row_to_restore(self):
+        posts = []
+        def fake_post(url, json=None, headers=None, timeout=None):
+            posts.append((url, json))
+            return _Resp(200, {"restored": [180001], "restored_rows": [{"id": 180001}],
+                               "rejected": [], "jobs_restored": 265})
+        out = io.StringIO()
+        with mock.patch.object(ac.requests, "post", fake_post), redirect_stdout(out):
+            rc = ac.run_restore_merged("https://x", "key", self.ENTRIES, "audit", True)
+        self.assertEqual(rc, 0)
+        self.assertTrue(posts[0][0].endswith("/restore-merged-rows"))
+        self.assertEqual(posts[0][1]["reason"], "audit")
+
+    def test_apply_fails_on_any_rejected_row(self):
+        def fake_post(url, json=None, headers=None, timeout=None):
+            return _Resp(200, {"restored": [], "restored_rows": [],
+                               "rejected": [{"id": 61941, "reason": "wrong suppression"}],
+                               "jobs_restored": 0})
+        with mock.patch.object(ac.requests, "post", fake_post):
+            rc = ac.run_restore_merged("https://x", "key", self.ENTRIES, "audit", True)
+        self.assertNotEqual(rc, 0)
+
+
+class FalseMergeCorrectionSpec(unittest.TestCase):
+    def test_exact_five_rows_and_428_jobs(self):
+        rows = json.loads(_read(RESTORE_SPEC))
+        self.assertEqual(len(rows), 5)
+        self.assertEqual(sum(int(row["job_count"]) for row in rows), 428)
+        self.assertEqual({row["original_id"] for row in rows},
+                         {179170, 177083, 177379, 61050, 61941})
+
+    def test_source_specific_hashes_are_preserved_not_rederived_as_news(self):
+        rows = {row["original_id"]: row for row in json.loads(_read(RESTORE_SPEC))}
+        self.assertEqual(rows[179170]["dedup_hash"], hashlib.md5(
+            b"fedrifdepartment of health and human services202607").hexdigest())
+        for row_id, factsheet in ((61050, "300539"), (61941, "202925")):
+            import_hash = hashlib.md5(f"erm{factsheet}".encode()).hexdigest()
+            edited_hash = hashlib.md5(f"edited:{import_hash}".encode()).hexdigest()
+            self.assertEqual(rows[row_id]["dedup_hash"], edited_hash)
+
+
 class WorkflowOffersBoth(unittest.TestCase):
     def test_choices(self):
         wf = _read(WORKFLOW)
-        self.assertIn("options: [trash, edit, move-sources, add]", wf)
+        self.assertIn("options: [trash, edit, move-sources, add, restore-merged]", wf)
         self.assertIn("default: false", wf, "apply must default to a dry run")
 
 

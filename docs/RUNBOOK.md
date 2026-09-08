@@ -1167,6 +1167,36 @@ else the next import re-creates it). 3. Remove/correct data: single entries →
 in the site's corrections log (templates/page-tracker.php) + TECHLOG. Counts are part of
 the dedup hash — corrected counts need the purge path, plain re-import duplicates.
 
+**A model-confirmed merge was false (the row itself was deleted)**
+
+Do not use ordinary `add`: `/merge-events` suppresses the removed row's exact
+hash, and structured ERM/federal rows use source-specific hashes that the news
+formula cannot reproduce.
+
+1. Prove the events are distinct from primary evidence. For ERM, different
+   Eurofound factsheet ids are different event identities. For `federal_rif`,
+   each agency-effective-month is a separate observation.
+2. Recover the exact removed row from the privacy-scanned backup or reconstruct
+   it through its production importer. Preserve the original/source-specific
+   `dedup_hash`, count, date, country, source URL, excerpt, editor pin and role
+   state. Commit the evidence-only JSON under `railway/correction_specs/` so the
+   correction can be reproduced without an Actions log.
+3. Fix the candidate-generation cause and add the live pair as a red-first
+   regression before restoring data.
+4. Dispatch `Apply a signed-off correction` with `action=restore-merged`,
+   `ids=0`, `fields=<the JSON array>`, and `apply=false`. The dry run must name
+   every old id/hash and reconcile the worker total. Then rerun with
+   `apply=true`. The endpoint refuses any hash not currently suppressed by a
+   merge, inserts while suppression stays armed, then unsuppresses only after a
+   successful read-back.
+5. Record the returned new ids. Move any wrongly retained report URLs from the
+   old keeper events to those restored ids with `action=move-sources`; never
+   move a keeper's own primary citation.
+6. Re-read every restored row and both events' `/sources`, run
+   `data_integrity.py`, and reconcile the exact headline movement. A disclosed
+   correction is evidence to investigate, not permission to advance a failing
+   baseline.
+
 **A row holds another event's source links (its facts are right, its evidence is wrong)**
 
 The shape: `/query` shows a row whose `additional_sources` describe a different

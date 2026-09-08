@@ -10,6 +10,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.modules.setdefault("openai", SimpleNamespace())
@@ -74,9 +75,12 @@ class PairWindowTest(unittest.TestCase):
 class CandidateClusterWindowTest(unittest.TestCase):
     """End-to-end through candidate_clusters: the VW pair clusters now."""
 
-    def _row(self, rid, count, dt, name="Volkswagen Group"):
-        return {"id": rid, "company_name": name, "job_count": count,
-                "layoff_date": dt, "source_name": "x", "source_type": "news"}
+    def _row(self, rid, count, dt, name="Volkswagen Group", **overrides):
+        row = {"id": rid, "company_name": name, "job_count": count,
+               "layoff_date": dt, "source_name": "x", "source_type": "news",
+               "source_url": "https://example.test/report", "country": ""}
+        row.update(overrides)
+        return row
 
     def test_identical_large_pair_125_days_clusters(self):
         rows = [self._row(1, 50000, "2026-03-10"), self._row(2, 50000, "2026-07-13")]
@@ -88,6 +92,79 @@ class CandidateClusterWindowTest(unittest.TestCase):
         rows = [self._row(1, 50, "2026-03-10", "Tiny Co"),
                 self._row(2, 50, "2026-07-13", "Tiny Co")]
         self.assertEqual(d.candidate_clusters(rows), [])
+
+    def test_federal_monthly_rif_rows_never_cluster(self):
+        """OPM rows are agency-month observations, not outlet re-reports."""
+        rows = [
+            self._row(177395, 16, "2026-04-01", "Treasury",
+                      source_type="federal_rif", country="United States"),
+            self._row(177083, 15, "2026-06-01", "Treasury",
+                      source_type="federal_rif", country="United States"),
+        ]
+        self.assertEqual(d.candidate_clusters(rows), [])
+
+    def test_specific_different_countries_never_cluster(self):
+        """Dow Germany 110 and Dow Spain 138 are different facilities/events."""
+        rows = [
+            self._row(61050, 110, "2026-06-04", "Dow",
+                      source_type="erm", country="Germany",
+                      source_url="https://apps.eurofound.europa.eu/restructuring-events/detail/300539"),
+            self._row(176859, 138, "2026-08-01", "Dow",
+                      country="Spain", source_url="https://example.test/tarragona"),
+        ]
+        self.assertEqual(d.candidate_clusters(rows), [])
+
+    def test_distinct_erm_factsheets_never_cluster(self):
+        """Eurofound assigns one factsheet ID per restructuring event."""
+        rows = [
+            self._row(62020, 200, "2025-05-07", "Stellantis",
+                      source_type="erm", country="Italy",
+                      source_url="https://apps.eurofound.europa.eu/restructuring-events/detail/202770"),
+            self._row(61941, 265, "2025-06-11", "Stellantis",
+                      source_type="erm", country="Italy",
+                      source_url="https://apps.eurofound.europa.eu/restructuring-events/detail/202925"),
+        ]
+        self.assertEqual(d.candidate_clusters(rows), [])
+
+    def test_erm_and_news_for_same_plan_remain_eligible(self):
+        rows = [
+            self._row(1, 121, "2026-02-24", "Sprava zeleznic",
+                      source_type="erm", country="Czechia",
+                      source_url="https://apps.eurofound.europa.eu/restructuring-events/detail/204292"),
+            self._row(2, 100, "2026-02-24", "Sprava zeleznic",
+                      source_type="news", country="Czechia",
+                      source_url="https://example.test/sprava-news"),
+        ]
+        clusters = d.candidate_clusters(rows)
+        self.assertEqual([{r["id"] for r in group} for group in clusters], [{1, 2}])
+
+    def test_unknown_geography_does_not_hide_a_possible_duplicate(self):
+        rows = [
+            self._row(1, 500, "2026-04-01", "Acme", country="Multiple countries"),
+            self._row(2, 500, "2026-04-02", "Acme", country="France"),
+        ]
+        clusters = d.candidate_clusters(rows)
+        self.assertEqual([{r["id"] for r in group} for group in clusters], [{1, 2}])
+
+    def test_unknown_geography_cannot_bridge_two_specific_countries(self):
+        rows = [
+            self._row(1, 500, "2026-04-01", "Acme", country="Multiple countries"),
+            self._row(2, 500, "2026-04-02", "Acme", country="France"),
+            self._row(3, 500, "2026-04-03", "Acme", country="Germany"),
+        ]
+        clusters = d.candidate_clusters(rows)
+        self.assertEqual(len(clusters), 1)
+        self.assertNotEqual({r["id"] for r in clusters[0]}, {1, 2, 3})
+
+    def test_fetch_never_requests_federal_rif_rows(self):
+        requested = []
+        def fake_api(path):
+            requested.append(path)
+            return {"data": [], "total": 0}
+        with mock.patch.object(d, "api", fake_api):
+            self.assertEqual(d.fetch_all(), [])
+        self.assertEqual(len(requested), 1)
+        self.assertNotIn("federal_rif", requested[0])
 
 
 if __name__ == "__main__":

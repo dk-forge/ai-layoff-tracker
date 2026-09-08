@@ -10,7 +10,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
   `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  current branch: `codex/top3-gdelt`; initial starting point was
+  current branch: `codex/top3-dedup-integrity`; initial starting point was
   `origin/main` at `4c310d0`.
   Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
   20/20 data-integrity invariants pass; all 40 declared due collectors have
@@ -48,22 +48,57 @@ holder, so the start-of-session ritual surfaces it automatically.
   every step in 1m46s, including origin integrity JSON, the exact reader build,
   subscriber links and both rendered themes.
 
-  **Current red-first batch:** the same HTTP 409 handshake independently broke
+  **Shared host handshake repair is merged:** the same HTTP 409 handshake independently broke
   `Extract affected-role categories` at run `34207201742`. The shared
   `http_retry` transport now recognizes and replays only the exact
   `humans_<digits>=1` challenge for both requests GETs and stdlib GET/POSTs;
   arbitrary 409s remain hard failures. Three focused tests were red first and
-  all 23 host-call tests pass. This branch is not yet pushed or merged; after a
-  green CI merge, rerun the failed role workflow and prove its alert closes.
+  all 23 host-call tests passed; all CI shards passed and PR `#287` merged as
+  `f15f6ed`. Production rerun `34234244136` passed on that exact SHA; the
+  role-extraction alert's cause is closed.
+
+  **Current red-first batch (P0 data integrity):** branch
+  `codex/top3-dedup-integrity` is rebased onto current `origin/main` at
+  `84bc8e1`; the rebased implementation commits are `0781655` and `637c1d3`.
   A fresh live audit also found `headline_containment` failing after the eight
   reviewed merges in dedup run `34204171256`; those rows are now enumerated in
   its log. Treat the live number as wrong until the 41,575-job net movement is
   reconciled to those removals and ordinary arrivals. Do not start GDELT edits
-  before that P0 is closed. Remaining
+  before that P0 is closed. Evidence reconstruction proves at least two false
+  merges: Dow Germany 110 was folded into Dow Spain 138, and Stellantis Cassino
+  265 was folded into Stellantis Termoli 200. Separate Treasury and USAID
+  federal monthly RIF rows were also folded across effective months; HHS is now
+  reconstructed from current OPM data as 13 / 2026-07. The five false removals
+  total 428 jobs. TDD now prevents federal-RIF, different-country and
+  distinct-ERM-factsheet pairs from reaching the model; 75 focused checks and
+  163 broader affected tests pass (254 subtests, two intentional skips). An
+  outside-sandbox full run reached 4,588 passes, 31 skips and 3,001 subtests;
+  its five failures were one missing local dependency and four stale test-
+  harness globals, each repaired and rerun green. CI remains the required
+  clean one-shot gate. The exact payload is committed under
+  `railway/correction_specs/`. Version 2.20.179 adds an insert-first,
+  merge-suppression-only restoration endpoint and complete merge before-state
+  output. PR `#289` first ran three green shards and one red shard: all 2,219
+  tests in that shard ran except `test_corrections_reader`, whose recent
+  `pytest.mark.parametrize` import was incompatible with the repository's
+  locked unittest-only CI environment. The test now expresses the same two
+  cases as a dependency-free `TestCase`; a red count check proved the old shape
+  would otherwise execute zero. Main independently merged that canonical repair
+  in PR `#288`, so the rebase retained it rather than duplicating a second test
+  harness. The unittest runner executes 8/8 and the 83-test affected set is
+  green. After the rebase, PR `#289` run `34270355326` passed all four full
+  shards (`rest`, `rest-2`, `rendered-1`, `rendered-2`); both comparison guards
+  and the version guard also passed. Main then advanced by PR `#290`'s
+  Cloudflare-52x integrity repair; that non-overlapping incident record and
+  code are retained in the current rebase, whose fresh CI is still required.
+  Still required: green CI/merge/deploy, dry-run and apply the
+  correction, move Dow/Stellantis report links, and live integrity read-back.
+  Remaining
   measured program gates: six orphaned run starts, 16 unclassified country
   regimes, Taiwan 0%, UK 15.8%-26.2%, Estonia 23.6%, 88.5% Wayback coverage,
   and an unavailable local-only competitor
-  benchmark. The $10 tracker allowance projects $7.11/month; shared-account
+  benchmark. The September ledger currently projects $6.23/month against the
+  hard $10 tracker allowance; shared-account
   spend outside this repo remains out of scope. Use red-test-first changes,
   green CI, SHA-matched deploys, live read-back, and keep this baton current.
 - **SHIPPED / BATON RELEASED by Codex (2026-09-07): 2.20.176 source-backed
