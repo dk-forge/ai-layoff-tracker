@@ -141,6 +141,36 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
 PASS, FAIL, UNKNOWN = "pass", "fail", "unknown"
 
+# Statuses CLOUDFLARE mints itself when it could not get a response out of the
+# origin at all: 520 unknown error, 521 origin refused, 522 connection timed
+# out, 523 origin unreachable, 524 origin timed out after connecting. The
+# request never reached WordPress, so the number under it was never read and
+# the status is not a statement about the DATA. It is the same fact as a socket
+# error one hop closer to us, which every path here already calls UNKNOWN and
+# treats as transport.
+#
+# Before the 2026-09-08 move to ChemiCloud behind Cloudflare, "an HTTPError
+# means the site DID answer" held, and this module rested on it in three
+# places. It no longer does. The same assumption in subscriber_routes.py
+# reddened the Tests workflow that day on an edge blip; here the alarm it
+# produces is a live-data one, which is supposed to mean a wrong number is
+# already published, so a blip must never raise it.
+#
+# DELIBERATELY NOT 525/526. Those are the Cloudflare-to-origin TLS handshake,
+# a durable misconfiguration a human has to clear rather than a blip, and after
+# the move to Full (strict) with an Origin CA certificate they are the single
+# most likely real defect on this domain. They keep failing loudly.
+#
+# Kept identical to subscriber_routes._EDGE_TO_ORIGIN, which is standalone by
+# design; tests/test_cloudflare_edge_unknown.py fails if the two drift.
+_EDGE_TO_ORIGIN = {520, 521, 522, 523, 524}
+
+
+def _edge_detail(status):
+    return (f"HTTP {status}: Cloudflare could not get an answer out of the origin, "
+            "so nothing was read. This is NOT a verdict on the data.")
+
+
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
 # Day-over-day observations of the published headlines. Committed, because the
@@ -746,16 +776,20 @@ def _headline_query(ctx, h):
 def _excusable(err):
     """May the unit suite SKIP on this failure rather than redden the push?
 
-    Yes when we never got an answer (offline laptop, egress-blocked runner) or
-    when the answer was the deploy's own 503 maintenance window. NO for any other
-    HTTP status: the site answered, and answered wrongly, on exactly the
-    parameterised path a reader uses. Skipping that is the F27 failure — a guard
-    that stays green forever.
+    Yes when we never got an answer (offline laptop, egress-blocked runner), when
+    the answer was the deploy's own 503 maintenance window, or when the status
+    was minted by CLOUDFLARE because it could not get an answer out of the origin
+    (_EDGE_TO_ORIGIN). In none of those cases was the number read at all.
+
+    NO for any other HTTP status, INCLUDING the origin TLS failures 525/526: the
+    site answered, and answered wrongly, on exactly the parameterised path a
+    reader uses. Skipping that is the F27 failure, a guard that stays green
+    forever.
     """
     if err is None:
         return False
     if isinstance(err, urllib.error.HTTPError):
-        return err.code == 503
+        return err.code == 503 or err.code in _EDGE_TO_ORIGIN
     return True
 
 
@@ -805,6 +839,7 @@ def _fetch_aggregate(ctx, params):
         return (json.loads(ctx.fetch(url, ctx.timeout)) or {}), None, "", None
     except urllib.error.HTTPError as e:
         why = ("site is in its deploy maintenance window (HTTP 503)" if e.code == 503
+               else _edge_detail(e.code) if e.code in _EDGE_TO_ORIGIN
                else f"live API returned HTTP {e.code}")
         return None, UNKNOWN, why, e
     except Exception as e:                                  # noqa: BLE001 — any transport fault
@@ -2150,6 +2185,7 @@ class ArchiveRecheckInvariant:
             payload = json.loads(ctx.fetch(url, ctx.timeout)) or {}
         except urllib.error.HTTPError as e:
             why = ("site is in its deploy maintenance window (HTTP 503)" if e.code == 503
+                   else _edge_detail(e.code) if e.code in _EDGE_TO_ORIGIN
                    else f"live API returned HTTP {e.code}")
             return Result(self, UNKNOWN, detail=why, error=e, pending=_excusable(e))
         except Exception as e:                                  # noqa: BLE001 — any transport fault
@@ -2456,13 +2492,25 @@ class Result:
 
     @property
     def transport(self):
-        """True when we never got an HTTP answer (DNS/proxy/refused/timeout).
+        """True when the ORIGIN never answered (DNS/proxy/refused/timeout/52x).
 
-        ops_status uses this to tell 'this environment cannot reach the site'
-        (an environment block, exit 3) from 'the site answered wrongly' (a real
-        problem). An HTTPError means the site DID answer, so it is never
-        transport — same reasoning as ops_status._is_egress_block."""
-        return self.error is not None and not isinstance(self.error, urllib.error.HTTPError)
+        ops_status uses this to tell 'the site could not be reached' (exit 3)
+        from 'the site answered wrongly' (a real problem). An HTTPError usually
+        means the site DID answer, so it is usually not transport.
+
+        The exception is a Cloudflare 52x (_EDGE_TO_ORIGIN). That status was
+        minted by the EDGE because it could not get a response out of the
+        origin, so no request reached WordPress and no number was read. It is
+        the same fact as a socket error one hop closer to us, and calling it an
+        answer routes an edge blip into 'the live API answered, but wrongly'.
+        525/526 stay non-transport: the origin WAS reached and its TLS is
+        misconfigured, which is a durable fault a human must clear."""
+        err = self.error
+        if err is None:
+            return False
+        if isinstance(err, urllib.error.HTTPError):
+            return err.code in _EDGE_TO_ORIGIN
+        return True
 
 
 class Report:
