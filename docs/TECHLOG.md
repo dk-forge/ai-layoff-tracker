@@ -33,6 +33,67 @@ has exactly one H1, and a 320px browser measured page/body scroll widths of 320p
 with a 224px brand link. Those are the production gates left open in the prior
 entry; they are now directly proved.
 
+## 2026-09-08 - a Bloomberg report of the Volkswagen cuts sat as its own row and inflated the worldwide headline by ~50,000 for five days
+
+**Class:** novel
+**Guard:** `headline_containment` in `railway/data_integrity.py` (already existed; it
+raised this correctly and could not explain it)
+
+`ops_status.py [3]` read FAILING: worldwide all-time moved **-40,495 jobs on +7
+entries** while the United States slice moved **+1,504 on -1**, leaving -41,999
+in the non-US complement that dedup exclusions did not account for. The guard
+named two mechanisms it could not tell apart and could not name the rows.
+
+**It was neither of the two.** The rows did not move across the boundary and
+they were not re-scored. They were DELETED, and the endpoint built to answer
+this question says in its own metadata that it cannot see that:
+
+    "deletions_not_covered": "A row removed by /trash or /bulk-purge leaves no
+     updated_at and cannot appear here."
+
+`trace-changed-rows` over the window returned 69 rows carrying **12,731 jobs**,
+largest 4,000. Nothing that CHANGED could move a headline by 40,495.
+
+**What actually happened, from the public corrections log and the dedup run
+log.** The daily cross-source dedup merged 8 duplicates and the source-
+verification audit removed 1 row. `/merge-events` hard-deletes the duplicate
+(`$wpdb->delete($table, ...)`), which is why `excluded` never moved: a merged
+row does not become a superset member, it stops existing. The merges:
+
+    179185 (Bloomberg)              -> keep 179106 Volkswagen 50,000 2026-09-03
+    179170 (OPM EHRI federal)       -> keep 177082 HHS 15
+    177083 (OPM EHRI federal)       -> keep 177395 Treasury 16
+    177379 (OPM EHRI federal)       -> keep 177361 USAID 31
+    258    (businessinsider)        -> keep 49129  UiPath 400
+    61050  (European Restructuring) -> keep 176859 Dow 138
+    61308  (European Restructuring) -> keep 179182 Sprava zeleznic 100
+    61941  (European Restructuring) -> keep 62020  Stellantis 200
+
+The first line is the finding. A Bloomberg report of the **Volkswagen 50,000**
+event had been stored as a SEPARATE row alongside the canonical one, so the
+worldwide headline counted those 50,000 cuts twice from 2026-09-03 until the
+rotating dedup review reached that cluster on 2026-09-08. Volkswagen is not a
+US employer, which is exactly why the loss landed in the non-US complement and
+the US slice barely moved.
+
+The arithmetic reconciles: roughly -50,000 (Volkswagen duplicate) -900 (the
+seven small merges) -4,320 (the audited SEC row, a table stated in thousands
+read as a worker count) plus the window's arrivals lands within a few hundred
+of the observed -40,495.
+
+**So the alarm was true and the direction was good.** The published number did
+not become wrong on 2026-09-08; it STOPPED being wrong. What the guard detected
+was the repair, not the damage. The damage ran silently for five days, inside a
+`largest row` check that passed the whole time because 50,000 of 20.7M is 0.24%
+and the bound is 1%.
+
+**Open, and deliberately not fixed in this entry.** Nothing here made the
+containment guard able to answer its own question. It reports "unexplained"
+whenever a row leaves the corpus, and every removal IS already disclosed,
+machine-readably, in the corrections log it does not read. Wiring that in would
+have turned an hour of forensics into a sentence. Filed rather than done,
+because it is a guard change and this session was mid hosting migration.
+
 ## 2026-09-08 - citation pages used WordPress's legacy fallback instead of the site's header (2.20.177, branch)
 
 **Class:** two-copies-drifted
