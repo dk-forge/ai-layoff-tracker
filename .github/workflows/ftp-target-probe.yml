@@ -1,0 +1,70 @@
+name: FTPS target probe
+
+# READ-ONLY. Dispatch only, never scheduled, writes nothing.
+#
+# 2026-09-09: the deploy's own read-back says the FTPS target holds the file
+# this commit built, and the live site serves that same relative URL with
+# `Last-Modified: Mon, 07 Sep 2026 13:18:50 GMT` -- the 2.20.175 deploy. Both
+# readings are true, so the FTPS home and the document root the web server
+# serves are two different trees, each holding a WordPress install with this
+# plugin. That is why the pre-flight guard (wp-config.php exists, the plugin
+# file exists) passes against the wrong one.
+#
+# This lists the candidate roots and reports, for each, whether it holds the
+# plugin and which version. It prints no credential and no file contents
+# beyond a version string.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Which tree does FTPS actually land in
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -uo pipefail
+          echo "FTP_HOST resolves to: $(getent hosts "$FTP_HOST" | awk '{print $1}' | paste -sd, - || echo UNRESOLVED)"
+          echo "The live origin is 162.19.222.172 (ChemiCloud, per the 2026-09-08 migration)."
+          echo
+          echo "== FTP home =="
+          lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            pwd; cls -l --sort=name .;
+          " 2>&1 | head -40
+          echo
+          for CAND in \
+            "wp-content/plugins/ai-layoff-tracker" \
+            "public_html/wp-content/plugins/ai-layoff-tracker" \
+            "public_html/blog/wp-content/plugins/ai-layoff-tracker" \
+            "blog/wp-content/plugins/ai-layoff-tracker" \
+            "www/blog/wp-content/plugins/ai-layoff-tracker" \
+            "public_html/asktherecruiter.com/blog/wp-content/plugins/ai-layoff-tracker"
+          do
+            echo "== $CAND =="
+            rm -f probe.php
+            if lftp -c "
+              set cmd:fail-exit true; set ssl:verify-certificate no;
+              set ftp:ssl-force true; set ftp:ssl-protect-data true;
+              set net:max-retries 1; set net:timeout 15;
+              open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+              get -O . \"$CAND/ai-layoff-tracker.php\" -o probe.php;
+            " >/dev/null 2>&1; then
+              V=$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" probe.php | grep -oE '[0-9.]+$')
+              echo "   HOLDS THE PLUGIN, version $V"
+            else
+              echo "   absent"
+            fi
+            rm -f probe.php
+          done
+          echo
+          echo "The live site currently executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
+          echo "This checkout builds: $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"

@@ -300,6 +300,20 @@ jobs:
       # RESOLVED ADDRESS of FTP_HOST -- an IP from public DNS, not a secret --
       # because "which machine did this land on" is the first question when it
       # fails, and the value of the secret itself is never printed.
+      #
+      # WHAT THIS STEP CANNOT DO, said here so nobody later reads it as
+      # sufficient: it asks the FTPS target what it holds, so it passes a write
+      # that landed perfectly into a tree the web server does not serve.  That
+      # is what is happening.  Measured 2026-09-09: this read-back reported
+      # 2.20.179 while the live site served the SAME relative URL with
+      # `Last-Modified: Mon, 07 Sep 2026 13:18:50 GMT`, the 2.20.175 deploy.
+      # Both readings are true, so the FTPS home and the document root are two
+      # different trees, each holding a WordPress install with this plugin --
+      # which is also why the pre-flight guard above passes against the wrong
+      # one.  It takes BOTH this step and the origin check below to tell "the
+      # upload failed" from "the upload succeeded somewhere nobody reads", and
+      # neither replaces the other.  `.github/workflows/ftp-target-probe.yml`
+      # is the read-only dispatch that names the candidate trees.
       - name: Verify the bytes we just wrote are the bytes we meant to write
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}

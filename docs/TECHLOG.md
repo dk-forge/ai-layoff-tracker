@@ -29,13 +29,30 @@ explains a headline move. It is not live, so tonight's -46,400 incident reads
 resolves to UNKNOWN. A guard was built, merged, reported as done, and has never
 once been able to answer.
 
-**The root cause is UNKNOWN and is deliberately not guessed here.** The mirror
-transfers every file and the pre-flight guard finds both `wp-config.php` and an
-existing `ai-layoff-tracker.php` at the target, so it is reaching *a* WordPress
-install that has this plugin. Whether that install is the one serving the site
-is exactly what nothing measured. The hosting migration on 2026-09-08 is the
-obvious suspect and does not fit cleanly: 2.20.176 failed to land on 2026-09-07
-20:46, before the cutover.
+**MEASURED THE SAME NIGHT, and it is not caching.** The read-back step landed
+and PASSED: the FTPS target holds 2.20.179, written 22:5x UTC. At the same
+moment the live site served
+`/wp-content/plugins/ai-layoff-tracker/assets/health.js` with
+`Last-Modified: Mon, 07 Sep 2026 13:18:50 GMT` and `cf-cache-status: MISS`, so
+the ORIGIN itself, not an edge, holds a file last written by the 2.20.175
+deploy. Both readings are true and they cannot describe one file. **The FTPS
+home and the document root the web server serves are two different trees, each
+holding a WordPress install with this plugin.** That is also why the pre-flight
+guard passes: it looks for `wp-config.php` and an existing
+`ai-layoff-tracker.php` relative to the FTP home, and the wrong tree has both.
+
+The timeline agrees. `Last-Modified` Sun 13:18 UTC is 15:18 CEST, which is when
+2.20.175 was cut. So the split happened between 2026-09-07 15:18 and the
+2.20.176 deploy at 20:46 the same evening -- earlier than the 2026-09-08 date
+recorded for the hosting move, which is worth correcting in that record.
+
+**This needs the owner and cannot be fixed from here.** Either `FTP_HOST` /
+`FTP_USERNAME` point at the old account, or the FTP home is the account root
+while the live docroot is a subdirectory (`public_html/blog/...`), so the
+relative `wp-content/plugins/...` reaches a stale copy.
+`.github/workflows/ftp-target-probe.yml` is a read-only, dispatch-only probe
+that lists the candidate trees and reports which hold the plugin and at what
+version. It writes nothing and prints no credential.
 
 **The fix reads the bytes back off the server it just wrote to** and fails the
 deploy when they are not the bytes in the checkout. It also prints the resolved
