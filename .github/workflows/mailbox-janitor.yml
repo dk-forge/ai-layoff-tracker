@@ -60,6 +60,13 @@ jobs:
           JANITOR_IMAP_USER: ${{ secrets[matrix.user_secret] }}
           JANITOR_IMAP_PASSWORD: ${{ secrets[matrix.pass_secret] }}
           JANITOR_RETAIN_DAYS: '14'
+          # 100, not 400. Measured 2026-09-08 on the first LIVE run: reading
+          # and then DELETING 400 of a 2,106-message mailbox dropped the
+          # connection mid-sweep. Reading that many was fine in dry run; the
+          # delete and expunge is what the server would not sit through. A
+          # smaller bite drains over several days, and the retention window
+          # means nothing is lost by taking longer.
+          JANITOR_MAX_PER_RUN: '100'
           # Scheduled runs are live. Manual runs default to a dry run.
           JANITOR_DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run && 'true' || 'false') }}
         run: |

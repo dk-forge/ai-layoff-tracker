@@ -118,8 +118,13 @@ def _classify(subject: str, sender: str) -> str:
 
 
 def sweep(host: str, user: str, password: str, retain_days: int,
-          dry_run: bool, limit: int = 400) -> tuple[str, dict, str]:
+          dry_run: bool, limit: int = 0) -> tuple[str, dict, str]:
     """Return (state, findings, detail). Never raises, never leaks."""
+    if not limit:
+        try:
+            limit = int(os.environ.get("JANITOR_MAX_PER_RUN", "100"))
+        except ValueError:
+            limit = 100
     secrets = [password]
     now = datetime.now(timezone.utc)
     classes: Counter[str] = Counter()
