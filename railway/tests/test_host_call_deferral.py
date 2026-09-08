@@ -55,7 +55,7 @@ class _Host:
         self.calls = []
 
     def __call__(self, method, url, data=None, headers=None, timeout=None):
-        self.calls.append((method, url))
+        self.calls.append((method, url, dict(headers or {})))
         item = self.responses[min(len(self.calls) - 1, len(self.responses) - 1)]
         if isinstance(item, Exception):
             raise item
@@ -151,6 +151,42 @@ class AnUnreachableHostDefers(_Case):
         self.assertEqual(len(host.calls), 2)
         self.assertEqual(deferral_ledger.pending(self.ledger_doc()), [])
         self.assertEqual(json.loads(self.output.read_text()), {"ok": True})
+
+    def test_browser_cookie_challenge_is_replayed_not_failed(self):
+        challenge = '<script>document.cookie = "humans_21909=1"; document.location.reload(true)</script>'
+        code, host = self.run_call((409, challenge), (200, '{"ok": true}'))
+        self.assertEqual(code, 0)
+        self.assertEqual(len(host.calls), 2)
+        self.assertEqual(host.calls[1][2].get("Cookie"), "humans_21909=1")
+        self.assertEqual(json.loads(self.output.read_text()), {"ok": True})
+
+    def test_requests_get_replays_the_same_narrow_challenge(self):
+        challenge = '<script>document.cookie = "humans_21909=1"; document.location.reload(true)</script>'
+        calls = []
+
+        class Response:
+            def __init__(self, status, text):
+                self.status_code = status
+                self.text = text
+                self.headers = {}
+
+        responses = [Response(409, challenge), Response(200, '{"ok": true}')]
+
+        def get(url, params=None, headers=None, timeout=None):
+            calls.append(dict(headers or {}))
+            return responses.pop(0)
+
+        original = http_retry.requests
+        http_retry.requests = mock.MagicMock(get=get, RequestException=OSError)
+        self.addCleanup(lambda: setattr(http_retry, "requests", original))
+        response = http_retry.get_with_retry("https://example.test/query", sleep=lambda _s: None)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calls[1].get("Cookie"), "humans_21909=1")
+
+    def test_arbitrary_409_still_fails_without_a_replay(self):
+        code, host = self.run_call((409, "conflict"))
+        self.assertNotEqual(code, 0)
+        self.assertEqual(len(host.calls), 1)
 
     def test_a_deferral_writes_no_response_file(self):
         """The downstream parse must never read a stale body from a previous run."""

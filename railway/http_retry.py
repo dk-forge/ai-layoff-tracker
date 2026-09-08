@@ -24,6 +24,7 @@ breakable by dependency resolution. `requests` is therefore an OPTIONAL import,
 so this module loads on a runner that has no third-party packages.
 """
 import json
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -49,6 +50,23 @@ RETRY_AFTER_CAP_SECONDS = 120
 #: The sleep get_with_retry waits with. A module-level name so a test can
 #: record the retry waits without also catching a collector's pacing sleeps.
 _sleep = time.sleep
+
+
+_HUMAN_CHALLENGE_RX = re.compile(
+    r'document\.cookie\s*=\s*["\'](humans_\d+=1)["\']')
+
+
+def human_challenge_cookie(status, body):
+    """The one safe cookie from Bluehost's HTTP 409 browser handshake.
+
+    The host emits JavaScript rather than a Set-Cookie header. Only the exact
+    `humans_<digits>=1` value is admitted; every other 409 stays a settled
+    failure, as it was before this handshake appeared.
+    """
+    if status != 409:
+        return None
+    found = _HUMAN_CHALLENGE_RX.search(body or "")
+    return found.group(1) if found else None
 
 
 def retry_after_seconds(resp, cap=RETRY_AFTER_CAP_SECONDS):
@@ -104,8 +122,16 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
 
     for attempt in range(attempts):
         try:
-            r = get(url, params=params, headers=headers or DEFAULT_UA,
+            sent_headers = dict(headers or DEFAULT_UA)
+            r = get(url, params=params, headers=sent_headers,
                     timeout=timeout)
+            cookie = human_challenge_cookie(r.status_code, getattr(r, "text", ""))
+            if cookie:
+                # The challenge request did not reach WordPress. Replay the
+                # same GET once, just as the returned browser script does.
+                sent_headers["Cookie"] = cookie
+                r = get(url, params=params, headers=sent_headers,
+                        timeout=timeout)
             if r.status_code not in retried:
                 return r
             if attempt < attempts - 1:
@@ -211,6 +237,15 @@ def call_with_retry(url, *, method="POST", data=None, headers=None, timeout=90,
         try:
             status, body = _send(method, url, data=data, headers=sent_headers,
                                  timeout=timeout)
+            cookie = human_challenge_cookie(status, body)
+            if cookie:
+                # The first request stopped at the host's browser handshake;
+                # PHP did not receive the GET/POST, so replaying the same body
+                # once is safe and is exactly what document.location.reload
+                # asks a browser to do.
+                sent_headers["Cookie"] = cookie
+                status, body = _send(method, url, data=data,
+                                     headers=sent_headers, timeout=timeout)
         except Unreachable as exc:
             detail = f"could not reach the host: {exc}"
             continue
