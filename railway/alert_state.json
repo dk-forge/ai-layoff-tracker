@@ -66,13 +66,8 @@
       "first": 1788880130,
       "last": 1788880130,
       "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
-    },
-    "tests:main:84c6c760add42cf9": {
-      "first": 1788874108,
-      "last": 1788874108,
-      "subject": "CI RED: Tests \u2014 ModuleNotFoundError: No module named 'pytest'"
     }
   },
-  "updated_at": "2026-09-08T15:11:55+00:00",
+  "updated_at": "2026-09-08T16:10:50+00:00",
   "version": 1
 }
