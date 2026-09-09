@@ -111,8 +111,13 @@
       "first": 1788967216,
       "last": 1788967216,
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
+    },
+    "tests:main:973ea34d4b0ec8af": {
+      "first": 1788982900,
+      "last": 1788982900,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'fail' != 'unknown'"
     }
   },
-  "updated_at": "2026-09-09T19:34:04+00:00",
+  "updated_at": "2026-09-09T19:41:41+00:00",
   "version": 1
 }
