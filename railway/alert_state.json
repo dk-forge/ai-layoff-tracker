@@ -52,15 +52,10 @@
     }
   ],
   "open": {
-    "apply-a-signed-off-correction:main:b6c3989521fd8bfe": {
-      "first": 1788968240,
-      "last": 1788968240,
-      "subject": "CI RED: Apply a signed-off correction \u2014 restore was incomplete: restored=0/5, rejected=[{'id': 179170, 'reason': 'hash is not suppressed by a merge'}, {'id': 177083, 'reason': 'has"
-    },
-    "apply-a-signed-off-correction:main:b8426f299208ae51": {
-      "first": 1788897798,
-      "last": 1788897798,
-      "subject": "CI RED: Apply a signed-off correction \u2014 restore failed: HTTP 404 {\"code\":\"rest_no_route\",\"message\":\"No route was found matching the URL and request method.\",\"data\":{\"status\":404}}"
+    "apply-a-signed-off-correction:main:ce4c928f0f44950d": {
+      "first": 1788983936,
+      "last": 1788983936,
+      "subject": "CI RED: Apply a signed-off correction \u2014 requests.exceptions.SSLError: HTTPSConnectionPool(host='asktherecruiter.com', port=443): Max retries exceeded with url: /blog/wp-json/layoff"
     },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
@@ -82,20 +77,15 @@
       "last": 1788982444,
       "subject": "CI RED: ERM provenance check \u2014 published ERM rows disagree with the country they were imported with (exit 2) - see the step above for the rows"
     },
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1788983942,
+      "last": 1788983942,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,607,216 jobs / 65,530 entries"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: OPEN INCIDENT, baseline NOT advanced. Only `--close-incident worldwide_all_time` (reviewer + reason + row IDs + an explicit "
-    },
-    "mailbox-janitor:main:147a366b787e9eb0": {
-      "first": 1788879925,
-      "last": 1788879925,
-      "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
-    },
-    "mailbox-janitor:main:819dd5ba32cdd289": {
-      "first": 1788880314,
-      "last": 1788880314,
-      "subject": "CI RED: Mailbox janitor \u2014 The mailbox could not be read. UNKNOWN, not a pass."
     },
     "tests:live.data:4c51a688fc18dee4": {
       "first": 1788968371,
@@ -111,8 +101,13 @@
       "first": 1788967216,
       "last": 1788967216,
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
+    },
+    "tests:main:973ea34d4b0ec8af": {
+      "first": 1788982900,
+      "last": 1788982900,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'fail' != 'unknown'"
     }
   },
-  "updated_at": "2026-09-09T19:34:04+00:00",
+  "updated_at": "2026-09-09T19:59:02+00:00",
   "version": 1
 }
