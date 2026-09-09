@@ -1,3 +1,69 @@
+## 2026-09-09 - the -46,400 incident is closed: two dedup runs, and a guard that cannot see a deletion
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/duplicate_shape_scan.py` (ops_status `[3f]`), `railway/dedupe_llm.bucket_key`
+
+Closed by dak with rows 179185, 179133, 179106 and a replacement baseline of
+20,579,595 jobs / 65,507 entries. The short reason on the ledger points here.
+
+**What moved the number.** Two cross-source dedup runs, both hard-deleting
+duplicate rows:
+
+- run `34204171256` (2026-09-08T08:27:58Z) removed 8, dominated by **179185**,
+  a Bloomberg report of the Volkswagen 50,000 event stored as its own row
+  beside keeper 179106 since 2026-09-03.
+- run `34335272802` (2026-09-09T09:32Z) removed 6 more, after `bucket_key`
+  (commit f7fe402) taught `candidate_clusters` to see name variants:
+  **179133 "Volkswagen (VW)"** into 179106 on the owner's ruling, plus SAP,
+  Schlumberger, Aerojet, Electrolux and HP re-reports.
+
+**Why the guard fired on the repair rather than the damage.**
+`MovementInvariant` sizes its allowance from `abs(d_entries)`, which is a NET
+figure. Eight rows out and six in reads as `-2`, so the allowance covers two
+rows while fourteen moved. The same shape produced the 42,000-job alarm on
+2026-08-14. The knowledge already existed in the wrong guard:
+`ContainmentInvariant`'s own FAIL text says a net delta "bounds neither gross
+flow".
+
+**Ruled out arithmetically, not by inspection.** `reconcile-supersets` did not
+run: `excluded_entries` 424 and `excluded_jobs` 121,458 are identical on both
+baselines. The 4,320-job Applied Aerospace SEC repair is outside the window,
+applied 2026-09-07T18:32:57Z, before the 20:44:18Z baseline.
+
+**THREE THINGS ARE NOT CLOSED BY THIS, and the replacement baseline is the
+CURRENT PUBLISHED FIGURE rather than a figure proven free of duplicates.**
+
+1. **428 jobs across 5 rows falsely merged on 2026-09-08 are still missing.**
+   `/restore-merged-rows` returns 404 on the live 2.20.175; it ships in
+   2.20.178 and lands with the deploy.
+2. **Row 176988, "Grupo Volkswagen", 60,000, is a suspected third report of the
+   same VW event and is unreachable by dedup**, because it carries no
+   `layoff_date`, `days_between` returns 9999 for a blank, and no window admits
+   it. A dateless row can never cluster with anything, whatever it is called.
+   That is a second, independent blind spot in the same job.
+3. **`duplicate_shape_scan` reports 67 dated and 12 dateless suspects**,
+   including a `Golman Sachs` / `Goldman Sachs` typo, three JLR spellings and
+   `LAUSD` against `Los Angeles Unified School District`. None is adjudicated.
+
+**Why the second detector had to drop the name entirely.** Every duplicate
+defence sat behind one gate, `candidate_clusters`, which buckets by company
+string first. A pair that never becomes a candidate is invisible forever and
+silently. The new scan keys on `(country, job_count within 2%, date gap <= 30d)`
+with no company string anywhere in it, so a typo, an acronym, a translation or
+a ticker cannot remove a pair from consideration: there is nothing for a name
+to be wrong in. It reports and never merges, and its findings are
+UNKNOWN-pending-adjudication rather than FAIL, because a suspicion is not a
+proven duplicate and a permanent backlog as exit 2 would train sessions to
+ignore exit 2.
+
+**What teaching the movement guard about gross flow would NOT fix.** When a
+duplicate ARRIVES, `d_entries` is `+1` and the "one arriving row is the whole
+move" clause excuses it correctly: at the headline, a duplicate of a big event
+and a real big event are the same observation. No bound on a published
+aggregate separates them. That is why this needed a separate question rather
+than another parameter. The deletion blindness is still worth fixing, for a
+different reason: it points the alarm at the person cleaning up.
+
 ## 2026-09-09 - a unit test read the live incident ledger, so a real open finding reddened it
 
 **Class:** two-copies-drifted
