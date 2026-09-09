@@ -167,7 +167,7 @@ jobs:
           # masked, which is itself evidence -- GitHub masks a secret's value,
           # so FTP_HOST resolving to a masked string means FTP_HOST IS that
           # literal address. Compare it instead and print only the verdict.
-          # `awk NR==1` rather than `| head -1`: awk reads to end of input, so
+          # `awk NR==1` rather than `| awk 'NR<=1'`: awk reads to end of input, so
           # getent is never handed EPIPE. getent exits 2 on a name that does not
           # resolve, and the empty case below is the report for that.
           LIVE_ORIGIN=$(getent hosts asktherecruiter.com | awk 'NR==1{print $1}') || true
@@ -185,7 +185,7 @@ jobs:
           fi
           echo
           echo "== FTP home =="
-          # Capture, then truncate in the shell. `| grep -v "^ftp://" | head -40` closes the pipe
+          # Capture, then truncate in the shell. `| grep -v "^ftp://" | awk 'NR<=40'` closes the pipe
           # while lftp is still writing, and pipefail promotes that EPIPE to a
           # failed step. And lftp's own non-zero on a refused login is this
           # probe's FINDING, not its failure: a diagnostic that goes red for
@@ -210,7 +210,7 @@ jobs:
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             cls -1 .;
           " 2>&1) || true
-          printf '%s\n' "$OUT" | grep -v '^ftp:' | grep -v '^\./\.' | head -40
+          printf '%s\n' "$OUT" | grep -v '^ftp:' | grep -v '^\./\.' | awk 'NR<=40'
           echo
           echo "== what plugins are actually installed =="
           R=$(timeout 45 lftp -c "
@@ -219,7 +219,7 @@ jobs:
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             cls -1 public_html/wp-content/plugins;
           " 2>&1) || true
-          printf '%s\n' "$R" | grep -v '^ftp:' | head -40 | sed 's/^/      /'
+          printf '%s\n' "$R" | grep -v '^ftp:' | awk 'NR<=40' | sed 's/^/      /'
           echo
           echo "== addondomains, two levels deep (the /blog origin is an addon domain) =="
           A=$(timeout 60 lftp -c "
@@ -228,7 +228,22 @@ jobs:
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             find -d 3 addondomains;
           " 2>&1) || true
-          printf '%s\n' "$A" | grep -v '^ftp:' | grep -i 'wp-config\|wp-content\|addondomains/[^/]*/$' | head -40 | sed 's/^/      /'
+          printf '%s\n' "$A" | grep -v '^ftp:' | grep -i 'wp-config\|wp-content\|addondomains/[^/]*/$' | awk 'NR<=40' | sed 's/^/      /'
+          echo
+          echo "== addondomains/AskTheRecruiter.com, unfiltered, and its plugins folder =="
+          C=$(timeout 60 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 25;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 addondomains/AskTheRecruiter.com/;
+            echo ---plugins---;
+            cls -1 addondomains/AskTheRecruiter.com/wp-content/plugins/;
+            echo ---blog---;
+            cls -1 addondomains/AskTheRecruiter.com/blog/;
+            echo ---thejewsofindia-plugins---;
+            cls -1 addondomains/thejewsofindia/wp-content/plugins/;
+          " 2>&1) || true
+          printf '%s\n' "$C" | grep -v '^ftp:' | awk 'NR<=80' | sed 's/^/      /'
           echo
           echo "== the same for asktherecruiter.com/ at the root =="
           B=$(timeout 60 lftp -c "
@@ -237,7 +252,7 @@ jobs:
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             find -d 3 asktherecruiter.com;
           " 2>&1) || true
-          printf '%s\n' "$B" | grep -v '^ftp:' | head -30 | sed 's/^/      /'
+          printf '%s\n' "$B" | grep -v '^ftp:' | awk 'NR<=30' | sed 's/^/      /'
           echo
           echo "== is wp-config.php where the owner says it is =="
           timeout 40 lftp -c "
