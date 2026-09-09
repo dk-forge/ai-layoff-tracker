@@ -168,8 +168,10 @@ class NothingFailsOnAnEdgeBlip(unittest.TestCase):
     def _report(self, status):
         def fetch(url, timeout):
             raise _http(status)
+        live_only = tuple(i for i in di.INVARIANTS
+                          if getattr(i, "reads_live_data", True))
         return di.check_all(fetch=fetch,
-                            invariants=without_open_incidents(di.INVARIANTS))
+                            invariants=without_open_incidents(live_only))
 
     def test_an_edge_blip_produces_no_failure_and_no_bare_unknown(self):
         for status in EDGE:

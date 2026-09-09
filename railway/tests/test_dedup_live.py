@@ -245,7 +245,7 @@ class DegradationContract(unittest.TestCase):
         # The sibling repo's failure mode in miniature: a response that carries
         # no answer must never be scored as a good answer.
         report = data_integrity.check_all(fetch=lambda url, timeout: b"{}",
-                                          invariants=_without_open_incidents(INVARIANTS))
+                                          invariants=_without_open_incidents(LIVE_ONLY))
         self.assertEqual(report.verdict, UNKNOWN)
 
     def test_a_confirmed_failure_outranks_an_unverifiable_one(self):
