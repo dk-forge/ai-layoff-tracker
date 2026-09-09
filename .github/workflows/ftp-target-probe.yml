@@ -199,17 +199,32 @@ jobs:
           mapfile -t HOME_LINES <<< "$HOME_OUT"
           printf '%s\n' "${HOME_LINES[@]:0:40}" | grep -v "^ftp://"
           echo
-          echo "== the account root, and then public_html =="
-          for DIR in "." "public_html" "public_html/blog"; do
-            echo "  --- $DIR"
-            OUT=$(timeout 45 lftp -c "
+          echo "== every NON-hidden entry at the account root =="
+          OUT=$(timeout 45 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 -d [a-zA-Z]*;
+          " 2>&1) || true
+          mapfile -t L <<< "$OUT"
+          printf '  %s\n' "${L[@]:0:60}" | grep -v "ftp:"
+          echo
+          echo "== and inside asktherecruiter.com, wherever it is =="
+          for D in "asktherecruiter.com" "public_html/asktherecruiter.com" \
+                   "asktherecruiter.com/blog" "public_html/asktherecruiter.com/blog"; do
+            R=$(timeout 40 lftp -c "
               set ssl:verify-certificate no; set ftp:ssl-force true;
               set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
               open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-              cls -1 -d \"$DIR\"/*;
+              cls -1 -d \"$D\"/[a-zA-Z]*;
             " 2>&1) || true
-            mapfile -t L <<< "$OUT"
-            printf '    %s\n' "${L[@]:0:40}" | grep -v "ftp:"
+            if printf '%s' "$R" | grep -q '550'; then
+              echo "  $D : absent"
+            else
+              echo "  $D :"
+              mapfile -t RL <<< "$R"
+              printf '      %s\n' "${RL[@]:0:25}" | grep -v "ftp:"
+            fi
           done
           echo
           echo "== is wp-config.php where the owner says it is =="
