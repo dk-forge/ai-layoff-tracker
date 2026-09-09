@@ -444,9 +444,13 @@ jobs:
           # long-lived include: db.php transferred, but its new route never
           # registered. So verify the route contract itself, through the same
           # checker, so its verdict travels inside the annotation too.
+          # Pinned to the WordPress ORIGIN (mail.asktherecruiter.com is the
+          # origin's own name), so an edge cache cannot answer for it.
+          ORIGIN_IP="$(getent ahostsv4 mail.asktherecruiter.com | awk 'NR == 1 {print $1}')"
           OUT="$(python3 railway/endpoint_check.py \
             --label "the tracker route index" \
             --url "$WP_SITE_URL/wp-json/layoffs/v1?deploy_check=$GITHUB_RUN_ID" \
+            --resolve "asktherecruiter.com:443:$ORIGIN_IP" \
             --require "routes>/layoffs/v1/restore-merged-rows" \
             --cookie 'humans_21909=1' \
             --where "the route is registered from includes/restore-merged.php via includes/db.php; missing here means the include did not transfer or is stale behind a fresh entrypoint (the 2.20.179 class)" 2>&1)"

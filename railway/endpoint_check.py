@@ -54,6 +54,10 @@ import json
 import re
 import sys
 import time
+import functools
+import http.client
+import socket
+import ssl
 import urllib.error
 import urllib.request
 
@@ -135,7 +139,50 @@ def excerpt(body, limit=MAX_EXCERPT):
     return text
 
 
-def fetch(url, timeout=TIMEOUT_S, cookie=""):
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """Dial a fixed address, keep the URL's hostname for SNI and the cert.
+
+    The same thing `curl --resolve host:443:ip` does: the request goes to
+    the WordPress ORIGIN, not to whatever edge the public name resolves to,
+    so a cached answer at the edge cannot stand in for the origin's own.
+    The origin presents a Cloudflare Origin CA certificate (2026-09-08
+    migration), which only Cloudflare's edge trusts, so a pinned request
+    cannot be verified against the public roots. The pin IS the trust
+    decision here: the address comes from the origin's own DNS name, chosen
+    by the workflow, exactly as the lftp steps already choose it with
+    `ssl:verify-certificate no`. An unpinned request keeps full verification.
+    """
+
+    def __init__(self, host, *args, pin=None, **kwargs):
+        super().__init__(host, *args, **kwargs)
+        self._pin = pin
+
+    def connect(self):
+        sock = socket.create_connection((self._pin, self.port), self.timeout)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+def _opener(resolve):
+    """An opener honouring `resolve` = "host:port:ip", or the default one."""
+    if not resolve:
+        return urllib.request.build_opener()
+    host, port, ip = resolve.split(":", 2)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    class _Handler(urllib.request.HTTPSHandler):
+        def https_open(self, req):
+            if req.host.split(":")[0] != host:
+                return super().https_open(req)
+            conn = functools.partial(_PinnedHTTPSConnection, pin=ip,
+                                     context=ctx, port=int(port))
+            return self.do_open(conn, req)
+
+    return urllib.request.build_opener(_Handler())
+
+
+def fetch(url, timeout=TIMEOUT_S, cookie="", resolve=""):
     """Status, content type and body, captured SEPARATELY.
 
     An HTTP error is not an exception here: its status and its body are the
@@ -150,7 +197,7 @@ def fetch(url, timeout=TIMEOUT_S, cookie=""):
         # challenge marker, not a credential, and it is never printed.
         req.add_header("Cookie", cookie)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with _opener(resolve).open(req, timeout=timeout) as resp:
             return resp.status, resp.headers.get("Content-Type", ""), resp.read(65536)
     except urllib.error.HTTPError as exc:
         with exc:
@@ -243,7 +290,7 @@ def judge(status, content_type, body, require=(), url="", require_type=True):
 
 
 def check(url, require=(), attempts=4, retry_delay=5.0, timeout=TIMEOUT_S,
-          cookie="", sleep=time.sleep, fetcher=fetch):
+          cookie="", sleep=time.sleep, fetcher=fetch, resolve=""):
     """Fetch and judge, retrying only what a retry can change.
 
     A 200 carrying the wrong body will carry the same wrong body again, so it
@@ -254,7 +301,8 @@ def check(url, require=(), attempts=4, retry_delay=5.0, timeout=TIMEOUT_S,
     last = None
     for attempt in range(1, max(1, attempts) + 1):
         try:
-            status, ctype, body = fetcher(url, timeout=timeout, cookie=cookie)
+            extra = {"resolve": resolve} if resolve else {}
+            status, ctype, body = fetcher(url, timeout=timeout, cookie=cookie, **extra)
         except Exception as exc:                       # noqa: BLE001
             last = Result(UNKNOWN,
                           f"could not reach {url}: {exc.__class__.__name__}: {exc}. "
@@ -283,13 +331,16 @@ def main(argv=None):
     parser.add_argument("--attempts", type=int, default=4)
     parser.add_argument("--retry-delay", type=float, default=5.0)
     parser.add_argument("--timeout", type=int, default=TIMEOUT_S)
+    parser.add_argument("--resolve", default="", metavar="HOST:PORT:IP",
+                        help="dial IP for HOST, keeping SNI and certificate checks "
+                             "(curl --resolve); pins the request to the origin")
     parser.add_argument("--cookie", default="",
                         help="a Cookie header value (the host's public bot-challenge marker)")
     args = parser.parse_args(argv)
 
     result = check(args.url, require=args.require, attempts=args.attempts,
                    retry_delay=args.retry_delay, timeout=args.timeout,
-                   cookie=args.cookie)
+                   cookie=args.cookie, resolve=args.resolve)
     label = f"{args.label}: " if args.label else ""
     print(f"{result.verdict}: {label}{result.detail}")
     if not result.ok and args.where:
