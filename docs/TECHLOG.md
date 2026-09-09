@@ -1,3 +1,59 @@
+## 2026-09-09 - a workflow whose YAML does not parse runs no jobs, and nothing anywhere says so
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_workflow_yaml_parses.py`
+
+GitHub Actions does not fail a workflow file it cannot parse. It does not
+annotate the commit, it does not open a run, and it does not appear in
+`gh run list`. The workflow simply stops existing, and every deploy, cron and
+guard it carried stops with it while every surface in this repo stays green.
+
+This is not hypothetical here. Commit `f014ebe` left
+`.github/workflows/deploy-plugin.yml` in exactly that state: a long prose block
+inside a block scalar ran on past its indentation and the scanner gave up at
+line 277, column 1. `ftp-target-probe.yml` was broken the same way twice in one
+day, both times by mis-indenting an embedded script, and both times it was
+caught only because somebody happened to validate it by hand. Hand validation
+is not a guard.
+
+Five checks over every file in `.github/workflows/`, using pyyaml, which is
+already in `railway/requirements.lock`:
+
+1. the directory exists and is not empty. A guard that examines zero files
+   passes forever and proves nothing, which is the same lesson an empty test
+   group taught;
+2. every file `safe_load`s, and a failure names the file with the parser's own
+   line and column;
+3. no stray TOP-LEVEL key, whitelisted against the real Actions set plus
+   Python's `True`, because pyyaml is YAML 1.1 and reads a bare `on:` as a
+   boolean. This is the sharper half: a file that fails outright is loud, but a
+   DEDENTED CONTINUATION LINE that happens to contain a colon parses perfectly
+   and quietly becomes a new root key, which Actions ignores along with
+   everything it swallowed;
+4. every file declares a trigger and at least one job;
+5. every step is a mapping carrying `run` or `uses`, since a truncated block
+   scalar turns a step list into a list of strings. A job-level `uses` is
+   accepted instead of `steps`, for reusable-workflow calls.
+
+Checks 3 to 5 SKIP a file that did not parse. Check 2 already owns that
+failure, and the first cut of this file re-parsed the broken file in every
+check, so one mis-indented script produced four failures, three of them raw
+tracebacks. One readable failure beats four noisy ones.
+
+Proven by mutation rather than by a clean run, using the real defect: swapping
+`f014ebe`'s `deploy-plugin.yml` in produces exactly one failure,
+`deploy-plugin.yml at line 277, column 1: could not find expected ':'`, and
+restoring it returns all five to green. Checks 3 and 5 were proven separately
+with a dedented root key and a step that is a bare string. All 94 currently
+committed workflow files pass all five.
+
+**The limit is stated in the docstring and is worth repeating: pyyaml is not
+GitHub Actions.** A file that parses here can still be rejected for an unknown
+key, a `runs-on` naming no runner, a malformed `${{ }}` expression, a cron
+Actions will not accept, or a `uses:` pointing at something that does not
+exist. Green here means the file is YAML shaped like a workflow, never that the
+workflow will run.
+
 ## 2026-09-09 - five test modules that were never collected, and a janitor that deleted mail and then reported it could not read the mailbox
 
 **Class:** guard-went-vacuous
