@@ -46,9 +46,17 @@ holder, so the start-of-session ritual surfaces it automatically.
   This changes no country verdict and does not turn the 16-country backlog into
   completed work.
 
+  Closeout PR #295 passed both comparison gates, the version gate, the drill,
+  both rendered shards and both core shards, then merged as
+  `76bab5b2c254d9a8b7e9df31e6f62c257438ae90`. Final no-write restoration run
+  `34403600311` was green, again printed exactly five source-proven rows / 428
+  jobs and explicitly wrote nothing; its success cleared the stale correction
+  alarm on main (`047c31ba`). No WordPress deployment was required because the
+  closeout changed Python monitoring language, tests and documentation only.
+
   Dakota confirmed the host migration is complete: Bluehost is historical;
   ChemiCloud is the current WordPress/MySQL/FTPS host, behind Cloudflare and the
-  Railway `/blog` reverse proxy. Branch `codex/top3-chemicloud-closeout` updates
+  Railway `/blog` reverse proxy. PR #295 updates
   present-tense operator, architecture and recovery documentation while keeping
   historical Bluehost incident evidence intact. The tracker-specific OpenRouter
   ledger is $2.168 for September through day 9 and projects $7.23/month under
