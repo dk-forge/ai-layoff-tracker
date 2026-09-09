@@ -52,3 +52,20 @@ def without_open_incidents(invariants, incidents_path=None):
         data_integrity.MovementInvariant(incidents_path=incidents_path)
         if isinstance(i, data_integrity.MovementInvariant) else i
         for i in invariants)
+
+
+def live_only(invariants):
+    """`invariants`, keeping only the ones that actually read the live site.
+
+    A structural invariant (`reads_live_data = False`, e.g. ErmProvenanceInvariant)
+    answers from committed state - a measurement file, a register - and its
+    verdict on any given day is independent of whatever fetch a transport test
+    stubs in. Folding one into a transport-only or payload-only assertion
+    inherits a real, unrelated finding the same way an open headline incident
+    does above: `erm_provenance` reddened `test_cloudflare_edge_unknown`'s edge-
+    blip claim and `test_dedup_live`'s empty-payload claim on 2026-09-09 when a
+    genuine re-scored ERM row (179002, Cheminova) landed in the committed
+    measurement, neither of which has anything to do with what either test
+    means to exercise.
+    """
+    return tuple(i for i in invariants if getattr(i, "reads_live_data", True))

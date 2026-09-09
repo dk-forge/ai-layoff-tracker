@@ -1,3 +1,37 @@
+## 2026-09-09 - signed corrections now use the public TLS-verified ChemiCloud path
+
+**Class:** wrong-scope-or-key - a direct origin pin used the wrong trust model
+**Guard:** `railway/tests/test_move_source_reports.py`
+
+Dakota confirmed the WordPress site has moved from Bluehost to ChemiCloud. The
+new restoration route was already live, and dry run `34398160574` reproduced the
+five intended rows and 428 jobs without writing. Apply run `34398242111` failed
+before a database write: `/etc/hosts` pinned `asktherecruiter.com` directly to
+the ChemiCloud origin, which presents a Cloudflare Origin CA certificate. That
+certificate is correct for the Cloudflare-to-origin leg but is not a public
+trust certificate, so Requests rejected it. Disabling TLS verification would
+have hidden the design error.
+
+An unauthenticated empty POST over the ordinary public route returned 403 rather
+than 404, proving that the deployed handler is reachable through Cloudflare and
+the proxy. The correction workflow therefore no longer pins the hostname to the
+origin. It uses `https://asktherecruiter.com/blog` with normal certificate
+verification. The regression test was red against the pinned workflow and now
+requires the public URL while prohibiting the origin alias, `/etc/hosts`, and
+`--insecure`; all 34 correction/restoration tests pass. The data correction
+remains pending until a merged-main apply and five-row read-back succeed.
+
+The first full PR run also exposed two test-scope defects because the fresh
+weekly ERM measurement carried a genuine, file-backed contradiction. The tests
+for “a Cloudflare edge failure cannot create a data verdict” and “an empty HTTP
+payload is UNKNOWN” passed the entire invariant registry, including checks that
+do not read HTTP at all. They now pass only invariants declaring
+`reads_live_data`; both failed before and pass after the change. The underlying
+finding was not suppressed: live row 179002 stores `Multiple countries`, while
+its own excerpt says Denmark and official Eurofound factsheet 300940 explicitly
+records Country: Denmark and 385 planned losses at the Rønland plant. That row
+must be corrected through this signed path and the ERM measurement rerun.
+
 ## 2026-09-08 - 2.20.179 was visible while one transferred PHP include still executed old bytecode (2.20.180, branch)
 
 **Class:** cache-served-stale - the host served an old compiled include beside a new plugin entrypoint

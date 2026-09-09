@@ -244,8 +244,15 @@ class DegradationContract(unittest.TestCase):
     def test_empty_payload_is_unknown_not_pass(self):
         # The sibling repo's failure mode in miniature: a response that carries
         # no answer must never be scored as a good answer.
+        #
+        # Scoped to LIVE_ONLY like the class docstring promises, and like
+        # test_unreachable_is_unknown_never_pass above already does. On
+        # 2026-09-09 this ran against the full INVARIANTS and inherited
+        # erm_provenance's structural, committed-measurement verdict — a real,
+        # unrelated re-scored row (179002, Cheminova) — which answered a
+        # question this test never asked and turned UNKNOWN into FAIL.
         report = data_integrity.check_all(fetch=lambda url, timeout: b"{}",
-                                          invariants=_without_open_incidents(INVARIANTS))
+                                          invariants=_without_open_incidents(LIVE_ONLY))
         self.assertEqual(report.verdict, UNKNOWN)
 
     def test_a_confirmed_failure_outranks_an_unverifiable_one(self):

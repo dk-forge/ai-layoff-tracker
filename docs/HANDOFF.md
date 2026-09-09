@@ -6,6 +6,29 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **2026-09-09 20:00 UTC checkpoint — ChemiCloud correction transport.** Dakota
+  confirmed that Bluehost is no longer the host; the live WordPress origin is
+  ChemiCloud. PR #291 is merged and its SHA-matched deploy proved the fresh
+  `restore-merged-rows` route. Correction dry run `34398160574` then reached the
+  workflow and reproduced the exact five rows / 428 jobs without writing.
+  Apply run `34398242111` failed before any database write because the workflow
+  pinned the public hostname to the ChemiCloud origin, whose Cloudflare Origin
+  CA certificate is deliberately not trusted by public clients. A keyless,
+  empty POST to the public route returned 403, proving the handler is present
+  through the normal TLS-verified path. Branch `codex/top3-finalize` changes the
+  signed-correction workflow to use that public path and forbids origin pinning
+  or insecure TLS. TDD: the new transport assertion failed against main, then
+  all 34 correction/restoration tests passed. Full PR CI then surfaced a real
+  committed ERM-provenance failure: row 179002, Cheminova, is stored as
+  `Multiple countries`, while both its import excerpt and official Eurofound
+  factsheet 300940 say Denmark / 385 jobs. Two transport-degradation tests also
+  incorrectly included file-backed invariants unrelated to the simulated
+  network; their live-only scope was red first and is now fixed. Next:
+  merge/deploy, correct Cheminova to Denmark through the signed path, re-run the
+  provenance measurement, repeat the five-row restoration dry run and apply,
+  read back all five rows, move the two ERM source reports, and run integrity/
+  coverage/cost gates. **Do not claim the 428-job restoration or top-three
+  status before those read-backs pass.**
 - **HELD by Codex (2026-09-07): complete top-three TDD program.** Dakota
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
