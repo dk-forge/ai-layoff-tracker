@@ -87,6 +87,11 @@
       "last": 1788955374,
       "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at asktherecruiter/blog, or no existing ai-layoff-tracker.php at asktherecruiter/blog/wp-content/plugins/ai"
     },
+    "ftps-target-probe:main:951004c0bf5e43ca": {
+      "first": 1788956478,
+      "last": 1788956478,
+      "subject": "CI RED: FTPS target probe \u2014 ^[[36;1m# failed step. And lftp's own non-zero on a refused login is this^[[0m"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -118,6 +123,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != [\"ftp-target-probe.yml:221  `grep` consumes early in: grep -q '550'\"]"
     }
   },
-  "updated_at": "2026-09-09T12:20:22+00:00",
+  "updated_at": "2026-09-09T12:21:19+00:00",
   "version": 1
 }
