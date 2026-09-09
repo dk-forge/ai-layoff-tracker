@@ -23,6 +23,55 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Which host and credential pair actually authenticates
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          CHEMI_HOST: ${{ secrets.CHEMICLOUD_FTP }}
+          OLD_USER: ${{ secrets.FTP_USERNAME }}
+          OLD_PASS: ${{ secrets.FTP_PASSWORD }}
+          NEW_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          NEW_PASS: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          # 2026-09-09. FTP_HOST was corrected to the live origin and the JULY
+          # credentials answered 421 (no such home). The CHEMICLOUD_* pair,
+          # unread by any workflow since it was added on 2026-09-06, answered
+          # 530 (bad login). Two different refusals, so neither pair is simply
+          # "the right one". Rather than guess at combinations against a live
+          # server, try each one ONCE and print only the verdict.
+          #
+          # No value is ever echoed. A missing secret is reported as absent,
+          # never as a failure to log in, because those are different facts.
+          probe () {
+            local label="$1" host="$2" user="$3" pass="$4"
+            if [ -z "$host" ] || [ -z "$user" ] || [ -z "$pass" ]; then
+              echo "  $label: SKIPPED, one of its secrets is not set"
+              return
+            fi
+            local out
+            out=$(timeout 45 lftp -c "
+              set cmd:fail-exit true; set ssl:verify-certificate no;
+              set ftp:ssl-force true; set ftp:ssl-protect-data true;
+              set net:max-retries 1; set net:timeout 15;
+              open -u \"$user\",\"$pass\" \"$host\";
+              cls -1 wp-config.php;
+            " 2>&1) && { echo "  $label: AUTHENTICATES, and wp-config.php is at the FTP home"; return; }
+            case "$out" in
+              *530*)  echo "  $label: rejected the login (530)";;
+              *421*)  echo "  $label: logged in but has no home directory (421)";;
+              *550*|*"No such file"*) echo "  $label: AUTHENTICATES, but no wp-config.php at the home";;
+              *)      echo "  $label: failed, $(echo "$out" | tail -1 | cut -c1-90)";;
+            esac
+          }
+          echo "Each pairing, once:"
+          probe "FTP_HOST + July credentials       " "$FTP_HOST"   "$OLD_USER" "$OLD_PASS"
+          probe "FTP_HOST + ChemiCloud credentials " "$FTP_HOST"   "$NEW_USER" "$NEW_PASS"
+          probe "CHEMICLOUD_FTP + July credentials " "$CHEMI_HOST" "$OLD_USER" "$OLD_PASS"
+          probe "CHEMICLOUD_FTP + ChemiCloud creds " "$CHEMI_HOST" "$NEW_USER" "$NEW_PASS"
+          echo
+          echo "The live site executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
+          echo "This checkout builds:   $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"
+
       - name: Which tree does FTPS actually land in
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
