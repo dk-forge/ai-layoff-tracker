@@ -7958,6 +7958,71 @@
    "truncated": null
   },
   {
+   "calls": 1884,
+   "ceiling_usd": 0.2,
+   "complete": true,
+   "completion_tokens": 109484,
+   "cost_usd": 0.177466,
+   "date": "2026-09-08",
+   "gate_mode": "live",
+   "items": 1420,
+   "job": "railway-cron",
+   "max_call_usd": 0.000624,
+   "prompt_tokens": 1336724,
+   "run_id": "railway-20260908T2245",
+   "sources": {
+    "edgar": {
+     "calls": 20,
+     "cost_usd": 0.003004,
+     "dropped": 4,
+     "items": 12,
+     "kept": 8,
+     "stored": 0
+    },
+    "gdelt": {
+     "calls": 1133,
+     "cost_usd": 0.079867,
+     "dropped": 901,
+     "items": 1017,
+     "kept": 116,
+     "stored": 13
+    },
+    "google_news": {
+     "calls": 259,
+     "cost_usd": 0.033996,
+     "dropped": 11,
+     "items": 135,
+     "kept": 124,
+     "stored": 7
+    },
+    "local_news": {
+     "calls": 458,
+     "cost_usd": 0.058283,
+     "dropped": 38,
+     "items": 248,
+     "kept": 210,
+     "stored": 4
+    },
+    "national_feeds": {
+     "calls": 10,
+     "cost_usd": 0.00149,
+     "dropped": 2,
+     "items": 6,
+     "kept": 4,
+     "stored": 0
+    },
+    "warn_mn_letters": {
+     "calls": 4,
+     "cost_usd": 0.000826,
+     "dropped": 0,
+     "items": 2,
+     "kept": 2,
+     "stored": 0
+    }
+   },
+   "stored": 24
+  },
+  {
    "attempt": "1",
    "calls": 40,
    "ceiling_usd": 0.005,
@@ -7989,6 +8054,41 @@
    "prompt_tokens": 0,
    "run_id": "34203237171",
    "stored": null,
+   "truncated": null
+  },
+  {
+   "attempt": "1",
+   "calls": 31,
+   "ceiling_usd": 0.025,
+   "changed": 13,
+   "complete": true,
+   "completion_tokens": 533,
+   "cost_usd": 0.001647,
+   "date": "2026-09-09",
+   "items": 31,
+   "job": "dedupe-llm",
+   "max_call_usd": 0.000102,
+   "prompt_tokens": 14338,
+   "run_id": "34335272802",
+   "stored": null,
+   "truncated": null
+  },
+  {
+   "attempt": "1",
+   "cached_prompt_tokens": 8136,
+   "calls": 185,
+   "ceiling_usd": 0.15,
+   "changed": null,
+   "complete": true,
+   "completion_tokens": 41422,
+   "cost_usd": 0.056699,
+   "date": "2026-09-09",
+   "items": 185,
+   "job": "edgar-history-sweep",
+   "max_call_usd": 0.000471,
+   "prompt_tokens": 408626,
+   "run_id": "34336766468",
+   "stored": 0,
    "truncated": null
   }
  ],
