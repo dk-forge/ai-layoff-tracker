@@ -6,6 +6,54 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **2026-09-09 closeout checkpoint — corrections are live; ranking proof is not complete.**
+  PR #294 passed all four full test shards and merged as
+  `5740e588c5d0e4db10e6f9d56849371f9460d941`. Signed correction workflow dry
+  run `34400600537` reproduced Cheminova row 179002 / 385 jobs, apply run
+  `34400663451` changed only its country to Denmark, and an independent public
+  API read-back confirmed the official Eurofound 300940 URL and corrected
+  country. ERM provenance refresh `34400781349` then passed: all 19,476
+  published ERM rows were readable, with zero country contradictions. Fresh
+  production data-integrity run `34401892697` also passed all 20/20 invariants.
+
+  The five records previously lost to over-broad merging are present in the
+  current ChemiCloud production database under their original IDs, exact counts
+  and source URLs: HHS 179170/13, Treasury 177083/15, USAID 177379/25, Dow
+  61050/110 (ERM 300539), and Stellantis 61941/265 (ERM 202925). Restoration
+  dry run `34400784521` again selected exactly five / 428 jobs without writing.
+  Apply `34400847461` then rejected all five because none of their hashes is
+  currently merge-suppressed. That is the correct duplicate-safe outcome: do
+  not bypass the guard or insert another copy. The wrong Dow and Stellantis
+  keeper rows do not carry those ERM sources, so no source move remains.
+
+  A fresh read-only shape scan covered the 999 largest counted rows (floor
+  3,000 jobs) and still reports 67 dated candidates plus 12 dateless rows from
+  date-bearing sources. These are UNKNOWN pending source-by-source adjudication,
+  not proven duplicates; row 176988 Grupo Volkswagen / 60,000 remains the
+  largest risk. The GDELT work ledger is also not clean: 121 slots currently
+  comprise 11 complete broad windows, 98 queued regional/language slots and 12
+  failed segment slots. The competitor benchmark is absent/stale, 16 represented
+  countries still lack a completed regime classification, and regional
+  human-labelled recall evidence is not complete. Therefore the tracker is a
+  strong, unusually transparent candidate, but **top-three global rank and 100%
+  world coverage remain unproven and must not be published as facts**.
+
+  One monitoring-copy defect was also closed on the closeout branch: the
+  country invariant intentionally passes when every unclassified country is
+  explicitly dated in the acknowledged backlog, but its old label said every
+  country was classified. The label now says “classified or explicitly
+  acknowledged,” and a test prevents the stronger false claim from returning.
+  This changes no country verdict and does not turn the 16-country backlog into
+  completed work.
+
+  Dakota confirmed the host migration is complete: Bluehost is historical;
+  ChemiCloud is the current WordPress/MySQL/FTPS host, behind Cloudflare and the
+  Railway `/blog` reverse proxy. Branch `codex/top3-chemicloud-closeout` updates
+  present-tense operator, architecture and recovery documentation while keeping
+  historical Bluehost incident evidence intact. The tracker-specific OpenRouter
+  ledger is $2.168 for September through day 9 and projects $7.23/month under
+  the hard $10 allowance; shared-account activity outside this repo is not part
+  of that tracker projection.
 - **2026-09-09 20:00 UTC checkpoint — ChemiCloud correction transport.** Dakota
   confirmed that Bluehost is no longer the host; the live WordPress origin is
   ChemiCloud. PR #291 is merged and its SHA-matched deploy proved the fresh

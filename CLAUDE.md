@@ -108,7 +108,7 @@ still:
   a failed POST**: that is what let one outage manufacture red runs which
   manufacture alerts which also fail. `ops_status.py [4b]` shows what is held.
 - **The unattended host watch lives in the SIBLING repo**, on purpose: both
-  trackers share one Bluehost account, so `host-watch.yml` over there probes it
+  trackers share one ChemiCloud account, so `host-watch.yml` over there probes it
   every 15 minutes and opens ONE GitHub issue per sustained outage. A second
   identical watchdog here would double the load and send two emails per outage.
   This repo's own check is `ops_status.py [1]`, at session start, and it is
@@ -144,7 +144,7 @@ and so anything genuinely NEW is escalated. It is not a place to go looking.
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Ops playbooks: deploy, caches, imports, "X is broken → do Y", add/tune/enhance a source |
 
 ## The 60-second mental model
-1. **`wordpress-plugin/ai-layoff-tracker/`** — a WP plugin on Bluehost (install lives at `/blog`).
+1. **`wordpress-plugin/ai-layoff-tracker/`** — a WP plugin on ChemiCloud (install lives at `/blog`, with Cloudflare in front).
    Front-end is fully server-side: the browser calls `/query` (table), `/aggregate` (charts+stats),
    `/facets` (dropdowns). Data lives in a custom indexed table `wp_alt_layoffs` (scales to 100K+ rows);
    rich entries also exist as `layoffs` CPT posts for permalink pages.

@@ -528,6 +528,11 @@ class WiredIntoTheOneRegistry(unittest.TestCase):
         self.assertEqual(result.state, data_integrity.UNKNOWN)
         self.assertIn("Wakanda", result.detail)
 
+    def test_the_green_label_does_not_claim_acknowledged_backlog_is_classified(self):
+        _data_integrity, inv = self._invariant()
+        self.assertIn("classified or explicitly acknowledged", inv.label)
+        self.assertNotIn("Every country in the corpus has a classified", inv.label)
+
 
 if __name__ == "__main__":
     unittest.main()

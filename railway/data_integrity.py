@@ -1841,8 +1841,8 @@ class RollingRecallInvariant:
 
 
 class CountryCoverageInvariant:
-    """Every country in the corpus has an established disclosure regime, or says
-    it has not been checked.
+    """Every country in the corpus has an established disclosure regime, or is
+    explicitly acknowledged as not yet classified.
 
     WHAT IT ASSERTS. That railway/country_coverage_measurement.json exists, is
     younger than country_coverage.MAX_MEASUREMENT_AGE_DAYS, could read the live
@@ -1871,7 +1871,7 @@ class CountryCoverageInvariant:
     """
 
     key = "country_coverage_fresh"
-    label = "Every country in the corpus has a classified disclosure regime"
+    label = "Every country in the corpus is classified or explicitly acknowledged"
     reads_live_data = False        # reads the committed register, not the site
 
     def __init__(self, measurement_path=None):

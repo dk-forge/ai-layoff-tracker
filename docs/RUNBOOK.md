@@ -2,7 +2,7 @@
 
 ## Deploy
 Push to `main` → `.github/workflows/deploy-plugin.yml` FTPS-uploads
-`wordpress-plugin/ai-layoff-tracker/` to the Bluehost install at `/blog`.
+`wordpress-plugin/ai-layoff-tracker/` to the ChemiCloud install at `/blog`.
 **Always bump `Version:` AND `ALT_VERSION`** in `ai-layoff-tracker.php` — that
 cache-busts assets and fires `alt_flush_caches_on_deploy` (page-cache flush +
 DB-table dbDelta) on the first PHP request. To trip it immediately:
@@ -899,7 +899,7 @@ being served.
    |---|---|---|
    | Cloudflare | `cf-cache-status` | No. There is no Cloudflare API token in this repo's secrets, on purpose. |
    | Railway proxy (fronts `/blog`) | `x-cache-status` | No. Different app, not this repo. |
-   | Bluehost + WP Super Cache | none of the above | Yes, `alt_flush_caches_on_deploy()` |
+   | ChemiCloud + WP Super Cache | none of the above | Yes, `alt_flush_caches_on_deploy()` |
 
    To see the origin alone, bypass the two you cannot purge:
    ```bash
@@ -1149,7 +1149,7 @@ workflow. Browser-side: check the Cloudflare cache rule's Browser TTL (must be
 override; browsers may serve up to 5-min-old numbers by design).
 
 **Duplicate Cache-Control returns (API/page sends `public, max-age=…` AND `no-cache, no-store…`)**
-Bluehost's Apache injects the no-store trio after PHP's headers on every PHP response;
+The former Bluehost Apache stack injected the no-store trio after PHP's headers on every PHP response;
 the plugin overrides it with a marked block in the WP root `.htaccess` (managed by
 `includes/htaccess.php`, self-healing on init, canary-probed, auto-rolls-back on 5xx).
 1. Check state: option `alt_htaccess_state` (`status: verified|failed`, `reason: write|probe`).
@@ -1371,7 +1371,7 @@ worldwide labels are untouched by all four gates.
 
 **Contact form not delivering**
 Mails go via `wp_mail()` to info@asktherecruiter.com — confirm the mailbox exists in
-Bluehost. Form errors surface as `?alt_error=` codes (spam|rate|fields|mail|expired).
+the host. Form errors surface as `?alt_error=` codes (spam|rate|fields|mail|expired).
 Spam getting through → tighten in `includes/contact.php` or add Cloudflare Turnstile
 (needs owner-registered keys). Accepted risk (audit #2): math captcha & fill-time check
 deter only dumb bots; the honeypot does the real work; rate limit is per-IP 3/hour.
@@ -2906,8 +2906,8 @@ the confidentiality work.
    sees it, and on this host that is a live possibility. A wrong token and a
    stripped header produce the identical 401, which is exactly why both are
    accepted.
-4. **Never put the token in the URL**, though most guides suggest it. Bluehost
-   logs the full request line, so a secret in a path or query string is written
+4. **Never put the token in the URL**, though many guides suggest it. Web servers
+   log the full request line, so a secret in a path or query string is written
    permanently to a file we do not control. A test enforces this.
 5. **Leave `batched` OFF.** Brevo's batched payload shape is not documented;
    all three plausible shapes are accepted here defensively, but none of them
@@ -3329,7 +3329,7 @@ then walk `getBoundingClientRect()` and `paddingLeft` from a paragraph up to
   if the table grows 10×.
 - `is_user_logged_in`-gated REST nocache suppression means logged-in admins always see
   fresh (uncached) API data; anonymous visitors may be ≤60s behind.
-- FTP deploys upload files in place (no atomic swap on Bluehost), so each deploy has a
+- FTPS deploys upload files in place (no atomic swap on ChemiCloud), so each deploy has a
   ~30–60s window where a PHP-hitting request can 500 on a truncated file. Supercached
   HTML shields most anonymous traffic; a 500 observed right after a push is this window,
   not an outage — re-check after the deploy run goes green before reverting anything.

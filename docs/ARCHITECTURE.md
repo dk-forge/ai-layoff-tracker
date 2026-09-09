@@ -15,7 +15,7 @@
                          └────────────────────────────────────────────────┘             │
                                                                                         ▼
   ┌──────────────────────────────────────────────────────────────────────────────────────┐
-  │  WORDPRESS PLUGIN (Bluehost, install at /blog; Cloudflare in front)                  │
+  │  WORDPRESS PLUGIN (ChemiCloud, install at /blog; Cloudflare in front)                │
   │                                                                                      │
   │  wp_alt_layoffs (custom indexed table — THE query surface, holds everything)         │
   │  layoffs CPT posts (rich entries only: SEC/news/curated → permalink pages)           │
@@ -251,10 +251,11 @@ filter was dropped instead of trusting a number. That is not built yet; until it
 the contract. `tests/test_filter_param_contract.py` pins it to the code.
 
 ## Caching layers
-Request chain for `/blog/*` (observed 2026-07-19): **Cloudflare → Railway root app (reverse-proxies
-/blog) → Bluehost Apache** (`x-railway-*` headers + base64 `host-header: shared.bluehost.com` on
-/blog responses; origin reachable directly via the Bluehost IP that `mail.asktherecruiter.com`
-resolves to, with `curl --resolve`).
+Request chain for `/blog/*` (updated after the 2026-09-08 migration):
+**Cloudflare → Railway root app (reverse-proxies `/blog`) → ChemiCloud Apache/PHP**.
+Administrative writes use the public TLS-verified hostname. Do not pin the hostname to
+the ChemiCloud origin: that origin presents a Cloudflare Origin CA certificate intended
+for Cloudflare's origin leg, not for direct public-client trust.
 
 1. Page HTML: WP-Super-Cache (+ Autoptimize) — flushed automatically on version bump.
 2. API JSON: 5-min transients keyed by params+alt_data_ver; `alt_api_cached` sends
@@ -264,5 +265,6 @@ resolves to, with `curl --resolve`).
    ⚠ Ensure the rule's Browser TTL = "Respect origin" (a 5-day browser TTL was observed initially).
    HEAD requests are never edge-cached (`cf-cache-status: DYNAMIC` is normal on HEAD; verify with GET).
 4. Browser: works only because `includes/htaccess.php` maintains a mod_headers block in the WP root
-   `.htaccess` that strips the duplicate `no-cache, no-store` Cache-Control (+Pragma+Expires) that
-   Bluehost's Apache appends to every PHP response after PHP's own headers (v2.19.16; see TECHLOG).
+   `.htaccess` that strips the duplicate `no-cache, no-store` Cache-Control (+Pragma+Expires).
+   This was required on Bluehost (v2.19.16; see TECHLOG) and remains a compatibility guard after
+   the ChemiCloud migration until a measured removal proves it unnecessary.

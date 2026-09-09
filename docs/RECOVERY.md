@@ -15,7 +15,7 @@ python3 railway/ops_status.py
 
 | What you see | What it is | What to do |
 |---|---|---|
-| `[1] LIVE TRACKER UNREACHABLE`, everything else fine | The host is down. Bluehost 504s under `/blog/` a few times a month. | **Nothing.** Wait. The sibling repo's `host-watch.yml` probes every 15 minutes and opens ONE GitHub issue on a sustained outage. Data is not lost when the host is unreachable. |
+| `[1] LIVE TRACKER UNREACHABLE`, everything else fine | The ChemiCloud origin, Cloudflare, or the Railway reverse proxy may be unavailable. | **Nothing destructive.** Wait for the sibling repo's 15-minute `host-watch.yml` to distinguish a wobble from a sustained outage. Data is not lost merely because the reader path is unreachable. |
 | The site answers but the tracker shows zero or wildly wrong numbers | A data problem, not an outage. | Go to section 2. |
 | `[9] OFF-HOST BACKUP` says STALE or UNKNOWN | The backup itself has stopped. | Section 6. Do this even in a calm week. |
 | The site is gone and is not coming back | A reimage. | Section 3, then section 7. |
@@ -29,7 +29,7 @@ is to not start a restore into a site that was merely busy.
 
 There are two copies and they are not equal.
 
-**The live copy** is MySQL on Bluehost: thirteen tables the plugin owns, of
+**The live copy** is MySQL on ChemiCloud: thirteen tables the plugin owns, of
 which `wp_alt_layoffs` is the one that matters. It is the only writable copy.
 
 **The backup copy** is a GitHub Release on this repository, tagged
@@ -221,17 +221,17 @@ is worse off than one who knew the boundary.
 
 | Not covered | Size, measured | Is anything else covering it? |
 |---|---|---|
-| **`wp_posts`: the blog articles** | **557 posts** | **No repo holds them.** WordPress Tools -> Export writes a WXR file covering posts, pages and custom post types. Nobody runs it on a schedule. Bluehost's own backups cover it only while Bluehost exists. |
+| **`wp_posts`: the blog articles** | **557 posts at the last measurement** | **No repo holds them.** WordPress Tools -> Export writes a WXR file covering posts, pages and custom post types. Nobody runs it on a schedule. ChemiCloud's provider backups are not an independent off-host copy controlled by this project. |
 | **`wp_posts`: the `layoffs` CPT permalink pages** | **2,063 entries** | Same as above. These are the per-entry permalink pages the tracker links to. |
 | **WordPress pages** | **14 pages** | Same as above. |
-| **Uploads and media** | **2,171 media items** | **Nothing.** A WXR export records the URLs, not the files. Restoring media needs the `wp-content/uploads` directory, which exists only on the host and in Bluehost's own backups. |
+| **Uploads and media** | **2,171 media items at the last measurement** | **Nothing project-controlled.** A WXR export records the URLs, not the files. Restoring media needs the `wp-content/uploads` directory, currently held on ChemiCloud and its provider backups. |
 | **The WordPress install** | theme, other plugins, `wp_options` | **Nothing in this repo.** `wp_options` holds the plugin's API key, the dataset-release ledger and the editorial suppression list, none of which are exported. The plugin's own code IS in this repo under `wordpress-plugin/`. |
 | **The subscriber list** | see section 2 | **A sealed local copy, once armed.** DISARMED today: no recipient key is deployed, so nothing has been pulled and the consent records still exist only on the host. Arming is in section 2. |
 | **Anything ingested since the last Sunday** | up to 7 days | Partly. WARN and news rows are re-derivable by re-running the collectors against their sources, at some cost and with some loss. LLM-extracted rows would be re-extracted, and re-extraction is not guaranteed to reproduce the same classification. |
 
 The honest summary: **the tracker's DATA can be reimaged from GitHub. The BLOG
 cannot.** The 557 posts and 2,063 entry pages are the SEO asset, and they live
-on Bluehost and nowhere else.
+on ChemiCloud and nowhere else under project control.
 
 The cheapest way to close the largest part of that gap is a periodic WordPress
 WXR export (Tools -> Export -> All content) stored off-host. It would not cover
@@ -373,9 +373,9 @@ Adjudicate it like this, which is what happened the first time it fired:
 2. Deploy this plugin from `wordpress-plugin/ai-layoff-tracker/`. Activating it
    creates all thirteen tables.
 3. Restore the tracker data per **3a**.
-4. Restore the blog: a WXR file if one exists, or a Bluehost backup. **If
+4. Restore the blog: a WXR file if one exists, or a ChemiCloud backup. **If
    neither exists, the 557 posts and 2,063 entry pages are gone.**
-5. Restore `wp-content/uploads` from a Bluehost backup. There is no other copy.
+5. Restore `wp-content/uploads` from a ChemiCloud backup. There is no other project-controlled copy.
 6. Re-set the plugin API key, then update `WP_API_KEY` and `WP_SITE_URL` in this
    repo's Actions secrets.
 7. Re-run the derived passes per **3c**.

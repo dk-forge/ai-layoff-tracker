@@ -15,7 +15,7 @@ news via GDELT), flagging the ones companies explicitly attribute to AI.
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Ops playbooks: deploy, caches, imports, "X is broken → do Y" |
 
 ## The 60-second mental model
-1. **`wordpress-plugin/ai-layoff-tracker/`** — a WP plugin on Bluehost (install lives at `/blog`).
+1. **`wordpress-plugin/ai-layoff-tracker/`** — a WP plugin on ChemiCloud (install lives at `/blog`, with Cloudflare in front).
    Front-end is fully server-side: the browser calls `/query` (table), `/aggregate` (charts+stats),
    `/facets` (dropdowns). Data lives in a custom indexed table `wp_alt_layoffs` (scales to 100K+ rows);
    rich entries also exist as `layoffs` CPT posts for permalink pages.

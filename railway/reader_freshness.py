@@ -14,7 +14,7 @@ later the bare URL with a browser User-Agent still served HTML built by
 and the cache-immune `/status` endpoint reported 2.19.274. The origin was
 correct the whole time. Two chained shared caches were not:
 
-    reader -> Cloudflare -> Railway proxy (x-cache-status) -> Bluehost -> PHP
+    reader -> Cloudflare -> Railway proxy (x-cache-status) -> WordPress origin -> PHP
 
 Both honour the page's own Cache-Control, and their windows ADD: the response
 carried `s-maxage=300, stale-while-revalidate=600`, so each hop could serve up

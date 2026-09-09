@@ -3,7 +3,7 @@
 
 WHY THIS IS SO MUCH SMALLER THAN THE SIBLING'S host_watch.py
 ------------------------------------------------------------
-Both trackers live on the SAME Bluehost account, so there is exactly one host to
+Both trackers live on the SAME ChemiCloud account, so there is exactly one host to
 watch and it should be watched once. The talent tracker's `host-watch.yml` probes
 it every 15 minutes and, on a sustained outage, opens ONE GitHub issue. Adding a
 second, identical watchdog here would double the requests to a host that has
