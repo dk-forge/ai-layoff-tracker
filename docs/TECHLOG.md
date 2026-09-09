@@ -1,3 +1,84 @@
+## 2026-09-09 - a diagnostic went red for successfully diagnosing something, and mailed the owner about it
+
+**Class:** novel
+**Guard:** `railway/tests/test_pipefail_broken_pipe.py`
+
+`FTPS target probe` run 34331498772 failed, `ci_alert.py` did exactly what it is
+built to do, and the owner got an operational email. The probe had not failed at
+its job. It had established that no credential in this repository authenticates
+against the new host, printed that finding, and then died on the line that
+printed it:
+
+    echo "$OUT" | head -2 | cut -c1-160
+
+`head` stops after two lines and closes its end of the pipe. `echo` is still
+writing, takes EPIPE, dies 141. `set -o pipefail` returns the highest code in
+the pipeline, so the step failed, so the workflow was red, so the alarm fired.
+The finding was correct, complete, and delivered as an outage.
+
+**This is worse than a broken diagnostic.** A probe that is simply broken gets
+fixed. A probe that reddens on success teaches the reader that this channel's
+red does not mean anything, and that is how the alerting built on 2026-08-19
+stops working without anything appearing to change.
+
+**Why nothing caught it.** The pattern is a RACE, not a rule. A pipe has a
+buffer, so a producer whose entire output fits inside it finishes before the
+consumer exits and never sees EPIPE. `cmd | head` is fine almost always. Small
+output is not safety, it is a longer fuse: the workflow carries the defect
+through months of green runs and fails on the one run whose output crossed the
+buffer. Nothing reports a pattern that is usually fine.
+
+**The sweep found four, all in the one file, and one of them was lying rather
+than failing.** Three were the loud kind (`| head -1` twice, `| head -40`
+once). The fourth was `if echo "$OUT" | grep -q '"status" *: *1'`, which is the
+same mechanism producing a WRONG ANSWER instead of a red step: `grep -q` stops
+at the first match, `echo` takes EPIPE, pipefail returns 141 for a pipeline
+that MATCHED, and a cPanel login that works reads as one that did not. That one
+would never have been noticed at all.
+
+Two more sites (`deploy-plugin.yml`, `find-site-css.yml`, both
+`$(lftp --version | head -1)`) are NOT findings and are deliberately not
+"fixed": those blocks run `set -e` with no pipefail, so the pipeline's status is
+`head`'s zero and lftp's EPIPE is invisible. Precision here is the point. A
+guard that flagged every `| head` in the repo would be turned off within a week.
+
+**THE FIX IS NEVER TO DROP PIPEFAIL.** This repo has been bitten from the other
+side, by a `pytest | tail && git push` that pushed a red tree because `tail`
+succeeded and the exit code that mattered was discarded. Turning pipefail off to
+quiet a broken pipe trades a loud harmless failure for a silent harmful one,
+which is the worse of the two trades and is the one that is hard to detect
+afterwards. The house fix is to truncate without a pipe (command substitution,
+then `cut` or a bash array slice), to hand the early exiter a herestring or a
+file so it has no upstream to signal, or to guard the pipeline explicitly. All
+three keep pipefail.
+
+**The guard.** `test_pipefail_broken_pipe.py` reads every `run:` block in
+`.github/workflows/`, decides whether pipefail is on (a `set` in the body, or a
+`shell: bash -eo pipefail {0}` on the step), and fails on an early-exiting
+consumer anywhere after the first position in a pipeline. Position is the whole
+test: `grep -m1 pattern file | tr -d x` is safe because the early exiter reads a
+file and has nothing upstream to kill.
+
+It tokenizes rather than greps, because the two shapes that matter both defeat
+text matching, and both are real here: a pipe inside a `$(...)` that is itself
+inside double quotes, and a quoted argument spanning physical lines so that the
+pipe closing it arrives on a line beginning mid-string. The first regex draft
+missed three of the six sites for exactly those reasons.
+
+**Proved by mutation.** The original line was put back into
+`ftp-target-probe.yml` and the guard failed naming `ftp-target-probe.yml:92`;
+removed, and it passed. A guard that has never caught its own defect is
+untested.
+
+**What NOT to do about it.** Do not answer a finding by adding to `ALLOWED`
+without a reason that says why that particular pipeline cannot race; the
+allowlist key is one workflow line, a whole-file exemption is deliberately not
+expressible, and a stale entry that no longer matches a finding fails its own
+test. Do not answer one by removing `set -o pipefail`. And do not read the
+scanner's silence as proof: it judges the commands it knows, so a `python3 -c`
+that reads part of stdin, or an `awk` that calls `exit`, is the same defect and
+is invisible to it. Add the command to `EARLY_EXITING` when a new one bites.
+
 ## 2026-09-09 - the deploy has no working credential for the new host, and that is now measured rather than suspected
 
 **Class:** absent-read-as-ok

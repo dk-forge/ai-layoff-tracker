@@ -79,7 +79,11 @@ jobs:
 
           echo "== do these credentials open cPanel =="
           OUT=$(curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/Variables/get_user_information" 2>&1)
-          if echo "$OUT" | grep -q '"status" *: *1'; then
+          # A herestring, not a pipe. `echo ... | grep -q` under pipefail can
+          # report the OPPOSITE of the truth: grep -q stops at the first match,
+          # echo takes EPIPE, and pipefail returns 141 for a pipeline that
+          # matched, so a cPanel login that WORKS reads as one that did not.
+          if grep -q '"status" *: *1' <<< "$OUT"; then
             echo "  cPanel: AUTHENTICATES"
           else
             echo "  cPanel: did NOT authenticate."
@@ -159,10 +163,13 @@ jobs:
           # masked, which is itself evidence -- GitHub masks a secret's value,
           # so FTP_HOST resolving to a masked string means FTP_HOST IS that
           # literal address. Compare it instead and print only the verdict.
-          LIVE_ORIGIN=$(getent hosts asktherecruiter.com | awk '{print $1}' | head -1)
+          # `awk NR==1` rather than `| head -1`: awk reads to end of input, so
+          # getent is never handed EPIPE. getent exits 2 on a name that does not
+          # resolve, and the empty case below is the report for that.
+          LIVE_ORIGIN=$(getent hosts asktherecruiter.com | awk 'NR==1{print $1}') || true
           echo "asktherecruiter.com resolves to: $LIVE_ORIGIN (Cloudflare proxy)"
           echo "The ChemiCloud origin recorded on 2026-09-08 is 162.19.222.172"
-          FTP_IP=$(getent hosts "$FTP_HOST" | awk '{print $1}' | head -1)
+          FTP_IP=$(getent hosts "$FTP_HOST" | awk 'NR==1{print $1}') || true
           if [ -z "$FTP_IP" ]; then
             echo "FTP_HOST does not resolve at all"
           elif [ "$FTP_IP" = "162.19.222.172" ]; then
@@ -174,12 +181,19 @@ jobs:
           fi
           echo
           echo "== FTP home =="
-          lftp -c "
+          # Capture, then truncate in the shell. `| head -40` closes the pipe
+          # while lftp is still writing, and pipefail promotes that EPIPE to a
+          # failed step. And lftp's own non-zero on a refused login is this
+          # probe's FINDING, not its failure: a diagnostic that goes red for
+          # successfully diagnosing something trains the reader to ignore it.
+          HOME_OUT=$(lftp -c "
             set ssl:verify-certificate no; set ftp:ssl-force true;
             set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             pwd; cls -l --sort=name .;
-          " 2>&1 | head -40
+          " 2>&1) || true
+          mapfile -t HOME_LINES <<< "$HOME_OUT"
+          printf '%s\n' "${HOME_LINES[@]:0:40}"
           echo
           for CAND in \
             "wp-content/plugins/ai-layoff-tracker" \
@@ -198,7 +212,7 @@ jobs:
               open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
               get -O . \"$CAND/ai-layoff-tracker.php\" -o probe.php;
             " >/dev/null 2>&1; then
-              V=$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" probe.php | grep -oE '[0-9.]+$')
+              V=$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" probe.php | grep -oE '[0-9.]+$') || V="unreadable"
               echo "   HOLDS THE PLUGIN, version $V"
             else
               echo "   absent"
