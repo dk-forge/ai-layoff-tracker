@@ -72,11 +72,6 @@
       "last": 1788958598,
       "subject": "CI RED: DMARC report check \u2014 DMARC: a sender would be quarantined, or the mailbox login was REFUSED. See the job summary."
     },
-    "erm-provenance-check:main:e959632802090c95": {
-      "first": 1788982444,
-      "last": 1788982444,
-      "subject": "CI RED: ERM provenance check \u2014 published ERM rows disagree with the country they were imported with (exit 2) - see the step above for the rows"
-    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1788983942,
       "last": 1788983942,
@@ -88,6 +83,6 @@
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: OPEN INCIDENT, baseline NOT advanced. Only `--close-incident worldwide_all_time` (reviewer + reason + row IDs + an explicit "
     }
   },
-  "updated_at": "2026-09-09T20:24:59+00:00",
+  "updated_at": "2026-09-09T20:31:07+00:00",
   "version": 1
 }
