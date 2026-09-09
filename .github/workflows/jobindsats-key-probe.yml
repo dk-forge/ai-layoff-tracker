@@ -115,9 +115,13 @@ jobs:
           echo "== the repository's own key, one request per candidate path =="
           NON401=0
           OK200=0
-          for P in /v3/dataset /v3/datasets /v3/data /v3/table /v3/tables /v3/metadata /v3/no-such-route; do
+          # /v3/tables answered 422 "'format' is required." on 2026-09-09: the
+          # API validated the request and asked for a parameter, which only a
+          # live route past authentication does. It is asked here with the
+          # parameter it named.
+          for P in "/v3/tables?format=json" /v3/tables /v3/dataset /v3/no-such-route; do
             CODE=$(ask key "$P")
-            printf '  %-18s -> %s\n' "$P" "$CODE"
+            printf '  %-24s -> %s\n' "$P" "$CODE"
             case "$CODE" in
               401|403) ;;
               000) ;;
