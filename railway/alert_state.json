@@ -91,13 +91,8 @@
       "first": 1788898203,
       "last": 1788898203,
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: Worldwide jobs, all time: -46,400 jobs over 1.0d on -2 entries (20,691,203 -> 20,644,803). The rows th"
-    },
-    "tests:main:7ba8f6d0b4896be7": {
-      "first": 1788966435,
-      "last": 1788966435,
-      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-09T15:16:16+00:00",
+  "updated_at": "2026-09-09T15:16:18+00:00",
   "version": 1
 }
