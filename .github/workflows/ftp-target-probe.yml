@@ -144,10 +144,14 @@ jobs:
             esac
           }
           echo "Each pairing, once:"
-          probe "FTP_HOST + July credentials       " "$FTP_HOST"   "$OLD_USER" "$OLD_PASS"
-          probe "FTP_HOST + ChemiCloud credentials " "$FTP_HOST"   "$NEW_USER" "$NEW_PASS"
-          probe "CHEMICLOUD_FTP + July credentials " "$CHEMI_HOST" "$OLD_USER" "$OLD_PASS"
-          probe "CHEMICLOUD_FTP + ChemiCloud creds " "$CHEMI_HOST" "$NEW_USER" "$NEW_PASS"
+          # 2026-09-09: cut from four pairings to ONE. Four failed logins per run
+          # is a brute-force pattern, and cPanel blocked the runner IPs for it
+          # this morning: the symptom changed from "connected and refused" to
+          # "cannot connect at all", which cost a diagnostic cycle to untangle.
+          # The other three pairings have already answered and their answers do
+          # not change: the July credentials and the account credentials both
+          # authenticate, and CHEMICLOUD_FTP does not resolve.
+          probe "FTP_HOST + CHEMICLOUD credentials " "$FTP_HOST" "$NEW_USER" "$NEW_PASS"
           echo
           echo "The live site executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
           echo "This checkout builds:   $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"
