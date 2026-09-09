@@ -72,6 +72,11 @@
       "last": 1788908535,
       "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.179/4b9648229ee116f4 after 600s. The origin may be correct while a shared cache serves a superseded build,"
     },
+    "deploy-wordpress-plugin:main:cd519f0bffc26030": {
+      "first": 1788941122,
+      "last": 1788941122,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at ., or no existing ai-layoff-tracker.php at wp-content/plugins/ai-layoff-tracker. Refusing to deploy so f"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -93,6 +98,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: Worldwide jobs, all time: -46,400 jobs over 1.0d on -2 entries (20,691,203 -> 20,644,803). The rows th"
     }
   },
-  "updated_at": "2026-09-08T23:02:15+00:00",
+  "updated_at": "2026-09-09T08:05:23+00:00",
   "version": 1
 }
