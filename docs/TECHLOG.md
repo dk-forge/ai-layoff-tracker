@@ -1,3 +1,86 @@
+## 2026-09-09 - five test modules that were never collected, and a janitor that deleted mail and then reported it could not read the mailbox
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_test_groups.py::test_no_module_declares_zero_tests`, `railway/tests/test_mailbox_janitor.py::test_a_session_that_dies_at_logout_does_not_erase_the_sweep`
+
+The owner asked for certainty that a cron reads both notification mailboxes,
+acts on them, clears what it has read, and does all of it while his laptop is
+off. Three of those four were already true by construction: `mailbox-janitor.yml`
+and `dmarc-report-check.yml` are both on a `schedule:` trigger and both run on
+`ubuntu-latest`, so no job in either depends on a machine in his house. The
+fourth was not.
+
+**Every mailbox-janitor run on record had failed.** The production mailbox swept
+cleanly, listed its one message and exited 2 because that message matched the
+escalation vocabulary. The sandbox mailbox, the one holding 2,106 real messages,
+failed both attempts with:
+
+    MAILBOX JANITOR: UNKNOWN -- socket error: EOF occurred in violation of protocol
+
+which the workflow reports as "the mailbox could not be read". That sentence was
+false. The sweep had read the mailbox, classified it, flagged what was past the
+retention window and expunged it. The connection died afterwards, in
+`IMAP4_SSL.__exit__`, which sends LOGOUT to a server that had just been made to
+delete and expunge through it. The exception escaped the teardown, past an
+`except` clause written for the read, and became the verdict for the whole run.
+
+Reproduced before touching anything, with a double whose `__exit__` raises
+`SSLEOFError` after a normal sweep:
+
+    UNKNOWN | deleted: [b'1']
+
+Work done, message deleted, verdict thrown away, run red, and the owner told the
+mailbox was unreadable. **A session that is being closed must not be able to
+invalidate work that already happened.** `sweep()` no longer uses `with`: the
+socket-error boundary covers the read and the delete, and teardown is a
+best-effort LOGOUT in a `finally` that sets `unclean_logout` and is REPORTED in
+the detail line rather than promoted to a state. Deliberately LOGOUT and not
+CLOSE, because CLOSE expunges everything flagged `\Deleted` and a teardown must
+not be able to remove anything the sweep did not decide to remove.
+
+**The tests that should have caught the class were never running.** This suite
+has no pytest (#288); the runner is `railway/run_tests.py`, which is `unittest`,
+and unittest collects TestCase methods. A module-level `def test_x(monkeypatch)`
+is collected as nothing at all: it does not fail, it does not error, it does not
+appear. `test_mailbox_janitor.py` and `test_dmarc_fetch.py` were written
+pytest-style and collected ZERO tests from the day they landed. Both were in a
+group. Both were listed. Both were counted as modules. Neither ran a single
+assertion.
+
+`test_test_groups.py` already pinned totality and disjointness over MODULES,
+which is the property that looked like the one that mattered and was not. Adding
+the real one found three more dead files nobody knew about:
+`test_industry_backfill_retry.py`, `test_tracker_diff_sitemap.py`,
+`test_warn_sanitize.py`. Five modules, 51 assertions, none of them executing.
+
+`railway/tests/_pytest_bridge.py` turns those functions into a real TestCase with
+a minimal `monkeypatch`, so the bodies are kept verbatim and nothing is
+re-litigated by the port. All 51 pass, so none of them was hiding a live defect,
+but every one of them was hiding the fact that it was not looking.
+
+**Mutation, both guards.** Remove the bridge from one file: the group guard fails
+naming `test_warn_sanitize.py`; restored, OK. Let the teardown escape again: 12
+of 13 janitor tests error; restored, OK.
+
+**Not changed, and why.** The GitHub cron for this repository is currently
+delivering about four and a half hours late (`Enrich announcement and domicile
+evidence`, cron 03:41 UTC, fired 08:21 / 08:18 / 08:36 / 08:05 / 07:50 / 08:11 on
+the last six days). The three mail workflows landed on main at 15:00-15:20 UTC on
+2026-09-08, after yesterday's slot, so their first scheduled runs are due around
+midday UTC today rather than at 07:40 / 08:10 / 08:50. That is queue latency on
+free hosted runners, not a wiring defect, and moving the cron would not move the
+queue.
+
+**Still open for the owner.** `JANITOR_PRODUCTION_IMAP_HOST` remains an orphan in
+`railway/orphaned_secrets.py`. The workflow points both matrix legs at the single
+`JANITOR_IMAP_HOST`, and the production leg connected and swept with it, so a
+per-mailbox host is not needed. Wiring a secret whose value cannot be read into
+the one path that currently works is exactly the unverified change this
+repository keeps ruling against, especially with the shared certificate on
+`rs7-fra.serverhostgroup.com` covering nothing under `mail.`. The honest options
+are revoke it and say so here, or point one mailbox at it deliberately and prove
+the connection. It stays reported.
+
 ## 2026-09-09 - the deploy check failed in a language nobody speaks
 
 **Class:** novel

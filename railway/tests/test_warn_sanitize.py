@@ -116,3 +116,10 @@ def test_drops_rows_whose_employer_cell_is_only_punctuation():
         {"company_name": "118-118", "excerpt": "x", "dedup_hash": "c", "job_count": 180},
     ])
     assert [e["company_name"] for e in out] == ["118-118"]
+
+
+# This suite is unittest, not pytest (#288). Without this, every test above is
+# collected as nothing at all and the file passes by never running.
+from _pytest_bridge import bind  # noqa: E402
+
+WarnSanitizeTests = bind(globals(), "WarnSanitizeTests")

@@ -132,14 +132,33 @@ def sweep(host: str, user: str, password: str, retain_days: int,
     deletable: list[bytes] = []
     unreadable = 0
     total = 0
+    torn_down_badly = False
     try:
-        with imaplib.IMAP4_SSL(host, 993, ssl_context=ssl.create_default_context(),
-                               timeout=60) as m:
+        # NOT `with`. IMAP4_SSL.__exit__ calls LOGOUT, and on 2026-09-08 the
+        # sandbox sweep did all of its work, deleted what it had read, and then
+        # died on that logout: the server had already dropped a connection it
+        # had just been made to delete and expunge through. The exception
+        # escaped from the teardown, the whole sweep resolved to UNKNOWN, and
+        # the run went red saying "the mailbox could not be read" while
+        # messages were in fact being cleared. Every janitor run on record
+        # failed this way.
+        #
+        # A session that is being closed cannot be allowed to invalidate work
+        # that already happened. Teardown is best effort and is REPORTED, never
+        # promoted to a verdict.
+        m = imaplib.IMAP4_SSL(host, 993, ssl_context=ssl.create_default_context(),
+                              timeout=60)
+    except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
+        return UNKNOWN, {}, _scrub(exc, secrets)
+    try:
+        try:
             try:
                 m.login(user, password)
             except imaplib.IMAP4.error as exc:
                 return REJECTED, {}, _scrub(exc, secrets)
-            m.select("INBOX")
+            typ, _ = m.select("INBOX")
+            if typ != "OK":
+                return UNKNOWN, {}, "could not select INBOX"
             typ, data = m.search(None, "ALL")
             if typ != "OK":
                 return UNKNOWN, {}, "mailbox search failed"
@@ -213,8 +232,16 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                     m.expunge()
                 except Exception:
                     pass
-    except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
-        return UNKNOWN, {}, _scrub(exc, secrets)
+        except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
+            return UNKNOWN, {}, _scrub(exc, secrets)
+    finally:
+        # LOGOUT only. Deliberately not CLOSE, which expunges every message
+        # flagged \Deleted: a teardown must not be able to remove anything the
+        # sweep did not decide to remove.
+        try:
+            m.logout()
+        except Exception:
+            torn_down_badly = True
 
     findings = {
         "total": total, "classes": classes,
@@ -223,8 +250,11 @@ def sweep(host: str, user: str, password: str, retain_days: int,
         "unreadable": unreadable, "eligible": len(deletable),
         "removed": 0 if dry_run else removed, "dry_run": dry_run,
         "retain_days": retain_days, "partial": broke_early,
+        "unclean_logout": torn_down_badly,
     }
     note = " (PARTIAL: the server closed the connection mid-sweep; the next run continues)" if broke_early else ""
+    if torn_down_badly:
+        note += " (the server dropped the session at logout; the sweep above had already finished)"
     return OK, findings, f"{total} message(s) listed{note}"
 
 

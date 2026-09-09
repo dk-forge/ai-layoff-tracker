@@ -155,3 +155,10 @@ def test_the_password_never_survives_into_an_error_string() -> None:
     """Actions logs on this repository are PUBLIC."""
     assert "hunter2" not in _scrub("login failed for u:hunter2@h", ["hunter2"])
     assert "***" in _scrub("login failed for u:hunter2@h", ["hunter2"])
+
+
+# This suite is unittest, not pytest (#288). Without this, every test above is
+# collected as nothing at all and the file passes by never running.
+from _pytest_bridge import bind  # noqa: E402
+
+DmarcFetchTests = bind(globals(), "DmarcFetchTests")
