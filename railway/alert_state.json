@@ -106,8 +106,13 @@
       "first": 1788956489,
       "last": 1788956489,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consume[81 chars]-25']"
+    },
+    "tests:main:7ba8f6d0b4896be7": {
+      "first": 1788966435,
+      "last": 1788966435,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-09T15:06:17+00:00",
+  "updated_at": "2026-09-09T15:07:15+00:00",
   "version": 1
 }
