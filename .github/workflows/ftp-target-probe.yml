@@ -26,8 +26,8 @@ jobs:
       - name: Which tree does FTPS actually land in
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
         run: |
           set -uo pipefail
           # Do NOT print the resolved address: on the first run it came back

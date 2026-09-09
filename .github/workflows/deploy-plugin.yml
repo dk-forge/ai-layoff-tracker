@@ -94,10 +94,17 @@ jobs:
       - name: Verify secrets are configured
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
         run: |
           missing=0
+          # 2026-09-09 -- FTP_USER/FTP_PASSWORD now carry the CHEMICLOUD_*
+          # secrets. The ChemiCloud credentials were added on 2026-09-06 and
+          # NO WORKFLOW EVER READ THEM: the deploy went on using the July
+          # secrets, which belong to the host the site left. Four versions
+          # uploaded cleanly onto a machine nobody reads, and when FTP_HOST was
+          # finally corrected the old credentials answered
+          # "421 Home directory not available".
           for var in FTP_HOST FTP_USER FTP_PASSWORD; do
             if [ -z "${!var}" ]; then
               echo "::error::Repo secret $var is not set."
@@ -180,8 +187,8 @@ jobs:
       - name: Verify target is the live plugin directory
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
           # HARDCODED path, relative to the FTP account home (2026-07-27). The
           # FTP account homes at the blog's WordPress root, so the live plugin
           # is at ./wp-content/plugins/ai-layoff-tracker. We used to read this
@@ -222,8 +229,8 @@ jobs:
       - name: Deploy plugin over FTPS
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
           # Hardcoded (see guard step above for why the secret was dropped).
           REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
         run: |
@@ -271,8 +278,8 @@ jobs:
         if: always()
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
         run: |
           timeout 60 lftp -c "
             set ssl:verify-certificate no;
@@ -317,8 +324,8 @@ jobs:
       - name: Verify the bytes we just wrote are the bytes we meant to write
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
           REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
         run: |
           set -euo pipefail
