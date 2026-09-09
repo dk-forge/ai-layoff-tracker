@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "apply-a-signed-off-correction:main:b6c3989521fd8bfe": {
-      "first": 1788968240,
-      "last": 1788968240,
-      "subject": "CI RED: Apply a signed-off correction \u2014 restore was incomplete: restored=0/5, rejected=[{'id': 179170, 'reason': 'hash is not suppressed by a merge'}, {'id': 177083, 'reason': 'has"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -103,6 +98,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: 'fail' != 'unknown'"
     }
   },
-  "updated_at": "2026-09-09T19:58:09+00:00",
+  "updated_at": "2026-09-09T19:58:11+00:00",
   "version": 1
 }
