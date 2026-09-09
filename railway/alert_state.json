@@ -67,11 +67,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "deploy-wordpress-plugin:main:04c6efdddc7c8fbc": {
-      "first": 1788908535,
-      "last": 1788908535,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.179/4b9648229ee116f4 after 600s. The origin may be correct while a shared cache serves a superseded build,"
-    },
     "deploy-wordpress-plugin:main:10f54fb7b360cf23": {
       "first": 1788965972,
       "last": 1788965972,
@@ -138,6 +133,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consume[81 chars]-25']"
     }
   },
-  "updated_at": "2026-09-09T14:59:32+00:00",
+  "updated_at": "2026-09-09T15:06:07+00:00",
   "version": 1
 }
