@@ -199,7 +199,7 @@ jobs:
           # resolve to "." — so wp-config.php was found (guard passed) while the
           # mirror CREATED a stray ./<hex>/ folder and the real plugin was never
           # written. Hardcoding the known-correct relative path removes both.
-          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
         run: |
           set -euo pipefail
           WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
@@ -231,8 +231,15 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
           FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
-          # Hardcoded (see guard step above for why the secret was dropped).
-          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
+          # 2026-09-09 -- back to a repo VARIABLE, not a constant. It was
+          # hardcoded because a stray secret once made the mirror invent a
+          # folder, and that reasoning still holds for a SECRET. But the path
+          # is not a secret, and it is not the same on every host: the
+          # ChemiCloud account serves asktherecruiter.com as an addon domain,
+          # so the plugin sits under the domain's own docroot rather than at
+          # the FTP home. A variable is visible in the repo settings, shows up
+          # in the run log, and cannot be confused with a credential.
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
         run: |
           set -euo pipefail
           # WordPress maintenance window around the upload. `mirror` overwrites
@@ -326,7 +333,7 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
           FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
-          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
         run: |
           set -euo pipefail
           # `|| true` so an unmatched grep reaches the named error below
