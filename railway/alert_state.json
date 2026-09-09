@@ -77,11 +77,6 @@
       "last": 1788941122,
       "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at ., or no existing ai-layoff-tracker.php at wp-content/plugins/ai-layoff-tracker. Refusing to deploy so f"
     },
-    "ftps-target-probe:main:d365ed64885bc4f6": {
-      "first": 1788943961,
-      "last": 1788943961,
-      "subject": "CI RED: FTPS target probe \u2014 /home/runner/work/_temp/93bad263-c0b3-4a98-96d7-6ee213fc1cf1.sh: line 55: echo: write error: Broken pipe"
-    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -103,6 +98,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: Worldwide jobs, all time: -46,400 jobs over 1.0d on -2 entries (20,691,203 -> 20,644,803). The rows th"
     }
   },
-  "updated_at": "2026-09-09T09:05:55+00:00",
+  "updated_at": "2026-09-09T09:05:57+00:00",
   "version": 1
 }
