@@ -23,6 +23,14 @@ on:
     - cron: '50 8 * * *'
   workflow_dispatch:
     inputs:
+      retain_days:
+        description: 'Delete read-and-classified mail older than this many days (scheduled runs use 14)'
+        required: false
+        default: '14'
+      max_per_run:
+        description: 'How many messages one pass may read (scheduled runs use 100)'
+        required: false
+        default: '100'
       dry_run:
         description: 'Report only, delete nothing'
         type: boolean
@@ -59,14 +67,14 @@ jobs:
           JANITOR_IMAP_HOST: ${{ secrets.JANITOR_IMAP_HOST }}
           JANITOR_IMAP_USER: ${{ secrets[matrix.user_secret] }}
           JANITOR_IMAP_PASSWORD: ${{ secrets[matrix.pass_secret] }}
-          JANITOR_RETAIN_DAYS: '14'
+          JANITOR_RETAIN_DAYS: ${{ inputs.retain_days || '14' }}
           # 100, not 400. Measured 2026-09-08 on the first LIVE run: reading
           # and then DELETING 400 of a 2,106-message mailbox dropped the
           # connection mid-sweep. Reading that many was fine in dry run; the
           # delete and expunge is what the server would not sit through. A
           # smaller bite drains over several days, and the retention window
           # means nothing is lost by taking longer.
-          JANITOR_MAX_PER_RUN: '100'
+          JANITOR_MAX_PER_RUN: ${{ inputs.max_per_run || '100' }}
           # Scheduled runs are live. Manual runs default to a dry run.
           JANITOR_DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run && 'true' || 'false') }}
         run: |
