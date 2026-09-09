@@ -185,7 +185,7 @@ jobs:
           fi
           echo
           echo "== FTP home =="
-          # Capture, then truncate in the shell. `| head -40` closes the pipe
+          # Capture, then truncate in the shell. `| grep -v "^ftp://" | head -40` closes the pipe
           # while lftp is still writing, and pipefail promotes that EPIPE to a
           # failed step. And lftp's own non-zero on a refused login is this
           # probe's FINDING, not its failure: a diagnostic that goes red for
@@ -194,10 +194,10 @@ jobs:
             set ssl:verify-certificate no; set ftp:ssl-force true;
             set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-            pwd; cls -l --sort=name .;
+            cls -l --sort=name .;
           " 2>&1) || true
           mapfile -t HOME_LINES <<< "$HOME_OUT"
-          printf '%s\n' "${HOME_LINES[@]:0:40}"
+          printf '%s\n' "${HOME_LINES[@]:0:40}" | grep -v "^ftp://"
           echo
           for CAND in \
             "wp-content/plugins/ai-layoff-tracker" \
