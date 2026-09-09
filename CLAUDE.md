@@ -192,19 +192,19 @@ and so anything genuinely NEW is escalated. It is not a place to go looking.
    feeds a ledger; the weekly **`health_digest.py`** emails the owner (via
    Resend since 2026-08-19, not the host it reports on) when a scraper breaks, with a
    **paste-ready fix instruction**.
-   **OPERATIONAL MAIL GOES TO `dak@dakotta.com`, NOT `info@asktherecruiter.com`,
-   AND THAT IS DELIBERATE (2026-09-08).** Two reasons, and neither is
-   preference. The alarm must not be reachable only through the thing it
-   monitors: sending alerts ABOUT asktherecruiter.com TO a mailbox ON
-   asktherecruiter.com restores exactly the dependency the 2026-08-19 move to
-   Resend removed, and the hosting migration made that concrete when that
-   mailbox went dark mid-cutover. Second, `info@` is a published contact
-   address that also receives newsletter and reader mail, so alarms arrived
-   filed among things that are not alarms — which is how an alert channel
-   stops being read. The destination is the repo variable `OPS_MAIL_TO`,
+   **OPERATIONAL MAIL GOES TO `errornotifications-production@asktherecruiter.com`
+   SINCE 2026-09-09, BY THE OWNER'S RULING.** From 2026-09-08 to 2026-09-09 it
+   went to the owner's personal inbox so the alarm could not depend on a
+   mailbox living on the host it monitors (that mailbox went dark mid-cutover
+   on 2026-09-08). The owner received 26 CI alerts in one day and ruled that
+   operational mail belongs in the error-tracking mailbox, which
+   `mailbox-janitor.yml` sweeps daily and the hourly ops check reads. The
+   trade is known: if ChemiCloud mail is down, alerts about ChemiCloud land in
+   a dead mailbox. The destination is the repo variable `OPS_MAIL_TO`,
    consumed by ci-alert, alert-drain, health-digest, ci-noise-report and
    opsmail-selftest; `opsmail.DEFAULT_TO` remains the old address only as a
-   fallback for a checkout with no variable set. Do not "restore" it.
+   fallback for a checkout with no variable set. Do not move it back without
+   asking.
    So the human loop is: get email → paste one line here → fix the one scraper. Full
    "add a source / tune it / fix a breakage" guide is in **docs/RUNBOOK.md**.
 
