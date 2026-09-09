@@ -1,3 +1,80 @@
+## 2026-09-09 - the deploy check failed in a language nobody speaks
+
+**Class:** novel
+**Guard:** `railway/tests/test_endpoint_check.py`
+
+The owner was emailed twice about `Deploy WordPress plugin`. The first mail
+carried one line:
+
+    json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+The second carried a bare `AssertionError`. Both came out of the same line, the
+step that verified the live API:
+
+    curl --fail --silent ... | python3 -c 'import json, sys;
+        payload = json.load(sys.stdin);
+        assert "canonical_events" in payload; print("verified")'
+
+Neither message names the endpoint, the HTTP status, the content type, or one
+byte of what came back. The first says only that something which was supposed
+to be JSON was not; the second says nothing at all, because a bare `assert`
+raises with no message. **The alert body is what outlives the run's log
+retention**, so those two strings are the whole of what an operator reads at
+3am, and neither of them is a place to start.
+
+**`--fail` threw away the evidence before Python could see it.** curl discards
+the body of any error response, so the HTML error page, the Cloudflare
+interstitial or the WordPress fatal that would have identified the answer in
+one glance was gone by the time anything looked. Status and body have to be
+captured separately, and both have to be reported.
+
+**And the check had only two states where it needed three.** A host that never
+answered and a host that answered with the wrong content were the same red run.
+That is the shape this repo has ruled on repeatedly: an endpoint that replied
+wrongly is a FAIL, an endpoint that was never reached was never asked and is
+UNKNOWN, and absence of a signal is not a pass.
+
+**The fix.** `railway/endpoint_check.py` is the four-copies-of-a-fragile-
+one-liner problem solved once: it fetches with the host's required User-Agent,
+captures status, content type and body separately, and answers PASS / FAIL /
+UNKNOWN with the same exit codes as `reader_freshness.py` and
+`subscriber_routes.py` (0, 2, 3), which is what lets the workflow branch the
+way its neighbouring steps already do. FAIL fails the deploy. UNKNOWN warns
+loudly and does not, the same asymmetry as the contrast and subscriber-route
+steps, because a host outage that manufactures red runs manufactures alerts
+that also fail. Cloudflare's 52x family, a 502 or 504 from a gateway, a 429 and
+the deploy's OWN 503 maintenance window are all UNKNOWN. A 500 is not: that is
+PHP answering, and a fatal in a plugin this job just uploaded is precisely the
+fault the step exists for.
+
+Bodies are truncated to 200 characters and stripped of control characters, so a
+response cannot smuggle an ANSI escape or a `::error::` line of its own into
+the run log. The endpoints are public and unauthenticated; no request here
+carries a credential and no header is echoed.
+
+Two smaller mouths were closed in the same pass. Both version greps
+(`ALT_VERSION` in the read-back step and in the reader step) ran under `set -e`,
+so an unmatched grep ended the step with no output whatsoever; they now fall
+through to a named error saying which file and which define was expected.
+
+**What was NOT touched.** This workflow is red right now for a real and separate
+reason: the FTPS account cannot authenticate (the July credentials answer 421,
+the CHEMICLOUD_* pair answers 530) and a human has to create an FTP account in
+cPanel. Nothing here tries to make that go green, and no verification step was
+weakened or skipped. `.github/workflows/ftp-target-probe.yml` also parses JSON
+inline, and was left alone deliberately: it already catches its own parse
+failure and prints it, and it is a read-only dispatch rather than a gate.
+
+**The guard, and the mutation.** `test_endpoint_check.py` pins four bodies to
+four distinct verdicts (empty, HTML, valid JSON missing the key, good), pins
+UNKNOWN for every unreachable shape, and pins the workflow itself: no
+verification step may carry a bare `json.load(sys.stdin)` or a bare `assert`
+again. Its first version of that second guard was itself vacuous, `$` without
+`re.MULTILINE` anchors to the end of the FILE, so it matched nothing anywhere
+and passed a deliberately re-injected bare assert. It was fixed and re-run
+against the same mutation, which it then caught by name. A guard's clean zero
+means nothing until it has caught one known instance.
+
 ## 2026-09-09 - a diagnostic went red for successfully diagnosing something, and mailed the owner about it
 
 **Class:** novel

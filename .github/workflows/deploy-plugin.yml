@@ -329,9 +329,20 @@ jobs:
           REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
         run: |
           set -euo pipefail
+          # `|| true` so an unmatched grep reaches the named error below
+          # rather than killing the step under `set -e` with no message at all.
           LOCAL_VER="$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" \
             wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
-            | grep -oE '[0-9.]+$')"
+            | grep -oE '[0-9.]+$' || true)"
+          if [ -z "$LOCAL_VER" ]; then
+            echo "::error::Could not read ALT_VERSION out of \
+              wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php in this \
+              checkout. Expected a line defining ALT_VERSION with a dotted \
+              number; found none. Without it there is nothing to compare the \
+              read-back against, so this is UNKNOWN and the deploy stops rather \
+              than claiming a match it cannot make."
+            exit 1
+          fi
           echo "This checkout builds plugin $LOCAL_VER"
           echo "FTP_HOST resolves to: $(getent hosts "$FTP_HOST" | awk '{print $1}' | paste -sd, - || echo 'UNRESOLVED')"
 
@@ -360,22 +371,47 @@ jobs:
           fi
           echo "Read-back matches: the server holds the file this commit built."
 
+      # A cache-busting public endpoint confirms that WordPress loaded the
+      # newly uploaded plugin rather than merely serving cached HTML.
+      # NOTE: this proves the ORIGIN is updated and nothing more. The query
+      # string is a key no cache holds, so the origin always answers it. The
+      # step below is the one that speaks for readers.
+      #
+      # THIS USED TO BE `curl --fail ... | python3 -c '... json.load(sys.stdin);
+      # assert "canonical_events" in payload'`, and the owner was emailed twice
+      # by it: once with a bare `json.decoder.JSONDecodeError: Expecting value:
+      # line 1 column 1 (char 0)` and once with a bare `AssertionError`. Neither
+      # names the endpoint, the HTTP status, the content type or a single byte
+      # of what came back, and the alert body is what outlives the run's log
+      # retention. `--fail` made it worse by throwing away the error body, which
+      # was the one piece of evidence there was.
+      #
+      # railway/endpoint_check.py captures status and body separately, prints
+      # both plus a truncated excerpt, and answers in three states rather than
+      # two. FAIL (it answered, the answer is wrong) fails the deploy. UNKNOWN
+      # (it was never reached, or a gateway answered for it) warns, the same
+      # asymmetry as the two steps below: a host outage must not manufacture
+      # red runs, which manufacture alerts, which also fail.
       - name: Verify the deployed tracker API
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
-          set -euo pipefail
-          # A cache-busting public endpoint confirms that WordPress loaded the
-          # newly uploaded plugin rather than merely serving cached HTML.
-          # NOTE: this proves the ORIGIN is updated and nothing more. The query
-          # string is a key no cache holds, so the origin always answers it. The
-          # step below is the one that speaks for readers.
-          curl --fail --show-error --silent --retry 4 --retry-all-errors \
-            --retry-delay 5 --max-time 30 \
+          set -uo pipefail
+          python3 railway/endpoint_check.py \
+            --label "the deployed tracker API" \
+            --url "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
+            --require canonical_events \
             --cookie 'humans_21909=1' \
-            -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
-            "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
-            | python3 -c 'import json, sys; payload = json.load(sys.stdin); assert "canonical_events" in payload; print("Live tracker API verified.")'
+            --where "the route is alt_api_integrity_status(), registered in wordpress-plugin/ai-layoff-tracker/includes/db.php; an HTML body here usually means WordPress fataled on the freshly uploaded plugin, so read the excerpt above before re-running"
+          STATUS=$?
+          if [ "$STATUS" = "2" ]; then
+            echo "::error::The live tracker API answered, and the answer is not the JSON this deploy expects. The verdict line above names the status, the content type and the first 200 characters of the body."
+            exit 1
+          fi
+          if [ "$STATUS" = "3" ]; then
+            echo "::warning::The live tracker API could NOT be reached, so it was never asked. This is UNKNOWN, not a pass; the reader check below and the daily jobs go red if it persists."
+          fi
+          exit 0
 
       # The check that measures the surface a reader actually gets: the BARE
       # url, a browser User-Agent, no cache buster. Every deploy check before
@@ -388,9 +424,19 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
           set -euo pipefail
+          # `|| true` so an unmatched grep reaches the named error below
+          # rather than killing the step under `set -e` with no message at all.
           VERSION="$(grep -oE "define\('ALT_VERSION', '[0-9.]+'\)" \
             wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read ALT_VERSION out of \
+              wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php in this \
+              checkout, so there is no version to wait for. Expected \
+              define('ALT_VERSION', 'X.Y.Z'); found none. Fix the define rather \
+              than skipping the reader check."
+            exit 1
+          fi
           echo "Deployed ALT_VERSION: $VERSION"
           # The VERSION is all this step can pass on a command line, and the
           # version alone is not the content: on 2.20.21 a page rendered while
