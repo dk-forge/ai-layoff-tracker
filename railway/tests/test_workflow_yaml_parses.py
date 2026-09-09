@@ -23,7 +23,23 @@ The five checks here:
      ignores along with whatever it swallowed;
   4. every file declares a trigger and at least one job;
   5. every step is a mapping carrying `run` or `uses`. A truncated block
-     scalar turns a list of steps into a list of strings.
+     scalar turns a list of steps into a list of strings;
+  6. no mapping repeats a key. YAML 1.1 permits it and pyyaml keeps the last
+     one silently; GitHub Actions REJECTS the file. This is the one check
+     here that is not about a file being malformed - a duplicate key file is
+     perfectly well-formed YAML, and checks 2 through 5 all pass it.
+
+A DUPLICATE KEY FAILS DIFFERENTLY FROM AN UNPARSEABLE FILE, and the shape is
+worth knowing because it is how this check was earned. Commit 60bda6e added
+`OPS_MAIL_FROM` to seven jobs that already carried it a few lines below, under
+its own comment. Actions could not build the workflow, so it never read the
+`on:` block, so it could not know the file does not listen to pushes: it
+opened a run against the push anyway and failed it in under a second. Seven
+FAILED runs per push to main, each with zero jobs, no logs, and - the
+tell - `workflowName` reported as the file PATH rather than the declared
+`name:`, because the name is inside the file it could not parse. A healthy
+workflow always reports by its name. Those runs are `push`-triggered red runs,
+so ci-alert.yml mails the owner about every one of them.
 
 WHAT THIS CANNOT TELL YOU. pyyaml is not GitHub Actions. A file that parses
 here can still be rejected or misbehave in a dozen ways this test cannot see:
@@ -58,6 +74,38 @@ ALLOWED_TOP_LEVEL = frozenset({
 
 def _files():
     return sorted(WORKFLOWS.glob("*.yml")) + sorted(WORKFLOWS.glob("*.yaml"))
+
+
+def duplicate_keys(text):
+    """Every repeated key in `text`, as (key, 1-based line) pairs.
+
+    pyyaml's own mapping constructor takes the last value and says nothing,
+    which is why a duplicate survives `safe_load` and every other check in
+    this file. This subclass records the collision instead of hiding it. It
+    deliberately does not raise: one file's duplicates should not stop the
+    walk over the rest.
+    """
+    found = []
+
+    class _Loader(yaml.SafeLoader):
+        pass
+
+    def _mapping(loader, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = loader.construct_object(key_node, deep=deep)
+            try:
+                if key in seen:
+                    found.append((key, key_node.start_mark.line + 1))
+                seen.add(key)
+            except TypeError:      # an unhashable key; not our business
+                pass
+        return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+    _Loader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
+    yaml.load(text, Loader=_Loader)
+    return found
 
 
 class WorkflowFilesAreValidYaml(unittest.TestCase):
@@ -169,6 +217,61 @@ class WorkflowFilesAreValidYaml(unittest.TestCase):
                             f"{path.name}:{job_id} step {i} has neither run "
                             f"nor uses")
         self.assertEqual(problems, [], "\n  ".join([""] + problems))
+
+
+class WorkflowFilesRepeatNoKey(unittest.TestCase):
+    """Check 6, and a mutation proving the check can actually fail.
+
+    A guard whose clean zero has never caught a known instance is worth
+    nothing, so `test_the_detector_sees_a_planted_duplicate` plants the exact
+    shape 60bda6e shipped and asserts the detector reports it.
+    """
+
+    def setUp(self):
+        if yaml is None:
+            self.skipTest("pyyaml is in requirements.lock; CI asserts this")
+
+    def test_no_workflow_repeats_a_key_in_one_mapping(self):
+        repeated = []
+        for path in _files():
+            try:
+                dupes = duplicate_keys(path.read_text(encoding="utf-8"))
+            except yaml.YAMLError:
+                continue        # check 2 owns unparseable files
+            for key, line in dupes:
+                repeated.append(f"{path.name}:{line}: {key!r}")
+        self.assertEqual(
+            repeated, [],
+            "these mappings set the same key twice. pyyaml keeps the last "
+            "one and says nothing, but GitHub Actions REJECTS the file: it "
+            "opens a run against whatever event triggered it, fails it in a "
+            "second with zero jobs and no logs, and reports the run under "
+            "the file's PATH because the `name:` is inside the file it "
+            "could not read. On main those are push-triggered red runs, so "
+            "the owner is emailed for each one:\n  "
+            + "\n  ".join(repeated))
+
+    def test_the_detector_sees_a_planted_duplicate(self):
+        planted = (
+            "name: Planted\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: '0 13 1 * *'\n"
+            "jobs:\n"
+            "  go:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - env:\n"
+            "          OPS_MAIL_TO: to\n"
+            "          OPS_MAIL_FROM: from\n"
+            "          # a comment, exactly as in 60bda6e\n"
+            "          OPS_MAIL_FROM: from\n"
+            "        run: true\n"
+        )
+        # It is valid YAML and shaped like a workflow, which is why every
+        # other check in this file passes it.
+        self.assertIsInstance(yaml.safe_load(planted), dict)
+        self.assertEqual(duplicate_keys(planted), [("OPS_MAIL_FROM", 13)])
 
 
 if __name__ == "__main__":

@@ -1,3 +1,57 @@
+## 2026-09-09 - seven workflows stopped existing for 15 hours, and the only report was seven red runs that read as noise
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_workflow_yaml_parses.py`
+
+Commit `60bda6e` (2026-09-08 20:08 UTC) added `OPS_MAIL_TO` and `OPS_MAIL_FROM`
+to seven jobs. Six of the seven files already carried `OPS_MAIL_FROM` a few
+lines below, under its own five-line comment explaining why it is passed
+wherever `RESEND_API_KEY` is; `warn-import.yml` gained a line identical to the
+one directly above it. Every one of the seven `env:` mappings ended up setting
+`OPS_MAIL_FROM` twice.
+
+**Duplicate keys are valid YAML and are rejected by Actions.** YAML 1.1 permits
+a repeated key and pyyaml keeps the last one without a word, so
+`test_workflow_yaml_parses.py` — five checks whose whole purpose is to catch a
+workflow file that has stopped working — passed all seven files. GitHub refuses
+to build the file at all.
+
+**How it presented, because the signature is the useful part.** Every push to
+main produced seven runs with `event: push`, `conclusion: failure`, created and
+concluded in the same second, `total_count: 0` from the jobs API, and
+`gh run view --log-failed` saying "log not found". The tell is the name:
+`gh run list` reported them as `.github/workflows/warn-import.yml` — the file
+PATH — while every healthy run reported its declared `name:`. Actions never read
+the `name:`, because the name is inside the file it could not parse. The same
+fact explains the `on: push` puzzle: none of the seven declares a push trigger,
+but Actions could not read the `on:` block either, so it attached the build
+error to whatever event arrived and failed a run against it. Example run
+`34344099814`; the earliest seen today was 10:02:47 UTC, and eight pushes across
+at least three sessions each produced their own seven.
+
+**Nobody was emailed, and that is the worse half.** No cause for any of the
+seven appears in `railway/alert_state.json`. `ci-alert.yml` subscribes to
+`workflow_run` for `workflows: ['*']`, and a workflow that never builds emits no
+`workflow_run` event — there is no workflow entity for the event to key off. The
+listener written to cover all 66 files from one place cannot see a file that
+failed to become one of the 66. So the seven red runs were loud in
+`gh run list` and completely absent from the inbox.
+
+What actually stopped is not the noise. A file Actions cannot build does not
+run its schedule: for 15 hours the daily WARN import, the tracker-diff learning
+loop, the data-quality anomaly pass, the link check, the OpenRouter
+low-balance alarm, the public tips queue and the monthly source-verification
+audit were not scheduled jobs. They were seven files.
+
+**The fix.** The duplicate line is removed from all seven; the pre-existing
+commented one is kept, so the intent of `60bda6e` (every ops job carries both
+variables) is unchanged and `tests/test_ops_sender.py` still passes with its 16
+checks green. `test_workflow_yaml_parses.py` gains check 6, a duplicate-key
+detector built on a `SafeLoader` subclass that records collisions the default
+constructor discards. It is proved by mutation rather than by a clean zero: a
+planted mapping of the exact shape `60bda6e` shipped is asserted to be valid
+YAML, shaped like a workflow, and reported by the detector.
+
 ## 2026-09-09 - the Jobindsats key has worked since 2026-08-13; the public page said "application pending" for 27 days
 
 **Class:** derived-value-typed-by-hand
