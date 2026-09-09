@@ -29,6 +29,7 @@ Pure stdlib.
 from __future__ import annotations
 
 import email
+import email.header
 import email.utils
 import imaplib
 import os
@@ -107,6 +108,25 @@ def _age_days(msg, now: datetime) -> float | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return (now - dt).total_seconds() / 86400.0
+
+
+def _decode_header(raw: str) -> str:
+    """Undo RFC 2047 encoded-words ("=?utf-8?q?...?=").
+
+    A sender encodes the WHOLE header, not just the non-ASCII part, the
+    moment a subject carries so much as one em-dash or emoji -- ordinary
+    for a PR title. Left undecoded, "run_failed" (Q-encoding turns every
+    space into "_") never matches the literal "run failed" the classifier
+    looks for, the message falls through to "other", and "other" always
+    escalates. A header that fails to decode is returned as-is rather than
+    raising: a garbled classification is no worse than today's, but a crash
+    here must never stop the sweep.
+    """
+    try:
+        parts = email.header.decode_header(raw)
+        return str(email.header.make_header(parts))
+    except (email.errors.HeaderParseError, UnicodeDecodeError, LookupError):
+        return raw
 
 
 def _classify(subject: str, sender: str) -> str:
@@ -197,8 +217,8 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                         continue
                     parsed += 1
                     msg = email.message_from_bytes(item[1])
-                    subject = str(msg.get("Subject") or "")
-                    sender = str(msg.get("From") or "")
+                    subject = _decode_header(str(msg.get("Subject") or ""))
+                    sender = _decode_header(str(msg.get("From") or ""))
                     label = _classify(subject, sender)
                     classes[label] += 1
                     if label in _ESCALATE_CLASSES or _ESCALATE.search(subject):

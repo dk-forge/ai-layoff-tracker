@@ -206,6 +206,34 @@ def test_the_real_subjects_that_broke_escalation_do_not_escalate(monkeypatch) ->
     )
 
 
+def test_a_mime_encoded_subject_still_classifies_and_does_not_escalate(monkeypatch) -> None:
+    """A second way a real subject broke escalation, distinct from the "main"
+    regression above.
+
+    GitHub Q-encodes the ENTIRE Subject header (RFC 2047), not just the
+    non-ASCII part, whenever the subject contains so much as one em-dash or
+    emoji -- ordinary for a PR title. `_classify` matched literal text like
+    "run failed", but the raw undecoded header carries "run_failed" (Q-encoding
+    turns every space into "_") split across wrapped encoded-words, so the
+    match never fires, the message falls through to "other", and "other"
+    always escalates. Verbatim (line-wrapped, multi-encoded-word) header from
+    the real sandbox mailbox.
+    """
+    raw = (
+        b"Subject: =?utf-8?q?[dk-forge/asktherecruiter-sandbox]_PR_run_failed:_Frontend_CI_-?=\n"
+        b" =?utf-8?q?_Wave_D_=E2=80=94_merge_conflict?=\n"
+        b"From: notifications@github.com\n"
+        b"Date: " + email.utils.format_datetime(NOW - timedelta(days=30)).encode() + b"\n\n"
+        b"body"
+    )
+    conn = _Conn([raw])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert f["escalate"] == [], (
+        f"a routine CI failure with an encoded subject must not escalate; got: {f['escalate']}"
+    )
+
+
 def test_a_crashed_deployment_escalates_even_with_a_dull_subject(monkeypatch) -> None:
     """The signal genuinely not covered anywhere else. It escalates on its
     CLASS, so it does not depend on alarming words appearing in the subject."""
