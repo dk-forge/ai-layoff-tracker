@@ -261,3 +261,24 @@ class TheWorkflowActuallyUsesIt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NestedRequirement(unittest.TestCase):
+    """`--require PARENT>CHILD` reaches one level down, so the route index
+    (a dict under "routes") can be checked through the same verdict path."""
+
+    def test_a_present_nested_key_passes(self):
+        import endpoint_check as ec
+        body = b'{"routes": {"/layoffs/v1/restore-merged-rows": {}}}'
+        r = ec.judge(200, "application/json", body,
+                     require=("routes>/layoffs/v1/restore-merged-rows",))
+        self.assertEqual(r.verdict, ec.PASS, r.detail)
+
+    def test_a_missing_nested_key_fails_and_names_it(self):
+        import endpoint_check as ec
+        body = b'{"routes": {"/layoffs/v1/query": {}}}'
+        r = ec.judge(200, "application/json", body,
+                     require=("routes>/layoffs/v1/restore-merged-rows",))
+        self.assertEqual(r.verdict, ec.FAIL)
+        self.assertIn("restore-merged-rows", r.detail)
+

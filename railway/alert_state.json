@@ -67,36 +67,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "deploy-wordpress-plugin:main:04c6efdddc7c8fbc": {
-      "first": 1788908535,
-      "last": 1788908535,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.179/4b9648229ee116f4 after 600s. The origin may be correct while a shared cache serves a superseded build,"
-    },
-    "deploy-wordpress-plugin:main:10f54fb7b360cf23": {
-      "first": 1788965972,
-      "last": 1788965972,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at addondomains/AskTheRecruiter.com, or no existing ai-layoff-tracker.php at addondomains/AskTheRecruiter.c"
-    },
-    "deploy-wordpress-plugin:main:7a4385696aad8fc4": {
-      "first": 1788955284,
-      "last": 1788955284,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at asktherecruiter.com/blog, or no existing ai-layoff-tracker.php at asktherecruiter.com/blog/wp-content/pl"
-    },
-    "deploy-wordpress-plugin:main:cd519f0bffc26030": {
-      "first": 1788941122,
-      "last": 1788941122,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at ., or no existing ai-layoff-tracker.php at wp-content/plugins/ai-layoff-tracker. Refusing to deploy so f"
-    },
-    "deploy-wordpress-plugin:main:f13199a49defb956": {
-      "first": 1788955374,
-      "last": 1788955374,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at asktherecruiter/blog, or no existing ai-layoff-tracker.php at asktherecruiter/blog/wp-content/plugins/ai"
-    },
-    "deploy-wordpress-plugin:main:fca134bf9a75991e": {
-      "first": 1788956982,
-      "last": 1788956982,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at public_html, or no existing ai-layoff-tracker.php at public_html/wp-content/plugins/ai-layoff-tracker. R"
-    },
     "dmarc-report-check:main:148f7d8019c4cbbf": {
       "first": 1788958598,
       "last": 1788958598,
@@ -136,8 +106,13 @@
       "first": 1788956489,
       "last": 1788956489,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consume[81 chars]-25']"
+    },
+    "tests:main:7ba8f6d0b4896be7": {
+      "first": 1788966435,
+      "last": 1788966435,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-09T14:59:32+00:00",
+  "updated_at": "2026-09-09T15:07:15+00:00",
   "version": 1
 }

@@ -218,7 +218,16 @@ def judge(status, content_type, body, require=(), url="", require_type=True):
                       f"First {MAX_EXCERPT} characters of the body: {head}",
                       status=status, content_type=ctype, excerpt=head)
 
-    missing = [key for key in require if key not in payload]
+    # A requirement may name a nested key as PARENT>CHILD (the separator is
+    # `>` because route keys carry slashes and dots): "routes>/layoffs/v1/x"
+    # holds when payload["routes"] is an object carrying that key.
+    def _carries(obj, path):
+        for part in path.split(">"):
+            if not isinstance(obj, dict) or part not in obj:
+                return False
+            obj = obj[part]
+        return True
+    missing = [key for key in require if not _carries(payload, key)]
     if missing:
         found = ", ".join(sorted(payload)[:12]) or "(no keys at all)"
         return Result(FAIL,
@@ -267,7 +276,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--url", required=True)
     parser.add_argument("--require", action="append", default=[], metavar="KEY",
-                        help="a top-level JSON key the answer must carry")
+                        help="a JSON key the answer must carry; PARENT>CHILD for a nested one")
     parser.add_argument("--label", default="", help="what this endpoint is, for humans")
     parser.add_argument("--where", default="",
                         help="where a human should look when this fails")
