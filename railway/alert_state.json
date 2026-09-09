@@ -77,6 +77,11 @@
       "last": 1788982444,
       "subject": "CI RED: ERM provenance check \u2014 published ERM rows disagree with the country they were imported with (exit 2) - see the step above for the rows"
     },
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1788983942,
+      "last": 1788983942,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,607,216 jobs / 65,530 entries"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -103,6 +108,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: 'fail' != 'unknown'"
     }
   },
-  "updated_at": "2026-09-09T19:58:57+00:00",
+  "updated_at": "2026-09-09T19:59:02+00:00",
   "version": 1
 }
