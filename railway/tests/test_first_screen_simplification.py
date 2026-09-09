@@ -586,5 +586,70 @@ var document = { getElementById: function (id) {
         self.assertIn("if (id === 'alt-f-years') return false;", body)
 
 
+class TopStripBalanceTests(unittest.TestCase):
+    """The trust strip above the figure, laid out so neither half is padding.
+
+    2026-09-09, the owner on the live page: "please also fix the formatting".
+    Two things were measurable rather than a matter of taste. The strip was
+    `320px minmax(0, 1fr)`, so the coverage ribbon (two lines) shared a grid
+    row with the freshness card (mascot, four status lines, five year and
+    all-time pairs) and about 200px of the row beside the ribbon was empty
+    page. And the pairs were laid in a 2-column grid, which leaves the fifth
+    alone on a row with no neighbour.
+
+    Both are pinned as relationships, not as pixels: the top strip has ONE
+    track at the wide breakpoint, and the pair grid has exactly as many
+    columns as the template renders pairs. Adding a sixth pair fails here
+    instead of orphaning it live.
+    """
+
+    def _wide_block(self) -> str:
+        i = CSS.find("@media (min-width: 860px)")
+        while i != -1:
+            j = CSS.index("{", i)
+            depth, k = 0, j
+            while k < len(CSS):
+                if CSS[k] == "{":
+                    depth += 1
+                elif CSS[k] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                k += 1
+            body = CSS[j:k]
+            if ".alt-datastrip-top" in body:
+                return body
+            i = CSS.find("@media (min-width: 860px)", k)
+        self.fail("no wide-width block styles the top strip")
+
+    def test_the_top_strip_is_one_track_so_the_ribbon_row_has_no_dead_area(self):
+        body = self._wide_block()
+        m = re.search(r"\.alt-datastrip-top\s*\{([^}]*)\}", body)
+        self.assertIsNotNone(m, "the top strip's own grid is not stated here")
+        decl = m.group(1)
+        cols = re.search(r"grid-template-columns:([^;]*);", decl)
+        self.assertIsNotNone(cols, "the top strip states no column template")
+        self.assertEqual(1, cols.group(1).count("minmax("),
+                         "the top strip is two tracks again: the coverage "
+                         "ribbon sits beside a card three times its height "
+                         "and the rest of the row is empty page")
+        self.assertNotIn("px", cols.group(1),
+                         "a fixed sidebar track is what put the ribbon beside "
+                         "the tall card in the first place")
+
+    def test_the_pair_grid_has_a_column_for_every_pair_the_template_renders(self):
+        pairs = TEMPLATE.count('class="alt-fresh-stat"')
+        self.assertGreater(pairs, 0, "the year/all-time pairs are gone")
+        body = self._wide_block()
+        m = re.search(r"\.alt-fresh-stats\s*\{([^}]*)\}", body)
+        self.assertIsNotNone(m, "the pair grid is not re-stated for wide screens")
+        cols = re.search(r"grid-template-columns:\s*repeat\((\d+),", m.group(1))
+        self.assertIsNotNone(cols, "the pair grid's column count is not stated")
+        self.assertEqual(pairs, int(cols.group(1)),
+                         "%d pairs in %d columns leaves one alone on the last "
+                         "row, which reads as an accident rather than as the "
+                         "last of a set" % (pairs, int(cols.group(1))))
+
+
 if __name__ == "__main__":
     unittest.main()
