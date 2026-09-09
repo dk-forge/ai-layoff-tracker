@@ -1,3 +1,48 @@
+## 2026-09-09 - the deploy has no working credential for the new host, and that is now measured rather than suspected
+
+**Class:** absent-read-as-ok
+**Guard:** `.github/workflows/ftp-target-probe.yml`
+
+`FTP_HOST` was corrected to `blogorigin.asktherecruiter.com` (DNS-only, resolves
+to the live origin 162.19.222.172). That was necessary and not sufficient.
+Three credential paths were then tried ONCE each, and all three refuse,
+differently:
+
+| pairing | answer |
+|---|---|
+| `FTP_HOST` + the July `FTP_USERNAME` / `FTP_PASSWORD` | **421** logged in, no home directory |
+| `FTP_HOST` + `CHEMICLOUD_USERNAME` / `CHEMICLOUD_PASSWORD_FTP` | **530** login rejected |
+| `CHEMICLOUD_FTP` + either pair | identical, so it is the same machine |
+| `CHEMICLOUD_CPANELURL` + the CHEMICLOUD pair, over the cPanel API | an HTML login page, not JSON |
+
+The three answers are consistent with one story and only one: **the July FTP
+username still exists on the new server but its home directory does not, and
+the CHEMICLOUD_* secrets are not a working credential for either FTP or
+cPanel.** A 421 is a server that knows the user and cannot place them; a 530 is
+a server that does not know them at all.
+
+**Why the CHEMICLOUD_* secrets existed and did nothing.** They were added
+2026-09-06 during the hosting move and NO WORKFLOW EVER READ THEM
+(`railway/orphaned_secrets.py` has been reporting them, and nobody read that
+report as "the deploy is using the wrong ones"). All three FTPS workflows now
+read them, which is why their failure is visible at all: before today they
+could not fail, because nothing called them.
+
+**STOP GUESSING HERE.** Three refusals is enough to conclude there is no
+working credential in the repository, and continuing to try combinations
+against a live server is the thing this file warns about elsewhere. The next
+move is not another probe.
+
+**What closes it, and it is the owner's:** create an FTP account in ChemiCloud
+cPanel whose DIRECTORY is the WordPress root of the `/blog` install (the folder
+that directly contains `wp-config.php` and `wp-content/`), and put its username
+and password into `CHEMICLOUD_USERNAME` and `CHEMICLOUD_PASSWORD_FTP`. The
+directory is the half that matters: the 421 says the previous account's was
+wrong, not its password.
+
+The probe stays. It is read-only, dispatch-only, prints no secret value, and it
+turns "the deploy is broken" into a four-line table in about forty seconds.
+
 ## 2026-09-09 - four green deploys shipped nothing: FTP_HOST still points at the old server
 
 **Class:** guard-went-vacuous

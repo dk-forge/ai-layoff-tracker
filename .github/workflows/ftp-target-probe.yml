@@ -83,7 +83,9 @@ jobs:
             echo "  cPanel: AUTHENTICATES"
           else
             echo "  cPanel: did NOT authenticate."
-            echo "$OUT" | head -2 | cut -c1-160
+            # head closes the pipe early and `set -o pipefail` makes that a failed
+            # step, which is not what a diagnostic should do. Truncate in the shell.
+            printf '  answered: %s\n' "$(printf '%s' "$OUT" | tr -d '\n' | cut -c1-160)"
             echo "  So CHEMICLOUD_USERNAME / CHEMICLOUD_PASSWORD_FTP are neither a"
             echo "  working FTP account nor a working cPanel login."
             exit 0
