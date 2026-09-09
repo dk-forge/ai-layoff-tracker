@@ -1,3 +1,70 @@
+## 2026-09-09 - the Jobindsats key has worked since 2026-08-13; the public page said "application pending" for 27 days
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_credential_copy_is_derived.py`
+
+`JOBINDSATS_API_KEY` became a repository secret on 2026-08-13 and no code read
+it (`railway/orphaned_secrets.py` has reported it as an orphan since). A GitHub
+secret is write-only, so nothing here could tell whether it worked, and the
+Denmark row of the public country table went on saying **"Jobindsats varsel
+API: key application pending"** for 27 days after the application had already
+succeeded.
+
+**The measurement.** `.github/workflows/jobindsats-key-probe.yml`, dispatch
+only, read only, prints no key. Run `34342294682`:
+
+- `GET /v3/tables?format=json` with the secret answered **HTTP 200**, listing
+  18 subjects. Subject 1319, `Status paa arbejdsmarkedet`, is the one carrying
+  `Antal varslinger om afskedigelser`.
+- The controls in the same run: with **no token** and with a **bogus token**,
+  every path under `/v3/` answers 401, including one that does not exist. The
+  auth layer runs before routing, so the 200 is the key's own doing.
+
+**The first two runs were UNKNOWN, and saying so is what got to the answer.**
+`/v3/dataset` (the path in the brief) answered **404**, which is neither 200
+nor a refusal. Rounding that to "broken" would have been wrong and rounding it
+to "works" would have been a guess; naming it UNKNOWN is what prompted the
+control requests that settled it. `/v3/tables` then answered **422 "'format' is
+required."**, which is a live route validating a request, and the parameter it
+named produced the 200.
+
+**What the source can and cannot ever be.** The API publishes AGGREGATE monthly
+counts of persons and companies varslet by region, municipality and industry.
+It names no employer, so it can reconcile a Danish national total and can never
+produce a tracker entry. That is recorded in the ledger so nobody promises more
+than it can give.
+
+**Why the copy was unfalsifiable, which is the actual defect.** "key application
+pending" was a literal string in `railway/generate_country_table.py`. A fact
+about a credential lived where no run, no test and no session could contradict
+it, which is the cadence defect (`test_cadence_is_derived.py`) in a place a
+cadence scanner cannot see. The cell is now composed by `denmark_blurb()` from
+two things that can be read:
+
+- `railway/source_credentials.json` for the credential. Three states, because
+  "never asked" is not "asked and refused" and neither is a pass: `UNTESTED`
+  (and an absent entry means this), `VERIFIED`, `REFUSED`. A settled state
+  needs the date and a link to the run that watched it, or it is an assertion
+  again.
+- `collector_is_built()` for ingestion, deliberately NARROWER than
+  `source_inventory`'s "named by any file under railway/ or .github/workflows/":
+  a module must exist and `cron.py` must run it. The probe workflow names the
+  id, and a diagnostic that only asked a question must never vouch for a source.
+
+The live cell now reads **"Jobindsats varsel API: key verified 2026-09-09;
+aggregate counts only, not yet ingested"**. The key works, nothing is built on
+it, and no data flows: three separate claims, stated separately.
+
+**Proved by mutation.** Restoring the old typed string to the committed partial
+fails two tests; making the blurb say "ingested daily" with no collector fails
+the ingestion guard; removing the `evidence` link fails the ledger guard. All
+three green again on restore.
+
+**NOT LIVE.** The plugin deploy is broken on an FTP credential (see the FTPS
+target probe entries above). 2.20.181 is committed and UNVERIFIED LIVE; the
+live plugin remains 2.20.175, still showing "key application pending" until the
+next successful deploy.
+
 ## 2026-09-09 - the -46,400 incident is closed: two dedup runs, and a guard that cannot see a deletion
 
 **Class:** wrong-scope-or-key
