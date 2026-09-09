@@ -97,11 +97,6 @@
       "last": 1788956421,
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consumes early in: head -40']"
     },
-    "tests:main:380b914a80a72a63": {
-      "first": 1788955395,
-      "last": 1788955395,
-      "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != [\"ftp-target-probe.yml:221  `grep` consumes early in: grep -q '550'\"]"
-    },
     "tests:main:407feea17bdac8d1": {
       "first": 1788956489,
       "last": 1788956489,
@@ -113,6 +108,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
     }
   },
-  "updated_at": "2026-09-09T15:07:15+00:00",
+  "updated_at": "2026-09-09T15:16:11+00:00",
   "version": 1
 }
