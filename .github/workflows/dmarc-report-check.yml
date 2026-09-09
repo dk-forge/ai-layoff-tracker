@@ -64,6 +64,7 @@ jobs:
         run: |
           case "${{ steps.judge.outputs.code }}" in
             0) echo "Green: either not armed, or every observed sender passes." ;;
-            2) echo "::error::DMARC: a sender would be quarantined, or the mailbox login was REFUSED. See the job summary."; exit 1 ;;
+            1) echo "::notice::DMARC is NOT YET safe to tighten. That is this check's normal answer while a sender is still unaligned, and the live policy is p=none so nothing is being quarantined. See the job summary for which sender." ;;
+            2) echo "::error::DMARC: the mailbox login was REFUSED. Rotate the password and update DMARC_IMAP_PASSWORD."; exit 1 ;;
             *) echo "::error::DMARC reports could not be read. That is UNKNOWN, not a pass."; exit 1 ;;
           esac

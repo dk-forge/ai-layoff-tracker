@@ -131,7 +131,19 @@ def report(paths: list[str]) -> int:
     if failing:
         print(f"  {failing} of {total} message(s) would be acted on by p=quarantine.")
         print("  DO NOT TIGHTEN. Identify each failing sender above first.")
-        return 2
+        # 2026-09-09: this returns 1 (NOT READY), not 2 (FAULT).
+        #
+        # The policy live today is p=none, so nothing is actually being
+        # quarantined. "One sender would fail IF we tightened" is the answer to
+        # the question this check exists to ask, not a fault, and it will stay
+        # true every day until every sender aligns. Returning 2 made the
+        # workflow red daily and mailed the owner about it, which is precisely
+        # what `_announce_readiness` refuses to do three functions away: "never
+        # a daily nag, which is how an alert channel gets filtered."
+        #
+        # A rejected mailbox login stays 2 and an unreadable report stays 3.
+        # Those are faults. Not-yet-ready is a measurement.
+        return 1
     print(f"  All {total} observed message(s) pass DMARC and would survive p=quarantine.")
     print("  This is ONE report from ONE receiver over the window shown. A sender that")
     print("  did not send in that window is absent, not proven safe. Read the sender")
