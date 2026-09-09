@@ -1,3 +1,45 @@
+## 2026-09-09 - a green country diagnostic claimed more than its policy proved
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_country_coverage.py`
+
+`CountryCoverageInvariant` deliberately treats a dated, explicitly acknowledged
+country backlog differently from a country that arrived unnoticed. That keeps a
+long research programme from producing a permanent ignored alarm. Its label did
+not preserve that distinction: “Every country in the corpus has a classified
+disclosure regime” appeared beside a green result whose detail truthfully named
+16 countries still unclassified.
+
+The label now says every country is “classified or explicitly acknowledged.” A
+focused test forbids restoring the stronger sentence. The registry, backlog and
+PASS/UNKNOWN policy are unchanged; this repair removes an overclaim rather than
+pretending the backlog is finished.
+
+## 2026-09-09 - current operating docs still sent recovery work to the former host
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_current_host_documentation.py`
+
+Dakota confirmed that Bluehost is no longer part of the current system. The
+WordPress plugin, MySQL database and FTPS deployment target now live on
+ChemiCloud; Cloudflare remains in front and the Railway root application still
+reverse-proxies `/blog`. The correction transport incident exposed the practical
+consequence of stale architecture: a direct-origin technique documented for the
+old stack is invalid against ChemiCloud's Cloudflare Origin CA certificate.
+
+Present-tense orientation, deployment, architecture, recovery and backup text
+now names ChemiCloud and requires signed administrative writes to use the public
+TLS-verified hostname. Historical Bluehost incidents remain historical evidence
+because rewriting them would erase the reason the retry, alert and cache guards
+exist. A focused regression test pins the current host in the operator-facing
+contracts without outlawing legitimate history.
+
+The accompanying production closeout is green. ERM provenance run
+`34400781349` checked 19,476 published Eurofound rows, read every one and found
+zero contradictions after Cheminova's correction. Data-integrity run
+`34401892697` passed 20/20 live invariants. These results close that active data
+incident; they do not prove competitor rank or complete global recall.
+
 ## 2026-09-09 - signed corrections now use the public TLS-verified ChemiCloud path
 
 **Class:** wrong-scope-or-key - a direct origin pin used the wrong trust model

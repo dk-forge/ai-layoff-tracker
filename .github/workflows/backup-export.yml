@@ -1,7 +1,7 @@
 name: Weekly off-host backup
 
-# The tracker's data lived in exactly one place: wp_alt_layoffs on a shared
-# Bluehost account. ~65,000 curated rows, a large share of them produced by paid
+# Before this backup shipped, the tracker's data lived in exactly one place:
+# wp_alt_layoffs on the WordPress host. ~65,000 curated rows, many produced by paid
 # LLM extraction, with no copy anywhere. The adjudication files are committed
 # JSON so the human rulings survive a loss; the extracted rows did not.
 #

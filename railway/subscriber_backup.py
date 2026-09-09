@@ -10,8 +10,8 @@ WHAT WAS MISSING
 `backup_export.py` walks every table the plugin owns to a PUBLIC GitHub release
 and EXCLUDES `wp_alt_subscribers`, which is right: addresses, consent records
 and two live tokens. The consequence was that the list and its consent records
-existed in exactly one place, a shared Bluehost account, with a migration
-coming. A migration is when a single-copy table gets lost, and a consent record
+existed in exactly one place, the WordPress host. The move from Bluehost to
+ChemiCloud demonstrated the migration risk: a single-copy table can be lost, and a consent record
 has legal weight, so losing it is worse than losing the address it belongs to.
 
 THE SHAPE, AND WHY IT IS THIS SHAPE

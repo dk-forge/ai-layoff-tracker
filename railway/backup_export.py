@@ -3,8 +3,8 @@
 
 WHY THIS EXISTS
 ---------------
-Until this shipped, `wp_alt_layoffs` existed in exactly one place: MySQL on a
-shared Bluehost account. Roughly 65,000 curated rows, a large share of them
+Until this shipped, `wp_alt_layoffs` existed in exactly one place: the live
+WordPress MySQL database (now on ChemiCloud). Roughly 65,000 curated rows, a large share of them
 produced by paid LLM extraction, with no copy anywhere. The adjudication files
 are committed JSON so the human rulings survive a loss; the extracted rows did
 not. If that table went, it went.
