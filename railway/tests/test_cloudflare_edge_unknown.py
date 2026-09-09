@@ -48,7 +48,7 @@ import data_integrity as di
 import published_figures as pf
 import subscriber_routes
 import _incident_free
-from _incident_free import without_open_incidents
+from _incident_free import without_open_incidents, live_only
 
 EDGE = (520, 521, 522, 523, 524)
 ORIGIN_TLS = (525, 526)
@@ -165,13 +165,19 @@ class NothingFailsOnAnEdgeBlip(unittest.TestCase):
     #: edge-blip logic is the only thing under test. Nothing is relaxed: the
     #: incident still reports FAIL in `test_dedup_live`, ops_status and the
     #: digest, which is where it is supposed to be read.
+    #:
+    #: SAME HAZARD, SECOND SOURCE, added 2026-09-09. A structural invariant
+    #: (`reads_live_data = False`, e.g. ErmProvenanceInvariant) never calls the
+    #: stubbed `fetch` at all - it answers from its own committed measurement -
+    #: so its verdict on any given day is exactly as unrelated to "did the edge
+    #: blip" as an open headline incident is, and just as capable of reddening
+    #: this class for a real, unrelated finding. `live_only` drops those the
+    #: same way `without_open_incidents` drops the ledger-backed one.
     def _report(self, status):
         def fetch(url, timeout):
             raise _http(status)
-        live_only = tuple(i for i in di.INVARIANTS
-                          if getattr(i, "reads_live_data", True))
         return di.check_all(fetch=fetch,
-                            invariants=without_open_incidents(live_only))
+                            invariants=without_open_incidents(live_only(di.INVARIANTS)))
 
     def test_an_edge_blip_produces_no_failure_and_no_bare_unknown(self):
         for status in EDGE:
