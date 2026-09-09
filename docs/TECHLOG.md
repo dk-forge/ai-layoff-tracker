@@ -1,3 +1,58 @@
+## 2026-09-08 - 2.20.179 was visible while one transferred PHP include still executed old bytecode (2.20.180, branch)
+
+**Class:** cache-served-stale - the host served an old compiled include beside a new plugin entrypoint
+**Guard:** `railway/tests/test_move_source_reports.py`, deploy step `Verify the deployed tracker API`
+
+PR `#289` merged as `fe7e98b` and deploy `34271567276` passed in 7m27s. The
+deploy log explicitly says `Removing old file includes/db.php` and then
+`Transferring file includes/db.php`; readers exposed 2.20.179 and its exact
+build. Dry run `34272357642` printed the source-proven five-row payload and its
+428-job total, then explicitly wrote nothing. The signed apply run
+`34272468974` nevertheless received `rest_no_route` / HTTP 404 before any row
+could be written. A public namespace read confirmed the adjacent
+`merge-events` and `move-source-reports` routes but not
+`restore-merged-rows`. This is not a data partial-write and not an upload
+guess: zero rows were restored, and the transfer is in the deploy record.
+
+The production-proof gap was that deployment verified a long-existing
+integrity route and the reader version, neither of which proves a newly added
+route compiled. The recovery route now lives in a newly named guarded include,
+`includes/restore-merged.php`. A new pathname forces PHP to compile it on a
+worker that still holds pre-2.20.179 `db.php` bytecode. The first full PR CI
+caught that merely guarding a same-named compatibility function still violates
+the duplicate-declaration contract and could fatal on a mixed deploy. The fresh
+include therefore uses the unique `alt_api_restore_merged_rows_fresh` callback,
+while shipped `db.php` no longer declares the old callback name. A worker with
+stale 2.20.179 bytecode may retain the old function, but it cannot collide with
+or receive the new route. Only the fresh include registers that route. The main
+entrypoint uses `is_readable`
+before `require_once`, preserving the no-fatal invariant during one-file-at-a-
+time FTPS deployment.
+
+Nine tests were red before that include and deploy contract existed. The
+restoration and cross-plugin collision checks now pass locally. The deployment
+now reads the live REST
+namespace and requires `/layoffs/v1/restore-merged-rows`; a green version alone
+can no longer certify this release. Version 2.20.180 still requires PR CI,
+SHA-matched deployment, a live namespace read, then a new signed apply run.
+
+The same CI run found a separate test-isolation defect: the Cloudflare-52x
+fixture used the repository's mutable production incident ledger, so a genuine
+open incident made a transport-only unit test fail. That fixture now supplies a
+clean temporary ledger to `MovementInvariant`. It still exercises the full live
+invariant registry and the production path still preserves sticky incidents.
+
+Manual deploy `34275294788` then proved the second layer of the failure. FTPS
+completed, but the public Railway reverse proxy returned a cache-busted,
+no-store 72-route namespace without the recovery route. A direct request to the
+documented Bluehost IP with the public hostname and TLS verification returned
+74 routes including it. The plugin had deployed; the proxy was not an honest
+administrative-path verifier. The deploy gate and signed-correction workflow now
+resolve `mail.asktherecruiter.com` to the WordPress origin and either use curl's
+`--resolve` or pin that IP in `/etc/hosts`. Both retain `asktherecruiter.com` as
+the URL/SNI name, so certificate validation remains enabled. Reader-facing
+verification still uses the public path; only origin writes and their route
+gate bypass the proxy.
 ## 2026-09-09 - seven workflows stopped existing for 15 hours, and the only report was seven red runs that read as noise
 
 **Class:** silent-stop

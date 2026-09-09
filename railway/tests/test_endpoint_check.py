@@ -261,3 +261,60 @@ class TheWorkflowActuallyUsesIt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NestedRequirement(unittest.TestCase):
+    """`--require PARENT>CHILD` reaches one level down, so the route index
+    (a dict under "routes") can be checked through the same verdict path."""
+
+    def test_a_present_nested_key_passes(self):
+        import endpoint_check as ec
+        body = b'{"routes": {"/layoffs/v1/restore-merged-rows": {}}}'
+        r = ec.judge(200, "application/json", body,
+                     require=("routes>/layoffs/v1/restore-merged-rows",))
+        self.assertEqual(r.verdict, ec.PASS, r.detail)
+
+    def test_a_missing_nested_key_fails_and_names_it(self):
+        import endpoint_check as ec
+        body = b'{"routes": {"/layoffs/v1/query": {}}}'
+        r = ec.judge(200, "application/json", body,
+                     require=("routes>/layoffs/v1/restore-merged-rows",))
+        self.assertEqual(r.verdict, ec.FAIL)
+        self.assertIn("restore-merged-rows", r.detail)
+
+
+class ResolvePinsTheAddress(unittest.TestCase):
+    """`--resolve HOST:PORT:IP` dials IP for HOST and leaves other hosts alone."""
+
+    def test_fetch_threads_resolve_to_the_opener(self):
+        import endpoint_check as ec
+        seen = {}
+
+        class FakeResp:
+            status = 200
+            headers = {"Content-Type": "application/json"}
+            def read(self, n): return b'{"ok": 1}'
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        class FakeOpener:
+            def open(self, req, timeout=None):
+                seen["url"] = req.full_url
+                return FakeResp()
+
+        original = ec._opener
+        ec._opener = lambda resolve: seen.setdefault("resolve", resolve) and FakeOpener() or FakeOpener()
+        try:
+            status, _, body = ec.fetch("https://asktherecruiter.com/x", resolve="asktherecruiter.com:443:203.0.113.9")
+        finally:
+            ec._opener = original
+        self.assertEqual(status, 200)
+        self.assertEqual(seen["resolve"], "asktherecruiter.com:443:203.0.113.9")
+
+    def test_an_unpinned_host_uses_the_default_handler(self):
+        import endpoint_check as ec
+        opener = ec._opener("asktherecruiter.com:443:203.0.113.9")
+        handlers = [h for h in opener.handlers if type(h).__name__ == "_Handler"]
+        self.assertEqual(len(handlers), 1)
+        self.assertEqual(ec._opener("").handlers[-1].__class__.__module__, "urllib.request")
+

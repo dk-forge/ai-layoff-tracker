@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.183
+ * Version:           2.20.184
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.183');
+define('ALT_VERSION', '2.20.184');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -32,6 +32,15 @@ if (!function_exists('alt_build_stamp_comment')) {
 // Load includes
 require_once ALT_PLUGIN_DIR . 'includes/cpt.php';
 require_once ALT_PLUGIN_DIR . 'includes/db.php';
+// A newly named include is intentional. The 2.20.179 deploy transferred
+// includes/db.php and exposed the new version, but the host kept executing old
+// cached bytecode for that long-lived file, so the restoration route stayed
+// absent. A new pathname forces compilation. Guard it because FTPS uploads one
+// file at a time and the entrypoint can land before this include.
+$alt_restore_merged = ALT_PLUGIN_DIR . 'includes/restore-merged.php';
+if (is_readable($alt_restore_merged)) {
+    require_once $alt_restore_merged;
+}
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
 require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
