@@ -87,17 +87,12 @@
       "last": 1788898189,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: OPEN INCIDENT, baseline NOT advanced. Only `--close-incident worldwide_all_time` (reviewer + reason + row IDs + an explicit "
     },
-    "tests:live.data:4c51a688fc18dee4": {
-      "first": 1788968371,
-      "last": 1788968371,
-      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: live API returned HTTP 500; Worldwide jobs, all time: live API returned "
-    },
     "tests:main:973ea34d4b0ec8af": {
       "first": 1788982900,
       "last": 1788982900,
       "subject": "CI RED: Tests \u2014 AssertionError: 'fail' != 'unknown'"
     }
   },
-  "updated_at": "2026-09-09T20:21:31+00:00",
+  "updated_at": "2026-09-09T20:21:33+00:00",
   "version": 1
 }
