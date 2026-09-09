@@ -1,0 +1,102 @@
+name: Jobindsats key probe
+
+# READ-ONLY. Dispatch only, never scheduled, writes nothing, stores nothing.
+#
+# JOBINDSATS_API_KEY has been a repository secret since 2026-08-13 and no code
+# reads it (`railway/orphaned_secrets.py` reports it as an orphan). A secret
+# nobody has ever exercised is an UNKNOWN, not an asset: the public country
+# table has said "key application pending" for the 27 days since it arrived,
+# and nothing in this repository could say whether that was still true.
+#
+# GitHub secrets are write-only, so the question can only be answered from a
+# runner. This asks api.jobindsats.dk one question, once, and prints the HTTP
+# status plus a verdict. It never prints the key, never echoes a header that
+# carries it, and sends no other request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Does JOBINDSATS_API_KEY authenticate against api.jobindsats.dk
+        env:
+          JOBINDSATS_API_KEY: ${{ secrets.JOBINDSATS_API_KEY }}
+        run: |
+          set -uo pipefail
+
+          cat > /tmp/show_datasets.py <<'PYDS'
+          import json
+          try:
+              with open("/tmp/jobindsats.body", encoding="utf-8") as fh:
+                  doc = json.load(fh)
+          except Exception as exc:
+              print("  answered 200 but the body did not parse as JSON: %s" % exc)
+              raise SystemExit(0)
+          rows = doc if isinstance(doc, list) else (
+              doc.get("data") or doc.get("datasets") or doc.get("items") or [])
+          if not isinstance(rows, list):
+              print("  200, but the shape is not a list. Top-level keys: %s" % sorted(doc)[:20])
+              raise SystemExit(0)
+          print("  %d dataset(s) listed" % len(rows))
+          for row in rows[:40]:
+              if isinstance(row, dict):
+                  ident = row.get("id") or row.get("name") or row.get("key") or "?"
+                  label = row.get("title") or row.get("description") or row.get("label") or ""
+                  print("  %-30s %s" % (str(ident)[:30], str(label)[:90]))
+              else:
+                  print("  %s" % str(row)[:110])
+          if len(rows) > 40:
+              print("  ... and %d more" % (len(rows) - 40))
+          PYDS
+
+          # ABSENT is a third state and must stay one: "no key is configured"
+          # and "the configured key was refused" send a reader to different
+          # places, and collapsing them would send the owner to re-apply for a
+          # registration he may already hold.
+          if [ -z "${JOBINDSATS_API_KEY:-}" ]; then
+            echo "VERDICT: ABSENT. No JOBINDSATS_API_KEY is set for this repository."
+            echo "         That is not a refusal and not a pass. Nothing was asked."
+            exit 0
+          fi
+
+          # -o writes the body to a file rather than to a pipe, and %{http_code}
+          # is captured on its own. No pipeline here places an early-exiting
+          # consumer after the first position, which under `set -o pipefail`
+          # would let EPIPE redden a step that answered its question
+          # (railway/tests/test_pipefail_broken_pipe.py).
+          CODE=$(curl -sS -o /tmp/jobindsats.body -w '%{http_code}' --max-time 45 \
+                   -H "Authorization: Bearer $JOBINDSATS_API_KEY" \
+                   -H 'Accept: application/json' \
+                   -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
+                   'https://api.jobindsats.dk/v3/dataset') || CODE="000"
+          echo "HTTP status: $CODE"
+          echo
+
+          case "$CODE" in
+            200)
+              echo "VERDICT: THE KEY WORKS. api.jobindsats.dk accepted the bearer token."
+              echo
+              echo "What the dataset index actually offers:"
+              python3 /tmp/show_datasets.py
+              ;;
+            401|403)
+              echo "VERDICT: THE KEY DOES NOT WORK. api.jobindsats.dk refused it ($CODE)."
+              echo "         Plainly: this secret does not authenticate. Nothing can be"
+              echo "         built on it until a working credential replaces it."
+              # Truncate in the shell. `tr` and `cut` both read to end of input,
+              # so neither can hand its producer an EPIPE.
+              printf '  answered: %s\n' "$(tr -d '\n' < /tmp/jobindsats.body | cut -c1-200)"
+              ;;
+            000)
+              echo "VERDICT: UNKNOWN. The request did not complete (network or timeout)."
+              echo "         This is neither a working key nor a refused one."
+              ;;
+            *)
+              echo "VERDICT: UNKNOWN, HTTP $CODE. Named, not rounded to either answer."
+              printf '  answered: %s\n' "$(tr -d '\n' < /tmp/jobindsats.body | cut -c1-200)"
+              ;;
+          esac
