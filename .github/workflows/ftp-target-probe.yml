@@ -203,7 +203,7 @@ jobs:
           PLUG=$(timeout 60 lftp -c "
             set ssl:verify-certificate no; set ftp:ssl-force true;
             set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
-            open -u \"$FTP_USER\",\"$FTP_PASS\" \"$FTP_HOST\";
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             cls -1 public_html/blog/wp-content/plugins/;
           " 2>&1) || true
           mapfile -t PLUG_LINES <<< "$PLUG"
@@ -213,7 +213,7 @@ jobs:
           timeout 40 lftp -c "
             set ssl:verify-certificate no; set ftp:ssl-force true;
             set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
-            open -u \"$FTP_USER\",\"$FTP_PASS\" \"$FTP_HOST\";
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
             cls -1 public_html/blog/wp-config.php;
           " 2>&1 | grep -v "ftp:" || echo "  wp-config.php NOT found at public_html/blog/"
           echo
