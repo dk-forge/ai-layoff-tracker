@@ -23,6 +23,80 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Ask cPanel what the FTP accounts and document roots actually are
+        env:
+          CPANEL_URL: ${{ secrets.CHEMICLOUD_CPANELURL }}
+          CPANEL_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          CPANEL_PASS: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          # 2026-09-09. The FTPS pairings all fail, and they fail DIFFERENTLY: the
+          # July username logs in with no home directory (421), the CHEMICLOUD pair
+          # is rejected outright (530). A 530 is consistent with those being cPanel
+          # credentials rather than an FTP account, which would explain everything.
+          # So ask cPanel instead of guessing at more combinations against a live
+          # server.
+          #
+          # Read-only. No password is printed. FTP account NAMES and document ROOTS
+          # are configuration rather than secrets, and they are the two facts nobody
+          # currently has.
+          if [ -z "${CPANEL_URL:-}" ] || [ -z "${CPANEL_USER:-}" ] || [ -z "${CPANEL_PASS:-}" ]; then
+            echo "cPanel probe SKIPPED: one of the three secrets is not set."
+            exit 0
+          fi
+          BASE="${CPANEL_URL%/}"
+          case "$BASE" in http*) ;; *) BASE="https://$BASE" ;; esac
+
+          cat > /tmp/show_ftp.py <<'PYFTP'
+          import json, sys
+          try:
+              d = json.load(sys.stdin)
+          except Exception as exc:
+              print("  could not parse the answer:", exc)
+              raise SystemExit(0)
+          rows = d.get("data") or []
+          if not rows:
+              print("  none reported")
+          for row in rows:
+              print("  %-30s home=%s" % (row.get("user", "?"), row.get("homedir", "?")))
+          PYFTP
+
+          cat > /tmp/show_roots.py <<'PYROOT'
+          import json, sys
+          try:
+              d = json.load(sys.stdin)
+          except Exception as exc:
+              print("  could not parse the answer:", exc)
+              raise SystemExit(0)
+          data = d.get("data") or {}
+          main = data.get("main_domain") or {}
+          print("  main    %-30s docroot=%s" % (main.get("domain", "?"), main.get("documentroot", "?")))
+          for key in ("addon_domains", "sub_domains", "parked_domains"):
+              for row in (data.get(key) or []):
+                  if isinstance(row, dict):
+                      print("  %-7s %-30s docroot=%s" % (key[:7], row.get("domain", "?"), row.get("documentroot", "?")))
+          PYROOT
+
+          echo "== do these credentials open cPanel =="
+          OUT=$(curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/Variables/get_user_information" 2>&1)
+          if echo "$OUT" | grep -q '"status" *: *1'; then
+            echo "  cPanel: AUTHENTICATES"
+          else
+            echo "  cPanel: did NOT authenticate."
+            echo "$OUT" | head -2 | cut -c1-160
+            echo "  So CHEMICLOUD_USERNAME / CHEMICLOUD_PASSWORD_FTP are neither a"
+            echo "  working FTP account nor a working cPanel login."
+            exit 0
+          fi
+
+          echo
+          echo "== FTP accounts that exist, names and home directories only =="
+          curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/Ftp/list_ftp" | python3 /tmp/show_ftp.py
+
+          echo
+          echo "== document roots, so we learn where /blog actually lives =="
+          curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/DomainInfo/domains_data?format=hash" | python3 /tmp/show_roots.py
+
       - name: Which host and credential pair actually authenticates
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
