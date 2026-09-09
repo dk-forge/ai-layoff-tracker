@@ -74,6 +74,130 @@ A close cousin of this fix exists on PR #291, found independently; that branch
 is 21 commits behind main and carries unrelated changes, so this was written
 fresh on main. Credit to that investigation for reaching the same diagnosis.
 
+## 2026-09-09 - a second duplicate detector, because every guard we had asked the same question
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_duplicate_shape_scan.py`
+
+The class is `wrong-scope-or-key` and not `novel`: this is a dedup keyed on the
+wrong thing, which is the shape that slug names. What is new is not the shape
+but the reach. The key was not merely wrong for one pair, it was the SINGLE
+gate every other duplicate guard sat behind, so getting it wrong disabled all
+of them at once and silently.
+
+Every defence against a double-counted headline lived inside
+`dedupe_llm.candidate_clusters`. The exact-hash gate, the same-company window,
+the widened pair windows, the model adjudication: all of them run AFTER
+bucketing, and bucketing is a company-name key. A pair that never becomes a
+candidate is never compared, never judged, never logged and never counted. It
+costs nothing, produces no error, no health row and no log line, and it lasts
+forever.
+
+Three ways that happened were found live in one day.
+
+1. NAME VARIANTS. "Volkswagen", "Volkswagen (VW)" and "Grupo Volkswagen"
+   bucketed under three keys, so one 50,000-job event reported three times was
+   never proposed as a pair, while a fourth report of the same event WAS
+   caught. `bucket_key()` was widened for this in `f7fe402`.
+2. DATELESS ROWS. `days_between` answers 9999 for a blank `layoff_date`, and
+   every window gate compares a day count, so a row with no date can never
+   cluster with anything, whatever the bucketing does. Row 176988 (Grupo
+   Volkswagen, 60,000, no date) is live in the headline and structurally
+   unreachable.
+3. The movement guard fired on the REPAIR rather than on the damage. Written
+   up at the bottom, because it is a separate change and it is subtle.
+
+A guard that shares its target's blind spot is worth nothing until it has
+caught one known instance, and widening `bucket_key` again is more of the same
+guard. So `railway/duplicate_shape_scan.py` asks a DIFFERENT QUESTION.
+
+**The key is `(country compatibility, job_count within 2%, date gap <= 30d)`
+and there is no company string in it.** Not normalised, not bucketed, not
+compared, not read. Those three fields are exactly the three the published
+headline sums over, so a spelling, a typo, an acronym, a parent or subsidiary
+label, a translation or a ticker cannot remove a pair from consideration:
+there is nothing for a name to be wrong IN. `bucket_key` fails when two rows
+for one event are SPELLED differently; this fails only when they carry
+different NUMBERS, and those two failure modes are disjoint. The name reaches
+the OUTPUT only, where a human reads it to adjudicate.
+
+On the live top 1,000 rows it immediately surfaces pairs no name key can ever
+reach: `Golman Sachs` against `Goldman Sachs` (a typo, 3,200 jobs, same day),
+`LAUSD` against `Los Angeles Unified School District`, `JLR` against
+`Tata Motors' JLR` against `Jaguar Land Rover` (three rows, 4,000 each, three
+days), `IBM` against `International Business Machines Corp.`, `Nissan` against
+`Nissan Motor Co.`, `Boots UK` against `Walgreens Boots Alliance`. 67 dated
+suspects and 12 dateless ones, none of them merged by anything.
+
+**It reports and never merges.** No `/merge-events`, no `/bulk-purge`, no
+`/add`, no write of any kind, no model call, $0.00 per run. A suspected
+duplicate is not a proven one and two genuinely distinct 5,000-job rounds in
+one country in one month are an ordinary false positive here, so every finding
+is UNKNOWN pending the owner's adjudication and NONE of them is an action item.
+`ops_status.py [3f]` prints the count and the worst five and does not touch the
+exit code; only a sweep that could not RUN joins `unverified`, because an
+unread signal is not a pass.
+
+**Dateless rows get their own section** for the reason they are invisible in
+the first place: they are unreachable by the automated path by construction, so
+they need a human queue rather than silence. Which dateless rows is DERIVED,
+never listed. Eurofound ERM's historical records are 70% dateless, which is a
+property of the source and not an anomaly, so that class is reported as a bulk
+count. News is 95% dated, so a dateless news row is an anomaly and is queued,
+with its nearest same-country count neighbours attached as adjudication hints,
+strict-country matches ranked above wildcard ones. That cut turns 519 dateless
+rows into a queue of 12, and 176988 is the largest of them with 179106 named as
+its first candidate.
+
+The sweep is 5 paged `/query` requests, one at a time, 1.5s apart, and it
+ABORTS at the first response that is not decodable JSON. Parallel page walks of
+this host cost this machine's IP several hours of bot challenge once already.
+It reads `exclude_supersets=1` on purpose: `/aggregate` sums `superset_of = 0`,
+so the detector reads exactly the population the number it protects is made of.
+
+**Proven by mutation, both directions.** Giving `row_date` a sentinel instead
+of `None` for a blank date, which is the 9999 defect written in a second place,
+empties the dateless queue and fails 7 of 25. Adding an equal-company-name
+requirement to `pair_is_suspect`, which is the blind spot itself, loses the
+179106/179133 pair and fails 5 of 25. Restored, all 25 pass. 179133 had already
+been merged away by the dedup job before this was written, which is why the
+three rows are committed as a fixture: the acceptance case no longer exists to
+be re-read. The guard lands in the `rest-2` group.
+
+**What it still cannot see, stated in its own output rather than left to be
+assumed:** anything below the sweep's floor (3,000 jobs at `--top 1000`); two
+reports of one event whose counts differ by more than 2% and that BOTH carry
+dates (the 50,000/60,000 Volkswagen pair is only visible because one side is
+dateless); WARN against WARN, which the iron rule exempts and which would
+otherwise flood the list; and rows already folded by `/reconcile-supersets`,
+which the headline does not count. It also cannot judge. It hands a human a
+worklist, and that is the whole of it.
+
+**THE MOVEMENT GUARD, WRITTEN UP AND DELIBERATELY NOT FIXED HERE.**
+`MovementInvariant` computes `d_entries = entries - prior_entries` and sizes
+its whole allowance from it: `allowance = abs(d_entries) * base_mean *
+mean_factor`. That figure is NET. Eight hard deletes and six arrivals in one
+window read as `-2 entries`, so the allowance is sized for two rows while
+fourteen actually moved, and a repair that removes 50,000 duplicated jobs
+arrives as a large drop with almost no allowance behind it. It FAILS on the
+repair. The knowledge was already in this file and in the wrong guard:
+`ContainmentInvariant`'s own FAIL text says a net entry delta "bounds neither
+gross flow, so a handful of large departures hides inside it". Movement never
+learned it.
+
+The half that matters more is the other end, and it is NOT fixed by teaching
+the guard about gross flow. When the duplicate ARRIVES, `d_entries` is `+1`,
+the headline moves by that row's job count, and the clause "one arriving row is
+the whole move" excuses it explicitly, by design, correctly: a duplicate of a
+big event and a real big event are the SAME OBSERVATION at the headline. No
+bound on a published aggregate can separate them, because the difference is not
+in the aggregate. So the movement guard is not the place this class gets caught
+and no widening of it will make it so, which is exactly why the detector above
+had to be a separate question rather than another parameter. What the deletion
+blindness costs is different and still worth fixing: it points the alarm at the
+person cleaning up, which teaches sessions that the guard is wrong when it is
+merely late.
+
 ## 2026-09-09 - a workflow whose YAML does not parse runs no jobs, and nothing anywhere says so
 
 **Class:** silent-stop
