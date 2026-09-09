@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "apply-a-signed-off-correction:main:b6c3989521fd8bfe": {
-      "first": 1788985499,
-      "last": 1788985499,
-      "subject": "CI RED: Apply a signed-off correction \u2014 restore was incomplete: restored=0/5, rejected=[{'id': 179170, 'reason': 'hash is not suppressed by a merge'}, {'id': 177083, 'reason': 'has"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -73,6 +68,6 @@
       "subject": "CI RED: DMARC report check \u2014 DMARC: a sender would be quarantined, or the mailbox login was REFUSED. See the job summary."
     }
   },
-  "updated_at": "2026-09-09T20:35:48+00:00",
+  "updated_at": "2026-09-09T20:52:32+00:00",
   "version": 1
 }
