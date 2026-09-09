@@ -397,19 +397,29 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
           set -uo pipefail
-          python3 railway/endpoint_check.py \
+          # THE VERDICT GOES INSIDE THE ANNOTATION, not just into the log.
+          # ci_alert.py mails the single most specific line it can find, and it
+          # ranks `::error::` annotations above ordinary output. An annotation
+          # that said "see the line above" would therefore be the whole email,
+          # and the status, the content type and the excerpt would stay in a log
+          # that outlives nothing. So the verdict is carried INTO it, folded to
+          # one line because an annotation is one line. No pipe into an early
+          # exiter here: `tr` reads all of its input, so nothing can take EPIPE.
+          OUT="$(python3 railway/endpoint_check.py \
             --label "the deployed tracker API" \
             --url "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
             --require canonical_events \
             --cookie 'humans_21909=1' \
-            --where "the route is alt_api_integrity_status(), registered in wordpress-plugin/ai-layoff-tracker/includes/db.php; an HTML body here usually means WordPress fataled on the freshly uploaded plugin, so read the excerpt above before re-running"
+            --where "the route is alt_api_integrity_status(), registered in wordpress-plugin/ai-layoff-tracker/includes/db.php; an HTML body here usually means WordPress fataled on the freshly uploaded plugin, so read the excerpt in this message before re-running" 2>&1)"
           STATUS=$?
+          echo "$OUT"
+          ONE_LINE="$(printf '%s' "$OUT" | tr '\n\r' '  ')"
           if [ "$STATUS" = "2" ]; then
-            echo "::error::The live tracker API answered, and the answer is not the JSON this deploy expects. The verdict line above names the status, the content type and the first 200 characters of the body."
+            echo "::error::The live tracker API answered and the answer is not the JSON this deploy expects. $ONE_LINE"
             exit 1
           fi
           if [ "$STATUS" = "3" ]; then
-            echo "::warning::The live tracker API could NOT be reached, so it was never asked. This is UNKNOWN, not a pass; the reader check below and the daily jobs go red if it persists."
+            echo "::warning::The live tracker API could NOT be reached, so it was never asked. This is UNKNOWN, not a pass; the reader check below and the daily jobs go red if it persists. $ONE_LINE"
           fi
           exit 0
 

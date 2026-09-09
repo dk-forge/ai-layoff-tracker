@@ -240,6 +240,19 @@ class TheWorkflowActuallyUsesIt(unittest.TestCase):
         self.assertIn('if [ "$STATUS" = "3" ]', step)
         self.assertIn("UNKNOWN, not a pass", step)
 
+    def test_the_verdict_travels_inside_the_annotation(self):
+        """ci_alert mails the most specific line, and it ranks `::error::`
+        annotations above ordinary output. An annotation that pointed at the
+        log would BE the email, and the status, content type and excerpt would
+        never leave the run."""
+        step = DEPLOY_CODE.split("- name: Verify the deployed tracker API", 1)[1]
+        step = step.split("- name:", 1)[0]
+        self.assertIn('OUT="$(python3 railway/endpoint_check.py', step)
+        for line in step.splitlines():
+            if "::error::" in line or "::warning::" in line:
+                self.assertIn("$ONE_LINE", line,
+                              f"this annotation drops the verdict: {line.strip()}")
+
     def test_the_version_greps_cannot_die_silently(self):
         """An unmatched grep under `set -e` used to end the step with no line
         of output at all. Both now fall through to a named error."""

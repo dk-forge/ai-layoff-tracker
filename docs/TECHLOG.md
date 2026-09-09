@@ -47,6 +47,17 @@ the deploy's OWN 503 maintenance window are all UNKNOWN. A 500 is not: that is
 PHP answering, and a fatal in a plugin this job just uploaded is precisely the
 fault the step exists for.
 
+**And the verdict travels INSIDE the annotation.** `ci_alert.py` mails the
+single most specific line it can find and ranks `::error::` annotations above
+ordinary output, so an annotation reading "see the log above" would have BEEN
+the email and the status, the content type and the excerpt would have stayed in
+a log that outlives nothing. The step folds the helper's verdict to one line
+and carries it into the annotation, with the diagnosis first and the
+where-to-look tail last, so a truncation at 400 characters still cuts after the
+part that identifies the failure. No pipe into an early exiter is used to do
+it: `tr` reads all of its input, so nothing here can take EPIPE the way the
+FTPS probe did this morning.
+
 Bodies are truncated to 200 characters and stripped of control characters, so a
 response cannot smuggle an ANSI escape or a `::error::` line of its own into
 the run log. The endpoints are public and unauthenticated; no request here
