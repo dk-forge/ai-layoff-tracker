@@ -87,6 +87,11 @@
       "last": 1788955374,
       "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at asktherecruiter/blog, or no existing ai-layoff-tracker.php at asktherecruiter/blog/wp-content/plugins/ai"
     },
+    "deploy-wordpress-plugin:main:fca134bf9a75991e": {
+      "first": 1788956982,
+      "last": 1788956982,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at public_html, or no existing ai-layoff-tracker.php at public_html/wp-content/plugins/ai-layoff-tracker. R"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -123,6 +128,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consume[81 chars]-25']"
     }
   },
-  "updated_at": "2026-09-09T12:28:15+00:00",
+  "updated_at": "2026-09-09T12:29:42+00:00",
   "version": 1
 }
