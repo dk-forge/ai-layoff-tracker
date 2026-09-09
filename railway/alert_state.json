@@ -92,6 +92,11 @@
       "last": 1788880314,
       "subject": "CI RED: Mailbox janitor \u2014 The mailbox could not be read. UNKNOWN, not a pass."
     },
+    "tests:live.data:4c51a688fc18dee4": {
+      "first": 1788968371,
+      "last": 1788968371,
+      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: live API returned HTTP 500; Worldwide jobs, all time: live API returned "
+    },
     "tests:live.data:7771c627fc3b103d": {
       "first": 1788898203,
       "last": 1788898203,
@@ -103,6 +108,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-09T15:37:20+00:00",
+  "updated_at": "2026-09-09T15:39:32+00:00",
   "version": 1
 }
