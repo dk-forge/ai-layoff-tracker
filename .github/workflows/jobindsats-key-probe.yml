@@ -58,13 +58,18 @@ jobs:
               print("    %s" % " ".join(json.dumps(rows, ensure_ascii=False).split())[:300])
               raise SystemExit(0)
           print("    %d row(s)" % len(rows))
+          if rows and isinstance(rows[0], dict):
+              # Print the field names the API actually uses rather than guessing
+              # at id/title/name. The first run guessed and printed 18 rows of
+              # "?", which is a report that says nothing.
+              print("    fields: %s" % ", ".join(sorted(rows[0])))
           for row in rows[:40]:
               if isinstance(row, dict):
-                  ident = row.get("id") or row.get("name") or row.get("key") or "?"
-                  label = row.get("title") or row.get("description") or row.get("label") or ""
-                  print("    %-30s %s" % (str(ident)[:30], str(label)[:90]))
+                  vals = [str(v) for v in row.values()
+                          if isinstance(v, (str, int, float)) and str(v).strip()]
+                  print("    %s" % " | ".join(vals)[:170])
               else:
-                  print("    %s" % str(row)[:110])
+                  print("    %s" % str(row)[:170])
           if len(rows) > 40:
               print("    ... and %d more" % (len(rows) - 40))
           PYBODY
