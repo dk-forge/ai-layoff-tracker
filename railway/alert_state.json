@@ -92,6 +92,11 @@
       "last": 1788956982,
       "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at public_html, or no existing ai-layoff-tracker.php at public_html/wp-content/plugins/ai-layoff-tracker. R"
     },
+    "dmarc-report-check:main:148f7d8019c4cbbf": {
+      "first": 1788958598,
+      "last": 1788958598,
+      "subject": "CI RED: DMARC report check \u2014 DMARC: a sender would be quarantined, or the mailbox login was REFUSED. See the job summary."
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -128,6 +133,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consume[81 chars]-25']"
     }
   },
-  "updated_at": "2026-09-09T12:29:42+00:00",
+  "updated_at": "2026-09-09T12:56:38+00:00",
   "version": 1
 }
