@@ -76,13 +76,8 @@
       "first": 1788983942,
       "last": 1788983942,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,607,216 jobs / 65,530 entries"
-    },
-    "live-data-integrity-check:main:b0ae244977e18b74": {
-      "first": 1788898189,
-      "last": 1788898189,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: OPEN INCIDENT, baseline NOT advanced. Only `--close-incident worldwide_all_time` (reviewer + reason + row IDs + an explicit "
     }
   },
-  "updated_at": "2026-09-09T20:31:07+00:00",
+  "updated_at": "2026-09-09T20:35:46+00:00",
   "version": 1
 }
