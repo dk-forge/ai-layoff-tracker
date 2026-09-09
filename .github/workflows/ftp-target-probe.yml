@@ -212,6 +212,18 @@ jobs:
           " 2>&1) || true
           printf '%s\n' "$OUT" | grep -v '^ftp:' | grep -v '^\./\.' | head -40
           echo
+          echo "== inside asktherecruiter.com =="
+          for D in "asktherecruiter.com" "asktherecruiter.com/blog"; do
+            echo "  --- $D"
+            R=$(timeout 40 lftp -c "
+              set ssl:verify-certificate no; set ftp:ssl-force true;
+              set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+              open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+              cls -1 \"$D\";
+            " 2>&1) || true
+            printf '%s\n' "$R" | grep -v '^ftp:' | head -25 | sed 's/^/      /'
+          done
+          echo
           echo "== is wp-config.php where the owner says it is =="
           timeout 40 lftp -c "
             set ssl:verify-certificate no; set ftp:ssl-force true;
