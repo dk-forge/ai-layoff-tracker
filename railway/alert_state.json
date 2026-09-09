@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "apply-a-signed-off-correction:main:b6c3989521fd8bfe": {
+      "first": 1788968240,
+      "last": 1788968240,
+      "subject": "CI RED: Apply a signed-off correction \u2014 restore was incomplete: restored=0/5, rejected=[{'id': 179170, 'reason': 'hash is not suppressed by a merge'}, {'id': 177083, 'reason': 'has"
+    },
     "apply-a-signed-off-correction:main:b8426f299208ae51": {
       "first": 1788897798,
       "last": 1788897798,
@@ -98,6 +103,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-09T15:20:17+00:00",
+  "updated_at": "2026-09-09T15:37:20+00:00",
   "version": 1
 }
