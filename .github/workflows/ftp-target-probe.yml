@@ -221,6 +221,24 @@ jobs:
           " 2>&1) || true
           printf '%s\n' "$R" | grep -v '^ftp:' | head -40 | sed 's/^/      /'
           echo
+          echo "== addondomains, two levels deep (the /blog origin is an addon domain) =="
+          A=$(timeout 60 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 25;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            find -d 3 addondomains;
+          " 2>&1) || true
+          printf '%s\n' "$A" | grep -v '^ftp:' | grep -i 'wp-config\|wp-content\|addondomains/[^/]*/$' | head -40 | sed 's/^/      /'
+          echo
+          echo "== the same for asktherecruiter.com/ at the root =="
+          B=$(timeout 60 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 25;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            find -d 3 asktherecruiter.com;
+          " 2>&1) || true
+          printf '%s\n' "$B" | grep -v '^ftp:' | head -30 | sed 's/^/      /'
+          echo
           echo "== is wp-config.php where the owner says it is =="
           timeout 40 lftp -c "
             set ssl:verify-certificate no; set ftp:ssl-force true;
