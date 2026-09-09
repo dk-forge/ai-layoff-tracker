@@ -181,12 +181,12 @@ class RestoreMergedHandlerRules(unittest.TestCase):
         self.assertIn("mail.asktherecruiter.com", workflow)
         self.assertRegex(workflow, r"--resolve [^\n]*asktherecruiter\.com:443")
 
-    def test_signed_corrections_pin_the_hostname_to_the_wordpress_origin(self):
+    def test_signed_corrections_use_the_public_tls_verified_route(self):
         workflow = _read(WORKFLOW)
-        pin = workflow.index("mail.asktherecruiter.com")
-        apply = workflow.index("python3 railway/apply_correction.py")
-        self.assertLess(pin, apply)
-        self.assertIn("/etc/hosts", workflow)
+        self.assertIn("WP_SITE_URL: https://asktherecruiter.com/blog", workflow)
+        self.assertNotIn("mail.asktherecruiter.com", workflow)
+        self.assertNotIn("/etc/hosts", workflow)
+        self.assertNotIn("--insecure", workflow)
 
 
 class DedupHashParity(unittest.TestCase):

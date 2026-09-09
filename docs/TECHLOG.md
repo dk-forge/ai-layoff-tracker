@@ -1,3 +1,26 @@
+## 2026-09-09 - signed corrections now use the public TLS-verified ChemiCloud path
+
+**Class:** correction-transport - a direct origin pin used the wrong trust model
+**Guard:** `railway/tests/test_move_source_reports.py`
+
+Dakota confirmed the WordPress site has moved from Bluehost to ChemiCloud. The
+new restoration route was already live, and dry run `34398160574` reproduced the
+five intended rows and 428 jobs without writing. Apply run `34398242111` failed
+before a database write: `/etc/hosts` pinned `asktherecruiter.com` directly to
+the ChemiCloud origin, which presents a Cloudflare Origin CA certificate. That
+certificate is correct for the Cloudflare-to-origin leg but is not a public
+trust certificate, so Requests rejected it. Disabling TLS verification would
+have hidden the design error.
+
+An unauthenticated empty POST over the ordinary public route returned 403 rather
+than 404, proving that the deployed handler is reachable through Cloudflare and
+the proxy. The correction workflow therefore no longer pins the hostname to the
+origin. It uses `https://asktherecruiter.com/blog` with normal certificate
+verification. The regression test was red against the pinned workflow and now
+requires the public URL while prohibiting the origin alias, `/etc/hosts`, and
+`--insecure`; all 34 correction/restoration tests pass. The data correction
+remains pending until a merged-main apply and five-row read-back succeed.
+
 ## 2026-09-08 - 2.20.179 was visible while one transferred PHP include still executed old bytecode (2.20.180, branch)
 
 **Class:** cache-served-stale - the host served an old compiled include beside a new plugin entrypoint
