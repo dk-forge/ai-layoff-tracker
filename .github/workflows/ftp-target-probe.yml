@@ -199,15 +199,18 @@ jobs:
           mapfile -t HOME_LINES <<< "$HOME_OUT"
           printf '%s\n' "${HOME_LINES[@]:0:40}" | grep -v "^ftp://"
           echo
-          echo "== what is actually in the blog's plugins folder =="
-          PLUG=$(timeout 60 lftp -c "
-            set ssl:verify-certificate no; set ftp:ssl-force true;
-            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
-            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-            cls -1 public_html/blog/wp-content/plugins/;
-          " 2>&1) || true
-          mapfile -t PLUG_LINES <<< "$PLUG"
-          printf '  %s\n' "${PLUG_LINES[@]:0:30}" | grep -v "ftp:" 
+          echo "== the account root, and then public_html =="
+          for DIR in "." "public_html" "public_html/blog"; do
+            echo "  --- $DIR"
+            OUT=$(timeout 45 lftp -c "
+              set ssl:verify-certificate no; set ftp:ssl-force true;
+              set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+              open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+              cls -1 -d \"$DIR\"/*;
+            " 2>&1) || true
+            mapfile -t L <<< "$OUT"
+            printf '    %s\n' "${L[@]:0:40}" | grep -v "ftp:"
+          done
           echo
           echo "== is wp-config.php where the owner says it is =="
           timeout 40 lftp -c "
