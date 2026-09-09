@@ -77,6 +77,11 @@
       "last": 1788958598,
       "subject": "CI RED: DMARC report check \u2014 DMARC: a sender would be quarantined, or the mailbox login was REFUSED. See the job summary."
     },
+    "erm-provenance-check:main:e959632802090c95": {
+      "first": 1788982444,
+      "last": 1788982444,
+      "subject": "CI RED: ERM provenance check \u2014 published ERM rows disagree with the country they were imported with (exit 2) - see the step above for the rows"
+    },
     "live-data-integrity-check:main:b0ae244977e18b74": {
       "first": 1788898189,
       "last": 1788898189,
@@ -108,6 +113,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-09T15:39:32+00:00",
+  "updated_at": "2026-09-09T19:34:04+00:00",
   "version": 1
 }
