@@ -1,3 +1,79 @@
+## 2026-09-09 - a unit test read the live incident ledger, so a real open finding reddened it
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_cloudflare_edge_unknown.py`
+
+`test_an_edge_blip_produces_no_failure_and_no_bare_unknown` failed on main from
+run 34334767922, one week after the file shipped, on an assertion that had
+nothing to do with the code it was written to guard.
+
+The test is a claim about TRANSPORT: a Cloudflare 52x is minted by the edge, no
+request reached WordPress, no number was read, so nothing can be wrong and
+`report.failed` must be empty. It proved that by calling
+`data_integrity.check_all()` over the real invariant registry with a fetch stub
+that only raises. The real registry contains `MovementInvariant`, and
+`MovementInvariant` reads the COMMITTED `railway/headline_incidents.json` at run
+time. On 2026-09-08 an incident opened there for `worldwide_all_time`, and an
+open incident makes its slice report FAIL by design, deliberately without
+consulting the network, because time, later rows and an unreachable API must
+never be able to close a finding a human has not closed. Both mechanisms were
+behaving exactly as specified. The test simply asked a question about transport
+and got a true answer about live data.
+
+It had passed for months only because no incident happened to be open.
+
+WHY THIS IS `two-copies-drifted` AND NOT A NEW SHAPE. The mitigation already
+existed. `tests/test_dedup_live.py` has carried a private
+`_without_open_incidents()` since `9e723ff` (2026-08-22), written against this
+precise hazard, with a docstring that describes it in full. The new file drives
+`check_all()` over the same registry in the same offline way and could not
+inherit a helper that lived inside another test module, so the second copy of
+the construct shipped without the first copy's guard.
+
+THE FIX IS HERMETICITY, NOT A RELAXED ASSERTION. Nothing here widens a
+tolerance, exempts a slice, or makes the sticky-incident mechanism quieter.
+`tests/_incident_free.py` now holds ONE definition of "the registry, with the
+movement guard pointed off the live ledger", and both modules import it. The
+incident still reports FAIL in every place it is meant to be read: the live
+`test_dedup_live` pass, `ops_status.py [3]`, the digest, and
+`data_integrity.py` on its own registry. Only the OFFLINE test stops reading
+live mutable state.
+
+The other half is asserted, because a hermetic test that no longer tests
+anything is worse than the flaky one it replaced.
+`TheStickyIncidentIsStillLouderThanABlip` builds a temp ledger holding an open
+incident and pins that all five edge statuses still produce FAIL through it: if
+a 520 could excuse an incident, an outage would be a way to launder a finding.
+A second test asserts the empty-ledger stand-in path really is absent, so
+committing a file at that name cannot quietly return the module to reading live
+state. Verified by mutation in both directions: with the fix in place, dropping
+520 from `_EDGE_TO_ORIGIN` still reddens the original assertion (6 failures),
+and the fixture ledger still produces the sticky FAIL.
+
+SWEPT THE CLASS, NOT THE INSTANCE. Every other test under `railway/tests/` that
+touches `headline_incidents.json`, `headline_baseline.json`, `source_state.json`,
+`alert_state.json`, `alert_outbox.json`, `spend_jobs.json`,
+`tracker_learning_state.json`, `curated_probe_state.json` or the health ledger
+already redirects to a temp path or a patched module attribute. Two read a
+committed file ON PURPOSE and are correctly left alone, because they assert the
+shipped artifact is well formed rather than exercising logic through it:
+`test_headline_guards.TheShippedLedger` (an open slice name that is not a
+watched slice would make an incident silently unenforceable) and
+`test_source_freshness.TheCommittedLedgerIsWellFormed` (no entry may describe
+two different runs, and every UNAVAILABLE must be human signed). Both are
+empty-safe and do not depend on whether anything is currently open.
+
+NOT FIXED HERE, AND NOT OURS TO FIX. `test_no_headline_moves_without_rows_to_explain_it`
+still fails, and it should: that is the `worldwide_all_time` incident itself,
+-46,400 jobs over 1.0d on -2 entries with no row that explains it, opened
+2026-09-08T20:09:29Z. It is closed by a named human with a reason, affected row
+IDs and a replacement baseline, never by a test change. The count on main goes
+from two failures to one.
+
+A close cousin of this fix exists on PR #291, found independently; that branch
+is 21 commits behind main and carries unrelated changes, so this was written
+fresh on main. Credit to that investigation for reaching the same diagnosis.
+
 ## 2026-09-09 - a workflow whose YAML does not parse runs no jobs, and nothing anywhere says so
 
 **Class:** silent-stop
