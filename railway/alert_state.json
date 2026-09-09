@@ -57,11 +57,6 @@
       "last": 1788968240,
       "subject": "CI RED: Apply a signed-off correction \u2014 restore was incomplete: restored=0/5, rejected=[{'id': 179170, 'reason': 'hash is not suppressed by a merge'}, {'id': 177083, 'reason': 'has"
     },
-    "apply-a-signed-off-correction:main:b8426f299208ae51": {
-      "first": 1788897798,
-      "last": 1788897798,
-      "subject": "CI RED: Apply a signed-off correction \u2014 restore failed: HTTP 404 {\"code\":\"rest_no_route\",\"message\":\"No route was found matching the URL and request method.\",\"data\":{\"status\":404}}"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -108,6 +103,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: 'fail' != 'unknown'"
     }
   },
-  "updated_at": "2026-09-09T19:43:01+00:00",
+  "updated_at": "2026-09-09T19:58:09+00:00",
   "version": 1
 }
