@@ -199,6 +199,24 @@ jobs:
           mapfile -t HOME_LINES <<< "$HOME_OUT"
           printf '%s\n' "${HOME_LINES[@]:0:40}" | grep -v "^ftp://"
           echo
+          echo "== what is actually in the blog's plugins folder =="
+          PLUG=$(timeout 60 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASS\" \"$FTP_HOST\";
+            cls -1 public_html/blog/wp-content/plugins/;
+          " 2>&1) || true
+          mapfile -t PLUG_LINES <<< "$PLUG"
+          printf '  %s\n' "${PLUG_LINES[@]:0:30}" | grep -v "ftp:" 
+          echo
+          echo "== is wp-config.php where the owner says it is =="
+          timeout 40 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASS\" \"$FTP_HOST\";
+            cls -1 public_html/blog/wp-config.php;
+          " 2>&1 | grep -v "ftp:" || echo "  wp-config.php NOT found at public_html/blog/"
+          echo
           for CAND in \
             "wp-content/plugins/ai-layoff-tracker" \
             "public_html/wp-content/plugins/ai-layoff-tracker" \
