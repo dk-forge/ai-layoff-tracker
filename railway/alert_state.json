@@ -67,11 +67,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "deploy-wordpress-plugin:main:10f54fb7b360cf23": {
-      "first": 1788965972,
-      "last": 1788965972,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Guard failed \u2014 either no wp-config.php at addondomains/AskTheRecruiter.com, or no existing ai-layoff-tracker.php at addondomains/AskTheRecruiter.c"
-    },
     "dmarc-report-check:main:148f7d8019c4cbbf": {
       "first": 1788958598,
       "last": 1788958598,
@@ -113,6 +108,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Lists differ: [] != ['ftp-target-probe.yml:213  `head` consume[81 chars]-25']"
     }
   },
-  "updated_at": "2026-09-09T15:06:15+00:00",
+  "updated_at": "2026-09-09T15:06:17+00:00",
   "version": 1
 }
