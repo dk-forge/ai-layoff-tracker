@@ -1,6 +1,6 @@
 ## 2026-09-09 - signed corrections now use the public TLS-verified ChemiCloud path
 
-**Class:** correction-transport - a direct origin pin used the wrong trust model
+**Class:** wrong-scope-or-key - a direct origin pin used the wrong trust model
 **Guard:** `railway/tests/test_move_source_reports.py`
 
 Dakota confirmed the WordPress site has moved from Bluehost to ChemiCloud. The
