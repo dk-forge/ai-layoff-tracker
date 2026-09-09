@@ -1,3 +1,14 @@
 {
-  "history": []
+  "history": [
+    {
+      "curated_recall_pct": 100.0,
+      "date": "2026-09-09",
+      "judged": 3,
+      "lessons": 0,
+      "matched": 3,
+      "method": "c1",
+      "taught_pct": null,
+      "unmatched": 0
+    }
+  ]
 }

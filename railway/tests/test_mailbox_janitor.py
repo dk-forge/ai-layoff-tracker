@@ -224,3 +224,38 @@ def test_repeats_of_one_subject_collapse_to_one_finding(monkeypatch) -> None:
     _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
     assert len(f["escalate"]) == 1
     assert "x16" in f["escalate"][0]
+
+
+def test_a_session_that_dies_at_logout_does_not_erase_the_sweep(monkeypatch) -> None:
+    """MEASURED 2026-09-08, and it is why every janitor run on record was red.
+
+    The sweep read the mailbox, classified it and deleted what it had read,
+    and then IMAP4_SSL.__exit__ called LOGOUT on a connection the server had
+    already dropped after being made to delete and expunge. The exception
+    escaped the teardown, the whole sweep resolved to UNKNOWN, and the run
+    reported "the mailbox could not be read" while messages were in fact
+    being cleared. Work that already happened must not be invalidated by the
+    closing of the session that did it.
+    """
+    class _DiesAtLogout(_Conn):
+        def logout(self):
+            import ssl
+            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
+
+        def __exit__(self, *a):
+            self.logout()
+
+    conn = _DiesAtLogout([_msg("Run failed", "notifications@github.com", 40)])
+    _patch(conn, monkeypatch)
+    state, f, detail = sweep("h", "u", "pw", retain_days=14, dry_run=False)
+    assert state == OK, f"a dead logout must not become the verdict, got {state}"
+    assert f["removed"] == 1
+    assert f["unclean_logout"] is True, "and it must be reported, not swallowed"
+    assert "logout" in detail
+
+
+# This suite is unittest, not pytest (#288). Without this, every test above is
+# collected as nothing at all and the file passes by never running.
+from _pytest_bridge import bind  # noqa: E402
+
+MailboxJanitorTests = bind(globals(), "MailboxJanitorTests")

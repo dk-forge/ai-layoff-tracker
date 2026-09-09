@@ -53,6 +53,843 @@ resolve `mail.asktherecruiter.com` to the WordPress origin and either use curl's
 the URL/SNI name, so certificate validation remains enabled. Reader-facing
 verification still uses the public path; only origin writes and their route
 gate bypass the proxy.
+## 2026-09-09 - seven workflows stopped existing for 15 hours, and the only report was seven red runs that read as noise
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_workflow_yaml_parses.py`
+
+Commit `60bda6e` (2026-09-08 20:08 UTC) added `OPS_MAIL_TO` and `OPS_MAIL_FROM`
+to seven jobs. Six of the seven files already carried `OPS_MAIL_FROM` a few
+lines below, under its own five-line comment explaining why it is passed
+wherever `RESEND_API_KEY` is; `warn-import.yml` gained a line identical to the
+one directly above it. Every one of the seven `env:` mappings ended up setting
+`OPS_MAIL_FROM` twice.
+
+**Duplicate keys are valid YAML and are rejected by Actions.** YAML 1.1 permits
+a repeated key and pyyaml keeps the last one without a word, so
+`test_workflow_yaml_parses.py` — five checks whose whole purpose is to catch a
+workflow file that has stopped working — passed all seven files. GitHub refuses
+to build the file at all.
+
+**How it presented, because the signature is the useful part.** Every push to
+main produced seven runs with `event: push`, `conclusion: failure`, created and
+concluded in the same second, `total_count: 0` from the jobs API, and
+`gh run view --log-failed` saying "log not found". The tell is the name:
+`gh run list` reported them as `.github/workflows/warn-import.yml` — the file
+PATH — while every healthy run reported its declared `name:`. Actions never read
+the `name:`, because the name is inside the file it could not parse. The same
+fact explains the `on: push` puzzle: none of the seven declares a push trigger,
+but Actions could not read the `on:` block either, so it attached the build
+error to whatever event arrived and failed a run against it. Example run
+`34344099814`; the earliest seen today was 10:02:47 UTC, and eight pushes across
+at least three sessions each produced their own seven.
+
+**Nobody was emailed, and that is the worse half.** No cause for any of the
+seven appears in `railway/alert_state.json`. `ci-alert.yml` subscribes to
+`workflow_run` for `workflows: ['*']`, and a workflow that never builds emits no
+`workflow_run` event — there is no workflow entity for the event to key off. The
+listener written to cover all 66 files from one place cannot see a file that
+failed to become one of the 66. So the seven red runs were loud in
+`gh run list` and completely absent from the inbox.
+
+What actually stopped is not the noise. A file Actions cannot build does not
+run its schedule: for 15 hours the daily WARN import, the tracker-diff learning
+loop, the data-quality anomaly pass, the link check, the OpenRouter
+low-balance alarm, the public tips queue and the monthly source-verification
+audit were not scheduled jobs. They were seven files.
+
+**The fix.** The duplicate line is removed from all seven; the pre-existing
+commented one is kept, so the intent of `60bda6e` (every ops job carries both
+variables) is unchanged and `tests/test_ops_sender.py` still passes with its 16
+checks green. `test_workflow_yaml_parses.py` gains check 6, a duplicate-key
+detector built on a `SafeLoader` subclass that records collisions the default
+constructor discards. It is proved by mutation rather than by a clean zero: a
+planted mapping of the exact shape `60bda6e` shipped is asserted to be valid
+YAML, shaped like a workflow, and reported by the detector.
+
+## 2026-09-09 - the Jobindsats key has worked since 2026-08-13; the public page said "application pending" for 27 days
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_credential_copy_is_derived.py`
+
+`JOBINDSATS_API_KEY` became a repository secret on 2026-08-13 and no code read
+it (`railway/orphaned_secrets.py` has reported it as an orphan since). A GitHub
+secret is write-only, so nothing here could tell whether it worked, and the
+Denmark row of the public country table went on saying **"Jobindsats varsel
+API: key application pending"** for 27 days after the application had already
+succeeded.
+
+**The measurement.** `.github/workflows/jobindsats-key-probe.yml`, dispatch
+only, read only, prints no key. Run `34342294682`:
+
+- `GET /v3/tables?format=json` with the secret answered **HTTP 200**, listing
+  18 subjects. Subject 1319, `Status paa arbejdsmarkedet`, is the one carrying
+  `Antal varslinger om afskedigelser`.
+- The controls in the same run: with **no token** and with a **bogus token**,
+  every path under `/v3/` answers 401, including one that does not exist. The
+  auth layer runs before routing, so the 200 is the key's own doing.
+
+**The first two runs were UNKNOWN, and saying so is what got to the answer.**
+`/v3/dataset` (the path in the brief) answered **404**, which is neither 200
+nor a refusal. Rounding that to "broken" would have been wrong and rounding it
+to "works" would have been a guess; naming it UNKNOWN is what prompted the
+control requests that settled it. `/v3/tables` then answered **422 "'format' is
+required."**, which is a live route validating a request, and the parameter it
+named produced the 200.
+
+**What the source can and cannot ever be.** The API publishes AGGREGATE monthly
+counts of persons and companies varslet by region, municipality and industry.
+It names no employer, so it can reconcile a Danish national total and can never
+produce a tracker entry. That is recorded in the ledger so nobody promises more
+than it can give.
+
+**Why the copy was unfalsifiable, which is the actual defect.** "key application
+pending" was a literal string in `railway/generate_country_table.py`. A fact
+about a credential lived where no run, no test and no session could contradict
+it, which is the cadence defect (`test_cadence_is_derived.py`) in a place a
+cadence scanner cannot see. The cell is now composed by `denmark_blurb()` from
+two things that can be read:
+
+- `railway/source_credentials.json` for the credential. Three states, because
+  "never asked" is not "asked and refused" and neither is a pass: `UNTESTED`
+  (and an absent entry means this), `VERIFIED`, `REFUSED`. A settled state
+  needs the date and a link to the run that watched it, or it is an assertion
+  again.
+- `collector_is_built()` for ingestion, deliberately NARROWER than
+  `source_inventory`'s "named by any file under railway/ or .github/workflows/":
+  a module must exist and `cron.py` must run it. The probe workflow names the
+  id, and a diagnostic that only asked a question must never vouch for a source.
+
+The live cell now reads **"Jobindsats varsel API: key verified 2026-09-09;
+aggregate counts only, not yet ingested"**. The key works, nothing is built on
+it, and no data flows: three separate claims, stated separately.
+
+**Proved by mutation.** Restoring the old typed string to the committed partial
+fails two tests; making the blurb say "ingested daily" with no collector fails
+the ingestion guard; removing the `evidence` link fails the ledger guard. All
+three green again on restore.
+
+**NOT LIVE.** The plugin deploy is broken on an FTP credential (see the FTPS
+target probe entries above). 2.20.181 is committed and UNVERIFIED LIVE; the
+live plugin remains 2.20.175, still showing "key application pending" until the
+next successful deploy.
+
+## 2026-09-09 - the -46,400 incident is closed: two dedup runs, and a guard that cannot see a deletion
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/duplicate_shape_scan.py` (ops_status `[3f]`), `railway/dedupe_llm.bucket_key`
+
+Closed by dak with rows 179185, 179133, 179106 and a replacement baseline of
+20,579,595 jobs / 65,507 entries. The short reason on the ledger points here.
+
+**What moved the number.** Two cross-source dedup runs, both hard-deleting
+duplicate rows:
+
+- run `34204171256` (2026-09-08T08:27:58Z) removed 8, dominated by **179185**,
+  a Bloomberg report of the Volkswagen 50,000 event stored as its own row
+  beside keeper 179106 since 2026-09-03.
+- run `34335272802` (2026-09-09T09:32Z) removed 6 more, after `bucket_key`
+  (commit f7fe402) taught `candidate_clusters` to see name variants:
+  **179133 "Volkswagen (VW)"** into 179106 on the owner's ruling, plus SAP,
+  Schlumberger, Aerojet, Electrolux and HP re-reports.
+
+**Why the guard fired on the repair rather than the damage.**
+`MovementInvariant` sizes its allowance from `abs(d_entries)`, which is a NET
+figure. Eight rows out and six in reads as `-2`, so the allowance covers two
+rows while fourteen moved. The same shape produced the 42,000-job alarm on
+2026-08-14. The knowledge already existed in the wrong guard:
+`ContainmentInvariant`'s own FAIL text says a net delta "bounds neither gross
+flow".
+
+**Ruled out arithmetically, not by inspection.** `reconcile-supersets` did not
+run: `excluded_entries` 424 and `excluded_jobs` 121,458 are identical on both
+baselines. The 4,320-job Applied Aerospace SEC repair is outside the window,
+applied 2026-09-07T18:32:57Z, before the 20:44:18Z baseline.
+
+**THREE THINGS ARE NOT CLOSED BY THIS, and the replacement baseline is the
+CURRENT PUBLISHED FIGURE rather than a figure proven free of duplicates.**
+
+1. **428 jobs across 5 rows falsely merged on 2026-09-08 are still missing.**
+   `/restore-merged-rows` returns 404 on the live 2.20.175; it ships in
+   2.20.178 and lands with the deploy.
+2. **Row 176988, "Grupo Volkswagen", 60,000, is a suspected third report of the
+   same VW event and is unreachable by dedup**, because it carries no
+   `layoff_date`, `days_between` returns 9999 for a blank, and no window admits
+   it. A dateless row can never cluster with anything, whatever it is called.
+   That is a second, independent blind spot in the same job.
+3. **`duplicate_shape_scan` reports 67 dated and 12 dateless suspects**,
+   including a `Golman Sachs` / `Goldman Sachs` typo, three JLR spellings and
+   `LAUSD` against `Los Angeles Unified School District`. None is adjudicated.
+
+**Why the second detector had to drop the name entirely.** Every duplicate
+defence sat behind one gate, `candidate_clusters`, which buckets by company
+string first. A pair that never becomes a candidate is invisible forever and
+silently. The new scan keys on `(country, job_count within 2%, date gap <= 30d)`
+with no company string anywhere in it, so a typo, an acronym, a translation or
+a ticker cannot remove a pair from consideration: there is nothing for a name
+to be wrong in. It reports and never merges, and its findings are
+UNKNOWN-pending-adjudication rather than FAIL, because a suspicion is not a
+proven duplicate and a permanent backlog as exit 2 would train sessions to
+ignore exit 2.
+
+**What teaching the movement guard about gross flow would NOT fix.** When a
+duplicate ARRIVES, `d_entries` is `+1` and the "one arriving row is the whole
+move" clause excuses it correctly: at the headline, a duplicate of a big event
+and a real big event are the same observation. No bound on a published
+aggregate separates them. That is why this needed a separate question rather
+than another parameter. The deletion blindness is still worth fixing, for a
+different reason: it points the alarm at the person cleaning up.
+
+## 2026-09-09 - a unit test read the live incident ledger, so a real open finding reddened it
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_cloudflare_edge_unknown.py`
+
+`test_an_edge_blip_produces_no_failure_and_no_bare_unknown` failed on main from
+run 34334767922, one week after the file shipped, on an assertion that had
+nothing to do with the code it was written to guard.
+
+The test is a claim about TRANSPORT: a Cloudflare 52x is minted by the edge, no
+request reached WordPress, no number was read, so nothing can be wrong and
+`report.failed` must be empty. It proved that by calling
+`data_integrity.check_all()` over the real invariant registry with a fetch stub
+that only raises. The real registry contains `MovementInvariant`, and
+`MovementInvariant` reads the COMMITTED `railway/headline_incidents.json` at run
+time. On 2026-09-08 an incident opened there for `worldwide_all_time`, and an
+open incident makes its slice report FAIL by design, deliberately without
+consulting the network, because time, later rows and an unreachable API must
+never be able to close a finding a human has not closed. Both mechanisms were
+behaving exactly as specified. The test simply asked a question about transport
+and got a true answer about live data.
+
+It had passed for months only because no incident happened to be open.
+
+WHY THIS IS `two-copies-drifted` AND NOT A NEW SHAPE. The mitigation already
+existed. `tests/test_dedup_live.py` has carried a private
+`_without_open_incidents()` since `9e723ff` (2026-08-22), written against this
+precise hazard, with a docstring that describes it in full. The new file drives
+`check_all()` over the same registry in the same offline way and could not
+inherit a helper that lived inside another test module, so the second copy of
+the construct shipped without the first copy's guard.
+
+THE FIX IS HERMETICITY, NOT A RELAXED ASSERTION. Nothing here widens a
+tolerance, exempts a slice, or makes the sticky-incident mechanism quieter.
+`tests/_incident_free.py` now holds ONE definition of "the registry, with the
+movement guard pointed off the live ledger", and both modules import it. The
+incident still reports FAIL in every place it is meant to be read: the live
+`test_dedup_live` pass, `ops_status.py [3]`, the digest, and
+`data_integrity.py` on its own registry. Only the OFFLINE test stops reading
+live mutable state.
+
+The other half is asserted, because a hermetic test that no longer tests
+anything is worse than the flaky one it replaced.
+`TheStickyIncidentIsStillLouderThanABlip` builds a temp ledger holding an open
+incident and pins that all five edge statuses still produce FAIL through it: if
+a 520 could excuse an incident, an outage would be a way to launder a finding.
+A second test asserts the empty-ledger stand-in path really is absent, so
+committing a file at that name cannot quietly return the module to reading live
+state. Verified by mutation in both directions: with the fix in place, dropping
+520 from `_EDGE_TO_ORIGIN` still reddens the original assertion (6 failures),
+and the fixture ledger still produces the sticky FAIL.
+
+SWEPT THE CLASS, NOT THE INSTANCE. Every other test under `railway/tests/` that
+touches `headline_incidents.json`, `headline_baseline.json`, `source_state.json`,
+`alert_state.json`, `alert_outbox.json`, `spend_jobs.json`,
+`tracker_learning_state.json`, `curated_probe_state.json` or the health ledger
+already redirects to a temp path or a patched module attribute. Two read a
+committed file ON PURPOSE and are correctly left alone, because they assert the
+shipped artifact is well formed rather than exercising logic through it:
+`test_headline_guards.TheShippedLedger` (an open slice name that is not a
+watched slice would make an incident silently unenforceable) and
+`test_source_freshness.TheCommittedLedgerIsWellFormed` (no entry may describe
+two different runs, and every UNAVAILABLE must be human signed). Both are
+empty-safe and do not depend on whether anything is currently open.
+
+NOT FIXED HERE, AND NOT OURS TO FIX. `test_no_headline_moves_without_rows_to_explain_it`
+still fails, and it should: that is the `worldwide_all_time` incident itself,
+-46,400 jobs over 1.0d on -2 entries with no row that explains it, opened
+2026-09-08T20:09:29Z. It is closed by a named human with a reason, affected row
+IDs and a replacement baseline, never by a test change. The count on main goes
+from two failures to one.
+
+A close cousin of this fix exists on PR #291, found independently; that branch
+is 21 commits behind main and carries unrelated changes, so this was written
+fresh on main. Credit to that investigation for reaching the same diagnosis.
+
+## 2026-09-09 - a second duplicate detector, because every guard we had asked the same question
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_duplicate_shape_scan.py`
+
+The class is `wrong-scope-or-key` and not `novel`: this is a dedup keyed on the
+wrong thing, which is the shape that slug names. What is new is not the shape
+but the reach. The key was not merely wrong for one pair, it was the SINGLE
+gate every other duplicate guard sat behind, so getting it wrong disabled all
+of them at once and silently.
+
+Every defence against a double-counted headline lived inside
+`dedupe_llm.candidate_clusters`. The exact-hash gate, the same-company window,
+the widened pair windows, the model adjudication: all of them run AFTER
+bucketing, and bucketing is a company-name key. A pair that never becomes a
+candidate is never compared, never judged, never logged and never counted. It
+costs nothing, produces no error, no health row and no log line, and it lasts
+forever.
+
+Three ways that happened were found live in one day.
+
+1. NAME VARIANTS. "Volkswagen", "Volkswagen (VW)" and "Grupo Volkswagen"
+   bucketed under three keys, so one 50,000-job event reported three times was
+   never proposed as a pair, while a fourth report of the same event WAS
+   caught. `bucket_key()` was widened for this in `f7fe402`.
+2. DATELESS ROWS. `days_between` answers 9999 for a blank `layoff_date`, and
+   every window gate compares a day count, so a row with no date can never
+   cluster with anything, whatever the bucketing does. Row 176988 (Grupo
+   Volkswagen, 60,000, no date) is live in the headline and structurally
+   unreachable.
+3. The movement guard fired on the REPAIR rather than on the damage. Written
+   up at the bottom, because it is a separate change and it is subtle.
+
+A guard that shares its target's blind spot is worth nothing until it has
+caught one known instance, and widening `bucket_key` again is more of the same
+guard. So `railway/duplicate_shape_scan.py` asks a DIFFERENT QUESTION.
+
+**The key is `(country compatibility, job_count within 2%, date gap <= 30d)`
+and there is no company string in it.** Not normalised, not bucketed, not
+compared, not read. Those three fields are exactly the three the published
+headline sums over, so a spelling, a typo, an acronym, a parent or subsidiary
+label, a translation or a ticker cannot remove a pair from consideration:
+there is nothing for a name to be wrong IN. `bucket_key` fails when two rows
+for one event are SPELLED differently; this fails only when they carry
+different NUMBERS, and those two failure modes are disjoint. The name reaches
+the OUTPUT only, where a human reads it to adjudicate.
+
+On the live top 1,000 rows it immediately surfaces pairs no name key can ever
+reach: `Golman Sachs` against `Goldman Sachs` (a typo, 3,200 jobs, same day),
+`LAUSD` against `Los Angeles Unified School District`, `JLR` against
+`Tata Motors' JLR` against `Jaguar Land Rover` (three rows, 4,000 each, three
+days), `IBM` against `International Business Machines Corp.`, `Nissan` against
+`Nissan Motor Co.`, `Boots UK` against `Walgreens Boots Alliance`. 67 dated
+suspects and 12 dateless ones, none of them merged by anything.
+
+**It reports and never merges.** No `/merge-events`, no `/bulk-purge`, no
+`/add`, no write of any kind, no model call, $0.00 per run. A suspected
+duplicate is not a proven one and two genuinely distinct 5,000-job rounds in
+one country in one month are an ordinary false positive here, so every finding
+is UNKNOWN pending the owner's adjudication and NONE of them is an action item.
+`ops_status.py [3f]` prints the count and the worst five and does not touch the
+exit code; only a sweep that could not RUN joins `unverified`, because an
+unread signal is not a pass.
+
+**Dateless rows get their own section** for the reason they are invisible in
+the first place: they are unreachable by the automated path by construction, so
+they need a human queue rather than silence. Which dateless rows is DERIVED,
+never listed. Eurofound ERM's historical records are 70% dateless, which is a
+property of the source and not an anomaly, so that class is reported as a bulk
+count. News is 95% dated, so a dateless news row is an anomaly and is queued,
+with its nearest same-country count neighbours attached as adjudication hints,
+strict-country matches ranked above wildcard ones. That cut turns 519 dateless
+rows into a queue of 12, and 176988 is the largest of them with 179106 named as
+its first candidate.
+
+The sweep is 5 paged `/query` requests, one at a time, 1.5s apart, and it
+ABORTS at the first response that is not decodable JSON. Parallel page walks of
+this host cost this machine's IP several hours of bot challenge once already.
+It reads `exclude_supersets=1` on purpose: `/aggregate` sums `superset_of = 0`,
+so the detector reads exactly the population the number it protects is made of.
+
+**Proven by mutation, both directions.** Giving `row_date` a sentinel instead
+of `None` for a blank date, which is the 9999 defect written in a second place,
+empties the dateless queue and fails 7 of 25. Adding an equal-company-name
+requirement to `pair_is_suspect`, which is the blind spot itself, loses the
+179106/179133 pair and fails 5 of 25. Restored, all 25 pass. 179133 had already
+been merged away by the dedup job before this was written, which is why the
+three rows are committed as a fixture: the acceptance case no longer exists to
+be re-read. The guard lands in the `rest-2` group.
+
+**What it still cannot see, stated in its own output rather than left to be
+assumed:** anything below the sweep's floor (3,000 jobs at `--top 1000`); two
+reports of one event whose counts differ by more than 2% and that BOTH carry
+dates (the 50,000/60,000 Volkswagen pair is only visible because one side is
+dateless); WARN against WARN, which the iron rule exempts and which would
+otherwise flood the list; and rows already folded by `/reconcile-supersets`,
+which the headline does not count. It also cannot judge. It hands a human a
+worklist, and that is the whole of it.
+
+**THE MOVEMENT GUARD, WRITTEN UP AND DELIBERATELY NOT FIXED HERE.**
+`MovementInvariant` computes `d_entries = entries - prior_entries` and sizes
+its whole allowance from it: `allowance = abs(d_entries) * base_mean *
+mean_factor`. That figure is NET. Eight hard deletes and six arrivals in one
+window read as `-2 entries`, so the allowance is sized for two rows while
+fourteen actually moved, and a repair that removes 50,000 duplicated jobs
+arrives as a large drop with almost no allowance behind it. It FAILS on the
+repair. The knowledge was already in this file and in the wrong guard:
+`ContainmentInvariant`'s own FAIL text says a net entry delta "bounds neither
+gross flow, so a handful of large departures hides inside it". Movement never
+learned it.
+
+The half that matters more is the other end, and it is NOT fixed by teaching
+the guard about gross flow. When the duplicate ARRIVES, `d_entries` is `+1`,
+the headline moves by that row's job count, and the clause "one arriving row is
+the whole move" excuses it explicitly, by design, correctly: a duplicate of a
+big event and a real big event are the SAME OBSERVATION at the headline. No
+bound on a published aggregate can separate them, because the difference is not
+in the aggregate. So the movement guard is not the place this class gets caught
+and no widening of it will make it so, which is exactly why the detector above
+had to be a separate question rather than another parameter. What the deletion
+blindness costs is different and still worth fixing: it points the alarm at the
+person cleaning up, which teaches sessions that the guard is wrong when it is
+merely late.
+
+## 2026-09-09 - a workflow whose YAML does not parse runs no jobs, and nothing anywhere says so
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_workflow_yaml_parses.py`
+
+GitHub Actions does not fail a workflow file it cannot parse. It does not
+annotate the commit, it does not open a run, and it does not appear in
+`gh run list`. The workflow simply stops existing, and every deploy, cron and
+guard it carried stops with it while every surface in this repo stays green.
+
+This is not hypothetical here. Commit `f014ebe` left
+`.github/workflows/deploy-plugin.yml` in exactly that state: a long prose block
+inside a block scalar ran on past its indentation and the scanner gave up at
+line 277, column 1. `ftp-target-probe.yml` was broken the same way twice in one
+day, both times by mis-indenting an embedded script, and both times it was
+caught only because somebody happened to validate it by hand. Hand validation
+is not a guard.
+
+Five checks over every file in `.github/workflows/`, using pyyaml, which is
+already in `railway/requirements.lock`:
+
+1. the directory exists and is not empty. A guard that examines zero files
+   passes forever and proves nothing, which is the same lesson an empty test
+   group taught;
+2. every file `safe_load`s, and a failure names the file with the parser's own
+   line and column;
+3. no stray TOP-LEVEL key, whitelisted against the real Actions set plus
+   Python's `True`, because pyyaml is YAML 1.1 and reads a bare `on:` as a
+   boolean. This is the sharper half: a file that fails outright is loud, but a
+   DEDENTED CONTINUATION LINE that happens to contain a colon parses perfectly
+   and quietly becomes a new root key, which Actions ignores along with
+   everything it swallowed;
+4. every file declares a trigger and at least one job;
+5. every step is a mapping carrying `run` or `uses`, since a truncated block
+   scalar turns a step list into a list of strings. A job-level `uses` is
+   accepted instead of `steps`, for reusable-workflow calls.
+
+Checks 3 to 5 SKIP a file that did not parse. Check 2 already owns that
+failure, and the first cut of this file re-parsed the broken file in every
+check, so one mis-indented script produced four failures, three of them raw
+tracebacks. One readable failure beats four noisy ones.
+
+Proven by mutation rather than by a clean run, using the real defect: swapping
+`f014ebe`'s `deploy-plugin.yml` in produces exactly one failure,
+`deploy-plugin.yml at line 277, column 1: could not find expected ':'`, and
+restoring it returns all five to green. Checks 3 and 5 were proven separately
+with a dedented root key and a step that is a bare string. All 94 currently
+committed workflow files pass all five.
+
+**The limit is stated in the docstring and is worth repeating: pyyaml is not
+GitHub Actions.** A file that parses here can still be rejected for an unknown
+key, a `runs-on` naming no runner, a malformed `${{ }}` expression, a cron
+Actions will not accept, or a `uses:` pointing at something that does not
+exist. Green here means the file is YAML shaped like a workflow, never that the
+workflow will run.
+
+## 2026-09-09 - five test modules that were never collected, and a janitor that deleted mail and then reported it could not read the mailbox
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_test_groups.py::test_no_module_declares_zero_tests`, `railway/tests/test_mailbox_janitor.py::test_a_session_that_dies_at_logout_does_not_erase_the_sweep`
+
+The owner asked for certainty that a cron reads both notification mailboxes,
+acts on them, clears what it has read, and does all of it while his laptop is
+off. Three of those four were already true by construction: `mailbox-janitor.yml`
+and `dmarc-report-check.yml` are both on a `schedule:` trigger and both run on
+`ubuntu-latest`, so no job in either depends on a machine in his house. The
+fourth was not.
+
+**Every mailbox-janitor run on record had failed.** The production mailbox swept
+cleanly, listed its one message and exited 2 because that message matched the
+escalation vocabulary. The sandbox mailbox, the one holding 2,106 real messages,
+failed both attempts with:
+
+    MAILBOX JANITOR: UNKNOWN -- socket error: EOF occurred in violation of protocol
+
+which the workflow reports as "the mailbox could not be read". That sentence was
+false. The sweep had read the mailbox, classified it, flagged what was past the
+retention window and expunged it. The connection died afterwards, in
+`IMAP4_SSL.__exit__`, which sends LOGOUT to a server that had just been made to
+delete and expunge through it. The exception escaped the teardown, past an
+`except` clause written for the read, and became the verdict for the whole run.
+
+Reproduced before touching anything, with a double whose `__exit__` raises
+`SSLEOFError` after a normal sweep:
+
+    UNKNOWN | deleted: [b'1']
+
+Work done, message deleted, verdict thrown away, run red, and the owner told the
+mailbox was unreadable. **A session that is being closed must not be able to
+invalidate work that already happened.** `sweep()` no longer uses `with`: the
+socket-error boundary covers the read and the delete, and teardown is a
+best-effort LOGOUT in a `finally` that sets `unclean_logout` and is REPORTED in
+the detail line rather than promoted to a state. Deliberately LOGOUT and not
+CLOSE, because CLOSE expunges everything flagged `\Deleted` and a teardown must
+not be able to remove anything the sweep did not decide to remove.
+
+**The tests that should have caught the class were never running.** This suite
+has no pytest (#288); the runner is `railway/run_tests.py`, which is `unittest`,
+and unittest collects TestCase methods. A module-level `def test_x(monkeypatch)`
+is collected as nothing at all: it does not fail, it does not error, it does not
+appear. `test_mailbox_janitor.py` and `test_dmarc_fetch.py` were written
+pytest-style and collected ZERO tests from the day they landed. Both were in a
+group. Both were listed. Both were counted as modules. Neither ran a single
+assertion.
+
+`test_test_groups.py` already pinned totality and disjointness over MODULES,
+which is the property that looked like the one that mattered and was not. Adding
+the real one found three more dead files nobody knew about:
+`test_industry_backfill_retry.py`, `test_tracker_diff_sitemap.py`,
+`test_warn_sanitize.py`. Five modules, 51 assertions, none of them executing.
+
+`railway/tests/_pytest_bridge.py` turns those functions into a real TestCase with
+a minimal `monkeypatch`, so the bodies are kept verbatim and nothing is
+re-litigated by the port. All 51 pass, so none of them was hiding a live defect,
+but every one of them was hiding the fact that it was not looking.
+
+**Mutation, both guards.** Remove the bridge from one file: the group guard fails
+naming `test_warn_sanitize.py`; restored, OK. Let the teardown escape again: 12
+of 13 janitor tests error; restored, OK.
+
+**Not changed, and why.** The GitHub cron for this repository is currently
+delivering about four and a half hours late (`Enrich announcement and domicile
+evidence`, cron 03:41 UTC, fired 08:21 / 08:18 / 08:36 / 08:05 / 07:50 / 08:11 on
+the last six days). The three mail workflows landed on main at 15:00-15:20 UTC on
+2026-09-08, after yesterday's slot, so their first scheduled runs are due around
+midday UTC today rather than at 07:40 / 08:10 / 08:50. That is queue latency on
+free hosted runners, not a wiring defect, and moving the cron would not move the
+queue.
+
+**Still open for the owner.** `JANITOR_PRODUCTION_IMAP_HOST` remains an orphan in
+`railway/orphaned_secrets.py`. The workflow points both matrix legs at the single
+`JANITOR_IMAP_HOST`, and the production leg connected and swept with it, so a
+per-mailbox host is not needed. Wiring a secret whose value cannot be read into
+the one path that currently works is exactly the unverified change this
+repository keeps ruling against, especially with the shared certificate on
+`rs7-fra.serverhostgroup.com` covering nothing under `mail.`. The honest options
+are revoke it and say so here, or point one mailbox at it deliberately and prove
+the connection. It stays reported.
+
+## 2026-09-09 - the deploy check failed in a language nobody speaks
+
+**Class:** novel
+**Guard:** `railway/tests/test_endpoint_check.py`
+
+The owner was emailed twice about `Deploy WordPress plugin`. The first mail
+carried one line:
+
+    json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+The second carried a bare `AssertionError`. Both came out of the same line, the
+step that verified the live API:
+
+    curl --fail --silent ... | python3 -c 'import json, sys;
+        payload = json.load(sys.stdin);
+        assert "canonical_events" in payload; print("verified")'
+
+Neither message names the endpoint, the HTTP status, the content type, or one
+byte of what came back. The first says only that something which was supposed
+to be JSON was not; the second says nothing at all, because a bare `assert`
+raises with no message. **The alert body is what outlives the run's log
+retention**, so those two strings are the whole of what an operator reads at
+3am, and neither of them is a place to start.
+
+**`--fail` threw away the evidence before Python could see it.** curl discards
+the body of any error response, so the HTML error page, the Cloudflare
+interstitial or the WordPress fatal that would have identified the answer in
+one glance was gone by the time anything looked. Status and body have to be
+captured separately, and both have to be reported.
+
+**And the check had only two states where it needed three.** A host that never
+answered and a host that answered with the wrong content were the same red run.
+That is the shape this repo has ruled on repeatedly: an endpoint that replied
+wrongly is a FAIL, an endpoint that was never reached was never asked and is
+UNKNOWN, and absence of a signal is not a pass.
+
+**The fix.** `railway/endpoint_check.py` is the four-copies-of-a-fragile-
+one-liner problem solved once: it fetches with the host's required User-Agent,
+captures status, content type and body separately, and answers PASS / FAIL /
+UNKNOWN with the same exit codes as `reader_freshness.py` and
+`subscriber_routes.py` (0, 2, 3), which is what lets the workflow branch the
+way its neighbouring steps already do. FAIL fails the deploy. UNKNOWN warns
+loudly and does not, the same asymmetry as the contrast and subscriber-route
+steps, because a host outage that manufactures red runs manufactures alerts
+that also fail. Cloudflare's 52x family, a 502 or 504 from a gateway, a 429 and
+the deploy's OWN 503 maintenance window are all UNKNOWN. A 500 is not: that is
+PHP answering, and a fatal in a plugin this job just uploaded is precisely the
+fault the step exists for.
+
+**And the verdict travels INSIDE the annotation.** `ci_alert.py` mails the
+single most specific line it can find and ranks `::error::` annotations above
+ordinary output, so an annotation reading "see the log above" would have BEEN
+the email and the status, the content type and the excerpt would have stayed in
+a log that outlives nothing. The step folds the helper's verdict to one line
+and carries it into the annotation, with the diagnosis first and the
+where-to-look tail last, so a truncation at 400 characters still cuts after the
+part that identifies the failure. No pipe into an early exiter is used to do
+it: `tr` reads all of its input, so nothing here can take EPIPE the way the
+FTPS probe did this morning.
+
+Bodies are truncated to 200 characters and stripped of control characters, so a
+response cannot smuggle an ANSI escape or a `::error::` line of its own into
+the run log. The endpoints are public and unauthenticated; no request here
+carries a credential and no header is echoed.
+
+Two smaller mouths were closed in the same pass. Both version greps
+(`ALT_VERSION` in the read-back step and in the reader step) ran under `set -e`,
+so an unmatched grep ended the step with no output whatsoever; they now fall
+through to a named error saying which file and which define was expected.
+
+**What was NOT touched.** This workflow is red right now for a real and separate
+reason: the FTPS account cannot authenticate (the July credentials answer 421,
+the CHEMICLOUD_* pair answers 530) and a human has to create an FTP account in
+cPanel. Nothing here tries to make that go green, and no verification step was
+weakened or skipped. `.github/workflows/ftp-target-probe.yml` also parses JSON
+inline, and was left alone deliberately: it already catches its own parse
+failure and prints it, and it is a read-only dispatch rather than a gate.
+
+**The guard, and the mutation.** `test_endpoint_check.py` pins four bodies to
+four distinct verdicts (empty, HTML, valid JSON missing the key, good), pins
+UNKNOWN for every unreachable shape, and pins the workflow itself: no
+verification step may carry a bare `json.load(sys.stdin)` or a bare `assert`
+again. Its first version of that second guard was itself vacuous, `$` without
+`re.MULTILINE` anchors to the end of the FILE, so it matched nothing anywhere
+and passed a deliberately re-injected bare assert. It was fixed and re-run
+against the same mutation, which it then caught by name. A guard's clean zero
+means nothing until it has caught one known instance.
+
+## 2026-09-09 - a diagnostic went red for successfully diagnosing something, and mailed the owner about it
+
+**Class:** novel
+**Guard:** `railway/tests/test_pipefail_broken_pipe.py`
+
+`FTPS target probe` run 34331498772 failed, `ci_alert.py` did exactly what it is
+built to do, and the owner got an operational email. The probe had not failed at
+its job. It had established that no credential in this repository authenticates
+against the new host, printed that finding, and then died on the line that
+printed it:
+
+    echo "$OUT" | head -2 | cut -c1-160
+
+`head` stops after two lines and closes its end of the pipe. `echo` is still
+writing, takes EPIPE, dies 141. `set -o pipefail` returns the highest code in
+the pipeline, so the step failed, so the workflow was red, so the alarm fired.
+The finding was correct, complete, and delivered as an outage.
+
+**This is worse than a broken diagnostic.** A probe that is simply broken gets
+fixed. A probe that reddens on success teaches the reader that this channel's
+red does not mean anything, and that is how the alerting built on 2026-08-19
+stops working without anything appearing to change.
+
+**Why nothing caught it.** The pattern is a RACE, not a rule. A pipe has a
+buffer, so a producer whose entire output fits inside it finishes before the
+consumer exits and never sees EPIPE. `cmd | head` is fine almost always. Small
+output is not safety, it is a longer fuse: the workflow carries the defect
+through months of green runs and fails on the one run whose output crossed the
+buffer. Nothing reports a pattern that is usually fine.
+
+**The sweep found four, all in the one file, and one of them was lying rather
+than failing.** Three were the loud kind (`| head -1` twice, `| head -40`
+once). The fourth was `if echo "$OUT" | grep -q '"status" *: *1'`, which is the
+same mechanism producing a WRONG ANSWER instead of a red step: `grep -q` stops
+at the first match, `echo` takes EPIPE, pipefail returns 141 for a pipeline
+that MATCHED, and a cPanel login that works reads as one that did not. That one
+would never have been noticed at all.
+
+Two more sites (`deploy-plugin.yml`, `find-site-css.yml`, both
+`$(lftp --version | head -1)`) are NOT findings and are deliberately not
+"fixed": those blocks run `set -e` with no pipefail, so the pipeline's status is
+`head`'s zero and lftp's EPIPE is invisible. Precision here is the point. A
+guard that flagged every `| head` in the repo would be turned off within a week.
+
+**THE FIX IS NEVER TO DROP PIPEFAIL.** This repo has been bitten from the other
+side, by a `pytest | tail && git push` that pushed a red tree because `tail`
+succeeded and the exit code that mattered was discarded. Turning pipefail off to
+quiet a broken pipe trades a loud harmless failure for a silent harmful one,
+which is the worse of the two trades and is the one that is hard to detect
+afterwards. The house fix is to truncate without a pipe (command substitution,
+then `cut` or a bash array slice), to hand the early exiter a herestring or a
+file so it has no upstream to signal, or to guard the pipeline explicitly. All
+three keep pipefail.
+
+**The guard.** `test_pipefail_broken_pipe.py` reads every `run:` block in
+`.github/workflows/`, decides whether pipefail is on (a `set` in the body, or a
+`shell: bash -eo pipefail {0}` on the step), and fails on an early-exiting
+consumer anywhere after the first position in a pipeline. Position is the whole
+test: `grep -m1 pattern file | tr -d x` is safe because the early exiter reads a
+file and has nothing upstream to kill.
+
+It tokenizes rather than greps, because the two shapes that matter both defeat
+text matching, and both are real here: a pipe inside a `$(...)` that is itself
+inside double quotes, and a quoted argument spanning physical lines so that the
+pipe closing it arrives on a line beginning mid-string. The first regex draft
+missed three of the six sites for exactly those reasons.
+
+**Proved by mutation.** The original line was put back into
+`ftp-target-probe.yml` and the guard failed naming `ftp-target-probe.yml:92`;
+removed, and it passed. A guard that has never caught its own defect is
+untested.
+
+**What NOT to do about it.** Do not answer a finding by adding to `ALLOWED`
+without a reason that says why that particular pipeline cannot race; the
+allowlist key is one workflow line, a whole-file exemption is deliberately not
+expressible, and a stale entry that no longer matches a finding fails its own
+test. Do not answer one by removing `set -o pipefail`. And do not read the
+scanner's silence as proof: it judges the commands it knows, so a `python3 -c`
+that reads part of stdin, or an `awk` that calls `exit`, is the same defect and
+is invisible to it. Add the command to `EARLY_EXITING` when a new one bites.
+
+## 2026-09-09 - the deploy has no working credential for the new host, and that is now measured rather than suspected
+
+**Class:** absent-read-as-ok
+**Guard:** `.github/workflows/ftp-target-probe.yml`
+
+`FTP_HOST` was corrected to `blogorigin.asktherecruiter.com` (DNS-only, resolves
+to the live origin 162.19.222.172). That was necessary and not sufficient.
+Three credential paths were then tried ONCE each, and all three refuse,
+differently:
+
+| pairing | answer |
+|---|---|
+| `FTP_HOST` + the July `FTP_USERNAME` / `FTP_PASSWORD` | **421** logged in, no home directory |
+| `FTP_HOST` + `CHEMICLOUD_USERNAME` / `CHEMICLOUD_PASSWORD_FTP` | **530** login rejected |
+| `CHEMICLOUD_FTP` + either pair | identical, so it is the same machine |
+| `CHEMICLOUD_CPANELURL` + the CHEMICLOUD pair, over the cPanel API | an HTML login page, not JSON |
+
+The three answers are consistent with one story and only one: **the July FTP
+username still exists on the new server but its home directory does not, and
+the CHEMICLOUD_* secrets are not a working credential for either FTP or
+cPanel.** A 421 is a server that knows the user and cannot place them; a 530 is
+a server that does not know them at all.
+
+**Why the CHEMICLOUD_* secrets existed and did nothing.** They were added
+2026-09-06 during the hosting move and NO WORKFLOW EVER READ THEM
+(`railway/orphaned_secrets.py` has been reporting them, and nobody read that
+report as "the deploy is using the wrong ones"). All three FTPS workflows now
+read them, which is why their failure is visible at all: before today they
+could not fail, because nothing called them.
+
+**STOP GUESSING HERE.** Three refusals is enough to conclude there is no
+working credential in the repository, and continuing to try combinations
+against a live server is the thing this file warns about elsewhere. The next
+move is not another probe.
+
+**What closes it, and it is the owner's:** create an FTP account in ChemiCloud
+cPanel whose DIRECTORY is the WordPress root of the `/blog` install (the folder
+that directly contains `wp-config.php` and `wp-content/`), and put its username
+and password into `CHEMICLOUD_USERNAME` and `CHEMICLOUD_PASSWORD_FTP`. The
+directory is the half that matters: the 421 says the previous account's was
+wrong, not its password.
+
+The probe stays. It is read-only, dispatch-only, prints no secret value, and it
+turns "the deploy is broken" into a four-line table in about forty seconds.
+
+## 2026-09-09 - four green deploys shipped nothing: FTP_HOST still points at the old server
+
+**Class:** guard-went-vacuous
+**Guard:** `.github/workflows/deploy-plugin.yml` step "Verify the bytes we just wrote are the bytes we meant to write"
+
+Live is plugin **2.20.175**, uploaded 2026-09-07 15:17. Since then 2.20.176,
+2.20.177, 2.20.178 and 2.20.179 each ran the deploy workflow, each reported
+success, and each logged `Transferring file` for every file in the plugin. The
+site never moved.
+
+**Nothing in this repo could have caught it, and the reason is worth stating
+precisely.** Every version check here reads its version FROM THE LIVE SITE.
+`reader_freshness.py` compares the bare-URL render against `/status` and proves
+the readers and the origin agree with each other. `ops_status [1]` prints what
+the origin says it is. Both were green and both were correct: the origin is
+perfectly coherent at 2.20.175. The comparison nobody was making is between the
+REPOSITORY and the origin, and a guard that cannot fail on a whole class of
+failure is vacuous for that class whether or not it ever worked.
+
+That is also how the 2.20.33 build-stamp lesson generalises and was not
+generalised. Back then a version string matched while the body was older, so
+the fix was to hash the body and compare version AND build. Both halves of that
+comparison still come off the same server.
+
+**What this cost, beyond four unshipped versions.** `/corrections` shipped in
+2.20.178 specifically so `data_integrity` could ask whether a disclosed removal
+explains a headline move. It is not live, so tonight's -46,400 incident reads
+`the corrections log could not be consulted (unreachable: HTTP Error 404)` and
+resolves to UNKNOWN. A guard was built, merged, reported as done, and has never
+once been able to answer.
+
+**MEASURED THE SAME NIGHT, and it is not caching.** The read-back step landed
+and PASSED: the FTPS target holds 2.20.179, written 22:5x UTC. At the same
+moment the live site served
+`/wp-content/plugins/ai-layoff-tracker/assets/health.js` with
+`Last-Modified: Mon, 07 Sep 2026 13:18:50 GMT` and `cf-cache-status: MISS`, so
+the ORIGIN itself, not an edge, holds a file last written by the 2.20.175
+deploy. Both readings are true and they cannot describe one file. **The FTPS
+home and the document root the web server serves are two different trees, each
+holding a WordPress install with this plugin.** That is also why the pre-flight
+guard passes: it looks for `wp-config.php` and an existing
+`ai-layoff-tracker.php` relative to the FTP home, and the wrong tree has both.
+
+The timeline agrees. `Last-Modified` Sun 13:18 UTC is 15:18 CEST, which is when
+2.20.175 was cut. So the split happened between 2026-09-07 15:18 and the
+2.20.176 deploy at 20:46 the same evening -- earlier than the 2026-09-08 date
+recorded for the hosting move, which is worth correcting in that record.
+
+**ROOT CAUSE, MEASURED: `FTP_HOST` does not point at the machine that serves
+the site.** The probe compares the resolved address against the origin rather
+than printing it, and reports `FTP_HOST does NOT point at 162.19.222.172`. That
+origin was verified independently, not taken from this doc:
+`blogorigin.asktherecruiter.com` and `mail.asktherecruiter.com` both resolve to
+`162.19.222.172`, whose reverse is `rs7-fra.serverhostgroup.com`, the
+ChemiCloud host. The apex resolves to Cloudflare, so it cannot be used for
+this.
+
+A detail worth keeping: the FIRST version of the probe printed the resolved
+address and GitHub rendered it as `***`. GitHub masks a secret's VALUE, so an
+address that comes back masked means **`FTP_HOST` is that literal address** - a
+hardcoded IP, which is exactly the kind of constant a DNS migration cannot
+move. The probe now compares and prints only a verdict.
+
+Everything else follows. The FTP home is a complete WordPress root (its own
+`wp-config.php`, `wp-admin/`, `wp-content/`, `wp-includes/`), which is why the
+pre-flight guard passes: it looks for `wp-config.php` and an existing
+`ai-layoff-tracker.php` relative to that home, and the OLD server's copy has
+both. Only one candidate path holds the plugin, at 2.20.179, and no
+`public_html` exists in that tree at all. So the mirror writes a real,
+complete, correct deploy - onto a machine nobody reads.
+
+**The owner has to rotate the secret; a session must not guess or set
+credentials.** The durable fix is to point `FTP_HOST` at a HOSTNAME that
+follows the origin rather than an address that does not:
+`blogorigin.asktherecruiter.com` is DNS-only (not Cloudflare-proxied) and
+already resolves to the live host, so a future move carries the deploy with it.
+`FTP_USERNAME` and `FTP_PASSWORD` may also need to change - they are the old
+account's - and that is unknown from here. After rotating, the read-back step
+and the reader check together prove it landed; do not accept a green mirror as
+evidence.
+
+**Also worth correcting elsewhere:** the hosting move is recorded as
+2026-09-08, and the served asset's `Last-Modified` of Sun 13:18 UTC (15:18
+CEST, when 2.20.175 was cut) puts the split between then and the 2.20.176
+deploy at 20:46 that same evening.
+
+**The fix reads the bytes back off the server it just wrote to** and fails the
+deploy when they are not the bytes in the checkout. It also prints the resolved
+ADDRESS of `FTP_HOST` (an IP from public DNS, never the secret's value),
+because "which machine did this land on" is the first question when it fails.
+A mirror that reports success into a host nobody reads cannot survive this
+step.
+
+Do NOT answer a future failure of this step by removing it, by comparing the
+live site to itself again, or by trusting `Transferring file`. A transfer log
+is the client's account of what it sent, not the server's account of what it
+kept.
 
 ## 2026-09-08 - a Cloudflare 52x was read as the origin answering, and reddened a live-data alarm
 

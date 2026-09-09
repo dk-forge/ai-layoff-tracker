@@ -3450,9 +3450,38 @@ figure.alt-soundbite figcaption.alt-sb-actions,
    is asked after. `span 4` was correct when four lines sat beside the card and
    is wrong for either shape now: the top strip has one line beside it, and the
    lower strip has no card at all. */
+/* 2026-09-09 -- AND THE TOP STRIP IS NOW ONE COLUMN, not 320px + the rest.
+   Beside each other those two children are wildly different heights: the
+   freshness card carries the mascot, four status lines and the year/all-time
+   pairs, the coverage ribbon carries two. The row is as tall as the card, so
+   at 1280px the ribbon sat in the top of a ~300px track and the rest of it
+   was empty page. Stacking them costs nothing (the ribbon was already a
+   full-width line inside its own track) and removes the dead area, and the
+   card gets the width it needs to lay the pairs out in ONE row instead of a
+   2-column grid whose fifth cell had no neighbour. Nothing moves in the
+   markup: same order, same ids, same two blocks in the same places. */
 @media (min-width: 860px) {
-    .alt-datastrip-top { grid-template-columns: 320px minmax(0, 1fr); }
-    .alt-datastrip-top .alt-fresh { grid-row: auto; }
+    .alt-datastrip-top { grid-template-columns: minmax(0, 1fr); }
+    /* The card's own inside, stated as a grid rather than left to flex
+       wrapping: the status block on the left, the next-collection time held
+       at the right edge of the same row, the pairs across the full width
+       under them. */
+    .alt-datastrip-top .alt-fresh {
+        display: grid; grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start; column-gap: 22px; row-gap: 10px;
+    }
+    .alt-datastrip-top .alt-fresh > .alt-header { grid-column: 1; }
+    .alt-datastrip-top .alt-fresh > .alt-fresh-next {
+        grid-column: 2; justify-self: end; text-align: right;
+    }
+    /* FIVE PAIRS, FIVE COLUMNS. Two columns left the fifth ("entries · all
+       time") alone on a row of its own, which reads as a layout accident
+       rather than as the last of a set. */
+    .alt-datastrip-top .alt-fresh-stats {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px 18px;
+    }
 }
 /* No freshness card down here any more, so one full-width column. Without this
    the cite line would be squeezed into the 320px track the card used to fill. */

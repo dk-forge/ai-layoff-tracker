@@ -1,0 +1,276 @@
+name: FTPS target probe
+
+# READ-ONLY. Dispatch only, never scheduled, writes nothing.
+#
+# 2026-09-09: the deploy's own read-back says the FTPS target holds the file
+# this commit built, and the live site serves that same relative URL with
+# `Last-Modified: Mon, 07 Sep 2026 13:18:50 GMT` -- the 2.20.175 deploy. Both
+# readings are true, so the FTPS home and the document root the web server
+# serves are two different trees, each holding a WordPress install with this
+# plugin. That is why the pre-flight guard (wp-config.php exists, the plugin
+# file exists) passes against the wrong one.
+#
+# This lists the candidate roots and reports, for each, whether it holds the
+# plugin and which version. It prints no credential and no file contents
+# beyond a version string.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Ask cPanel what the FTP accounts and document roots actually are
+        env:
+          CPANEL_URL: ${{ secrets.CHEMICLOUD_CPANELURL }}
+          CPANEL_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          CPANEL_PASS: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          # 2026-09-09. The FTPS pairings all fail, and they fail DIFFERENTLY: the
+          # July username logs in with no home directory (421), the CHEMICLOUD pair
+          # is rejected outright (530). A 530 is consistent with those being cPanel
+          # credentials rather than an FTP account, which would explain everything.
+          # So ask cPanel instead of guessing at more combinations against a live
+          # server.
+          #
+          # Read-only. No password is printed. FTP account NAMES and document ROOTS
+          # are configuration rather than secrets, and they are the two facts nobody
+          # currently has.
+          if [ -z "${CPANEL_URL:-}" ] || [ -z "${CPANEL_USER:-}" ] || [ -z "${CPANEL_PASS:-}" ]; then
+            echo "cPanel probe SKIPPED: one of the three secrets is not set."
+            exit 0
+          fi
+          BASE="${CPANEL_URL%/}"
+          case "$BASE" in http*) ;; *) BASE="https://$BASE" ;; esac
+
+          cat > /tmp/show_ftp.py <<'PYFTP'
+          import json, sys
+          try:
+              d = json.load(sys.stdin)
+          except Exception as exc:
+              print("  could not parse the answer:", exc)
+              raise SystemExit(0)
+          rows = d.get("data") or []
+          if not rows:
+              print("  none reported")
+          for row in rows:
+              print("  %-30s home=%s" % (row.get("user", "?"), row.get("homedir", "?")))
+          PYFTP
+
+          cat > /tmp/show_roots.py <<'PYROOT'
+          import json, sys
+          try:
+              d = json.load(sys.stdin)
+          except Exception as exc:
+              print("  could not parse the answer:", exc)
+              raise SystemExit(0)
+          data = d.get("data") or {}
+          main = data.get("main_domain") or {}
+          print("  main    %-30s docroot=%s" % (main.get("domain", "?"), main.get("documentroot", "?")))
+          for key in ("addon_domains", "sub_domains", "parked_domains"):
+              for row in (data.get(key) or []):
+                  if isinstance(row, dict):
+                      print("  %-7s %-30s docroot=%s" % (key[:7], row.get("domain", "?"), row.get("documentroot", "?")))
+          PYROOT
+
+          echo "== do these credentials open cPanel =="
+          OUT=$(curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/Variables/get_user_information" 2>&1)
+          # A herestring, not a pipe. `echo ... | grep -q` under pipefail can
+          # report the OPPOSITE of the truth: grep -q stops at the first match,
+          # echo takes EPIPE, and pipefail returns 141 for a pipeline that
+          # matched, so a cPanel login that WORKS reads as one that did not.
+          if grep -q '"status" *: *1' <<< "$OUT"; then
+            echo "  cPanel: AUTHENTICATES"
+          else
+            echo "  cPanel: did NOT authenticate."
+            # head closes the pipe early and `set -o pipefail` makes that a failed
+            # step, which is not what a diagnostic should do. Truncate in the shell.
+            printf '  answered: %s\n' "$(printf '%s' "$OUT" | tr -d '\n' | cut -c1-160)"
+            echo "  So CHEMICLOUD_USERNAME / CHEMICLOUD_PASSWORD_FTP are neither a"
+            echo "  working FTP account nor a working cPanel login."
+            exit 0
+          fi
+
+          echo
+          echo "== FTP accounts that exist, names and home directories only =="
+          curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/Ftp/list_ftp" | python3 /tmp/show_ftp.py
+
+          echo
+          echo "== document roots, so we learn where /blog actually lives =="
+          curl -sS --max-time 45 -u "$CPANEL_USER:$CPANEL_PASS" "$BASE/execute/DomainInfo/domains_data?format=hash" | python3 /tmp/show_roots.py
+
+      - name: Which host and credential pair actually authenticates
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          CHEMI_HOST: ${{ secrets.CHEMICLOUD_FTP }}
+          OLD_USER: ${{ secrets.FTP_USERNAME }}
+          OLD_PASS: ${{ secrets.FTP_PASSWORD }}
+          NEW_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          NEW_PASS: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          # 2026-09-09. FTP_HOST was corrected to the live origin and the JULY
+          # credentials answered 421 (no such home). The CHEMICLOUD_* pair,
+          # unread by any workflow since it was added on 2026-09-06, answered
+          # 530 (bad login). Two different refusals, so neither pair is simply
+          # "the right one". Rather than guess at combinations against a live
+          # server, try each one ONCE and print only the verdict.
+          #
+          # No value is ever echoed. A missing secret is reported as absent,
+          # never as a failure to log in, because those are different facts.
+          probe () {
+            local label="$1" host="$2" user="$3" pass="$4"
+            if [ -z "$host" ] || [ -z "$user" ] || [ -z "$pass" ]; then
+              echo "  $label: SKIPPED, one of its secrets is not set"
+              return
+            fi
+            local out
+            out=$(timeout 45 lftp -c "
+              set cmd:fail-exit true; set ssl:verify-certificate no;
+              set ftp:ssl-force true; set ftp:ssl-protect-data true;
+              set net:max-retries 1; set net:timeout 15;
+              open -u \"$user\",\"$pass\" \"$host\";
+              cls -1 wp-config.php;
+            " 2>&1) && { echo "  $label: AUTHENTICATES, and wp-config.php is at the FTP home"; return; }
+            case "$out" in
+              *530*)  echo "  $label: rejected the login (530)";;
+              *421*)  echo "  $label: logged in but has no home directory (421)";;
+              *550*|*"No such file"*) echo "  $label: AUTHENTICATES, but no wp-config.php at the home";;
+              *)      echo "  $label: failed, $(echo "$out" | tail -1 | cut -c1-90)";;
+            esac
+          }
+          echo "Each pairing, once:"
+          # 2026-09-09: cut from four pairings to ONE. Four failed logins per run
+          # is a brute-force pattern, and cPanel blocked the runner IPs for it
+          # this morning: the symptom changed from "connected and refused" to
+          # "cannot connect at all", which cost a diagnostic cycle to untangle.
+          # The other three pairings have already answered and their answers do
+          # not change: the July credentials and the account credentials both
+          # authenticate, and CHEMICLOUD_FTP does not resolve.
+          probe "FTP_HOST + CHEMICLOUD credentials " "$FTP_HOST" "$NEW_USER" "$NEW_PASS"
+          echo
+          echo "The live site executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
+          echo "This checkout builds:   $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"
+
+      - name: Which tree does FTPS actually land in
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          # Do NOT print the resolved address: on the first run it came back
+          # masked, which is itself evidence -- GitHub masks a secret's value,
+          # so FTP_HOST resolving to a masked string means FTP_HOST IS that
+          # literal address. Compare it instead and print only the verdict.
+          # `awk NR==1` rather than `| head -1`: awk reads to end of input, so
+          # getent is never handed EPIPE. getent exits 2 on a name that does not
+          # resolve, and the empty case below is the report for that.
+          LIVE_ORIGIN=$(getent hosts asktherecruiter.com | awk 'NR==1{print $1}') || true
+          echo "asktherecruiter.com resolves to: $LIVE_ORIGIN (Cloudflare proxy)"
+          echo "The ChemiCloud origin recorded on 2026-09-08 is 162.19.222.172"
+          FTP_IP=$(getent hosts "$FTP_HOST" | awk 'NR==1{print $1}') || true
+          if [ -z "$FTP_IP" ]; then
+            echo "FTP_HOST does not resolve at all"
+          elif [ "$FTP_IP" = "162.19.222.172" ]; then
+            echo "VERDICT: FTP_HOST points at the CURRENT ChemiCloud origin."
+          else
+            echo "VERDICT: FTP_HOST does NOT point at 162.19.222.172."
+            echo "         The deploy is writing to a different machine from the one"
+            echo "         that serves the site. That is the whole defect."
+          fi
+          echo
+          echo "== FTP home =="
+          # Capture, then truncate in the shell. `| grep -v "^ftp://" | head -40` closes the pipe
+          # while lftp is still writing, and pipefail promotes that EPIPE to a
+          # failed step. And lftp's own non-zero on a refused login is this
+          # probe's FINDING, not its failure: a diagnostic that goes red for
+          # successfully diagnosing something trains the reader to ignore it.
+          HOME_OUT=$(lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -l --sort=name .;
+          " 2>&1) || true
+          mapfile -t HOME_LINES <<< "$HOME_OUT"
+          printf '%s\n' "${HOME_LINES[@]:0:40}" | grep -v "^ftp://"
+          echo
+          echo "== the account root, listed plainly (glob-free) =="
+          # 2026-09-09: the previous version globbed [a-zA-Z]* and every
+          # listing came back empty, which read as "this account sees nothing"
+          # and sent us hunting a chroot that was never there. lftp does not
+          # expand that glob server-side. List plainly and filter here.
+          OUT=$(timeout 45 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 .;
+          " 2>&1) || true
+          printf '%s\n' "$OUT" | grep -v '^ftp:' | grep -v '^\./\.' | head -40
+          echo
+          echo "== what plugins are actually installed =="
+          R=$(timeout 45 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 25;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 public_html/wp-content/plugins;
+          " 2>&1) || true
+          printf '%s\n' "$R" | grep -v '^ftp:' | head -40 | sed 's/^/      /'
+          echo
+          echo "== addondomains, two levels deep (the /blog origin is an addon domain) =="
+          A=$(timeout 60 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 25;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            find -d 3 addondomains;
+          " 2>&1) || true
+          printf '%s\n' "$A" | grep -v '^ftp:' | grep -i 'wp-config\|wp-content\|addondomains/[^/]*/$' | head -40 | sed 's/^/      /'
+          echo
+          echo "== the same for asktherecruiter.com/ at the root =="
+          B=$(timeout 60 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 25;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            find -d 3 asktherecruiter.com;
+          " 2>&1) || true
+          printf '%s\n' "$B" | grep -v '^ftp:' | head -30 | sed 's/^/      /'
+          echo
+          echo "== is wp-config.php where the owner says it is =="
+          timeout 40 lftp -c "
+            set ssl:verify-certificate no; set ftp:ssl-force true;
+            set ftp:ssl-protect-data true; set net:max-retries 1; set net:timeout 20;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 public_html/blog/wp-config.php;
+          " 2>&1 | grep -v "ftp:" || echo "  wp-config.php NOT found at public_html/blog/"
+          echo
+          for CAND in \
+            "wp-content/plugins/ai-layoff-tracker" \
+            "public_html/wp-content/plugins/ai-layoff-tracker" \
+            "public_html/blog/wp-content/plugins/ai-layoff-tracker" \
+            "blog/wp-content/plugins/ai-layoff-tracker" \
+            "www/blog/wp-content/plugins/ai-layoff-tracker" \
+            "public_html/asktherecruiter.com/blog/wp-content/plugins/ai-layoff-tracker"
+          do
+            echo "== $CAND =="
+            rm -f probe.php
+            if lftp -c "
+              set cmd:fail-exit true; set ssl:verify-certificate no;
+              set ftp:ssl-force true; set ftp:ssl-protect-data true;
+              set net:max-retries 1; set net:timeout 15;
+              open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+              get -O . \"$CAND/ai-layoff-tracker.php\" -o probe.php;
+            " >/dev/null 2>&1; then
+              V=$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" probe.php | grep -oE '[0-9.]+$') || V="unreadable"
+              echo "   HOLDS THE PLUGIN, version $V"
+            else
+              echo "   absent"
+            fi
+            rm -f probe.php
+          done
+          echo
+          echo "The live site currently executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
+          echo "This checkout builds: $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"

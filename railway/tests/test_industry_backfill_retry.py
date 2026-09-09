@@ -73,3 +73,10 @@ def test_network_exception_is_retried_then_reported_as_none():
     get, fake = _load([Exception("boom"), Exception("boom"), Exception("boom")])
     assert get("u", {}) is None
     assert fake.calls == 3
+
+
+# This suite is unittest, not pytest (#288). Without this, every test above is
+# collected as nothing at all and the file passes by never running.
+from _pytest_bridge import bind  # noqa: E402
+
+IndustryBackfillRetryTests = bind(globals(), "IndustryBackfillRetryTests")

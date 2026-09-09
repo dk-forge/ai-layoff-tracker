@@ -90,3 +90,10 @@ def test_learn_step_ranks_source_gaps_by_miss_count():
 def test_learn_step_is_empty_when_nothing_clusters():
     cluster = _load_cluster()
     assert cluster(["Acme Holdings", "Generic Corp"]) == []
+
+
+# This suite is unittest, not pytest (#288). Without this, every test above is
+# collected as nothing at all and the file passes by never running.
+from _pytest_bridge import bind  # noqa: E402
+
+TrackerDiffSitemapTests = bind(globals(), "TrackerDiffSitemapTests")

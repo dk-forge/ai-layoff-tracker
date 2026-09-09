@@ -35,6 +35,7 @@ WHAT IS PINNED HERE, IN BOTH DIRECTIONS.
     two copies on purpose (that module is standalone, stdlib only, and imports
     nothing from here), so drift is what this asserts against.
 """
+import json
 import sys
 import tempfile
 import unittest
@@ -46,6 +47,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import data_integrity as di
 import published_figures as pf
 import subscriber_routes
+import _incident_free
+from _incident_free import without_open_incidents
 
 EDGE = (520, 521, 522, 523, 524)
 ORIGIN_TLS = (525, 526)
@@ -152,27 +155,21 @@ class NothingFailsOnAnEdgeBlip(unittest.TestCase):
     ones. What must never happen is neither.
     """
 
+    #: HERMETICITY, added 2026-09-09. `check_all()` over the bare registry reads
+    #: the COMMITTED `railway/headline_incidents.json`, and an entry under
+    #: `open` there makes its slice report FAIL by design, without a fetch and
+    #: whatever this stub does. That is right in production and wrong here: this
+    #: class is a claim about TRANSPORT, and it went red the week it shipped on
+    #: an open `worldwide_all_time` incident that is a real, unrelated finding
+    #: awaiting a human. The registry is re-pointed at an empty ledger so the
+    #: edge-blip logic is the only thing under test. Nothing is relaxed: the
+    #: incident still reports FAIL in `test_dedup_live`, ops_status and the
+    #: digest, which is where it is supposed to be read.
     def _report(self, status):
         def fetch(url, timeout):
             raise _http(status)
-        # This test is about a transport-only run, not today's committed
-        # operations ledger. Once a real sticky incident is open, the default
-        # MovementInvariant quite correctly remains FAIL even when every fetch
-        # 52x's. Give that invariant a clean temporary ledger so the fixture is
-        # hermetic and can still prove that the edge response creates no new
-        # data failure.
-        with tempfile.TemporaryDirectory() as td:
-            incident_path = Path(td) / "headline_incidents.json"
-            invariants = [
-                di.MovementInvariant(
-                    headlines=inv.headlines,
-                    baseline_path=inv.baseline_path,
-                    incidents_path=incident_path,
-                    now=inv.now,
-                ) if isinstance(inv, di.MovementInvariant) else inv
-                for inv in di.INVARIANTS
-            ]
-            return di.check_all(fetch=fetch, invariants=invariants)
+        return di.check_all(fetch=fetch,
+                            invariants=without_open_incidents(di.INVARIANTS))
 
     def test_an_edge_blip_produces_no_failure_and_no_bare_unknown(self):
         for status in EDGE:
@@ -198,6 +195,51 @@ class NothingFailsOnAnEdgeBlip(unittest.TestCase):
             for r in live:
                 self.assertFalse(r.transport, f"{r.inv.key} on HTTP {status}")
                 self.assertFalse(r.pending, f"{r.inv.key} on HTTP {status}")
+
+
+class TheStickyIncidentIsStillLouderThanABlip(unittest.TestCase):
+    """The other half of the hermeticity fix, and the reason it is not a relax.
+
+    `_report` above points the movement guard at an EMPTY incident ledger. The
+    only honest way to ship that is to prove, here, that the guard it re-points
+    has lost none of its bite: given a ledger that DOES hold an open incident,
+    an edge blip must still produce FAIL. A sticky incident is closed by a named
+    human, never by the calendar, by later rows, and never by an unreachable
+    API - if a 520 could excuse one, an outage would be a way to launder a
+    finding. So this asserts the exact behaviour that made the original test go
+    red, against a fixture instead of against live state.
+    """
+
+    OPEN = {"open": {"worldwide_all_time": {
+        "slice": "worldwide_all_time",
+        "label": "Worldwide jobs, all time",
+        "detail": "-1 job on +0 entries; NO ROW EXPLAINS THIS",
+        "opened_at": "2026-01-01T00:00:00Z",
+    }}, "closed": []}
+
+    def test_an_edge_blip_does_not_excuse_an_open_incident(self):
+        with tempfile.TemporaryDirectory() as d:
+            ledger = Path(d) / "headline_incidents.json"
+            ledger.write_text(json.dumps(self.OPEN), encoding="utf-8")
+            for status in EDGE:
+                def fetch(url, timeout, _s=status):
+                    raise _http(_s)
+                report = di.check_all(
+                    fetch=fetch,
+                    invariants=without_open_incidents(di.INVARIANTS,
+                                                      incidents_path=ledger))
+                failed = [r for r in report.failed if r.inv.key == "headline_movement"]
+                self.assertEqual(1, len(failed),
+                                 f"HTTP {status} must not close an incident that "
+                                 f"only a human can close")
+                self.assertIn("OPEN INCIDENT", failed[0].detail)
+
+    def test_the_empty_ledger_stand_in_is_really_absent(self):
+        # If someone ever commits a file at that name, `_report` would start
+        # reading it and this file would drift back to non-hermetic silently.
+        self.assertFalse(_incident_free.EMPTY_LEDGER.exists(),
+                         f"{_incident_free.EMPTY_LEDGER} exists; the empty-ledger "
+                         f"stand-in must be a name nothing writes")
 
 
 if __name__ == "__main__":

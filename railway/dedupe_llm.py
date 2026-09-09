@@ -124,6 +124,134 @@ def norm_company(name):
     return re.sub(r"\s+", " ", n).strip()
 
 
+# ---------------------------------------------------------------------------
+# BUCKETING IS NOT IDENTITY, AND THIS IS THE DIFFERENCE.
+#
+# `norm_company` above mirrors the plugin's alt_company_key: it is an IDENTITY
+# key, and two rows sharing it are treated as the same employer by both dedup
+# layers. `bucket_key` below is only a CANDIDATE-GENERATION key. Sharing it
+# buys a pair exactly one thing: the right to be compared. Every hard gate
+# still runs afterwards -- pair_can_be_same_event (federal_rif, a country
+# mismatch, two different ERM factsheet ids), the 75% job-count ratio,
+# pair_window_days -- and then the model decides which ids are one event.
+# Bucketing cannot merge anything on its own.
+#
+# WHY IT EXISTS. Bucketing ran on norm_company, which is upstream of every
+# guard, so a name variant did not produce a bad merge -- it produced NO
+# COMPARISON AT ALL, silently, at zero cost, with nothing to observe. Live on
+# 2026-09-09: "Volkswagen" (50,000, 2026-09-03) and "Volkswagen (VW)" (50,000,
+# 2026-09-04) sat in the buckets `volkswagen` and `volkswagen vw` and were
+# never candidates, while a fourth report of the same event WAS caught by the
+# same job. "Grupo Volkswagen" made a third bucket.
+#
+# EVERY TOKEN BELOW WAS READ OUT OF THE LIVE CORPUS (42,719 distinct company
+# names from /companies plus a paced 2,200-row sample of the news/8K/ERM rows
+# this job actually fetches), never guessed, and the ones the data REFUSED are
+# recorded here because that is the load-bearing half:
+#   * `spa` is NOT stripped. All 82 trailing "Spa" names in the corpus are
+#     resorts ("Rancho Valencia Resort & Spa"), not Italian S.p.A. The dotted
+#     form is handled separately below, which is exactly what tells them apart.
+#   * `kgaa` is NOT stripped. It would put "Merck KGaA" (Darmstadt) and
+#     "Merck & Co" (Rahway) in one bucket, and they are different companies.
+#   * `konzern`/`koncern` are NOT stripped: zero occurrences in any leading or
+#     trailing position (the corpus has "Południowy Koncern Energetyczny",
+#     where the word is mid-name and stripping it would be wrong).
+#   * Tokens with no trailing occurrence at all (srl, pte, pty, bhd, kk, ...)
+#     are left out. A list longer than the evidence is a list nobody measured.
+# ---------------------------------------------------------------------------
+
+#: Legal forms observed as the LAST token of a real name in the corpus (counts
+#: from the 42,719-name read: ab 36, gmbh 21, nv 13, as 12, sas 10, se 7, kg 6,
+#: oyj 5, bv 3, oy 3, sarl 2, asa 1). Stripped repeatedly, because Nordic names
+#: stack them ("Rolls-Royce Oy Ab").
+#: `zoo` was tried and REJECTED by the same read: all five trailing "Zoo" names
+#: are actual zoos ("Santa Barbara Zoo"), not Polish "z o.o." -- that form is
+#: spelled with dots and is handled below, on the raw string.
+_LEGAL_SUFFIX_TOKENS = ("gmbh", "oyj", "sarl", "asa", "sas", "nv", "bv",
+                        "ab", "as", "se", "oy", "kg")
+_LEGAL_SUFFIX_RX = re.compile(r"\s(?:%s)$" % "|".join(_LEGAL_SUFFIX_TOKENS))
+
+#: Dotted legal forms, matched on the RAW name before punctuation is flattened.
+#: Doing it here rather than on tokens is what keeps "S.A." from eating the
+#: "U.S.A." in "Yamaha Motor Finance Corporation U.S.A.": the match must start
+#: at a space, and in "U.S.A." the S does not.
+#: EVERY alternative here REQUIRES a dot or a slash. That is not decoration:
+#: an undotted "Spa" is a resort in this corpus 82 times out of 82, and a
+#: dotless alternative would strip it off "Rancho Valencia Resort & Spa".
+_LEGAL_DOTTED_RX = re.compile(
+    r"[\s,]+(?:s\.p\.?a\.?|a\.s\.?|a/s|n\.v\.?|b\.v\.?|d\.d\.?"
+    r"|s\.a\.r\.l\.?|sp\.?\s*z\s*o\.\s*o\.?)\s*$", re.I)
+
+#: "Group" in the languages the corpus actually uses, as a prefix or a suffix.
+#: English `group` is already stripped by norm_company; not stripping the other
+#: spellings was an English-only bug, not a policy ("Grupo Volkswagen",
+#: "Groupe Compass Canada", "Grupa OLX", "WAZ-Gruppe", "Telegraaf Media Groep").
+_GROUP_WORDS = ("grupo", "groupe", "gruppo", "grupa", "gruppen", "gruppe", "groep")
+_GROUP_LEAD_RX = re.compile(r"^(?:%s)\s" % "|".join(_GROUP_WORDS))
+_GROUP_TRAIL_RX = re.compile(r"\s(?:%s)$" % "|".join(_GROUP_WORDS))
+
+#: A parenthetical is dropped only when what remains still reads as a NAME.
+#: This is the guard against the one real over-collapse the corpus contains:
+#: "CTS (Coyne Textile Services)" and "CTS Corp." are different companies, and
+#: so are "BD (Becton Dickinson)" and "BD (C.R. Bard Inc.)". A bare all-caps
+#: initialism is not a name, it is a handle that needs its expansion to stay
+#: distinguishable -- so it keeps the parenthetical and simply does not widen.
+#: A short head that carries a lowercase letter is a word, not a handle, which
+#: is what lets "Meta (Facebook)", "Flex (Flex Global Operations)" and "Sony
+#: (Game Division)" widen while CTS/BD/ČSA do not. Measured over the full
+#: corpus, that relaxation adds exactly three buckets and no wrong one.
+_PAREN_MIN_HEAD_CHARS = 5
+_PAREN_MIN_WORD_CHARS = 3
+
+
+def _strip_parenthetical(name):
+    head = re.sub(r"\s*\([^)]*\)", " ", name)
+    head = re.sub(r"\s+", " ", head).strip(" ,-")
+    size = len(re.sub(r"[^A-Za-z0-9]", "", head))
+    if size >= _PAREN_MIN_HEAD_CHARS:
+        return head
+    if size >= _PAREN_MIN_WORD_CHARS and any(c.islower() for c in head):
+        return head
+    return name
+
+
+def bucket_key(name):
+    """Candidate-generation key: broader than norm_company, never an identity.
+
+    Collapses the three name-variation classes the live corpus shows -- a
+    parenthetical alias or ticker, a legal form in any of the languages we
+    ingest, and "Group" in any of them -- so those pairs REACH the evidence
+    gates and the model. It decides nothing on its own.
+
+    A strip is never allowed to empty the key: "SAS" is an airline, not a
+    French legal form with nothing in front of it, and a row whose key goes
+    empty leaves the candidate set entirely (candidate_clusters skips a blank
+    key), which would turn a widening into a silent loss of coverage.
+    """
+    raw = (name or "").strip()
+    if not raw:
+        return ""
+    stage = _strip_parenthetical(raw)
+    dotted = _LEGAL_DOTTED_RX.sub("", stage)
+    if dotted.strip():
+        stage = dotted
+    tokens = re.sub(r"[^a-z0-9]+", " ", stage.lower()).strip()
+    while True:
+        shorter = _LEGAL_SUFFIX_RX.sub("", tokens).strip()
+        if not shorter or shorter == tokens:
+            break
+        tokens = shorter
+    for rx in (_GROUP_LEAD_RX, _GROUP_TRAIL_RX):
+        shorter = rx.sub(" ", tokens).strip()
+        if shorter:
+            tokens = shorter
+    key = norm_company(tokens)
+    # Everything above is a widening, so it must never subtract: if the extra
+    # stripping leaves nothing, fall back to the identity key the bucketing
+    # used before this function existed.
+    return key or norm_company(raw)
+
+
 def days_between(a, b):
     from datetime import date
     try:
@@ -182,12 +310,18 @@ def pair_can_be_same_event(a, b):
 
 
 def candidate_clusters(rows):
-    """Same normalized company + job counts within 25% + dates within window."""
+    """Same company BUCKET + job counts within 25% + dates within window.
+
+    The bucket is bucket_key, deliberately broader than the identity key: it
+    only decides which pairs get compared. pair_can_be_same_event, the count
+    ratio, the window and then the model still stand between a candidate and
+    a merge.
+    """
     by_co = defaultdict(list)
     for r in rows:
         if str(r.get("source_type") or "").lower() == "federal_rif":
             continue
-        by_co[norm_company(r["company_name"])].append(r)
+        by_co[bucket_key(r["company_name"])].append(r)
     clusters = []
     for co, items in by_co.items():
         if not co or len(items) < 2:

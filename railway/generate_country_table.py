@@ -64,6 +64,68 @@ def sweep_days():
     """Days for the segment matrix to sweep once, or 0 when unknown."""
     return int((_schedule().get("rotation", {}).get("gdelt_segments") or {}).get("days") or 0)
 
+CREDENTIALS = HERE / "source_credentials.json"
+
+
+def _credentials():
+    try:
+        return json.loads(CREDENTIALS.read_text(encoding="utf-8")).get("credentials", {})
+    except Exception:
+        return {}
+
+
+def credential_state(secret):
+    """VERIFIED / REFUSED / UNTESTED, and the date it was established.
+
+    An absent entry is UNTESTED, never a pass: "nobody has ever asked" and
+    "asked and refused" send a reader to different places.
+    """
+    row = _credentials().get(secret) or {}
+    state = str(row.get("state") or "UNTESTED").upper()
+    if state not in ("VERIFIED", "REFUSED", "UNTESTED"):
+        state = "UNTESTED"
+    return state, str(row.get("checked_at") or "")
+
+
+def collector_is_built(name):
+    """Does a collector by this id exist AND run?
+
+    Deliberately narrower than source_inventory's "named by any file", which a
+    dispatch-only probe workflow would satisfy just by mentioning the id. A
+    collector exists when there is a module for it and cron.py runs it.
+    """
+    module = HERE / "sources" / (str(name) + ".py")
+    if not module.exists():
+        return False
+    try:
+        return str(name) in (HERE / "cron.py").read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+
+def denmark_blurb():
+    """Denmark's cell, composed from the credential ledger and the code.
+
+    TYPED COPY IS HOW THIS WENT WRONG. The cell read "Jobindsats varsel API:
+    key application pending" for the 27 days after the key arrived, because a
+    fact about a credential was a string in a generator that nothing could
+    falsify. The two halves are now read rather than asserted: the credential
+    from source_credentials.json (which only a run that watched the API answer
+    may change), the ingestion half from whether the collector actually exists.
+    """
+    state, checked = credential_state("JOBINDSATS_API_KEY")
+    built = collector_is_built("jobindsats")
+    if state == "REFUSED":
+        return "Jobindsats varsel API: key on file does not authenticate"
+    if state == "UNTESTED":
+        return "Jobindsats varsel API: key on file, not yet exercised"
+    verified = "key verified" + (" " + checked if checked else "")
+    if built:
+        return "Jobindsats varsel API: " + verified + "; aggregate varsel counts, no employer names"
+    return ("Jobindsats varsel API: " + verified
+            + "; aggregate counts only, not yet ingested")
+
+
 OFFICIAL = {
     # No jurisdiction count here: this file is generated offline and cannot read
     # the live data, so a number typed in would be a fourth, permanently stale
@@ -75,7 +137,7 @@ OFFICIAL = {
     "South Korea": "OpenDART discovery probe, {rate} (list-only)",
     "Canada": "Quebec collective-dismissal lists: candidate (courtesy notice pending)",
     "Brazil": "CVM filings index: discovery client built, pending promotion",
-    "Denmark": "Jobindsats varsel API: key application pending",
+    "Denmark": "{denmark}",
 }
 
 # Countries whose news scanning ALSO rides Eurofound ERM coverage.
@@ -270,6 +332,8 @@ def render(countries):
     for country in sorted(countries, key=lambda c: (c == "United States & global English press", c)):
         outlets = countries[country]
         official = OFFICIAL.get(country, "")
+        if official and "{denmark}" in official:
+            official = official.format(denmark=denmark_blurb())
         if official and "{rate}" in official:
             # The cadence comes from the cron, and a blurb that cannot state it
             # drops the clause rather than naming a schedule we did not read.

@@ -39,6 +39,45 @@ class TheSplitLosesNothing(unittest.TestCase):
                          "a module in neither group would stop running while "
                          "CI stayed green")
 
+    def test_no_module_declares_zero_tests(self):
+        """A module in a group still runs nothing if it declares no TestCase.
+
+        FOUND 2026-09-09. `test_mailbox_janitor.py` and `test_dmarc_fetch.py`
+        were written pytest-style (module-level `def test_x(monkeypatch)`).
+        This suite has no pytest; the runner is unittest, which collects
+        TestCase METHODS and treats a bare function as nothing at all. Both
+        modules were in a group, both were listed, both were counted, and both
+        collected ZERO tests from the day they landed. Nothing anywhere said
+        so: an absent assertion cannot fail.
+
+        Totality over MODULES was never the property that mattered. This is
+        the property that mattered.
+
+        Checked by reading the source rather than importing it, so a browser
+        module is not driven and no module's import side effects run here.
+        """
+        import ast
+
+        empty = []
+        for path in sorted(TESTS_DIR.glob("test_*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            declares = False
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and any(
+                        "TestCase" in ast.dump(b) for b in node.bases):
+                    declares = True
+                # `_pytest_bridge.bind(globals(), "X")` builds a real TestCase
+                # out of pytest-style functions.
+                elif isinstance(node, ast.Call) and "bind" in ast.dump(node.func):
+                    declares = True
+            if not declares:
+                empty.append(path.name)
+        self.assertEqual(empty, [],
+                         "these modules are collected by the runner and "
+                         "declare no unittest test; they pass by never "
+                         "running. Wrap them in a TestCase, or bridge them "
+                         "with tests/_pytest_bridge.bind().")
+
     def test_no_module_is_in_two_groups(self):
         covered = []
         for group in run_tests.GROUPS:

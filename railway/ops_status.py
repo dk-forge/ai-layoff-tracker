@@ -1918,6 +1918,41 @@ def main():
         print(f"    UNKNOWN - could not read the national denominators: {exc}")
         issues.append("COVERAGE: national denominators unreadable")
 
+    # [3f] The SECOND duplicate detector, and the point of it is that it does
+    # not share the first one's blind spot. Everything the dedup job can do
+    # happens downstream of `dedupe_llm.candidate_clusters`, which buckets on
+    # the COMPANY NAME. A pair that never becomes a candidate is never
+    # compared, never judged and never logged, silently and forever. Three
+    # ways that happened were found live on 2026-09-09 (a name variant, a
+    # dateless row, and a movement guard blind to deletions). This scan reads
+    # no company name at all: its key is (country, job_count, date window)
+    # over the largest rows the headline actually sums, so a spelling cannot
+    # remove a pair from it.
+    #
+    # ITS FINDINGS ARE NEVER AN ACTION ITEM AND NEVER A FAILURE. A suspected
+    # duplicate is not a proven one, and this tool merges nothing. What it
+    # produces is a worklist for the owner. What it must never do is print a
+    # clean line off a sweep it could not run: that resolves to UNKNOWN and
+    # joins `unverified`, like every other unread signal here.
+    print("\n[3f] DUPLICATE SHAPE SCAN  (no company name in the key; reports, never merges)")
+    try:
+        import duplicate_shape_scan
+        _dup_rows, _dup_complete = duplicate_shape_scan.fetch_top_rows()
+        if not _dup_rows:
+            raise ValueError("/query returned no rows")
+        _dup_report = duplicate_shape_scan.scan(_dup_rows, complete=_dup_complete)
+        for _line in duplicate_shape_scan.summary_lines(_dup_report):
+            print(_line)
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        if _is_egress_block(exc):
+            print(f"    UNKNOWN: /query unreachable from this environment ({exc}).")
+            print("    Likely an ENVIRONMENT BLOCK, not a data problem. Not a pass.")
+            egress_blocked.append("duplicate shape scan")
+        else:
+            print(f"    UNKNOWN: the sweep did not complete ({exc}).")
+            print("    THIS IS NOT A PASS: nothing looked for double-counted events.")
+            unverified.append("duplicate shape scan")
+
     # 4. RECENT CI — is any workflow red right now?
     #
     # Section [3] deliberately re-queries the live API instead of reading a CI

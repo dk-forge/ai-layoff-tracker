@@ -157,11 +157,13 @@
       },
       "reviewed_by": "dak (close delegated in-session 2026-08-30; traced and written by Claude Code)",
       "slice": "ai_all_time"
-    }
-  ],
-  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {
-    "worldwide_all_time": {
+    },
+    {
+      "affected_row_ids": [
+        "179185",
+        "179133",
+        "179106"
+      ],
       "baseline_at_open": {
         "captured_at": "2026-09-07T20:44:18Z",
         "entries": 65500,
@@ -170,6 +172,7 @@
         "jobs": 20691203,
         "recorded_in": "2026-09-07T20:44:50Z"
       },
+      "closed_at": "2026-09-09T10:01:56Z",
       "detail": "-46,400 jobs over 1.0d on -2 entries (20,691,203 -> 20,644,803). The rows that changed carry at most 7,582 and the largest single row is 60,000, so NO ROW EXPLAINS THIS. Something re-scored rows that were already published: check the last reconcile-supersets run, any /bulk-purge, and the corrections log",
       "label": "Worldwide jobs, all time",
       "observed_at_open": {
@@ -180,8 +183,17 @@
         "jobs": 20644803
       },
       "opened_at": "2026-09-08T20:09:29Z",
+      "reason": "Two dedup runs hard-deleted duplicates; the guard sizes its allowance from net entries so it cannot see a deletion. Full evidence in docs/TECHLOG.md 2026-09-09.",
+      "replacement_baseline": {
+        "captured_at": "2026-09-09T10:01:56Z",
+        "entries": 65507,
+        "jobs": 20579595
+      },
+      "reviewed_by": "dak",
       "slice": "worldwide_all_time"
     }
-  },
-  "written_at": "2026-09-08T20:09:29Z"
+  ],
+  "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
+  "open": {},
+  "written_at": "2026-09-09T10:01:56Z"
 }

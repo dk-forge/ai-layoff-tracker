@@ -101,10 +101,17 @@ jobs:
       - name: Verify secrets are configured
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
         run: |
           missing=0
+          # 2026-09-09 -- FTP_USER/FTP_PASSWORD now carry the CHEMICLOUD_*
+          # secrets. The ChemiCloud credentials were added on 2026-09-06 and
+          # NO WORKFLOW EVER READ THEM: the deploy went on using the July
+          # secrets, which belong to the host the site left. Four versions
+          # uploaded cleanly onto a machine nobody reads, and when FTP_HOST was
+          # finally corrected the old credentials answered
+          # "421 Home directory not available".
           for var in FTP_HOST FTP_USER FTP_PASSWORD; do
             if [ -z "${!var}" ]; then
               echo "::error::Repo secret $var is not set."
@@ -187,8 +194,8 @@ jobs:
       - name: Verify target is the live plugin directory
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
           # HARDCODED path, relative to the FTP account home (2026-07-27). The
           # FTP account homes at the blog's WordPress root, so the live plugin
           # is at ./wp-content/plugins/ai-layoff-tracker. We used to read this
@@ -199,7 +206,7 @@ jobs:
           # resolve to "." — so wp-config.php was found (guard passed) while the
           # mirror CREATED a stray ./<hex>/ folder and the real plugin was never
           # written. Hardcoding the known-correct relative path removes both.
-          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
         run: |
           set -euo pipefail
           WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
@@ -229,10 +236,17 @@ jobs:
       - name: Deploy plugin over FTPS
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          # Hardcoded (see guard step above for why the secret was dropped).
-          REMOTE_DIR: wp-content/plugins/ai-layoff-tracker
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+          # 2026-09-09 -- back to a repo VARIABLE, not a constant. It was
+          # hardcoded because a stray secret once made the mirror invent a
+          # folder, and that reasoning still holds for a SECRET. But the path
+          # is not a secret, and it is not the same on every host: the
+          # ChemiCloud account serves asktherecruiter.com as an addon domain,
+          # so the plugin sits under the domain's own docroot rather than at
+          # the FTP home. A variable is visible in the repo settings, shows up
+          # in the run log, and cannot be confused with a credential.
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
         run: |
           set -euo pipefail
           # WordPress maintenance window around the upload. `mirror` overwrites
@@ -278,8 +292,8 @@ jobs:
         if: always()
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
         run: |
           timeout 60 lftp -c "
             set ssl:verify-certificate no;
@@ -291,34 +305,150 @@ jobs:
             rm -f .maintenance;
           " || echo "maintenance flag already clear (or unreachable); WP self-clears it after 10 minutes"
 
+      # 2026-09-09: FOUR GREEN DEPLOYS SHIPPED NOTHING.  Live sat at 2.20.175
+      # (deployed 2026-09-07 15:17) while 2.20.176, .177, .178 and .179 each
+      # reported success and each logged "Transferring file" for every file in
+      # the plugin.  Nothing in this repo noticed, because every check that
+      # reads a version reads it from the LIVE SITE: `reader_freshness.py`
+      # proves the readers and the origin agree with each other, and
+      # `ops_status [1]` prints what the origin says.  Both are internally
+      # coherent while the repository and the origin disagree, which is the one
+      # comparison nobody was making.
+      #
+      # So read the bytes back off the server we just wrote to, and compare
+      # them to the bytes in this checkout.  A mirror that reports success into
+      # a host nobody reads cannot survive this step.  It also prints the
+      # RESOLVED ADDRESS of FTP_HOST -- an IP from public DNS, not a secret --
+      # because "which machine did this land on" is the first question when it
+      # fails, and the value of the secret itself is never printed.
+      #
+      # WHAT THIS STEP CANNOT DO, said here so nobody later reads it as
+      # sufficient: it asks the FTPS target what it holds, so it passes a write
+      # that landed perfectly into a tree the web server does not serve.  That
+      # is what is happening.  Measured 2026-09-09: this read-back reported
+      # 2.20.179 while the live site served the SAME relative URL with
+      # `Last-Modified: Mon, 07 Sep 2026 13:18:50 GMT`, the 2.20.175 deploy.
+      # Both readings are true, so the FTPS home and the document root are two
+      # different trees, each holding a WordPress install with this plugin --
+      # which is also why the pre-flight guard above passes against the wrong
+      # one.  It takes BOTH this step and the origin check below to tell "the
+      # upload failed" from "the upload succeeded somewhere nobody reads", and
+      # neither replaces the other.  `.github/workflows/ftp-target-probe.yml`
+      # is the read-only dispatch that names the candidate trees.
+      - name: Verify the bytes we just wrote are the bytes we meant to write
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
+        run: |
+          set -euo pipefail
+          # `|| true` so an unmatched grep reaches the named error below
+          # rather than killing the step under `set -e` with no message at all.
+          LOCAL_VER="$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" \
+            wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
+            | grep -oE '[0-9.]+$' || true)"
+          if [ -z "$LOCAL_VER" ]; then
+            echo "::error::Could not read ALT_VERSION out of \
+              wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php in this \
+              checkout. Expected a line defining ALT_VERSION with a dotted \
+              number; found none. Without it there is nothing to compare the \
+              read-back against, so this is UNKNOWN and the deploy stops rather \
+              than claiming a match it cannot make."
+            exit 1
+          fi
+          echo "This checkout builds plugin $LOCAL_VER"
+          echo "FTP_HOST resolves to: $(getent hosts "$FTP_HOST" | awk '{print $1}' | paste -sd, - || echo 'UNRESOLVED')"
+
+          rm -f readback.php
+          timeout 90 lftp -c "
+            set cmd:fail-exit true;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 1;
+            set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            get -O . \"$REMOTE_DIR/ai-layoff-tracker.php\" -o readback.php;
+          "
+          REMOTE_VER="$(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" readback.php | grep -oE '[0-9.]+$' || echo NONE)"
+          rm -f readback.php
+          echo "The server now holds plugin $REMOTE_VER"
+          if [ "$REMOTE_VER" != "$LOCAL_VER" ]; then
+            echo "::error::The upload reported success and did NOT land. This \
+              checkout is $LOCAL_VER; the file read back off the FTPS target is \
+              $REMOTE_VER. Either the mirror is writing to a host that no longer \
+              serves the site (check the resolved address printed above against \
+              the live origin), or the write is being reverted. Do NOT treat a \
+              green mirror as a deploy."
+            exit 1
+          fi
+          echo "Read-back matches: the server holds the file this commit built."
+
+      # A cache-busting public endpoint confirms that WordPress loaded the
+      # newly uploaded plugin rather than merely serving cached HTML.
+      # NOTE: this proves the ORIGIN is updated and nothing more. The query
+      # string is a key no cache holds, so the origin always answers it. The
+      # step below is the one that speaks for readers.
+      #
+      # THIS USED TO BE `curl --fail ... | python3 -c '... json.load(sys.stdin);
+      # assert "canonical_events" in payload'`, and the owner was emailed twice
+      # by it: once with a bare `json.decoder.JSONDecodeError: Expecting value:
+      # line 1 column 1 (char 0)` and once with a bare `AssertionError`. Neither
+      # names the endpoint, the HTTP status, the content type or a single byte
+      # of what came back, and the alert body is what outlives the run's log
+      # retention. `--fail` made it worse by throwing away the error body, which
+      # was the one piece of evidence there was.
+      #
+      # railway/endpoint_check.py captures status and body separately, prints
+      # both plus a truncated excerpt, and answers in three states rather than
+      # two. FAIL (it answered, the answer is wrong) fails the deploy. UNKNOWN
+      # (it was never reached, or a gateway answered for it) warns, the same
+      # asymmetry as the two steps below: a host outage must not manufacture
+      # red runs, which manufacture alerts, which also fail.
       - name: Verify the deployed tracker API
         env:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
-          set -euo pipefail
-          # A cache-busting public endpoint confirms that WordPress loaded the
-          # newly uploaded plugin rather than merely serving cached HTML.
-          # NOTE: this proves the ORIGIN is updated and nothing more. The query
-          # string is a key no cache holds, so the origin always answers it. The
-          # step below is the one that speaks for readers.
-          curl --fail --show-error --silent --retry 4 --retry-all-errors \
-            --retry-delay 5 --max-time 30 \
-            --resolve "asktherecruiter.com:443:$ORIGIN_IP" \
+          set -uo pipefail
+          # THE VERDICT GOES INSIDE THE ANNOTATION, not just into the log.
+          # ci_alert.py mails the single most specific line it can find, and it
+          # ranks `::error::` annotations above ordinary output. An annotation
+          # that said "see the line above" would therefore be the whole email,
+          # and the status, the content type and the excerpt would stay in a log
+          # that outlives nothing. So the verdict is carried INTO it, folded to
+          # one line because an annotation is one line. No pipe into an early
+          # exiter here: `tr` reads all of its input, so nothing can take EPIPE.
+          OUT="$(python3 railway/endpoint_check.py \
+            --label "the deployed tracker API" \
+            --url "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
+            --require canonical_events \
+            --cookie 'humans_21909=1' \
+            --where "the route is alt_api_integrity_status(), registered in wordpress-plugin/ai-layoff-tracker/includes/db.php; an HTML body here usually means WordPress fataled on the freshly uploaded plugin, so read the excerpt in this message before re-running" 2>&1)"
+          STATUS=$?
+          echo "$OUT"
+          ONE_LINE="$(printf '%s' "$OUT" | tr '\n\r' '  ')"
+          if [ "$STATUS" = "2" ]; then
+            echo "::error::The live tracker API answered and the answer is not the JSON this deploy expects. $ONE_LINE"
+            exit 1
+          fi
+          if [ "$STATUS" = "3" ]; then
+            echo "::warning::The live tracker API could NOT be reached, so it was never asked. This is UNKNOWN, not a pass; the reader check below and the daily jobs go red if it persists. $ONE_LINE"
+          fi
+          
+          # 2.20.179 proved a fresh entrypoint can coexist with STALE BYTECODE for a
+          # long-lived include: db.php transferred, but its new route never
+          # registered. So verify the route contract itself, not just the version.
+          # No pipe into an early exiter: python reads all of its input.
+          ROUTES="$(curl --silent --retry 4 --retry-all-errors --retry-delay 5 --max-time 30 \
             --cookie 'humans_21909=1' \
             -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
-            "$WP_SITE_URL/wp-json/layoffs/v1/integrity-status?deploy_check=$GITHUB_RUN_ID" \
-            | python3 -c 'import json, sys; payload = json.load(sys.stdin); assert "canonical_events" in payload; print("Live tracker API verified.")'
-          # Version 2.20.179 proved that a fresh entrypoint/version can coexist
-          # with stale bytecode for a long-lived include: db.php transferred,
-          # but its new correction route never registered. Verify the route
-          # contract itself so a green deploy can no longer miss that class.
-          curl --fail --show-error --silent --retry 4 --retry-all-errors \
-            --retry-delay 5 --max-time 30 \
-            --resolve "asktherecruiter.com:443:$ORIGIN_IP" \
-            --cookie 'humans_21909=1' \
-            -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' \
-            "$WP_SITE_URL/wp-json/layoffs/v1?deploy_check=$GITHUB_RUN_ID" \
-            | python3 -c 'import json, sys; routes = json.load(sys.stdin).get("routes", {}); assert "/layoffs/v1/restore-merged-rows" in routes; print("Restoration route verified.")'
+            "$WP_SITE_URL/wp-json/layoffs/v1?deploy_check=$GITHUB_RUN_ID" || true)"
+          if ! printf '%s' "$ROUTES" | python3 -c 'import json, sys; routes = json.load(sys.stdin).get("routes", {}); assert "/layoffs/v1/restore-merged-rows" in routes; print("Restoration route verified.")'; then
+            echo "::error::The restore-merged-rows route is NOT registered on the live site after this deploy. Same class as 2.20.179: a stale include behind a fresh entrypoint. Check that includes/restore-merged.php transferred and that includes/db.php requires it."
+            exit 1
+          fi
+          exit 0
 
       # The check that measures the surface a reader actually gets: the BARE
       # url, a browser User-Agent, no cache buster. Every deploy check before
@@ -331,9 +461,19 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
           set -euo pipefail
+          # `|| true` so an unmatched grep reaches the named error below
+          # rather than killing the step under `set -e` with no message at all.
           VERSION="$(grep -oE "define\('ALT_VERSION', '[0-9.]+'\)" \
             wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read ALT_VERSION out of \
+              wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php in this \
+              checkout, so there is no version to wait for. Expected \
+              define('ALT_VERSION', 'X.Y.Z'); found none. Fix the define rather \
+              than skipping the reader check."
+            exit 1
+          fi
           echo "Deployed ALT_VERSION: $VERSION"
           # The VERSION is all this step can pass on a command line, and the
           # version alone is not the content: on 2.20.21 a page rendered while

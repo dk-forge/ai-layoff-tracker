@@ -1,0 +1,157 @@
+name: Jobindsats key probe
+
+# READ-ONLY. Dispatch only, never scheduled, writes nothing, stores nothing.
+#
+# JOBINDSATS_API_KEY has been a repository secret since 2026-08-13 and no code
+# reads it (`railway/orphaned_secrets.py` reports it as an orphan). A secret
+# nobody has ever exercised is an UNKNOWN, not an asset: the public country
+# table has said "key application pending" for the 27 days since it arrived,
+# and nothing in this repository could say whether that was still true.
+#
+# GitHub secrets are write-only, so the question can only be answered from a
+# runner. This prints HTTP statuses and a verdict. It never prints the key and
+# never echoes a header that carries it.
+#
+# FIRST RUN, 2026-09-09: /v3/dataset answered 404, not 200 and not 401. That is
+# only readable against a control, because on this API the auth layer runs
+# BEFORE routing: with no token, and with a deliberately bogus token, EVERY
+# path under /v3/ answers 401 (including a path that does not exist). So a 404
+# is a reply from past the auth layer, and the run below establishes that in
+# its own log rather than leaving it to be inferred somewhere else.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Does JOBINDSATS_API_KEY authenticate against api.jobindsats.dk
+        env:
+          JOBINDSATS_API_KEY: ${{ secrets.JOBINDSATS_API_KEY }}
+        run: |
+          set -uo pipefail
+
+          cat > /tmp/show_body.py <<'PYBODY'
+          import json
+          import sys
+          try:
+              with open("/tmp/jobindsats.body", encoding="utf-8") as fh:
+                  raw = fh.read()
+          except Exception as exc:
+              print("    (body unreadable: %s)" % exc)
+              raise SystemExit(0)
+          try:
+              doc = json.loads(raw)
+          except Exception:
+              print("    %s" % " ".join(raw.split())[:200])
+              raise SystemExit(0)
+          rows = doc if isinstance(doc, list) else (
+              doc.get("data") or doc.get("datasets") or doc.get("items") or None)
+          if rows is None:
+              print("    keys: %s" % sorted(doc)[:20])
+              print("    %s" % " ".join(json.dumps(doc, ensure_ascii=False).split())[:300])
+              raise SystemExit(0)
+          if not isinstance(rows, list):
+              print("    %s" % " ".join(json.dumps(rows, ensure_ascii=False).split())[:300])
+              raise SystemExit(0)
+          print("    %d row(s)" % len(rows))
+          if rows and isinstance(rows[0], dict):
+              # Print the field names the API actually uses rather than guessing
+              # at id/title/name. The first run guessed and printed 18 rows of
+              # "?", which is a report that says nothing.
+              print("    fields: %s" % ", ".join(sorted(rows[0])))
+          for row in rows[:40]:
+              if isinstance(row, dict):
+                  vals = [str(v) for v in row.values()
+                          if isinstance(v, (str, int, float)) and str(v).strip()]
+                  print("    %s" % " | ".join(vals)[:170])
+              else:
+                  print("    %s" % str(row)[:170])
+          if len(rows) > 40:
+              print("    ... and %d more" % (len(rows) - 40))
+          PYBODY
+
+          # ABSENT is a third state and must stay one: "no key is configured"
+          # and "the configured key was refused" send a reader to different
+          # places, and collapsing them would send the owner to re-apply for a
+          # registration he may already hold.
+          if [ -z "${JOBINDSATS_API_KEY:-}" ]; then
+            echo "VERDICT: ABSENT. No JOBINDSATS_API_KEY is set for this repository."
+            echo "         That is not a refusal and not a pass. Nothing was asked."
+            exit 0
+          fi
+
+          UA='AiLayoffTracker/1.0 (+https://asktherecruiter.com)'
+          BASE='https://api.jobindsats.dk'
+
+          # -o writes the body to a file rather than to a pipe, and %{http_code}
+          # is captured on its own. No pipeline here places an early-exiting
+          # consumer after the first position, which under `set -o pipefail`
+          # would let EPIPE redden a step that answered its question
+          # (railway/tests/test_pipefail_broken_pipe.py).
+          ask () {
+            # $1 = label for the Authorization header mode, $2 = path
+            local mode="$1" path="$2" code
+            case "$mode" in
+              none)  code=$(curl -sS -o /tmp/jobindsats.body -w '%{http_code}' --max-time 45 \
+                              -H 'Accept: application/json' -A "$UA" "$BASE$path") || code="000" ;;
+              bogus) code=$(curl -sS -o /tmp/jobindsats.body -w '%{http_code}' --max-time 45 \
+                              -H "Authorization: Bearer 00000000-0000-0000-0000-000000000000" \
+                              -H 'Accept: application/json' -A "$UA" "$BASE$path") || code="000" ;;
+              key)   code=$(curl -sS -o /tmp/jobindsats.body -w '%{http_code}' --max-time 45 \
+                              -H "Authorization: Bearer $JOBINDSATS_API_KEY" \
+                              -H 'Accept: application/json' -A "$UA" "$BASE$path") || code="000" ;;
+            esac
+            printf '%s' "$code"
+          }
+
+          echo "== controls: what this API answers WITHOUT a valid token =="
+          echo "  no token,    /v3/dataset       -> $(ask none  /v3/dataset)"
+          echo "  bogus token, /v3/dataset       -> $(ask bogus /v3/dataset)"
+          echo "  no token,    /v3/no-such-route -> $(ask none  /v3/no-such-route)"
+          echo "  bogus token, /v3/no-such-route -> $(ask bogus /v3/no-such-route)"
+          echo "  If those are all 401, the auth layer runs before routing, and"
+          echo "  ANY non-401 below is a reply from past it."
+          echo
+
+          echo "== the repository's own key, one request per candidate path =="
+          NON401=0
+          OK200=0
+          # /v3/tables answered 422 "'format' is required." on 2026-09-09: the
+          # API validated the request and asked for a parameter, which only a
+          # live route past authentication does. It is asked here with the
+          # parameter it named.
+          for P in "/v3/tables?format=json" /v3/tables /v3/dataset /v3/no-such-route; do
+            CODE=$(ask key "$P")
+            printf '  %-24s -> %s\n' "$P" "$CODE"
+            case "$CODE" in
+              401|403) ;;
+              000) ;;
+              *) NON401=$((NON401 + 1)) ;;
+            esac
+            if [ "$CODE" = "200" ]; then
+              OK200=$((OK200 + 1))
+              echo "    what this path returns:"
+              python3 /tmp/show_body.py
+            elif [ "$CODE" != "401" ] && [ "$CODE" != "403" ]; then
+              # Truncate in the shell. `tr` and `cut` both read to end of input,
+              # so neither can hand its producer an EPIPE.
+              printf '    answered: %s\n' "$(tr -d '\n' < /tmp/jobindsats.body | cut -c1-200)"
+            fi
+          done
+
+          echo
+          if [ "$OK200" -gt 0 ]; then
+            echo "VERDICT: THE KEY WORKS. At least one path answered 200 with it."
+          elif [ "$NON401" -gt 0 ]; then
+            echo "VERDICT: THE KEY AUTHENTICATES, but no path tried here is a live route."
+            echo "         Every request without a valid token is refused 401 before"
+            echo "         routing, so a 404 could only be produced past the auth layer."
+            echo "         The credential is good; the endpoint shape is not yet known."
+          else
+            echo "VERDICT: THE KEY DOES NOT WORK. Every request with it was refused,"
+            echo "         exactly as the no-token and bogus-token controls were."
+          fi
