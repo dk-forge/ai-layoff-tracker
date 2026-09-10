@@ -2234,7 +2234,7 @@ def _evaluate_month_gate() -> tuple[bool, str]:
 # Degrade / report
 # --------------------------------------------------------------------------
 
-def degrade(over: bool) -> None:
+def degrade(over: bool, reason: str = "spend ceiling reached") -> None:
     """Switch paid reads off for the rest of the job, and say so.
 
     Sets the variable in this process (so an in-process caller such as cron.py
@@ -2246,12 +2246,12 @@ def degrade(over: bool) -> None:
         return
 
     os.environ[PAID_READS_ENV] = "off"
-    print("\n  DEGRADED: paid reads are OFF.")
+    print(f"\n  DEGRADED: paid reads are OFF ({reason}).")
     print("  WARN, SEC/EDGAR structured fields, ERM, every state scraper, the")
     print("  seen-URL pre-check and all server-side dedup keep running: none of")
     print("  them call a model. Candidates that would have cost money defer")
-    print("  UNMARKED, so a later run reads them. This costs depth for the rest")
-    print("  of the month, never coverage.")
+    print("  UNMARKED, so a later run reads them after paid access returns. This")
+    print("  costs current depth, never permanent coverage.")
 
     github_env = os.environ.get("GITHUB_ENV")
     if not github_env:
@@ -2431,6 +2431,13 @@ def main() -> int:
         problems.append(f"under $1 left on this key (${remaining:.2f})")
 
     over = persisted and spent_this_month >= MONTHLY_ALLOWANCE_USD * STOP_AT_FRACTION
+    # OpenRouter's key limit is a lifetime ceiling, not a monthly allowance.
+    # It is therefore a separate availability gate: a key can be comfortably
+    # inside this month's policy while the provider will still reject every
+    # paid request with 402 because lifetime usage has exhausted the key.  In
+    # that state we must defer paid work before it reaches the network.
+    provider_exhausted = remaining is not None and remaining <= 0
+    paid_reads_unavailable = over or provider_exhausted
     if over:
         problems.append(
             f"this month's spend ${spent_this_month:.2f} is at or past "
@@ -2450,11 +2457,13 @@ def main() -> int:
     # workflow that gains --degrade without losing --enforce cannot go red by
     # accident.
     if args.degrade:
-        degrade(over)
+        reason = ("OpenRouter provider key exhausted" if provider_exhausted
+                  else "monthly allowance reached")
+        degrade(paid_reads_unavailable, reason=reason)
         apply_job_ceiling()
         return 0
-    if args.enforce and over:
-        print("\nSTOPPING: spend ceiling reached. Paid collection will not run.",
+    if args.enforce and paid_reads_unavailable:
+        print("\nSTOPPING: paid reads are unavailable. Paid collection will not run.",
               file=sys.stderr)
         return 1
     return 0
