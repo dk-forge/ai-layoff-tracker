@@ -9,8 +9,9 @@ the BigQuery client are injected; no test touches the network):
   2. a window that stays capped to the split floor is PARTIAL, never truncated;
   3. the BigQuery mirror is PAGINATED deterministically and walked to completion;
   4. an unfinished slot PERSISTS in the work ledger and a later run completes it;
-  5. mirror recovery does NOT skip the run's other sweeps (no early return);
-  6. a run with any incomplete slot reports DEGRADED, not green.
+  5. the preferred complete mirror supersedes the unstable public-query layer;
+  6. fallback mirror recovery still runs the other sweeps;
+  7. a run with any incomplete slot reports DEGRADED, not green.
 
 Import note: this module never imports `cdp`, so run_tests.py files it under the
 non-browser `rest` group, where the rest of the GDELT tests live.
@@ -165,6 +166,25 @@ class MirrorPagination(unittest.TestCase):
         ):
             self.assertIn(theme, body)
 
+    def test_non_ascii_vocabulary_matches_gkg_html_entities(self):
+        """GKG escapes every non-ASCII title character as a hex entity.
+
+        A raw-Unicode-only regex silently drops native-title matches in China,
+        Japan, Korea, and every other non-Latin script unless a GKG theme happens
+        to rescue the article.  The query pattern must match both encodings.
+        """
+        import re
+        rx = re.compile(gdelt_bq.title_pattern(["大规模裁员"]))
+        self.assertTrue(rx.search("company &#x5927;&#x89c4;&#x6a21;&#x88c1;&#x5458; plan"))
+        self.assertTrue(rx.search("company 大规模裁员 plan"))
+
+    def test_gkg_titles_are_unescaped_before_downstream_extraction(self):
+        rows = [{"url": "https://example.com/cut", "domain": "example.com",
+                 "date_int": 20260909120000,
+                 "title": "&#x516C;&#x53F8; &#x5927;&#x89C4;&#x6A21;&#x88C1;&#x5458;"}]
+        articles = gdelt_bq.rows_to_articles(rows)
+        self.assertEqual(articles[0]["title"], "公司 大规模裁员")
+
 
 class RunLevelBehaviour(unittest.TestCase):
     """pull_gdelt_between: no early return, honest health, durable retry."""
@@ -250,6 +270,93 @@ class RunLevelBehaviour(unittest.TestCase):
         self.assertIn("mirror-1", urls)
         self.assertIn("seg-1", urls)
         self.assertEqual(segment_calls, ['"California"'])
+
+    def test_preferred_complete_mirror_supersedes_public_query_debt(self):
+        """A complete canonical mirror must not keep feeding a dead queue.
+
+        The public DOC endpoint throttled every measured production run while
+        the preferred BigQuery walk completed the same global window. Once the
+        mirror is the configured source, the public full-text sweeps are an
+        optional retired layer, not 130 permanently failed coverage units.
+        Their history stays in the ledger with an explicit resolution.
+        """
+        old_key = gdelt._slot_key("segment", '"California"', W_START, W_END)
+        with open(self.ledger_path, "w", encoding="utf-8") as fh:
+            json.dump({"slots": {old_key: {
+                "family": "segment", "query_text": '"California"',
+                "window_start": gdelt._win_stamp(W_START),
+                "window_end": gdelt._win_stamp(W_END),
+                "status": "queued", "returned": 0, "attempts": 0,
+                "first_seen": gdelt._win_stamp(W_START),
+                "updated": gdelt._win_stamp(W_START),
+            }}}, fh)
+
+        def public_must_not_run(*args, **kwargs):
+            self.fail("preferred complete mirror still called the public DOC API")
+
+        with patch.object(gdelt, "prefer_mirror", lambda: True), \
+             patch.object(gdelt_bq, "available", lambda: True), \
+             patch.object(gdelt, "_collect_mirror",
+                          lambda *a: ([_article("mirror-1")], "complete")), \
+             patch.object(gdelt, "_query_window", public_must_not_run), \
+             patch.object(gdelt, "_planned_sweeps", public_must_not_run):
+            out = gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path)
+
+        self.assertEqual([a["url"] for a in out], ["mirror-1"])
+        slot = self._read_ledger()["slots"][old_key]
+        self.assertEqual(slot["status"], "superseded")
+        self.assertEqual(slot["resolution"], "preferred_bigquery_mirror")
+        self.assertEqual(gdelt.last_run_status(), "ok")
+
+    def test_partial_preferred_mirror_keeps_the_public_recovery_layer(self):
+        calls = []
+
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
+            calls.append((label, query))
+            return [_article("public-1")], False, None
+
+        with patch.object(gdelt, "prefer_mirror", lambda: True), \
+             patch.object(gdelt_bq, "available", lambda: True), \
+             patch.object(gdelt, "_collect_mirror",
+                          lambda *a: ([_article("mirror-1")], "partial")), \
+             patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps",
+                          lambda: [("segment", '"California"')]):
+            out = gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path)
+
+        self.assertIn(("segment", '"California"'), calls)
+        self.assertEqual({a["url"] for a in out}, {"mirror-1", "public-1"})
+        self.assertEqual(gdelt.last_run_status(), "degraded")
+
+    def test_pre_title_history_keeps_public_full_text_recovery(self):
+        """GKG PAGE_TITLE began after 2019-09-22 noon US Eastern.
+
+        A complete mirror walk over older history proves only that the theme
+        query exhausted; it cannot prove the native/euphemism title vocabulary
+        was searched.  Such windows therefore retain the public full-text layer.
+        """
+        old_start = datetime(2019, 9, 1, tzinfo=timezone.utc)
+        old_end = old_start + timedelta(days=1)
+        calls = []
+
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
+            calls.append((label, query))
+            return [_article("public-old")], False, None
+
+        with patch.object(gdelt, "prefer_mirror", lambda: True), \
+             patch.object(gdelt_bq, "available", lambda: True), \
+             patch.object(gdelt, "_collect_mirror",
+                          lambda *a: ([_article("mirror-old")], "complete")), \
+             patch.object(gdelt, "_query_window", fake_query), \
+             patch.object(gdelt, "_planned_sweeps",
+                          lambda: [("native", '"licenciements"')]):
+            out = gdelt.pull_gdelt_between(
+                old_start, old_end, max_records=5, ledger_path=self.ledger_path)
+
+        self.assertIn(("native", '"licenciements"'), calls)
+        self.assertEqual({a["url"] for a in out}, {"mirror-old", "public-old"})
 
     def test_capped_broad_window_reports_degraded_not_green(self):
         def always_capped(query, start, end, mr, label="broad"):

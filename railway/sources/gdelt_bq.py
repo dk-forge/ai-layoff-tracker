@@ -16,6 +16,7 @@ for the segment-query rotation on BigQuery-served windows.
 from __future__ import annotations
 
 import json
+import html
 import os
 import re
 
@@ -37,9 +38,36 @@ def _client():
 
 
 def title_pattern(terms) -> str:
-    """RE2 alternation over the shared discovery vocabulary (lowercased)."""
-    escaped = [re.escape(t.lower()) for t in terms if t and t.strip()]
-    return "|".join(escaped) if escaped else "$^"
+    """RE2 alternation over raw and GKG-escaped discovery vocabulary.
+
+    GKG's legacy ASCII format encodes every non-ASCII PAGE_TITLE character as
+    ``&#x...;``.  Searching only the Unicode phrase therefore silently misses
+    native-script titles unless one of the coarser GKG themes rescues them.
+    Include both literal forms; BigQuery lowercases the title before applying
+    this expression, so hexadecimal entities are lowercased here as well.
+    """
+    def re2_literal(value):
+        # Escape only actual RE2 metacharacters.  Python's re.escape also
+        # escapes '&' and '#', producing unnecessary/non-portable RE2 escapes
+        # in the GKG entity representation.
+        return re.sub(r"([\\.^$|?*+(){}\[\]])", r"\\\1", value)
+
+    patterns = []
+    seen = set()
+    for term in terms:
+        raw = (term or "").strip().lower()
+        if not raw:
+            continue
+        entity = "".join(
+            ch if ord(ch) < 128 else f"&#x{ord(ch):x};"
+            for ch in raw
+        )
+        for form in (raw, entity):
+            escaped = re2_literal(form)
+            if escaped not in seen:
+                seen.add(escaped)
+                patterns.append(escaped)
+    return "|".join(patterns) if patterns else "$^"
 
 
 def _seendate(date_int) -> str:
@@ -58,7 +86,7 @@ def rows_to_articles(rows):
         articles.append({
             "url": url,
             "domain": domain,
-            "title": (row.get("title") or "").strip(),
+            "title": html.unescape((row.get("title") or "").strip()),
             "seendate": _seendate(row.get("date_int")),
         })
     return articles

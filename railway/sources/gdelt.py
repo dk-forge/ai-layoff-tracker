@@ -44,9 +44,9 @@ QUERY = "(" + " OR ".join(
 # GDELT's public DOC endpoint refuses queries around its 1,000-character
 # boundary with HTTP 200 + "query was too short or too long". The full global
 # query is 984 characters before a segment term is appended, so every segment
-# sweep was deterministically refused. Segments are an additive full-text net,
-# not the primary mirror scan: use the 20 highest-value global terms here and
-# keep the complete 51-term vocabulary in QUERY and in the mirror.
+# sweep was deterministically refused. Segments are the public fallback's
+# full-text net, not the preferred mirror scan: use the 20 highest-value global
+# terms here and keep the complete vocabulary in QUERY and in the mirror.
 SEGMENT_QUERY = "(" + " OR ".join(
     f'"{term}"' if " " in term else term for term in discovery_terms()[:20]
 ) + ")"
@@ -814,11 +814,13 @@ QUERY_TIMEOUT_SECONDS = _clamped_query_timeout()
 #      re-queries each half until every sub-window returns UNDER the cap (or a
 #      sensible floor is reached and it is recorded `partial`, never dropped).
 #   2. A window the public API abandoned but the BigQuery mirror recovered used
-#      to RETURN EARLY, skipping every other sweep for that run. It no longer
-#      does: the recovered articles are ASSIGNED and the run CONTINUES.
-#   3. An unfinished window vanished. Now every (query-family, window) slot is
-#      written to a committed ledger as queued/attempted/complete/partial/failed
-#      and RETRIED across runs until complete.
+#      to RETURN EARLY, skipping every other sweep for that run. Fallback
+#      recovery now continues. When BigQuery is explicitly preferred and its
+#      walk completes, it is canonical and the unstable public copy is retired.
+#   3. An unfinished window vanished. Every fallback (query-family, window) slot
+#      is written to a committed ledger as queued/attempted/complete/partial/
+#      failed and retried, or retained as `superseded` when a complete preferred
+#      mirror makes the supplementary public layer no longer part of policy.
 #
 # The ledger is a committed JSON file, mirroring alert_state.json /
 # source_state.json / headline_incidents.json: any session can read what is
@@ -850,6 +852,20 @@ MAX_RETRY_SLOTS_PER_RUN = max(0, min(20, int(os.environ.get("GDELT_MAX_RETRY_SLO
 # ceiling. A fully-abandoned broad window still RAISES (loud, non-zero); this
 # flag is for the partial case that keeps its rows.
 _LAST_RUN_INCOMPLETE = False
+
+# The source policy used when BigQuery is explicitly preferred. The GKG walk
+# covers the global corpus by title plus the three dismissal themes, and the
+# title vocabulary includes the native-language and euphemism rings. The
+# public DOC API is full-text rather than GKG metadata, so it is not claimed to
+# be byte-for-byte equivalent; it is a retired supplementary layer once this
+# complete canonical walk succeeds, not a second mandatory denominator.
+MIRROR_COVERAGE_PROFILE = "gkg_titles_dismissal_themes_v2"
+
+# GDELT added PAGE_TITLE after noon US Eastern on 2019-09-22.  Use the first
+# complete UTC day after launch as the conservative boundary: before it, a
+# completed GKG walk proves only theme exhaustion and cannot replace the DOC
+# API's native/euphemism full-text searches.
+MIRROR_TITLE_COVERAGE_START = datetime(2019, 9, 23, tzinfo=timezone.utc)
 
 
 def last_run_status():
@@ -1516,8 +1532,8 @@ def _collect_window(query, start, end, max_records, reach_label,
     largest worst case — hours against a 900s budget. Even a clean full split
     spends 127 x REQUEST_DELAY = ~10.6 min of pacing sleep alone.
 
-    Read BEFORE STARTING a half, never mid-query, exactly as the sweep loop
-    does. A window whose halves the clock skipped returns "partial", which is
+    Read before starting a half and before sleeping for another query attempt.
+    A window whose halves the clock skipped returns "partial", which is
     already a first-class ledger status that `_retry_pending_slots` picks up on
     a later run — deferred coverage, never lost coverage, and never a raise.
     """
@@ -1664,6 +1680,33 @@ def _record_slot(ledger, family, query, start, end, status, articles, *, cap_hit
     # call is throttled and skips an unchanged ledger, so this is cheap.
     _sync_ledger_mid_run(ledger)
     return key
+
+
+def _supersede_public_debt(ledger, broad_key):
+    """Close non-broad DOC slots after the preferred mirror becomes canonical.
+
+    Preserve every old slot and its attempt count for audit. `superseded` is a
+    terminal product-policy resolution, not `complete`: the unstable full-text
+    endpoint did not suddenly answer, and the ledger must never say it did.
+    """
+    now_iso = _win_stamp(datetime.now(timezone.utc))
+    changed = 0
+    for key, slot in ledger.get("slots", {}).items():
+        if key == broad_key or slot.get("family") == "broad":
+            continue
+        if slot.get("status") not in ("partial", "failed", "queued"):
+            continue
+        window_start = _parse_stamp(slot.get("window_start"))
+        if window_start is None or window_start < MIRROR_TITLE_COVERAGE_START:
+            continue
+        slot.update({
+            "status": "superseded",
+            "resolution": "preferred_bigquery_mirror",
+            "superseded_by": broad_key,
+            "updated": now_iso,
+        })
+        changed += 1
+    return changed
 
 
 def _rebuild_query(slot):
@@ -1818,23 +1861,23 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
                        deadline=None, max_candidates=None):
     """Return raw layoff-news entries (trusted domains) filed in [start, end].
 
-    Every planned unit of work (the broad window plus each rotating sweep) is a
-    ledger SLOT: attempted, recorded complete/partial/failed, and retried across
-    runs until it completes. A capped window is bisected, an abandoned window is
-    recovered from the BigQuery mirror WITHOUT skipping the other sweeps, and a
-    run with any incomplete slot reports degraded (see last_run_status), so a
-    truncated or lost window is visible instead of silently green.
+    In fallback mode every planned unit of work (the broad window plus each
+    rotating sweep) is a ledger SLOT: attempted, recorded complete/partial/
+    failed, and retried across runs. When BigQuery is explicitly preferred and
+    its deterministic walk reports complete, that mirror is canonical and old
+    supplementary public-DOC debt is retained as `superseded`, never relabeled
+    complete. A partial mirror still invokes public recovery. Any incomplete
+    required slot reports degraded (see last_run_status), so a truncated or
+    lost canonical window cannot silently turn green.
 
     `deadline`, when given, is an absolute `time.monotonic()` cutoff (run
     33094996142, 2026-08-27: the broad slot cleared via the BigQuery mirror in
     seconds, then ten rotating sweeps hit the throttled public API one after
     another, each patient with QUERY_ATTEMPTS x QUERY_BACKOFF_SECONDS of its
     own backoff and no clock, and the job was killed by timeout-minutes with a
-    sweep still retrying). It is consulted before STARTING each sweep, never
-    mid-query, so a sweep already retrying is left to finish rather than cut
-    off part-way; a skipped sweep is simply not attempted this run and stays
-    (or becomes) a ledger slot that the next run retries — no coverage is lost,
-    only deferred.
+    sweep still retrying). It is consulted before each sweep, bisection half,
+    request, and retry sleep. An in-flight HTTP request is allowed only the
+    remaining time; skipped fallback work stays in the ledger for a later run.
 
     It is also consulted before starting each BISECTION half (`_collect_window`).
     It has to be: the BROAD slot runs BEFORE the sweep loop, so until 2026-09-03
@@ -1860,10 +1903,12 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     broad_articles = None
     broad_status = None
     broad_cap = False
+    broad_from_preferred_mirror = False
     if gdelt_bq.available() and prefer_bq:
         try:
             broad_articles, broad_status = _collect_mirror(start, end)
             broad_cap = broad_status != "complete"
+            broad_from_preferred_mirror = True
             print(f"GDELT via BigQuery mirror: {len(broad_articles)} article(s), no rate limits")
         except Exception as e:
             print(f"GDELT BigQuery mirror failed ({e}); falling back to public API")
@@ -1898,11 +1943,30 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
             broad_articles, broad_status, broad_cap = arts, status, (status != "complete")
 
     collected.extend(broad_articles)
-    done_keys.add(_record_slot(ledger, "broad", QUERY, start, end,
-                               "complete" if broad_status == "complete" else "partial",
-                               broad_articles, cap_hit=broad_cap))
+    broad_key = _record_slot(ledger, "broad", QUERY, start, end,
+                             "complete" if broad_status == "complete" else "partial",
+                             broad_articles, cap_hit=broad_cap)
+    done_keys.add(broad_key)
     if broad_status != "complete":
         incomplete.append(f"broad:{broad_status}")
+
+    # The production policy explicitly prefers the BigQuery mirror. Once that
+    # deterministic walk reaches the bottom, it is the canonical GDELT source
+    # for the window. Continuing into the shared public DOC API bought only
+    # systematic 429s: 16/16 measured runs lost at least one supplementary
+    # slot and the durable queue grew on every retry. Retire that optional
+    # layer honestly instead of calling its failures either complete or a
+    # permanent coverage incident. A partial mirror does NOT enter this path.
+    if (broad_from_preferred_mirror and broad_status == "complete"
+            and start >= MIRROR_TITLE_COVERAGE_START):
+        ledger["slots"][broad_key]["coverage_profile"] = MIRROR_COVERAGE_PROFILE
+        superseded = _supersede_public_debt(ledger, broad_key)
+        if superseded:
+            print(f"GDELT preferred mirror superseded {superseded} unfinished "
+                  "public-DOC slot(s); history retained in the ledger")
+        _LAST_RUN_INCOMPLETE = False
+        _save_work_ledger(ledger, ledger_path)
+        return _fetch_trusted(collected, max_candidates=max_candidates)
 
     # --- Rotating sweeps: never return early, each is its own retriable slot ---
     #
