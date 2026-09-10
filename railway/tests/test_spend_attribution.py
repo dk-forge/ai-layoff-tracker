@@ -82,6 +82,19 @@ class HarvestPaginationTests(unittest.TestCase):
         self.assertEqual(len(runs), 37)
         self.assertEqual(pages, [1])
 
+    def test_the_default_bound_covers_the_measured_september_run_volume(self):
+        """Production held 2,359 completed runs in the two-day harvest window.
+
+        A bound below that volume makes the cost ledger UNKNOWN every day even
+        though pagination itself works. Keep measured headroom rather than
+        restoring a cap sized to the much quieter August schedule.
+        """
+        api, pages = self._api_over(2359)
+        runs, complete = spend.list_runs_in_window(api, "o/r", "2026-09-08")
+        self.assertTrue(complete)
+        self.assertEqual(len(runs), 2359)
+        self.assertEqual(pages[-1], 24)
+
     def test_hitting_the_page_cap_reports_incomplete_rather_than_lying(self):
         """UNKNOWN is not a pass: a truncated read must say it was truncated."""
         api, _ = self._api_over(100 * spend.HARVEST_MAX_PAGES + 1)

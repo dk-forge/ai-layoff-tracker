@@ -8,14 +8,38 @@ holder, so the start-of-session ritual surfaces it automatically.
 ## Baton
 - **HELD by Codex (2026-09-10) — top-three evidence programme, GDELT first.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/gdelt-proof-budget-guard`, based on `origin/main` at
-  `94190341a4e6776d532161b5d08cfad8e271b9bb`.
+  branch: `codex/spend-harvest-bound`, based on `origin/main` at
+  `bddeb9c4f0211bc3c002d0fd5592364c5884c869`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
 
-  **Newest production result (do not lose this).** PR #300 passed all seven
+  **Newest production result (2026-09-11 CET).** PR #301 passed all seven
+  checks and merged as `525af46660317e453fe8e1994ab20696f71d55be`.
+  Railway deployment `ecda9325-77cf-46b0-8efe-7abb2bc451b6` is SUCCESS on that
+  exact SHA with root `railway`, `/railway/railway.toml`, `python cron.py`, and
+  final schedule `0 22 * * *`. Zero-cost production check `34541947139` then
+  proved the guard reports `DEGRADED: paid reads are OFF (OpenRouter provider
+  key exhausted)` rather than its old contradictory ON status. The API measured
+  $2.5953 September usage; the durable ledger currently reports $2.45 and
+  projects $7.35/month, still under policy. Paid extraction cannot resume until
+  the owner raises or replaces the provider-side lifetime key limit.
+
+  That proof found two new non-passes. First, the two-day GitHub run window now
+  contains 2,359 completed runs, so the spend harvester's August-sized 10-page
+  cap truncated at 1,000 and explicitly marked attribution UNKNOWN. Current
+  red-first work raises the bounded default to 30 pages (3,000 runs, 27%
+  headroom); 143 spend-related tests pass. Second, the live GDELT ledger is 154
+  slots: 13 complete, 130 superseded, 9 queued, 1 failed and 1 partial. Railway
+  logs identify the cause: the raw English feed was current but four newest
+  Translingual 15-minute files were not yet published, so the honest raw verdict
+  was partial and the throttled public fallback generated the 11 unfinished
+  slots. After the harvest-bound repair, add an explicit live-source watermark
+  so the daily 36-hour overlap requests only intervals both raw streams have
+  published; never relabel those missing edge intervals complete.
+
+  **Earlier production result.** PR #300 passed all seven
   checks and merged as `94190341a4e6776d532161b5d08cfad8e271b9bb`.
   Railway deployment `483af316-dc9e-4987-8196-cdd3e13667f7` is SUCCESS on that
   exact SHA with root `railway`, config `/railway/railway.toml`, start command
