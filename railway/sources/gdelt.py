@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from sources import gdelt_bq
+from sources import gdelt_bq, gdelt_raw
 
 import gdelt_reach
 import robots_gate
@@ -860,6 +860,7 @@ _LAST_RUN_INCOMPLETE = False
 # be byte-for-byte equivalent; it is a retired supplementary layer once this
 # complete canonical walk succeeds, not a second mandatory denominator.
 MIRROR_COVERAGE_PROFILE = "gkg_titles_dismissal_themes_v2"
+RAW_COVERAGE_PROFILE = "raw_gkg_english_translingual_titles_dismissal_themes_v1"
 
 # GDELT added PAGE_TITLE after noon US Eastern on 2019-09-22.  Use the first
 # complete UTC day after launch as the conservative boundary: before it, a
@@ -1583,6 +1584,17 @@ def prefer_mirror():
     return os.environ.get("GDELT_PREFER_BQ", "").strip().lower() in ("1", "true", "yes")
 
 
+def _mirror_terms():
+    """One title vocabulary for BigQuery and both official raw streams."""
+    from source_registry import discovery_terms as _terms
+    from sources.native_layoff_terms import mirror_title_terms
+    euphemisms = tuple(dict.fromkeys(
+        phrase for query in EUPHEMISM_TERMS
+        for phrase in re.findall(r'"([^"]+)"', query)
+    ))
+    return _terms() + mirror_title_terms() + euphemisms
+
+
 def mirror_corpus(start, end):
     """The collector's candidate universe for [start, end] from the BigQuery
     mirror, BEFORE the trusted-domain gate. Returns (articles, complete).
@@ -1599,8 +1611,6 @@ def mirror_corpus(start, end):
     `complete` is False only when the walk hit its page ceiling, so a caller can
     say "partial" as a fact rather than infer it from a row count.
     """
-    from source_registry import discovery_terms as _terms
-    from sources.native_layoff_terms import mirror_title_terms
     # The mirror matches ORIGINAL-language page titles, and until 2026-09-02 the
     # regex held only the English vocabulary: a "Stellenabbau" headline reached
     # the pipeline only if GDELT's theme tagger had also filed it under
@@ -1613,12 +1623,7 @@ def mirror_corpus(start, end):
     # phrase from the precision-selected ring into the SAME title regex: a
     # longer regex does not scan another partition, while the normal trusted-
     # domain and extraction gates still reject noise downstream.
-    euphemisms = tuple(dict.fromkeys(
-        phrase for query in EUPHEMISM_TERMS
-        for phrase in re.findall(r'"([^"]+)"', query)
-    ))
-    return gdelt_bq.query_window_walk(
-        start, end, _terms() + mirror_title_terms() + euphemisms)
+    return gdelt_bq.query_window_walk(start, end, _mirror_terms())
 
 
 def _collect_mirror(start, end):
@@ -1638,6 +1643,18 @@ def _collect_mirror(start, end):
     # request and [2d] prints it.
     gdelt_reach.current().note_query("mirror", len(arts), gdelt_bq.MIRROR_LIMIT,
                                      truncated=not complete)
+    return arts, ("complete" if complete else "partial")
+
+
+def _collect_raw(start, end, deadline=None):
+    """Walk GDELT's English + Translingual 15-minute GKG ZIP streams."""
+    arts, complete = gdelt_raw.query_window_walk(
+        start, end, _mirror_terms(), deadline=deadline)
+    # `mirror` remains the public reach label because this is the same GKG
+    # corpus and contract through a different transport. The coverage_profile
+    # on the ledger distinguishes BigQuery from raw files exactly.
+    gdelt_reach.current().note_query(
+        "mirror", len(arts), max(1, len(arts) + 1), truncated=not complete)
     return arts, ("complete" if complete else "partial")
 
 
@@ -1903,16 +1920,39 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     broad_articles = None
     broad_status = None
     broad_cap = False
-    broad_from_preferred_mirror = False
-    if gdelt_bq.available() and prefer_bq:
-        try:
-            broad_articles, broad_status = _collect_mirror(start, end)
-            broad_cap = broad_status != "complete"
-            broad_from_preferred_mirror = True
-            print(f"GDELT via BigQuery mirror: {len(broad_articles)} article(s), no rate limits")
-        except Exception as e:
-            print(f"GDELT BigQuery mirror failed ({e}); falling back to public API")
-            broad_articles = None
+    canonical_profile = None
+    raw_attempted = False
+    if prefer_bq:
+        if gdelt_bq.available():
+            try:
+                broad_articles, broad_status = _collect_mirror(start, end)
+                broad_cap = broad_status != "complete"
+                if broad_status == "complete":
+                    canonical_profile = MIRROR_COVERAGE_PROFILE
+                print(f"GDELT via BigQuery mirror: {len(broad_articles)} article(s), no rate limits")
+            except Exception as e:
+                print(f"GDELT BigQuery mirror failed ({e}); trying official raw GKG files")
+                broad_articles = None
+        # BigQuery quota, credentials, or a partial page walk cannot be the
+        # availability boundary. The official English + Translingual files are
+        # the same GKG source through a quota-independent transport.
+        if broad_articles is None:
+            prior = list(broad_articles or [])
+            try:
+                raw_attempted = True
+                raw_articles, raw_status = _collect_raw(start, end, deadline=deadline)
+                broad_articles = prior + raw_articles
+                broad_status = raw_status
+                broad_cap = raw_status != "complete"
+                if raw_status == "complete":
+                    canonical_profile = RAW_COVERAGE_PROFILE
+                print(f"GDELT via official raw GKG files: {len(raw_articles)} article(s), "
+                      f"{raw_status}")
+            except Exception as e:
+                print(f"GDELT raw GKG fallback failed ({type(e).__name__}); "
+                      "falling back to public API")
+                if not prior:
+                    broad_articles = None
 
     if broad_articles is None:
         arts, status, saw_rl, err = _collect_window(QUERY, start, end, max_records,
@@ -1931,6 +1971,21 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
                 except Exception as e:
                     print(f"BigQuery fallback also failed: {e}")
                     broad_articles = None
+            if prefer_bq and not raw_attempted and (
+                    broad_articles is None or broad_status != "complete"):
+                prior = list(broad_articles or [])
+                try:
+                    raw_attempted = True
+                    raw_articles, raw_status = _collect_raw(start, end, deadline=deadline)
+                    broad_articles = prior + raw_articles
+                    broad_status = raw_status
+                    broad_cap = raw_status != "complete"
+                    print(f"GDELT public API abandoned; raw GKG recovered "
+                          f"{len(raw_articles)} article(s) ({raw_status})")
+                except Exception as e:
+                    print(f"Raw GKG fallback also failed: {type(e).__name__}")
+                    if not prior:
+                        broad_articles = None
             if broad_articles is None:
                 # Neither delivered nor recovered. Fail loudly (cron -> degraded,
                 # non-zero) and persist nothing: the whole run failed and the
@@ -1957,9 +2012,9 @@ def pull_gdelt_between(start, end, max_records=250, ledger_path=WORK_LEDGER_PATH
     # slot and the durable queue grew on every retry. Retire that optional
     # layer honestly instead of calling its failures either complete or a
     # permanent coverage incident. A partial mirror does NOT enter this path.
-    if (broad_from_preferred_mirror and broad_status == "complete"
+    if (canonical_profile and broad_status == "complete"
             and start >= MIRROR_TITLE_COVERAGE_START):
-        ledger["slots"][broad_key]["coverage_profile"] = MIRROR_COVERAGE_PROFILE
+        ledger["slots"][broad_key]["coverage_profile"] = canonical_profile
         superseded = _supersede_public_debt(ledger, broad_key)
         if superseded:
             print(f"GDELT preferred mirror superseded {superseded} unfinished "

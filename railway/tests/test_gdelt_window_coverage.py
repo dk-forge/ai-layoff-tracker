@@ -309,6 +309,28 @@ class RunLevelBehaviour(unittest.TestCase):
         self.assertEqual(slot["resolution"], "preferred_bigquery_mirror")
         self.assertEqual(gdelt.last_run_status(), "ok")
 
+    def test_bigquery_quota_failure_uses_complete_raw_gkg_without_public_api(self):
+        """Free-query quota exhaustion must not route back to permanent 429s."""
+        def public_must_not_run(*args, **kwargs):
+            self.fail("complete official raw GKG recovery still called public DOC")
+
+        with patch.object(gdelt, "prefer_mirror", lambda: True), \
+             patch.object(gdelt_bq, "available", lambda: True), \
+             patch.object(gdelt, "_collect_mirror", side_effect=RuntimeError("quota")), \
+             patch.object(gdelt, "_collect_raw",
+                          return_value=([_article("raw-1")], "complete")), \
+             patch.object(gdelt, "_query_window", public_must_not_run), \
+             patch.object(gdelt, "_planned_sweeps", public_must_not_run):
+            out = gdelt.pull_gdelt_between(
+                W_START, W_END, max_records=5, ledger_path=self.ledger_path)
+
+        self.assertEqual([a["url"] for a in out], ["raw-1"])
+        broad = next(s for s in self._read_ledger()["slots"].values()
+                     if s["family"] == "broad")
+        self.assertEqual(broad["coverage_profile"],
+                         gdelt.RAW_COVERAGE_PROFILE)
+        self.assertEqual(gdelt.last_run_status(), "ok")
+
     def test_partial_preferred_mirror_keeps_the_public_recovery_layer(self):
         calls = []
 

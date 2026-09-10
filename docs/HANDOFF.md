@@ -8,14 +8,40 @@ holder, so the start-of-session ritual surfaces it automatically.
 ## Baton
 - **HELD by Codex (2026-09-10) — top-three evidence programme, GDELT first.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/gdelt-provider-fallback`, based on `origin/main` at
-  `721cc9ac5b36868accb3ee5b0cb77a6db8c82a59`.
+  branch: `codex/gdelt-raw-fallback`, based on `origin/main` at
+  `615f21492857f7aa93c8b7b263192f64cf020110`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
 
-  **Current checkpoint.** PR #298 passed all seven checks and merged as
+  **Newest production result (do not lose this).** PR #299 passed all seven
+  checks and merged as `615f21492857f7aa93c8b7b263192f64cf020110`.
+  Railway deployment `1151b340-dced-44b4-9122-d76328629f7f` is SUCCESS on that
+  exact SHA with `python cron.py` and `0 22 * * *`. Repeated-window proof run
+  `34494338520` then disproved continuous BigQuery availability: Google returned
+  HTTP 403 `Quota exceeded ... free query bytes scanned` twice, the collector
+  correctly fell back, and public DOC again exhausted the 600-second collection
+  deadline under 429s. The workflow was green only because the success-anchored
+  sweep preserves progress and warns; it processed zero candidates and did not
+  move the manual cursor. **Therefore the GDELT required queue is not closed.**
+  Current branch `codex/gdelt-raw-fallback` adds a third, quota-independent
+  source from GDELT's official 15-minute English and Translingual GKG ZIP files.
+  BigQuery is now an accelerator, not the sole reliable denominator. The raw
+  path requires both streams, applies the same title/theme contract, filters to
+  the requested timestamps, and bounds workers, file bytes, expanded ZIP bytes,
+  total files, total window bytes and wall time. Any missing interval is
+  `partial`, never an empty success. A complete raw result is canonical under
+  `raw_gkg_english_translingual_titles_dismissal_themes_v1` and may supersede
+  DOC debt only under the same post-2019 PAGE_TITLE boundary as BigQuery.
+  Five red-first tests plus 71 existing affected tests are green. A real read
+  of the 2026-09-09 12:00 UTC English and Translingual pair completed in 7.5s,
+  matched 86 candidates and returned valid URL/domain/timestamp fields. Still
+  required: full CI, merge/deploy, then the repeated one-day production proof.
+  Expect roughly 1.7 GB compressed inbound data per day-sized raw fallback;
+  discovery spends $0 on OpenRouter, but full-window runtime must be measured.
+
+  **Earlier checkpoint.** PR #298 passed all seven checks and merged as
   `721cc9ac5b36868accb3ee5b0cb77a6db8c82a59`. Railway deployment
   `3f44db4c-4207-4a1a-a8fc-8f33c7f04530` is SUCCESS on that exact SHA and
   retained the repository's `python cron.py` / `0 22 * * *` configuration.
