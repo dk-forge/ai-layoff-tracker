@@ -1,3 +1,40 @@
+## 2026-09-10 - the canonical GDELT mirror exhausted its free monthly query quota
+
+**Class:** quota-exhaustion
+**Guard:** `railway/tests/test_gdelt_raw_files.py`,
+`railway/tests/test_gdelt_window_coverage.py`
+
+PR #299 passed all seven gates, merged as
+`615f21492857f7aa93c8b7b263192f64cf020110`, and deployed successfully to
+Railway as `1151b340-dced-44b4-9122-d76328629f7f` with the correct cron
+configuration. Production proof run `34494338520` repeated the 2026-09-09..10
+window. It did **not** prove the new source policy: both BigQuery attempts failed
+HTTP 403 because the project had exhausted its free query-bytes quota. Public
+DOC fallback then returned 429s until the 600-second collection deadline. The
+job's green conclusion means progress was preserved; it does not mean coverage
+passed. It processed zero candidates and left the manual cursor unchanged.
+
+The new source layer is GDELT's own raw 15-minute GKG distribution, which the
+official documentation identifies as free, global, updated every 15 minutes,
+and split into English and GDELT Translingual streams. Deterministic filenames
+were verified live for both `YYYYMMDDHHMMSS.gkg.csv.zip` and
+`YYYYMMDDHHMMSS.translation.gkg.csv.zip`. The reader downloads both streams,
+applies the same title/theme contract, and bounds concurrency, per-file bytes,
+expanded ZIP bytes, total files, total window bytes and wall time. Any missing,
+corrupt, oversized or late interval produces `partial` while retaining the
+other rows; it cannot silently become an empty success. A complete raw walk has
+its own versioned ledger profile and enters the same post-2019 canonical path.
+
+Five tests were red first and now pass inside 76 green affected tests. A real
+2026-09-09 12:00 UTC two-stream read downloaded about 18 MB, completed in 7.5s,
+matched 86 candidates and returned valid URL/domain/timestamp fields. A
+day-sized fallback is expected to download about 1.7 GB compressed based on the
+two live file sizes. Discovery makes zero OpenRouter calls, but the full-window
+production proof must measure runtime and bandwidth before closure. BigQuery
+remains the fast path; raw files make quota exhaustion survivable without
+falsely relying on DOC. Official data overview:
+https://gdeltproject.org/data.html.
+
 ## 2026-09-10 - the required GDELT path completed while its optional public copy grew forever
 
 **Class:** unbounded-growth
