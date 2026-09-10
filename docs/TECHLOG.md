@@ -1,8 +1,14 @@
 ## 2026-09-10 - the canonical GDELT mirror exhausted its free monthly query quota
 
-**Class:** quota-exhaustion
+**Class:** novel
 **Guard:** `railway/tests/test_gdelt_raw_files.py`,
 `railway/tests/test_gdelt_window_coverage.py`
+
+No existing incident slug describes a free third-party query allowance that is
+both expected to exhaust under the designed cadence and was the sole reliable
+transport. This is not paid-model `unmetered-spend`: BigQuery charged $0 and the
+OpenRouter gate was untouched. Treat recurrence as a candidate for a dedicated
+provider-quota class.
 
 PR #299 passed all seven gates, merged as
 `615f21492857f7aa93c8b7b263192f64cf020110`, and deployed successfully to
