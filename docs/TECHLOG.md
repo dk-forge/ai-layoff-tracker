@@ -1,6 +1,6 @@
 ## 2026-09-10 - a retry in flight ignored the run-wide GDELT deadline
 
-**Class:** timeout-budget-bypassed
+**Class:** started-not-finished
 **Guard:** `railway/tests/test_gdelt_throttle_classification.py`
 
 Merged repair `e5181ddd631b79c8f2e2b79bf9913168694ac9b9` was deployed successfully

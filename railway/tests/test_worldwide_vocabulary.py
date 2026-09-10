@@ -206,7 +206,7 @@ class ClockSkippedSweepsAreQueuedNotLost(unittest.TestCase):
         now = [0.0]
         saved = {}
 
-        def fake_query(query, start, end, mr, label="broad"):
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
             if label == "broad":
                 now[0] = 999.0   # the broad slot alone ate the budget
             return [], False, None
