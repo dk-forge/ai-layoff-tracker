@@ -337,6 +337,12 @@ class TheWorkflowPassesWhatTheCollectorsPass(unittest.TestCase):
             step)
         self.assertIn("GDELT_PREFER_BQ: '1'", step)
 
+    def test_historical_proof_lines_are_not_lost_when_a_run_is_cancelled(self):
+        text = (WORKFLOW.parent / "historical-news-sweep.yml").read_text(encoding="utf-8")
+        start = text.index("- name: Ingest and deduplicate the selected global window")
+        step = text[start:]
+        self.assertIn("PYTHONUNBUFFERED: '1'", step)
+
     def test_no_model_key_reaches_the_learn_step(self):
         """$0.00 in model spend, structurally."""
         step = self._learn_step()

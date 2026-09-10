@@ -153,6 +153,30 @@ class RecoveryAndCost(_Harness):
                          "the sleep schedule must be unchanged — no backoff was "
                          "added to answer a rate limit")
 
+    def test_run_deadline_stops_one_slot_from_sleeping_past_the_whole_budget(self):
+        clock = [0.0]
+
+        def fake_sleep(seconds):
+            self.sleeps.append(seconds)
+            clock[0] += seconds
+
+        def fake_get(*args, **kwargs):
+            self.requests += 1
+            return FakeResponse(429, THROTTLE_BODY)
+
+        with patch.object(gdelt.time, "monotonic", lambda: clock[0]), \
+             patch.object(gdelt.time, "sleep", fake_sleep), \
+             patch.object(gdelt.requests, "get", fake_get), \
+             patch.object(gdelt, "_retry_delay", lambda *a: 90):
+            arts, saw_rl, err = gdelt._query_window(
+                gdelt.QUERY, W_START, W_END, 250, "broad", deadline=12)
+
+        self.assertIsNone(arts)
+        self.assertTrue(saw_rl)
+        self.assertEqual(self.requests, 1)
+        self.assertEqual(self.sleeps, [gdelt.REQUEST_DELAY])
+        self.assertIn("deadline", err.lower())
+
 
 class BodyClassifier(unittest.TestCase):
     """The classifier itself, at its edges."""
