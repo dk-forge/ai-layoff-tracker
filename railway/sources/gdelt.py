@@ -1406,7 +1406,7 @@ def _segment_queries_for_now():
     return [f"{SEGMENT_QUERY} {term}" for term in picked]
 
 
-def _query_window(query, start, end, max_records, reach_label="broad"):
+def _query_window(query, start, end, max_records, reach_label="broad", deadline=None):
     """One GDELT ArtList query with patient 429 backoff.
 
     Returns (articles, saw_rate_limit, last_error); articles is None when the
@@ -1434,11 +1434,25 @@ def _query_window(query, start, end, max_records, reach_label="broad"):
     saw_refusal = False
     delay = REQUEST_DELAY
     for attempt in range(QUERY_ATTEMPTS):
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            # Do not spend the rest of the run merely waiting to START another
+            # retry. The slot is durable and the next run resumes it.
+            if remaining <= delay:
+                last_error = "run deadline reached before the next GDELT attempt"
+                break
         time.sleep(delay)
         try:
-            resp = requests.get(GDELT_URL, params=params,
-                                headers={"User-Agent": BROWSER_UA},
-                                timeout=QUERY_TIMEOUT_SECONDS)
+            if deadline is None:
+                resp = requests.get(GDELT_URL, params=params,
+                                    headers={"User-Agent": BROWSER_UA},
+                                    timeout=QUERY_TIMEOUT_SECONDS)
+            else:
+                request_timeout = max(0.1, min(
+                    QUERY_TIMEOUT_SECONDS, deadline - time.monotonic()))
+                resp = requests.get(GDELT_URL, params=params,
+                                    headers={"User-Agent": BROWSER_UA},
+                                    timeout=request_timeout)
             if resp.status_code == 429:
                 saw_rate_limit = True
                 last_error = "HTTP 429"
@@ -1507,7 +1521,12 @@ def _collect_window(query, start, end, max_records, reach_label,
     already a first-class ledger status that `_retry_pending_slots` picks up on
     a later run — deferred coverage, never lost coverage, and never a raise.
     """
-    articles, saw_rl, err = _query_window(query, start, end, max_records, reach_label)
+    if deadline is None:
+        articles, saw_rl, err = _query_window(
+            query, start, end, max_records, reach_label)
+    else:
+        articles, saw_rl, err = _query_window(
+            query, start, end, max_records, reach_label, deadline=deadline)
     if articles is None:
         return None, "abandoned", saw_rl, err
     if len(articles) < max_records:

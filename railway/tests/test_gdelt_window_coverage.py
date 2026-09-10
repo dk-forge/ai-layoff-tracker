@@ -77,7 +77,7 @@ class Bisection(unittest.TestCase):
         floor = gdelt.MIN_BISECT_WINDOW
         calls = []
 
-        def fake_query(query, start, end, mr, label="broad"):
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
             calls.append((start, end))
             span = end - start
             # The full window still caps; once split to an 18h half it is under.
@@ -229,7 +229,7 @@ class RunLevelBehaviour(unittest.TestCase):
     def test_mirror_recovery_still_runs_the_other_sweeps(self):
         segment_calls = []
 
-        def fake_query(query, start, end, mr, label="broad"):
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
             if label == "broad":
                 return None, True, "HTTP 429"      # public API abandons the window
             segment_calls.append(query)
@@ -442,7 +442,7 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
         now = [0.0]
         started = []
 
-        def fake_query(query, start, end, mr, label="broad"):
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
             if label == "broad":
                 return [], False, None
             started.append(label)
@@ -478,7 +478,7 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
         now = [0.0]
         windows = []
 
-        def fake_query(query, start, end, mr, label="broad"):
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
             windows.append((label, start, end))
             if label != "broad":
                 return [], False, None
@@ -520,7 +520,7 @@ class SweepCollectionRespectsTheDeadline(unittest.TestCase):
         the run would die of its own safety valve."""
         now = [0.0]
 
-        def fake_query(query, start, end, mr, label="broad"):
+        def fake_query(query, start, end, mr, label="broad", deadline=None):
             now[0] += 400.0
             return ([_article("broad-1")] * mr if label == "broad" else []), False, None
 

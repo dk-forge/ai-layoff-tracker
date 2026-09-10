@@ -34,8 +34,25 @@ holder, so the start-of-session ritual surfaces it automatically.
   The manual GitHub backfill had a separate wiring bug: it checked the BigQuery
   secret in one step but omitted it from the step that runs the collector; that
   is fixed and pinned by a step-scoped test. Affected suite: 111 tests green.
-  **Still open:** merge/deploy, run production, observe mirror completion and
-  actual queued/failed counts decline; code-level coverage is not run proof.
+  PR #297 passed all four full test shards plus comparison/version gates and
+  merged as `e5181ddd631b79c8f2e2b79bf9913168694ac9b9`. Railway deployment
+  `3ae0a59f-88a1-494a-b46b-27d712ed40d9` is SUCCESS on that exact SHA, with
+  `python cron.py` and `0 22 * * *` confirmed after build. Production
+  `GDELT_PREFER_BQ=1` is also confirmed.
+
+  Production-connected proof run `34446693697` then exposed the next bound:
+  the workflow correctly carried both the BigQuery credential and preference,
+  but one public additive query stayed inside its six-attempt 90-second backoff
+  beyond nine minutes even though the run's own budget was 600 seconds. Codex
+  cancelled it at 9m33s; its cursor did not advance. Branch
+  `codex/gdelt-deadline` makes the deadline reach inside `_query_window`, caps
+  each request timeout to remaining time, and leaves the slot queued for the
+  next run. The new test failed on the missing deadline argument and now proves
+  one throttled slot cannot consume the whole run. The workflow also enables
+  unbuffered Python output so a canceled run retains diagnostic lines. Local
+  affected suites are green. **Still open:** merge/deploy this second patch,
+  rerun the one-day proof, then observe the live queued/failed counts decline;
+  neither the canceled run nor code-level coverage is clean-run proof.
 - **2026-09-09 closeout checkpoint — corrections are live; ranking proof is not complete.**
   PR #294 passed all four full test shards and merged as
   `5740e588c5d0e4db10e6f9d56849371f9460d941`. Signed correction workflow dry

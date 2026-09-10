@@ -1,3 +1,31 @@
+## 2026-09-10 - a retry in flight ignored the run-wide GDELT deadline
+
+**Class:** started-not-finished
+**Guard:** `railway/tests/test_gdelt_throttle_classification.py`
+
+Merged repair `e5181ddd631b79c8f2e2b79bf9913168694ac9b9` was deployed successfully
+to Railway, then production-connected run `34446693697` was dispatched for
+2026-09-09 through 2026-09-10. Its environment proved the actual ingest step
+received `GCP_BIGQUERY_CREDENTIALS_JSON`, `GDELT_PREFER_BQ=1` and
+`BACKFILL_DEADLINE_SECONDS=600`. The ingest step was still running after nine
+minutes and had emitted no Python lines because stdout was buffered. It was
+canceled at 9m33s without advancing the historical cursor.
+
+The collection deadline was checked before a slot and before a bisection half,
+but `_query_window` then owned all six retries and their 90/180-second sleeps.
+The outer caller could not check the clock again until those sleeps ended. The
+deadline now reaches the retry loop: it will not sleep when the remaining run
+budget is shorter than the next delay, and an individual HTTP timeout is capped
+to the remaining time. The durable slot remains incomplete and is retried in a
+later run, so the change bounds latency without converting UNKNOWN into zero or
+dismissing coverage debt. Calls without a deadline retain the exact previous
+attempt count, pacing and timeout; the existing cost/behavior test remains
+green. The new test failed first because `_query_window` accepted no deadline,
+then passed with one request and one five-second pace rather than sleeping past
+a synthetic 12-second run budget. The historical workflow now sets
+`PYTHONUNBUFFERED=1` so future cancellation retains the lines needed to diagnose
+where it stopped.
+
 ## 2026-09-10 - the production BigQuery mirror was configured but a casing-sensitive flag left it unused
 
 **Class:** guard-went-vacuous
