@@ -66,8 +66,13 @@
       "first": 1789045718,
       "last": 1789045718,
       "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
+    },
+    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
+      "first": 1789069075,
+      "last": 1789069075,
+      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     }
   },
-  "updated_at": "2026-09-10T13:08:38+00:00",
+  "updated_at": "2026-09-10T19:37:55+00:00",
   "version": 1
 }
