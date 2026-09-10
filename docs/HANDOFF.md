@@ -8,38 +8,52 @@ holder, so the start-of-session ritual surfaces it automatically.
 ## Baton
 - **HELD by Codex (2026-09-10) — top-three evidence programme, GDELT first.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/gdelt-raw-fallback`, based on `origin/main` at
-  `615f21492857f7aa93c8b7b263192f64cf020110`.
+  branch: `codex/gdelt-proof-budget-guard`, based on `origin/main` at
+  `94190341a4e6776d532161b5d08cfad8e271b9bb`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
 
-  **Newest production result (do not lose this).** PR #299 passed all seven
-  checks and merged as `615f21492857f7aa93c8b7b263192f64cf020110`.
-  Railway deployment `1151b340-dced-44b4-9122-d76328629f7f` is SUCCESS on that
-  exact SHA with `python cron.py` and `0 22 * * *`. Repeated-window proof run
-  `34494338520` then disproved continuous BigQuery availability: Google returned
-  HTTP 403 `Quota exceeded ... free query bytes scanned` twice, the collector
-  correctly fell back, and public DOC again exhausted the 600-second collection
-  deadline under 429s. The workflow was green only because the success-anchored
-  sweep preserves progress and warns; it processed zero candidates and did not
-  move the manual cursor. **Therefore the GDELT required queue is not closed.**
-  Current branch `codex/gdelt-raw-fallback` adds a third, quota-independent
-  source from GDELT's official 15-minute English and Translingual GKG ZIP files.
-  BigQuery is now an accelerator, not the sole reliable denominator. The raw
-  path requires both streams, applies the same title/theme contract, filters to
-  the requested timestamps, and bounds workers, file bytes, expanded ZIP bytes,
-  total files, total window bytes and wall time. Any missing interval is
-  `partial`, never an empty success. A complete raw result is canonical under
-  `raw_gkg_english_translingual_titles_dismissal_themes_v1` and may supersede
-  DOC debt only under the same post-2019 PAGE_TITLE boundary as BigQuery.
-  Five red-first tests plus 71 existing affected tests are green. A real read
-  of the 2026-09-09 12:00 UTC English and Translingual pair completed in 7.5s,
-  matched 86 candidates and returned valid URL/domain/timestamp fields. Still
-  required: full CI, merge/deploy, then the repeated one-day production proof.
-  Expect roughly 1.7 GB compressed inbound data per day-sized raw fallback;
-  discovery spends $0 on OpenRouter, but full-window runtime must be measured.
+  **Newest production result (do not lose this).** PR #300 passed all seven
+  checks and merged as `94190341a4e6776d532161b5d08cfad8e271b9bb`.
+  Railway deployment `483af316-dc9e-4987-8196-cdd3e13667f7` is SUCCESS on that
+  exact SHA with root `railway`, config `/railway/railway.toml`, start command
+  `python cron.py`, and final schedule `0 22 * * *`. Controlled production run
+  `34498937692` / job `102944518250` repeated 2026-09-09..10 and completed in
+  2m21s. BigQuery returned its known free-query-quota 403; the official raw
+  English plus Translingual GKG path then completed in 67 seconds with 5,163
+  matching articles. It superseded 130 unfinished public-DOC slots while
+  retaining their history, persisted 143 total slots, attempted/fetched 12
+  pages, considered the capped ten candidates, recorded no extraction failures,
+  and correctly left the manual cursor unchanged. This is a genuine one-window
+  production proof of the quota-independent path, not merely a green workflow.
+  It closes the immediate GDELT queue mechanism; seven clean scheduled runs and
+  fourteen clean days are still required for reliability evidence.
+
+  **New spend blocker found in that proof.** The tracker key measured $2.4108
+  in September through day 10 and projected $6.50 for the month, within the
+  repository's $10 monthly policy. But OpenRouter reported lifetime key usage
+  of $87.4374 against a provider-side lifetime key limit of $10, so paid calls
+  will return 402. The guard warned correctly but incorrectly printed paid reads
+  ON because it actuated only on the monthly delta. Current red-first work makes
+  an exhausted provider key turn paid reads OFF while every free collector and
+  unmarked retry continues. This code repair prevents waste and false status;
+  it cannot restore paid extraction. Owner action remains required in the
+  OpenRouter dashboard: raise or replace that lifetime key ceiling while
+  retaining the repository's independently enforced $10 monthly allowance.
+
+  **Preceding production result.** PR #299 passed all seven checks and merged
+  as `615f21492857f7aa93c8b7b263192f64cf020110`. Railway deployment
+  `1151b340-dced-44b4-9122-d76328629f7f` is SUCCESS on that exact SHA with
+  `python cron.py` and `0 22 * * *`. Repeated-window proof run `34494338520`
+  disproved continuous BigQuery availability: Google returned HTTP 403
+  `Quota exceeded ... free query bytes scanned` twice, and public DOC exhausted
+  the 600-second deadline under 429s. Its green conclusion meant progress was
+  preserved, not that coverage passed: it processed zero candidates and left
+  the manual cursor unchanged. PR #300 is the measured recovery from that
+  failure. Expect roughly 1.7 GB compressed inbound data per day-sized raw
+  fallback; discovery itself spends $0 on OpenRouter.
 
   **Earlier checkpoint.** PR #298 passed all seven checks and merged as
   `721cc9ac5b36868accb3ee5b0cb77a6db8c82a59`. Railway deployment

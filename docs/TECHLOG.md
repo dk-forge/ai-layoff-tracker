@@ -1,3 +1,56 @@
+## 2026-09-10 - an exhausted provider key was reported but paid reads stayed on
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_spend_guard.py`
+
+Production proof run `34498937692` exposed two different budget clocks. The
+tracker had spent $2.4108 in September and projected $6.50 for the month, safely
+inside the code's $10 monthly allowance. OpenRouter simultaneously reported
+$87.4374 lifetime usage against a $10 provider-side lifetime key limit. The
+guard printed `key limit reached: paid calls will fail with 402`, then
+contradicted itself by printing `Paid reads: ON. Within the allowance.` It
+passed only the monthly `over` value to `degrade()`; the observed provider
+availability failure never actuated the gate.
+
+The new test reproduces that exact state: month-to-date below policy, lifetime
+remaining below zero, and `--degrade`. It failed first because
+`ALT_PAID_READS` remained unset. The guard now treats an exhausted lifetime key
+as a separate provider-availability condition and disables paid reads before a
+network call, while free collectors continue and deferred candidates remain
+unmarked for retry. This does not conflate lifetime usage with monthly spend,
+raise the $10 monthly policy, or repair the provider account. Restoring paid
+extraction still requires the owner to raise or replace the exhausted lifetime
+key limit in OpenRouter; the repository continues to enforce its own monthly
+$10 ceiling independently.
+
+## 2026-09-10 - official raw GKG recovered production after BigQuery quota exhaustion
+
+**Class:** started-not-finished
+**Guard:** `railway/tests/test_gdelt_raw_files.py`,
+`railway/tests/test_gdelt_window_coverage.py`
+
+PR #300 passed all seven required checks and merged as
+`94190341a4e6776d532161b5d08cfad8e271b9bb`. Railway deployment
+`483af316-dc9e-4987-8196-cdd3e13667f7` succeeded on that exact commit with
+root `railway`, `/railway/railway.toml`, `python cron.py`, and the final
+`0 22 * * *` schedule. The service manifest temporarily displayed
+`0 14,22 * * *` while BUILDING; the successful file-backed manifest and final
+service manifest both correctly resolved to the repository's once-daily
+schedule, so the interim value was not treated as deployed truth.
+
+Controlled production run `34498937692` / job `102944518250` repeated
+2026-09-09..10. BigQuery returned 403 for exhausted free query bytes, after
+which the official English and Translingual raw GKG pair returned 5,163 matches
+and a `complete` verdict in 67 seconds. The collector retained history while
+marking 130 unfinished public-DOC slots superseded, persisted 143 slots, fetched
+12 of 12 attempted pages, considered the capped ten candidates, recorded no
+extraction failures, and left the manual cursor unchanged. The full workflow
+completed in 2m21s. Unlike the preceding green-but-empty run, this closes the
+specific quota-independent recovery invariant with production evidence. It is
+one controlled proof, not evidence of seven consecutive clean scheduled runs
+or fourteen clean days, and therefore does not by itself substantiate a
+top-three ranking.
+
 ## 2026-09-10 - the canonical GDELT mirror exhausted its free monthly query quota
 
 **Class:** novel

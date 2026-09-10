@@ -7,12 +7,15 @@ and kills autonomous collection silently. The second bug is halting a whole
 collect job to protect a budget that most of the job does not spend.
 """
 import json
+import io
 import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Unit tests exercise pure guardrails and never build an API client.
@@ -182,6 +185,31 @@ class TheGateDegrades(unittest.TestCase):
     def test_degrade_when_not_over_leaves_paid_reads_on(self):
         spend.degrade(False)
         self.assertTrue(spend.paid_reads_enabled())
+
+    def test_exhausted_provider_key_degrades_even_when_month_is_under_budget(self):
+        """A lifetime provider cap and our monthly policy are different gates.
+
+        The September 2026 production key had spent only $2.41 this month, but
+        its provider-side lifetime limit was already below lifetime usage.  A
+        green monthly check must not announce paid reads ON when OpenRouter
+        will reject every paid request with 402.
+        """
+        output = io.StringIO()
+        with (redirect_stdout(output),
+              mock.patch.object(sys, "argv", ["spend.py", "--degrade"]),
+              mock.patch.object(spend, "fetch_key_state", return_value={
+                  "usage": 87.44,
+                  "limit": 10.0,
+              }),
+              mock.patch.object(spend, "month_delta",
+                                return_value=(2.41, "2026-09", True)),
+              mock.patch.object(spend, "apply_job_ceiling"),
+              mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"})):
+            self.assertEqual(spend.main(), 0)
+            self.assertEqual(os.environ.get(spend.PAID_READS_ENV), "off")
+            self.assertFalse(spend.paid_reads_enabled())
+        self.assertIn("OpenRouter provider key exhausted", output.getvalue())
+        self.assertNotIn("Paid reads: ON", output.getvalue())
 
 
 class EveryPaidCallIsGated(unittest.TestCase):
