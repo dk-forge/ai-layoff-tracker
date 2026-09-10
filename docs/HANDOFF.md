@@ -8,11 +8,43 @@ holder, so the start-of-session ritual surfaces it automatically.
 ## Baton
 - **HELD by Codex (2026-09-10) — top-three evidence programme, GDELT first.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/top3-evidence-program`, based on `origin/main` at `b7f3a43a`.
+  branch: `codex/gdelt-provider-fallback`, based on `origin/main` at
+  `721cc9ac5b36868accb3ee5b0cb77a6db8c82a59`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
+
+  **Current checkpoint.** PR #298 passed all seven checks and merged as
+  `721cc9ac5b36868accb3ee5b0cb77a6db8c82a59`. Railway deployment
+  `3f44db4c-4207-4a1a-a8fc-8f33c7f04530` is SUCCESS on that exact SHA and
+  retained the repository's `python cron.py` / `0 22 * * *` configuration.
+  Direct before/after proof run `34448733122` repeated 2026-09-09..10 and
+  completed in 10m08s instead of hanging: BigQuery delivered 4,720 candidates
+  in 23 seconds, the public endpoint returned four 429s, and the deadline
+  refused the next 183-second retry. Ten candidates were considered, with no
+  failures; the manual cursor correctly did not move. The hang is therefore
+  production-proved fixed.
+
+  The same proof showed that retrying the public DOC layer is not a viable
+  queue drain. The live ledger grew from 132 slots (12 complete / 13 failed /
+  107 queued) to 143 (13 / 14 / 116). Current red-first work makes a complete,
+  explicitly preferred BigQuery walk canonical and retains old public-DOC debt
+  as terminal `superseded` history rather than falsely `complete`. BigQuery's
+  GKG title/theme surface is not identical to DOC full text; this is an explicit
+  source-policy decision, not an equivalence claim. A partial mirror and the
+  non-preferred fallback path still use public recovery. The implementation
+  also closes a global-recall trap documented by GDELT itself: GKG stores every
+  non-ASCII PAGE_TITLE character as a hexadecimal HTML entity. The mirror regex
+  now searches both native Unicode and the stored entity form, and unescapes
+  returned titles before extraction. Because GKG introduced PAGE_TITLE only
+  after noon US Eastern on 2019-09-22, mirror-only completion is conservatively
+  allowed from 2019-09-23 UTC; older history retains public full-text recovery
+  and old pre-title ledger debt is never superseded. Profile
+  `gkg_titles_dismissal_themes_v2` records that exact contract. All 80 runnable
+  affected tests are green; four unrelated vocabulary methods cannot import in
+  this local environment because its venv lacks `openai`, so dependency-equipped
+  CI, merge, deployment and a fresh live ledger read are still required.
 
   First live finding and repair: production Railway already has a valid
   `GCP_BIGQUERY_CREDENTIALS_JSON` and declares `GDELT_PREFER_BQ`, but
@@ -44,15 +76,17 @@ holder, so the start-of-session ritual surfaces it automatically.
   the workflow correctly carried both the BigQuery credential and preference,
   but one public additive query stayed inside its six-attempt 90-second backoff
   beyond nine minutes even though the run's own budget was 600 seconds. Codex
-  cancelled it at 9m33s; its cursor did not advance. Branch
-  `codex/gdelt-deadline` makes the deadline reach inside `_query_window`, caps
+  cancelled it at 9m33s; its cursor did not advance. The merged deadline repair
+  makes the deadline reach inside `_query_window`, caps
   each request timeout to remaining time, and leaves the slot queued for the
   next run. The new test failed on the missing deadline argument and now proves
   one throttled slot cannot consume the whole run. The workflow also enables
   unbuffered Python output so a canceled run retains diagnostic lines. Local
-  affected suites are green. **Still open:** merge/deploy this second patch,
-  rerun the one-day proof, then observe the live queued/failed counts decline;
-  neither the canceled run nor code-level coverage is clean-run proof.
+  affected suites and full CI are green; the production proof and exact deploy
+  are recorded above. **Still open:** merge/deploy the canonical-mirror policy,
+  verify the live failed/queued counts become zero and old slots read
+  `superseded`, then collect seven consecutive scheduled-run proofs. One manual
+  run proves the defect fixed, not long-run reliability.
 - **2026-09-09 closeout checkpoint — corrections are live; ranking proof is not complete.**
   PR #294 passed all four full test shards and merged as
   `5740e588c5d0e4db10e6f9d56849371f9460d941`. Signed correction workflow dry

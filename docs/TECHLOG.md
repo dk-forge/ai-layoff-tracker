@@ -1,3 +1,51 @@
+## 2026-09-10 - the required GDELT path completed while its optional public copy grew forever
+
+**Class:** unbounded-growth
+**Guard:** `railway/tests/test_gdelt_window_coverage.py`
+
+PR #298 merged as `721cc9ac5b36868accb3ee5b0cb77a6db8c82a59` after all
+seven checks passed. Railway deployment `3f44db4c-4207-4a1a-a8fc-8f33c7f04530`
+is SUCCESS on that exact SHA with the repository's `railway/railway.toml`,
+`python cron.py`, and `0 22 * * *` configuration. The before/after production
+proof repeated the same 2026-09-09..10 manual window that had hung before the
+deadline repair. Run `34448733122` completed successfully in 10m08s: the
+preferred BigQuery mirror returned 4,720 candidates in 23 seconds, the public
+endpoint answered 429 four times, the retry stopped before its next 183-second
+sleep would exceed the run deadline, ten candidates were evaluated, and the
+manual historical cursor correctly stayed unchanged.
+
+That proof closed the unbounded retry, but it falsified the proposed queue-drain
+claim. The live ledger grew from 132 slots (12 complete / 13 failed / 107
+queued) before the run to 143 (13 / 14 / 116) afterwards. Retrying a provider
+that throttled every measured run is not a recovery plan; it is an unbounded
+queue generator.
+
+The preferred BigQuery path is therefore being made the canonical GDELT source
+when, and only when, its deterministic page walk reports `complete`. It scans
+the global GKG corpus using page titles, the full shared layoff vocabulary,
+native-language and euphemism phrases, and three dismissal themes. GDELT DOC is
+a full-text index while GKG is title/theme metadata, so the code does **not**
+rename old DOC failures `complete` or claim the products are identical. It
+retains those slots and their attempts as terminal `superseded` records with an
+explicit `preferred_bigquery_mirror` resolution. A partial mirror still invokes
+the public recovery layer, and a deployment without the configured preference
+keeps the existing public/fallback behavior. The red-first tests pin all three
+distinctions.
+
+The first implementation review caught two international/historical boundary
+errors before merge. GDELT's official PAGE_TITLE documentation says the field
+was added after noon US Eastern on 2019-09-22 and that every non-ASCII character
+is stored as an HTML entity. A raw-Unicode regex therefore missed native-title
+signals such as `大规模裁员` unless a coarse theme also happened to match. The
+query now carries both the Unicode and GKG entity forms, and returned titles are
+unescaped before normal extraction. Canonical mirror completion is limited to
+windows beginning 2019-09-23 UTC or later; older history still runs DOC
+full-text recovery and cannot have its debt superseded. The versioned contract
+is `gkg_titles_dismissal_themes_v2`. Three new tests failed first on the old
+behavior and now pass. Official evidence:
+https://blog.gdeltproject.org/gkg-2-0-now-includes-page-titles/ and
+https://blog.gdeltproject.org/unescaping-article-titles-in-the-gkg-2-0/.
+
 ## 2026-09-10 - a retry in flight ignored the run-wide GDELT deadline
 
 **Class:** started-not-finished
