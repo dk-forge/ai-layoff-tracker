@@ -173,6 +173,9 @@ def query_window_page(start, end, terms, after=None, limit=MIRROR_LIMIT):
           AND DATE >= @window_start AND DATE <= @window_end
           AND (
             V2Themes LIKE '%UNEMPLOYMENT%'
+            OR V2Themes LIKE '%WB_2806_DISMISSAL_PROCEDURES%'
+            OR V2Themes LIKE '%WB_2790_LABOR_REDUNDANCY%'
+            OR V2Themes LIKE '%WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES%'
             OR REGEXP_CONTAINS(
                 LOWER(IFNULL(REGEXP_EXTRACT(Extras, r'<PAGE_TITLE>(.*?)</PAGE_TITLE>'), '')),
                 @title_re)

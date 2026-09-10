@@ -275,6 +275,8 @@ class TheCollectorDidNotMove(unittest.TestCase):
                                 datetime(2026, 9, 4, tzinfo=timezone.utc))
         self.assertIn("layoffs", seen["terms"])
         self.assertIn("Stellenabbau", seen["terms"])
+        self.assertIn("cost optimization", seen["terms"])
+        self.assertIn("reduce headcount", seen["terms"])
 
     def test_mirror_corpus_prints_nothing(self):
         """It is called from a loop whose stdout is nameless by construction;
@@ -292,6 +294,7 @@ class TheCollectorDidNotMove(unittest.TestCase):
         saved = os.environ.get("GDELT_PREFER_BQ")
         try:
             for val, want in (("1", True), ("true", True), ("yes", True),
+                              ("TRUE", True), (" Yes ", True),
                               ("0", False), ("", False)):
                 os.environ["GDELT_PREFER_BQ"] = val
                 self.assertIs(gdelt.prefer_mirror(), want, val)
@@ -323,6 +326,16 @@ class TheWorkflowPassesWhatTheCollectorsPass(unittest.TestCase):
             self.assertIn("GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}",
                           other, name)
             self.assertIn("GDELT_PREFER_BQ: '1'", other, name)
+
+    def test_manual_backfill_passes_mirror_config_to_the_step_that_runs_it(self):
+        path = WORKFLOW.parent / "gdelt-backfill.yml"
+        text = path.read_text(encoding="utf-8")
+        start = text.index("- name: Run GDELT backfill")
+        step = text[start:]
+        self.assertIn(
+            "GCP_BIGQUERY_CREDENTIALS_JSON: ${{ secrets.GCP_BIGQUERY_CREDENTIALS_JSON }}",
+            step)
+        self.assertIn("GDELT_PREFER_BQ: '1'", step)
 
     def test_no_model_key_reaches_the_learn_step(self):
         """$0.00 in model spend, structurally."""

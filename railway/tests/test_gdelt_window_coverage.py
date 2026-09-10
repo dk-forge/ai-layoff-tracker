@@ -21,6 +21,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -153,6 +154,17 @@ class MirrorPagination(unittest.TestCase):
             W_START, W_END, ["x"], page_limit=limit, max_pages=3, page_fn=always_full)
         self.assertFalse(complete)  # never reached a short page -> not proven complete
 
+    def test_mirror_includes_every_public_theme_sweep(self):
+        src = Path(gdelt_bq.__file__).read_text(encoding="utf-8")
+        body = src[src.index("def query_window_page"):]
+        body = body[:body.index("\n\ndef ", 1)]
+        for theme in (
+            "WB_2806_DISMISSAL_PROCEDURES",
+            "WB_2790_LABOR_REDUNDANCY",
+            "WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES",
+        ):
+            self.assertIn(theme, body)
+
 
 class RunLevelBehaviour(unittest.TestCase):
     """pull_gdelt_between: no early return, honest health, durable retry."""
@@ -175,6 +187,44 @@ class RunLevelBehaviour(unittest.TestCase):
     def _read_ledger(self):
         with open(self.ledger_path, encoding="utf-8") as fh:
             return json.load(fh)
+
+    def test_segment_queries_stay_well_below_the_upstream_refusal_boundary(self):
+        queries = gdelt._segment_queries_for_now()
+        self.assertTrue(queries)
+        self.assertTrue(all(len(query) < 512 for query in queries),
+                        [len(query) for query in queries])
+
+    def test_old_overlong_segment_debt_is_rebuilt_with_the_compact_prefix(self):
+        old = f'{gdelt.QUERY} "California"'
+        rebuilt = gdelt._rebuild_query({"family": "segment", "query_text": old})
+        self.assertEqual(rebuilt, f'{gdelt.SEGMENT_QUERY} "California"')
+        self.assertLess(len(rebuilt), 512)
+
+    def test_retry_migrates_old_segment_debt_in_place_instead_of_doubling_it(self):
+        old = f'{gdelt.QUERY} "California"'
+        key = gdelt._slot_key("segment", old, W_START, W_END)
+        ledger = {"slots": {key: {
+            "family": "segment", "query_text": old,
+            "window_start": gdelt._win_stamp(W_START),
+            "window_end": gdelt._win_stamp(W_END),
+            "status": "queued", "returned": 0, "cap_hit": False,
+            "oldest": None, "newest": None, "attempts": 0,
+            "first_seen": gdelt._win_stamp(W_START),
+            "updated": gdelt._win_stamp(W_START),
+        }}}
+
+        with patch.object(gdelt, "_query_window",
+                          lambda *a, **k: ([_article("recovered")], False, None)), \
+             patch.object(gdelt, "_sync_ledger_mid_run", lambda ledger: None):
+            gdelt._retry_pending_slots(
+                ledger, W_END + timedelta(hours=1), 5, [], [], set())
+
+        segment_slots = [s for s in ledger["slots"].values()
+                         if s.get("family") == "segment"]
+        self.assertEqual(len(segment_slots), 1)
+        self.assertEqual(segment_slots[0]["status"], "complete")
+        self.assertEqual(segment_slots[0]["query_text"],
+                         f'{gdelt.SEGMENT_QUERY} "California"')
 
     def test_mirror_recovery_still_runs_the_other_sweeps(self):
         segment_calls = []

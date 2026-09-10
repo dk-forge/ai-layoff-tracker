@@ -6,6 +6,36 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Codex (2026-09-10) — top-three evidence programme, GDELT first.**
+  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
+  branch: `codex/top3-evidence-program`, based on `origin/main` at `b7f3a43a`.
+  Dakota authorized fixing the remaining eight evidence gaps and reminded us
+  that the $20 ChatGPT plan can pause interactive work. That subscription is
+  separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
+  OpenRouter allowance; this handoff is the durable restart point.
+
+  First live finding and repair: production Railway already has a valid
+  `GCP_BIGQUERY_CREDENTIALS_JSON` and declares `GDELT_PREFER_BQ`, but
+  `sources.gdelt.prefer_mirror()` did not recognize the configured value.
+  It accepted only exact lower-case `1|true|yes`, with no normalization. This
+  explains why the 2026-09-08 live run still used four public GDELT queries,
+  abandoned three, and never used the configured mirror. The production value
+  is now explicitly `1` (2026-09-10); the parser normalization is green under
+  TDD but still awaits merge/deploy and a measured production run.
+
+  The same pass found the repeated failure behind most queued work: the broad
+  public query is 984 characters and the segment suffixes make it 995-999,
+  exactly where GDELT returns a deterministic HTTP-200 refusal (“query was too
+  short or too long”). Segment discovery now uses a 365-character, 20-term core
+  while the complete 51-term vocabulary remains on the BigQuery/global path;
+  old persisted segment slots are migrated to the compact identity in place so
+  retries do not double the queue. The mirror now also includes the existing
+  native, euphemism and three dismissal-theme signals in one partition scan.
+  The manual GitHub backfill had a separate wiring bug: it checked the BigQuery
+  secret in one step but omitted it from the step that runs the collector; that
+  is fixed and pinned by a step-scoped test. Affected suite: 111 tests green.
+  **Still open:** merge/deploy, run production, observe mirror completion and
+  actual queued/failed counts decline; code-level coverage is not run proof.
 - **2026-09-09 closeout checkpoint — corrections are live; ranking proof is not complete.**
   PR #294 passed all four full test shards and merged as
   `5740e588c5d0e4db10e6f9d56849371f9460d941`. Signed correction workflow dry
