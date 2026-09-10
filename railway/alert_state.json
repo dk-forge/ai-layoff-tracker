@@ -62,6 +62,11 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1789070380,
+      "last": 1789070380,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,617,504 jobs / 65,573 entries"
+    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1789045718,
       "last": 1789045718,
@@ -73,6 +78,6 @@
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     }
   },
-  "updated_at": "2026-09-10T19:37:55+00:00",
+  "updated_at": "2026-09-10T19:59:41+00:00",
   "version": 1
 }
