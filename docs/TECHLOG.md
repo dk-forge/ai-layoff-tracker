@@ -1,3 +1,40 @@
+## 2026-09-10 - the production BigQuery mirror was configured but a casing-sensitive flag left it unused
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_learn_corpus_mirror.py`
+
+The production Railway service has a present, JSON-valid
+`GCP_BIGQUERY_CREDENTIALS_JSON` and a `GDELT_PREFER_BQ` variable, but the running
+parser did not recognize the latter. It accepted only the exact lower-case
+strings `1`, `true`, or `yes`; ordinary environment spellings such as `TRUE` or
+whitespace-padded values silently selected the rate-limited public API. The
+2026-09-08 source-health record is the consequence: four GDELT queries, one
+answer and three abandoned slices even though the mirror credential existed.
+
+The preference parser now trims whitespace and compares case-insensitively. The
+test failed first on `TRUE`, and now covers both upper-case and padded truthy
+values while retaining false behavior for `0`, blank, and an absent variable.
+Production was set explicitly to `1` on 2026-09-10; the next source-health run
+must still prove that it used the mirror. Configured code is not run proof.
+
+The rejected public calls were not all throttles. The full 51-term public query
+is 984 characters; adding the rotating segment suffix produces 995-999
+characters, and the upstream returns HTTP 200 with “Your query was too short or
+too long.” This deterministic refusal sat at the front of the retry walk, which
+then left the rest queued. Segment full-text discovery now uses a 365-character
+20-term core, while the full vocabulary remains on the global mirror path. A
+retry rewrites the old prefix and migrates the ledger key in place before the
+request, avoiding a second slot beside the refused one. Tests pin a sub-512
+character request and a one-slot successful migration.
+
+The BigQuery title/theme scan also gains the existing euphemism phrases and the
+three public dismissal themes without another partition read. Public sweeps
+remain additive because GDELT DOC full-text and GKG title/theme are not the same
+denominator; the code does not pretend one subsumes the other. Finally, the
+manual `gdelt-backfill` workflow now passes the credential and preference flag
+to the run step itself, not only the preceding secret check. The affected GDELT
+suite passes 111 tests.
+
 ## 2026-09-09 - a green country diagnostic claimed more than its policy proved
 
 **Class:** two-copies-drifted

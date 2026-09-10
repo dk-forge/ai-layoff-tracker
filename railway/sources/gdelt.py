@@ -41,6 +41,16 @@ QUERY = "(" + " OR ".join(
     f'"{term}"' if " " in term else term for term in discovery_terms()
 ) + ")"
 
+# GDELT's public DOC endpoint refuses queries around its 1,000-character
+# boundary with HTTP 200 + "query was too short or too long". The full global
+# query is 984 characters before a segment term is appended, so every segment
+# sweep was deterministically refused. Segments are an additive full-text net,
+# not the primary mirror scan: use the 20 highest-value global terms here and
+# keep the complete 51-term vocabulary in QUERY and in the mirror.
+SEGMENT_QUERY = "(" + " OR ".join(
+    f'"{term}"' if " " in term else term for term in discovery_terms()[:20]
+) + ")"
+
 TRUSTED_DOMAINS = {
     # wires / national general
     "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "cnn.com", "nytimes.com",
@@ -1393,7 +1403,7 @@ def _segment_queries_for_now():
     stretched this ring's full sweep from 15 days to 44 with no signal.
     """
     picked = run_slice.rotate(SEGMENT_TERMS, SEGMENT_QUERIES_PER_RUN)
-    return [f"{QUERY} {term}" for term in picked]
+    return [f"{SEGMENT_QUERY} {term}" for term in picked]
 
 
 def _query_window(query, start, end, max_records, reach_label="broad"):
@@ -1535,7 +1545,7 @@ def prefer_mirror():
     own pre-gate corpus) cannot drift on what the flag means. Preference is not
     availability: `gdelt_bq.available()` says whether credentials exist.
     """
-    return os.environ.get("GDELT_PREFER_BQ", "") in ("1", "true", "yes")
+    return os.environ.get("GDELT_PREFER_BQ", "").strip().lower() in ("1", "true", "yes")
 
 
 def mirror_corpus(start, end):
@@ -1562,7 +1572,18 @@ def mirror_corpus(start, end):
     # UNEMPLOYMENT. The native phrases ride the same scan (the regex grows, the
     # partition filter does not), so this costs bytes nothing and candidates
     # something -- which the allowlist and the gate then judge as usual.
-    return gdelt_bq.query_window_walk(start, end, _terms() + mirror_title_terms())
+    # The old mirror vocabulary omitted the corporate-euphemism ring, then the
+    # collector repeated that ring against the shared DOC API. Those repeated
+    # calls were the source of the daily 429 backlog. Extract every quoted
+    # phrase from the precision-selected ring into the SAME title regex: a
+    # longer regex does not scan another partition, while the normal trusted-
+    # domain and extraction gates still reject noise downstream.
+    euphemisms = tuple(dict.fromkeys(
+        phrase for query in EUPHEMISM_TERMS
+        for phrase in re.findall(r'"([^"]+)"', query)
+    ))
+    return gdelt_bq.query_window_walk(
+        start, end, _terms() + mirror_title_terms() + euphemisms)
 
 
 def _collect_mirror(start, end):
@@ -1630,7 +1651,14 @@ def _rebuild_query(slot):
     """The query string to re-issue for a persisted slot, or None if unknown."""
     if slot.get("family") == "broad":
         return QUERY
-    return slot.get("query_text")
+    query = slot.get("query_text")
+    # Repair already-persisted segment debt created before SEGMENT_QUERY: the
+    # suffix is the rotating place/industry phrase and the 984-character old
+    # prefix is what made the upstream reject every retry deterministically.
+    if slot.get("family") == "segment" and isinstance(query, str):
+        if query.startswith(QUERY + " "):
+            return SEGMENT_QUERY + query[len(QUERY):]
+    return query
 
 
 def _run_sweep_slot(ledger, family, query, start, end, max_records, collected,
@@ -1729,6 +1757,25 @@ def _retry_pending_slots(ledger, end, max_records, collected, incomplete,
         query = _rebuild_query(slot)
         if not query:
             continue
+        original_query = slot.get("query_text")
+        if family == "segment" and query != original_query:
+            # Change the ledger identity before recording the retry. Otherwise
+            # _record_slot creates a second compact-key slot while the refused
+            # 984-character slot remains queued forever.
+            new_key = _slot_key(family, query, ws, we)
+            existing = ledger["slots"].get(new_key)
+            if isinstance(existing, dict):
+                existing["attempts"] = (
+                    int(existing.get("attempts", 0)) + int(slot.get("attempts", 0)))
+                firsts = [v for v in (existing.get("first_seen"), slot.get("first_seen")) if v]
+                if firsts:
+                    existing["first_seen"] = min(firsts)
+                slot = existing
+            else:
+                slot["query_text"] = query
+                ledger["slots"][new_key] = slot
+            del ledger["slots"][key]
+            key = new_key
         print(f"GDELT retry pending slot {key} (attempt {int(slot.get('attempts', 0)) + 1})")
         status, _saw_rl = _run_sweep_slot(ledger, family, query, ws, we,
                                           max_records, collected, incomplete,
