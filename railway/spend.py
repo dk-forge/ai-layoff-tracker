@@ -1640,12 +1640,11 @@ def parse_ledger_lines(text: str) -> list[dict]:
 
 
 # How many 100-run pages `list_runs_in_window` will read before giving up and
-# saying so. This repo produced 414 completed runs in a 2-day window on
-# 2026-08-04, so 2 pages (the old, unpaginated behaviour) covered under seven
-# hours of it. 10 pages = 1,000 runs is several times the observed volume and
-# still bounded, so a runaway cannot turn the daily balance job into a
-# thousand-request crawl.
-HARVEST_MAX_PAGES = max(1, int(os.environ.get("ALT_HARVEST_MAX_PAGES", "10")))
+# saying so. This repo grew from 414 completed runs in a 2-day window on
+# 2026-08-04 to 2,359 on 2026-09-10. The old 10-page bound therefore made the
+# cost ledger UNKNOWN every day. Thirty pages covers that measured workload
+# with 27% headroom while still bounding a runaway at 3,000 listed runs.
+HARVEST_MAX_PAGES = max(1, int(os.environ.get("ALT_HARVEST_MAX_PAGES", "30")))
 
 
 def list_runs_in_window(api, repo: str, since: str) -> tuple[list[dict], bool]:

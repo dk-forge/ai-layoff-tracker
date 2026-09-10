@@ -1,3 +1,26 @@
+## 2026-09-11 - the spend harvester outgrew its fixed pagination bound
+
+**Class:** unbounded-growth
+**Guard:** `railway/tests/test_spend_attribution.py`
+
+Production check `34541947139` proved PR #301's provider-key degradation, then
+reported that the two-day Actions harvest stopped at its ten-page cap. A direct
+GitHub API count measured 2,359 completed runs in that same window. The cap was
+sized from 414 runs measured on 2026-08-04; schedule and monitoring growth made
+the once-generous 1,000-run ceiling a guaranteed truncation. The code correctly
+said attribution was UNKNOWN, but a guard that is permanently UNKNOWN cannot
+substantiate the $10 policy or identify the expensive job.
+
+The new regression feeds the measured 2,359-run window through the paginator.
+It failed first at ten pages. The bounded default is now 30 pages, covering
+3,000 completed runs with 27% headroom while retaining an explicit incomplete
+verdict above that limit. It does not make more model calls; it only reads the
+metadata and logs the cost-bearing jobs already selected by the existing
+allowlist. All 143 spend-related tests, compilation and diff checks pass. A
+fresh production harvest must still finish within the five-minute workflow and
+return a complete window before the cost ledger becomes evidence rather than
+UNKNOWN.
+
 ## 2026-09-10 - an exhausted provider key was reported but paid reads stayed on
 
 **Class:** guard-went-vacuous
