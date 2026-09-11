@@ -24656,6 +24656,24 @@ coverage is 42/42 green. The live country and integrity workflows still must be
 rerun after this merge; their prior UNKNOWN was exactly the undeclared-country
 finding, not a data-integrity arithmetic failure.
 
+## 2026-09-12 - China moves from acknowledged backlog to classified regime
+
+**Class:** wrong-scope-or-key  
+**Guard:** `railway/tests/test_country_coverage.py`
+
+China is now `REGIME_NO_AGGREGATE`, using MOHRSS's own current text of Labour
+Contract Law article 41. The statute requires 30-day consultation and a report
+to the labour administration when an employer cuts at least 20 workers, or
+fewer than 20 where that exceeds 10% of its workforce. This closes the primary
+text gap in the previous backlog note and preserves the distinction between a
+report and an approval application.
+
+The MOHRSS and provincial government material found publishes the law, filing
+instructions and local forms, but no periodic national article-41 count or
+named employer register. National labour indicators and unemployment-insurance
+spending are explicitly rejected as filing denominators. TDD: the China guard
+failed on the absent register entry, then the full country suite passed 44/44.
+
 ## 2026-09-12 - Cambodia moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
