@@ -76,8 +76,13 @@
       "first": 1789069075,
       "last": 1789069075,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
+    },
+    "tests:live.data:eacb9ee45de18437": {
+      "first": 1789163848,
+      "last": 1789163848,
+      "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-10T19:59:41+00:00",
+  "updated_at": "2026-09-11T21:57:33+00:00",
   "version": 1
 }
