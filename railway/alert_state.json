@@ -72,17 +72,12 @@
       "last": 1789164521,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: verdict SUPPRESSED, baseline deliberately NOT advanced (recording an unjudged reading is the same laundering as recording a "
     },
-    "mailbox-janitor:main:147a366b787e9eb0": {
-      "first": 1789165484,
-      "last": 1789165484,
-      "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
-    },
     "tests:live.data:eacb9ee45de18437": {
       "first": 1789163848,
       "last": 1789163848,
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-11T22:26:35+00:00",
+  "updated_at": "2026-09-11T22:39:07+00:00",
   "version": 1
 }
