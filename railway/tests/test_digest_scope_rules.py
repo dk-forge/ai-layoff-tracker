@@ -1607,66 +1607,180 @@ class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
     """THE 2026-09-11 DAILY led with "Amazon's 30,000 verified job cuts were
     94% of the 32,077 verified job cuts worldwide", where that row is one
     bronze news report, still provisional, with no country. "Verified" is a
-    tier name and a reader takes it as "confirmed". So when the dominant entry
-    rests on one unconfirmed report the paragraph says so, gives the figure
-    without it (the same denominator minus the same row, never a second
-    definition of the headline), and the biggest-cuts row carries the same
-    qualifier. The headline figure itself does not move.
+    tier name and a reader takes it as "confirmed". 2.20.186 answered with a
+    footnote: the headline kept the row and a clause gave the figure without
+    it. The owner's ruling of 2026-09-12 is that the CONFIRMED figure is the
+    lead. So when the dominant entry rests on one unconfirmed report the lead
+    sentence, the headline pair and the AI block are built from the window
+    totals minus that one row (the same rows, never a second definition of a
+    headline number), the report is named underneath in its own paragraph,
+    and the Biggest cuts row keeps its qualifier. When no entry is a single
+    unconfirmed report, nothing changes.
     """
 
-    def _dominant(self, **row):
+    SENTENCE = "One report we have not independently confirmed would add 9,000"
+
+    @staticmethod
+    def _coherent(**row):
+        """The default fixture with its largest row raised to 9,000 AND the
+        totals raised by the same 4,680, so the window is internally
+        consistent: 21,406 jobs, 3,016 announced, 18,390 verified."""
         fixture = layoff_fixture()
+        fixture["layoff"]["totals"]["jobs"] = 21406
         fixture["layoff"]["leaders"][0]["job_count"] = 9000
+        fixture["layoff"]["leaders"][0]["source_url"] = "https://www.example.com/story"
         fixture["layoff"]["leaders"][0].update(row)
-        return compose(fixture)["text"]
+        return fixture
 
-    def test_a_bronze_row_is_called_provisional_with_the_figure_without_it(self):
+    def _dominant(self, **row):
+        return compose(self._coherent(**row))["text"]
+
+    @staticmethod
+    def _lead(text):
+        return [l for l in text.splitlines() if l.startswith("Over ")][0]
+
+    @staticmethod
+    def _pair(text):
+        return [l for l in text.splitlines()
+                if l.startswith("  United States:") or l.startswith("  Worldwide:")]
+
+    def test_an_unconfirmed_dominant_entry_is_excluded_from_the_lead(self):
         text = self._dominant(verification_level="bronze")
-        line = [l for l in text.splitlines() if l.startswith("One entry dominated")][0]
-        self.assertIn("9,000 verified job cuts", line)
-        self.assertIn("66% of the 13,710 verified job cuts worldwide", line)
-        self.assertIn("rests on a single news report we have not independently "
-                      "confirmed, so it is provisional", line)
-        # 13,710 - 9,000, from the same rows the section already read.
-        self.assertIn("the verified worldwide figure without it is 4,710", line)
-        # The headline number is untouched.
-        self.assertIn("13,710 verified job cuts", text)
+        lead = self._lead(text)
+        # 18,390 verified minus the 9,000 row, from the same rows.
+        self.assertIn("Worldwide, verified job cuts totalled 9,390.", lead)
+        self.assertNotIn("18,390", lead)
+        pair = self._pair(text)
+        self.assertEqual(2, len(pair))
+        self.assertIn("  Worldwide: 9,390 verified job cuts", pair)
+        self.assertNotIn("18,390", " ".join(pair))
+        # The old shape is gone: no dominant sentence over a total the lead
+        # no longer prints, and no footnote asking the reader to subtract.
+        self.assertNotIn("One entry dominated", text)
+        self.assertNotIn("figure without it", text)
 
-    def test_a_provisional_row_with_one_source_report_counts_too(self):
-        text = self._dominant(review_status="provisional", report_count=1)
-        self.assertIn("so it is provisional", text)
-        text = self._dominant(review_status="provisional", report_count=0)
-        self.assertIn("so it is provisional", text)
+    def test_the_report_is_named_underneath_in_its_own_paragraph(self):
+        text = self._dominant(verification_level="bronze")
+        lines = text.splitlines()
+        para = [l for l in lines if l.startswith(self.SENTENCE)]
+        self.assertTrue(para, "the excluded report is not named under the pair")
+        self.assertEqual(
+            "One report we have not independently confirmed would add 9,000: "
+            "Applied Aerospace, 9,000 job cuts, reported by example.com. It is "
+            "listed as provisional and is not in the figures above.", para[0])
+        at = lines.index(para[0])
+        pair = [i for i, l in enumerate(lines) if l.startswith("  Worldwide:")][0]
+        self.assertGreater(at, pair, "the paragraph sits above the figures it qualifies")
+        self.assertLess(at, lines.index("AI-attributed cuts"))
+        html = compose(self._coherent(verification_level="bronze"))["html"]
+        self.assertIn('<p data-alt="finding">' + self.SENTENCE, html)
 
-    def test_a_provisional_row_with_two_reports_is_not_single_report(self):
-        text = self._dominant(review_status="provisional", report_count=2)
-        self.assertNotIn("so it is provisional", text)
-        self.assertNotIn("single report, unconfirmed", text)
+    def test_a_row_with_no_source_url_says_so(self):
+        text = self._dominant(verification_level="bronze", source_url="")
+        self.assertIn("9,000 job cuts, source not recorded. It is listed", text)
 
-    def test_a_payload_without_the_columns_never_claims_it(self):
-        """An /aggregate from an older build carries neither column. The
-        qualifier is printed only when the data says so."""
-        text = self._dominant()
-        self.assertNotIn("single news report", text)
-        self.assertNotIn("single report, unconfirmed", text)
-        text = self._dominant(verification_level="silver")
-        self.assertNotIn("single news report", text)
+    def test_the_united_states_figure_drops_only_when_the_row_was_in_it(self):
+        # No country: the row was never in the United States figure.
+        text = self._dominant(verification_level="bronze")
+        self.assertIn("employers verified 7,862 US job cuts", self._lead(text))
+        self.assertIn("  United States: 7,862 verified job cuts", self._pair(text))
+        # A United States row: the figure is the country total minus the row.
+        fixture = self._coherent(verification_level="bronze",
+                                 country="United States", state="CA")
+        fixture["layoff"]["top_countries"][1] = _tuple("United States", 12000, 12000)
+        text = compose(fixture)["text"]
+        self.assertIn("employers verified 3,000 US job cuts", self._lead(text))
+        self.assertIn("  United States: 3,000 verified job cuts", self._pair(text))
+        self.assertNotIn("12,000", self._lead(text))
 
-    def test_the_biggest_cuts_row_carries_the_same_qualifier(self):
+    def test_the_ai_block_excludes_it_too_and_says_why(self):
+        fixture = self._coherent(verification_level="bronze", ai_explicit=True)
+        fixture["layoff"]["totals"]["ai_verified_jobs"] = 9500
+        fixture["layoff"]["totals"]["ai_verified_entries"] = 2
+        text = compose(fixture)["text"]
+        # The lead's third sentence and the block agree with each other.
+        self.assertIn("Employers explicitly named AI on 500 of the worldwide total.",
+                      self._lead(text))
+        block = text.split("AI-attributed cuts")[1].split("Source quality")[0]
+        self.assertIn("500 this period", block)
+        self.assertIn("We reviewed 73 entries dated August 9-16, 2026, 9,390 "
+                      "verified job cuts between them.", block)
+        self.assertIn("named AI as a reason on 1 entry, covering 500 verified "
+                      "job cuts.", block)
+        self.assertIn(self.SENTENCE, block)
+        self.assertNotIn("9,500", block)
+        # The cumulative figure beside it is the year's own and is untouched.
+        self.assertIn("42,253 in 2026 so far", block)
+
+    def test_a_zero_after_exclusion_is_still_stated_with_the_denominator(self):
+        """The AI block's rule: a zero is never printed alone."""
+        fixture = self._coherent(verification_level="bronze", ai_explicit=True)
+        fixture["layoff"]["totals"]["ai_verified_jobs"] = 9000
+        fixture["layoff"]["totals"]["ai_verified_entries"] = 1
+        text = compose(fixture)["text"]
+        self.assertIn("No employer explicitly named AI as a reason.", self._lead(text))
+        block = text.split("AI-attributed cuts")[1].split("Source quality")[0]
+        self.assertIn("0 this period", block)
+        self.assertIn("We reviewed 73 entries", block)
+        self.assertIn("No employer explicitly named AI as a reason on any of them.", block)
+        self.assertIn(self.SENTENCE, block)
+
+    def test_the_biggest_cuts_row_keeps_the_row_and_the_qualifier(self):
         text = self._dominant(verification_level="bronze")
         block = text.split("Biggest cuts")[1]
         row = [l for l in block.splitlines() if "Applied Aerospace" in l][0]
         self.assertIn("single report, unconfirmed", row)
-        # Still the existing "no place" wording beside it.
+        self.assertIn("9,000 jobs", row)
         self.assertIn("location not recorded", row)
 
-    def test_an_announced_single_report_subtracts_from_its_own_denominator(self):
+    def test_a_confirmed_dominant_entry_is_unchanged(self):
+        """No verification columns, or a silver row: the headline keeps the
+        row, the dominant line prints as before, and nothing is named
+        underneath."""
+        for row in (dict(), dict(verification_level="silver"),
+                    dict(review_status="provisional", report_count=2)):
+            text = self._dominant(**row)
+            self.assertIn("Worldwide, verified job cuts totalled 18,390.",
+                          self._lead(text))
+            self.assertIn("  Worldwide: 18,390 verified job cuts", self._pair(text))
+            line = [l for l in text.splitlines() if l.startswith("One entry dominated")]
+            self.assertTrue(line, "a confirmed dominant entry lost its line")
+            self.assertIn("49% of the 18,390 verified job cuts worldwide", line[0])
+            self.assertNotIn("One report we have not independently confirmed", text)
+            self.assertNotIn("single report, unconfirmed", text)
+            self.assertIn("We reviewed 74 entries", text)
+
+    def test_a_window_with_no_dominant_entry_is_unchanged(self):
+        """The default fixture: 4,320 of 13,710 is 31%, below the floor. A
+        bronze row that does not dominate is qualified on its row only."""
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][0]["verification_level"] = "bronze"
+        text = compose(fixture)["text"]
+        self.assertIn("Worldwide, verified job cuts totalled 13,710.", self._lead(text))
+        self.assertIn("  Worldwide: 13,710 verified job cuts", self._pair(text))
+        self.assertNotIn("One entry dominated", text)
+        self.assertNotIn("One report we have not independently confirmed", text)
+        self.assertIn("We reviewed 74 entries", text)
+        row = [l for l in text.split("Biggest cuts")[1].splitlines()
+               if "Applied Aerospace" in l][0]
+        self.assertIn("single report, unconfirmed", row)
+
+    def test_a_provisional_row_with_one_source_report_counts_too(self):
+        for row in (dict(review_status="provisional", report_count=1),
+                    dict(review_status="provisional", report_count=0)):
+            text = self._dominant(**row)
+            self.assertIn(self.SENTENCE, text)
+            self.assertIn("Worldwide, verified job cuts totalled 9,390.", self._lead(text))
+
+    def test_an_announced_single_report_subtracts_nothing_and_is_still_named(self):
+        """An announced row was never inside the verified figures, so there is
+        nothing to take out of them; the paragraph still names it and the
+        dominant line over the announced-inclusive total does not print."""
         text = self._dominant(verification_level="bronze", announced=True)
-        line = [l for l in text.splitlines() if l.startswith("One entry dominated")][0]
-        self.assertIn("once announced estimates are included", line)
-        self.assertIn("the worldwide figure including announced estimates "
-                      "without it is", line)
-        self.assertNotIn("the verified worldwide figure without it", line)
+        self.assertIn("Worldwide, verified job cuts totalled 18,390.", self._lead(text))
+        self.assertIn(self.SENTENCE, text)
+        self.assertNotIn("One entry dominated", text)
+        self.assertIn("We reviewed 74 entries", text)
 
     def test_the_year_to_date_share_names_the_verified_denominator(self):
         text = compose(layoff_fixture())["text"]

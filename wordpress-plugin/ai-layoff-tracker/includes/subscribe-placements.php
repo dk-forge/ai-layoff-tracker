@@ -97,6 +97,11 @@ function alt_digest_append_to_post($content) {
     if (doing_filter('get_the_excerpt')) return $content;
     if (!is_singular('post')) return $content;
     if (!in_the_loop() || !is_main_query()) return $content;
+    // A post that already carries the [alt_digest_subscribe] shortcode has
+    // the form in its body. Appending a second one is two id="alt-digest"
+    // anchors on one page, and the static in alt_digest_placement() cannot
+    // see a shortcode, because the shortcode calls the form directly.
+    if (function_exists('has_shortcode') && has_shortcode((string) $content, 'alt_digest_subscribe')) return $content;
     return $content . alt_digest_placement('post');
 }
 add_filter('the_content', 'alt_digest_append_to_post', 25);
