@@ -101,10 +101,20 @@ class LedgerPersistenceBase(unittest.TestCase):
 
     @staticmethod
     def _slot(updated, status="failed", family="segment", returned=0):
+        # This helper tests local/remote union and sync semantics, not expiry.
+        # A fixed 2026-08-28 window aged past the production 14-day retry
+        # horizon on 2026-09-11, making every save prune the fixture to `{}`
+        # before the persistence assertion ran. Anchor the work window to the
+        # clock; keep `updated` caller-controlled because merge precedence is
+        # what several tests deliberately exercise.
+        start = (gdelt.datetime.now(gdelt.timezone.utc)
+                 .replace(hour=0, minute=0, second=0, microsecond=0)
+                 - gdelt.timedelta(days=4))
+        end = start + gdelt.timedelta(hours=12)
         return {
             "family": family,
-            "window_start": "20260828T000000Z",
-            "window_end": "20260828T120000Z",
+            "window_start": start.strftime("%Y%m%dT%H%M%SZ"),
+            "window_end": end.strftime("%Y%m%dT%H%M%SZ"),
             "status": status,
             "returned": returned,
             "cap_hit": False,

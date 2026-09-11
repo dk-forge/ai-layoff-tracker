@@ -16,10 +16,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 
 from generate_ingest_schedule import (  # noqa: E402
-    OUT, TOML, build_schedule, parse_cron_schedule)
+    OUT, TOML, build_schedule, parse_cron_schedule, _literal)
 
 
 class IngestScheduleMatchesCron(unittest.TestCase):
+    def test_priority_editions_are_not_counted_in_the_rotating_ring(self):
+        schedule = build_schedule(TOML.read_text(encoding="utf-8"))
+        locales = _literal("sources/google_news.py", "GOOGLE_NEWS_LOCALES")
+        priority = _literal("sources/google_news.py", "PRIORITY_LOCALE_CODES")
+        self.assertEqual(
+            schedule["rotation"]["news_editions"]["terms"],
+            len(locales) - 1 - len(priority),
+        )
+
     def test_committed_json_matches_railway_toml(self):
         expected = build_schedule(TOML.read_text(encoding="utf-8"))
         self.assertTrue(OUT.exists(),

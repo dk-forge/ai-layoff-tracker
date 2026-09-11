@@ -24500,7 +24500,7 @@ subject. Every first word differs, the date is last and is what truncation
 eats. That question is settled.
 ## 2026-09-11 - weak-market discovery floor and five live country regimes closed
 
-**Class:** coverage-gap
+**Class:** wrong-scope-or-key
 **Guard:** `railway/tests/test_worldwide_vocabulary.py`, `railway/tests/test_country_coverage.py`
 
 The closeout did not turn an old percentage into a claim. It changed the next
@@ -24532,3 +24532,13 @@ ground the discovery vocabulary. Offline: worldwide vocabulary 10/10, rotation
 6/6 and country coverage 41/41 green; `git diff --check` clean. Production
 country/data-integrity workflows must be rerun after merge before this is called
 closed live.
+
+The first PR run also detonated a date bomb in
+`test_gdelt_ledger_persistence`: its generic persistence fixture used a fixed
+2026-08-28 work window, and on 2026-09-11 the production 14-day pruning rule
+correctly removed it before every assertion. The helper now anchors only the
+work window four days behind the current clock while leaving each caller's
+`updated` timestamp untouched for precedence tests. This changes no collector
+code and does not widen the production retry horizon. The same CI run also had
+one live-site read timeout; that remains a real UNKNOWN/transient rerun gate and
+was not converted into a pass.
