@@ -68,6 +68,25 @@ class EveryEntryIsCheckable(unittest.TestCase):
             except (ValueError, TypeError, AttributeError):
                 self.fail(f"{name}: unreadable assessed date {entry['assessed']!r}")
 
+    def test_new_live_countries_have_primary_source_classifications(self):
+        """Countries newly observed in production cannot remain implicit.
+
+        The 2026-09-11 live measurement introduced Mauritius and Palestine
+        after the preceding five-country patch was cut.  Both have statutory
+        employer-notification duties, so neither may be treated as a generic
+        news-only market or parked in the acknowledgement backlog.
+        """
+        expected_hosts = {
+            "Mauritius": "govmu.org",
+            "Palestine": "ogb.gov.ps",
+        }
+        for country, primary_host in expected_hosts.items():
+            with self.subTest(country=country):
+                entry = cc.REGISTER[country]
+                self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+                self.assertIn(primary_host, entry["cite"])
+                self.assertNotIn(country, cc.ACKNOWLEDGED_BACKLOG)
+
     def test_a_country_with_a_regime_names_its_authority_and_threshold(self):
         """"A regime exists" is only checkable if it says who receives the notice.
 

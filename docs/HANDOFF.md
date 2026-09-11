@@ -25,6 +25,14 @@ holder, so the start-of-session ritual surfaces it automatically.
   and the private competitor-benchmark input. Never convert elapsed time into a
   GDELT pass or public competitor guesses into benchmark evidence.
 
+  **Live country follow-up (2026-09-11 CET).** The post-deploy measurement found
+  Mauritius and Palestine in addition to the five countries closed in PR #305.
+  This session added primary-source `REGIME_NO_AGGREGATE` entries and a TDD
+  guard for both on branch `codex/top3-country-closeout-20260911`. The prior
+  integrity workflow had 19/20 checks PASS; its only UNKNOWN was the same
+  undeclared-country invariant, so merge and rerun the country and integrity
+  workflows before calling this gate live-green.
+
   **Newest production result (2026-09-11 CET).** PR #301 passed all seven
   checks and merged as `525af46660317e453fe8e1994ab20696f71d55be`.
   Railway deployment `ecda9325-77cf-46b0-8efe-7abb2bc451b6` is SUCCESS on that
