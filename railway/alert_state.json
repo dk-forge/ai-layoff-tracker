@@ -72,17 +72,12 @@
       "last": 1789164521,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: verdict SUPPRESSED, baseline deliberately NOT advanced (recording an unjudged reading is the same laundering as recording a "
     },
-    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
-      "first": 1789167169,
-      "last": 1789167169,
-      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
-    },
     "tests:live.data:eacb9ee45de18437": {
       "first": 1789163848,
       "last": 1789163848,
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-11T22:52:50+00:00",
+  "updated_at": "2026-09-11T22:55:10+00:00",
   "version": 1
 }
