@@ -3086,3 +3086,21 @@ citation advantage and the reason it can be quoted.
 credentials were invalid in that environment, so private Actions logs were not
 read. Its conclusions rest on emails, local git objects, public API reads and
 committed ledgers. Anything resting on a private log is UNVERIFIED, not wrong.
+
+## 2026-09-12 - top-three closeout continues one country at a time
+
+China PR #314 merged as `19209aa`; the immediate production country-coverage
+workflow `34655250092` passed and committed the refreshed measurement. China is
+therefore closed both in code and in the live register, reducing the declared
+research backlog to 14 countries.
+
+The next isolated package is South Korea. Primary law establishes two
+non-overlapping reports: Labor Standards Act art. 24(4), and Framework Act on
+Employment Policy art. 33 with its express exclusion for an art. 24(4) report.
+The current MOEL statistics catalogue, the 2025 Employment and Labor Statistics
+Yearbook surface and KOSIS expose no periodic filing total or employer register
+for either duty. Surveys and OpenDART disclosures are deliberately excluded as
+different populations. TDD evidence: the new country guard first failed with a
+missing `REGISTER["South Korea"]`; after classification, all 45 country tests
+passed. Merge and a live country workflow are still required before this package
+is production-closed.
