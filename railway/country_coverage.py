@@ -1022,27 +1022,6 @@ ACKNOWLEDGED_BACKLOG = {
       "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
       "or a real PDF library."
       ),
-    'Cambodia': ("2026-08-18",
-      "REGIME ESTABLISHED FROM PRIMARY TEXT, AND THIS FILE'S OWN CITATION WAS "
-      "WRONG. Labour Law (Kram of 13 March 1997) ARTICLE 95 ALONE carries the "
-      "mass-layoff duty — read verbatim, it defines mass layoff as any layoff "
-      "resulting from a reduction in an establishment's activity or a foreseen "
-      "internal re-organization, sets selection criteria and last-in-first-out "
-      "with family weighting, a two-year re-hire priority, and the sentence "
-      "that matters: 'The Labour Inspector is kept informed of the procedure "
-      "covered in this article.' On a worker-representative request the "
-      "Inspector may convene the parties and the Minister may issue a Prakas "
-      "SUSPENDING the layoff for up to 30 days, repeatable once. ARTICLE 371 "
-      "makes it mandatory rather than hortatory: dismissal under art. 95 "
-      "without informing the Labour Inspector draws a fine of 61-90 days' base "
-      "wage or 6 days to a month's imprisonment. CORRECTION RECORDED: the "
-      "previous note paired art. 95 with art. 130. Article 130 is the WAGE "
-      "GARNISHMENT ceiling and art. 131 its food-creditor exception — nothing "
-      "to do with layoffs. There is NO numeric threshold and NO stated notice "
-      "period; the duty is procedural. PUBLICATION UNKNOWN: no periodic count "
-      "from MLVT or NIS was located, and the search was not exhaustive in "
-      "Khmer, so this is UNKNOWN rather than a negative."
-      ),
     'China': ("2026-08-18",
       "ART. 41 IS NOW VERIFIED AND CHARACTERISED; PUBLICATION REMAINS "
       "UNRESOLVED. Labour Contract Law art. 41: where an employer cuts 20+ "
@@ -1933,6 +1912,30 @@ REGISTER = {
         "assessed": "2026-08-19",
         "cite": ("https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/koyou/"
                  "kyufukin/other36/index.html"),
+    },
+
+    "Cambodia": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Law (Kram of 13 March 1997), arts. 95 and 371. A mass "
+                   "layoff resulting from reduced activity or a foreseen internal "
+                   "reorganisation follows article 95's worker-selection and "
+                   "consultation procedure, and the Labour Inspector must be kept "
+                   "informed. Article 371 makes failure to inform the Inspector "
+                   "punishable. Article 130 is wage garnishment and is deliberately "
+                   "excluded; an earlier backlog note had cited it incorrectly."),
+        "authority": "Labour Inspector under the Ministry of Labour and Vocational Training",
+        "threshold": ("any mass layoff caused by reduced establishment activity or a "
+                      "foreseen internal reorganisation; the Act states no numeric floor "
+                      "or fixed advance-notice period"),
+        "aggregate": ("NONE LOCATED. MLVT's current reports-and-statistics catalogue "
+                      "publishes monthly, quarterly, labour-market and employer-skill "
+                      "indicators, while NIS publishes labour-force tables and surveys; "
+                      "neither exposes a periodic count or employer register derived from "
+                      "article 95 notifications. Survey layoffs and employment disruption "
+                      "are not a filing denominator."),
+        "assessed": "2026-09-12",
+        "cite": ("https://www.mlvt.gov.kh/index.php/en/official-docs/royal-code/"
+                 "4-uncategorised/download/77_44a845451a542889db7ce2c72bfcd448.html"),
     },
 
     "Afghanistan": {

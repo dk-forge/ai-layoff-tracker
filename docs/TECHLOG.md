@@ -24656,6 +24656,24 @@ coverage is 42/42 green. The live country and integrity workflows still must be
 rerun after this merge; their prior UNKNOWN was exactly the undeclared-country
 finding, not a data-integrity arithmetic failure.
 
+## 2026-09-12 - Cambodia moves from acknowledged backlog to classified regime
+
+**Class:** wrong-scope-or-key  
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Cambodia is now `REGIME_NO_AGGREGATE`, grounded in MLVT's primary Labour Law
+text. Article 95 requires the Labour Inspector to be kept informed of a mass
+layoff caused by reduced activity or internal reorganisation, and article 371
+makes omission punishable. The classification explicitly corrects the old
+article-130 citation: that provision is wage garnishment, not layoffs.
+
+MLVT's current reports-and-statistics catalogue and NIS labour tables were
+checked for the publication question. They publish labour-market indicators,
+surveys and employer-skill material, but no periodic article-95 notification
+count or named register was located. Survey-reported layoffs are not substituted
+for an administrative filing denominator. TDD: the new Cambodia guard failed on
+the missing register entry, then the full country suite passed 43/43.
+
 ## 2026-09-12 - production country gate green; headline baseline timing remains
 
 **Class:** novel
