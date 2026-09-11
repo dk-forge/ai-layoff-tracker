@@ -1215,32 +1215,6 @@ ACKNOWLEDGED_BACKLOG = {
       "or by the Labour Court (Punjab), and Labour Court orders are adjudicative "
       "records. Whether any of it is published is untested."
       ),
-    'South Korea': ("2026-08-18",
-      "THE STATUTE IS NOW VERIFIED FROM PRIMARY TEXT and the publication "
-      "question is still open. Korea has TWO parallel duties, and this register "
-      "previously named only the first: (1) Labor Standards Act art. 24(4) with "
-      "Enforcement Decree art. 10 — file a dismissal plan with the Minister of "
-      "Employment and Labor 30 days ahead where dismissals within one month "
-      "reach 10+ (firm under 100 staff), 10% (100-999) or 100+ (1,000+); (2) "
-      "Framework Act on Employment Policy art. 33 with Enforcement Decree art. "
-      "31 — notify the head of the employment security agency of a large "
-      "employment change, 30+ separations in a month (firm under 300) or 10% "
-      "(300+), with an EXPLICIT CARVE-OUT where an art. 24(4) filing was "
-      "already made, so the two do not double-count. Both read on law.go.kr, "
-      "which permits us ('User-agent:* / Allow: /'). Korea's per-firm trigger "
-      "is materially LOWER than Japan's flat 30. PUBLICATION UNKNOWN, and "
-      "UNKNOWN is the verdict rather than a negative: no table for either "
-      "filing was found in KOSIS, laborstat.moel.go.kr renders its statistics "
-      "tree in JavaScript and served navigation chrome only, and "
-      "eis.work24.go.kr is an empty SPA to a fetcher. TO CLOSE, cheapest first: "
-      "the Employment and Labor Statistics Yearbook PDFs (bbsId=LSS113), "
-      "chapter 고용안정, which is exactly where such a count would sit. "
-      "NEAR-MISS WORTH NAMING BECAUSE IT LOOKS LIKE A PER-EMPLOYER REGISTER AND "
-      "IS NOT: MOEL does run a genuine statutory public NAMING register of "
-      "employers — but for habitual WAGE ARREARS, not layoffs. Its path "
-      "/info/defaulter/ is robots-disallowed and was not fetched. It proves the "
-      "naming barrier in Korea is policy rather than statute."
-      ),
     'Thailand': ("2026-08-18",
       "THE NARROW READING IS CONFIRMED AND s.75 IS RULED OUT. Labour Protection "
       "Act B.E. 2541 s.121 bites ONLY on termination by reason of reorganising "
@@ -1939,6 +1913,36 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://www.mohrss.gov.cn/xxgk2020/fdzdgknr/zcfg/fl/"
                  "202011/t20201102_394622_wap.html"),
+    },
+
+    "South Korea": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Two non-overlapping statutory reports. Labor Standards Act "
+                   "art. 24(4), with Enforcement Decree art. 10, requires a "
+                   "business-reason dismissal plan to the Minister of Employment "
+                   "and Labor 30 days in advance. Framework Act on Employment "
+                   "Policy art. 33, with Enforcement Decree art. 31, separately "
+                   "requires large employment changes to the employment-security "
+                   "agency, but expressly excludes a change already reported under "
+                   "Labor Standards Act art. 24(4), preventing double-counting."),
+        "authority": ("Minister of Employment and Labor, or the head of the competent "
+                      "employment-security agency"),
+        "threshold": ("Labor Standards Act: within one month, 10+ dismissals at a "
+                      "workplace with under 100 workers, 10 percent at 100-999, or "
+                      "100+ at 1,000+. Employment Policy Act: 30+ separations at a "
+                      "workplace with under 300 workers, or 10 percent at 300+."),
+        "aggregate": ("NONE LOCATED. The official MOEL statistics catalogue and its "
+                      "2025 Employment and Labor Statistics Yearbook publish approved "
+                      "labour surveys and administrative performance statistics, but "
+                      "no periodic total or employer register derived from either "
+                      "statutory report was found. KOSIS and the MOEL statistics "
+                      "catalogue likewise return no filing series. Establishment "
+                      "workforce surveys, separations from all causes, and OpenDART "
+                      "company disclosures are not these two reporting denominators "
+                      "and are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://www.law.go.kr/LSW/lsLinkCommonInfo.do?"
+                 "chrClsCd=010202&lsJoLnkSeq=1027156523"),
     },
 
     "Afghanistan": {

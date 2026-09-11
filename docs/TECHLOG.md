@@ -24675,7 +24675,7 @@ subject. Every first word differs, the date is last and is what truncation
 eats. That question is settled.
 ## 2026-09-11 - live country register catches and classifies Mauritius and Palestine
 
-**Class:** wrong-scope-or-key  
+**Class:** wrong-scope-or-key
 **Guard:** `railway/tests/test_country_coverage.py`
 
 The post-deploy country measurement found two countries that arrived after the
@@ -24698,6 +24698,25 @@ host, and rejects a return to the acknowledgement backlog. Offline country
 coverage is 42/42 green. The live country and integrity workflows still must be
 rerun after this merge; their prior UNKNOWN was exactly the undeclared-country
 finding, not a data-integrity arithmetic failure.
+
+## 2026-09-12 - South Korea moves from acknowledged backlog to classified regime
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+South Korea is now `REGIME_NO_AGGREGATE`. The classification preserves two
+separate statutory duties and their different thresholds: Labor Standards Act
+article 24(4) reporting to the Minister, and Framework Act on Employment Policy
+article 33 reporting to the employment-security agency. Article 33 expressly
+carves out an event already reported under article 24(4), so the tracker must
+never add the two as independent layoffs.
+
+The MOEL statistics catalogue, its current yearbook surface and KOSIS were
+checked for publication. No periodic filing total or named-employer register was
+located for either report. General workforce/separation surveys and OpenDART
+disclosures are different populations and remain excluded. TDD: the new guard
+failed with `KeyError: 'South Korea'`, then passed; the full country suite is
+45/45 green. Production closure still requires merge plus the country workflow.
 
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
