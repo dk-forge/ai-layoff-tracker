@@ -8,7 +8,8 @@ holder, so the start-of-session ritual surfaces it automatically.
 ## Baton
 - **HELD by Codex (2026-09-11) — top-three closeout and production proof.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/top3-closeout-20260911`, based on `origin/main` at `aa3761e8`.
+  branch: `codex/top3-closeout-20260911`, rebased on `origin/main` at `71c9a212`;
+  plugin version reserved by this branch: `2.20.185`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
