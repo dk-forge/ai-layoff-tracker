@@ -24768,6 +24768,24 @@ disclosures are different populations and remain excluded. TDD: the new guard
 failed with `KeyError: 'South Korea'`, then passed; the full country suite is
 45/45 green. Production closure still requires merge plus the country workflow.
 
+## 2026-09-12 - Thailand's technology-specific filing regime is classified
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Thailand is `REGIME_NO_AGGREGATE`, grounded in the Ministry of Labour's official
+consolidated Labour Protection Act. Section 121 requires 60 days' notice to the
+Labour Inspector and affected employees, including their names, when machinery
+or technology causes a workforce-reducing operational change. It has no numeric
+floor and does not cover ordinary economic redundancy. Section 75 is explicitly
+excluded because it regulates temporary suspension, not dismissal.
+
+No periodic section-121 filing aggregate or public employer register was found
+in the Ministry and NSO publication surfaces. Labour-force surveys and social
+security benefit claims remain excluded as different populations. The new TDD
+guard failed with `KeyError: 'Thailand'` before implementation. Merge plus a
+live country workflow remain the production gate.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
