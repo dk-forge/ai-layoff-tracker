@@ -24582,6 +24582,32 @@ no-restatement rule and its mechanical test are unchanged.
 **Confirmed working, in a real client, on both platforms:** the metric-first
 subject. Every first word differs, the date is last and is what truncation
 eats. That question is settled.
+## 2026-09-11 - live country register catches and classifies Mauritius and Palestine
+
+**Class:** wrong-scope-or-key  
+**Guard:** `railway/tests/test_country_coverage.py`
+
+The post-deploy country measurement found two countries that arrived after the
+previous closeout branch was cut: Mauritius and Palestine. Both are now
+explicitly classified as `REGIME_NO_AGGREGATE` from primary legal sources,
+instead of being silently left as UNKNOWN or folded into a generic world bucket.
+
+Mauritius is governed by the current consolidated Workers' Rights Act 2019:
+employers meeting the section 72 definition must negotiate and, where required,
+notify the Redundancy Board at least 30 days before a reduction or closure. The
+Board publishes individual cause lists and orders, but no periodic employer-level
+aggregate was located. Palestine's official legal reference records Labour Law
+No. 7 of 2000, article 41: technical/economic workforce reductions require
+notice to the Ministry of Labour; the official law and statistical surfaces do
+not publish an article-41 notification aggregate. General labour-force figures
+are deliberately not used as a denominator for either country.
+
+The new test names both production-observed countries, requires the primary
+host, and rejects a return to the acknowledgement backlog. Offline country
+coverage is 42/42 green. The live country and integrity workflows still must be
+rerun after this merge; their prior UNKNOWN was exactly the undeclared-country
+finding, not a data-integrity arithmetic failure.
+
 ## 2026-09-11 - weak-market discovery floor and five live country regimes closed
 
 **Class:** wrong-scope-or-key

@@ -2041,6 +2041,48 @@ REGISTER = {
                  "Law%20No.%20%2814%29%20of%202004%20Promulgating%20the%20Labour%20Law.pdf"),
     },
 
+    "Mauritius": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Workers' Rights Act 2019, ss. 72-75 (consolidated as at 9 August "
+                   "2025). An employer with at least 15 workers or at least MUR 25 "
+                   "million annual turnover that intends to reduce its workforce or "
+                   "close must first notify and negotiate with the relevant worker "
+                   "representatives; where no agreement or negotiation occurs, written "
+                   "notice and reasons go to the Redundancy Board at least 30 days "
+                   "before the reduction or closure. The Board handles economic, "
+                   "financial, structural and technological reductions."),
+        "authority": "Redundancy Board under the Ministry of Labour",
+        "threshold": ("employer with at least 15 workers or annual turnover of at least "
+                      "MUR 25 million; reduction or closure trigger"),
+        "aggregate": ("NONE LOCATED. The official Board publishes individual cause lists "
+                      "and orders, but the official law and ministry/Board pages expose "
+                      "no periodic national total or employer-level public register "
+                      "that can serve as a denominator. Individual orders are source "
+                      "leads, not an aggregate."),
+        "assessed": "2026-09-11",
+        "cite": "https://labour.govmu.org/Documents/Legislations/THE%20WORKERS%20RIGHTS%20Act%202019/A%20Consolidated%20Version%20of%20the%20Workers'%20Rights%20Act%202019%20as%20at%209%20August%202025.pdf",
+    },
+
+    "Palestine": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Law No. 7 of 2000, art. 41. An employer may terminate for "
+                   "technical reasons or a loss requiring workforce reduction, while "
+                   "preserving notice pay and end-of-service compensation, provided "
+                   "the Ministry of Labour is notified. The official Gazette text is "
+                   "current on the Palestinian legal reference and records the law's "
+                   "effective date."),
+        "authority": "Palestinian Ministry of Labour",
+        "threshold": ("technical reason or loss requiring a reduction in the number "
+                      "of workers; no numeric floor in article 41"),
+        "aggregate": ("NONE LOCATED. The Ministry, official legal reference and PCBS "
+                      "publish labour-law, labour-force and dispute material, but no "
+                      "periodic national count or employer-level public register of "
+                      "article 41 notices. Labour-force and unemployment estimates are "
+                      "not an article 41 denominator."),
+        "assessed": "2026-09-11",
+        "cite": "https://mjr.ogb.gov.ps/Decrees/ViewText/26866",
+    },
+
     "United Kingdom": {
         "class": REGIME_WITH_AGGREGATE,
         "regime": ("TWO regimes, because the UK has two statutes and two publishers. GREAT "
