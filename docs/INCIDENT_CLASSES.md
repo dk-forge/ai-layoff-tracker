@@ -62,6 +62,7 @@ say so in the entry.
 | `cache-served-stale` | the origin was correct and the reader was served something older | *a version number is not the content* |
 | `unmetered-spend` | a paid path outside the gate, or a retry nobody counted | *never make a paid model call outside `metered_call()`* |
 | `unbounded-growth` | a store with no ceiling, or a backlog that can never drain | — |
+| `source-watermark` | a live source is queried before its newest interval is published, creating a false partial or avoidable fallback | — |
 | `novel` | none of the above fits | → candidate for a new iron rule |
 
 ## What this measures, and what it does not

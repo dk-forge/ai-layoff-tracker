@@ -1,6 +1,6 @@
 """
 AI Layoff Tracker — Main Cron Script
-Runs 2x daily: 9 AM ET + 5 PM ET (see railway.toml for the schedule)
+Runs on Railway's configured schedule (see railway.toml).
 """
 import os
 import time
@@ -85,6 +85,32 @@ def _gdelt_run_budget_seconds(raw=None):
     except (TypeError, ValueError):
         return 900
     return max(120, min(3600, value))
+
+
+def _gdelt_source_lag_minutes(raw=None):
+    """Return the safety lag behind the newest GDELT raw publication.
+
+    GKG Translingual files are published after the nominal 15-minute interval
+    and the newest files can be absent for a short period.  Asking for them at
+    the live clock makes a complete collector look partial and needlessly
+    falls back to the throttled public API.  Keep the operator knob bounded so
+    a typo can never remove the publication watermark.
+    """
+    if raw is None:
+        raw = os.environ.get("GDELT_SOURCE_LAG_MINUTES", "90")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 90
+    return max(75, min(180, value))
+
+
+def _gdelt_live_window(now=None):
+    """Return the overlapping live window ending behind raw-file publication."""
+    if now is None:
+        now = datetime.now(timezone.utc)
+    end = now - timedelta(minutes=_gdelt_source_lag_minutes())
+    return end - timedelta(hours=36), end
 
 
 def _mark_phase(phase):
@@ -482,15 +508,18 @@ def run():
             report_source_health(source, "degraded", 0, str(e))
             print(f"{source} source failed: {e}")
     try:
-        # Worldwide press coverage (Europe/Asia/everywhere) via GDELT. 36h
-        # window overlaps the twice-daily runs; dedup drops the repeats.
+        # Worldwide press coverage (Europe/Asia/everywhere) via GDELT. The
+        # 36h window overlaps scheduled runs; dedup drops repeats. End it
+        # behind the raw publication watermark: the newest Translingual ZIPs
+        # are commonly published 75-90 minutes after their nominal interval.
         now = datetime.now(timezone.utc)
+        gdelt_start, gdelt_end = _gdelt_live_window(now)
         report_source_health("gdelt", "running", 0, "collection in progress")
         # Measurement only (railway/gdelt_reach.py). The reach ledger is
         # reset here rather than inside the collector because a backfill
         # sweep calls pull_gdelt_between many times and one run is one ledger.
         gdelt_reach.reset()
-        # THE DEADLINE EXISTS AND THIS CALLER NEVER PASSED IT.
+        # THE DEADLINE EXISTS AND THIS CALLER PASSES IT.
         # `pull_gdelt_between` grew a `deadline` for exactly this failure (run
         # 33094996142: the broad slot cleared in seconds, then ten rotating
         # sweeps hit the throttled public API one after another, each patient
@@ -512,7 +541,7 @@ def run():
         # conservatively. Worst case we defer a sweep; best case the run
         # survives to write the terminal note that says so.
         pulled = pull_gdelt_between(
-            now - timedelta(hours=36), now,
+            gdelt_start, gdelt_end,
             deadline=time.monotonic() + _gdelt_run_budget_seconds(),
         )
         for e in pulled:
