@@ -1,3 +1,31 @@
+## 2026-09-11 - every plugin deploy served fatals mid-upload, because the maintenance flag has been in the wrong directory since the hosting move
+
+**Class:** wrong-scope-or-key
+
+**Guard:** none - the flag path is now derived from the plugin directory exactly as the deploy guard derives the WordPress root, and each upload is atomic (temp name, then rename); the proof is the absence of WordPress recovery-mode mail on the next deploys, which the owner receives and reads
+
+At 23:52 local on 2026-09-11 WordPress mailed its recovery-mode notice:
+`Failed opening required includes/api.php` from `ai-layoff-tracker.php:44`,
+raised by an admin-ajax request during the 2.20.186 deploy. The deploy
+workflow has put a `.maintenance` file up for the duration of the mirror
+for a long time, which is exactly the protection this needs, but `put -O .`
+writes it to the FTP login's home. On the old host that was the WordPress
+root. Since the 2026-09-08 move the blog lives at
+`addondomains/AskTheRecruiter.com/blog/`, so the flag has landed in the
+home directory on every deploy since, where WordPress never looks, and the
+mirror rewrote each file in place with the site fully live. Every deploy
+since the move has had this window; this is the first request that landed
+in it on the main plugin file.
+
+Two fixes in `deploy-plugin.yml`. The flag now goes to the WordPress root
+derived from `WP_PLUGIN_REMOTE_DIR` (three directories up, the same math
+the guard step already used to find `wp-config.php`), and the clear step
+removes it from both places. And `xfer:use-temp-file` with a
+`*.lftp-tmp` name makes every upload a temp file renamed into place, so a
+request that arrives mid-transfer sees the previous file or the new one and
+never a truncated or missing one. The second matters because WordPress
+keeps serving some requests during maintenance (`admin-ajax`, cron, REST).
+
 ## 2026-09-11 - the digest called one unconfirmed report a verified fact, and its cron fired four hours late
 
 **Class:** novel

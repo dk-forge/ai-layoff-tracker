@@ -268,6 +268,19 @@ jobs:
           # --- FTPS (default). For SFTP-over-SSH instead, replace the open line
           #     with:  open -u "$FTP_USER","$FTP_PASSWORD" "sftp://$FTP_HOST"
           #     and drop the three ftp:ssl* lines. ---
+          # The flag must sit in the WordPress ROOT, not the FTP login's home.
+          # Since the 2026-09-08 move the blog lives under an addon-domain
+          # path, so `put -O .` dropped .maintenance where WP never looks and
+          # every deploy served fatals mid-upload (2026-09-11 23:52: "Failed
+          # opening required includes/api.php", mailed by WP's own recovery
+          # mode). Same "3 up" derivation as the guard step above.
+          WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
+          echo "Maintenance flag goes to: $WP_ROOT/.maintenance"
+          # Every file is uploaded to a temp name and renamed into place, so a
+          # request that lands mid-transfer sees the old file or the new one,
+          # never a half-written or missing one. The maintenance flag is the
+          # first line of defence; this is the second, for the requests WP
+          # still serves while the flag is up (admin-ajax, cron, REST).
           timeout 180 lftp -c "
             set cmd:fail-exit true;
             set ssl:verify-certificate no;
@@ -275,13 +288,16 @@ jobs:
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
             set net:timeout 15;
+            set xfer:use-temp-file true;
+            set xfer:temp-file-name *.lftp-tmp;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-            put -O . .maintenance;
+            put -O \"$WP_ROOT\" .maintenance;
             mirror --reverse --delete --verbose \
               --exclude-glob .git* \
               --exclude-glob *.zip \
+              --exclude-glob *.lftp-tmp \
               wordpress-plugin/ai-layoff-tracker/ \"$REMOTE_DIR\";
-            rm -f .maintenance;
+            rm -f \"$WP_ROOT/.maintenance\";
           "
           echo "Deployed wordpress-plugin/ai-layoff-tracker/ to $REMOTE_DIR"
 
@@ -294,7 +310,9 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
           FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+          REMOTE_DIR: ${{ vars.WP_PLUGIN_REMOTE_DIR || 'wp-content/plugins/ai-layoff-tracker' }}
         run: |
+          WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
           timeout 60 lftp -c "
             set ssl:verify-certificate no;
             set ftp:ssl-force true;
@@ -302,6 +320,7 @@ jobs:
             set net:max-retries 1;
             set net:timeout 15;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            rm -f \"$WP_ROOT/.maintenance\";
             rm -f .maintenance;
           " || echo "maintenance flag already clear (or unreachable); WP self-clears it after 10 minutes"
 
