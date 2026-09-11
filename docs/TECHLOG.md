@@ -25,6 +25,26 @@ removes it from both places. And `xfer:use-temp-file` with a
 request that arrives mid-transfer sees the previous file or the new one and
 never a truncated or missing one. The second matters because WordPress
 keeps serving some requests during maintenance (`admin-ajax`, cron, REST).
+## 2026-09-12 - the janitor cleared 100 messages per run from a mailbox holding thousands, and reported it as done
+
+**Class:** ran-but-brought-nothing
+
+**Guard:** `railway/tests/test_mailbox_janitor.py::test_deletes_are_committed_in_chunks_highest_first` and `::test_a_dropped_session_mid_delete_keeps_what_was_expunged`
+
+The owner looked at the two mailboxes after the one-day clear-out and the
+sandbox one still held 49 MB. The sweep had listed 400 messages, judged 400
+eligible, and removed 9 on the first run and 100 on the second, both green.
+Cause: the server drops the session after roughly a hundred STORE calls,
+and the sweep flagged every message first and expunged once at the end, so
+everything flagged after the drop was lost and nothing before it was
+committed either on the run that died early. Deletes now go highest
+sequence number first (an expunge only renumbers what sits above the
+removed message, so the numbers still to come stay valid) with an expunge
+after every chunk of 50, so a dropped session costs at most one chunk. And
+one run may make several passes (`JANITOR_MAX_PASSES`, dispatch input
+`passes`), each a fresh session with its own escalation report, until a
+pass finds nothing eligible. Scheduled runs keep one pass and 14 days; the
+clear-out ran with one day and 20 passes.
 
 ## 2026-09-11 - the digest called one unconfirmed report a verified fact, and its cron fired four hours late
 
@@ -24637,6 +24657,10 @@ rerun after this merge; their prior UNKNOWN was exactly the undeclared-country
 finding, not a data-integrity arithmetic failure.
 
 ## 2026-09-12 - production country gate green; headline baseline timing remains
+
+**Class:** novel
+
+**Guard:** none - a status note, not a defect: the guard it describes (`headline_movement` refusing to advance a baseline younger than one ingest cycle) behaved correctly
 
 PR #308 merged as `030a5e0`. The follow-up country workflow passed and wrote
 measurement commit `1d31217`, bringing Mauritius and Palestine into the live
