@@ -18,18 +18,21 @@ that resolves to a silent pass.
 THE MECHANISM.
 
 Both candidate UTC hours are scheduled, and this module decides which of them
-is the real one TODAY. 6:00 ET is 10:00 UTC under EDT and 11:00 UTC under EST;
-7:30 ET is 11:30 UTC under EDT and 12:30 UTC under EST; 9:00 ET is 13:00 UTC
-under EDT and 14:00 UTC under EST. Exactly one of each pair lands on the
+is the real one TODAY. 6:07 ET is 10:07 UTC under EDT and 11:07 UTC under EST;
+7:37 ET is 11:37 UTC under EDT and 12:37 UTC under EST; 9:07 ET is 13:07 UTC
+under EDT and 14:07 UTC under EST (the minute is off the hour on purpose; see
+SEND_TIMES). Exactly one of each pair lands on the
 intended wall clock on any given date, so exactly one tick sends and the other
 exits 0 having done nothing at all. The monthly pair is day-of-month 1 in UTC,
-and 13:00 or 14:00 UTC on the 1st is still the 1st in New York, so the UTC
+and 13:07 or 14:07 UTC on the 1st is still the 1st in New York, so the UTC
 cron date and the Eastern date this module judges never disagree for it.
 
 IT JUDGES THE SCHEDULED TIME, NOT THE CLOCK, AND THAT IS THE WHOLE POINT.
 
 The obvious implementation reads `datetime.now()` in New York and skips unless
-the hour is 6. It is wrong, and wrong in the direction that loses an edition:
+the hour is 6. (`late_tick_line` below does compare the two clocks, but only
+to PRINT the delay; it takes the start time as an argument and decides
+nothing.) It is wrong, and wrong in the direction that loses an edition:
 GitHub delays scheduled runs under load, routinely by minutes and occasionally
 by more, so a 10:00 UTC tick that starts at 11:05 UTC would fail a
 now()-based test, the 11:00 UTC tick would fail it too, and the day's digest
@@ -86,11 +89,23 @@ ZONE = ZoneInfo(ZONE_NAME)
 # every tier must not receive two editions in the same minute, and a 1st that
 # falls on a Monday already carries the other two. The window it composes is
 # the site's (alt_digest_monthly_window): the month the tick is in, to date.
+#
+# THE MINUTE IS :07 OR :37, NOT :00 OR :30 (2026-09-11). GitHub queues every
+# repository's on-the-hour cron at once and documents that those are the most
+# delayed; measured 2026-09-06 to 2026-09-11 the `0 10 * * *` tick started at
+# 13:56 UTC each day and the Monday `30 11 * * 1` tick at 16:36. Seven minutes
+# past lands in a quieter queue. The hours and days are the owner's; only the
+# minute moved, and digest-send.yml carries the same six lines.
 SEND_TIMES = {
-    (6, 0): ("daily", None, None),
-    (7, 30): ("weekly", 1, None),    # 1 = Monday, ISO
-    (9, 0): ("monthly", None, 1),    # the 1st of the month
+    (6, 7): ("daily", None, None),
+    (7, 37): ("weekly", 1, None),    # 1 = Monday, ISO
+    (9, 7): ("monthly", None, 1),    # the 1st of the month
 }
+
+# A tick that starts more than this long after its scheduled minute is
+# reported as LATE. It is a log line and nothing else: the slot is still
+# judged from the cron string, so the edition still goes out.
+LATE_AFTER = datetime.timedelta(minutes=60)
 
 
 class UnreadableCron(ValueError):
@@ -163,3 +178,31 @@ def tier_for_cron(cron: str, on_date: datetime.date | None = None):
     return tier, (
         f"this tick is the {tier} slot: cron '{cron}' is {utc_txt}, which is "
         f"{local_txt} in {ZONE_NAME}, the wall clock this tier is scheduled for.")
+
+
+def late_tick_line(cron: str, started_at: datetime.datetime,
+                   late_after: datetime.timedelta = LATE_AFTER):
+    """One log line when the runner started long after the slot, else None.
+
+    THIS DECIDES NOTHING. The tick's identity comes from the cron string
+    (tier_for_cron); this only makes the delay visible, because a run that is
+    four hours late and green looks identical in the run list to one that was
+    on time, and the 2026-09-06 to 2026-09-11 delays were only found by
+    reading start times by hand. `started_at` is supplied by the caller
+    (GITHUB_RUN_STARTED_AT, or the clock at process start) so this module
+    still reads no clock of its own.
+    """
+    if started_at.tzinfo is None:
+        started_at = started_at.replace(tzinfo=datetime.timezone.utc)
+    started_at = started_at.astimezone(datetime.timezone.utc)
+    hour, minute = parse_cron(cron)
+    scheduled = started_at.replace(hour=hour, minute=minute, second=0,
+                                   microsecond=0)
+    # A tick queued before midnight and started after it: the slot it was
+    # scheduled for is the previous day's.
+    if scheduled > started_at:
+        scheduled -= datetime.timedelta(days=1)
+    if started_at - scheduled <= late_after:
+        return None
+    return (f"LATE TICK: scheduled {scheduled:%H:%M} UTC, "
+            f"started {started_at:%H:%M} UTC")

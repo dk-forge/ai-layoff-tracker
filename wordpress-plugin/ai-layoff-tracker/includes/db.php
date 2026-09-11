@@ -6619,7 +6619,9 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     */
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url
+        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url,
+                verification_level, review_status,
+                (SELECT COUNT(*) FROM " . alt_source_reports_table() . " r WHERE r.event_id = $table.event_id AND $table.event_id > 0) AS report_count
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
@@ -6669,6 +6671,20 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
               is created. Additive key: every consumer reads leaders by name.
             */
             'source_url' => (string) ($row->source_url ?? ''),
+            /*
+              HOW WELL THE ROW IS SUPPORTED, so a consumer can say so beside
+              the figure. Added 2026-09-11. The September 11 daily led with a
+              single bronze news row that was 94% of the worldwide figure, and
+              the digest had no way to know: the tier of evidence was not in
+              the payload, so the line read like a settled fact. `report_count`
+              is the number of source reports attached to the row's event (0
+              when the row predates the events table), and the digest reads
+              "single report" from it together with the two status columns.
+              Additive keys: every consumer reads leaders by name.
+            */
+            'verification_level' => (string) ($row->verification_level ?? ''),
+            'review_status' => (string) ($row->review_status ?? ''),
+            'report_count' => (int) ($row->report_count ?? 0),
         );
     }
 

@@ -1603,6 +1603,78 @@ class TheDominantEventIsSurfacedUpTop(unittest.TestCase):
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
+class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
+    """THE 2026-09-11 DAILY led with "Amazon's 30,000 verified job cuts were
+    94% of the 32,077 verified job cuts worldwide", where that row is one
+    bronze news report, still provisional, with no country. "Verified" is a
+    tier name and a reader takes it as "confirmed". So when the dominant entry
+    rests on one unconfirmed report the paragraph says so, gives the figure
+    without it (the same denominator minus the same row, never a second
+    definition of the headline), and the biggest-cuts row carries the same
+    qualifier. The headline figure itself does not move.
+    """
+
+    def _dominant(self, **row):
+        fixture = layoff_fixture()
+        fixture["layoff"]["leaders"][0]["job_count"] = 9000
+        fixture["layoff"]["leaders"][0].update(row)
+        return compose(fixture)["text"]
+
+    def test_a_bronze_row_is_called_provisional_with_the_figure_without_it(self):
+        text = self._dominant(verification_level="bronze")
+        line = [l for l in text.splitlines() if l.startswith("One entry dominated")][0]
+        self.assertIn("9,000 verified job cuts", line)
+        self.assertIn("66% of the 13,710 verified job cuts worldwide", line)
+        self.assertIn("rests on a single news report we have not independently "
+                      "confirmed, so it is provisional", line)
+        # 13,710 - 9,000, from the same rows the section already read.
+        self.assertIn("the verified worldwide figure without it is 4,710", line)
+        # The headline number is untouched.
+        self.assertIn("13,710 verified job cuts", text)
+
+    def test_a_provisional_row_with_one_source_report_counts_too(self):
+        text = self._dominant(review_status="provisional", report_count=1)
+        self.assertIn("so it is provisional", text)
+        text = self._dominant(review_status="provisional", report_count=0)
+        self.assertIn("so it is provisional", text)
+
+    def test_a_provisional_row_with_two_reports_is_not_single_report(self):
+        text = self._dominant(review_status="provisional", report_count=2)
+        self.assertNotIn("so it is provisional", text)
+        self.assertNotIn("single report, unconfirmed", text)
+
+    def test_a_payload_without_the_columns_never_claims_it(self):
+        """An /aggregate from an older build carries neither column. The
+        qualifier is printed only when the data says so."""
+        text = self._dominant()
+        self.assertNotIn("single news report", text)
+        self.assertNotIn("single report, unconfirmed", text)
+        text = self._dominant(verification_level="silver")
+        self.assertNotIn("single news report", text)
+
+    def test_the_biggest_cuts_row_carries_the_same_qualifier(self):
+        text = self._dominant(verification_level="bronze")
+        block = text.split("Biggest cuts")[1]
+        row = [l for l in block.splitlines() if "Applied Aerospace" in l][0]
+        self.assertIn("single report, unconfirmed", row)
+        # Still the existing "no place" wording beside it.
+        self.assertIn("location not recorded", row)
+
+    def test_an_announced_single_report_subtracts_from_its_own_denominator(self):
+        text = self._dominant(verification_level="bronze", announced=True)
+        line = [l for l in text.splitlines() if l.startswith("One entry dominated")][0]
+        self.assertIn("once announced estimates are included", line)
+        self.assertIn("the worldwide figure including announced estimates "
+                      "without it is", line)
+        self.assertNotIn("the verified worldwide figure without it", line)
+
+    def test_the_year_to_date_share_names_the_verified_denominator(self):
+        text = compose(layoff_fixture())["text"]
+        self.assertIn("of the year's verified total.", text)
+        self.assertNotIn("of the year's total.", text)
+
+
+@unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
 class ThePercentageWaitsUntilItIsLikeForLike(unittest.TestCase):
     """A CONFIDENT PERCENT ON A WINDOW THAT HAS BARELY SETTLED IS A LAG, NOT A
     FALL.
