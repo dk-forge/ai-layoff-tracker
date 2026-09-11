@@ -1,3 +1,46 @@
+## 2026-09-12 - the digest led with an unconfirmed report and asked the reader to subtract it; the confirmed figure is the lead now
+
+**Class:** novel (an owner ruling on what the lead may carry, not a mechanism that stopped; none of the vocabulary fits)
+**Guard:** `railway/tests/test_digest_scope_rules.py` (ASingleUnconfirmedReportIsNamedAsProvisional: unconfirmed dominant row excluded from the lead, the pair and the AI block and named underneath; a confirmed dominant row unchanged; a window with no dominant row unchanged), `railway/tests/test_signup_reaches_landing_pages.py` (a post carrying the shortcode gets no second form)
+
+2.20.186 answered the 2026-09-11 daily with a footnote: the headline kept
+the single bronze row and the dominant line added "the verified worldwide
+figure without it is N". The owner's ruling of 2026-09-12 is that the
+confirmed figure IS the lead. `alt_digest_dominant_event()` now returns the
+row under `excluded` when the dominant entry is a single unconfirmed report
+(`alt_digest_single_report`, unchanged), and `alt_digest_compose_layoff`
+judges it BEFORE the lead: the lead sentence, the headline pair, the
+reconciliation line under the pair, the country map and the AI block's
+period figures are built from the window totals minus that one row, from the
+same rows the section already reads, never a second definition of a headline
+number. The row is named underneath in its own paragraph ("One report we
+have not independently confirmed would add N: company, N job cuts, reported
+by host. It is listed as provisional and is not in the figures above."), the
+same sentence closes the AI block so the two never disagree, and the Biggest
+cuts row keeps "single report, unconfirmed". An announced row was never in
+the verified figures, so nothing is subtracted for it and the paragraph still
+names it; a row with no country leaves the United States figure alone. The
+interpretation sentence is dropped in that case, because a share taken
+against a total the lead no longer prints is not a reading of it. When no
+row is excluded every derived figure equals the total it shadows and the
+output is byte-for-byte what it was. The year-to-date figure, the source
+split and the entry-count line under Source quality stay on the full window;
+they are not headline figures and the paragraph says which figures it is
+outside of.
+
+Two of the owner's three asks of the same day were already live and are
+recorded here so nobody rebuilds them: the signup has been appended to every
+single post by `alt_digest_append_to_post` (the_content, priority 25,
+`is_singular('post')`) and placed at the bottom of `page-tracker.php` under
+the last section since 2.20.60, one placement per page by construction, and
+Weekly has been the pre-selected frequency (`value="weekly" checked`) with
+`'weekly'` as both server fallbacks (`alt_digest_prefs_from_post`,
+`digest-api.php`). A second, compact form on the same pages would be the
+duplicate `alt_digest_placement()` exists to prevent, so none was built.
+The one gap closed: a post whose body carries `[alt_digest_subscribe]` no
+longer gets a second form appended, because the shortcode calls the form
+directly and the once-per-request static never saw it. Plugin 2.20.187.
+
 ## 2026-09-11 - every plugin deploy served fatals mid-upload, because the maintenance flag has been in the wrong directory since the hosting move
 
 **Class:** wrong-scope-or-key

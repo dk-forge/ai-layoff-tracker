@@ -209,6 +209,20 @@ class TheSignupIsPlacedOnEverySurfaceReadersLandOn(unittest.TestCase):
                 "related-posts widget rendering the same content prints a "
                 "second form with a second id=\"alt-digest\"" % gate)
 
+    def test_a_post_that_carries_the_shortcode_is_not_given_a_second_form(self):
+        """The shortcode calls alt_digest_subscribe_form() directly, so the
+        once-per-request static in alt_digest_placement() never sees it. A post
+        written with [alt_digest_subscribe] in its body would end with two
+        forms and two id="alt-digest" anchors unless the filter stands down."""
+        src = PLACEMENTS.read_text(encoding="utf-8")
+        body = re.search(r"function alt_digest_append_to_post\(.*?\n\}", src, re.S)
+        self.assertTrue(body, "alt_digest_append_to_post() is gone")
+        self.assertIn(
+            "has_shortcode((string) $content, 'alt_digest_subscribe')", body.group(0),
+            "alt_digest_append_to_post() appends the signup to a post whose "
+            "body already carries [alt_digest_subscribe], so that post ends "
+            "with two forms")
+
     def test_one_placement_per_page_is_enforced_not_assumed(self):
         src = PLACEMENTS.read_text(encoding="utf-8")
         self.assertTrue(

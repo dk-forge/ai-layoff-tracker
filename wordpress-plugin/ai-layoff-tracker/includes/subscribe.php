@@ -4233,7 +4233,8 @@ function alt_digest_single_report($l) {
  */
 function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
                                    $ai_verified_jobs, $range) {
-    $empty = array('event' => '', 'interpretation' => '', 'concentrated' => false);
+    $empty = array('event' => '', 'interpretation' => '', 'concentrated' => false,
+                   'excluded' => null);
     $leaders = is_array($leaders) ? $leaders : array();
     // The single largest entry by job count. db.php orders leaders by
     // job_count DESC, but the maximum is taken defensively rather than trusting
@@ -4302,25 +4303,30 @@ function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
     $event .= '.';
 
     /*
-      WHEN THE WHOLE STORY IS ONE UNCONFIRMED REPORT, SAY SO IN THE SAME
-      BREATH. See alt_digest_single_report for the 2026-09-11 daily that
-      made this necessary. The figure without the entry is the SAME
-      denominator this sentence already used minus the entry's own count,
-      taken from the same rows this section reads: it is never a second
-      definition of a headline number, and the headline itself is untouched.
-      For a verified entry that is the verified worldwide figure; for an
-      announced entry it is the announced-inclusive one the share was taken
-      against, and the sentence names which.
+      WHEN THE WHOLE STORY IS ONE UNCONFIRMED REPORT, THE LEAD IS BUILT
+      WITHOUT IT. See alt_digest_single_report for the 2026-09-11 daily that
+      made this necessary. Until 2.20.187 this appended "that entry rests on
+      a single news report ... the figure without it is N" to the dominant
+      line, and the headline still carried the entry: the reader was handed
+      a verified-looking figure and a footnote asking them to subtract. The
+      owner's ruling (2026-09-12) is that the confirmed figure IS the lead.
+      So the caller receives the row under 'excluded' and builds the lead,
+      the headline pair and the AI block from the window totals minus that
+      one row, taken from the same rows this section already reads and never
+      a second definition of a headline number. This sentence then names the
+      report underneath, and the Biggest cuts row keeps its qualifier. The
+      interpretation sentence is dropped: a share taken against a total the
+      lead no longer prints is not a reading of the figures above it.
+      For an announced entry the verified figures never contained it, so the
+      caller subtracts nothing, and this sentence is still true.
     */
     if (alt_digest_single_report($top)) {
-        $without = max(0, $denom - $jobs);
-        $figure_word = $announced
-            ? 'the worldwide figure including announced estimates'
-            : 'the verified worldwide figure';
-        $event .= ' That entry rests on a single news report we have not '
-                . 'independently confirmed, so it is provisional: '
-                . $figure_word . ' without it is '
-                . alt_digest_number($without) . '.';
+        return array(
+            'event' => alt_digest_unconfirmed_report_sentence($top),
+            'interpretation' => '',
+            'concentrated' => $concentrated,
+            'excluded' => $top,
+        );
     }
 
     // ONE DERIVED SENTENCE OF INTERPRETATION, and it is derived, never a guess.
@@ -4343,7 +4349,39 @@ function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
     }
 
     return array('event' => $event, 'interpretation' => $interp,
-                 'concentrated' => $concentrated);
+                 'concentrated' => $concentrated, 'excluded' => null);
+}
+
+/**
+ * The name of the outlet behind a row, from its source URL, for a reader.
+ * The leaders payload carries `source_url` and no source name, so the host is
+ * the one thing about the report the data can vouch for. '' when the row has
+ * no URL, and the caller says so rather than inventing an outlet.
+ */
+function alt_digest_report_source_name($url) {
+    $host = (string) wp_parse_url(trim((string) $url), PHP_URL_HOST);
+    $host = strtolower(preg_replace('/^www\./i', '', $host));
+    return $host;
+}
+
+/**
+ * THE ONE UNCONFIRMED REPORT, NAMED UNDER THE FIGURES IT IS NOT IN.
+ *
+ * One sentence of what it would add and one of where it stands. The count is
+ * the row's own job count; the caller has already taken the same count out
+ * of the lead and the pair, so "not in the figures above" is true by
+ * construction and not by care.
+ */
+function alt_digest_unconfirmed_report_sentence($row) {
+    $row = (array) $row;
+    $jobs = (int) ($row['job_count'] ?? 0);
+    $company = trim((string) ($row['company_name'] ?? ''));
+    $source = alt_digest_report_source_name($row['source_url'] ?? '');
+    $source = ($source !== '') ? ('reported by ' . $source) : 'source not recorded';
+    return 'One report we have not independently confirmed would add '
+         . alt_digest_number($jobs) . ': ' . $company . ', '
+         . alt_digest_number($jobs) . ' job cuts, ' . $source
+         . '. It is listed as provisional and is not in the figures above.';
 }
 
 function alt_digest_talent_url($from, $to, $filters = array()) {
@@ -4910,6 +4948,46 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         return array($all, $multi, $covered);
     };
     list($countries_all, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
+
+    /*
+      THE DOMINANT ENTRY IS JUDGED HERE, BEFORE THE LEAD, because the lead
+      may now depend on it. It is PRINTED further down, under the headline
+      pair, where it always was. When the dominant row is a single unconfirmed
+      report (alt_digest_single_report) it comes back under 'excluded', and
+      every figure the reader meets first is built from the confirmed entries
+      only: the window totals minus that one row, taken from the same rows
+      this section already read. Nothing here is a second definition of a
+      headline number. When no row is excluded every $lead_* below equals the
+      window total it shadows, and the output is byte-for-byte what it was.
+
+      An ANNOUNCED row was never inside the verified figures, so nothing is
+      subtracted for it; the sentence underneath still names it. A row with
+      no country was never inside the United States figure or the country
+      map, so those are left alone for it. The country map is adjusted so the
+      reconciliation line under the pair keeps doing arithmetic against the
+      pair it sits under.
+    */
+    $dominant = alt_digest_dominant_event(
+        $data['leaders'] ?? null, $ver_jobs, $all_jobs,
+        (int) ($totals['ai_verified_jobs'] ?? 0), $range);
+    $excluded = is_array($dominant['excluded'] ?? null) ? $dominant['excluded'] : null;
+    $ex_jobs = 0; $ex_us = false; $ex_ai = false; $ex_entries = 0;
+    if ($excluded !== null && empty($excluded['announced'])) {
+        $ex_jobs = max(0, (int) ($excluded['job_count'] ?? 0));
+        $ex_entries = 1;
+        $ex_us = (strcasecmp(trim((string) ($excluded['country'] ?? '')), 'United States') === 0);
+        $ex_ai = !empty($excluded['ai_explicit']);
+        $ex_country = trim((string) ($excluded['country'] ?? ''));
+        if ($ex_country !== '' && isset($countries_all[$ex_country])) {
+            $countries_all[$ex_country] = max(0, $countries_all[$ex_country] - $ex_jobs);
+            if ($countries_all[$ex_country] === 0) unset($countries_all[$ex_country]);
+            $covered = max(0, $covered - $ex_jobs);
+        }
+    }
+    $lead_ver_jobs = max(0, $ver_jobs - $ex_jobs);
+    $lead_entries = max(0, $all_entries - $ex_entries);
+    $lead_ai_jobs = max(0, (int) ($totals['ai_verified_jobs'] ?? 0) - ($ex_ai ? $ex_jobs : 0));
+    $lead_ai_entries = max(0, (int) ($totals['ai_verified_entries'] ?? 0) - ($ex_ai ? 1 : 0));
     $named = array_slice($countries_all, 0, 5, true);
 
     /*
@@ -4942,6 +5020,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         $us_ai = (int) ($row[5] ?? 0);
         break;
     }
+    // The excluded row leaves the United States figure only if it was in it.
+    $lead_us_jobs = max(0, $us_jobs - ($ex_us ? $ex_jobs : 0));
 
     /*
       THE WEEK BEFORE, AND THIS REVERSES A RULE THIS FILE USED TO HOLD.
@@ -5144,8 +5224,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
               . $sep . $provisional_token;
 
     $lead = array();
-    $us_change = $change_phrase($us_jobs, $prior_us, false);
-    $all_change = $change_phrase($ver_jobs, $prior_all, false);
+    $us_change = $change_phrase($lead_us_jobs, $prior_us, false);
+    $all_change = $change_phrase($lead_ver_jobs, $prior_all, false);
     /*
       THE LEAD OPENS ON ITS WINDOW, and that is a rule and not a style choice.
       A line of this email lifted out on its own has to still be true and still
@@ -5210,8 +5290,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         $opening = 'Over ' . alt_digest_date_range($from, $to)
                  . ', employers verified ';
     }
-    if ($us_change !== '' && $us_jobs > 0) {
-        $lead[] = $opening . alt_digest_number($us_jobs) . ' US job cuts, '
+    if ($us_change !== '' && $lead_us_jobs > 0) {
+        $lead[] = $opening . alt_digest_number($lead_us_jobs) . ' US job cuts, '
                 . $us_change . '.';
         /*
           THE WORLDWIDE DIRECTION IS ITS OWN SENTENCE, AND IT HAS TO BE.
@@ -5226,18 +5306,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         */
         if ($all_change !== '') {
             $lead[] = 'Worldwide, verified job cuts totalled '
-                    . alt_digest_number($ver_jobs) . ', '
+                    . alt_digest_number($lead_ver_jobs) . ', '
                     . $all_change . '.';
         } else {
             $lead[] = 'Worldwide, verified job cuts totalled '
-                    . alt_digest_number($ver_jobs) . '.';
+                    . alt_digest_number($lead_ver_jobs) . '.';
         }
     } else {
-        $lead[] = $opening . alt_digest_number($us_jobs) . ' US job cuts.';
+        $lead[] = $opening . alt_digest_number($lead_us_jobs) . ' US job cuts.';
         $lead[] = 'Worldwide, verified job cuts totalled '
-                . alt_digest_number($ver_jobs) . '.';
+                . alt_digest_number($lead_ver_jobs) . '.';
     }
-    $ai_jobs_lead = (int) ($totals['ai_verified_jobs'] ?? 0);
+    $ai_jobs_lead = $lead_ai_jobs;
     /*
       THE THIRD SENTENCE IS THE SIGNATURE METRIC, AND IT STAYS IN THE LEAD.
 
@@ -5314,15 +5394,15 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
     */
     list($pair_html, $pair_text) = alt_digest_stat_pair(array(
         array('label' => 'United States',
-              'figure' => alt_digest_number($us_jobs),
-              'unit' => alt_digest_verb($us_jobs, 'verified job cut', 'verified job cuts'),
-              'foot' => $change_phrase($us_jobs, $prior_us),
+              'figure' => alt_digest_number($lead_us_jobs),
+              'unit' => alt_digest_verb($lead_us_jobs, 'verified job cut', 'verified job cuts'),
+              'foot' => $change_phrase($lead_us_jobs, $prior_us),
               'url' => alt_digest_track_link($send_id, alt_digest_tracker_url(
                            $from, $to, array('country' => 'United States')))),
         array('label' => 'Worldwide',
-              'figure' => alt_digest_number($ver_jobs),
-              'unit' => alt_digest_verb($ver_jobs, 'verified job cut', 'verified job cuts'),
-              'foot' => $change_phrase($ver_jobs, $prior_all),
+              'figure' => alt_digest_number($lead_ver_jobs),
+              'unit' => alt_digest_verb($lead_ver_jobs, 'verified job cut', 'verified job cuts'),
+              'foot' => $change_phrase($lead_ver_jobs, $prior_all),
               'url' => alt_digest_track_link($send_id,
                            alt_digest_tracker_url($from, $to))),
     ));
@@ -5331,10 +5411,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
     // once already. See alt_digest_span_phrase.
     $scope = 'Both figures are verified job cuts ' . $span
            . ', counted where the jobs were and by the date the cuts take effect.';
-    $unplaced = max(0, $ver_jobs - $covered);
+    $unplaced = max(0, $lead_ver_jobs - $covered);
     if ($unplaced > 0) {
         $reconcile = alt_digest_number($unplaced) . ' of the '
-                   . alt_digest_count($ver_jobs, 'verified job cut')
+                   . alt_digest_count($lead_ver_jobs, 'verified job cut')
                    . alt_digest_verb($unplaced, ' sits', ' sit')
                    . ' on entries with no country recorded. The United States figure '
                    . 'and the regions below therefore do not sum to the worldwide one.';
@@ -5416,9 +5496,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       because a line that always fires is decoration. See that function for the
       >=40% and sole-AI-driver triggers and for why the tiers are never mixed.
     */
-    $dominant = alt_digest_dominant_event(
-        $data['leaders'] ?? null, $ver_jobs, $all_jobs,
-        (int) ($totals['ai_verified_jobs'] ?? 0), $range);
+    // $dominant was judged above, before the lead, because the lead may be
+    // built without the row it names. It prints here, under the pair.
     if ($dominant['event'] !== '') {
         $html .= '<p data-alt="finding">' . esc_html($dominant['event']) . '</p>';
         $text .= $dominant['event'] . "\n";
@@ -5575,8 +5654,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
     $AI_BASE_ZERO = 16;
     $AI_BASE_ASOF = 'August 16';
 
-    $ai_jobs = (int) ($totals['ai_verified_jobs'] ?? 0);
-    $ai_entries = (int) ($totals['ai_verified_entries'] ?? 0);
+    // The confirmed figures, so this block and the lead never disagree: when
+    // a single unconfirmed report is excluded up top it is excluded here too,
+    // and the same sentence below says why. The cumulative figure beside it
+    // is the year's own total and is not touched.
+    $ai_jobs = $lead_ai_jobs;
+    $ai_entries = $lead_ai_entries;
 
     // THE SIGNATURE LINE. The period's value and the cumulative one, adjacent,
     // because a line reading "0" on its own most weeks trains a reader to skip
@@ -5612,14 +5695,15 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       result rather than after it.
     */
     $ai_lines = array();
-    $ai_lines[] = 'We reviewed ' . alt_digest_count($all_entries, 'entry', 'entries')
-                . ' dated ' . $range . ', ' . alt_digest_number($ver_jobs)
+    $ai_lines[] = 'We reviewed ' . alt_digest_count($lead_entries, 'entry', 'entries')
+                . ' dated ' . $range . ', ' . alt_digest_number($lead_ver_jobs)
                 . ' verified job cuts between them.';
     $ai_lines[] = ($ai_jobs > 0)
         ? 'Employers explicitly named AI as a reason on '
           . alt_digest_count($ai_entries, 'entry', 'entries') . ', covering '
           . alt_digest_count($ai_jobs, 'verified job cut') . '.'
         : 'No employer explicitly named AI as a reason on any of them.';
+    if ($excluded !== null && $dominant['event'] !== '') $ai_lines[] = $dominant['event'];
     // THE BASE RATE, IN THE SAME BREATH, so the lead never has to hedge. It is
     // dated, so it is true whenever it is read.
     $ai_lines[] = 'Explicit attribution is rare and arrives in bursts: of the '
