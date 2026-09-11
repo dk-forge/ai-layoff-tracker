@@ -1,7 +1,6 @@
 {
   "backlog": [
     "Bosnia and Herzegovina",
-    "Cambodia",
     "China",
     "Costa Rica",
     "Czechia",
@@ -157,12 +156,18 @@
       "threshold": "the Directive banding as transposed in chl. 328a / chl. 130a \u2014 recorded as transposition, NOT as a read of the Bulgarian text, which was not obtained"
     },
     "Cambodia": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "NONE LOCATED. MLVT's current reports-and-statistics catalogue publishes monthly, quarterly, labour-market and employer-skill indicators, while NIS publishes labour-force tables and surveys; neither exposes a periodic count or employer register derived from article 95 notifications. Survey layoffs and employment disruption are not a filing denominator.",
+      "assessed": "2026-09-12",
+      "authority": "Labour Inspector under the Ministry of Labour and Vocational Training",
+      "cite": "https://www.mlvt.gov.kh/index.php/en/official-docs/royal-code/4-uncategorised/download/77_44a845451a542889db7ce2c72bfcd448.html",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 1000,
-      "state": "unknown",
-      "stored_name": "Cambodia"
+      "regime": "Labour Law (Kram of 13 March 1997), arts. 95 and 371. A mass layoff resulting from reduced activity or a foreseen internal reorganisation follows article 95's worker-selection and consultation procedure, and the Labour Inspector must be kept informed. Article 371 makes failure to inform the Inspector punishable. Article 130 is wage garnishment and is deliberately excluded; an earlier backlog note had cited it incorrectly.",
+      "state": "not_measurable",
+      "stored_name": "Cambodia",
+      "threshold": "any mass layoff caused by reduced establishment activity or a foreseen internal reorganisation; the Act states no numeric floor or fixed advance-notice period"
     },
     "Canada": {
       "age_days": 24,
@@ -1112,7 +1117,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-11T22:07:47Z",
+  "measured_at": "2026-09-11T22:37:32Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1784,13 +1789,12 @@
   "tallies": {
     "no_regime": 4,
     "refused": 6,
-    "regime_no_aggregate": 32,
+    "regime_no_aggregate": 33,
     "regime_with_aggregate": 21,
-    "unassessed": 16
+    "unassessed": 15
   },
   "unassessed": [
     "Bosnia and Herzegovina",
-    "Cambodia",
     "China",
     "Costa Rica",
     "Czechia",
