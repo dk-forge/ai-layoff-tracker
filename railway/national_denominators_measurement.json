@@ -10,7 +10,7 @@
     "pl_group_layoffs",
     "is_hopuppsagnir"
   ],
-  "measured_at": "2026-09-11T17:38:18Z",
+  "measured_at": "2026-09-11T19:11:19Z",
   "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
   "slices": {
     "ee_collective_redundancy_notices": {
