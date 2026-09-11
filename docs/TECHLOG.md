@@ -24658,7 +24658,7 @@ finding, not a data-integrity arithmetic failure.
 
 ## 2026-09-12 - production country gate green; headline baseline timing remains
 
-**Class:** none
+**Class:** novel
 
 **Guard:** none - a status note, not a defect: the guard it describes (`headline_movement` refusing to advance a baseline younger than one ingest cycle) behaved correctly
 
