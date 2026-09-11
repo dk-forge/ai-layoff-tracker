@@ -37,8 +37,15 @@ holder, so the start-of-session ritual surfaces it automatically.
   slots. The current branch adds an explicit 75–180 minute live-source
   watermark (90 minutes by default), so the daily 36-hour overlap requests
   only intervals both raw streams have published; never relabel those missing
-  edge intervals complete. Eight focused tests pass locally; CI, deployment,
-  and a fresh scheduled-run proof remain.
+  edge intervals complete. PR #303 merged as `94bece167d3aecdcfc425c2cf1176f5a5d6c502c`
+  after all CI shards passed. Railway deployment
+  `ea9302db-f46e-4ed0-9b95-c27e749e3d76` is SUCCESS on that exact SHA with
+  `/railway/railway.toml`, `python cron.py`, and the file-backed schedule
+  `0 22 * * *`. This proves the repair is live; seven clean scheduled runs and
+  fourteen clean days are still required before the GDELT reliability gate is
+  closed. A keyless country-register run also completed its write but correctly
+  stayed UNVERIFIED because Afghanistan, Egypt, Ghana, Paraguay and Qatar are
+  newly observed and still lack declared regime classifications.
 
   **Earlier production result.** PR #300 passed all seven
   checks and merged as `94190341a4e6776d532161b5d08cfad8e271b9bb`.
