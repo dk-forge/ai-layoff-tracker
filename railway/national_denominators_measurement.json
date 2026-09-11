@@ -10,7 +10,7 @@
     "pl_group_layoffs",
     "is_hopuppsagnir"
   ],
-  "measured_at": "2026-09-04T21:21:06Z",
+  "measured_at": "2026-09-11T17:38:18Z",
   "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
   "slices": {
     "ee_collective_redundancy_notices": {
@@ -46,8 +46,8 @@
         "label": "2025-07..2026-06",
         "to": "2026-06-30"
       },
-      "period_age_days": 66,
-      "publisher_updated": "2026-08-07T10:04:45.938Z",
+      "period_age_days": 73,
+      "publisher_updated": "2026-09-08T11:24:05.663Z",
       "robots": "avaandmed.eesti.ee and andmed.eesti.ee both serve no robots.txt (404). tootukassa.ee allows the statistics path with Crawl-delay: 10, and is not fetched by this collector",
       "secondary": {
         "note": "summed over 12 months, so an employer filing in two months counts twice",
@@ -94,7 +94,7 @@
         "label": "2025-07..2026-06",
         "to": "2026-06-30"
       },
-      "period_age_days": 66,
+      "period_age_days": 73,
       "publisher_updated": "2026-08-17T23:00:00.000Z",
       "robots": "ons.gov.uk serves no robots.txt (404) — no directive to obey",
       "secondary": {
@@ -154,7 +154,7 @@
         "label": "2024/25",
         "to": "2025-03-31"
       },
-      "period_age_days": 522,
+      "period_age_days": 529,
       "publisher_updated": "2026-08",
       "robots": "www.nisra.gov.uk's robots.txt disallows '/*.xlsx', '/*.ods' and '/*.zip' for every agent (re-read 2026-09-04), so the redundancy workbook and the ODS bundle are refused to us and are NOT fetched; the refusal is recorded in country_coverage.REFUSAL_LEDGER, whose ruling names the HTML report as the alternative. The two www.nisra.gov.uk HTML pages read to find the latest report are 'Allow' under the same file. datavis.nisra.gov.uk serves no readable robots.txt: /robots.txt answers HTTP 200 with the host's HTML 'Unavailable' placeholder, which robots_gate reads as UNKNOWN",
       "secondary": {
@@ -226,7 +226,7 @@
         "label": "2025",
         "to": "2025-12-31"
       },
-      "period_age_days": 247,
+      "period_age_days": 254,
       "publisher_updated": "20260611T154255",
       "robots": "apiservice.mol.gov.tw returns an F5 'Request Rejected' page for /robots.txt itself, so no directive could be read. The data endpoints answer 200 to our own identifying agent string under an explicit open-data licence, and no block aimed at agents was found. Recorded as PERMITTED WITH THE ROBOTS FILE UNREADABLE — if that ever becomes a 403 to this agent it is a refusal and stays one. statfy.mol.gov.tw was unreachable and its robots.txt has never been read: treat as NOT permitted",
       "secondary": {
