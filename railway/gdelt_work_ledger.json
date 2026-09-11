@@ -306,12 +306,12 @@
       "family": "euphemism",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "\"branch\" \"optimization\" jobs"
     },
     "euphemism|387f2fbed6|20260828T100716Z|20260829T220716Z": {
@@ -402,12 +402,12 @@
       "family": "euphemism",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "\"store rationalization\""
     },
     "euphemism|77d08f3f22|20260903T101002Z|20260904T221002Z": {
@@ -678,12 +678,12 @@
       "family": "euro",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "\"plan social\" OR \"licenciements\" OR \"suppressions de postes\""
     },
     "native|1bdbdf1e47|20260827T100635Z|20260828T220635Z": {
@@ -846,12 +846,12 @@
       "family": "native",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "\"massaontslag\""
     },
     "native|83c1fa1225|20260828T100716Z|20260829T220716Z": {
@@ -894,12 +894,12 @@
       "family": "native",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "\"zwolnienia grupowe\""
     },
     "native|9f8d8c53fa|20260828T100716Z|20260829T220716Z": {
@@ -1122,12 +1122,12 @@
       "family": "segment",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\") \"shed jobs\""
     },
     "segment|43e72a37d5|20260830T100650Z|20260831T220650Z": {
@@ -1350,12 +1350,12 @@
       "family": "segment",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "failed",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 1,
       "first_seen": "20260910T221248Z",
-      "updated": "20260910T221248Z",
+      "updated": "20260911T100416Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\") \"sackings\""
     },
     "segment|9f0de259a7|20260905T100833Z|20260906T220833Z": {
@@ -1410,12 +1410,12 @@
       "family": "segment",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\") \"slash jobs\""
     },
     "segment|aac09659b1|20260904T100901Z|20260905T220901Z": {
@@ -1518,12 +1518,12 @@
       "family": "segment",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\") \"job shedding\""
     },
     "segment|bef313b7e7|20260827T100635Z|20260828T220635Z": {
@@ -1854,12 +1854,12 @@
       "family": "theme",
       "window_start": "20260909T100432Z",
       "window_end": "20260910T220432Z",
-      "status": "queued",
+      "status": "superseded",
       "returned": 0,
       "cap_hit": false,
       "attempts": 0,
       "first_seen": "20260910T221249Z",
-      "updated": "20260910T221249Z",
+      "updated": "20260911T100416Z",
       "query_text": "(theme:WB_2806_DISMISSAL_PROCEDURES OR theme:WB_2790_LABOR_REDUNDANCY OR theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"
     }
   }
