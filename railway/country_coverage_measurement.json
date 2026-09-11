@@ -20,12 +20,18 @@
   "backlog_oldest": "2026-08-18",
   "countries": {
     "Afghanistan": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED. The Ministry publishes the governing law and activity updates, not a periodic count or named register of art. 149 approvals/notices. Legal continuity is stated as a caveat rather than silently inferred from the 2007 date",
+      "assessed": "2026-09-11",
+      "authority": "Ministry of Labour and Social Affairs (the statute uses the former MoLSAMD name)",
+      "cite": "https://molsa.gov.af/index.php/en/labor-law",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 1000,
-      "state": "unknown",
-      "stored_name": "Afghanistan"
+      "regime": "Labour Law, Official Gazette No. 914 (2007), art. 149. The text covers government, non-government, joint-venture and private entities: they may not dismiss all or a group of employees without MoLSAMD approval unless another law provides otherwise; a long work stoppage that closes the organisation must be reported three months in advance. CURRENT-LAW CAVEAT: the present Ministry still publishes this Labour Law on its law page, while its 2026 Legislation and Labour Rights update says a new version has been DRAFTED, not that it has been enacted. Recheck upon publication of that draft",
+      "state": "not_measurable",
+      "stored_name": "Afghanistan",
+      "threshold": "'all or a group' of employees; no numeric employee or event floor is stated in art. 149"
     },
     "Argentina": {
       "age_days": 24,
@@ -272,12 +278,18 @@
       "threshold": "10 in an establishment of 20-99; 10% in 100-299; 30 in 300+, within 30 days"
     },
     "Egypt": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED. The official law and Ministry surfaces describe case approval and worker-rights procedures but expose no periodic national application total or employer-level register. Do not use general unemployment or establishment-closure statistics as the art. 237 denominator",
+      "assessed": "2026-09-11",
+      "authority": "the closure/reduction committee constituted under the Prime Minister and Ministry of Labour, with worker and employer representatives",
+      "cite": "https://www.alamiria.com/Sec/TashTxt?id=vPdoWGGYwoE%3D",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 324,
-      "state": "unknown",
-      "stored_name": "Egypt"
+      "regime": "Labour Law No. 14 of 2025, arts. 236-240. For economic necessity an employer seeking full or partial closure, or a reduction in size or activity that may affect workers temporarily or permanently, must apply to a designated committee. Art. 237 requires the reasons, circumstances, procedures, and number and categories of workers; the committee has 45 days to issue a reasoned decision and set the implementation date, with appeal available",
+      "state": "not_measurable",
+      "stored_name": "Egypt",
+      "threshold": "no numeric floor; full or partial closure or reduction in the establishment's size or activity for economic necessity"
     },
     "Estonia": {
       "age_days": 23,
@@ -334,19 +346,25 @@
       "cite": "https://www.gesetze-im-internet.de/kschg/__17.html",
       "class": "regime_no_aggregate",
       "entries": 150,
-      "jobs": 1748426,
+      "jobs": 1748546,
       "regime": "Massenentlassungsanzeige \u2014 s.17(1) and (3) Kundigungsschutzgesetz (KSchG)",
       "state": "not_measurable",
       "stored_name": "Germany",
       "threshold": "per establishment within 30 days: more than 5 where 21-59 employees; 10% or more than 25 where 60-499; at least 30 where 500+"
     },
     "Ghana": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED. The receiving authority publishes the Act but no periodic national total or employer register derived from s.65 notices; labour-force and employment statistics are not a filing denominator",
+      "assessed": "2026-09-11",
+      "authority": "Chief Labour Officer, with notice also to the trade union concerned",
+      "cite": "https://www.melr.gov.gh/files/publications/Labour_Act_-_2003.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 4650,
-      "state": "unknown",
-      "stored_name": "Ghana"
+      "regime": "Labour Act 2003 (Act 651), s.65(1). An employer contemplating major production, programme, organisational, structural or technological changes likely to terminate workers must provide the Chief Labour Officer and the union written reasons, number and categories, and timing at least three months before the change, and consult on avoiding or mitigating the terminations",
+      "state": "not_measurable",
+      "stored_name": "Ghana",
+      "threshold": "no numeric floor; the trigger is a contemplated major change likely to entail termination of workers"
     },
     "Greece": {
       "age_days": 24,
@@ -694,12 +712,18 @@
       "stored_name": "Palestine"
     },
     "Paraguay": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED. MTESS exposes employer/worker communications and labour-market material, but no periodic count or named register of art. 78(h) closure/reduction communications. Contract suspensions are explicitly temporary and must not be counted as dismissals",
+      "assessed": "2026-09-11",
+      "authority": "Autoridad Administrativa del Trabajo (MTESS)",
+      "cite": "https://www.bacn.gov.py/leyes-paraguayas/2608/ley-n-213-establece-el-codigo-",
+      "class": "regime_no_aggregate",
       "entries": 180,
       "jobs": 180,
-      "state": "unknown",
-      "stored_name": "Paraguay"
+      "regime": "Labour Code, Law No. 213, art. 78(h). Total closure of an enterprise or a definitive reduction of its work requires prior written communication to the Administrative Labour Authority, which gives workers summary participation before issuing its decision. Arts. 80 and 99 attach compensation consequences to closure, omission of the communication, and stable workers",
+      "state": "not_measurable",
+      "stored_name": "Paraguay",
+      "threshold": "no numeric floor; total enterprise closure or definitive reduction of work"
     },
     "Peru": {
       "age_days": 24,
@@ -764,12 +788,18 @@
       "threshold": "2 workers in a firm under 50, or 5 in a firm of 50+, within 3 months"
     },
     "Qatar": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED. The Ministry publishes the consolidated law but no periodic national count or employer-level register of art. 52 bis notifications. General labour-force and contract-administration figures are not an equivalent denominator",
+      "assessed": "2026-09-11",
+      "authority": "Ministry of Labour",
+      "cite": "https://mol.gov.qa/admin/LawsDocuments/Law%20No.%20%2814%29%20of%202004%20Promulgating%20the%20Labour%20Law.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 200,
-      "state": "unknown",
-      "stored_name": "Qatar"
+      "regime": "Labour Law No. 14 of 2004 as amended by Decree-Law No. 18 of 2020, art. 52 bis. Before terminating employment for economic, structural or other reasons unrelated to the employment contract, an employer must notify the Ministry at least 15 days before termination and submit the reasons, number and categories of workers, intended implementation period, and other requested information",
+      "state": "not_measurable",
+      "stored_name": "Qatar",
+      "threshold": "no numeric floor in art. 52 bis; the duty is framed per employer termination decision for the covered reasons"
     },
     "Romania": {
       "age_days": 23,
@@ -1006,7 +1036,7 @@
       "class": "regime_with_aggregate",
       "denominator_basis": "closed_enumeration_primary_regulator_index",
       "entries": 43453,
-      "jobs": 6168237,
+      "jobs": 6169625,
       "regime": "SEC 8-K Item 2.05 (costs associated with exit or disposal activities), Securities Exchange Act s.13/15(d) \u2014 a US public company recording a material charge for an exit activity files an 8-K carrying that code in its SGML header. SEPARATELY, state WARN acts and the federal WARN Act 29 U.S.C. 2101 compel notice to state dislocated-worker units",
       "state": "measured",
       "stored_name": "United States",
@@ -1070,7 +1100,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-11T00:18:27Z",
+  "measured_at": "2026-09-11T17:37:34Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1742,19 +1772,16 @@
   "tallies": {
     "no_regime": 4,
     "refused": 6,
-    "regime_no_aggregate": 25,
+    "regime_no_aggregate": 30,
     "regime_with_aggregate": 21,
-    "unassessed": 23
+    "unassessed": 18
   },
   "unassessed": [
-    "Afghanistan",
     "Bosnia and Herzegovina",
     "Cambodia",
     "China",
     "Costa Rica",
     "Czechia",
-    "Egypt",
-    "Ghana",
     "Hong Kong",
     "Hungary",
     "India",
@@ -1765,20 +1792,13 @@
     "New Zealand",
     "Pakistan",
     "Palestine",
-    "Paraguay",
-    "Qatar",
     "South Korea",
     "Thailand",
     "Vietnam"
   ],
   "undeclared": [
-    "Afghanistan",
-    "Egypt",
-    "Ghana",
     "Mauritius",
-    "Palestine",
-    "Paraguay",
-    "Qatar"
+    "Palestine"
   ],
   "vocabulary_duplicates": []
 }
