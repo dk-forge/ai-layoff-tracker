@@ -42,6 +42,13 @@ holder, so the start-of-session ritual surfaces it automatically.
   ingest cycle. A subsequent daily run must close that timing gate; this is not
   evidence of a new arithmetic defect.
 
+  **Country backlog package 1 (2026-09-12 CET).** Cambodia is removed from the
+  acknowledged backlog and classified `REGIME_NO_AGGREGATE` from MLVT's primary
+  Labour Law text (articles 95 and 371). The current MLVT statistics catalogue
+  and NIS labour tables expose no article-95 notification total; survey layoffs
+  are rejected as a filing denominator. Country coverage tests are 43/43 green
+  on `codex/cambodia-regime-closeout-20260912`. Continue one country at a time.
+
   **Newest production result (2026-09-11 CET).** PR #301 passed all seven
   checks and merged as `525af46660317e453fe8e1994ab20696f71d55be`.
   Railway deployment `ecda9325-77cf-46b0-8efe-7abb2bc451b6` is SUCCESS on that
