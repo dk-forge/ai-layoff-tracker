@@ -1,3 +1,53 @@
+## 2026-09-12 - a retrospective count is never a new event dated by the article; the incremental figure wins over the cumulative one
+
+**Class:** wrong-scope-or-key (the model's count was read at the scope of one event when the text scoped it as a running total, and the date fallback then keyed that total to the article's publish day)
+**Guard:** `railway/tests/test_extractor_retrospective.py` (the Amazon "since late 2025" text yields no stored 30,000 row; "300 more, bringing the total to 30,000" stores 300 with the cumulative ceiling cleared; a plain "500 layoffs effective October 1" is untouched; Spanish "desde 2025" and German "seit 2025" are retrospective; "its biggest cut since 2020" is a comparison, not a total; a mutation that drops the "since" phrase lets the Amazon row pass, proving the constant is what the guard reads; the prompt carries the rule)
+
+The open question the 2026-09-11 entry left: row 179276 stored "Amazon,
+30,000 jobs, 2026-09-10" from an explainer whose only figure was "Amazon has
+cut around 30,000 corporate jobs since late 2025". The prompt's TIMELINE TRAP
+did not hold, and nothing in the post-parse validation asked whether the count
+described one event; the date fallback then supplied the article's own date.
+A prompt is advice. The rule is now deterministic and text-based, in
+`extractor.retrospective_verdict`, read by `finalize_extraction`, which is
+every post-parse rule lifted out of `extract_layoff_data` as a pure function
+of the model's dict so it can be exercised with no client and no model.
+
+Two phrase families, kept apart because they bind differently:
+`CUMULATIVE_ANCHORS` bind to the number that follows them ("brings the total
+to 30,000") and `RETROSPECTIVE_SPANS` describe the sentence ("since late
+2025", "over the past two years", "so far this year", "a series of", "rounds
+of layoffs", "the latest in"; Spanish "desde 2025", German "seit 2025", since
+the gate is language-blind and GDELT is worldwide). A count in a span
+sentence is cumulative unless it carries its own incremental marker ("300
+MORE jobs", "an ADDITIONAL 300"), and a "since" that follows a superlative
+("its biggest cut since 2020") is a comparison and ignored. Three verdicts:
+
+- `event`: the count reads as one new cut; stored as before.
+- `incremental`: the count is cumulative but its sentence names the new cut's
+  own figure; that figure is stored with the row's date, and `job_count_max`
+  is cleared so the model's cumulative ceiling cannot survive as the
+  "announced" reading. The figure must be verbatim, smaller than the total
+  and not itself anchored; nothing is derived.
+- `retrospective`: the count is cumulative and its sentence names no new cut
+  and no date for one (a date word counts only after a cut or announcement
+  verb in the same clause, because "según un informe publicado este jueves"
+  dates the report, which is exactly what 179276 was wrongly dated by). The
+  row is REJECTED, loudly, like the 60,000 plausibility cap beside it.
+
+Why reject rather than store undated or route to `announced`: there is no
+confidence threshold at the store, so lowering confidence would still publish
+an undated 30,000 row; an undated row still counts in every all-time total;
+and `announced=1` is the news-only "announced but not executed" stage, which
+a retrospective about cuts that already happened is not. A cumulative figure
+is not an event under any flag. The events it summarises are, and those rows
+are collected when they happen. `SYSTEM_PROMPT` rule 5 gains a CUMULATIVE
+TRAP so the model prefers the incremental figure too, but the deterministic
+check is what guarantees it. The vocabulary is a floor, not a census: a
+phrasing it does not know fails toward storing a row, never toward rewriting
+one, so a miss looks like 2026-09-11 again and lands in adjudication, not
+in a silently altered count.
+
 ## 2026-09-12 - the digest led with an unconfirmed report and asked the reader to subtract it; the confirmed figure is the lead now
 
 **Class:** novel (an owner ruling on what the lead may carry, not a mechanism that stopped; none of the vocabulary fits)

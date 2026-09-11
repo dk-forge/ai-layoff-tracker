@@ -169,7 +169,7 @@ CRITICAL RULES:
 2. Classify AI causation carefully. `primary_cause` means THE EMPLOYER says AI, automation, machine learning or robots caused the reduction. A report counts when it quotes or reports the employer saying it; a journalist's own characterisation, with no such statement from the employer, does NOT. `contributing_cause` means it is one stated cause. `selection_or_operations` means AI was used to select, monitor or manage workers; this is NOT a cause. `context_only` means AI investment, strategy or a passing mention is not stated as a cause. `explicitly_denied` means the source says the cuts were not because of AI. Use `unknown` if the source is unclear.
 3. For ai_explicit: true ONLY for `primary_cause` or `contributing_cause`, and only with an exact supporting phrase. Never infer it from a company's AI investment, a future automation projection, or AI use during selection.
 4. For ai_language: copy the EXACT supporting phrase from the source. If none, return null.
-5. For job_count: the total for THIS newly announced event only. TIMELINE TRAP: articles cite older layoffs for context ("after cutting 10,000 last year, X announced 500 new cuts") — NEVER use a historical/contextual number; use the number for the new announcement (500 here). SUBSET TRAP: if a division figure and a companywide total for the SAME new announcement both appear ("500 in cloud, part of 3,000 overall"), use the companywide total (3,000). If a range is given, use the lower bound. CEILING TRAP: when the source states ONLY an upper bound ("up to 600", "as many as 600", "could reach 600") with no floor, that figure is a ceiling, not a measured total: set job_count to it (it is the only number the source gives, and we never invent a floor) and set job_count_max to the SAME figure, then copy the qualifying words into ai_language-style evidence by keeping the qualifier in the excerpt so the ceiling is never displayed as a hard count. Never turn a percentage, dollar figure, future work-equivalence, or projected automation number into a layoff count.
+5. For job_count: the total for THIS newly announced event only. TIMELINE TRAP: articles cite older layoffs for context ("after cutting 10,000 last year, X announced 500 new cuts"): NEVER use a historical/contextual number; use the number for the new announcement (500 here). SUBSET TRAP: if a division figure and a companywide total for the SAME new announcement both appear ("500 in cloud, part of 3,000 overall"), use the companywide total (3,000). If a range is given, use the lower bound. CEILING TRAP: when the source states ONLY an upper bound ("up to 600", "as many as 600", "could reach 600") with no floor, that figure is a ceiling, not a measured total: set job_count to it (it is the only number the source gives, and we never invent a floor) and set job_count_max to the SAME figure, then copy the qualifying words into ai_language-style evidence by keeping the qualifier in the excerpt so the ceiling is never displayed as a hard count. Never turn a percentage, dollar figure, future work-equivalence, or projected automation number into a layoff count. CUMULATIVE TRAP: a running total ("has cut 30,000 since late 2025", "bringing the total to 30,000", "so far this year") is a retrospective, not a new event: if the text names the new cut's own figure ("300 more jobs on Tuesday") use THAT and its date; if it names only the cumulative figure and no new cut, set is_layoff_event to false rather than dating the total by the article.
 6. For reason_tags: only assign tags that are supported by explicit language in the source.
 7. If you cannot determine a required field with confidence, return null for that field.
 8. Return ONLY valid JSON. No preamble. No explanation. No markdown.
@@ -660,6 +660,226 @@ def _count_has_headcount_context(job_count, text):
         if not money and re.search(rf"\b(?:{action})\b", near, re.I):
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# The retrospective guard (2026-09-12, TECHLOG 2026-09-11 "a retrospective
+# explainer became a 30,000-job event").
+#
+# Row 179276 stored "Amazon, 30,000 jobs, 2026-09-10" from an explainer whose
+# only figure was "Amazon has cut around 30,000 corporate jobs since late
+# 2025". The model took the cumulative headline count as a new event and the
+# extractor dated it by the article, because the date fallback is the source's
+# own date and nothing asked whether the count described one event at all.
+# The prompt already had a TIMELINE TRAP; a prompt is advice, and this is the
+# deterministic rule that holds regardless of what the model does with it.
+#
+# Two phrase families, kept apart because they bind differently:
+#   * CUMULATIVE_ANCHORS bind to the number that FOLLOWS them ("brings the
+#     total to 30,000"): the count is cumulative only when an anchor sits
+#     immediately before it.
+#   * RETROSPECTIVE_SPANS describe the sentence ("since late 2025", "over the
+#     past two years", "so far this year"): a count in such a sentence is
+#     cumulative unless it carries its own incremental marker ("300 MORE
+#     jobs", "an ADDITIONAL 300"), which is how a fresh cut is phrased inside
+#     a retrospective sentence.
+# Case-insensitive. Spanish ("desde 2025") and German ("seit 2025") are
+# included because the collectors read those languages (the gate is
+# language-blind and GDELT is worldwide); the vocabulary is a floor, not a
+# census, and a missing phrasing fails toward storing a row, never toward
+# rewriting one.
+# ---------------------------------------------------------------------------
+_MONTH = (r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?|"
+          r"enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|"
+          r"octubre|noviembre|diciembre|januar|februar|märz|april|mai|juni|"
+          r"juli|august|september|oktober|november|dezember")
+_YEAR = r"(?:19|20)\d{2}"
+
+CUMULATIVE_ANCHORS = (
+    r"\b(?:bring(?:s|ing)?|brought|tak(?:es|ing)|took|push(?:es|ing)?|pushed)\s+"
+    r"(?:the\s+)?(?:total|tally|count|number|figure)\s+(?:of\s+[\w\s-]{0,30}?)?"
+    r"to\s+(?:about|around|roughly|nearly|more than|over|some|approximately)?\s*$",
+    r"\b(?:a|the|for a)\s+(?:running\s+|combined\s+|grand\s+)?total\s+of\s+"
+    r"(?:about|around|roughly|nearly|more than|over|some|approximately)?\s*$",
+    r"\b(?:in\s+total|all\s+told|altogether|cumulatively|combined)[,:]?\s+"
+    r"(?:about|around|roughly|nearly|more than|over|some|approximately)?\s*$",
+    r"\b(?:un\s+total\s+de|en\s+total)\s+(?:unos|unas|cerca de|más de|alrededor de)?\s*$",
+    r"\b(?:insgesamt|in\s+summe)\s+(?:rund|etwa|über|mehr als)?\s*$",
+)
+
+RETROSPECTIVE_SPANS = (
+    rf"\bsince\s+(?:late|early|mid-?|the\s+(?:start|beginning|end)\s+of)?\s*"
+    rf"(?:(?:{_MONTH})\s+)?{_YEAR}\b",
+    rf"\bsince\s+(?:last\s+(?:year|spring|summer|autumn|fall|winter)|"
+    rf"(?:{_MONTH})\b|the\s+(?:start|beginning)\s+of\s+the\s+year|then\b)",
+    r"\bover\s+the\s+(?:past|last)\s+(?:\w+\s+)?(?:months?|years?|quarters?|weeks?)\b",
+    r"\bin\s+the\s+(?:past|last)\s+(?:\w+\s+)?(?:months?|years?|quarters?)\b",
+    r"\bso\s+far\s+(?:this|in)\s+(?:year|\d{4})\b",
+    r"\byear[\s-]to[\s-]date\b|\bto\s+date\b|\bthus\s+far\b",
+    r"\bcumulative(?:ly)?\b",
+    r"\bin\s+total\s+since\b",
+    r"\b(?:has|have|had)\s+(?:now\s+)?(?:cut|shed|eliminated|axed|slashed|laid\s+off|let\s+go)\b"
+    r"[^.;]{0,60}?\bsince\b",
+    r"\ba\s+series\s+of\b",
+    r"\b(?:several|multiple|successive|repeated|numerous)\s+rounds?\s+of\b|\brounds\s+of\s+(?:layoffs|cuts|job\s+cuts|redundancies)\b",
+    r"\bthe\s+latest\s+in\b",
+    r"\bbring(?:s|ing)?\s+(?:the\s+)?total\s+to\b|\bbrought\s+(?:the\s+)?total\s+to\b",
+    # Spanish
+    rf"\bdesde\s+(?:finales\s+de|principios\s+de|mediados\s+de|el\s+inicio\s+de)?\s*(?:(?:{_MONTH})\s+de\s+)?{_YEAR}\b",
+    r"\bdesde\s+hace\s+\w+\s+(?:meses|años)\b|\ben\s+lo\s+que\s+va\s+de(?:l)?\s+año\b|\bhasta\s+la\s+fecha\b|\bacumulad[oa]s?\b",
+    # German
+    rf"\bseit\s+(?:anfang|ende|mitte)?\s*(?:(?:{_MONTH})\s+)?{_YEAR}\b",
+    r"\bseit\s+(?:anfang|beginn)\s+des\s+jahres\b|\bin\s+den\s+(?:letzten|vergangenen)\s+\w+\s+(?:monaten|jahren)\b|\bbislang\b|\bbisher\b",
+)
+
+# The words that mark a figure as THIS cut inside a retrospective sentence.
+_INCREMENTAL_MARKERS = (r"more|additional|further|another|extra|new|fresh|"
+                        r"más|adicionales|nuevos|nuevas|weitere|zusätzliche|neue")
+
+# A sentence that names when THIS cut happens. If the count is cumulative but
+# its sentence dates the cut itself, the row keeps its date: an explicit
+# effective date is a claim the source made, not one we invented. The date
+# word must follow a cut or announcement verb inside the same clause, because
+# "según un informe publicado este jueves" dates the REPORT, not the cut, and
+# a publication date is exactly what row 179276 was wrongly dated by.
+_WEEKDAY = (r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+            r"lunes|martes|miércoles|jueves|viernes|montag|dienstag|mittwoch|"
+            r"donnerstag|freitag")
+_CUT_VERB = (r"cut(?:s|ting)?|lay(?:s|ing)?\s+off|laid\s+off|eliminat(?:e|es|ed|ing)|"
+             r"axe[sd]?|shed(?:s|ding)?|slash(?:es|ed|ing)?|announce[sd]?|said|"
+             r"confirmed|effective|will|recort(?:a|ará|ó|an)|despid(?:e|ió|irá)|"
+             r"anunci(?:ó|a)|streicht|baut\s+ab|kündigte|gab\s+bekannt")
+_DATE_WORD = (rf"(?:today|yesterday|this\s+(?:week|morning|month)|hoy|ayer|heute|gestern|"
+              rf"(?:on|this|last|am|el|este)\s+(?:{_WEEKDAY})|"
+              rf"(?:on|from|starting|beginning|as\s+of|a\s+partir\s+del?|ab\s+dem|am)\s+"
+              rf"(?:(?:{_MONTH})\s+\d{{1,2}}|\d{{1,2}}\.?\s+(?:de\s+)?(?:{_MONTH})))")
+NEW_CUT_DATE_SIGNALS = (
+    rf"\b(?:{_CUT_VERB})\b[^.;,]{{0,40}}?\b{_DATE_WORD}\b",
+    rf"\beffective\s+(?:on\s+|from\s+|as\s+of\s+)?(?:(?:{_MONTH})\s+\d{{1,2}}|\d{{1,2}}\s+(?:{_MONTH}))\b",
+)
+
+
+def _number_pattern(n):
+    """Exact-literal alternation for a count, fenced like `_count_in_text`."""
+    n = int(n)
+    grouped = f"{n:,}"
+    variants = {str(n), grouped, grouped.replace(",", " "), grouped.replace(",", "."),
+                grouped.replace(",", " "), grouped.replace(",", " "),
+                grouped.replace(",", " ")}
+    if n % 1000 == 0 and n >= 1000:
+        variants.update({f"{n // 1000}k", f"{n // 1000}K"})
+    alt = "|".join(re.escape(v) for v in sorted(variants, key=len, reverse=True))
+    return rf"(?<![\d.,])(?:{alt})(?![\d])(?![.,    ]\d{{3}})"
+
+
+def _sentences_with(job_count, raw_text):
+    text = re.sub(r"\s+", " ", str(raw_text or ""))
+    pattern = _number_pattern(job_count)
+    out = []
+    for sentence in re.split(r"(?<![A-Z])[.!?]\s", text):
+        if re.search(pattern, sentence):
+            out.append(sentence.strip())
+    return out
+
+
+# "its biggest cut since 2020" is a comparison, not a running total: a span
+# phrase opening with since/desde/seit is ignored when a superlative sits
+# just before it, so the commonest layoff-story phrasing does not hold back
+# a plainly new event.
+_SUPERLATIVE = (r"\b(?:biggest|largest|first|worst|deepest|steepest|most|highest|"
+                r"lowest|record|major|mayor|primer[ao]?|peor|größte|erste|"
+                r"schwerste)\b[\w\s-]{0,30}$")
+
+
+def _span_hit(sentence):
+    for pattern in RETROSPECTIVE_SPANS:
+        for m in re.finditer(pattern, sentence, re.I):
+            if re.match(r"(?:since|desde|seit)\b", m.group(0), re.I) and \
+                    re.search(_SUPERLATIVE, sentence[max(0, m.start() - 40):m.start()], re.I):
+                continue
+            return True
+    return False
+
+
+def _anchored(sentence, span_start):
+    """A cumulative anchor sits immediately before the figure at span_start."""
+    before = sentence[max(0, span_start - 45):span_start]
+    return any(re.search(p, before, re.I) for p in CUMULATIVE_ANCHORS)
+
+
+def _marked_incremental(sentence, start, end):
+    before = sentence[max(0, start - 25):start]
+    after = sentence[end:end + 25]
+    return bool(re.search(rf"\b(?:{_INCREMENTAL_MARKERS})\s*$", before, re.I)
+                or re.search(rf"^\s*(?:{_INCREMENTAL_MARKERS})\b", after, re.I))
+
+
+def _incremental_figure(sentence, cumulative):
+    """The smaller, incrementally-marked headcount in a cumulative sentence.
+
+    "cut 300 more jobs on Tuesday, bringing the total to 30,000" -> 300. Only a
+    figure that is verbatim, smaller than the cumulative one, not itself
+    anchored, and carrying an incremental marker or a headcount noun beside it
+    qualifies. None when there is no such figure: we never derive one.
+    """
+    noun = (r"jobs?|employees?|workers?|positions?|staff|roles?|people|"
+            r"empleos?|trabajadores|puestos|stellen|mitarbeiter|arbeitsplätze")
+    for m in re.finditer(r"(?<![\d.,])(\d{1,3}(?:[,. ]\d{3})+|\d+)(?![\d])", sentence):
+        digits = re.sub(r"[^\d]", "", m.group(1))
+        if not digits:
+            continue
+        value = int(digits)
+        if value <= 0 or value >= cumulative:
+            continue
+        if 1990 <= value <= 2099 and not re.search(
+                rf"^\s*(?:{_INCREMENTAL_MARKERS}\s+)?(?:{noun})\b", sentence[m.end():m.end() + 30], re.I):
+            continue
+        if _anchored(sentence, m.start()):
+            continue
+        after = sentence[m.end():m.end() + 30]
+        if _marked_incremental(sentence, m.start(), m.end()) or re.search(
+                rf"^\s*(?:\w+\s+){{0,2}}(?:{noun})\b", after, re.I):
+            return value
+    return None
+
+
+def retrospective_verdict(job_count, raw_text):
+    """Deterministic read of whether `job_count` describes ONE new event.
+
+    Returns a (verdict, figure) pair:
+      ("event", None)          the count reads as a single new cut; store it.
+      ("incremental", N)       the count is cumulative but the same sentence
+                               names the new cut's own figure N; store N.
+      ("retrospective", None)  the count is cumulative and the text names no
+                               new cut and no effective date for one; do not
+                               store it as an event dated by the article.
+    Pure and text-based: no model, no network. A count that appears nowhere
+    in a cumulative sentence is an event, so the vocabulary can only ever
+    hold a row back, never rewrite one that the text presents as new.
+    """
+    if not job_count or not raw_text:
+        return ("event", None)
+    pattern = _number_pattern(job_count)
+    cumulative, fresh = [], False
+    for sentence in _sentences_with(job_count, raw_text):
+        span_hit = _span_hit(sentence)
+        for m in re.finditer(pattern, sentence):
+            anchored = _anchored(sentence, m.start())
+            incremental = _marked_incremental(sentence, m.start(), m.end())
+            if anchored or (span_hit and not incremental):
+                cumulative.append((sentence, anchored))
+            else:
+                fresh = True
+    if fresh or not cumulative:
+        return ("event", None)
+    for sentence, anchored in cumulative:
+        figure = _incremental_figure(sentence, int(job_count))
+        if figure:
+            return ("incremental", figure)
+    for sentence, anchored in cumulative:
+        if not anchored and any(re.search(p, sentence, re.I) for p in NEW_CUT_DATE_SIGNALS):
+            return ("event", None)
+    return ("retrospective", None)
 
 
 def _coerce_job_count(value):
@@ -1349,6 +1569,20 @@ TEXT:
         print(f"Extraction error: non-object JSON — response head: {response_text[:300]!r}")
         return None
 
+    return finalize_extraction(extracted, raw_entry, raw_text)
+
+
+def finalize_extraction(extracted, raw_entry, raw_text=None):
+    """Every post-parse rule, as a pure function of the model's dict.
+
+    Lifted out of extract_layoff_data on 2026-09-12 so the retrospective guard
+    (and every other validation here) can be exercised on a fake parsed dict
+    with no client, no network and no model. Returns the row for wp_poster or
+    None to skip it; identical contract to the caller.
+    """
+    if raw_text is None:
+        raw_text = (raw_entry.get("raw_text") or "")[:RAW_TEXT_LIMIT]
+
     # Skip if the model determined this isn't a layoff event
     if not extracted.get("is_layoff_event"):
         return None
@@ -1382,6 +1616,24 @@ TEXT:
                   f"headcount context in its evidence excerpt — source: "
                   f"{raw_entry.get('source_url')}")
             return None
+    # A cumulative figure is not an event. "Amazon has cut around 30,000
+    # corporate jobs since late 2025" stored as 30,000 jobs on the article's
+    # date (row 179276, TECHLOG 2026-09-11); the prompt's TIMELINE TRAP did
+    # not hold and nothing below it asked. When the sentence also names the
+    # NEW cut ("cut 300 more jobs on Tuesday, bringing the total to 30,000")
+    # the incremental figure wins and the ceiling is cleared with it, or the
+    # model's 30,000 job_count_max would survive as the "announced" reading.
+    verdict, figure = retrospective_verdict(job_count, raw_text)
+    if verdict == "retrospective":
+        print(f"Extraction rejected: job_count {job_count} is a cumulative or "
+              f"retrospective figure with no new cut dated in the text "
+              f"- source: {raw_entry.get('source_url')}")
+        return None
+    if verdict == "incremental":
+        print(f"Extraction adjusted: job_count {job_count} is cumulative; the text "
+              f"names the new cut as {figure} - source: {raw_entry.get('source_url')}")
+        job_count = figure
+        extracted["job_count_max"] = None
     extracted["job_count"] = job_count
     # Range upper bound: store it too so a query can report the "announced
     # intentions" framing (upper) or our conservative executed floor (job_count),
