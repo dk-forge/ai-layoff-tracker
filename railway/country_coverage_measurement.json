@@ -1,7 +1,6 @@
 {
   "backlog": [
     "Bosnia and Herzegovina",
-    "China",
     "Costa Rica",
     "Czechia",
     "Hong Kong",
@@ -199,12 +198,18 @@
       "threshold": "none \u2014 the duty attaches to every termination notice, not to a mass threshold"
     },
     "China": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "NONE LOCATED. MOHRSS and provincial government surfaces publish the law, filing instructions and local forms, but no periodic national article-41 filing total or public employer register was found. National Bureau of Statistics labour indicators and unemployment-insurance expenditure are not counts of article-41 reports and are explicitly excluded.",
+      "assessed": "2026-09-12",
+      "authority": "the competent local labour administrative department under MOHRSS",
+      "cite": "https://www.mohrss.gov.cn/xxgk2020/fdzdgknr/zcfg/fl/202011/t20201102_394622_wap.html",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 18201,
-      "state": "unknown",
-      "stored_name": "China"
+      "regime": "Labour Contract Law of the People's Republic of China, art. 41. Where an employer needs to cut at least 20 workers, or fewer than 20 workers but more than 10 percent of its workforce, it must explain the situation to the union or all employees 30 days in advance, hear their views, and report the reduction plan to the labour administration before implementing it. The primary MOHRSS text uses a reporting duty, not prior approval.",
+      "state": "not_measurable",
+      "stored_name": "China",
+      "threshold": "20 or more workers, or fewer than 20 workers where the number exceeds 10 percent of the enterprise workforce"
     },
     "Colombia": {
       "age_days": 24,
@@ -1117,7 +1122,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-11T22:37:32Z",
+  "measured_at": "2026-09-11T22:43:53Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1789,13 +1794,12 @@
   "tallies": {
     "no_regime": 4,
     "refused": 6,
-    "regime_no_aggregate": 33,
+    "regime_no_aggregate": 34,
     "regime_with_aggregate": 21,
-    "unassessed": 15
+    "unassessed": 14
   },
   "unassessed": [
     "Bosnia and Herzegovina",
-    "China",
     "Costa Rica",
     "Czechia",
     "Hong Kong",
