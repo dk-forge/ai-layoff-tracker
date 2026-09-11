@@ -143,6 +143,31 @@ def test_routine_noise_is_not_escalated(monkeypatch) -> None:
     assert f["escalate"] == []
 
 
+def test_our_own_ops_mail_is_routine_never_escalated(monkeypatch) -> None:
+    """2026-09-10 and 09-11: the janitor read its own RECOVERED notice
+    ("... Mailbox janitor: Something in the notification mailbox needs a
+    human"), classified it "other", escalated, and went red about itself two
+    days running. Our stamped ops mail is a copy of a ledger entry, routine
+    here exactly as GitHub's own notifications are."""
+    ops = "AI Layoff Tracker Ops <ops@asktherecruiter.com>"
+    recovered = ("[AI Layoff Tracker] RECOVERED: CI RED: Mailbox janitor: "
+                 "Something in the notification mailbox needs a human")
+    unread = ("[AI Layoff Tracker] CI RED: Mailbox janitor: The mailbox could "
+              "not be read. UNKNOWN, not a pass.")
+    assert _classify(recovered, ops) == "ops mail (ours)"
+    assert _classify(unread, "someone@example.com") == "ops mail (ours)"
+    assert _classify("Fwd: [AI Layoff Tracker] weekly health digest", ops) == "ops mail (ours)"
+    conn = _Conn([_msg(recovered, ops, 2), _msg(unread, ops, 2)])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert f["escalate"] == [], f["escalate"]
+
+
+def test_an_unknown_shape_still_escalates() -> None:
+    """The class for our mail must not widen 'other' out of existence."""
+    assert _classify("Your account has been suspended", "abuse@host.example") == "other"
+
+
 def test_a_refused_login_is_rejected_and_touches_nothing(monkeypatch) -> None:
     conn = _Conn([_msg("x", "y@z", 40)], refuse_login=True)
     _patch(conn, monkeypatch)

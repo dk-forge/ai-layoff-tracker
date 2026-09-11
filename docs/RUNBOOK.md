@@ -1675,6 +1675,38 @@ gh workflow run apply-correction.yml -f ids=70289 -f action=trash -f reason="aud
    TECHLOG under "## Audits". Report register-level rows separately from real
    errors, and say what you could NOT verify.
 
+## A published row looks wrong: two-model adjudication
+
+The owner's standing rule (2026-09-11): a correction that would once have
+waited for his sign-off is put to two independent AI referees through the
+tracker's own machinery, applied only when both agree, and he hears about it
+only when they disagree. Never edit live data by hand and never wait on him.
+
+```bash
+cd railway
+ALT_RUN_CEILING_USD=0.05 railway run -- ../.venv/bin/python adjudicate_row.py \
+    --id 179276 --company Amazon            # dry run: both verdicts, nothing written
+ALT_RUN_CEILING_USD=0.05 railway run -- ../.venv/bin/python adjudicate_row.py \
+    --id 179276 --company Amazon --apply    # applies ONLY on agreement
+```
+
+What it does: reads the row from the public `/query`, reads the cited page
+(the archived copy first), asks `anthropic/claude-sonnet-4.5` and
+`openai/gpt-4o` the same question under the published rules (date basis,
+employer attribution, count supported by the source, re-report is not a new
+event), through `spend.metered_call` with a $0.05 ceiling. Same
+`recommended_action` from both (and identical `edit_fields` for an edit) is
+agreement; the write then goes through `apply_correction.py`, so the dedup
+hash is suppressed and the public corrections log gets its line. Every run
+writes `railway/correction_specs/<date>-adjudication-<id>.json` with both
+verdicts, the cost and the outcome.
+
+Exit 3 is UNKNOWN and applies nothing: the referees disagreed, one of them
+answered without JSON, or the cited page could not be read (absence of
+evidence is not evidence). Those are the only cases to bring to the owner.
+First case: row 179276, Amazon, 30,000 jobs dated 2026-09-10 from a
+retrospective explainer; both referees said trash; applied 2026-09-11.
+
 ## Monthly coverage audit (the gap-closing loop)
 
 The daily pipeline collects; this loop finds what the pipeline is BLIND to. Run

@@ -1,0 +1,34 @@
+{
+ "row_id": 179276,
+ "status": "applied",
+ "verdicts": {
+  "anthropic/claude-sonnet-4.5": {
+   "event_is_new_on_layoff_date": false,
+   "count_supported_by_source": true,
+   "employer_attributed_to_ai": false,
+   "recommended_action": "trash",
+   "edit_fields": null,
+   "confidence": 95,
+   "reasoning": "The source is a retrospective summary published Sept 10, 2026, describing cuts that \"began in October 2025\" with multiple rounds through July 2026. The article states \"Amazon has cut around 30,000 corporate jobs since late 2025\" - this is cumulative reporting of past events, not a new announcement on Sept 10, 2026. The 30,000 figure is supported but represents a total across multiple earlier announcements (Oct 2025: 14,000; Jan 2026: 16,000; plus May/July). No employer attribution to AI is present; the headline juxtaposition is journalistic framing."
+  },
+  "openai/gpt-4o": {
+   "event_is_new_on_layoff_date": false,
+   "count_supported_by_source": true,
+   "employer_attributed_to_ai": true,
+   "recommended_action": "trash",
+   "edit_fields": null,
+   "confidence": 95,
+   "reasoning": "The source describes layoffs as part of a trend starting in October 2025, not a new event on September 10, 2026. 'Amazon has cut around 30,000 corporate jobs since late 2025.' This indicates the row is a retrospective summary, not a new event."
+  }
+ },
+ "referees": [
+  "anthropic/claude-sonnet-4.5",
+  "openai/gpt-4o"
+ ],
+ "cost_usd": 0.0145,
+ "archived_url": "https://web.archive.org/web/20260911102309/https://businessexplainer.co.za/tech/2026/09/10/amazon-cuts-30000-jobs-as-ai-spending-rises/",
+ "action": "trash",
+ "edit_fields": null,
+ "reason": "two-model adjudication (anthropic/claude-sonnet-4.5 + openai/gpt-4o agree: trash): The source is a retrospective summary published Sept 10, 2026, describing cuts that \"began in October 2025\" with multiple rounds through Jul; The source describes layoffs as part of a trend starting in October 2025, not a new event on September 10, 2026. 'Amazon has cut around 30,0",
+ "apply_rc": 0
+}

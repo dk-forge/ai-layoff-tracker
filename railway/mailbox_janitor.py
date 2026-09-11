@@ -43,6 +43,17 @@ ABSENT, OK, REJECTED, UNKNOWN = "ABSENT", "OK", "REJECTED", "UNKNOWN"
 
 #: Classes of routine notification. Order matters: first match wins.
 _CLASSES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    # Our OWN operational mail lands in this mailbox too (ci-alert, RECOVERED,
+    # the health digest, this janitor's own red-run notices). On 2026-09-10
+    # and 09-11 the janitor read its own "RECOVERED: ... needs a human" and
+    # "... could not be read" subjects, classified them "other", escalated,
+    # and went red about itself two days running. Every one of those is a
+    # copy of a signal that already lives in the alert ledger, so it is
+    # routine here, exactly as GitHub's own notifications are. Matched by the
+    # stamped prefix and the ops sender, both of which opsmail.send_once sets
+    # and nothing else does.
+    ("ops mail (ours)",
+     re.compile(r"^\s*(?:re:\s*|fwd?:\s*)*\[AI Layoff Tracker\]|ops@asktherecruiter\.com", re.I)),
     # Dependabot's own signature is its SUBJECT shape ("Bump x from 1 to 2");
     # the sender is the generic notifications@github.com, so matching on the
     # word alone misses every one of them and they fall to "other".

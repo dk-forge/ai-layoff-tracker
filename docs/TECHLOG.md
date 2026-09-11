@@ -34,6 +34,53 @@ and `late_tick_line()` prints `LATE TICK: scheduled HH:MM UTC, started HH:MM
 UTC` when the runner starts more than an hour after the slot, from
 `GITHUB_RUN_STARTED_AT` or the process start clock supplied by the caller. It
 changes nothing about what is sent. Plugin 2.20.186.
+## 2026-09-11 - a retrospective explainer became a 30,000-job event, led the daily digest, and was a third of the year's AI-attributed total
+
+**Class:** novel
+
+**Guard:** `railway/tests/test_adjudicate_row.py` (the decision rule: agreement applies, disagreement and unreadable evidence never do); the digest's dominance paragraph names a single bronze source as provisional (separate change, same day)
+
+Row 179276: "Amazon", 30,000 jobs, layoff_date 2026-09-10, no country, bronze,
+provisional, ai_causation primary_cause at confidence 95, from a South African
+explainer blog via Google News. The article is a retrospective about cuts that
+began in October 2025 ("Amazon has cut around 30,000 corporate jobs since late
+2025"). The extractor dated it by the article and took the headline count as a
+new event. It was 94% of the worldwide figure for September 10-11, the lead of
+the September 11 daily edition, and 30,300 of the year's 96,853 AI-attributed
+jobs. No earlier Amazon row of that size existed, so it was not a duplicate the
+merge could catch; it was a misdated re-report.
+
+Fixed by the new `railway/adjudicate_row.py` (RUNBOOK "A published row looks
+wrong: two-model adjudication"): two referees from different vendors read the
+row and the archived article under the published rules and both said trash
+(confidence 95 and 100, $0.03 in total across the dry run and the apply). The
+write went through `apply_correction.py`: post trashed, hash suppressed, event
+152009 cleaned. The window now reads 2,077 jobs across 14 entries with 300
+AI-attributed; the year 66,853 AI-attributed of 1,103,315. The owner's
+standing rule from the same day: corrections no longer wait for his sign-off;
+two agreeing referees are the bar, and he is told only about disagreements.
+The extractor's date basis for retrospectives is the open question this leaves
+(a "since late 2025" phrasing should never date to the publish day), and the
+digest now names a single bronze source as provisional when it dominates a
+window (separate change, same day).
+
+## 2026-09-11 - the mailbox janitor went red about its own recovery email, two days running
+
+**Class:** guard-went-vacuous
+
+**Guard:** `railway/tests/test_mailbox_janitor.py::test_our_own_ops_mail_is_routine_never_escalated`
+
+`mailbox_janitor.py` classified every message it did not recognise as
+"other", and "other" always escalates. Our own operational mail (ci-alert,
+RECOVERED, this janitor's red-run notice) was never a class, so on 2026-09-10
+and 09-11 the sweep read "[AI Layoff Tracker] RECOVERED: CI RED: Mailbox
+janitor: Something in the notification mailbox needs a human", escalated it,
+failed, mailed a new red notice into the same mailbox, and would have done so
+every morning. A guard that alarms on its own alarm is worse than vacuous: it
+manufactures the traffic it exists to clear. Added an "ops mail (ours)" class
+matched on the stamped subject prefix and the ops sender, both set only by
+`opsmail.send_once`; it is routine, like GitHub's own notifications, because
+every one of those messages is a copy of a ledger entry.
 
 ## 2026-09-11 - the live GDELT window reached unpublished raw intervals
 
