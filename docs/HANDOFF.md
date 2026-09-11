@@ -3104,3 +3104,16 @@ different populations. TDD evidence: the new country guard first failed with a
 missing `REGISTER["South Korea"]`; after classification, all 45 country tests
 passed. Merge and a live country workflow are still required before this package
 is production-closed.
+
+South Korea subsequently merged in PR #316 as `80fbfec`. Two immediate live
+checks correctly returned UNKNOWN during a transient aggregate-endpoint HTTP
+503; after the endpoint recovered to HTTP 200, workflow `34655987983` passed.
+South Korea is production-closed and the declared backlog is 13.
+
+Thailand is the next package. The Ministry's official consolidated Labour
+Protection Act confirms section 121: a machinery- or technology-driven workforce
+reduction has a 60-day notice to the Labour Inspector and affected workers,
+including names, with no numeric floor. Section 75 is only temporary suspension.
+No periodic section-121 filing total or named register was located in Ministry
+or NSO publication surfaces; survey and benefit populations are excluded. The
+guard failed first on the absent entry. Merge and live verification remain.

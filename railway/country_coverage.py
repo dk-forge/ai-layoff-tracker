@@ -1215,29 +1215,6 @@ ACKNOWLEDGED_BACKLOG = {
       "or by the Labour Court (Punjab), and Labour Court orders are adjudicative "
       "records. Whether any of it is published is untested."
       ),
-    'Thailand': ("2026-08-18",
-      "THE NARROW READING IS CONFIRMED AND s.75 IS RULED OUT. Labour Protection "
-      "Act B.E. 2541 s.121 bites ONLY on termination by reason of reorganising "
-      "work units, production process, distribution or services arising from "
-      "the use of machinery, a change in machinery, or changes in TECHNOLOGY — "
-      "60 days' written notice to the Labour Inspector and to the affected "
-      "employees, stating date, reason and A LIST OF THE AFFECTED EMPLOYEES, "
-      "with 60 days' wages in lieu for failure, and NO numeric threshold. "
-      "s.75 was checked as the obvious candidate for a general economic duty "
-      "and it is NOT one: it covers TEMPORARY SUSPENSION of business (3 working "
-      "days' notice to the employee and the Labour Inspector, 75% of wages "
-      "during suspension) and the Supreme Court confines it to genuine "
-      "temporary necessity. So ordinary economic redundancy in Thailand carries "
-      "NO notification to any authority, and the one duty that exists is "
-      "technology-scoped — the closest statutory analogue anywhere on earth to "
-      "an AI-caused-layoff filing, which is worth knowing for this tracker "
-      "specifically. s.121's exact wording is SECONDARY (law-firm briefings); "
-      "the Thai official hosts were unreachable. PUBLICATION UNKNOWN: "
-      "labour.go.th and legal.labour.go.th answer ECONNREFUSED, and mol.go.th "
-      "serves an EMPTY robots.txt (no restriction) but no statistics page was "
-      "reached. NEAR-MISSES REJECTED: SSO unemployment-benefit claim counts are "
-      "claimants, and s.75 suspension notices are not dismissals."
-      ),
     'Costa Rica': ("2026-08-30",
       "ARRIVED IN THE CORPUS 2026-08-30 (one news row, id 178867, Hospital "
       "Clinica Biblica via nacion.com) and is acknowledged the same day. "
@@ -1943,6 +1920,30 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://www.law.go.kr/LSW/lsLinkCommonInfo.do?"
                  "chrClsCd=010202&lsJoLnkSeq=1027156523"),
+    },
+
+    "Thailand": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Protection Act B.E. 2541, section 121. The duty is "
+                   "narrow: it applies when machinery or technology changes drive "
+                   "a reorganisation of work units, production, distribution or "
+                   "services that reduces employees. The employer must report the "
+                   "dismissal date, reason and names of affected employees to the "
+                   "Labour Inspector and those employees at least 60 days ahead. "
+                   "Section 75 instead concerns temporary suspension and is not a "
+                   "general economic-layoff report."),
+        "authority": "Labour Inspector under Thailand's Ministry of Labour",
+        "threshold": ("no numeric floor; only dismissals caused by machinery or "
+                      "technology-driven operational change fall within section 121"),
+        "aggregate": ("NONE LOCATED. The Ministry publishes the consolidated Act, "
+                      "employee-rights guidance and individual factory-closure "
+                      "responses, but no periodic section-121 filing total or named "
+                      "employer register was found. NSO labour-force survey tables and "
+                      "Social Security unemployment-benefit claims are different "
+                      "populations and are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://www.mol.go.th/wp-content/uploads/sites/2/1998/01/"
+                 "labour_protection_2541_new62.pdf"),
     },
 
     "Afghanistan": {
