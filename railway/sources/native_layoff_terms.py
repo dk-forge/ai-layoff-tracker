@@ -41,7 +41,7 @@ PROVENANCE, per language. Nothing here is invented for this file:
   ja ko                        `sources/layoff_language.py STRONG_TERMS_*`,
                                researched 2026-07-18 with EDINET/DART fixture
                                evidence, strong tier only.
-  da no fi cs ro hu th vi      NEW here, and honestly labelled as such: these
+  da no fi cs ro hu th vi et   NEW here, and honestly labelled as such: these
                                are the standard collective-dismissal words of
                                each language (the legal term plus the headline
                                word), NOT a precision-sampled set. They are
@@ -99,6 +99,12 @@ PHRASES_BY_LANG: dict[str, tuple[str, ...]] = {
     "hu": ("csoportos létszámleépítés", "létszámleépítés", "leépítés"),
     "th": ("เลิกจ้างพนักงาน", "ปลดพนักงาน", "เลิกจ้างจำนวนมาก"),
     "vi": ("cắt giảm nhân sự", "sa thải hàng loạt", "cắt giảm lao động"),
+    # Estonia is denominator-backed and measured weak. These use the statute's
+    # collective-dismissal term plus the ordinary headline constructions seen
+    # in ERR's reporting; bare "koondamine" alone is deliberately excluded
+    # because it also describes an individual redundancy.
+    "et": ("kollektiivne koondamine", "kollektiivsed koondamised",
+           "koondab töötajaid", "koondab töökohta", "töökohtade koondamine"),
 }
 
 # Google News `hl` codes that mean English. An edition in this set keeps the

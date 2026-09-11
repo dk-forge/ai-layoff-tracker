@@ -82,23 +82,41 @@ def parse_cron_schedule(toml_text: str) -> dict:
 # nobody to notice. Sizes are read from the collectors by AST so this stays
 # stdlib-only and needs no key, no network and no optional dependency.
 ROTATIONS = (
-    # (public key, module, terms symbol, per-run symbol, skip_first)
-    # google_news pins the US edition and rotates only the remainder.
+    # (public key, module, terms symbol, per-run symbol, skip_first,
+    #  additionally pinned code symbol)
+    # google_news pins the US edition and the measured-weak priority editions;
+    # only the remainder belongs in the published rotation duration.
     ("news_editions", "sources/google_news.py",
-     "GOOGLE_NEWS_LOCALES", "LOCALES_PER_RUN", True),
+     "GOOGLE_NEWS_LOCALES", "LOCALES_PER_RUN", True, "PRIORITY_LOCALE_CODES"),
     ("gdelt_segments", "sources/gdelt.py",
-     "SEGMENT_TERMS", "SEGMENT_QUERIES_PER_RUN", False),
+     "SEGMENT_TERMS", "SEGMENT_QUERIES_PER_RUN", False, None),
 )
 
 
-def _ring_size(module_rel: str, terms: str, skip_first: bool) -> int:
+def _literal(module_rel: str, symbol: str):
     src = (ROOT / "railway" / module_rel).read_text(encoding="utf-8")
     for node in ast.parse(src).body:
         if isinstance(node, ast.Assign) and any(
-                isinstance(t, ast.Name) and t.id == terms for t in node.targets):
-            n = len(ast.literal_eval(node.value))
-            return n - 1 if skip_first else n
-    raise ValueError(f"{terms} not found in {module_rel}")
+                isinstance(t, ast.Name) and t.id == symbol for t in node.targets):
+            return ast.literal_eval(node.value)
+    raise ValueError(f"{symbol} not found in {module_rel}")
+
+
+def _ring_size(module_rel: str, terms: str, skip_first: bool,
+               pinned_codes_symbol: str | None = None) -> int:
+    values = _literal(module_rel, terms)
+    n = len(values) - (1 if skip_first else 0)
+    if pinned_codes_symbol:
+        pinned = set(_literal(module_rel, pinned_codes_symbol))
+        present = {str(value[0]) for value in values if value}
+        missing = pinned - present
+        if missing:
+            raise ValueError(
+                f"{pinned_codes_symbol} names absent {terms} codes: {sorted(missing)}")
+        n -= len(pinned)
+    if n < 0:
+        raise ValueError(f"negative rotating ring size for {terms}: {n}")
+    return n
 
 
 def _per_run(module_rel: str, name: str) -> int:
@@ -113,8 +131,8 @@ def _per_run(module_rel: str, name: str) -> int:
 def rotation_sweeps(runs_per_day: int) -> dict:
     """Days to sweep each public rotating ring once, at this cadence."""
     out = {}
-    for key, module_rel, terms, per_run_name, skip_first in ROTATIONS:
-        size = _ring_size(module_rel, terms, skip_first)
+    for key, module_rel, terms, per_run_name, skip_first, pinned_codes in ROTATIONS:
+        size = _ring_size(module_rel, terms, skip_first, pinned_codes)
         per_run = _per_run(module_rel, per_run_name)
         if per_run <= 0:
             continue

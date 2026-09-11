@@ -1935,6 +1935,112 @@ REGISTER = {
                  "kyufukin/other36/index.html"),
     },
 
+    "Afghanistan": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Law, Official Gazette No. 914 (2007), art. 149. The text "
+                   "covers government, non-government, joint-venture and private "
+                   "entities: they may not dismiss all or a group of employees without "
+                   "MoLSAMD approval unless another law provides otherwise; a long work "
+                   "stoppage that closes the organisation must be reported three months "
+                   "in advance. CURRENT-LAW CAVEAT: the present Ministry still publishes "
+                   "this Labour Law on its law page, while its 2026 Legislation and "
+                   "Labour Rights update says a new version has been DRAFTED, not that it "
+                   "has been enacted. Recheck upon publication of that draft"),
+        "authority": ("Ministry of Labour and Social Affairs (the statute uses the former "
+                      "MoLSAMD name)"),
+        "threshold": ("'all or a group' of employees; no numeric employee or event floor "
+                      "is stated in art. 149"),
+        "aggregate": ("NONE LOCATED. The Ministry publishes the governing law and "
+                      "activity updates, not a periodic count or named register of art. "
+                      "149 approvals/notices. Legal continuity is stated as a caveat "
+                      "rather than silently inferred from the 2007 date"),
+        "assessed": "2026-09-11",
+        "cite": "https://molsa.gov.af/index.php/en/labor-law",
+    },
+
+    "Egypt": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Law No. 14 of 2025, arts. 236-240. For economic necessity an "
+                   "employer seeking full or partial closure, or a reduction in size or "
+                   "activity that may affect workers temporarily or permanently, must "
+                   "apply to a designated committee. Art. 237 requires the reasons, "
+                   "circumstances, procedures, and number and categories of workers; the "
+                   "committee has 45 days to issue a reasoned decision and set the "
+                   "implementation date, with appeal available"),
+        "authority": ("the closure/reduction committee constituted under the Prime "
+                      "Minister and Ministry of Labour, with worker and employer "
+                      "representatives"),
+        "threshold": ("no numeric floor; full or partial closure or reduction in the "
+                      "establishment's size or activity for economic necessity"),
+        "aggregate": ("NONE LOCATED. The official law and Ministry surfaces describe "
+                      "case approval and worker-rights procedures but expose no periodic "
+                      "national application total or employer-level register. Do not use "
+                      "general unemployment or establishment-closure statistics as the "
+                      "art. 237 denominator"),
+        "assessed": "2026-09-11",
+        "cite": "https://www.alamiria.com/Sec/TashTxt?id=vPdoWGGYwoE%3D",
+    },
+
+    "Ghana": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Act 2003 (Act 651), s.65(1). An employer contemplating major "
+                   "production, programme, organisational, structural or technological "
+                   "changes likely to terminate workers must provide the Chief Labour "
+                   "Officer and the union written reasons, number and categories, and "
+                   "timing at least three months before the change, and consult on "
+                   "avoiding or mitigating the terminations"),
+        "authority": "Chief Labour Officer, with notice also to the trade union concerned",
+        "threshold": ("no numeric floor; the trigger is a contemplated major change "
+                      "likely to entail termination of workers"),
+        "aggregate": ("NONE LOCATED. The receiving authority publishes the Act but no "
+                      "periodic national total or employer register derived from s.65 "
+                      "notices; labour-force and employment statistics are not a filing "
+                      "denominator"),
+        "assessed": "2026-09-11",
+        "cite": "https://www.melr.gov.gh/files/publications/Labour_Act_-_2003.pdf",
+    },
+
+    "Paraguay": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Code, Law No. 213, art. 78(h). Total closure of an enterprise "
+                   "or a definitive reduction of its work requires prior written "
+                   "communication to the Administrative Labour Authority, which gives "
+                   "workers summary participation before issuing its decision. Arts. 80 "
+                   "and 99 attach compensation consequences to closure, omission of the "
+                   "communication, and stable workers"),
+        "authority": "Autoridad Administrativa del Trabajo (MTESS)",
+        "threshold": ("no numeric floor; total enterprise closure or definitive "
+                      "reduction of work"),
+        "aggregate": ("NONE LOCATED. MTESS exposes employer/worker communications and "
+                      "labour-market material, but no periodic count or named register "
+                      "of art. 78(h) closure/reduction communications. Contract "
+                      "suspensions are explicitly temporary and must not be counted as "
+                      "dismissals"),
+        "assessed": "2026-09-11",
+        "cite": ("https://www.bacn.gov.py/leyes-paraguayas/2608/"
+                 "ley-n-213-establece-el-codigo-"),
+    },
+
+    "Qatar": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Law No. 14 of 2004 as amended by Decree-Law No. 18 of 2020, "
+                   "art. 52 bis. Before terminating employment for economic, structural "
+                   "or other reasons unrelated to the employment contract, an employer "
+                   "must notify the Ministry at least 15 days before termination and "
+                   "submit the reasons, number and categories of workers, intended "
+                   "implementation period, and other requested information"),
+        "authority": "Ministry of Labour",
+        "threshold": ("no numeric floor in art. 52 bis; the duty is framed per employer "
+                      "termination decision for the covered reasons"),
+        "aggregate": ("NONE LOCATED. The Ministry publishes the consolidated law but no "
+                      "periodic national count or employer-level register of art. 52 bis "
+                      "notifications. General labour-force and contract-administration "
+                      "figures are not an equivalent denominator"),
+        "assessed": "2026-09-11",
+        "cite": ("https://mol.gov.qa/admin/LawsDocuments/"
+                 "Law%20No.%20%2814%29%20of%202004%20Promulgating%20the%20Labour%20Law.pdf"),
+    },
+
     "United Kingdom": {
         "class": REGIME_WITH_AGGREGATE,
         "regime": ("TWO regimes, because the UK has two statutes and two publishers. GREAT "

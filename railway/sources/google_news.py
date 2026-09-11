@@ -100,6 +100,7 @@ DISCOVERY_QUERIES = (
 GOOGLE_NEWS_LOCALES = (
     ("US", "en-US", "US", "US:en"),
     ("GB", "en-GB", "GB", "GB:en"),
+    ("EE", "et", "EE", "EE:et"),
     ("CA", "en-CA", "CA", "CA:en"),
     ("AU", "en-AU", "AU", "AU:en"),
     ("IE", "en-IE", "IE", "IE:en"),
@@ -144,7 +145,16 @@ GOOGLE_NEWS_LOCALES = (
     ("KE", "en-KE", "KE", "KE:en"),
     ("NZ", "en-NZ", "NZ", "NZ:en"),
 )
-# Editions per run beyond the always-on US edition. 0 disables rotation.
+# The three non-US markets with a current independent national denominator and
+# a measured weak tracker numerator. Keeping them in the rotating ring meant a
+# once-daily schedule reached each only about once every eleven days, which
+# cannot repair or even promptly observe the gap. Their requests are free and
+# MAX_ITEMS remains one global extraction ceiling, so always-on reach does not
+# raise the model-spend maximum.
+PRIORITY_LOCALE_CODES = ("GB", "EE", "TW")
+
+# Rotating editions per run beyond the always-on US and measured weak markets.
+# 0 disables the rest-of-world rotation, never the priority markets.
 LOCALES_PER_RUN = max(0, min(8, _env_int("GOOGLE_NEWS_LOCALES_PER_RUN", 4)))
 
 
@@ -160,10 +170,14 @@ def _locales_for_now():
     `run_slice.rotate` steps by exactly one run, so no cadence can stride it.
     """
     us = GOOGLE_NEWS_LOCALES[0]
-    rest = GOOGLE_NEWS_LOCALES[1:]
+    priority = [loc for loc in GOOGLE_NEWS_LOCALES
+                if loc[0] in PRIORITY_LOCALE_CODES]
+    priority_codes = {loc[0] for loc in priority}
+    rest = [loc for loc in GOOGLE_NEWS_LOCALES[1:]
+            if loc[0] not in priority_codes]
     if not LOCALES_PER_RUN or not rest:
-        return [us]
-    return [us] + run_slice.rotate(rest, LOCALES_PER_RUN)
+        return [us] + priority
+    return [us] + priority + run_slice.rotate(rest, LOCALES_PER_RUN)
 
 
 def queries_for_edition(locale, english_queries):

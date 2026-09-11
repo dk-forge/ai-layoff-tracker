@@ -6,13 +6,24 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-11) — top-three evidence programme, GDELT first.**
+- **HELD by Codex (2026-09-11) — top-three closeout and production proof.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/gdelt-live-watermark`, based on `origin/main` at `f6f7b204`.
+  branch: `codex/top3-closeout-20260911`, rebased on `origin/main` at `71c9a212`;
+  plugin version reserved by this branch: `2.20.185`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
+
+  **Current closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
+  The watermark repair is deployed and the daily 22:00 UTC schedule must now
+  accumulate seven genuinely clean runs over fourteen days; the quiet Codex
+  heartbeat `layoff-tracker-top-three-proof` checks this every 30 minutes and
+  reports only a failure, a completed gate, required owner input, or a fully
+  evidenced ranking decision. Immediate work is the five-country legal/source
+  classification, regional recall, archive recovery, duplicate adjudication,
+  and the private competitor-benchmark input. Never convert elapsed time into a
+  GDELT pass or public competitor guesses into benchmark evidence.
 
   **Newest production result (2026-09-11 CET).** PR #301 passed all seven
   checks and merged as `525af46660317e453fe8e1994ab20696f71d55be`.

@@ -12,7 +12,7 @@
       "days": 11,
       "per_run": 4,
       "runs": 11,
-      "terms": 44
+      "terms": 42
     }
   },
   "source": "railway/railway.toml [deploy] cronSchedule",

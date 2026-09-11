@@ -24498,3 +24498,47 @@ no-restatement rule and its mechanical test are unchanged.
 **Confirmed working, in a real client, on both platforms:** the metric-first
 subject. Every first word differs, the date is last and is what truncation
 eats. That question is settled.
+## 2026-09-11 - weak-market discovery floor and five live country regimes closed
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_worldwide_vocabulary.py`, `railway/tests/test_country_coverage.py`
+
+The closeout did not turn an old percentage into a claim. It changed the next
+measurement's inputs and removed the five undeclared-country failures from the
+live country register.
+
+Google News discovery now carries a non-rotating measured-weak-market floor:
+United States first, then Great Britain, Estonia and Taiwan on every invocation,
+with the remaining editions still rotating. Estonia also has an `et-EE` edition
+and five native collective-redundancy phrases. `MAX_ITEMS` remains the global
+candidate ceiling, so this adds free RSS reads but does not enlarge the paid
+classification surface. The acceptance test asserts all three weak markets are
+present on every day of the rotation and that the United States remains first.
+
+The five countries represented in live data but absent from `REGISTER` are now
+classified as `regime_no_aggregate`, not hidden in the acknowledged backlog:
+Afghanistan, Egypt, Ghana, Paraguay and Qatar. Each record names the governing
+rule, the authority, what an employer must report, why no public employer-level
+aggregate was found, an assessment date, and primary or official evidence.
+This closes the machine-readable declaration gap; it does not claim a public
+denominator exists where the official system does not publish one.
+
+Evidence read on 2026-09-11: Qatar Labour Law article 52 bis; Paraguay Labour
+Code article 78(h); Egypt Labour Law 14/2025 articles 236-240; Ghana Labour Act
+651 section 65; and Afghanistan's official Labour Law publication plus the
+Ministry's 2026 statement that a new version is still being drafted. Estonia's
+official Employment Contracts Act section 90 and the Töötukassa employer portal
+ground the discovery vocabulary. Offline: worldwide vocabulary 10/10, rotation
+6/6 and country coverage 41/41 green; `git diff --check` clean. Production
+country/data-integrity workflows must be rerun after merge before this is called
+closed live.
+
+The first PR run also detonated a date bomb in
+`test_gdelt_ledger_persistence`: its generic persistence fixture used a fixed
+2026-08-28 work window, and on 2026-09-11 the production 14-day pruning rule
+correctly removed it before every assertion. The helper now anchors only the
+work window four days behind the current clock while leaving each caller's
+`updated` timestamp untouched for precedence tests. This changes no collector
+code and does not widen the production retry horizon. The same CI run also had
+one live-site read timeout; that remains a real UNKNOWN/transient rerun gate and
+was not converted into a pass.
