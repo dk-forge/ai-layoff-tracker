@@ -16,12 +16,17 @@ a lie on the health page.
 import ast
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _requests_stub import install as _install_requests  # noqa: E402
 _install_requests()
+# Timing tests do not build a model client; keep the stdlib-only local test
+# path independent of the production OpenAI package.
+sys.modules.setdefault("openai", SimpleNamespace())
 
 import cron  # noqa: E402
 
@@ -40,6 +45,24 @@ class BudgetIsClamped(unittest.TestCase):
         # An operator typo must not take the whole daily run down.
         for junk in ("", "abc", None if False else "12.5"):
             self.assertEqual(cron._gdelt_run_budget_seconds(junk), 900)
+
+
+class LiveWindowHonoursTheRawPublicationWatermark(unittest.TestCase):
+    """Do not ask the raw fallback for Translingual files not published yet."""
+
+    NOW = datetime(2026, 9, 10, 22, 4, 32, tzinfo=timezone.utc)
+
+    def test_live_window_ends_behind_the_measured_translation_lag(self):
+        start, end = cron._gdelt_live_window(self.NOW)
+        self.assertEqual(end, self.NOW - timedelta(minutes=90))
+        self.assertEqual(end - start, timedelta(hours=36))
+
+    def test_an_operator_cannot_remove_the_measured_safety_floor(self):
+        self.assertEqual(cron._gdelt_source_lag_minutes("0"), 75)
+        self.assertEqual(cron._gdelt_source_lag_minutes("9999"), 180)
+
+    def test_a_junk_watermark_uses_the_safe_default(self):
+        self.assertEqual(cron._gdelt_source_lag_minutes("junk"), 90)
 
 
 class TheDailyCollectorPassesADeadline(unittest.TestCase):

@@ -6,10 +6,9 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-10) — top-three evidence programme, GDELT first.**
+- **HELD by Codex (2026-09-11) — top-three evidence programme, GDELT first.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/spend-harvest-bound`, based on `origin/main` at
-  `bddeb9c4f0211bc3c002d0fd5592364c5884c869`.
+  branch: `codex/gdelt-live-watermark`, based on `origin/main` at `f6f7b204`.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
@@ -35,9 +34,11 @@ holder, so the start-of-session ritual surfaces it automatically.
   logs identify the cause: the raw English feed was current but four newest
   Translingual 15-minute files were not yet published, so the honest raw verdict
   was partial and the throttled public fallback generated the 11 unfinished
-  slots. After the harvest-bound repair, add an explicit live-source watermark
-  so the daily 36-hour overlap requests only intervals both raw streams have
-  published; never relabel those missing edge intervals complete.
+  slots. The current branch adds an explicit 75–180 minute live-source
+  watermark (90 minutes by default), so the daily 36-hour overlap requests
+  only intervals both raw streams have published; never relabel those missing
+  edge intervals complete. Eight focused tests pass locally; CI, deployment,
+  and a fresh scheduled-run proof remain.
 
   **Earlier production result.** PR #300 passed all seven
   checks and merged as `94190341a4e6776d532161b5d08cfad8e271b9bb`.

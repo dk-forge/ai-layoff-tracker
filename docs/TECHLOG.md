@@ -1,3 +1,24 @@
+## 2026-09-11 - the live GDELT window reached unpublished raw intervals
+
+**Class:** source-watermark drift
+**Guard:** `railway/tests/test_gdelt_run_budget.py`
+
+The 2026-09-10 Railway run used the current clock as the end of its 36-hour
+GDELT window. The official English raw stream was current, but the newest four
+Translingual 15-minute files had not been published yet. The raw reader
+therefore returned an honest `partial` verdict (`translation:missing=4`), and
+the collector fell into the throttled public-DOC recovery path, creating 11
+unfinished slots. This was a timing defect at the source edge, not evidence
+that the raw collector had lost a whole country or that the missing intervals
+were complete.
+
+The repair adds `_gdelt_source_lag_minutes()` with a bounded 75–180 minute
+operator range and a 90-minute default, plus `_gdelt_live_window()` that keeps
+the existing 36-hour overlap but ends behind that watermark. Invalid or unsafe
+settings cannot remove the floor. Eight focused tests pass locally. The
+remaining proof is CI, exact-SHA deployment, and seven clean scheduled runs
+over fourteen days; until then GDELT is improved but not closed for ranking.
+
 ## 2026-09-11 - the spend harvester outgrew its fixed pagination bound
 
 **Class:** unbounded-growth
