@@ -24658,6 +24658,10 @@ finding, not a data-integrity arithmetic failure.
 
 ## 2026-09-12 - production country gate green; headline baseline timing remains
 
+**Class:** none
+
+**Guard:** none - a status note, not a defect: the guard it describes (`headline_movement` refusing to advance a baseline younger than one ingest cycle) behaved correctly
+
 PR #308 merged as `030a5e0`. The follow-up country workflow passed and wrote
 measurement commit `1d31217`, bringing Mauritius and Palestine into the live
 register. The integrity rerun passed country coverage and 19 of 20 checks. Its
