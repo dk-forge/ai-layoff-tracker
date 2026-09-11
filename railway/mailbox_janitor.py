@@ -327,6 +327,8 @@ def main() -> int:
     except ValueError:
         max_passes = 1
     total_removed = 0
+    zero_passes = 0
+    seen_escalations: dict[str, int] = {}
     for n in range(1, max_passes + 1):
         state, f, detail = sweep(host, user, pw, retain, dry)
         if n > 1:
@@ -340,12 +342,22 @@ def main() -> int:
             print("  Could not read the mailbox. UNKNOWN, not a pass.")
             return 3
         total_removed += f["removed"]
-        if dry or f["eligible"] == 0 or f["removed"] == 0:
+        # An escalation is REPORTED at the end, never a reason to stop
+        # clearing: the first clear-out stopped after two passes on old
+        # crash notices that were already fixed, and left thousands behind.
+        for line in f["escalate"]:
+            seen_escalations[line] = seen_escalations.get(line, 0) + 1
+        if dry or f["eligible"] == 0:
             break
-        if f["escalate"]:
+        # A pass that removed nothing is usually the server dropping the
+        # session before the first expunge; one more try is cheap, two in a
+        # row means the mailbox really will not give more this run.
+        zero_passes = zero_passes + 1 if f["removed"] == 0 else 0
+        if zero_passes >= 2:
             break
     if max_passes > 1:
-        f = dict(f, removed=total_removed)
+        f = dict(f, removed=total_removed,
+                 escalate=sorted(seen_escalations, key=lambda s: -seen_escalations[s])[:15])
         detail = f"{detail}; {n} pass(es), {total_removed} removed in total"
     print(f"MAILBOX JANITOR: {state} -- {detail}\n")
 
