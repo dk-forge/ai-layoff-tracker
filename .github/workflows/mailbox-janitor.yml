@@ -31,6 +31,10 @@ on:
         description: 'How many messages one pass may read (scheduled runs use 100)'
         required: false
         default: '100'
+      passes:
+        description: 'How many back-to-back passes one run may make (scheduled runs use 1; a clear-out uses 20)'
+        required: false
+        default: '1'
       dry_run:
         description: 'Report only, delete nothing'
         type: boolean
@@ -75,6 +79,7 @@ jobs:
           # smaller bite drains over several days, and the retention window
           # means nothing is lost by taking longer.
           JANITOR_MAX_PER_RUN: ${{ inputs.max_per_run || '100' }}
+          JANITOR_MAX_PASSES: ${{ inputs.passes || '1' }}
           # Scheduled runs are live. Manual runs default to a dry run.
           JANITOR_DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (inputs.dry_run && 'true' || 'false') }}
         run: |

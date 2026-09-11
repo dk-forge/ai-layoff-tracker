@@ -253,16 +253,32 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                 # thing that quietly removes the wrong thing.
                 deletable = []
             if deletable and not dry_run:
-                for num in deletable:
+                # MEASURED 2026-09-11: the server drops the session after
+                # roughly 100 STORE calls, and one expunge at the very end
+                # meant everything flagged after the drop was lost and the
+                # flags before it were never committed. So: HIGHEST sequence
+                # number first (an expunge renumbers only what sits above the
+                # removed message, so the lower numbers still to come stay
+                # valid) and an EXPUNGE after every chunk, so a dropped
+                # connection costs at most one chunk of work. A run that is
+                # cut off reports what it removed and the next pass carries on.
+                chunk_size = 50
+                ordered = sorted(deletable, key=lambda b: int(b), reverse=True)
+                for i in range(0, len(ordered), chunk_size):
+                    chunk = ordered[i:i + chunk_size]
+                    flagged = 0
                     try:
-                        m.store(num, "+FLAGS", "\\Deleted")
-                        removed += 1
+                        for num in chunk:
+                            m.store(num, "+FLAGS", "\\Deleted")
+                            flagged += 1
+                        m.expunge()
                     except Exception:
-                        continue
-                try:
-                    m.expunge()
-                except Exception:
-                    pass
+                        # Whatever was flagged in this chunk without an
+                        # expunge is still on the server; count only what
+                        # an expunge committed.
+                        broke_early = True
+                        break
+                    removed += flagged
         except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
             return UNKNOWN, {}, _scrub(exc, secrets)
     finally:
@@ -299,14 +315,39 @@ def main() -> int:
     retain = int(os.environ.get("JANITOR_RETAIN_DAYS", "14") or 14)
     dry = os.environ.get("JANITOR_DRY_RUN", "true").lower() != "false"
 
-    state, f, detail = sweep(host, user, pw, retain, dry)
+    # PASSES. One session reads at most JANITOR_MAX_PER_RUN messages and the
+    # server tolerates about a hundred deletes before it drops the session
+    # (2026-09-11), so a mailbox holding thousands drains at a crawl if every
+    # run is one pass. JANITOR_MAX_PASSES lets one run open fresh sessions
+    # back to back until a pass finds nothing eligible or removes nothing.
+    # Scheduled runs keep 1; a manual clear-out passes 20. Every pass is a
+    # complete sweep with its own escalation report, so nothing is skipped.
+    try:
+        max_passes = max(1, int(os.environ.get("JANITOR_MAX_PASSES", "1") or 1))
+    except ValueError:
+        max_passes = 1
+    total_removed = 0
+    for n in range(1, max_passes + 1):
+        state, f, detail = sweep(host, user, pw, retain, dry)
+        if n > 1:
+            print(f"\n  pass {n}: {state} -- {detail}")
+        if state == REJECTED:
+            print(f"MAILBOX JANITOR: {state} -- {detail}\n")
+            print("  Login refused. Rotate the mailbox password and update the secret.")
+            return 2
+        if state != OK:
+            print(f"MAILBOX JANITOR: {state} -- {detail}\n")
+            print("  Could not read the mailbox. UNKNOWN, not a pass.")
+            return 3
+        total_removed += f["removed"]
+        if dry or f["eligible"] == 0 or f["removed"] == 0:
+            break
+        if f["escalate"]:
+            break
+    if max_passes > 1:
+        f = dict(f, removed=total_removed)
+        detail = f"{detail}; {n} pass(es), {total_removed} removed in total"
     print(f"MAILBOX JANITOR: {state} -- {detail}\n")
-    if state == REJECTED:
-        print("  Login refused. Rotate the mailbox password and update the secret.")
-        return 2
-    if state != OK:
-        print("  Could not read the mailbox. UNKNOWN, not a pass.")
-        return 3
 
     for label, n in f["classes"].most_common():
         print(f"    {n:>6}  {label}")

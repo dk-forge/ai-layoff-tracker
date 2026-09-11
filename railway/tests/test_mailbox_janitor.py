@@ -168,6 +168,59 @@ def test_an_unknown_shape_still_escalates() -> None:
     assert _classify("Your account has been suspended", "abuse@host.example") == "other"
 
 
+def test_deletes_are_committed_in_chunks_highest_first(monkeypatch) -> None:
+    """MEASURED 2026-09-11: the server drops the session after ~100 STORE
+    calls, and a single expunge at the end lost everything flagged after
+    the drop. Deletes now go highest sequence number first and expunge
+    after every chunk, so a drop costs at most one chunk and the sequence
+    numbers still to come are never renumbered from under the sweep."""
+    class _Counting(_Conn):
+        def __init__(self, msgs):
+            super().__init__(msgs)
+            self.expunges = 0
+            self.order: list[list[bytes]] = []
+
+        def store(self, num, flags, value):
+            self.deleted.append(num)
+            return ("OK", [b""])
+
+        def expunge(self):
+            self.expunges += 1
+            self.order.append(list(self.deleted))
+            return ("OK", [b""])
+
+    msgs = [_msg("Run failed", "notifications@github.com", 40) for _ in range(120)]
+    conn = _Counting(msgs)
+    _patch(conn, monkeypatch)
+    state, f, _ = sweep("h", "u", "pw", retain_days=14, dry_run=False, limit=200)
+    assert state == OK and f["removed"] == 120
+    assert conn.expunges == 3, "120 deletes are three chunks of at most 50, each expunged"
+    nums = [int(n) for n in conn.deleted]
+    assert nums == sorted(nums, reverse=True), "highest sequence number first"
+
+
+def test_a_dropped_session_mid_delete_keeps_what_was_expunged(monkeypatch) -> None:
+    class _Dropping(_Conn):
+        def __init__(self, msgs):
+            super().__init__(msgs)
+            self.calls = 0
+
+        def store(self, num, flags, value):
+            self.calls += 1
+            if self.calls > 70:
+                raise OSError("EOF occurred in violation of protocol")
+            self.deleted.append(num)
+            return ("OK", [b""])
+
+    msgs = [_msg("Run failed", "notifications@github.com", 40) for _ in range(120)]
+    conn = _Dropping(msgs)
+    _patch(conn, monkeypatch)
+    state, f, detail = sweep("h", "u", "pw", retain_days=14, dry_run=False, limit=200)
+    assert state == OK
+    assert f["removed"] == 50, "only the first, expunged chunk counts as removed"
+    assert f["partial"] is True and "PARTIAL" in detail
+
+
 def test_a_refused_login_is_rejected_and_touches_nothing(monkeypatch) -> None:
     conn = _Conn([_msg("x", "y@z", 40)], refuse_login=True)
     _patch(conn, monkeypatch)
