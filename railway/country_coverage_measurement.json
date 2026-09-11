@@ -11,7 +11,6 @@
     "Morocco",
     "New Zealand",
     "Pakistan",
-    "Thailand",
     "Vietnam"
   ],
   "backlog_oldest": "2026-08-18",
@@ -1001,12 +1000,18 @@
       "threshold": "art. 2, size-banded over 60 days: workplace under 30 employees, more than 10 dismissed; 30-199, more than one third or more than 20 in a single day; 200-499, more than one quarter or more than 50 in a day; 500+, more than one fifth or more than 80 in a day; or the business unit dismisses more than 200 in 60 days or more than 100 in a single day"
     },
     "Thailand": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": -1,
+      "aggregate": "NONE LOCATED. The Ministry publishes the consolidated Act, employee-rights guidance and individual factory-closure responses, but no periodic section-121 filing total or named employer register was found. NSO labour-force survey tables and Social Security unemployment-benefit claims are different populations and are explicitly excluded.",
+      "assessed": "2026-09-12",
+      "authority": "Labour Inspector under Thailand's Ministry of Labour",
+      "cite": "https://www.mol.go.th/wp-content/uploads/sites/2/1998/01/labour_protection_2541_new62.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 427,
-      "state": "unknown",
-      "stored_name": "Thailand"
+      "regime": "Labour Protection Act B.E. 2541, section 121. The duty is narrow: it applies when machinery or technology changes drive a reorganisation of work units, production, distribution or services that reduces employees. The employer must report the dismissal date, reason and names of affected employees to the Labour Inspector and those employees at least 60 days ahead. Section 75 instead concerns temporary suspension and is not a general economic-layoff report.",
+      "state": "not_measurable",
+      "stored_name": "Thailand",
+      "threshold": "no numeric floor; only dismissals caused by machinery or technology-driven operational change fall within section 121"
     },
     "T\u00fcrkiye": {
       "age_days": 24,
@@ -1127,7 +1132,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-11T22:54:54Z",
+  "measured_at": "2026-09-11T23:32:14Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1799,9 +1804,9 @@
   "tallies": {
     "no_regime": 4,
     "refused": 6,
-    "regime_no_aggregate": 35,
+    "regime_no_aggregate": 36,
     "regime_with_aggregate": 21,
-    "unassessed": 13
+    "unassessed": 12
   },
   "unassessed": [
     "Bosnia and Herzegovina",
@@ -1815,7 +1820,6 @@
     "Morocco",
     "New Zealand",
     "Pakistan",
-    "Thailand",
     "Vietnam"
   ],
   "undeclared": [],
