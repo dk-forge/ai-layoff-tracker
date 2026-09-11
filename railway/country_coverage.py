@@ -1022,26 +1022,6 @@ ACKNOWLEDGED_BACKLOG = {
       "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
       "or a real PDF library."
       ),
-    'China': ("2026-08-18",
-      "ART. 41 IS NOW VERIFIED AND CHARACTERISED; PUBLICATION REMAINS "
-      "UNRESOLVED. Labour Contract Law art. 41: where an employer cuts 20+ "
-      "workers, or fewer than 20 but more than 10% of the workforce, it must "
-      "explain to the union or all employees 30 days in advance, hear their "
-      "opinions, and REPORT the reduction plan to the labour administration "
-      "department before implementing it. THE DISTINCTION THAT MATTERS: this is "
-      "报告, a report, NOT 审批, an authorisation — so unlike India and Morocco "
-      "China is a notification regime, and a count of filings would be a count "
-      "of layoffs rather than of applications. Attested consistently across the "
-      "Supreme People's Procuratorate commentary and provincial portals; the "
-      "consolidated text was NOT read on a .gov.cn host, which is recorded as a "
-      "gap rather than a doubt. PUBLICATION IS UNKNOWN AND SHOULD BE STATED AS "
-      "UNKNOWN: mohrss.gov.cn — the ministry that receives these reports — "
-      "serves an obfuscated JavaScript anti-bot challenge and was never "
-      "attempted; stats.gov.cn returns HTTP 404 for robots.txt (so it is "
-      "unrestricted) and carried nothing, but was not exhaustively searched. "
-      "REJECTED NEAR-MISS: MOHRSS unemployment-insurance FUND OUTLAYS are money, "
-      "not layoffs, and must never be used as a layoff series."
-      ),
     'Czechia': ("2026-08-18",
       "STATUTE VERIFIED, PUBLICATION STILL OPEN, and the reason it is still "
       "open is recorded so the next pass does not repeat the same dead end. "
@@ -1936,6 +1916,29 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://www.mlvt.gov.kh/index.php/en/official-docs/royal-code/"
                  "4-uncategorised/download/77_44a845451a542889db7ce2c72bfcd448.html"),
+    },
+
+    "China": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Contract Law of the People's Republic of China, art. 41. "
+                   "Where an employer needs to cut at least 20 workers, or fewer than "
+                   "20 workers but more than 10 percent of its workforce, it must "
+                   "explain the situation to the union or all employees 30 days in "
+                   "advance, hear their views, and report the reduction plan to the "
+                   "labour administration before implementing it. The primary MOHRSS "
+                   "text uses a reporting duty, not prior approval."),
+        "authority": "the competent local labour administrative department under MOHRSS",
+        "threshold": ("20 or more workers, or fewer than 20 workers where the number "
+                      "exceeds 10 percent of the enterprise workforce"),
+        "aggregate": ("NONE LOCATED. MOHRSS and provincial government surfaces publish "
+                      "the law, filing instructions and local forms, but no periodic "
+                      "national article-41 filing total or public employer register was "
+                      "found. National Bureau of Statistics labour indicators and "
+                      "unemployment-insurance expenditure are not counts of article-41 "
+                      "reports and are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://www.mohrss.gov.cn/xxgk2020/fdzdgknr/zcfg/fl/"
+                 "202011/t20201102_394622_wap.html"),
     },
 
     "Afghanistan": {

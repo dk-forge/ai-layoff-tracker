@@ -49,6 +49,15 @@ holder, so the start-of-session ritual surfaces it automatically.
   are rejected as a filing denominator. Country coverage tests are 43/43 green
   on `codex/cambodia-regime-closeout-20260912`. Continue one country at a time.
 
+  **Country backlog package 2 (2026-09-12 CET).** China is removed from the
+  acknowledged backlog and classified `REGIME_NO_AGGREGATE` from MOHRSS's
+  primary Labour Contract Law article 41. The filing threshold is 20 workers or
+  more than 10% of the workforce, with 30-day worker/union consultation and a
+  report to the labour administration. No national article-41 filing aggregate
+  or named employer register was located; general statistics are excluded.
+  Country coverage tests are 44/44 green on
+  `codex/china-regime-closeout-20260912`.
+
   **Newest production result (2026-09-11 CET).** PR #301 passed all seven
   checks and merged as `525af46660317e453fe8e1994ab20696f71d55be`.
   Railway deployment `ecda9325-77cf-46b0-8efe-7abb2bc451b6` is SUCCESS on that
