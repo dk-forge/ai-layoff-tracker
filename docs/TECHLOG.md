@@ -1,3 +1,40 @@
+## 2026-09-11 - the digest called one unconfirmed report a verified fact, and its cron fired four hours late
+
+**Class:** novel
+**Guard:** `railway/tests/test_digest_scope_rules.py` (ASingleUnconfirmedReportIsNamedAsProvisional), `railway/tests/test_digest_dst_slot.py` (ALateTickIsNamedInTheLogAndChangesNothing)
+
+A review of the 2026-09-11 daily found three things. The edition led with
+"Amazon's 30,000 verified job cuts were 94% of the 32,077 verified job cuts
+worldwide", where that row is a single bronze news report, still provisional,
+with no country. "Verified" is the tier name for anything that is not an
+announced estimate, and a reader takes it as "confirmed": fixed prose wrapped
+variable data without the qualifier the data needed. The leaders payload
+carried no verification level, review status or report count, so the composer
+could not have known. `db.php` now ships all three (additive keys), and
+`alt_digest_single_report()` in subscribe.php reads bronze, or provisional
+with at most one report, as single-report. The dominant-entry paragraph then
+adds "That entry rests on a single news report we have not independently
+confirmed, so it is provisional: the verified worldwide figure without it is
+N", with N the same denominator minus the same row, never a second definition
+of the headline, and the Biggest cuts row carries "single report,
+unconfirmed". A payload without the columns prints nothing. The headline
+figure is unchanged.
+
+Second, the year-to-date line said "15% of the year's total" over a
+denominator that is jobs minus announced. It now says "of the year's verified
+total".
+
+Third, GitHub fired this repo's `:00` and `:30` digest crons four to five
+hours late (2026-09-06 to 09-11: the `0 10 * * *` tick started at 13:56 UTC
+each day, the Monday `30 11 * * 1` tick at 16:36), and nothing in the log said
+so. GitHub documents that on-the-hour schedules are the most delayed. All six
+lines moved to minute 07 or 37 with the same hours; `digest_slot.SEND_TIMES`
+carries the new wall clocks and still judges the tick from its cron string,
+and `late_tick_line()` prints `LATE TICK: scheduled HH:MM UTC, started HH:MM
+UTC` when the runner starts more than an hour after the slot, from
+`GITHUB_RUN_STARTED_AT` or the process start clock supplied by the caller. It
+changes nothing about what is sent. Plugin 2.20.186.
+
 ## 2026-09-11 - the live GDELT window reached unpublished raw intervals
 
 **Class:** source-watermark drift

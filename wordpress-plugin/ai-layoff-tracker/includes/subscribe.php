@@ -4172,6 +4172,35 @@ function alt_digest_layoff_basis($for) {
 }
 
 /**
+ * A ROW THAT RESTS ON ONE UNCONFIRMED REPORT, read off the payload and never
+ * assumed.
+ *
+ * THE DEFECT. The 2026-09-11 daily led with "Amazon's 30,000 verified job cuts
+ * were 94% of the 32,077 verified job cuts worldwide". That row is a single
+ * bronze news report with no country, still provisional, and the sentence
+ * carried none of that: fixed prose wrapped variable data without the
+ * qualifier the data needed. "Verified" is the tier name for anything that is
+ * not an announced estimate, and a reader takes it as "confirmed".
+ *
+ * THE RULE. A row is single-report when its verification level is bronze (one
+ * news report, nothing official behind it yet), or when its review status is
+ * provisional and at most one source report is attached to it. A payload that
+ * carries neither column, which is what an /aggregate from an older plugin
+ * build returns, answers false: absence of evidence is not evidence of a
+ * second source, but it is not evidence of a first one either, and the
+ * qualifier is only ever printed when the data says so.
+ */
+function alt_digest_single_report($l) {
+    $l = (array) $l;
+    $level = strtolower(trim((string) ($l['verification_level'] ?? '')));
+    if ($level === 'bronze') return true;
+    $status = strtolower(trim((string) ($l['review_status'] ?? '')));
+    if ($status !== 'provisional') return false;
+    if (!array_key_exists('report_count', $l)) return false;
+    return (int) $l['report_count'] <= 1;
+}
+
+/**
  * THE ONE ENTRY THAT IS THE WHOLE STORY, when there is one.
  *
  * WHAT THIS ANSWERS. An external editorial review read a week whose worldwide
@@ -4271,6 +4300,28 @@ function alt_digest_dominant_event($leaders, $ver_jobs, $all_jobs,
                 . ' of the AI-attributed cuts in that window';
     }
     $event .= '.';
+
+    /*
+      WHEN THE WHOLE STORY IS ONE UNCONFIRMED REPORT, SAY SO IN THE SAME
+      BREATH. See alt_digest_single_report for the 2026-09-11 daily that
+      made this necessary. The figure without the entry is the SAME
+      denominator this sentence already used minus the entry's own count,
+      taken from the same rows this section reads: it is never a second
+      definition of a headline number, and the headline itself is untouched.
+      For a verified entry that is the verified worldwide figure; for an
+      announced entry it is the announced-inclusive one the share was taken
+      against, and the sentence names which.
+    */
+    if (alt_digest_single_report($top)) {
+        $without = max(0, $denom - $jobs);
+        $figure_word = $announced
+            ? 'the worldwide figure including announced estimates'
+            : 'the verified worldwide figure';
+        $event .= ' That entry rests on a single news report we have not '
+                . 'independently confirmed, so it is provisional: '
+                . $figure_word . ' without it is '
+                . alt_digest_number($without) . '.';
+    }
 
     // ONE DERIVED SENTENCE OF INTERPRETATION, and it is derived, never a guess.
     // What changed this week beyond the numbers: whether the total is one
@@ -5580,7 +5631,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             ? number_format($ai_share, 1) : (string) round($ai_share);
         $ai_lines[] = 'So far in ' . $ytd['year'] . ' employers have attributed '
                     . alt_digest_count($ytd['ai'], 'verified job cut')
-                    . ' to AI, ' . $shown . '% of the year\'s total.';
+                    // "verified total", because $ytd['jobs'] is jobs minus
+                    // announced_jobs (the fetch above), not every cut. "The
+                    // year's total" read as all of them (review 2026-09-11).
+                    . ' to AI, ' . $shown . '% of the year\'s verified total.';
     }
     $html .= '<p data-alt="note">' . esc_html(implode(' ', $ai_lines)) . '</p>';
     $text .= implode(' ', $ai_lines) . "\n";
@@ -5808,6 +5862,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             $detail[] = ($place !== '') ? $place : 'location not recorded';
             if ($when !== '') $detail[] = 'takes effect ' . $when;
             if (!empty($l['ai_explicit'])) $detail[] = 'AI attributed';
+            // ONE UNCONFIRMED REPORT, ON THE ROW. Same test as the dominant
+            // line up top (alt_digest_single_report), so the two cannot
+            // disagree about the same row, and printed only when the payload
+            // carries the evidence for it.
+            if (alt_digest_single_report($l)) $detail[] = 'single report, unconfirmed';
             /*
               THE TIER, ON THE ROW, AND WHY THIS LIST IS NOT FILTERED INSTEAD.
 

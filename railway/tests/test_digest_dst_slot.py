@@ -9,9 +9,9 @@ Both candidate UTC ticks are scheduled and railway/digest_slot.py decides which
 one is real today. A guard nobody tested across the boundary is the bug with
 extra steps, so the boundary is tested here, on real dates, from BOTH sides:
 
-  2026-10-31  EDT is still in force. 10:00 UTC sends, 11:00 UTC skips.
-  2026-11-02  EST is in force (the change is 2026-11-01). 11:00 UTC sends,
-              10:00 UTC skips. It is also a Monday, so both weekly ticks are
+  2026-10-31  EDT is still in force. 10:07 UTC sends, 11:07 UTC skips.
+  2026-11-02  EST is in force (the change is 2026-11-01). 11:07 UTC sends,
+              10:07 UTC skips. It is also a Monday, so both weekly ticks are
               asserted the same way.
 
 Every assertion below states both sides. "The right one fires" is half a test:
@@ -28,12 +28,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import digest_send  # noqa: E402
 import digest_slot  # noqa: E402
 
-DAILY_EDT = "0 10 * * *"
-DAILY_EST = "0 11 * * *"
-WEEKLY_EDT = "30 11 * * 1"
-WEEKLY_EST = "30 12 * * 1"
-MONTHLY_EDT = "0 13 1 * *"
-MONTHLY_EST = "0 14 1 * *"
+# MINUTE 07 AND 37, NOT 00 AND 30. GitHub fires on-the-hour schedules last;
+# measured 2026-09-06 to 2026-09-11 the :00 daily tick started at 13:56 UTC.
+# The hours and the DST pairing are unchanged.
+DAILY_EDT = "7 10 * * *"
+DAILY_EST = "7 11 * * *"
+WEEKLY_EDT = "37 11 * * 1"
+WEEKLY_EST = "37 12 * * 1"
+MONTHLY_EDT = "7 13 1 * *"
+MONTHLY_EST = "7 14 1 * *"
 ALL_CRONS = (DAILY_EDT, DAILY_EST, WEEKLY_EDT, WEEKLY_EST, MONTHLY_EDT, MONTHLY_EST)
 
 # The six lines exactly as digest-send.yml carries them. If that file changes,
@@ -71,25 +74,25 @@ class TheDaylightSavingBoundary(unittest.TestCase):
 
     def test_the_saturday_before_the_change_is_still_edt(self):
         self.assertEqual(tier(DAILY_EDT, "2026-10-31"), "daily",
-                         "10:00 UTC is 06:00 EDT on 2026-10-31 and must send")
+                         "10:07 UTC is 06:07 EDT on 2026-10-31 and must send")
         self.assertIsNone(tier(DAILY_EST, "2026-10-31"),
-                          "11:00 UTC is 07:00 EDT on 2026-10-31 and must skip; "
+                          "11:07 UTC is 07:07 EDT on 2026-10-31 and must skip; "
                           "letting it through sends the digest twice")
 
     def test_the_monday_after_the_change_is_est(self):
         self.assertEqual(tier(DAILY_EST, "2026-11-02"), "daily",
-                         "11:00 UTC is 06:00 EST on 2026-11-02 and must send")
+                         "11:07 UTC is 06:07 EST on 2026-11-02 and must send")
         self.assertIsNone(tier(DAILY_EDT, "2026-11-02"),
-                          "10:00 UTC is 05:00 EST on 2026-11-02 - an hour early, "
+                          "10:07 UTC is 05:07 EST on 2026-11-02 - an hour early, "
                           "which is exactly the silent drift this guard exists "
                           "to prevent - and must skip")
 
     def test_the_weekly_slot_crosses_the_boundary_the_same_way(self):
         # 2026-11-02 is a Monday, so both weekly ticks are live candidates.
         self.assertEqual(tier(WEEKLY_EST, "2026-11-02"), "weekly",
-                         "12:30 UTC is 07:30 EST and must send the look-back")
+                         "12:37 UTC is 07:37 EST and must send the look-back")
         self.assertIsNone(tier(WEEKLY_EDT, "2026-11-02"),
-                          "11:30 UTC is 06:30 EST - not the slot - and must skip")
+                          "11:37 UTC is 06:37 EST - not the slot - and must skip")
         # 2026-10-26 is the Monday before the change, still EDT.
         self.assertEqual(tier(WEEKLY_EDT, "2026-10-26"), "weekly")
         self.assertIsNone(tier(WEEKLY_EST, "2026-10-26"))
@@ -97,16 +100,16 @@ class TheDaylightSavingBoundary(unittest.TestCase):
     def test_the_monthly_slot_on_the_fall_back_day_itself(self):
         """2026-11-01 is BOTH the fall-back Sunday and the 1st of a month.
 
-        The clocks go back at 02:00 local, so by 13:00 UTC New York is already
-        on EST: 13:00 UTC is 08:00 EST (an hour early, must skip) and 14:00 UTC
-        is 09:00 EST (the slot, must send). The 1st of October, still EDT, is
+        The clocks go back at 02:00 local, so by 13:07 UTC New York is already
+        on EST: 13:07 UTC is 08:07 EST (an hour early, must skip) and 14:07 UTC
+        is 09:07 EST (the slot, must send). The 1st of October, still EDT, is
         the other way round. Both sides, both ticks, on the one date where the
         monthly slot meets the transition.
         """
         self.assertEqual(tier(MONTHLY_EST, "2026-11-01"), "monthly",
-                         "14:00 UTC is 09:00 EST on 2026-11-01 and must send")
+                         "14:07 UTC is 09:07 EST on 2026-11-01 and must send")
         self.assertIsNone(tier(MONTHLY_EDT, "2026-11-01"),
-                          "13:00 UTC is 08:00 EST on 2026-11-01 - an hour early "
+                          "13:07 UTC is 08:07 EST on 2026-11-01 - an hour early "
                           "- and must skip; letting it through mails the "
                           "monthly twice")
         self.assertEqual(tier(MONTHLY_EDT, "2026-10-01"), "monthly")
@@ -193,7 +196,7 @@ class TheGuardIsJudgedOnTheSCHEDULEDTimeNotTheClock(unittest.TestCase):
     """A run GitHub delayed must still know which slot it is.
 
     GitHub delays scheduled runs, sometimes past the hour. A guard reading
-    datetime.now() would reject a delayed 10:00 UTC tick AND the 11:00 UTC
+    datetime.now() would reject a delayed 10:07 UTC tick AND the 11:07 UTC
     tick that fired on time, and the day's digest would silently not go out
     with two green runs behind it.
     """
@@ -415,3 +418,52 @@ class TheWeeklySlotHasItsOwnLivenessRow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ALateTickIsNamedInTheLogAndChangesNothing(unittest.TestCase):
+    """Measured 2026-09-06 to 2026-09-11: the daily tick started four hours
+    late every day, green, and identical in the run list to an on-time run.
+    The slot is still judged from the cron string; this line only makes the
+    delay readable. It takes the start time as an argument so digest_slot
+    still reads no clock."""
+
+    def test_an_on_time_start_prints_nothing(self):
+        start = datetime.datetime(2026, 9, 12, 10, 9, tzinfo=datetime.timezone.utc)
+        self.assertIsNone(digest_slot.late_tick_line(DAILY_EDT, start))
+        start = datetime.datetime(2026, 9, 12, 11, 7, tzinfo=datetime.timezone.utc)
+        self.assertIsNone(digest_slot.late_tick_line(DAILY_EDT, start),
+                          "exactly sixty minutes is not late")
+
+    def test_a_start_over_an_hour_late_prints_both_clocks(self):
+        start = datetime.datetime(2026, 9, 12, 13, 56, tzinfo=datetime.timezone.utc)
+        self.assertEqual(digest_slot.late_tick_line(DAILY_EDT, start),
+                         "LATE TICK: scheduled 10:07 UTC, started 13:56 UTC")
+
+    def test_a_tick_that_crossed_midnight_is_judged_against_yesterday(self):
+        start = datetime.datetime(2026, 9, 13, 0, 30, tzinfo=datetime.timezone.utc)
+        self.assertEqual(digest_slot.late_tick_line("7 23 * * *", start),
+                         "LATE TICK: scheduled 23:07 UTC, started 00:30 UTC")
+
+    def test_the_line_reaches_the_log_and_the_tier_is_unchanged(self):
+        env = {"DIGEST_CRON": DAILY_EDT,
+               "GITHUB_RUN_STARTED_AT": "2026-10-31T13:56:00Z"}
+        import io
+        from contextlib import redirect_stdout
+        out = io.StringIO()
+        with redirect_stdout(out):
+            freqs, skip = digest_send.slot_decision(env, datetime.date(2026, 10, 31))
+        self.assertEqual(freqs, ("daily",))
+        self.assertFalse(skip)
+        self.assertIn("LATE TICK: scheduled 10:07 UTC, started 13:56 UTC",
+                      out.getvalue())
+
+    def test_an_on_time_run_logs_no_late_line(self):
+        env = {"DIGEST_CRON": DAILY_EDT,
+               "GITHUB_RUN_STARTED_AT": "2026-10-31T10:12:00Z"}
+        import io
+        from contextlib import redirect_stdout
+        out = io.StringIO()
+        with redirect_stdout(out):
+            freqs, _ = digest_send.slot_decision(env, datetime.date(2026, 10, 31))
+        self.assertEqual(freqs, ("daily",))
+        self.assertNotIn("LATE TICK", out.getvalue())

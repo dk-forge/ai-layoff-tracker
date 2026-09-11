@@ -239,7 +239,38 @@ def slot_decision(env=None, today=None):
     if tier is None:
         return (), reason
     print(f"digest: {reason}")
+    # THE DELAY, VISIBLE. Measured 2026-09-06 to 2026-09-11 the daily tick
+    # started four hours late every day and nothing in the log said so. This
+    # changes nothing about what is sent: the slot above was judged from the
+    # cron string, and this line only compares that minute to when the runner
+    # actually started (GitHub's own stamp when it has one).
+    late = digest_slot.late_tick_line(cron, _run_started_at(env))
+    if late:
+        print(f"digest: {late}")
     return (tier,), ""
+
+
+def _run_started_at(env=None):
+    """When this run began, as an aware UTC datetime.
+
+    GITHUB_RUN_STARTED_AT is not a documented default variable, so the
+    workflow may or may not set it; the process start clock is the fallback,
+    read once at import so a slow install does not count as delay twice.
+    """
+    env = os.environ if env is None else env
+    raw = (env.get("GITHUB_RUN_STARTED_AT") or "").strip()
+    if raw:
+        try:
+            stamp = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=datetime.timezone.utc)
+            return stamp.astimezone(datetime.timezone.utc)
+        except ValueError:
+            pass
+    return PROCESS_STARTED_AT
+
+
+PROCESS_STARTED_AT = datetime.datetime.now(datetime.timezone.utc)
 
 
 # ---------------------------------------------------------------------------
