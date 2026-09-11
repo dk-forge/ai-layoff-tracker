@@ -33,6 +33,15 @@ holder, so the start-of-session ritual surfaces it automatically.
   undeclared-country invariant, so merge and rerun the country and integrity
   workflows before calling this gate live-green.
 
+  **Production rerun (2026-09-12 CET).** PR #308 merged as `030a5e0`. The
+  follow-up country workflow passed and committed measurement `1d31217`:
+  Mauritius and Palestine are now included in the live 79-country register.
+  The integrity rerun then passed country coverage and 19 other checks; its only
+  remaining UNVERIFIED check was `headline_movement`, because the baseline was
+  2.2 hours old after the 30,000-job correction and had not yet crossed one full
+  ingest cycle. A subsequent daily run must close that timing gate; this is not
+  evidence of a new arithmetic defect.
+
   **Newest production result (2026-09-11 CET).** PR #301 passed all seven
   checks and merged as `525af46660317e453fe8e1994ab20696f71d55be`.
   Railway deployment `ecda9325-77cf-46b0-8efe-7abb2bc451b6` is SUCCESS on that

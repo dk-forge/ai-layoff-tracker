@@ -24636,6 +24636,16 @@ coverage is 42/42 green. The live country and integrity workflows still must be
 rerun after this merge; their prior UNKNOWN was exactly the undeclared-country
 finding, not a data-integrity arithmetic failure.
 
+## 2026-09-12 - production country gate green; headline baseline timing remains
+
+PR #308 merged as `030a5e0`. The follow-up country workflow passed and wrote
+measurement commit `1d31217`, bringing Mauritius and Palestine into the live
+register. The integrity rerun passed country coverage and 19 of 20 checks. Its
+only remaining UNVERIFIED check was `headline_movement`: the baseline was 2.2
+hours old immediately after the 30,000-job correction, shorter than one ingest
+cycle. The guard correctly suppressed advancement rather than laundering that
+movement into a pass. Re-run after a full scheduled cycle.
+
 ## 2026-09-11 - weak-market discovery floor and five live country regimes closed
 
 **Class:** wrong-scope-or-key
