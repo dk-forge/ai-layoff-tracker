@@ -48,6 +48,26 @@ def _english_words(text):
 
 class EveryEditionIsAskedInItsOwnLanguage(unittest.TestCase):
 
+    def test_measured_weak_markets_are_swept_every_run(self):
+        """A once-per-ring query cannot repair a measured regional recall gap.
+
+        GB, Estonia and Taiwan are the three denominator-backed weak markets.
+        Keep them in every unattended run while the rest of the world rotates;
+        the global candidate ceiling still bounds extraction spend.
+        """
+        codes = [loc[0] for loc in google_news._locales_for_now()]
+        self.assertEqual(codes[0], "US", "USA must remain the first priority")
+        for code in ("GB", "EE", "TW"):
+            self.assertIn(code, codes, f"measured weak market {code} is still rotating")
+
+    def test_estonia_has_the_local_legal_and_headline_vocabulary(self):
+        phrases = native.PHRASES_BY_LANG.get("et", ())
+        self.assertIn("kollektiivne koondamine", phrases)
+        self.assertIn("koondab töötajaid", phrases)
+        qs = google_news.queries_for_edition(("EE", "et", "EE", "EE:et"), [])
+        self.assertTrue(qs)
+        self.assertTrue(any("koond" in q for q in qs))
+
     def test_every_non_english_edition_has_a_native_vocabulary(self):
         """An edition with no vocabulary is skipped, so a missing language is
         silent coverage loss. Name every one."""
