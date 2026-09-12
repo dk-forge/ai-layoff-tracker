@@ -1,7 +1,6 @@
 {
   "backlog": [
     "Bosnia and Herzegovina",
-    "Costa Rica",
     "Czechia",
     "Hungary",
     "India",
@@ -221,12 +220,18 @@
       "threshold": "over 6 months, sliding by size: 30% in firms of 10-50, down to 5% above 1000"
     },
     "Costa Rica": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE because no administrative collective-dismissal filing population exists. MTSS labour-conflict and inspection data and INEC employment surveys do not identify compulsory economic redundancy notices and are excluded.",
+      "assessed": "2026-09-12",
+      "authority": null,
+      "cite": "https://www.mtss.go.cr/elministerio/marco-legal/documentos/codigo_trabajo_cr.pdf",
+      "class": "no_regime",
       "entries": 0,
       "jobs": 85,
-      "state": "unknown",
-      "stored_name": "Costa Rica"
+      "regime": "NO collective-dismissal notification or approval regime was found in the current official Codigo de Trabajo. The Code regulates individual termination notice, dismissal grounds, severance and worker remedies, but creates no numeric collective threshold or employer report to MTSS for an ordinary economic redundancy. Article 35's fallback delivery of an individual misconduct dismissal letter to MTSS when the worker refuses it is evidence service, not layoff disclosure. Articles 74-77 require approval for temporary contract suspension, not termination. Temporary COVID working-hour reduction under Law 9832 is also excluded.",
+      "state": "not_measurable",
+      "stored_name": "Costa Rica",
+      "threshold": null
     },
     "Croatia": {
       "age_days": 25,
@@ -1147,7 +1152,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T03:13:47Z",
+  "measured_at": "2026-09-12T03:44:38Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1817,15 +1822,14 @@
   "scope_basis": "countries the tracker holds rows for, read live from /aggregate",
   "scope_state": "measured",
   "tallies": {
-    "no_regime": 6,
+    "no_regime": 7,
     "refused": 6,
     "regime_no_aggregate": 37,
     "regime_with_aggregate": 21,
-    "unassessed": 9
+    "unassessed": 8
   },
   "unassessed": [
     "Bosnia and Herzegovina",
-    "Costa Rica",
     "Czechia",
     "Hungary",
     "India",
