@@ -3214,3 +3214,16 @@ and regional employer/worker totals for 2022-2024 (three employers and 135
 workers in 2024). This is valuable partial regional evidence, not a complete
 current national denominator or named notice register. The new guard first
 failed with `KeyError: 'Czechia'`; merge and live verification remain.
+
+Czechia subsequently merged in PR #327 as `4afa93e8`; its full CI matrix and
+live country workflow `34676771928` passed. It is production-closed and the
+declared country backlog is 4.
+
+Morocco is now the active package. The Justice Ministry's current official
+Labour Code text confirms that articles 66-70 create an ex-ante provincial
+authorization process for covered dismissals at employers with at least ten
+workers. Current HCP labour surveys and OMTPME firm-demography reports are not
+counts of authorization applications, decisions or approved dismissals, and no
+such public aggregate or employer register was located. Applications may be
+refused, so they must never be labelled layoffs. The new guard first failed
+with `KeyError: 'Morocco'`; merge and live verification remain.
