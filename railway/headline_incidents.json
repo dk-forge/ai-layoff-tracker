@@ -194,6 +194,49 @@
     }
   ],
   "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {},
-  "written_at": "2026-09-09T10:01:56Z"
+  "open": {
+    "ai_all_time": {
+      "baseline_at_open": {
+        "captured_at": "2026-09-11T19:57:48Z",
+        "entries": 99,
+        "excluded_entries": 0,
+        "excluded_jobs": 0,
+        "jobs": 270268,
+        "recorded_in": "2026-09-11T19:58:54Z"
+      },
+      "detail": "Worldwide jobs, all time minus AI-attributed jobs, all time moved -57,685 jobs on +9 entries (Worldwide jobs, all time -87,685 jobs on +8 entries; AI-attributed jobs, all time -30,000 jobs on -1 entries). Superset exclusions account for +615 of that, leaving -58,300 jobs unexplained by dedup and moving into AI-attributed jobs, all time against the direction the complement's own rows moved. TWO mechanisms produce this and these readings cannot tell them apart: rows that were ALREADY PUBLISHED re-scored across the boundary, or the rows that LEFT carried more jobs than the rows that arrived \u2014 +9 is a NET figure and bounds neither gross flow, so a handful of large departures hides inside it. Both are invisible to the movement guard, which judges each slice alone and never sees a move that cancels between two. Check, in this order: the corrections log and anything trashed in this window, the dedupe-llm merge runs (a merge restamps no updated_at, so /changed-rows will not show it), then any country/AI relabel job. reconcile-supersets is already accounted for above. the corrections log discloses 2 row(s) removed or merged in this window, which is a CANDIDATE explanation and not a verdict (the log records rows, never their job counts): 2026-09-12: 1 removed \u2014 Source describes 63,000 German automotive-sector cuts and a separate Volkswagen plan of 50,000 by 2030; it ...; 2026-09-11: 1 removed \u2014 two-model adjudication (anthropic/claude-sonnet-4.5 + openai/gpt-4o agree: trash): The source is a retrospe...",
+      "label": "AI-attributed jobs, all time",
+      "observed_at_open": {
+        "captured_at": "2026-09-12T19:35:07Z",
+        "entries": 98,
+        "excluded_entries": 0,
+        "excluded_jobs": 0,
+        "jobs": 240268
+      },
+      "opened_at": "2026-09-12T19:35:48Z",
+      "slice": "ai_all_time"
+    },
+    "worldwide_all_time": {
+      "baseline_at_open": {
+        "captured_at": "2026-09-11T19:57:53Z",
+        "entries": 65586,
+        "excluded_entries": 427,
+        "excluded_jobs": 124073,
+        "jobs": 20651190,
+        "recorded_in": "2026-09-11T19:58:54Z"
+      },
+      "detail": "-87,685 jobs over 1.0d on +8 entries (20,651,190 -> 20,563,505). The rows that changed carry at most 30,228 and the largest single row is 60,000, so NO ROW EXPLAINS THIS. Something re-scored rows that were already published: check the last reconcile-supersets run, any /bulk-purge, and the corrections log",
+      "label": "Worldwide jobs, all time",
+      "observed_at_open": {
+        "captured_at": "2026-09-12T19:35:14Z",
+        "entries": 65594,
+        "excluded_entries": 425,
+        "excluded_jobs": 123458,
+        "jobs": 20563505
+      },
+      "opened_at": "2026-09-12T19:35:48Z",
+      "slice": "worldwide_all_time"
+    }
+  },
+  "written_at": "2026-09-12T19:35:48Z"
 }
