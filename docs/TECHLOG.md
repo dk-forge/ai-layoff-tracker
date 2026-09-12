@@ -24836,6 +24836,19 @@ system and acknowledges incomplete capture. No article-38 filing aggregate or
 employer register was located. TDD: the guard first failed with `KeyError:
 'Indonesia'`. Merge plus live verification remain.
 
+## 2026-09-12 - Costa Rica's official Labour Code establishes no regime
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Costa Rica is now `NO_REGIME`. MTSS's current consolidated Labour Code was
+checked for collective economic dismissal duties and contains no government
+filing, approval or numeric threshold. Article 35 delivery of an individual
+misconduct letter when a worker refuses it is evidence service; articles 74-77
+cover temporary contract suspension; Law 9832 was a temporary COVID hours
+measure. None is a layoff-disclosure regime. The guard first failed with
+`KeyError: 'Costa Rica'`; merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  

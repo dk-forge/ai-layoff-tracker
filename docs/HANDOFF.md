@@ -3151,3 +3151,13 @@ ministry and/or regional office. The former backlog note stopped one article too
 soon. Satu Data's published worker count is explicitly a JKP insurance-claim
 population, not the article-38 report denominator. The TDD guard failed first on
 the absent entry; merge and live verification remain.
+
+Indonesia subsequently merged in PR #321 as `9a4cbcc`; its full CI matrix and
+live country workflow `34669791613` passed. It is production-closed and the
+declared country backlog is 9.
+
+Costa Rica is now the active package. The current official Labour Code contains
+no collective-dismissal threshold, MTSS notification or approval for ordinary
+economic redundancy. Individual refused-letter delivery, temporary contract
+suspension approval and temporary COVID hours reduction are explicitly rejected
+near-misses. The TDD guard failed first; merge and live verification remain.
