@@ -72,11 +72,6 @@
       "last": 1789229088,
       "subject": "CI RED: Rendered contrast audit \u2014 RESULT: FAIL \u2014 96 contrast violation(s) are live for readers (text and/or control boundaries)."
     },
-    "tests:live.data:240a9bbebb4867de": {
-      "first": 1789252040,
-      "last": 1789252040,
-      "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 504 \u2014 server regression, not a blip"
-    },
     "tests:main:7ba8f6d0b4896be7": {
       "first": 1789249838,
       "last": 1789249838,
@@ -88,6 +83,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T23:46:33+00:00",
+  "updated_at": "2026-09-12T23:46:34+00:00",
   "version": 1
 }
