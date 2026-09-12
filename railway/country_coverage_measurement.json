@@ -5,7 +5,6 @@
     "Czechia",
     "Hungary",
     "India",
-    "Indonesia",
     "Isle of Man",
     "Morocco",
     "Pakistan",
@@ -432,12 +431,18 @@
       "stored_name": "India"
     },
     "Indonesia": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED for article-38 reports. Kemnaker Satu Data does publish monthly province-level counts of terminated workers, but its own 2026 snapshot says those are workers recorded in the JKP job-loss insurance claims system. That claimant population is not the article-38 employer-report population, is acknowledged incomplete, and is excluded as a filing denominator.",
+      "assessed": "2026-09-12",
+      "authority": "Ministry of Manpower and/or the competent provincial or regency/city labour office",
+      "cite": "https://jdih.kemnaker.go.id/asset/data_puu/PP352021.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 200,
-      "state": "unknown",
-      "stored_name": "Indonesia"
+      "regime": "Government Regulation No. 35 of 2021, articles 37-39. Article 37 requires the employer to give the worker and/or company union a written termination reason no later than 14 working days before termination (7 during probation). Article 38 then requires the employer to report the termination to the national labour ministry and/or provincial or municipal labour office when the notified worker does not object. An objection instead enters the bipartite industrial-dispute route in article 39. The government report was omitted from the former backlog note and changes the classification.",
+      "state": "not_measurable",
+      "stored_name": "Indonesia",
+      "threshold": "no collective numeric floor; article 38 covers a termination after the affected worker receives notice and does not object"
     },
     "Ireland": {
       "age_days": 25,
@@ -1142,7 +1147,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T01:40:35Z",
+  "measured_at": "2026-09-12T03:13:47Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1814,9 +1819,9 @@
   "tallies": {
     "no_regime": 6,
     "refused": 6,
-    "regime_no_aggregate": 36,
+    "regime_no_aggregate": 37,
     "regime_with_aggregate": 21,
-    "unassessed": 10
+    "unassessed": 9
   },
   "unassessed": [
     "Bosnia and Herzegovina",
@@ -1824,7 +1829,6 @@
     "Czechia",
     "Hungary",
     "India",
-    "Indonesia",
     "Isle of Man",
     "Morocco",
     "Pakistan",
