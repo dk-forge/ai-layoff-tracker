@@ -47,7 +47,47 @@ holder, so the start-of-session ritual surfaces it automatically.
   source policies differ. The refresh identifies the required comparison
   dimensions but does not substantiate a top-three ranking.
 
-  **Current closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
+  **Restart checklist for the next ChatGPT session.** Start in this worktree,
+  run `git status` and `git log --oneline -5`, then claim the baton before
+  editing. Read `docs/TECHLOG.md`, `docs/COMPETITOR_BENCHMARK_2026-09-12.md`,
+  and the latest `railway/ops_status.py` output. Do not use the unrelated parent
+  sandbox as the tracker repository. Do not replay the weekly digest manually.
+
+  1. At the next scheduled 22:00 UTC run, verify GDELT has a terminal finish,
+     no lost window, no unexplained cap, and a recovered retry ledger. Record
+     the run id and verdict. Repeat until seven clean scheduled runs span
+     fourteen days; this is a real calendar gate, not a test-suite assertion.
+  2. Re-run the daily integrity check after a full ingest cycle so the
+     `headline_movement` UNKNOWN caused by the 30,000-job correction can be
+     judged. UNKNOWN is not PASS.
+  3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
+     the 69 shape candidates and 12 dateless rows one source at a time. Never
+     merge on count/date alone and never call a national-total share recall.
+  4. Refresh the private benchmark with matching date basis, amendments,
+     notice-vs-effective semantics, source classes and country scope. The
+     public comparison file is a starting evidence snapshot, not a ranking.
+  5. Resolve archive pending/exhausted queues through the existing cadence;
+     do not promise 100% Wayback coverage where the publisher or archive is
+     unavailable.
+
+  The current branch contains two local documentation commits after `origin/main`:
+  `64cd9e13` (correction receipt) and `55fd3f03` (benchmark refresh). The last
+  push was rejected by the ChatGPT usage-limit permission gate; retry a normal
+  `git push` when repository access returns. Do not bypass that gate or rewrite
+  history. The quiet heartbeat `layoff-tracker-top-three-proof` is already
+  attached and should remain active while time-based proof is pending.
+
+  **Status language.** Say “US is strongest measured slice,” “country regimes
+  classified,” and “GDELT proof in progress.” Do not say “100% global,” “full
+  recall,” or “top three” until the measured gates above pass and the benchmark
+  supports the claim.
+
+  **Historical notes below.** The older entries that follow preserve prior
+  evidence and decisions; when they say “pending,” “active package,” or name a
+  smaller country backlog, use the newest closeout and restart checklist above
+  as the source of truth.
+
+  **Historical closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
   The watermark repair is deployed and the daily 22:00 UTC schedule must now
   accumulate seven genuinely clean runs over fourteen days; the quiet Codex
   heartbeat `layoff-tracker-top-three-proof` checks this every 30 minutes and
