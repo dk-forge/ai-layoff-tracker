@@ -12,13 +12,21 @@ if (!defined('ABSPATH')) exit;
 define('ALT_CONTACT_TO', 'info@asktherecruiter.com');
 
 function alt_contact_topics() {
+    // Alphabetical, with the catch-all pinned last: a person scanning a list
+    // looks for their own words, and "Something Else" is the one option that
+    // is only correct once every other line has been ruled out.
+    //
+    // The labels say what the person is bringing us, not what we call it
+    // internally. "Data correction" made someone guess whose data; "API or
+    // dataset access" means nothing to a reader who has never used an API.
     return array(
-        'correction'  => 'Data correction',
-        'tip'         => 'Report a layoff we\'re missing',
-        'press'       => 'Press / journalist inquiry',
-        'api'         => 'API or dataset access',
-        'partnership' => 'Partnership / advertising',
-        'other'       => 'Something else',
+        'tip'         => 'A Layoff You Are Missing',
+        'api'         => 'Access to the Data or API',
+        'app'         => 'Help With the Resume Tool',
+        'partnership' => 'Partnership or Advertising',
+        'press'       => 'Press or Media Enquiry',
+        'correction'  => 'Something in the Tracker Looks Wrong',
+        'other'       => 'Something Else',
     );
 }
 
@@ -250,7 +258,7 @@ add_action('admin_post_nopriv_alt_press_subscribe', 'alt_press_subscribe_submit'
  * version bump — same trigger as the cache flush).
  */
 function alt_contact_intro_html() {
-    return "<!-- wp:paragraph --><p>Got a question, a correction, a press request, or a layoff we should be tracking? Fill out the form below and it comes straight to us.</p><!-- /wp:paragraph -->\n\n<!-- wp:shortcode -->[alt_contact]<!-- /wp:shortcode -->";
+    return "<!-- wp:paragraph --><p>Tell us about a layoff we have missed, something in the tracker that looks wrong, or anything else. Pick the closest subject below and it comes straight to us.</p><!-- /wp:paragraph -->\n\n<!-- wp:shortcode -->[alt_contact]<!-- /wp:shortcode -->";
 }
 
 function alt_ensure_contact_page() {
@@ -265,16 +273,39 @@ function alt_ensure_contact_page() {
 }
 
 /**
- * One-time: refresh the stored /contact intro to the current copy (the create
- * hook won't touch an existing page). Guarded so a later owner edit is safe.
+ * Refresh the stored /contact intro to the current copy. The create hook will
+ * not touch a page that already exists, so without this the intro on the live
+ * site is frozen at whatever wording shipped the day the page was created.
+ *
+ * The option is keyed by copy REVISION, not by a bare "done" flag: a plain flag
+ * closes the door behind the first migration, which is why the v2 copy sat live
+ * after the wording moved on. Bump ALT_CONTACT_INTRO_REV whenever
+ * alt_contact_intro_html() changes, and add the superseded sentence to the list
+ * below so the guard still recognises the page as ours.
+ *
+ * The guard is what protects an owner edit: we only overwrite content that is
+ * still verbatim one of OUR shipped intros. Anything hand-written on the page
+ * stops the migration and stays.
  */
+define('ALT_CONTACT_INTRO_REV', 3);
+
+function alt_contact_intro_shipped_phrases() {
+    return array(
+        'goes straight to our inbox',
+        'Got a question, a correction, a press request',
+    );
+}
+
 function alt_contact_intro_migrate() {
-    if (get_option('alt_contact_intro_v2')) return;
+    if ((int) get_option('alt_contact_intro_rev') >= ALT_CONTACT_INTRO_REV) return;
     $p = get_page_by_path('contact');
     if (!$p) return;
-    if (strpos((string) $p->post_content, 'goes straight to our inbox') !== false) {
-        wp_update_post(array('ID' => $p->ID, 'post_content' => alt_contact_intro_html()));
+    foreach (alt_contact_intro_shipped_phrases() as $phrase) {
+        if (strpos((string) $p->post_content, $phrase) !== false) {
+            wp_update_post(array('ID' => $p->ID, 'post_content' => alt_contact_intro_html()));
+            break;
+        }
     }
-    update_option('alt_contact_intro_v2', 1, false);
+    update_option('alt_contact_intro_rev', ALT_CONTACT_INTRO_REV, false);
 }
 add_action('init', 'alt_contact_intro_migrate', 21);

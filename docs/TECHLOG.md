@@ -1,3 +1,42 @@
+## 2026-09-12 - The /contact intro was frozen at the copy that shipped the day the page was created
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_contact_intro_revision.py`
+
+An FTP deploy cannot create or edit a WordPress page, so the plugin does it
+from an init hook. `alt_ensure_contact_page()` returns early when the page
+exists, which is correct, and a separate one-shot migration refreshed the
+stored paragraph. That migration was keyed on `alt_contact_intro_v2`, a bare
+flag, set on the live site the day the v2 copy landed. When the wording moved
+on, the door was already closed: the repo held one paragraph and the reader
+saw another, with no surface reporting the difference and no way to notice
+except by opening the page.
+
+The option answered "has a migration ever run here" when the question is
+"which revision of our copy is on this page". It is keyed by revision now,
+compared with `>=` so a site that skipped one still catches up, and every
+superseded sentence is listed in `alt_contact_intro_shipped_phrases()`. The
+hand-edit guard is unchanged in substance: the migration overwrites only
+content that is verbatim one of our own shipped intros.
+
+The guard counts. `ALT_CONTACT_INTRO_REV` must equal the number of superseded
+phrases plus one, so changing the copy without retiring the old sentence, or
+retiring it without bumping, fails the test rather than silently freezing the
+live page a second time. It also fails when a shipped phrase appears in the
+CURRENT intro, which would make the guard match its own output.
+
+The same commit rewrote the seven subject options, which was the owner-visible
+half: they were a mix of internal vocabulary ("Data correction", "API or
+dataset access") in sentence case and arbitrary order. They are title case now,
+alphabetical with the catch-all pinned last, phrased as what the person is
+bringing us, and carry a new "Help With the Resume Tool" option because the
+resume app has no contact route of its own. The keys are untouched, so the mail
+handler and the `tip` path into the tips ledger behave exactly as before, and
+the test pins that too.
+
+Red first on the pre-change tree: 8 of 9 assertions fail, the first being
+`AssertionError: 'Something else' != 'Something Else'`.
+
 ## 2026-09-12 - A valid code deployment could still kill the daily GDELT run
 
 **Class:** started-not-finished
