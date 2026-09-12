@@ -29,6 +29,27 @@ holder, so the start-of-session ritual surfaces it automatically.
   service manifest reports `overlapSeconds: 7200`, then begin the clean-run
   clock from the next protected scheduled run.
 
+  **Current integration point (2026-09-13 01:40 CEST).** PR #336 contains the
+  typed-config repair and its red-first guard. Local targeted tests pass 10/10,
+  TOML parses `overlapSeconds` as an integer, and `git diff --check` is clean.
+  Do **not** merge yet: Actions run `34722447904` is red. On the first attempt
+  the live-data shards received HTTP 504 during the ChemiCloud outage. After
+  the public tracker recovered locally to HTTP 200, the rerun's `rest-2` shard
+  passed but `rest` received HTTP 403 from the live API for seven integrity
+  assertions. This is a production-access gate, not a failure of the new TOML
+  unit guard, and it must remain red/UNKNOWN until a clean rerun evaluates the
+  live invariants. Never weaken or skip those assertions to merge this PR.
+
+  **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
+  itself completed cleanly: the BigQuery mirror returned 5,497 articles with
+  zero throttled, abandoned or capped windows; 660 candidates were attempted
+  and 651 fetched. Publication then met sustained host/edge HTTP 504s. The run
+  pulled 1,101 candidates, posted 0, recorded 75 post failures, spent $0.1598
+  across 1,544 model calls, and failed loudly. Work-ledger and source-health
+  writes also failed. The public tracker and API later recovered, but recovery
+  does not convert this run into a pass. The seven-run/fourteen-day clock has
+  not started.
+
   **Newest closeout (2026-09-12 19:00 CEST).** PRs #328, #329 and #330 are
   merged and green. The post-merge country-register run `34700082245` passed:
   every one of the 79 countries currently represented in the corpus now has a
@@ -59,12 +80,13 @@ holder, so the start-of-session ritual surfaces it automatically.
   incidents were closed through `data_integrity.py --close-incident`; the
   closure reasons identify rows 179276 and 176988 and install explicit
   replacement baselines. Those ledger commits are already on `origin/main`,
-  and no headline incident remains open. Rerun PR #333 and merge only after
-  every check is green.
+  PR #333 is merged, final live integrity run `34720705216` passed all 20/20,
+  and no headline incident remains open.
 
-  Remaining proof, not implementation theatre: the first protected GDELT run
-  is due at 22:00 UTC on September 12, then seven clean scheduled runs across
-  fourteen days remain required; the independent US/Europe/global competitor
+  Remaining proof, not implementation theatre: after PR #336 merges and a
+  Railway deployment proves the numeric overlap setting, the next protected
+  scheduled run can begin the seven-clean-runs-across-fourteen-days gate. The
+  independent US/Europe/global competitor
   benchmark is still UNKNOWN; weak UK/Estonia/Taiwan official-total shares and
   the remaining duplicate/archive worklists are still open. Never call the
   tracker top-three until those measurements support it.
@@ -83,30 +105,32 @@ holder, so the start-of-session ritual surfaces it automatically.
   and the latest `railway/ops_status.py` output. Do not use the unrelated parent
   sandbox as the tracker repository. Do not replay the weekly digest manually.
 
-  1. At the next scheduled 22:00 UTC run, verify GDELT has a terminal finish,
+  1. Inspect PR #336. Rerun only the failed Actions jobs after confirming both
+     the public tracker and API answer normally from an external client. Merge
+     only when every required check is green. Then verify Railway accepted and
+     successfully deployed a manifest with numeric `overlapSeconds: 7200`.
+  2. At the next scheduled 22:00 UTC run after that deployment, verify GDELT has a terminal finish,
      no lost window, no unexplained cap, and a recovered retry ledger. Record
      the run id and verdict. Repeat until seven clean scheduled runs span
      fourteen days; this is a real calendar gate, not a test-suite assertion.
-  2. The two correction-driven `headline_movement` incidents are reconciled
-     and closed on `origin/main`. Re-run the daily integrity check;
-     the containment pair may be UNKNOWN once because the two explicit close
-     baselines have separate epochs. The next recorder run should advance the
-     complete group together. UNKNOWN is not PASS.
-  3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
+  3. Add a separate red-first host-readiness guard before paid extraction. If
+     the required publish/read endpoint is unavailable or returns 5xx, defer
+     candidates without marking them seen and do not spend model budget. Keep
+     the existing per-item fail-open behavior for isolated seen-URL errors;
+     this guard is for a host-wide outage like September 12.
+  4. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
      the 69 shape candidates and 12 dateless rows one source at a time. Never
      merge on count/date alone and never call a national-total share recall.
-  4. Refresh the private benchmark with matching date basis, amendments,
+  5. Refresh the private benchmark with matching date basis, amendments,
      notice-vs-effective semantics, source classes and country scope. The
      public comparison file is a starting evidence snapshot, not a ranking.
-  5. Resolve archive pending/exhausted queues through the existing cadence;
+  6. Resolve archive pending/exhausted queues through the existing cadence;
      do not promise 100% Wayback coverage where the publisher or archive is
      unavailable.
 
-  The current branch contains four commits after `origin/main`: `e5b56aad`
-  (correction receipt), `0f120ac1` (benchmark refresh), `e32858e7`
-  (restart-ready handoff), and the branch tip (headline-incident documentation).
-  PR #333 is the integration point. Do not merge it unless every required check
-  is green. The quiet heartbeat `layoff-tracker-top-three-proof` is already
+  PR #336 is the current integration point. Do not merge it unless every
+  required check is green. The quiet heartbeat
+  `layoff-tracker-top-three-proof` is already
   attached and should remain active while time-based proof is pending.
 
   **Status language.** Say “US is strongest measured slice,” “country regimes

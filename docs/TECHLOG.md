@@ -58,6 +58,25 @@ Production proof is a successful Railway deployment whose manifest reports the
 numeric value, followed by a protected scheduled run with a terminal GDELT
 finish.
 
+The September 12 22:00 UTC run cannot supply that proof. It ran on the last
+valid pre-overlap deployment. Its GDELT discovery stage was healthy (5,497
+mirror articles; zero throttled, abandoned or capped windows; 660 attempted and
+651 fetched), but the ChemiCloud/Cloudflare publication path returned sustained
+HTTP 504s. The full run pulled 1,101 candidates, posted 0, recorded 75 post
+failures, and spent $0.1598 across 1,544 model calls before failing loudly;
+work-ledger and source-health writes also failed. This exposes a separate cost
+and reliability gap: a host-wide readiness check must stop before paid
+extraction while leaving the queued candidates resumable. Do not change the
+existing per-item seen-URL fail-open contract to disguise that outage.
+
+PR #336's local evidence is green: the overlap/incident target is 10/10, TOML
+parses the value as an integer, and the diff check is clean. Actions run
+`34722447904` remains a legitimate integration gate: the first live attempt
+received 504s; after local recovery the rerun passed `rest-2`, but `rest`
+received HTTP 403 for seven live integrity reads. The new configuration test
+did not fail. Merge remains prohibited until all required live checks evaluate
+and pass, followed by a successful Railway deployment with the numeric value.
+
 ## 2026-09-12 - The contact form could not be submitted from a cached page, and told the sender they looked like spam
 
 **Class:** cache-served-stale
