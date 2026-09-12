@@ -24786,6 +24786,22 @@ security benefit claims remain excluded as different populations. The new TDD
 guard failed with `KeyError: 'Thailand'` before implementation. Merge plus a
 live country workflow remain the production gate.
 
+## 2026-09-12 - New Zealand's no-regime finding reaches primary law
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+New Zealand is now `NO_REGIME`. The current Employment Relations Act 2000 and
+official Employment New Zealand redundancy guidance were read for an external
+notification duty. They require a genuine reason, good-faith consultation,
+redeployment consideration and employee notice, but identify no government
+filing, collective threshold or public recipient. Part 6A and section 69O deal
+with restructuring protections and entitlement disputes, not disclosure.
+
+Stats NZ job-displacement and employment surveys are explicitly excluded as
+sampled statistics rather than administrative filings. TDD: the guard first
+failed with `KeyError: 'New Zealand'`. Merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
