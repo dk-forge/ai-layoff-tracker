@@ -1078,35 +1078,6 @@ ACKNOWLEDGED_BACKLOG = {
       "403s an identifying agent; labourbureau.gov.in answers 200 and is the "
       "permitted route."
       ),
-    'Indonesia': ("2026-08-18",
-      "THE REGIME ITSELF IS NOW IN DOUBT, WHICH IS A STRONGER STATEMENT THAN "
-      "THE PREVIOUS NOTE MADE. The notification article under UU 13/2003 as "
-      "amended by UU 6/2023 with PP 35/2021 appears to be PP 35/2021 Pasal 37, "
-      "and ITS ADDRESSEE IS NOT THE GOVERNMENT: the purpose and reasons of a "
-      "PHK are notified by the employer TO THE WORKER AND/OR THE UNION, by "
-      "surat pemberitahuan at least 14 working days ahead (7 in probation). No "
-      "general duty to notify a public authority of a collective PHK was found; "
-      "the state enters at the DISPUTE stage through bipartite negotiation and "
-      "Disnaker mediation under UU 2/2004, and the pre-Cipta-Kerja penetapan "
-      "requirement was removed. DO NOT PUBLISH NO_REGIME ON THIS: both official "
-      "primary hosts REFUSED us — peraturan.bpk.go.id, the official legal "
-      "database, names ClaudeBot with 'Disallow: /', and so does "
-      "learning.hukumonline.com — so Pasal 37 is secondary. THE PERMITTED "
-      "ALTERNATIVE IS IDENTIFIED AND NOT YET MINED: jdih.setneg.go.id serves "
-      "'User-agent: * / Disallow:' (fully permitted). TO CLOSE: read PP 35/2021 "
-      "arts. 37-40 and UU 13/2003 art. 151 there. SEPARATELY, a count IS "
-      "published and it is exactly as mixed as suspected — Kemnaker's Satu Data "
-      "publishes monthly WORKER counts by province (Jan-Jun 2026: 32,389; 2024: "
-      "77,965), classified by JKP unemployment-insurance participation and "
-      "excluding resignation, retirement, disability and death per PP 6/2025 "
-      "and Permenaker 2/2025, compiled from regional office reports and "
-      "acknowledged incomplete. THE CONSEQUENCE IS THE INTERESTING PART: a "
-      "count exists that is NOT the by-product of a notification duty, so "
-      "Indonesia cannot be classified as REGIME_WITH_AGGREGATE without settling "
-      "the Pasal 37 addressee question first. REJECTED: BPS publishes no PHK "
-      "count — its 'PHK' indicator is the percentage of HOUSEHOLDS receiving "
-      "severance pay, from a household survey."
-      ),
     'Isle of Man': ("2026-08-18",
       "LEANS NO_REGIME, NOW ON TWO POSITIVE SECONDARY STATEMENTS RATHER THAN "
       "ON SILENCE, AND STILL NOT RECORDED. Two independent practitioner sources "
@@ -1950,6 +1921,32 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://www.labour.gov.hk/eng/public/wcp/ConciseGuide/"
                  "EO_guide_full.pdf"),
+    },
+
+    "Indonesia": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Government Regulation No. 35 of 2021, articles 37-39. "
+                   "Article 37 requires the employer to give the worker and/or "
+                   "company union a written termination reason no later than 14 "
+                   "working days before termination (7 during probation). Article "
+                   "38 then requires the employer to report the termination to the "
+                   "national labour ministry and/or provincial or municipal labour "
+                   "office when the notified worker does not object. An objection "
+                   "instead enters the bipartite industrial-dispute route in article "
+                   "39. The government report was omitted from the former backlog "
+                   "note and changes the classification."),
+        "authority": ("Ministry of Manpower and/or the competent provincial or "
+                      "regency/city labour office"),
+        "threshold": ("no collective numeric floor; article 38 covers a termination "
+                      "after the affected worker receives notice and does not object"),
+        "aggregate": ("NONE LOCATED for article-38 reports. Kemnaker Satu Data does "
+                      "publish monthly province-level counts of terminated workers, "
+                      "but its own 2026 snapshot says those are workers recorded in "
+                      "the JKP job-loss insurance claims system. That claimant "
+                      "population is not the article-38 employer-report population, is "
+                      "acknowledged incomplete, and is excluded as a filing denominator."),
+        "assessed": "2026-09-12",
+        "cite": "https://jdih.kemnaker.go.id/asset/data_puu/PP352021.pdf",
     },
 
     "Afghanistan": {

@@ -24818,6 +24818,24 @@ disclosure events; workforce surveys are also excluded.
 TDD: the country guard first failed with `KeyError: 'Hong Kong'`. Merge plus a
 live country workflow remain the production gate.
 
+## 2026-09-12 - Indonesia article 38 corrects the reporting-regime finding
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Indonesia is `REGIME_NO_AGGREGATE`, not no-regime. PP 35/2021 article 37 sends
+the advance termination notice to the worker or union, but the old research
+stopped there. Article 38 requires the employer to report the termination to the
+national ministry and/or regional labour office when the worker does not object;
+article 39 routes objections through the industrial-dispute process. There is no
+collective numeric floor.
+
+Kemnaker's public monthly PHK total is not promoted as the denominator because
+its own 2026 snapshot defines it as workers recorded in the JKP insurance-claim
+system and acknowledges incomplete capture. No article-38 filing aggregate or
+employer register was located. TDD: the guard first failed with `KeyError:
+'Indonesia'`. Merge plus live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
