@@ -82,6 +82,11 @@
       "last": 1789229088,
       "subject": "CI RED: Rendered contrast audit \u2014 RESULT: FAIL \u2014 96 contrast violation(s) are live for readers (text and/or control boundaries)."
     },
+    "tests:live.data:4c51a688fc18dee4": {
+      "first": 1789244624,
+      "last": 1789244624,
+      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-09-12T19:35:48Z): Worldwide jobs, all"
+    },
     "tests:live.data:eacb9ee45de18437": {
       "first": 1789163848,
       "last": 1789163848,
@@ -93,6 +98,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T19:36:03+00:00",
+  "updated_at": "2026-09-12T20:23:44+00:00",
   "version": 1
 }
