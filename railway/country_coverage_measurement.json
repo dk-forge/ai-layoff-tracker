@@ -2,7 +2,6 @@
   "backlog": [
     "Bosnia and Herzegovina",
     "Czechia",
-    "Hungary",
     "India",
     "Morocco",
     "Pakistan"
@@ -403,12 +402,18 @@
       "threshold": null
     },
     "Hungary": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NO COMPLETE NATIONAL AGGREGATE LOCATED. NFSZ and county government offices publish some periodic county labour-market reports that mention notified collective-redundancy decisions and affected workers; for example official 2025 reports for Bacs-Kiskun and Nograd. The publication is fragmented and the complete 20-county-plus-Budapest population is not exposed as one national series or named employer register. Expected-headcount surveys and redundancy-avoidance subsidies are different populations and are explicitly excluded.",
+      "assessed": "2026-09-12",
+      "authority": "the competent state employment body, administered through the county or Budapest government office",
+      "cite": "https://njt.hu/jogszabaly/2012-1-00-00.1",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 172643,
-      "state": "unknown",
-      "stored_name": "Hungary"
+      "regime": "Labour Code, Act I of 2012, sections 71-76. Section 72 requires works-council consultation. Section 74 requires written notice of both the intended and decided collective redundancy to the state employment body; the decision notice precedes dismissal by at least 30 days and includes each affected worker's identifying data, role and qualification.",
+      "state": "not_measurable",
+      "stored_name": "Hungary",
+      "threshold": "within 30 days: at least 10 workers where the employer has 21-99 employees; 10 percent where it has 100-299; or at least 30 where it has 300 or more, calculated per workplace with sites in the same county combined"
     },
     "Iceland": {
       "age_days": 24,
@@ -1162,7 +1167,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T04:37:30Z",
+  "measured_at": "2026-09-12T05:16:33Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1834,14 +1839,13 @@
   "tallies": {
     "no_regime": 8,
     "refused": 6,
-    "regime_no_aggregate": 38,
+    "regime_no_aggregate": 39,
     "regime_with_aggregate": 21,
-    "unassessed": 6
+    "unassessed": 5
   },
   "unassessed": [
     "Bosnia and Herzegovina",
     "Czechia",
-    "Hungary",
     "India",
     "Morocco",
     "Pakistan"
