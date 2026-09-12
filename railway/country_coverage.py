@@ -1024,20 +1024,6 @@ ACKNOWLEDGED_BACKLOG = {
       "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
       "or a real PDF library."
       ),
-    'India': ("2026-08-18",
-      "A PERMISSION REGIME, NOT A NOTIFICATION ONE, and the distinction is "
-      "load-bearing: permission can be REFUSED and the layoff then never "
-      "happens, so a count of applications is not a count of layoffs. Industrial "
-      "Disputes Act 1947 Ch. V-B (establishments above 100, or 300 in some "
-      "states) — STATUTE NOT VERIFIED here and must not be restated from "
-      "memory. One sweep reports the only published series is voluntary state "
-      "returns, roughly 3 years stale, scanned-image PDFs, with implausible "
-      "single-digit national case counts; another found no "
-      "industrial-disputes/retrenchment series in the Labour Bureau navigation "
-      "at all. Neither is verified. ACCESS: every *.gov.in and *.nic.in host "
-      "403s an identifying agent; labourbureau.gov.in answers 200 and is the "
-      "permitted route."
-      ),
     'Morocco': ("2026-08-18",
       "THE STATUTE IS NOW READ IN FULL AND PUBLICATION IS UNKNOWN — those are "
       "two separate states and the entry must not collapse them. Code du "
@@ -1127,6 +1113,40 @@ REGISTER = {
         "denominator_basis": "closed_enumeration_primary_regulator_index",
         "assessed": "2026-08-18",
         "cite": "https://efts.sec.gov/LATEST/search-index?q=%22Item%202.05%22&forms=8-K",
+    },
+
+    "India": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Industrial Relations Code 2020, Chapter X, sections 77-80, "
+                   "in force from 21 November 2025. Covered factories, mines and "
+                   "plantations may not lay off or retrench workers without prior "
+                   "permission from the appropriate Government; closure likewise "
+                   "requires a prior application. Applications state the reason and "
+                   "affected-worker count and are copied to the workers. The 2026 "
+                   "Central Rules prescribe Form XIV for these applications."),
+        "authority": ("the appropriate Central or State Government, or its specified "
+                      "authority; Central-sphere returns flow through the Regional "
+                      "Labour Commissioners to the Labour Bureau"),
+        "threshold": ("Chapter X applies to a non-seasonal factory, mine or plantation "
+                      "averaging at least 300 workers per working day in the preceding "
+                      "12 months, or a higher threshold notified by the appropriate "
+                      "Government"),
+        "aggregate": ("PUBLISHED, BUT PARTIAL AND LAGGED. The Labour Bureau's annual "
+                      "Statistics on Industrial Disputes, Closures, Retrenchments and "
+                      "Lay-offs reports cases and affected workers by State/Central "
+                      "sphere, sector, state and industry. The current index reaches "
+                      "2023. The Bureau expressly says the reports are compiled from "
+                      "information furnished voluntarily each month by State Labour "
+                      "Commissioners and Regional Labour Commissioners (Central), so "
+                      "this is not a complete national enumeration, not an employer-"
+                      "named register and not a recall denominator. Permission "
+                      "applications can also be refused, so application counts must "
+                      "never be labelled completed layoffs. Source: "
+                      "https://labourbureau.gov.in/report-on-statistics-on-industrial-"
+                      "disputes-closures-retrenchments-and-layoff-in-india"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-09-12",
+        "cite": "https://www.indiacode.nic.in/bitstream/123456789/22040/1/aa202035.pdf",
     },
 
     "Sweden": {

@@ -171,6 +171,17 @@ class EveryEntryIsCheckable(unittest.TestCase):
         self.assertIn("mpsv.cz", entry["cite"])
         self.assertNotIn("Czechia", cc.ACKNOWLEDGED_BACKLOG)
 
+    def test_india_is_a_classification_not_permanent_backlog(self):
+        """Current law and the Labour Bureau series settle India's regime."""
+        entry = cc.REGISTER["India"]
+        self.assertEqual(entry["class"], cc.REGIME_WITH_AGGREGATE)
+        self.assertIn("indiacode.nic.in", entry["cite"])
+        self.assertIn("labourbureau.gov.in", entry["aggregate"])
+        self.assertIn("voluntar", entry["aggregate"].lower())
+        self.assertEqual(entry["denominator_basis"],
+                         "national_notification_aggregate")
+        self.assertNotIn("India", cc.ACKNOWLEDGED_BACKLOG)
+
     def test_a_country_with_a_regime_names_its_authority_and_threshold(self):
         """"A regime exists" is only checkable if it says who receives the notice.
 

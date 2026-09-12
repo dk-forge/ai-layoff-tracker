@@ -24976,7 +24976,7 @@ than reported-unverified. TDD: the Czechia guard first failed with
 
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
-**Class:** wrong-scope-or-key  
+**Class:** wrong-scope-or-key
 **Guard:** `railway/tests/test_country_coverage.py`
 
 China is now `REGIME_NO_AGGREGATE`, using MOHRSS's own current text of Labour
@@ -25068,3 +25068,24 @@ work window four days behind the current clock while leaving each caller's
 code and does not widen the production retry horizon. The same CI run also had
 one live-site read timeout; that remains a real UNKNOWN/transient rerun gate and
 was not converted into a pass.
+
+## 2026-09-12 - India moves from acknowledged backlog to classified regime
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+India is now `REGIME_WITH_AGGREGATE` on the closeout branch. India Code's
+current Act 35 of 2020 and the commencement notification establish an active
+300-worker Chapter X permission regime for covered factories, mines and
+plantations. The final 2026 Central Rules supply Form XIV for lay-off,
+retrenchment and closure applications.
+
+The Labour Bureau's current official publication index reaches 2023 and
+contains annual case and affected-worker totals. The Bureau expressly labels
+the underlying monthly returns voluntary. The registry therefore records the
+series as partial and lagged, rejects it as recall or a named-employer register,
+and warns that permission applications are not completed layoffs.
+
+Red first: the new test failed on missing `REGISTER["India"]`. Green after
+implementation: 55/55 country tests; the live measurement passed and reduced
+the declared backlog from three countries to two.

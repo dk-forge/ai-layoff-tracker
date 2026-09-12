@@ -3214,3 +3214,32 @@ and regional employer/worker totals for 2022-2024 (three employers and 135
 workers in 2024). This is valuable partial regional evidence, not a complete
 current national denominator or named notice register. The new guard first
 failed with `KeyError: 'Czechia'`; merge and live verification remain.
+
+## 2026-09-12 India disclosure-regime closeout (PR pending)
+
+India is no longer an unverified country-regime backlog item on this branch.
+The current primary sources settle both halves of the classification:
+
+- Industrial Relations Code 2020 sections 77-80, effective 21 November 2025,
+  require prior government permission for lay-off and retrenchment and a prior
+  application for closure at covered factories, mines and plantations. The
+  Chapter X floor is 300 workers averaged over the preceding 12 months (or a
+  higher threshold notified by the appropriate government).
+- The Industrial Relations (Central) Rules 2026 prescribe the affected-worker
+  fields in Form XIV. The Labour Bureau publishes annual counts of cases and
+  workers affected by closures, retrenchments and lay-offs; its current index
+  reaches 2023.
+
+India is classified `REGIME_WITH_AGGREGATE`, with a load-bearing limitation:
+the Labour Bureau says its series is compiled from monthly information supplied
+*voluntarily* by State Labour Commissioners and Regional Labour Commissioners
+(Central). It is partial, lagged, not employer-named and not a recall
+denominator. Permission applications may be refused, so application counts
+must not be described as completed layoffs.
+
+TDD evidence: the India guard first failed with `KeyError: 'India'`; after the
+entry and backlog removal, all 55 country-register tests passed. A live
+`country_coverage.py --write` run at 2026-09-12T13:47:52Z passed with 79
+countries in scope, 22 publishing countable totals and only Bosnia and
+Herzegovina plus Pakistan remaining in the declared backlog. Merge, CI and
+post-deploy measurement remain.

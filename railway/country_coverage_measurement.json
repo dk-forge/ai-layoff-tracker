@@ -1,7 +1,6 @@
 {
   "backlog": [
     "Bosnia and Herzegovina",
-    "India",
     "Morocco",
     "Pakistan"
   ],
@@ -436,12 +435,19 @@
       "threshold": "within 30 days: at least 10 workers where the employer normally has more than 20 and fewer than 100; 10% where 100-299; 30 where 300+. Dismissals take effect no earlier than 30 days after the notification reaches Vinnumalastofnun"
     },
     "India": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "PUBLISHED, BUT PARTIAL AND LAGGED. The Labour Bureau's annual Statistics on Industrial Disputes, Closures, Retrenchments and Lay-offs reports cases and affected workers by State/Central sphere, sector, state and industry. The current index reaches 2023. The Bureau expressly says the reports are compiled from information furnished voluntarily each month by State Labour Commissioners and Regional Labour Commissioners (Central), so this is not a complete national enumeration, not an employer-named register and not a recall denominator. Permission applications can also be refused, so application counts must never be labelled completed layoffs. Source: https://labourbureau.gov.in/report-on-statistics-on-industrial-disputes-closures-retrenchments-and-layoff-in-india",
+      "assessed": "2026-09-12",
+      "authority": "the appropriate Central or State Government, or its specified authority; Central-sphere returns flow through the Regional Labour Commissioners to the Labour Bureau",
+      "cite": "https://www.indiacode.nic.in/bitstream/123456789/22040/1/aa202035.pdf",
+      "class": "regime_with_aggregate",
+      "denominator_basis": "national_notification_aggregate",
       "entries": 26529,
       "jobs": 155741,
-      "state": "unknown",
-      "stored_name": "India"
+      "regime": "Industrial Relations Code 2020, Chapter X, sections 77-80, in force from 21 November 2025. Covered factories, mines and plantations may not lay off or retrench workers without prior permission from the appropriate Government; closure likewise requires a prior application. Applications state the reason and affected-worker count and are copied to the workers. The 2026 Central Rules prescribe Form XIV for these applications.",
+      "state": "measured",
+      "stored_name": "India",
+      "threshold": "Chapter X applies to a non-seasonal factory, mine or plantation averaging at least 300 workers per working day in the preceding 12 months, or a higher threshold notified by the appropriate Government"
     },
     "Indonesia": {
       "age_days": 0,
@@ -1147,6 +1153,7 @@
     "Denmark",
     "Estonia",
     "Iceland",
+    "India",
     "Latvia",
     "Netherlands",
     "Norway",
@@ -1172,7 +1179,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T05:54:43Z",
+  "measured_at": "2026-09-12T13:47:52Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1845,12 +1852,11 @@
     "no_regime": 8,
     "refused": 6,
     "regime_no_aggregate": 40,
-    "regime_with_aggregate": 21,
-    "unassessed": 4
+    "regime_with_aggregate": 22,
+    "unassessed": 3
   },
   "unassessed": [
     "Bosnia and Herzegovina",
-    "India",
     "Morocco",
     "Pakistan"
   ],
