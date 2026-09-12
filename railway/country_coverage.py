@@ -1046,24 +1046,6 @@ ACKNOWLEDGED_BACKLOG = {
       "confident wrong quote. TO CLOSE: read ONE regional report with a real "
       "PDF library."
       ),
-    'Hungary': ("2026-08-18",
-      "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
-      "notification regime exists; ONLY the publication question is open. The "
-      "instrument is Mt. 2012. evi I. tv. ss.71-76, with s.74 the notification "
-      "duty, filed through the ESTAT portal to the county kormanyhivatal. "
-      "NARROWED, NOT CLOSED: the COMPLETE NFSZ statistics catalogue (11 series) "
-      "was enumerated and none covers collective redundancies; KSH returns only "
-      "OSAP methodology guides. But county-level counts demonstrably exist and "
-      "are released to local press (142 notifications in Heves varmegye "
-      "2024-10 to 2025-02; a Vas varmegye release in 2025-09), and whether they "
-      "are PUBLISHED or answered on request could not be established — one "
-      "carrier, heol.hu, returned HTTP 403 to our agent and was not retried "
-      "under another identity. So this is UNKNOWN, not 'nothing is published'. "
-      "TO CLOSE: the 20 varmegye kormanyhivatal sites plus Budapest. "
-      "NEAR-MISSES ALREADY REJECTED: nfsz.munka.hu/cikk/1595 is a wage subsidy "
-      "to AVOID redundancy, and stat_negyedeves_felmeres is a quarterly "
-      "employer SURVEY of expected headcount change."
-      ),
     'India': ("2026-08-18",
       "A PERMISSION REGIME, NOT A NOTIFICATION ONE, and the distinction is "
       "load-bearing: permission can be REFUSED and the layoff then never "
@@ -1963,6 +1945,33 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/"
                  "2006/2006-0021/2006-0021.pdf"),
+    },
+
+    "Hungary": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Code, Act I of 2012, sections 71-76. Section 72 "
+                   "requires works-council consultation. Section 74 requires "
+                   "written notice of both the intended and decided collective "
+                   "redundancy to the state employment body; the decision notice "
+                   "precedes dismissal by at least 30 days and includes each "
+                   "affected worker's identifying data, role and qualification."),
+        "authority": ("the competent state employment body, administered through "
+                      "the county or Budapest government office"),
+        "threshold": ("within 30 days: at least 10 workers where the employer has "
+                      "21-99 employees; 10 percent where it has 100-299; or at "
+                      "least 30 where it has 300 or more, calculated per workplace "
+                      "with sites in the same county combined"),
+        "aggregate": ("NO COMPLETE NATIONAL AGGREGATE LOCATED. NFSZ and county "
+                      "government offices publish some periodic county labour-market "
+                      "reports that mention notified collective-redundancy decisions "
+                      "and affected workers; for example official 2025 reports for "
+                      "Bacs-Kiskun and Nograd. The publication is fragmented and the "
+                      "complete 20-county-plus-Budapest population is not exposed as "
+                      "one national series or named employer register. Expected-"
+                      "headcount surveys and redundancy-avoidance subsidies are "
+                      "different populations and are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": "https://njt.hu/jogszabaly/2012-1-00-00.1",
     },
 
     "Afghanistan": {

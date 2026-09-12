@@ -3187,3 +3187,17 @@ approval, numeric threshold or filing recipient. Redundancy-payment claims,
 tribunal cases and labour statistics are different populations and are
 excluded. The new guard first failed with `KeyError: 'Isle of Man'`; merge and
 live verification remain.
+
+Isle of Man subsequently merged in PR #325 as `596b532e`; its full CI matrix
+and live country workflow `34673491051` passed. It is production-closed and the
+declared country backlog is 6.
+
+Hungary is now the active package. The official current Labour Code confirms
+the banded collective-redundancy thresholds, works-council consultation and the
+section-74 notices to the state employment body. Official NFSZ and county
+reports prove that some county-level decisions and affected-worker counts are
+published, but no complete national series or public employer register was
+located across the fragmented 20-county-plus-Budapest system. Those partial
+figures are documented rather than promoted into a national denominator. The
+new guard first failed with `KeyError: 'Hungary'`; merge and live verification
+remain.
