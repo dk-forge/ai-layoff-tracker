@@ -1078,19 +1078,6 @@ ACKNOWLEDGED_BACKLOG = {
       "403s an identifying agent; labourbureau.gov.in answers 200 and is the "
       "permitted route."
       ),
-    'Isle of Man': ("2026-08-18",
-      "LEANS NO_REGIME, NOW ON TWO POSITIVE SECONDARY STATEMENTS RATHER THAN "
-      "ON SILENCE, AND STILL NOT RECORDED. Two independent practitioner sources "
-      "(CIPD HR-inform and a Mondaq Isle of Man country chapter) state that no "
-      "collective consultation rights are in force, that there is no equivalent "
-      "of TULRCA's 20-employee threshold, and that the Employment Act 2006 "
-      "imposes no duty to inform or consult — coherent with the Island being "
-      "outside the EU and never transposing Directive 98/59/EC. BOTH ARE "
-      "SECONDARY. Every Isle of Man government host (gov.im, "
-      "legislation.gov.im) returns a WAF 'Request Rejected' page to automated "
-      "fetching and was NOT retried, so the Act itself is unread. This register "
-      "records NO_REGIME only on the instrument, so it stays outstanding."
-      ),
     'Morocco': ("2026-08-18",
       "THE STATUTE IS NOW READ IN FULL AND PUBLICATION IS UNKNOWN — those are "
       "two separate states and the entry must not collapse them. Code du "
@@ -1953,6 +1940,29 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://vbpl.moj.gov.vn/bolaodong/pages/"
                  "vbpqen-toanvan.aspx?ItemID=11135"),
+    },
+
+    "Isle of Man": {
+        "class": NO_REGIME,
+        "regime": ("NO collective-redundancy report or government-approval "
+                   "regime appears in the current official Employment Act 2006. "
+                   "The Act regulates individual dismissal and unfair selection "
+                   "for redundancy, employee time off to seek work, tribunal "
+                   "remedies and trade-union activity. Its definition of collective "
+                   "agreements includes voluntarily agreed consultation machinery; "
+                   "it does not create a statutory collective-dismissal consultation "
+                   "or notification duty. Redundancy payments are governed separately "
+                   "by the Redundancy Payments Act 1990. No numeric collective "
+                   "threshold or public filing recipient exists."),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE because no administrative collective-dismissal filing "
+                      "population exists. Redundancy-payment or insolvency claims, "
+                      "tribunal cases and labour-market statistics are downstream or "
+                      "different populations and are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/"
+                 "2006/2006-0021/2006-0021.pdf"),
     },
 
     "Afghanistan": {

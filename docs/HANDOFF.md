@@ -3174,3 +3174,16 @@ when a large number may be dismissed. The Code gives no numeric threshold. No
 public article-42 filing total or named national register was located; GSO job-
 loss statistics are a different population and remain excluded. The new guard
 failed first with `KeyError: 'Vietnam'`; merge and live verification remain.
+
+Vietnam subsequently merged in PR #324 as `46b9d297`; its full CI matrix and
+live country workflow `34673141463` passed. It is production-closed and the
+declared country backlog is 7.
+
+Isle of Man is now the active package. The official current consolidated
+Employment Act 2006 is accessible and regulates individual dismissal, unfair
+redundancy selection, remedies and voluntary collective-agreement machinery,
+but creates no statutory collective-dismissal consultation, public report,
+approval, numeric threshold or filing recipient. Redundancy-payment claims,
+tribunal cases and labour statistics are different populations and are
+excluded. The new guard first failed with `KeyError: 'Isle of Man'`; merge and
+live verification remain.
