@@ -87,6 +87,11 @@
       "last": 1789244624,
       "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-09-12T19:35:48Z): Worldwide jobs, all"
     },
+    "tests:live.data:7771c627fc3b103d": {
+      "first": 1789248671,
+      "last": 1789248671,
+      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: Worldwide jobs, all time: OPEN INCIDENT, opened 0d ago (2026-09-12T19:35:48Z): -87,685 jobs over 1.0d "
+    },
     "tests:live.data:eacb9ee45de18437": {
       "first": 1789163848,
       "last": 1789163848,
@@ -98,6 +103,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T20:23:44+00:00",
+  "updated_at": "2026-09-12T21:31:11+00:00",
   "version": 1
 }
