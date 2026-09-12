@@ -1600,8 +1600,18 @@ $alt_hero_basis  = 'counted by filing date';
                     $c['anchor'] = 'log-' . $alt_ld . '-' . $alt_log_seq[$alt_ld];
                     $alt_log_items[] = $c;
                 }
+                // The jobs a removal or a merge took out are SHOWN, because
+                // "1 entry removed, 60,000 jobs" is the disclosure a reader
+                // actually needs and "1 entry removed" is not: the same line
+                // that spared a guard an hour of forensics spares a reader the
+                // question "how much did that move the number?". It renders
+                // only when the entry HAS a figure. array_key_exists, not a
+                // truthiness test: a measured 0 (rows that carried no
+                // headcount) is a figure and prints, and an absent one prints
+                // nothing at all rather than the words "0 jobs", which would
+                // be a number nobody ever measured.
                 foreach (array_reverse($alt_log_items) as $c) : ?>
-                <li id="<?php echo esc_attr($c['anchor']); ?>"><b><?php echo esc_html($c['date']); ?>: <?php echo (int) $c['count']; ?> entr<?php echo ((int) $c['count'] === 1) ? 'y' : 'ies'; ?> <?php echo esc_html($c['action']); ?><?php echo $c['detail'] ? ' (' . esc_html($c['detail']) . ')' : ''; ?>.</b> <?php echo esc_html($c['reason']); ?> <a class="alt-log-anchor" href="#<?php echo esc_attr($c['anchor']); ?>" aria-label="Link to this correction">#</a></li>
+                <li id="<?php echo esc_attr($c['anchor']); ?>"><b><?php echo esc_html($c['date']); ?>: <?php echo (int) $c['count']; ?> entr<?php echo ((int) $c['count'] === 1) ? 'y' : 'ies'; ?> <?php echo esc_html($c['action']); ?><?php echo (array_key_exists('jobs', $c) && is_numeric($c['jobs'])) ? ', ' . number_format(max(0, (int) $c['jobs'])) . ' job' . (((int) $c['jobs'] === 1) ? '' : 's') : ''; ?><?php echo $c['detail'] ? ' (' . esc_html($c['detail']) . ')' : ''; ?>.</b> <?php echo esc_html($c['reason']); ?> <a class="alt-log-anchor" href="#<?php echo esc_attr($c['anchor']); ?>" aria-label="Link to this correction">#</a></li>
                 <?php endforeach; ?>
                 <li id="log-2026-07-15-s1"><b>2026-07-15: Florida test rows removed, 87,600 jobs.</b> Florida's official WARN export contains internal test entries, which are fictitious notices sharing one WARN number and using non-existent zip codes. Eight such rows were removed, the largest a fake 78,788-worker "AT&amp;T" notice that briefly ranked as our biggest entry. Our importer now skips test-named rows, and each removed row is permanently blocked from re-import. <a class="alt-log-anchor" href="#log-2026-07-15-s1" aria-label="Link to this correction">#</a></li>
                 <li id="log-2026-07-15-s2"><b>2026-07-15: Country assigned to 88 news and SEC entries.</b> These rows had no country recorded, which hid them from the regional views and country charts, though they were always in the worldwide totals. Each was resolved from its own source article. The largest were Oracle (30,000, spanning the US, India, Canada, Mexico and Uruguay, so "Multiple countries") and BBC (2,000, United Kingdom). <a class="alt-log-anchor" href="#log-2026-07-15-s2" aria-label="Link to this correction">#</a></li>
