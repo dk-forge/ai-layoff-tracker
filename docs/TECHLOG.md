@@ -1,5 +1,8 @@
 ## 2026-09-12 - A valid code deployment could still kill the daily GDELT run
 
+**Class:** started-not-finished
+**Guard:** `railway/tests/test_railway_deploy_overlap.py`
+
 The September 11 production chronology proved a gap left after the Railway
 `watchPatterns` repair. The cron began at 22:00 UTC. PR #308 merged at 22:06
 UTC with a legitimate `railway/country_coverage.py` change, so Railway replaced
