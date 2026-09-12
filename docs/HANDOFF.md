@@ -6,15 +6,38 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-12) — GDELT deployment-interruption TDD.**
+- **HELD by Codex (2026-09-12) — top-three evidence closeout.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
-  branch: `codex/gdelt-deploy-overlap-20260912`, based on `origin/main` at
-  `912f2231`. No plugin version is reserved because this changes only the
-  Railway service configuration, its test and documentation.
+  branch: `codex/document-volkswagen-correction-20260912`, based on
+  `origin/main` at `d10503bf`. No plugin version is reserved because this
+  package records a completed editorial correction only.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
+
+  **Newest closeout (2026-09-12 19:00 CEST).** PRs #328, #329 and #330 are
+  merged and green. The post-merge country-register run `34700082245` passed:
+  every one of the 79 countries currently represented in the corpus now has a
+  researched disclosure classification, so the acknowledged country backlog
+  is zero. Shared-host monitoring PR #135 is also merged and green in
+  `dk-forge/talent-intelligence-tracker`.
+
+  Dakota then authorized the evidence-backed removal of row 176988. Its cited
+  20minutos report says the German automotive sector had lost more than 60,000
+  jobs and separately describes a potential 50,000-worker Volkswagen plan by
+  2030; it never supports 60,000 cuts by Grupo Volkswagen. Signed correction
+  run `34706912085` trashed WordPress post 8731, cleaned orphan event 149721,
+  suppressed the row hash, and read row 176988 back as gone. The operation is
+  recoverable from the off-host backup and its suppression record; do not add a
+  replacement 50,000 row without checking the existing Volkswagen event first.
+
+  Remaining proof, not implementation theatre: the first protected GDELT run
+  is due at 22:00 UTC on September 12, then seven clean scheduled runs across
+  fourteen days remain required; the independent US/Europe/global competitor
+  benchmark is still UNKNOWN; weak UK/Estonia/Taiwan official-total shares and
+  the remaining duplicate/archive worklists are still open. Never call the
+  tracker top-three until those measurements support it.
 
   **Current closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
   The watermark repair is deployed and the daily 22:00 UTC schedule must now

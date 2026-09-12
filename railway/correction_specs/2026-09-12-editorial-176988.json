@@ -1,0 +1,22 @@
+{
+ "row_id": 176988,
+ "status": "applied",
+ "action": "trash",
+ "company_name": "Grupo Volkswagen",
+ "job_count": 60000,
+ "layoff_date": null,
+ "source_url": "https://www.20minutos.es/lainformacion/empresas/automovil-aleman-despedir-60000-empleados-crisis-sector_7020454_0.html",
+ "archived_url": "https://web.archive.org/web/20260911102309/https://www.20minutos.es/lainformacion/empresas/automovil-aleman-despedir-60000-empleados-crisis-sector_7020454_0.html",
+ "evidence": "The cited report describes more than 60,000 job losses across the German automotive industry and separately describes a potential 50,000-worker Volkswagen plan by 2030. It does not support attributing 60,000 cuts to Grupo Volkswagen.",
+ "reason": "Source describes 63,000 German automotive-sector cuts and a separate Volkswagen plan of 50,000 by 2030; it does not support attributing 60,000 cuts to Grupo Volkswagen.",
+ "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/34703968057",
+ "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/34706912085",
+ "result": {
+  "trashed_posts": [8731],
+  "orphan_events_cleaned": [149721],
+  "not_found": [],
+  "suppressed": 1,
+  "read_back": "row 176988 gone"
+ },
+ "recovery": "Restore the pre-correction row from the off-host backup and remove its suppression record only after a new source review."
+}

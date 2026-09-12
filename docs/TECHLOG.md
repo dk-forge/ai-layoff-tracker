@@ -140,6 +140,28 @@ the test pins that too.
 Red first on the pre-change tree: 8 of 9 assertions fail, the first being
 `AssertionError: 'Something else' != 'Something Else'`.
 
+## 2026-09-12 - a German industry total was attributed to Volkswagen and has been removed
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/correction_specs/2026-09-12-editorial-176988.json` (the
+source-specific evidence and signed correction receipt; the general extraction
+scope guards remain `railway/tests/test_extractor_retrospective.py`)
+
+Row 176988 said Grupo Volkswagen had 60,000 cuts, with no event date. Its own
+20minutos source says the German automotive sector had lost more than 60,000
+jobs and separately says Volkswagen was considering another 50,000 by 2030.
+The sector total therefore cannot be attributed to Volkswagen, and changing the
+row to 50,000 would risk duplicating the separate Volkswagen event already in
+the tracker.
+
+Dakota authorized the exact correction in the top-three closeout. The audited
+`Apply a signed-off correction` workflow first ran dry as `34703968057`; no
+data changed. Applied run `34706912085` then showed row 176988 before the write,
+trashed WordPress post 8731, cleaned orphan event 149721, added one suppression
+record, reported no missing ids, and read the row back as gone. The source row
+can be recovered from the off-host backup; the suppression record deliberately
+prevents the same bad parse from silently returning.
+
 ## 2026-09-12 - A valid code deployment could still kill the daily GDELT run
 
 **Class:** started-not-finished
