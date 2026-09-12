@@ -1,8 +1,6 @@
 {
-  "backlog": [
-    "Morocco"
-  ],
-  "backlog_oldest": "2026-08-18",
+  "backlog": [],
+  "backlog_oldest": null,
   "countries": {
     "Afghanistan": {
       "age_days": 1,
@@ -686,12 +684,18 @@
       "threshold": "collective termination on the statutory economic grounds; no simple headcount band"
     },
     "Morocco": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED for article-67 authorization applications, decisions or approved dismissals. The Justice Ministry publishes the governing Code, while current HCP labour-market surveys and OMTPME firm-demography reports measure employment, unemployment, closures or firm populations rather than this provincial authorization process. Those populations are explicitly excluded. An application can be refused, so even a future application count must never be labelled layoffs.",
+      "assessed": "2026-09-12",
+      "authority": "the provincial labour delegate and the governor of the competent prefecture or province, advised by the provincial commission",
+      "cite": "https://adala.justice.gov.ma/api/uploads/2024/04/30/code%20du%20travail-1714463246806.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 300,
-      "state": "unknown",
-      "stored_name": "Morocco"
+      "regime": "Labour Code, Law 65-99, articles 66-70. An employer that habitually employs at least 10 workers and proposes dismissal for technological, structural, similar or economic reasons must inform and consult worker delegates and union representatives at least one month ahead. The signed consultation record goes to the provincial labour delegate. Dismissal then requires prior authorization from the provincial or prefectural governor on the provincial commission's recommendation; article 69 extends the procedure to closure.",
+      "state": "not_measurable",
+      "stored_name": "Morocco",
+      "threshold": "an employer habitually employing 10 or more workers that plans to dismiss all or part of its workforce for a covered technological, structural, similar or economic reason"
     },
     "Netherlands": {
       "age_days": 24,
@@ -1189,7 +1193,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T13:55:24Z",
+  "measured_at": "2026-09-12T14:42:50Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1861,13 +1865,11 @@
   "tallies": {
     "no_regime": 8,
     "refused": 6,
-    "regime_no_aggregate": 42,
+    "regime_no_aggregate": 43,
     "regime_with_aggregate": 22,
-    "unassessed": 1
+    "unassessed": 0
   },
-  "unassessed": [
-    "Morocco"
-  ],
+  "unassessed": [],
   "undeclared": [],
   "vocabulary_duplicates": []
 }
