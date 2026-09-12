@@ -3117,3 +3117,15 @@ including names, with no numeric floor. Section 75 is only temporary suspension.
 No periodic section-121 filing total or named register was located in Ministry
 or NSO publication surfaces; survey and benefit populations are excluded. The
 guard failed first on the absent entry. Merge and live verification remain.
+
+Thailand subsequently merged in PR #317 as `8429154`; all CI checks and live
+country workflow `34658423574` passed. Thailand is production-closed and the
+declared country backlog is 12.
+
+New Zealand is now the active package. The current Employment Relations Act and
+Employment New Zealand's complete process guidance establish employee-facing
+good-faith consultation, redeployment and notice duties, but no government
+collective-redundancy report, numeric threshold or filing recipient. Part 6A's
+redundancy-entitlement dispute machinery is not a disclosure regime. Stats NZ
+surveys are rejected as filing denominators. The new guard failed first on the
+missing entry; merge and live verification remain.

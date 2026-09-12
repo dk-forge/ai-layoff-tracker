@@ -1169,25 +1169,6 @@ ACKNOWLEDGED_BACKLOG = {
       "2004 and 2020 is colour, never a figure. TO CLOSE: reach miepeec.gov.ma "
       "from an environment with Moroccan egress."
       ),
-    'New Zealand': ("2026-08-18",
-      "STRONGLY INDICATED NO_REGIME, STILL DELIBERATELY NOT RECORDED AS ONE, "
-      "and the evidence is now stronger than it was. MBIE's own complete "
-      "redundancy process page (employment.govt.nz, which permits us with "
-      "Crawl-delay 5) was read end to end: it lays out the entire process and "
-      "contains NO notification duty to any agency, NO collective threshold and "
-      "NO reporting step; the only agency named is MSD, explicitly as optional "
-      "employer support. That is proof by silence on the government's own "
-      "complete page. THE TWO SOURCES THAT WOULD HAVE MADE IT POSITIVE BOTH "
-      "REFUSED: the OECD EPL country note sits under oecd.org/content/dam/, "
-      "which robots excludes, the OECD EPL dataset page returns HTTP 403, and "
-      "ILO EPLex returns 403 on both of its hosts. nzlii.org names ClaudeBot "
-      "with 'Disallow: /'. legislation.govt.nz's AWS WAF was never attempted. "
-      "So the Employment Relations Act 2000 is STILL unread, and 'no regime "
-      "exists' is the one claim this register makes only on the instrument. TO "
-      "CLOSE: one human reading of the Act. REJECTED NEAR-MISS: ERA s.69O lets "
-      "the Employment Relations Authority determine redundancy entitlements — a "
-      "dispute-resolution power, not a disclosure duty."
-      ),
     'Pakistan': ("2026-08-18",
       "PAKISTAN IS NOT NO_REGIME, AND THE PREVIOUS NOTE'S WORKING HYPOTHESIS IS "
       "OVERTURNED AT THE PROVINCIAL LEVEL — where it had to be answered. What "
@@ -1944,6 +1925,30 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://www.mol.go.th/wp-content/uploads/sites/2/1998/01/"
                  "labour_protection_2541_new62.pdf"),
+    },
+
+    "New Zealand": {
+        "class": NO_REGIME,
+        "regime": ("NO collective-redundancy report to government was found in the "
+                   "current Employment Relations Act 2000 or Employment New Zealand's "
+                   "complete redundancy and workplace-change guidance. The duties are "
+                   "a genuine business reason, good-faith consultation, consideration "
+                   "of redeployment, and notice to affected employees under their "
+                   "agreements or reasonable notice. The guidance names MSD only as "
+                   "optional employer support. Part 6A and section 69O govern employee "
+                   "protections and redundancy entitlements during restructuring; an "
+                   "Employment Relations Authority dispute power is not a disclosure "
+                   "duty. No numeric collective threshold or filing recipient exists."),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE because no administrative redundancy filing population "
+                      "exists. Stats NZ employment and job-displacement surveys, and "
+                      "Quarterly Employment Survey redundancy-payment fields, are "
+                      "sampled labour statistics rather than employer notifications "
+                      "and are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://legislation.govt.nz/act/public/2000/24/en/"
+                 "2025-07-01.pdf"),
     },
 
     "Afghanistan": {
