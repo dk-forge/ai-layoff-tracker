@@ -59,13 +59,74 @@ function alt_contact_topic_hint($key) {
     return isset($hints[$key]) ? $hints[$key] : '';
 }
 
-function alt_shortcode_contact() {
-    // Arithmetic challenge: store the answer server-side, keyed by a token,
-    // so the correct answer never appears in the page source.
+/**
+ * A FORM WHOSE CHALLENGE IS BAKED INTO CACHEABLE HTML IS A BROKEN FORM.
+ *
+ * The contact form carries three values that are minted per request: the WP
+ * nonce, the render timestamp, and the arithmetic token whose answer is held
+ * in a 30 minute transient. All three were printed into the page and the page
+ * sits behind a shared cache. Measured 2026-09-12: the edge served one render
+ * from 19:35 for hours, so every visitor was handed the same token long after
+ * its transient had gone, the same nonce on its way to expiring, and a
+ * timestamp from before they arrived. The form answered "That looked like
+ * spam to us", which is the one reading that sends an honest person away
+ * believing they did something wrong.
+ *
+ * includes/blog-claps.php already learned this and says so in its own comment:
+ * "the page is cached, so there is no session to gate on and a nonce would be
+ * stale HTML". The contact form never got the same treatment.
+ *
+ * So the challenge is fetched, not printed. This route is no-store, returns a
+ * freshly minted set on every call, and the form asks for one as it loads. The
+ * values rendered into the HTML stay exactly as they were and remain the
+ * fallback for a visitor with no JavaScript on an uncached page: strictly more
+ * works than before, and nothing that worked stops.
+ */
+function alt_contact_mint_challenge() {
     $a = wp_rand(2, 9);
     $b = wp_rand(2, 9);
     $token = wp_generate_password(16, false, false);
     set_transient('alt_captcha_' . $token, $a + $b, 30 * MINUTE_IN_SECONDS);
+    return array(
+        'nonce' => wp_create_nonce('alt_contact'),
+        'ts'    => time(),
+        'token' => $token,
+        'a'     => $a,
+        'b'     => $b,
+    );
+}
+
+function alt_api_contact_challenge() {
+    $resp = rest_ensure_response(alt_contact_mint_challenge());
+    // Every hop, not just ours. A cached challenge is the defect this exists
+    // to answer, so nothing may hold it: not the browser, not the edge.
+    $resp->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    $resp->header('Pragma', 'no-cache');
+    return $resp;
+}
+
+function alt_contact_register_routes() {
+    register_rest_route('layoffs/v1', '/contact-challenge', array(
+        'methods'  => 'GET',
+        'callback' => 'alt_api_contact_challenge',
+        // Public by necessity, exactly as /clap is: the visitor is anonymous
+        // and the page in front of this is cached. What bounds the form is the
+        // challenge itself, the honeypot, the minimum fill time and the per-IP
+        // rate limit, none of which a credential would improve.
+        'permission_callback' => '__return_true',
+    ));
+}
+add_action('rest_api_init', 'alt_contact_register_routes');
+
+function alt_shortcode_contact() {
+    // Arithmetic challenge: the answer is stored server-side under a token, so
+    // it never appears in the page source. Minted through the SAME function
+    // the /contact-challenge route uses, so the printed fallback and the
+    // fetched replacement cannot drift apart.
+    $challenge = alt_contact_mint_challenge();
+    $a = $challenge['a'];
+    $b = $challenge['b'];
+    $token = $challenge['token'];
 
     $sent  = isset($_GET['alt_sent']);
     $error = isset($_GET['alt_error']) ? sanitize_key($_GET['alt_error']) : '';
@@ -132,7 +193,18 @@ function alt_shortcode_contact() {
                 </div>
                 <div class="alt-filter alt-link-row">
                     <label for="alt-c-link" id="alt-c-link-label">Link to the source (news report, filing, or company post)</label>
-                    <input type="url" id="alt-c-link" name="alt_link" maxlength="500" placeholder="https://">
+                    <?php
+                    // NOT type="url". That makes the browser reject
+                    // "example.com/the-article" and refuse to submit the whole
+                    // form over a field that is optional, which is what the
+                    // owner hit on 2026-09-12. People paste what they copied.
+                    // The scheme is added server-side by alt_contact_clean_url()
+                    // and the value is still validated there, so nothing is
+                    // accepted that was not accepted before.
+                    ?>
+                    <input type="text" id="alt-c-link" name="alt_link" maxlength="500"
+                           inputmode="url" autocomplete="url"
+                           placeholder="paste the address, with or without https://">
                     <span class="alt-contact-note alt-tip-note" hidden>Reporting a layoff? A source link lets us verify it against the original and add it automatically. Without one we still read your tip, but it needs a manual check first.</span>
                     <span class="alt-contact-note alt-app-note" hidden>Optional. If something went wrong on a particular page, paste its address here.</span>
                     <span class="alt-contact-note alt-nontip-note">For corrections, paste the entry you're flagging so we can locate it fast.</span>
@@ -142,12 +214,31 @@ function alt_shortcode_contact() {
                     <textarea id="alt-c-msg" name="alt_message" required rows="6" maxlength="5000" placeholder="Tell us what you need. For corrections, include what the figure should be and the source it comes from."></textarea>
                 </div>
                 <div class="alt-filter">
-                <?php if (defined('ALT_RECAPTCHA_SITE_KEY') && ALT_RECAPTCHA_SITE_KEY) : ?>
+                <?php
+                // Turnstile first, then reCAPTCHA, then the arithmetic.
+                //
+                // Turnstile is the right shape for a page behind a cache: the
+                // widget fetches its own challenge in the browser at load time,
+                // so nothing about it can be baked into stale HTML - the defect
+                // the challenge route above exists to work around. It is free,
+                // it sends no data to Google, and this site already sits behind
+                // Cloudflare, so it introduces no new party.
+                //
+                // The arithmetic stays as the floor. It needs no account and no
+                // key, and a contact form that is one expired credential away
+                // from unreachable is worse than a slightly ruder one.
+                ?>
+                <?php if (defined('ALT_TURNSTILE_SITE_KEY') && ALT_TURNSTILE_SITE_KEY) : ?>
+                    <label>Quick check to keep bots out</label>
+                    <div class="cf-turnstile" data-sitekey="<?php echo esc_attr(ALT_TURNSTILE_SITE_KEY); ?>"></div>
+                    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+                <?php elseif (defined('ALT_RECAPTCHA_SITE_KEY') && ALT_RECAPTCHA_SITE_KEY) : ?>
                     <label>Quick check to keep bots out</label>
                     <div class="g-recaptcha" data-sitekey="<?php echo esc_attr(ALT_RECAPTCHA_SITE_KEY); ?>"></div>
                     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                 <?php else : ?>
-                    <label for="alt-c-captcha">Quick check to keep bots out: what is <?php echo (int) $a; ?> + <?php echo (int) $b; ?>?</label>
+                    <label for="alt-c-captcha" id="alt-c-captcha-label"
+                          data-alt-question="Quick check to keep bots out: what is %A% + %B%?">Quick check to keep bots out: what is <?php echo (int) $a; ?> + <?php echo (int) $b; ?>?</label>
                     <input type="number" id="alt-c-captcha" name="alt_captcha" required inputmode="numeric" autocomplete="off">
                 <?php endif; ?>
                 </div>
@@ -192,6 +283,46 @@ function alt_shortcode_contact() {
             };
             topic.addEventListener('change', sync);
             sync();
+
+            // THE CHALLENGE IS FETCHED, NOT TRUSTED FROM THE HTML.
+            //
+            // Everything below replaces values that were minted when this page
+            // was RENDERED, which behind a shared cache can be hours or days
+            // before anyone read it. The nonce, the timestamp and the
+            // arithmetic token all expire; the page does not. Until this ran,
+            // a visitor served a cached copy was told their message looked
+            // like spam.
+            //
+            // Failure here is silent ON PURPOSE. If the route cannot be
+            // reached, the printed values stay in place and the form behaves
+            // exactly as it did before: on an uncached page they are valid,
+            // and a visitor should never be shown an error about our caching.
+            var form = document.querySelector('.alt-contact-form');
+            if (!form || !window.fetch) return;
+            var put = function (name, value) {
+                var el = form.querySelector('[name="' + name + '"]');
+                if (el) el.value = value;
+            };
+            fetch('<?php echo esc_js(esc_url_raw(rest_url('layoffs/v1/contact-challenge'))); ?>', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }).then(function (r) {
+                return r.ok ? r.json() : null;
+            }).then(function (c) {
+                if (!c || !c.token) return;
+                put('alt_contact_nonce', c.nonce);
+                put('alt_ts', c.ts);
+                put('alt_token', c.token);
+                var label = document.getElementById('alt-c-captcha-label');
+                if (label && typeof c.a === 'number' && typeof c.b === 'number') {
+                    var tpl = label.getAttribute('data-alt-question') || '';
+                    label.textContent = tpl.replace('%A%', c.a).replace('%B%', c.b);
+                }
+                var answer = document.getElementById('alt-c-captcha');
+                // The question just changed under them; an answer to the old
+                // one would fail and read as their mistake.
+                if (answer) answer.value = '';
+            }).catch(function () { /* printed values stand */ });
         })();
         </script>
     </div>
@@ -204,6 +335,53 @@ function alt_shortcode_contact() {
     return alt_build_stamp_comment() . ob_get_clean();
 }
 add_shortcode('alt_contact', 'alt_shortcode_contact');
+
+/**
+ * Accept an address the way a person pastes it.
+ *
+ * esc_url_raw() on a bare "example.com/article" returns '', so before this the
+ * field had to be typed with a scheme or the link was silently dropped - and
+ * the input was type="url", so the browser refused to submit the form at all
+ * over an OPTIONAL field. People paste what they copied, including addresses
+ * their browser showed them without the scheme.
+ *
+ * Only http and https are ever produced. A value carrying any other scheme is
+ * rejected outright rather than repaired, because "javascript:" with https
+ * glued on the front is not a link, and this string ends up in an email a
+ * person will click.
+ */
+function alt_contact_clean_url($raw) {
+    $raw = trim((string) $raw);
+    if ($raw === '') return '';
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*:#', $raw)) {
+        if (!preg_match('#^https?://#i', $raw)) return '';
+    } else {
+        $raw = 'https://' . ltrim($raw, '/');
+    }
+    $clean = esc_url_raw($raw, array('http', 'https'));
+    $host = parse_url($clean, PHP_URL_HOST);
+    // A host with no dot is not an address someone pasted from the web; it is
+    // usually a sentence that wandered into the wrong field.
+    if (!$host || strpos($host, '.') === false) return '';
+    return $clean;
+}
+
+/**
+ * The arithmetic challenge, in one place, because two callers reach it: the
+ * normal path and a Turnstile verification we could not reach.
+ *
+ * An EXPIRED token and a WRONG answer are different outcomes and must stay
+ * different. "That looked like spam to us" told the owner he had failed a test
+ * he had actually passed, when the truth was that the page he was reading had
+ * been cached for hours and its token was long gone.
+ */
+function alt_contact_check_arithmetic($fail) {
+    $token = preg_replace('/[^a-zA-Z0-9]/', '', (string) ($_POST['alt_token'] ?? ''));
+    $expected = get_transient('alt_captcha_' . $token);
+    delete_transient('alt_captcha_' . $token); // single use
+    if ($expected === false) $fail('expired');
+    if ((int) ($_POST['alt_captcha'] ?? -1) !== (int) $expected) $fail('spam');
+}
 
 function alt_contact_submit() {
     $back = wp_get_referer() ?: home_url('/contact/');
@@ -222,7 +400,36 @@ function alt_contact_submit() {
     $ts = (int) ($_POST['alt_ts'] ?? 0);
     if (!$ts || (time() - $ts) < 3) $fail('spam');
 
-    if (defined('ALT_RECAPTCHA_SECRET') && ALT_RECAPTCHA_SECRET) {
+    if (defined('ALT_TURNSTILE_SECRET') && ALT_TURNSTILE_SECRET) {
+        $ts_resp = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', array(
+            'timeout' => 8,
+            'body' => array(
+                'secret'   => ALT_TURNSTILE_SECRET,
+                'response' => (string) ($_POST['cf-turnstile-response'] ?? ''),
+                'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            )));
+        // THREE STATES, NOT TWO. A verifier we could not REACH has returned no
+        // verdict, and treating that as spam tells an honest person they failed
+        // a test that never ran. It also cannot fall back to the arithmetic:
+        // when Turnstile is configured the arithmetic field is not rendered, so
+        // there is nothing for the visitor to have answered, and asking for it
+        // here would reject everyone.
+        //
+        // So an unreachable verifier lets the message through, and says so in
+        // the mail. What still bounds the form in that window is everything
+        // that never left this host: the honeypot, the three second minimum
+        // fill time, and the three per hour per IP limit below. The trade is
+        // deliberate. A contact form that silently drops real messages during
+        // somebody else's outage is the worse failure, because nobody finds
+        // out - not the sender, who was told they looked like spam, and not us.
+        $ts_ok = null;
+        if (!is_wp_error($ts_resp)) {
+            $body = json_decode((string) wp_remote_retrieve_body($ts_resp), true);
+            $ts_ok = !empty($body['success']);
+        }
+        if ($ts_ok === false) $fail('spam');
+        if ($ts_ok === null) $GLOBALS['alt_contact_unverified'] = true;
+    } elseif (defined('ALT_RECAPTCHA_SECRET') && ALT_RECAPTCHA_SECRET) {
         // Google reCAPTCHA v2 verification (enabled by defining the keys).
         $rc = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
             'timeout' => 8,
@@ -235,12 +442,7 @@ function alt_contact_submit() {
         if (!is_wp_error($rc)) { $rc_body = json_decode((string) wp_remote_retrieve_body($rc), true); $rc_ok = !empty($rc_body['success']); }
         if (!$rc_ok) $fail('spam');
     } else {
-        // Arithmetic challenge (answer stored server-side under the token).
-        $token = preg_replace('/[^a-zA-Z0-9]/', '', (string) ($_POST['alt_token'] ?? ''));
-        $expected = get_transient('alt_captcha_' . $token);
-        delete_transient('alt_captcha_' . $token); // single use
-        if ($expected === false) $fail('expired');
-        if ((int) ($_POST['alt_captcha'] ?? -1) !== (int) $expected) $fail('spam');
+        alt_contact_check_arithmetic($fail);
     }
 
     // Per-IP rate limit: 3 messages/hour.
@@ -256,12 +458,18 @@ function alt_contact_submit() {
     $name  = sanitize_text_field(wp_unslash($_POST['alt_name'] ?? ''));
     $email = sanitize_email(wp_unslash($_POST['alt_email'] ?? ''));
     $org   = sanitize_text_field(wp_unslash($_POST['alt_org'] ?? ''));
-    $link  = esc_url_raw(wp_unslash($_POST['alt_link'] ?? ''));
+    $link  = alt_contact_clean_url(wp_unslash($_POST['alt_link'] ?? ''));
     $msg   = sanitize_textarea_field(wp_unslash($_POST['alt_message'] ?? ''));
 
     if ($name === '' || !is_email($email) || $msg === '') $fail('fields');
 
     $body = "Topic: $topic\nName: $name\nEmail: $email\n";
+    // Said out loud, in the one place a person will read it. A message that
+    // arrived while the bot check was unreachable is not a message we verified,
+    // and the reader deserves to know which of the two they are holding.
+    if (!empty($GLOBALS['alt_contact_unverified'])) {
+        $body .= "Note: the bot check could not be reached when this was sent, so it is UNVERIFIED.\n";
+    }
     if ($org)  $body .= "Outlet/company: $org\n";
     if ($link) $body .= "Related link: $link\n";
     $body .= "\nMessage:\n$msg\n\n--\nSent from the AI Layoff Tracker contact form\nIP: $ip";

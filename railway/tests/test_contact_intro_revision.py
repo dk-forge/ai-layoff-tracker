@@ -254,5 +254,89 @@ class EverySubjectExplainsItself(unittest.TestCase):
         )
         self.assertIn("Link to the page (optional)", CONTACT)
 
+class TheFormWorksFromACachedPage(unittest.TestCase):
+    """The nonce, the timestamp and the arithmetic token are all minted per
+    request, and all three were printed into a page that sits behind a shared
+    cache holding one render for hours. The form answered "That looked like
+    spam to us", which sends an honest person away believing they made a
+    mistake. includes/blog-claps.php had already written this lesson down."""
+
+    def test_a_no_store_route_mints_the_challenge(self):
+        self.assertIn("'/contact-challenge'", CONTACT)
+        self.assertIn("no-store", CONTACT,
+                      "a cached challenge is the whole defect; the route must forbid it")
+
+    def test_the_printed_and_fetched_challenges_come_from_one_minter(self):
+        """Two minters drift, and the drift is invisible: the page would show
+        one sum while the token held the answer to another."""
+        self.assertIn("function alt_contact_mint_challenge()", CONTACT)
+        self.assertEqual(
+            CONTACT.count("set_transient('alt_captcha_'"), 1,
+            "the arithmetic answer is stored in more than one place")
+        self.assertIn("$challenge = alt_contact_mint_challenge();", CONTACT)
+
+    def test_the_form_replaces_all_three_stale_values(self):
+        for name in ("alt_contact_nonce", "alt_ts", "alt_token"):
+            self.assertIn("put('%s'" % name, CONTACT,
+                          "%s is minted per request and must be refetched" % name)
+
+    def test_a_failed_fetch_leaves_the_printed_values_alone(self):
+        """On an uncached page the printed values are valid. A visitor must
+        never see an error about our caching."""
+        self.assertIn(".catch(function () {", CONTACT)
+
+    def test_the_question_and_the_answer_field_move_together(self):
+        """Swapping the token without redrawing the sum would fail every
+        submission and read as the visitor's mistake."""
+        self.assertIn("data-alt-question", CONTACT)
+        self.assertIn("answer.value = ''", CONTACT)
+
+
+class ThatLookedLikeSpamIsNeverSaidAboutOurOwnOutage(unittest.TestCase):
+    def test_an_unreachable_verifier_is_not_a_verdict(self):
+        self.assertIn("$ts_ok = null", CONTACT)
+        self.assertIn("if ($ts_ok === false) $fail('spam');", CONTACT)
+        self.assertNotIn("if ($ts_ok !== true) $fail('spam');", CONTACT)
+
+    def test_an_unverified_message_says_so_in_the_mail(self):
+        self.assertIn("alt_contact_unverified", CONTACT)
+        self.assertIn("UNVERIFIED", CONTACT)
+
+    def test_expired_and_wrong_stay_different_answers(self):
+        self.assertIn("if ($expected === false) $fail('expired');", CONTACT)
+
+
+class TurnstileIsPreferredAndNothingDependsOnIt(unittest.TestCase):
+    def test_turnstile_is_offered(self):
+        self.assertIn("ALT_TURNSTILE_SITE_KEY", CONTACT)
+        self.assertIn("challenges.cloudflare.com/turnstile", CONTACT)
+
+    def test_the_arithmetic_remains_the_keyless_floor(self):
+        """A contact form one expired credential away from unreachable is worse
+        than a slightly ruder one."""
+        self.assertIn("function alt_contact_check_arithmetic(", CONTACT)
+        self.assertIn("alt-c-captcha", CONTACT)
+
+
+class APastedAddressIsAccepted(unittest.TestCase):
+    def test_the_link_field_does_not_demand_a_scheme(self):
+        """type="url" makes the browser refuse to submit the whole form over an
+        OPTIONAL field when someone pastes example.com/article."""
+        self.assertNotIn('type="url" id="alt-c-link"', CONTACT)
+        self.assertIn('inputmode="url"', CONTACT)
+
+    def test_the_scheme_is_added_server_side(self):
+        self.assertIn("function alt_contact_clean_url(", CONTACT)
+        self.assertIn("'https://' . ltrim($raw", CONTACT)
+
+    def test_only_http_and_https_survive(self):
+        """This string lands in an email a person will click."""
+        self.assertIn("array('http', 'https')", CONTACT)
+        self.assertIn("^https?://", CONTACT)
+
+    def test_a_hostless_value_is_dropped_rather_than_repaired(self):
+        self.assertIn("strpos($host, '.') === false", CONTACT)
+
+
 if __name__ == "__main__":
     unittest.main()

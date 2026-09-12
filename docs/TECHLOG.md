@@ -1,3 +1,54 @@
+## 2026-09-12 - The contact form could not be submitted from a cached page, and told the sender they looked like spam
+
+**Class:** cache-served-stale
+**Guard:** `railway/tests/test_contact_intro_revision.py` (TheFormWorksFromACachedPage, ThatLookedLikeSpamIsNeverSaidAboutOurOwnOutage, APastedAddressIsAccepted)
+
+The owner filled in the contact form and was told "That looked like spam to
+us. Please try again (check the math question)." He had answered it correctly.
+
+The form mints three values per request and printed all three into the page:
+the WP nonce, the render timestamp, and a token whose arithmetic answer lives
+in a 30 minute transient. The page sits behind a shared cache that held one
+render from 19:35 for hours, so every visitor was handed the same token long
+after its transient had gone, the same nonce on its way to expiring, and a
+timestamp from before they arrived. The measured cached page carried
+`alt_token=2dcX0FBTZjc39zbb`, `alt_ts=1789241726` and the sum "6 + 4", all
+frozen.
+
+`includes/blog-claps.php` had already written this lesson in its own comment,
+"the page is cached, so there is no session to gate on and a nonce would be
+stale HTML". The contact form never got the same treatment, and nothing
+connected the two: a form that rejects every submission produces no error
+anywhere, because from the server's side a wrong answer is a wrong answer.
+
+The challenge is fetched now, not printed. `GET /layoffs/v1/contact-challenge`
+is no-store and mints a fresh set through the SAME function that renders the
+fallback, so the printed sum and the stored answer cannot drift. The form asks
+for one as it loads and replaces all three values plus the visible question. A
+failed fetch is silent and the printed values stand, so an uncached page
+behaves exactly as before: strictly more works, and nothing that worked stops.
+
+**Two other defects came out of the same ten minutes.**
+
+The source-link field was `type="url"` with an `https://` placeholder, so a
+browser refused to submit the whole form when someone pasted
+`example.com/article` into a field that is OPTIONAL. It takes text now and
+`alt_contact_clean_url()` adds the scheme, accepting only http and https,
+rejecting any other scheme outright rather than repairing it, and dropping a
+value whose host carries no dot. That string ends up in an email a person will
+click.
+
+Cloudflare Turnstile is now the preferred check, ahead of reCAPTCHA, with the
+arithmetic kept as the keyless floor. Turnstile is the right shape for a cached
+page because the widget fetches its own challenge in the browser. An
+unreachable verifier is a THIRD state: it lets the message through and marks it
+UNVERIFIED in the mail, rather than calling our own outage spam. It cannot fall
+back to the arithmetic, because when Turnstile is configured that field is not
+rendered and asking for it would reject everyone.
+
+Red first: 19 of the 29 assertions in the contact suite fail on the pre-change
+tree.
+
 ## 2026-09-12 - The contact page was five days stale at the edge and every check in the repo read green
 
 **Class:** cache-served-stale
