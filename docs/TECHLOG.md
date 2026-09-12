@@ -24910,6 +24910,26 @@ note: the official legal database is now reachable and supplies the primary
 text. TDD: the new Vietnam guard first failed with `KeyError: 'Vietnam'` before
 the register entry was added. Merge and live verification remain.
 
+## 2026-09-12 - Isle of Man official Act closes the no-regime finding
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Isle of Man is now `NO_REGIME`, replacing a secondary-only backlog note with
+the official current consolidated Employment Act 2006. The Act regulates
+individual dismissal, unfair selection for redundancy, time off to seek work,
+tribunal remedies and trade-union activity. Its collective-agreement definition
+recognises voluntarily agreed consultation machinery; it does not create a
+statutory collective-redundancy consultation, government report, approval,
+numeric threshold or public filing recipient. The separate Redundancy Payments
+Act concerns employee entitlement, not employer disclosure.
+
+Redundancy-payment and insolvency claims, tribunal cases and labour-market
+statistics are explicitly excluded because none is an administrative employer-
+notification population. The official legislation surface is now accessible,
+closing the former WAF-dependent evidence gap. TDD: the new Isle of Man guard
+first failed with `KeyError: 'Isle of Man'`. Merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
