@@ -62,11 +62,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "live-data-integrity-check:main:a3cde0067ab8e2ac": {
-      "first": 1789241762,
-      "last": 1789241762,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
-    },
     "rendered-contrast-audit:main:04439d7caed4f0f2": {
       "first": 1789229088,
       "last": 1789229088,
@@ -93,6 +88,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T21:43:08+00:00",
+  "updated_at": "2026-09-12T21:43:10+00:00",
   "version": 1
 }
