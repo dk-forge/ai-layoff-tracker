@@ -12,6 +12,16 @@
     },
     {
       "consecutive": 1,
+      "first_deferred_at": "2026-09-12T08:11:35+00:00",
+      "job": "enrich-context",
+      "last_deferred_at": "2026-09-12T08:11:35+00:00",
+      "last_key": "34682419167:1",
+      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/34682419167",
+      "state": "pending"
+    },
+    {
+      "consecutive": 1,
       "first_deferred_at": "2026-08-13T23:59:11+00:00",
       "job": "archive-backfill",
       "last_deferred_at": "2026-08-13T23:59:11+00:00",
@@ -88,6 +98,6 @@
       "state": "resolved"
     }
   ],
-  "updated_at": "2026-09-12T08:05:08+00:00",
+  "updated_at": "2026-09-12T08:11:35+00:00",
   "version": 1
 }
