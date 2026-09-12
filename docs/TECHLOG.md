@@ -1,3 +1,39 @@
+## 2026-09-12 - A valid code deployment could still kill the daily GDELT run
+
+**Class:** started-not-finished
+**Guard:** `railway/tests/test_railway_deploy_overlap.py`
+
+The September 11 production chronology proved a gap left after the Railway
+`watchPatterns` repair. The cron began at 22:00 UTC. PR #308 merged at 22:06
+UTC with a legitimate `railway/country_coverage.py` change, so Railway replaced
+the running cron at 22:07 and sent SIGTERM. The signal handler correctly wrote
+`gdelt: degraded` instead of leaving another orphan, but correct telemetry does
+not recover the lost collection window.
+
+`railway/railway.toml` now sets `overlapSeconds = "7200"`. Railway therefore
+keeps the previous deployment alive for the maximum one-hour GDELT collection
+budget plus one hour for downstream extraction, posting and the remaining
+collectors whenever a real code release lands mid-run. Ledger-only automated
+commits remain excluded by the existing `watchPatterns`, so this is not a
+second scheduled collection and does not double normal daily spend. The extra
+runtime occurs only when a code deployment overlaps a running cron and is the
+runtime required to finish the already-started job.
+
+TDD was red first: `test_railway_deploy_overlap` failed because no overlap was
+configured. It now requires at least 7,200 seconds. Production proof remains
+the next scheduled run plus the existing seven-clean-runs/fourteen-days gate;
+the September 11 interruption remains a failure in the evidence history.
+
+During closeout, the health digest and recall measurement were manually
+dispatched before the migration-forensics note below was re-read. The recall
+run passed and refreshed its health evidence; the health digest correctly
+failed on the already-recorded stale rows and mailed the owner. This does not
+erase the incident: the old timestamps, missing Trade Desk row, run IDs and
+the host-split chronology are retained below and in GitHub. The weekly reader
+digest was deliberately not replayed, because that could duplicate an email
+already sent from the old host; its next scheduled Monday slot is the safe
+repair.
+
 ## 2026-09-12 - Writes made on the old host after the migration export are gone, and the first sign was four STALE rows five days later
 
 **Class:** silent-stop (rows and health posts written on 2026-09-07 landed on the host the site was leaving; nothing reported the loss, and the health ledger only went STALE when the weekly jobs' rows aged past their ceiling)
