@@ -47,6 +47,10 @@ from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parents[2] / "wordpress-plugin" / "ai-layoff-tracker"
 CONTACT = (PLUGIN / "includes" / "contact.php").read_text(encoding="utf-8")
+# The form's behaviour moved to an enqueued file on 2026-09-12, because an
+# inline <script> in shortcode output never reached the live page. These
+# assertions follow the code rather than the filename.
+CONTACT_JS = (PLUGIN / "assets" / "contact.js").read_text(encoding="utf-8")
 
 
 def _revision():
@@ -252,7 +256,7 @@ class EverySubjectExplainsItself(unittest.TestCase):
             "leaving the source-link wording up tells the person they picked "
             "the wrong option",
         )
-        self.assertIn("Link to the page (optional)", CONTACT)
+        self.assertIn("Link to the page (optional)", CONTACT_JS)
 
 class TheFormWorksFromACachedPage(unittest.TestCase):
     """The nonce, the timestamp and the arithmetic token are all minted per
@@ -263,6 +267,7 @@ class TheFormWorksFromACachedPage(unittest.TestCase):
 
     def test_a_no_store_route_mints_the_challenge(self):
         self.assertIn("'/contact-challenge'", CONTACT)
+        self.assertIn("window.ALT_CONTACT_CHALLENGE_URL", CONTACT_JS)
         self.assertIn("no-store", CONTACT,
                       "a cached challenge is the whole defect; the route must forbid it")
 
@@ -277,19 +282,19 @@ class TheFormWorksFromACachedPage(unittest.TestCase):
 
     def test_the_form_replaces_all_three_stale_values(self):
         for name in ("alt_contact_nonce", "alt_ts", "alt_token"):
-            self.assertIn("put('%s'" % name, CONTACT,
+            self.assertIn("put('%s'" % name, CONTACT_JS,
                           "%s is minted per request and must be refetched" % name)
 
     def test_a_failed_fetch_leaves_the_printed_values_alone(self):
         """On an uncached page the printed values are valid. A visitor must
         never see an error about our caching."""
-        self.assertIn(".catch(function () {", CONTACT)
+        self.assertIn(".catch(function () {", CONTACT_JS)
 
     def test_the_question_and_the_answer_field_move_together(self):
         """Swapping the token without redrawing the sum would fail every
         submission and read as the visitor's mistake."""
-        self.assertIn("data-alt-question", CONTACT)
-        self.assertIn("answer.value = ''", CONTACT)
+        self.assertIn("data-alt-question", CONTACT)   # the template carries it
+        self.assertIn("answer.value = ''", CONTACT_JS)  # the script acts on it
 
 
 class ThatLookedLikeSpamIsNeverSaidAboutOurOwnOutage(unittest.TestCase):

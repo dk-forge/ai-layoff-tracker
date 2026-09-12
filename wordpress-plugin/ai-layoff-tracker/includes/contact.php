@@ -82,6 +82,36 @@ function alt_contact_topic_hint($key) {
  * fallback for a visitor with no JavaScript on an uncached page: strictly more
  * works than before, and nothing that worked stops.
  */
+/**
+ * The contact form's script, enqueued rather than printed.
+ *
+ * An inline <script> inside this shortcode's output never reached the live
+ * page: see the header of assets/contact.js for the measurement. Enqueued
+ * files do survive, which is how every other script in this plugin ships.
+ *
+ * Gated on the page actually carrying the form, so no other page pays for it.
+ */
+function alt_contact_enqueue() {
+    if (is_admin()) return;
+    $post = get_post();
+    if (!$post || !has_shortcode((string) $post->post_content, 'alt_contact')) return;
+    $t = @filemtime(ALT_PLUGIN_DIR . 'assets/contact.js');
+    wp_enqueue_script(
+        'alt-contact',
+        ALT_PLUGIN_URL . 'assets/contact.js',
+        array(),
+        ALT_VERSION . ($t ? '.' . $t : ''),
+        array('in_footer' => true, 'strategy' => 'defer')
+    );
+    wp_add_inline_script(
+        'alt-contact',
+        'window.ALT_CONTACT_CHALLENGE_URL = '
+            . wp_json_encode(rest_url('layoffs/v1/contact-challenge')) . ';',
+        'before'
+    );
+}
+add_action('wp_enqueue_scripts', 'alt_contact_enqueue');
+
 function alt_contact_mint_challenge() {
     $a = wp_rand(2, 9);
     $b = wp_rand(2, 9);
@@ -248,83 +278,6 @@ function alt_shortcode_contact() {
             </div>
             <p class="alt-contact-note">We usually reply within 3 business days, and corrections get looked at first. Anything we fix gets logged publicly on the tracker, so you can see it was handled.</p>
         </form>
-        <script>
-        (function () {
-            var topic = document.getElementById('alt-c-topic');
-            if (!topic) return;
-            var hints = {};
-            try { hints = JSON.parse(topic.getAttribute('data-alt-hints') || '{}'); } catch (e) { hints = {}; }
-            var hintEl = document.getElementById('alt-c-topic-hint');
-            // 'app' is the one subject that is not about the tracker at all, so
-            // the source-link row stops asking for a news report and asks for
-            // the page that went wrong instead. Leaving the tracker wording up
-            // is how a form tells someone they picked the wrong option.
-            var sync = function () {
-                var value = topic.value;
-                var isTip = value === 'tip';
-                var isApp = value === 'app';
-                document.querySelectorAll('.alt-tip-only').forEach(function (el) { el.hidden = !isTip; });
-                var show = function (sel, on) {
-                    var el = document.querySelector(sel);
-                    if (el) el.hidden = !on;
-                };
-                show('.alt-tip-note', isTip);
-                show('.alt-app-note', isApp);
-                show('.alt-nontip-note', !isTip && !isApp);
-                var linkLabel = document.getElementById('alt-c-link-label');
-                if (linkLabel) {
-                    linkLabel.textContent = isApp
-                        ? 'Link to the page (optional)'
-                        : 'Link to the source (news report, filing, or company post)';
-                }
-                if (hintEl && Object.prototype.hasOwnProperty.call(hints, value)) {
-                    hintEl.textContent = hints[value];
-                }
-            };
-            topic.addEventListener('change', sync);
-            sync();
-
-            // THE CHALLENGE IS FETCHED, NOT TRUSTED FROM THE HTML.
-            //
-            // Everything below replaces values that were minted when this page
-            // was RENDERED, which behind a shared cache can be hours or days
-            // before anyone read it. The nonce, the timestamp and the
-            // arithmetic token all expire; the page does not. Until this ran,
-            // a visitor served a cached copy was told their message looked
-            // like spam.
-            //
-            // Failure here is silent ON PURPOSE. If the route cannot be
-            // reached, the printed values stay in place and the form behaves
-            // exactly as it did before: on an uncached page they are valid,
-            // and a visitor should never be shown an error about our caching.
-            var form = document.querySelector('.alt-contact-form');
-            if (!form || !window.fetch) return;
-            var put = function (name, value) {
-                var el = form.querySelector('[name="' + name + '"]');
-                if (el) el.value = value;
-            };
-            fetch('<?php echo esc_js(esc_url_raw(rest_url('layoffs/v1/contact-challenge'))); ?>', {
-                credentials: 'same-origin',
-                cache: 'no-store'
-            }).then(function (r) {
-                return r.ok ? r.json() : null;
-            }).then(function (c) {
-                if (!c || !c.token) return;
-                put('alt_contact_nonce', c.nonce);
-                put('alt_ts', c.ts);
-                put('alt_token', c.token);
-                var label = document.getElementById('alt-c-captcha-label');
-                if (label && typeof c.a === 'number' && typeof c.b === 'number') {
-                    var tpl = label.getAttribute('data-alt-question') || '';
-                    label.textContent = tpl.replace('%A%', c.a).replace('%B%', c.b);
-                }
-                var answer = document.getElementById('alt-c-captcha');
-                // The question just changed under them; an answer to the old
-                // one would fail and read as their mistake.
-                if (answer) answer.value = '';
-            }).catch(function () { /* printed values stand */ });
-        })();
-        </script>
     </div>
     <?php
     // The contact form renders its own buffer rather than going through
