@@ -1,3 +1,83 @@
+## 2026-09-13 - The corrections log said WHAT was removed and never HOW MANY JOBS, so two correct removals reddened every branch
+
+**Class:** novel
+**Guard:** `railway/tests/test_corrections_log_job_counts.py`
+
+On 2026-09-12 `headline_movement` opened two incidents. The worldwide all-time
+figure fell 87,685 jobs in a day and the AI-attributed figure fell 30,000. Both
+were fully explained by two deliberate, correct, already-disclosed removals: an
+Amazon row of 30,000 (row 179276, removed by two-model adjudication) and a
+Grupo Volkswagen row of 60,000, against +2,315 jobs of genuine new entries on
++8 entries. Minus 90,000 plus 2,315 is exactly the observed minus 87,685, with
+nothing left over.
+
+The guard could not reach that conclusion and said so in its own words: "the
+corrections log discloses 2 row(s) removed or merged in this window, which is a
+CANDIDATE explanation and not a verdict (the log records rows, never their job
+counts)". So it stayed FAIL, every branch in the repo went red, a merged pull
+request was blocked, and the owner was woken to run a close command for a
+defect that did not exist.
+
+The cause is one missing field. `alt_log_correction()` recorded an action, a
+row COUNT, a reason and a detail. The site was disclosing the fact of a removal
+and never its magnitude, which is enough to name a cause and never enough to
+settle one. The class is `novel` because none of the existing shapes fits: the
+mechanism did not stop, nothing was absent from a registry, no guard went
+vacuous, and no derived value was typed by hand. A correct guard was starved of
+a measurement that only the writer could take, at the one instant it could be
+taken, and it degraded honestly rather than silently, which is why this cost a
+night rather than a wrong number.
+
+The log now carries a jobs total. The three call sites that REMOVE or MERGE
+rows sum `job_count` BEFORE the rows are deleted: `alt_api_trash` (the ids,
+post_ids and row_ids spaces, each read while the row still exists, because
+`wp_trash_post` cascades), `alt_dedup_undated_cleanup` (summed off its own
+cursor) and `alt_api_merge_events` (which has computed `net_jobs_removed` since
+it shipped and until now spent it only on a sentence). Enrichment and
+reclassification move no jobs and pass nothing.
+
+**ABSENT MEANS UNKNOWN AND NEVER ZERO**, at the writer and at every reader.
+That is the rule the whole change turns on, because a reader that defaults a
+missing figure to 0 would "account for" a removal that took nothing out and
+publish a confident wrong verdict, which is strictly worse than the refusal it
+replaced. The writer omits the key entirely when nothing was measured, and
+`alt_api_corrections` omits the field rather than serialising a 0. The same-day
+collapse is the one place a zero could have been manufactured: a measured
+30,000 accumulated with an unmeasured call is not 30,000 removed, so the merged
+entry LOSES its figure. A partial sum published as a total would be subtracted
+by a guard and would clear a real defect, so one unreadable row makes the whole
+call unmeasured. Historical entries carry no figure and never will.
+
+`account_for_disclosures()` in `data_integrity.py` does the arithmetic and has
+three outcomes, not two: PASS when the residual is inside the floor or inside
+what the ARRIVING rows carry (the removed rows leave the entry allowance
+because their jobs were subtracted explicitly), FAIL exactly as before when the
+disclosure falls short, and UNKNOWN naming the entry when the window holds a
+removal with no job total. An unreadable log leaves the FAIL standing, because
+a network blip is not evidence and promoting a FAIL to UNKNOWN on one would
+hand every real defect a way out. The UNKNOWN is `suppressed`, so the recorder
+cannot turn an unaccountable reading into tomorrow's normal.
+
+`headline_containment` deliberately does NOT use the new field. A containment
+number is a difference between two slices, and a removal disclosed against the
+corpus does not say which side of that boundary it sat on, so there is still no
+subtraction to do there.
+
+The figure is also shown to readers: "1 entry removed, 60,000 jobs" is the
+disclosure a reader needs and "1 entry removed" is not. It renders through
+`array_key_exists`, so a measured 0 prints and an absent figure prints nothing
+rather than the words "0 jobs".
+
+Red first, on the pre-change tree: 15 failing, the first assertion being
+`TheAccounting.test_the_night_of_2026_09_12_is_fully_accounted_for` with
+`AttributeError: module 'data_integrity' has no attribute
+'account_for_disclosures'`, then
+`test_the_trash_endpoint_discloses_its_job_total` with `AssertionError: 'jobs'
+not found in "('removed', array_merge($out['trashed_posts'],
+$out['deleted_rows']), $reason)"`. The writer tests EXECUTE `db.php` through
+the php binary rather than grepping it, so "absent stays absent" is a measured
+property of the stored entry and of the JSON the endpoint serves.
+
 ## 2026-09-12 - The contact form's script never reached a single visitor, and the markup around it did
 
 **Class:** silent-stop

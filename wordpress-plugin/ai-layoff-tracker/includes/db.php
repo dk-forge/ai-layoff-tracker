@@ -476,13 +476,22 @@ function alt_suppressed_hashes() {
  * on-page "Data notes & corrections log" renders from it — disclosure is
  * structural, not a manual habit.
  */
-function alt_log_correction($action, $ids, $reason, $detail = '') {
+function alt_log_correction($action, $ids, $reason, $detail = '', $jobs = null) {
     $log = get_option('alt_corrections_log');
     if (!is_array($log)) $log = array();
     $date   = gmdate('Y-m-d');
     $reason = substr((string) $reason, 0, 400);
     $detail = substr((string) $detail, 0, 200);
     $n      = count((array) $ids);
+    // How many JOBS left with those rows, summed by the caller BEFORE the rows
+    // were deleted. NULL means nobody measured it, and null is NOT zero: the
+    // key is omitted entirely, so /corrections serves no `jobs` field and every
+    // reader is forced to say UNKNOWN rather than "a removal of nothing". Zero
+    // is a legitimate measured answer (rows that carried no headcount) and is
+    // stored as 0. Enrichment and reclassification move no jobs and pass
+    // nothing: a 0 there would be a measurement we never took.
+    $measured = ($jobs !== null && is_numeric($jobs));
+    $jobs     = $measured ? max(0, (int) $jobs) : null;
     // Collapse repeat automated passes: the batched enrichment jobs (industry
     // classification, reason-tag backfill) log one row per 200-item batch and
     // run many times a day, which buried the meaningful corrections (merges,
@@ -494,12 +503,23 @@ function alt_log_correction($action, $ids, $reason, $detail = '') {
         if (($e['date'] ?? '') === $date && ($e['action'] ?? '') === $action
             && ($e['reason'] ?? '') === $reason && ($e['detail'] ?? '') === $detail) {
             $e['count'] = (int) ($e['count'] ?? 0) + $n;
+            // The collapse is the one place a zero could be manufactured. A
+            // measured 30,000 accumulated with an unmeasured call is not
+            // 30,000 removed, it is unknown, so the merged entry LOSES its
+            // figure rather than under-reporting one.
+            if ($measured && array_key_exists('jobs', $e)) {
+                $e['jobs'] = (int) $e['jobs'] + $jobs;
+            } else {
+                unset($e['jobs']);
+            }
             update_option('alt_corrections_log', $log, false);
             return;
         }
     }
     unset($e);
-    $log[] = array('date' => $date, 'action' => $action, 'count' => $n, 'reason' => $reason, 'detail' => $detail);
+    $entry = array('date' => $date, 'action' => $action, 'count' => $n, 'reason' => $reason, 'detail' => $detail);
+    if ($measured) $entry['jobs'] = $jobs;
+    $log[] = $entry;
     if (count($log) > 200) $log = array_slice($log, -200);
     update_option('alt_corrections_log', $log, false);
 }
@@ -614,7 +634,7 @@ function alt_dedup_undated_cleanup() {
     global $wpdb;
     $t = alt_db_table();
     $dups = $wpdb->get_results(
-        "SELECT a.id, a.post_id FROM $t a
+        "SELECT a.id, a.post_id, a.job_count FROM $t a
          WHERE a.layoff_date IS NULL
            AND a.source_type IN ('news','8K','press_release')
            AND a.edited = 0 AND a.company_key <> '' AND a.job_count > 0
@@ -626,6 +646,10 @@ function alt_dedup_undated_cleanup() {
          LIMIT 2000");
     if (!$dups) return;
     $removed = array();
+    // Summed from the SELECT above, i.e. BEFORE the rows are gone. There is no
+    // reading it afterwards, which is why the job total is carried on the
+    // cursor rather than looked up at log time.
+    $jobs_removed = 0;
     foreach ($dups as $d) {
         if (!empty($d->post_id)) {
             wp_trash_post((int) $d->post_id);          // cascades to the table row
@@ -633,10 +657,12 @@ function alt_dedup_undated_cleanup() {
             $wpdb->delete($t, array('id' => (int) $d->id));
         }
         $removed[] = (int) $d->id;
+        $jobs_removed += max(0, (int) $d->job_count);
     }
     if ($removed && function_exists('alt_log_correction')) {
         alt_log_correction('removed', $removed,
-            'Undated duplicate cleanup: news/SEC rows with no date that duplicate a dated event of the same company and headcount (they had bypassed the date-gated dedup guard).');
+            'Undated duplicate cleanup: news/SEC rows with no date that duplicate a dated event of the same company and headcount (they had bypassed the date-gated dedup guard).',
+            '', $jobs_removed);
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
 }
@@ -2776,13 +2802,22 @@ function alt_api_corrections(WP_REST_Request $r) {
     foreach ($log as $entry) {
         $date = (string) ($entry['date'] ?? '');
         if ($since !== '' && $date < $since) continue;
-        $out[] = array(
+        $row = array(
             'date'   => $date,
             'action' => (string) ($entry['action'] ?? ''),
             'count'  => max(0, (int) ($entry['count'] ?? 0)),
             'reason' => (string) ($entry['reason'] ?? ''),
             'detail' => (string) ($entry['detail'] ?? ''),
         );
+        // `jobs` is present ONLY when the entry recorded one. Serialising an
+        // absent figure as 0 would let a reader "account for" a removal that
+        // took nothing out, which is a confident wrong verdict and strictly
+        // worse than saying UNKNOWN. Historical entries have no figure and
+        // never will.
+        if (array_key_exists('jobs', $entry) && is_numeric($entry['jobs'])) {
+            $row['jobs'] = max(0, (int) $entry['jobs']);
+        }
+        $out[] = $row;
     }
     $out = array_reverse($out);
     return rest_ensure_response(array(
@@ -4673,6 +4708,14 @@ function alt_api_trash(WP_REST_Request $r) {
     $table = alt_db_table();
     $reason = (string) $r->get_param('reason');
     $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'orphan_events_cleaned' => array(), 'not_found' => array(), 'suppressed' => 0);
+    // The job total this call takes out of every published headline, summed
+    // before each row is deleted. $jobs_measured goes false the moment ONE
+    // removed row's headcount could not be read, and the log then records no
+    // figure at all: a partial sum published as a total is the one outcome
+    // worse than publishing nothing, because a guard would subtract it and
+    // clear a real defect. Absent means UNKNOWN, never zero.
+    $jobs_removed = 0;
+    $jobs_measured = true;
 
     // `ids` are TABLE row ids — the `id` field the public /query API returns.
     // Rows mirrored from a CPT post get the post trashed (hooks remove the
@@ -4682,11 +4725,12 @@ function alt_api_trash(WP_REST_Request $r) {
     foreach ((array) $r->get_param('ids') as $tid) {
         $tid = (int) $tid;
         $row = $tid ? $wpdb->get_row($wpdb->prepare(
-            "SELECT id, post_id, event_id, dedup_hash FROM $table WHERE id = %d", $tid)) : null;
+            "SELECT id, post_id, event_id, dedup_hash, job_count FROM $table WHERE id = %d", $tid)) : null;
         if (!$row) {
             $out['not_found'][] = $tid;
             continue;
         }
+        $jobs_removed += max(0, (int) $row->job_count);
         if ($row->dedup_hash) {
             alt_suppress_hash($row->dedup_hash, 'trashed: ' . $reason);
             $out['suppressed']++;
@@ -4706,6 +4750,10 @@ function alt_api_trash(WP_REST_Request $r) {
     foreach ((array) $r->get_param('post_ids') as $pid) {
         $pid = (int) $pid;
         if ($pid && get_post_type($pid) === 'layoffs') {
+            // Read the headcount while the row still exists: wp_trash_post
+            // cascades and removes it.
+            $jc = $wpdb->get_var($wpdb->prepare("SELECT job_count FROM $table WHERE post_id = %d", $pid));
+            if ($jc === null) { $jobs_measured = false; } else { $jobs_removed += max(0, (int) $jc); }
             wp_trash_post($pid);
             $out['trashed_posts'][] = $pid;
         } elseif ($pid) {
@@ -4714,12 +4762,18 @@ function alt_api_trash(WP_REST_Request $r) {
     }
     foreach ((array) $r->get_param('row_ids') as $rid) {
         $rid = (int) $rid;
+        $jc = $rid ? $wpdb->get_var($wpdb->prepare("SELECT job_count FROM $table WHERE id = %d AND post_id IS NULL", $rid)) : null;
         $deleted = $rid ? $wpdb->delete($table, array('id' => $rid, 'post_id' => null)) : 0;
-        if ($deleted) { $out['deleted_rows'][] = $rid; } elseif ($rid) { $out['not_found'][] = $rid; }
+        if ($deleted) {
+            $out['deleted_rows'][] = $rid;
+            if ($jc === null) { $jobs_measured = false; } else { $jobs_removed += max(0, (int) $jc); }
+        } elseif ($rid) { $out['not_found'][] = $rid; }
     }
 
     if (!empty($out['trashed_posts']) || !empty($out['deleted_rows'])) {
-        alt_log_correction('removed', array_merge($out['trashed_posts'], $out['deleted_rows']), $reason);
+        $out['jobs_removed'] = $jobs_measured ? $jobs_removed : null;
+        alt_log_correction('removed', array_merge($out['trashed_posts'], $out['deleted_rows']),
+            $reason, '', $out['jobs_removed']);
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
@@ -4768,9 +4822,12 @@ function alt_api_merge_events(WP_REST_Request $r) {
         }
     }
     if (!empty($out['merged_rows'])) {
+        // The same figure the detail sentence has always named, now also passed
+        // as the FIELD a guard can subtract. A sentence is not a measurement.
         alt_log_correction('merged', $out['merged_rows'], $reason ?: 'Confirmed duplicate sources merged into canonical event',
             sprintf('%d jobs removed across %d exact row pair(s); full before-state returned by the signed endpoint',
-                $out['net_jobs_removed'], count($out['merged_records'])));
+                $out['net_jobs_removed'], count($out['merged_records'])),
+            $out['net_jobs_removed']);
         if (function_exists('alt_flush_caches')) alt_flush_caches();
     }
     return rest_ensure_response($out);

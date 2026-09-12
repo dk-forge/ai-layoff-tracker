@@ -1000,7 +1000,7 @@ class MovementInvariant:
     reads_live_data = True
 
     def __init__(self, headlines=HEADLINES, baseline_path=None, incidents_path=None,
-                 now=None):
+                 now=None, disclosed=None):
         # `now` mirrors ContainmentInvariant and exists for the same reason its
         # sibling states: a test that pins a real historical reading must not
         # rot as the wall clock moves past it. Without this seam the staleness
@@ -1014,6 +1014,10 @@ class MovementInvariant:
         self.baseline_path = baseline_path or BASELINE_PATH
         self.incidents_path = incidents_path or INCIDENTS_PATH
         self.now = now
+        # Injected in tests that need a specific window; otherwise the run's
+        # own ctx decides (Ctx.disclosed), and the live endpoint is read only on
+        # the path that is about to FAIL.
+        self.disclosed = disclosed
 
     def run(self, ctx):
         base = load_baseline(self.baseline_path)
@@ -1181,13 +1185,30 @@ class MovementInvariant:
                         f"the daily data-integrity run spans a whole cycle and judges it",
                         observed=observed, pending=True, suppressed=True)
 
+        # THE ROWS THAT LEFT ON PURPOSE. A deliberate removal takes its jobs out
+        # of the headline and leaves no `updated_at` for /changed-rows to see,
+        # so until the log carried job totals this branch could only name the
+        # corrections log and hope a human read it. On 2026-09-12 two correct
+        # removals of 90,000 jobs put every branch in the repo red and woke the
+        # owner to close an incident for a defect that did not exist. The log
+        # now discloses what left, so the arithmetic is done here -- and an
+        # entry that discloses no total makes this UNJUDGED rather than clean.
+        state, line = account_for_disclosures(
+            (self.disclosed or ctx.disclosed)(prior.get("captured_at")),
+            d_jobs, d_entries, floor, base_mean, h.mean_factor)
+        if state == PASS:
+            return _out(PASS, f"{line} (over {span:.1f}d)", observed=observed)
+        if state == UNKNOWN:
+            return _out(UNKNOWN, f"{line} (over {span:.1f}d)", observed=observed,
+                        pending=True, suppressed=True)
+
         return _out(FAIL,
                     f"{d_jobs:+,} jobs over {span:.1f}d on {d_entries:+,} entries "
                     f"({int(prior['jobs']):,} -> {jobs:,}). The rows that changed carry at "
                     f"most {allowance:,.0f} and the largest single row is {largest:,}, so "
                     f"NO ROW EXPLAINS THIS. Something re-scored rows that were already "
                     f"published: check the last reconcile-supersets run, any /bulk-purge, "
-                    f"and the corrections log", observed=observed)
+                    f"and the corrections log. " + line, observed=observed)
 
 
 # ---------------------------------------------------------------------------
@@ -1323,28 +1344,84 @@ def containment_groups(pairs=CONTAINMENTS):
     return {name: frozenset(members) for name, members in groups.items()}
 
 
-def _disclosed_removals_line(since_iso):
-    """What the site itself disclosed was removed in this window.
-
-    Added 2026-09-08. The message above spent an hour of a human's time saying
-    "two mechanisms and I cannot tell them apart" when the actual cause -- a
-    Bloomberg duplicate of the Volkswagen 50,000 event, merged away after five
-    days of double-counting -- was published in the corrections log the whole
-    time. A merge hard-deletes its duplicate, so /changed-rows is blind to the
-    single event most likely to move a headline.
-
-    This NARROWS, it never CLEARS. The log records how many rows were removed,
-    never how many jobs they carried, so it cannot arithmetically explain a
-    move and must not be allowed to look as though it did. A failing check
-    still fails, and an unreadable log reads UNKNOWN rather than "nothing was
-    removed".
-    """
+def _corrections_reader():
+    """The corrections_reader module, imported late so `check_all` stays
+    importable from either the repo root or railway/."""
     try:
-        from corrections_reader import fetch_removals
+        import corrections_reader
     except ImportError:  # running from the repo root rather than railway/
-        from railway.corrections_reader import fetch_removals
+        from railway import corrections_reader
+    return corrections_reader
+
+
+def _disclosed_removals(since_iso):
+    """What the site itself disclosed was removed in this window, as data.
+
+    Reached through `Ctx.disclosed`, which is what decides whether this run is
+    entitled to read the live log at all.
+    """
     since = str(since_iso or "")[:10] or "1970-01-01"
-    return fetch_removals(BASE.rsplit("/wp-json/", 1)[0], since).summary()
+    return _corrections_reader().fetch_removals(
+        BASE.rsplit("/wp-json/", 1)[0], since)
+
+
+def account_for_disclosures(disclosed, d_jobs, d_entries, floor, base_mean,
+                            mean_factor):
+    """Does the disclosed removal arithmetic settle this movement?
+
+    Returns `(state, line)`. `state` is PASS when the movement is fully
+    accounted for, UNKNOWN when the window holds a removal whose job total was
+    never recorded, and None when the caller's FAIL stands.
+
+    WHY THIS IS NOT "corrections exist, therefore pass". It subtracts a NUMBER
+    the site published, and then asks the caller's own question again of what is
+    left. On 2026-09-12 the worldwide headline fell 87,685 jobs; two disclosed
+    removals carried 90,000; +2,315 remained on +10 arriving rows, which is
+    ordinary and is what the day actually was. Disclose only one of the two and
+    57,685 jobs are still unexplained, and this returns None.
+
+    ABSENT IS NOT ZERO, which is the rule the whole change turns on. One entry
+    with no jobs figure means the sum is a floor and not a total, so no
+    arithmetic here can be completed: UNKNOWN, naming the entry, even when the
+    measured entries would have settled it on their own. Treating the missing
+    figure as 0 would "account for" a removal that took nothing out and publish
+    a confident wrong verdict, which is worse than the refusal this replaced.
+
+    AN UNREADABLE LOG LEAVES THE FAIL ALONE. It is not evidence of anything, and
+    promoting a FAIL to UNKNOWN on a network blip would hand every real defect a
+    way out.
+    """
+    if not disclosed.consulted or not disclosed.entries:
+        return None, disclosed.summary()
+    if disclosed.unmeasured:
+        named = "; ".join(
+            f"{e.get('date')}: {e.get('count')} {e.get('action')} ("
+            f"{(e.get('reason') or '').strip()[:80]})"
+            for e in disclosed.unmeasured[:3])
+        return UNKNOWN, (
+            f"the corrections log discloses {disclosed.rows} row(s) removed or merged "
+            f"in this window, and {len(disclosed.unmeasured)} of those entries record "
+            f"NO job total, so this movement CANNOT BE ACCOUNTED FOR either way. "
+            f"UNJUDGED, not clean: {named}. The jobs those rows carried were never "
+            f"measured, and a missing figure is not a zero")
+    removed = disclosed.measured_jobs
+    residual_jobs = d_jobs + removed
+    # The removed rows are accounted for by their OWN jobs above, so they leave
+    # the entry allowance: what is left has to be carried by the rows that
+    # actually arrived. This is not double counting, it is the same subtraction
+    # applied to both halves of the ratio.
+    residual_entries = d_entries + disclosed.rows
+    head = (f"{d_jobs:+,} jobs, of which {removed:,} were removed by "
+            f"{disclosed.rows} disclosed correction row(s), leaving "
+            f"{residual_jobs:+,} on {residual_entries:+,} arriving entries")
+    if abs(residual_jobs) <= floor:
+        return PASS, f"{head}, inside the {floor:,.0f} floor"
+    allowance = abs(residual_entries) * base_mean * mean_factor
+    if allowance and abs(residual_jobs) <= allowance:
+        return PASS, f"{head}, within what those rows carry ({allowance:,.0f})"
+    return None, (f"{head}, which the disclosed removals do NOT explain")
+
+
 
 
 def containment_problem(sub, sup):
@@ -1649,7 +1726,26 @@ class ContainmentInvariant:
                     f"anything trashed in this window, the dedupe-llm merge runs (a merge "
                     f"restamps no updated_at, so /changed-rows will not show it), then any "
                     f"country/AI relabel job. reconcile-supersets is already accounted for "
-                    f"above. " + _disclosed_removals_line(priors[sup.name].get("captured_at")))
+                    f"above. " +
+                    # WHAT THE SITE ITSELF DISCLOSED. Added 2026-09-08, after
+                    # this message spent an hour of a human's time saying "two
+                    # mechanisms and I cannot tell them apart" while the actual
+                    # cause -- a Bloomberg duplicate of the Volkswagen 50,000
+                    # event, merged away after five days of double-counting --
+                    # sat published in the corrections log the whole time. A
+                    # merge hard-deletes its duplicate, so /changed-rows is
+                    # blind to the single event most likely to move a headline.
+                    #
+                    # This NARROWS a containment finding and never CLEARS one,
+                    # and that is still true now that the log carries job
+                    # totals: a containment number is a difference between two
+                    # slices, and a removal disclosed against the corpus does
+                    # not say which side of that boundary it sat on, so there is
+                    # no subtraction to do here. The arithmetic that CAN be
+                    # completed is headline_movement's, through
+                    # account_for_disclosures. An unreadable log reads UNKNOWN
+                    # rather than "nothing was removed".
+                    ctx.disclosed(priors[sup.name].get("captured_at")).summary())
 
 
 class DenominatorProvenanceInvariant:
@@ -2628,6 +2724,25 @@ class Ctx:
         if url not in self._cache:
             self._cache[url] = self._fetch(url, timeout)
         return self._cache[url]
+
+    def disclosed(self, since_iso):
+        """What the corrections log disclosed in a window, for THIS run.
+
+        THE LOG IS READ ONLY WHEN THE LIVE DATA WAS. A ctx built on an injected
+        fetch is a test or a replay: there is no corrections log that belongs to
+        its numbers, so this reports "not consulted" instead of reaching for the
+        production host. That distinction was missing until 2026-09-13, and the
+        containment guard called the endpoint straight out of its FAIL branch,
+        so nine OFFLINE unit tests issued real requests to asktherecruiter.com
+        on every run of the suite. "Not consulted" is the safe answer at both
+        call sites: it is printed as UNKNOWN and it clears nothing.
+        """
+        if self._fetch is not _default_fetch:
+            return _corrections_reader().DisclosedRemovals(
+                consulted=False,
+                error="this run reads an injected transport, so the live "
+                      "corrections log is not its log")
+        return _disclosed_removals(since_iso)
 
 
 def check_all(fetch=None, timeout=20, invariants=INVARIANTS, ctx=None):
