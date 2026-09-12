@@ -1,3 +1,40 @@
+## 2026-09-12 - The contact form's script never reached a single visitor, and the markup around it did
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_shortcode_scripts_are_enqueued.py`
+
+Deploying 2.20.190 and then reading the page it produced, rather than the file
+that produced it, showed the markup present and the script absent. The rendered
+contact page carries `alt-tip-only` and `data-alt-hints`, and not one line of
+the behaviour that acts on them, while other script tags on the same page
+survive. Something in the stack strips executable script out of post content.
+
+It had been doing so the whole time. The tip-only "Company that had the layoff"
+field is revealed by that script, so it had never appeared for anyone reporting
+a layoff, and the tip note beside the link field had never shown. The fix
+shipped hours earlier in this same session, which refetches the challenge so a
+cached page can still be submitted, would also never have run.
+
+Nothing reported any of it and nothing could. A behaviour that never runs
+raises no error, writes no log and leaves a page that looks right. It was found
+by fetching the deployed page and grepping for a function name that should have
+been in it, which is the check that was missing from every previous claim that
+this form worked.
+
+The script is `assets/contact.js` now, enqueued the way every other script in
+this plugin ships, with the endpoint passed through `wp_add_inline_script`
+exactly as `blog-claps.js` takes its own. That shape demonstrably survives.
+
+The guard fails on any file under `includes/` that prints a `<script>` with a
+body. Two exemptions, both decisions rather than holes: a bare
+`<script src=...>` loader for a third-party widget carries no logic of ours,
+and `application/ld+json` is data that nothing executes, emitted from
+`wp_head` and confirmed present on the live page. The first version of the
+guard flagged those four JSON-LD blocks; they were checked against the deployed
+page before the exemption was written, not assumed.
+
+Red first: 4 failures and 1 error on the pre-change tree.
+
 ## 2026-09-12 - The contact form could not be submitted from a cached page, and told the sender they looked like spam
 
 **Class:** cache-served-stale
