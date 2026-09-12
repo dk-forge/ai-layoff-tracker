@@ -8629,6 +8629,23 @@
    "run_id": "34577859604",
    "stored": null,
    "truncated": "paid reads were switched off for this run (ALT_PAID_READS=off)"
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "ceiling_usd": 0.090914,
+   "changed": null,
+   "complete": false,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-09-12",
+   "items": 287,
+   "job": "edgar-history-sweep",
+   "max_call_usd": 0.0,
+   "prompt_tokens": 0,
+   "run_id": "34685718383",
+   "stored": 0,
+   "truncated": "paid reads were switched off for this run (ALT_PAID_READS=off)"
   }
  ],
  "v": 1
