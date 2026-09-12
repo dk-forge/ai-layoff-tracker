@@ -6,8 +6,7 @@
     "India",
     "Isle of Man",
     "Morocco",
-    "Pakistan",
-    "Vietnam"
+    "Pakistan"
   ],
   "backlog_oldest": "2026-08-18",
   "countries": {
@@ -1110,12 +1109,18 @@
       "threshold": null
     },
     "Vietnam": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE LOCATED for article-42 notifications. General Statistics Office job-loss figures compiled from local reports, labour-force surveys and benefit populations are not counts of employer notifications under article 42 and are explicitly excluded. Provincial agencies may retain employer-level intake lists, but no public periodic filing total or named national register was found.",
+      "assessed": "2026-09-12",
+      "authority": "the competent provincial People's Committee and its provincial labour administration",
+      "cite": "https://vbpl.moj.gov.vn/bolaodong/pages/vbpqen-toanvan.aspx?ItemID=11135",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 2786,
-      "state": "unknown",
-      "stored_name": "Vietnam"
+      "regime": "Labour Code 45/2019/QH14, articles 42 and 44. When structural or technological change or economic reasons risk dismissal of a large number of employees, the employer must consult the workplace employee representative, prepare a labour-utilisation plan, and give the affected employees and the provincial People's Committee at least 30 days' notice. The plan identifies the names and numbers retained, retrained, moved to part-time work, retired and terminated.",
+      "state": "not_measurable",
+      "stored_name": "Vietnam",
+      "threshold": "a 'large number of employees'; the Code states no numeric employee or percentage cutoff"
     }
   },
   "countries_in_scope": 79,
@@ -1152,7 +1157,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T03:44:38Z",
+  "measured_at": "2026-09-12T04:30:24Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1824,9 +1829,9 @@
   "tallies": {
     "no_regime": 7,
     "refused": 6,
-    "regime_no_aggregate": 37,
+    "regime_no_aggregate": 38,
     "regime_with_aggregate": 21,
-    "unassessed": 8
+    "unassessed": 7
   },
   "unassessed": [
     "Bosnia and Herzegovina",
@@ -1835,8 +1840,7 @@
     "India",
     "Isle of Man",
     "Morocco",
-    "Pakistan",
-    "Vietnam"
+    "Pakistan"
   ],
   "undeclared": [],
   "vocabulary_duplicates": []
