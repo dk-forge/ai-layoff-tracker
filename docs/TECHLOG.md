@@ -24930,6 +24930,27 @@ notification population. The official legislation surface is now accessible,
 closing the former WAF-dependent evidence gap. TDD: the new Isle of Man guard
 first failed with `KeyError: 'Isle of Man'`. Merge and live verification remain.
 
+## 2026-09-12 - Hungary's fragmented county figures are not a national total
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Hungary is now `REGIME_NO_AGGREGATE`, grounded in the current official text of
+Act I of 2012 sections 71-76. The employer consults the works council and gives
+the state employment body written notice of both intent and decision; the
+decision notice is at least 30 days before dismissal and identifies affected
+workers, roles and qualifications. The thresholds over 30 days are 10 workers
+at 21-99 employees, 10 percent at 100-299, and 30 workers at 300 or more.
+
+The publication finding is narrower than the former UNKNOWN. Official NFSZ and
+county-government reports do publish some county-period counts, including 2025
+Bacs-Kiskun and Nograd reports, but no complete national series or named public
+employer register was located across all 20 counties plus Budapest. Partial
+county figures cannot serve as the country's filing denominator. Expected-
+headcount surveys and redundancy-avoidance subsidies remain excluded as other
+populations. TDD: the Hungary guard first failed with `KeyError: 'Hungary'`.
+Merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
