@@ -16,13 +16,11 @@
       "recorded_in": "2026-09-11T19:58:54Z"
     },
     "worldwide_all_time": {
-      "captured_at": "2026-09-11T19:57:53Z",
-      "entries": 65586,
-      "excluded_entries": 427,
-      "excluded_jobs": 124073,
-      "jobs": 20651190,
-      "recorded_in": "2026-09-11T19:58:54Z"
+      "captured_at": "2026-09-12T21:30:08Z",
+      "entries": 65594,
+      "jobs": 20563505,
+      "recorded_in": "close:worldwide_all_time:2026-09-12T21:30:08Z"
     }
   },
-  "written_at": "2026-09-12T21:23:15Z"
+  "written_at": "2026-09-12T21:30:08Z"
 }
