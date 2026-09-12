@@ -35,6 +35,48 @@ page before the exemption was written, not assumed.
 
 Red first: 4 failures and 1 error on the pre-change tree.
 
+## 2026-09-13 - the overlap repair was the wrong TOML type, so Railway rejected every deployment
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_railway_deploy_overlap.py`
+
+PR #330 intended to keep the old Railway deployment alive for 7,200 seconds
+when a release overlaps the GDELT cron. It stored
+`overlapSeconds = "7200"`. Railway's config parser requires a number and
+rejected the service manifest with `expected number, received string`; every
+subsequent deployment failed before build, leaving the prior deployment live.
+The September 12 22:00 UTC cron therefore started without the claimed overlap
+protection.
+
+The test caused the miss: its regex deliberately accepted both quoted and
+unquoted digits, then converted the capture to an integer itself. It proved our
+interpretation of the text, not Railway's typed configuration contract. The
+test now parses the entire file with Python's TOML parser, requires
+`deploy.overlapSeconds` to be an integer, and still enforces the 7,200-second
+floor. Red first on the deployed string; the config is now numeric `7200`.
+Production proof is a successful Railway deployment whose manifest reports the
+numeric value, followed by a protected scheduled run with a terminal GDELT
+finish.
+
+The September 12 22:00 UTC run cannot supply that proof. It ran on the last
+valid pre-overlap deployment. Its GDELT discovery stage was healthy (5,497
+mirror articles; zero throttled, abandoned or capped windows; 660 attempted and
+651 fetched), but the ChemiCloud/Cloudflare publication path returned sustained
+HTTP 504s. The full run pulled 1,101 candidates, posted 0, recorded 75 post
+failures, and spent $0.1598 across 1,544 model calls before failing loudly;
+work-ledger and source-health writes also failed. This exposes a separate cost
+and reliability gap: a host-wide readiness check must stop before paid
+extraction while leaving the queued candidates resumable. Do not change the
+existing per-item seen-URL fail-open contract to disguise that outage.
+
+PR #336's local evidence is green: the overlap/incident target is 10/10, TOML
+parses the value as an integer, and the diff check is clean. Actions run
+`34722447904` remains a legitimate integration gate: the first live attempt
+received 504s; after local recovery the rerun passed `rest-2`, but `rest`
+received HTTP 403 for seven live integrity reads. The new configuration test
+did not fail. Merge remains prohibited until all required live checks evaluate
+and pass, followed by a successful Railway deployment with the numeric value.
+
 ## 2026-09-12 - The contact form could not be submitted from a cached page, and told the sender they looked like spam
 
 **Class:** cache-served-stale
