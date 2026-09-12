@@ -4,7 +4,6 @@
     "Czechia",
     "Hungary",
     "India",
-    "Isle of Man",
     "Morocco",
     "Pakistan"
   ],
@@ -465,12 +464,18 @@
       "threshold": "banded over 30 days: 5 in an establishment of 21-49; 10 in 50-99; 10% in 100-299; 30 in 300+"
     },
     "Isle of Man": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE because no administrative collective-dismissal filing population exists. Redundancy-payment or insolvency claims, tribunal cases and labour-market statistics are downstream or different populations and are explicitly excluded.",
+      "assessed": "2026-09-12",
+      "authority": null,
+      "cite": "https://legislation.gov.im/cms/images/LEGISLATION/PRINCIPAL/2006/2006-0021/2006-0021.pdf",
+      "class": "no_regime",
       "entries": 0,
       "jobs": 50,
-      "state": "unknown",
-      "stored_name": "Isle of Man"
+      "regime": "NO collective-redundancy report or government-approval regime appears in the current official Employment Act 2006. The Act regulates individual dismissal and unfair selection for redundancy, employee time off to seek work, tribunal remedies and trade-union activity. Its definition of collective agreements includes voluntarily agreed consultation machinery; it does not create a statutory collective-dismissal consultation or notification duty. Redundancy payments are governed separately by the Redundancy Payments Act 1990. No numeric collective threshold or public filing recipient exists.",
+      "state": "not_measurable",
+      "stored_name": "Isle of Man",
+      "threshold": null
     },
     "Israel": {
       "age_days": 25,
@@ -1157,7 +1162,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T04:30:24Z",
+  "measured_at": "2026-09-12T04:37:30Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1827,18 +1832,17 @@
   "scope_basis": "countries the tracker holds rows for, read live from /aggregate",
   "scope_state": "measured",
   "tallies": {
-    "no_regime": 7,
+    "no_regime": 8,
     "refused": 6,
     "regime_no_aggregate": 38,
     "regime_with_aggregate": 21,
-    "unassessed": 7
+    "unassessed": 6
   },
   "unassessed": [
     "Bosnia and Herzegovina",
     "Czechia",
     "Hungary",
     "India",
-    "Isle of Man",
     "Morocco",
     "Pakistan"
   ],
