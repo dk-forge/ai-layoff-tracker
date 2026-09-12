@@ -153,6 +153,76 @@ class TrackerPageCacheLifetime(unittest.TestCase):
         self.assertGreaterEqual(directives(values["assets"]).get("max-age", 0), 31536000)
 
 
+class EveryPageThePluginOwnsIsChecked(unittest.TestCase):
+    """One URL was checked until 2026-09-12, and /blog/contact/ was five days
+    stale at the edge while every check in the repo read green. The origin sent
+    no-store for that page and an edge rule cached it anyway for five days,
+    bypassing only on a query string, which is what the other checks all send."""
+
+    def test_more_than_one_page_is_read(self):
+        self.assertGreater(
+            len(reader_freshness.READER_PAGES), 1,
+            "a single-page reader check cannot see a stale page anywhere else")
+
+    def test_the_tracker_page_is_still_among_them(self):
+        self.assertIn(reader_freshness.PAGE_URL, reader_freshness.READER_PAGES)
+
+    def test_the_contact_page_is_among_them(self):
+        self.assertTrue(
+            any(u.rstrip("/").endswith("/contact") for u in reader_freshness.READER_PAGES),
+            "the page whose staleness this class exists for is not being read")
+
+    def test_no_reader_page_carries_a_query_string(self):
+        for url in reader_freshness.READER_PAGES:
+            self.assertNotIn("?", url, f"{url} would measure the origin, not the reader")
+
+    def test_every_page_owning_shortcode_asserts_the_short_lifetime(self):
+        """alt_page_is_plugin_surface() gates the 60s header. A page-level
+        shortcode missing from that list gets whatever the stack in front
+        decides, which is how /blog/contact/ ended up at five days."""
+        listed = set(re.findall(r"'(alt_[a-z_]+)'", _surface_shortcode_source()))
+        for required in ("alt_tracker", "alt_contact", "alt_methodology", "alt_press_media"):
+            self.assertIn(
+                required, listed,
+                f"{required} owns a page but is not a plugin surface, so that page "
+                f"never gets the bounded cache lifetime")
+
+    def test_the_contact_form_emits_a_build_stamp(self):
+        """Without it the page cannot be dated and the verdict is UNKNOWN. The
+        contact form renders its own buffer rather than going through
+        alt_template(), which is why it was missing."""
+        contact = (PLUGIN / "includes" / "contact.php").read_text(encoding="utf-8")
+        self.assertIn("alt_build_stamp_comment() . ob_get_clean()", contact)
+
+
+class AGraceWindowIsNotTakenFromTheCacheBeingMeasured(unittest.TestCase):
+    """The window came from the response's own headers, so a page held for five
+    days granted itself ten days of patience and could never fail."""
+
+    def test_a_long_ttl_cannot_buy_an_unbounded_window(self):
+        grace = reader_freshness.grace_seconds("max-age=432000")
+        self.assertLessEqual(grace, reader_freshness.MAX_GRACE_S)
+
+    def test_the_plugins_own_header_is_untouched_by_the_cap(self):
+        """The cap must not change any verdict the file already reached."""
+        own = page_header_from_shortcodes()
+        self.assertEqual(
+            reader_freshness.grace_seconds(own),
+            reader_freshness.max_reader_staleness_s(own)
+                + reader_freshness.PROPAGATION_MARGIN_S,
+            "the cap is biting on the plugin's own pages, which means it is too tight")
+        self.assertEqual(reader_freshness.cache_lifetime_overrun(own), 0)
+
+    def test_the_overrun_is_reported_rather_than_swallowed(self):
+        self.assertGreater(reader_freshness.cache_lifetime_overrun("max-age=432000"), 0)
+
+
+def _surface_shortcode_source():
+    src = (PLUGIN / "includes" / "shortcodes.php").read_text(encoding="utf-8")
+    start = src.index("function alt_public_surface_shortcodes()")
+    return src[start:src.index("}", src.index("return array(", start))]
+
+
 class ReaderFreshnessMeasuresTheReaderSurface(unittest.TestCase):
     def test_page_url_carries_no_query_string(self):
         """The entire point of the module. A cache buster here would turn it

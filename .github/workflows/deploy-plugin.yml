@@ -485,6 +485,62 @@ jobs:
           fi
           exit 0
 
+      # PURGE THE EDGE BEFORE ASKING WHAT A READER SEES.
+      #
+      # Measured 2026-09-12: the origin sends
+      # `private, no-cache, no-store, must-revalidate, max-age=0` for
+      # /blog/contact/, and the bare URL came back `cf-cache-status: HIT`,
+      # `age: 3185`, `cache-control: max-age=432000`. An edge rule caches that
+      # HTML for five days and ignores the origin entirely, bypassing only when
+      # a query string is present - which is what every other check in this repo
+      # sends, and why every one of them passed while a reader was served a
+      # subject list from before the deploy. No PHP cache flush can reach a
+      # cache PHP is never consulted by.
+      #
+      # ABSENT IS A STATE, NOT A PASS. With no token this step says so and the
+      # run continues, because a missing credential must not manufacture a red
+      # deploy. It is the reader check below that decides whether the deploy
+      # landed, and that check now reads every page the plugin owns. A token
+      # that is REJECTED is a different thing and fails the step: a credential
+      # that no longer works is a repair a human has to make, and swallowing it
+      # is how this became invisible in the first place.
+      #
+      # The token needs one permission: Zone / Cache Purge, on this zone only.
+      - name: Purge the CDN copy of every page the plugin owns
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          set -uo pipefail
+          if [ -z "${CF_TOKEN:-}" ] || [ -z "${CF_ZONE:-}" ]; then
+            echo "::notice::ABSENT: no CLOUDFLARE_API_TOKEN / CLOUDFLARE_ZONE_ID, \
+              so nothing was purged. A shared cache in front of this site can \
+              hold a page for days regardless of what the origin says; the \
+              reader check below is what will notice. Add a token with the \
+              Zone / Cache Purge permission to close this."
+            exit 0
+          fi
+          # The list is read FROM railway/reader_freshness.py, not retyped
+          # here. A page that is purged but not checked, or checked but not
+          # purged, is exactly the gap this change exists to close, and two
+          # hand-kept lists drift.
+          BODY=$(python3 -c 'import json,sys; sys.path.insert(0,"railway"); import reader_freshness as r; print(json.dumps({"files": list(r.READER_PAGES)}))')
+          echo "Purging: $BODY"
+          CODE=$(curl -s -o /tmp/purge.json -w '%{http_code}' \
+            -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/purge_cache" \
+            -H "Authorization: Bearer $CF_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$BODY")
+          if [ "$CODE" = "200" ] && grep -q '"success":[[:space:]]*true' /tmp/purge.json; then
+            echo "Purged the edge copy of every page the plugin owns."
+            exit 0
+          fi
+          echo "::error::Cloudflare refused the purge (HTTP $CODE). A credential \
+            that no longer works is a repair, not a warning: until it is fixed, \
+            a copy change can be live at the origin and days from its readers."
+          head -c 600 /tmp/purge.json || true
+          exit 1
+
       # The check that measures the surface a reader actually gets: the BARE
       # url, a browser User-Agent, no cache buster. Every deploy check before
       # this one carried a query string and therefore measured the origin, which

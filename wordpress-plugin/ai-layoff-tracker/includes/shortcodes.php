@@ -294,11 +294,28 @@ function alt_page_link_label($file, $fallback) {
  * needs. Detection is by our own shortcodes/routes, so ordinary blog posts
  * keep their TOC.
  */
+function alt_public_surface_shortcodes() {
+    return array(
+        'alt_tracker', 'alt_tracker_health', 'alt_publisher_tools',
+        'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker',
+        'alt_company_history', 'alt_sources', 'alt_report',
+        'alt_contact', 'alt_methodology', 'alt_press_media',
+    );
+}
+
 function alt_page_is_plugin_surface() {
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return true;
     $post = get_post();
     if (!$post || empty($post->post_content)) return false;
-    foreach (array('alt_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker', 'alt_company_history', 'alt_sources', 'alt_report') as $shortcode) {
+    // Every shortcode that OWNS a page belongs here. A page that is missing
+    // falls through to whatever the stack in front of us decides, which on
+    // 2026-09-12 was an edge rule holding /blog/contact/ for five days while
+    // the origin said no-store. The plugin cannot purge that cache; asserting
+    // a 60s lifetime is the only lever it holds, and a page left off this list
+    // never gets it. Embed shortcodes (alt_digest_subscribe, alt_stats_bar,
+    // alt_export_buttons, alt_ai_quotes) are deliberately absent: they appear
+    // INSIDE other pages and do not make their host a plugin surface.
+    foreach (alt_public_surface_shortcodes() as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
     }
     return false;

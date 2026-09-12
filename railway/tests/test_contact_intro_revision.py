@@ -32,6 +32,13 @@ THE SUBJECT LIST IS HELD HERE TOO, for the same reason it was rewritten: the
 options are what a person reads before deciding whether this form is for them.
 They are alphabetical with the catch-all last, and the catch-all is the only
 one allowed to be vague.
+
+AND THE HINT UNDER IT. A label has to be short enough to read in a dropdown, so
+it can name the thing without saying who should pick it or what we will need
+from them. Every subject carries one sentence that does, it is rendered
+server-side for the default option so it is right with JavaScript off, and the
+map is keyed by the same keys as the list, because a hint that describes the
+wrong option is worse than no hint.
 """
 
 import re
@@ -173,6 +180,162 @@ class TheSubjectListReadsLikeSomeoneWroteIt(unittest.TestCase):
                 "subject '%s' reads as a category name rather than as the thing "
                 "a person is bringing us: %r" % (key, label),
             )
+
+
+
+
+class EverySubjectExplainsItself(unittest.TestCase):
+    def _hints(self):
+        m = re.search(r"function alt_contact_topic_hints\(\)\s*\{(.*?)\n\}", CONTACT, re.S)
+        assert m, "alt_contact_topic_hints() is gone"
+        return dict(
+            re.findall(r"'([a-z_]+)'\s*=>\s*'((?:[^'\\]|\\.)*)'", m.group(1))
+        )
+
+    def test_every_subject_has_one(self):
+        hints = self._hints()
+        for key, label in _topics():
+            self.assertIn(
+                key,
+                hints,
+                "subject %r has no hint, so a reader has only the label to go on"
+                % label,
+            )
+
+    def test_no_hint_belongs_to_a_subject_that_is_gone(self):
+        keys = {key for key, _ in _topics()}
+        for key in self._hints():
+            self.assertIn(
+                key, keys, "hint %r describes a subject that no longer exists" % key
+            )
+
+    def test_a_hint_is_a_sentence_and_not_a_restated_label(self):
+        labels = {key: label for key, label in _topics()}
+        for key, hint in self._hints().items():
+            self.assertGreaterEqual(
+                len(hint.split()),
+                8,
+                "hint for %r is too short to add anything: %r" % (key, hint),
+            )
+            self.assertTrue(
+                hint.rstrip().endswith("."),
+                "hint for %r is not written as a sentence: %r" % (key, hint),
+            )
+            self.assertNotEqual(
+                hint.rstrip(". ").lower(),
+                labels[key].lower(),
+                "hint for %r just repeats the label" % key,
+            )
+
+    def test_the_fallback_is_empty_and_not_another_subjects_hint(self):
+        body = re.search(
+            r"function alt_contact_topic_hint\(\$key\)\s*\{(.*?)\n\}", CONTACT, re.S
+        )
+        self.assertIsNotNone(body, "alt_contact_topic_hint() is gone")
+        self.assertIn("''", body.group(1))
+
+    def test_it_is_rendered_before_any_script_runs(self):
+        self.assertIn(
+            "alt_contact_topic_hint($first)",
+            CONTACT,
+            "the hint for the default option must be rendered server-side, or "
+            "the form opens with a blank line under the subject",
+        )
+        self.assertIn('id="alt-c-topic-hint"', CONTACT)
+        self.assertIn('aria-describedby="alt-c-topic-hint"', CONTACT)
+
+    def test_the_resume_subject_stops_asking_for_a_news_report(self):
+        self.assertIn(
+            "alt-app-note",
+            CONTACT,
+            "the resume tool is the one subject that is not about the tracker; "
+            "leaving the source-link wording up tells the person they picked "
+            "the wrong option",
+        )
+        self.assertIn("Link to the page (optional)", CONTACT)
+
+class TheFormWorksFromACachedPage(unittest.TestCase):
+    """The nonce, the timestamp and the arithmetic token are all minted per
+    request, and all three were printed into a page that sits behind a shared
+    cache holding one render for hours. The form answered "That looked like
+    spam to us", which sends an honest person away believing they made a
+    mistake. includes/blog-claps.php had already written this lesson down."""
+
+    def test_a_no_store_route_mints_the_challenge(self):
+        self.assertIn("'/contact-challenge'", CONTACT)
+        self.assertIn("no-store", CONTACT,
+                      "a cached challenge is the whole defect; the route must forbid it")
+
+    def test_the_printed_and_fetched_challenges_come_from_one_minter(self):
+        """Two minters drift, and the drift is invisible: the page would show
+        one sum while the token held the answer to another."""
+        self.assertIn("function alt_contact_mint_challenge()", CONTACT)
+        self.assertEqual(
+            CONTACT.count("set_transient('alt_captcha_'"), 1,
+            "the arithmetic answer is stored in more than one place")
+        self.assertIn("$challenge = alt_contact_mint_challenge();", CONTACT)
+
+    def test_the_form_replaces_all_three_stale_values(self):
+        for name in ("alt_contact_nonce", "alt_ts", "alt_token"):
+            self.assertIn("put('%s'" % name, CONTACT,
+                          "%s is minted per request and must be refetched" % name)
+
+    def test_a_failed_fetch_leaves_the_printed_values_alone(self):
+        """On an uncached page the printed values are valid. A visitor must
+        never see an error about our caching."""
+        self.assertIn(".catch(function () {", CONTACT)
+
+    def test_the_question_and_the_answer_field_move_together(self):
+        """Swapping the token without redrawing the sum would fail every
+        submission and read as the visitor's mistake."""
+        self.assertIn("data-alt-question", CONTACT)
+        self.assertIn("answer.value = ''", CONTACT)
+
+
+class ThatLookedLikeSpamIsNeverSaidAboutOurOwnOutage(unittest.TestCase):
+    def test_an_unreachable_verifier_is_not_a_verdict(self):
+        self.assertIn("$ts_ok = null", CONTACT)
+        self.assertIn("if ($ts_ok === false) $fail('spam');", CONTACT)
+        self.assertNotIn("if ($ts_ok !== true) $fail('spam');", CONTACT)
+
+    def test_an_unverified_message_says_so_in_the_mail(self):
+        self.assertIn("alt_contact_unverified", CONTACT)
+        self.assertIn("UNVERIFIED", CONTACT)
+
+    def test_expired_and_wrong_stay_different_answers(self):
+        self.assertIn("if ($expected === false) $fail('expired');", CONTACT)
+
+
+class TurnstileIsPreferredAndNothingDependsOnIt(unittest.TestCase):
+    def test_turnstile_is_offered(self):
+        self.assertIn("ALT_TURNSTILE_SITE_KEY", CONTACT)
+        self.assertIn("challenges.cloudflare.com/turnstile", CONTACT)
+
+    def test_the_arithmetic_remains_the_keyless_floor(self):
+        """A contact form one expired credential away from unreachable is worse
+        than a slightly ruder one."""
+        self.assertIn("function alt_contact_check_arithmetic(", CONTACT)
+        self.assertIn("alt-c-captcha", CONTACT)
+
+
+class APastedAddressIsAccepted(unittest.TestCase):
+    def test_the_link_field_does_not_demand_a_scheme(self):
+        """type="url" makes the browser refuse to submit the whole form over an
+        OPTIONAL field when someone pastes example.com/article."""
+        self.assertNotIn('type="url" id="alt-c-link"', CONTACT)
+        self.assertIn('inputmode="url"', CONTACT)
+
+    def test_the_scheme_is_added_server_side(self):
+        self.assertIn("function alt_contact_clean_url(", CONTACT)
+        self.assertIn("'https://' . ltrim($raw", CONTACT)
+
+    def test_only_http_and_https_survive(self):
+        """This string lands in an email a person will click."""
+        self.assertIn("array('http', 'https')", CONTACT)
+        self.assertIn("^https?://", CONTACT)
+
+    def test_a_hostless_value_is_dropped_rather_than_repaired(self):
+        self.assertIn("strpos($host, '.') === false", CONTACT)
 
 
 if __name__ == "__main__":
