@@ -6,10 +6,11 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-11) — top-three closeout and production proof.**
-  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
-  branch: `codex/top3-closeout-20260911`, rebased on `origin/main` at `71c9a212`;
-  plugin version reserved by this branch: `2.20.185`.
+- **HELD by Codex (2026-09-12) — GDELT deployment-interruption TDD.**
+  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
+  branch: `codex/gdelt-deploy-overlap-20260912`, based on `origin/main` at
+  `912f2231`. No plugin version is reserved because this changes only the
+  Railway service configuration, its test and documentation.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
@@ -24,6 +25,20 @@ holder, so the start-of-session ritual surfaces it automatically.
   classification, regional recall, archive recovery, duplicate adjudication,
   and the private competitor-benchmark input. Never convert elapsed time into a
   GDELT pass or public competitor guesses into benchmark evidence.
+
+  **Deployment-interruption repair (2026-09-12 CET, pending CI/merge).** The
+  2026-09-11 scheduled cron began at 22:00Z and PR #308, which legitimately
+  changed `railway/country_coverage.py`, merged at 22:06Z. Railway activated
+  that code deployment at 22:07Z and sent SIGTERM to the in-flight cron; the
+  new interrupt handler correctly retained a terminal `degraded` GDELT note,
+  but the window itself still did not finish. `watchPatterns` already prevents
+  ledger-only bot commits from deploying, so the remaining failure is a real
+  code release during collection. `railway.toml` now retains the old deployment
+  for 7,200 seconds: the collector's clamped one-hour GDELT maximum plus one
+  hour for extraction, posting and remaining sources. A red-first test proved
+  the setting was absent and now pins the two-hour floor. This prevents a code
+  release from killing the run; it does not turn the interrupted September 11
+  run into a pass or shorten the seven-run/fourteen-day evidence gate.
 
   **Live country follow-up (2026-09-11 CET).** The post-deploy measurement found
   Mauritius and Palestine in addition to the five countries closed in PR #305.
