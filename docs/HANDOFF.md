@@ -3139,3 +3139,15 @@ text and Labour Department's complete Ordinance guide contain individual notice,
 severance and remedy rules but no collective threshold, government filing or
 recipient. Assistance and workforce surveys are not employer disclosure. The
 new guard failed first on the missing entry; merge and live verification remain.
+
+Hong Kong subsequently merged in PR #320 as `f82edad`; all CI checks and live
+country workflow `34665509239` passed. It is production-closed and the declared
+country backlog is 10.
+
+Indonesia is now the active package, with a material correction from primary
+law. PP 35/2021 article 37 sends advance notice to the worker/union, but article
+38 then requires the employer to report an uncontested termination to the labour
+ministry and/or regional office. The former backlog note stopped one article too
+soon. Satu Data's published worker count is explicitly a JKP insurance-claim
+population, not the article-38 report denominator. The TDD guard failed first on
+the absent entry; merge and live verification remain.
