@@ -65,4 +65,4 @@ restartPolicyType = "NEVER"
 # extraction, posting and the remaining sources. This is a maximum overlap
 # during an actual code deployment, not two daily cron runs; ledger-only bot
 # commits remain excluded by watchPatterns above.
-overlapSeconds = "7200"
+overlapSeconds = 7200

@@ -6,15 +6,28 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-12) — top-three evidence closeout.**
+- **HELD by Codex (2026-09-13) — Railway overlap type repair.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
-  branch: `codex/document-volkswagen-correction-20260912`, based on
-  `origin/main` at `0eee0728`. No plugin version is reserved because this
-  package records a completed editorial correction only.
+  branch: `codex/fix-railway-overlap-type`, based on `origin/main` at
+  `be27a904`. No plugin version is reserved because this changes only Railway
+  service configuration, its guard, and operational documentation.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
+
+  **Railway deployment blocker found 2026-09-13 00:13 CEST.** PR #330's
+  overlap repair wrote `overlapSeconds = "7200"`. Railway requires this field
+  to be a TOML number, rejected the string at config parsing, and therefore
+  rejected every deployment after #330 with `expected number, received
+  string`. The 22:00 UTC cron started from the last valid deployment and did
+  not carry the promised overlap protection, so it is not production proof of
+  #330. This branch changes the value to numeric `7200` and makes the test
+  parse the TOML and assert the runtime type, rather than accepting optional
+  quotation marks with a regex. Red first: the strengthened test fails on the
+  shipped string. After merge, require a successful Railway deployment whose
+  service manifest reports `overlapSeconds: 7200`, then begin the clean-run
+  clock from the next protected scheduled run.
 
   **Newest closeout (2026-09-12 19:00 CEST).** PRs #328, #329 and #330 are
   merged and green. The post-merge country-register run `34700082245` passed:

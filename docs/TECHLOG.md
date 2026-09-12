@@ -35,6 +35,29 @@ page before the exemption was written, not assumed.
 
 Red first: 4 failures and 1 error on the pre-change tree.
 
+## 2026-09-13 - the overlap repair was the wrong TOML type, so Railway rejected every deployment
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_railway_deploy_overlap.py`
+
+PR #330 intended to keep the old Railway deployment alive for 7,200 seconds
+when a release overlaps the GDELT cron. It stored
+`overlapSeconds = "7200"`. Railway's config parser requires a number and
+rejected the service manifest with `expected number, received string`; every
+subsequent deployment failed before build, leaving the prior deployment live.
+The September 12 22:00 UTC cron therefore started without the claimed overlap
+protection.
+
+The test caused the miss: its regex deliberately accepted both quoted and
+unquoted digits, then converted the capture to an integer itself. It proved our
+interpretation of the text, not Railway's typed configuration contract. The
+test now parses the entire file with Python's TOML parser, requires
+`deploy.overlapSeconds` to be an integer, and still enforces the 7,200-second
+floor. Red first on the deployed string; the config is now numeric `7200`.
+Production proof is a successful Railway deployment whose manifest reports the
+numeric value, followed by a protected scheduled run with a terminal GDELT
+finish.
+
 ## 2026-09-12 - The contact form could not be submitted from a cached page, and told the sender they looked like spam
 
 **Class:** cache-served-stale
