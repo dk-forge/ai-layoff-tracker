@@ -122,6 +122,13 @@ class EveryEntryIsCheckable(unittest.TestCase):
         self.assertIn("legislation.govt.nz", entry["cite"])
         self.assertNotIn("New Zealand", cc.ACKNOWLEDGED_BACKLOG)
 
+    def test_hong_kong_is_a_classification_not_permanent_backlog(self):
+        """The verified Ordinance and Labour Department guide settle the finding."""
+        entry = cc.REGISTER["Hong Kong"]
+        self.assertEqual(entry["class"], cc.NO_REGIME)
+        self.assertIn("labour.gov.hk", entry["cite"])
+        self.assertNotIn("Hong Kong", cc.ACKNOWLEDGED_BACKLOG)
+
     def test_a_country_with_a_regime_names_its_authority_and_threshold(self):
         """"A regime exists" is only checkable if it says who receives the notice.
 
