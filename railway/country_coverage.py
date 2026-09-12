@@ -930,14 +930,16 @@ PER_EMPLOYER_REGISTERS = (
               "statistiques-relatives-aux-restructurations")},
     {"jurisdiction": "14 krajske pobocky", "country": "Czechia", "names_employers": False,
      "names_selectively": True,
-     "what": ("REPORTED, NOT VERIFIED. Each regional labour office's annual "
-              "'Zprava o situaci na krajskem trhu prace' PDF is reported to carry "
-              "hromadne propousteni counts AND to name the largest filing employers, "
-              "2013-2025. Same narrative-selection objection as Belgium. Verification "
-              "failed here: the PDFs are font-subset encoded and a hand-rolled text "
-              "extraction silently drops every diacritic word"),
+     "what": ("VERIFIED AS PARTIAL AND SELECTIVE. Regional labour-office annual "
+              "reports can publish section-62 employer and affected-worker totals: "
+              "Pardubice's official 2024 report gives district rows and a regional "
+              "total for 2022-2024. Some older official regional narratives name "
+              "selected employers, but the current table does not; this is therefore "
+              "not a notice register or a complete named-employer source. The same "
+              "narrative-selection objection as Belgium applies."),
      "since": "2013", "in_tracker": False,
-     "cite": "https://up.gov.cz/tiskove-zpravy"},
+     "cite": ("https://up.gov.cz/cms/documents/b4a5b91b-92ac-3b29-66f2-"
+              "e3046c0dcc7e/Rocni_PAK_2024.pdf")},
 )
 
 # The units swept to produce the list above, recorded so the next pass does not
@@ -1021,30 +1023,6 @@ ACKNOWLEDGED_BACKLOG = {
       "extraction of the consolidated FBiH law SILENTLY DROPPED every word "
       "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
       "or a real PDF library."
-      ),
-    'Czechia': ("2026-08-18",
-      "STATUTE VERIFIED, PUBLICATION STILL OPEN, and the reason it is still "
-      "open is recorded so the next pass does not repeat the same dead end. "
-      "Zakonik prace (262/2006 Sb.) s.62 with s.62(5) — the duty to notify the "
-      "krajska pobocka Uradu prace. TWO PUBLICATION LEADS, NEITHER CLOSED: (1) "
-      "UP CR ran a DEDICATED national release carrying employers-filing and "
-      "employees-covered (Dec 2013: 15 employers / 901 workers; Dec 2014: 26 / "
-      "877) but the last one found is from January 2016, and recent figures "
-      "reach the public through statements to CTK rather than a series. (2) "
-      "each of the 14 krajske pobocky publishes an annual 'Zprava o situaci na "
-      "krajskem trhu prace' PDF, 2013 through 2025, and those are REPORTED to "
-      "carry counts AND to name the largest filing employers — which would make "
-      "Czechia the closest thing to a per-employer source outside the three "
-      "known registers, at narrative rather than per-notice granularity. "
-      "VERIFICATION FAILED HERE FOR A REASON WORTH KEEPING: Rocni_OLK_2024.pdf "
-      "was fetched (up.gov.cz permits us; HTTP 200, 1.2 MB) and its text "
-      "extracted by decompressing the content streams, and EVERY WORD "
-      "CONTAINING A CZECH DIACRITIC IS SILENTLY MISSING from that extraction — "
-      "'hromadne propousteni' cannot be found because the accented glyphs live "
-      "in a separate font subset. A hand-rolled PDF parser does not fail loudly "
-      "here, it fails by omission, which is how it would have produced a "
-      "confident wrong quote. TO CLOSE: read ONE regional report with a real "
-      "PDF library."
       ),
     'India': ("2026-08-18",
       "A PERMISSION REGIME, NOT A NOTIFICATION ONE, and the distinction is "
@@ -1972,6 +1950,35 @@ REGISTER = {
                       "different populations and are explicitly excluded."),
         "assessed": "2026-09-12",
         "cite": "https://njt.hu/jogszabaly/2012-1-00-00.1",
+    },
+
+    "Czechia": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Code Act No. 262/2006 Coll., sections 62-64. An "
+                   "employer must consult employee representatives and notify the "
+                   "competent regional branch of the Labour Office in writing at "
+                   "least 30 days before individual notices. A final written report "
+                   "to that branch describes the decision, consultation results and "
+                   "the occupational composition of affected workers; employment "
+                   "normally cannot end until 30 days after that report."),
+        "authority": ("the competent regional branch of the Labour Office of the "
+                      "Czech Republic (Urad prace CR)"),
+        "threshold": ("within 30 calendar days: at least 10 workers at an employer "
+                      "with 20-100 employees; 10 percent at 101-300; or at least "
+                      "30 at more than 300; agreements count where at least five "
+                      "covered dismissals also occur"),
+        "aggregate": ("NO COMPLETE CURRENT NATIONAL AGGREGATE LOCATED. Official "
+                      "regional annual labour-market reports publish some section-62 "
+                      "employer and affected-worker totals. Pardubice's 2024 report, "
+                      "read with a full PDF text layer, gives three reporting "
+                      "employers and 135 affected workers for 2024, with district "
+                      "rows and 2022-2023 comparisons. UP CR's statistics catalogue "
+                      "hosts regional annual reports through 2025, but no consistent "
+                      "national series or complete named notice register was found. "
+                      "Selected employer mentions in narratives are partial and "
+                      "cannot serve as a filing denominator."),
+        "assessed": "2026-09-12",
+        "cite": "https://ppropo.mpsv.cz/VI224Hromadnepropousteni",
     },
 
     "Afghanistan": {

@@ -24951,6 +24951,29 @@ headcount surveys and redundancy-avoidance subsidies remain excluded as other
 populations. TDD: the Hungary guard first failed with `KeyError: 'Hungary'`.
 Merge and live verification remain.
 
+## 2026-09-12 - Czechia regional publication verified without inventing a national series
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Czechia is now `REGIME_NO_AGGREGATE`, grounded in MPSV's current official
+section-62 guidance. Employers crossing the 10 / 10 percent / 30 banded
+thresholds within 30 days must consult employee representatives, notify the
+competent regional Labour Office at least 30 days before individual notices,
+and submit a final written report. Employment normally cannot end until 30 days
+after that report.
+
+The old publication UNKNOWN is narrowed by a real PDF reading rather than the
+prior hand-rolled extraction that silently dropped Czech diacritics. Pardubice's
+official 2024 regional report publishes section-62 employer and affected-worker
+totals by district and for the region across 2022-2024: three employers and 135
+workers in 2024. UP CR hosts annual regional reports through 2025, but no
+complete current national series or public notice-level employer register was
+located. Older narratives that name selected firms remain useful leads, never a
+denominator. The per-employer near-miss is now marked verified partial rather
+than reported-unverified. TDD: the Czechia guard first failed with
+`KeyError: 'Czechia'`. Merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  

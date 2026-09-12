@@ -3201,3 +3201,16 @@ located across the fragmented 20-county-plus-Budapest system. Those partial
 figures are documented rather than promoted into a national denominator. The
 new guard first failed with `KeyError: 'Hungary'`; merge and live verification
 remain.
+
+Hungary subsequently merged in PR #326 as `730c358c`; its full CI matrix and
+live country workflow `34675161104` passed. It is production-closed and the
+declared country backlog is 5.
+
+Czechia is now the active package. The MPSV's current section-62 guidance
+confirms the banded thresholds, consultation and two written reports to the
+regional Labour Office. A real PDF text layer now verifies publication rather
+than inferring it: Pardubice's official 2024 regional report carries district
+and regional employer/worker totals for 2022-2024 (three employers and 135
+workers in 2024). This is valuable partial regional evidence, not a complete
+current national denominator or named notice register. The new guard first
+failed with `KeyError: 'Czechia'`; merge and live verification remain.
