@@ -1146,33 +1146,6 @@ ACKNOWLEDGED_BACKLOG = {
       "or by the Labour Court (Punjab), and Labour Court orders are adjudicative "
       "records. Whether any of it is published is untested."
       ),
-    'Vietnam': ("2026-08-18",
-      "REGIME ESTABLISHED, PUBLICATION UNKNOWN FOR AN ENVIRONMENT REASON. "
-      "Labour Code 45/2019/QH14 art. 42 (obligations on structural, "
-      "technological or economic change) and art. 44 (the labour utilisation "
-      "plan): 30 days' prior notice to the PROVINCIAL PEOPLE'S COMMITTEE, in "
-      "practice received by the provincial So LDTBXH. THERE IS NO NUMERIC "
-      "THRESHOLD — art. 42 triggers on affecting 'a large number of employees' "
-      "and no 10/20/50 cut-off exists in the Code, which is a real finding "
-      "rather than a gap in the reading. Art. 44 read in full: the plan must "
-      "list the NAMES and number of employees retained, retrained, moved to "
-      "part-time, retiring and terminated. Art. 42(6)'s text layer truncates "
-      "mid-sentence in the official English PDF and the two hosts that could "
-      "close it were down (vbpl.vn 502, MOLISA's portal on an expired "
-      "certificate), so the 30-day wording is secondary-corroborated rather "
-      "than primary-read. PUBLICATION: gso.gov.vn and nso.gov.vn were "
-      "unreachable (ECONNREFUSED — not refusals). GSO does publish a QUARTERLY "
-      "job-loss figure compiled from 'bao cao cua cac dia phuong', and the "
-      "classification trap is that this is a labour-force statistic built from "
-      "local administrative reports, NOT a count of art. 42 filings; do not "
-      "classify Vietnam as publishing an aggregate on it. BEST PER-EMPLOYER "
-      "LEAD IN ASIA: HCMC's DoLISA runs a documented intake for art. 42 "
-      "notifications and instructs EPZ and industrial-park management boards to "
-      "COMPILE LISTS OF THE ENTERPRISES THAT FILED and return them to the "
-      "Department. A named-employer list provably exists inside at least one "
-      "provincial DoLISA; no public publication was found. Worth a dedicated "
-      "look at HCMC, Binh Duong, Dong Nai and Bac Ninh."
-      ),
 }
 
 # The date is the FIRST element so `min()` over the backlog gives the oldest
@@ -1954,6 +1927,32 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://www.mtss.go.cr/elministerio/marco-legal/documentos/"
                  "codigo_trabajo_cr.pdf"),
+    },
+
+    "Vietnam": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Code 45/2019/QH14, articles 42 and 44. When "
+                   "structural or technological change or economic reasons "
+                   "risk dismissal of a large number of employees, the employer "
+                   "must consult the workplace employee representative, prepare "
+                   "a labour-utilisation plan, and give the affected employees "
+                   "and the provincial People's Committee at least 30 days' "
+                   "notice. The plan identifies the names and numbers retained, "
+                   "retrained, moved to part-time work, retired and terminated."),
+        "authority": ("the competent provincial People's Committee and its "
+                      "provincial labour administration"),
+        "threshold": ("a 'large number of employees'; the Code states no "
+                      "numeric employee or percentage cutoff"),
+        "aggregate": ("NONE LOCATED for article-42 notifications. General "
+                      "Statistics Office job-loss figures compiled from local "
+                      "reports, labour-force surveys and benefit populations are "
+                      "not counts of employer notifications under article 42 and "
+                      "are explicitly excluded. Provincial agencies may retain "
+                      "employer-level intake lists, but no public periodic filing "
+                      "total or named national register was found."),
+        "assessed": "2026-09-12",
+        "cite": ("https://vbpl.moj.gov.vn/bolaodong/pages/"
+                 "vbpqen-toanvan.aspx?ItemID=11135"),
     },
 
     "Afghanistan": {

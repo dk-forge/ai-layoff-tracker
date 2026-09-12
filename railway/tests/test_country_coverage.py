@@ -143,6 +143,13 @@ class EveryEntryIsCheckable(unittest.TestCase):
         self.assertIn("mtss.go.cr", entry["cite"])
         self.assertNotIn("Costa Rica", cc.ACKNOWLEDGED_BACKLOG)
 
+    def test_vietnam_is_a_classification_not_permanent_backlog(self):
+        """The official current Code settles the provincial notification duty."""
+        entry = cc.REGISTER["Vietnam"]
+        self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+        self.assertIn("vbpl.moj.gov.vn", entry["cite"])
+        self.assertNotIn("Vietnam", cc.ACKNOWLEDGED_BACKLOG)
+
     def test_a_country_with_a_regime_names_its_authority_and_threshold(self):
         """"A regime exists" is only checkable if it says who receives the notice.
 
