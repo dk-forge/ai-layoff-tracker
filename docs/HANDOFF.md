@@ -39,6 +39,14 @@ holder, so the start-of-session ritual surfaces it automatically.
   the remaining duplicate/archive worklists are still open. Never call the
   tracker top-three until those measurements support it.
 
+  **Benchmark refresh (2026-09-12).** `docs/COMPETITOR_BENCHMARK_2026-09-12.md`
+  records current public comparisons. WARN Act Tracker claims all 50 states
+  and DC; WARNScan claims all 50 states; LayoffAlert reports 44 states; and
+  EuroLayoffs reports a Europe-first curated register. These are not directly
+  comparable because their date bases, amendments, event definitions and
+  source policies differ. The refresh identifies the required comparison
+  dimensions but does not substantiate a top-three ranking.
+
   **Current closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
   The watermark repair is deployed and the daily 22:00 UTC schedule must now
   accumulate seven genuinely clean runs over fourteen days; the quiet Codex
