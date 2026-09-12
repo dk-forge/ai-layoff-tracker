@@ -1,8 +1,6 @@
 {
   "backlog": [
-    "Bosnia and Herzegovina",
-    "Morocco",
-    "Pakistan"
+    "Morocco"
   ],
   "backlog_oldest": "2026-08-18",
   "countries": {
@@ -92,12 +90,18 @@
       "threshold": "reported as: in establishments of 20+, over 60 days, 10 dismissals at 20-99 employees; 10% at 100-299; 30 at 300+. UNVERIFIED against CCT n.24 primary text in this pass \u2014 recorded as recollection, not as a finding. The PUBLISHED FIGURES, by contrast, were read out of the PDF itself and do reconcile"
     },
     "Bosnia and Herzegovina": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. The current Republika Srpska ministry index at https://vladars.rs/sr-SP-Cyrl/Vlada/Ministarstva/mpb/PAO/Pages/Resor-za-rad.aspx publishes the governing Act and amendments; the Employment Institute's current publications and monthly bulletins publish unemployment, vacancies, benefits and programme outcomes, not article-163 redundancy programmes. The Brcko Assembly and Federation government likewise publish the laws, but no countable notice series was found. Labour-force and unemployment totals are different populations and are explicitly excluded.",
+      "assessed": "2026-09-12",
+      "authority": "Republika Srpska Employment Institute (Zavod za zaposljavanje Republike Srpske) and Brcko District Employment Institute; the Federation procedure is internal consultation",
+      "cite": "https://skupstinabd.ba/3-zakon/ba/Zakon%20o%20radu%20Brc--ko%20Distrikta%20BiH/03B12-25%20Zakon%20o%20radu%20Brc--ko%20distrikta%20Bosne%20i%20Hercegovine%20-%20prec--is--c-eni%20tekst.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 18,
-      "state": "unknown",
-      "stored_name": "Bosnia and Herzegovina"
+      "regime": "Labour disclosure is devolved. Republika Srpska Labour Law articles 160-165 requires a redundancy programme and sends the proposal to the Employment Institute within eight days; the Institute replies within 15 days. Brcko District's current consolidated Labour Law articles 126-127 requires consultation and notice to the Brcko Employment Institute with the written programme at least 30 days before termination. Federation of BiH Labour Law articles 109-110 instead addresses the written consultation to the works council and union, with no public-body recipient in that procedure. The entity-level difference is recorded rather than flattened into a fictitious national rule.",
+      "state": "not_measurable",
+      "stored_name": "Bosnia and Herzegovina",
+      "threshold": "Republika Srpska, within 90 days: 10 workers at an employer with 31-99 permanent workers; 10 percent above 100; or 30 workers above 300 or regardless of establishment size. Brcko: an employer with more than 15 workers proposing to dismiss more than 20 percent within three months. Federation: more than 30 workers and at least five proposed dismissals within three months."
     },
     "Botswana": {
       "age_days": 24,
@@ -750,12 +754,18 @@
       "threshold": "at least 10 workers within 30 days"
     },
     "Pakistan": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. Sindh's official code publishes the statute and KP's official code at https://www.kpcode.kp.gov.pk/uploads/2013_11_THE_KHYBER_PAKHTUNKHWA_INDUSTRIAL_AND_COMMERCIAL_EMPLOYMENT_STANDING_ORDERS_ACT_2013.pdf publishes the governing clause, but neither provincial publication surface exposes a periodic series of permission applications, decisions or affected workers. Punjab Labour Court material is adjudicative and not a complete filing register. The Balochistan Assembly lists the 2021 Act, but its public labour reports do not expose a closure-application series. Applications may be refused, so even a future application total must not be labelled layoffs.",
+      "assessed": "2026-09-12",
+      "authority": "Sindh and Khyber Pakhtunkhwa provincial Governments; the Punjab Labour Court; Balochistan authority not restated without a readable primary clause",
+      "cite": "https://sindhlaws.gov.pk/Setup/Publications_SindhCode/PUB-NEW-18-000108.pdf",
+      "class": "regime_no_aggregate",
       "entries": 0,
       "jobs": 173,
-      "state": "unknown",
-      "stored_name": "Pakistan"
+      "regime": "Employment law is provincial. Sindh Terms of Employment (Standing Orders) Act 2015, Standing Order 15, bars termination of more than 50 percent of workers or closure of the whole establishment without prior Sindh Government permission; an undecided application is deemed granted after 15 days and may be appealed to the Labour Court. Khyber Pakhtunkhwa Industrial and Commercial Employment (Standing Orders) Act 2013, Standing Order 16, imposes the same event threshold and prior Government permission, and expressly includes a lay-off beyond 14 days that results in closure. Punjab retains the adapted 1968 Ordinance, whose Standing Order 11-A routes closure permission to the Labour Court. The Balochistan Assembly's official register confirms its 2021 provincial Standing Orders Act; its exact closure clause was not promoted from secondary material and remains a stated sub-provincial caveat.",
+      "state": "not_measurable",
+      "stored_name": "Pakistan",
+      "threshold": "Sindh and Khyber Pakhtunkhwa: more than 50 percent of workers terminated, or the whole establishment closed; the closure definition includes a lay-off beyond 14 days that produces closure. Ordinary smaller retrenchments are not authority filings under these Standing Orders."
     },
     "Palestine": {
       "age_days": 1,
@@ -1179,7 +1189,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T13:47:52Z",
+  "measured_at": "2026-09-12T13:55:24Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1851,14 +1861,12 @@
   "tallies": {
     "no_regime": 8,
     "refused": 6,
-    "regime_no_aggregate": 40,
+    "regime_no_aggregate": 42,
     "regime_with_aggregate": 22,
-    "unassessed": 3
+    "unassessed": 1
   },
   "unassessed": [
-    "Bosnia and Herzegovina",
-    "Morocco",
-    "Pakistan"
+    "Morocco"
   ],
   "undeclared": [],
   "vocabulary_duplicates": []

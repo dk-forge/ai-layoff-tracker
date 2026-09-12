@@ -3243,3 +3243,34 @@ entry and backlog removal, all 55 country-register tests passed. A live
 countries in scope, 22 publishing countable totals and only Bosnia and
 Herzegovina plus Pakistan remaining in the declared backlog. Merge, CI and
 post-deploy measurement remain.
+
+## 2026-09-12 Bosnia and Pakistan country closeout (same PR pending)
+
+The final two research items have now been removed from the declared backlog on
+this branch.
+
+Bosnia and Herzegovina is `REGIME_NO_AGGREGATE`, expressed as the devolved
+system it actually has. Republika Srpska Labour Law articles 160-165 sends a
+banded-threshold redundancy programme to its Employment Institute; Brcko's
+current consolidated articles 126-127 sends a >20% programme to its Institute;
+Federation articles 109-110 provide only internal works-council/union
+consultation. Current authority publication surfaces expose employment and
+benefit statistics, not a complete periodic notice count or named register.
+
+Pakistan is `REGIME_NO_AGGREGATE`. Primary Sindh and Khyber Pakhtunkhwa laws
+both require prior provincial permission where more than 50% of workers are
+terminated or the whole establishment closes, including a lay-off beyond 14
+days that produces closure. Punjab's adapted Standing Orders route closure
+permission to the Labour Court. The Balochistan Assembly confirms its 2021
+Standing Orders Act, but the exact closure clause was deliberately left as a
+sub-provincial caveat because a readable primary clause was not available. No
+complete periodic applications/decisions series or named register was found;
+applications can be refused and are not layoffs.
+
+TDD evidence: each new guard failed first with a missing register key, then the
+full country suite passed 57/57. The live measurement passed at 79 countries:
+22 publish a countable total, 42 have a regime without a published aggregate,
+8 have no disclosure regime, 6 are refused, and only Morocco remains pending
+because its already-green PR #328 is separate and not yet authorized to merge.
+Once the Morocco and this country PR are both merged, the represented-country
+research backlog reaches zero; that does not by itself prove tracker recall.

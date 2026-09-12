@@ -25089,3 +25089,26 @@ and warns that permission applications are not completed layoffs.
 Red first: the new test failed on missing `REGISTER["India"]`. Green after
 implementation: 55/55 country tests; the live measurement passed and reduced
 the declared backlog from three countries to two.
+
+## 2026-09-12 - Bosnia and Pakistan close the researched country backlog
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Bosnia and Herzegovina is classified from three distinct labour-law systems,
+not a fabricated national rule. Republika Srpska and Brcko require delivery of
+redundancy programmes to their Employment Institutes; Federation law keeps the
+specified consultation internal. No complete public programme total or named
+register was located on the current authority surfaces.
+
+Pakistan is classified from provincial primary law. Sindh Standing Order 15
+and Khyber Pakhtunkhwa Standing Order 16 establish a >50%-or-closure prior-
+permission regime. Punjab uses its adapted 1968 Ordinance and Labour Court;
+Balochistan's official Assembly confirms the 2021 Act, while the unreadable
+exact closure clause remains stated as a caveat rather than guessed. No
+complete periodic permission series or named register was located.
+
+Both guards failed first on their absent register keys. Green after the two
+entries and backlog removals: 57/57 country tests and a live measurement PASS.
+The branch reports one remaining item only because Morocco is green in separate
+PR #328 and still awaits explicit merge authorization.

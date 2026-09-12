@@ -182,6 +182,23 @@ class EveryEntryIsCheckable(unittest.TestCase):
                          "national_notification_aggregate")
         self.assertNotIn("India", cc.ACKNOWLEDGED_BACKLOG)
 
+    def test_bosnia_is_a_classification_not_permanent_backlog(self):
+        """Entity and district laws settle Bosnia's devolved regime."""
+        entry = cc.REGISTER["Bosnia and Herzegovina"]
+        self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+        self.assertIn("skupstinabd.ba", entry["cite"])
+        self.assertIn("vladars.rs", entry["aggregate"])
+        self.assertNotIn("Bosnia and Herzegovina", cc.ACKNOWLEDGED_BACKLOG)
+
+    def test_pakistan_is_a_classification_not_permanent_backlog(self):
+        """Provincial primary laws settle Pakistan's approval regime."""
+        entry = cc.REGISTER["Pakistan"]
+        self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+        self.assertIn("sindhlaws.gov.pk", entry["cite"])
+        self.assertIn("kpcode.kp.gov.pk", entry["aggregate"])
+        self.assertIn("Balochistan", entry["regime"])
+        self.assertNotIn("Pakistan", cc.ACKNOWLEDGED_BACKLOG)
+
     def test_a_country_with_a_regime_names_its_authority_and_threshold(self):
         """"A regime exists" is only checkable if it says who receives the notice.
 
