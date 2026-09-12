@@ -77,6 +77,16 @@ received HTTP 403 for seven live integrity reads. The new configuration test
 did not fail. Merge remains prohibited until all required live checks evaluate
 and pass, followed by a successful Railway deployment with the numeric value.
 
+That gate subsequently closed without weakening it. The fresh Actions run
+`34726022730` passed every required check; its `rest` shard evaluated and passed
+the live-data invariants. PR #336 merged as `63a0cd7d`. Railway deployment
+`b237d665-befe-4bdd-a7fa-8fe1106aa9d8` reached SUCCESS with the applied file
+manifest reporting `cronSchedule: "0 22 * * *"`, the intended watch patterns,
+and numeric `overlapSeconds: 7200`. This closes the configuration and deployment
+incident only. Because the September 12 collector run failed publication, the
+seven-clean-runs/across-fourteen-days proof clock begins no earlier than the next
+successful protected scheduled run.
+
 ## 2026-09-12 - The contact form could not be submitted from a cached page, and told the sender they looked like spam
 
 **Class:** cache-served-stale
