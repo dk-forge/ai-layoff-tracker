@@ -1046,27 +1046,6 @@ ACKNOWLEDGED_BACKLOG = {
       "confident wrong quote. TO CLOSE: read ONE regional report with a real "
       "PDF library."
       ),
-    'Hong Kong': ("2026-08-18",
-      "STRONGLY INDICATED NO_REGIME, STILL NOT RECORDED, AND NOW BETTER "
-      "EVIDENCED THAN BEFORE. The Labour Department's own Concise Guide to the "
-      "Employment Ordinance — on labour.gov.hk, which returns 404 for "
-      "robots.txt and is therefore unrestricted — covers the whole Ordinance in "
-      "13 chapters (application, contract, wages, rest days and leave, sickness "
-      "allowance, maternity, paternity, end-of-year payment, termination, "
-      "employment protection, severance and long service payment, anti-union "
-      "discrimination, employers' criminal liability) plus three appendices, "
-      "with NO collective-redundancy chapter and NO notification provision "
-      "anywhere; redundancy appears only as a trigger for severance. Two "
-      "independent practitioner sources state positively that Hong Kong has no "
-      "concept of collective dismissal and no duty to inform or consult. Also "
-      "worth recording: the Employee's Rights to Representation, Consultation "
-      "and Collective Bargaining Ordinance 1997 was repealed and never revived. "
-      "STILL NOT RECORDED because the guide is an authoritative DESCRIPTION of "
-      "Cap. 57 rather than Cap. 57 itself: elegislation.gov.hk allows only "
-      "Googlebot and Bingbot, and ILO EPLex — the one instrument note that "
-      "would have settled it — returns HTTP 403 to our agent on every country "
-      "page. Same rule as New Zealand."
-      ),
     'Hungary': ("2026-08-18",
       "EU/EEA, so Directive 98/59/EC art. 3(1) already guarantees a "
       "notification regime exists; ONLY the publication question is open. The "
@@ -1949,6 +1928,28 @@ REGISTER = {
         "assessed": "2026-09-12",
         "cite": ("https://legislation.govt.nz/act/public/2000/24/en/"
                  "2025-07-01.pdf"),
+    },
+
+    "Hong Kong": {
+        "class": NO_REGIME,
+        "regime": ("NO collective-dismissal disclosure regime exists in the current "
+                   "Employment Ordinance (Cap. 57). The official verified whole-chapter "
+                   "text and the Labour Department's complete guide define redundancy "
+                   "through business closure or diminished work, then regulate contract "
+                   "notice, severance, long-service payments and employee remedies. "
+                   "Neither contains an employer report to the Labour Department, a "
+                   "collective threshold, state consultation, or a filing recipient. "
+                   "A worker's later severance claim and Labour Tribunal remedy are "
+                   "individual enforcement paths, not employer disclosure."),
+        "authority": None,
+        "threshold": None,
+        "aggregate": ("NONE because no administrative collective-dismissal filing "
+                      "population exists. Labour Department assistance during a "
+                      "retrenchment and Census and Statistics Department workforce "
+                      "surveys are not compulsory layoff notices and are excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://www.labour.gov.hk/eng/public/wcp/ConciseGuide/"
+                 "EO_guide_full.pdf"),
     },
 
     "Afghanistan": {

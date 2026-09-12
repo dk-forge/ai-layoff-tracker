@@ -3129,3 +3129,13 @@ collective-redundancy report, numeric threshold or filing recipient. Part 6A's
 redundancy-entitlement dispute machinery is not a disclosure regime. Stats NZ
 surveys are rejected as filing denominators. The new guard failed first on the
 missing entry; merge and live verification remain.
+
+New Zealand subsequently merged in PR #319 as `12e8690`; the full CI matrix and
+live country workflow `34662161440` passed. It is production-closed and the
+declared country backlog is 11.
+
+Hong Kong is now the active package. The official verified whole-chapter Cap. 57
+text and Labour Department's complete Ordinance guide contain individual notice,
+severance and remedy rules but no collective threshold, government filing or
+recipient. Assistance and workforce surveys are not employer disclosure. The
+new guard failed first on the missing entry; merge and live verification remain.

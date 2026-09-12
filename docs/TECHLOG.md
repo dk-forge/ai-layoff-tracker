@@ -24802,6 +24802,22 @@ Stats NZ job-displacement and employment surveys are explicitly excluded as
 sampled statistics rather than administrative filings. TDD: the guard first
 failed with `KeyError: 'New Zealand'`. Merge and live verification remain.
 
+## 2026-09-12 - Hong Kong's no-regime finding reaches the verified Ordinance
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Hong Kong is now `NO_REGIME`. The official verified whole-chapter Employment
+Ordinance (Cap. 57) and Labour Department's complete guide were checked for a
+collective-dismissal report. They regulate contract notice, severance,
+long-service payments and employee remedies, but contain no collective numeric
+threshold, state notification or filing recipient. Employee severance claims,
+Labour Tribunal remedies and Labour Department assistance are not employer
+disclosure events; workforce surveys are also excluded.
+
+TDD: the country guard first failed with `KeyError: 'Hong Kong'`. Merge plus a
+live country workflow remain the production gate.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  
