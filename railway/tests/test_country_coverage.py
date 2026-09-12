@@ -198,6 +198,12 @@ class EveryEntryIsCheckable(unittest.TestCase):
         self.assertIn("kpcode.kp.gov.pk", entry["aggregate"])
         self.assertIn("Balochistan", entry["regime"])
         self.assertNotIn("Pakistan", cc.ACKNOWLEDGED_BACKLOG)
+    def test_morocco_is_a_classification_not_permanent_backlog(self):
+        """The official current Labour Code settles the authorization regime."""
+        entry = cc.REGISTER["Morocco"]
+        self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+        self.assertIn("adala.justice.gov.ma", entry["cite"])
+        self.assertNotIn("Morocco", cc.ACKNOWLEDGED_BACKLOG)
 
     def test_a_country_with_a_regime_names_its_authority_and_threshold(self):
         """"A regime exists" is only checkable if it says who receives the notice.
@@ -355,8 +361,27 @@ class AnUnclassifiedCountryIsUnknownNotFine(unittest.TestCase):
         acknowledged, dated outstanding work passes; an unnoticed arrival does
         not.
         """
-        known = sorted(cc.ACKNOWLEDGED_BACKLOG)[0]
-        report = cc.classify_all(fetch=_stub_aggregate([known]))
+        # 2026-09-12: the real backlog reached ZERO for the first time, when
+        # Morocco, India, Pakistan and Bosnia and Herzegovina were all
+        # classified. An empty backlog must not turn this test into a skip:
+        # the concession mechanism has to keep being exercised, or the day
+        # somebody acknowledges a country again will be the first run in
+        # months that ever used this path. So when the real backlog is empty
+        # the test supplies its own entry and proves the mechanism on that.
+        real = sorted(cc.ACKNOWLEDGED_BACKLOG)
+        if real:
+            known = real[0]
+            report = cc.classify_all(fetch=_stub_aggregate([known]))
+        else:
+            known = "Wakanda"
+            patched = dict(cc.ACKNOWLEDGED_BACKLOG)
+            patched[known] = ("2026-09-12", "synthetic: the real backlog is empty")
+            original = cc.ACKNOWLEDGED_BACKLOG
+            cc.ACKNOWLEDGED_BACKLOG = patched
+            try:
+                report = cc.classify_all(fetch=_stub_aggregate([known]))
+            finally:
+                cc.ACKNOWLEDGED_BACKLOG = original
         self.assertIn(known, report["backlog"])
         self.assertEqual(report["undeclared"], [])
         state, _ = cc.judge(report)

@@ -1001,70 +1001,51 @@ PER_EMPLOYER_SWEPT = {
 BACKLOG_DECLARED = "2026-08-18"
 
 ACKNOWLEDGED_BACKLOG = {
-    'Morocco': ("2026-08-18",
-      "THE STATUTE IS NOW READ IN FULL AND PUBLICATION IS UNKNOWN — those are "
-      "two separate states and the entry must not collapse them. Code du "
-      "Travail (Loi 65-99) art. 66: an employer habitually employing TEN OR "
-      "MORE workers who plans to dismiss all or some for technological, "
-      "structural or economic reasons must inform the workers' delegates and "
-      "union representatives at least one month ahead, and a signed "
-      "proces-verbal of those consultations goes to the delegue provincial "
-      "charge du travail. Art. 67: the dismissal is SUBORDINATE TO AN "
-      "AUTHORISATION issued by the gouverneur of the prefecture or province "
-      "within two months, on the conclusions of a provincial commission the "
-      "gouverneur chairs; an economic file additionally needs a grounds "
-      "report, the firm's financial position and a chartered accountant's "
-      "report. Art. 69 extends it to closures, art. 70 keeps notice and "
-      "severance owed whether or not the authorisation was obtained. THIS IS "
-      "EX-ANTE APPROVAL, NOT NOTIFICATION, and the consequence is the same as "
-      "India's: the countable state event is an APPLICATION, permission can be "
-      "refused, and any aggregate must say 'granted'. PUBLICATION UNKNOWN FOR "
-      "AN ENVIRONMENT REASON, NOT A REFUSAL: miepeec.gov.ma — the ministry "
-      "running the Observatoire National du Marche du Travail and its annual "
-      "labour-market report, the one plausible publisher — answers ECONNREFUSED "
-      "from here, robots.txt included. That is also the only remaining place in "
-      "this region a per-employer register could exist unseen, since the "
-      "provincial commissions hold named files. REJECTED: a lawyer's newspaper "
-      "assertion that no economic-dismissal authorisation was issued between "
-      "2004 and 2020 is colour, never a figure. TO CLOSE: reach miepeec.gov.ma "
-      "from an environment with Moroccan egress."
-      ),
 }
 
 # The date is the FIRST element so `min()` over the backlog gives the oldest
 # acknowledgement, which ops_status [3d] prints every session.
 
 REGISTER = {
-
-    # -----------------------------------------------------------------------
-    # PUBLISHES A COUNTABLE TOTAL — a denominator exists and we may fetch it
-    # -----------------------------------------------------------------------
-
-    "United States": {
-        "class": REGIME_WITH_AGGREGATE,
-        "regime": ("SEC 8-K Item 2.05 (costs associated with exit or disposal "
-                   "activities), Securities Exchange Act s.13/15(d) — a US public "
-                   "company recording a material charge for an exit activity files an "
-                   "8-K carrying that code in its SGML header. SEPARATELY, state WARN "
-                   "acts and the federal WARN Act 29 U.S.C. 2101 compel notice to state "
-                   "dislocated-worker units"),
-        "authority": "SEC (Item 2.05); state rapid-response / dislocated worker units (WARN)",
-        "threshold": ("Item 2.05: any material exit-or-disposal charge, no headcount "
-                      "floor. Federal WARN: 100+ employees, 50+ affected at a site"),
-        "aggregate": ("MEASURED. EDGAR full-text search enumerates every Item 2.05 filing "
-                      "for a period exactly, so the denominator is the universe rather "
-                      "than a sample — this is the one slice in the project that supports "
-                      "the word RECALL, and railway/rolling_recall.py measures it every "
-                      "week. The WARN layer is a SECOND regime in the same country and it "
-                      "is NOT measurable: there is no national aggregate at all (US DOL "
-                      "keeps no database, BLS Mass Layoff Statistics ended 2013) and "
-                      "Wisconsin, which publishes the right figure, disallows AI agents. "
-                      "See rolling_recall.assess_state_warn()"),
-        "denominator_basis": "closed_enumeration_primary_regulator_index",
-        "assessed": "2026-08-18",
-        "cite": "https://efts.sec.gov/LATEST/search-index?q=%22Item%202.05%22&forms=8-K",
+    "Bosnia and Herzegovina": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour disclosure is devolved. Republika Srpska Labour Law "
+                   "articles 160-165 requires a redundancy programme and sends the "
+                   "proposal to the Employment Institute within eight days; the "
+                   "Institute replies within 15 days. Brcko District's current "
+                   "consolidated Labour Law articles 126-127 requires consultation "
+                   "and notice to the Brcko Employment Institute with the written "
+                   "programme at least 30 days before termination. Federation of "
+                   "BiH Labour Law articles 109-110 instead addresses the written "
+                   "consultation to the works council and union, with no public-body "
+                   "recipient in that procedure. The entity-level difference is "
+                   "recorded rather than flattened into a fictitious national rule."),
+        "authority": ("Republika Srpska Employment Institute (Zavod za zaposljavanje "
+                      "Republike Srpske) and Brcko District Employment Institute; "
+                      "the Federation procedure is internal consultation"),
+        "threshold": ("Republika Srpska, within 90 days: 10 workers at an employer "
+                      "with 31-99 permanent workers; 10 percent above 100; or 30 "
+                      "workers above 300 or regardless of establishment size. Brcko: "
+                      "an employer with more than 15 workers proposing to dismiss "
+                      "more than 20 percent within three months. Federation: more "
+                      "than 30 workers and at least five proposed dismissals within "
+                      "three months."),
+        "aggregate": ("NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. "
+                      "The current Republika Srpska ministry index at "
+                      "https://vladars.rs/sr-SP-Cyrl/Vlada/Ministarstva/mpb/PAO/Pages/"
+                      "Resor-za-rad.aspx publishes the governing Act and amendments; "
+                      "the Employment Institute's current publications and monthly "
+                      "bulletins publish unemployment, vacancies, benefits and "
+                      "programme outcomes, not article-163 redundancy programmes. "
+                      "The Brcko Assembly and Federation government likewise publish "
+                      "the laws, but no countable notice series was found. Labour-"
+                      "force and unemployment totals are different populations and "
+                      "are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://skupstinabd.ba/3-zakon/ba/Zakon%20o%20radu%20Brc--ko%20"
+                 "Distrikta%20BiH/03B12-25%20Zakon%20o%20radu%20Brc--ko%20"
+                 "distrikta%20Bosne%20i%20Hercegovine%20-%20prec--is--c-eni%20tekst.pdf"),
     },
-
     "India": {
         "class": REGIME_WITH_AGGREGATE,
         "regime": ("Industrial Relations Code 2020, Chapter X, sections 77-80, "
@@ -1097,6 +1078,76 @@ REGISTER = {
         "denominator_basis": "national_notification_aggregate",
         "assessed": "2026-09-12",
         "cite": "https://www.indiacode.nic.in/bitstream/123456789/22040/1/aa202035.pdf",
+    },
+    "Pakistan": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Employment law is provincial. Sindh Terms of Employment "
+                   "(Standing Orders) Act 2015, Standing Order 15, bars termination "
+                   "of more than 50 percent of workers or closure of the whole "
+                   "establishment without prior Sindh Government permission; an "
+                   "undecided application is deemed granted after 15 days and may "
+                   "be appealed to the Labour Court. Khyber Pakhtunkhwa Industrial "
+                   "and Commercial Employment (Standing Orders) Act 2013, Standing "
+                   "Order 16, imposes the same event threshold and prior Government "
+                   "permission, and expressly includes a lay-off beyond 14 days that "
+                   "results in closure. Punjab retains the adapted 1968 Ordinance, "
+                   "whose Standing Order 11-A routes closure permission to the "
+                   "Labour Court. The Balochistan Assembly's official register "
+                   "confirms its 2021 provincial Standing Orders Act; its exact "
+                   "closure clause was not promoted from secondary material and "
+                   "remains a stated sub-provincial caveat."),
+        "authority": ("Sindh and Khyber Pakhtunkhwa provincial Governments; the "
+                      "Punjab Labour Court; Balochistan authority not restated "
+                      "without a readable primary clause"),
+        "threshold": ("Sindh and Khyber Pakhtunkhwa: more than 50 percent of workers "
+                      "terminated, or the whole establishment closed; the closure "
+                      "definition includes a lay-off beyond 14 days that produces "
+                      "closure. Ordinary smaller retrenchments are not authority "
+                      "filings under these Standing Orders."),
+        "aggregate": ("NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. "
+                      "Sindh's official code publishes the statute and KP's official "
+                      "code at https://www.kpcode.kp.gov.pk/uploads/2013_11_THE_"
+                      "KHYBER_PAKHTUNKHWA_INDUSTRIAL_AND_COMMERCIAL_EMPLOYMENT_"
+                      "STANDING_ORDERS_ACT_2013.pdf publishes the governing clause, "
+                      "but neither provincial publication surface exposes a periodic "
+                      "series of permission applications, decisions or affected "
+                      "workers. Punjab Labour Court material is adjudicative and not "
+                      "a complete filing register. The Balochistan Assembly lists the "
+                      "2021 Act, but its public labour reports do not expose a "
+                      "closure-application series. Applications may be refused, so "
+                      "even a future application total must not be labelled layoffs."),
+        "assessed": "2026-09-12",
+        "cite": ("https://sindhlaws.gov.pk/Setup/Publications_SindhCode/"
+                 "PUB-NEW-18-000108.pdf"),
+    },
+
+    # -----------------------------------------------------------------------
+    # PUBLISHES A COUNTABLE TOTAL — a denominator exists and we may fetch it
+    # -----------------------------------------------------------------------
+
+    "United States": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("SEC 8-K Item 2.05 (costs associated with exit or disposal "
+                   "activities), Securities Exchange Act s.13/15(d) — a US public "
+                   "company recording a material charge for an exit activity files an "
+                   "8-K carrying that code in its SGML header. SEPARATELY, state WARN "
+                   "acts and the federal WARN Act 29 U.S.C. 2101 compel notice to state "
+                   "dislocated-worker units"),
+        "authority": "SEC (Item 2.05); state rapid-response / dislocated worker units (WARN)",
+        "threshold": ("Item 2.05: any material exit-or-disposal charge, no headcount "
+                      "floor. Federal WARN: 100+ employees, 50+ affected at a site"),
+        "aggregate": ("MEASURED. EDGAR full-text search enumerates every Item 2.05 filing "
+                      "for a period exactly, so the denominator is the universe rather "
+                      "than a sample — this is the one slice in the project that supports "
+                      "the word RECALL, and railway/rolling_recall.py measures it every "
+                      "week. The WARN layer is a SECOND regime in the same country and it "
+                      "is NOT measurable: there is no national aggregate at all (US DOL "
+                      "keeps no database, BLS Mass Layoff Statistics ended 2013) and "
+                      "Wisconsin, which publishes the right figure, disallows AI agents. "
+                      "See rolling_recall.assess_state_warn()"),
+        "denominator_basis": "closed_enumeration_primary_regulator_index",
+        "assessed": "2026-08-18",
+        "cite": "https://efts.sec.gov/LATEST/search-index?q=%22Item%202.05%22&forms=8-K",
     },
 
     "Sweden": {
@@ -1951,86 +2002,34 @@ REGISTER = {
         "cite": "https://ppropo.mpsv.cz/VI224Hromadnepropousteni",
     },
 
-    "Bosnia and Herzegovina": {
+    "Morocco": {
         "class": REGIME_NO_AGGREGATE,
-        "regime": ("Labour disclosure is devolved. Republika Srpska Labour Law "
-                   "articles 160-165 requires a redundancy programme and sends the "
-                   "proposal to the Employment Institute within eight days; the "
-                   "Institute replies within 15 days. Brcko District's current "
-                   "consolidated Labour Law articles 126-127 requires consultation "
-                   "and notice to the Brcko Employment Institute with the written "
-                   "programme at least 30 days before termination. Federation of "
-                   "BiH Labour Law articles 109-110 instead addresses the written "
-                   "consultation to the works council and union, with no public-body "
-                   "recipient in that procedure. The entity-level difference is "
-                   "recorded rather than flattened into a fictitious national rule."),
-        "authority": ("Republika Srpska Employment Institute (Zavod za zaposljavanje "
-                      "Republike Srpske) and Brcko District Employment Institute; "
-                      "the Federation procedure is internal consultation"),
-        "threshold": ("Republika Srpska, within 90 days: 10 workers at an employer "
-                      "with 31-99 permanent workers; 10 percent above 100; or 30 "
-                      "workers above 300 or regardless of establishment size. Brcko: "
-                      "an employer with more than 15 workers proposing to dismiss "
-                      "more than 20 percent within three months. Federation: more "
-                      "than 30 workers and at least five proposed dismissals within "
-                      "three months."),
-        "aggregate": ("NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. "
-                      "The current Republika Srpska ministry index at "
-                      "https://vladars.rs/sr-SP-Cyrl/Vlada/Ministarstva/mpb/PAO/Pages/"
-                      "Resor-za-rad.aspx publishes the governing Act and amendments; "
-                      "the Employment Institute's current publications and monthly "
-                      "bulletins publish unemployment, vacancies, benefits and "
-                      "programme outcomes, not article-163 redundancy programmes. "
-                      "The Brcko Assembly and Federation government likewise publish "
-                      "the laws, but no countable notice series was found. Labour-"
-                      "force and unemployment totals are different populations and "
-                      "are explicitly excluded."),
+        "regime": ("Labour Code, Law 65-99, articles 66-70. An employer that "
+                   "habitually employs at least 10 workers and proposes dismissal "
+                   "for technological, structural, similar or economic reasons "
+                   "must inform and consult worker delegates and union representatives "
+                   "at least one month ahead. The signed consultation record goes to "
+                   "the provincial labour delegate. Dismissal then requires prior "
+                   "authorization from the provincial or prefectural governor on the "
+                   "provincial commission's recommendation; article 69 extends the "
+                   "procedure to closure."),
+        "authority": ("the provincial labour delegate and the governor of the "
+                      "competent prefecture or province, advised by the provincial "
+                      "commission"),
+        "threshold": ("an employer habitually employing 10 or more workers that "
+                      "plans to dismiss all or part of its workforce for a covered "
+                      "technological, structural, similar or economic reason"),
+        "aggregate": ("NONE LOCATED for article-67 authorization applications, "
+                      "decisions or approved dismissals. The Justice Ministry "
+                      "publishes the governing Code, while current HCP labour-market "
+                      "surveys and OMTPME firm-demography reports measure employment, "
+                      "unemployment, closures or firm populations rather than this "
+                      "provincial authorization process. Those populations are "
+                      "explicitly excluded. An application can be refused, so even "
+                      "a future application count must never be labelled layoffs."),
         "assessed": "2026-09-12",
-        "cite": ("https://skupstinabd.ba/3-zakon/ba/Zakon%20o%20radu%20Brc--ko%20"
-                 "Distrikta%20BiH/03B12-25%20Zakon%20o%20radu%20Brc--ko%20"
-                 "distrikta%20Bosne%20i%20Hercegovine%20-%20prec--is--c-eni%20tekst.pdf"),
-    },
-
-    "Pakistan": {
-        "class": REGIME_NO_AGGREGATE,
-        "regime": ("Employment law is provincial. Sindh Terms of Employment "
-                   "(Standing Orders) Act 2015, Standing Order 15, bars termination "
-                   "of more than 50 percent of workers or closure of the whole "
-                   "establishment without prior Sindh Government permission; an "
-                   "undecided application is deemed granted after 15 days and may "
-                   "be appealed to the Labour Court. Khyber Pakhtunkhwa Industrial "
-                   "and Commercial Employment (Standing Orders) Act 2013, Standing "
-                   "Order 16, imposes the same event threshold and prior Government "
-                   "permission, and expressly includes a lay-off beyond 14 days that "
-                   "results in closure. Punjab retains the adapted 1968 Ordinance, "
-                   "whose Standing Order 11-A routes closure permission to the "
-                   "Labour Court. The Balochistan Assembly's official register "
-                   "confirms its 2021 provincial Standing Orders Act; its exact "
-                   "closure clause was not promoted from secondary material and "
-                   "remains a stated sub-provincial caveat."),
-        "authority": ("Sindh and Khyber Pakhtunkhwa provincial Governments; the "
-                      "Punjab Labour Court; Balochistan authority not restated "
-                      "without a readable primary clause"),
-        "threshold": ("Sindh and Khyber Pakhtunkhwa: more than 50 percent of workers "
-                      "terminated, or the whole establishment closed; the closure "
-                      "definition includes a lay-off beyond 14 days that produces "
-                      "closure. Ordinary smaller retrenchments are not authority "
-                      "filings under these Standing Orders."),
-        "aggregate": ("NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. "
-                      "Sindh's official code publishes the statute and KP's official "
-                      "code at https://www.kpcode.kp.gov.pk/uploads/2013_11_THE_"
-                      "KHYBER_PAKHTUNKHWA_INDUSTRIAL_AND_COMMERCIAL_EMPLOYMENT_"
-                      "STANDING_ORDERS_ACT_2013.pdf publishes the governing clause, "
-                      "but neither provincial publication surface exposes a periodic "
-                      "series of permission applications, decisions or affected "
-                      "workers. Punjab Labour Court material is adjudicative and not "
-                      "a complete filing register. The Balochistan Assembly lists the "
-                      "2021 Act, but its public labour reports do not expose a "
-                      "closure-application series. Applications may be refused, so "
-                      "even a future application total must not be labelled layoffs."),
-        "assessed": "2026-09-12",
-        "cite": ("https://sindhlaws.gov.pk/Setup/Publications_SindhCode/"
-                 "PUB-NEW-18-000108.pdf"),
+        "cite": ("https://adala.justice.gov.ma/api/uploads/2024/04/30/"
+                 "code%20du%20travail-1714463246806.pdf"),
     },
 
     "Afghanistan": {

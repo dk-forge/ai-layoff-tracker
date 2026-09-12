@@ -58,3 +58,11 @@ watchPatterns = [
 startCommand = "python cron.py"
 cronSchedule = "0 22 * * *"
 restartPolicyType = "NEVER"
+# Railway sends SIGTERM to the old deployment when a code release becomes
+# active. On 2026-09-11 PR #308 became active seven minutes into the 22:00Z
+# cron and killed GDELT before its terminal note. Keep the old deployment
+# alive for the collector's maximum one-hour GDELT budget plus one hour for
+# extraction, posting and the remaining sources. This is a maximum overlap
+# during an actual code deployment, not two daily cron runs; ledger-only bot
+# commits remain excluded by watchPatterns above.
+overlapSeconds = "7200"
