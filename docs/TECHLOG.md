@@ -1,3 +1,43 @@
+## 2026-09-12 - Writes made on the old host after the migration export are gone, and the first sign was four STALE rows five days later
+
+**Class:** silent-stop (rows and health posts written on 2026-09-07 landed on the host the site was leaving; nothing reported the loss, and the health ledger only went STALE when the weekly jobs' rows aged past their ceiling)
+**Guard:** RUNBOOK "The site moved host: replay what was written after the export" (the checklist a move now ends with: re-run news-catchup, warn-import and the EDGAR sweep, re-post the weekly jobs' health, and compare the last row id on both hosts before the old one is switched off)
+
+**What was found.** `ops_status [2]` reported four sources STALE at 11 days
+(health_digest, recall_precision, news_catchup, digest_weekly). All four are
+weekly jobs, all four ran green on Monday 2026-09-07, and their health rows
+carry 2026-08-31. The 2026-09-07 news-catchup run printed "+ Posted: The Trade
+Desk" and stored two rows; the live database holds no Trade Desk row at all,
+although the company announced a 15% cut (over 500 staff) on 2026-09-03 and
+at least six outlets carried it. So everything the jobs wrote on 2026-09-07
+went to the Bluehost database after the ChemiCloud export had been taken, and
+the export is what went live. The 2026-09-08 TECHLOG entry already dated the
+split to between 15:18 and 20:46 CEST on 2026-09-07; this is the data side of
+the same split.
+
+**How much is lost is UNKNOWN.** The committed spend ledger shows the daily
+cron stored 14 rows on 2026-09-07 and the EDGAR sweep 0, the WARN import 34
+(a full bulk re-upsert every day, so those self-heal), supplemental news 1.
+Which of the 14 fell after the export cannot be told from this side: the
+append-only run telemetry keeps 50 runs and no longer reaches that day, and
+the public query keys on the event date, not the write date. The Trade Desk
+row is the one loss proven by name.
+
+**What was tried.** A 14-day news catch-up was dispatched at 03:45 UTC and
+posted nothing (132 non-events, the Trade Desk coverage was not among the
+articles its queries returned). The one readable article found for it sits
+behind a bot wall, the publisher's own post is not reachable by URL, and an
+EDGAR full-text query returned nothing, so the row cannot be re-fed through
+the pipeline from here. The tip form on the contact page is the standard
+path: a submitted link is processed by `process_tips.py` through the same
+extractor and guards as every collector. That is the ask for the owner.
+
+**Why the health rows matter more than they look.** STALE at 11 days on four
+weekly jobs is the migration's shape, not four breakages: each row will
+refresh on the job's next run (Sunday and Monday). Do not answer it by
+re-running the jobs by hand to make the alarm go quiet; the alarm is the only
+trace the loss left.
+
 ## 2026-09-12 - a retrospective count is never a new event dated by the article; the incremental figure wins over the cumulative one
 
 **Class:** wrong-scope-or-key (the model's count was read at the scope of one event when the text scoped it as a running total, and the date fallback then keyed that total to the article's publish day)
