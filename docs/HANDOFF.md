@@ -6,17 +6,107 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-12) — GDELT deployment-interruption TDD.**
+- **HELD by Codex (2026-09-12) — top-three evidence closeout.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
-  branch: `codex/gdelt-deploy-overlap-20260912`, based on `origin/main` at
-  `912f2231`. No plugin version is reserved because this changes only the
-  Railway service configuration, its test and documentation.
+  branch: `codex/document-volkswagen-correction-20260912`, based on
+  `origin/main` at `0eee0728`. No plugin version is reserved because this
+  package records a completed editorial correction only.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
   OpenRouter allowance; this handoff is the durable restart point.
 
-  **Current closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
+  **Newest closeout (2026-09-12 19:00 CEST).** PRs #328, #329 and #330 are
+  merged and green. The post-merge country-register run `34700082245` passed:
+  every one of the 79 countries currently represented in the corpus now has a
+  researched disclosure classification, so the acknowledged country backlog
+  is zero. Shared-host monitoring PR #135 is also merged and green in
+  `dk-forge/talent-intelligence-tracker`.
+
+  Dakota then authorized the evidence-backed removal of row 176988. Its cited
+  20minutos report says the German automotive sector had lost more than 60,000
+  jobs and separately describes a potential 50,000-worker Volkswagen plan by
+  2030; it never supports 60,000 cuts by Grupo Volkswagen. Signed correction
+  run `34706912085` trashed WordPress post 8731, cleaned orphan event 149721,
+  suppressed the row hash, and read row 176988 back as gone. The operation is
+  recoverable from the off-host backup and its suppression record; do not add a
+  replacement 50,000 row without checking the existing Volkswagen event first.
+
+  **Headline-integrity closeout (2026-09-12 23:29 CEST).** The correction
+  pair then caused the movement guard to do exactly what it should: PR #333's
+  live shard opened sticky incidents instead of silently adopting the lower
+  totals. The AI slice is exact to row 179276: removing the retrospective
+  Amazon 30,000 row moved 270,268/99 to 240,268/98 with zero residual. The
+  worldwide slice is the same Amazon correction plus row 176988's unsupported
+  Volkswagen 60,000 removal: -90,000 jobs/-2 entries, offset by ordinary net
+  arrivals of +2,315 jobs/+10 entries, exactly the observed -87,685/+8 move to
+  20,563,505 jobs/65,594 entries. Read-only trace run `34720031227` walked the
+  complete 40,101-row changed window over 41 pages; it also confirmed the
+  expected bulk WARN restamp and no surviving AI-explicit changed row. Both
+  incidents were closed through `data_integrity.py --close-incident`; the
+  closure reasons identify rows 179276 and 176988 and install explicit
+  replacement baselines. Those ledger commits are already on `origin/main`,
+  and no headline incident remains open. Rerun PR #333 and merge only after
+  every check is green.
+
+  Remaining proof, not implementation theatre: the first protected GDELT run
+  is due at 22:00 UTC on September 12, then seven clean scheduled runs across
+  fourteen days remain required; the independent US/Europe/global competitor
+  benchmark is still UNKNOWN; weak UK/Estonia/Taiwan official-total shares and
+  the remaining duplicate/archive worklists are still open. Never call the
+  tracker top-three until those measurements support it.
+
+  **Benchmark refresh (2026-09-12).** `docs/COMPETITOR_BENCHMARK_2026-09-12.md`
+  records current public comparisons. WARN Act Tracker claims all 50 states
+  and DC; WARNScan claims all 50 states; LayoffAlert reports 44 states; and
+  EuroLayoffs reports a Europe-first curated register. These are not directly
+  comparable because their date bases, amendments, event definitions and
+  source policies differ. The refresh identifies the required comparison
+  dimensions but does not substantiate a top-three ranking.
+
+  **Restart checklist for the next ChatGPT session.** Start in this worktree,
+  run `git status` and `git log --oneline -5`, then claim the baton before
+  editing. Read `docs/TECHLOG.md`, `docs/COMPETITOR_BENCHMARK_2026-09-12.md`,
+  and the latest `railway/ops_status.py` output. Do not use the unrelated parent
+  sandbox as the tracker repository. Do not replay the weekly digest manually.
+
+  1. At the next scheduled 22:00 UTC run, verify GDELT has a terminal finish,
+     no lost window, no unexplained cap, and a recovered retry ledger. Record
+     the run id and verdict. Repeat until seven clean scheduled runs span
+     fourteen days; this is a real calendar gate, not a test-suite assertion.
+  2. The two correction-driven `headline_movement` incidents are reconciled
+     and closed on `origin/main`. Re-run the daily integrity check;
+     the containment pair may be UNKNOWN once because the two explicit close
+     baselines have separate epochs. The next recorder run should advance the
+     complete group together. UNKNOWN is not PASS.
+  3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
+     the 69 shape candidates and 12 dateless rows one source at a time. Never
+     merge on count/date alone and never call a national-total share recall.
+  4. Refresh the private benchmark with matching date basis, amendments,
+     notice-vs-effective semantics, source classes and country scope. The
+     public comparison file is a starting evidence snapshot, not a ranking.
+  5. Resolve archive pending/exhausted queues through the existing cadence;
+     do not promise 100% Wayback coverage where the publisher or archive is
+     unavailable.
+
+  The current branch contains four commits after `origin/main`: `e5b56aad`
+  (correction receipt), `0f120ac1` (benchmark refresh), `e32858e7`
+  (restart-ready handoff), and the branch tip (headline-incident documentation).
+  PR #333 is the integration point. Do not merge it unless every required check
+  is green. The quiet heartbeat `layoff-tracker-top-three-proof` is already
+  attached and should remain active while time-based proof is pending.
+
+  **Status language.** Say “US is strongest measured slice,” “country regimes
+  classified,” and “GDELT proof in progress.” Do not say “100% global,” “full
+  recall,” or “top three” until the measured gates above pass and the benchmark
+  supports the claim.
+
+  **Historical notes below.** The older entries that follow preserve prior
+  evidence and decisions; when they say “pending,” “active package,” or name a
+  smaller country backlog, use the newest closeout and restart checklist above
+  as the source of truth.
+
+  **Historical closeout (2026-09-11 CET).** OpenRouter is explicitly not a blocker.
   The watermark repair is deployed and the daily 22:00 UTC schedule must now
   accumulate seven genuinely clean runs over fourteen days; the quiet Codex
   heartbeat `layoff-tracker-top-three-proof` checks this every 30 minutes and

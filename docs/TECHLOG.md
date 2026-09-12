@@ -100,7 +100,34 @@ dashboard, or a Zone.Cache Purge token in `CLOUDFLARE_API_TOKEN` plus a purge
 step in `deploy-plugin.yml`. Until one of those exists, a copy change to any
 page the edge rule covers is live at the origin and up to five days from its
 readers.
+## 2026-09-12 - two signed corrections moved the headlines, and the sticky guard required an explicit reconciliation
 
+**Class:** novel (the guard correctly stopped an authorized data correction;
+this is a required human reconciliation, not a recurring failure shape)
+**Guard:** `railway/headline_incidents.json`, `railway/headline_baseline.json`,
+read-only trace run `34720031227`
+
+PR #333's live test opened `ai_all_time` and `worldwide_all_time` incidents
+after the September 11 Amazon correction and September 12 Volkswagen
+correction. This is expected guard behaviour: an intentional deletion must not
+become tomorrow's unexplained baseline merely because the code path was signed.
+
+The AI slice reconciles exactly to row 179276: 270,268 jobs/99 entries minus
+30,000 jobs/one entry equals the observed 240,268/98. The worldwide slice
+reconciles to both corrected rows: Amazon 179276 (-30,000/-1) plus Volkswagen
+176988 (-60,000/-1), offset by ordinary net arrivals of +2,315 jobs/+10
+entries, equals the observed -87,685 jobs/+8 entries and replacement baseline
+20,563,505/65,594. Trace run `34720031227` paged the entire changed-row window
+(40,101 rows across 41 pages), documented the expected full WARN re-upsert,
+and found no AI-explicit survivor in the window. Deletions cannot appear in
+`/changed-rows`, so the signed correction receipts are the evidence for the two
+departures.
+
+Both incidents were closed only through `data_integrity.py --close-incident`,
+with the affected IDs and explicit replacement totals. `--incidents` now
+reports none open. The next recorder run may temporarily report containment
+UNKNOWN because the two individually closed slices have different epochs; it
+must advance the group together before that state is called PASS.
 ## 2026-09-12 - The /contact intro was frozen at the copy that shipped the day the page was created
 
 **Class:** wrong-scope-or-key
@@ -139,6 +166,28 @@ the test pins that too.
 
 Red first on the pre-change tree: 8 of 9 assertions fail, the first being
 `AssertionError: 'Something else' != 'Something Else'`.
+
+## 2026-09-12 - a German industry total was attributed to Volkswagen and has been removed
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/correction_specs/2026-09-12-editorial-176988.json` (the
+source-specific evidence and signed correction receipt; the general extraction
+scope guards remain `railway/tests/test_extractor_retrospective.py`)
+
+Row 176988 said Grupo Volkswagen had 60,000 cuts, with no event date. Its own
+20minutos source says the German automotive sector had lost more than 60,000
+jobs and separately says Volkswagen was considering another 50,000 by 2030.
+The sector total therefore cannot be attributed to Volkswagen, and changing the
+row to 50,000 would risk duplicating the separate Volkswagen event already in
+the tracker.
+
+Dakota authorized the exact correction in the top-three closeout. The audited
+`Apply a signed-off correction` workflow first ran dry as `34703968057`; no
+data changed. Applied run `34706912085` then showed row 176988 before the write,
+trashed WordPress post 8731, cleaned orphan event 149721, added one suppression
+record, reported no missing ids, and read the row back as gone. The source row
+can be recovered from the off-host backup; the suppression record deliberately
+prevents the same bad parse from silently returning.
 
 ## 2026-09-12 - A valid code deployment could still kill the daily GDELT run
 
