@@ -24974,6 +24974,27 @@ denominator. The per-employer near-miss is now marked verified partial rather
 than reported-unverified. TDD: the Czechia guard first failed with
 `KeyError: 'Czechia'`. Merge and live verification remain.
 
+## 2026-09-12 - Morocco authorization applications remain distinct from layoffs
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Morocco is now `REGIME_NO_AGGREGATE`, grounded in the Justice Ministry's
+official current Code du travail, Law 65-99, articles 66-70. An employer that
+habitually employs at least ten workers must consult worker representatives and
+send the signed record to the provincial labour delegate before a covered
+technological, structural or economic dismissal. The provincial or prefectural
+governor then authorizes or refuses the dismissal on the provincial
+commission's recommendation. Closure is covered by article 69.
+
+No public periodic series or named register of article-67 applications,
+decisions or approved dismissals was located. Current official HCP labour-
+market surveys and OMTPME firm-demography reports measure other populations and
+are explicitly excluded. The distinction is load-bearing: a filed application
+can be refused, so even a future application total cannot be labelled completed
+layoffs. TDD: the Morocco guard first failed with `KeyError: 'Morocco'` before
+the register entry was added. Merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  

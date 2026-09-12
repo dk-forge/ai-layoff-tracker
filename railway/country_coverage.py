@@ -1038,34 +1038,6 @@ ACKNOWLEDGED_BACKLOG = {
       "403s an identifying agent; labourbureau.gov.in answers 200 and is the "
       "permitted route."
       ),
-    'Morocco': ("2026-08-18",
-      "THE STATUTE IS NOW READ IN FULL AND PUBLICATION IS UNKNOWN — those are "
-      "two separate states and the entry must not collapse them. Code du "
-      "Travail (Loi 65-99) art. 66: an employer habitually employing TEN OR "
-      "MORE workers who plans to dismiss all or some for technological, "
-      "structural or economic reasons must inform the workers' delegates and "
-      "union representatives at least one month ahead, and a signed "
-      "proces-verbal of those consultations goes to the delegue provincial "
-      "charge du travail. Art. 67: the dismissal is SUBORDINATE TO AN "
-      "AUTHORISATION issued by the gouverneur of the prefecture or province "
-      "within two months, on the conclusions of a provincial commission the "
-      "gouverneur chairs; an economic file additionally needs a grounds "
-      "report, the firm's financial position and a chartered accountant's "
-      "report. Art. 69 extends it to closures, art. 70 keeps notice and "
-      "severance owed whether or not the authorisation was obtained. THIS IS "
-      "EX-ANTE APPROVAL, NOT NOTIFICATION, and the consequence is the same as "
-      "India's: the countable state event is an APPLICATION, permission can be "
-      "refused, and any aggregate must say 'granted'. PUBLICATION UNKNOWN FOR "
-      "AN ENVIRONMENT REASON, NOT A REFUSAL: miepeec.gov.ma — the ministry "
-      "running the Observatoire National du Marche du Travail and its annual "
-      "labour-market report, the one plausible publisher — answers ECONNREFUSED "
-      "from here, robots.txt included. That is also the only remaining place in "
-      "this region a per-employer register could exist unseen, since the "
-      "provincial commissions hold named files. REJECTED: a lawyer's newspaper "
-      "assertion that no economic-dismissal authorisation was issued between "
-      "2004 and 2020 is colour, never a figure. TO CLOSE: reach miepeec.gov.ma "
-      "from an environment with Moroccan egress."
-      ),
     'Pakistan': ("2026-08-18",
       "PAKISTAN IS NOT NO_REGIME, AND THE PREVIOUS NOTE'S WORKING HYPOTHESIS IS "
       "OVERTURNED AT THE PROVINCIAL LEVEL — where it had to be answered. What "
@@ -1979,6 +1951,36 @@ REGISTER = {
                       "cannot serve as a filing denominator."),
         "assessed": "2026-09-12",
         "cite": "https://ppropo.mpsv.cz/VI224Hromadnepropousteni",
+    },
+
+    "Morocco": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour Code, Law 65-99, articles 66-70. An employer that "
+                   "habitually employs at least 10 workers and proposes dismissal "
+                   "for technological, structural, similar or economic reasons "
+                   "must inform and consult worker delegates and union representatives "
+                   "at least one month ahead. The signed consultation record goes to "
+                   "the provincial labour delegate. Dismissal then requires prior "
+                   "authorization from the provincial or prefectural governor on the "
+                   "provincial commission's recommendation; article 69 extends the "
+                   "procedure to closure."),
+        "authority": ("the provincial labour delegate and the governor of the "
+                      "competent prefecture or province, advised by the provincial "
+                      "commission"),
+        "threshold": ("an employer habitually employing 10 or more workers that "
+                      "plans to dismiss all or part of its workforce for a covered "
+                      "technological, structural, similar or economic reason"),
+        "aggregate": ("NONE LOCATED for article-67 authorization applications, "
+                      "decisions or approved dismissals. The Justice Ministry "
+                      "publishes the governing Code, while current HCP labour-market "
+                      "surveys and OMTPME firm-demography reports measure employment, "
+                      "unemployment, closures or firm populations rather than this "
+                      "provincial authorization process. Those populations are "
+                      "explicitly excluded. An application can be refused, so even "
+                      "a future application count must never be labelled layoffs."),
+        "assessed": "2026-09-12",
+        "cite": ("https://adala.justice.gov.ma/api/uploads/2024/04/30/"
+                 "code%20du%20travail-1714463246806.pdf"),
     },
 
     "Afghanistan": {
