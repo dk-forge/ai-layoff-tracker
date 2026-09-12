@@ -77,11 +77,6 @@
       "last": 1789252040,
       "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 504 \u2014 server regression, not a blip"
     },
-    "tests:live.data:4c51a688fc18dee4": {
-      "first": 1789244624,
-      "last": 1789244624,
-      "subject": "CI RED: Tests \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-09-12T19:35:48Z): Worldwide jobs, all"
-    },
     "tests:live.data:7771c627fc3b103d": {
       "first": 1789248671,
       "last": 1789248671,
@@ -98,6 +93,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T23:46:29+00:00",
+  "updated_at": "2026-09-12T23:46:31+00:00",
   "version": 1
 }
