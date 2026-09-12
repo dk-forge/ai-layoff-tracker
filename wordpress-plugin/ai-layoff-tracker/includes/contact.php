@@ -30,6 +30,35 @@ function alt_contact_topics() {
     );
 }
 
+/**
+ * One line per subject, shown under the select as soon as it is chosen.
+ *
+ * The label is what a person scans; the hint is what stops them guessing. A
+ * label has to stay short enough to read in a dropdown, so it can name the
+ * thing without saying what happens to it, who should pick it, or what we will
+ * need from them. That is the sentence below.
+ *
+ * Every key in alt_contact_topics() must have one. alt_contact_topic_hint()
+ * falls back to '' rather than to another subject's sentence, because a hint
+ * that describes the wrong option is worse than no hint at all.
+ */
+function alt_contact_topic_hints() {
+    return array(
+        'tip'         => 'A layoff that is not in the tracker yet. A link to a news report, a filing or the company\'s own post is what lets us verify it.',
+        'api'         => 'You want to pull our data into something of your own, or you are asking about bulk access. Tell us roughly what you are building.',
+        'app'         => 'Anything about the resume and cover letter tool at asktherecruiter.com: your account, your credits, or something that did not work.',
+        'partnership' => 'Sponsorship, advertising, or working together on something. Not a job application.',
+        'press'       => 'You are writing about layoffs and want figures, context, or a comment you can quote.',
+        'correction'  => 'A number, a date, a company or a country in the tracker that does not match the source. Paste the entry and tell us what it should say.',
+        'other'       => 'None of the above. Say what you need in the message and it reaches the same inbox.',
+    );
+}
+
+function alt_contact_topic_hint($key) {
+    $hints = alt_contact_topic_hints();
+    return isset($hints[$key]) ? $hints[$key] : '';
+}
+
 function alt_shortcode_contact() {
     // Arithmetic challenge: store the answer server-side, keyed by a token,
     // so the correct answer never appears in the page source.
@@ -70,11 +99,19 @@ function alt_shortcode_contact() {
             <div class="alt-contact-grid">
                 <div class="alt-filter">
                     <label for="alt-c-topic">Subject</label>
-                    <select id="alt-c-topic" name="alt_topic" required>
+                    <select id="alt-c-topic" name="alt_topic" required aria-describedby="alt-c-topic-hint"
+                            data-alt-hints="<?php echo esc_attr(wp_json_encode(alt_contact_topic_hints())); ?>">
                         <?php foreach (alt_contact_topics() as $key => $label) : ?>
                             <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <?php
+                    // Rendered server-side for the option the browser selects by
+                    // default, so the hint is right before any script runs and
+                    // stays right if none ever does.
+                    $first = array_key_first(alt_contact_topics());
+                    ?>
+                    <span class="alt-contact-note alt-topic-hint" id="alt-c-topic-hint"><?php echo esc_html(alt_contact_topic_hint($first)); ?></span>
                 </div>
                 <div class="alt-filter">
                     <label for="alt-c-name">Your name</label>
@@ -93,10 +130,11 @@ function alt_shortcode_contact() {
                     <label for="alt-c-tipco">Company that had the layoff</label>
                     <input type="text" id="alt-c-tipco" name="alt_tip_company" maxlength="160" placeholder="e.g. Acme Corp">
                 </div>
-                <div class="alt-filter">
-                    <label for="alt-c-link">Link to the source (news report, filing, or company post)</label>
+                <div class="alt-filter alt-link-row">
+                    <label for="alt-c-link" id="alt-c-link-label">Link to the source (news report, filing, or company post)</label>
                     <input type="url" id="alt-c-link" name="alt_link" maxlength="500" placeholder="https://">
                     <span class="alt-contact-note alt-tip-note" hidden>Reporting a layoff? A source link lets us verify it against the original and add it automatically. Without one we still read your tip, but it needs a manual check first.</span>
+                    <span class="alt-contact-note alt-app-note" hidden>Optional. If something went wrong on a particular page, paste its address here.</span>
                     <span class="alt-contact-note alt-nontip-note">For corrections, paste the entry you're flagging so we can locate it fast.</span>
                 </div>
                 <div class="alt-filter">
@@ -123,12 +161,34 @@ function alt_shortcode_contact() {
         (function () {
             var topic = document.getElementById('alt-c-topic');
             if (!topic) return;
+            var hints = {};
+            try { hints = JSON.parse(topic.getAttribute('data-alt-hints') || '{}'); } catch (e) { hints = {}; }
+            var hintEl = document.getElementById('alt-c-topic-hint');
+            // 'app' is the one subject that is not about the tracker at all, so
+            // the source-link row stops asking for a news report and asks for
+            // the page that went wrong instead. Leaving the tracker wording up
+            // is how a form tells someone they picked the wrong option.
             var sync = function () {
-                var isTip = topic.value === 'tip';
+                var value = topic.value;
+                var isTip = value === 'tip';
+                var isApp = value === 'app';
                 document.querySelectorAll('.alt-tip-only').forEach(function (el) { el.hidden = !isTip; });
-                var tn = document.querySelector('.alt-tip-note'), nn = document.querySelector('.alt-nontip-note');
-                if (tn) tn.hidden = !isTip;
-                if (nn) nn.hidden = isTip;
+                var show = function (sel, on) {
+                    var el = document.querySelector(sel);
+                    if (el) el.hidden = !on;
+                };
+                show('.alt-tip-note', isTip);
+                show('.alt-app-note', isApp);
+                show('.alt-nontip-note', !isTip && !isApp);
+                var linkLabel = document.getElementById('alt-c-link-label');
+                if (linkLabel) {
+                    linkLabel.textContent = isApp
+                        ? 'Link to the page (optional)'
+                        : 'Link to the source (news report, filing, or company post)';
+                }
+                if (hintEl && Object.prototype.hasOwnProperty.call(hints, value)) {
+                    hintEl.textContent = hints[value];
+                }
             };
             topic.addEventListener('change', sync);
             sync();
@@ -136,7 +196,12 @@ function alt_shortcode_contact() {
         </script>
     </div>
     <?php
-    return ob_get_clean();
+    // The contact form renders its own buffer rather than going through
+    // alt_template(), so it never carried the build stamp that every other
+    // plugin surface emits. Without it nothing can date this page: on
+    // 2026-09-12 the subject list was correct at the origin and five days
+    // stale at the edge, and the freshness check had no stamp to compare.
+    return alt_build_stamp_comment() . ob_get_clean();
 }
 add_shortcode('alt_contact', 'alt_shortcode_contact');
 

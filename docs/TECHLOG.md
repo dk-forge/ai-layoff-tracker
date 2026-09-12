@@ -1,3 +1,55 @@
+## 2026-09-12 - The contact page was five days stale at the edge and every check in the repo read green
+
+**Class:** cache-served-stale
+**Guard:** `railway/tests/test_deploy_reaches_readers.py` (EveryPageThePluginOwnsIsChecked, AGraceWindowIsNotTakenFromTheCacheBeingMeasured)
+
+2.20.188 shipped a rewritten contact form. The deploy was green,
+`reader_freshness.py` said PASS, and the owner opened the page and saw the old
+subject list. He was right and the repo was wrong, in three separate ways.
+
+**One page was being checked.** `reader_freshness.py` read the tracker page and
+nothing else, so a stale page anywhere else on the site was invisible to it.
+`READER_PAGES` now holds every page the plugin owns and `check_all()` returns
+the worst verdict across them, because one stale page is a stale deploy: a
+reader who lands on it sees old content whatever the other pages say.
+
+**The contact page could not be dated even if it had been read.** It renders
+its own output buffer instead of going through `alt_template()`, which is the
+funnel that emits the build stamp, so it carried neither a build stamp nor a
+plugin asset URL. The stamp is emitted now.
+
+**And it was never given the bounded lifetime.** The 60s header comes from
+`alt_public_page_cache_headers()`, gated on `alt_page_is_plugin_surface()`,
+whose shortcode list was hand-written and did not include `alt_contact`,
+`alt_methodology` or `alt_press_media`. The list is a named function now and
+the test requires every page-owning shortcode to be in it.
+
+**The measured state.** The origin sends
+`private, no-cache, no-store, must-revalidate, max-age=0` for that URL. The
+bare URL came back `cf-cache-status: HIT`, `age: 3185`,
+`cache-control: max-age=432000`. An edge rule is caching the HTML for five days
+and ignoring the origin entirely, bypassing only when a query string is
+present, which is exactly what `?cb=` sends, which is why every origin check in
+this repo passed. Nothing in this repo set that header and no deploy can purge
+it. The repo does not hold a Cloudflare API token.
+
+**The grace window was taken from the cache being measured.** `grace_seconds()`
+derived its patience from the response's own `cache-control`, so the five-day
+header bought itself a 864,120 second window: ten days in which a stale subject
+list would have reported as "still propagating". It is capped at
+`MAX_GRACE_S = 3600` now, against the 240s the plugin actually asks for, and
+the overrun is reported as a finding of its own rather than spent as patience.
+A cache must not be allowed to excuse itself.
+
+Red first: with the pre-change constants restored, three of the nine new
+assertions fail, including `test_more_than_one_page_is_read`.
+
+**Still open for a human.** Purging the cached copy needs the Cloudflare
+dashboard, or a Zone.Cache Purge token in `CLOUDFLARE_API_TOKEN` plus a purge
+step in `deploy-plugin.yml`. Until one of those exists, a copy change to any
+page the edge rule covers is live at the origin and up to five days from its
+readers.
+
 ## 2026-09-12 - The /contact intro was frozen at the copy that shipped the day the page was created
 
 **Class:** wrong-scope-or-key

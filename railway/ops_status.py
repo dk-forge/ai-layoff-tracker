@@ -1377,8 +1377,10 @@ def main():
     print("\n[1b] READER VIEW   (bare URL, browser UA, NO cache buster)")
     try:
         deploy_at, why_not = _last_deploy_finished_at()
-        freshness = reader_freshness.check(deploy_finished_at=deploy_at)
-        print(f"    {freshness.verdict}: {freshness.detail}")
+        freshness, per_page = reader_freshness.check_all(deploy_finished_at=deploy_at)
+        for url, one in per_page:
+            line = one.detail if one.detail.startswith(url) else f"{url}: {one.detail}"
+            print(f"    {one.verdict}: {line}")
         if freshness.verdict == reader_freshness.FAIL:
             print("    -> docs/RUNBOOK.md 'a deploy is not reaching readers'.")
             issues.append("deploys are not reaching readers")

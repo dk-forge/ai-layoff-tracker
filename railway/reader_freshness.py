@@ -94,6 +94,21 @@ from pathlib import Path
 
 BASE = os.environ.get("WP_SITE_URL", "https://asktherecruiter.com/blog").rstrip("/")
 PAGE_URL = f"{BASE}/ai-layoff-tracker/"
+# EVERY PAGE THE PLUGIN OWNS, not just the tracker. This file read one URL until
+# 2026-09-12 and passed while /blog/contact/ served a subject list five days old
+# with a new one at the origin. The gap was not subtle: the origin sends
+# `no-store` for that page, and an edge rule caches it anyway for five days,
+# bypassing only when a query string is present - which is exactly what every
+# other check in this repo sends. A page missing from this list is a page no
+# check can date.
+#
+# Add a URL here the same session you give the plugin a new page. The page must
+# emit the build stamp (includes/build-stamp.php) or the verdict is UNKNOWN,
+# which is the correct answer and not a pass.
+READER_PAGES = (
+    PAGE_URL,
+    f"{BASE}/contact/",
+)
 # `?build=1` asks /status to hash the plugin's files and report the build stamp.
 # It is opt-in because that route is polled by the live badge in every open tab
 # every 60s and is deliberately uncached; hashing 2MB for each of those would be
@@ -146,6 +161,20 @@ SHARED_CACHE_HOPS = 2
 # deploy's own wait is bounded separately (--timeout 600) and simply keeps
 # waiting rather than declaring anything.
 PROPAGATION_MARGIN_S = 120
+
+# THE GRACE IS DERIVED FROM THE RESPONSE, SO A LONG TTL BUYS ITSELF A PASS.
+# alt_public_page_cache_headers() asserts s-maxage=60, which over two hops plus
+# the margin is 240s. Anything much larger is not a page we are waiting on, it
+# is a page something in front of us decided to hold, and treating that number
+# as patience means the check can never fail on exactly the page that needs it.
+# Measured 2026-09-12: /blog/contact/ came back with max-age=432000 and this
+# file computed a 864120s window, ten days in which a stale subject list would
+# have read as "still propagating".
+#
+# So the window is capped, and the overrun is reported as its own fault. The
+# cap is generous against the 240s the plugin asks for: a page legitimately
+# slower than an hour to reach readers is a problem in itself.
+MAX_GRACE_S = 3600
 
 # How long the deploy's wait will hold out for the ORIGIN to report the build
 # this checkout computes, before deciding the difference is not a deploy in
@@ -304,7 +333,24 @@ def max_reader_staleness_s(cache_control):
 
 
 def grace_seconds(cache_control):
-    return max_reader_staleness_s(cache_control) + PROPAGATION_MARGIN_S
+    """How long a disagreement may be called propagation rather than a fault.
+
+    Capped at MAX_GRACE_S: the headers come from the cache we are measuring, so
+    an unbounded read of them lets a cache excuse itself.
+    """
+    return min(max_reader_staleness_s(cache_control) + PROPAGATION_MARGIN_S,
+               MAX_GRACE_S)
+
+
+def cache_lifetime_overrun(cache_control):
+    """Seconds by which this response's own headers exceed what we can wait.
+
+    Zero when the page is inside the window. A positive number is a finding on
+    its own: whatever set that header, it is not the plugin, and no deploy can
+    purge it.
+    """
+    uncapped = max_reader_staleness_s(cache_control) + PROPAGATION_MARGIN_S
+    return max(0, uncapped - MAX_GRACE_S)
 
 
 def _open(url, ua, timeout=40):
@@ -354,7 +400,7 @@ def origin_build(url=STATUS_URL, timeout=40):
     return (str(version) if version else None, str(build) if build else None)
 
 
-def check(deploy_finished_at=None, now=None):
+def check(deploy_finished_at=None, now=None, page_url=PAGE_URL):
     """Compare what readers are served against what is deployed.
 
     `deploy_finished_at` is a timezone-aware datetime for the last successful
@@ -364,9 +410,9 @@ def check(deploy_finished_at=None, now=None):
     """
     now = now or datetime.now(timezone.utc)
     try:
-        view = reader_view()
+        view = reader_view(page_url)
     except Exception as exc:                      # noqa: BLE001 - reported, not swallowed
-        return Result(UNKNOWN, f"could not fetch the reader view of {PAGE_URL}: {exc}")
+        return Result(UNKNOWN, f"could not fetch the reader view of {page_url}: {exc}")
     try:
         deployed, deployed_build = origin_build()
     except Exception as exc:                      # noqa: BLE001
@@ -374,7 +420,13 @@ def check(deploy_finished_at=None, now=None):
                       served=view.version)
 
     served, served_build = view.version, view.build
-    grace = grace_seconds(view.headers.get("cache-control", ""))
+    cache_control = view.headers.get("cache-control", "")
+    grace = grace_seconds(cache_control)
+    overrun = cache_lifetime_overrun(cache_control)
+    held = (f" A cache in front of this page declares '{cache_control}', which would let a "
+            f"reader be {overrun}s staler than this check is willing to wait. The plugin "
+            f"asks for s-maxage=60; nothing in this repo set that header and no deploy can "
+            f"purge it." if overrun else "")
 
     def undecided(detail):
         return Result(UNKNOWN, detail, served=served, deployed=deployed, grace=grace)
@@ -384,7 +436,7 @@ def check(deploy_finished_at=None, now=None):
         if deploy_finished_at is None:
             return undecided(
                 f"{what}, and the last deploy time is unknown here, so this cannot be "
-                f"told apart from normal propagation (grace is {grace}s)")
+                f"told apart from normal propagation (grace is {grace}s).{held}")
         age = (now - deploy_finished_at).total_seconds()
         if age <= grace:
             return Result(PASS,
@@ -392,7 +444,7 @@ def check(deploy_finished_at=None, now=None):
                           f"deploy and still inside the {grace}s window",
                           served=served, deployed=deployed, grace=grace)
         return Result(FAIL, f"{what}, {int(age)}s after the deploy and past the "
-                            f"{grace}s window. {detail_stuck}",
+                            f"{grace}s window. {detail_stuck}{held}",
                       served=served, deployed=deployed, grace=grace)
 
     # 1. The VERSION, judged exactly as before. Nothing this module could
@@ -425,9 +477,30 @@ def check(deploy_finished_at=None, now=None):
             "docs/RUNBOOK.md 'a deploy is not reaching readers'.")
 
     return Result(PASS,
-                  f"readers are served {served} and a body built from {served_build}, "
-                  f"which is the deployed build",
+                  f"{page_url}: readers are served {served} and a body built from "
+                  f"{served_build}, which is the deployed build",
                   served=served, deployed=deployed, grace=grace)
+
+
+def check_all(deploy_finished_at=None, now=None, pages=READER_PAGES):
+    """Run check() over every page the plugin owns and return the worst verdict.
+
+    FAIL beats UNKNOWN beats PASS. One stale page is a stale deploy: a reader
+    who lands on it sees old content whatever the other pages say, and the whole
+    reason this file exists is that the origin being right is not the question.
+
+    The individual results come back too, so a caller can print which page.
+    """
+    results = [
+        (url, check(deploy_finished_at=deploy_finished_at, now=now, page_url=url))
+        for url in pages
+    ]
+    for verdict in (FAIL, UNKNOWN, PASS):
+        for url, result in results:
+            if result.verdict == verdict:
+                return result, results
+    # pages was empty, which is a configuration error and not a pass.
+    return Result(UNKNOWN, "no reader pages are configured, so nothing was checked"), results
 
 
 def wait_for(expected, expected_build=None, timeout=600, interval=15, log=print):
@@ -554,9 +627,12 @@ def main(argv=None):
         print(f"Readers are served {args.wait_for}. Propagation delay: {int(delay)}s.")
         return 0
 
-    result = check()
-    print(f"{result.verdict}: {result.detail}")
-    return {PASS: 0, FAIL: 2}.get(result.verdict, 3)
+    worst, results = check_all()
+    for url, result in results:
+        print(f"{result.verdict}: {result.detail}"
+              if result.detail.startswith(url) else
+              f"{result.verdict}: {url}: {result.detail}")
+    return {PASS: 0, FAIL: 2}.get(worst.verdict, 3)
 
 
 if __name__ == "__main__":

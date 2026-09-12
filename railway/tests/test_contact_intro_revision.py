@@ -32,6 +32,13 @@ THE SUBJECT LIST IS HELD HERE TOO, for the same reason it was rewritten: the
 options are what a person reads before deciding whether this form is for them.
 They are alphabetical with the catch-all last, and the catch-all is the only
 one allowed to be vague.
+
+AND THE HINT UNDER IT. A label has to be short enough to read in a dropdown, so
+it can name the thing without saying who should pick it or what we will need
+from them. Every subject carries one sentence that does, it is rendered
+server-side for the default option so it is right with JavaScript off, and the
+map is keyed by the same keys as the list, because a hint that describes the
+wrong option is worse than no hint.
 """
 
 import re
@@ -174,6 +181,78 @@ class TheSubjectListReadsLikeSomeoneWroteIt(unittest.TestCase):
                 "a person is bringing us: %r" % (key, label),
             )
 
+
+
+
+class EverySubjectExplainsItself(unittest.TestCase):
+    def _hints(self):
+        m = re.search(r"function alt_contact_topic_hints\(\)\s*\{(.*?)\n\}", CONTACT, re.S)
+        assert m, "alt_contact_topic_hints() is gone"
+        return dict(
+            re.findall(r"'([a-z_]+)'\s*=>\s*'((?:[^'\\]|\\.)*)'", m.group(1))
+        )
+
+    def test_every_subject_has_one(self):
+        hints = self._hints()
+        for key, label in _topics():
+            self.assertIn(
+                key,
+                hints,
+                "subject %r has no hint, so a reader has only the label to go on"
+                % label,
+            )
+
+    def test_no_hint_belongs_to_a_subject_that_is_gone(self):
+        keys = {key for key, _ in _topics()}
+        for key in self._hints():
+            self.assertIn(
+                key, keys, "hint %r describes a subject that no longer exists" % key
+            )
+
+    def test_a_hint_is_a_sentence_and_not_a_restated_label(self):
+        labels = {key: label for key, label in _topics()}
+        for key, hint in self._hints().items():
+            self.assertGreaterEqual(
+                len(hint.split()),
+                8,
+                "hint for %r is too short to add anything: %r" % (key, hint),
+            )
+            self.assertTrue(
+                hint.rstrip().endswith("."),
+                "hint for %r is not written as a sentence: %r" % (key, hint),
+            )
+            self.assertNotEqual(
+                hint.rstrip(". ").lower(),
+                labels[key].lower(),
+                "hint for %r just repeats the label" % key,
+            )
+
+    def test_the_fallback_is_empty_and_not_another_subjects_hint(self):
+        body = re.search(
+            r"function alt_contact_topic_hint\(\$key\)\s*\{(.*?)\n\}", CONTACT, re.S
+        )
+        self.assertIsNotNone(body, "alt_contact_topic_hint() is gone")
+        self.assertIn("''", body.group(1))
+
+    def test_it_is_rendered_before_any_script_runs(self):
+        self.assertIn(
+            "alt_contact_topic_hint($first)",
+            CONTACT,
+            "the hint for the default option must be rendered server-side, or "
+            "the form opens with a blank line under the subject",
+        )
+        self.assertIn('id="alt-c-topic-hint"', CONTACT)
+        self.assertIn('aria-describedby="alt-c-topic-hint"', CONTACT)
+
+    def test_the_resume_subject_stops_asking_for_a_news_report(self):
+        self.assertIn(
+            "alt-app-note",
+            CONTACT,
+            "the resume tool is the one subject that is not about the tracker; "
+            "leaving the source-link wording up tells the person they picked "
+            "the wrong option",
+        )
+        self.assertIn("Link to the page (optional)", CONTACT)
 
 if __name__ == "__main__":
     unittest.main()
