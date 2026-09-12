@@ -87,12 +87,17 @@
       "last": 1789163848,
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     },
+    "tests:main:7ba8f6d0b4896be7": {
+      "first": 1789249838,
+      "last": 1789249838,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
+    },
     "weekly-health-digest-autonomy-tripwire:main:6df52ded92e991c5": {
       "first": 1789222225,
       "last": 1789222225,
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T21:45:59+00:00",
+  "updated_at": "2026-09-12T21:50:38+00:00",
   "version": 1
 }
