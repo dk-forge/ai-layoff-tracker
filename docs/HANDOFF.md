@@ -3230,6 +3230,65 @@ workers in 2024). This is valuable partial regional evidence, not a complete
 current national denominator or named notice register. The new guard first
 failed with `KeyError: 'Czechia'`; merge and live verification remain.
 
+## 2026-09-12 India disclosure-regime closeout (PR pending)
+
+India is no longer an unverified country-regime backlog item on this branch.
+The current primary sources settle both halves of the classification:
+
+- Industrial Relations Code 2020 sections 77-80, effective 21 November 2025,
+  require prior government permission for lay-off and retrenchment and a prior
+  application for closure at covered factories, mines and plantations. The
+  Chapter X floor is 300 workers averaged over the preceding 12 months (or a
+  higher threshold notified by the appropriate government).
+- The Industrial Relations (Central) Rules 2026 prescribe the affected-worker
+  fields in Form XIV. The Labour Bureau publishes annual counts of cases and
+  workers affected by closures, retrenchments and lay-offs; its current index
+  reaches 2023.
+
+India is classified `REGIME_WITH_AGGREGATE`, with a load-bearing limitation:
+the Labour Bureau says its series is compiled from monthly information supplied
+*voluntarily* by State Labour Commissioners and Regional Labour Commissioners
+(Central). It is partial, lagged, not employer-named and not a recall
+denominator. Permission applications may be refused, so application counts
+must not be described as completed layoffs.
+
+TDD evidence: the India guard first failed with `KeyError: 'India'`; after the
+entry and backlog removal, all 55 country-register tests passed. A live
+`country_coverage.py --write` run at 2026-09-12T13:47:52Z passed with 79
+countries in scope, 22 publishing countable totals and only Bosnia and
+Herzegovina plus Pakistan remaining in the declared backlog. Merge, CI and
+post-deploy measurement remain.
+
+## 2026-09-12 Bosnia and Pakistan country closeout (same PR pending)
+
+The final two research items have now been removed from the declared backlog on
+this branch.
+
+Bosnia and Herzegovina is `REGIME_NO_AGGREGATE`, expressed as the devolved
+system it actually has. Republika Srpska Labour Law articles 160-165 sends a
+banded-threshold redundancy programme to its Employment Institute; Brcko's
+current consolidated articles 126-127 sends a >20% programme to its Institute;
+Federation articles 109-110 provide only internal works-council/union
+consultation. Current authority publication surfaces expose employment and
+benefit statistics, not a complete periodic notice count or named register.
+
+Pakistan is `REGIME_NO_AGGREGATE`. Primary Sindh and Khyber Pakhtunkhwa laws
+both require prior provincial permission where more than 50% of workers are
+terminated or the whole establishment closes, including a lay-off beyond 14
+days that produces closure. Punjab's adapted Standing Orders route closure
+permission to the Labour Court. The Balochistan Assembly confirms its 2021
+Standing Orders Act, but the exact closure clause was deliberately left as a
+sub-provincial caveat because a readable primary clause was not available. No
+complete periodic applications/decisions series or named register was found;
+applications can be refused and are not layoffs.
+
+TDD evidence: each new guard failed first with a missing register key, then the
+full country suite passed 57/57. The live measurement passed at 79 countries:
+22 publish a countable total, 42 have a regime without a published aggregate,
+8 have no disclosure regime, 6 are refused, and only Morocco remains pending
+because its already-green PR #328 is separate and not yet authorized to merge.
+Once the Morocco and this country PR are both merged, the represented-country
+research backlog reaches zero; that does not by itself prove tracker recall.
 Czechia subsequently merged in PR #327 as `4afa93e8`; its full CI matrix and
 live country workflow `34676771928` passed. It is production-closed and the
 declared country backlog is 4.

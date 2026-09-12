@@ -1001,76 +1001,125 @@ PER_EMPLOYER_SWEPT = {
 BACKLOG_DECLARED = "2026-08-18"
 
 ACKNOWLEDGED_BACKLOG = {
-    'Bosnia and Herzegovina': ("2026-08-18",
-      "ONE ENTITY OF THREE IS NOW READ. Federation of BiH: Zakon o radu FBiH "
-      "(Sl. novine FBiH 26/16, 89/18, 44/22) cl. 109 — an employer of more than "
-      "30 workers intending to dismiss at least 5 for economic, technical or "
-      "organisational reasons over the next three months must CONSULT the works "
-      "council and the union; cl. 110 sets a 30-day consultation lead and the "
-      "content of the written notice; cl. 111 is severance. Every addressee in "
-      "109-111 is INTERNAL — no submission to the sluzba za zaposljavanje or "
-      "any public body was found, which points to no disclosure regime in FBiH. "
-      "Not recorded, for two reasons: it rests on one host (paragraf.ba, whose "
-      "robots disallows /propisi/ but carries an explicit 'Allow: *.html$' "
-      "exception that this path meets), and the duty could still sit in the "
-      "Zakon o posredovanju u zaposljavanju, which was not read. Republika "
-      "Srpska: a duty is REPORTED at Zakon o radu RS cl. 163 — the draft "
-      "redundancy programme goes to the union AND the Zavod within 8 days, with "
-      "cl. 164(2) obliging the Zavod to reply in 15 days — so RS and FBiH may "
-      "genuinely differ and neither may be inferred from the other. Brcko "
-      "District: unchecked. Publication in all three: unchecked. METHOD WARNING "
-      "FOR WHOEVER PICKS THIS UP: a hand-rolled zlib/PDF-operator text "
-      "extraction of the consolidated FBiH law SILENTLY DROPPED every word "
-      "containing c/c/s/z, which is most of the legal vocabulary. Use the HTML "
-      "or a real PDF library."
-      ),
-    'India': ("2026-08-18",
-      "A PERMISSION REGIME, NOT A NOTIFICATION ONE, and the distinction is "
-      "load-bearing: permission can be REFUSED and the layoff then never "
-      "happens, so a count of applications is not a count of layoffs. Industrial "
-      "Disputes Act 1947 Ch. V-B (establishments above 100, or 300 in some "
-      "states) — STATUTE NOT VERIFIED here and must not be restated from "
-      "memory. One sweep reports the only published series is voluntary state "
-      "returns, roughly 3 years stale, scanned-image PDFs, with implausible "
-      "single-digit national case counts; another found no "
-      "industrial-disputes/retrenchment series in the Labour Bureau navigation "
-      "at all. Neither is verified. ACCESS: every *.gov.in and *.nic.in host "
-      "403s an identifying agent; labourbureau.gov.in answers 200 and is the "
-      "permitted route."
-      ),
-    'Pakistan': ("2026-08-18",
-      "PAKISTAN IS NOT NO_REGIME, AND THE PREVIOUS NOTE'S WORKING HYPOTHESIS IS "
-      "OVERTURNED AT THE PROVINCIAL LEVEL — where it had to be answered. What "
-      "exists is not a notification duty but a PRIOR-APPROVAL duty with a "
-      "numeric threshold. SINDH, READ VERBATIM: Sindh Terms of Employment "
-      "(Standing Orders) Act 2015, Standing Order 15 — no employer shall "
-      "terminate the employment of MORE THAN FIFTY PERCENT OF THE WORKERS or "
-      "close down the whole establishment WITHOUT PRIOR PERMISSION OF THE "
-      "GOVERNMENT, except for fire, catastrophe, power stoppage, epidemic or "
-      "civil commotion; an undecided application is DEEMED GRANTED after 15 "
-      "days; appeal to the Labour Court within 30 days; and the explanation "
-      "extends 'close down' to a lay-off beyond fourteen days that results in "
-      "closure. The negative half was read too: SO 16 notice runs to the "
-      "WORKER, SO 18 'Procedure for retrenchment' is last-in-first-out and "
-      "nothing else, SO 19 re-employment preference goes to the workers by "
-      "registered post — so ORDINARY retrenchment in Sindh has no authority "
-      "duty at all. PUNJAB, SECONDARY: the 1968 Ordinance's SO 11-A, inserted "
-      "in 1973, is the parent clause with ONE MATERIAL DIFFERENCE — permission "
-      "runs to the LABOUR COURT, not the Government. KP (its own 2013 Act) and "
-      "BALOCHISTAN (its own 2021 Act) are UNKNOWN: kpcode.kp.gov.pk timed out "
-      "and the Balochistan PDF has no extractable text layer and needs OCR. All "
-      "four apply to establishments of 20+ workers. PUBLICATION UNKNOWN. "
-      "STRUCTURAL LEAD WORTH KEEPING: a >50%-or-closure event generates a "
-      "per-employer APPLICATION FILE held by the provincial Government (Sindh) "
-      "or by the Labour Court (Punjab), and Labour Court orders are adjudicative "
-      "records. Whether any of it is published is untested."
-      ),
 }
 
 # The date is the FIRST element so `min()` over the backlog gives the oldest
 # acknowledgement, which ops_status [3d] prints every session.
 
 REGISTER = {
+    "Bosnia and Herzegovina": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Labour disclosure is devolved. Republika Srpska Labour Law "
+                   "articles 160-165 requires a redundancy programme and sends the "
+                   "proposal to the Employment Institute within eight days; the "
+                   "Institute replies within 15 days. Brcko District's current "
+                   "consolidated Labour Law articles 126-127 requires consultation "
+                   "and notice to the Brcko Employment Institute with the written "
+                   "programme at least 30 days before termination. Federation of "
+                   "BiH Labour Law articles 109-110 instead addresses the written "
+                   "consultation to the works council and union, with no public-body "
+                   "recipient in that procedure. The entity-level difference is "
+                   "recorded rather than flattened into a fictitious national rule."),
+        "authority": ("Republika Srpska Employment Institute (Zavod za zaposljavanje "
+                      "Republike Srpske) and Brcko District Employment Institute; "
+                      "the Federation procedure is internal consultation"),
+        "threshold": ("Republika Srpska, within 90 days: 10 workers at an employer "
+                      "with 31-99 permanent workers; 10 percent above 100; or 30 "
+                      "workers above 300 or regardless of establishment size. Brcko: "
+                      "an employer with more than 15 workers proposing to dismiss "
+                      "more than 20 percent within three months. Federation: more "
+                      "than 30 workers and at least five proposed dismissals within "
+                      "three months."),
+        "aggregate": ("NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. "
+                      "The current Republika Srpska ministry index at "
+                      "https://vladars.rs/sr-SP-Cyrl/Vlada/Ministarstva/mpb/PAO/Pages/"
+                      "Resor-za-rad.aspx publishes the governing Act and amendments; "
+                      "the Employment Institute's current publications and monthly "
+                      "bulletins publish unemployment, vacancies, benefits and "
+                      "programme outcomes, not article-163 redundancy programmes. "
+                      "The Brcko Assembly and Federation government likewise publish "
+                      "the laws, but no countable notice series was found. Labour-"
+                      "force and unemployment totals are different populations and "
+                      "are explicitly excluded."),
+        "assessed": "2026-09-12",
+        "cite": ("https://skupstinabd.ba/3-zakon/ba/Zakon%20o%20radu%20Brc--ko%20"
+                 "Distrikta%20BiH/03B12-25%20Zakon%20o%20radu%20Brc--ko%20"
+                 "distrikta%20Bosne%20i%20Hercegovine%20-%20prec--is--c-eni%20tekst.pdf"),
+    },
+    "India": {
+        "class": REGIME_WITH_AGGREGATE,
+        "regime": ("Industrial Relations Code 2020, Chapter X, sections 77-80, "
+                   "in force from 21 November 2025. Covered factories, mines and "
+                   "plantations may not lay off or retrench workers without prior "
+                   "permission from the appropriate Government; closure likewise "
+                   "requires a prior application. Applications state the reason and "
+                   "affected-worker count and are copied to the workers. The 2026 "
+                   "Central Rules prescribe Form XIV for these applications."),
+        "authority": ("the appropriate Central or State Government, or its specified "
+                      "authority; Central-sphere returns flow through the Regional "
+                      "Labour Commissioners to the Labour Bureau"),
+        "threshold": ("Chapter X applies to a non-seasonal factory, mine or plantation "
+                      "averaging at least 300 workers per working day in the preceding "
+                      "12 months, or a higher threshold notified by the appropriate "
+                      "Government"),
+        "aggregate": ("PUBLISHED, BUT PARTIAL AND LAGGED. The Labour Bureau's annual "
+                      "Statistics on Industrial Disputes, Closures, Retrenchments and "
+                      "Lay-offs reports cases and affected workers by State/Central "
+                      "sphere, sector, state and industry. The current index reaches "
+                      "2023. The Bureau expressly says the reports are compiled from "
+                      "information furnished voluntarily each month by State Labour "
+                      "Commissioners and Regional Labour Commissioners (Central), so "
+                      "this is not a complete national enumeration, not an employer-"
+                      "named register and not a recall denominator. Permission "
+                      "applications can also be refused, so application counts must "
+                      "never be labelled completed layoffs. Source: "
+                      "https://labourbureau.gov.in/report-on-statistics-on-industrial-"
+                      "disputes-closures-retrenchments-and-layoff-in-india"),
+        "denominator_basis": "national_notification_aggregate",
+        "assessed": "2026-09-12",
+        "cite": "https://www.indiacode.nic.in/bitstream/123456789/22040/1/aa202035.pdf",
+    },
+    "Pakistan": {
+        "class": REGIME_NO_AGGREGATE,
+        "regime": ("Employment law is provincial. Sindh Terms of Employment "
+                   "(Standing Orders) Act 2015, Standing Order 15, bars termination "
+                   "of more than 50 percent of workers or closure of the whole "
+                   "establishment without prior Sindh Government permission; an "
+                   "undecided application is deemed granted after 15 days and may "
+                   "be appealed to the Labour Court. Khyber Pakhtunkhwa Industrial "
+                   "and Commercial Employment (Standing Orders) Act 2013, Standing "
+                   "Order 16, imposes the same event threshold and prior Government "
+                   "permission, and expressly includes a lay-off beyond 14 days that "
+                   "results in closure. Punjab retains the adapted 1968 Ordinance, "
+                   "whose Standing Order 11-A routes closure permission to the "
+                   "Labour Court. The Balochistan Assembly's official register "
+                   "confirms its 2021 provincial Standing Orders Act; its exact "
+                   "closure clause was not promoted from secondary material and "
+                   "remains a stated sub-provincial caveat."),
+        "authority": ("Sindh and Khyber Pakhtunkhwa provincial Governments; the "
+                      "Punjab Labour Court; Balochistan authority not restated "
+                      "without a readable primary clause"),
+        "threshold": ("Sindh and Khyber Pakhtunkhwa: more than 50 percent of workers "
+                      "terminated, or the whole establishment closed; the closure "
+                      "definition includes a lay-off beyond 14 days that produces "
+                      "closure. Ordinary smaller retrenchments are not authority "
+                      "filings under these Standing Orders."),
+        "aggregate": ("NO COMPLETE PERIODIC COUNT OR EMPLOYER-NAMED REGISTER LOCATED. "
+                      "Sindh's official code publishes the statute and KP's official "
+                      "code at https://www.kpcode.kp.gov.pk/uploads/2013_11_THE_"
+                      "KHYBER_PAKHTUNKHWA_INDUSTRIAL_AND_COMMERCIAL_EMPLOYMENT_"
+                      "STANDING_ORDERS_ACT_2013.pdf publishes the governing clause, "
+                      "but neither provincial publication surface exposes a periodic "
+                      "series of permission applications, decisions or affected "
+                      "workers. Punjab Labour Court material is adjudicative and not "
+                      "a complete filing register. The Balochistan Assembly lists the "
+                      "2021 Act, but its public labour reports do not expose a "
+                      "closure-application series. Applications may be refused, so "
+                      "even a future application total must not be labelled layoffs."),
+        "assessed": "2026-09-12",
+        "cite": ("https://sindhlaws.gov.pk/Setup/Publications_SindhCode/"
+                 "PUB-NEW-18-000108.pdf"),
+    },
 
     # -----------------------------------------------------------------------
     # PUBLISHES A COUNTABLE TOTAL — a denominator exists and we may fetch it

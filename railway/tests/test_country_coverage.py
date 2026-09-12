@@ -171,6 +171,33 @@ class EveryEntryIsCheckable(unittest.TestCase):
         self.assertIn("mpsv.cz", entry["cite"])
         self.assertNotIn("Czechia", cc.ACKNOWLEDGED_BACKLOG)
 
+    def test_india_is_a_classification_not_permanent_backlog(self):
+        """Current law and the Labour Bureau series settle India's regime."""
+        entry = cc.REGISTER["India"]
+        self.assertEqual(entry["class"], cc.REGIME_WITH_AGGREGATE)
+        self.assertIn("indiacode.nic.in", entry["cite"])
+        self.assertIn("labourbureau.gov.in", entry["aggregate"])
+        self.assertIn("voluntar", entry["aggregate"].lower())
+        self.assertEqual(entry["denominator_basis"],
+                         "national_notification_aggregate")
+        self.assertNotIn("India", cc.ACKNOWLEDGED_BACKLOG)
+
+    def test_bosnia_is_a_classification_not_permanent_backlog(self):
+        """Entity and district laws settle Bosnia's devolved regime."""
+        entry = cc.REGISTER["Bosnia and Herzegovina"]
+        self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+        self.assertIn("skupstinabd.ba", entry["cite"])
+        self.assertIn("vladars.rs", entry["aggregate"])
+        self.assertNotIn("Bosnia and Herzegovina", cc.ACKNOWLEDGED_BACKLOG)
+
+    def test_pakistan_is_a_classification_not_permanent_backlog(self):
+        """Provincial primary laws settle Pakistan's approval regime."""
+        entry = cc.REGISTER["Pakistan"]
+        self.assertEqual(entry["class"], cc.REGIME_NO_AGGREGATE)
+        self.assertIn("sindhlaws.gov.pk", entry["cite"])
+        self.assertIn("kpcode.kp.gov.pk", entry["aggregate"])
+        self.assertIn("Balochistan", entry["regime"])
+        self.assertNotIn("Pakistan", cc.ACKNOWLEDGED_BACKLOG)
     def test_morocco_is_a_classification_not_permanent_backlog(self):
         """The official current Labour Code settles the authorization regime."""
         entry = cc.REGISTER["Morocco"]
@@ -334,8 +361,27 @@ class AnUnclassifiedCountryIsUnknownNotFine(unittest.TestCase):
         acknowledged, dated outstanding work passes; an unnoticed arrival does
         not.
         """
-        known = sorted(cc.ACKNOWLEDGED_BACKLOG)[0]
-        report = cc.classify_all(fetch=_stub_aggregate([known]))
+        # 2026-09-12: the real backlog reached ZERO for the first time, when
+        # Morocco, India, Pakistan and Bosnia and Herzegovina were all
+        # classified. An empty backlog must not turn this test into a skip:
+        # the concession mechanism has to keep being exercised, or the day
+        # somebody acknowledges a country again will be the first run in
+        # months that ever used this path. So when the real backlog is empty
+        # the test supplies its own entry and proves the mechanism on that.
+        real = sorted(cc.ACKNOWLEDGED_BACKLOG)
+        if real:
+            known = real[0]
+            report = cc.classify_all(fetch=_stub_aggregate([known]))
+        else:
+            known = "Wakanda"
+            patched = dict(cc.ACKNOWLEDGED_BACKLOG)
+            patched[known] = ("2026-09-12", "synthetic: the real backlog is empty")
+            original = cc.ACKNOWLEDGED_BACKLOG
+            cc.ACKNOWLEDGED_BACKLOG = patched
+            try:
+                report = cc.classify_all(fetch=_stub_aggregate([known]))
+            finally:
+                cc.ACKNOWLEDGED_BACKLOG = original
         self.assertIn(known, report["backlog"])
         self.assertEqual(report["undeclared"], [])
         state, _ = cc.judge(report)

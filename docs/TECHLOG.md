@@ -25033,7 +25033,7 @@ the register entry was added. Merge and live verification remain.
 
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
-**Class:** wrong-scope-or-key  
+**Class:** wrong-scope-or-key
 **Guard:** `railway/tests/test_country_coverage.py`
 
 China is now `REGIME_NO_AGGREGATE`, using MOHRSS's own current text of Labour
@@ -25125,3 +25125,47 @@ work window four days behind the current clock while leaving each caller's
 code and does not widen the production retry horizon. The same CI run also had
 one live-site read timeout; that remains a real UNKNOWN/transient rerun gate and
 was not converted into a pass.
+
+## 2026-09-12 - India moves from acknowledged backlog to classified regime
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+India is now `REGIME_WITH_AGGREGATE` on the closeout branch. India Code's
+current Act 35 of 2020 and the commencement notification establish an active
+300-worker Chapter X permission regime for covered factories, mines and
+plantations. The final 2026 Central Rules supply Form XIV for lay-off,
+retrenchment and closure applications.
+
+The Labour Bureau's current official publication index reaches 2023 and
+contains annual case and affected-worker totals. The Bureau expressly labels
+the underlying monthly returns voluntary. The registry therefore records the
+series as partial and lagged, rejects it as recall or a named-employer register,
+and warns that permission applications are not completed layoffs.
+
+Red first: the new test failed on missing `REGISTER["India"]`. Green after
+implementation: 55/55 country tests; the live measurement passed and reduced
+the declared backlog from three countries to two.
+
+## 2026-09-12 - Bosnia and Pakistan close the researched country backlog
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Bosnia and Herzegovina is classified from three distinct labour-law systems,
+not a fabricated national rule. Republika Srpska and Brcko require delivery of
+redundancy programmes to their Employment Institutes; Federation law keeps the
+specified consultation internal. No complete public programme total or named
+register was located on the current authority surfaces.
+
+Pakistan is classified from provincial primary law. Sindh Standing Order 15
+and Khyber Pakhtunkhwa Standing Order 16 establish a >50%-or-closure prior-
+permission regime. Punjab uses its adapted 1968 Ordinance and Labour Court;
+Balochistan's official Assembly confirms the 2021 Act, while the unreadable
+exact closure clause remains stated as a caveat rather than guessed. No
+complete periodic permission series or named register was located.
+
+Both guards failed first on their absent register keys. Green after the two
+entries and backlog removals: 57/57 country tests and a live measurement PASS.
+The branch reports one remaining item only because Morocco is green in separate
+PR #328 and still awaits explicit merge authorization.
