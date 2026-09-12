@@ -67,11 +67,6 @@
       "last": 1789241762,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
     },
-    "live-data-integrity-check:main:aa0eaf87db8c4614": {
-      "first": 1789070380,
-      "last": 1789070380,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,617,504 jobs / 65,573 entries"
-    },
     "live-data-integrity-check:main:c1cce901d3eb3923": {
       "first": 1789164521,
       "last": 1789164521,
@@ -103,6 +98,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T21:31:11+00:00",
+  "updated_at": "2026-09-12T21:43:05+00:00",
   "version": 1
 }
