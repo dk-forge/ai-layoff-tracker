@@ -100,7 +100,34 @@ dashboard, or a Zone.Cache Purge token in `CLOUDFLARE_API_TOKEN` plus a purge
 step in `deploy-plugin.yml`. Until one of those exists, a copy change to any
 page the edge rule covers is live at the origin and up to five days from its
 readers.
+## 2026-09-12 - two signed corrections moved the headlines, and the sticky guard required an explicit reconciliation
 
+**Class:** novel (the guard correctly stopped an authorized data correction;
+this is a required human reconciliation, not a recurring failure shape)
+**Guard:** `railway/headline_incidents.json`, `railway/headline_baseline.json`,
+read-only trace run `34720031227`
+
+PR #333's live test opened `ai_all_time` and `worldwide_all_time` incidents
+after the September 11 Amazon correction and September 12 Volkswagen
+correction. This is expected guard behaviour: an intentional deletion must not
+become tomorrow's unexplained baseline merely because the code path was signed.
+
+The AI slice reconciles exactly to row 179276: 270,268 jobs/99 entries minus
+30,000 jobs/one entry equals the observed 240,268/98. The worldwide slice
+reconciles to both corrected rows: Amazon 179276 (-30,000/-1) plus Volkswagen
+176988 (-60,000/-1), offset by ordinary net arrivals of +2,315 jobs/+10
+entries, equals the observed -87,685 jobs/+8 entries and replacement baseline
+20,563,505/65,594. Trace run `34720031227` paged the entire changed-row window
+(40,101 rows across 41 pages), documented the expected full WARN re-upsert,
+and found no AI-explicit survivor in the window. Deletions cannot appear in
+`/changed-rows`, so the signed correction receipts are the evidence for the two
+departures.
+
+Both incidents were closed only through `data_integrity.py --close-incident`,
+with the affected IDs and explicit replacement totals. `--incidents` now
+reports none open. The next recorder run may temporarily report containment
+UNKNOWN because the two individually closed slices have different epochs; it
+must advance the group together before that state is called PASS.
 ## 2026-09-12 - The /contact intro was frozen at the copy that shipped the day the page was created
 
 **Class:** wrong-scope-or-key
