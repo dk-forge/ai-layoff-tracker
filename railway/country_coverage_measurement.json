@@ -3,7 +3,6 @@
     "Bosnia and Herzegovina",
     "Costa Rica",
     "Czechia",
-    "Hong Kong",
     "Hungary",
     "India",
     "Indonesia",
@@ -388,12 +387,18 @@
       "threshold": "6 in establishments of 20-150; 5% or up to 30 in larger, per month"
     },
     "Hong Kong": {
-      "class": "unassessed",
-      "detail": "no entry in the register \u2014 this country appears in the corpus and nobody has established whether a disclosure regime exists. UNKNOWN, and it is somebody's outstanding work, not a pass",
+      "age_days": 0,
+      "aggregate": "NONE because no administrative collective-dismissal filing population exists. Labour Department assistance during a retrenchment and Census and Statistics Department workforce surveys are not compulsory layoff notices and are excluded.",
+      "assessed": "2026-09-12",
+      "authority": null,
+      "cite": "https://www.labour.gov.hk/eng/public/wcp/ConciseGuide/EO_guide_full.pdf",
+      "class": "no_regime",
       "entries": 0,
       "jobs": 6000,
-      "state": "unknown",
-      "stored_name": "Hong Kong"
+      "regime": "NO collective-dismissal disclosure regime exists in the current Employment Ordinance (Cap. 57). The official verified whole-chapter text and the Labour Department's complete guide define redundancy through business closure or diminished work, then regulate contract notice, severance, long-service payments and employee remedies. Neither contains an employer report to the Labour Department, a collective threshold, state consultation, or a filing recipient. A worker's later severance claim and Labour Tribunal remedy are individual enforcement paths, not employer disclosure.",
+      "state": "not_measurable",
+      "stored_name": "Hong Kong",
+      "threshold": null
     },
     "Hungary": {
       "class": "unassessed",
@@ -1137,7 +1142,7 @@
   ],
   "expired": [],
   "max_assessment_age_days": 183,
-  "measured_at": "2026-09-12T00:35:56Z",
+  "measured_at": "2026-09-12T01:40:35Z",
   "note": "Per-country disclosure-regime register. What EXISTS to be found, per country, with the regime named \u2014 not a coverage percentage. There is deliberately no worldwide average in this file: averaging a measured country against an unmeasurable one produces a number whose denominator is this register rather than the world. Written by country-coverage.yml; NEVER hand-edit a classification, edit REGISTER in railway/country_coverage.py and re-run.",
   "per_employer_naming": [
     "Illes Balears",
@@ -1807,17 +1812,16 @@
   "scope_basis": "countries the tracker holds rows for, read live from /aggregate",
   "scope_state": "measured",
   "tallies": {
-    "no_regime": 5,
+    "no_regime": 6,
     "refused": 6,
     "regime_no_aggregate": 36,
     "regime_with_aggregate": 21,
-    "unassessed": 11
+    "unassessed": 10
   },
   "unassessed": [
     "Bosnia and Herzegovina",
     "Costa Rica",
     "Czechia",
-    "Hong Kong",
     "Hungary",
     "India",
     "Indonesia",
