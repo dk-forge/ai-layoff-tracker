@@ -72,12 +72,17 @@
       "last": 1789164521,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: verdict SUPPRESSED, baseline deliberately NOT advanced (recording an unjudged reading is the same laundering as recording a "
     },
+    "retained-evidence-hash-backfill:main:8dc31dc87f3f85ad": {
+      "first": 1789211492,
+      "last": 1789211492,
+      "subject": "CI RED: Retained evidence hash backfill \u2014 error code: 504"
+    },
     "tests:live.data:eacb9ee45de18437": {
       "first": 1789163848,
       "last": 1789163848,
       "subject": "CI RED: Tests \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
     }
   },
-  "updated_at": "2026-09-11T22:55:10+00:00",
+  "updated_at": "2026-09-12T11:11:33+00:00",
   "version": 1
 }
