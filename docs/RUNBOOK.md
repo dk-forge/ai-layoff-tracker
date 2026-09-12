@@ -3212,6 +3212,32 @@ moving prose back up into the intro is not a neutral edit.
 **Do not answer a fold failure by raising 812.** It is an iPhone viewport, not
 a preference.
 
+## The site moved host: replay what was written after the export
+
+A hosting move copies the database at one instant and switches traffic at a
+later one. Every row, health post and tip written to the OLD host in between
+is on a machine that is about to be switched off, and nothing in this repo
+sees it go: the collectors reported success, the rows existed, and the new
+host simply never had them. On 2026-09-07 that window ran from the export to
+the evening cutover and took at least one published row (The Trade Desk,
+posted by news-catchup at 15:09 UTC) and the health rows of every weekly job
+that ran that Monday (TECHLOG 2026-09-12).
+
+So a move is not finished when the site answers from the new origin. Finish
+it with this, on the SAME day, before the old host is cancelled:
+
+1. Note the highest row id and the newest `checked_at` on BOTH hosts
+   (`/query?sort=newest&per_page=1`, `/source-health`). A gap is the size of
+   the loss; write the number in TECHLOG even when it is zero.
+2. Re-run the collectors whose windows still cover the gap, through the
+   machinery, never by hand: `news-catchup.yml` (14 days of news),
+   `warn-import.yml` (a full re-upsert), `edgar-history-sweep.yml`.
+3. For anything the windows no longer cover, submit the source link through
+   the contact page tip form; `process-tips.yml` feeds it to the extractor
+   with every guard. Never post a row directly.
+4. Expect `ops_status [2]` to show the weekly jobs STALE until each has run
+   once on the new host. That is the trace, not a breakage; do not silence it.
+
 ## Back up the subscriber list (addresses + consent records)
 
 **State today: DISARMED.** `ops_status.py [9b]` says so at session start, and it
