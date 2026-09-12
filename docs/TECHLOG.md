@@ -24889,6 +24889,27 @@ cover temporary contract suspension; Law 9832 was a temporary COVID hours
 measure. None is a layoff-disclosure regime. The guard first failed with
 `KeyError: 'Costa Rica'`; merge and live verification remain.
 
+## 2026-09-12 - Vietnam moves from acknowledged backlog to classified regime
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_country_coverage.py`
+
+Vietnam is now `REGIME_NO_AGGREGATE`, grounded in the Ministry of Justice's
+official current English text of Labour Code 45/2019/QH14. Articles 42 and 44
+require consultation with the workplace employee representative, a labour-
+utilisation plan naming the workers in each outcome, and at least 30 days'
+advance notice to the provincial People's Committee and affected employees when
+structural, technological or economic change risks dismissal of a large number.
+The Code provides no numeric cutoff.
+
+No public periodic count or national named register of article-42 notifications
+was located. GSO job-loss totals compiled from local reports, surveys and
+benefit populations are explicitly excluded because they are not the statutory
+employer-notification denominator. This replaces the old environment-blocked
+note: the official legal database is now reachable and supplies the primary
+text. TDD: the new Vietnam guard first failed with `KeyError: 'Vietnam'` before
+the register entry was added. Merge and live verification remain.
+
 ## 2026-09-12 - China moves from acknowledged backlog to classified regime
 
 **Class:** wrong-scope-or-key  

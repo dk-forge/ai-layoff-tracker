@@ -3161,3 +3161,16 @@ no collective-dismissal threshold, MTSS notification or approval for ordinary
 economic redundancy. Individual refused-letter delivery, temporary contract
 suspension approval and temporary COVID hours reduction are explicitly rejected
 near-misses. The TDD guard failed first; merge and live verification remain.
+
+Costa Rica subsequently merged in PR #322 as `52476bfd`; its full CI matrix and
+live country workflow `34671182696` passed. It is production-closed and the
+declared country backlog is 8.
+
+Vietnam is now the active package. The Ministry of Justice's official current
+English text of Labour Code 45/2019/QH14 closes the former primary-text outage:
+articles 42 and 44 require consultation, a named labour-utilisation plan and at
+least 30 days' notice to the provincial People's Committee and affected workers
+when a large number may be dismissed. The Code gives no numeric threshold. No
+public article-42 filing total or named national register was located; GSO job-
+loss statistics are a different population and remain excluded. The new guard
+failed first with `KeyError: 'Vietnam'`; merge and live verification remain.
