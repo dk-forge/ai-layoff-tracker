@@ -72,6 +72,16 @@
     },
     {
       "consecutive": 1,
+      "first_deferred_at": "2026-09-12T16:05:22+00:00",
+      "job": "erm-import",
+      "last_deferred_at": "2026-09-12T16:05:22+00:00",
+      "last_key": "34704113800:1",
+      "last_reason": "the source-health ledger would not accept the 'running' note; nothing was imported",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/34704113800",
+      "state": "pending"
+    },
+    {
+      "consecutive": 1,
       "first_deferred_at": "2026-08-13T23:59:11+00:00",
       "job": "archive-backfill",
       "last_deferred_at": "2026-08-13T23:59:11+00:00",
@@ -148,6 +158,6 @@
       "state": "resolved"
     }
   ],
-  "updated_at": "2026-09-12T10:47:42+00:00",
+  "updated_at": "2026-09-12T16:05:22+00:00",
   "version": 1
 }
