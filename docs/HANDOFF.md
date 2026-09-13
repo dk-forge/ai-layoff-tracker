@@ -6,11 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Codex (2026-09-13) — Railway overlap type repair.**
-  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
-  branch: `codex/fix-railway-overlap-type`, based on `origin/main` at
-  `be27a904`. No plugin version is reserved because this changes only Railway
-  service configuration, its guard, and operational documentation.
+- **FREE (2026-09-13) — Railway overlap type repair is production-closed.**
+  Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
+  PR #336 is merged and no plugin version is reserved. A new session must claim
+  the baton and branch from current `origin/main` before editing.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
@@ -29,16 +28,15 @@ holder, so the start-of-session ritual surfaces it automatically.
   service manifest reports `overlapSeconds: 7200`, then begin the clean-run
   clock from the next protected scheduled run.
 
-  **Current integration point (2026-09-13 01:40 CEST).** PR #336 contains the
-  typed-config repair and its red-first guard. Local targeted tests pass 10/10,
-  TOML parses `overlapSeconds` as an integer, and `git diff --check` is clean.
-  Do **not** merge yet: Actions run `34722447904` is red. On the first attempt
-  the live-data shards received HTTP 504 during the ChemiCloud outage. After
-  the public tracker recovered locally to HTTP 200, the rerun's `rest-2` shard
-  passed but `rest` received HTTP 403 from the live API for seven integrity
-  assertions. This is a production-access gate, not a failure of the new TOML
-  unit guard, and it must remain red/UNKNOWN until a clean rerun evaluates the
-  live invariants. Never weaken or skip those assertions to merge this PR.
+  **Railway repair production-closed (2026-09-13 01:49 CEST).** PR #336 merged
+  as `63a0cd7d` after all seven required checks passed, including the live-data
+  shard evaluating its invariants. Railway deployment
+  `b237d665-befe-4bdd-a7fa-8fe1106aa9d8` reached SUCCESS. Its applied service
+  manifest identifies `/railway/railway.toml`, schedules only `0 22 * * *`,
+  preserves the code-only watch patterns, and reports numeric
+  `overlapSeconds: 7200`. The type/config/deployment defect is closed. The next
+  scheduled run is the first one eligible for the separate clean-run proof
+  clock; deployment success does not pre-approve that run.
 
   **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
   itself completed cleanly: the BigQuery mirror returned 5,497 articles with
@@ -105,31 +103,27 @@ holder, so the start-of-session ritual surfaces it automatically.
   and the latest `railway/ops_status.py` output. Do not use the unrelated parent
   sandbox as the tracker repository. Do not replay the weekly digest manually.
 
-  1. Inspect PR #336. Rerun only the failed Actions jobs after confirming both
-     the public tracker and API answer normally from an external client. Merge
-     only when every required check is green. Then verify Railway accepted and
-     successfully deployed a manifest with numeric `overlapSeconds: 7200`.
-  2. At the next scheduled 22:00 UTC run after that deployment, verify GDELT has a terminal finish,
+  1. At the next scheduled 22:00 UTC run after deployment `b237d665`, verify
+     GDELT has a terminal finish,
      no lost window, no unexplained cap, and a recovered retry ledger. Record
      the run id and verdict. Repeat until seven clean scheduled runs span
      fourteen days; this is a real calendar gate, not a test-suite assertion.
-  3. Add a separate red-first host-readiness guard before paid extraction. If
+  2. Add a separate red-first host-readiness guard before paid extraction. If
      the required publish/read endpoint is unavailable or returns 5xx, defer
      candidates without marking them seen and do not spend model budget. Keep
      the existing per-item fail-open behavior for isolated seen-URL errors;
      this guard is for a host-wide outage like September 12.
-  4. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
+  3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
      the 69 shape candidates and 12 dateless rows one source at a time. Never
      merge on count/date alone and never call a national-total share recall.
-  5. Refresh the private benchmark with matching date basis, amendments,
+  4. Refresh the private benchmark with matching date basis, amendments,
      notice-vs-effective semantics, source classes and country scope. The
      public comparison file is a starting evidence snapshot, not a ranking.
-  6. Resolve archive pending/exhausted queues through the existing cadence;
+  5. Resolve archive pending/exhausted queues through the existing cadence;
      do not promise 100% Wayback coverage where the publisher or archive is
      unavailable.
 
-  PR #336 is the current integration point. Do not merge it unless every
-  required check is green. The quiet heartbeat
+  There is no open integration PR at this handoff. The quiet heartbeat
   `layoff-tracker-top-three-proof` is already
   attached and should remain active while time-based proof is pending.
 
