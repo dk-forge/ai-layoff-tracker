@@ -49,8 +49,9 @@ holder, so the start-of-session ritual surfaces it automatically.
   exits loudly before paid extraction, with candidate URLs still unmarked; a
   healthy result preserves the existing item-level fail-open behavior. TDD:
   twelve errors on the pre-change tree, then 90/90 relevant tests green.
-  PR #338 is open at head `7f2fc94a`; `git diff --check` is clean. Do not
-  recreate or supersede this package.
+  PR #338 contains the implementation at `7f2fc94a`; the handoff-only follow-up
+  is `4c90dd53`. `git diff --check` is clean. Do not recreate or supersede this
+  package.
 
   **PR #338 release gate (2026-09-13 03:52 CEST): BLOCKED by the live host,
   not by a package test failure.** Three attempts of GitHub run `34729643938`
