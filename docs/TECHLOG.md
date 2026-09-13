@@ -1,3 +1,82 @@
+## 2026-09-13 - The offline test suite used the production website as test data, on every push, from every machine
+
+**Class:** novel
+**Guard:** `railway/tests/test_offline_suite_is_offline.py`
+
+asktherecruiter.com went down three times in twenty hours. Every PHP request
+on the shared ChemiCloud account timed out at ten seconds, account wide: the
+blog root, the WordPress REST index, this tracker's routes and the sibling
+talent tracker's routes, all failing identically. It was load, not a code
+fault: down at 21:40 UTC on 2026-09-12 under a burst of deploys and CI,
+recovered by itself after a quiet night, straight back down the moment the
+sibling's hourly `tests` workflow ran at 06:46, recovered when that workflow
+was disabled, and down again after the daily scheduled job burst at 15:18.
+
+A measurable share of that load was our own test suites. Forty two modules
+under `railway/tests/` name `asktherecruiter.com`, and a grep could not say
+how many of them made a request, because almost all of them name it inside a
+PHP string they are asserting against. So the whole suite was run under
+`railway/tests/netblock.py`, a `sitecustomize` that records and refuses every
+non-loopback socket, and counted. One run of this suite, on a tree with PR #335
+already applied, opened FIFTY connections to the live site:
+
+    test_dedup_live                      24   deliberate, live-data by design
+    test_secondary_surface_consistency   21   deliberate, live-data by design
+    test_subscriber_routes_live           5   deliberate, live-data by design
+
+and on `origin/main` without #335 there were sixteen more, from
+`test_headline_containment`, which are the ACCIDENT: offline unit tests that
+reached the live `/corrections` endpoint out of an invariant's FAIL branch.
+That one is fixed in #335 (`Ctx.disclosed` reads the live log only when the
+run reads live data; an injected transport resolves to NOT CONSULTED).
+
+None of the fifty is a mistake in the ordinary sense. Each of the three modules
+is about what the deployed site actually returns, and cannot be stubbed
+without becoming a different test. The defect is the TRIGGER: they ran by
+default on every push and every pull request, across four parallel CI legs and
+from every laptop, which is a request-costing check on an event that fires
+hundreds of times a day. The class is `novel`: the mechanism did not stop,
+nothing was absent from a registry, no guard went vacuous, no value was typed
+by hand and nothing was keyed wrongly. A correct check sat on the wrong
+cadence, and the cost was paid by the host it was checking.
+
+The three modules are now OPT IN through `railway/tests/live_host.py`:
+`require()` skips with a reason that begins "UNKNOWN, NOT RUN" unless
+`ALT_LIVE_TESTS=1`, and the exact string "1" is the only value that arms it,
+because a GitHub Actions `env:` block writes an empty string when its
+expression evaluates to nothing. `live-surface-check.yml` is the one run that
+sets it: four times a day on a schedule, one module after another rather than
+a matrix, with `concurrency` so two can never overlap. It carries the same two
+"Live-data invariants were evaluated / NOT evaluated" steps as `tests.yml`,
+because `ci_alert.py` clears a `<workflow>:live.data` incident on a green run
+of the workflow that raised it and a run whose every check skipped must not be
+that run. `tests.yml` keeps its two steps and now always reports NOT
+evaluated, which is the truth.
+
+Measured under the same probe after the change: the default suite opens ZERO
+connections to any host. A skipped live test prints its reason, so the suite
+output says in words that a live surface went unchecked rather than checked
+and found well.
+
+The guard is a runtime measurement, not a grep, and it carries its own
+positive control: `TheBlockerActuallyBlocks` runs a module whose only
+statement is a fetch of a deliberately unresolvable host and requires that it
+be recorded. Proven red by mutation: with `live_host.require()` removed from
+`test_subscriber_routes_live` the guard fails on
+`test_subscriber_routes_live opened 5 connection(s) with ALT_LIVE_TESTS unset`,
+with no packet leaving the machine. A static half (`EveryFetcherIsRegistered`)
+parses every test module with `ast` and requires any module that builds a
+request to the live host, or calls one of the entry points in
+`live_host.LIVE_DOORS` with no injected transport, to be registered in
+`LIVE_MODULES`; it is parsed rather than grepped because the first version
+matched `reader_freshness.check()` inside a docstring.
+
+Not settled here: the scheduled JOBS that read the host (data-integrity,
+reader freshness, the daily burst at 15:18) are out of this change's scope and
+are still the next thing to count. And the rendered groups start a real Chrome,
+which is not a Python socket: what the browser itself fetches while rendering a
+fixture is not visible to `netblock.py`.
+
 ## 2026-09-13 - The corrections log said WHAT was removed and never HOW MANY JOBS, so two correct removals reddened every branch
 
 **Class:** novel

@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import data_integrity
 from data_integrity import INVARIANTS, FAIL, PASS, UNKNOWN
 from _incident_free import without_open_incidents
+import live_host
 
 
 def tearDownModule():
@@ -63,8 +64,13 @@ def tearDownModule():
     if not path:
         return
     if report is None:
-        state, detail = (data_integrity.NOT_EVALUATED,
-                         "the live invariants were never fetched in this run")
+        state, detail = (
+            data_integrity.NOT_EVALUATED,
+            "the live invariants were never fetched in this run. Since "
+            "2026-09-13 the ordinary suite does not read the deployed site at "
+            "all, so this is the NORMAL answer on a push or a pull request and "
+            "it is not a fault. live-surface-check.yml sets ALT_LIVE_TESTS and "
+            "is the run entitled to evaluate them")
     else:
         state, detail = data_integrity.live_data_state(report)
     Path(path).write_text(f"{state}\n{detail}\n", encoding="utf-8")
@@ -79,6 +85,15 @@ def _inv(key):
 
 class DedupLiveRegression(unittest.TestCase):
     def setUp(self):
+        # OPT IN FIRST, BEFORE THE ROUND TRIP. This class reads the DEPLOYED
+        # API, and until 2026-09-13 it did so on every push and every pull
+        # request: twenty four connections to asktherecruiter.com per run of
+        # the suite, from four parallel CI legs and from every laptop. The site
+        # fell over twice in twelve hours under load that this was part of.
+        # The assertions below are unchanged and still fail loudly on a real
+        # dedup regression; what changed is that the run has to say it is
+        # entitled to ask.
+        live_host.require(self, "the deployed dedup API")
         # One shared fetch of every invariant, so the four tests cost one round
         # trip instead of four.
         cls = type(self)
