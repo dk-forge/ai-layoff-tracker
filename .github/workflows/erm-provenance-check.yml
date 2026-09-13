@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   measure:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # The measured pass is ~25 min against a host that has 504'd before; 45
     # leaves room for a slow day without letting a hung run sit all afternoon.
     timeout-minutes: 45

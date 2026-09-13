@@ -99,7 +99,7 @@ concurrency:
 
 jobs:
   edgar-history:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 120
     steps:
       - name: Check out repo

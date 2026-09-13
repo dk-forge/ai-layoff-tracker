@@ -79,7 +79,7 @@ concurrency:
 
 jobs:
   sweep:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Sized from measurement, 2026-08-28: the 20 most recent scheduled runs all
     # finished in 1.4-2.2 minutes. The one run that ever hit this ceiling
     # (2026-08-27, run 33094996142) was not the corpus outgrowing 45 minutes:

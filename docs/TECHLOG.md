@@ -1,3 +1,32 @@
+## 2026-09-13 - Host jobs move to the whitelisted VPS runner: a green run that did nothing
+
+**Class:** true-but-empty
+**Guard:** none (a runner placement cannot be pinned by a test; the proof is `runnerName` on the first scheduled run, RUNBOOK "Which jobs run on the VPS and why")
+
+Imunify360 on the ChemiCloud host now challenges every datacenter address.
+From a GitHub-hosted runner a live call gets HTTP 403, or the "One moment,
+please" interstitial on a 2xx. `archive-backfill` at 10:23 exited "success"
+and re-checked zero rows: a check that passed because there was nothing to
+check. The owner whitelisted one fixed address, the Contabo VPS, and
+registered it as a self-hosted runner in both tracker repos.
+
+Every workflow in both repos was inventoried and classed. Class (a), anything
+that reads or writes asktherecruiter.com, is now `runs-on: [self-hosted,
+linux, contabo]`: 72 workflows here, 34 in the talent tracker. Class (b),
+repo-only checks, mail checks, Resend, GitHub API, stays on `ubuntu-latest`,
+and that includes the alarm (`ci-alert`, `alert-drain`), which must not queue
+behind the runner it may be reporting on, and `self-heal`, whose autonomous
+agent should not get a shell on the one whitelisted box. Installs the GitHub
+image gave for free are guarded with `command -v`; the deploy skips
+`setup-php` on the self-hosted box. Concurrency was read for every moved
+workflow: no `cancel-in-progress: true` group moved, and `timeout-minutes`
+counts from job start, so the single queue cannot expire a job.
+
+Not settled by this change: `contrast-audit` needs Chrome on the VPS and
+`backup-export` needs `gh`; both fail loudly, not quietly, until installed.
+`host-watch` in the sibling now probes from the whitelisted address, so it
+measures the origin, not what a datacenter reader sees. The move is unproven
+until the runner takes one scheduled job.
 ## 2026-09-13 - Nothing watched the self-hosted runner box, and an offline runner read as "no jobs ran"
 
 **Class:** absent-read-as-ok
