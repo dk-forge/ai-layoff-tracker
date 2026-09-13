@@ -237,7 +237,7 @@ class CronWiringTests(unittest.TestCase):
     def tearDown(self):
         spend.reset_run_meter()
 
-    def _run_cron(self, gate_mode, verdict, extracted):
+    def _run_cron(self, gate_mode, verdict, extracted, host_ready=True):
         entry = {"raw_text": "Acme Corp to lay off 500 workers",
                  "source_url": "https://x.test/1", "source_type": "news",
                  "source_name": "Example Wire"}
@@ -298,14 +298,27 @@ class CronWiringTests(unittest.TestCase):
              patch.object(cron, "pull_mn_warn_letters", return_value=[]), \
              patch.object(cron, "reviewed_feed_count", return_value=1), \
              patch.object(cron, "pull_gdelt_between", return_value=[]), \
+             patch.object(cron, "publishing_host_ready", return_value=host_ready), \
              patch.object(cron, "filter_already_seen", side_effect=lambda e: e), \
              patch.object(extractor, "gate_verdict", return_value=verdict) as gate, \
              patch.object(cron, "extract_layoff_data",
                           return_value=extracted) as extract, \
              patch.object(cron, "post_to_wordpress",
                           side_effect=lambda x: posted.append(x) or "posted"):
+            self._last_cron_calls = (gate, extract, posted, post_rec)
             cron.run()
         return gate, extract, posted, post_rec
+
+    def test_host_outage_stops_before_any_paid_call(self):
+        extracted = {"company_name": "Acme", "job_count": 500}
+        with self.assertRaises(SystemExit) as stopped:
+            self._run_cron(
+                "live", extractor.GATE_YES, extracted, host_ready=False)
+        gate, extract, posted, _ = self._last_cron_calls
+        self.assertIn("before paid extraction", str(stopped.exception))
+        self.assertEqual(gate.call_count, 0)
+        self.assertEqual(extract.call_count, 0)
+        self.assertEqual(posted, [])
 
     def _default_gate_mode(self):
         """The module's own default, with ALT_GATE_MODE out of the way."""

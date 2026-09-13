@@ -63,5 +63,45 @@ class SeenUrlsPrecheckTests(unittest.TestCase):
         self.assertEqual(len(kept), 3)
 
 
+class PublishingHostReadinessTests(unittest.TestCase):
+    """The strict run-level probe protects paid work, not item-level recall."""
+
+    def setUp(self):
+        os.environ["WP_SITE_URL"] = "https://example.test/blog"
+        os.environ["WP_API_KEY"] = "k"
+
+    def test_keyed_seen_url_read_proves_the_publish_path_is_available(self):
+        resp = mock.Mock(status_code=200)
+        resp.json.return_value = {"seen": []}
+        fake = mock.Mock(); fake.post.return_value = resp
+        with mock.patch.object(seen_urls, "requests", fake):
+            self.assertTrue(seen_urls.publishing_host_ready())
+        call = fake.post.call_args
+        self.assertTrue(call.args[0].endswith("/wp-json/layoffs/v1/seen-urls"))
+        self.assertEqual(len(call.kwargs["json"]["urls"]), 1)
+        self.assertEqual(call.kwargs["headers"]["X-Layoff-API-Key"], "k")
+
+    def test_http_error_blocks_paid_work(self):
+        fake = mock.Mock(); fake.post.return_value = mock.Mock(status_code=504)
+        with mock.patch.object(seen_urls, "requests", fake):
+            self.assertFalse(seen_urls.publishing_host_ready())
+
+    def test_exception_blocks_paid_work(self):
+        fake = mock.Mock(); fake.post.side_effect = OSError("host down")
+        with mock.patch.object(seen_urls, "requests", fake):
+            self.assertFalse(seen_urls.publishing_host_ready())
+
+    def test_malformed_success_body_blocks_paid_work(self):
+        resp = mock.Mock(status_code=200)
+        resp.json.return_value = {"status": "ok"}
+        fake = mock.Mock(); fake.post.return_value = resp
+        with mock.patch.object(seen_urls, "requests", fake):
+            self.assertFalse(seen_urls.publishing_host_ready())
+
+    def test_missing_credentials_block_paid_work(self):
+        os.environ["WP_API_KEY"] = ""
+        self.assertFalse(seen_urls.publishing_host_ready())
+
+
 if __name__ == "__main__":
     unittest.main()
