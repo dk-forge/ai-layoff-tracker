@@ -1,3 +1,55 @@
+## 2026-09-13 - Per-request plugin work is cheap again: the build stamp is cached by what is on disk, and a page that exists is not looked up forever (2.20.194)
+
+**Class:** novel. None of the slugs in docs/INCIDENT_CLASSES.md names this shape: work that is correct, bounded and idempotent, repeated on every request because nothing records that it was done. Candidate slug: `never-recorded-done`.
+**Guard:** `railway/tests/test_per_request_plugin_work_is_cheap.py`
+
+The blog host fell over four times in twenty hours on 2026-09-12/13, and the
+investigation ranked per-request plugin work third among the causes. Two
+shapes, both in wordpress-plugin/ai-layoff-tracker, shipped in one PR marked
+DO NOT MERGE so it deploys together with #347 once the host has been up for
+two hours.
+
+**1. alt_build_stamp() hashed the whole plugin on every uncached render.**
+66 files, about 3.1 MB, sha256, on every plugin surface and since 2.20.191 on
+the contact page too. The docblock refused a cross-request cache on purpose:
+a stamp cached during an FTPS upload would outlive the race that produced it
+and turn a two-minute mismatch into a permanent one. That guarantee is kept a
+cheaper way. The stamp lives in a transient keyed by ALT_VERSION and a stat
+pass over the same file set (alt_build_stat_key: count, every size, every
+mtime, folded into one digest). A half-uploaded tree has a different key from
+the finished one, so a stamp cached mid-upload is invalidated by the next
+file that lands; an ordinary render now costs one directory walk of stat()
+calls, not 66 digests. alt_build_stamp(true) bypasses the cache and /status
+with build=1 uses it, because that is what reader_freshness.py grades a
+deploy against, twice a deploy. Without WordPress (the php CLI in tests, or a
+request that arrives before the plugin is loadable) there is no transient and
+it hashes as before, and the Python half is untouched: the cached number is
+the same number.
+
+**2. Eight page hooks queried the database on every request and never wrote
+anything down.** Seven alt_ensure_*_page_once hooks at init priority 20 each
+called get_page_by_path per request and returned early on success without
+recording it; alt_ensure_quarterly_report_page_once had no guard at all and
+called it twice. Each now has the shape alt_ensure_contact_page_once has had
+since the contact page: a done-option read first, written only once the page
+is verified to exist, and a short-lived transient lock around the create so
+two concurrent first requests cannot insert the page twice. One deliberate
+difference from the contact hook: the done-options are autoloaded, so they
+ride the options load every request already performs and cost no query of
+their own. A non-autoloaded flag would have replaced one query with another.
+The report hook keeps its one-time title rename ahead of the flag, so a page
+still carrying the old title is renamed before the hook goes quiet. What the
+hooks create is unchanged.
+
+The test reads the PHP as text for the shape (every hook reads its own
+distinct done-option before any page lookup, writes it only inside the branch
+that found the page, takes the lock) and runs the stamp under the php CLI with
+fake transient functions for the behaviour: a cached stamp under a matching
+key is served without hashing, the forced path ignores it, a file that lands
+after the cache was written changes the key, and the cached value equals what
+reader_freshness.checkout_build_stamp computes. Proven red on 2.20.192 (10 of
+11 failing) before the change.
+
 ## 2026-09-13 - An unread health ledger was reported as 39 collectors that never reported
 
 **Class:** true-but-empty signal
