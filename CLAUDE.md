@@ -413,6 +413,21 @@ the end check.
   straight through on 2026-08-14, leaving a -53,476 artifact and 14 days of red
   CI with nothing to close. Do not answer a UNJUDGED pair with a new tolerance.
 - **Retiring a source takes THREE steps**, and skipping the third silently voids the second: (1) drop it from `cron.py`, (2) add it to `alt_retired_sources()` in db.php, (3) **stop every remaining path that posts health under that id**. `alt_retired_sources()` deliberately refuses to mask a row whose last run postdates the retirement, so one forgotten weekly job keeps a retired collector looking live forever. Also: a staleness ceiling must match the job's REAL cadence — a 2-day ceiling on a weekly job is permanent noise that hides real breakage.
+- **THE DEFAULT TEST RUN OPENS NO CONNECTION TO THE DEPLOYED SITE.** On
+  2026-09-12/13 the shared host fell over three times in twenty hours under
+  load, and one run of this suite opened fifty connections to
+  asktherecruiter.com: three modules that are deliberately about live data,
+  running on every push and every pull request across four CI legs and every
+  laptop. They are OPT IN now (`railway/tests/live_host.py`, `ALT_LIVE_TESTS=1`,
+  exact string) and `live-surface-check.yml` is the one scheduled run that sets
+  it. A skipped live test says "UNKNOWN, NOT RUN" in its reason and clears
+  nothing. `railway/tests/test_offline_suite_is_offline.py` runs the live
+  modules and the one known accidental caller under `netblock.py`, a
+  `sitecustomize` that records and refuses every non-loopback socket, and
+  parses every test module for a fetch or an unstubbed live door. **Do not
+  answer a quiet live check by defaulting the gate on, and do not register a
+  module in `LIVE_MODULES` to make the guard pass**: give the surface its own
+  scheduled job. A test that reads production is not a unit test.
 - **Don't claim "100% automated."** It's ~99%; the honest sliver is scraper repairs (auto-detected + emailed), private-benchmark refresh, and novel-source judgment.
 
 ## Dependencies are hash-pinned. Never `pip install` a name.

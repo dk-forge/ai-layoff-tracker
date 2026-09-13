@@ -1,0 +1,129 @@
+name: Live surface check
+
+# THE ONLY RUN IN THIS REPOSITORY ENTITLED TO FETCH THE DEPLOYED SITE FROM THE
+# TEST SUITE.
+#
+# WHY IT EXISTS, 2026-09-13. asktherecruiter.com went down twice in twelve
+# hours. Every PHP request timed out at ten seconds, account wide, across both
+# trackers on the shared ChemiCloud account: the blog root, the WordPress REST
+# index, this tracker's routes and the sibling's, all failing identically. It
+# was not a code fault. It was load, and a measurable share of it was our own
+# test suites using the production website as test data.
+#
+# Measured with railway/tests/netblock.py on the tree before this workflow
+# existed, one run of the suite opened fifty connections to the live site:
+#
+#     test_dedup_live                      24
+#     test_secondary_surface_consistency   21
+#     test_subscriber_routes_live           5
+#
+# tests.yml runs on every push and every pull request, across four parallel
+# legs. Nothing about those fifty requests is wrong except the trigger they sat
+# on. So the three modules became opt in (railway/tests/live_host.py) and this
+# workflow is the opt in.
+#
+# FOUR TIMES A DAY, NOT FOUR TIMES A PUSH. Every one of these surfaces breaks
+# by DEPLOY or by DATA, not by commit, so a cadence measured in hours loses
+# nothing a cadence measured in pushes was catching. The times sit clear of the
+# 16:40 UTC reconcile-supersets pass and the 17:30 UTC data-integrity run so
+# this is never one of several jobs hitting the host at once.
+#
+# DO NOT ANSWER A MISSED REGRESSION BY MOVING THESE BACK INTO tests.yml. The
+# whole failure was a request-costing check on a trigger that fires hundreds of
+# times a day. If one surface needs watching more closely, give that surface
+# its own job and its own cadence.
+
+on:
+  schedule:
+    - cron: '25 2,8,14,20 * * *'
+  workflow_dispatch:
+
+concurrency:
+  # ONE AT A TIME, AND A LATE RUN IS DROPPED RATHER THAN QUEUED. This job
+  # exists to bound the load we put on a host that has already fallen over
+  # twice; two of them overlapping would be the defect wearing a schedule.
+  group: live-surface-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install the minimum
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+
+      # The three modules named in live_host.LIVE_MODULES, run one after
+      # another rather than in a matrix. A matrix would put three runners on
+      # the host simultaneously, which is the shape of the problem.
+      - name: Read the deployed surfaces
+        working-directory: railway/tests
+        env:
+          ALT_LIVE_TESTS: '1'
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          # test_dedup_live writes 'evaluated' or 'unknown' here. The two
+          # named steps below carry it to ci_alert.py, which clears a
+          # `live-surface-check:live.data` incident ONLY on a run that
+          # positively evaluated the invariants. Without them a green run
+          # whose every check skipped on an unreachable host would read as
+          # RECOVERED, which is the 2026-08-14 defect under a new name.
+          LIVE_DATA_VERDICT_FILE: ${{ runner.temp }}/live-data-verdict.txt
+        run: |
+          set -e
+          for m in test_dedup_live test_secondary_surface_consistency \
+                   test_subscriber_routes_live; do
+            echo "::group::$m"
+            python3 "$m.py" -v
+            echo "::endgroup::"
+          done
+
+      # THE VERDICT CHANNEL, IDENTICAL TO tests.yml. ci_alert.py reads step
+      # names off the jobs API; the names are pinned by
+      # railway/tests/test_ci_alert.py in BOTH workflows. Exactly one of the
+      # two runs, so the alerter never has to read an absence.
+      - name: Read the live-data verdict
+        id: livedata
+        if: ${{ always() }}
+        run: |
+          f="${{ runner.temp }}/live-data-verdict.txt"
+          state=unknown
+          [ -f "$f" ] && state="$(head -1 "$f")"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "live-data verdict: $state"
+          [ -f "$f" ] && tail -n +2 "$f" || true
+
+      - name: Live-data invariants were evaluated
+        if: ${{ always() && steps.livedata.outputs.state == 'evaluated' }}
+        run: |
+          echo "The live-data invariants resolved to pass or fail in this run,"
+          echo "so a green run of this workflow is entitled to clear an open"
+          echo "live-data incident."
+
+      - name: Live-data invariants were NOT evaluated
+        if: ${{ always() && steps.livedata.outputs.state != 'evaluated' }}
+        run: |
+          echo "The live-data invariants did not run in this run (unreachable"
+          echo "site, or the deploy's own 503 maintenance window), so they"
+          echo "skipped. That is UNKNOWN, not a pass: a green run here says"
+          echo "nothing about the live numbers and must not clear an open"
+          echo "live-data incident. This step is NOT a failure."
+
+      # A run that could not reach the site has not passed, and the suite says
+      # so in its own words: every live assertion in those modules resolves an
+      # unreachable host to a skip whose reason begins "NOT passing". This step
+      # exists so that fact is visible in the run summary rather than only in a
+      # log nobody opens.
+      - name: What a skip here means
+        if: ${{ always() }}
+        run: |
+          echo "A skipped assertion above is UNKNOWN, not a pass. It means the"
+          echo "deployed surface was not read, so nothing about it was cleared."
+          echo "A green run with skips is not evidence the live site is well."
