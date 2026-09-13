@@ -378,7 +378,7 @@ add_filter('template_include', 'alt_company_directory_template');
 function alt_company_directory_rewrite_flush_once() {
     if (!file_exists(ALT_PLUGIN_DIR . 'templates/page-company-directory.php')) return;
     if (get_option('alt_company_directory_rewrite_version') === ALT_VERSION) return;
-    flush_rewrite_rules(false); update_option('alt_company_directory_rewrite_version', ALT_VERSION, false);
+    alt_request_rewrite_flush(); update_option('alt_company_directory_rewrite_version', ALT_VERSION, false);
 }
 add_action('init', 'alt_company_directory_rewrite_flush_once', 99);
 

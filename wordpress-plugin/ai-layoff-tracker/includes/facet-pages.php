@@ -442,7 +442,7 @@ add_filter('query_vars', 'alt_facet_query_vars');
 function alt_facet_rewrite_flush_once() {
     if (!file_exists(ALT_PLUGIN_DIR . 'templates/page-facet.php')) return;
     if (get_option('alt_facet_rewrite_version') === ALT_VERSION) return;
-    flush_rewrite_rules(false);
+    alt_request_rewrite_flush();
     update_option('alt_facet_rewrite_version', ALT_VERSION, false);
 }
 add_action('init', 'alt_facet_rewrite_flush_once', 99);

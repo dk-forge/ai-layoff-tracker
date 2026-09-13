@@ -755,7 +755,7 @@ add_filter('query_vars', function ($vars) {
 // until something else happened to flush. Once per version, on its own option.
 add_action('init', function () {
     if (get_option('alt_edition_rewrite_version') === ALT_VERSION) return;
-    flush_rewrite_rules(false);
+    alt_request_rewrite_flush();
     update_option('alt_edition_rewrite_version', ALT_VERSION, false);
 }, 99);
 

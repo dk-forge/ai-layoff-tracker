@@ -11,6 +11,11 @@ holder, so the start-of-session ritual surfaces it automatically.
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
   and this line. No plugin change, no version reserved, no request to the
   host beyond the one ops_status run at session start.
+- 2026-09-13 (Claude, worktree `/tmp/wt-lay-deploycost`, branch
+  `fix/deploy-first-request-is-cheap`, reserves 2.20.193): the deploy's first
+  request stops downloading the Nevada PDF inline, runs its two sweeps once a
+  day, and flushes rewrite rules once instead of five times. DO NOT MERGE until
+  the host has been up for two hours; a plugin deploy is itself the load event.
 - **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
   branch: `codex/host-readiness-preflight`, based on `origin/main` at
