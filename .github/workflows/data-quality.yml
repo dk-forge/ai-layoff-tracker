@@ -16,7 +16,7 @@ on:
 
 jobs:
   report:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Sized from measurement, 2026-08-05: healthy runs of this whole job take
     # 0.6-0.9 min (snapshot ~26s, report ~4s, spot-check ~10-30s). The three
     # runs cancelled AT this ceiling (Jul 29, Aug 3, Aug 5 - run 31021670125)

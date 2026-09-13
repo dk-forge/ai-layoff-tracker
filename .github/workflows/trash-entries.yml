@@ -26,7 +26,7 @@ on:
 
 jobs:
   trash:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 5
     steps:
       - name: Trash
