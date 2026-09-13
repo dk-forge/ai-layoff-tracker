@@ -70,6 +70,17 @@ holder, so the start-of-session ritual surfaces it automatically.
   outage with a loud pre-extraction stop and zero model calls proves its
   production behavior.
 
+  **CI live-probe serialization added (2026-09-13 05:20 CEST).** The failed
+  reruns exposed a separate test-orchestration defect: `test_dedup_live` and
+  `test_subscriber_routes_live` were placed on different matrix legs and hit
+  the same small production host concurrently. The branch now pins both to the
+  designated `rest` leg. No assertion is skipped; only the live probes are
+  serialized, while the remaining modules re-balance to equal 2,210/2,210
+  weights. Red first: the subscriber probe was demonstrably on `rest-2`.
+  Green locally: all 16 grouping/workflow tests pass. Push this addition, then
+  require the new full CI run to pass; do not treat the local result as host or
+  deployment proof.
+
   **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
   itself completed cleanly: the BigQuery mirror returned 5,497 articles with
   zero throttled, abandoned or capped windows; 660 candidates were attempted

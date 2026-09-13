@@ -194,6 +194,28 @@ page before the exemption was written, not assumed.
 
 Red first: 4 failures and 1 error on the pre-change tree.
 
+## 2026-09-13 - CI made two production probes hit the small host concurrently
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_test_groups.py`
+
+The required dedup/headline live check and subscriber-route live check were
+dealt onto different matrix legs. That was balanced by module weight but wrong
+for the external resource they share: both legs reached AskTheRecruiter at the
+same time. Repeated PR #338 runs began with a fast 200 from the tracker and API,
+then the live shards received 504s from the same API, cursor, archive and
+subscriber paths. Rerunning the failed matrix job repeated the contention.
+
+Both live modules now stay on the designated `rest` leg. Their assertions still
+run; only their order changes, so CI no longer turns two correctness probes into
+a concurrent production load test. The remaining modules are re-dealt around
+the pinned pair and both non-browser legs retain equal computed weight.
+
+Red first: the grouping guard proved `test_subscriber_routes_live` was on
+`rest-2`. Green after implementation: all 16 grouping/workflow tests pass, both
+live modules resolve to `rest`, and the computed `rest`/`rest-2` weights remain
+2,210/2,210. Full CI must still pass against the live host before merge.
+
 ## 2026-09-13 - a host-wide outage now stops before the first paid extraction
 
 **Class:** unmetered-spend

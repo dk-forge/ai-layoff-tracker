@@ -38,7 +38,8 @@ is only a balance hint; it can never drop a test. `test_dedup_live` is pinned to
 `ALL` is the same set `unittest discover -s tests -p "test_*.py"` would find
 (the same glob against the same directory), and the four groups partition it
 by construction. tests/test_test_groups.py pins that: total, disjoint, weight-
-balanced, the live-data module on `rest`, and every group named by the workflow.
+balanced, the live-host modules serialized on `rest`, and every group named by
+the workflow.
 
   python3 run_tests.py --group rest
   python3 run_tests.py --group rendered-1
@@ -67,9 +68,13 @@ GROUPS = ("rest", "rest-2", "rendered-1", "rendered-2")
 
 #: test_dedup_live writes LIVE_DATA_VERDICT_FILE, and the "Live-data invariants"
 #: steps in tests.yml gate on `matrix.group == 'rest'`. So it MUST ride the
-#: `rest` leg — pinned here so a re-weight can never drift it onto rest-2, which
-#: would let a leg that never read the live site answer for the one that did.
-_LIVE_DATA_PINNED_TO_REST = ("test_dedup_live",)
+#: `rest` leg. test_subscriber_routes_live reaches the same small production
+#: host and MUST share that leg so the two network probes run serially rather
+#: than making CI itself a concurrent load test. No assertion is skipped.
+_LIVE_HOST_PINNED_TO_REST = (
+    "test_dedup_live",
+    "test_subscriber_routes_live",
+)
 
 #: Per-module wall seconds MEASURED FROM CI on 2026-08-26 (run_tests prints
 #: `TIMING <secs> <stem>`; re-run and re-read to refresh). Until 2026-08-26 TWO
@@ -157,16 +162,16 @@ def _deal(stems, legs, preload=None):
 def _compute_grouping():
     """stem -> leg for every discovered module. Browser (cdp) modules split
     across two time-balanced legs; the rest split across two more, with the
-    live-data module pinned to `rest`. Nothing lands in no leg."""
+    live-host modules pinned to `rest`. Nothing lands in no leg."""
     browser = [m for m in all_modules() if drives_a_browser(m)]
     nonbrowser = [m for m in all_modules() if not drives_a_browser(m)]
     assign = {}
     assign.update(_deal(browser, ["rendered-1", "rendered-2"]))
-    pinned = [m for m in nonbrowser if m in _LIVE_DATA_PINNED_TO_REST]
+    pinned = [m for m in nonbrowser if m in _LIVE_HOST_PINNED_TO_REST]
     for m in pinned:
         assign[m] = "rest"
     preload = {"rest": sum(weight_of(m) for m in pinned), "rest-2": 0}
-    free = [m for m in nonbrowser if m not in _LIVE_DATA_PINNED_TO_REST]
+    free = [m for m in nonbrowser if m not in _LIVE_HOST_PINNED_TO_REST]
     assign.update(_deal(free, ["rest", "rest-2"], preload=preload))
     return assign
 
