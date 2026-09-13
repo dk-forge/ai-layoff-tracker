@@ -69,6 +69,50 @@ def human_challenge_cookie(status, body):
     return found.group(1) if found else None
 
 
+#: Body markers of the host's bot wall standing in for the answer. Measured
+#: 2026-09-13 from GitHub-hosted runners against ChemiCloud's Imunify360: an
+#: HTML interstitial titled "One moment, please..." served with a 2xx and a
+#: 5-second JS reload, and a text/plain "Access denied by Imunify360
+#: bot-protection. IPs used for automation should be whitelisted" on a 403.
+CHALLENGE_MARKERS = ("One moment, please", "Imunify360", "bot-protection")
+
+#: Cloudflare-style edge page: the whole body is `error code: 504`. The edge
+#: answered for the host, so nothing behind it was reached.
+_EDGE_ERROR_RX = re.compile(r"^\s*error code:\s*(\d{3})\s*$", re.IGNORECASE)
+
+
+def challenge_reason(status, content_type, body, *, expect_json=True):
+    """Return a reason string when `body` is a bot wall or an edge page standing
+    in for the host's answer, else "".
+
+    Detection is by CONTENT, never by status alone: the interstitial is a 2xx,
+    which `raise_for_status` waves through, and the denial is a 403, which is
+    otherwise a settled refusal that must stay red. Until 2026-09-13 the first
+    reached `response.json()` and died as "JSONDecodeError: Expecting value",
+    a message that says JSON and means "bot wall", and on the CLI path it
+    would have been written to the output file as the response.
+
+    `expect_json` admits a fourth, weaker shape: a body that starts with
+    `<!DOCTYPE` or `<html` where JSON was expected. Off for a caller that can
+    legitimately receive HTML.
+    """
+    text = body or ""
+    head = text[:4000]
+    lowered = head.lower()
+    for marker in CHALLENGE_MARKERS:
+        if marker.lower() in lowered:
+            return (f"HTTP {status} carried the host's bot-protection page "
+                    f"(marker {marker!r}) in place of the answer")
+    edge = _EDGE_ERROR_RX.match(text[:64])
+    if edge:
+        return (f"HTTP {status} carried an edge page reading 'error code: "
+                f"{edge.group(1)}' in place of the answer")
+    if expect_json and lowered.lstrip().startswith(("<!doctype", "<html")):
+        return (f"HTTP {status} carried an HTML page "
+                f"({content_type or 'no content-type'}) where JSON was expected")
+    return ""
+
+
 def retry_after_seconds(resp, cap=RETRY_AFTER_CAP_SECONDS):
     """Seconds a 429/503 asked us to wait, capped, or None when it did not say.
 

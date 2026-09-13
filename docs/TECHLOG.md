@@ -1,3 +1,40 @@
+## 2026-09-13 - A bot wall answered for the host, and the run said "JSON"
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_host_challenge_names_the_bot_wall.py`
+
+At 16:09 UTC `archive-backfill.yml`, on a GitHub-hosted runner, called
+`host_call.get_json` against `/archive-candidates` and died with
+`requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1`. The
+host was up: this Mac got 200 JSON from the same route in the same minute. The
+runner had been served ChemiCloud's Imunify360 bot-protection page instead, in
+one of three shapes measured that day: an HTML "One moment, please..."
+interstitial with a JS reload on a 2xx, a text/plain "Access denied by
+Imunify360 bot-protection. IPs used for automation should be whitelisted" on a
+403 (a deploy's verification step met that one in the morning), and an edge
+page reading `error code: 504`.
+
+The 2xx interstitial is the dangerous one. `raise_for_status` waves it
+through, and the only thing standing between it and a green run was that the
+worker happened to parse. The CLI path (`host_call.py main`) did not: it would
+have written the HTML page to its output file as the response and exited 0.
+And the message that did surface named the wrong thing entirely, so a session
+reading it would go looking for a broken route.
+
+`http_retry.challenge_reason` now detects the three shapes by body content,
+before any parse and before `raise_for_status`, never by status alone.
+`host_call.HostChallenged` carries what happened and what a human does: the
+host's bot protection challenged this client, whitelist the caller's IP in
+Imunify360 or run the job from a fixed whitelisted IP. It is a `Deferred`, so
+every worker's existing top-level `except` records it and exits 0. Retrying
+tomorrow from the same blocked IP changes nothing, and a red run each morning
+saying so is alarm fatigue with no new information. But it is not allowed to
+hide as an ordinary deferral: the ledger reason starts with
+`deferral_ledger.CHALLENGED_PREFIX`, `[4d]` prints CHALLENGED with the RUNBOOK
+pointer, and `ops_status` asks for a human on the first one rather than the
+third, because waiting does not whitelist an IP. A body that is merely not
+JSON, with none of the markers, still raises the ordinary decode error: that
+is our bug and stays loud. RUNBOOK: "a job says JSONDecodeError from the host".
 ## 2026-09-13 - The offline test suite used the production website as test data, on every push, from every machine
 
 **Class:** novel
