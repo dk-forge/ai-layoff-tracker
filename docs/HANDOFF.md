@@ -6,6 +6,11 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
+  Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
+  `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
+  and this line. No plugin change, no version reserved, no request to the
+  host beyond the one ops_status run at session start.
 - **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
   branch: `codex/host-readiness-preflight`, based on `origin/main` at
