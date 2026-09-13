@@ -138,13 +138,19 @@ class TheSplitIsDerivedFromTheSource(unittest.TestCase):
                 "%s(w=%d) vs %s(w=%d) lopsided by more than the heaviest module "
                 "(%d): the deal no longer balances them" % (a, wa, b, wb, heaviest))
 
-    def test_the_live_data_module_rides_the_rest_leg(self):
+    def test_the_live_probes_share_the_rest_leg(self):
         # tests.yml gates the "Live-data invariants" steps on
         # `matrix.group == 'rest'` and test_dedup_live writes the verdict file.
         # If the weight deal moved it to rest-2, the leg that never read the live
         # site would answer for the one that did. Pinned in run_tests, held here.
         self.assertIn("test_dedup_live", run_tests.modules_in("rest"))
         self.assertNotIn("test_dedup_live", run_tests.modules_in("rest-2"))
+        # Both modules probe the same small production host. Running them on
+        # separate matrix legs made CI itself issue the requests concurrently
+        # and repeatedly drove the host into 504s. Keep every assertion, but
+        # serialize the two live modules on the one designated live leg.
+        self.assertIn("test_subscriber_routes_live", run_tests.modules_in("rest"))
+        self.assertNotIn("test_subscriber_routes_live", run_tests.modules_in("rest-2"))
         self.assertIn("matrix.group == 'rest'", WORKFLOW)
 
     def test_a_mention_in_prose_does_not_move_a_module(self):

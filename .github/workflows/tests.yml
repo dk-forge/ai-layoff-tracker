@@ -45,7 +45,10 @@ jobs:
     # the old serial wall. test_dedup_live rides `rest` because the live-data
     # verdict steps below gate on that leg. railway/tests/test_test_groups.py
     # pins that the four groups are total, disjoint, weight-balanced, and that
-    # a module cannot fall out of every leg and stop running unnoticed.
+    # a module cannot fall out of every leg and stop running unnoticed. The
+    # dedup and subscriber-route live probes both ride `rest` deliberately:
+    # they exercise the same small production host and must run serially, not
+    # turn the parallel matrix into a production load test.
     #
     # fail-fast is OFF deliberately: one leg failing must not CANCEL the
     # others. A cancelled job is a conclusion this repo's alerter and healer
