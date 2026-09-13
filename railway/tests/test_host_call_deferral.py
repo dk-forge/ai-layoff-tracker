@@ -219,6 +219,58 @@ class ARealAnswerStillFailsLoudly(_Case):
         self.assertNotEqual(code, 0)
 
 
+class _FakeResponse:
+    def __init__(self, status_code, text, content_type=""):
+        self.status_code = status_code
+        self.text = text
+        self.headers = {"Content-Type": content_type} if content_type else {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return json.loads(self.text)
+
+
+class GetJsonNamesA200WithABadBody(unittest.TestCase):
+    """`archive_backfill.py` (run 34767733052, 2026-09-13) died on
+
+        json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+    raised bare out of `response.json()` inside `get_json` — naming no URL, no
+    HTTP status, no content type and no body, the exact contextless crash
+    `railway/endpoint_check.py` was written on 2026-09-09 to stop happening to
+    a human reading an alert at 3am. `get_json` must fail exactly as loudly
+    (this is a real, settled answer — not something a retry fixes) but name
+    what came back, the same three-part shape `endpoint_check.judge()` uses.
+    """
+
+    def test_a_200_with_a_bot_challenge_page_names_the_body(self):
+        body = "<!DOCTYPE html>\n<html><title>One moment, please...</title></html>"
+        response = _FakeResponse(200, body, "text/html; charset=UTF-8")
+        with mock.patch.object(host_call.http_retry, "get_with_retry", return_value=response):
+            with self.assertRaises(RuntimeError) as ctx:
+                host_call.get_json("https://example.test/wp-json/layoffs/v1/archive-candidates")
+        message = str(ctx.exception)
+        self.assertIn("HTTP 200", message)
+        self.assertIn("text/html", message)
+        self.assertIn("One moment, please", message)
+
+    def test_an_empty_200_body_names_itself_empty(self):
+        response = _FakeResponse(200, "")
+        with mock.patch.object(host_call.http_retry, "get_with_retry", return_value=response):
+            with self.assertRaises(RuntimeError) as ctx:
+                host_call.get_json("https://example.test/wp-json/layoffs/v1/archive-candidates")
+        self.assertIn("HTTP 200", str(ctx.exception))
+
+    def test_a_valid_200_still_returns_the_parsed_body(self):
+        response = _FakeResponse(200, '{"ok": true}', "application/json")
+        with mock.patch.object(host_call.http_retry, "get_with_retry", return_value=response):
+            payload = host_call.get_json("https://example.test/wp-json/layoffs/v1/archive-candidates")
+        self.assertEqual(payload, {"ok": True})
+
+
 class DeferralsEscalate(_Case):
     def test_the_third_consecutive_deferral_goes_red(self):
         first, _ = self.run_call(504)

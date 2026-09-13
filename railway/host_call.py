@@ -177,18 +177,53 @@ def clear(job: str, *, ledger=deferral_ledger.LEDGER,
 # The Python worker API.
 # --------------------------------------------------------------------------
 
+def _excerpt(text, limit=200):
+    """The first `limit` characters of a body, safe to put in a log line.
+
+    Same shape as `endpoint_check.excerpt`: whitespace runs collapse (an HTML
+    error page is mostly newlines) and control characters are dropped so a
+    response cannot smuggle an ANSI escape or a `::error::` line of its own
+    into the run log or the alert `ci_alert.py` builds from it.
+    """
+    if not text:
+        return ""
+    cleaned = "".join(ch if ch.isprintable() or ch.isspace() else " " for ch in text)
+    cleaned = " ".join(cleaned.split())
+    if len(cleaned) > limit:
+        return cleaned[:limit] + f"... [truncated at {limit} characters]"
+    return cleaned
+
+
 def get_json(url, *, params=None, headers=None, timeout=60):
     """GET our host, resolved to the same three outcomes.
 
     `Deferred` when every attempt died transiently; a settled refusal (403, a
     missing route) raises through `raise_for_status` exactly as it always did.
+
+    A 200 whose body is not JSON (a bot-challenge interstitial, a WordPress
+    fatal swallowed by output buffering) is the same class of answer
+    `endpoint_check.judge()` already names FAIL, not a pass and not something
+    a retry fixes — so it still raises (`get_json` does not soften failure any
+    more than `post_json` does), but with the status, content type and a body
+    excerpt attached. Before this, `response.json()` raised a bare
+    `JSONDecodeError` naming none of that — the exact contextless crash
+    `railway/endpoint_check.py` was written on 2026-09-09 to stop happening to
+    a human at 3am.
     """
     response = http_retry.get_with_retry(url, params=params, headers=headers,
                                          timeout=timeout)
     if response is None:
         raise Deferred(f"GET {url} never got an answer from the host")
     response.raise_for_status()
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as exc:
+        ctype = (response.headers or {}).get("Content-Type", "") or "no content type"
+        raise RuntimeError(
+            f"GET {url}: HTTP {response.status_code} but the body is not JSON "
+            f"({exc}). Content-Type was {ctype}. First 200 characters of the "
+            f"body: {_excerpt(response.text)}"
+        ) from exc
 
 
 def post_json(url, payload, *, headers=None, timeout=90):
