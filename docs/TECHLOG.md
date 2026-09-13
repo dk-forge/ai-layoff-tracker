@@ -35,6 +35,33 @@ page before the exemption was written, not assumed.
 
 Red first: 4 failures and 1 error on the pre-change tree.
 
+## 2026-09-13 - a host-wide outage now stops before the first paid extraction
+
+**Class:** unmetered-spend
+**Guard:** `railway/tests/test_seen_urls_precheck.py`, `railway/tests/test_cost_funnel.py`
+
+The September 12 cron's GDELT query was healthy, but ChemiCloud/Cloudflare
+returned 504 on publication. The existing same-URL pre-check deliberately
+failed open, which is correct for an isolated optimization failure and wrong as
+the only host signal: the run spent $0.1598 across 1,544 model calls before it
+proved 0/1,101 candidates could be published.
+
+The main cron now performs a separate strict readiness probe after every free
+collector and before the first gate or extraction call. It sends a harmless
+sentinel URL through the authenticated `/seen-urls` endpoint, exercising
+WordPress routing, the API key and both source tables without writing a layoff.
+A non-200, malformed body, exception or missing credential stops the run loudly
+before paid work. The candidate URLs remain unmarked, so the overlapping source
+windows can offer them again. A healthy probe leaves the existing per-item
+seen-URL fail-open contract untouched; one batch error must still cost money
+rather than coverage.
+
+Red first: the new contract produced twelve errors because neither the strict
+probe nor cron wiring existed. Green after implementation: 90/90 across the
+seen-URL, cost-funnel, spend-guard and incident suites. Production proof still
+requires green full CI, merge and a successful Railway deployment. A real host
+outage, not a manufactured one, must later show a loud zero-model-call stop.
+
 ## 2026-09-13 - the overlap repair was the wrong TOML type, so Railway rejected every deployment
 
 **Class:** guard-went-vacuous

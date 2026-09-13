@@ -229,6 +229,12 @@ def filter_already_seen(entries):
     return _shared(entries)
 
 
+def publishing_host_ready():
+    """Strict run-level guard; separate from the item-level fail-open filter."""
+    from seen_urls import publishing_host_ready as _shared
+    return _shared()
+
+
 def _pull_local_news_rows():
     """Adapter: pull_local_news returns (rows, stats); this loop wants rows.
 
@@ -578,6 +584,20 @@ def run():
             print(f"discovery probes failed (non-fatal): {e}")
 
     print(f"Pulled {len(entries)} raw entries")
+
+    # A host-wide outage is different from one failed seen-URL batch. On
+    # 2026-09-12 the latter correctly failed open, after which the cron spent
+    # $0.1598 on 1,544 model calls and posted 0/1,101 candidates because the
+    # WordPress path was returning 504. Exercise the authenticated, read-only
+    # WordPress namespace before the first paid call. A failure stops loudly;
+    # no URL has been marked seen, so the overlapping discovery windows can
+    # offer the candidates again on the next scheduled run.
+    if entries and not publishing_host_ready():
+        print(f"::error::publish host unavailable; deferring {len(entries)} "
+              "unmarked candidates before paid extraction")
+        raise SystemExit(
+            f"publish host unavailable; deferred {len(entries)} candidates "
+            "before paid extraction")
 
     # URL-level pre-check: the pull windows overlap on purpose (36h GDELT on a
     # twice-daily cadence), so the SAME article URL arrives ~3 runs in a row.

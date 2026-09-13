@@ -6,10 +6,11 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **FREE (2026-09-13) — Railway overlap type repair is production-closed.**
-  Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
-  PR #336 is merged and no plugin version is reserved. A new session must claim
-  the baton and branch from current `origin/main` before editing.
+- **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
+  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
+  branch: `codex/host-readiness-preflight`, based on `origin/main` at
+  `b06fdad9`. No plugin version is reserved because this changes the Railway
+  collector and its tests/documentation, not the WordPress plugin.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
@@ -37,6 +38,37 @@ holder, so the start-of-session ritual surfaces it automatically.
   `overlapSeconds: 7200`. The type/config/deployment defect is closed. The next
   scheduled run is the first one eligible for the separate clean-run proof
   clock; deployment success does not pre-approve that run.
+
+  **Active host-readiness package (2026-09-13 02:55 CEST).** The September 12
+  failure proved that the item-level seen-URL pre-check's correct fail-open
+  policy is unsafe as the only host signal: the cron then paid to extract work
+  it could not publish. This branch adds a separate strict run-level probe after
+  free discovery and before the first model call. It exercises the keyed
+  `/seen-urls` route with a harmless sentinel, including the WordPress REST,
+  authentication and database-read path. HTTP/auth/malformed/transport failure
+  exits loudly before paid extraction, with candidate URLs still unmarked; a
+  healthy result preserves the existing item-level fail-open behavior. TDD:
+  twelve errors on the pre-change tree, then 90/90 relevant tests green.
+  PR #338 contains the implementation at `7f2fc94a`; the handoff-only follow-up
+  is `4c90dd53`. `git diff --check` is clean. Do not recreate or supersede this
+  package.
+
+  **PR #338 release gate (2026-09-13 03:52 CEST): BLOCKED by the live host,
+  not by a package test failure.** Three attempts of GitHub run `34729643938`
+  passed both rendered shards, version discipline and compare checks. The two
+  remaining shards repeatedly reached their live invariants while
+  ChemiCloud/Cloudflare returned HTTP 504 from the tracker API and subscriber
+  routes. The last rerun failed seven dedup/headline live assertions in `rest`
+  and the subscriber-route live assertion in `rest-2`; the same run also saw
+  504s from the historical cursor route. These failures reproduce the
+  production-host incident this package is designed to contain and are not
+  evidence that the preflight code regressed. They still make the required CI
+  gate red, so do not merge by bypassing checks. Wait for sustained host
+  recovery, rerun only the failed jobs, merge when all required checks are
+  green, and verify the resulting Railway deployment SHA and status. A
+  successful deployment closes this implementation package; only a later real
+  outage with a loud pre-extraction stop and zero model calls proves its
+  production behavior.
 
   **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
   itself completed cleanly: the BigQuery mirror returned 5,497 articles with
@@ -81,9 +113,11 @@ holder, so the start-of-session ritual surfaces it automatically.
   PR #333 is merged, final live integrity run `34720705216` passed all 20/20,
   and no headline incident remains open.
 
-  Remaining proof, not implementation theatre: after PR #336 merges and a
-  Railway deployment proves the numeric overlap setting, the next protected
-  scheduled run can begin the seven-clean-runs-across-fourteen-days gate. The
+  Remaining proof, not implementation theatre: PR #336 and Railway deployment
+  `b237d665-befe-4bdd-a7fa-8fe1106aa9d8` have already proved the numeric
+  overlap setting. A scheduled run becomes eligible to begin the
+  seven-clean-runs-across-fourteen-days gate only after PR #338 is merged and
+  deployed, and only if that run itself meets every clean-run invariant. The
   independent US/Europe/global competitor
   benchmark is still UNKNOWN; weak UK/Estonia/Taiwan official-total shares and
   the remaining duplicate/archive worklists are still open. Never call the
@@ -103,27 +137,28 @@ holder, so the start-of-session ritual surfaces it automatically.
   and the latest `railway/ops_status.py` output. Do not use the unrelated parent
   sandbox as the tracker repository. Do not replay the weekly digest manually.
 
-  1. At the next scheduled 22:00 UTC run after deployment `b237d665`, verify
+  1. Restore sustained live-host availability, rerun only the failed jobs in
+     GitHub run `34729643938`, and merge PR #338 only when every required check
+     is green. Verify the new Railway deployment is SUCCESS on the merge SHA.
+  2. At the first scheduled 22:00 UTC run after that deployment, verify
      GDELT has a terminal finish,
      no lost window, no unexplained cap, and a recovered retry ledger. Record
      the run id and verdict. Repeat until seven clean scheduled runs span
      fourteen days; this is a real calendar gate, not a test-suite assertion.
-  2. Add a separate red-first host-readiness guard before paid extraction. If
-     the required publish/read endpoint is unavailable or returns 5xx, defer
-     candidates without marking them seen and do not spend model budget. Keep
-     the existing per-item fail-open behavior for isolated seen-URL errors;
-     this guard is for a host-wide outage like September 12.
-  3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
+  3. On the next naturally occurring host outage, require a loud
+     pre-extraction stop with zero model calls; do not manufacture an outage to
+     prove it. The existing per-item fail-open behavior remains deliberate.
+  4. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
      the 69 shape candidates and 12 dateless rows one source at a time. Never
      merge on count/date alone and never call a national-total share recall.
-  4. Refresh the private benchmark with matching date basis, amendments,
+  5. Refresh the private benchmark with matching date basis, amendments,
      notice-vs-effective semantics, source classes and country scope. The
      public comparison file is a starting evidence snapshot, not a ranking.
-  5. Resolve archive pending/exhausted queues through the existing cadence;
+  6. Resolve archive pending/exhausted queues through the existing cadence;
      do not promise 100% Wayback coverage where the publisher or archive is
      unavailable.
 
-  There is no open integration PR at this handoff. The quiet heartbeat
+  The host-readiness branch is the current integration point. The quiet heartbeat
   `layoff-tracker-top-three-proof` is already
   attached and should remain active while time-based proof is pending.
 
