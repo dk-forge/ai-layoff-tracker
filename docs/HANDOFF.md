@@ -6,6 +6,11 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **Cloud session alongside (2026-09-13 evening, branch `fix/per-request-plugin-work-is-cheap`, claims 2.20.194, DO NOT MERGE until the host has been up two hours; deploys with #347).**
+  Touches `includes/build-stamp.php` (stamp cached in a transient keyed by
+  version plus a stat pass), `includes/api.php` (/status?build=1 forces a fresh
+  hash), the eight `alt_ensure_*_page_once` hooks in `ai-layoff-tracker.php`
+  (done-options), one new test, TECHLOG and this line. No request to the host.
 - **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
   Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
