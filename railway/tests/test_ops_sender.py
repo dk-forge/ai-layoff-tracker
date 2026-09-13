@@ -365,6 +365,7 @@ class EveryJobThatMailsCarriesTheKeyThatLetsItMail(unittest.TestCase):
         # was absent from this map and from its workflow's env for 18 days:
         # the one mail this map exists to guarantee never left.
         "warn_import.py": "warn-import.yml",
+        "vps_watch.py": "vps-watch.yml",
     }
 
     def test_the_sender_override_travels_with_the_key(self):
