@@ -6,10 +6,11 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **FREE (2026-09-13) — Railway overlap type repair is production-closed.**
-  Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
-  PR #336 is merged and no plugin version is reserved. A new session must claim
-  the baton and branch from current `origin/main` before editing.
+- **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
+  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
+  branch: `codex/host-readiness-preflight`, based on `origin/main` at
+  `b06fdad9`. No plugin version is reserved because this changes the Railway
+  collector and its tests/documentation, not the WordPress plugin.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
@@ -37,6 +38,18 @@ holder, so the start-of-session ritual surfaces it automatically.
   `overlapSeconds: 7200`. The type/config/deployment defect is closed. The next
   scheduled run is the first one eligible for the separate clean-run proof
   clock; deployment success does not pre-approve that run.
+
+  **Active host-readiness package (2026-09-13 02:55 CEST).** The September 12
+  failure proved that the item-level seen-URL pre-check's correct fail-open
+  policy is unsafe as the only host signal: the cron then paid to extract work
+  it could not publish. This branch adds a separate strict run-level probe after
+  free discovery and before the first model call. It exercises the keyed
+  `/seen-urls` route with a harmless sentinel, including the WordPress REST,
+  authentication and database-read path. HTTP/auth/malformed/transport failure
+  exits loudly before paid extraction, with candidate URLs still unmarked; a
+  healthy result preserves the existing item-level fail-open behavior. TDD:
+  twelve errors on the pre-change tree, then 90/90 relevant tests green. Merge,
+  CI and a successful Railway deployment remain required.
 
   **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
   itself completed cleanly: the BigQuery mirror returned 5,497 articles with
@@ -108,11 +121,10 @@ holder, so the start-of-session ritual surfaces it automatically.
      no lost window, no unexplained cap, and a recovered retry ledger. Record
      the run id and verdict. Repeat until seven clean scheduled runs span
      fourteen days; this is a real calendar gate, not a test-suite assertion.
-  2. Add a separate red-first host-readiness guard before paid extraction. If
-     the required publish/read endpoint is unavailable or returns 5xx, defer
-     candidates without marking them seen and do not spend model budget. Keep
-     the existing per-item fail-open behavior for isolated seen-URL errors;
-     this guard is for a host-wide outage like September 12.
+  2. Merge the active host-readiness package only after full CI is green, then
+     verify its Railway deployment. On the next host outage, require a loud
+     pre-extraction stop with zero model calls; do not manufacture an outage to
+     prove it. The existing per-item fail-open behavior remains deliberate.
   3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
      the 69 shape candidates and 12 dateless rows one source at a time. Never
      merge on count/date alone and never call a national-total share recall.
@@ -123,7 +135,7 @@ holder, so the start-of-session ritual surfaces it automatically.
      do not promise 100% Wayback coverage where the publisher or archive is
      unavailable.
 
-  There is no open integration PR at this handoff. The quiet heartbeat
+  The host-readiness branch is the current integration point. The quiet heartbeat
   `layoff-tracker-top-three-proof` is already
   attached and should remain active while time-based proof is pending.
 
