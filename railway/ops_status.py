@@ -502,6 +502,9 @@ _DEFERRAL_LEDGER = Path(__file__).resolve().parent / "deferral_ledger.json"
 
 #: Mirrors deferral_ledger.ESCALATE_AFTER, duplicated for that same reason.
 _DEFERRAL_ESCALATE_AFTER = 3
+#: Mirrors deferral_ledger.CHALLENGED_PREFIX, same reason; pinned equal by
+#: railway/tests/test_host_challenge_names_the_bot_wall.py.
+_CHALLENGED_PREFIX = "challenged:"
 
 
 #: Conclusions ci_alert.py treats as a red run. Kept in step with its ALERTABLE
@@ -598,9 +601,25 @@ def _open_deferrals():
             if e.get("state") == "pending"]
 
 
+def _challenged_deferrals():
+    """Deferrals where the host's bot protection answered in place of the host.
+
+    Not an outage and not a defect of ours, but not something the next run
+    fixes either: the same runner IP is challenged again tomorrow. So unlike
+    an ordinary deferral it asks for a human on the FIRST occurrence. On
+    2026-09-13 archive-backfill met it from a GitHub-hosted runner and the only
+    trace was a "JSONDecodeError" that named the wrong thing entirely.
+    """
+    return [e for e in _open_deferrals()
+            if str(e.get("last_reason", "")).startswith(_CHALLENGED_PREFIX)]
+
+
 def _deferrals_need_a_human():
     """One deferral is an outage and the design working. Three in a row is a job
-    hiding behind the outage story, and needs a person."""
+    hiding behind the outage story, and needs a person. A CHALLENGED one needs
+    a person at once: waiting does not whitelist an IP."""
+    if _challenged_deferrals():
+        return True
     return any(e.get("consecutive", 0) >= _DEFERRAL_ESCALATE_AFTER
                for e in _open_deferrals())
 
@@ -616,9 +635,15 @@ def _report_deferrals():
                      f"{str(e.get('last_reason', ''))[:52]}")
     if len(open_) > 4:
         lines.append(f"  ... and {len(open_) - 4} more")
-    if _deferrals_need_a_human():
+    if any(e.get("consecutive", 0) >= _DEFERRAL_ESCALATE_AFTER for e in open_):
         lines.append(f"  {_DEFERRAL_ESCALATE_AFTER}+ in a row is NOT the host having a "
                      "bad night. -> RUNBOOK 'a job is DEFERRING'.")
+    blocked = _challenged_deferrals()
+    if blocked:
+        names = ", ".join(str(e.get("job")) for e in blocked[:4])
+        lines.append(f"  CHALLENGED by the host's bot protection (Imunify360): {names}. "
+                     "Not an outage; whitelist the runner's IP. "
+                     "-> RUNBOOK 'a job says JSONDecodeError from the host'.")
     return lines
 
 
@@ -2062,7 +2087,11 @@ def main():
     print("\n[4d] DEFERRED HOST CALLS  (never reached the host — NOT a pass)")
     for line in _report_deferrals():
         print(f"    {line}")
-    if _deferrals_need_a_human():
+    if _challenged_deferrals():
+        issues.append("a job was CHALLENGED by the host's bot protection; "
+                      "whitelist the runner IP (RUNBOOK 'a job says "
+                      "JSONDecodeError from the host')")
+    elif _deferrals_need_a_human():
         issues.append("a job has deferred 3+ times in a row")
 
     # 5+6. Surfaces to keep current

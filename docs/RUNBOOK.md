@@ -761,6 +761,53 @@ on the FIRST occurrence: a wrong key (401/403), a missing route (404), any
 non-transient status, and a 2xx body that reports its own failed batch. None of
 those gets better by waiting, and softening them was never the point.
 
+**A job says JSONDecodeError from the host: it was challenged; whitelist the IP.**
+A run died with `requests.exceptions.JSONDecodeError: Expecting value: line 1
+column 1 (char 0)` from a `/wp-json/layoffs/v1/` route, or `[4d]` lists a job
+as **CHALLENGED**, or a run printed `DEFERRED: <job> ... challenged:`.
+
+**What it means.** The host is UP. The runner's request never reached WordPress:
+ChemiCloud's Imunify360 bot protection answered in its place, in one of three
+shapes. An HTML interstitial titled "One moment, please..." with a 5-second JS
+reload, served with a 2xx (this is the one that used to reach `.json()` and
+die saying "JSON"). A text/plain 403 reading "Access denied by Imunify360
+bot-protection. IPs used for automation should be whitelisted". Or an edge page
+whose whole body is `error code: 504`. Measured 2026-09-13 16:09 UTC from
+`archive-backfill.yml` on a GitHub-hosted runner while this Mac got 200 JSON
+from the same route in the same minute; a deploy's verification step had met
+the 403 shape earlier that day.
+
+**Since 2026-09-13** `http_retry.challenge_reason` detects all three by body
+content (never by status alone, the interstitial is a 2xx) before any parse,
+and `host_call` raises `HostChallenged`. It DEFERS (exit 0, counted in
+`railway/deferral_ledger.json` with a reason starting `challenged:`) because
+it is not an outage and not a defect in the job, and a red run every morning
+from the same blocked IP is alarm fatigue. It is not an ordinary deferral
+either: `[4d]` prints CHALLENGED and ops_status exits 2 on the FIRST one,
+because waiting does not whitelist an IP. The third in a row still goes red
+and mails, as for any deferral.
+
+**What to do.** GitHub-hosted runners come from a large, rotating IP range, so
+"whitelist the runner" is not one address:
+
+1. Open a ChemiCloud ticket asking for the caller to be whitelisted in
+   Imunify360 (they can whitelist by User-Agent `AiLayoffTracker/1.0` or by
+   IP), or add the IP in cPanel > Imunify360 > Proactive Defense / Whitelist
+   if that panel is exposed to the account.
+2. Better: run the job from a FIXED IP and whitelist that one. The owner's
+   VPS at `173.249.57.163` exists for this. Point the workflow at a
+   self-hosted runner on it (`runs-on:` via the `CI_RUNNER` variable pattern)
+   and whitelist that address once.
+3. Do NOT answer this by widening `TRANSIENT`, by retrying harder, or by
+   parsing the interstitial's cookie: a challenge that is passed by automation
+   is a challenge the host will tighten, and this Mac's IP was blocked for
+   hours in July for exactly that kind of walk.
+
+**Once whitelisted**, let it run: the next successful call clears the streak.
+A `JSONDecodeError` that survives whitelisting, with no challenge marker in the
+body, is OUR bug (a route returning garbage) and is deliberately not caught by
+this path.
+
 **Converting another workflow to defer** is per job and is not automatic. The
 bar is: re-running it tomorrow must be equivalent to running it today. The first
 two cleared it for different reasons — `reconcile-supersets` is a clean-slate
