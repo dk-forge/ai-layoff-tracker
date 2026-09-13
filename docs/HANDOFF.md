@@ -70,6 +70,17 @@ holder, so the start-of-session ritual surfaces it automatically.
   outage with a loud pre-extraction stop and zero model calls proves its
   production behavior.
 
+  **Concurrency hypothesis disproved (2026-09-13 05:27 CEST).** A TDD
+  experiment serialized the dedup/headline and subscriber-route production
+  probes on one CI leg. In run `34735198979`, both rendered legs and the
+  non-live `rest-2` leg passed, while the single serialized live leg still
+  received HTTP 504 from every tracker API, archive and subscriber route it
+  checked. Serialization therefore did not repair the release gate and its
+  causal explanation was withdrawn. Commit `775da8bf` cleanly reverts the
+  experiment. Do not weaken or bypass the live invariants; this is now stronger
+  evidence of intermittent host/edge availability independent of matrix
+  concurrency.
+
   **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
   itself completed cleanly: the BigQuery mirror returned 5,497 articles with
   zero throttled, abandoned or capped windows; 660 candidates were attempted
