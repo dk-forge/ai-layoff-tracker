@@ -77,6 +77,11 @@
       "last": 1789249558,
       "subject": "CI RED: Deploy WordPress plugin \u2014 WP_SITE_URL: https://asktherecruiter.com/blog"
     },
+    "live-data-integrity-check:main:aa0eaf87db8c4614": {
+      "first": 1789328502,
+      "last": 1789328502,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,563,505 jobs / 65,594 entries"
+    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1789306127,
       "last": 1789306127,
@@ -113,6 +118,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-13T17:46:10+00:00",
+  "updated_at": "2026-09-13T19:41:42+00:00",
   "version": 1
 }
