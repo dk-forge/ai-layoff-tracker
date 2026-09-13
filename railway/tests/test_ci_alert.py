@@ -639,16 +639,26 @@ class ASkippedCheckIsNotARecovery(unittest.TestCase):
     def test_the_workflow_runs_the_steps_the_alerter_looks_for(self):
         """The parity that makes the channel real. A rename on either side turns
         RECOVERED back into a mail sent on no evidence, silently."""
-        yml = (Path(__file__).resolve().parents[2] / ".github" / "workflows"
-               / "tests.yml").read_text(encoding="utf-8")
-        for name in (ci_alert.LIVE_DATA_STEP, ci_alert.LIVE_DATA_STEP_UNKNOWN):
-            self.assertIn(f"- name: {name}\n", yml,
-                          f"tests.yml no longer runs a step named {name!r}, so "
-                          f"ci_alert.py can never learn whether the live checks "
-                          f"ran")
-        self.assertIn("LIVE_DATA_VERDICT_FILE", yml,
-                      "the suite is not being told where to write the verdict, "
-                      "so the two steps above decide on an empty file")
+        # TWO workflows since 2026-09-13. The ordinary suite (tests.yml) no
+        # longer reads the deployed site at all, so its verdict is always NOT
+        # evaluated; test_dedup_live is actually evaluated by
+        # live-surface-check.yml, on a schedule. The scope is
+        # `<workflow>:live.data`, so the workflow that RAISES a live-data
+        # incident is the one whose green run clears it, and that workflow has
+        # to carry the same two steps or a run in which every check skipped
+        # would clear it on no evidence.
+        workflows = Path(__file__).resolve().parents[2] / ".github" / "workflows"
+        for wf in ("tests.yml", "live-surface-check.yml"):
+            yml = (workflows / wf).read_text(encoding="utf-8")
+            for name in (ci_alert.LIVE_DATA_STEP, ci_alert.LIVE_DATA_STEP_UNKNOWN):
+                self.assertIn(f"- name: {name}\n", yml,
+                              f"{wf} no longer runs a step named {name!r}, so "
+                              f"ci_alert.py can never learn whether the live "
+                              f"checks ran")
+            self.assertIn("LIVE_DATA_VERDICT_FILE", yml,
+                          f"{wf}: the suite is not being told where to write "
+                          f"the verdict, so the two steps above decide on an "
+                          f"empty file")
 
 
 class OneIncidentAcrossTwoBranches(unittest.TestCase):

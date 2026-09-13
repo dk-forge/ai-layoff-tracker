@@ -1,3 +1,162 @@
+## 2026-09-13 - The offline test suite used the production website as test data, on every push, from every machine
+
+**Class:** novel
+**Guard:** `railway/tests/test_offline_suite_is_offline.py`
+
+asktherecruiter.com went down three times in twenty hours. Every PHP request
+on the shared ChemiCloud account timed out at ten seconds, account wide: the
+blog root, the WordPress REST index, this tracker's routes and the sibling
+talent tracker's routes, all failing identically. It was load, not a code
+fault: down at 21:40 UTC on 2026-09-12 under a burst of deploys and CI,
+recovered by itself after a quiet night, straight back down the moment the
+sibling's hourly `tests` workflow ran at 06:46, recovered when that workflow
+was disabled, and down again after the daily scheduled job burst at 15:18.
+
+A measurable share of that load was our own test suites. Forty two modules
+under `railway/tests/` name `asktherecruiter.com`, and a grep could not say
+how many of them made a request, because almost all of them name it inside a
+PHP string they are asserting against. So the whole suite was run under
+`railway/tests/netblock.py`, a `sitecustomize` that records and refuses every
+non-loopback socket, and counted. One run of this suite, on a tree with PR #335
+already applied, opened FIFTY connections to the live site:
+
+    test_dedup_live                      24   deliberate, live-data by design
+    test_secondary_surface_consistency   21   deliberate, live-data by design
+    test_subscriber_routes_live           5   deliberate, live-data by design
+
+and on `origin/main` without #335 there were sixteen more, from
+`test_headline_containment`, which are the ACCIDENT: offline unit tests that
+reached the live `/corrections` endpoint out of an invariant's FAIL branch.
+That one is fixed in #335 (`Ctx.disclosed` reads the live log only when the
+run reads live data; an injected transport resolves to NOT CONSULTED).
+
+None of the fifty is a mistake in the ordinary sense. Each of the three modules
+is about what the deployed site actually returns, and cannot be stubbed
+without becoming a different test. The defect is the TRIGGER: they ran by
+default on every push and every pull request, across four parallel CI legs and
+from every laptop, which is a request-costing check on an event that fires
+hundreds of times a day. The class is `novel`: the mechanism did not stop,
+nothing was absent from a registry, no guard went vacuous, no value was typed
+by hand and nothing was keyed wrongly. A correct check sat on the wrong
+cadence, and the cost was paid by the host it was checking.
+
+The three modules are now OPT IN through `railway/tests/live_host.py`:
+`require()` skips with a reason that begins "UNKNOWN, NOT RUN" unless
+`ALT_LIVE_TESTS=1`, and the exact string "1" is the only value that arms it,
+because a GitHub Actions `env:` block writes an empty string when its
+expression evaluates to nothing. `live-surface-check.yml` is the one run that
+sets it: four times a day on a schedule, one module after another rather than
+a matrix, with `concurrency` so two can never overlap. It carries the same two
+"Live-data invariants were evaluated / NOT evaluated" steps as `tests.yml`,
+because `ci_alert.py` clears a `<workflow>:live.data` incident on a green run
+of the workflow that raised it and a run whose every check skipped must not be
+that run. `tests.yml` keeps its two steps and now always reports NOT
+evaluated, which is the truth.
+
+Measured under the same probe after the change: the default suite opens ZERO
+connections to any host. A skipped live test prints its reason, so the suite
+output says in words that a live surface went unchecked rather than checked
+and found well.
+
+The guard is a runtime measurement, not a grep, and it carries its own
+positive control: `TheBlockerActuallyBlocks` runs a module whose only
+statement is a fetch of a deliberately unresolvable host and requires that it
+be recorded. Proven red by mutation: with `live_host.require()` removed from
+`test_subscriber_routes_live` the guard fails on
+`test_subscriber_routes_live opened 5 connection(s) with ALT_LIVE_TESTS unset`,
+with no packet leaving the machine. A static half (`EveryFetcherIsRegistered`)
+parses every test module with `ast` and requires any module that builds a
+request to the live host, or calls one of the entry points in
+`live_host.LIVE_DOORS` with no injected transport, to be registered in
+`LIVE_MODULES`; it is parsed rather than grepped because the first version
+matched `reader_freshness.check()` inside a docstring.
+
+Not settled here: the scheduled JOBS that read the host (data-integrity,
+reader freshness, the daily burst at 15:18) are out of this change's scope and
+are still the next thing to count. And the rendered groups start a real Chrome,
+which is not a Python socket: what the browser itself fetches while rendering a
+fixture is not visible to `netblock.py`.
+
+## 2026-09-13 - The corrections log said WHAT was removed and never HOW MANY JOBS, so two correct removals reddened every branch
+
+**Class:** novel
+**Guard:** `railway/tests/test_corrections_log_job_counts.py`
+
+On 2026-09-12 `headline_movement` opened two incidents. The worldwide all-time
+figure fell 87,685 jobs in a day and the AI-attributed figure fell 30,000. Both
+were fully explained by two deliberate, correct, already-disclosed removals: an
+Amazon row of 30,000 (row 179276, removed by two-model adjudication) and a
+Grupo Volkswagen row of 60,000, against +2,315 jobs of genuine new entries on
++8 entries. Minus 90,000 plus 2,315 is exactly the observed minus 87,685, with
+nothing left over.
+
+The guard could not reach that conclusion and said so in its own words: "the
+corrections log discloses 2 row(s) removed or merged in this window, which is a
+CANDIDATE explanation and not a verdict (the log records rows, never their job
+counts)". So it stayed FAIL, every branch in the repo went red, a merged pull
+request was blocked, and the owner was woken to run a close command for a
+defect that did not exist.
+
+The cause is one missing field. `alt_log_correction()` recorded an action, a
+row COUNT, a reason and a detail. The site was disclosing the fact of a removal
+and never its magnitude, which is enough to name a cause and never enough to
+settle one. The class is `novel` because none of the existing shapes fits: the
+mechanism did not stop, nothing was absent from a registry, no guard went
+vacuous, and no derived value was typed by hand. A correct guard was starved of
+a measurement that only the writer could take, at the one instant it could be
+taken, and it degraded honestly rather than silently, which is why this cost a
+night rather than a wrong number.
+
+The log now carries a jobs total. The three call sites that REMOVE or MERGE
+rows sum `job_count` BEFORE the rows are deleted: `alt_api_trash` (the ids,
+post_ids and row_ids spaces, each read while the row still exists, because
+`wp_trash_post` cascades), `alt_dedup_undated_cleanup` (summed off its own
+cursor) and `alt_api_merge_events` (which has computed `net_jobs_removed` since
+it shipped and until now spent it only on a sentence). Enrichment and
+reclassification move no jobs and pass nothing.
+
+**ABSENT MEANS UNKNOWN AND NEVER ZERO**, at the writer and at every reader.
+That is the rule the whole change turns on, because a reader that defaults a
+missing figure to 0 would "account for" a removal that took nothing out and
+publish a confident wrong verdict, which is strictly worse than the refusal it
+replaced. The writer omits the key entirely when nothing was measured, and
+`alt_api_corrections` omits the field rather than serialising a 0. The same-day
+collapse is the one place a zero could have been manufactured: a measured
+30,000 accumulated with an unmeasured call is not 30,000 removed, so the merged
+entry LOSES its figure. A partial sum published as a total would be subtracted
+by a guard and would clear a real defect, so one unreadable row makes the whole
+call unmeasured. Historical entries carry no figure and never will.
+
+`account_for_disclosures()` in `data_integrity.py` does the arithmetic and has
+three outcomes, not two: PASS when the residual is inside the floor or inside
+what the ARRIVING rows carry (the removed rows leave the entry allowance
+because their jobs were subtracted explicitly), FAIL exactly as before when the
+disclosure falls short, and UNKNOWN naming the entry when the window holds a
+removal with no job total. An unreadable log leaves the FAIL standing, because
+a network blip is not evidence and promoting a FAIL to UNKNOWN on one would
+hand every real defect a way out. The UNKNOWN is `suppressed`, so the recorder
+cannot turn an unaccountable reading into tomorrow's normal.
+
+`headline_containment` deliberately does NOT use the new field. A containment
+number is a difference between two slices, and a removal disclosed against the
+corpus does not say which side of that boundary it sat on, so there is still no
+subtraction to do there.
+
+The figure is also shown to readers: "1 entry removed, 60,000 jobs" is the
+disclosure a reader needs and "1 entry removed" is not. It renders through
+`array_key_exists`, so a measured 0 prints and an absent figure prints nothing
+rather than the words "0 jobs".
+
+Red first, on the pre-change tree: 15 failing, the first assertion being
+`TheAccounting.test_the_night_of_2026_09_12_is_fully_accounted_for` with
+`AttributeError: module 'data_integrity' has no attribute
+'account_for_disclosures'`, then
+`test_the_trash_endpoint_discloses_its_job_total` with `AssertionError: 'jobs'
+not found in "('removed', array_merge($out['trashed_posts'],
+$out['deleted_rows']), $reason)"`. The writer tests EXECUTE `db.php` through
+the php binary rather than grepping it, so "absent stays absent" is a measured
+property of the stored entry and of the JSON the endpoint serves.
+
 ## 2026-09-12 - The contact form's script never reached a single visitor, and the markup around it did
 
 **Class:** silent-stop

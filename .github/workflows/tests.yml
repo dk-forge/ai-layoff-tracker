@@ -134,6 +134,14 @@ jobs:
           # lives in the `rest` group, which is why the three steps below are
           # scoped to that group: see them for what reads this and why it is
           # not enough for this job to simply be green.
+          #
+          # SINCE 2026-09-13 THIS IS ALWAYS 'unknown' HERE, AND THAT IS RIGHT.
+          # The ordinary suite opens no connection to the deployed site (the
+          # host fell over twice in twelve hours under load these runs were
+          # part of). The live modules gate on ALT_LIVE_TESTS, which only
+          # live-surface-check.yml sets, and that workflow carries these same
+          # two verdict steps. The steps stay here so a green push can never
+          # be read as having looked at the live numbers.
           LIVE_DATA_VERDICT_FILE: ${{ runner.temp }}/live-data-verdict.txt
         run: |
           set -o pipefail

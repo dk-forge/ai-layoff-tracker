@@ -35,6 +35,7 @@ from pathlib import Path
 from shutil import which
 
 import jsrun
+import live_host
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "wordpress-plugin/ai-layoff-tracker"
@@ -671,6 +672,19 @@ class RenderedPageHeadingTests(unittest.TestCase):
              "publisher-tools/", "ai-quotes/", "report/")
 
     _cache = {}
+
+    def setUp(self):
+        # SEVEN PAGES, THREE TESTS, TWENTY ONE CONNECTIONS A RUN. Every one of
+        # them went to asktherecruiter.com on every push and every pull
+        # request until 2026-09-13, when the shared hosting account went down
+        # twice in twelve hours under load. Nothing below is weakened: the
+        # deployed <h1> and the browser tab still have to agree, and the tab
+        # is still the only place the wp_posts migration can be proved. The
+        # check runs on a schedule now rather than on every commit.
+        #
+        # The gate is in setUp rather than in _fetch so that a page is never
+        # requested to find out whether we were allowed to request it.
+        live_host.require(self, "the deployed secondary pages")
 
     def _fetch(self, page):
         if page not in self._cache:

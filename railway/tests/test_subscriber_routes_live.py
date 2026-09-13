@@ -51,6 +51,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import subscriber_routes
 from subscriber_routes import FAIL, PASS, UNKNOWN
 
+import live_host
+
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 PLUGIN = REPO / "wordpress-plugin" / "ai-layoff-tracker"
@@ -245,6 +247,13 @@ class TheLiveRoutesAnswer(unittest.TestCase):
     """
 
     def test_live(self):
+        # This probes five deployed routes, so it cost five connections to
+        # asktherecruiter.com on every push and every pull request until
+        # 2026-09-13, when the account went down twice in twelve hours under
+        # load our own suites were part of. It is a real check of a real
+        # surface and it keeps every assertion it had; it just runs on a
+        # schedule now instead of on a trigger that fires all day.
+        live_host.require(self, "the deployed subscriber routes")
         result = subscriber_routes.check()
         if result.verdict == UNKNOWN:
             self.skipTest(f"site not reachable from here, NOT passing: {result.detail}")
