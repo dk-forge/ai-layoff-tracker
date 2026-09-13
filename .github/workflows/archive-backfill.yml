@@ -65,7 +65,7 @@ permissions:
 
 jobs:
   backfill:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Sized from measurement, 2026-08-05: runtime is bimodal - median 2.7
     # min but a legitimate 41.1-min run sat at 91% of the old 45 ceiling.
     # ~3x the slow mode: 120.

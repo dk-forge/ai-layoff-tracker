@@ -55,7 +55,7 @@ concurrency:
 
 jobs:
   measure:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Measured 2026-08-18 from a laptop: four denominator sources, seven file
     # or API requests in total, plus eight /aggregate reads. Under a minute
     # cold. 15 leaves room for a slow statistics office without letting a hung

@@ -14,7 +14,7 @@ on:
 
 jobs:
   hi-warn:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
@@ -48,7 +48,12 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
         run: '[ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }'
       - name: Install tesseract (system)
+        # Once per box on the self-hosted runner, every run on a GitHub image.
         run: |
+          if command -v tesseract >/dev/null 2>&1; then
+            echo "tesseract already present: $(tesseract --version 2>&1 | head -1)"
+            exit 0
+          fi
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr
       - name: Install deps

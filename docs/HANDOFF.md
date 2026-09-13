@@ -6,6 +6,9 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **Claude, 2026-09-13 late afternoon, VPS/traffic/handover session:** branch
+  `ci/host-jobs-run-on-the-vps` (PR open, unmerged) moves every host-touching
+  workflow to the Contabo self-hosted runner; no plugin version claimed.
 - **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
   branch: `codex/host-readiness-preflight`, based on `origin/main` at

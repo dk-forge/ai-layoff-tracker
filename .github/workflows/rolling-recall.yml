@@ -54,7 +54,7 @@ concurrency:
 
 jobs:
   measure:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Measured 2026-08-17 on a cold cache: 12 enumeration requests, ~215
     # document fetches and ~45 API lookups, all at a 0.15s courtesy delay,
     # in about 6 minutes. 40 leaves room for a slow SEC day without letting a

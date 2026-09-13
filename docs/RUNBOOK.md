@@ -87,6 +87,69 @@ Every dormant source ships DORMANT and exits clean when its key is absent, so
 adding a key is the only step to activate it. First run each in `dry_run=1` and
 read the diagnostics (they log the raw API status) before trusting live output.
 
+## Which jobs run on the VPS and why (2026-09-13)
+
+**Anything that reads or writes asktherecruiter.com runs on the Contabo VPS
+(173.249.57.163), never on a GitHub-hosted runner.** ChemiCloud's Imunify360
+bot protection challenges every datacenter address. From a GitHub-hosted
+runner a live call gets HTTP 403, or an HTML "One moment, please" page on a
+2xx, and a job that reads that as an answer exits green having done nothing:
+`archive-backfill` on 2026-09-13 10:23 was "success" and re-checked zero rows.
+The owner whitelisted ONE fixed address, that VPS, and registered it as a
+self-hosted runner in both tracker repos (labels `self-hosted, Linux, X64,
+contabo`; names `atr-runner-ai-layoff-tracker` and
+`atr-runner-talent-intelligence-tracker`).
+
+The rule, per workflow, in `.github/workflows/`:
+
+- **Class (a), touches the host** (`WP_SITE_URL`, `host_call`,
+  `endpoint_check`, `reader_freshness`, any curl to the site, the lftp deploy,
+  `/add`, `/bulk`, `/query`, the REST API): `runs-on: [self-hosted, linux,
+  contabo]`. 72 workflows here, including `deploy-plugin`,
+  `live-surface-check`, every collector, every correction, `data-integrity`,
+  `health-digest`, `digest-send`, `backup-export` and `contrast-audit`.
+- **Class (b), never touches the host** (repo-only checks, DNS and IMAP mail
+  checks, Resend mail, GitHub API only): stays on `ubuntu-latest`. That is
+  `tests`, `card-contract`, `style-standard`, `version-collision`,
+  `subscriber-backup-drill`, `ci-alert`, `ci-alert-selftest`, `alert-drain`,
+  `ci-noise-report`, `self-heal`, `mail-auth-watch`, `dmarc-report-check`,
+  `mailbox-janitor`, `opsmail-selftest`, `archive-sources` (Wayback only),
+  `nc-warn-check`, `jobindsats-key-probe`,
+  `official-connector-credential-smoke`, and the dry-run and A/B harnesses
+  (`ab-ai-causation`, `ab-extraction-models`, `hi-warn-dryrun`,
+  `warn-llm-probe`, `wv-warn-dryrun`), which carry `WP_API_KEY` but call no
+  route.
+- `ci-alert` and `alert-drain` stay on GitHub on purpose: they are the alarm,
+  they deliver through Resend, and an alarm about the VPS runner must not
+  queue behind the VPS runner. `self-heal` stays because it runs an
+  autonomous agent with `gh` and a merge gate; the one whitelisted address
+  should not also be the box that agent gets a shell on.
+- The Railway cron (`railway/railway.toml`) is not a GitHub job and is not
+  affected.
+
+**One runner serialises everything.** GitHub's scheduler already delays cron
+jobs by hours and then fires them in a bunch, which is part of what overloads
+the shared host, so the queue is a feature. `timeout-minutes` counts from job
+START, not from queueing, so a long wait cannot expire a job. Every class (a)
+workflow with a `concurrency:` block has `cancel-in-progress: false`; the
+`cancel-in-progress: true` groups are all class (b) push/PR workflows.
+
+**What the VPS has and lacks.** Ubuntu 24.04, system Python 3.12, Node 22,
+git, jq, curl, lftp, php-cli. `actions/setup-python` works (it downloads into
+the runner's tool cache on first use). Installs that a GitHub image gave for
+free are now guarded with `command -v` so they run once per box:
+`hi-warn-import` (tesseract), `ftp-target-probe`, `find-site-css` and the
+deploy (lftp); `deploy-plugin` skips `setup-php` when
+`runner.environment == 'self-hosted'`. Two jobs need something the VPS does
+not ship: **`contrast-audit` needs a Chrome binary** (`CHROME_BIN` or
+`google-chrome-stable` on PATH; its first step fails loudly until one is
+installed) and **`backup-export` needs the `gh` CLI** for `gh release`.
+
+**Proving a move.** A green run is not proof until the runner has taken one
+scheduled job: `gh run list --workflow=<name> -L 1 --json runnerName` shows
+`atr-runner-ai-layoff-tracker` when it did. Do not dispatch several by hand
+at once; they will queue, and the host is what the queue protects.
+
 ## Runner minutes: caching, cancelling, and the arithmetic (the sandbox pattern)
 
 **Both tracker repos are PUBLIC, so their Actions minutes are free and always
