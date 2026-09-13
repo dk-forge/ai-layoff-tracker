@@ -41,13 +41,13 @@
       "state": "pending"
     },
     {
-      "consecutive": 1,
+      "consecutive": 2,
       "first_deferred_at": "2026-09-12T10:47:42+00:00",
       "job": "canonical-event-migrate",
-      "last_deferred_at": "2026-09-12T10:47:42+00:00",
-      "last_key": "34689335967:1",
+      "last_deferred_at": "2026-09-13T11:53:18+00:00",
+      "last_key": "34755566662:1",
       "last_reason": "POST https://asktherecruiter.com/blog/wp-json/layoffs/v1/event-migrate: HTTP 504 from the host: error code: 504",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/34689335967",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/34755566662",
       "state": "pending"
     },
     {
@@ -160,6 +160,6 @@
       "state": "resolved"
     }
   ],
-  "updated_at": "2026-09-13T10:24:04+00:00",
+  "updated_at": "2026-09-13T11:53:18+00:00",
   "version": 1
 }
