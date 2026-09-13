@@ -116,9 +116,17 @@ def declared_collectors(path=HEALTH_JS):
 
 
 def reporting_collectors(health):
-    """Every id present in the live health ledger, whatever its status."""
-    return tuple(sorted(k for k, v in (health or {}).items()
-                        if isinstance(v, dict)))
+    """Every id present in the live health ledger, whatever its status.
+
+    `None` means the ledger was never read (the host was unreachable, or the
+    caller ran egress-blocked) and is NOT an empty ledger. Diffing the declared
+    list against "nothing answered" names every collector as never reported,
+    which is exactly the true-but-empty signal this module exists to refuse.
+    """
+    if health is None:
+        raise ValueError("the health ledger was not read, so which collectors "
+                         "report is UNKNOWN")
+    return tuple(sorted(k for k, v in health.items() if isinstance(v, dict)))
 
 
 #: Declared collectors whose FIRST run is scheduled for a date that has not
@@ -263,7 +271,8 @@ def summary(health, path=HEALTH_JS):
     except ValueError as exc:
         out["unimplemented"] = None           # UNKNOWN, never an empty pass
         out["unimplemented_error"] = str(exc)
-    out["reporting_collectors"] = len(reporting_collectors(health))
+    out["reporting_collectors"] = (None if health is None
+                                   else len(reporting_collectors(health)))
     return out
 
 

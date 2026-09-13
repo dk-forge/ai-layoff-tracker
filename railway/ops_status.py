@@ -1541,7 +1541,7 @@ def main():
     print("\n[2c] SOURCE INVENTORY  (what SHOULD exist, vs what reports)")
     try:
         import source_inventory as _si
-        _inv = _si.summary(health or {})
+        _inv = _si.summary(health)  # None stays None: unread is UNKNOWN, not empty
         print(f"    {_inv['jurisdictions_collected']} of {_inv['jurisdictions']} "
               f"US jurisdictions have a WARN collector; no public register in: "
               f"{', '.join(_inv['jurisdictions_uncollected'])}")

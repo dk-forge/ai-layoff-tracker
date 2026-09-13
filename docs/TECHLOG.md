@@ -1,3 +1,26 @@
+## 2026-09-13 - An unread health ledger was reported as 39 collectors that never reported
+
+**Class:** true-but-empty signal
+**Guard:** `railway/tests/test_inventory_unread_ledger_is_unknown.py`
+
+An egress-blocked cloud session ran `ops_status.py`. Section `[2]` printed
+HEALTH UNREACHABLE, and section `[2c]` then printed ACTION NEEDED: "39
+collector(s) declared but never reported". Nothing had been read. The section
+passed `health or {}` into `source_inventory.summary`, so an unreachable
+ledger became an empty one and every declared collector was diffed against
+nothing. The one check whose whole purpose is refusing true-but-empty signals
+was manufacturing one out of its own blindness.
+
+Fix: `reporting_collectors(None)` raises, `summary(None)` reports
+`never_reported = None` (UNKNOWN) with the reason, and ops_status hands the
+ledger through untouched. An answered, genuinely empty ledger (`{}`) still
+names every declared collector, because that one is a real finding. The
+same session found the mailbox janitor red on escalated subjects (a Railway
+"deployment crashed" notice and Sentry alerts from the sandbox project) and
+`evidence-hash-backfill` red on four host 504s in a row at 12:13 UTC; both
+are the host and the sibling app, not this repo, and are left for the
+operator holding the baton.
+
 ## 2026-09-13 - A bot wall answered for the host, and the run said "JSON"
 
 **Class:** silent-stop
