@@ -40,7 +40,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   dates, prepare adjudication inputs without running referees, and read the
   private benchmark's dates.
 
-- **Previous: FREE (2026-09-13) — Railway overlap type repair is production-closed.**
+- **Previous: FREE (2026-09-13), Railway overlap type repair is production-closed.**
   Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
   PR #336 is merged and no plugin version is reserved. A new session must claim
   the baton and branch from current `origin/main` before editing.
