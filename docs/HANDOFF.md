@@ -6,6 +6,12 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VPS watchdog opened as a side PR (Claude, 2026-09-13 late afternoon):**
+  branch `ops/vps-watchdog` adds `vps-heartbeat.yml` (on the Contabo runner box),
+  `vps-watch.yml` (off it, hourly, mails `vps:offline:<repo>` and
+  `vps:heartbeat-stale` through `ops_notify`), `railway/vps_watch.py` and its
+  test. No plugin version, no host request. The baton is NOT claimed here;
+  the owner merges. RUNBOOK "the VPS watchdog fired".
 - **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
   Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
   branch: `codex/host-readiness-preflight`, based on `origin/main` at
