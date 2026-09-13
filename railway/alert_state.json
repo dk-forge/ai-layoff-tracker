@@ -87,6 +87,11 @@
       "last": 1789301811,
       "subject": "CI RED: Self-heal \u2014 Action failed with error: Claude execution failed: result is_error:true"
     },
+    "source-archive-backfill:main:a22c8b6bc32cfc50": {
+      "first": 1789315800,
+      "last": 1789315800,
+      "subject": "CI RED: Source-archive backfill \u2014 requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -108,6 +113,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-13T16:08:04+00:00",
+  "updated_at": "2026-09-13T16:10:01+00:00",
   "version": 1
 }
