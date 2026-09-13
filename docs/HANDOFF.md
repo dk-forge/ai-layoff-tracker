@@ -40,6 +40,89 @@ holder, so the start-of-session ritual surfaces it automatically.
   dates, prepare adjudication inputs without running referees, and read the
   private benchmark's dates.
 
+  **Findings of this session (2026-09-13, all offline; nothing touched the host).**
+
+  1. **PR #338 review (not merged).** Diff read line by line. Its two suites
+     pass locally on the project venv: `test_seen_urls_precheck.py` 9/9 and
+     `test_cost_funnel.py` 27/27. TECHLOG entry carries `Class: unmetered-spend`
+     and a Guard line; the slug exists in `docs/INCIDENT_CLASSES.md`. No em or
+     en dash on any added code or TECHLOG line; the one em dash added is in
+     the HANDOFF baton heading, which follows the file's own heading style.
+     The sentinel probe is read-only on the server: `alt_api_seen_urls` runs
+     two SELECTs and writes nothing. No collector in cron's table makes a paid
+     call before the probe, so "before the first model call" holds.
+     Reviewer notes, none blocking: (a) the stop is `SystemExit` (exit 1) with
+     no ledger write, so a deferral is visible only in Railway's log; the
+     Railway cron cannot write `railway/deferral_ledger.json`, so this is the
+     ceiling, not an omission, but nothing emails on it. (b) "the overlapping
+     windows can offer them again" is true for the newest 24h of a 36h window
+     at a daily cadence; the oldest 12h of a deferred run's candidates are
+     not re-pulled by the next run. (c) One 30s probe is one sample; a single
+     edge blip defers the whole run. Acceptable given (b) and the alternative
+     of spending $0.16 into a dead host. (d) #338's HANDOFF.md will conflict
+     with this branch's baton entry; resolve by keeping this entry and folding
+     Codex's paragraphs under it. Verdict: READY on code and tests; blocked
+     only by its red live shards, which are the host outage itself.
+  2. **Offline proof of the stop's shape.** New
+     `railway/tests/test_host_readiness_stop.py` (this branch): with
+     `publishing_host_ready` stubbed False, `cron.run()` exits non-zero naming
+     the deferral, `spend.metered_call` is a tripwire that is never reached,
+     gate/extractor/poster are at zero calls, `filter_already_seen` is never
+     consulted so no URL is marked, and the candidates are exactly as pulled.
+     With it stubbed True the pipeline is untouched (2 gated, 2 extracted, 2
+     posted). Red on main: `AttributeError: module 'cron' does not have the
+     attribute 'publishing_host_ready'` (all three tests). Green on the #338
+     tree: 3/3. It is intended to land after #338; until then it is a red
+     that says exactly what is missing.
+  3. **GDELT seven-clean-runs-in-fourteen-days gate: zero clean runs so far.**
+     First eligible run is 2026-09-13 22:00 UTC (the first scheduled run after
+     deployment `b237d665`, which reached SUCCESS at 2026-09-12 23:49 UTC).
+     Evidence read: `railway/spend_jobs.json` holds `railway-cron` end-of-run
+     records through 2026-09-10; 2026-09-11 (SIGTERM'd by a code deploy) and
+     2026-09-12 (504s, $0.1598 for 0 posted) have none, which is what
+     `run_completion.py` uses to call a run dead rather than a dropped POST.
+     `railway/deferral_ledger.json` never carries the Railway cron (it holds
+     six pending GitHub jobs, all "host never answered", since 2026-09-12/13).
+     `gdelt_work_ledger.json`: 154 slots, 13 complete, 1 partial, 140
+     superseded, last update 2026-09-11T10:04Z. Earliest the gate can pass:
+     **2026-09-27 22:00 UTC**, if tonight's run and six more within the span
+     are clean; every failed run pushes that date by one day per day lost.
+     Open question for the owner: whether merging #338 (a Railway code deploy)
+     restarts the clock; Codex's text keys the clock to `b237d665` only.
+     Tonight's 22:00 UTC run goes out WITHOUT #338 and the host has failed
+     three times in 20 hours, so it may repeat September 12's paid failure.
+     Pausing the Railway cron until the host is stable is an owner call.
+  4. **Adjudication inputs for the 67 to 69 shape candidates and 12 dateless
+     rows: BLOCKED offline.** Nothing in the repo records them:
+     `duplicate_shape_scan.py` reads the live `/query` API only and writes no
+     file, and the HANDOFF figures came from live reads on 2026-09-11/12.
+     `adjudicate_row.py` (the two-referee machinery) needs, per row: the row
+     id, a `--company` filter (it fetches the row from the live API), the
+     row's `archived_url` or `source_url` (it fetches the evidence text from
+     the outlet), `OPENROUTER_API_KEY`, and spend approval for two short calls
+     per row (about 160 calls for the full list). The only offline copy of
+     the table is the GitHub Release backup (`backup_state.json`, plugin
+     2.20.173, 2026-09-06), which predates the September 12 corrections and
+     was not downloaded this session. To prepare inputs without the host:
+     download that backup, add an offline `--from-backup` reader to the shape
+     scan, and emit the row list. Not done here; it is code the owner may not
+     want. UK/Estonia/Taiwan recall re-measurement: blocked on the host.
+  5. **Private benchmark (read locally, nameless).**
+     `railway/benchmark_freshness.py` exit 2, STALE: our side has no refresh
+     stamp; the comparator inputs are oldest 2026-08-24 (20 days), newest
+     2026-09-07 (3 auto, 2 manual); four hand-written ratio claims stamped
+     2026-09-06 predate the last denominator re-check (2026-09-07) and must
+     not be quoted. Dimensions present: full field, weekly claim changes, AI
+     attribution, H1 US report comparison, US monthly, US sector, reason mix,
+     US states, standing position, breadth, US total and tech event count,
+     country master lookup, sources and what each measures. Dimensions
+     absent, per the restart checklist: date basis per comparator (announced
+     vs effective vs notice date), amendment handling, notice-vs-effective
+     semantics, an explicit source-class matrix per comparator, and a
+     Europe-scoped comparison against the Europe-first register named in
+     `docs/COMPETITOR_BENCHMARK_2026-09-12.md`. Refresh is by hand and
+     needs the live API for our side; blocked on the host.
+
 - **Previous: FREE (2026-09-13), Railway overlap type repair is production-closed.**
   Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
   PR #336 is merged and no plugin version is reserved. A new session must claim
