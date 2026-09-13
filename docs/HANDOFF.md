@@ -6,7 +6,41 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **FREE (2026-09-13) — Railway overlap type repair is production-closed.**
+- **HELD by Claude, 2026-09-13 late afternoon, VPS/traffic/handover session.**
+  Worktree: `/tmp/wt-lay-handover`; branch: `claude/handover-2026-09-13`,
+  based on `origin/main` at `1bb1bc45`. No plugin version is reserved: this
+  session does not touch `wordpress-plugin/`.
+
+  **Taken over from Codex's closeout.** On `origin/main` this entry read FREE
+  (written after PR #336 merged, 01:49 CEST). Codex's still-open branch
+  `codex/host-readiness-preflight` (PR #338) carries a later HELD entry
+  (02:55 to 05:27 CEST) that never reached main because #338 is unmerged. This
+  entry supersedes both. What is being taken over, in Codex's own terms:
+  - PR #338 is implementation-complete at `7f2fc94a` and its release gate is
+    BLOCKED by the live host (HTTP 504 across tracker API, archive and
+    subscriber routes on three reruns of `34729643938` and on the serialized
+    experiment `34735198979`, since reverted in `775da8bf`). Codex asked that
+    the package not be recreated or superseded and that checks not be bypassed.
+  - The September 12 22:00 UTC scheduled run is FAILED, not proof: 1,101
+    candidates, 0 posted, 75 post failures, $0.1598 over 1,544 model calls.
+    The seven-clean-runs-across-fourteen-days GDELT gate has not started.
+  - `codex/fix-railway-overlap-type` is the branch behind merged PR #336;
+    nothing on it is outstanding. Neither Codex branch may be force-pushed or
+    rewritten.
+  - Open and deliberately unmerged until the host answers: #335 (corrections
+    log carries job counts), #339 (offline suite opens no connection to the
+    deployed site, stacked on #335). Talent repo hourly `tests` is disabled
+    pending its PR #138.
+
+  **Standing rule for this session.** asktherecruiter.com has been down three
+  times in 20 hours under load. This session makes NO request to it, from this
+  machine or from any CI it dispatches, merges nothing that deploys to it, and
+  spends nothing on paid models. Its work is offline only: review #338, prove
+  the readiness stop's shape with the probe stubbed, write down the GDELT gate
+  dates, prepare adjudication inputs without running referees, and read the
+  private benchmark's dates.
+
+- **Previous: FREE (2026-09-13) — Railway overlap type repair is production-closed.**
   Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
   PR #336 is merged and no plugin version is reserved. A new session must claim
   the baton and branch from current `origin/main` before editing.
