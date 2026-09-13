@@ -72,12 +72,17 @@
       "last": 1789229088,
       "subject": "CI RED: Rendered contrast audit \u2014 RESULT: FAIL \u2014 96 contrast violation(s) are live for readers (text and/or control boundaries)."
     },
+    "tests:main:7ba8f6d0b4896be7": {
+      "first": 1789259355,
+      "last": 1789259355,
+      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
+    },
     "weekly-health-digest-autonomy-tripwire:main:6df52ded92e991c5": {
       "first": 1789222225,
       "last": 1789222225,
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-12T23:48:26+00:00",
+  "updated_at": "2026-09-13T00:29:15+00:00",
   "version": 1
 }
