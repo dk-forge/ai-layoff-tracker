@@ -122,5 +122,16 @@ class RewriteFlushesCoalesce(unittest.TestCase):
                 self.assertFalse("flush_rewrite_rules(" in src, "%s still flushes itself" % name)
 
 
+class TheDailyMirrorSurvivesTheOneOff(unittest.TestCase):
+    def test_the_daily_event_is_checked_by_recurrence_not_by_any_pending_event(self):
+        """A one-off run queued by the deploy hook must not satisfy the check
+        that registers the daily one, or a fresh install never gets a daily."""
+        src = MAIN
+        i = src.index("function alt_nv_mirror_schedule()")
+        body = src[i:src.index("}", src.index("wp_schedule_event", i))]
+        self.assertIn("wp_get_schedule('alt_nv_mirror_cron') !== 'daily'", body)
+        self.assertNotIn("wp_next_scheduled('alt_nv_mirror_cron')", body)
+
+
 if __name__ == "__main__":
     unittest.main()

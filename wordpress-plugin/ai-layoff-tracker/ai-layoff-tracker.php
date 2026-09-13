@@ -790,7 +790,12 @@ function alt_nv_mirror_refresh() {
 add_action('alt_nv_mirror_cron', 'alt_nv_mirror_refresh');
 
 function alt_nv_mirror_schedule() {
-    if (!wp_next_scheduled('alt_nv_mirror_cron')) {
+    // Ask for the RECURRING event specifically. wp_next_scheduled() answers
+    // true for any pending event under this hook, and the deploy hook now
+    // queues a one-off run of the same hook ten minutes out; on a fresh
+    // install that one-off would have satisfied this check and the daily
+    // event would never have been registered.
+    if (wp_get_schedule('alt_nv_mirror_cron') !== 'daily') {
         wp_schedule_event(time() + 300, 'daily', 'alt_nv_mirror_cron');
     }
 }
