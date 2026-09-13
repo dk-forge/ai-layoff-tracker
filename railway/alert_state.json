@@ -82,6 +82,11 @@
       "last": 1789328502,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,563,505 jobs / 65,594 entries"
     },
+    "live-surface-check:live.data:8b2aad5ae1ea05cc": {
+      "first": 1789338641,
+      "last": 1789338641,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 504 \u2014 server regression, not a blip"
+    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1789306127,
       "last": 1789306127,
@@ -118,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-13T19:41:42+00:00",
+  "updated_at": "2026-09-13T22:30:41+00:00",
   "version": 1
 }
