@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.193
+ * Version:           2.20.194
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.193');
+define('ALT_VERSION', '2.20.194');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -53,6 +53,14 @@ require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
+// The US jurisdiction registry page (/ai-layoff-tracker/us-warn-registry/).
+// GUARDED with is_readable like every NEW include below: the deploy that
+// introduces it can land this main file first, and a hard require of a file
+// not yet uploaded fatals the whole plugin until it arrives (2.19.20).
+$alt_us_registry = ALT_PLUGIN_DIR . 'includes/us-registry.php';
+if (is_readable($alt_us_registry)) {
+    require_once $alt_us_registry;
+}
 // The public archive of every digest that goes out. GUARDED with is_readable
 // for the same reason as the file below: this one is NEW, so the deploy that
 // introduces it can land this main file first, and its absence must degrade to
@@ -392,7 +400,7 @@ add_action('init', 'alt_serve_indexnow_key', 0);
 function alt_indexnow_urls() {
     $t = home_url('/ai-layoff-tracker/');
     return array($t, $t . 'report/', $t . 'press/', $t . 'sources/',
-                 $t . 'ai-quotes/', $t . 'ai-tracker-health/');
+                 $t . 'ai-quotes/', $t . 'ai-tracker-health/', $t . 'us-warn-registry/');
 }
 
 /**
@@ -1198,6 +1206,7 @@ function alt_page_needs_assets() {
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report', 'alt_ai_quotes', 'alt_methodology',
+        'alt_us_registry',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
@@ -1327,6 +1336,10 @@ function alt_enqueue_assets() {
             'apiUrl' => esc_url_raw(rest_url('layoffs/v1/')),
             'widgetUrl' => esc_url_raw(home_url('/?alt_tracker_widget=1')),
             'trackerUrl' => esc_url_raw(home_url('/ai-layoff-tracker/')),
+            // The per-jurisdiction WARN registry page, linked from every WARN
+            // collector label so a reader can go from "warn_us is ok" to
+            // which of the 56 jurisdictions that run actually covers.
+            'usRegistryUrl' => esc_url_raw(home_url('/ai-layoff-tracker/us-warn-registry/')),
             // Cadence for the Railway-cron collectors, DERIVED from
             // railway.toml. health.js had 'Twice daily' typed into eight
             // collector labels and kept showing it for six days after the cron

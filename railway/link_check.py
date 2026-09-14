@@ -43,6 +43,7 @@ PUBLIC_PAGES = (
     "/ai-layoff-tracker/ai-quotes/",
     "/ai-layoff-tracker/press/",
     "/ai-layoff-tracker/publisher-tools/",
+    "/ai-layoff-tracker/us-warn-registry/",
     "/contact/",
 )
 
