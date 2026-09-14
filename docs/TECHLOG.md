@@ -29,7 +29,7 @@ operator holding the baton.
 
 **Why.** The repo is public and the brand is standalone; competitor names and numbers must never enter the repo or CI logs (CLAUDE.md, "Competitor data stays private"). A benchmark refresh on 2026-09-12 wrote them straight into `docs/` and the baton file, and two sessions read past it. Git history still holds the file; rewriting a public repo's history is the owner's call and is not done here.
 
-**Guard.** None added in this PR beyond the restated rule; the existing test scans test fixtures, not docs. A docs scan for the banned list is the obvious follow-up and is noted in the owner list.
+**Guard.** `railway/tests/test_no_competitor_names_in_docs.py` walks `docs/`, `wordpress-plugin/` and the README for a case-insensitive banned list and fails on any hit; it is proven against a planted name and refuses to pass on an empty walk. The existing `test_recall_goldset.py` check keeps reading the fixture; this one reads the prose.
 
 ## 2026-09-13 - A bot wall answered for the host, and the run said "JSON"
 
