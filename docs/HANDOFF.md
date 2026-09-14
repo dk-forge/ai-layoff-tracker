@@ -139,17 +139,18 @@ holder, so the start-of-session ritual surfaces it automatically.
   the remaining duplicate/archive worklists are still open. Never call the
   tracker top-three until those measurements support it.
 
-  **Benchmark refresh (2026-09-12).** `docs/COMPETITOR_BENCHMARK_2026-09-12.md`
-  records current public comparisons. WARN Act Tracker claims all 50 states
-  and DC; WARNScan claims all 50 states; LayoffAlert reports 44 states; and
-  EuroLayoffs reports a Europe-first curated register. These are not directly
-  comparable because their date bases, amendments, event definitions and
-  source policies differ. The refresh identifies the required comparison
-  dimensions but does not substantiate a top-three ranking.
+  **Benchmark refresh (2026-09-12).** The public-tracker comparison taken
+  that day lives in the LOCAL private benchmark only (`scratchpad/`, never
+  committed): competitor names and figures do not enter this repo, by the
+  standing rule. In nameless terms: several public US WARN trackers claim
+  50-state coverage and one European register claims a curated Europe-first
+  scope; none is directly comparable because date bases, amendments, event
+  definitions and source policies differ. The refresh identifies the required
+  comparison dimensions but does not substantiate a top-three ranking.
 
   **Restart checklist for the next ChatGPT session.** Start in this worktree,
   run `git status` and `git log --oneline -5`, then claim the baton before
-  editing. Read `docs/TECHLOG.md`, `docs/COMPETITOR_BENCHMARK_2026-09-12.md`,
+  editing. Read `docs/TECHLOG.md`, the local private benchmark,
   and the latest `railway/ops_status.py` output. Do not use the unrelated parent
   sandbox as the tracker repository. Do not replay the weekly digest manually.
 

@@ -21,6 +21,16 @@ same session found the mailbox janitor red on escalated subjects (a Railway
 are the host and the sibling app, not this repo, and are left for the
 operator holding the baton.
 
+## 2026-09-14 - Competitor names were committed to this public repo for two days; removed, rule restated
+
+**Class:** novel
+
+**What.** `docs/COMPETITOR_BENCHMARK_2026-09-12.md` (a 46-line table naming four public trackers with their claimed figures) is deleted from the repo, and the two paragraphs in `docs/HANDOFF.md` that quoted those names are rewritten nameless. The table itself now lives only in the local private benchmark directory (`scratchpad/`, gitignored), which is where the standing rule has always put it. `railway/tests/test_recall_goldset.py` keeps its banned-word list: that is the guard, not a leak.
+
+**Why.** The repo is public and the brand is standalone; competitor names and numbers must never enter the repo or CI logs (CLAUDE.md, "Competitor data stays private"). A benchmark refresh on 2026-09-12 wrote them straight into `docs/` and the baton file, and two sessions read past it. Git history still holds the file; rewriting a public repo's history is the owner's call and is not done here.
+
+**Guard.** None added in this PR beyond the restated rule; the existing test scans test fixtures, not docs. A docs scan for the banned list is the obvious follow-up and is noted in the owner list.
+
 ## 2026-09-13 - A bot wall answered for the host, and the run said "JSON"
 
 **Class:** silent-stop
