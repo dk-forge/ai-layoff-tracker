@@ -20,6 +20,52 @@ same session found the mailbox janitor red on escalated subjects (a Railway
 `evidence-hash-backfill` red on four host 504s in a row at 12:13 UTC; both
 are the host and the sibling app, not this repo, and are left for the
 operator holding the baton.
+## 2026-09-13 - The deploy's own first request was the load event, and the deploy then amplified it with a purge
+
+**Class:** novel (the shape: the deploy's own first request is a load event that the deploy then amplifies with a purge)
+**Guard:** `railway/tests/test_deploy_first_request_is_cheap.py`
+
+Every outage on the weekend of 2026-09-12/13 began within minutes of a plugin
+deploy. FTP deploys bypass WordPress's updater, so the first visitor request
+after a version bump runs `alt_flush_caches_on_deploy()` on one PHP worker.
+Read end to end, that request did: eleven `dbDelta`s via `alt_db_install()`,
+three `COUNT(*)` via `alt_record_dataset_release`, a `DELETE FROM wp_options
+WHERE option_name LIKE ...` full scan with four predicates,
+`alt_dedup_undated_cleanup()` (a correlated EXISTS self-join over the 65k-row
+layoffs table, then `wp_trash_post` per hit, each re-flushing caches),
+`alt_nv_mirror_refresh()` (an outbound `wp_remote_get` to detr.nv.gov with
+`timeout => 45`, downloading a multi-MB PDF inside the visitor's request),
+two `wp_cache_clear_cache()`, `litespeed_purge_all`, and then FIVE separate
+`flush_rewrite_rules(false)` calls from five modules' own init priority 99
+hooks. The same request also ran `alt_ensure_schema_once` and the htaccess
+ensure step, which can make a loopback request to `/stats` with a 15 second
+timeout. Then `deploy-plugin.yml` purged Cloudflare, so every reader arrived
+at the origin at once and queued behind that held worker. On a shared host
+with a per-account entry-process and CPU ceiling, the account pins.
+
+2.20.193 makes the three cheapest cuts, each pinned by the guard test:
+
+- the Nevada mirror leaves the deploy request. The hook now calls
+  `wp_schedule_single_event(time() + 600, 'alt_nv_mirror_cron')`, guarded by
+  `wp_next_scheduled` so no duplicate is queued. The mirror still refreshes
+  ten minutes later; the daily cron on the same hook is unchanged;
+- the `wp_options` LIKE sweep and `alt_dedup_undated_cleanup()` run at most
+  once per calendar day, behind `alt_deploy_sweeps_ran_on` (today's `Y-m-d`),
+  written AFTER they run so a request that dies mid-sweep retries. Three
+  deploys in one night now run them once; the first deploy of a day still
+  runs them;
+- the five rewrite flushes coalesce. Each caller keeps its own version option
+  (its "I need a flush" signal is untouched) but calls
+  `alt_request_rewrite_flush()`, and one `init` priority 100 hook,
+  `alt_rewrite_flush_if_requested()`, flushes once if any flag is set.
+
+Deliberately NOT touched, each a separate question: `alt_db_install()` and
+its eleven `dbDelta`s, `alt_record_dataset_release` and its three counts, the
+htaccess ensure step and its loopback request, and `alt_ensure_schema_once`.
+Also open: the deploy workflow's Cloudflare purge is the amplifier, and a
+warm-before-purge or a staggered purge would address the second half of the
+shape. A plugin deploy is itself the load event, so this change ships only
+after the host has been up for two hours.
 
 ## 2026-09-14 - Competitor names were committed to this public repo for two days; removed, rule restated
 

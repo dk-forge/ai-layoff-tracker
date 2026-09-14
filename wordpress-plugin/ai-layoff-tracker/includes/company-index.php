@@ -160,7 +160,7 @@ add_filter('query_vars', function ($vars) {
 // by its own option (the shape report-seo.php and company-directory.php use).
 add_action('init', function () {
     if (get_option('alt_company_index_rewrite_version') === ALT_VERSION) return;
-    flush_rewrite_rules(false);
+    alt_request_rewrite_flush();
     update_option('alt_company_index_rewrite_version', ALT_VERSION, false);
 }, 99);
 

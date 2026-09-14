@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.192
+ * Version:           2.20.193
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.192');
+define('ALT_VERSION', '2.20.193');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -610,12 +610,24 @@ function alt_flush_caches_on_deploy() {
         && method_exists('\RankMath\Sitemap\Cache_Watcher', 'invalidate_storage')) {
         \RankMath\Sitemap\Cache_Watcher::invalidate_storage();
     }
-    $wpdb->query(
-        "DELETE FROM $wpdb->options
-         WHERE option_name LIKE '\_transient\_rank\_math\_sitemap%'
-            OR option_name LIKE '\_transient\_timeout\_rank\_math\_sitemap%'
-            OR option_name LIKE '\_transient\_wpseo\_sitemap%'
-            OR option_name LIKE '\_transient\_timeout\_wpseo\_sitemap%'");
+    // The two sweeps below are the expensive half of this hook: a LIKE scan
+    // over wp_options and a correlated self-join over the whole layoffs table
+    // (then a wp_trash_post per hit). They are idempotent and nothing in a
+    // deploy makes them more necessary than they were yesterday, so they run
+    // at most once per calendar day. Three deploys in one night ran them
+    // three times on 2026-09-12/13 and each first request held a worker while
+    // the Cloudflare purge sent every reader to that same origin. The guard is
+    // written AFTER they run, so a request that dies mid-sweep retries.
+    $sweep_day = gmdate('Y-m-d');
+    $run_sweeps = get_option('alt_deploy_sweeps_ran_on') !== $sweep_day;
+    if ($run_sweeps) {
+        $wpdb->query(
+            "DELETE FROM $wpdb->options
+             WHERE option_name LIKE '\_transient\_rank\_math\_sitemap%'
+                OR option_name LIKE '\_transient\_timeout\_rank\_math\_sitemap%'
+                OR option_name LIKE '\_transient\_wpseo\_sitemap%'
+                OR option_name LIKE '\_transient\_timeout\_wpseo\_sitemap%'");
+    }
     // Compact the historical wall of identical automated-enrichment log rows
     // into single accumulating entries (idempotent).
     if (function_exists('alt_compact_corrections_log')) alt_compact_corrections_log();
@@ -624,10 +636,20 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('alt_normalize_corrections_dashes')) alt_normalize_corrections_dashes();
     // Remove undated news/SEC rows that duplicate a dated same-size event
     // (they bypassed the date-gated dedup guard). Idempotent.
-    if (function_exists('alt_dedup_undated_cleanup')) alt_dedup_undated_cleanup();
-    // Populate the Nevada WARN mirror immediately on deploy so it is current
-    // without waiting for the daily cron (the importer reads NV from it).
-    if (function_exists('alt_nv_mirror_refresh')) alt_nv_mirror_refresh();
+    if ($run_sweeps) {
+        if (function_exists('alt_dedup_undated_cleanup')) alt_dedup_undated_cleanup();
+        update_option('alt_deploy_sweeps_ran_on', $sweep_day, false);
+    }
+    // Refresh the Nevada WARN mirror ten minutes from now, from a request that
+    // is not the deploy storm. Until 2.20.193 this was an inline wp_remote_get
+    // to detr.nv.gov with a 45 second timeout, downloading a multi-MB PDF
+    // inside the first visitor's request. The importer reads NV from the
+    // mirror, so it still refreshes on deploy; it just does not hold the
+    // worker that every purged reader is about to queue behind. The daily
+    // cron on the same hook is untouched.
+    if (!wp_next_scheduled('alt_nv_mirror_cron')) {
+        wp_schedule_single_event(time() + 600, 'alt_nv_mirror_cron');
+    }
     if (function_exists('wp_cache_clear_cache')) {
         wp_cache_clear_cache();
     }
@@ -638,6 +660,25 @@ function alt_flush_caches_on_deploy() {
     // 2026-07-15, v2.7.2). Old aggregates are harmless; AO prunes its own cache.
 }
 add_action('init', 'alt_flush_caches_on_deploy');
+
+/**
+ * One rewrite flush per request, not one per module. Five modules each keep a
+ * per-version option that says "my rewrite rules changed, flush once", and
+ * until 2.20.193 each of them ran its own rewrite flush from
+ * init priority 99, so the first request after a deploy rebuilt and saved the
+ * rewrite table five times over. Each caller keeps its own option (that is
+ * its signal, and a module must not depend on another module's flush) but
+ * raises this flag instead, and the priority-100 hook flushes once.
+ */
+function alt_request_rewrite_flush() {
+    $GLOBALS['alt_rewrite_flush_requested'] = true;
+}
+function alt_rewrite_flush_if_requested() {
+    if (empty($GLOBALS['alt_rewrite_flush_requested'])) return;
+    $GLOBALS['alt_rewrite_flush_requested'] = false;
+    flush_rewrite_rules(false);
+}
+add_action('init', 'alt_rewrite_flush_if_requested', 100);
 
 // Newest column in the wp_alt_layoffs schema. UPDATE THIS on every schema
 // change: the guard below re-runs dbDelta until this column really exists,
@@ -749,7 +790,12 @@ function alt_nv_mirror_refresh() {
 add_action('alt_nv_mirror_cron', 'alt_nv_mirror_refresh');
 
 function alt_nv_mirror_schedule() {
-    if (!wp_next_scheduled('alt_nv_mirror_cron')) {
+    // Ask for the RECURRING event specifically. wp_next_scheduled() answers
+    // true for any pending event under this hook, and the deploy hook now
+    // queues a one-off run of the same hook ten minutes out; on a fresh
+    // install that one-off would have satisfied this check and the daily
+    // event would never have been registered.
+    if (wp_get_schedule('alt_nv_mirror_cron') !== 'daily') {
         wp_schedule_event(time() + 300, 'daily', 'alt_nv_mirror_cron');
     }
 }
