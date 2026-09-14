@@ -57,11 +57,6 @@
       "last": 1789397772,
       "subject": "CI RED: Archive WARN sources to Wayback \u2014 ERROR: zero snapshots from 54 attempt(s) while the Internet Archive IS answering \u2014 this is a defect here, not an outage. Check the URL lis"
     },
-    "broken-link-check:main:9f49e0764dbe8183": {
-      "first": 1789320709,
-      "last": 1789320709,
-      "subject": "CI RED: Broken-link check \u2014 broken public page(s) detected"
-    },
     "data-quality-report-anomaly-flags:main:15edba09b39ab76b": {
       "first": 1789321569,
       "last": 1789321569,
@@ -123,6 +118,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-14T18:22:33+00:00",
+  "updated_at": "2026-09-14T19:31:44+00:00",
   "version": 1
 }
