@@ -6,6 +6,16 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Claude Code (2026-09-14 evening), worktree
+  `/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aacb03447c7e1f396`,
+  branches `claude/us-registry-and-country-tiers` (PR A, plugin 2.20.194) and a
+  sibling branch for PR B (plugin 2.20.195).** Touches ONLY the plugin
+  (`wordpress-plugin/ai-layoff-tracker/`: new US jurisdiction registry page,
+  country page coverage tiers, Sources page, `assets/health.js` `meta{}`,
+  version bump), `railway/source_inventory.py` read-only helpers if needed,
+  tests under `railway/tests/`, TECHLOG and this line. The Codex and cloud
+  holders below are inactive tonight (2026-09-14). Nothing is merged from
+  here; the coordinating session merges.
 - **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
   Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
