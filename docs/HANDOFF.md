@@ -157,6 +157,9 @@ holder, so the start-of-session ritual surfaces it automatically.
   clean between them. Also merged: #349 (cloud-session handover rules) and
   #353 (competitor names removed from the public repo, with a docs guard test).
   Nobody holds the baton; claim it before editing.
+- **Cloud session alongside (2026-09-14 evening, branch `fix/deploy-check-unknown-is-a-warning`, no plugin version).**
+  Touches only `.github/workflows/deploy-plugin.yml` (`set +e` in the three
+  status-reading verification steps), one new test and TECHLOG. Deploys nothing.
 - **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
   Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG

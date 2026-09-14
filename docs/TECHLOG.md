@@ -1,3 +1,25 @@
+## 2026-09-14 - The deploy's three-state checks died silently on UNKNOWN, because the step ran under errexit
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_deploy_check_unknown_is_a_warning.py`
+
+Three verification steps in `deploy-plugin.yml` run a checker that answers
+PASS, FAIL or UNKNOWN and branch on `STATUS=$?`: FAIL fails the deploy,
+UNKNOWN (the host could not be reached) warns, so that a host outage cannot
+manufacture red runs that manufacture alerts that also fail. Each step opened
+with `set -uo pipefail` and nothing else, and GitHub runs `run:` blocks under
+`bash -e`. Under errexit the checker's exit 3 ended the step before the line
+that reads `$?`, with exit code 3 and no annotation, which is the opposite of
+what the step documents. The 2.20.191 and 2.20.192 deploys went red that way
+on 2026-09-12/13 while the host sat behind its bot wall, and the alert ledger
+kept the bare `AssertionError` and `JSONDecodeError` causes this checker was
+written to replace, because no newer cause was ever printed.
+
+Fix: `set +e` in each of the three status-reading steps, with the reason
+beside it. The test parses the workflow and requires every `run:` block that
+reads `STATUS=$?` to turn errexit off before the command it measures. Proven
+red on origin/main. No behaviour of the checks changes: FAIL still fails the
+deploy and UNKNOWN now warns, as the comments always said it did.
 ## 2026-09-13 - Host jobs move to the whitelisted VPS runner: a green run that did nothing
 
 **Class:** true-but-empty
