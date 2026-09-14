@@ -6,24 +6,13 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Claude Code (2026-09-14 evening), worktree
-  `/Users/dakotta/Projects/atr-layoff-tracker/.claude/worktrees/agent-aacb03447c7e1f396`,
-  branches `claude/us-registry-and-country-tiers` (PR A, plugin 2.20.194) and a
-  sibling branch for PR B (plugin 2.20.195).** Touches ONLY the plugin
-  (`wordpress-plugin/ai-layoff-tracker/`: new US jurisdiction registry page,
-  country page coverage tiers, Sources page, `assets/health.js` `meta{}`,
-  version bump), `railway/source_inventory.py` read-only helpers if needed,
-  tests under `railway/tests/`, TECHLOG and this line. The Codex and cloud
-  holders below are inactive tonight (2026-09-14). Nothing is merged from
-  here; the coordinating session merges.
-  branches `claude/us-registry-and-country-tiers` (PR #351, plugin 2.20.194)
-  and `claude/country-coverage-tiers` (this PR, plugin 2.20.195).** Touches
-  ONLY the plugin (`wordpress-plugin/ai-layoff-tracker/`: US jurisdiction
-  registry page, country page coverage tiers, Sources page, `assets/health.js`
-  `meta{}`, version bump), new generators under `railway/`, tests under
-  `railway/tests/`, TECHLOG and this line. The Codex and cloud holders below
-  are inactive tonight (2026-09-14). Nothing is merged from here; the
-  coordinating session merges.
+- **RELEASED 2026-09-14 23:55 UTC (Claude Code, Mac session).** The evening's
+  two plugin PRs are merged and live: #351 (US jurisdiction registry page,
+  2.20.194) and #352 (country coverage tiers, 2.20.195), after #347 (cheap
+  deploy, 2.20.193) at 21:34 UTC, each an hour apart with the blog watched
+  clean between them. Also merged: #349 (cloud-session handover rules) and
+  #353 (competitor names removed from the public repo, with a docs guard test).
+  Nobody holds the baton; claim it before editing.
 - **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
   Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
