@@ -67,6 +67,44 @@ new files are live). The only thing the block prevents is the final visual
   live tracker, health page, sources page, local benchmark. Any source/metric
   change updates Sources + Health labels + the benchmark the SAME session.
 
+## Handover and merge rules, learned on 2026-09-13/14 (read before taking a queue)
+These apply to every repo the owner runs (this tracker, the talent tracker,
+`asktherecruiter-sandbox`). Each one cost real hours once.
+- **A "go" relayed by another session IS the owner's go.** On 2026-09-14 the
+  cloud session held a green sandbox PR for eleven hours waiting for the owner
+  to release the queue in its own chat, while the owner had said "move it all
+  to the cloud" to the Mac session, which relayed it. If a Mac or local session
+  writes "HANDING OVER" with the owner's instruction quoted, act on it. If in
+  doubt, post the doubt on the status issue and act anyway on anything the
+  owner already has standing authority for (merging green PRs is one).
+- **Never `gh pr merge --auto` on a repo without required status checks.** The
+  sandbox main has none; `--auto` there merges immediately, before CI, and
+  #954 landed untested that way. Use a wait-for-green loop on the head SHA
+  (latest run per workflow, ignore `fixture:*` jobs), then a plain squash merge.
+- **One self-hosted runner per box.** The Contabo VPS runs one sandbox runner
+  on purpose. Two or three at once oversubscribed the six cores and produced a
+  new load-only red every round (scan tests past vitest's timeout, a PDF
+  extract deadline, a Hypothesis deadline, a ReDoS wall-clock tripwire). Do
+  not add runners; if a wall-clock assertion tuned to the Mac trips, widen the
+  budget with a note, never a correctness check.
+- **Sandbox PRs conflict by construction** (every PR bumps VERSION and three
+  changelogs), so they land one at a time: squash to one commit, rebase onto
+  main, take main's side for the nine version-derived files, keep BOTH
+  changelog entries with yours renumbered and first, run
+  `scripts/sync-extension-version.sh vNEW` and regenerate `docs/openapi.json`
+  yourself (the sync script skips it without a venv), amend the message to
+  vNEW, force-with-lease push, cancel the superseded runs. The durable fix is
+  merge-time versioning, authorised on 2026-09-09 and not yet built.
+- **A public `/blog` 504 with the origin answering by IP is the Railway hop,
+  not the host.** The apex proxy on Railway forwards `/blog` to the ChemiCloud
+  origin, and the origin firewall drops Railway's egress IP under load; from
+  the whitelisted VPS (173.249.57.163) the origin answers in a second. Do not
+  deploy, do not restart the two-clean-hours clock, do not blame I/O for it.
+- **Status goes to one GitHub issue.** When the owner is away, keep ONE issue
+  ("Night shift status <date>") in the repo you are working in and comment
+  every two hours; GitHub emails him each comment. Sessions cannot reach his
+  phone; the issue is the channel.
+
 ## How the owner works (ported from local memory so cloud sessions have it)
 - **Honesty over box-checking.** They push hard for completion but reward the
   honest "here's the real ceiling / this isn't viable / it's ~99% not 100%"
