@@ -99,6 +99,104 @@ $alt_bd_titles = array(
         this page&rsquo;s totals with another <?php echo esc_html($alt_meta['noun']); ?>&rsquo;s.</p>
     <?php endif; ?>
 
+    <?php
+    // HOW THIS COUNTRY IS COVERED. Country pages only. The tier, the languages,
+    // the sources and the measurements are read from data/country-coverage.json,
+    // which railway/generate_country_tiers.py derives from the committed
+    // disclosure-regime register and the collectors' own scopes; the last
+    // successful collection is read from the health ledger. A country the file
+    // does not hold renders no block rather than a guessed one. Recall is
+    // printed ONLY where a real event-recall sample exists; an official-total
+    // comparison is labelled as exactly that, never as recall or accuracy.
+    $alt_cov = ($alt_f['dim'] === 'country' && function_exists('alt_country_coverage'))
+        ? alt_country_coverage($alt_f['display']) : null;
+    if ($alt_cov) :
+        $alt_cov_tier = isset($alt_cov['tier']) ? (int) $alt_cov['tier'] : 0;
+        $alt_cov_defs = alt_country_coverage_tier_definitions();
+        $alt_cov_last = alt_country_coverage_last_ok($alt_cov);
+        $alt_cov_last_t = $alt_cov_last !== '' ? strtotime($alt_cov_last) : 0;
+        $alt_cov_src = isset($alt_cov['sources']) && is_array($alt_cov['sources']) ? $alt_cov['sources'] : array();
+        $alt_cov_n_outlets = (int) ($alt_cov_src['gdelt_outlets'] ?? 0);
+        $alt_cov_n_pub = (int) ($alt_cov_src['local_publishers'] ?? 0);
+        $alt_cov_feeds = isset($alt_cov_src['feeds']) && is_array($alt_cov_src['feeds']) ? $alt_cov_src['feeds'] : array();
+        $alt_cov_officials = isset($alt_cov['official_collectors']) && is_array($alt_cov['official_collectors']) ? $alt_cov['official_collectors'] : array();
+        $alt_cov_reg = isset($alt_cov['register']) && is_array($alt_cov['register']) ? $alt_cov['register'] : null;
+    ?>
+    <section class="alt-facet-coverage" aria-labelledby="alt-facet-coverage-h">
+        <h2 id="alt-facet-coverage-h">How <?php echo esc_html(alt_facet_phrase($alt_f['dim'], $alt_f['display'])); ?> is covered</h2>
+        <p class="alt-facet-coverage-tier">
+            <span class="alt-gap-status alt-facet-tier-<?php echo $alt_cov_tier > 0 ? (int) $alt_cov_tier : 'none'; ?>"><?php
+                echo $alt_cov_tier > 0 ? 'Tier ' . (int) $alt_cov_tier . ': ' : ''; ?><?php echo esc_html($alt_cov['tier_label'] ?? 'Not yet classified'); ?></span>
+            <?php if ($alt_cov_tier > 0 && isset($alt_cov_defs[$alt_cov_tier])) : ?>
+                <span class="alt-muted"><?php echo esc_html(ucfirst($alt_cov_defs[$alt_cov_tier])); ?>.</span>
+            <?php elseif (!empty($alt_cov['tier_reason'])) : ?>
+                <span class="alt-muted"><?php echo esc_html(ucfirst($alt_cov['tier_reason'])); ?>.</span>
+            <?php endif; ?>
+        </p>
+        <dl class="alt-facet-coverage-facts">
+            <?php if ($alt_cov_officials) : ?>
+            <dt>Official sources read</dt>
+            <dd><?php echo esc_html(implode('; ', array_map(function ($o) { return (string) ($o['label'] ?? ''); }, $alt_cov_officials))); ?></dd>
+            <?php elseif ($alt_cov_reg && !empty($alt_cov_reg['authority'])) : ?>
+            <dt>Official regime</dt>
+            <dd>Notifications go to <?php echo esc_html($alt_cov_reg['authority']); ?>.
+                <?php if (!empty($alt_cov_reg['cite'])) : ?><a href="<?php echo esc_url($alt_cov_reg['cite']); ?>" target="_blank" rel="noopener nofollow">Statute or publisher</a>.<?php endif; ?>
+                No employer-level register is ingested.</dd>
+            <?php endif; ?>
+
+            <dt>Languages searched</dt>
+            <dd><?php if (!empty($alt_cov['languages'])) : ?><?php echo esc_html(implode(', ', $alt_cov['languages'])); ?> in the national news editions, plus English worldwide.<?php else : ?>English worldwide.<?php endif; ?>
+                <?php if (!empty($alt_cov['gdelt_index_note'])) : ?><span class="alt-muted"><?php echo esc_html($alt_cov['gdelt_index_note']); ?>.</span><?php endif; ?></dd>
+
+            <dt>Sources monitored</dt>
+            <dd><?php
+                $alt_cov_parts = array();
+                if ($alt_cov_n_outlets > 0) $alt_cov_parts[] = number_format($alt_cov_n_outlets) . ' allowlisted news ' . ($alt_cov_n_outlets === 1 ? 'outlet' : 'outlets');
+                if ($alt_cov_n_pub > 0) $alt_cov_parts[] = number_format($alt_cov_n_pub) . ' reviewed national ' . ($alt_cov_n_pub === 1 ? 'publisher' : 'publishers');
+                foreach ($alt_cov_feeds as $alt_cov_feed) $alt_cov_parts[] = 'the ' . $alt_cov_feed . ' feed';
+                foreach ($alt_cov_officials as $alt_cov_o) $alt_cov_parts[] = (string) ($alt_cov_o['label'] ?? '');
+                $alt_cov_parts = array_values(array_filter($alt_cov_parts));
+                echo $alt_cov_parts ? esc_html(implode('; ', $alt_cov_parts)) . '.' : 'No named source is configured for this country; entries arrive through the worldwide index.';
+            ?></dd>
+
+            <dt>Last successful collection</dt>
+            <dd><?php if ($alt_cov_last_t) : ?><time datetime="<?php echo esc_attr($alt_cov_last); ?>"><?php echo esc_html(gmdate('j M Y, H:i', $alt_cov_last_t)); ?> UTC</time>, the newest completed run among the collectors serving this country.<?php else : ?><span class="alt-muted">Not yet reported by any collector serving this country.</span><?php endif; ?></dd>
+
+            <dt>Represented entries</dt>
+            <dd><?php echo number_format((int) $alt_f['entries']); ?> source-linked <?php echo (int) $alt_f['entries'] === 1 ? 'entry' : 'entries'; ?> on this page's basis.</dd>
+
+            <?php if (!empty($alt_cov['recall'])) : ?>
+            <dt>Measured recall</dt>
+            <dd>
+                <?php foreach ($alt_cov['recall'] as $alt_cov_r) :
+                    $alt_cov_m = (int) ($alt_cov_r['matched'] ?? 0); $alt_cov_n = (int) ($alt_cov_r['reference'] ?? 0);
+                    if ($alt_cov_n < 1) continue; ?>
+                    <span class="alt-facet-coverage-measure"><b><?php echo esc_html($alt_cov_m); ?> of <?php echo esc_html($alt_cov_n); ?></b>
+                    (<?php echo esc_html(alt_country_coverage_pct($alt_cov_m / $alt_cov_n)); ?>) reference cases held: <?php echo esc_html($alt_cov_r['label'] ?? ''); ?><?php
+                    if (!empty($alt_cov_r['window']['from']) && !empty($alt_cov_r['window']['to'])) : ?>, filed <?php echo esc_html($alt_cov_r['window']['from']); ?> to <?php echo esc_html($alt_cov_r['window']['to']); ?><?php endif; ?><?php
+                    if (!empty($alt_cov_r['pending_adjudication'])) : ?>; <?php echo (int) $alt_cov_r['pending_adjudication']; ?> candidate matches await an editor<?php endif; ?><?php
+                    if (!empty($alt_cov_r['measured_at'])) : ?>; measured <?php echo esc_html(substr((string) $alt_cov_r['measured_at'], 0, 10)); ?><?php endif; ?>.</span>
+                <?php endforeach; ?>
+            </dd>
+            <?php endif; ?>
+
+            <?php if (!empty($alt_cov['official_total_comparisons'])) : ?>
+            <dt>Official-total comparison</dt>
+            <dd>
+                <?php foreach ($alt_cov['official_total_comparisons'] as $alt_cov_c) :
+                    $alt_cov_lo = alt_country_coverage_pct($alt_cov_c['coverage_lower'] ?? null);
+                    $alt_cov_hi = alt_country_coverage_pct($alt_cov_c['coverage_upper'] ?? null);
+                    if ($alt_cov_lo === '') continue; ?>
+                    <span class="alt-facet-coverage-measure">We hold <b><?php echo esc_html($alt_cov_lo === $alt_cov_hi ? $alt_cov_lo : $alt_cov_lo . ' to ' . $alt_cov_hi); ?></b> of the <?php echo esc_html(number_format((int) ($alt_cov_c['denominator'] ?? 0))); ?> <?php echo esc_html($alt_cov_c['unit'] ?? 'workers'); ?> notified to <?php echo esc_html($alt_cov_c['authority'] ?? 'the national authority'); ?><?php if (!empty($alt_cov_c['period'])) : ?> in <?php echo esc_html($alt_cov_c['period']); ?><?php endif; ?><?php if (!empty($alt_cov_c['measured_at'])) : ?>; measured <?php echo esc_html(substr((string) $alt_cov_c['measured_at'], 0, 10)); ?><?php endif; ?>.</span>
+                <?php endforeach; ?>
+                <span class="alt-muted">This compares the jobs we hold against a national notified total. It is not recall of individual cases and not a measure of accuracy: a notified total counts intentions, is revised, and can include cuts no outlet ever reported.</span>
+            </dd>
+            <?php endif; ?>
+        </dl>
+        <p class="alt-facet-coverage-note alt-muted">Tiers, in short: Tier 1, <?php echo esc_html($alt_cov_defs[1]); ?>; Tier 2, <?php echo esc_html($alt_cov_defs[2]); ?>; Tier 3, <?php echo esc_html($alt_cov_defs[3]); ?>; Tier 4, <?php echo esc_html($alt_cov_defs[4]); ?>. The tier is derived from the disclosure-regime research behind the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/#m-jurisdictions')); ?>">methodology</a>, and no figure above is typed by hand.</p>
+    </section>
+    <?php endif; ?>
+
     <?php foreach ($alt_f['breakdowns'] as $alt_bd => $alt_rows) : ?>
         <h2><?php echo esc_html($alt_bd_titles[$alt_bd]); ?></h2>
         <ul class="alt-facet-links">
