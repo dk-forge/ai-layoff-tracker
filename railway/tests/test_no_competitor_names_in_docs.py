@@ -53,7 +53,8 @@ class NoCompetitorNamesInDocs(unittest.TestCase):
         offenders = []
         for path in _files():
             try:
-                text = open(path, encoding="utf-8", errors="ignore").read().lower()
+                with open(path, encoding="utf-8", errors="ignore") as fh:
+                    text = fh.read().lower()
             except OSError:
                 continue
             for banned in BANNED:
