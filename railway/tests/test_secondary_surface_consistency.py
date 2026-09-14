@@ -60,6 +60,7 @@ SECONDARY = {
     "press": TPL / "page-press.php",
     "ai-quotes": TPL / "page-ai-quotes.php",
     "publisher-tools": TPL / "page-publisher.php",
+    "us-warn-registry": TPL / "page-us-registry.php",
 }
 
 # The six pages that head themselves: slug under the tracker parent -> template.
@@ -370,6 +371,7 @@ class ThemeTitleRemovalTests(unittest.TestCase):
         "ai-quotes": "alt_ai_quotes",
         "publisher-tools": "alt_publisher_tools",
         "ai-tracker-health": "alt_tracker_health",
+        "us-warn-registry": "alt_us_registry",
     }
 
     def setUp(self):

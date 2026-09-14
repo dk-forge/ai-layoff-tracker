@@ -1,3 +1,52 @@
+## 2026-09-14 - A public US jurisdiction registry, one row per jurisdiction, nothing typed (2.20.194)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_us_registry.py`
+
+The Sources page answered the WARN question in two hand-written pieces: a
+generated list of the registries the importer reads, and a five-row
+`$alt_gap_states` array typed into the template with a paragraph of reasoning
+per state and a "Daily, 11am ET" cell beside every registry. Nothing tied
+either to the collectors: a state moved into a custom scraper, marked
+UNAVAILABLE in `source_state.json`, or judged QUIET by `source_freshness.py`
+changed nothing a reader could see, and the territories were not on the page
+at all.
+
+`/ai-layoff-tracker/us-warn-registry/` now renders one row for each of the 56
+jurisdictions in `source_inventory.US_JURISDICTIONS`: official source,
+collection method, last successful collection, freshness, historical range,
+whether worker counts and notice documents are on file, and "No public
+register" where a reviewer recorded that. Two halves, both derived:
+
+- `railway/generate_us_registry.py` writes `data/us-jurisdictions.json` from
+  `source_inventory.warn_collectors()` (the scrapers' own state registries plus
+  the cron-run per-state collectors), `sources/warn.py STATE_WARN_URL`,
+  `source_state.json` (HEALTHY / UNAVAILABLE / UNKNOWN with the reviewer's
+  reason), and the WARN workflows' `cron:` lines parsed into a cadence word.
+  The parity test fails when the committed file no longer matches a fresh
+  build, so a collector change reaches the page in the same commit.
+- `includes/us-registry.php` merges that with the two things only the plugin
+  holds: the masked source-health ledger (newest `ok` completion among the
+  collectors serving a jurisdiction) and one grouped query over `wp_alt_layoffs`
+  (effective-date span, rows with a headcount, rows citing a per-notice
+  document rather than the landing page), cached against `alt_data_ver`.
+
+"No public register" is a finding, never a default: it is said only where the
+ledger holds a policy UNAVAILABLE with no official page (AR, NH, WY, PR, GU,
+VI) or where nothing exists at all (AS, MP). Oklahoma is UNAVAILABLE with a
+page and renders as "Published, not countable" with the ledger's own reason.
+Hawaii's freshness is "Not judged" because its OCR collector reports under its
+own id and the freshness ledger holds no `warn:HI` row; that is the true
+state and the page says so rather than borrowing a verdict.
+
+Wired as a secondary page everywhere one has to be: `alt_secondary_pages`
+(title sync), `alt_own_h1_shortcodes`, the asset gate, the public-surface
+list, the IndexNow list, `link_check.PUBLIC_PAGES`, and a retry-until-verified
+page creator. The Sources page links to it under the state WARN section, and
+every WARN collector label on the health page (`meta{}` fifth element `'us'`)
+links to it. Not added to the curated four in the nav submenu, which is a
+reader-order decision for the owner.
+
 ## 2026-09-13 - An unread health ledger was reported as 39 collectors that never reported
 
 **Class:** true-but-empty signal
