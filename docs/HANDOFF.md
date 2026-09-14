@@ -16,6 +16,14 @@ holder, so the start-of-session ritual surfaces it automatically.
   tests under `railway/tests/`, TECHLOG and this line. The Codex and cloud
   holders below are inactive tonight (2026-09-14). Nothing is merged from
   here; the coordinating session merges.
+  branches `claude/us-registry-and-country-tiers` (PR #351, plugin 2.20.194)
+  and `claude/country-coverage-tiers` (this PR, plugin 2.20.195).** Touches
+  ONLY the plugin (`wordpress-plugin/ai-layoff-tracker/`: US jurisdiction
+  registry page, country page coverage tiers, Sources page, `assets/health.js`
+  `meta{}`, version bump), new generators under `railway/`, tests under
+  `railway/tests/`, TECHLOG and this line. The Codex and cloud holders below
+  are inactive tonight (2026-09-14). Nothing is merged from here; the
+  coordinating session merges.
 - **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
   Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG

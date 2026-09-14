@@ -1,3 +1,59 @@
+## 2026-09-14 - Country pages say which kind of coverage they rest on, derived from the register (2.20.195)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_country_tiers.py`
+
+A country page listed its entries and said nothing about what they rested on.
+The disclosure-regime research behind every one of the 79 countries in the
+corpus was committed (`country_coverage.REGISTER`, closed to zero backlog on
+2026-09-12) and read by nothing a reader could see, so "Layoffs in Germany"
+and "Layoffs in Japan" looked like the same kind of record when one is
+Eurofound's monitor plus the press and the other is the press alone.
+
+Every country page now carries a "How this country is covered" block, and
+every value in it is derived:
+
+- **Tier**, by one rule in `railway/generate_country_tiers.py`: Tier 1
+  (official structured) where an official employer-level dataset is read into
+  the tracker, which is the set `PER_EMPLOYER_REGISTERS` marks `in_tracker`
+  (US WARN units, Quebec, Mazowieckie), SEC EDGAR Item 2.05 (US) and
+  Eurofound's ERM over the EU + Norway scope `generate_country_table.EU`
+  names; Tier 2 (official unstructured) where the register classes the
+  country `REGIME_WITH_AGGREGATE`; Tier 3 (verified reported) for
+  `REGIME_NO_AGGREGATE`, `NO_REGIME` and `REFUSED`; Tier 4 (discovery only)
+  for a country in the news-scan scope with no register entry; and "Not yet
+  classified" for an unsettled or expired entry, never a tier. 30 / 7 / 42 /
+  118 on the day it shipped, 0 unclassified.
+- **Languages searched** from the Google News editions in
+  `sources/local_news_markets`, plus a feed's own stated language, with
+  GDELT's 65-language index noted once for every country rather than claimed
+  per country. **Sources monitored** from the GDELT allowlist count for the
+  country, its reviewed publishers, and the regional and national feeds that
+  name it. Scope keys go through `country_coverage.canonical()`, so "Turkey"
+  in a market table and "Türkiye" in the register are one row.
+- **Last successful collection** from the masked health ledger, the newest
+  `ok` among the collector ids serving the country. **Represented events** is
+  the page's own entry count.
+- **Measured recall ONLY where a real event-recall sample exists**: the US
+  (rolling recall's SEC Item 2.05 slice and the editor-confirmed WARN
+  reference set) and the UK (the Hansard-derived set, printed as 0 of 32 with
+  7 candidates awaiting an editor, because that is what the file says).
+  **Estonia and Taiwan carry an official-total comparison, not recall**: the
+  `national_denominators` slices, printed as "we hold X% of the workers
+  notified to <authority>", followed by the sentence that this is not event
+  recall and not a measure of accuracy. Same for GB, NI, Iceland, Latvia,
+  the Netherlands, Poland and Romania.
+
+The block is a definition list, not a table, for the page's own reason (no
+horizontal bleed at 375px); it collapses to one column under 520px. The
+parity test rebuilds on the committed file's own date because register
+assessments expire by age, so a stale file still fails when a collector, a
+market or a measurement moved. `includes/country-coverage.php` holds no SQL,
+so `test_the_page_module_contains_no_sql` still holds for the facet module.
+
+Known seam with PR #351 (2.20.194): both prepend TECHLOG, both add a baton
+line and both bump the plugin version from 2.20.192, so whichever merges
+second carries a three-line conflict with nothing to decide.
 ## 2026-09-14 - A public US jurisdiction registry, one row per jurisdiction, nothing typed (2.20.194)
 
 **Class:** derived-value-typed-by-hand

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.194
+ * Version:           2.20.195
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.194');
+define('ALT_VERSION', '2.20.195');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -60,6 +60,14 @@ require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
 $alt_us_registry = ALT_PLUGIN_DIR . 'includes/us-registry.php';
 if (is_readable($alt_us_registry)) {
     require_once $alt_us_registry;
+}
+// Country coverage tiers for the country pages (data/country-coverage.json).
+// GUARDED with is_readable like every NEW include below: the deploy that
+// introduces it can land this main file first, and a hard require of a file
+// not yet uploaded fatals the whole plugin until it arrives (2.19.20).
+$alt_country_coverage = ALT_PLUGIN_DIR . 'includes/country-coverage.php';
+if (is_readable($alt_country_coverage)) {
+    require_once $alt_country_coverage;
 }
 // The public archive of every digest that goes out. GUARDED with is_readable
 // for the same reason as the file below: this one is NEW, so the deploy that
