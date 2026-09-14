@@ -430,6 +430,12 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
           set -uo pipefail
+          # GitHub runs this block under `bash -e`. The checker below answers
+          # in three states and this step branches on `$?`, so errexit must be
+          # OFF: under -e an exit 3 (UNKNOWN, the host could not be reached)
+          # ended the step right here with no annotation, which is what
+          # reddened the 2.20.191 and 2.20.192 deploys on 2026-09-12/13.
+          set +e
           # THE VERDICT GOES INSIDE THE ANNOTATION, not just into the log.
           # ci_alert.py mails the single most specific line it can find, and it
           # ranks `::error::` annotations above ordinary output. An annotation
@@ -594,6 +600,12 @@ jobs:
       - name: Verify the confirm and unsubscribe links still resolve
         run: |
           set -uo pipefail
+          # GitHub runs this block under `bash -e`. The checker below answers
+          # in three states and this step branches on `$?`, so errexit must be
+          # OFF: under -e an exit 3 (UNKNOWN, the host could not be reached)
+          # ended the step right here with no annotation, which is what
+          # reddened the 2.20.191 and 2.20.192 deploys on 2026-09-12/13.
+          set +e
           python3 railway/subscriber_routes.py
           STATUS=$?
           if [ "$STATUS" = "2" ]; then
@@ -623,6 +635,12 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
         run: |
           set -uo pipefail
+          # GitHub runs this block under `bash -e`. The checker below answers
+          # in three states and this step branches on `$?`, so errexit must be
+          # OFF: under -e an exit 3 (UNKNOWN, the host could not be reached)
+          # ended the step right here with no annotation, which is what
+          # reddened the 2.20.191 and 2.20.192 deploys on 2026-09-12/13.
+          set +e
           python3 railway/contrast_audit.py \
             --url "$WP_SITE_URL/ai-layoff-tracker/" --json contrast.json
           STATUS=$?
