@@ -186,6 +186,34 @@ USER_AGENT = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 MONTHLY_TARGET_COMBINED_USD = 18.0   # $10 here + sibling's separate $8 policy
 SIBLING_ALLOWANCE_USD = 8.0          # talent-intelligence-tracker, same literal there
 #
+# THIS TOTAL IS INCOMPLETE, AND SAYING SO IS THE POINT (2026-09-15).
+#
+# $10 + $8 = $18 counts TWO consumers. A THIRD bills this account:
+# asktherecruiter-sandbox, whose `llm-canary` workflow runs nightly at 06:00
+# UTC against a PRODUCTION model plus an LLM judge. Unlike that repo's
+# `error-triage-cron`, which is pinned to a `:free` model, nothing constrains
+# the canary to free. It has no literal here and none there, so it is spending
+# against a total that does not count it.
+#
+# This was found while trying to explain a measured account burn of ~$1.85/day
+# (~$56/month) against this $18. It does NOT explain it: a nightly canary is
+# not $38/month. What it does establish is that the denominator was never
+# complete, so "the remainder is the sibling" was an attribution nobody could
+# check. ops_status now says UNATTRIBUTED instead, and compares the account
+# against this constant rather than claiming no combined target exists.
+#
+# WHY NO THIRD LITERAL IS ADDED HERE YET: a number invented from this side
+# would be the same mistake the paragraph above records, a share whose
+# denominator nobody enforces. The sandbox's own policy is the owner's to set,
+# and the honest state until then is a total that admits what it omits.
+#
+# WHAT WOULD ACTUALLY ATTRIBUTE THE BURN, since committed state cannot: the two
+# siblings keep no per-job ledger. The talent tracker holds only
+# `data/spend_month.json`, a month-start LIFETIME snapshot with no $/day and no
+# $/job, and the sandbox has no CI spend ledger at all. Nothing in either
+# repository can say which job spent what. That needs OpenRouter's activity API
+# read from a runner holding the key, which no session without that key can do.
+#
 # WHAT $7.00 COSTS, said plainly rather than discovered later: the committed
 # path measures $4.92/month, so ~$2.08/month is left for every backfill. The
 # historical sweeps therefore run SLOWER than they did in August. That is a
