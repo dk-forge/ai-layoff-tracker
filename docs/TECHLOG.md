@@ -1,3 +1,39 @@
+## 2026-09-15 - The eight-state WARN re-probe is settled: all eight OUT, all on criterion (b)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+Three runs, and the answer only became trustworthy on the third.
+
+Run 1 (16:36) called all eight OUT. Four of those were not verdicts: PA and WA
+404, GA 503, MI 403 after a robots.txt that also 403'd. Run 2 (16:47), after the
+UNKNOWN fix, correctly reported PA, WA and MI as UNKNOWN and moved GA to OUT on
+(b) once its 503 cleared. Run 3 (16:53), after the three moved URLs were
+corrected, is the first run in which every one of the eight was actually
+examined.
+
+FINAL: NY, IL, OH, PA, WA, GA, NJ and MI are all OUT on criterion (b). Each
+returns HTTP 200 and serves no notice rows in the markup; every one of these
+eight publications is populated client-side. Not one of them is excluded by a
+publisher instruction, and not one is reachable by a static read.
+
+The consequence is the definition document's stated bias, confirmed rather than
+lifted: the reference set still cannot say anything about WARN coverage in the
+industrial Midwest or the Northeast, and NO RECALL FIGURE EXISTS for these eight
+states. The eligible set remains CA, TX, FL and TN.
+
+Three things worth keeping. GA's 503 lasted under fifteen minutes and would have
+been recorded permanently as a criterion (a) failure, which is the wrong reason
+as well as the wrong verdict. PA, WA and MI had merely been reorganised, and a
+404 read as OUT would have frozen three live publications as ineligible. MI
+returned 403 then 404 then 200 across seventeen minutes, so a single probe of
+that host decides nothing.
+
+What would change this answer is a documented open-data API or bulk file from
+any of the eight, not a cleverer read of their pages: criterion (b) bars an
+undocumented internal XHR endpoint, and NY's vizql route, GA's admin-ajax and
+MI's Sitecore API are all refused by name in the probe.
+
 ## 2026-09-15 - The eight-state WARN re-probe ran, and called three non-findings OUT
 
 **Class:** true-but-empty
