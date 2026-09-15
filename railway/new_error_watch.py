@@ -114,6 +114,13 @@ MODEL = "google/gemini-2.5-flash-lite"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 SENTRY_API = "https://sentry.io/api/0"
 
+# Prefix on the note fetch_new_issues returns when this watch is simply not
+# configured. ABSENT and UNKNOWN are different states and the digest mailer
+# already learned this one the hard way: "nothing armed" is green, "armed
+# and could not be read" is red, and collapsing the first into the second
+# sends someone to fix a thing that was never switched on.
+ABSENT_NOTE = "not configured"
+
 #: Every network request gets a browser-ish UA, the same iron rule as every
 #: other network caller in this repo, even though neither Sentry nor
 #: OpenRouter is the WP host that taught it to us.
@@ -166,8 +173,10 @@ def fetch_new_issues(hours: int = 1, fetch=None):
     """
     org, project, token = sentry_org(), sentry_project(), sentry_token()
     if not (org and project and token):
-        return None, ("SENTRY_ORG, SENTRY_PROJECT or SENTRY_AUTH_TOKEN is not "
-                       "set, so Sentry could not be read")
+        # ABSENT, not UNKNOWN. Nothing is armed here, which is a state of its
+        # own and a green one. See run() for why the difference matters.
+        return None, (ABSENT_NOTE + ": SENTRY_ORG, SENTRY_PROJECT or "
+                      "SENTRY_AUTH_TOKEN is not set, so nothing is armed")
     url = (f"{SENTRY_API}/projects/{org}/{project}/issues/"
            f"?query={urllib.parse.quote('is:unresolved is:new', safe='')}"
            f"&statsPeriod={hours}h&limit=25")
@@ -480,13 +489,21 @@ def run(*, fetch=None, http_post=None, fetch_status=None,
         state_path: Path | str = STATE_PATH,
         spend_path: Path | str = SPEND_LEDGER_PATH, now: int | None = None,
         sleep=time.sleep, notify=None) -> int:
-    """-> exit code. 0 on a clean run (including "nothing new"); 3 when Sentry
-    could not be read at all (UNKNOWN, never a silent pass)."""
+    """-> exit code. 0 on a clean run (including "nothing new") and 0 when this
+    watch is not configured at all; 3 when it IS configured and Sentry could
+    not be read (UNKNOWN, never a silent pass)."""
     notify = notify or ops_notify.notify
     issues, note = fetch_new_issues(fetch=fetch)
     if issues is None:
         print(f"new_error_watch: {note}")
-        return 3
+        # THREE STATES, NOT TWO. `ABSENT` means no Sentry credentials exist, so
+        # this watch was never switched on: exit 0, because an hourly red run
+        # for a feature nobody armed is manufactured noise, and manufactured
+        # noise is how a real alert gets filtered. `UNKNOWN` means it IS armed
+        # and Sentry could not be read, which must go red and stay red. The
+        # digest mailer carries the same distinction for the same reason, and
+        # CLAUDE.md says plainly not to collapse ABSENT into the fault state.
+        return 0 if note.startswith(ABSENT_NOTE) else 3
 
     state = alert_state.load(state_path)
 

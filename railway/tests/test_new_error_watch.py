@@ -236,14 +236,49 @@ class LedgerKeepsAlertStatesThreeShapes(_Base):
             self.assertIn("subject", entry)
 
 
+class AbsentIsGreenAndUnknownIsNot(_Base):
+    """Three states, not two, and the middle one is what stops hourly noise.
+
+    Merging this with no SENTRY_ORG/SENTRY_PROJECT set would have produced a
+    red run every hour for a feature nobody had switched on. CLAUDE.md already
+    rules on this shape for the digest mailer: ABSENT (nothing armed) is green,
+    and collapsing it into the fault state sends someone to fix a thing that
+    was never configured.
+    """
+
+    def test_no_sentry_credentials_at_all_is_green(self):
+        for key in ("SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_AUTH_TOKEN"):
+            os.environ.pop(key, None)
+        self.assertEqual(self._run([]), 0,
+                         "an unconfigured watch must not manufacture a red run")
+
+    def test_configured_but_unreadable_is_still_red(self):
+        # Armed and broken is the case the exit code exists for.
+        def failing(url, headers):
+            raise OSError("connection reset")
+        code = watch.run(fetch=failing, state_path=self.state_path,
+                         spend_path=self.spend_path, notify=self._notify)
+        self.assertEqual(code, 3)
+
+    def test_a_partial_configuration_is_absent_not_armed(self):
+        # Half-configured is not armed: without a token nothing can be read,
+        # and reporting that hourly as a fault is the same noise.
+        os.environ.pop("SENTRY_AUTH_TOKEN", None)
+        self.assertEqual(self._run([]), 0)
+
+
 class UnknownWhenSentryCannotBeRead(_Base):
-    def test_missing_config_returns_unknown_exit_code(self):
+    def test_missing_config_is_green_and_fetches_nothing(self):
+        # This asserted exit 3 until 2026-09-15. Merging on that would have
+        # produced a red run every hour, because SENTRY_ORG and SENTRY_PROJECT
+        # do not exist as repository variables yet. Unconfigured is ABSENT and
+        # green; it still must not reach the network, and must not alert.
         os.environ.pop("SENTRY_AUTH_TOKEN", None)
         code = watch.run(fetch=lambda url, headers: (_ for _ in ()).throw(
             AssertionError("should not fetch when unconfigured")),
             state_path=self.state_path, spend_path=self.spend_path,
             notify=self._notify)
-        self.assertEqual(code, 3)
+        self.assertEqual(code, 0)
         self.assertEqual(self.notified, [])
 
 
