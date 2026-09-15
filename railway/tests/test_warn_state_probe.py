@@ -164,11 +164,21 @@ class ProbeStateCriterionTests(unittest.TestCase):
         self.assertEqual(r["failed_criterion"], "a")
         self.assertIn("Content-Signal", r["reason"])
 
-    def test_criterion_a_fails_on_404(self):
+    def test_a_404_is_UNKNOWN_and_this_test_used_to_assert_the_defect(self):
+        # This asserted verdict == OUT until 2026-09-15, and the live run that
+        # day recorded PA and WA as OUT on a 404 because of it. A 404 says the
+        # documented path is gone, which is a stale URL in our own definition
+        # document, not a finding about the state's publication. The status is
+        # still recorded so the next run knows which URL to replace.
         r = self._run(url_resp=ProbeResponse(404, {}, b"not found"))
+        self.assertEqual(r["verdict"], "UNKNOWN")
+        self.assertIsNone(r["failed_criterion"])
+        self.assertEqual(r["http_status"], 404)
+
+    def test_a_403_is_still_OUT_because_it_is_an_explicit_refusal(self):
+        r = self._run(url_resp=ProbeResponse(403, {}, b"forbidden"))
         self.assertEqual(r["verdict"], "OUT")
         self.assertEqual(r["failed_criterion"], "a")
-        self.assertEqual(r["http_status"], 404)
 
     def test_unreachable_page_is_unknown_not_out(self):
         r = self._run(url_resp=ProbeResponse(None, {}, b"", error="TimeoutError"))
@@ -289,3 +299,71 @@ class ReportShapeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ACheckThatCouldNotRunIsNotAFail(unittest.TestCase):
+    """UNKNOWN and OUT are different answers, and the first cut collapsed them.
+
+    On 2026-09-15 the live run recorded PA (404), WA (404) and GA (503) as OUT
+    on criterion (a). None of those statuses says anything about whether the
+    state's publication is machine-readable. A 404 on a path recorded a month
+    earlier means the page moved; a state does not stop publishing WARN
+    notices. A 503 is transient. Recording either as OUT would freeze a
+    non-finding into the definition document as though it had been measured.
+    """
+
+    def _verdict(self, code, status):
+        url = STATES[code]["url"]
+        fetch = _fetch_map({"/robots.txt": _PERMISSIVE_ROBOTS,
+                            url: ProbeResponse(status, {}, b"")})
+        return probe_state(code, fetch=fetch)
+
+    def test_a_404_on_the_documented_path_is_UNKNOWN(self):
+        r = self._verdict("PA", 404)
+        self.assertEqual(r["verdict"], "UNKNOWN")
+        self.assertIsNone(r["failed_criterion"])
+        self.assertIn("stale", r["reason"])
+
+    def test_a_503_is_UNKNOWN_not_a_verdict(self):
+        r = self._verdict("GA", 503)
+        self.assertEqual(r["verdict"], "UNKNOWN")
+        self.assertIsNone(r["failed_criterion"])
+
+    def test_a_403_IS_a_verdict_because_the_host_declined_us(self):
+        # MA was excluded on exactly this in the definition. An explicit
+        # refusal of a plain browser UA is what criterion (a) asks about.
+        r = self._verdict("MI", 403)
+        self.assertEqual(r["verdict"], "OUT")
+        self.assertEqual(r["failed_criterion"], "a")
+
+
+class AnUnreadRobotsFileIsNeverConsent(unittest.TestCase):
+    """A 403 on robots.txt is not 'nothing is disallowed'.
+
+    MI returned 403 for robots.txt on 2026-09-15 and the first cut recorded
+    'nothing is disallowed' and went on to fetch the page. Only a 404 means the
+    host publishes no robots.txt. Anything else means permission was never
+    established, and proceeding on that is the absent-read-as-ok shape aimed at
+    a publisher's own stated wishes.
+    """
+
+    def _run(self, robots_status):
+        calls = []
+        url = STATES["MI"]["url"]
+        fetch = _fetch_map(
+            {"/robots.txt": ProbeResponse(robots_status, {}, b""),
+             url: ProbeResponse(200, _HTML_HEADERS, _STATIC_TABLE_HTML.encode())},
+            calls=calls)
+        return probe_state("MI", fetch=fetch), calls
+
+    def test_a_403_on_robots_stops_the_probe_as_UNKNOWN(self):
+        r, calls = self._run(403)
+        self.assertEqual(r["verdict"], "UNKNOWN")
+        self.assertEqual([c for c in calls if "/robots.txt" not in c], [],
+                         "the publication must not be fetched when permission "
+                         "could not be established")
+
+    def test_a_404_on_robots_really_does_mean_no_robots_file(self):
+        r, calls = self._run(404)
+        self.assertNotEqual(r["verdict"], "UNKNOWN")
+        self.assertTrue([c for c in calls if "/robots.txt" not in c],
+                        "a host with no robots.txt may be read")

@@ -1,3 +1,32 @@
+## 2026-09-15 - The eight-state WARN re-probe ran, and called three non-findings OUT
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+The re-probe was dispatched against the live sites for the first time. All
+eight states came back OUT, and four of those verdicts were not sound.
+
+NY, IL, OH and NJ are genuine: HTTP 200 with the notice rows populated
+client-side, exactly as on 2026-08-13. OH has moved, from a 404 last month to a
+200 that serves an empty shell, so its failing criterion changed from (a) to
+(b) without becoming any more readable.
+
+PA (404), WA (404) and GA (503) were recorded as OUT on criterion (a). None of
+those statuses says anything about whether the publication is machine-readable.
+A state does not stop publishing WARN notices, so a 404 on a path recorded a
+month earlier means our own URL is stale; a 503 is transient. Both are UNKNOWN
+and are now reported that way, with the status kept so the next run knows which
+URL to replace. An explicit 401 or 403 stays OUT on (a), which is what excluded
+MA in the definition document.
+
+MI is the worse one. Its robots.txt returned 403 and the probe recorded "no
+robots.txt; nothing is disallowed", then fetched the page. An unread robots.txt
+is not consent. Only a 404 means a host publishes no robots.txt; any other
+status means permission was never established, and the probe now stops there.
+
+No recall figure exists for any of these eight states, and none is implied by
+this entry.
+
 ## 2026-09-15 - Eight-state WARN re-probe built, on `feat/warn-eight-state-reprobe` (no measurement yet)
 
 **Class:** derived-value-typed-by-hand

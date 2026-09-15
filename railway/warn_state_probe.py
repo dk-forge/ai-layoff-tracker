@@ -257,14 +257,24 @@ def probe_robots(url, fetch):
     rurl = robots_url(url)
     resp = fetch(rurl, SITE_UA)
     if resp.status != 200:
+        # A 404 is the ONLY status that means "this host publishes no robots.txt",
+        # which is the one case where nothing is disallowed. Any other failure
+        # means permission was never established, and an unread robots.txt must
+        # never read as consent: that is the absent-read-as-ok shape, pointed at
+        # a publisher's own wishes. MI returned 403 here on 2026-09-15 and the
+        # first cut recorded "nothing is disallowed" and fetched the page anyway.
+        no_robots_file = resp.status == 404
         return {
             "robots_url": rurl, "http_status": resp.status, "fetched": False,
             "blocked": False, "blocked_by": None,
             "content_signal_ai_input_no": False,
-            "note": (f"no robots.txt (HTTP {resp.status}); nothing is disallowed"
-                     if resp.status is not None else
-                     f"robots.txt could not be fetched ({resp.error}); UNKNOWN, not permitted"),
-            "unreachable": resp.status is None,
+            "note": ("no robots.txt (HTTP 404); nothing is disallowed"
+                     if no_robots_file else
+                     (f"robots.txt could not be read (HTTP {resp.status}); permission "
+                      f"is UNKNOWN, which is not consent"
+                      if resp.status is not None else
+                      f"robots.txt could not be fetched ({resp.error}); UNKNOWN, not permitted")),
+            "unreachable": not no_robots_file,
         }
     text = resp.body.decode("utf-8", "replace")
     blocks, content_signal = parse_robots(text)
@@ -364,11 +374,33 @@ def probe_state(code, fetch=None):
     resp = fetch(cfg["url"], SITE_UA)
     result["http_status"] = resp.status
     if resp.status != 200:
-        result.update(
-            verdict="OUT" if resp.status is not None else "UNKNOWN",
-            failed_criterion="a" if resp.status is not None else None,
-            reason=(f"HTTP {resp.status} on the documented path" if resp.status is not None
-                     else f"could not be reached this run ({resp.error})"))
+        # An explicit refusal is a verdict; a missing or broken page is not.
+        # 401/403 is the host declining THIS agent, which is what criterion (a)
+        # is about and what excluded MA in the definition. A 404 means the
+        # documented path is gone -- almost always a site reorganisation, since
+        # a state does not stop publishing WARN notices -- and a 5xx is
+        # transient. Neither says anything about whether the publication is
+        # machine-readable, so neither may be recorded as OUT. This repo holds
+        # that a check which could not run is not a pass; it is equally not a
+        # fail, and the first cut of this module called PA, WA and GA OUT on a
+        # 404, 404 and 503.
+        if resp.status in (401, 403):
+            result.update(
+                verdict="OUT", failed_criterion="a",
+                reason=(f"HTTP {resp.status} on the documented path: the host "
+                        f"declines a plain browser User-Agent"))
+        elif resp.status is None:
+            result.update(
+                verdict="UNKNOWN", failed_criterion=None,
+                reason=f"could not be reached this run ({resp.error})")
+        else:
+            result.update(
+                verdict="UNKNOWN", failed_criterion=None,
+                reason=(f"HTTP {resp.status} on the documented path recorded in the "
+                        f"definition. That path is stale or the service is down, so "
+                        f"this run did not judge the publication at all. UNKNOWN is "
+                        f"not OUT: re-probe with the current URL before concluding "
+                        f"anything about this state"))
         return result
 
     content_type = resp.headers.get("Content-Type") or resp.headers.get("content-type")
