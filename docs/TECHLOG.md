@@ -1,3 +1,49 @@
+## 2026-09-15 - Hourly new-error watch: a new Sentry issue becomes a summarised email within the hour
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_new_error_watch.py`
+
+A new, unresolved application error reached Sentry and stopped there until a
+human happened to open the mailbox or a scheduled job failed loudly enough to
+trip `ci-alert.yml`. That is the same shape `ci_alert.py` closed for a red
+workflow run in 2026-07-30: a real signal existed and nothing routed it to
+anyone.
+
+`railway/new_error_watch.py`, run hourly by `.github/workflows/new-error-watch.yml`,
+asks Sentry for issues that are unresolved and new in the last hour, computes
+a deduped cause key with numbers normalised out first (the same shape
+`ci_alert.normalise()` uses), and keeps its own committed ledger,
+`railway/new_error_state.json`, built with `alert_state.py` itself
+(`path=`), so it carries the identical three semantics as
+`railway/alert_state.json`: raise once per cause and remind at 14 days, clear
+once when Sentry reports the underlying issue resolved or ignored (checked by
+issue id, never by "it stopped appearing in the last hour's new-issue page",
+which would clear every cause a day after it opened whether or not anyone had
+touched it).
+
+Only a genuinely NEW cause spends anything. That one summary call goes
+through `spend.metered_call` (one request, `max_retries=0`, retried only via
+`attempts=N`) on `google/gemini-2.5-flash-lite`, using a separate key,
+`OPENROUTER_OPS_KEY`, with its own committed USD 3.00/month ledger
+(`railway/new_error_spend.json`) kept apart from `spend.py`'s own allowance
+for `OPENROUTER_API_KEY` so the two budgets can never misattribute each
+other's spend. Email addresses, bearer tokens, API keys and authorization
+header values are redacted out of the error text before it ever reaches the
+prompt. Whatever happens to the summary call (cap reached, no key, or the
+call itself raising) the alert still sends, and says plainly which of the
+three happened; an LLM outage must never be able to silence an error alert.
+
+Every alert leaves through `railway/ops_notify.py`, the one door, with no
+`dedupe_key`/`resolve_scope` of its own (dedup already happened against our
+own ledger; routing it through `ci_alert.post_alert`'s ledger a second time
+would dedupe it again, against the wrong file). Consistent with `opsmail`'s
+"BEST EFFORT, NEVER RAISES" contract and with how `tracker_diff` and
+`curated_probe` already use the same door, a delivery failure is not held in
+a second outbox: the cause is only committed to the ledger once it actually
+sends, so a relay outage leaves the cause reading as still new and the next
+hourly tick retries it, bounded by that hourly cadence rather than by an
+unbounded queue.
+
 ## 2026-09-15 - main was red on a guard no pull request could fix
 
 **Class:** guard-went-vacuous
