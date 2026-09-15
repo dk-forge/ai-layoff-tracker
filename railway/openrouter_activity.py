@@ -49,7 +49,19 @@ from collections import defaultdict
 
 BASE = "https://openrouter.ai/api/v1"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
-OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+# /activity NEEDS A PROVISIONING KEY, NOT AN INFERENCE KEY, and this is not a
+# guess: the first dispatch on 2026-09-15 returned HTTP 403 with
+# OPENROUTER_API_KEY present. OpenRouter restricts the endpoint deliberately so
+# historic account usage is not readable by anyone holding a normal inference
+# key. A provisioning key is created under Settings -> Provisioning Keys.
+#
+# So the provisioning key is preferred and the inference key is only a fallback,
+# which keeps the remedy a SECRET to add rather than a code change to make. The
+# fallback is kept rather than removed because a 403 that names its own cause is
+# more useful than a missing-key message that hides it.
+OR_KEY = (os.environ.get("OPENROUTER_PROVISIONING_KEY", "")
+          or os.environ.get("OPENROUTER_API_KEY", ""))
+USING_PROVISIONING_KEY = bool(os.environ.get("OPENROUTER_PROVISIONING_KEY", ""))
 
 #: Exit codes. 0 = read and reported. 3 = could not be read, which is UNKNOWN
 #: and must never be presented as "nothing is spending".
@@ -68,13 +80,20 @@ def fetch_activity(days=7, get=None):
     `get` is injectable so tests never open a socket.
     """
     if not OR_KEY:
-        return None, ("OPENROUTER_API_KEY is not set, so the account's activity "
-                      "was never requested. That is UNKNOWN, not an empty account")
+        return None, ("neither OPENROUTER_PROVISIONING_KEY nor OPENROUTER_API_KEY "
+                      "is set, so the account's activity was never requested. "
+                      "That is UNKNOWN, not an empty account")
     getter = get or _http_get
     try:
         payload = getter(f"{BASE}/activity")
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
-        return None, f"activity read failed: {_scrub(exc)}"
+        note = f"activity read failed: {_scrub(exc)}"
+        if "403" in note and not USING_PROVISIONING_KEY:
+            note += (". /activity is restricted to a PROVISIONING key; an "
+                     "inference key gets 403 by design. Create one under "
+                     "OpenRouter Settings -> Provisioning Keys and set it as "
+                     "OPENROUTER_PROVISIONING_KEY. No code change is needed")
+        return None, note
     if payload is None:
         return None, "activity read returned nothing"
     rows = payload.get("data") if isinstance(payload, dict) else payload

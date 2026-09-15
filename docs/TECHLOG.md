@@ -1,3 +1,40 @@
+## 2026-09-15 - The activity reader was dispatched and returned 403: a provisioning key, not an inference key
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_openrouter_activity.py`
+
+The reader merged earlier today was dispatched against the live account and
+returned, correctly:
+
+    UNKNOWN: activity read failed: HTTP Error 403: Forbidden
+    openrouter_activity exit code: 3
+
+The key was present. OpenRouter restricts `/activity` to a PROVISIONING key on
+purpose, so that historic account usage is not readable by anyone in the
+organisation holding an ordinary inference key. Confirmed against OpenRouter's
+own documentation rather than assumed from the status code.
+
+Two things follow, and the first is the reason the exit code was worth
+designing.
+
+The module reported UNKNOWN and exited 3 instead of printing an empty report.
+Had it printed "$0.0000 over 0 days", the account would have read as at rest
+while it drains, which is the exact defect the whole spend thread is about, and
+it would have read that way from the instrument built to detect it.
+
+The message did not say WHY, and an operator reading "HTTP Error 403" learns
+nothing and re-dispatches. It now names the cause and the remedy: create a
+provisioning key under OpenRouter Settings -> Provisioning Keys and set it as
+`OPENROUTER_PROVISIONING_KEY`. The module prefers that variable and keeps the
+inference key only as a fallback, so the remedy is a SECRET TO ADD and not a
+code change, and the guidance is suppressed when a provisioning key IS in use,
+because then the 403 means something else and this advice would misdirect.
+
+**The burn remains UNATTRIBUTED and no number was produced.** Three repos bill
+one account, the combined target is $18/month against a measured ~$56/month,
+`llm-canary` is counted in no budget, and which job spends the balance still
+cannot be said. The instrument is now one secret away from saying it.
+
 ## 2026-09-15 - The account can be attributed, just not from any ledger we keep
 
 **Class:** absent-read-as-ok
