@@ -1,0 +1,48 @@
+name: OpenRouter activity attribution
+
+# WHY DISPATCH ONLY. This answers "which repo and which model is spending the
+# shared account", which is a question a human asks when a spending decision
+# is blocked. It is not a tripwire and must not become one: the daily balance
+# job already owns the alarm, and a second scheduled reader of the same account
+# would double the requests while reporting the same fact.
+#
+# It reads OpenRouter's /activity endpoint, which is metadata about spend
+# ALREADY INCURRED. It makes no model call and costs $0.00.
+#
+# Exit 3 means the account could not be read, which is UNKNOWN, so the step
+# prints the code and the job stays green: a reading that could not be taken is
+# not a red run, it is an answer of "we still do not know".
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: How many days of activity to group
+        required: false
+        default: '7'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openrouter-activity
+  cancel-in-progress: false
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # Stdlib only, so no install step and no lock is named.
+      - name: Read the account's activity
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set +e
+          python3 railway/openrouter_activity.py --days "${{ inputs.days || '7' }}"
+          echo "openrouter_activity exit code: $?"
