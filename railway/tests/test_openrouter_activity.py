@@ -5,6 +5,7 @@ the one thing it must never do is make an unreadable account look like a quiet
 one.
 """
 import os
+import urllib.error
 import sys
 import unittest
 from pathlib import Path
@@ -121,3 +122,53 @@ class ItIsNotASecondBalanceWriter(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class A403NamesItsOwnRemedy(unittest.TestCase):
+    """The first dispatch returned 403 and the reason was not in the message.
+
+    An operator reading "activity read failed: HTTP Error 403" learns nothing
+    and will re-dispatch. /activity is restricted to a provisioning key by
+    OpenRouter's design, so the message says so and names the secret to add.
+    """
+
+    def setUp(self):
+        self._k, self._p = act.OR_KEY, act.USING_PROVISIONING_KEY
+        act.OR_KEY, act.USING_PROVISIONING_KEY = "inference-key", False
+        self.addCleanup(lambda: setattr(act, "OR_KEY", self._k))
+        self.addCleanup(lambda: setattr(act, "USING_PROVISIONING_KEY", self._p))
+
+    def _note(self):
+        def forbidden(url):
+            raise urllib.error.HTTPError(url, 403, "Forbidden", {}, None)
+        _rows, note = act.fetch_activity(get=forbidden)
+        return note
+
+    def test_a_403_on_an_inference_key_names_the_provisioning_key(self):
+        note = self._note()
+        self.assertIn("403", note)
+        self.assertIn("PROVISIONING", note.upper())
+        self.assertIn("OPENROUTER_PROVISIONING_KEY", note)
+
+    def test_it_says_no_code_change_is_needed(self):
+        # The remedy is a secret, and saying so stops the next session editing
+        # the module instead of adding the key.
+        self.assertIn("No code change is needed", self._note())
+
+    def test_a_403_with_a_provisioning_key_does_not_blame_the_key_type(self):
+        # Then the 403 means something else and the guidance would misdirect.
+        act.USING_PROVISIONING_KEY = True
+        self.assertNotIn("OPENROUTER_PROVISIONING_KEY", self._note())
+
+
+class TheProvisioningKeyIsPreferred(unittest.TestCase):
+    def test_no_key_at_all_names_both_variables(self):
+        k, p = act.OR_KEY, act.USING_PROVISIONING_KEY
+        act.OR_KEY, act.USING_PROVISIONING_KEY = "", False
+        try:
+            _rows, note = act.fetch_activity()
+            self.assertIn("OPENROUTER_PROVISIONING_KEY", note)
+            self.assertIn("OPENROUTER_API_KEY", note)
+            self.assertIn("UNKNOWN", note)
+        finally:
+            act.OR_KEY, act.USING_PROVISIONING_KEY = k, p
+

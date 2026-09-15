@@ -41,6 +41,14 @@ jobs:
       # Stdlib only, so no install step and no lock is named.
       - name: Read the account's activity
         env:
+          # /activity is restricted to a PROVISIONING key. The first dispatch
+          # (2026-09-15) got HTTP 403 with only the inference key present, which
+          # is OpenRouter's deliberate design: historic account usage is not
+          # readable by anyone holding a normal inference key. Add
+          # OPENROUTER_PROVISIONING_KEY as a repository secret and this reports;
+          # until then it exits 3 and names the remedy. The inference key stays
+          # so the 403 keeps explaining itself rather than going silent.
+          OPENROUTER_PROVISIONING_KEY: ${{ secrets.OPENROUTER_PROVISIONING_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set +e
