@@ -179,6 +179,41 @@ class LedgerKeepsAlertStatesThreeShapes(_Base):
         self.assertEqual(state.get("open"), {}, "the cleared cause must leave the ledger")
         self.assertTrue(any("RECOVERED" in s for s, _b in self.notified))
 
+    def test_a_recovered_notice_that_fails_to_send_leaves_the_cause_open(self):
+        """RECOVERED is mailed once by contract, so a failed send must retry.
+
+        The raise path already commits to the ledger only after notify()
+        returns True. The clear path has to match: if it applied first, a
+        relay outage would drop the cause from the ledger with nobody ever
+        told it recovered, and no later run would re-derive it.
+        """
+        self._run([issue()], http_post=self._post_ok())
+        self.assertEqual(len(alert_state.load(self.state_path).get("open") or {}), 1)
+
+        resolved_status = lambda url, headers: (200, json.dumps({"status": "resolved"}))
+
+        self.notified.clear()
+        failing = lambda subject, body, **_kw: (
+            self.notified.append((subject, body)) or False)
+        code = watch.run(fetch=self._fetch([]), http_post=self._post_ok(),
+                         fetch_status=resolved_status,
+                         state_path=self.state_path, spend_path=self.spend_path,
+                         notify=failing)
+        self.assertEqual(code, 0)
+        self.assertTrue(any("RECOVERED" in s for s, _b in self.notified),
+                        "it must still try to send")
+        self.assertEqual(
+            len(alert_state.load(self.state_path).get("open") or {}), 1,
+            "an undelivered RECOVERED must leave the cause open so the next "
+            "run re-sends it")
+
+        self.notified.clear()
+        code = self._run([], http_post=self._post_ok(), fetch_status=resolved_status)
+        self.assertEqual(code, 0)
+        self.assertTrue(any("RECOVERED" in s for s, _b in self.notified),
+                        "the next run re-sends it")
+        self.assertEqual(alert_state.load(self.state_path).get("open"), {})
+
     def test_an_open_cause_is_not_cleared_while_still_unresolved(self):
         self._run([issue()], http_post=self._post_ok())
         self.notified.clear()

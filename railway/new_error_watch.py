@@ -522,8 +522,14 @@ def run(*, fetch=None, http_post=None, fetch_status=None,
     for resolve_decision in resolve_settled_causes(state, now=now, fetch_status=fetch_status):
         if resolve_decision.kind != "resolve":
             continue
-        alert_state.apply(state, resolve_decision, now=now)
-        notify(resolve_decision.subject, resolve_decision.body)
+        # Same ordering as the raise path above, and for the same reason: the
+        # clear is committed only once the RECOVERED notice actually sent. A
+        # failed send leaves the cause open, so the next hourly run asks Sentry
+        # again, finds it still settled and re-sends. Applying first would drop
+        # the cause from the ledger whether or not anyone was ever told it
+        # recovered, and RECOVERED is mailed once by contract.
+        if notify(resolve_decision.subject, resolve_decision.body):
+            alert_state.apply(state, resolve_decision, now=now)
 
     alert_state.save(state, state_path)
     return 0
