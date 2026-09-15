@@ -682,13 +682,60 @@ def burn_problems(account_per_day, repo_per_day, allowance_month, runway_days):
             f"~${repo_per_day * 30:.0f}/month) is above its "
             f"${allowance_month:.2f}/month allowance")
     elif account_per_day * 30 > allowance_month:
-        out.append(
+        # TWO SENTENCES HERE WERE FALSE UNTIL 2026-09-15, and both understated
+        # the finding.
+        #
+        # It said "No combined account allowance is recorded here". One IS
+        # recorded, in this repo, as spend.MONTHLY_TARGET_COMBINED_USD, and not
+        # comparing against it meant the one number that bounds the ACCOUNT was
+        # never checked. A per-repo meter reading correct while the account
+        # drains is the whole defect.
+        #
+        # It also said the remainder "is the other tracker on the same key".
+        # That named a culprit this repo cannot see, and named it in the
+        # singular. THREE repos bill this account: this one, the talent
+        # tracker, and asktherecruiter-sandbox, whose llm-canary runs nightly
+        # against a production model. An unattributed remainder is UNKNOWN, and
+        # calling it the sibling is the same "invisible from here read as small"
+        # error spend.py records at MONTHLY_TARGET_COMBINED_USD.
+        unexplained = account_per_day - repo_per_day
+        line = (
             f"the SHARED account is burning ${account_per_day:.2f}/day "
             f"(~${account_per_day * 30:.0f}/month) while this repo's meter explains only "
             f"${repo_per_day:.2f}/day of it — this repo is inside its "
-            f"${allowance_month:.2f}/month allowance, so the balance is the other "
-            f"tracker on the same key. No combined account allowance is recorded here")
+            f"${allowance_month:.2f}/month allowance, so ${unexplained:.2f}/day "
+            f"(~${unexplained * 30:.0f}/month) is UNATTRIBUTED: it is spent by the "
+            f"other consumers on this key and this repo cannot see which")
+        combined = _combined_target()
+        if combined is None:
+            line += (", and the combined target could not be read from spend.py, "
+                     "which is UNKNOWN and not a pass")
+        elif account_per_day * 30 > combined:
+            line += (f". THE ACCOUNT IS OVER ITS COMBINED TARGET: "
+                     f"~${account_per_day * 30:.0f}/month against "
+                     f"${combined:.2f}/month. Every per-repo meter can read correct "
+                     f"and this still be true, which is why it is checked here")
+        else:
+            line += (f", and the account is inside its ${combined:.2f}/month "
+                     f"combined target")
+        out.append(line)
     return out
+
+
+def _combined_target():
+    """spend.MONTHLY_TARGET_COMBINED_USD, or None when it cannot be read.
+
+    None is UNKNOWN and the caller must not read it as "within target". Kept a
+    lookup rather than a second literal so there is ONE combined number in this
+    repo; a copy here would drift from the policy it is meant to enforce, which
+    is how the two repos set contradictory budgets in the first place.
+    """
+    try:
+        import spend
+        value = float(spend.MONTHLY_TARGET_COMBINED_USD)
+    except Exception:
+        return None
+    return value if value > 0 else None
 
 
 def _report_run_cost():

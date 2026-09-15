@@ -1,3 +1,42 @@
+## 2026-09-15 - The account had a combined target and nothing compared anything to it
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_ops_burn_denominator.py`
+
+`ops_status [2a]` reported, correctly, that the shared OpenRouter account was
+burning $1.85/day (~$56/month) while this repo's meter explained $0.10/day of
+it. Then it said two things that were false.
+
+It said "No combined account allowance is recorded here". One is recorded, in
+this repo, `spend.MONTHLY_TARGET_COMBINED_USD = 18.0`, eight lines of comment
+deep in the file the check imports. So the one number that bounds the ACCOUNT
+was never compared against the account. Every per-repo meter read correct while
+the account drained, which is the defect this project keeps writing rules
+about, arriving through the gap between a policy and a check.
+
+It also said the remainder "is the other tracker on the same key" - a culprit
+this repo cannot see, named in the singular. THREE repos bill that account. The
+third is asktherecruiter-sandbox, whose `llm-canary` runs nightly against a
+production model plus an LLM judge, and unlike that repo's `error-triage-cron`
+nothing pins it to a `:free` model. It has no literal in any budget on either
+side, so it spends against a total that does not count it. An unattributed
+remainder is UNKNOWN; ops_status says UNATTRIBUTED now and reports whether the
+account is over its combined target.
+
+**The burn is still not attributed, and that is a finding rather than a gap in
+the effort.** Committed state cannot do it: the talent tracker holds only
+`data/spend_month.json`, a month-start LIFETIME snapshot with no $/day and no
+$/job, and the sandbox keeps no CI spend ledger. Neither repository can say
+which job spent what. Attribution needs OpenRouter's activity API read from a
+runner holding the key. A nightly canary is not $38/month, so the third
+consumer does not explain the number either - what it explains is why "the
+remainder is the sibling" was never checkable.
+
+No third literal was invented here. A number made up from this side is the same
+mistake recorded at MONTHLY_TARGET_COMBINED_USD, where two repos derived
+contradictory shares from one unenforced denominator. The sandbox's policy is
+the owner's to set; until then the total admits what it omits.
+
 ## 2026-09-15 - Europe "event-recall" for DE FR NL ES IT UK: the label is wrong and five of six are unmeasurable
 
 **Class:** novel
