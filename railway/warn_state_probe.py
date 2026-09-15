@@ -122,8 +122,10 @@ STATES = {
     },
     "PA": {
         "publisher": "Pennsylvania Department of Labor and Industry",
-        "url": ("https://www.pa.gov/agencies/dli/programs-services/workforce-development/"
-                "warn-requirements/warn-notices.html"),
+        # Path corrected 2026-09-15: the 2026-08-13 URL 404s. The section is
+        # now "workforce-development-home". A 404 here was UNKNOWN, never OUT.
+        "url": ("https://www.pa.gov/agencies/dli/programs-services/"
+                "workforce-development-home/warn-requirements/warn-notices"),
         "prior_verdict_2026_08_13": "out",
         "prior_failed_criterion": "b",
         "prior_reason": "HTTP 200 but the notice rows are populated client-side",
@@ -131,8 +133,11 @@ STATES = {
     },
     "WA": {
         "publisher": "Washington State Employment Security Department",
-        "url": ("https://esd.wa.gov/about-employees/WARN/"
-                "warn-layoff-and-closure-database"),
+        # Path corrected 2026-09-15: the 2026-08-13 URL 404s after an ESD
+        # site reorganisation into /employer-requirements/.
+        "url": ("https://esd.wa.gov/employer-requirements/"
+                "layoffs-and-employee-notifications/worker-adjustment-and-"
+                "retraining-notification-warn-layoff-and-closure-database"),
         "prior_verdict_2026_08_13": "out",
         "prior_failed_criterion": "b",
         "prior_reason": "HTTP 200 but the notice rows are populated client-side",
@@ -161,7 +166,10 @@ STATES = {
     },
     "MI": {
         "publisher": "Michigan Department of Labor and Economic Opportunity",
-        "url": "https://www.michigan.gov/leo/bureaus-agencies/wd/warn-notices",
+        # Path corrected 2026-09-15: the 2026-08-13 URL returned 403 then 404
+        # within fifteen minutes. The list now sits under /data-public-notices/.
+        "url": ("https://www.michigan.gov/leo/bureaus-agencies/wd/"
+                "data-public-notices/warn-notices"),
         "prior_verdict_2026_08_13": "out",
         "prior_failed_criterion": "b",
         "prior_reason": "HTTP 200 but the notice rows are populated client-side",
