@@ -44,6 +44,286 @@ sends, so a relay outage leaves the cause reading as still new and the next
 hourly tick retries it, bounded by that hourly cadence rather than by an
 unbounded queue.
 
+## 2026-09-15 - The activity reader was dispatched and returned 403: a provisioning key, not an inference key
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_openrouter_activity.py`
+
+The reader merged earlier today was dispatched against the live account and
+returned, correctly:
+
+    UNKNOWN: activity read failed: HTTP Error 403: Forbidden
+    openrouter_activity exit code: 3
+
+The key was present. OpenRouter restricts `/activity` to a PROVISIONING key on
+purpose, so that historic account usage is not readable by anyone in the
+organisation holding an ordinary inference key. Confirmed against OpenRouter's
+own documentation rather than assumed from the status code.
+
+Two things follow, and the first is the reason the exit code was worth
+designing.
+
+The module reported UNKNOWN and exited 3 instead of printing an empty report.
+Had it printed "$0.0000 over 0 days", the account would have read as at rest
+while it drains, which is the exact defect the whole spend thread is about, and
+it would have read that way from the instrument built to detect it.
+
+The message did not say WHY, and an operator reading "HTTP Error 403" learns
+nothing and re-dispatches. It now names the cause and the remedy: create a
+provisioning key under OpenRouter Settings -> Provisioning Keys and set it as
+`OPENROUTER_PROVISIONING_KEY`. The module prefers that variable and keeps the
+inference key only as a fallback, so the remedy is a SECRET TO ADD and not a
+code change, and the guidance is suppressed when a provisioning key IS in use,
+because then the 403 means something else and this advice would misdirect.
+
+**The burn remains UNATTRIBUTED and no number was produced.** Three repos bill
+one account, the combined target is $18/month against a measured ~$56/month,
+`llm-canary` is counted in no budget, and which job spends the balance still
+cannot be said. The instrument is now one secret away from saying it.
+
+## 2026-09-15 - The account can be attributed, just not from any ledger we keep
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_openrouter_activity.py`
+
+The combined-target fix earlier today established that ~$1.75/day of a
+$1.85/day account burn is UNATTRIBUTED, and that committed state cannot
+attribute it. This adds the one reader that can.
+
+Three consumers, one balance, and only one of them can account for itself.
+This repo keeps `railway/spend_jobs.json`, a real per-job ledger. The talent
+tracker keeps `data/spend_month.json`, a month-start LIFETIME snapshot with no
+$/day and no $/job. asktherecruiter-sandbox keeps no CI spend ledger at all.
+So the question "which job spent the money" has no answer in any repository,
+and no amount of reading them harder produces one.
+
+`railway/openrouter_activity.py` reads OpenRouter's own `/activity` record and
+groups it BY API KEY and BY MODEL, so "which repo" can be read off a key label.
+`.github/workflows/openrouter-activity.yml` is dispatch-only on purpose: the
+daily balance job already owns the alarm, and a second scheduled reader of the
+same account would double the requests to report the same fact.
+
+It costs $0.00 and cannot cost anything: `/activity` is metadata about spend
+already incurred, so reading it adds nothing to the bill. It is in
+`test_spend_guard`'s EXEMPT set for that reason, alongside the balance reporter,
+and the exemption is pinned by a test that the module makes no model call so it
+cannot quietly become a hole.
+
+Two things it refuses to do. A key-less or failed read exits 3 and says UNKNOWN
+rather than printing an empty report, because "no activity found" and "never
+asked" are different answers and conflating them is what produced this whole
+line of work. And it persists nothing: `openrouter_balance_history.json` has
+ONE writer and this is not it, pinned by a test that the module opens no file.
+
+**An unlabelled key is a repo nobody named**, and the report says so rather
+than folding it into a total. That is the shape the uncounted third consumer
+arrived in.
+
+## 2026-09-15 - The account had a combined target and nothing compared anything to it
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_ops_burn_denominator.py`
+
+`ops_status [2a]` reported, correctly, that the shared OpenRouter account was
+burning $1.85/day (~$56/month) while this repo's meter explained $0.10/day of
+it. Then it said two things that were false.
+
+It said "No combined account allowance is recorded here". One is recorded, in
+this repo, `spend.MONTHLY_TARGET_COMBINED_USD = 18.0`, eight lines of comment
+deep in the file the check imports. So the one number that bounds the ACCOUNT
+was never compared against the account. Every per-repo meter read correct while
+the account drained, which is the defect this project keeps writing rules
+about, arriving through the gap between a policy and a check.
+
+It also said the remainder "is the other tracker on the same key" - a culprit
+this repo cannot see, named in the singular. THREE repos bill that account. The
+third is asktherecruiter-sandbox, whose `llm-canary` runs nightly against a
+production model plus an LLM judge, and unlike that repo's `error-triage-cron`
+nothing pins it to a `:free` model. It has no literal in any budget on either
+side, so it spends against a total that does not count it. An unattributed
+remainder is UNKNOWN; ops_status says UNATTRIBUTED now and reports whether the
+account is over its combined target.
+
+**The burn is still not attributed, and that is a finding rather than a gap in
+the effort.** Committed state cannot do it: the talent tracker holds only
+`data/spend_month.json`, a month-start LIFETIME snapshot with no $/day and no
+$/job, and the sandbox keeps no CI spend ledger. Neither repository can say
+which job spent what. Attribution needs OpenRouter's activity API read from a
+runner holding the key. A nightly canary is not $38/month, so the third
+consumer does not explain the number either - what it explains is why "the
+remainder is the sibling" was never checkable.
+
+No third literal was invented here. A number made up from this side is the same
+mistake recorded at MONTHLY_TARGET_COMBINED_USD, where two repos derived
+contradictory shares from one unenforced denominator. The sandbox's policy is
+the owner's to set; until then the total admits what it omits.
+
+## 2026-09-15 - Europe "event-recall" for DE FR NL ES IT UK: the label is wrong and five of six are unmeasurable
+
+**Class:** novel
+**Guard:** none - this is an assessment read out of `railway/country_coverage.py`'s
+own committed registers, not a new mechanism. The registers already carry the
+guard: a country in the corpus and not in REGISTER makes the report UNKNOWN and
+names itself.
+
+A measurement brief asked for European EVENT-RECALL samples for Germany,
+France, the Netherlands, Spain, Italy and the United Kingdom. No number was
+produced, and none should have been. Read against this repo's own register,
+nothing was measured and nothing was fetched.
+
+**The label is a category error before any country is considered.**
+`country_coverage.py` states it: the only denominator in this project that
+supports the word recall is one that enumerates identifiable events, which so
+far is SEC Item 2.05 and nothing else. What a labour ministry publishes is a
+periodic count of affected workers or of procedures with no identities
+attached. Dividing our stored total by that yields SHARE OF THE OFFICIAL TOTAL,
+never recall, and the module explicitly forbids printing such a share beside the
+Item 2.05 band.
+
+**Country by country, from the register rather than from a fresh probe:**
+
+- **Germany** - `regime_no_aggregate`. The Bundesagentur fur Arbeit's complete
+  Fachstatistiken publication calendar was enumerated on 2026-08-18 and carries
+  no product for Massenentlassung or KSchG s.17 at all. There is no denominator
+  to be against. Sampling only.
+- **France** - `refused`, and the register calls it the largest single loss it
+  holds. DARES does publish the PSE series quarterly as XLSX. The host serves an
+  F5/TSPD JavaScript bot defence and its robots.txt is itself unreadable, so the
+  figure exists and is not ours to take.
+- **Italy** - `refused`, and the block sits upstream of even finding out whether
+  an aggregate exists: cliclavoro.gov.it carries `User-agent: ClaudeBot /
+  Disallow: /`. The aggregate is UNDETERMINED and must stay that way.
+- **Netherlands** - an aggregate exists but only as annual PROSE in a UWV press
+  release. cao.minszw.nl serves an Anubis proof-of-work wall and
+  wetten.overheid.nl names ClaudeBot. A citation, not a series.
+- **United Kingdom** - already measured, and already correctly labelled a SHARE:
+  15.8 to 26.2 percent of 303,097 workers notified on GB HR1 for
+  2025-07..2026-06. Northern Ireland is NOT MEASURABLE for a reason that is
+  ours rather than the publisher's: the denominator covers NI alone and the
+  tracker's country vocabulary has no NI split, so a UK numerator over an NI
+  denominator read 177 percent on its first run.
+- **Spain** - the only one with real headroom, twice over. The national monthly
+  XLSX is called the best-shaped source in the corpus, and separately Illes
+  Balears publishes the underlying notices WITH THE EMPLOYER NAMED, CC-BY 4.0,
+  verified by downloading the file.
+
+**The one place event-recall is even possible in Europe is Illes Balears**,
+because naming the employer is what turns a total into a set of events. Four
+jurisdictions on earth do it: US state WARN units, Quebec, Mazowieckie and
+Illes Balears. The Balears register is recorded `in_tracker: False`, and its
+dismissal coverage is recorded as 2008 to 2022, so it cannot support a
+measurement over a recent window without that being stated plainly. A recall
+figure over 2008-2022 is a legitimate thing to want and is not the same claim
+as a current one.
+
+Nothing here was fetched. France and Italy are refused hosts and were not
+probed; the Netherlands' walled paths were not touched.
+
+## 2026-09-15 - The eight-state WARN re-probe is settled: all eight OUT, all on criterion (b)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+Three runs, and the answer only became trustworthy on the third.
+
+Run 1 (16:36) called all eight OUT. Four of those were not verdicts: PA and WA
+404, GA 503, MI 403 after a robots.txt that also 403'd. Run 2 (16:47), after the
+UNKNOWN fix, correctly reported PA, WA and MI as UNKNOWN and moved GA to OUT on
+(b) once its 503 cleared. Run 3 (16:53), after the three moved URLs were
+corrected, is the first run in which every one of the eight was actually
+examined.
+
+FINAL: NY, IL, OH, PA, WA, GA, NJ and MI are all OUT on criterion (b). Each
+returns HTTP 200 and serves no notice rows in the markup; every one of these
+eight publications is populated client-side. Not one of them is excluded by a
+publisher instruction, and not one is reachable by a static read.
+
+The consequence is the definition document's stated bias, confirmed rather than
+lifted: the reference set still cannot say anything about WARN coverage in the
+industrial Midwest or the Northeast, and NO RECALL FIGURE EXISTS for these eight
+states. The eligible set remains CA, TX, FL and TN.
+
+Three things worth keeping. GA's 503 lasted under fifteen minutes and would have
+been recorded permanently as a criterion (a) failure, which is the wrong reason
+as well as the wrong verdict. PA, WA and MI had merely been reorganised, and a
+404 read as OUT would have frozen three live publications as ineligible. MI
+returned 403 then 404 then 200 across seventeen minutes, so a single probe of
+that host decides nothing.
+
+What would change this answer is a documented open-data API or bulk file from
+any of the eight, not a cleverer read of their pages: criterion (b) bars an
+undocumented internal XHR endpoint, and NY's vizql route, GA's admin-ajax and
+MI's Sitecore API are all refused by name in the probe.
+
+## 2026-09-15 - The eight-state WARN re-probe ran, and called three non-findings OUT
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+The re-probe was dispatched against the live sites for the first time. All
+eight states came back OUT, and four of those verdicts were not sound.
+
+NY, IL, OH and NJ are genuine: HTTP 200 with the notice rows populated
+client-side, exactly as on 2026-08-13. OH has moved, from a 404 last month to a
+200 that serves an empty shell, so its failing criterion changed from (a) to
+(b) without becoming any more readable.
+
+PA (404), WA (404) and GA (503) were recorded as OUT on criterion (a). None of
+those statuses says anything about whether the publication is machine-readable.
+A state does not stop publishing WARN notices, so a 404 on a path recorded a
+month earlier means our own URL is stale; a 503 is transient. Both are UNKNOWN
+and are now reported that way, with the status kept so the next run knows which
+URL to replace. An explicit 401 or 403 stays OUT on (a), which is what excluded
+MA in the definition document.
+
+MI is the worse one. Its robots.txt returned 403 and the probe recorded "no
+robots.txt; nothing is disallowed", then fetched the page. An unread robots.txt
+is not consent. Only a 404 means a host publishes no robots.txt; any other
+status means permission was never established, and the probe now stops there.
+
+No recall figure exists for any of these eight states, and none is implied by
+this entry.
+
+## 2026-09-15 - Eight-state WARN re-probe built, on `feat/warn-eight-state-reprobe` (no measurement yet)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+`US-WARN-REFERENCE-SET-DEFINITION.md`'s live probe on 2026-08-13 excluded NY,
+IL, OH, PA, WA, GA, NJ and MI from the WARN reference set (CA, TX, FL, TN are
+the four IN states). None of those eight were excluded on a publisher
+instruction the way VA and MD were (robots block, `Content-Signal:
+ai-input=no`) -- NY needs a dependency (`tableauhyperapi`) this repo will not
+add casually, five states serve their notice table client-side, and OH 404s on
+every documented path. A verdict from a single probe a month old is worth
+re-checking, since state sites change shape without notice.
+
+Built `railway/warn_state_probe.py`, which re-applies the SAME four criteria
+(a/b/c/d from the definition, section 2) to the SAME eight official
+publications, through one injectable fetch function so the judgement logic
+(robots parsing, the named-agent-block rule, the `Content-Signal: ai-input=no`
+rule, the client-side-vs-static-table heuristic, the undocumented-XHR-endpoint
+rule) is unit-tested offline with stubbed HTTP responses -- 28 tests in
+`test_warn_state_probe.py`, none of which opens a socket. `.github/workflows
+/warn-state-reprobe.yml` (`workflow_dispatch` only, `permissions: contents:
+write`, the min hash-pinned lock) is the only place it can honestly run
+against the live sites, since this repo's cloud/remote sessions have no
+egress to state government hosts.
+
+**This commit produces NO recall number and touches NO existing reference-set
+file.** It does not build a frame, does not sample, does not call
+`warn_reference_set.py` or `recall_goldset`, and never reads or writes
+`railway/warn_recall_measurement.json`,
+`docs/recall-reference-sets/us-warn-ca-tx-fl-tn-2025-07_2026-06.goldset.json`,
+`railway/recall_measurement.json` or `railway/recall_adjudications.json`. Its
+own report is a new file pair,
+`docs/recall-reference-sets/us-warn-state-reprobe.{json,md}`, written only
+when the `workflow_dispatch` job actually runs -- it has not run yet as of
+this commit, so those two files do not exist in the repo yet either. The next
+step, once a human dispatches the workflow and reads the result, is deciding
+whether any of the eight now belongs in the reference set; that decision, and
+any frame-building it implies, is explicitly out of scope for this change.
+
 ## 2026-09-14 - Country pages say which kind of coverage they rest on, derived from the register (2.20.195)
 
 **Class:** derived-value-typed-by-hand

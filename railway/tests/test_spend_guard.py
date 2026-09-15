@@ -375,8 +375,17 @@ class EveryPaidWorkflowIsGuarded(unittest.TestCase):
     unguarded, which is exactly the situation on 2026-08-02: the Railway cron
     spent invisibly because every cost check lived in GitHub Actions."""
 
-    # The balance reporter makes no paid calls; it OWNS the snapshot instead.
-    EXEMPT = {"openrouter-balance-check.yml"}
+    # Exempt ONLY where the workflow holds the key and cannot spend it. Both
+    # entries read OpenRouter metadata about money already gone: the balance
+    # reporter reads /credits and OWNS the snapshot, and the activity reader
+    # reads /activity to attribute a burn no committed ledger can. A degrade
+    # step on either is meaningless, because there is no paid call to degrade.
+    #
+    # This set is NOT a place to put a workflow that spends. Each entry is
+    # pinned by a test that the module makes no model call, so an exemption
+    # cannot quietly become a hole: openrouter_activity has
+    # test_openrouter_activity.ItIsNotASecondBalanceWriter.test_it_makes_no_model_call.
+    EXEMPT = {"openrouter-balance-check.yml", "openrouter-activity.yml"}
 
     def test_every_workflow_holding_the_key_runs_the_degrade_step(self):
         wf = ROOT / ".github/workflows"
