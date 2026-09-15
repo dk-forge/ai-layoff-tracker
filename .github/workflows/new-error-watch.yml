@@ -7,7 +7,8 @@ name: New error watch
 # WHY A SEPARATE KEY AND A SEPARATE CAP. OPENROUTER_OPS_KEY carries its own
 # USD 3.00/month credit, shared across three repositories by the owner's own
 # arrangement, and it is used for exactly one thing: the plain-language
-# summary this job asks for. It is never OPENROUTER_API_KEY, and this job
+# summary this job asks for. It is never the main extraction key that
+# spend.py's monthly allowance governs, and this job
 # never touches the extraction/classification budget that key spends against.
 # `railway/new_error_watch.py` keeps its OWN committed ledger
 # (railway/new_error_spend.json) for that USD 3.00 ceiling, separate from

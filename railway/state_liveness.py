@@ -90,6 +90,7 @@ WATCHED_FILES = (
     "railway/curated_probe_state.json",
     "railway/deferral_ledger.json",
     "railway/warn_state_baselines.json",
+    "railway/new_error_state.json",
 )
 
 # STALENESS IS THE WRONG LENS FOR AN EVENT-DRIVEN FILE, and the first cut of
@@ -112,6 +113,10 @@ EVENT_DRIVEN = frozenset({
     # job got an answer, which is the best thing this file can report. Only
     # NEVER_USED can apply, exactly as for the outbox above.
     "railway/deferral_ledger.json",
+    # A new-error alert is written WHEN A NEW CAUSE APPEARS and again when
+    # Sentry reports it settled. Most hours nothing is new, so a long gap
+    # here means no new error has broken -- the best thing it can report.
+    "railway/new_error_state.json",
 })
 
 # Never call a file stale below this, whatever its own history says. A file
