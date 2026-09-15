@@ -1,3 +1,43 @@
+## 2026-09-15 - Eight-state WARN re-probe built, on `feat/warn-eight-state-reprobe` (no measurement yet)
+
+**Class:** eligibility-re-check, no recall figure produced
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+`US-WARN-REFERENCE-SET-DEFINITION.md`'s live probe on 2026-08-13 excluded NY,
+IL, OH, PA, WA, GA, NJ and MI from the WARN reference set (CA, TX, FL, TN are
+the four IN states). None of those eight were excluded on a publisher
+instruction the way VA and MD were (robots block, `Content-Signal:
+ai-input=no`) -- NY needs a dependency (`tableauhyperapi`) this repo will not
+add casually, five states serve their notice table client-side, and OH 404s on
+every documented path. A verdict from a single probe a month old is worth
+re-checking, since state sites change shape without notice.
+
+Built `railway/warn_state_probe.py`, which re-applies the SAME four criteria
+(a/b/c/d from the definition, section 2) to the SAME eight official
+publications, through one injectable fetch function so the judgement logic
+(robots parsing, the named-agent-block rule, the `Content-Signal: ai-input=no`
+rule, the client-side-vs-static-table heuristic, the undocumented-XHR-endpoint
+rule) is unit-tested offline with stubbed HTTP responses -- 28 tests in
+`test_warn_state_probe.py`, none of which opens a socket. `.github/workflows
+/warn-state-reprobe.yml` (`workflow_dispatch` only, `permissions: contents:
+write`, the min hash-pinned lock) is the only place it can honestly run
+against the live sites, since this repo's cloud/remote sessions have no
+egress to state government hosts.
+
+**This commit produces NO recall number and touches NO existing reference-set
+file.** It does not build a frame, does not sample, does not call
+`warn_reference_set.py` or `recall_goldset`, and never reads or writes
+`railway/warn_recall_measurement.json`,
+`docs/recall-reference-sets/us-warn-ca-tx-fl-tn-2025-07_2026-06.goldset.json`,
+`railway/recall_measurement.json` or `railway/recall_adjudications.json`. Its
+own report is a new file pair,
+`docs/recall-reference-sets/us-warn-state-reprobe.{json,md}`, written only
+when the `workflow_dispatch` job actually runs -- it has not run yet as of
+this commit, so those two files do not exist in the repo yet either. The next
+step, once a human dispatches the workflow and reads the result, is deciding
+whether any of the eight now belongs in the reference set; that decision, and
+any frame-building it implies, is explicitly out of scope for this change.
+
 ## 2026-09-14 - Country pages say which kind of coverage they rest on, derived from the register (2.20.195)
 
 **Class:** derived-value-typed-by-hand

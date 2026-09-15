@@ -1,0 +1,54 @@
+name: WARN eight-state re-probe
+
+# Re-probes the eight states named in the measurement brief and currently
+# EXCLUDED from US-WARN-REFERENCE-SET-DEFINITION.md (NY, IL, OH, PA, WA, GA,
+# NJ, MI) against the SAME four eligibility criteria (railway/warn_state_probe
+# .py). It builds no frame, draws no sample, and measures no recall for any
+# state; it only re-checks whether each state's official publication still
+# fails the criterion it failed on 2026-08-13.
+#
+# workflow_dispatch only, on purpose. This repo's own container/cloud sessions
+# have no egress to state government sites, so this Action is the only place
+# the re-probe can run honestly against the live pages. No schedule: a
+# monthly-or-so manual re-check is the right cadence for eight pages that
+# rarely change shape, and an unattended cron against eight different state
+# hosts is not a risk worth taking for its own sake.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  reprobe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: railway/requirements-min.lock
+      # Stdlib only (urllib, json, re) -- this uses the MIN lock, same reason
+      # the health jobs do: no reason to install pdfplumber/openpyxl/openai
+      # for a module that opens no PDF, no spreadsheet and calls no model.
+      - name: Install deps
+        working-directory: railway
+        run: pip install --require-hashes -r requirements-min.lock
+      - name: Re-probe the eight excluded states
+        working-directory: railway
+        run: python3 warn_state_probe.py --probe
+      - name: Commit the report if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/recall-reference-sets/us-warn-state-reprobe.json \
+                  docs/recall-reference-sets/us-warn-state-reprobe.md
+          if git diff --cached --quiet; then
+            echo "no change in the re-probe report"
+          else
+            git commit -m "warn state re-probe: refresh eight-state eligibility report"
+            git push
+          fi
