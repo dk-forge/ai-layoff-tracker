@@ -1,3 +1,41 @@
+## 2026-09-15 - The account can be attributed, just not from any ledger we keep
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_openrouter_activity.py`
+
+The combined-target fix earlier today established that ~$1.75/day of a
+$1.85/day account burn is UNATTRIBUTED, and that committed state cannot
+attribute it. This adds the one reader that can.
+
+Three consumers, one balance, and only one of them can account for itself.
+This repo keeps `railway/spend_jobs.json`, a real per-job ledger. The talent
+tracker keeps `data/spend_month.json`, a month-start LIFETIME snapshot with no
+$/day and no $/job. asktherecruiter-sandbox keeps no CI spend ledger at all.
+So the question "which job spent the money" has no answer in any repository,
+and no amount of reading them harder produces one.
+
+`railway/openrouter_activity.py` reads OpenRouter's own `/activity` record and
+groups it BY API KEY and BY MODEL, so "which repo" can be read off a key label.
+`.github/workflows/openrouter-activity.yml` is dispatch-only on purpose: the
+daily balance job already owns the alarm, and a second scheduled reader of the
+same account would double the requests to report the same fact.
+
+It costs $0.00 and cannot cost anything: `/activity` is metadata about spend
+already incurred, so reading it adds nothing to the bill. It is in
+`test_spend_guard`'s EXEMPT set for that reason, alongside the balance reporter,
+and the exemption is pinned by a test that the module makes no model call so it
+cannot quietly become a hole.
+
+Two things it refuses to do. A key-less or failed read exits 3 and says UNKNOWN
+rather than printing an empty report, because "no activity found" and "never
+asked" are different answers and conflating them is what produced this whole
+line of work. And it persists nothing: `openrouter_balance_history.json` has
+ONE writer and this is not it, pinned by a test that the module opens no file.
+
+**An unlabelled key is a repo nobody named**, and the report says so rather
+than folding it into a total. That is the shape the uncounted third consumer
+arrived in.
+
 ## 2026-09-15 - The account had a combined target and nothing compared anything to it
 
 **Class:** true-but-empty
