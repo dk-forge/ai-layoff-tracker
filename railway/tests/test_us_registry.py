@@ -49,6 +49,47 @@ class CommittedRegistryTests(unittest.TestCase):
             "`python3 railway/generate_us_registry.py` and commit the result; "
             "the public page must move with the collectors, not after them."))
 
+    def test_a_live_freshness_reading_does_not_fail_parity(self):
+        """The calendar must not be able to fail this suite.
+
+        `committed_matches` dropped the top-level `generated_on` but not the
+        per-row freshness block, which carries `checked` (today) and a `reason`
+        recomputed from live history every run. The committed file was written
+        on 2026-09-14 and landed on 2026-09-15, so this test was red the moment
+        it merged and stayed red on main, failing every pull request in the
+        repository for a reason no pull request could fix. A guard that fails
+        daily whatever the code does is a guard everyone learns to scroll past.
+        """
+        doc = json.loads(_read(str(gur.OUT)))
+        doc["rows"][0]["freshness"]["checked"] = "1999-01-01"
+        doc["rows"][0]["freshness"]["reason"] = "recomputed prose, different today"
+        doc["rows"][0]["freshness"]["verdict"] = "UNKNOWN"
+        self.assertEqual(gur._without_live_readings(doc),
+                         gur._without_live_readings(json.loads(_read(str(gur.OUT)))),
+                         "a freshness reading is a live value, not a committed fact")
+
+    def test_a_collector_change_still_fails_parity(self):
+        """The teeth this guard exists for: a scraper change must reach the
+        public page in the same commit. Checked by comparison rather than by
+        trusting that the exclusion above was narrow."""
+        fresh = gur.build()
+        for mutate, what in (
+            (lambda d: d["rows"][0].__setitem__("collectors", []), "a removed collector"),
+            (lambda d: d["rows"][0].__setitem__("official_url", "https://example.invalid/"),
+             "a changed official URL"),
+            (lambda d: d["rows"].pop(0), "a dropped jurisdiction"),
+        ):
+            with self.subTest(what=what):
+                broken = json.loads(json.dumps(fresh))
+                mutate(broken)
+                self.assertNotEqual(gur._without_live_readings(broken),
+                                    gur._without_live_readings(fresh),
+                                    f"{what} must still fail parity")
+
+    def test_only_freshness_is_exempt(self):
+        # A future exclusion is a deliberate act, not a drive-by widening.
+        self.assertEqual(gur.LIVE_ROW_KEYS, ("freshness",))
+
     def test_one_row_per_jurisdiction(self):
         codes = [r["code"] for r in self.doc["rows"]]
         self.assertEqual(codes, list(si.US_JURISDICTIONS))
