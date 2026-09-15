@@ -36,6 +36,67 @@ ONE writer and this is not it, pinned by a test that the module opens no file.
 than folding it into a total. That is the shape the uncounted third consumer
 arrived in.
 
+## 2026-09-15 - Europe "event-recall" for DE FR NL ES IT UK: the label is wrong and five of six are unmeasurable
+
+**Class:** novel
+**Guard:** none - this is an assessment read out of `railway/country_coverage.py`'s
+own committed registers, not a new mechanism. The registers already carry the
+guard: a country in the corpus and not in REGISTER makes the report UNKNOWN and
+names itself.
+
+A measurement brief asked for European EVENT-RECALL samples for Germany,
+France, the Netherlands, Spain, Italy and the United Kingdom. No number was
+produced, and none should have been. Read against this repo's own register,
+nothing was measured and nothing was fetched.
+
+**The label is a category error before any country is considered.**
+`country_coverage.py` states it: the only denominator in this project that
+supports the word recall is one that enumerates identifiable events, which so
+far is SEC Item 2.05 and nothing else. What a labour ministry publishes is a
+periodic count of affected workers or of procedures with no identities
+attached. Dividing our stored total by that yields SHARE OF THE OFFICIAL TOTAL,
+never recall, and the module explicitly forbids printing such a share beside the
+Item 2.05 band.
+
+**Country by country, from the register rather than from a fresh probe:**
+
+- **Germany** - `regime_no_aggregate`. The Bundesagentur fur Arbeit's complete
+  Fachstatistiken publication calendar was enumerated on 2026-08-18 and carries
+  no product for Massenentlassung or KSchG s.17 at all. There is no denominator
+  to be against. Sampling only.
+- **France** - `refused`, and the register calls it the largest single loss it
+  holds. DARES does publish the PSE series quarterly as XLSX. The host serves an
+  F5/TSPD JavaScript bot defence and its robots.txt is itself unreadable, so the
+  figure exists and is not ours to take.
+- **Italy** - `refused`, and the block sits upstream of even finding out whether
+  an aggregate exists: cliclavoro.gov.it carries `User-agent: ClaudeBot /
+  Disallow: /`. The aggregate is UNDETERMINED and must stay that way.
+- **Netherlands** - an aggregate exists but only as annual PROSE in a UWV press
+  release. cao.minszw.nl serves an Anubis proof-of-work wall and
+  wetten.overheid.nl names ClaudeBot. A citation, not a series.
+- **United Kingdom** - already measured, and already correctly labelled a SHARE:
+  15.8 to 26.2 percent of 303,097 workers notified on GB HR1 for
+  2025-07..2026-06. Northern Ireland is NOT MEASURABLE for a reason that is
+  ours rather than the publisher's: the denominator covers NI alone and the
+  tracker's country vocabulary has no NI split, so a UK numerator over an NI
+  denominator read 177 percent on its first run.
+- **Spain** - the only one with real headroom, twice over. The national monthly
+  XLSX is called the best-shaped source in the corpus, and separately Illes
+  Balears publishes the underlying notices WITH THE EMPLOYER NAMED, CC-BY 4.0,
+  verified by downloading the file.
+
+**The one place event-recall is even possible in Europe is Illes Balears**,
+because naming the employer is what turns a total into a set of events. Four
+jurisdictions on earth do it: US state WARN units, Quebec, Mazowieckie and
+Illes Balears. The Balears register is recorded `in_tracker: False`, and its
+dismissal coverage is recorded as 2008 to 2022, so it cannot support a
+measurement over a recent window without that being stated plainly. A recall
+figure over 2008-2022 is a legitimate thing to want and is not the same claim
+as a current one.
+
+Nothing here was fetched. France and Italy are refused hosts and were not
+probed; the Netherlands' walled paths were not touched.
+
 ## 2026-09-15 - The eight-state WARN re-probe is settled: all eight OUT, all on criterion (b)
 
 **Class:** derived-value-typed-by-hand
