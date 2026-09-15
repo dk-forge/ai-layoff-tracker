@@ -9,7 +9,7 @@
     "d": "publishes employer, an absolute headcount, and a notice or received date"
   },
   "agent": "AiLayoffTracker/1.0",
-  "generated_at": "2026-09-15T16:36:47Z",
+  "generated_at": "2026-09-15T16:47:09Z",
   "cost_usd": 0.0,
   "no_recall_measured": true,
   "states_probed": [
@@ -22,13 +22,17 @@
     "NJ",
     "MI"
   ],
-  "states_no_longer_out": [],
+  "states_no_longer_out": [
+    "PA",
+    "WA",
+    "MI"
+  ],
   "results": [
     {
       "state": "NY",
       "publisher": "New York State Department of Labor",
       "official_publication_url": "https://dol.ny.gov/warn-dashboard",
-      "probed_at": "2026-09-15T16:36:39Z",
+      "probed_at": "2026-09-15T16:46:58Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -57,7 +61,7 @@
       "state": "IL",
       "publisher": "Illinois Department of Commerce and Economic Opportunity",
       "official_publication_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
-      "probed_at": "2026-09-15T16:36:39Z",
+      "probed_at": "2026-09-15T16:46:59Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -85,7 +89,7 @@
       "state": "OH",
       "publisher": "Ohio Department of Job and Family Services",
       "official_publication_url": "https://jfs.ohio.gov/job-workforce-services/job-programs-and-services/submit-a-warn-notice/current-public-notices-of-layoffs-and-closures",
-      "probed_at": "2026-09-15T16:36:41Z",
+      "probed_at": "2026-09-15T16:47:00Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "a",
@@ -113,7 +117,7 @@
       "state": "PA",
       "publisher": "Pennsylvania Department of Labor and Industry",
       "official_publication_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development/warn-requirements/warn-notices.html",
-      "probed_at": "2026-09-15T16:36:42Z",
+      "probed_at": "2026-09-15T16:47:01Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -129,15 +133,15 @@
         "unreachable": false
       },
       "http_status": 404,
-      "verdict": "OUT",
-      "failed_criterion": "a",
-      "reason": "HTTP 404 on the documented path"
+      "verdict": "UNKNOWN",
+      "failed_criterion": null,
+      "reason": "HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state"
     },
     {
       "state": "WA",
       "publisher": "Washington State Employment Security Department",
       "official_publication_url": "https://esd.wa.gov/about-employees/WARN/warn-layoff-and-closure-database",
-      "probed_at": "2026-09-15T16:36:44Z",
+      "probed_at": "2026-09-15T16:47:02Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -153,15 +157,15 @@
         "unreachable": false
       },
       "http_status": 404,
-      "verdict": "OUT",
-      "failed_criterion": "a",
-      "reason": "HTTP 404 on the documented path"
+      "verdict": "UNKNOWN",
+      "failed_criterion": null,
+      "reason": "HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state"
     },
     {
       "state": "GA",
       "publisher": "Technical College System of Georgia",
       "official_publication_url": "https://www.tcsg.edu/warn-public-view/",
-      "probed_at": "2026-09-15T16:36:45Z",
+      "probed_at": "2026-09-15T16:47:02Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -177,16 +181,20 @@
         "note": "permitted",
         "unreachable": false
       },
-      "http_status": 503,
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
       "verdict": "OUT",
-      "failed_criterion": "a",
-      "reason": "HTTP 503 on the documented path"
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
     },
     {
       "state": "NJ",
       "publisher": "New Jersey Department of Labor and Workforce Development",
       "official_publication_url": "https://www.nj.gov/labor/employer-services/warn/",
-      "probed_at": "2026-09-15T16:36:46Z",
+      "probed_at": "2026-09-15T16:47:07Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -214,7 +222,7 @@
       "state": "MI",
       "publisher": "Michigan Department of Labor and Economic Opportunity",
       "official_publication_url": "https://www.michigan.gov/leo/bureaus-agencies/wd/warn-notices",
-      "probed_at": "2026-09-15T16:36:47Z",
+      "probed_at": "2026-09-15T16:47:08Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -222,18 +230,18 @@
       "undocumented_endpoint_note": "sources/warn_custom.fetch_mi reads a Sitecore SXA search results JSON endpoint for ingestion; it is an undocumented internal API and is not promoted to eligible under (b)",
       "robots": {
         "robots_url": "https://www.michigan.gov/robots.txt",
-        "http_status": 403,
-        "fetched": false,
+        "http_status": 200,
+        "fetched": true,
         "blocked": false,
-        "blocked_by": null,
+        "blocked_by": "*",
         "content_signal_ai_input_no": false,
-        "note": "no robots.txt (HTTP 403); nothing is disallowed",
+        "note": "permitted",
         "unreachable": false
       },
-      "http_status": 403,
-      "verdict": "OUT",
-      "failed_criterion": "a",
-      "reason": "HTTP 403 on the documented path"
+      "http_status": 404,
+      "verdict": "UNKNOWN",
+      "failed_criterion": null,
+      "reason": "HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state"
     }
   ]
 }

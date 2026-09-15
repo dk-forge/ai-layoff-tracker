@@ -1,6 +1,6 @@
 # US WARN eight-state re-probe
 
-Generated 2026-09-15T16:36:47Z. Definition document: `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`.
+Generated 2026-09-15T16:47:09Z. Definition document: `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`.
 
 This re-probes NY, IL, OH, PA, WA, GA, NJ and MI against the four eligibility criteria fixed in the definition document. **It has NOT produced a recall figure for any of these states and does not build a frame or draw a sample.** Cost: $0.00, no model calls.
 
@@ -9,11 +9,11 @@ This re-probes NY, IL, OH, PA, WA, GA, NJ and MI against the four eligibility cr
 | NY | out (b) | **OUT** | b | 200 | HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13 |
 | IL | out (b) | **OUT** | b | 200 | HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13 |
 | OH | out (a) | **OUT** | b | 200 | HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13 |
-| PA | out (b) | **OUT** | a | 404 | HTTP 404 on the documented path |
-| WA | out (b) | **OUT** | a | 404 | HTTP 404 on the documented path |
-| GA | out (b) | **OUT** | a | 503 | HTTP 503 on the documented path |
+| PA | out (b) | **UNKNOWN** | - | 404 | HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state |
+| WA | out (b) | **UNKNOWN** | - | 404 | HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state |
+| GA | out (b) | **OUT** | b | 200 | HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13 |
 | NJ | out (b) | **OUT** | b | 200 | HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13 |
-| MI | out (b) | **OUT** | a | 403 | HTTP 403 on the documented path |
+| MI | out (b) | **UNKNOWN** | - | 404 | HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state |
 
 ## Criteria
 
@@ -49,21 +49,22 @@ This re-probes NY, IL, OH, PA, WA, GA, NJ and MI against the four eligibility cr
 ### PA -- Pennsylvania Department of Labor and Industry
 - URL: https://www.pa.gov/agencies/dli/programs-services/workforce-development/warn-requirements/warn-notices.html
 - robots.txt: permitted (`https://www.pa.gov/robots.txt`, HTTP 200)
-- verdict: **OUT** on criterion (a)
-- HTTP 404 on the documented path
+- verdict: **UNKNOWN**
+- HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state
 
 ### WA -- Washington State Employment Security Department
 - URL: https://esd.wa.gov/about-employees/WARN/warn-layoff-and-closure-database
 - robots.txt: permitted (`https://esd.wa.gov/robots.txt`, HTTP 200)
-- verdict: **OUT** on criterion (a)
-- HTTP 404 on the documented path
+- verdict: **UNKNOWN**
+- HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state
 
 ### GA -- Technical College System of Georgia
 - URL: https://www.tcsg.edu/warn-public-view/
 - robots.txt: permitted (`https://www.tcsg.edu/robots.txt`, HTTP 200)
+- static readability: False -- HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13
 - undocumented endpoint: sources/warn_custom.fetch_ga reads a nonce'd wp-admin/admin-ajax.php GravityView endpoint for ingestion; it is undocumented and public only by discovery, so it is not promoted to eligible under (b)
-- verdict: **OUT** on criterion (a)
-- HTTP 503 on the documented path
+- verdict: **OUT** on criterion (b)
+- HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13
 
 ### NJ -- New Jersey Department of Labor and Workforce Development
 - URL: https://www.nj.gov/labor/employer-services/warn/
@@ -74,8 +75,8 @@ This re-probes NY, IL, OH, PA, WA, GA, NJ and MI against the four eligibility cr
 
 ### MI -- Michigan Department of Labor and Economic Opportunity
 - URL: https://www.michigan.gov/leo/bureaus-agencies/wd/warn-notices
-- robots.txt: no robots.txt (HTTP 403); nothing is disallowed (`https://www.michigan.gov/robots.txt`, HTTP 403)
+- robots.txt: permitted (`https://www.michigan.gov/robots.txt`, HTTP 200)
 - undocumented endpoint: sources/warn_custom.fetch_mi reads a Sitecore SXA search results JSON endpoint for ingestion; it is an undocumented internal API and is not promoted to eligible under (b)
-- verdict: **OUT** on criterion (a)
-- HTTP 403 on the documented path
+- verdict: **UNKNOWN**
+- HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state
 
