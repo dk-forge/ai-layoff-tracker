@@ -9,7 +9,7 @@
     "d": "publishes employer, an absolute headcount, and a notice or received date"
   },
   "agent": "AiLayoffTracker/1.0",
-  "generated_at": "2026-09-15T16:47:09Z",
+  "generated_at": "2026-09-15T16:53:13Z",
   "cost_usd": 0.0,
   "no_recall_measured": true,
   "states_probed": [
@@ -22,17 +22,13 @@
     "NJ",
     "MI"
   ],
-  "states_no_longer_out": [
-    "PA",
-    "WA",
-    "MI"
-  ],
+  "states_no_longer_out": [],
   "results": [
     {
       "state": "NY",
       "publisher": "New York State Department of Labor",
       "official_publication_url": "https://dol.ny.gov/warn-dashboard",
-      "probed_at": "2026-09-15T16:46:58Z",
+      "probed_at": "2026-09-15T16:53:04Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -61,7 +57,7 @@
       "state": "IL",
       "publisher": "Illinois Department of Commerce and Economic Opportunity",
       "official_publication_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
-      "probed_at": "2026-09-15T16:46:59Z",
+      "probed_at": "2026-09-15T16:53:05Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -89,7 +85,7 @@
       "state": "OH",
       "publisher": "Ohio Department of Job and Family Services",
       "official_publication_url": "https://jfs.ohio.gov/job-workforce-services/job-programs-and-services/submit-a-warn-notice/current-public-notices-of-layoffs-and-closures",
-      "probed_at": "2026-09-15T16:47:00Z",
+      "probed_at": "2026-09-15T16:53:06Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "a",
@@ -116,8 +112,8 @@
     {
       "state": "PA",
       "publisher": "Pennsylvania Department of Labor and Industry",
-      "official_publication_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development/warn-requirements/warn-notices.html",
-      "probed_at": "2026-09-15T16:47:01Z",
+      "official_publication_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+      "probed_at": "2026-09-15T16:53:06Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -132,16 +128,20 @@
         "note": "permitted",
         "unreachable": false
       },
-      "http_status": 404,
-      "verdict": "UNKNOWN",
-      "failed_criterion": null,
-      "reason": "HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state"
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
     },
     {
       "state": "WA",
       "publisher": "Washington State Employment Security Department",
-      "official_publication_url": "https://esd.wa.gov/about-employees/WARN/warn-layoff-and-closure-database",
-      "probed_at": "2026-09-15T16:47:02Z",
+      "official_publication_url": "https://esd.wa.gov/employer-requirements/layoffs-and-employee-notifications/worker-adjustment-and-retraining-notification-warn-layoff-and-closure-database",
+      "probed_at": "2026-09-15T16:53:10Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -156,16 +156,20 @@
         "note": "permitted",
         "unreachable": false
       },
-      "http_status": 404,
-      "verdict": "UNKNOWN",
-      "failed_criterion": null,
-      "reason": "HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state"
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
     },
     {
       "state": "GA",
       "publisher": "Technical College System of Georgia",
       "official_publication_url": "https://www.tcsg.edu/warn-public-view/",
-      "probed_at": "2026-09-15T16:47:02Z",
+      "probed_at": "2026-09-15T16:53:10Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -194,7 +198,7 @@
       "state": "NJ",
       "publisher": "New Jersey Department of Labor and Workforce Development",
       "official_publication_url": "https://www.nj.gov/labor/employer-services/warn/",
-      "probed_at": "2026-09-15T16:47:07Z",
+      "probed_at": "2026-09-15T16:53:12Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -221,8 +225,8 @@
     {
       "state": "MI",
       "publisher": "Michigan Department of Labor and Economic Opportunity",
-      "official_publication_url": "https://www.michigan.gov/leo/bureaus-agencies/wd/warn-notices",
-      "probed_at": "2026-09-15T16:47:08Z",
+      "official_publication_url": "https://www.michigan.gov/leo/bureaus-agencies/wd/data-public-notices/warn-notices",
+      "probed_at": "2026-09-15T16:53:12Z",
       "agent": "AiLayoffTracker/1.0",
       "prior_verdict_2026_08_13": "out",
       "prior_failed_criterion_2026_08_13": "b",
@@ -238,10 +242,14 @@
         "note": "permitted",
         "unreachable": false
       },
-      "http_status": 404,
-      "verdict": "UNKNOWN",
-      "failed_criterion": null,
-      "reason": "HTTP 404 on the documented path recorded in the definition. That path is stale or the service is down, so this run did not judge the publication at all. UNKNOWN is not OUT: re-probe with the current URL before concluding anything about this state"
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
     }
   ]
 }
