@@ -35,8 +35,7 @@ jobs:
       # the health jobs do: no reason to install pdfplumber/openpyxl/openai
       # for a module that opens no PDF, no spreadsheet and calls no model.
       - name: Install deps
-        working-directory: railway
-        run: pip install --require-hashes -r requirements-min.lock
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
       - name: Re-probe the eight excluded states
         working-directory: railway
         run: python3 warn_state_probe.py --probe

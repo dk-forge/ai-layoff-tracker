@@ -1,6 +1,6 @@
 ## 2026-09-15 - Eight-state WARN re-probe built, on `feat/warn-eight-state-reprobe` (no measurement yet)
 
-**Class:** eligibility-re-check, no recall figure produced
+**Class:** derived-value-typed-by-hand
 **Guard:** `railway/tests/test_warn_state_probe.py`
 
 `US-WARN-REFERENCE-SET-DEFINITION.md`'s live probe on 2026-08-13 excluded NY,
