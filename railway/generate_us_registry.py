@@ -238,16 +238,56 @@ def render(doc=None):
     return json.dumps(doc, indent=2, ensure_ascii=False, sort_keys=False) + "\n"
 
 
+#: Per-row keys that are a LIVE READING, not a committed fact, and so are
+#: excluded from the parity comparison below.
+#:
+#: WHY (2026-09-15). `committed_matches` already dropped the top-level
+#: `generated_on`, so the calendar was thought about. It did not drop the
+#: per-row `freshness` block, which carries `checked` (today's date) and a
+#: `reason` recomputed from live history on every run: "14d quiet ... p=0.257"
+#: became "15d quiet ... p=0.233" overnight, and Arizona moved QUIET to UNKNOWN
+#: because its measured history shrank. So the committed file could not match a
+#: fresh build on any day after it was written, and it was committed the day
+#: AFTER it was generated, which means this test was red from the moment it
+#: landed and stayed red on main, failing every pull request in the repository
+#: for a reason no pull request could fix.
+#:
+#: A guard that fails daily whatever the code does is a guard everybody learns
+#: to scroll past, which is the same lesson as eight identical CI emails in one
+#: afternoon. What the test exists to catch is a COLLECTOR change reaching the
+#: public page in the same commit, and that is entirely outside this block: the
+#: jurisdiction set, the health ids, the official URLs, the cadence and the
+#: no_public_register flags all still compare exactly.
+#:
+#: Freshness on the page is not weakened by this. The plugin reads the live
+#: health ledger at render time, which is the only place a current reading can
+#: come from; a date frozen into a committed artifact is stale the moment it is
+#: written, and comparing it promised a currency the file never had.
+LIVE_ROW_KEYS = ("freshness",)
+
+
+def _without_live_readings(doc):
+    """A copy of `doc` with the volatile per-row readings removed."""
+    out = dict(doc)
+    out.pop("generated_on", None)
+    out["rows"] = [
+        {k: v for k, v in row.items() if k not in LIVE_ROW_KEYS}
+        for row in doc.get("rows", [])
+    ]
+    return out
+
+
 def committed_matches(path=OUT):
-    """True when the committed file equals a fresh build, ignoring the date."""
+    """True when the committed file equals a fresh build.
+
+    Compares everything the COLLECTORS determine and nothing that a clock
+    determines. See LIVE_ROW_KEYS for why, and for what is still pinned.
+    """
     try:
         old = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    new = build()
-    old.pop("generated_on", None)
-    new.pop("generated_on", None)
-    return old == new
+    return _without_live_readings(old) == _without_live_readings(build())
 
 
 if __name__ == "__main__":

@@ -1,3 +1,45 @@
+## 2026-09-15 - main was red on a guard no pull request could fix
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_us_registry.py`
+
+`test_committed_json_matches_regeneration` was failing on main, and therefore on
+every open pull request in the repository. It was not any of their defects and
+it was not a flake.
+
+`data/us-jurisdictions.json` is generated. `committed_matches()` compared the
+committed file against a fresh build and already dropped the top-level
+`generated_on`, so the calendar had been thought about. It did not drop the
+per-row `freshness` block, which carries `checked` (today's date) and a `reason`
+recomputed from live history on every run. Overnight "14d quiet ... p=0.257"
+became "15d quiet ... p=0.233", and Arizona moved QUIET to UNKNOWN because its
+measured history shrank. Nothing regenerates the file: no workflow runs
+`generate_us_registry.py`, and it was hand-committed on 2026-09-15 carrying
+`generated_on: 2026-09-14`. It was born stale. The test was red from the commit
+that introduced it and could only ever go redder.
+
+**A guard that fails every day whatever the code does is a guard everybody
+learns to scroll past**, which is the same lesson as eight identical CI emails
+in one afternoon. It had already cost real attention: it read as the failure of
+an unrelated feature branch.
+
+The parity comparison now excludes exactly one thing, `LIVE_ROW_KEYS =
+("freshness",)`, and nothing else. Everything the test exists to catch still
+compares byte for byte: the jurisdiction set, the collector tiers and their
+health ids, the official URLs, the derived cadence and the no_public_register
+flags. Three tests pin that, one for the exemption and two for the teeth, the
+second checking that a removed collector, a changed official URL and a dropped
+jurisdiction each still fail. A fourth asserts the exemption is one key, so
+widening it later is a deliberate act rather than a drive-by.
+
+**The page loses nothing.** The plugin reads the live health ledger at render
+time, which is the only place a current freshness reading can come from. A date
+frozen into a committed artifact is stale the moment it is written, so comparing
+it promised a currency the file never had.
+
+The regenerated file is committed here too, so main is green on the same commit
+that stops it going red again.
+
 ## 2026-09-15 - The activity reader was dispatched and returned 403: a provisioning key, not an inference key
 
 **Class:** true-but-empty
