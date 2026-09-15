@@ -1,0 +1,116 @@
+name: New error watch
+
+# Hourly: a new, unresolved Sentry issue becomes an email within the hour
+# instead of waiting for a human to open the mailbox or a scheduled job to
+# fail loudly enough to trip ci-alert.yml.
+#
+# WHY A SEPARATE KEY AND A SEPARATE CAP. OPENROUTER_OPS_KEY carries its own
+# USD 3.00/month credit, shared across three repositories by the owner's own
+# arrangement, and it is used for exactly one thing: the plain-language
+# summary this job asks for. It is never OPENROUTER_API_KEY, and this job
+# never touches the extraction/classification budget that key spends against.
+# `railway/new_error_watch.py` keeps its OWN committed ledger
+# (railway/new_error_spend.json) for that USD 3.00 ceiling, separate from
+# spend.py's ALLOWANCE for the main key.
+#
+# WHY THE ALERT STILL SENDS WHEN THE SUMMARY CANNOT BE MADE. A cap reached, a
+# missing key, or the call itself raising are all handled inside
+# new_error_watch.py: the alert always goes out, and says plainly which of
+# the three happened. An LLM outage must never silence an error alert.
+#
+# WHY THIS IS FREE. The repo is public, so Actions minutes are unmetered. The
+# job reads Sentry (read scopes only) and, at most once per new cause, makes
+# one OpenRouter request; most hours it makes zero.
+#
+# THE ONE DOOR. `railway/new_error_watch.py` never builds a mail client and
+# never reads OPS_MAIL_FROM; every alert leaves through
+# `railway/ops_notify.py`, exactly like every other operational sender in
+# this repo. A delivery failure is not a red run (opsmail is BEST EFFORT,
+# NEVER RAISES) — the cause simply stays open in new_error_state.json and the
+# next hourly tick tries again.
+on:
+  schedule:
+    - cron: '15 * * * *'   # hourly at :15, clear of the top-of-hour data jobs
+  workflow_dispatch: {}
+
+concurrency:
+  group: new-error-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    name: Check Sentry for new, unresolved errors
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # Stdlib only. No pip install on the alerting path, for the same reason
+      # ci_alert.py and opsmail.py stay stdlib: a dependency resolution
+      # failure must never be able to take the notifier down with it.
+      - name: Check for new errors and alert
+        id: watch
+        env:
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          OPENROUTER_OPS_KEY: ${{ secrets.OPENROUTER_OPS_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+        working-directory: railway
+        run: |
+          set +e
+          python3 new_error_watch.py
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      # Both ledgers are committed so the ledger's own retry (see the module
+      # docstring) and the 14-day dedupe window survive across runs. Retried
+      # the same way alert_state.py's own claim loop is: fetch, reset onto
+      # main, re-write, push, and re-derive on a lost race rather than
+      # replaying a diff.
+      - name: Commit the ledgers
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git add railway/new_error_state.json railway/new_error_spend.json
+            if git diff --staged --quiet; then
+              echo "Nothing changed."
+              exit 0
+            fi
+            git commit -q -m "new-error-watch: ledger update $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push origin HEAD:main; then
+              echo "Recorded on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), re-deriving on current main."
+            git fetch origin main
+            git reset --hard origin/main
+            (cd railway && python3 new_error_watch.py) || true
+            sleep $((attempt * 5))
+          done
+          echo "::warning::could not record the new-error ledgers after 5 attempts; a cause already alerted this run may alert again next hour."
+
+      # 0 = healthy (including "nothing new"). 3 = Sentry could not be
+      # checked at all, which is UNKNOWN and must not read as a pass, so the
+      # run goes red and ci-alert.yml reports it like any other failure.
+      - name: Fail loudly when Sentry could not be checked
+        if: ${{ !cancelled() }}
+        run: |
+          case "${{ steps.watch.outputs.code }}" in
+            0) echo "OK." ;;
+            *) echo "::error::new_error_watch.py exited ${{ steps.watch.outputs.code }}: Sentry could not be checked this run. That is UNKNOWN, not a pass."; exit 1 ;;
+          esac
