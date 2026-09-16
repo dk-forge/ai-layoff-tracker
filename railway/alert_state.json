@@ -87,6 +87,11 @@
       "last": 1789544803,
       "subject": "CI RED: VPS watch \u2014 UNKNOWN: 3 reading(s) could not be taken. Not a pass, not a fault."
     },
+    "vps:heartbeat-stale": {
+      "first": 1789559252,
+      "last": 1789559252,
+      "subject": "VPS heartbeat is stale: atr-runner may be down"
+    },
     "vps:offline:asktherecruiter-sandbox": {
       "first": 1789559250,
       "last": 1789559250,
@@ -103,6 +108,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-16T11:47:30+00:00",
+  "updated_at": "2026-09-16T11:47:33+00:00",
   "version": 1
 }
