@@ -61,14 +61,14 @@ Both reviewers' cells, side by side, each labelled with its convention:
 
 | Cell | Floor (published) | Reviewer verdict (A and B agree) |
 |---|---|---|
-| IL primary | 20/25 = 80.0% [60.9%, 91.1%] | 22/25 = 88.0% [70.0%, 95.8%] |
-| OH primary | 23/25 = 92.0% [75.0%, 97.8%] | 25/25 = 100.0% [86.7%, 100.0%] |
-| PA primary | 15/25 = 60.0% [40.7%, 76.6%] | 16/25 = 64.0% [44.5%, 79.8%] |
-| **wave 2 primary pooled** | **58/75 = 77.3% [66.7%, 85.3%]** | 63/75 = 84.0% [74.1%, 90.6%] |
-| wave 2 large census | 4/6 = 66.7% [30.0%, 90.3%] | 5/6 = 83.3% [43.6%, 97.0%] |
-| **pooled SEVEN states (waves 1+2)** | **157/175 = 89.7% [84.3%, 93.4%]** | 162/175 = 92.6% [87.7%, 95.6%] |
+| IL primary | 20 of 25 = 80.0% [60.9%, 91.1%] | 22 of 25 = 88.0% [70.0%, 95.8%] |
+| OH primary | 23 of 25 = 92.0% [75.0%, 97.8%] | 25 of 25 = 100.0% [86.7%, 100.0%] |
+| PA primary | 15 of 25 = 60.0% [40.7%, 76.6%] | 16 of 25 = 64.0% [44.5%, 79.8%] |
+| **wave 2 primary pooled** | **58 of 75 = 77.3% [66.7%, 85.3%]** | 63 of 75 = 84.0% [74.1%, 90.6%] |
+| wave 2 large census | 4 of 6 = 66.7% [30.0%, 90.3%] | 5 of 6 = 83.3% [43.6%, 97.0%] |
+| **pooled SEVEN states (waves 1+2)** | **157 of 175 = 89.7% [84.3%, 93.4%]** | 162 of 175 = 92.6% [87.7%, 95.6%] |
 
-Wilson 95% score intervals throughout. The seven-state pooled row uses **equal
+**The floor column is REPRODUCED from the generated block in section 2**, and `railway/tests/test_warn_reference_set_wave2.py` fails if it drifts from the committed measurement. The reviewer-verdict column is the only hand-entered one; it comes from the verdict file's own `tally`, which is recomputed from the per-event verdicts and not typed either. Figures here are spelled `N of M` rather than `N/M` so that no hand-written cell can be mistaken for a generated one. Wilson 95% score intervals throughout. The seven-state pooled row uses **equal
 allocation** — 25 events per state regardless of how many notices that state
 publishes — so it is the mean of seven state samples and **not** a
 population-weighted national estimate. **These cells are not ranked and must not
