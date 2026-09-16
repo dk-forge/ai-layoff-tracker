@@ -199,6 +199,13 @@ no identifiable employer, notice date outside the window.
 Two shape notes about the new states, recorded now because they affect the
 denominator:
 
+- **Illinois's own footer is checked against this module's parse, per month.**
+  Every monthly report ends with the department's `Total Layoff Events` and
+  `Total Impacted`. Both are compared with what was parsed and the result is
+  written into the manifest per month, including the size of any gap and
+  whether it equals exactly one published row. A parse nobody checked against
+  the publisher is a parse that is trusted, and a frame built on a trusted
+  parse is a denominator nobody can audit.
 - **IL files one row per site in the same way CA and FL do** (`Compass Group`
   appears four times in July 2025 under four `DBA` site names, one received
   date). The collapse rule handles it; the `DBA` column is retained on each
@@ -210,6 +217,48 @@ denominator:
   **inflate** PA's measured recall. It is disclosed here and PA's collapsed
   multi-row event count is reported in the manifest so the size of the effect is
   visible rather than assumed.
+
+> **AMENDMENT, 2026-09-16, written before the frame was built and before any
+> tracker query.** Inspecting the three publications turned up one artifact the
+> wave-1 rules do not cover, and leaving it alone would have manufactured
+> misses rather than measured them.
+>
+> **Ohio prepends a status marker to its own row when a notice is amended** —
+> `UPDATE Senior Resource Connection`, `UPDATED Eagle Machining - First Brands
+> Group, LLC`, four more. **Six of Ohio's 81 in-window rows carry one.** Wave 1
+> derives every query alias from the state's published employer name, so those
+> six aliases would all have begun with the word `UPDATE`, no query for the
+> actual employer would ever have been sent, and six events would have scored as
+> misses with the rows sitting in the table. That is the identical defect wave 1
+> found when Florida's glued street addresses emptied fourteen alias lists.
+>
+> So a leading `UPDATE` / `UPDATED` / `AMENDED` / `REVISED` / `CORRECTED` marker
+> is **cut on the reference side**, in `warn_reference_set_wave2._employer`,
+> before the collapse key and before the aliases. The rules, and each is there
+> to bound the risk:
+>
+> - it cuts only a **leading** marker, never one inside a name;
+> - it never cuts a name down to fewer than three characters, because a marker
+>   that IS the whole name is not a marker;
+> - the state's **raw published string is kept on every component row**
+>   (`employer_published_raw`) and a boolean says the cut fired
+>   (`status_marker_cut`), so a reviewer checks the cut instead of trusting it;
+> - the manifest reports **how many rows it fired on, per state**.
+>
+> **The direction of the risk is stated rather than left to be discovered.**
+> Cutting makes a match more findable, so it can only move the figure up; not
+> cutting would have manufactured six certain misses. The marker is the
+> department's bookkeeping and not part of the employer's name, which is the
+> same reasoning wave 1 used to cut a street address out of an employer cell.
+>
+> **One thing this amendment deliberately does NOT do:** it does not merge an
+> amended notice into the notice it amends. Wave 1's unit is
+> `(state, employer, notice date)` and an amendment carries a later received
+> date, so it stays a **separate reference event**. That can only make the
+> denominator larger and the figure lower, and if our own `dedup_hash` collapses
+> an amendment into the original, the resulting miss is real, is classified
+> `dedup`, and is exactly the kind of finding this set exists to surface — the
+> same shape as wave 1's two rejects.
 
 ---
 
