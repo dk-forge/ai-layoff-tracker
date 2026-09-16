@@ -432,9 +432,15 @@ class WiredIntoTheOneRegistry(unittest.TestCase):
         self.assertIn("page=1", urls[0])
 
     def test_both_layers_read_one_ceiling(self):
-        """The ingest gate and the live invariant must not drift apart."""
+        """The ingest gate and the live invariant must not drift apart.
+
+        Neither is allowed its own copy of the number: both read the one in
+        filing_shapes, so a change there moves both or neither.
+        """
+        import filing_shape_check as fsc
         self.assertIs(extractor.MAX_8K_LEAD_DAYS, fs.MAX_8K_LEAD_DAYS)
-        self.assertIs(di.MAX_8K_LEAD_DAYS, fs.MAX_8K_LEAD_DAYS)
+        self.assertIs(fsc.MAX_8K_LEAD_DAYS, fs.MAX_8K_LEAD_DAYS)
+        self.assertIs(fsc.REVIEW_8K_LEAD_DAYS, fs.REVIEW_8K_LEAD_DAYS)
 
 
 if __name__ == "__main__":

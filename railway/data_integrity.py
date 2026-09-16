@@ -136,9 +136,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from filing_shapes import (MAX_8K_LEAD_DAYS, REVIEW_8K_LEAD_DAYS, filing_lead_verdict,
-                           projection_language)
-
 BASE = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
@@ -2580,158 +2577,6 @@ class DuplicateArticleInvariant:
                              f"{floor:,} jobs is outside this sweep and is NOT claimed clean")
 
 
-#: One /query page of 8-K rows, largest first, because a wrong 8-K figure's
-#: damage is its job_count and the shapes this looks for arrive large (20,000;
-#: 4,320; 3,500). The window is unbounded on purpose: the Aon row is dated
-#: 2020 and a trailing window would have hidden it.
-FILING_SHAPE_ROWS = 200
-
-
-def filing_shape_findings(rows, refuse_after=MAX_8K_LEAD_DAYS,
-                          review_after=REVIEW_8K_LEAD_DAYS):
-    """Sort 8-K rows into the shapes `filing_shapes` names. Pure; no network.
-
-    Returns {"refuse": [...], "review": [...], "count_absent": [...],
-    "projection": [...]}. Only "refuse" is a defect by itself: an
-    announcement more than `refuse_after` days before the row's own effective
-    date is not this filing's event. The other three are ADVISORY worklists,
-    and the reason is measured, not assumed: applying the ingest gate's
-    excerpt rule to the 991 live 8-K rows on 2026-09-16 failed 260 of them,
-    most legitimate ("36,000 U.S.-based employees" trips a regex on the dots),
-    so a FAIL on that tell would be noise and noise is how an alert channel
-    gets filtered. "count_absent" is the row 177216 shape (a job_count that
-    its own excerpt never states, beside cost words); "projection" is the
-    Paramount shape (a region's forecast stored as an announcement).
-    """
-    out = {"refuse": [], "review": [], "count_absent": [], "projection": []}
-    for row in rows or ():
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("source_type") or "") != "8K":
-            continue
-        try:
-            jobs = int(row.get("job_count") or 0)
-        except (TypeError, ValueError):
-            jobs = 0
-        verdict, days = filing_lead_verdict(row.get("announcement_date"),
-                                            row.get("layoff_date"),
-                                            refuse_after=refuse_after,
-                                            review_after=review_after)
-        item = {"id": row.get("id"), "job_count": jobs, "lead_days": days,
-                "announcement_date": row.get("announcement_date"),
-                "layoff_date": row.get("layoff_date")}
-        if verdict == "refuse":
-            out["refuse"].append(item)
-        elif verdict == "review":
-            out["review"].append(item)
-        excerpt = str(row.get("excerpt") or "")
-        if jobs > 0 and excerpt and not re.search(rf"(?<![\d.,]){jobs:,}(?![\d])|(?<![\d.,]){jobs}(?![\d])", excerpt) \
-                and re.search(r"(?i)[$€£]|\bcosts?\b|\bexpenses?\b|\bcharges?\b|severance", excerpt):
-            out["count_absent"].append(item)
-        if projection_language(excerpt):
-            out["projection"].append(item)
-    for key in out:
-        out[key].sort(key=lambda r: (-(r["lead_days"] or 0), -r["job_count"], str(r["id"])))
-    return out
-
-
-class FilingShapeInvariant:
-    """An 8-K row states its filer's own, current headcount.
-
-    WHAT IT ASSERTS. Over the largest 8-K rows: no row's announcement_date
-    leads its layoff_date by more than MAX_8K_LEAD_DAYS. That span is the one
-    tell of the third-party-figure shape a published row still carries after
-    the filing text is gone (docs/findings-july-august-2026-us-accuracy.md,
-    row 176990: 467 days; live row 176490: 2,233 days). Everything else this
-    module knows about the shape is applied at INGEST in
-    extractor.finalize_extraction, from the same `filing_shapes` definitions.
-
-    WHAT IT REPORTS WITHOUT FAILING. The 181-365 day band, excerpts that never
-    state their own count beside cost words, and projection language, each as
-    a count with row ids, so the PASS sentence is a worklist rather than a
-    clean zero. A guard whose clean zero has never caught a real case is
-    worthless; this one names the row it is failing on today.
-
-    ONE REQUEST, largest first, floor printed. Never a page walk.
-    """
-
-    key = "filing_shape_tells"
-    label = "8-K rows are the filer's own current cuts"
-    reads_live_data = True
-
-    ROWS = FILING_SHAPE_ROWS
-
-    def run(self, ctx):
-        params = {"sources": "8K", "sort": "job_count", "dir": "desc",
-                  "per_page": self.ROWS, "page": 1, "cb": ctx.cachebust}
-        url = BASE + "query?" + urllib.parse.urlencode(params)
-        try:
-            payload = json.loads(ctx.fetch(url, ctx.timeout)) or {}
-        except urllib.error.HTTPError as exc:
-            why = ("site is in its deploy maintenance window (HTTP 503)"
-                   if exc.code == 503 else f"/query returned HTTP {exc.code}")
-            return Result(self, UNKNOWN, detail=why, error=exc)
-        except Exception as exc:
-            return Result(self, UNKNOWN,
-                          detail=f"could not read /query ({exc})", error=exc)
-
-        rows = payload.get("data")
-        if not isinstance(rows, list) or not rows:
-            return Result(self, UNKNOWN,
-                          detail="/query returned no 8-K rows — this check did not "
-                                 "run, which is not the same as finding nothing")
-        counts = []
-        for row in rows:
-            try:
-                counts.append(int((row or {}).get("job_count") or 0))
-            except (TypeError, ValueError):
-                pass
-        floor = min(counts) if counts else 0
-        try:
-            total = int(payload.get("total") or 0)
-        except (TypeError, ValueError):
-            total = 0
-        dated = sum(1 for r in rows if isinstance(r, dict)
-                    and r.get("announcement_date") and r.get("layoff_date"))
-        scope = (f"{len(rows)} largest of {total:,} 8-K rows, down to {floor:,} jobs, "
-                 f"{dated} carrying both dates")
-
-        found = filing_shape_findings(rows)
-
-        def ids(items, n=4):
-            return ", ".join(str(i["id"]) for i in items[:n]) + (" ..." if len(items) > n else "")
-
-        advisory = []
-        if found["review"]:
-            advisory.append(f"{len(found['review'])} row(s) announced {REVIEW_8K_LEAD_DAYS}-"
-                            f"{MAX_8K_LEAD_DAYS} days before their effective date "
-                            f"(rows {ids(found['review'])}): adjudicate, not failed")
-        if found["count_absent"]:
-            advisory.append(f"{len(found['count_absent'])} row(s) whose excerpt never states "
-                            f"their own count beside cost words, the row-177216 shape "
-                            f"(rows {ids(found['count_absent'])}): adjudicate, not failed")
-        if found["projection"]:
-            advisory.append(f"{len(found['projection'])} row(s) with projection language "
-                            f"(rows {ids(found['projection'])}): adjudicate, not failed")
-        advice = ("; ".join(advisory)) if advisory else "no advisory shapes in this sample"
-
-        if found["refuse"]:
-            worst = found["refuse"][0]
-            return Result(self, FAIL, observed=sum(i["job_count"] for i in found["refuse"]),
-                          detail=f"{len(found['refuse'])} 8-K row(s) carry an announcement more "
-                                 f"than {MAX_8K_LEAD_DAYS} days before their own effective date, "
-                                 f"the third-party-figure shape of row 176990. Worst: row "
-                                 f"{worst['id']}, {worst['job_count']:,} jobs, announced "
-                                 f"{worst['announcement_date']} for {worst['layoff_date']} "
-                                 f"({worst['lead_days']:,} days). Read the cited filing, then "
-                                 f"correct through the machinery (RUNBOOK: a published row is "
-                                 f"wrong), never by hand. Also: {advice} ({scope})")
-        return Result(self, PASS, observed=0,
-                      detail=f"no 8-K row is announced more than {MAX_8K_LEAD_DAYS} days before "
-                             f"its own effective date; {advice} ({scope}); a row below "
-                             f"{floor:,} jobs is outside this sweep and is NOT claimed clean")
-
-
 def _php_function_body(src, name):
     """Source between `function name(` and the next top-level closing brace."""
     start = src.find(f"function {name}(")
@@ -2820,12 +2665,6 @@ INVARIANTS = (
     # one article, 7% each of a headline bounded at far more. This one asks
     # that question, on a key that holds no company name at all.
     DuplicateArticleInvariant(),
-    # Both of the above ask whether a number is counted twice. This one asks
-    # whether an 8-K number was ever the filer's to begin with: a row whose
-    # announcement predates its own effective date by more than a year is
-    # quoting somebody else (the 2026-07 Aeternum/HHS 20,000; live Aon). It
-    # also carries three named worklists it deliberately does not fail on.
-    FilingShapeInvariant(),
     MovementInvariant(),
     # The movement guard measures a headline's move against how many ROWS
     # ARRIVED, and a re-scoring moves a headline while nothing arrives. This one
@@ -2892,6 +2731,18 @@ INVARIANTS = (
 from published_figures import FIGURE_INVARIANTS      # noqa: E402
 
 INVARIANTS = INVARIANTS + FIGURE_INVARIANTS
+
+# The 8-K filing-shape guard, appended the same way and for the same reason.
+# It asks what neither of the duplicate guards can: was an 8-K number ever the
+# filer's to begin with? A row whose announcement predates its own effective
+# date by more than a year is quoting somebody else (the 2026-07 Aeternum/HHS
+# 20,000; live row 176490, Aon). It lives in its own module so the rule is
+# shared byte-for-byte with the INGEST gate in extractor.finalize_extraction
+# rather than copied, and so this file's diff stays small.
+from filing_shape_check import (FilingShapeInvariant,  # noqa: E402
+                                filing_shape_findings)
+
+INVARIANTS = INVARIANTS + (FilingShapeInvariant(),)
 
 
 class Result:
