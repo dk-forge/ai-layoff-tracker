@@ -1,3 +1,48 @@
+## 2026-09-16 - Four of seventy-nine countries can carry the word "recall", and now a test says so
+
+**Class:** novel
+**Guard:** `railway/tests/test_worldwide_claim_matrix.py`
+
+A measurement brief asked for per-country samples across the world. Most
+countries cannot carry one, and the reason is a property of what their
+authority publishes rather than anything about our collectors. Answering that
+one country at a time, by hand, is how a wrong answer gets typed into a launch
+surface and quoted for months - the exact defect the cadence work of 2026-08-14
+and the US jurisdiction registry of 2026-09-15 both punished.
+
+`railway/worldwide_claim_matrix.py` derives the answer instead, from this repo's
+own committed, dated assessments in `country_coverage.py`, and writes
+`docs/recall-reference-sets/WORLDWIDE-CLAIM-MATRIX.md`. Four tiers:
+
+- EVENT_RECALL - a register NAMES the employer, so the denominator is a set of
+  identifiable events. **4 countries.**
+- OFFICIAL_SHARE - a periodic aggregate exists, so our total over it is a SHARE
+  and never recall. **19.**
+- DISCOVERY_ONLY - a regime with no complete periodic count, or no regime at
+  all. Nothing beyond discovery is provable. **50.**
+- REFUSED - the publisher declines automated access. **6.**
+
+**Four of seventy-nine.** That is the number the launch needs and it is a fact
+about the world's disclosure regimes, not a shortfall here. The four are US
+state WARN units, Quebec, Mazowieckie and the Illes Balears; the first three are
+ingested and Balears is not, which bounds what may be claimed from it.
+
+The tier order is load-bearing in one non-obvious way: a REFUSAL outranks a
+known aggregate. France demonstrably has the figure and blocks us, and the point
+of the refusal ledger is that such a figure is not ours to take - so it must not
+be promoted to OFFICIAL_SHARE just because we know it exists.
+
+A test pins the rule rather than the rendering: nothing reaches EVENT_RECALL
+without a register that names employers, a masked-identifier register never
+does (Euskadi, settled by download - a masked CIF on 216 of 216 rows), an
+aggregate never yields the word recall, and the matrix carries no collection
+timestamp as data, because "did the collector run?" and "could a number exist?"
+are different questions and a dashboard that mixes them makes a stale source
+and an unmeasurable country look alike.
+
+No network, no model, $0.00. The generator reads two committed Python
+structures and writes Markdown.
+
 ## 2026-09-13 - Nothing watched the self-hosted runner box, and an offline runner read as "no jobs ran"
 
 **Class:** absent-read-as-ok
