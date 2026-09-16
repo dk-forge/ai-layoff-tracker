@@ -59,6 +59,16 @@ fired". Wiring left for the owner: a `VPS_WATCH_TOKEN` fine-grained PAT with
 Administration: read on the three repos, because listing runners is an
 admin-scoped read the workflow token cannot make across repositories.
 
+## 2026-09-16 - the registry's committed jurisdiction data was regenerated stale
+
+**Class:** novel
+
+**What.** `data/us-jurisdictions.json` regenerated (73 rows changed) and the plugin bumped to 2.20.196 so the deploy carries it.
+
+**Why.** The US jurisdiction registry page shipped in 2.20.194 renders from this committed file. It was generated before the last WARN collector runs, so the page's "last successful collection" column was behind the health ledger it is supposed to mirror. Found by the self-heal run, not by a reader, which is the right order.
+
+**Guard:** none added - `test_us_registry.py` already pins the shape, and staleness of the generated copy is what the regeneration job exists to fix. The registry parity check (#366) reports a drift rather than failing on live freshness readings.
+
 ## 2026-09-15 - Hourly new-error watch: a new Sentry issue becomes a summarised email within the hour
 
 **Class:** absent-read-as-ok
