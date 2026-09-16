@@ -2500,6 +2500,22 @@ def duplicated_article_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES):
     return out
 
 
+# THE SECOND IMPLEMENTATION OF THIS CHECK LIVED HERE AND IS NOW COLLAPSED INTO
+# CrossAliasDuplicateInvariant BELOW (PR #377, merged 2026-09-16; PR #376
+# supersedes it). Two invariants keyed on one defect mean two alarms per
+# incident, two sentences that can disagree about one cluster, and two places to
+# maintain one judgement, which is the two-copies-drifted shape this repo keeps
+# ONE registry to avoid.
+#
+# NOTHING WAS DROPPED IN THE COLLAPSE. That version bucketed on (job_count,
+# layoff_date) with date EQUALITY, and the four live rows are dated 09-05,
+# 09-07, 09-08 and 09-08, so it reached two of them; the surviving check uses a
+# two-day window and holds all four. Its initialism and containment rules are
+# both in entity_resolution, with a weak-token guard added. Its SCRIPT rule was
+# the one thing stronger than what #376 had, and it was folded in rather than
+# lost: see _pair_reason and entity_resolution.script_mismatch, narrowed to the
+# same calendar day because that branch carries no name evidence under it.
+
 class DuplicateArticleInvariant:
     """One article reporting one number may not be counted twice.
 
