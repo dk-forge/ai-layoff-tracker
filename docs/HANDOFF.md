@@ -6,6 +6,9 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **Claude, 2026-09-13 late afternoon, VPS/traffic/handover session:** branch
+  `ci/host-jobs-run-on-the-vps` (PR open, unmerged) moves every host-touching
+  workflow to the Contabo self-hosted runner; no plugin version claimed.
 - **HELD by Claude, 2026-09-13 late afternoon, VPS/traffic/handover session.**
   Worktree: `/tmp/wt-lay-handover`; branch: `claude/handover-2026-09-13`,
   based on `origin/main` at `1bb1bc45`. No plugin version is reserved: this

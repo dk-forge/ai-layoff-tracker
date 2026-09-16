@@ -49,7 +49,7 @@ permissions:
 
 jobs:
   backfill:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 45
     # Concurrency lives on the JOB, not the workflow: a workflow-level group
     # cannot reference `matrix` (that is a hard workflow-file error), and a

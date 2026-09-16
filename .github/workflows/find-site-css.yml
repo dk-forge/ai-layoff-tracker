@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   search:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Sized from measurement, 2026-08-05: median 13.5 min, max 19.1 (76%
     # of the old 25 ceiling). 3x the median rounded: 40.
     timeout-minutes: 40

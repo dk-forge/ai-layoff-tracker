@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # 6 -> 15, MEASURED 2026-08-07. The reader-verification step below polls for
     # up to 600s, and it was added under a 360s job timeout, so the wait could
     # never run to completion. Every deploy from 2026-08-05 08:00 onward ran all
@@ -57,10 +57,17 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v5
 
+      # The self-hosted runner (the Contabo VPS, 2026-09-13) ships php-cli 8.3
+      # from Ubuntu 24.04; setup-php on a self-hosted box would apt-install a
+      # PPA build on every deploy. GitHub-hosted runners still get the action.
       - name: Set up PHP for syntax validation
+        if: runner.environment != 'self-hosted'
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+
+      - name: Confirm a PHP CLI exists on this runner
+        run: php --version
 
       - name: Lint every plugin PHP file before upload
         run: |

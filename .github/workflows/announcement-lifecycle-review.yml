@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   report:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # 5 -> 12, MEASURED 2026-08-13: median 0.2 min, max 0.3 over the last 15
     # successful runs. The runtime was never the reason. THE DEFERRAL PATH WAS.
     # host_call.py resolves an unreachable host across three attempts at

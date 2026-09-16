@@ -51,7 +51,7 @@ concurrency:
 
 jobs:
   classify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # One HTTP request and a dictionary walk. The ceiling is here to kill a hung
     # request, not to bound real work.
     timeout-minutes: 10
