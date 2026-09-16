@@ -2321,6 +2321,24 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-facet-page { max-width: 860px; }
 .alt-facet-summary { color: var(--alt-ink-2); font-size: 14px; margin: 0 0 14px; }
 .alt-facet-basis { color: var(--alt-muted); font-size: 13px; margin: 0 0 22px; }
+/* Country pages: the "how this country is covered" block. A definition list,
+   not a table, for the same reason the page is a list: no horizontal bleed
+   at 375px. Tier pills reuse the gap-status shape from the Sources page. */
+.alt-facet-coverage { border: 1px solid var(--alt-border-warm, var(--alt-grid)); border-radius: 12px; padding: 16px 18px; margin: 0 0 24px; background: var(--alt-surface, transparent); }
+.alt-facet-coverage h2 { margin: 0 0 10px; }
+.alt-facet-coverage-tier { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }
+.alt-facet-coverage-tier .alt-gap-status { margin-right: 6px; }
+.alt-facet-coverage-facts { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 14px; line-height: 1.5; }
+.alt-facet-coverage-facts dt { color: var(--alt-muted); font-weight: 600; margin: 0; }
+.alt-facet-coverage-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.alt-facet-coverage-measure { display: block; margin: 0 0 4px; }
+.alt-facet-coverage-note { font-size: 12.5px; margin: 12px 0 0; }
+.alt-facet-tier-1 { background: var(--alt-ok-bg); color: var(--alt-ok-ink); }
+.alt-facet-tier-2 { background: var(--alt-cream-2); color: var(--alt-accent-dark, var(--alt-ink-2)); }
+.alt-facet-tier-3 { background: var(--alt-cream-2); color: var(--alt-ink-2); }
+.alt-facet-tier-4 { background: var(--alt-surface-2); color: var(--alt-muted); }
+.alt-facet-tier-none { background: var(--alt-surface-2); color: var(--alt-muted); }
+@media (max-width: 520px) { .alt-facet-coverage-facts { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } .alt-facet-coverage-facts dd { margin-bottom: 8px; } }
 .alt-facet-total { margin: 0 0 18px; }
 .alt-facet-total p { margin: 0 0 6px; font-size: 16px; color: var(--alt-ink-2); line-height: 1.45; }
 .alt-facet-total strong { color: var(--alt-ink); font-size: 24px; font-variant-numeric: tabular-nums; }

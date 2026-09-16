@@ -1,3 +1,751 @@
+## 2026-09-15 - Hourly new-error watch: a new Sentry issue becomes a summarised email within the hour
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_new_error_watch.py`
+
+A new, unresolved application error reached Sentry and stopped there until a
+human happened to open the mailbox or a scheduled job failed loudly enough to
+trip `ci-alert.yml`. That is the same shape `ci_alert.py` closed for a red
+workflow run in 2026-07-30: a real signal existed and nothing routed it to
+anyone.
+
+`railway/new_error_watch.py`, run hourly by `.github/workflows/new-error-watch.yml`,
+asks Sentry for issues that are unresolved and new in the last hour, computes
+a deduped cause key with numbers normalised out first (the same shape
+`ci_alert.normalise()` uses), and keeps its own committed ledger,
+`railway/new_error_state.json`, built with `alert_state.py` itself
+(`path=`), so it carries the identical three semantics as
+`railway/alert_state.json`: raise once per cause and remind at 14 days, clear
+once when Sentry reports the underlying issue resolved or ignored (checked by
+issue id, never by "it stopped appearing in the last hour's new-issue page",
+which would clear every cause a day after it opened whether or not anyone had
+touched it).
+
+Only a genuinely NEW cause spends anything. That one summary call goes
+through `spend.metered_call` (one request, `max_retries=0`, retried only via
+`attempts=N`) on `google/gemini-2.5-flash-lite`, using a separate key,
+`OPENROUTER_OPS_KEY`, with its own committed USD 3.00/month ledger
+(`railway/new_error_spend.json`) kept apart from `spend.py`'s own allowance
+for `OPENROUTER_API_KEY` so the two budgets can never misattribute each
+other's spend. Email addresses, bearer tokens, API keys and authorization
+header values are redacted out of the error text before it ever reaches the
+prompt. Whatever happens to the summary call (cap reached, no key, or the
+call itself raising) the alert still sends, and says plainly which of the
+three happened; an LLM outage must never be able to silence an error alert.
+
+Every alert leaves through `railway/ops_notify.py`, the one door, with no
+`dedupe_key`/`resolve_scope` of its own (dedup already happened against our
+own ledger; routing it through `ci_alert.post_alert`'s ledger a second time
+would dedupe it again, against the wrong file). Consistent with `opsmail`'s
+"BEST EFFORT, NEVER RAISES" contract and with how `tracker_diff` and
+`curated_probe` already use the same door, a delivery failure is not held in
+a second outbox: the cause is only committed to the ledger once it actually
+sends, so a relay outage leaves the cause reading as still new and the next
+hourly tick retries it, bounded by that hourly cadence rather than by an
+unbounded queue.
+
+## 2026-09-15 - main was red on a guard no pull request could fix
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_us_registry.py`
+
+`test_committed_json_matches_regeneration` was failing on main, and therefore on
+every open pull request in the repository. It was not any of their defects and
+it was not a flake.
+
+`data/us-jurisdictions.json` is generated. `committed_matches()` compared the
+committed file against a fresh build and already dropped the top-level
+`generated_on`, so the calendar had been thought about. It did not drop the
+per-row `freshness` block, which carries `checked` (today's date) and a `reason`
+recomputed from live history on every run. Overnight "14d quiet ... p=0.257"
+became "15d quiet ... p=0.233", and Arizona moved QUIET to UNKNOWN because its
+measured history shrank. Nothing regenerates the file: no workflow runs
+`generate_us_registry.py`, and it was hand-committed on 2026-09-15 carrying
+`generated_on: 2026-09-14`. It was born stale. The test was red from the commit
+that introduced it and could only ever go redder.
+
+**A guard that fails every day whatever the code does is a guard everybody
+learns to scroll past**, which is the same lesson as eight identical CI emails
+in one afternoon. It had already cost real attention: it read as the failure of
+an unrelated feature branch.
+
+The parity comparison now excludes exactly one thing, `LIVE_ROW_KEYS =
+("freshness",)`, and nothing else. Everything the test exists to catch still
+compares byte for byte: the jurisdiction set, the collector tiers and their
+health ids, the official URLs, the derived cadence and the no_public_register
+flags. Three tests pin that, one for the exemption and two for the teeth, the
+second checking that a removed collector, a changed official URL and a dropped
+jurisdiction each still fail. A fourth asserts the exemption is one key, so
+widening it later is a deliberate act rather than a drive-by.
+
+**The page loses nothing.** The plugin reads the live health ledger at render
+time, which is the only place a current freshness reading can come from. A date
+frozen into a committed artifact is stale the moment it is written, so comparing
+it promised a currency the file never had.
+
+The regenerated file is committed here too, so main is green on the same commit
+that stops it going red again.
+
+## 2026-09-15 - The activity reader was dispatched and returned 403: a provisioning key, not an inference key
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_openrouter_activity.py`
+
+The reader merged earlier today was dispatched against the live account and
+returned, correctly:
+
+    UNKNOWN: activity read failed: HTTP Error 403: Forbidden
+    openrouter_activity exit code: 3
+
+The key was present. OpenRouter restricts `/activity` to a PROVISIONING key on
+purpose, so that historic account usage is not readable by anyone in the
+organisation holding an ordinary inference key. Confirmed against OpenRouter's
+own documentation rather than assumed from the status code.
+
+Two things follow, and the first is the reason the exit code was worth
+designing.
+
+The module reported UNKNOWN and exited 3 instead of printing an empty report.
+Had it printed "$0.0000 over 0 days", the account would have read as at rest
+while it drains, which is the exact defect the whole spend thread is about, and
+it would have read that way from the instrument built to detect it.
+
+The message did not say WHY, and an operator reading "HTTP Error 403" learns
+nothing and re-dispatches. It now names the cause and the remedy: create a
+provisioning key under OpenRouter Settings -> Provisioning Keys and set it as
+`OPENROUTER_PROVISIONING_KEY`. The module prefers that variable and keeps the
+inference key only as a fallback, so the remedy is a SECRET TO ADD and not a
+code change, and the guidance is suppressed when a provisioning key IS in use,
+because then the 403 means something else and this advice would misdirect.
+
+**The burn remains UNATTRIBUTED and no number was produced.** Three repos bill
+one account, the combined target is $18/month against a measured ~$56/month,
+`llm-canary` is counted in no budget, and which job spends the balance still
+cannot be said. The instrument is now one secret away from saying it.
+
+## 2026-09-15 - The account can be attributed, just not from any ledger we keep
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_openrouter_activity.py`
+
+The combined-target fix earlier today established that ~$1.75/day of a
+$1.85/day account burn is UNATTRIBUTED, and that committed state cannot
+attribute it. This adds the one reader that can.
+
+Three consumers, one balance, and only one of them can account for itself.
+This repo keeps `railway/spend_jobs.json`, a real per-job ledger. The talent
+tracker keeps `data/spend_month.json`, a month-start LIFETIME snapshot with no
+$/day and no $/job. asktherecruiter-sandbox keeps no CI spend ledger at all.
+So the question "which job spent the money" has no answer in any repository,
+and no amount of reading them harder produces one.
+
+`railway/openrouter_activity.py` reads OpenRouter's own `/activity` record and
+groups it BY API KEY and BY MODEL, so "which repo" can be read off a key label.
+`.github/workflows/openrouter-activity.yml` is dispatch-only on purpose: the
+daily balance job already owns the alarm, and a second scheduled reader of the
+same account would double the requests to report the same fact.
+
+It costs $0.00 and cannot cost anything: `/activity` is metadata about spend
+already incurred, so reading it adds nothing to the bill. It is in
+`test_spend_guard`'s EXEMPT set for that reason, alongside the balance reporter,
+and the exemption is pinned by a test that the module makes no model call so it
+cannot quietly become a hole.
+
+Two things it refuses to do. A key-less or failed read exits 3 and says UNKNOWN
+rather than printing an empty report, because "no activity found" and "never
+asked" are different answers and conflating them is what produced this whole
+line of work. And it persists nothing: `openrouter_balance_history.json` has
+ONE writer and this is not it, pinned by a test that the module opens no file.
+
+**An unlabelled key is a repo nobody named**, and the report says so rather
+than folding it into a total. That is the shape the uncounted third consumer
+arrived in.
+
+## 2026-09-15 - The account had a combined target and nothing compared anything to it
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_ops_burn_denominator.py`
+
+`ops_status [2a]` reported, correctly, that the shared OpenRouter account was
+burning $1.85/day (~$56/month) while this repo's meter explained $0.10/day of
+it. Then it said two things that were false.
+
+It said "No combined account allowance is recorded here". One is recorded, in
+this repo, `spend.MONTHLY_TARGET_COMBINED_USD = 18.0`, eight lines of comment
+deep in the file the check imports. So the one number that bounds the ACCOUNT
+was never compared against the account. Every per-repo meter read correct while
+the account drained, which is the defect this project keeps writing rules
+about, arriving through the gap between a policy and a check.
+
+It also said the remainder "is the other tracker on the same key" - a culprit
+this repo cannot see, named in the singular. THREE repos bill that account. The
+third is asktherecruiter-sandbox, whose `llm-canary` runs nightly against a
+production model plus an LLM judge, and unlike that repo's `error-triage-cron`
+nothing pins it to a `:free` model. It has no literal in any budget on either
+side, so it spends against a total that does not count it. An unattributed
+remainder is UNKNOWN; ops_status says UNATTRIBUTED now and reports whether the
+account is over its combined target.
+
+**The burn is still not attributed, and that is a finding rather than a gap in
+the effort.** Committed state cannot do it: the talent tracker holds only
+`data/spend_month.json`, a month-start LIFETIME snapshot with no $/day and no
+$/job, and the sandbox keeps no CI spend ledger. Neither repository can say
+which job spent what. Attribution needs OpenRouter's activity API read from a
+runner holding the key. A nightly canary is not $38/month, so the third
+consumer does not explain the number either - what it explains is why "the
+remainder is the sibling" was never checkable.
+
+No third literal was invented here. A number made up from this side is the same
+mistake recorded at MONTHLY_TARGET_COMBINED_USD, where two repos derived
+contradictory shares from one unenforced denominator. The sandbox's policy is
+the owner's to set; until then the total admits what it omits.
+
+## 2026-09-15 - Europe "event-recall" for DE FR NL ES IT UK: the label is wrong and five of six are unmeasurable
+
+**Class:** novel
+**Guard:** none - this is an assessment read out of `railway/country_coverage.py`'s
+own committed registers, not a new mechanism. The registers already carry the
+guard: a country in the corpus and not in REGISTER makes the report UNKNOWN and
+names itself.
+
+A measurement brief asked for European EVENT-RECALL samples for Germany,
+France, the Netherlands, Spain, Italy and the United Kingdom. No number was
+produced, and none should have been. Read against this repo's own register,
+nothing was measured and nothing was fetched.
+
+**The label is a category error before any country is considered.**
+`country_coverage.py` states it: the only denominator in this project that
+supports the word recall is one that enumerates identifiable events, which so
+far is SEC Item 2.05 and nothing else. What a labour ministry publishes is a
+periodic count of affected workers or of procedures with no identities
+attached. Dividing our stored total by that yields SHARE OF THE OFFICIAL TOTAL,
+never recall, and the module explicitly forbids printing such a share beside the
+Item 2.05 band.
+
+**Country by country, from the register rather than from a fresh probe:**
+
+- **Germany** - `regime_no_aggregate`. The Bundesagentur fur Arbeit's complete
+  Fachstatistiken publication calendar was enumerated on 2026-08-18 and carries
+  no product for Massenentlassung or KSchG s.17 at all. There is no denominator
+  to be against. Sampling only.
+- **France** - `refused`, and the register calls it the largest single loss it
+  holds. DARES does publish the PSE series quarterly as XLSX. The host serves an
+  F5/TSPD JavaScript bot defence and its robots.txt is itself unreadable, so the
+  figure exists and is not ours to take.
+- **Italy** - `refused`, and the block sits upstream of even finding out whether
+  an aggregate exists: cliclavoro.gov.it carries `User-agent: ClaudeBot /
+  Disallow: /`. The aggregate is UNDETERMINED and must stay that way.
+- **Netherlands** - an aggregate exists but only as annual PROSE in a UWV press
+  release. cao.minszw.nl serves an Anubis proof-of-work wall and
+  wetten.overheid.nl names ClaudeBot. A citation, not a series.
+- **United Kingdom** - already measured, and already correctly labelled a SHARE:
+  15.8 to 26.2 percent of 303,097 workers notified on GB HR1 for
+  2025-07..2026-06. Northern Ireland is NOT MEASURABLE for a reason that is
+  ours rather than the publisher's: the denominator covers NI alone and the
+  tracker's country vocabulary has no NI split, so a UK numerator over an NI
+  denominator read 177 percent on its first run.
+- **Spain** - the only one with real headroom, twice over. The national monthly
+  XLSX is called the best-shaped source in the corpus, and separately Illes
+  Balears publishes the underlying notices WITH THE EMPLOYER NAMED, CC-BY 4.0,
+  verified by downloading the file.
+
+**The one place event-recall is even possible in Europe is Illes Balears**,
+because naming the employer is what turns a total into a set of events. Four
+jurisdictions on earth do it: US state WARN units, Quebec, Mazowieckie and
+Illes Balears. The Balears register is recorded `in_tracker: False`, and its
+dismissal coverage is recorded as 2008 to 2022, so it cannot support a
+measurement over a recent window without that being stated plainly. A recall
+figure over 2008-2022 is a legitimate thing to want and is not the same claim
+as a current one.
+
+Nothing here was fetched. France and Italy are refused hosts and were not
+probed; the Netherlands' walled paths were not touched.
+
+## 2026-09-15 - The eight-state WARN re-probe is settled: all eight OUT, all on criterion (b)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+Three runs, and the answer only became trustworthy on the third.
+
+Run 1 (16:36) called all eight OUT. Four of those were not verdicts: PA and WA
+404, GA 503, MI 403 after a robots.txt that also 403'd. Run 2 (16:47), after the
+UNKNOWN fix, correctly reported PA, WA and MI as UNKNOWN and moved GA to OUT on
+(b) once its 503 cleared. Run 3 (16:53), after the three moved URLs were
+corrected, is the first run in which every one of the eight was actually
+examined.
+
+FINAL: NY, IL, OH, PA, WA, GA, NJ and MI are all OUT on criterion (b). Each
+returns HTTP 200 and serves no notice rows in the markup; every one of these
+eight publications is populated client-side. Not one of them is excluded by a
+publisher instruction, and not one is reachable by a static read.
+
+The consequence is the definition document's stated bias, confirmed rather than
+lifted: the reference set still cannot say anything about WARN coverage in the
+industrial Midwest or the Northeast, and NO RECALL FIGURE EXISTS for these eight
+states. The eligible set remains CA, TX, FL and TN.
+
+Three things worth keeping. GA's 503 lasted under fifteen minutes and would have
+been recorded permanently as a criterion (a) failure, which is the wrong reason
+as well as the wrong verdict. PA, WA and MI had merely been reorganised, and a
+404 read as OUT would have frozen three live publications as ineligible. MI
+returned 403 then 404 then 200 across seventeen minutes, so a single probe of
+that host decides nothing.
+
+What would change this answer is a documented open-data API or bulk file from
+any of the eight, not a cleverer read of their pages: criterion (b) bars an
+undocumented internal XHR endpoint, and NY's vizql route, GA's admin-ajax and
+MI's Sitecore API are all refused by name in the probe.
+
+## 2026-09-15 - The eight-state WARN re-probe ran, and called three non-findings OUT
+
+**Class:** true-but-empty
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+The re-probe was dispatched against the live sites for the first time. All
+eight states came back OUT, and four of those verdicts were not sound.
+
+NY, IL, OH and NJ are genuine: HTTP 200 with the notice rows populated
+client-side, exactly as on 2026-08-13. OH has moved, from a 404 last month to a
+200 that serves an empty shell, so its failing criterion changed from (a) to
+(b) without becoming any more readable.
+
+PA (404), WA (404) and GA (503) were recorded as OUT on criterion (a). None of
+those statuses says anything about whether the publication is machine-readable.
+A state does not stop publishing WARN notices, so a 404 on a path recorded a
+month earlier means our own URL is stale; a 503 is transient. Both are UNKNOWN
+and are now reported that way, with the status kept so the next run knows which
+URL to replace. An explicit 401 or 403 stays OUT on (a), which is what excluded
+MA in the definition document.
+
+MI is the worse one. Its robots.txt returned 403 and the probe recorded "no
+robots.txt; nothing is disallowed", then fetched the page. An unread robots.txt
+is not consent. Only a 404 means a host publishes no robots.txt; any other
+status means permission was never established, and the probe now stops there.
+
+No recall figure exists for any of these eight states, and none is implied by
+this entry.
+
+## 2026-09-15 - Eight-state WARN re-probe built, on `feat/warn-eight-state-reprobe` (no measurement yet)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_warn_state_probe.py`
+
+`US-WARN-REFERENCE-SET-DEFINITION.md`'s live probe on 2026-08-13 excluded NY,
+IL, OH, PA, WA, GA, NJ and MI from the WARN reference set (CA, TX, FL, TN are
+the four IN states). None of those eight were excluded on a publisher
+instruction the way VA and MD were (robots block, `Content-Signal:
+ai-input=no`) -- NY needs a dependency (`tableauhyperapi`) this repo will not
+add casually, five states serve their notice table client-side, and OH 404s on
+every documented path. A verdict from a single probe a month old is worth
+re-checking, since state sites change shape without notice.
+
+Built `railway/warn_state_probe.py`, which re-applies the SAME four criteria
+(a/b/c/d from the definition, section 2) to the SAME eight official
+publications, through one injectable fetch function so the judgement logic
+(robots parsing, the named-agent-block rule, the `Content-Signal: ai-input=no`
+rule, the client-side-vs-static-table heuristic, the undocumented-XHR-endpoint
+rule) is unit-tested offline with stubbed HTTP responses -- 28 tests in
+`test_warn_state_probe.py`, none of which opens a socket. `.github/workflows
+/warn-state-reprobe.yml` (`workflow_dispatch` only, `permissions: contents:
+write`, the min hash-pinned lock) is the only place it can honestly run
+against the live sites, since this repo's cloud/remote sessions have no
+egress to state government hosts.
+
+**This commit produces NO recall number and touches NO existing reference-set
+file.** It does not build a frame, does not sample, does not call
+`warn_reference_set.py` or `recall_goldset`, and never reads or writes
+`railway/warn_recall_measurement.json`,
+`docs/recall-reference-sets/us-warn-ca-tx-fl-tn-2025-07_2026-06.goldset.json`,
+`railway/recall_measurement.json` or `railway/recall_adjudications.json`. Its
+own report is a new file pair,
+`docs/recall-reference-sets/us-warn-state-reprobe.{json,md}`, written only
+when the `workflow_dispatch` job actually runs -- it has not run yet as of
+this commit, so those two files do not exist in the repo yet either. The next
+step, once a human dispatches the workflow and reads the result, is deciding
+whether any of the eight now belongs in the reference set; that decision, and
+any frame-building it implies, is explicitly out of scope for this change.
+
+## 2026-09-14 - Country pages say which kind of coverage they rest on, derived from the register (2.20.195)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_country_tiers.py`
+
+A country page listed its entries and said nothing about what they rested on.
+The disclosure-regime research behind every one of the 79 countries in the
+corpus was committed (`country_coverage.REGISTER`, closed to zero backlog on
+2026-09-12) and read by nothing a reader could see, so "Layoffs in Germany"
+and "Layoffs in Japan" looked like the same kind of record when one is
+Eurofound's monitor plus the press and the other is the press alone.
+
+Every country page now carries a "How this country is covered" block, and
+every value in it is derived:
+
+- **Tier**, by one rule in `railway/generate_country_tiers.py`: Tier 1
+  (official structured) where an official employer-level dataset is read into
+  the tracker, which is the set `PER_EMPLOYER_REGISTERS` marks `in_tracker`
+  (US WARN units, Quebec, Mazowieckie), SEC EDGAR Item 2.05 (US) and
+  Eurofound's ERM over the EU + Norway scope `generate_country_table.EU`
+  names; Tier 2 (official unstructured) where the register classes the
+  country `REGIME_WITH_AGGREGATE`; Tier 3 (verified reported) for
+  `REGIME_NO_AGGREGATE`, `NO_REGIME` and `REFUSED`; Tier 4 (discovery only)
+  for a country in the news-scan scope with no register entry; and "Not yet
+  classified" for an unsettled or expired entry, never a tier. 30 / 7 / 42 /
+  118 on the day it shipped, 0 unclassified.
+- **Languages searched** from the Google News editions in
+  `sources/local_news_markets`, plus a feed's own stated language, with
+  GDELT's 65-language index noted once for every country rather than claimed
+  per country. **Sources monitored** from the GDELT allowlist count for the
+  country, its reviewed publishers, and the regional and national feeds that
+  name it. Scope keys go through `country_coverage.canonical()`, so "Turkey"
+  in a market table and "Türkiye" in the register are one row.
+- **Last successful collection** from the masked health ledger, the newest
+  `ok` among the collector ids serving the country. **Represented events** is
+  the page's own entry count.
+- **Measured recall ONLY where a real event-recall sample exists**: the US
+  (rolling recall's SEC Item 2.05 slice and the editor-confirmed WARN
+  reference set) and the UK (the Hansard-derived set, printed as 0 of 32 with
+  7 candidates awaiting an editor, because that is what the file says).
+  **Estonia and Taiwan carry an official-total comparison, not recall**: the
+  `national_denominators` slices, printed as "we hold X% of the workers
+  notified to <authority>", followed by the sentence that this is not event
+  recall and not a measure of accuracy. Same for GB, NI, Iceland, Latvia,
+  the Netherlands, Poland and Romania.
+
+The block is a definition list, not a table, for the page's own reason (no
+horizontal bleed at 375px); it collapses to one column under 520px. The
+parity test rebuilds on the committed file's own date because register
+assessments expire by age, so a stale file still fails when a collector, a
+market or a measurement moved. `includes/country-coverage.php` holds no SQL,
+so `test_the_page_module_contains_no_sql` still holds for the facet module.
+
+Known seam with PR #351 (2.20.194): both prepend TECHLOG, both add a baton
+line and both bump the plugin version from 2.20.192, so whichever merges
+second carries a three-line conflict with nothing to decide.
+## 2026-09-14 - A public US jurisdiction registry, one row per jurisdiction, nothing typed (2.20.194)
+
+**Class:** derived-value-typed-by-hand
+**Guard:** `railway/tests/test_us_registry.py`
+
+The Sources page answered the WARN question in two hand-written pieces: a
+generated list of the registries the importer reads, and a five-row
+`$alt_gap_states` array typed into the template with a paragraph of reasoning
+per state and a "Daily, 11am ET" cell beside every registry. Nothing tied
+either to the collectors: a state moved into a custom scraper, marked
+UNAVAILABLE in `source_state.json`, or judged QUIET by `source_freshness.py`
+changed nothing a reader could see, and the territories were not on the page
+at all.
+
+`/ai-layoff-tracker/us-warn-registry/` now renders one row for each of the 56
+jurisdictions in `source_inventory.US_JURISDICTIONS`: official source,
+collection method, last successful collection, freshness, historical range,
+whether worker counts and notice documents are on file, and "No public
+register" where a reviewer recorded that. Two halves, both derived:
+
+- `railway/generate_us_registry.py` writes `data/us-jurisdictions.json` from
+  `source_inventory.warn_collectors()` (the scrapers' own state registries plus
+  the cron-run per-state collectors), `sources/warn.py STATE_WARN_URL`,
+  `source_state.json` (HEALTHY / UNAVAILABLE / UNKNOWN with the reviewer's
+  reason), and the WARN workflows' `cron:` lines parsed into a cadence word.
+  The parity test fails when the committed file no longer matches a fresh
+  build, so a collector change reaches the page in the same commit.
+- `includes/us-registry.php` merges that with the two things only the plugin
+  holds: the masked source-health ledger (newest `ok` completion among the
+  collectors serving a jurisdiction) and one grouped query over `wp_alt_layoffs`
+  (effective-date span, rows with a headcount, rows citing a per-notice
+  document rather than the landing page), cached against `alt_data_ver`.
+
+"No public register" is a finding, never a default: it is said only where the
+ledger holds a policy UNAVAILABLE with no official page (AR, NH, WY, PR, GU,
+VI) or where nothing exists at all (AS, MP). Oklahoma is UNAVAILABLE with a
+page and renders as "Published, not countable" with the ledger's own reason.
+Hawaii's freshness is "Not judged" because its OCR collector reports under its
+own id and the freshness ledger holds no `warn:HI` row; that is the true
+state and the page says so rather than borrowing a verdict.
+
+Wired as a secondary page everywhere one has to be: `alt_secondary_pages`
+(title sync), `alt_own_h1_shortcodes`, the asset gate, the public-surface
+list, the IndexNow list, `link_check.PUBLIC_PAGES`, and a retry-until-verified
+page creator. The Sources page links to it under the state WARN section, and
+every WARN collector label on the health page (`meta{}` fifth element `'us'`)
+links to it. Not added to the curated four in the nav submenu, which is a
+reader-order decision for the owner.
+
+## 2026-09-13 - An unread health ledger was reported as 39 collectors that never reported
+
+**Class:** true-but-empty signal
+**Guard:** `railway/tests/test_inventory_unread_ledger_is_unknown.py`
+
+An egress-blocked cloud session ran `ops_status.py`. Section `[2]` printed
+HEALTH UNREACHABLE, and section `[2c]` then printed ACTION NEEDED: "39
+collector(s) declared but never reported". Nothing had been read. The section
+passed `health or {}` into `source_inventory.summary`, so an unreachable
+ledger became an empty one and every declared collector was diffed against
+nothing. The one check whose whole purpose is refusing true-but-empty signals
+was manufacturing one out of its own blindness.
+
+Fix: `reporting_collectors(None)` raises, `summary(None)` reports
+`never_reported = None` (UNKNOWN) with the reason, and ops_status hands the
+ledger through untouched. An answered, genuinely empty ledger (`{}`) still
+names every declared collector, because that one is a real finding. The
+same session found the mailbox janitor red on escalated subjects (a Railway
+"deployment crashed" notice and Sentry alerts from the sandbox project) and
+`evidence-hash-backfill` red on four host 504s in a row at 12:13 UTC; both
+are the host and the sibling app, not this repo, and are left for the
+operator holding the baton.
+## 2026-09-13 - The deploy's own first request was the load event, and the deploy then amplified it with a purge
+
+**Class:** novel (the shape: the deploy's own first request is a load event that the deploy then amplifies with a purge)
+**Guard:** `railway/tests/test_deploy_first_request_is_cheap.py`
+
+Every outage on the weekend of 2026-09-12/13 began within minutes of a plugin
+deploy. FTP deploys bypass WordPress's updater, so the first visitor request
+after a version bump runs `alt_flush_caches_on_deploy()` on one PHP worker.
+Read end to end, that request did: eleven `dbDelta`s via `alt_db_install()`,
+three `COUNT(*)` via `alt_record_dataset_release`, a `DELETE FROM wp_options
+WHERE option_name LIKE ...` full scan with four predicates,
+`alt_dedup_undated_cleanup()` (a correlated EXISTS self-join over the 65k-row
+layoffs table, then `wp_trash_post` per hit, each re-flushing caches),
+`alt_nv_mirror_refresh()` (an outbound `wp_remote_get` to detr.nv.gov with
+`timeout => 45`, downloading a multi-MB PDF inside the visitor's request),
+two `wp_cache_clear_cache()`, `litespeed_purge_all`, and then FIVE separate
+`flush_rewrite_rules(false)` calls from five modules' own init priority 99
+hooks. The same request also ran `alt_ensure_schema_once` and the htaccess
+ensure step, which can make a loopback request to `/stats` with a 15 second
+timeout. Then `deploy-plugin.yml` purged Cloudflare, so every reader arrived
+at the origin at once and queued behind that held worker. On a shared host
+with a per-account entry-process and CPU ceiling, the account pins.
+
+2.20.193 makes the three cheapest cuts, each pinned by the guard test:
+
+- the Nevada mirror leaves the deploy request. The hook now calls
+  `wp_schedule_single_event(time() + 600, 'alt_nv_mirror_cron')`, guarded by
+  `wp_next_scheduled` so no duplicate is queued. The mirror still refreshes
+  ten minutes later; the daily cron on the same hook is unchanged;
+- the `wp_options` LIKE sweep and `alt_dedup_undated_cleanup()` run at most
+  once per calendar day, behind `alt_deploy_sweeps_ran_on` (today's `Y-m-d`),
+  written AFTER they run so a request that dies mid-sweep retries. Three
+  deploys in one night now run them once; the first deploy of a day still
+  runs them;
+- the five rewrite flushes coalesce. Each caller keeps its own version option
+  (its "I need a flush" signal is untouched) but calls
+  `alt_request_rewrite_flush()`, and one `init` priority 100 hook,
+  `alt_rewrite_flush_if_requested()`, flushes once if any flag is set.
+
+Deliberately NOT touched, each a separate question: `alt_db_install()` and
+its eleven `dbDelta`s, `alt_record_dataset_release` and its three counts, the
+htaccess ensure step and its loopback request, and `alt_ensure_schema_once`.
+Also open: the deploy workflow's Cloudflare purge is the amplifier, and a
+warm-before-purge or a staggered purge would address the second half of the
+shape. A plugin deploy is itself the load event, so this change ships only
+after the host has been up for two hours.
+
+## 2026-09-14 - Competitor names were committed to this public repo for two days; removed, rule restated
+
+**Class:** novel
+
+**What.** `docs/COMPETITOR_BENCHMARK_2026-09-12.md` (a 46-line table naming four public trackers with their claimed figures) is deleted from the repo, and the two paragraphs in `docs/HANDOFF.md` that quoted those names are rewritten nameless. The table itself now lives only in the local private benchmark directory (`scratchpad/`, gitignored), which is where the standing rule has always put it. `railway/tests/test_recall_goldset.py` keeps its banned-word list: that is the guard, not a leak.
+
+**Why.** The repo is public and the brand is standalone; competitor names and numbers must never enter the repo or CI logs (CLAUDE.md, "Competitor data stays private"). A benchmark refresh on 2026-09-12 wrote them straight into `docs/` and the baton file, and two sessions read past it. Git history still holds the file; rewriting a public repo's history is the owner's call and is not done here.
+
+**Guard:** `railway/tests/test_no_competitor_names_in_docs.py` walks `docs/`, `wordpress-plugin/` and the README for a case-insensitive banned list and fails on any hit; it is proven against a planted name and refuses to pass on an empty walk. The existing `test_recall_goldset.py` check keeps reading the fixture; this one reads the prose.
+
+## 2026-09-13 - A bot wall answered for the host, and the run said "JSON"
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_host_challenge_names_the_bot_wall.py`
+
+At 16:09 UTC `archive-backfill.yml`, on a GitHub-hosted runner, called
+`host_call.get_json` against `/archive-candidates` and died with
+`requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1`. The
+host was up: this Mac got 200 JSON from the same route in the same minute. The
+runner had been served ChemiCloud's Imunify360 bot-protection page instead, in
+one of three shapes measured that day: an HTML "One moment, please..."
+interstitial with a JS reload on a 2xx, a text/plain "Access denied by
+Imunify360 bot-protection. IPs used for automation should be whitelisted" on a
+403 (a deploy's verification step met that one in the morning), and an edge
+page reading `error code: 504`.
+
+The 2xx interstitial is the dangerous one. `raise_for_status` waves it
+through, and the only thing standing between it and a green run was that the
+worker happened to parse. The CLI path (`host_call.py main`) did not: it would
+have written the HTML page to its output file as the response and exited 0.
+And the message that did surface named the wrong thing entirely, so a session
+reading it would go looking for a broken route.
+
+`http_retry.challenge_reason` now detects the three shapes by body content,
+before any parse and before `raise_for_status`, never by status alone.
+`host_call.HostChallenged` carries what happened and what a human does: the
+host's bot protection challenged this client, whitelist the caller's IP in
+Imunify360 or run the job from a fixed whitelisted IP. It is a `Deferred`, so
+every worker's existing top-level `except` records it and exits 0. Retrying
+tomorrow from the same blocked IP changes nothing, and a red run each morning
+saying so is alarm fatigue with no new information. But it is not allowed to
+hide as an ordinary deferral: the ledger reason starts with
+`deferral_ledger.CHALLENGED_PREFIX`, `[4d]` prints CHALLENGED with the RUNBOOK
+pointer, and `ops_status` asks for a human on the first one rather than the
+third, because waiting does not whitelist an IP. A body that is merely not
+JSON, with none of the markers, still raises the ordinary decode error: that
+is our bug and stays loud. RUNBOOK: "a job says JSONDecodeError from the host".
+## 2026-09-13 - The offline test suite used the production website as test data, on every push, from every machine
+
+**Class:** novel
+**Guard:** `railway/tests/test_offline_suite_is_offline.py`
+
+asktherecruiter.com went down three times in twenty hours. Every PHP request
+on the shared ChemiCloud account timed out at ten seconds, account wide: the
+blog root, the WordPress REST index, this tracker's routes and the sibling
+talent tracker's routes, all failing identically. It was load, not a code
+fault: down at 21:40 UTC on 2026-09-12 under a burst of deploys and CI,
+recovered by itself after a quiet night, straight back down the moment the
+sibling's hourly `tests` workflow ran at 06:46, recovered when that workflow
+was disabled, and down again after the daily scheduled job burst at 15:18.
+
+A measurable share of that load was our own test suites. Forty two modules
+under `railway/tests/` name `asktherecruiter.com`, and a grep could not say
+how many of them made a request, because almost all of them name it inside a
+PHP string they are asserting against. So the whole suite was run under
+`railway/tests/netblock.py`, a `sitecustomize` that records and refuses every
+non-loopback socket, and counted. One run of this suite, on a tree with PR #335
+already applied, opened FIFTY connections to the live site:
+
+    test_dedup_live                      24   deliberate, live-data by design
+    test_secondary_surface_consistency   21   deliberate, live-data by design
+    test_subscriber_routes_live           5   deliberate, live-data by design
+
+and on `origin/main` without #335 there were sixteen more, from
+`test_headline_containment`, which are the ACCIDENT: offline unit tests that
+reached the live `/corrections` endpoint out of an invariant's FAIL branch.
+That one is fixed in #335 (`Ctx.disclosed` reads the live log only when the
+run reads live data; an injected transport resolves to NOT CONSULTED).
+
+None of the fifty is a mistake in the ordinary sense. Each of the three modules
+is about what the deployed site actually returns, and cannot be stubbed
+without becoming a different test. The defect is the TRIGGER: they ran by
+default on every push and every pull request, across four parallel CI legs and
+from every laptop, which is a request-costing check on an event that fires
+hundreds of times a day. The class is `novel`: the mechanism did not stop,
+nothing was absent from a registry, no guard went vacuous, no value was typed
+by hand and nothing was keyed wrongly. A correct check sat on the wrong
+cadence, and the cost was paid by the host it was checking.
+
+The three modules are now OPT IN through `railway/tests/live_host.py`:
+`require()` skips with a reason that begins "UNKNOWN, NOT RUN" unless
+`ALT_LIVE_TESTS=1`, and the exact string "1" is the only value that arms it,
+because a GitHub Actions `env:` block writes an empty string when its
+expression evaluates to nothing. `live-surface-check.yml` is the one run that
+sets it: four times a day on a schedule, one module after another rather than
+a matrix, with `concurrency` so two can never overlap. It carries the same two
+"Live-data invariants were evaluated / NOT evaluated" steps as `tests.yml`,
+because `ci_alert.py` clears a `<workflow>:live.data` incident on a green run
+of the workflow that raised it and a run whose every check skipped must not be
+that run. `tests.yml` keeps its two steps and now always reports NOT
+evaluated, which is the truth.
+
+Measured under the same probe after the change: the default suite opens ZERO
+connections to any host. A skipped live test prints its reason, so the suite
+output says in words that a live surface went unchecked rather than checked
+and found well.
+
+The guard is a runtime measurement, not a grep, and it carries its own
+positive control: `TheBlockerActuallyBlocks` runs a module whose only
+statement is a fetch of a deliberately unresolvable host and requires that it
+be recorded. Proven red by mutation: with `live_host.require()` removed from
+`test_subscriber_routes_live` the guard fails on
+`test_subscriber_routes_live opened 5 connection(s) with ALT_LIVE_TESTS unset`,
+with no packet leaving the machine. A static half (`EveryFetcherIsRegistered`)
+parses every test module with `ast` and requires any module that builds a
+request to the live host, or calls one of the entry points in
+`live_host.LIVE_DOORS` with no injected transport, to be registered in
+`LIVE_MODULES`; it is parsed rather than grepped because the first version
+matched `reader_freshness.check()` inside a docstring.
+
+Not settled here: the scheduled JOBS that read the host (data-integrity,
+reader freshness, the daily burst at 15:18) are out of this change's scope and
+are still the next thing to count. And the rendered groups start a real Chrome,
+which is not a Python socket: what the browser itself fetches while rendering a
+fixture is not visible to `netblock.py`.
+
+## 2026-09-13 - The corrections log said WHAT was removed and never HOW MANY JOBS, so two correct removals reddened every branch
+
+**Class:** novel
+**Guard:** `railway/tests/test_corrections_log_job_counts.py`
+
+On 2026-09-12 `headline_movement` opened two incidents. The worldwide all-time
+figure fell 87,685 jobs in a day and the AI-attributed figure fell 30,000. Both
+were fully explained by two deliberate, correct, already-disclosed removals: an
+Amazon row of 30,000 (row 179276, removed by two-model adjudication) and a
+Grupo Volkswagen row of 60,000, against +2,315 jobs of genuine new entries on
++8 entries. Minus 90,000 plus 2,315 is exactly the observed minus 87,685, with
+nothing left over.
+
+The guard could not reach that conclusion and said so in its own words: "the
+corrections log discloses 2 row(s) removed or merged in this window, which is a
+CANDIDATE explanation and not a verdict (the log records rows, never their job
+counts)". So it stayed FAIL, every branch in the repo went red, a merged pull
+request was blocked, and the owner was woken to run a close command for a
+defect that did not exist.
+
+The cause is one missing field. `alt_log_correction()` recorded an action, a
+row COUNT, a reason and a detail. The site was disclosing the fact of a removal
+and never its magnitude, which is enough to name a cause and never enough to
+settle one. The class is `novel` because none of the existing shapes fits: the
+mechanism did not stop, nothing was absent from a registry, no guard went
+vacuous, and no derived value was typed by hand. A correct guard was starved of
+a measurement that only the writer could take, at the one instant it could be
+taken, and it degraded honestly rather than silently, which is why this cost a
+night rather than a wrong number.
+
+The log now carries a jobs total. The three call sites that REMOVE or MERGE
+rows sum `job_count` BEFORE the rows are deleted: `alt_api_trash` (the ids,
+post_ids and row_ids spaces, each read while the row still exists, because
+`wp_trash_post` cascades), `alt_dedup_undated_cleanup` (summed off its own
+cursor) and `alt_api_merge_events` (which has computed `net_jobs_removed` since
+it shipped and until now spent it only on a sentence). Enrichment and
+reclassification move no jobs and pass nothing.
+
+**ABSENT MEANS UNKNOWN AND NEVER ZERO**, at the writer and at every reader.
+That is the rule the whole change turns on, because a reader that defaults a
+missing figure to 0 would "account for" a removal that took nothing out and
+publish a confident wrong verdict, which is strictly worse than the refusal it
+replaced. The writer omits the key entirely when nothing was measured, and
+`alt_api_corrections` omits the field rather than serialising a 0. The same-day
+collapse is the one place a zero could have been manufactured: a measured
+30,000 accumulated with an unmeasured call is not 30,000 removed, so the merged
+entry LOSES its figure. A partial sum published as a total would be subtracted
+by a guard and would clear a real defect, so one unreadable row makes the whole
+call unmeasured. Historical entries carry no figure and never will.
+
+`account_for_disclosures()` in `data_integrity.py` does the arithmetic and has
+three outcomes, not two: PASS when the residual is inside the floor or inside
+what the ARRIVING rows carry (the removed rows leave the entry allowance
+because their jobs were subtracted explicitly), FAIL exactly as before when the
+disclosure falls short, and UNKNOWN naming the entry when the window holds a
+removal with no job total. An unreadable log leaves the FAIL standing, because
+a network blip is not evidence and promoting a FAIL to UNKNOWN on one would
+hand every real defect a way out. The UNKNOWN is `suppressed`, so the recorder
+cannot turn an unaccountable reading into tomorrow's normal.
+
+`headline_containment` deliberately does NOT use the new field. A containment
+number is a difference between two slices, and a removal disclosed against the
+corpus does not say which side of that boundary it sat on, so there is still no
+subtraction to do there.
+
+The figure is also shown to readers: "1 entry removed, 60,000 jobs" is the
+disclosure a reader needs and "1 entry removed" is not. It renders through
+`array_key_exists`, so a measured 0 prints and an absent figure prints nothing
+rather than the words "0 jobs".
+
+Red first, on the pre-change tree: 15 failing, the first assertion being
+`TheAccounting.test_the_night_of_2026_09_12_is_fully_accounted_for` with
+`AttributeError: module 'data_integrity' has no attribute
+'account_for_disclosures'`, then
+`test_the_trash_endpoint_discloses_its_job_total` with `AssertionError: 'jobs'
+not found in "('removed', array_merge($out['trashed_posts'],
+$out['deleted_rows']), $reason)"`. The writer tests EXECUTE `db.php` through
+the php binary rather than grepping it, so "absent stays absent" is a measured
+property of the stored entry and of the JSON the endpoint serves.
+
 ## 2026-09-12 - The contact form's script never reached a single visitor, and the markup around it did
 
 **Class:** silent-stop
@@ -34,6 +782,33 @@ guard flagged those four JSON-LD blocks; they were checked against the deployed
 page before the exemption was written, not assumed.
 
 Red first: 4 failures and 1 error on the pre-change tree.
+
+## 2026-09-13 - a host-wide outage now stops before the first paid extraction
+
+**Class:** unmetered-spend
+**Guard:** `railway/tests/test_seen_urls_precheck.py`, `railway/tests/test_cost_funnel.py`
+
+The September 12 cron's GDELT query was healthy, but ChemiCloud/Cloudflare
+returned 504 on publication. The existing same-URL pre-check deliberately
+failed open, which is correct for an isolated optimization failure and wrong as
+the only host signal: the run spent $0.1598 across 1,544 model calls before it
+proved 0/1,101 candidates could be published.
+
+The main cron now performs a separate strict readiness probe after every free
+collector and before the first gate or extraction call. It sends a harmless
+sentinel URL through the authenticated `/seen-urls` endpoint, exercising
+WordPress routing, the API key and both source tables without writing a layoff.
+A non-200, malformed body, exception or missing credential stops the run loudly
+before paid work. The candidate URLs remain unmarked, so the overlapping source
+windows can offer them again. A healthy probe leaves the existing per-item
+seen-URL fail-open contract untouched; one batch error must still cost money
+rather than coverage.
+
+Red first: the new contract produced twelve errors because neither the strict
+probe nor cron wiring existed. Green after implementation: 90/90 across the
+seen-URL, cost-funnel, spend-guard and incident suites. Production proof still
+requires green full CI, merge and a successful Railway deployment. A real host
+outage, not a manufactured one, must later show a loud zero-model-call stop.
 
 ## 2026-09-13 - the overlap repair was the wrong TOML type, so Railway rejected every deployment
 

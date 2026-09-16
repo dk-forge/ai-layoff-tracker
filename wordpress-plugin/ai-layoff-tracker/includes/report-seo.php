@@ -235,7 +235,7 @@ add_filter('query_vars', function ($vars) { $vars[] = 'alt_report_sitemap'; retu
 // by its own option so this does not depend on another module doing it.
 add_action('init', function () {
     if (get_option('alt_report_rewrite_version') === ALT_VERSION) return;
-    flush_rewrite_rules(false);
+    alt_request_rewrite_flush();
     update_option('alt_report_rewrite_version', ALT_VERSION, false);
 }, 99);
 

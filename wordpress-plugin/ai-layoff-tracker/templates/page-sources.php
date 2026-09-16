@@ -198,6 +198,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
 
   <h2 id="alt-state-warn">US state WARN registries we read (<?php echo (count($alt_state_urls) - (isset($alt_state_urls['DC']) ? 1 : 0)); ?> states + DC)</h2>
   <p>The federal WARN Act requires large employers to file advance notice of mass layoffs with their state's dislocated-worker unit. We import those official notices daily from every state that publishes usable per-notice data. Each link is the state's own official WARN page, the exact source our importer reads.</p>
+  <p class="alt-muted"><b>All 56 jurisdictions in one table:</b> the <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/us-warn-registry/')); ?>"><?php echo esc_html(function_exists('alt_page_link_label') ? alt_page_link_label('page-us-registry.php', 'US WARN Registry by Jurisdiction') : 'US WARN Registry by Jurisdiction'); ?></a> covers every state, DC and the five inhabited territories. Each row shows the official source, the collection method, the last successful collection, the freshness verdict and the historical range. It also says where there is no public register at all. Every cell is derived from the collectors and the ledgers.</p>
   <?php /*
      TWO COUNTS OF ONE THING, AND NEITHER OF THEM SAID WHICH IT WAS.
 

@@ -68,6 +68,13 @@ HISTORY_KEPT = 50
 
 VERSION = 1
 
+#: A deferral whose reason starts with this was not an outage: the host's bot
+#: protection (or its edge) answered in place of the host. Waiting changes
+#: nothing, a human whitelists the caller's IP. `host_call.HostChallenged`
+#: stamps it and `describe()` / `ops_status [4d]` key on it, so a challenge
+#: cannot hide inside the ordinary "the host had a bad night" line.
+CHALLENGED_PREFIX = "challenged:"
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -119,6 +126,12 @@ def pending(doc: dict) -> list[dict]:
 
 def escalated(doc: dict) -> list[dict]:
     return [e for e in pending(doc) if e.get("consecutive", 0) >= ESCALATE_AFTER]
+
+
+def challenged(doc: dict) -> list[dict]:
+    """Open deferrals where the host's bot protection answered for the host."""
+    return [e for e in pending(doc)
+            if str(e.get("last_reason", "")).startswith(CHALLENGED_PREFIX)]
 
 
 def record_deferral(doc: dict, *, job: str, reason: str = "", run_url: str = "",
@@ -192,6 +205,12 @@ def describe(doc: dict) -> list[str]:
     if escalated(doc):
         lines.append(f"  {ESCALATE_AFTER}+ in a row is NOT an outage. See docs/RUNBOOK.md "
                      "'a job is DEFERRING (and what three in a row means)'.")
+    blocked = challenged(doc)
+    if blocked:
+        names = ", ".join(str(e.get("job")) for e in blocked[:5])
+        lines.append(f"  CHALLENGED by the host's bot protection, not an outage: {names}. "
+                     "Whitelist the runner's IP. See docs/RUNBOOK.md 'a job says "
+                     "JSONDecodeError from the host'.")
     return lines
 
 

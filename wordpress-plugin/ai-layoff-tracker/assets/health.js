@@ -23,16 +23,20 @@
   // the schedule moves.
   const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
   const CRON = cap(altHealthData.ingestCadence) || 'On the ingest schedule';
-  // [coverage target, cadence, country/region, collection method]. The
-  // region+method pair renders under the source id in both tables so a reader
-  // can see what country a collector serves and how it collects.
+  // [coverage target, cadence, country/region, collection method, registry].
+  // The region+method pair renders under the source id in both tables so a
+  // reader can see what country a collector serves and how it collects. The
+  // optional fifth element names a per-jurisdiction registry page the label
+  // links to: every WARN collector carries 'us', which resolves to the US WARN
+  // registry (one row per jurisdiction, handed over by PHP as usRegistryUrl).
+  const REGISTRY = { us: altHealthData.usRegistryUrl || '' };
   const meta = {
     edgar: ['SEC EDGAR 8-K/6-K; US and foreign issuers', CRON, 'United States', 'Official filings API'],
-    warn_us: ['State WARN mass-layoff notices', 'Daily', 'United States', 'State labor-agency notices'],
+    warn_us: ['State WARN mass-layoff notices', 'Daily', 'United States', 'State labor-agency notices', 'us'],
     warn_quebec: ['Quebec collective-dismissal notices (MESS)', 'Daily check, monthly register', 'Canada', 'Provincial labour-ministry filings'],
     federal_rif: ['US federal RIF separations (OPM EHRI)', 'Monthly', 'United States', 'Official OPM workforce dataset'],
-    warn_hi_ocr: ['Hawaii WARN notices (OCR)', 'Daily', 'United States', 'Scanned state notices, OCR-read'],
-    warn_mn_letters: ['Minnesota per-company WARN letters', 'Daily', 'United States', 'State labor-agency notices'],
+    warn_hi_ocr: ['Hawaii WARN notices (OCR)', 'Daily', 'United States', 'Scanned state notices, OCR-read', 'us'],
+    warn_mn_letters: ['Minnesota per-company WARN letters', 'Daily', 'United States', 'State labor-agency notices', 'us'],
     warn_mazowieckie: ['Mazowieckie collective dismissals (WUP Warszawa)', 'Daily check, monthly register', 'Poland', 'Official regional labour-office register'],
     source_audit: ['Monthly self-audit (rows re-verified against their sources)', 'Monthly', 'Internal QA', 'Read-only accuracy check'],
     newsapi: ['Retired collector (replaced by Google News RSS)', 'Retired 2026-07-25', 'Worldwide', 'Licensed news API'],
@@ -48,7 +52,7 @@
     eurofound_erm: ['Eurofound ERM restructuring announcements', 'Daily', 'European Union', 'Official monitor dataset'],
     company_watchlist: ['Targeted sweep of large employers with no current-year entry', 'Daily, rotating slice', 'Worldwide', 'Licensed news API'],
     supplemental_news: ['Non-English / global news expansion (NewsData.io · Marketaux · Finnhub)', 'Daily', 'Worldwide (Europe-weighted)', 'Licensed news APIs'],
-    warn_custom_states: ['Custom-scraper WARN states (drift watchdog)', 'Daily', 'United States', 'State labor-agency notices'],
+    warn_custom_states: ['Custom-scraper WARN states (drift watchdog)', 'Daily', 'United States', 'State labor-agency notices', 'us'],
     context_enrichment: ['Existing source-linked records', 'Daily evidence-only', 'Internal', 'Evidence re-read'],
     reason_backfill: ['Untagged non-WARN records; reason tags only', 'Daily evidence-only', 'Internal', 'Stored-excerpt classification'],
     role_enrichment: ['Role categories from already-stored row text', 'Daily evidence-only', 'Internal', 'Stored-evidence re-read'],
@@ -65,14 +69,15 @@
     digest_weekly: ['Weekly digest slot liveness (the external sender\u2019s own completed-pass signal; counts only, never addresses)', 'Weekly (Mondays, 7:30 AM Eastern)', 'Internal', 'Self-reported by the scheduled sender after a completed weekly pass'],
     digest_monthly: ['Monthly digest slot liveness (the external sender\u2019s own completed-pass signal; counts only, never addresses)', 'Monthly (the 1st, 9:00 AM Eastern)', 'Internal', 'Self-reported by the scheduled sender after a completed monthly pass'],
     link_check: ['Broken-link tripwire: public pages + source-rot sample', 'Daily', 'Internal QA', 'HTTP reachability check'],
-    warn_custom_legacy: ['Legacy custom-scraper WARN states (drift watchdog family)', 'Daily', 'United States', 'State labor-agency notices'],
+    warn_custom_legacy: ['Legacy custom-scraper WARN states (drift watchdog family)', 'Daily', 'United States', 'State labor-agency notices', 'us'],
     backup_export: ['Weekly off-host backup of every public table, checked for drift (subscriber data is never included)', 'Weekly (Sundays)', 'Internal', 'Keyed read of our own tables, published as a GitHub release'],
   };
   const srcLabel = id => {
     const m = meta[id];
-    return m && m[2]
-      ? `${esc(id)}<br><small class="alt-health-src-meta">${esc(m[2])} · ${esc(m[3])}</small>`
-      : esc(id);
+    if (!m || !m[2]) return esc(id);
+    const reg = m[4] && REGISTRY[m[4]];
+    const link = reg ? ` · <a href="${esc(reg)}">per-jurisdiction registry</a>` : '';
+    return `${esc(id)}<br><small class="alt-health-src-meta">${esc(m[2])} · ${esc(m[3])}${link}</small>`;
   };
   const get = path => fetch(api + path + (path.includes('?') ? '&' : '?') + 'cb=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject(path));
 

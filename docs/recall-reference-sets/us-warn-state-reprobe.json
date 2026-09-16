@@ -1,0 +1,255 @@
+{
+  "report_id": "us-warn-eight-state-reprobe",
+  "purpose": "Re-probe of the eight WARN states excluded from US-WARN-REFERENCE-SET-DEFINITION.md on 2026-08-13 -- NY, IL, OH, PA, WA, GA, NJ, MI -- against the SAME four criteria. This report judges eligibility ONLY. It builds no frame, draws no sample, and measures no recall; no existing reference-set manifest or measurement file is touched.",
+  "definition_document": "docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md",
+  "criteria": {
+    "a": "reachable under a plain browser User-Agent and permitted by robots.txt",
+    "b": "statically machine-readable -- a document or a documented open-data API, not a JavaScript-only page, a proprietary BI extract, or an undocumented internal endpoint",
+    "c": "complete over the window in one document or one date-bounded query",
+    "d": "publishes employer, an absolute headcount, and a notice or received date"
+  },
+  "agent": "AiLayoffTracker/1.0",
+  "generated_at": "2026-09-15T16:53:13Z",
+  "cost_usd": 0.0,
+  "no_recall_measured": true,
+  "states_probed": [
+    "NY",
+    "IL",
+    "OH",
+    "PA",
+    "WA",
+    "GA",
+    "NJ",
+    "MI"
+  ],
+  "states_no_longer_out": [],
+  "results": [
+    {
+      "state": "NY",
+      "publisher": "New York State Department of Labor",
+      "official_publication_url": "https://dol.ny.gov/warn-dashboard",
+      "probed_at": "2026-09-15T16:53:04Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "Tableau Public visualization; the workbook downloads but holds two .hyper extracts needing tableauhyperapi, a dependency this repo will not add for a reference set",
+      "undocumented_endpoint_note": "the vizql bootstrap route carries no session id and is an undocumented internal API; not used and not promoted to eligible",
+      "robots": {
+        "robots_url": "https://dol.ny.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "IL",
+      "publisher": "Illinois Department of Commerce and Economic Opportunity",
+      "official_publication_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+      "probed_at": "2026-09-15T16:53:05Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "HTTP 200 but the notice rows are populated client-side",
+      "robots": {
+        "robots_url": "https://dceo.illinois.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "OH",
+      "publisher": "Ohio Department of Job and Family Services",
+      "official_publication_url": "https://jfs.ohio.gov/job-workforce-services/job-programs-and-services/submit-a-warn-notice/current-public-notices-of-layoffs-and-closures",
+      "probed_at": "2026-09-15T16:53:06Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "a",
+      "prior_reason_2026_08_13": "every documented path to the agency's own WARN listing 404s",
+      "robots": {
+        "robots_url": "https://jfs.ohio.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "PA",
+      "publisher": "Pennsylvania Department of Labor and Industry",
+      "official_publication_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+      "probed_at": "2026-09-15T16:53:06Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "HTTP 200 but the notice rows are populated client-side",
+      "robots": {
+        "robots_url": "https://www.pa.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "WA",
+      "publisher": "Washington State Employment Security Department",
+      "official_publication_url": "https://esd.wa.gov/employer-requirements/layoffs-and-employee-notifications/worker-adjustment-and-retraining-notification-warn-layoff-and-closure-database",
+      "probed_at": "2026-09-15T16:53:10Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "HTTP 200 but the notice rows are populated client-side",
+      "robots": {
+        "robots_url": "https://esd.wa.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "GA",
+      "publisher": "Technical College System of Georgia",
+      "official_publication_url": "https://www.tcsg.edu/warn-public-view/",
+      "probed_at": "2026-09-15T16:53:10Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "HTTP 200 but the notice rows are populated client-side",
+      "undocumented_endpoint_note": "sources/warn_custom.fetch_ga reads a nonce'd wp-admin/admin-ajax.php GravityView endpoint for ingestion; it is undocumented and public only by discovery, so it is not promoted to eligible under (b)",
+      "robots": {
+        "robots_url": "https://www.tcsg.edu/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "NJ",
+      "publisher": "New Jersey Department of Labor and Workforce Development",
+      "official_publication_url": "https://www.nj.gov/labor/employer-services/warn/",
+      "probed_at": "2026-09-15T16:53:12Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "HTTP 200 but the notice rows are populated client-side",
+      "robots": {
+        "robots_url": "https://www.nj.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    },
+    {
+      "state": "MI",
+      "publisher": "Michigan Department of Labor and Economic Opportunity",
+      "official_publication_url": "https://www.michigan.gov/leo/bureaus-agencies/wd/data-public-notices/warn-notices",
+      "probed_at": "2026-09-15T16:53:12Z",
+      "agent": "AiLayoffTracker/1.0",
+      "prior_verdict_2026_08_13": "out",
+      "prior_failed_criterion_2026_08_13": "b",
+      "prior_reason_2026_08_13": "HTTP 200 but the notice rows are populated client-side",
+      "undocumented_endpoint_note": "sources/warn_custom.fetch_mi reads a Sitecore SXA search results JSON endpoint for ingestion; it is an undocumented internal API and is not promoted to eligible under (b)",
+      "robots": {
+        "robots_url": "https://www.michigan.gov/robots.txt",
+        "http_status": 200,
+        "fetched": true,
+        "blocked": false,
+        "blocked_by": "*",
+        "content_signal_ai_input_no": false,
+        "note": "permitted",
+        "unreachable": false
+      },
+      "http_status": 200,
+      "static_readability": {
+        "readable": false,
+        "why": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+      },
+      "verdict": "OUT",
+      "failed_criterion": "b",
+      "reason": "HTTP 200 but no populated data rows found in the served markup -- the table is populated client-side, same as 2026-08-13"
+    }
+  ]
+}

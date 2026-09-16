@@ -127,6 +127,29 @@ holder, so the start-of-session ritual surfaces it automatically.
   Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
   PR #336 is merged and no plugin version is reserved. A new session must claim
   the baton and branch from current `origin/main` before editing.
+
+- **RELEASED 2026-09-14 23:55 UTC (Claude Code, Mac session).** The evening's
+  two plugin PRs are merged and live: #351 (US jurisdiction registry page,
+  2.20.194) and #352 (country coverage tiers, 2.20.195), after #347 (cheap
+  deploy, 2.20.193) at 21:34 UTC, each an hour apart with the blog watched
+  clean between them. Also merged: #349 (cloud-session handover rules) and
+  #353 (competitor names removed from the public repo, with a docs guard test).
+  Nobody holds the baton; claim it before editing.
+- **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
+  Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
+  `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
+  and this line. No plugin change, no version reserved, no request to the
+  host beyond the one ops_status run at session start.
+- 2026-09-13 (Claude, worktree `/tmp/wt-lay-deploycost`, branch
+  `fix/deploy-first-request-is-cheap`, reserves 2.20.193): the deploy's first
+  request stops downloading the Nevada PDF inline, runs its two sweeps once a
+  day, and flushes rewrite rules once instead of five times. DO NOT MERGE until
+  the host has been up for two hours; a plugin deploy is itself the load event.
+- **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
+  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
+  branch: `codex/host-readiness-preflight`, based on `origin/main` at
+  `b06fdad9`. No plugin version is reserved because this changes the Railway
+  collector and its tests/documentation, not the WordPress plugin.
   Dakota authorized fixing the remaining eight evidence gaps and reminded us
   that the $20 ChatGPT plan can pause interactive work. That subscription is
   separate from ChemiCloud, GitHub/Railway schedules and the tracker's hard $10
@@ -154,6 +177,48 @@ holder, so the start-of-session ritual surfaces it automatically.
   `overlapSeconds: 7200`. The type/config/deployment defect is closed. The next
   scheduled run is the first one eligible for the separate clean-run proof
   clock; deployment success does not pre-approve that run.
+
+  **Active host-readiness package (2026-09-13 02:55 CEST).** The September 12
+  failure proved that the item-level seen-URL pre-check's correct fail-open
+  policy is unsafe as the only host signal: the cron then paid to extract work
+  it could not publish. This branch adds a separate strict run-level probe after
+  free discovery and before the first model call. It exercises the keyed
+  `/seen-urls` route with a harmless sentinel, including the WordPress REST,
+  authentication and database-read path. HTTP/auth/malformed/transport failure
+  exits loudly before paid extraction, with candidate URLs still unmarked; a
+  healthy result preserves the existing item-level fail-open behavior. TDD:
+  twelve errors on the pre-change tree, then 90/90 relevant tests green.
+  PR #338 contains the implementation at `7f2fc94a`; the handoff-only follow-up
+  is `4c90dd53`. `git diff --check` is clean. Do not recreate or supersede this
+  package.
+
+  **PR #338 release gate (2026-09-13 03:52 CEST): BLOCKED by the live host,
+  not by a package test failure.** Three attempts of GitHub run `34729643938`
+  passed both rendered shards, version discipline and compare checks. The two
+  remaining shards repeatedly reached their live invariants while
+  ChemiCloud/Cloudflare returned HTTP 504 from the tracker API and subscriber
+  routes. The last rerun failed seven dedup/headline live assertions in `rest`
+  and the subscriber-route live assertion in `rest-2`; the same run also saw
+  504s from the historical cursor route. These failures reproduce the
+  production-host incident this package is designed to contain and are not
+  evidence that the preflight code regressed. They still make the required CI
+  gate red, so do not merge by bypassing checks. Wait for sustained host
+  recovery, rerun only the failed jobs, merge when all required checks are
+  green, and verify the resulting Railway deployment SHA and status. A
+  successful deployment closes this implementation package; only a later real
+  outage with a loud pre-extraction stop and zero model calls proves its
+  production behavior.
+
+  **Concurrency hypothesis disproved (2026-09-13 05:27 CEST).** A TDD
+  experiment serialized the dedup/headline and subscriber-route production
+  probes on one CI leg. In run `34735198979`, both rendered legs and the
+  non-live `rest-2` leg passed, while the single serialized live leg still
+  received HTTP 504 from every tracker API, archive and subscriber route it
+  checked. Serialization therefore did not repair the release gate and its
+  causal explanation was withdrawn. Commit `775da8bf` cleanly reverts the
+  experiment. Do not weaken or bypass the live invariants; this is now stronger
+  evidence of intermittent host/edge availability independent of matrix
+  concurrency.
 
   **September 12 scheduled run verdict: FAILED, not proof.** GDELT discovery
   itself completed cleanly: the BigQuery mirror returned 5,497 articles with
@@ -198,49 +263,53 @@ holder, so the start-of-session ritual surfaces it automatically.
   PR #333 is merged, final live integrity run `34720705216` passed all 20/20,
   and no headline incident remains open.
 
-  Remaining proof, not implementation theatre: after PR #336 merges and a
-  Railway deployment proves the numeric overlap setting, the next protected
-  scheduled run can begin the seven-clean-runs-across-fourteen-days gate. The
+  Remaining proof, not implementation theatre: PR #336 and Railway deployment
+  `b237d665-befe-4bdd-a7fa-8fe1106aa9d8` have already proved the numeric
+  overlap setting. A scheduled run becomes eligible to begin the
+  seven-clean-runs-across-fourteen-days gate only after PR #338 is merged and
+  deployed, and only if that run itself meets every clean-run invariant. The
   independent US/Europe/global competitor
   benchmark is still UNKNOWN; weak UK/Estonia/Taiwan official-total shares and
   the remaining duplicate/archive worklists are still open. Never call the
   tracker top-three until those measurements support it.
 
-  **Benchmark refresh (2026-09-12).** `docs/COMPETITOR_BENCHMARK_2026-09-12.md`
-  records current public comparisons. WARN Act Tracker claims all 50 states
-  and DC; WARNScan claims all 50 states; LayoffAlert reports 44 states; and
-  EuroLayoffs reports a Europe-first curated register. These are not directly
-  comparable because their date bases, amendments, event definitions and
-  source policies differ. The refresh identifies the required comparison
-  dimensions but does not substantiate a top-three ranking.
+  **Benchmark refresh (2026-09-12).** The public-tracker comparison taken
+  that day lives in the LOCAL private benchmark only (`scratchpad/`, never
+  committed): competitor names and figures do not enter this repo, by the
+  standing rule. In nameless terms: several public US WARN trackers claim
+  50-state coverage and one European register claims a curated Europe-first
+  scope; none is directly comparable because date bases, amendments, event
+  definitions and source policies differ. The refresh identifies the required
+  comparison dimensions but does not substantiate a top-three ranking.
 
   **Restart checklist for the next ChatGPT session.** Start in this worktree,
   run `git status` and `git log --oneline -5`, then claim the baton before
-  editing. Read `docs/TECHLOG.md`, `docs/COMPETITOR_BENCHMARK_2026-09-12.md`,
+  editing. Read `docs/TECHLOG.md`, the local private benchmark,
   and the latest `railway/ops_status.py` output. Do not use the unrelated parent
   sandbox as the tracker repository. Do not replay the weekly digest manually.
 
-  1. At the next scheduled 22:00 UTC run after deployment `b237d665`, verify
+  1. Restore sustained live-host availability, rerun only the failed jobs in
+     GitHub run `34729643938`, and merge PR #338 only when every required check
+     is green. Verify the new Railway deployment is SUCCESS on the merge SHA.
+  2. At the first scheduled 22:00 UTC run after that deployment, verify
      GDELT has a terminal finish,
      no lost window, no unexplained cap, and a recovered retry ledger. Record
      the run id and verdict. Repeat until seven clean scheduled runs span
      fourteen days; this is a real calendar gate, not a test-suite assertion.
-  2. Add a separate red-first host-readiness guard before paid extraction. If
-     the required publish/read endpoint is unavailable or returns 5xx, defer
-     candidates without marking them seen and do not spend model budget. Keep
-     the existing per-item fail-open behavior for isolated seen-URL errors;
-     this guard is for a host-wide outage like September 12.
-  3. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
+  3. On the next naturally occurring host outage, require a loud
+     pre-extraction stop with zero model calls; do not manufacture an outage to
+     prove it. The existing per-item fail-open behavior remains deliberate.
+  4. Re-measure UK, Estonia and Taiwan official-total shares, then adjudicate
      the 69 shape candidates and 12 dateless rows one source at a time. Never
      merge on count/date alone and never call a national-total share recall.
-  4. Refresh the private benchmark with matching date basis, amendments,
+  5. Refresh the private benchmark with matching date basis, amendments,
      notice-vs-effective semantics, source classes and country scope. The
      public comparison file is a starting evidence snapshot, not a ranking.
-  5. Resolve archive pending/exhausted queues through the existing cadence;
+  6. Resolve archive pending/exhausted queues through the existing cadence;
      do not promise 100% Wayback coverage where the publisher or archive is
      unavailable.
 
-  There is no open integration PR at this handoff. The quiet heartbeat
+  The host-readiness branch is the current integration point. The quiet heartbeat
   `layoff-tracker-top-three-proof` is already
   attached and should remain active while time-based proof is pending.
 
@@ -3091,7 +3160,7 @@ source health or Sources-page update is owed.
 - 2026-07-25 local (Claude Code) #3: **IndexNow + final retirement fix**, 2.19.201→204, deployed green. (a) Retirement guard compared the last run to a rolling 2-day window, so a freshly retired source un-retired itself for 2 days (ops_status went red on 'newsapi degraded' whose last run predated the retirement) — entries now carry retired_on and only a run NEWER than that counts as reactivation. (b) **IndexNow live**: pushes data changes to Bing (powers ChatGPT search) + Yandex the moment the dataset changes, throttled to once/day, non-blocking, fired from alt_flush_caches via a new alt_data_written action; submits the 6 public surfaces. Key is MINTED SERVER-SIDE and stored in the DB — never in this public repo (the protocol asks that only the owner + engines know it; an earlier commit hardcoded one, now abandoned/unused). Key file served at /blog/<key>.txt; Option-2 scope means it can only claim /blog/* URLs, which is exactly where every tracker page lives. (c) Owner-only IndexNow panel on the health page (admin capability check, verified invisible to the public) showing the key, key-file URL, last submission result and one-click per-URL submission links. **OWNER ACTIONS unchanged + one new:** disable Rank Math's LLMs.txt so ours serves; verify in Bing Webmaster Tools (the IndexNow key + links are on the health page when logged in) and Google Search Console.
 - 2026-07-25 local (Claude Code) #2: **360 ADVERSARIAL PASS + PERF**, 2.19.199→200, all green, verified live. Three parallel audits found 4 breaks-now bugs (all fixed): google_news' GLOBAL cap starved the company-chase + euphemism queries at cap 150 (company queries now FIRST + per-query slice); the map's AI-dot floor could exceed its blue bubble; vocab_hit substring-matched ('RIF' in 'tariff') so the missed-vocabulary learning was inert; the euphemism terms were segments (AND-ed with base vocabulary) so pure doublespeak could never match — now standalone on the native rotation. Also: weaning gauge records competitor spellings (was counting chased companies as independent), retirement keeps REAL timestamps + un-masks reactivated sources, date_basis share links round-trip (a 'notice date' link showed recipients DIFFERENT numbers), one Dataset JSON-LD per page. PERF: layoffs.js 82.7→44.9KB gzip (deploy-pipeline minify; repo keeps source), d3+topojson (~95KB) lazy-load on map reveal, API no-store stripped for claims/reconciliation/quality-status, assets immutable, preconnect. **Found a deploy bug:** the flush cleared every cache except the htaccess guard, so header changes lagged up to 12h — fixed, verified applied. **OWNER ACTIONS (only these):** (1) disable Rank Math's LLMs.txt in WP admin so OUR tracker llms.txt serves (currently overridden by a generic resume-content file); (2) verify in Bing Webmaster Tools (powers ChatGPT search) + Google Search Console, submit sitemap. **Next for any session:** watch the first learning email (vocab + outlet·country candidates) and paste adoptions back; consider branch protection on main if a collaborator is ever added; the remaining ~2,650 unclassified-industry rows are LLM-disagreement rows that stay honestly blank by design (hourly cloud sprint is self-limiting, costs nothing when idle).
 - 2026-07-25 local (Claude Code): FULL-AUDIT + LEARNING-MACHINE session, 2.19.193→198, all green + verified live. (1) CI unbroken: fake sources.* stubs in two warn tests leaked and shadowed real modules for the whole suite — requests-only stubs now, 267 tests green. (2) Retirements self-heal: alt_retired_sources() in db.php coerces newsapi/edinet_jp/opendart_kr/cvm_br to benign 'retired' on /source-health (never re-alarms); public copy synced everywhere. (3) Tracker narrative: 3 labeled chart chapters (Where/Trending/Who+why), map full-width with 4px-floor AI dots (was invisibly proportional), claims overlay on-by-default, announced un-stacked, 'AI-attributed'=strict everywhere, colorblind chips fixed, health page de-jargoned, no prose em-dashes. (4) NEW 'Jobless claims by US state' card (DOL, grey, context-only, auto-updates weekly; layoff cards relabeled to disambiguate). (5) WEANING machine in tracker_diff + keyed /tracker-meta: daily INDEPENDENT recall (have minus ever-chase-resolved), learn-from-wins (outlet · country tagged; allowlist candidates), missed-vocabulary capture (invisible-headline email to owner with paste-back line), earned Mondays-only cadence at ≥90% for 21d. (6) Euphemism vocabulary (base 42→48 + paired noisy segments), dedup near-count floor 1000→250, Google News throttled 150. (7) Cost: owner set key cap $50; steady ~$5-10/mo; industry tail draining via sequential dispatches. Private bm refreshed (LOCAL): US 97% basis-any / H1 80% / tech 103% of the live tech tracker. **Next:** watch the first learning email land (vocab + outlet·country candidates) and paste back any adoptions; consider the second tech tracker's gap (74%) via startup-press allowlist growth; TX/GA/WA/MI are the biggest state gaps vs the announcement survey.
-- 2026-07-21 local: honest 'Data last updated' timestamps on report/press/sources from alt_last_write (real last-ingest time, NOT page-load). Fixed report's misleading DateTime('now') stamp. Sources notes its list changes on deploys, not daily. **Next (BIG): investigate WARN gap — WARNTracker 775,892 vs our 239,450 (31%) on the same source.**
+- 2026-07-21 local: honest 'Data last updated' timestamps on report/press/sources from alt_last_write (real last-ingest time, NOT page-load). Fixed report's misleading DateTime('now') stamp. Sources notes its list changes on deploys, not daily. **Next (BIG): investigate WARN gap — a public WARN aggregator reports roughly three times our count on the same source (figures in the local private benchmark).**
 - 2026-07-21 local: self-growing watchlist — new public /companies endpoint (distinct captured names, cached) + company_watchlist self-grows from it (WATCHLIST_SELF_GROW). Monitored universe now compounds with every capture. **Next:** point WATCHLIST_INDEX_URLS at S&P500/Russell CSVs; build GLEIF/SEC alias feed.
 - 2026-07-21 local (Claude Code): added prominent public 'Why our number is lower' journalist callout on the tracker page (competitor-free). **Next:** point COMPETITOR_FEED_URLS at the tech-event tracker export to auto-run the gap-chase.
 - 2026-07-21 local (Claude Code): removed the dead public competitor-benchmark block from health.js (competitor/history numbers were in the served JS source, never rendered — no PHP container). Benchmark stays private (bm-live.html). **Next:** CA WARN backfill once egress allowlisted.

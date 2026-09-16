@@ -61,6 +61,33 @@ having one of got re-derived by the next scan.
 `/enrich-roles`, almost certainly WordPress in maintenance mode while an FTPS
 deploy of this very repo landed. A worker that cannot survive its own deploy is
 not fail-loud, it is just loud.
+
+A FOURTH ANSWER THAT IS REALLY THE SECOND: THE BOT WALL
+-------------------------------------------------------
+On 2026-09-13 `archive-backfill` on a GitHub-hosted runner died with
+`JSONDecodeError: Expecting value: line 1 column 1` while this route answered
+200 JSON to a browser in the same minute. The body was ChemiCloud's Imunify360
+bot-protection page: an HTML "One moment, please..." interstitial with a JS
+reload, served with a 2xx, or a text/plain "Access denied by Imunify360
+bot-protection. IPs used for automation should be whitelisted" on a 403, or an
+edge page reading `error code: 504`. Nothing behind the wall was reached, and
+the message named JSON.
+
+`http_retry.challenge_reason` detects those shapes by CONTENT, before any
+parse and before `raise_for_status` (the interstitial is a 2xx; the denial is
+a 403 that would otherwise be a settled refusal), and both worker helpers and
+`main()` raise or record `HostChallenged`.
+
+It maps to DEFERRED, deliberately: it is not a host outage (the host is up),
+it is not a defect in the job, and a red run every morning from the same
+blocked IP is alarm fatigue with no new information after the first. But it
+is NOT an ordinary deferral either, because waiting does not whitelist an IP.
+So `HostChallenged` is a `Deferred` (every worker's existing `except` keeps
+catching it, the ledger counts it, the run exits 0) whose reason starts with
+`deferral_ledger.CHALLENGED_PREFIX`; `[4d]` prints CHALLENGED with the RUNBOOK
+pointer and `ops_status` asks for a human on the first one rather than the
+third. A body that is merely not JSON, with none of those markers, still
+raises the ordinary decode error: that is our bug and it stays loud.
 """
 
 from __future__ import annotations
@@ -93,6 +120,31 @@ class Deferred(Exception):
     "did we get to ask?" question is answered in one place per job instead of
     at every call site.
     """
+
+
+#: What a human does about a challenge. One string, so the worker path, the
+#: CLI path and the ledger all say the same thing.
+CHALLENGE_REMEDY = (
+    "The host's bot protection (Imunify360 on ChemiCloud) challenged this "
+    "client instead of answering; the host itself is up. Nothing was read or "
+    "written. Retrying from the same IP changes nothing: whitelist the "
+    "caller's IP in Imunify360 (a ChemiCloud ticket), or run the job from a "
+    "fixed, whitelisted IP. See docs/RUNBOOK.md 'a job says JSONDecodeError "
+    "from the host'.")
+
+
+class HostChallenged(Deferred):
+    """The host's bot wall answered in place of the host.
+
+    A `Deferred`, so every worker's existing top-level `except` records it
+    through the ledger and exits 0. Its message starts with
+    `deferral_ledger.CHALLENGED_PREFIX` so the ledger, `[4d]` and ops_status
+    can tell it from an outage without parsing prose.
+    """
+
+    def __init__(self, what: str):
+        super().__init__(f"{deferral_ledger.CHALLENGED_PREFIX} {what}. "
+                         f"{CHALLENGE_REMEDY}")
 
 
 # --------------------------------------------------------------------------
@@ -187,8 +239,22 @@ def get_json(url, *, params=None, headers=None, timeout=60):
                                          timeout=timeout)
     if response is None:
         raise Deferred(f"GET {url} never got an answer from the host")
+    # Before raise_for_status AND before .json(): the interstitial is a 2xx
+    # that dies in the parser as "JSONDecodeError", the denial is a 403 that
+    # would otherwise read as a settled refusal.
+    challenge = http_retry.challenge_reason(
+        response.status_code, _content_type(response), getattr(response, "text", ""))
+    if challenge:
+        raise HostChallenged(f"GET {url}: {challenge}")
     response.raise_for_status()
     return response.json()
+
+
+def _content_type(response) -> str:
+    try:
+        return str((response.headers or {}).get("Content-Type", ""))
+    except AttributeError:
+        return ""
 
 
 def post_json(url, payload, *, headers=None, timeout=90):
@@ -205,6 +271,9 @@ def post_json(url, payload, *, headers=None, timeout=90):
                                         headers=sent, timeout=timeout)
     if result.outcome == http_retry.DEFERRED:
         raise Deferred(f"POST {url}: {result.detail}")
+    challenge = http_retry.challenge_reason(result.status, "", result.body)
+    if challenge:
+        raise HostChallenged(f"POST {url}: {challenge}")
     if result.outcome == http_retry.FAILURE:
         raise RuntimeError(f"POST {url}: {result.detail}")
     reason = http_retry.body_reports_failure(result.body)
@@ -307,6 +376,15 @@ def main(argv=None) -> int:
     if result.outcome == http_retry.DEFERRED:
         return defer(args.job, result.detail, ledger=args.ledger,
                      envelope=args.envelope)
+
+    # Before the FAILURE branch (the denial is a 403) and before the output
+    # file is written (the interstitial is a 2xx, and until 2026-09-13 this
+    # path would have saved the HTML page as the response and exited 0).
+    challenge = http_retry.challenge_reason(
+        result.status, "", result.body, expect_json="/wp-json/" in args.url)
+    if challenge:
+        why = str(HostChallenged(f"{args.method} {args.url}: {challenge}"))
+        return defer(args.job, why, ledger=args.ledger, envelope=args.envelope)
 
     if result.outcome == http_retry.FAILURE:
         _github_output("outcome", "failure")

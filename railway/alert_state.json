@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "archive-warn-sources-to-wayback:main:3a45c13fb500d229": {
+      "first": 1789397772,
+      "last": 1789397772,
+      "subject": "CI RED: Archive WARN sources to Wayback \u2014 ERROR: zero snapshots from 54 attempt(s) while the Internet Archive IS answering \u2014 this is a defect here, not an outage. Check the URL lis"
+    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -62,40 +67,25 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "deploy-wordpress-plugin:main:eb79bffe35fe8afb": {
-      "first": 1789249558,
-      "last": 1789249558,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 WP_SITE_URL: https://asktherecruiter.com/blog"
-    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1789306127,
       "last": 1789306127,
       "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
-    },
-    "rendered-contrast-audit:main:04439d7caed4f0f2": {
-      "first": 1789229088,
-      "last": 1789229088,
-      "subject": "CI RED: Rendered contrast audit \u2014 RESULT: FAIL \u2014 96 contrast violation(s) are live for readers (text and/or control boundaries)."
-    },
-    "retained-evidence-hash-backfill:main:8dc31dc87f3f85ad": {
-      "first": 1789301773,
-      "last": 1789301773,
-      "subject": "CI RED: Retained evidence hash backfill \u2014 error code: 504"
-    },
-    "self-heal:main:546478a37ca6511e": {
-      "first": 1789301811,
-      "last": 1789301811,
-      "subject": "CI RED: Self-heal \u2014 Action failed with error: Claude execution failed: result is_error:true"
     },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
       "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 504 \u2014 server regression, not a blip"
     },
-    "tests:main:7ba8f6d0b4896be7": {
-      "first": 1789259355,
-      "last": 1789259355,
-      "subject": "CI RED: Tests \u2014 AssertionError: 'PASS' != 'FAIL'"
+    "tests:live.data:2e215caae5bac21b": {
+      "first": 1789315684,
+      "last": 1789315684,
+      "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 6.2d ago (142 pending, 2,971 not yet in Wayback), but NOTHING "
+    },
+    "weekly-health-digest-autonomy-tripwire:main:27358af34b528c7a": {
+      "first": 1789405631,
+      "last": 1789405631,
+      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE national_feeds: last reported 2.8d ago (expected <= 2d): collector may have stopped"
     },
     "weekly-health-digest-autonomy-tripwire:main:6df52ded92e991c5": {
       "first": 1789222225,
@@ -103,6 +93,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-13T13:28:48+00:00",
+  "updated_at": "2026-09-15T18:55:54+00:00",
   "version": 1
 }

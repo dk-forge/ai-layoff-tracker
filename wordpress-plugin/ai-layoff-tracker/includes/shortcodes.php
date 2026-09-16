@@ -183,7 +183,8 @@ add_shortcode('alt_methodology', 'alt_shortcode_methodology');
  */
 function alt_own_h1_shortcodes() {
     return array('alt_methodology', 'alt_sources', 'alt_press_media',
-                 'alt_ai_quotes', 'alt_publisher_tools', 'alt_tracker_health');
+                 'alt_ai_quotes', 'alt_publisher_tools', 'alt_tracker_health',
+                 'alt_us_registry');
 }
 
 function alt_page_supplies_its_own_h1($post = null) {
@@ -246,6 +247,7 @@ function alt_secondary_pages() {
         'ai-layoff-tracker/ai-quotes'         => array('page-ai-quotes.php', 'alt_ai_quotes'),
         'ai-layoff-tracker/publisher-tools'   => array('page-publisher.php', 'alt_publisher_tools'),
         'ai-layoff-tracker/ai-tracker-health' => array('page-health.php', 'alt_tracker_health'),
+        'ai-layoff-tracker/us-warn-registry'  => array('page-us-registry.php', 'alt_us_registry'),
     );
 }
 
@@ -300,6 +302,7 @@ function alt_public_surface_shortcodes() {
         'alt_quarterly_report', 'alt_dashboard', 'alt_ai_tracker',
         'alt_company_history', 'alt_sources', 'alt_report',
         'alt_contact', 'alt_methodology', 'alt_press_media',
+        'alt_us_registry',
     );
 }
 

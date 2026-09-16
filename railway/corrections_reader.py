@@ -48,6 +48,27 @@ _UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 REMOVING_ACTIONS: frozenset[str] = frozenset({"merged", "removed"})
 
 
+def entry_jobs(entry):
+    """The jobs a log entry discloses, or None for "we did not measure it".
+
+    None and 0 are DIFFERENT ANSWERS and the difference is the whole point: 0
+    is a removal of rows that carried no headcount, None is a removal whose
+    headcount nobody recorded. A negative or unparsable figure is not a
+    measurement either, so it reads None rather than being clamped to 0 --
+    clamping would turn a garbled write into a confident zero.
+    """
+    if not isinstance(entry, dict) or "jobs" not in entry:
+        return None
+    raw = entry["jobs"]
+    if raw is None or isinstance(raw, bool) or isinstance(raw, (list, dict)):
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return None if value < 0 else value
+
+
 @dataclass(frozen=True)
 class DisclosedRemovals:
     """Removals the site disclosed in a window, as candidate explanations."""
@@ -56,6 +77,22 @@ class DisclosedRemovals:
     rows: int = 0
     entries: list[dict] = field(default_factory=list)
     error: str = ""
+
+    @property
+    def measured_jobs(self) -> int:
+        """Jobs disclosed by the entries that carry a figure. NOT a window total:
+        read it with `unmeasured`, never on its own."""
+        return sum(j for j in (entry_jobs(e) for e in self.entries) if j is not None)
+
+    @property
+    def unmeasured(self) -> list:
+        """The removing entries in this window that record no jobs figure."""
+        return [e for e in self.entries if entry_jobs(e) is None]
+
+    @property
+    def jobs_accounted(self) -> bool:
+        """True only if the window was read AND every removal in it is measured."""
+        return self.consulted and not self.unmeasured
 
     def summary(self) -> str:
         """One line for a guard message. Never asserts that it explains the move."""
@@ -69,6 +106,13 @@ class DisclosedRemovals:
                 "the corrections log discloses NO removal or merge in this "
                 "window, so a deleted row is not the explanation"
             )
+        if self.jobs_accounted:
+            carried = f"carrying {self.measured_jobs:,} disclosed job(s)"
+        else:
+            n = len(self.unmeasured)
+            carried = (f"of which {n} "
+                       f"{'entry records' if n == 1 else 'entries record'} no job "
+                       f"total, so what those carried is UNKNOWN")
         parts = []
         for e in self.entries[:4]:
             reason = (e.get("reason") or "").strip()
@@ -80,8 +124,8 @@ class DisclosedRemovals:
         more = "" if len(self.entries) <= 4 else f" (+{len(self.entries) - 4} more)"
         return (
             f"the corrections log discloses {self.rows} row(s) removed or merged "
-            f"in this window, which is a CANDIDATE explanation and not a verdict "
-            f"(the log records rows, never their job counts): "
+            f"in this window, {carried}, which is a CANDIDATE explanation and not a "
+            f"verdict: "
             + "; ".join(parts)
             + more
         )

@@ -1,0 +1,39 @@
+# Read the reliability clock from a runner that can reach the host.
+#
+# The seven-clean-runs-across-fourteen-days proof for the GDELT collector
+# (TECHLOG 2026-09-12, HANDOFF baton log) is evidenced by two things a cloud
+# session cannot read from an egress-blocked container: the append-only
+# /source-runs telemetry that run_completion.py pairs into "started AND
+# finished", and the end-of-run spend records on /tracker-meta. This job prints
+# ops_status.py in full (its [2e] section is run_completion's verdict) so the
+# session can copy the facts into TECHLOG instead of guessing.
+#
+# Read-only: public GETs, stdlib only, no key, no write, no commit. Dispatch
+# only; it is a reading, not a schedule. ops_status exits 2 or 3 when a human
+# is needed or a surface could not be checked; the exit code is printed and
+# the job stays green so the output is always available to read.
+name: Reliability clock reading
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: ops_status in full
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 railway/ops_status.py
+          echo "ops_status exit code: $?"
+          exit 0

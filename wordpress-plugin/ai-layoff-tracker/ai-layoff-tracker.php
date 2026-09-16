@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.191
+ * Version:           2.20.195
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.191');
+define('ALT_VERSION', '2.20.195');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -53,6 +53,22 @@ require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
+// The US jurisdiction registry page (/ai-layoff-tracker/us-warn-registry/).
+// GUARDED with is_readable like every NEW include below: the deploy that
+// introduces it can land this main file first, and a hard require of a file
+// not yet uploaded fatals the whole plugin until it arrives (2.19.20).
+$alt_us_registry = ALT_PLUGIN_DIR . 'includes/us-registry.php';
+if (is_readable($alt_us_registry)) {
+    require_once $alt_us_registry;
+}
+// Country coverage tiers for the country pages (data/country-coverage.json).
+// GUARDED with is_readable like every NEW include below: the deploy that
+// introduces it can land this main file first, and a hard require of a file
+// not yet uploaded fatals the whole plugin until it arrives (2.19.20).
+$alt_country_coverage = ALT_PLUGIN_DIR . 'includes/country-coverage.php';
+if (is_readable($alt_country_coverage)) {
+    require_once $alt_country_coverage;
+}
 // The public archive of every digest that goes out. GUARDED with is_readable
 // for the same reason as the file below: this one is NEW, so the deploy that
 // introduces it can land this main file first, and its absence must degrade to
@@ -392,7 +408,7 @@ add_action('init', 'alt_serve_indexnow_key', 0);
 function alt_indexnow_urls() {
     $t = home_url('/ai-layoff-tracker/');
     return array($t, $t . 'report/', $t . 'press/', $t . 'sources/',
-                 $t . 'ai-quotes/', $t . 'ai-tracker-health/');
+                 $t . 'ai-quotes/', $t . 'ai-tracker-health/', $t . 'us-warn-registry/');
 }
 
 /**
@@ -610,12 +626,24 @@ function alt_flush_caches_on_deploy() {
         && method_exists('\RankMath\Sitemap\Cache_Watcher', 'invalidate_storage')) {
         \RankMath\Sitemap\Cache_Watcher::invalidate_storage();
     }
-    $wpdb->query(
-        "DELETE FROM $wpdb->options
-         WHERE option_name LIKE '\_transient\_rank\_math\_sitemap%'
-            OR option_name LIKE '\_transient\_timeout\_rank\_math\_sitemap%'
-            OR option_name LIKE '\_transient\_wpseo\_sitemap%'
-            OR option_name LIKE '\_transient\_timeout\_wpseo\_sitemap%'");
+    // The two sweeps below are the expensive half of this hook: a LIKE scan
+    // over wp_options and a correlated self-join over the whole layoffs table
+    // (then a wp_trash_post per hit). They are idempotent and nothing in a
+    // deploy makes them more necessary than they were yesterday, so they run
+    // at most once per calendar day. Three deploys in one night ran them
+    // three times on 2026-09-12/13 and each first request held a worker while
+    // the Cloudflare purge sent every reader to that same origin. The guard is
+    // written AFTER they run, so a request that dies mid-sweep retries.
+    $sweep_day = gmdate('Y-m-d');
+    $run_sweeps = get_option('alt_deploy_sweeps_ran_on') !== $sweep_day;
+    if ($run_sweeps) {
+        $wpdb->query(
+            "DELETE FROM $wpdb->options
+             WHERE option_name LIKE '\_transient\_rank\_math\_sitemap%'
+                OR option_name LIKE '\_transient\_timeout\_rank\_math\_sitemap%'
+                OR option_name LIKE '\_transient\_wpseo\_sitemap%'
+                OR option_name LIKE '\_transient\_timeout\_wpseo\_sitemap%'");
+    }
     // Compact the historical wall of identical automated-enrichment log rows
     // into single accumulating entries (idempotent).
     if (function_exists('alt_compact_corrections_log')) alt_compact_corrections_log();
@@ -624,10 +652,20 @@ function alt_flush_caches_on_deploy() {
     if (function_exists('alt_normalize_corrections_dashes')) alt_normalize_corrections_dashes();
     // Remove undated news/SEC rows that duplicate a dated same-size event
     // (they bypassed the date-gated dedup guard). Idempotent.
-    if (function_exists('alt_dedup_undated_cleanup')) alt_dedup_undated_cleanup();
-    // Populate the Nevada WARN mirror immediately on deploy so it is current
-    // without waiting for the daily cron (the importer reads NV from it).
-    if (function_exists('alt_nv_mirror_refresh')) alt_nv_mirror_refresh();
+    if ($run_sweeps) {
+        if (function_exists('alt_dedup_undated_cleanup')) alt_dedup_undated_cleanup();
+        update_option('alt_deploy_sweeps_ran_on', $sweep_day, false);
+    }
+    // Refresh the Nevada WARN mirror ten minutes from now, from a request that
+    // is not the deploy storm. Until 2.20.193 this was an inline wp_remote_get
+    // to detr.nv.gov with a 45 second timeout, downloading a multi-MB PDF
+    // inside the first visitor's request. The importer reads NV from the
+    // mirror, so it still refreshes on deploy; it just does not hold the
+    // worker that every purged reader is about to queue behind. The daily
+    // cron on the same hook is untouched.
+    if (!wp_next_scheduled('alt_nv_mirror_cron')) {
+        wp_schedule_single_event(time() + 600, 'alt_nv_mirror_cron');
+    }
     if (function_exists('wp_cache_clear_cache')) {
         wp_cache_clear_cache();
     }
@@ -638,6 +676,25 @@ function alt_flush_caches_on_deploy() {
     // 2026-07-15, v2.7.2). Old aggregates are harmless; AO prunes its own cache.
 }
 add_action('init', 'alt_flush_caches_on_deploy');
+
+/**
+ * One rewrite flush per request, not one per module. Five modules each keep a
+ * per-version option that says "my rewrite rules changed, flush once", and
+ * until 2.20.193 each of them ran its own rewrite flush from
+ * init priority 99, so the first request after a deploy rebuilt and saved the
+ * rewrite table five times over. Each caller keeps its own option (that is
+ * its signal, and a module must not depend on another module's flush) but
+ * raises this flag instead, and the priority-100 hook flushes once.
+ */
+function alt_request_rewrite_flush() {
+    $GLOBALS['alt_rewrite_flush_requested'] = true;
+}
+function alt_rewrite_flush_if_requested() {
+    if (empty($GLOBALS['alt_rewrite_flush_requested'])) return;
+    $GLOBALS['alt_rewrite_flush_requested'] = false;
+    flush_rewrite_rules(false);
+}
+add_action('init', 'alt_rewrite_flush_if_requested', 100);
 
 // Newest column in the wp_alt_layoffs schema. UPDATE THIS on every schema
 // change: the guard below re-runs dbDelta until this column really exists,
@@ -749,7 +806,12 @@ function alt_nv_mirror_refresh() {
 add_action('alt_nv_mirror_cron', 'alt_nv_mirror_refresh');
 
 function alt_nv_mirror_schedule() {
-    if (!wp_next_scheduled('alt_nv_mirror_cron')) {
+    // Ask for the RECURRING event specifically. wp_next_scheduled() answers
+    // true for any pending event under this hook, and the deploy hook now
+    // queues a one-off run of the same hook ten minutes out; on a fresh
+    // install that one-off would have satisfied this check and the daily
+    // event would never have been registered.
+    if (wp_get_schedule('alt_nv_mirror_cron') !== 'daily') {
         wp_schedule_event(time() + 300, 'daily', 'alt_nv_mirror_cron');
     }
 }
@@ -1152,6 +1214,7 @@ function alt_page_needs_assets() {
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report', 'alt_ai_quotes', 'alt_methodology',
+        'alt_us_registry',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
@@ -1281,6 +1344,10 @@ function alt_enqueue_assets() {
             'apiUrl' => esc_url_raw(rest_url('layoffs/v1/')),
             'widgetUrl' => esc_url_raw(home_url('/?alt_tracker_widget=1')),
             'trackerUrl' => esc_url_raw(home_url('/ai-layoff-tracker/')),
+            // The per-jurisdiction WARN registry page, linked from every WARN
+            // collector label so a reader can go from "warn_us is ok" to
+            // which of the 56 jurisdictions that run actually covers.
+            'usRegistryUrl' => esc_url_raw(home_url('/ai-layoff-tracker/us-warn-registry/')),
             // Cadence for the Railway-cron collectors, DERIVED from
             // railway.toml. health.js had 'Twice daily' typed into eight
             // collector labels and kept showing it for six days after the cron

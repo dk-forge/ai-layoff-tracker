@@ -502,6 +502,9 @@ _DEFERRAL_LEDGER = Path(__file__).resolve().parent / "deferral_ledger.json"
 
 #: Mirrors deferral_ledger.ESCALATE_AFTER, duplicated for that same reason.
 _DEFERRAL_ESCALATE_AFTER = 3
+#: Mirrors deferral_ledger.CHALLENGED_PREFIX, same reason; pinned equal by
+#: railway/tests/test_host_challenge_names_the_bot_wall.py.
+_CHALLENGED_PREFIX = "challenged:"
 
 
 #: Conclusions ci_alert.py treats as a red run. Kept in step with its ALERTABLE
@@ -598,9 +601,25 @@ def _open_deferrals():
             if e.get("state") == "pending"]
 
 
+def _challenged_deferrals():
+    """Deferrals where the host's bot protection answered in place of the host.
+
+    Not an outage and not a defect of ours, but not something the next run
+    fixes either: the same runner IP is challenged again tomorrow. So unlike
+    an ordinary deferral it asks for a human on the FIRST occurrence. On
+    2026-09-13 archive-backfill met it from a GitHub-hosted runner and the only
+    trace was a "JSONDecodeError" that named the wrong thing entirely.
+    """
+    return [e for e in _open_deferrals()
+            if str(e.get("last_reason", "")).startswith(_CHALLENGED_PREFIX)]
+
+
 def _deferrals_need_a_human():
     """One deferral is an outage and the design working. Three in a row is a job
-    hiding behind the outage story, and needs a person."""
+    hiding behind the outage story, and needs a person. A CHALLENGED one needs
+    a person at once: waiting does not whitelist an IP."""
+    if _challenged_deferrals():
+        return True
     return any(e.get("consecutive", 0) >= _DEFERRAL_ESCALATE_AFTER
                for e in _open_deferrals())
 
@@ -616,9 +635,15 @@ def _report_deferrals():
                      f"{str(e.get('last_reason', ''))[:52]}")
     if len(open_) > 4:
         lines.append(f"  ... and {len(open_) - 4} more")
-    if _deferrals_need_a_human():
+    if any(e.get("consecutive", 0) >= _DEFERRAL_ESCALATE_AFTER for e in open_):
         lines.append(f"  {_DEFERRAL_ESCALATE_AFTER}+ in a row is NOT the host having a "
                      "bad night. -> RUNBOOK 'a job is DEFERRING'.")
+    blocked = _challenged_deferrals()
+    if blocked:
+        names = ", ".join(str(e.get("job")) for e in blocked[:4])
+        lines.append(f"  CHALLENGED by the host's bot protection (Imunify360): {names}. "
+                     "Not an outage; whitelist the runner's IP. "
+                     "-> RUNBOOK 'a job says JSONDecodeError from the host'.")
     return lines
 
 
@@ -657,13 +682,60 @@ def burn_problems(account_per_day, repo_per_day, allowance_month, runway_days):
             f"~${repo_per_day * 30:.0f}/month) is above its "
             f"${allowance_month:.2f}/month allowance")
     elif account_per_day * 30 > allowance_month:
-        out.append(
+        # TWO SENTENCES HERE WERE FALSE UNTIL 2026-09-15, and both understated
+        # the finding.
+        #
+        # It said "No combined account allowance is recorded here". One IS
+        # recorded, in this repo, as spend.MONTHLY_TARGET_COMBINED_USD, and not
+        # comparing against it meant the one number that bounds the ACCOUNT was
+        # never checked. A per-repo meter reading correct while the account
+        # drains is the whole defect.
+        #
+        # It also said the remainder "is the other tracker on the same key".
+        # That named a culprit this repo cannot see, and named it in the
+        # singular. THREE repos bill this account: this one, the talent
+        # tracker, and asktherecruiter-sandbox, whose llm-canary runs nightly
+        # against a production model. An unattributed remainder is UNKNOWN, and
+        # calling it the sibling is the same "invisible from here read as small"
+        # error spend.py records at MONTHLY_TARGET_COMBINED_USD.
+        unexplained = account_per_day - repo_per_day
+        line = (
             f"the SHARED account is burning ${account_per_day:.2f}/day "
             f"(~${account_per_day * 30:.0f}/month) while this repo's meter explains only "
             f"${repo_per_day:.2f}/day of it — this repo is inside its "
-            f"${allowance_month:.2f}/month allowance, so the balance is the other "
-            f"tracker on the same key. No combined account allowance is recorded here")
+            f"${allowance_month:.2f}/month allowance, so ${unexplained:.2f}/day "
+            f"(~${unexplained * 30:.0f}/month) is UNATTRIBUTED: it is spent by the "
+            f"other consumers on this key and this repo cannot see which")
+        combined = _combined_target()
+        if combined is None:
+            line += (", and the combined target could not be read from spend.py, "
+                     "which is UNKNOWN and not a pass")
+        elif account_per_day * 30 > combined:
+            line += (f". THE ACCOUNT IS OVER ITS COMBINED TARGET: "
+                     f"~${account_per_day * 30:.0f}/month against "
+                     f"${combined:.2f}/month. Every per-repo meter can read correct "
+                     f"and this still be true, which is why it is checked here")
+        else:
+            line += (f", and the account is inside its ${combined:.2f}/month "
+                     f"combined target")
+        out.append(line)
     return out
+
+
+def _combined_target():
+    """spend.MONTHLY_TARGET_COMBINED_USD, or None when it cannot be read.
+
+    None is UNKNOWN and the caller must not read it as "within target". Kept a
+    lookup rather than a second literal so there is ONE combined number in this
+    repo; a copy here would drift from the policy it is meant to enforce, which
+    is how the two repos set contradictory budgets in the first place.
+    """
+    try:
+        import spend
+        value = float(spend.MONTHLY_TARGET_COMBINED_USD)
+    except Exception:
+        return None
+    return value if value > 0 else None
 
 
 def _report_run_cost():
@@ -1516,7 +1588,7 @@ def main():
     print("\n[2c] SOURCE INVENTORY  (what SHOULD exist, vs what reports)")
     try:
         import source_inventory as _si
-        _inv = _si.summary(health or {})
+        _inv = _si.summary(health)  # None stays None: unread is UNKNOWN, not empty
         print(f"    {_inv['jurisdictions_collected']} of {_inv['jurisdictions']} "
               f"US jurisdictions have a WARN collector; no public register in: "
               f"{', '.join(_inv['jurisdictions_uncollected'])}")
@@ -2062,7 +2134,11 @@ def main():
     print("\n[4d] DEFERRED HOST CALLS  (never reached the host — NOT a pass)")
     for line in _report_deferrals():
         print(f"    {line}")
-    if _deferrals_need_a_human():
+    if _challenged_deferrals():
+        issues.append("a job was CHALLENGED by the host's bot protection; "
+                      "whitelist the runner IP (RUNBOOK 'a job says "
+                      "JSONDecodeError from the host')")
+    elif _deferrals_need_a_human():
         issues.append("a job has deferred 3+ times in a row")
 
     # 5+6. Surfaces to keep current
