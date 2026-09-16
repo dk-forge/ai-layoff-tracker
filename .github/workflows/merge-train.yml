@@ -66,6 +66,15 @@ jobs:
           fetch-depth: 0
 
       - name: Prove the tools exist
+        env:
+          # `gh auth status` READS this. Without it the step asks a logged-out
+          # CLI whether it is logged in, and on a self-hosted runner nothing
+          # ever logged it in, so the preflight failed on the first dispatch
+          # and would have failed on every scheduled tick: the train never got
+          # as far as judging a pull request. Same expression as the run step
+          # below, so the check exercises the credential the train will use
+          # rather than a different one.
+          GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN || github.token }}
         run: |
           set -euo pipefail
           python3 --version
