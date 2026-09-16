@@ -257,6 +257,7 @@ jobs:
               railway/headline_incidents.json, railway/headline_baseline.json,
               railway/recall_adjudications.json,
               railway/warn_recall_adjudications.json,
+              railway/warn_recall_adjudications_wave2.json,
               railway/deferral_ledger.json. The copy standard and its ceiling:
               docs/STYLE.md, railway/style_check.py. The alarm channel:
               railway/ci_alert.py, railway/alert_outbox.json,

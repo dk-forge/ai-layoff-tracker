@@ -6,6 +6,29 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude, 2026-09-16, US WARN wave 2 two-reviewer reconciliation.
+  Work complete.** Worktree `/tmp/wt-wave2`, branch
+  `adjudicate/wave2-consolidated`, based on `origin/main`. Supersedes PRs #374
+  and #373, which are closed. **No plugin file and no workflow file is touched,
+  and no plugin version is reserved**, so this cannot collide with any branch
+  holding a version. Touches the wave-2 ledger, measurement, goldset and
+  reviewer verdict file, `warn_adjudication_pack.py`, `adjudication_ledger.py`,
+  `self_heal.py`, one test, two reference-set docs and TECHLOG. Read-only GETs
+  to the public `/query` read API only; $0.00 of model spend; nothing merged and
+  nothing deployed. Shipped as a PR, NOT merged. Editing finished; this baton is
+  NOT held.
+- **RELEASED - Claude, 2026-09-16, closing the headline containment FAIL.**
+  Worktree `/tmp/wt-containment`, branch `fix/close-containment-2026-09-16`,
+  based on `origin/main`. **No plugin file, no workflow file, no plugin version
+  reserved.** Touches `railway/headline_incidents.json` and
+  `railway/headline_baseline.json` (both written by the machinery, neither hand
+  edited), `docs/TECHLOG.md` and this line. Closed the `ai_all_time` containment
+  incident raised by the five adjudicated corrections applied on 2026-09-16;
+  arithmetic closes to zero residual on every axis, see TECHLOG. Containment now
+  reads UNKNOWN until the 2026-09-17 17:30 UTC recorder run can advance the whole
+  group under one stamp, which is the designed state - do not hand record a pair.
+  Shipped as a PR, NOT merged. Editing finished; this baton is NOT held.
+
 - **RELEASED — Claude, 2026-09-16, July/August US accuracy audit. Work complete.**
   Worktree `/tmp/wt-accuracy`, branch `fix/july-august-accuracy`, based on
   `origin/main`. Touches `railway/data_integrity.py` (one new invariant),

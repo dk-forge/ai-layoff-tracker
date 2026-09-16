@@ -1,3 +1,405 @@
+## 2026-09-16 - One email said the employer verified it and, four lines down, that we could not confirm it (2.20.199)
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_digest_scope_rules.py` (the lead and the row
+label are pinned to the new words) and `railway/tests/test_style_standard.py`.
+
+The Week 37 edition of 2026-09-14 opened "In Week 37 of 2026, employers
+verified N job cuts" and, in the Biggest cuts table four lines below, labelled
+rows inside that same figure "single report, unconfirmed". Both sentences were
+about the same rows. Read together they say the employer confirmed something we
+could not confirm.
+
+**The two words were never on the same axis, and that is the whole fault.**
+"Verified" is the TIER NAME: source-linked, not an announcement-stage estimate
+(methodology #m-cards). How STRONG that source is is the separate evidence-tier
+question, and the methodology's own weakest published tier is "Reported: a
+single named outlet reports the cut ... the weakest tier until a document or a
+second source arrives" (#m-tiers). The tier genuinely contains both an 8-K and
+one outlet's report, and "employers verified" asserted the strongest member's
+provenance over the whole mixed figure -- a claim about WHO ESTABLISHED IT that
+the tier never made.
+
+**The figure did not move, and it was not allowed to.** Widening or narrowing a
+published number to rescue a word is the wrong direction. Three changes, all
+words:
+- the lead opens "the tracker recorded", which is true of every row in the tier;
+- the row label is the methodology's own tier in reader words, "one outlet
+  reporting, no document yet", which is a caution about EVIDENCE and no longer
+  a contradiction of the headline;
+- #m-cards now states plainly what the word does and does not claim.
+
+Unchanged on purpose: the same `alt_digest_single_report` test still drives the
+row label and the dominant line, so the two cannot disagree about one row, and a
+dominant single-report entry is still taken out of the lead entirely (2.20.187,
+the owner's 2026-09-12 ruling). No cadence is typed; no em-dash enters reader
+copy.
+
+---
+
+## 2026-09-16 - One layoff event, four rows, four names: the Week 37 digest published 8,000 jobs that do not exist
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_cross_alias_duplicate_guard.py` (new invariant
+`cross_alias_duplicate_rows`, keyed on same count + effective dates within two
+days + employer names that resolve to one employer), plus
+`railway/tests/test_entity_resolution.py` for the resolver and its PHP mirror.
+
+Jaguar Land Rover confirmed 4,000 job cuts on Monday 2026-09-07. We stored the
+announcement four times, from four different outlets, under four names:
+`Jaguar Land Rover` (179163, moneycontrol, 20 source reports), `JLR` (179186,
+Wards Auto), `Tata Motors' JLR` (179194, Livemint) and the Chinese
+`捷豹路虎` (179237, Yahoo新聞). Three of the four fell inside Week 37 and went
+out in the reader digest of 2026-09-14 as three separate "Biggest cuts". In the
+same email, worldwide verified was about 8,000 too high, "8,000 on entries with
+no country recorded" WAS the two blank-country duplicates, and Automotive
+12,107 carried the same 8,000.
+
+**Why nothing saw it, which is the reusable half.** Every dedup defence here
+buckets on a company name before anything is compared, so four spellings make
+four buckets and no pair is ever proposed. `duplicate_article_rows` was written
+in September for precisely that blind spot, keyed on `(source_url, job_count)`
+with no name in it -- and that is exactly what bounds it: it fires only when two
+rows cite the SAME article. Four outlets is four URLs, so it read four unrelated
+rows and passed. `headline_concentration` could not see it either; each row is
+an ordinary share of its week.
+
+**And one name had no key at all.** `alt_company_key()` strips every character
+outside `[a-z0-9 ]`, so `捷豹路虎` normalised to the EMPTY STRING -- as has every
+employer named in a non-Latin script since that function existed. An empty key
+matches nothing, so those rows have never been able to fuzzy-dedup against
+anything. Nothing can normalise a name it cannot read, so the fold is a lookup:
+`alt_nonlatin_company_alias()`, consulted before the strip, hand-kept, and never
+grown by inference. An unknown non-Latin name still returns `''` and still joins
+nothing, which is stated rather than papered over.
+
+**The new key is the conjunction, and each third of it was mutation-tested.**
+Same `job_count`, effective dates within two days, and employer names that
+resolve to one employer through `railway/entity_resolution.py` (canonical key,
+initialism, or token containment with a distinctive head). The count alone
+repeats constantly, the date alone is a week of unrelated layoffs, the employer
+alone is a company with two genuine rounds. Break any one of the three on these
+same four rows and the guard goes quiet; the test does exactly that, including
+removing the `捷豹路虎` alias to show that row drop out.
+
+**Measured over the live corpus.** The whole 378-row non-register population of
+the trailing 90 days: 11 groups, and by inspection every one is a real duplicate
+cluster (Ilva, Swiss Post, Samsung India, Sangamo, Pohde and five more), worth
+about 6,800 jobs beyond JLR's 12,000. Zero false positives. On two 200-row live
+WARN samples the register shape -- one employer filing several site notices the
+same day, which is CORRECT data and exempt from fuzzy dedup by policy -- produces
+16 groups, and the `warn`/`federal_rif` exclusion suppresses every one.
+
+The correction is PREPARED AND NOT APPLIED:
+`railway/correction_specs/2026-09-16-jlr-cross-alias-duplicates.json`. Four dry
+runs, all exit 0: move the event-describing links onto the canonical row, trash
+the three duplicates, and correct the canonical row's country from United States
+(which no source supports) to United Kingdom. Expected after, Week 37: 23,820
+jobs to 11,820, 65 entries to 62, UK 4,331 to 331, Automotive 12,107 to 107.
+
+**A second agent built the same guard independently (PR #377), and one branch
+of it was stronger.** Its script rule is the general case of this one's alias
+list: a Latin and a non-Latin name cannot be compared as words at all, so
+nothing follows from their looking different, and a pair may be let through on
+the count and the date alone provided the sentence SAYS that is what happened.
+Folded in here, narrowed to the same calendar day (that branch carries no name
+evidence, so it must not also be the widest one) and re-measured: no new group
+over the 90-day population and no false positive. #377 is otherwise a subset of
+this PR and was closed as superseded.
+
+Delegated in `test_dedup_live.InvariantCoverage.DELEGATED` for the same reason
+as `country_identity` and `duplicate_article_rows`: it is failing live on
+purpose, and a live claim would redden every push over a data defect a
+correction clears and a unit suite cannot act on.
+
+---
+## 2026-09-16 - A third party's figure bound to the filer: two 8-K shapes that a row carries in its own fields
+
+**Class:** novel
+**Guard:** `railway/tests/test_filing_shape_guards.py` (new module `railway/filing_shapes.py`, new invariant `filing_shape_tells`, new ingest gates in `extractor.finalize_extraction`)
+
+Three live 8-K rows state a number that was never the filer's own headcount, and
+until now nothing asked either question at ingest or on the published data.
+
+**Row 176990, 20,000 jobs, "Aeternum Health".** The sentence sits in the
+filing's RISK FACTORS and quotes HHS's own press language verbatim: "HHS
+announced that it intends to reduce our workforce by approximately 10,000
+full-time employees ... which in combination will result in a reduction of
+force by 20,000 employees." The extractor bound "our" to the registrant, a
+micro-cap shell. Corrected 2026-09-16; the audit is in
+`docs/findings-july-august-2026-us-accuracy.md`.
+
+**Row 177216, 4,320 jobs, "Applied Aerospace & Defense".** The figure is 4,320
+in an Adjusted EBITDA reconciliation headed "(in thousands, except
+percentages)": 4,320 thousand DOLLARS of integration and restructuring cost.
+The filing states no headcount anywhere.
+
+**Row 176490, 3,500 jobs, "Aon plc", still live.** announcement_date
+2014-04-01 against layoff_date 2020-05-12, 2,233 days apart.
+
+**THE TELL A PUBLISHED ROW STILL CARRIES IS THE DATE GAP.** Once the filing
+text is gone, the only thing left of the third-party shape is a row
+contradicting itself: an Item 2.05 8-K is due within four business days of the
+commitment, so an announcement a year before the filing's own effective date is
+somebody else's event, or history. `MAX_8K_LEAD_DAYS = 365` is read off the
+live distribution of the 252 8-K rows carrying both dates, measured today: p50
+0, p90 41, p95 120, p99 292, seven rows over 180 and one over 365. The longest
+legitimate row anyone has read is Koppers at 237 (announced in May for year
+end), and every row past 300 that has been read is wrong. 365 is the first
+round number no legitimate row reaches. The 181-365 band is NAMED FOR
+ADJUDICATION and never failed, because year-end closures and third-party
+figures both live there.
+
+**Two layers, one definition.** `railway/filing_shapes.py` is imported by the
+ingest gate and by the live invariant, so they cannot drift; a test asserts
+both read the same ceiling. At ingest: a headcount from a risk-factor section
+is refused outright (the collector now reports which section its window came
+from, `sources/edgar.fetch_document`), a count the filing states only as money,
+scale or a table cell is refused, and the date gate refuses past the ceiling
+and prints a worklist line inside the review band. On the live data:
+`filing_shape_tells` reads one /query page of the largest 8-K rows and FAILS on
+the date gap alone.
+
+**WHAT IT DELIBERATELY DOES NOT FAIL ON, and why that was measured rather than
+assumed.** Applying the existing excerpt rule to all 991 live 8-K rows failed
+260 of them, most of them legitimate, so a FAIL on that tell would be noise and
+noise is how an alert channel gets filtered. The narrower "count absent from
+its own excerpt, beside cost words" reads 15 of the top 200 and every one
+inspected was a genuine defect, but it is still reported as a worklist rather
+than a failure. The PASS sentence is therefore never a clean zero: it prints
+the three worklists and the job floor of its own sweep.
+
+**The units declaration is the fourth binding, and it is what the cost gate
+adds.** Row 177216's 4,320 sits 424 characters after "(in thousands, except
+percentages)", so the filing itself says the number is not a count. A units
+header never binds an occurrence that sits beside a people-noun: a press
+release routinely declares units for its tables and then states a real
+headcount in prose, and refusing that row would be the guard sharing its
+target's blind spot.
+
+**This shape already had an ingest guard, and the row is still live.**
+`_count_has_headcount_context` was written from this very filing on 2026-09-07
+and row 177216 was trashed that day, with the hash suppressed and the tool
+reading it back as gone. A public query today returns it again: id 177216,
+4,320 jobs, unedited, with a permalink. An ingest guard cannot clean data that
+is already published, which is the whole argument for the live invariant, and
+the resurrection itself is a separate open question that is NOT closed here.
+
+Delegated in `test_dedup_live.InvariantCoverage.DELEGATED` rather than claimed
+by a live assertion, for the reason `country_identity` and
+`duplicate_article_rows` are: it FAILS LIVE today on row 176490, and a live
+claim would redden every push over a data defect a correction clears. The
+repo's own mutation meta-guard caught the first attempt at that delegation
+pointing at the ingest tests rather than the invariant, which is the guard
+working.
+
+**A WARN-level tripwire for a shape that must never be a refusal.** Rows 178667
+(4,500) and 177173 (2,500) store a Los Angeles County consultancy's projection
+of REGIONAL production-job losses from a merger that is on hold, under the
+studio's own name. `projection_language()` prints the matched words at ingest
+and never decides anything, because "could cut 500 jobs" is also how a genuine
+announcement gets reported. `estimates that` was in the first phrase list and
+was removed: it fires on the cost sentence of every ordinary Item 2.05 filing.
+
+## 2026-09-16 - Two reviewers, 81 events, one real disagreement that a ledger diff could not see
+
+**Class:** novel
+**Guard:** `railway/tests/test_warn_reference_set_wave2.py` (the numerator is
+exactly the ledger's live accepts) plus the reconciliation recorded in
+`us-warn-il-oh-pa-2025-07_2026-06.review.agent-b-2026-09-16.json`. There is no
+test that catches the shape below, and saying so is the honest state: see
+"what has no guard" at the end.
+
+Wave 2 of the US WARN reference set (IL/OH/PA, 81 events) was adjudicated
+INDEPENDENTLY by two reviewers, shipped as #374 (`agent-a-2026-09-16`) and #373
+(`agent-b-2026-09-16`). This PR supersedes both with one reconciled result.
+
+**The ledgers differ on six events, and those six are not a disagreement.** All
+six are events both reviewers identified, in prose, as held in our data but not
+proposable by the frozen matching rule. Both name IDENTICAL tracker rows
+(137973; 136173+136174; 135563; 135258; 136059; 135782). Reviewer A recorded
+them as accepts carrying `pack=None` and an `evidence_outside_pack` key;
+reviewer B refused, because the recorder refuses by design, and wrote them to a
+verdict file. A recording convention, not a finding.
+
+**A SEVENTH event was a real disagreement, and diffing the two ledgers keyed on
+`reference_row_id` could not see it.** `warn-il-2026-02-23-first-brands` (First
+Brands Group, Albion Air Facility, IL, 642 workers). **Both ledgers record
+`reject`** — identical decision value, opposite reasons. A ruled it MISSED
+("we hold no row for any of the four Albion components"); B ruled it MATCHED on
+row 136396. It surfaced only when A's manifest was compared against B's separate
+verdict file, which is a comparison nobody had a reason to run. That is the
+shape worth remembering: **two reviewers can agree on a recorded value and
+disagree on the fact it stands for**, and the diff that everyone reaches for
+compares the value.
+
+**Ruled a MISS for every published figure** (owner, 2026-09-16). Row 136396 is
+real and was re-read live: `First Brands Group (Champion Laboratories,
+Inc.-multiple sites)`, 642 = exactly 114 + 48 + 435 + 45, Albion, IL WARN. It is
+excluded because it is dated 2026-01-15, 39 days before the notice date and
+outside the frozen window — the protocol's cross-period exclusion. The rule is
+frozen so a match this tempting cannot be admitted by an editor with the answer
+in view. It is recorded as excluded BY THE WINDOW RULE, not for absence of
+evidence, and it is deliberately OFF the chase worklist, because we almost
+certainly hold it and sending someone to find it would waste the effort. That is
+the one place the published figure and the worklist are allowed to differ, and
+the verdict file says so in a sentence.
+
+**A miss can be manufactured by the query that looks for it.** Reviewer A's
+ledger reason for that event reads "we hold no row for any of the four Albion
+components (live `/query company='First Brands' state=IL` **in the window**
+returns only the McHenry row)". The parenthesis states the window restriction
+and the sentence then generalises past it. Row 136396 could not have been
+returned. The verdict survived the correction; the sentence did not. Recorded as
+a finding because it is the same error the pack itself was making, one layer up.
+
+**The published figure is a floor and says so.** 58 of 75 primary (77.3%, Wilson
+95% CI [66.7%, 85.3%]) and 4 of 6 census, every one an accept naming a row the
+frozen pack proposed. Counting the six confirmed-but-unrecordable matches the
+reviewers' verdict is 63 of 75 and 5 of 6 — an editor figure, never published,
+never averaged with the floor. Pooled across seven states: floor 157/175 =
+89.7% [84.3%, 93.4%], verdict 162/175 = 92.6%. After the ruling the two
+reviewers agree per event on all 81. 13 misses, all UNKNOWN on cause.
+
+**The recorder's "No row of any kind, at any date, for this employer" was
+false**, and both reviewers found it. Two filters stand between "we hold
+nothing" and that sentence — the `/query?company=` whole-word match on the
+event's own terms, and the token-prefix name test applied to what came back —
+and the section claimed the first while printing neither. It now reports what
+was actually checked: the terms queried, how many rows came back, which aliases
+the name test used, how many rows it dropped and which. `warn_adjudication_pack`
+no longer asserts absence it did not measure.
+
+**The recorder stays closed, deliberately.** An accept whose row no evidence
+block covers is an editor matching with the answer in view, and a ledger that
+admits it can no longer be read as a floor. So reviewer A's
+`evidence_outside_pack` shape is NOT adopted: the ledger stays
+machine-recordable, the published figure UNDERSTATES, and the understatement is
+named in the results document instead of being quietly closed in the recorder.
+`adjudication_ledger.decide`'s refusal now says that out loud and points at the
+verdict file, rather than only offering "rebuild the pack".
+
+Also: `railway/warn_recall_adjudications_wave2.json` added to `self_heal.FORBIDDEN`
+(a new ledger is not covered by an old name), and `recall-reference-sets/README.md`
+corrected — it still said wave 1 was "0 of 100 - nothing is adjudicated", false
+since 2026-08-14, when the owner adjudicated it to 99 of 100 and 32 of 33.
+
+**Seven defects carried as FINDINGS, not fixed** (results document, section 5b):
+Ohio's amendment marker stored in `company_name`; U+2019 vs U+0027; an amended
+effective date creating a second row (TOPS 136862/176824, Premier
+136620/176837); `/query?company=` being whole-word, which makes
+`warn_miss_causes.py`'s 6-character prefixes inert; Walgreens' 469-job IL notice
+held only as a news row; Compass Group held as 1 of 4 components; and two
+reference-frame doubts recorded and NOT edited (Heartland 240 looks like one
+notice counted twice; BPM Jan/Feb looks like one closure held as two events),
+because a reference set is not repaired by the reviewer measuring against it.
+
+**Worklist leads:** Amazon Fresh's ten Illinois stores, 1,545 workers, the
+largest miss in the set, while the Pennsylvania sibling of the same programme IS
+held (row 135412, 983) — one state of one programme going missing while another
+lands is the lead, not the employer. And Adare Pharmaceuticals missed in BOTH IL
+(21) and PA (137), absent from the tracker nationwide.
+
+**What has no guard.** Nothing here fails if two future reviewers record the
+same value for opposite reasons. The only thing that caught it was reading both
+reasons. A cheap partial guard would be to require a reject's reason to state
+whether the event is held, which is not written here and is named rather than
+pretended.
+
+$0.00 of model spend. Nothing merged, nothing deployed, no write to live data.
+## 2026-09-16 - The containment guard fired on our own corrections, and it was right
+
+**Class:** novel
+**Guard:** none - there is no defect to guard against. The mechanism that caught
+this is `railway/data_integrity.py` `ContainmentInvariant`, already pinned by
+`railway/tests/test_headline_containment.py`; nothing in the tracker was wrong.
+`novel` is chosen deliberately: every slug in `docs/INCIDENT_CLASSES.md` names a
+way a mechanism failed quietly, and none of them fits a TRUE POSITIVE raised by
+an editor's own signed-off work.
+
+`headline_containment` went FAIL at 2026-09-16 13:05 UTC: "Worldwide jobs, all
+time" minus "AI-attributed jobs, all time" moved -32,210 jobs on +5 entries,
+with superset exclusions accounting for +0. The guard cannot tell a re-scoring
+across the AI boundary from a handful of large departures hiding inside a net
+entry count, which is why it says so and refuses to judge. In this case it was
+neither: it was five rows leaving, on purpose.
+
+**The arithmetic closes on every axis with zero residual.** Baseline
+2026-09-15T20:23Z, reading 2026-09-16T13:10Z.
+
+| slice | baseline | live | move |
+|---|---|---|---|
+| Worldwide, all time | 20,569,843 / 65,628 | 20,537,633 / 65,633 | -32,210 / +5 |
+| AI-attributed, all time | 241,305 / 99 | 241,305 / 99 | 0 / 0 |
+| United States, all time | 7,122,739 / 43,939 | 7,088,118 / 43,936 | -34,621 / -3 |
+
+Five adjudicated corrections were applied in that window, carrying 37,320 jobs:
+
+- **176990** Aeternum Health, 20,000. An 8-K risk-factor paragraph binds a US
+  federal agency's restructuring figure to the filer, who laid nobody off; those
+  cuts are already held under `federal_rif`.
+- **177161** Los Angeles Unified School District, 6,000. Byte-identical
+  duplicate of 176442, same source URL and count, under a second spelling of the
+  employer.
+- **177216** Applied Aerospace & Defense, 4,320. A DOLLAR figure: $4.32m of
+  integration and restructuring cost from an Adjusted EBITDA reconciliation
+  table headed "in thousands", stored as a headcount. The release states no
+  number of employees anywhere.
+- **178667** Paramount-Warner Bros, 4,500 and **177173** Paramount Skydance,
+  2,500. One Los Angeles County economic projection of a merger that is on hold
+  until at least March 2027, stored twice at its two published sizes, with no
+  employer announcement behind either.
+
+Ten rows arrived in the same 16.8 hours carrying 5,110 jobs: 179333 University
+of Vermont Health Network 199, 179334 United Internet 800, 179335 Stone 200,
+179336 Ruag 50, 179337 CSL Behring 180, 179338 Wyalla Steelworks 500, 179339
+Meta Spain 2,000, 179340 Afpa 867, 179341 Ulefos Jernvaerk 114, 179342 ABS-CBN
+200. They are ten consecutive ids, so the gross flow is bounded, not inferred.
+
+-37,320 + 5,110 = **-32,210** exactly; -5 + 10 = **+5** exactly. The AI slice did
+not move because none of the fifteen rows is `ai_explicit`, which is the whole of
+the complement finding. Superset exclusions are unchanged at 123,458 / 425,
+matching the check's own "+0". The same corrections close the US reading: four
+of the five sit in that slice (177173 is stored under country "Multiple
+countries" with no `employer_country`, so it falls outside `country_basis=any`),
+-34,820 on -4, plus the one arriving US row at +199 on +1 = **-34,621 on -3**.
+
+**The corrections log discloses those five removals and nothing else in the
+window.** Its only other entries are a `reason_tags` backfill and an industry
+enrichment, neither of which touches `job_count`, `country` or the AI flag. So no
+mechanism other than the five removals and the ten arrivals was available to move
+this complement.
+
+**Closed the documented way.** `--record-baseline` opened the sticky incident
+under the subset (`ai_all_time`, because one finding gets one incident), then
+`--close-incident ai_all_time` with reviewer `session-2026-09-16`, the finding,
+all fifteen row ids and an explicit replacement baseline of 241,305 jobs / 99
+entries - the AI slice's unchanged and correct figure. Neither JSON was hand
+edited and nothing was left to age out.
+
+**Containment has no close path of its own, and does not need one.** The close
+stamps `ai_all_time` with its own epoch `close:ai_all_time:...`, so the pair now
+reads UNKNOWN naming both sides - "the two baselines come from DIFFERENT recorder
+runs" - which is the honest state, not a pass. **Do not answer that by hand
+recording a pair.** A coherent pair is recorded by the next `data-integrity.yml`
+run that can advance the whole containment group under one stamp, and the
+recorder will not do it early: `worldwide_all_time` and `us_all_time` are still
+inside one ingest cycle of their 2026-09-15T20:23Z baseline, so today's 17:30 UTC
+run spans 0.88 d against `MIN_CYCLE_SPAN_DAYS = 0.95` and holds them, spreading
+the hold to `ai_all_time` as its pair. The first run that can advance all three
+is **2026-09-17 17:30 UTC**, at a span of 1.88 d.
+
+**The US `headline_movement` UNKNOWN is left open on purpose.** -34,621 jobs on
+-3 entries against a baseline 16.8 h old is UNJUDGED, not failing, and an UNKNOWN
+is not something a human closes - there is no incident to close and closing one
+would be the laundering the ledger exists to prevent. It is judged in full at the
+same 2026-09-17 17:30 UTC run. The expectation, stated as a prediction and not a
+result: the movement check consults the corrections log for the window, which
+discloses 37,320 jobs, and subtracting that from the -34,621 leaves a residual
+well inside the allowance, so it should resolve to PASS with no human action. If
+it instead renders FAIL it opens an incident, and that one is closed by the same
+path used here.
+
 ## 2026-09-16 - August 2026 US announcements: the curated probe run as a retrospective month reference, and what the machine figure needed an editor for
 
 **Class:** novel

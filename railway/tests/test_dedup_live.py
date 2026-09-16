@@ -368,6 +368,25 @@ class InvariantCoverage(unittest.TestCase):
         # data-integrity.yml, daily, exit 2 on FAIL.
         "duplicate_article_rows": ("test_duplicate_article_guard",
                                    "TheKnownInstance"),
+        # Delegated for the third time and for the same reason: IT IS CURRENTLY
+        # FAILING LIVE, on purpose. Jaguar Land Rover's 4,000-job announcement
+        # of 2026-09-07 is stored four times under four names, from four
+        # different outlets, and three of them went out in the Week 37 reader
+        # digest as three separate "Biggest cuts". A live claim here would
+        # redden every push over a data defect that a correction clears. The
+        # arming is proved offline on the four live rows' own field values,
+        # including the mutation of each of the three conditions; the LIVE
+        # reading is data-integrity.yml, daily, exit 2 on FAIL.
+        "cross_alias_duplicate_rows": ("test_cross_alias_duplicate_guard",
+                                       "TheKnownInstance"),
+        # Delegated for the same reason again: IT FAILS LIVE TODAY, on purpose.
+        # Row 176490 (Aon, 3,500 jobs, 8-K) carries an announcement_date of
+        # 2014-04-01 against a layoff_date of 2020-05-12, 2,233 days, which is
+        # the tell row 176990 (Aeternum/HHS, 467 days) left in its own fields
+        # before it was trashed. The arming is proved offline on both rows'
+        # field values; the LIVE reading is data-integrity.yml, daily.
+        "filing_shape_tells": ("test_filing_shape_guards",
+                               "TheInvariantOnTheKnownInstances"),
     }
 
     @staticmethod

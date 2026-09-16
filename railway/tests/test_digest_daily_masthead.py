@@ -3,7 +3,7 @@
 THE DEFECT THIS PINS (found in the 2026-08-28 nine-edition review). The
 composer's masthead fork was ``$is_monthly`` ONLY, so the daily edition - a
 two-day provisional window - rendered the ISO-week masthead ("2026 Week 35 ·
-August 27-28") and opened its lead "In Week 35 of 2026, employers verified ...".
+August 27-28") and opened its lead "In Week 35 of 2026, the tracker recorded ...".
 A two-day figure wearing a week's name is a false claim about the window in the
 two lines most likely to be quoted on their own - the exact class of masthead
 error the monthly branch was built to avoid (subscribe.php's own words), and it
