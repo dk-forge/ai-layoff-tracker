@@ -1,3 +1,87 @@
+## 2026-09-16 - July 2026 US headline over-counts by 26,000 jobs: one third party's number, one article stored twice
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_duplicate_article_guard.py` (new invariant `duplicate_article_rows`, keyed on `(source_url, job_count)` with no company name in it)
+
+The published July 2026 US figure fell month-over-month while an independent
+public series rose. Changing the date basis did not reconcile it, so the basis
+was not the cause. Two rows are.
+
+**Row 176990, 20,000 jobs, 23.2% of the whole July headline.** An 8-K row
+attributed to the filer, `Aeternum Health, Inc.`. The filing was read in full:
+the number comes out of a regulatory RISK FACTOR describing the US Department
+of Health and Human Services' March 2025 restructuring. The trap is one word --
+the filing quotes HHS's press language verbatim, "HHS announced that it intends
+to reduce OUR workforce by approximately 10,000 full-time employees ... in
+combination ... a reduction of force by 20,000 employees" -- and the extractor
+bound "our" to the registrant, a micro-cap shell with negative shareholders'
+equity and $10,000/month of consulting fees. The row contradicts itself in its
+own fields: `announcement_date` 2025-03-27 sits 467 days before its
+`layoff_date` of 2026-07-07. HHS reductions are separately carried under
+`federal_rif`, so it also double counts a population we already hold. It was
+stored at verification level `gold`.
+
+**Rows 177161 and 176442, 6,000 jobs each, one article.** Byte-identical
+`source_url`, identical count, one day apart, under "Los Angeles Unified School
+District" and "LAUSD". Different `event_id`s, so `/aggregate` summed both.
+
+**Why nothing caught the second one, which is the reusable half.** Every dedup
+defence we have buckets on a company name before anything is compared, so two
+spellings of one employer make two buckets and the pair is never proposed,
+never compared, never judged, at zero cost, forever -- the same blind spot
+`duplicate_shape_scan.py` was written for in September, which names LAUSD in its
+own docstring and which reports but never merges. `headline_concentration` could
+not see it either: each row is 7% of the month, individually unremarkable. A
+guard that shares its target's blind spot is worthless, so the new invariant's
+key holds NO company name at all. `job_count` is part of the key rather than a
+second test because one article really can be the cited source for several
+different facts -- the OPM workforce-changes portal is one URL behind four
+federal agencies with four different counts. Register-style source types
+(`warn`, `federal_rif`) are excluded outright: one CA WARN register URL is the
+`source_url` of 129 unrelated July rows. Over the 656 live US rows of July and
+August it reports exactly one group, the real one, and no false positives. One
+request, largest-first, floor printed in its own PASS sentence, never a page
+walk.
+
+It is DELEGATED in `test_dedup_live.InvariantCoverage.DELEGATED` rather than
+claimed by a live assertion, for the reason `country_identity` is: it fails live
+right now, on purpose, and a live claim would redden every push over a data
+defect that a correction clears and that a unit suite cannot act on.
+
+**Not closed, and deliberately not rounded into the correction.** Row 134521
+(`Ideal US Talent`, 9,891, state RI) says "in Minneapolis, MN" in its own
+excerpt, and sibling row 26778 holds the same URL and the same excerpt at a
+count of 2. `test_headline_guards.py` has named that exact shape -- "RI 98,912,
+a 9,891 ... (2 from RI) misparse" -- as a known incident since August, and it is
+still live in the published number. Rows 70479/134376 are a Meta news-over-WARN
+superset that was never joined, about 1,400 jobs. Both are judgement calls and
+are UNKNOWN pending two-model adjudication.
+
+**The August half is UNKNOWN and is reported as UNKNOWN.** Neither named
+instrument can answer a retrospective question: `tracker_diff --learn` reads a
+GDELT window anchored to now and capped at 168 hours (it answered "cadence
+quiet" on the day, which is correct shipped behaviour and was not overridden),
+and `curated_probe` needs a hand-fed worklist only the owner can supply. What
+the corpus does show is shape, not a number: August carries 6 rows flagged
+`announced` worth 5,123 jobs against July's 10 and 14,474.
+
+**And the comparison itself is not like-for-like.** 88% of July's rows and 87%
+of August's are state WARN notices. An announcement-based series does not count
+a WARN notice at all, so a WARN-inclusive series should normally read higher,
+and a month-over-month direction disagreement between the two is expected
+rather than diagnostic. The 26,000 is a real defect; most of the remaining
+spread is not.
+
+Corrections prepared, not applied (no key in the session, and a numeric change
+needs the owner): `railway/correction_specs/2026-09-16-july-us-overcount.json`.
+July announced 86,035 -> 60,035 (entries 354 -> 352). The NOTICE basis is
+not affected equally: row 176990 is dated there by its announcement_date of
+2025-03-27 and falls in March 2025, so that basis loses only the duplicate,
+56,023 -> 50,023. The same row being a 20,000-job July event on one published
+basis and a March-2025 event on the other is itself what a lifted number looks
+like from the outside. Full audit in
+`docs/findings-july-august-2026-us-accuracy.md`.
+
 ## 2026-09-14 - The deploy's three-state checks died silently on UNKNOWN, because the step ran under errexit
 
 **Class:** guard-went-vacuous

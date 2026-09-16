@@ -2421,6 +2421,162 @@ class ArchiveRecheckInvariant:
                              f"{self.PROJECTED_MAX_AGE_DAYS}d projected bound")
 
 
+# ---------------------------------------------------------------------------
+# ONE ARTICLE, ONE NUMBER, ONE ROW
+# ---------------------------------------------------------------------------
+#: Source types whose `source_url` is a REGISTER LANDING PAGE, shared by every
+#: notice in that jurisdiction, not an article about one event. Grouping on the
+#: URL is meaningless for these: one CA WARN register URL carried 129 unrelated
+#: July rows, and the OPM workforce-changes portal carries every federal agency.
+#: Excluding them is what makes the remaining signal exact rather than noisy.
+REGISTER_URL_SOURCE_TYPES = {"warn", "federal_rif"}
+
+#: How far back the sweep looks, and how many rows it reads. ONE request: this
+#: runs at every session start and a dashboard that is slow stops being run.
+#: Largest-first, because a duplicate's damage IS its job_count.
+DUPLICATE_ARTICLE_WINDOW_DAYS = 180
+DUPLICATE_ARTICLE_ROWS = 200
+
+
+def duplicated_article_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES):
+    """Rows that cite ONE article for ONE number and are counted more than once.
+
+    THE KEY IS (source_url, job_count), over rows that are NOT register-sourced.
+
+    WHY THIS CATCHES WHAT NAME BUCKETING CANNOT. Every existing dedup defence is
+    downstream of a company-name key, so two spellings of one employer make two
+    buckets and the pair is never compared (docs/TECHLOG.md; duplicate_shape_scan
+    exists for the same reason). This key holds no name at all, so a spelling
+    cannot remove a pair from consideration. The live instance it is written
+    from: "Los Angeles Unified School District" and "LAUSD", rows 177161 and
+    176442, 6,000 jobs each, SAME Google News article URL, one day apart, two
+    event ids, both summed into the published July headline.
+
+    WHY job_count IS PART OF THE KEY AND NOT A SECOND TEST. One article really
+    can be the cited source for several genuinely different numbers -- the OPM
+    workforce-changes portal is one URL behind four federal agencies with four
+    different counts (16/13/9/6 in July). Requiring the COUNT to match as well
+    is what separates "one page, several facts" from "one fact, stored twice",
+    and it is why this reports zero false positives over the 656 live US rows of
+    July and August 2026 while still naming the one real duplicate.
+
+    A group is only reported when its rows carry DIFFERENT `event_id`s. Rows
+    already joined into one event are one observation by construction and the
+    aggregate does not double count them.
+
+    Pure: no network, no keys. Returns groups worst-excess first, where excess
+    is what the headline carries beyond a single copy.
+    """
+    groups = {}
+    for row in rows or ():
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("source_type") or "").lower() in register_types:
+            continue
+        url = str(row.get("source_url") or "").strip()
+        if not url:
+            continue
+        try:
+            jobs = int(row.get("job_count") or 0)
+        except (TypeError, ValueError):
+            continue
+        if jobs <= 0:
+            continue
+        groups.setdefault((url, jobs), []).append(row)
+
+    out = []
+    for (url, jobs), members in groups.items():
+        if len(members) < 2:
+            continue
+        if len({m.get("event_id") for m in members}) < 2:
+            continue          # already one event; nothing is double counted
+        out.append({"source_url": url, "job_count": jobs,
+                    "rows": sorted(members, key=lambda m: str(m.get("id"))),
+                    "excess": jobs * (len(members) - 1)})
+    out.sort(key=lambda g: (-g["excess"], g["source_url"]))
+    return out
+
+
+class DuplicateArticleInvariant:
+    """One article reporting one number may not be counted twice.
+
+    WHAT IT ASSERTS. Over the largest rows of a trailing window, read from the
+    same superset-deduped population the headline sums: no two of them cite the
+    same article for the same job_count under different event ids.
+
+    WHY IT IS BOUNDED, AND WHY IT SAYS SO. One /query page, largest first. That
+    is deliberate -- the headline is a sum, so a duplicate's cost is its
+    job_count, and the page reaches a floor far below any duplicate that could
+    move a published number. A duplicate below the floor is invisible here, and
+    the PASS sentence PRINTS the floor rather than leaving it to be assumed. It
+    never page-walks the live host: one request, no parallelism (never
+    page-walk the live host -- that is how this machine's IP got blocked).
+
+    MISSING DATA IS NOT A PASS. An unreadable body, a response with no rows, or
+    a page that does not reach its own stated total is UNKNOWN, named as such.
+    """
+
+    key = "duplicate_article_rows"
+    label = "One article, one number, one row"
+    reads_live_data = True
+
+    WINDOW_DAYS = DUPLICATE_ARTICLE_WINDOW_DAYS
+    ROWS = DUPLICATE_ARTICLE_ROWS
+
+    def run(self, ctx):
+        since = ctx.today - timedelta(days=self.WINDOW_DAYS)
+        params = {"from": since.isoformat(), "to": ctx.today.isoformat(),
+                  "sort": "job_count", "dir": "desc",
+                  "per_page": self.ROWS, "page": 1,
+                  "exclude_supersets": 1, "cb": ctx.cachebust}
+        url = BASE + "query?" + urllib.parse.urlencode(params)
+        try:
+            payload = json.loads(ctx.fetch(url, ctx.timeout)) or {}
+        except urllib.error.HTTPError as exc:
+            why = ("site is in its deploy maintenance window (HTTP 503)"
+                   if exc.code == 503 else f"/query returned HTTP {exc.code}")
+            return Result(self, UNKNOWN, detail=why, error=exc)
+        except Exception as exc:
+            return Result(self, UNKNOWN,
+                          detail=f"could not read /query ({exc})", error=exc)
+
+        rows = payload.get("data")
+        if not isinstance(rows, list) or not rows:
+            return Result(self, UNKNOWN,
+                          detail="/query returned no rows for the window — this check "
+                                 "did not run, which is not the same as finding nothing")
+        counts = []
+        for row in rows:
+            try:
+                counts.append(int((row or {}).get("job_count") or 0))
+            except (TypeError, ValueError):
+                pass
+        floor = min(counts) if counts else 0
+        try:
+            total = int(payload.get("total") or 0)
+        except (TypeError, ValueError):
+            total = 0
+        scope = (f"{len(rows)} largest of {total:,} rows in the last "
+                 f"{self.WINDOW_DAYS}d, down to {floor:,} jobs")
+
+        groups = duplicated_article_rows(rows)
+        if groups:
+            worst = groups[0]
+            ids = ", ".join(str(r.get("id")) for r in worst["rows"])
+            excess = sum(g["excess"] for g in groups)
+            return Result(self, FAIL, observed=excess,
+                          detail=f"{len(groups)} article(s) counted more than once, "
+                                 f"{excess:,} jobs of excess in the headline. Worst: rows "
+                                 f"{ids} each carry {worst['job_count']:,} jobs from ONE "
+                                 f"source url under different event ids. Verify them "
+                                 f"against that url, then correct through the machinery "
+                                 f"(RUNBOOK: a published row is wrong) — never by hand "
+                                 f"({scope})")
+        return Result(self, PASS, observed=0,
+                      detail=f"no article is counted twice ({scope}); a duplicate below "
+                             f"{floor:,} jobs is outside this sweep and is NOT claimed clean")
+
+
 def _php_function_body(src, name):
     """Source between `function name(` and the next top-level closing brace."""
     start = src.find(f"function {name}(")
@@ -2503,6 +2659,12 @@ INVARIANTS = (
     # pattern all of these incidents share: one row, or one bad comparison,
     # moving a number the site publishes as fact.
     ConcentrationInvariant(),
+    # ConcentrationInvariant asks whether ONE row is too much of a headline.
+    # It cannot see two rows that are the same event, because each of them is
+    # individually ordinary -- the July 2026 LAUSD pair was 6,000 + 6,000 from
+    # one article, 7% each of a headline bounded at far more. This one asks
+    # that question, on a key that holds no company name at all.
+    DuplicateArticleInvariant(),
     MovementInvariant(),
     # The movement guard measures a headline's move against how many ROWS
     # ARRIVED, and a re-scoring moves a headline while nothing arrives. This one
