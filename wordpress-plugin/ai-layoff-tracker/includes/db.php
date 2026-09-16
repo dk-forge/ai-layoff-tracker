@@ -4703,11 +4703,51 @@ function alt_api_warn_transparency_post(WP_REST_Request $r) {
     return rest_ensure_response($row ?: $data);
 }
 
+/**
+ * ONE REMOVAL, ONE SUPPRESSION, WHICHEVER ID SPACE IT CAME THROUGH.
+ *
+ * THE DEFECT. `alt_api_trash` accepts three id spaces (`ids`, `post_ids`,
+ * `row_ids`) and only the first put the removed row's dedup hash on the
+ * suppression list. The other two read the headcount and deleted the row. The
+ * daily imports re-scrape the same source data, so a row removed through
+ * either of them is re-created on the next run under a new id, with the same
+ * wrong number and a fresh permalink. Nothing said so: the response carried
+ * `suppressed: 0`, which is also what a legitimate removal of a hashless row
+ * reports, so the two were indistinguishable.
+ *
+ * The three branches now call this, which is the only place the rule is
+ * written. A row with no hash to suppress is NAMED in `unsuppressed` rather
+ * than counted as zero, because "this entry is coming back" is a fact the
+ * caller has to be able to read.
+ */
+function alt_trash_suppress($hash, $id, $reason, array &$out) {
+    $hash = (string) $hash;
+    if ($hash !== '') {
+        alt_suppress_hash($hash, 'trashed: ' . $reason);
+        $out['suppressed']++;
+        return true;
+    }
+    $out['unsuppressed'][] = (int) $id;
+    return false;
+}
+
 function alt_api_trash(WP_REST_Request $r) {
     global $wpdb;
     $table = alt_db_table();
     $reason = (string) $r->get_param('reason');
-    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'orphan_events_cleaned' => array(), 'not_found' => array(), 'suppressed' => 0);
+    /*
+      `unsuppressed` NAMES WHAT WILL COME BACK, because a zero could not.
+
+      Suppression is what makes a removal stick: the daily imports re-scrape the
+      same source data, so a row deleted without its dedup hash on the list is
+      re-created on the next run under a new id. Until 2.20.201 only ONE of the
+      three id spaces below suppressed anything, and the response reported a
+      count rather than the ids, so an unprotected removal read as `suppressed:
+      0` and a caller had nothing to check it against. A number that is
+      sometimes right is not a signal. This is the list of ids removed with no
+      hash to suppress, so "this one is coming back" is stated.
+    */
+    $out = array('trashed_posts' => array(), 'deleted_rows' => array(), 'orphan_events_cleaned' => array(), 'not_found' => array(), 'suppressed' => 0, 'unsuppressed' => array());
     // The job total this call takes out of every published headline, summed
     // before each row is deleted. $jobs_measured goes false the moment ONE
     // removed row's headcount could not be read, and the log then records no
@@ -4731,10 +4771,7 @@ function alt_api_trash(WP_REST_Request $r) {
             continue;
         }
         $jobs_removed += max(0, (int) $row->job_count);
-        if ($row->dedup_hash) {
-            alt_suppress_hash($row->dedup_hash, 'trashed: ' . $reason);
-            $out['suppressed']++;
-        }
+        alt_trash_suppress($row->dedup_hash, $tid, $reason, $out);
         if ($row->post_id) {
             wp_trash_post((int) $row->post_id);
             $wpdb->delete($table, array('id' => (int) $row->id)); // belt & braces
@@ -4752,8 +4789,16 @@ function alt_api_trash(WP_REST_Request $r) {
         if ($pid && get_post_type($pid) === 'layoffs') {
             // Read the headcount while the row still exists: wp_trash_post
             // cascades and removes it.
-            $jc = $wpdb->get_var($wpdb->prepare("SELECT job_count FROM $table WHERE post_id = %d", $pid));
+            // THE HASH IS READ HERE FOR THE SAME REASON THE HEADCOUNT IS:
+            // wp_trash_post cascades and removes the row, so after the call
+            // there is nothing left to suppress. This branch read the count and
+            // not the hash until 2.20.201, which made every removal through it
+            // silently temporary.
+            $tr = $wpdb->get_row($wpdb->prepare(
+                "SELECT job_count, dedup_hash FROM $table WHERE post_id = %d", $pid));
+            $jc = $tr ? $tr->job_count : null;
             if ($jc === null) { $jobs_measured = false; } else { $jobs_removed += max(0, (int) $jc); }
+            alt_trash_suppress($tr ? $tr->dedup_hash : '', $pid, $reason, $out);
             wp_trash_post($pid);
             $out['trashed_posts'][] = $pid;
         } elseif ($pid) {
@@ -4762,11 +4807,17 @@ function alt_api_trash(WP_REST_Request $r) {
     }
     foreach ((array) $r->get_param('row_ids') as $rid) {
         $rid = (int) $rid;
-        $jc = $rid ? $wpdb->get_var($wpdb->prepare("SELECT job_count FROM $table WHERE id = %d AND post_id IS NULL", $rid)) : null;
+        // Same read, same reason as the two branches above: after the delete
+        // the hash is gone, and a removal that suppresses nothing is undone by
+        // the next import.
+        $tr = $rid ? $wpdb->get_row($wpdb->prepare(
+            "SELECT job_count, dedup_hash FROM $table WHERE id = %d AND post_id IS NULL", $rid)) : null;
+        $jc = $tr ? $tr->job_count : null;
         $deleted = $rid ? $wpdb->delete($table, array('id' => $rid, 'post_id' => null)) : 0;
         if ($deleted) {
             $out['deleted_rows'][] = $rid;
             if ($jc === null) { $jobs_measured = false; } else { $jobs_removed += max(0, (int) $jc); }
+            alt_trash_suppress($tr ? $tr->dedup_hash : '', $rid, $reason, $out);
         } elseif ($rid) { $out['not_found'][] = $rid; }
     }
 
