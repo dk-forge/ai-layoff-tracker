@@ -107,10 +107,39 @@ def _block(src, opener):
     raise AssertionError("unbalanced braces after " + opener)
 
 
+
+def _assert_self_contained(parts):
+    """Every alt_ function these lifted blocks CALL must also be lifted.
+
+    THE DEFECT THIS IS FROM. 2.20.199 made `alt_company_key()` consult a new
+    `alt_nonlatin_company_alias()` before the Latin strip. This harness lifts
+    functions by name, so it kept lifting the same four and the runner died
+    with a PHP fatal at the call. Sixteen tests failed, none of them about the
+    thing that had changed, and the failure text was about a temp file.
+
+    A lifted block is a copy of production with an import list maintained by
+    hand, so the list must be checked rather than trusted. This says which name
+    is missing, in the assertion, before php is ever started.
+    """
+    src = "\n".join(parts)
+    defined = set(re.findall(r"function\s+(alt_[A-Za-z0-9_]+)\s*\(", src))
+    called = set(re.findall(r"(?<!function )\b(alt_[A-Za-z0-9_]+)\s*\(", src))
+    missing = sorted(called - defined)
+    if missing:
+        raise AssertionError(
+            "the lifted PHP calls %s, which this harness does not lift. Add "
+            "_extract(...) for each, or the runner dies with a PHP fatal that "
+            "names a temp file instead of the cause." % ", ".join(missing))
+
+
 def _keys(names):
     """Return [(company_key, warn_revision_key), ...] from the real PHP."""
     parts = [
         _extract(API, "alt_canonical_company"),
+        # alt_company_key consults this BEFORE the Latin strip, so a harness
+        # that lifts the key function without it dies at the call rather than
+        # measuring anything. See 2.20.199.
+        _extract(API, "alt_nonlatin_company_alias"),
         _extract(API, "alt_company_key"),
         _extract(DB, "alt_strip_revision_marker"),
         _extract(DB, "alt_warn_revision_key"),
@@ -120,6 +149,7 @@ def _keys(names):
                        _read(DB), re.M)
     if not define:
         raise AssertionError("ALT_REVISION_MARKER_WORDS is not defined in db.php")
+    _assert_self_contained(parts)
     runner = (
         "<?php\n" + define.group(0) + "\n" + "\n".join(parts) + "\n"
         "$out = array();\n"
