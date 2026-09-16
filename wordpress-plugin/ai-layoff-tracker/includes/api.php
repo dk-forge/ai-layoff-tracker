@@ -991,11 +991,13 @@ function alt_api_status_get($request = null) {
     // is a page a cache is holding from a different build. '' means it could
     // not be computed, which is UNKNOWN and not a value to compare.
     //
-    // ON DEMAND, because it hashes ~2MB and this route is polled by the live
+    // ON DEMAND, because it hashes ~3MB and this route is polled by the live
     // badge in every open tab every 60 seconds and is deliberately uncached.
-    // The only caller that needs it is reader_freshness.py, twice a deploy.
+    // The only caller that needs it is reader_freshness.py, twice a deploy,
+    // and it gets a FRESH hash (true), never the cross-request cache a page
+    // render reads: this is the number a deploy is graded against.
     if ($request && $request->get_param('build')) {
-        $payload['build_stamp'] = alt_build_stamp();
+        $payload['build_stamp'] = alt_build_stamp(true);
     }
     $resp = rest_ensure_response($payload);
     $resp->header('Cache-Control', 'no-store, max-age=0');
