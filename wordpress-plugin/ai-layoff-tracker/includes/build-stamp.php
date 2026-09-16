@@ -26,11 +26,23 @@
  * emitted nowhere, and a page with no stamp resolves to UNKNOWN downstream,
  * never to a pass.
  *
- * COST: ~40 files, ~2MB, one sha256 pass, memoised per request, and only ever
- * called on a plugin surface (which is cached for 60s) or on /status. Not
- * memoised ACROSS requests on purpose: a stamp cached during the upload window
- * would outlive the race that produced it and turn a two-minute mismatch into a
- * permanent one.
+ * COST, AND WHY IT IS CACHED ACROSS REQUESTS SINCE 2.20.194. Until then this
+ * was ~66 files, ~3.1 MB, one sha256 pass on EVERY uncached render of every
+ * plugin surface (and the contact page since 2.20.191), memoised per request
+ * only. The docblock refused a cross-request cache on purpose: a stamp cached
+ * during the upload window would outlive the race that produced it and turn
+ * a two-minute mismatch into a permanent one. On 2026-09-12/13 the shared host
+ * fell over four times in twenty hours and per-request plugin work ranked
+ * third among the causes, so the guarantee is now kept a cheaper way. The
+ * stamp is held in a transient keyed by ALT_VERSION plus a stat pass over the
+ * same file set (alt_build_stat_key: count, sizes, mtimes). A half-uploaded
+ * tree has a different key from the finished one, so a stamp cached
+ * mid-upload is invalidated by the next file that lands, and an ordinary
+ * render costs one directory walk of stat() calls, not 66 digests.
+ * alt_build_stamp(true) bypasses the cache and rehashes; /status?build=1 uses
+ * it, because that is what reader_freshness.py grades a deploy against.
+ * Without WordPress (a mid-upload request, or the php CLI in tests) there is
+ * no transient and it hashes as before.
  *
  * The Python half is `checkout_build_stamp()` in railway/reader_freshness.py.
  * `tests/test_deploy_reaches_readers.py` EXECUTES this file and requires the
@@ -69,11 +81,48 @@ function alt_build_file_excluded($rel) {
 }
 
 /**
- * A short, stable fingerprint of this build's bytes, or '' if it cannot be read.
+ * What a stat pass says is on disk: the version, the file count, and every
+ * file's size and mtime folded into one digest. Cheap (no file is read), and
+ * it changes whenever any deployed file changes in size or lands anew, which
+ * is what makes it safe to key a cached stamp on. '' if the tree is unreadable.
  */
-function alt_build_stamp() {
+function alt_build_stat_key() {
+    $files = alt_build_files();
+    if (!$files) return '';
+    $ver = defined('ALT_VERSION') ? (string) ALT_VERSION : '';
+    $acc = '';
+    foreach ($files as $rel) {
+        $path = ALT_PLUGIN_DIR . $rel;
+        $size = @filesize($path);
+        $mtime = @filemtime($path);
+        if ($size === false || $mtime === false) return '';
+        $acc .= $rel . "\0" . $size . "\0" . $mtime . "\n";
+    }
+    return $ver . '|' . count($files) . '|' . substr(hash('sha256', $acc), 0, 32);
+}
+
+/**
+ * A short, stable fingerprint of this build's bytes, or '' if it cannot be read.
+ *
+ * $fresh = true skips the cross-request cache and rehashes the tree. The
+ * per-request memo is kept either way, so one render still emits one answer.
+ */
+function alt_build_stamp($fresh = false) {
     static $stamp = null;
-    if ($stamp !== null) return $stamp;
+    if ($stamp !== null && !$fresh) return $stamp;
+    $transient = 'alt_build_stamp';
+    $key = '';
+    if (!$fresh && function_exists('get_transient')) {
+        $key = alt_build_stat_key();
+        if ($key !== '') {
+            $cached = get_transient($transient);
+            if (is_array($cached) && isset($cached['key'], $cached['stamp'])
+                && $cached['key'] === $key && is_string($cached['stamp'])
+                && preg_match('/^[a-f0-9]{16}$/', $cached['stamp'])) {
+                return $stamp = $cached['stamp'];
+            }
+        }
+    }
     $files = alt_build_files();
     if (!$files) return $stamp = '';
     $manifest = '';
@@ -82,7 +131,20 @@ function alt_build_stamp() {
         if (!is_string($one) || $one === '') return $stamp = '';
         $manifest .= $one . '  ' . $rel . "\n";
     }
-    return $stamp = substr(hash('sha256', $manifest), 0, 16);
+    $stamp = substr(hash('sha256', $manifest), 0, 16);
+    // Written under the key of the tree that was just hashed. A tree that is
+    // still uploading yields a key no finished tree will match, so the entry
+    // can only ever be served to requests that see exactly these files.
+    if (function_exists('set_transient')) {
+        if ($key === '') $key = alt_build_stat_key();
+        if ($key !== '') set_transient($transient, array('key' => $key, 'stamp' => $stamp), DAY_IN_SECONDS_ALT());
+    }
+    return $stamp;
+}
+
+/** 86400 without depending on WordPress having defined DAY_IN_SECONDS yet. */
+function DAY_IN_SECONDS_ALT() {
+    return defined('DAY_IN_SECONDS') ? DAY_IN_SECONDS : 86400;
 }
 
 /**

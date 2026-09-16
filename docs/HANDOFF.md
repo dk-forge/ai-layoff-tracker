@@ -6,6 +6,16 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED — Claude, 2026-09-16, July/August US accuracy audit. Work complete.**
+  Worktree `/tmp/wt-accuracy`, branch `fix/july-august-accuracy`, based on
+  `origin/main`. Touches `railway/data_integrity.py` (one new invariant),
+  one new test, one `railway/correction_specs/` entry, a findings doc and
+  TECHLOG. **No plugin change and no version reserved** — nothing here edits
+  the WordPress plugin. No write to live data: the corrections it identifies
+  ship as a reviewed spec and need the owner's keys and sign-off.
+  Shipped as PRs #369 (findings + correction spec) and #370 (the guard),
+  neither merged. Editing finished; this baton is NOT held.
+
 - **HELD by Claude, 2026-09-16, US WARN recall wave 2 (NY/IL/OH/PA).**
   Worktree: `/tmp/wt-recall`; branch: `measure/us-recall-ny-il-oh-pa`, based on
   `origin/main`. **No plugin file is touched and no plugin version is
@@ -18,6 +28,16 @@ holder, so the start-of-session ritual surfaces it automatically.
   `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`. Read-only
   GETs to state agencies and to the public `/query` read API only; $0.00 of
   model spend; nothing is merged and nothing deploys.
+- **Claude alongside, 2026-09-16, branch `fix/per-request-plugin-work-is-cheap` (PR #348), worktree `/tmp/wt-t348`.**
+  Does NOT take the baton: the holder above touches no `wordpress-plugin/`
+  file and no workflow, so this cannot collide with it. **Reserves plugin
+  version 2.20.197.** Touches `includes/build-stamp.php` (stamp cached in a
+  transient keyed by version plus a stat pass), `includes/api.php`
+  (`/status?build=1` forces a fresh hash), the eight
+  `alt_ensure_*_page_once` hooks in `ai-layoff-tracker.php` (done-options),
+  one new test, TECHLOG and this line. The branch was rebuilt on `origin/main`
+  after its first commit was found to carry a pre-#347 copy of
+  `ai-layoff-tracker.php` and silently revert #347; see TECHLOG 2026-09-16.
 - **Claude, 2026-09-13 late afternoon, VPS/traffic/handover session:** branch
   `ci/host-jobs-run-on-the-vps` (PR open, unmerged) moves every host-touching
   workflow to the Contabo self-hosted runner; no plugin version claimed.
@@ -157,6 +177,9 @@ holder, so the start-of-session ritual surfaces it automatically.
   clean between them. Also merged: #349 (cloud-session handover rules) and
   #353 (competitor names removed from the public repo, with a docs guard test).
   Nobody holds the baton; claim it before editing.
+- **Cloud session alongside (2026-09-14 evening, branch `fix/deploy-check-unknown-is-a-warning`, no plugin version).**
+  Touches only `.github/workflows/deploy-plugin.yml` (`set +e` in the three
+  status-reading verification steps), one new test and TECHLOG. Deploys nothing.
 - **Cloud session alongside (2026-09-13, branch `claude/cloud-server-fixes-kvusd5`).**
   Touches ONLY `railway/source_inventory.py`, `railway/ops_status.py` (section
   `[2c]` hands an unread ledger through as UNKNOWN), one new test, TECHLOG
