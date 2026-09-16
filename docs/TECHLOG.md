@@ -1,3 +1,118 @@
+## 2026-09-16 - One email said the employer verified it and, four lines down, that we could not confirm it (2.20.199)
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_digest_scope_rules.py` (the lead and the row
+label are pinned to the new words) and `railway/tests/test_style_standard.py`.
+
+The Week 37 edition of 2026-09-14 opened "In Week 37 of 2026, employers
+verified N job cuts" and, in the Biggest cuts table four lines below, labelled
+rows inside that same figure "single report, unconfirmed". Both sentences were
+about the same rows. Read together they say the employer confirmed something we
+could not confirm.
+
+**The two words were never on the same axis, and that is the whole fault.**
+"Verified" is the TIER NAME: source-linked, not an announcement-stage estimate
+(methodology #m-cards). How STRONG that source is is the separate evidence-tier
+question, and the methodology's own weakest published tier is "Reported: a
+single named outlet reports the cut ... the weakest tier until a document or a
+second source arrives" (#m-tiers). The tier genuinely contains both an 8-K and
+one outlet's report, and "employers verified" asserted the strongest member's
+provenance over the whole mixed figure -- a claim about WHO ESTABLISHED IT that
+the tier never made.
+
+**The figure did not move, and it was not allowed to.** Widening or narrowing a
+published number to rescue a word is the wrong direction. Three changes, all
+words:
+- the lead opens "the tracker recorded", which is true of every row in the tier;
+- the row label is the methodology's own tier in reader words, "one outlet
+  reporting, no document yet", which is a caution about EVIDENCE and no longer
+  a contradiction of the headline;
+- #m-cards now states plainly what the word does and does not claim.
+
+Unchanged on purpose: the same `alt_digest_single_report` test still drives the
+row label and the dominant line, so the two cannot disagree about one row, and a
+dominant single-report entry is still taken out of the lead entirely (2.20.187,
+the owner's 2026-09-12 ruling). No cadence is typed; no em-dash enters reader
+copy.
+
+---
+
+## 2026-09-16 - One layoff event, four rows, four names: the Week 37 digest published 8,000 jobs that do not exist
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_cross_alias_duplicate_guard.py` (new invariant
+`cross_alias_duplicate_rows`, keyed on same count + effective dates within two
+days + employer names that resolve to one employer), plus
+`railway/tests/test_entity_resolution.py` for the resolver and its PHP mirror.
+
+Jaguar Land Rover confirmed 4,000 job cuts on Monday 2026-09-07. We stored the
+announcement four times, from four different outlets, under four names:
+`Jaguar Land Rover` (179163, moneycontrol, 20 source reports), `JLR` (179186,
+Wards Auto), `Tata Motors' JLR` (179194, Livemint) and the Chinese
+`捷豹路虎` (179237, Yahoo新聞). Three of the four fell inside Week 37 and went
+out in the reader digest of 2026-09-14 as three separate "Biggest cuts". In the
+same email, worldwide verified was about 8,000 too high, "8,000 on entries with
+no country recorded" WAS the two blank-country duplicates, and Automotive
+12,107 carried the same 8,000.
+
+**Why nothing saw it, which is the reusable half.** Every dedup defence here
+buckets on a company name before anything is compared, so four spellings make
+four buckets and no pair is ever proposed. `duplicate_article_rows` was written
+in September for precisely that blind spot, keyed on `(source_url, job_count)`
+with no name in it -- and that is exactly what bounds it: it fires only when two
+rows cite the SAME article. Four outlets is four URLs, so it read four unrelated
+rows and passed. `headline_concentration` could not see it either; each row is
+an ordinary share of its week.
+
+**And one name had no key at all.** `alt_company_key()` strips every character
+outside `[a-z0-9 ]`, so `捷豹路虎` normalised to the EMPTY STRING -- as has every
+employer named in a non-Latin script since that function existed. An empty key
+matches nothing, so those rows have never been able to fuzzy-dedup against
+anything. Nothing can normalise a name it cannot read, so the fold is a lookup:
+`alt_nonlatin_company_alias()`, consulted before the strip, hand-kept, and never
+grown by inference. An unknown non-Latin name still returns `''` and still joins
+nothing, which is stated rather than papered over.
+
+**The new key is the conjunction, and each third of it was mutation-tested.**
+Same `job_count`, effective dates within two days, and employer names that
+resolve to one employer through `railway/entity_resolution.py` (canonical key,
+initialism, or token containment with a distinctive head). The count alone
+repeats constantly, the date alone is a week of unrelated layoffs, the employer
+alone is a company with two genuine rounds. Break any one of the three on these
+same four rows and the guard goes quiet; the test does exactly that, including
+removing the `捷豹路虎` alias to show that row drop out.
+
+**Measured over the live corpus.** The whole 378-row non-register population of
+the trailing 90 days: 11 groups, and by inspection every one is a real duplicate
+cluster (Ilva, Swiss Post, Samsung India, Sangamo, Pohde and five more), worth
+about 6,800 jobs beyond JLR's 12,000. Zero false positives. On two 200-row live
+WARN samples the register shape -- one employer filing several site notices the
+same day, which is CORRECT data and exempt from fuzzy dedup by policy -- produces
+16 groups, and the `warn`/`federal_rif` exclusion suppresses every one.
+
+The correction is PREPARED AND NOT APPLIED:
+`railway/correction_specs/2026-09-16-jlr-cross-alias-duplicates.json`. Four dry
+runs, all exit 0: move the event-describing links onto the canonical row, trash
+the three duplicates, and correct the canonical row's country from United States
+(which no source supports) to United Kingdom. Expected after, Week 37: 23,820
+jobs to 11,820, 65 entries to 62, UK 4,331 to 331, Automotive 12,107 to 107.
+
+**A second agent built the same guard independently (PR #377), and one branch
+of it was stronger.** Its script rule is the general case of this one's alias
+list: a Latin and a non-Latin name cannot be compared as words at all, so
+nothing follows from their looking different, and a pair may be let through on
+the count and the date alone provided the sentence SAYS that is what happened.
+Folded in here, narrowed to the same calendar day (that branch carries no name
+evidence, so it must not also be the widest one) and re-measured: no new group
+over the 90-day population and no false positive. #377 is otherwise a subset of
+this PR and was closed as superseded.
+
+Delegated in `test_dedup_live.InvariantCoverage.DELEGATED` for the same reason
+as `country_identity` and `duplicate_article_rows`: it is failing live on
+purpose, and a live claim would redden every push over a data defect a
+correction clears and a unit suite cannot act on.
+
+---
 ## 2026-09-16 - A third party's figure bound to the filer: two 8-K shapes that a row carries in its own fields
 
 **Class:** novel

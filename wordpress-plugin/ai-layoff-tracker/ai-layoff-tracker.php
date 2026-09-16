@@ -837,7 +837,7 @@ function alt_ensure_contact_page_once() {
 add_action('init', 'alt_ensure_contact_page_once');
 
 /**
- * EVERY PAGE HOOK BELOW RECORDS THAT ITS PAGE EXISTS, SINCE 2.20.197.
+ * EVERY PAGE HOOK BELOW RECORDS THAT ITS PAGE EXISTS, SINCE 2.20.199.
  *
  * They ran on public init at priority 20 and each called get_page_by_path on
  * every request forever, returning early without writing anything down; the

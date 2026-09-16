@@ -368,6 +368,17 @@ class InvariantCoverage(unittest.TestCase):
         # data-integrity.yml, daily, exit 2 on FAIL.
         "duplicate_article_rows": ("test_duplicate_article_guard",
                                    "TheKnownInstance"),
+        # Delegated for the third time and for the same reason: IT IS CURRENTLY
+        # FAILING LIVE, on purpose. Jaguar Land Rover's 4,000-job announcement
+        # of 2026-09-07 is stored four times under four names, from four
+        # different outlets, and three of them went out in the Week 37 reader
+        # digest as three separate "Biggest cuts". A live claim here would
+        # redden every push over a data defect that a correction clears. The
+        # arming is proved offline on the four live rows' own field values,
+        # including the mutation of each of the three conditions; the LIVE
+        # reading is data-integrity.yml, daily, exit 2 on FAIL.
+        "cross_alias_duplicate_rows": ("test_cross_alias_duplicate_guard",
+                                       "TheKnownInstance"),
         # Delegated for the same reason again: IT FAILS LIVE TODAY, on purpose.
         # Row 176490 (Aon, 3,500 jobs, 8-K) carries an announcement_date of
         # 2014-04-01 against a layoff_date of 2020-05-12, 2,233 days, which is
@@ -376,17 +387,6 @@ class InvariantCoverage(unittest.TestCase):
         # field values; the LIVE reading is data-integrity.yml, daily.
         "filing_shape_tells": ("test_filing_shape_guards",
                                "TheInvariantOnTheKnownInstances"),
-        # Delegated on the same trade as the two above, and for a defect of the
-        # same family one key further out. The Week 37 reader digest carried ONE
-        # Jaguar Land Rover event three times -- a Chinese-language name, the
-        # parent's possessive, the abbreviation -- across THREE outlets, so the
-        # url key above could not group them and every name-bucketed dedup
-        # upstream made three buckets. Whether it is failing live right now
-        # depends on whether the correction has run, which a unit suite must not
-        # depend on; the arming is proved offline on the live triple's own field
-        # values, and the LIVE reading is data-integrity.yml, daily, exit 2.
-        "same_event_many_spellings": ("test_same_event_many_spellings",
-                                      "TheInvariantContract"),
     }
 
     @staticmethod
