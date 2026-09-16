@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 import http_retry
+from filing_shapes import EXHIBIT_SECTION, filing_section
 
 EDGAR_FTS_URL = "https://efts.sec.gov/LATEST/search-index"
 SEC_ARCHIVES_BASE = "https://www.sec.gov/Archives/edgar/data"
@@ -177,18 +178,38 @@ def _headcount_index(text):
     return found.start() if found else None
 
 
-def _fetch_filing_text(url):
-    """Fetch a filing document and return a text window centered on the first
-    layoff keyword, so the relevant passage survives the length cap."""
-    resp = _get(url)
-    resp.raise_for_status()
-    text = _strip_html(resp.text[:MAX_DOC_BYTES])
+def _primary_window(text):
+    """(window, section) for a stripped primary document.
+
+    The window is centred on the first layoff keyword so the passage survives
+    the length cap. The SECTION is where that keyword sits in the filing
+    (`filing_shapes.filing_section`): an "Item 2.05" block is the filer
+    disclosing its own exit costs; a "Risk Factors" block is the filer
+    describing the world, and a headcount read out of one is somebody else's
+    (row 176990, a shell company quoting HHS's 20,000). The collector reports
+    the section; the extractor decides what to do with it, so the two never
+    disagree about where the text came from.
+    """
     lowered = text.lower()
     for keyword in KEYWORDS:
         idx = lowered.find(keyword)
         if idx != -1:
-            return _window_at(text, idx)
-    return text[:RAW_TEXT_LIMIT]
+            return _window_at(text, idx), filing_section(text, idx)
+    return text[:RAW_TEXT_LIMIT], None
+
+
+def _fetch_filing(url):
+    """(window, section) for one primary document."""
+    resp = _get(url)
+    resp.raise_for_status()
+    text = _strip_html(resp.text[:MAX_DOC_BYTES])
+    return _primary_window(text)
+
+
+def _fetch_filing_text(url):
+    """Fetch a filing document and return a text window centered on the first
+    layoff keyword, so the relevant passage survives the length cap."""
+    return _fetch_filing(url)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -292,31 +313,40 @@ def _fetch_exhibit_text(url):
     return text[:RAW_TEXT_LIMIT]
 
 
-def fetch_document_window(doc_url):
-    """(text, url) for one filing: the primary document, or its EX-99.1.
+def fetch_document(doc_url):
+    """{"text", "url", "section"} for one filing: the primary document, or its EX-99.1.
 
     The primary document is always read. The exhibit is read ONLY when the
     primary states no headcount, and the exhibit is used ONLY when it states
     one — so this can add a candidate's count, never remove or dilute it. The
     returned URL is the document the text actually came from, because a row
-    must cite the document whose sentence it quotes.
+    must cite the document whose sentence it quotes. `section` is where in the
+    filing the text sits (see `_primary_window`); an exhibit's text is
+    `EXHIBIT_SECTION`, a press release being the filer speaking for itself.
 
     Exhibit lookup is best-effort: any failure leaves the primary untouched.
     """
-    text = _fetch_filing_text(doc_url)
+    text, section = _fetch_filing(doc_url)
     if _headcount_index(text) is not None:
-        return text, doc_url
+        return {"text": text, "url": doc_url, "section": section}
     index_url = _filing_index_url(doc_url)
     if not index_url:
-        return text, doc_url
+        return {"text": text, "url": doc_url, "section": section}
     try:
         for exhibit_url in _exhibit_urls(index_url):
             exhibit_text = _fetch_exhibit_text(exhibit_url)
             if _headcount_index(exhibit_text) is not None:
-                return exhibit_text, exhibit_url
+                return {"text": exhibit_text, "url": exhibit_url,
+                        "section": EXHIBIT_SECTION}
     except Exception as exc:                                   # noqa: BLE001
         print(f"EDGAR exhibit lookup skipped for {doc_url}: {exc}")
-    return text, doc_url
+    return {"text": text, "url": doc_url, "section": section}
+
+
+def fetch_document_window(doc_url):
+    """(text, url) for one filing; `fetch_document` with the section dropped."""
+    doc = fetch_document(doc_url)
+    return doc["text"], doc["url"]
 
 
 PAGE_SIZE = 10  # EFTS fixed page size
@@ -480,7 +510,11 @@ def pull_edgar_filings_between(start, end):
     results = []
     for doc_url, entry in candidates.items():
         try:
-            entry["raw_text"], entry["source_url"] = fetch_document_window(doc_url)
+            doc = fetch_document(doc_url)
+            entry["raw_text"], entry["source_url"] = doc["text"], doc["url"]
+            # Where in the filing the text came from. The extractor refuses a
+            # headcount read out of a Risk Factors block (filing_shapes).
+            entry["sec_section"] = doc["section"]
         except Exception as e:
             print(f"EDGAR document fetch error for {doc_url}: {e}")
             continue

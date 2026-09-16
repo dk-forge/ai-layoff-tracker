@@ -1,3 +1,91 @@
+## 2026-09-16 - A third party's figure bound to the filer: two 8-K shapes that a row carries in its own fields
+
+**Class:** novel
+**Guard:** `railway/tests/test_filing_shape_guards.py` (new module `railway/filing_shapes.py`, new invariant `filing_shape_tells`, new ingest gates in `extractor.finalize_extraction`)
+
+Three live 8-K rows state a number that was never the filer's own headcount, and
+until now nothing asked either question at ingest or on the published data.
+
+**Row 176990, 20,000 jobs, "Aeternum Health".** The sentence sits in the
+filing's RISK FACTORS and quotes HHS's own press language verbatim: "HHS
+announced that it intends to reduce our workforce by approximately 10,000
+full-time employees ... which in combination will result in a reduction of
+force by 20,000 employees." The extractor bound "our" to the registrant, a
+micro-cap shell. Corrected 2026-09-16; the audit is in
+`docs/findings-july-august-2026-us-accuracy.md`.
+
+**Row 177216, 4,320 jobs, "Applied Aerospace & Defense".** The figure is 4,320
+in an Adjusted EBITDA reconciliation headed "(in thousands, except
+percentages)": 4,320 thousand DOLLARS of integration and restructuring cost.
+The filing states no headcount anywhere.
+
+**Row 176490, 3,500 jobs, "Aon plc", still live.** announcement_date
+2014-04-01 against layoff_date 2020-05-12, 2,233 days apart.
+
+**THE TELL A PUBLISHED ROW STILL CARRIES IS THE DATE GAP.** Once the filing
+text is gone, the only thing left of the third-party shape is a row
+contradicting itself: an Item 2.05 8-K is due within four business days of the
+commitment, so an announcement a year before the filing's own effective date is
+somebody else's event, or history. `MAX_8K_LEAD_DAYS = 365` is read off the
+live distribution of the 252 8-K rows carrying both dates, measured today: p50
+0, p90 41, p95 120, p99 292, seven rows over 180 and one over 365. The longest
+legitimate row anyone has read is Koppers at 237 (announced in May for year
+end), and every row past 300 that has been read is wrong. 365 is the first
+round number no legitimate row reaches. The 181-365 band is NAMED FOR
+ADJUDICATION and never failed, because year-end closures and third-party
+figures both live there.
+
+**Two layers, one definition.** `railway/filing_shapes.py` is imported by the
+ingest gate and by the live invariant, so they cannot drift; a test asserts
+both read the same ceiling. At ingest: a headcount from a risk-factor section
+is refused outright (the collector now reports which section its window came
+from, `sources/edgar.fetch_document`), a count the filing states only as money,
+scale or a table cell is refused, and the date gate refuses past the ceiling
+and prints a worklist line inside the review band. On the live data:
+`filing_shape_tells` reads one /query page of the largest 8-K rows and FAILS on
+the date gap alone.
+
+**WHAT IT DELIBERATELY DOES NOT FAIL ON, and why that was measured rather than
+assumed.** Applying the existing excerpt rule to all 991 live 8-K rows failed
+260 of them, most of them legitimate, so a FAIL on that tell would be noise and
+noise is how an alert channel gets filtered. The narrower "count absent from
+its own excerpt, beside cost words" reads 15 of the top 200 and every one
+inspected was a genuine defect, but it is still reported as a worklist rather
+than a failure. The PASS sentence is therefore never a clean zero: it prints
+the three worklists and the job floor of its own sweep.
+
+**The units declaration is the fourth binding, and it is what the cost gate
+adds.** Row 177216's 4,320 sits 424 characters after "(in thousands, except
+percentages)", so the filing itself says the number is not a count. A units
+header never binds an occurrence that sits beside a people-noun: a press
+release routinely declares units for its tables and then states a real
+headcount in prose, and refusing that row would be the guard sharing its
+target's blind spot.
+
+**This shape already had an ingest guard, and the row is still live.**
+`_count_has_headcount_context` was written from this very filing on 2026-09-07
+and row 177216 was trashed that day, with the hash suppressed and the tool
+reading it back as gone. A public query today returns it again: id 177216,
+4,320 jobs, unedited, with a permalink. An ingest guard cannot clean data that
+is already published, which is the whole argument for the live invariant, and
+the resurrection itself is a separate open question that is NOT closed here.
+
+Delegated in `test_dedup_live.InvariantCoverage.DELEGATED` rather than claimed
+by a live assertion, for the reason `country_identity` and
+`duplicate_article_rows` are: it FAILS LIVE today on row 176490, and a live
+claim would redden every push over a data defect a correction clears. The
+repo's own mutation meta-guard caught the first attempt at that delegation
+pointing at the ingest tests rather than the invariant, which is the guard
+working.
+
+**A WARN-level tripwire for a shape that must never be a refusal.** Rows 178667
+(4,500) and 177173 (2,500) store a Los Angeles County consultancy's projection
+of REGIONAL production-job losses from a merger that is on hold, under the
+studio's own name. `projection_language()` prints the matched words at ingest
+and never decides anything, because "could cut 500 jobs" is also how a genuine
+announcement gets reported. `estimates that` was in the first phrase list and
+was removed: it fires on the cost sentence of every ordinary Item 2.05 filing.
+
 ## 2026-09-16 - Spain (Illes Balears): the one European set that CAN be built, defined before it is built
 
 **Class:** novel
