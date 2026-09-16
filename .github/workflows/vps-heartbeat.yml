@@ -1,0 +1,110 @@
+name: VPS heartbeat
+
+# Runs ON the Contabo box (`atr-runner`), the self-hosted runner for three
+# repositories. It reads the box's own vital signs and writes them to the
+# step summary. It goes RED for exactly two things a human must act on:
+#   * the root disk is under 15% free or under 20 GB free
+#   * a runner service (actions.runner.*) is not `active`
+# A pending reboot, high load or swap use is a NOTICE in the summary, never a
+# failure: none of those stops a job from running.
+#
+# A red run here is mailed by ci-alert.yml through the normal deduped channel,
+# so the cause reaches the owner once and RECOVERED follows once.
+#
+# WHAT THIS CANNOT SEE. A box that is offline runs nothing, including this.
+# `vps-watch.yml` runs OFF the box and reads the runner's registration and
+# this workflow's most recent run from the GitHub API, which is the half that
+# turns "no run happened" into a fault instead of a quiet zero.
+#
+# No checkout, no Python, no secrets. It must keep working when the disk is
+# full, which is when a checkout would be the thing that fails.
+
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 5
+    steps:
+      - name: Read the box
+        shell: bash
+        run: |
+          set -uo pipefail
+          DISK_MIN_PCT=15
+          DISK_MIN_GB=20
+          fail=0
+          notes=()
+
+          # Disk on / in GB and percent free (df reports used%, so invert it).
+          read -r size used avail pct < <(df -BG --output=size,used,avail,pcent / | tail -1 | tr -d 'G%')
+          free_pct=$((100 - pct))
+          if [ "$free_pct" -lt "$DISK_MIN_PCT" ] || [ "$avail" -lt "$DISK_MIN_GB" ]; then
+            echo "::error::disk floor: / has ${avail} GB (${free_pct}%) free; floor is ${DISK_MIN_GB} GB and ${DISK_MIN_PCT}%"
+            fail=1
+          fi
+
+          mem_total=$(awk '/MemTotal/ {printf "%.1f", $2/1048576}' /proc/meminfo)
+          mem_avail=$(awk '/MemAvailable/ {printf "%.1f", $2/1048576}' /proc/meminfo)
+          swap_total=$(awk '/SwapTotal/ {printf "%.1f", $2/1048576}' /proc/meminfo)
+          swap_free=$(awk '/SwapFree/ {printf "%.1f", $2/1048576}' /proc/meminfo)
+          swap_used=$(awk -v t="$swap_total" -v f="$swap_free" 'BEGIN {printf "%.1f", t-f}')
+          load=$(cut -d' ' -f1-3 /proc/loadavg)
+          cores=$(nproc)
+
+          # Runner services. `systemctl list-units` sees them whether or not
+          # they are running; is-active answers per unit.
+          services=$(systemctl list-units --all --type=service --no-legend 'actions.runner.*' | awk '{print $1}')
+          svc_rows=""
+          svc_count=0
+          if [ -z "$services" ]; then
+            echo "::error::no actions.runner.* service is installed on this box"
+            fail=1
+          fi
+          for svc in $services; do
+            svc_count=$((svc_count + 1))
+            state=$(systemctl is-active "$svc" || true)
+            svc_rows="${svc_rows}| \`${svc}\` | ${state} |"$'\n'
+            if [ "$state" != "active" ]; then
+              echo "::error::runner service ${svc} is ${state}, not active"
+              fail=1
+            fi
+          done
+
+          reboot="no"
+          if [ -f /var/run/reboot-required ]; then
+            reboot="YES"
+            notes+=("A reboot is pending (/var/run/reboot-required). Notice only.")
+            echo "::notice::a reboot is pending on the runner box"
+          fi
+          if awk -v l="${load%% *}" -v c="$cores" 'BEGIN {exit !(l > c)}'; then
+            notes+=("1-minute load ${load%% *} exceeds the ${cores} cores. Notice only.")
+          fi
+
+          {
+            echo "## VPS heartbeat: $(hostname) at $(date -u +%Y-%m-%dT%H:%MZ)"
+            echo
+            echo "| reading | value |"
+            echo "|---|---|"
+            echo "| disk / | ${avail} GB free of ${size} GB (${free_pct}% free; floor ${DISK_MIN_GB} GB / ${DISK_MIN_PCT}%) |"
+            echo "| memory | ${mem_avail} GB available of ${mem_total} GB |"
+            echo "| swap used | ${swap_used} GB of ${swap_total} GB |"
+            echo "| load 1/5/15 | ${load} on ${cores} cores |"
+            echo "| reboot pending | ${reboot} |"
+            echo "| runner services | ${svc_count} |"
+            echo
+            echo "| service | state |"
+            echo "|---|---|"
+            printf '%s' "$svc_rows"
+            if [ "${#notes[@]}" -gt 0 ]; then
+              echo
+              for n in "${notes[@]}"; do echo "- $n"; done
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$fail"

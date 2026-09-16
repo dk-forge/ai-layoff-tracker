@@ -1,3 +1,35 @@
+## 2026-09-13 - Nothing watched the self-hosted runner box, and an offline runner read as "no jobs ran"
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_vps_watch.py`
+
+The Contabo VPS `atr-runner` became the self-hosted runner for all sandbox CI
+and, soon, every tracker job that touches the WordPress host. Nothing watched
+it. A box that goes offline, fills its disk or loses its `actions.runner.*`
+service fails no job: every job on the `contabo` label queues, indefinitely,
+and every guard in this repo iterates runs that happened. An absent run is the
+same shape as a healthy quiet hour.
+
+Two workflows, on two machines by design. `vps-heartbeat.yml` runs ON the box
+every 30 minutes and reads disk, memory, load, swap, the runner services and
+the reboot flag into the step summary; it goes red only for the disk floor
+(under 15% or under 20 GB on `/`) or a runner service that is not `active`,
+and `ci-alert.yml` mails that cause through the existing deduped channel.
+`vps-watch.yml` runs OFF the box hourly: `railway/vps_watch.py` asks the
+GitHub API whether each of the three repos' `atr-runner-*` runner is online
+and whether the heartbeat's newest run is under two hours old and green, then
+mails through `ops_notify` under `vps:offline:<repo>` and
+`vps:heartbeat-stale`, claim committed before the send, RECOVERED once. A
+GitHub API error is UNKNOWN: nothing raised, nothing resolved, exit 3. A fault
+exits 0 so the same cause is not mailed twice.
+
+What is deliberately NOT here is remediation. No workflow holds a key to the
+box and the only agent on it is the runner that is dead; the fix is the Contabo
+panel or `sudo ./svc.sh start`, written down in RUNBOOK "the VPS watchdog
+fired". Wiring left for the owner: a `VPS_WATCH_TOKEN` fine-grained PAT with
+Administration: read on the three repos, because listing runners is an
+admin-scoped read the workflow token cannot make across repositories.
+
 ## 2026-09-15 - Hourly new-error watch: a new Sentry issue becomes a summarised email within the hour
 
 **Class:** absent-read-as-ok

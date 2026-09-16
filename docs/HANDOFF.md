@@ -6,6 +6,13 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **VPS watchdog opened as a side PR (Claude, 2026-09-13 late afternoon):**
+  branch `ops/vps-watchdog` adds `vps-heartbeat.yml` (on the Contabo runner box),
+  `vps-watch.yml` (off it, hourly, mails `vps:offline:<repo>` and
+  `vps:heartbeat-stale` through `ops_notify`), `railway/vps_watch.py` and its
+  test. No plugin version, no host request. The baton is NOT claimed here;
+  the owner merges. RUNBOOK "the VPS watchdog fired".
+
 - **RELEASED 2026-09-14 23:55 UTC (Claude Code, Mac session).** The evening's
   two plugin PRs are merged and live: #351 (US jurisdiction registry page,
   2.20.194) and #352 (country coverage tiers, 2.20.195), after #347 (cheap

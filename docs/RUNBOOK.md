@@ -3581,3 +3581,68 @@ in the log is not proof nothing merged; cross-check
 "<name>" --conclusion failure`. The gate is offline-tested in
 `railway/tests/test_self_heal.py`, including the forbidden-path guard's
 red-on-violation exit.
+
+## The VPS watchdog fired (`vps-heartbeat.yml` red, or a `vps:` email)
+
+The owner's Contabo VPS `atr-runner` (Ubuntu 24.04, 6 cores, 11 GB, 193 GB
+disk) is the self-hosted GitHub Actions runner for three repositories
+(`ai-layoff-tracker`, `talent-intelligence-tracker`, `asktherecruiter-sandbox`),
+labels `self-hosted, Linux, X64, contabo`, runner names `atr-runner-<repo>`. A
+box that is down does not fail a job. Every job on the `contabo` label QUEUES,
+and every surface in this repo reads "no run happened" as "nothing is wrong".
+Two workflows turn that silence into a signal:
+
+| workflow | runs | reads | red when |
+|---|---|---|---|
+| `vps-heartbeat.yml` | ON the box, every 30 min | disk, memory, load, swap, `systemctl is-active actions.runner.*`, `/var/run/reboot-required` | `/` under 15% or under 20 GB free; any runner service not `active` |
+| `vps-watch.yml` | OFF the box (ubuntu-latest), hourly | `gh api repos/<repo>/actions/runners` for all three repos; the heartbeat's newest run | never red for a fault (it mails instead); exit 3 on a GitHub API error, which is UNKNOWN |
+
+A pending reboot, a high load or swap in use is a notice in the run summary,
+never a failure.
+
+**Fault conditions and their dedupe keys** (`railway/vps_watch.py`, mailed
+through `ops_notify`, ledger `railway/alert_state.json`, one email per key and
+RECOVERED once):
+
+- `vps:offline:<repo>`: that repo's `atr-runner-*` runner is not `online`, or
+  no runner with that prefix is registered at all.
+- `vps:heartbeat-stale`: the heartbeat's newest run started more than two hours
+  ago, or its latest completed run did not succeed, or it has never run.
+- A red heartbeat run is ALSO mailed by `ci-alert.yml` under its own
+  `vps-heartbeat:main:<fingerprint>` key, carrying the actual assertion (which
+  floor, which service).
+
+**What is automatic, and what is not.** The owner asked whether the watchdog
+can "use the cloud to fix it". Honestly:
+
+- Automatic: the deduped email, the RECOVERED email, the red run in the Actions
+  tab, and the open alarm printed by `ops_status.py [4b2]` at the next session
+  start.
+- NOT automatic: any remediation. No workflow can reboot the box or restart a
+  service, because nothing in GitHub holds an SSH key to it and the only agent
+  on the box is the runner that is dead. The self-healer (`self-heal.yml`) only
+  opens draft PRs for CODE-shaped failures on main; a dead box is not one and
+  it has no way onto the box either. A Claude session cannot be started by a
+  workflow to go and fix it today.
+- The place these alerts get READ is the owner's own morning-routine Claude
+  session once he signs in on the VPS. Until then, the fix is by hand:
+
+| fault | what to do |
+|---|---|
+| box unreachable (every repo `vps:offline:*` at once, heartbeat stale) | Contabo customer panel: reboot, or open the VNC console and look at it |
+| one repo offline, box up | `ssh` in, `cd ~/runners/<repo>`, `sudo ./svc.sh status`, then `sudo ./svc.sh start`; if the runner was removed from the repo, re-register it with `./config.sh` |
+| disk floor | the heartbeat summary names the usage; clear `~/runners/*/_work/`, `docker system prune`, old journals (`journalctl --vacuum-time=7d`), then rerun the heartbeat by dispatch |
+| reboot pending | notice only; reboot from the panel at a quiet hour. The runner services are enabled and come back on boot |
+
+**Wiring.** `vps-watch.yml` needs `RESEND_API_KEY` and `OPS_MAIL_TO` like every
+ops workflow, plus one thing the others do not: listing a repository's runners
+is an admin-scoped read, so the workflow's own `GITHUB_TOKEN` cannot see the
+OTHER two repos' runners. Add a fine-grained PAT as the `VPS_WATCH_TOKEN`
+secret with Administration: read on the three repos. Until it exists, those
+readings are UNKNOWN (exit 3, no mail), never a pass. Do not "fix" an UNKNOWN by
+treating it as online.
+
+**Do not** widen the two-hour ceiling to quiet a stale heartbeat: the heartbeat
+runs every 30 minutes, so two hours is already four missed ticks. If the
+heartbeat is stale because a long sandbox job holds the runner, that is the
+runner being starved, which is worth knowing.
