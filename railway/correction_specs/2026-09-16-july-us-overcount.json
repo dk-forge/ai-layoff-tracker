@@ -1,0 +1,78 @@
+{
+  "spec_version": 1,
+  "prepared": "2026-09-16",
+  "status": "PREPARED \u2014 NOT APPLIED. Needs WP_API_KEY and the owner's sign-off.",
+  "finding": "docs/findings-july-august-2026-us-accuracy.md",
+  "why_not_applied": "A published numeric change always needs a human sign-off, and this session held no WP_API_KEY. Both rows below are unambiguous (no judgement call, no referee needed): one is contradicted by its own primary filing, the other is the same article stored twice.",
+  "headline_before": {
+    "measured": "2026-09-16, plugin 2.20.195, /aggregate country=United States",
+    "july_announced_jobs": 86035,
+    "july_announced_entries": 354,
+    "july_notice_jobs": 56023,
+    "july_notice_entries": 287
+  },
+  "headline_after_expected": {
+    "july_announced_jobs": 60035,
+    "july_announced_entries": 352,
+    "july_notice_jobs": 50023,
+    "july_notice_entries": 286,
+    "note": "THE TWO BASES DIFFER. Row 176990 is not in the notice-basis July set: on that basis it is dated by its announcement_date of 2025-03-27 and falls in March 2025. So announced loses both rows (-26,000, -2 entries) and notice loses only the LAUSD duplicate (-6,000, -1 entry). Verifying against a single figure for both bases would be wrong."
+  },
+  "corrections": [
+    {
+      "id": 176990,
+      "action": "trash",
+      "company_name": "Aeternum Health, Inc.",
+      "job_count": 20000,
+      "source_type": "8K",
+      "layoff_date": "2026-07-07",
+      "stored_announcement_date": "2025-03-27",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/764630/000149315226032365/form8-k.htm",
+      "judgement_call": false,
+      "reason": "audit 2026-09-16: the 20,000 figure is a THIRD PARTY's, read out of a regulatory risk-factor paragraph. The filing describes the US Department of Health and Human Services' March 2025 restructuring ('HHS announced that it intends to reduce our workforce by approximately 10,000 full-time employees ... in combination will result in a reduction of force by 20,000 employees'). 'our' is HHS's own press language quoted verbatim; the registrant is a micro-cap shell and laid off nobody. The count is unsupported for this event (adjudication rule 3), the employer is wrong, and the row's own announcement_date (2025-03-27) precedes its layoff_date (2026-07-07) by 467 days. HHS reductions are separately held under source_type federal_rif, so this also double counts a population we already carry.",
+      "evidence": "The 8-K was fetched and read in full for this audit; the paragraph is quoted above verbatim.",
+      "command": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 176990 --action trash --verify-company 'Aeternum Health, Inc.' --reason '<the reason field above>' --apply"
+    },
+    {
+      "id": 177161,
+      "action": "trash",
+      "company_name": "Los Angeles Unified School District",
+      "job_count": 6000,
+      "source_type": "news",
+      "layoff_date": "2026-07-21",
+      "event_id": 149894,
+      "judgement_call": false,
+      "duplicate_of": 176442,
+      "reason": "audit 2026-09-16: one article stored twice. Rows 177161 and 176442 carry the identical job_count (6,000) and the identical source_url, one day apart, under two spellings of one employer ('Los Angeles Unified School District' and 'LAUSD'), with different event_ids, so the superset machinery never joined them and /aggregate sums both. Every existing dedup defence buckets on a company name first, so the pair was never proposed as a candidate. 6,000 jobs of pure double count in the published July headline.",
+      "which_copy_to_keep": "Keep 176442. It carries an explicit announcement_date (2026-07-22) matching its layoff_date; 177161 has a blank announcement_date and a layoff_date one day earlier that nothing in the shared article supports. If the reviewer prefers the earlier row, trash 176442 instead \u2014 the headline effect is identical (\u22126,000) and only one may remain.",
+      "evidence": "Both rows' source_url fields are byte-identical; both excerpts are the same headline text.",
+      "command": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 177161 --action trash --verify-company 'Los Angeles Unified School District' --reason '<the reason field above>' --apply"
+    }
+  ],
+  "open_and_deliberately_excluded": [
+    {
+      "id": 134521,
+      "company_name": "Ideal US Talent Systems Worker OpCo LLC",
+      "job_count": 9891,
+      "state": "RI",
+      "status": "UNKNOWN \u2014 needs two-model adjudication, NOT counted in the 26,000",
+      "why": "The row's own excerpt says the site is 'in Minneapolis, MN' while the row is filed under state RI, and sibling row 26778 carries the same source_url and the same excerpt text with a job_count of 2. One of the two is a misparse of one register line and the audit cannot say which without reading the RI register. test_headline_guards.py already names this exact shape ('RI 98,912, a 9,891 ... (2 from RI) misparse') as a known incident \u2014 it is still live. Worth up to 9,889 jobs, 11.5% of the July headline."
+    },
+    {
+      "ids": [
+        70479,
+        134376
+      ],
+      "company_name": "Meta",
+      "status": "UNKNOWN \u2014 needs two-model adjudication, NOT counted in the 26,000",
+      "why": "News row 70479 (1,400, WA, 2026-07-22) and WARN row 134376 (1,395, King County WA, 2026-07-22) are the news-over-WARN superset case that superset_of exists for, and were not joined. Counts are 0.4% apart on the same employer, state and day. Whether the news report is the superset of this filing or a separate disclosure is a judgement call. Worth about 1,395 jobs. If adjudicated as one event the fix is a superset join, NOT a trash."
+    }
+  ],
+  "protocol": [
+    "Never edit or purge a row by hand. Both corrections go through apply_correction.py, which suppresses the dedup hash so the nightly re-scrape cannot resurrect the row.",
+    "Run without --apply first: that is a dry run showing exactly what would change.",
+    "Re-read the July headline on BOTH bases after applying and compare against headline_after_expected above, which differs per basis. A figure that does not match means something else moved and the run is not verified.",
+    "Applying this closes the DuplicateArticleInvariant FAIL for the LAUSD pair. Re-run python3 railway/ops_status.py and confirm it reads PASS.",
+    "The headline_movement baseline will see a 26,000-job drop. It is a DISCLOSED removal: record it through the corrections log so the movement guard accounts for it rather than opening an incident."
+  ]
+}
