@@ -255,9 +255,55 @@
       },
       "reviewed_by": "dak",
       "slice": "worldwide_all_time"
+    },
+    {
+      "affected_row_ids": [
+        "176990",
+        "177161",
+        "177216",
+        "178667",
+        "177173",
+        "179333",
+        "179334",
+        "179335",
+        "179336",
+        "179337",
+        "179338",
+        "179339",
+        "179340",
+        "179341",
+        "179342"
+      ],
+      "baseline_at_open": {
+        "captured_at": "2026-09-15T20:23:24Z",
+        "entries": 99,
+        "excluded_entries": 0,
+        "excluded_jobs": 0,
+        "jobs": 241305,
+        "recorded_in": "2026-09-15T20:24:10Z"
+      },
+      "closed_at": "2026-09-16T13:10:21Z",
+      "detail": "Worldwide jobs, all time minus AI-attributed jobs, all time moved -32,210 jobs on +5 entries (Worldwide jobs, all time -32,210 jobs on +5 entries; AI-attributed jobs, all time +0 jobs on +0 entries). Superset exclusions account for +0 of that, leaving -32,210 jobs unexplained by dedup and moving into AI-attributed jobs, all time against the direction the complement's own rows moved. TWO mechanisms produce this and these readings cannot tell them apart: rows that were ALREADY PUBLISHED re-scored across the boundary, or the rows that LEFT carried more jobs than the rows that arrived \u2014 +5 is a NET figure and bounds neither gross flow, so a handful of large departures hides inside it. Both are invisible to the movement guard, which judges each slice alone and never sees a move that cancels between two. Check, in this order: the corrections log and anything trashed in this window, the dedupe-llm merge runs (a merge restamps no updated_at, so /changed-rows will not show it), then any country/AI relabel job. reconcile-supersets is already accounted for above. the corrections log discloses 5 row(s) removed or merged in this window, carrying 37,320 disclosed job(s), which is a CANDIDATE explanation and not a verdict: 2026-09-16: 1 removed \u2014 audit 2026-09-16: the same Los Angeles County projection as row 178667, at its earlier (June) size, read ou...; 2026-09-16: 1 removed \u2014 audit 2026-09-16: a third-party economic-impact PROJECTION, not an employer announcement, and not the emplo...; 2026-09-16: 1 removed \u2014 audit 2026-09-16: the 4,320 is a DOLLAR figure, not a headcount. The document is a Q2 2026 earnings release...; 2026-09-16: 2 removed \u2014 Owner sign-off 2026-09-16: 176990 binds a US federal agency's restructuring figure from an 8-K risk-factor ...",
+      "label": "AI-attributed jobs, all time",
+      "observed_at_open": {
+        "captured_at": "2026-09-16T13:09:37Z",
+        "entries": 99,
+        "excluded_entries": 0,
+        "excluded_jobs": 0,
+        "jobs": 241305
+      },
+      "opened_at": "2026-09-16T13:09:58Z",
+      "reason": "Fully explained by five ADJUDICATED CORRECTIONS applied on 2026-09-16, with ZERO residual on every axis. The five rows removed, all non-AI, carrying 37,320 jobs between them: 176990 Aeternum Health 20,000 (an 8-K risk-factor paragraph binding a US federal agency's restructuring figure to the filer, who laid nobody off; those cuts are already held under federal_rif) and 177161 Los Angeles Unified School District 6,000 (a byte-identical duplicate of 176442, same source URL and count, under a second spelling of the employer) - the July US over-count, applied on the owner's sign-off; 177216 Applied Aerospace & Defense 4,320 (the 4,320 is a DOLLAR figure, $4.32m of integration and restructuring cost from an Adjusted EBITDA reconciliation table headed 'in thousands', stored as a headcount; the release states no number of employees anywhere); and 178667 Paramount-Warner Bros 4,500 plus 177173 Paramount Skydance 2,500, which are ONE Los Angeles County economic projection of a merger that is on hold until at least March 2027, stored twice at its two published sizes, with no employer announcement behind either. Each of the five was ruled by two independent readers, specced in railway/correction_specs/2026-09-16-july-us-overcount.json and 2026-09-16-august-us-rows.json, and applied through apply-correction.yml; all five are disclosed in the public corrections log, which discloses these five removals and NOTHING ELSE in this window (its only other entries are a reason_tags backfill and an industry enrichment, neither of which touches job_count, country or the AI flag). ARITHMETIC, closed to the job. Worldwide all time 20,569,843 -> 20,537,633 = -32,210 jobs on +5 entries; the five removals are -37,320 on -5, and ten rows arrived in the same 16.8h carrying +5,110 on +10: 179333 University of Vermont Health Network 199, 179334 United Internet 800, 179335 Stone 200, 179336 Ruag 50, 179337 CSL Behring 180, 179338 Wyalla Steelworks 500, 179339 Meta Spain 2,000, 179340 Afpa 867, 179341 Ulefos Jernvaerk 114, 179342 ABS-CBN 200. -37,320 + 5,110 = -32,210 exactly, and -5 + 10 = +5 exactly. The AI slice itself did NOT move: 241,305 jobs on 99 entries before and after, because none of the five removed rows and none of the ten arrivals is ai_explicit - which is the whole of the complement finding. Superset exclusions are unchanged at 123,458 jobs on 425 entries, matching the check's own 'exclusions account for +0'. The same corrections also close the us_all_time reading exactly: four of the five sit in that slice (177173 is stored under country 'Multiple countries' with no employer_country and so falls outside country_basis=any), giving -34,820 on -4, plus the one arriving US row 179333 at +199 on +1 = -34,621 on -3, which is the reading us_all_time reports. NO row was re-scored across the AI boundary and no published number is wrong. The replacement baseline asserted here is the AI slice's unchanged and correct figure, 241,305 jobs on 99 entries.",
+      "replacement_baseline": {
+        "captured_at": "2026-09-16T13:10:21Z",
+        "entries": 99,
+        "jobs": 241305
+      },
+      "reviewed_by": "session-2026-09-16",
+      "slice": "ai_all_time"
     }
   ],
   "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
   "open": {},
-  "written_at": "2026-09-12T21:30:08Z"
+  "written_at": "2026-09-16T13:10:21Z"
 }

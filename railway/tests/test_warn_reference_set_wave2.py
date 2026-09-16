@@ -20,6 +20,7 @@ that are new, each of which has already gone wrong once during assembly:
 
 No network, no keys.
 """
+import collections
 import json
 import re
 import sys
@@ -80,20 +81,63 @@ class FourFilesNotTwo(unittest.TestCase):
                               f"and must not be able to move another set's figure")
 
 
-class NothingIsMatchedUntilAnEditorSaysSo(unittest.TestCase):
-    def test_every_event_in_the_committed_manifest_arrives_not_matched(self):
-        m = _manifest()
-        for key in ("reference_events", "large_event_census"):
-            for ev in m[key]:
-                self.assertEqual(ev["match_decision"], "not_matched", ev["reference_row_id"])
+WAVE2_LEDGER = V.HERE / "warn_recall_adjudications_wave2.json"
 
-    def test_the_committed_measurement_has_a_zero_confirmed_numerator(self):
+
+def _ledger():
+    if not WAVE2_LEDGER.exists():
+        return {"decisions": []}
+    return json.loads(WAVE2_LEDGER.read_text(encoding="utf-8"))
+
+
+class NothingIsMatchedUntilAnEditorSaysSo(unittest.TestCase):
+    """Wave 2 was adjudicated on 2026-09-16 (reviewer agent-b-2026-09-16), so the
+    guard is wave 1's: a `matched` event must carry a named decision with a
+    ledger entry behind it, and the confirmed numerator in the committed
+    measurement must equal the number of live accepts in that ledger. Before
+    the review the same two tests asserted zero; a zero is now a regression,
+    not a virtue, and a nonzero that the ledger does not account for is the
+    machine promoting its own recall."""
+
+    def test_the_committed_manifest_has_no_self_awarded_match(self):
+        m = _manifest()
+        for ev in m["reference_events"] + m["large_event_census"]:
+            if ev.get("match_decision") == "matched":
+                self.assertTrue(ev.get("adjudicated_by"),
+                                f"{ev['reference_row_id']} is matched with no "
+                                f"adjudicator; only warn_adjudicate.py may set that")
+
+    def test_the_committed_manifest_and_wave2_ledger_verify(self):
+        import adjudication_ledger as AL
+        import warn_adjudicate as wa
+        ok, problems = AL.verify(wa.PROFILE, manifest=_manifest(), ledger=_ledger())
+        self.assertTrue(ok, "the committed wave-2 set has a `matched` event with no "
+                            "named decision behind it:\n  " + "\n  ".join(problems))
+
+    def test_the_wave2_ledger_is_its_own_file(self):
+        # The recorder writes wave 1's ledger by default; a wave-2 decision that
+        # landed there would move the wrong set's audit trail.
+        self.assertNotEqual(WAVE2_LEDGER, W.HERE / "warn_recall_adjudications.json")
+        for d in _ledger()["decisions"]:
+            self.assertTrue(d["reference_row_id"].startswith(("warn-il-", "warn-oh-", "warn-pa-")),
+                            f"{d['reference_row_id']} is not a wave-2 event")
+
+    def test_the_confirmed_numerator_equals_the_ledgers_live_accepts(self):
         if not V.MEASUREMENT_PATH.exists():
             self.skipTest("UNKNOWN, NOT RUN: no wave-2 measurement is committed")
-        s = json.loads(V.MEASUREMENT_PATH.read_text(encoding="utf-8"))["summary"]
-        self.assertEqual(s["editor_confirmed_overall"]["k"], 0,
-                         "a confirmed numerator appeared without an adjudication "
-                         "pass; the machine may not promote its own recall")
+        import adjudication_ledger as AL
+        meas = json.loads(V.MEASUREMENT_PATH.read_text(encoding="utf-8"))
+        ledger = _ledger()
+        for stratum in ("primary", "large_census"):
+            rows = meas["results"][stratum]
+            confirmed = sum(1 for r in rows if r["match_decision"] == "matched")
+            accepted = sum(1 for r in rows
+                           if any(d["decision"] == "accept"
+                                  for d in AL.live_entries(ledger, r["id"])))
+            self.assertEqual(confirmed, accepted,
+                             f"{stratum}: {confirmed} events read `matched` in the "
+                             f"measurement but the ledger holds {accepted} live "
+                             f"accepts for them")
 
 
 class PennsylvaniaYearParse(unittest.TestCase):
@@ -269,3 +313,86 @@ class IllinoisParseIsCheckedAgainstThePublisher(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheHandWrittenCellsCannotDriftFromTheLedger(unittest.TestCase):
+    """The results document's section 1 states figures in prose, above the
+    generated block, because the brief needs BOTH conventions side by side and
+    only one of them is generated. A typed figure that nothing checks is the
+    `derived-value-typed-by-hand` shape, so this checks them: the floor cells
+    against the committed measurement, the verdict cells against the reviewer
+    verdict file's own recomputed tally. Added 2026-09-16 with the two-reviewer
+    reconciliation."""
+
+    RESULTS = (V.HERE.parent / "docs" / "recall-reference-sets"
+               / "US-WARN-WAVE2-RESULTS-2026-09.md")
+    VERDICTS = (V.HERE.parent / "docs" / "recall-reference-sets"
+                / "us-warn-il-oh-pa-2025-07_2026-06"
+                  ".review.agent-b-2026-09-16.json")
+
+    def _prose(self):
+        text = self.RESULTS.read_text(encoding="utf-8")
+        return text[:text.index("<!-- BEGIN DERIVED")]
+
+    def _measured(self):
+        m = json.loads((V.HERE / "warn_recall_measurement_wave2.json")
+                       .read_text(encoding="utf-8"))
+        floor = collections.Counter()
+        for stratum, rows in m["results"].items():
+            for row in rows:
+                key = row["state"] if stratum == "primary" else "census"
+                floor[(key, "n")] += 1
+                if row["match_decision"] == "matched":
+                    floor[(key, "k")] += 1
+        return floor
+
+    def test_the_prose_floor_cells_are_the_committed_measurements(self):
+        prose, floor = self._prose(), self._measured()
+        for state in ("IL", "OH", "PA"):
+            cell = f"{floor[(state, 'k')]} of {floor[(state, 'n')]} ="
+            self.assertIn(cell, prose,
+                          f"{state}'s floor cell in section 1 is not "
+                          f"{cell!r}; the prose has drifted from the measurement")
+        k = sum(floor[(s, "k")] for s in ("IL", "OH", "PA"))
+        n = sum(floor[(s, "n")] for s in ("IL", "OH", "PA"))
+        self.assertIn(f"{k} of {n} =", prose,
+                      "the pooled wave-2 floor in section 1 is not the measurement's")
+
+    def test_the_prose_never_spells_a_hand_figure_like_a_generated_one(self):
+        # The generated block writes `N/M = `. If the prose above it used the
+        # same spelling, test_warn_recall_pooled's mutation test would land its
+        # edit in the prose and pass while the guard checked nothing.
+        self.assertNotRegex(self._prose(), r"\d+/\d+ = ",
+                            "section 1 spells a figure like the generated block; "
+                            "use `N of M` so the two can never be confused")
+
+    def test_the_verdict_tally_is_the_verdict_files_own_and_not_typed(self):
+        d = json.loads(self.VERDICTS.read_text(encoding="utf-8"))
+        counted = collections.Counter()
+        for v in d["verdicts"]:
+            counted[v["verdict"]] += 1
+        stated = (d["tally"]["primary_pooled"]["MATCHED_reviewer_verdict"]
+                  + d["tally"]["large_census"]["MATCHED_reviewer_verdict"])
+        self.assertEqual(counted["MATCHED"], stated,
+                         "the verdict file's tally disagrees with its own verdicts")
+        floor = self._measured()
+        self.assertEqual(
+            d["tally"]["primary_pooled"]["MATCHED_in_ledger"],
+            sum(floor[(s, "k")] for s in ("IL", "OH", "PA")),
+            "the verdict file's floor disagrees with the committed measurement")
+
+    def test_the_unrecordable_six_are_listed_and_are_not_in_the_ledger(self):
+        d = json.loads(self.VERDICTS.read_text(encoding="utf-8"))
+        named = d["confirmed_matches_outside_the_frozen_rule"]
+        self.assertEqual(len(named), 6, "the six confirmed-but-unrecordable "
+                                        "matches are the reason the figure is a floor")
+        accepts = {e["reference_row_id"] for e in _ledger()["decisions"]
+                   if e["decision"] == "accept"}
+        for item in named:
+            self.assertNotIn(
+                item["reference_row_id"], accepts,
+                f"{item['reference_row_id']} is BOTH an unrecordable match and a "
+                f"ledger accept; the floor would then double-count it")
+            self.assertIn(item["reference_row_id"], self._prose(),
+                          f"{item['reference_row_id']} is not named in section 1, so "
+                          f"the published floor does not say what it understates by")
