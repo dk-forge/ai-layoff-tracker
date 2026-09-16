@@ -1,3 +1,42 @@
+## 2026-09-16 - One email said the employer verified it and, four lines down, that we could not confirm it (2.20.199)
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_digest_scope_rules.py` (the lead and the row
+label are pinned to the new words) and `railway/tests/test_style_standard.py`.
+
+The Week 37 edition of 2026-09-14 opened "In Week 37 of 2026, employers
+verified N job cuts" and, in the Biggest cuts table four lines below, labelled
+rows inside that same figure "single report, unconfirmed". Both sentences were
+about the same rows. Read together they say the employer confirmed something we
+could not confirm.
+
+**The two words were never on the same axis, and that is the whole fault.**
+"Verified" is the TIER NAME: source-linked, not an announcement-stage estimate
+(methodology #m-cards). How STRONG that source is is the separate evidence-tier
+question, and the methodology's own weakest published tier is "Reported: a
+single named outlet reports the cut ... the weakest tier until a document or a
+second source arrives" (#m-tiers). The tier genuinely contains both an 8-K and
+one outlet's report, and "employers verified" asserted the strongest member's
+provenance over the whole mixed figure -- a claim about WHO ESTABLISHED IT that
+the tier never made.
+
+**The figure did not move, and it was not allowed to.** Widening or narrowing a
+published number to rescue a word is the wrong direction. Three changes, all
+words:
+- the lead opens "the tracker recorded", which is true of every row in the tier;
+- the row label is the methodology's own tier in reader words, "one outlet
+  reporting, no document yet", which is a caution about EVIDENCE and no longer
+  a contradiction of the headline;
+- #m-cards now states plainly what the word does and does not claim.
+
+Unchanged on purpose: the same `alt_digest_single_report` test still drives the
+row label and the dominant line, so the two cannot disagree about one row, and a
+dominant single-report entry is still taken out of the lead entirely (2.20.187,
+the owner's 2026-09-12 ruling). No cadence is typed; no em-dash enters reader
+copy.
+
+---
+
 ## 2026-09-16 - One layoff event, four rows, four names: the Week 37 digest published 8,000 jobs that do not exist
 
 **Class:** wrong-scope-or-key

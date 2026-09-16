@@ -5235,6 +5235,23 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       masthead and the subject all name the same week in the same words.
     */
     /*
+      THE TRACKER RECORDED IT. THE EMPLOYER DID NOT NECESSARILY VERIFY IT.
+
+      THE DEFECT, live in the Week 37 edition of 2026-09-14. This opened
+      "employers verified N job cuts" over a figure that includes rows resting
+      on one named outlet, and four lines below it the Biggest cuts table
+      labelled such a row "single report, unconfirmed". One email, two
+      sentences, flatly contradicting each other about the same rows.
+
+      "Verified" is the TIER NAME -- source-linked, not an announcement-stage
+      estimate -- and the tier genuinely contains both an employer's own 8-K
+      and a single named outlet's report. "Employers verified" asserted the
+      strongest member's provenance over the whole mixed figure, which is a
+      claim about WHO ESTABLISHED IT that the tier never made. The figure is
+      unchanged, deliberately: widening or narrowing a published number to
+      rescue a word is the wrong direction (methodology #m-cards now states
+      the definition the number actually carries). What changed is the verb.
+
       SHORT SENTENCES, ONE FACT EACH, AND THE DATE OUT OF THE WAY.
 
       WHAT HE READ AND WHAT HE SAID ABOUT IT. "In Week 33, 10 to 16 August
@@ -5273,22 +5290,22 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         $mm = (int) substr((string) $from, 5, 2);
         $month_name = ($mm >= 1 && $mm <= 12) ? $mnames[$mm - 1] : '';
         $opening = 'So far in ' . trim($month_name . ' ' . substr((string) $from, 0, 4))
-                 . ', employers verified ';
+                 . ', the tracker recorded ';
     } elseif ($is_week_window) {
         $opening = 'In Week ' . (($iso = alt_digest_iso_week($from)) ? $iso[1] : '')
                  . ' of ' . (($iso) ? $iso[0] : substr((string) $to, 0, 4))
-                 . ', employers verified ';
+                 . ', the tracker recorded ';
     } else {
         /*
           THE DAILY LEAD OPENS ON ITS OWN TWO DAYS. "Over August 27-28, 2026,
-          employers verified ..." holds the lifted-out-line property the weekly
+          the tracker recorded ..." holds the lifted-out-line property the weekly
           and monthly openings hold: quoted alone, the sentence still says
           exactly what it covers, and it no longer claims a week it does not
           have. The range keeps its year for the same reason "Week 33" keeps
           its year above: a lifted line must stay unambiguous across years.
         */
         $opening = 'Over ' . alt_digest_date_range($from, $to)
-                 . ', employers verified ';
+                 . ', the tracker recorded ';
     }
     if ($us_change !== '' && $lead_us_jobs > 0) {
         $lead[] = $opening . alt_digest_number($lead_us_jobs) . ' US job cuts, '
@@ -5950,7 +5967,37 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             // line up top (alt_digest_single_report), so the two cannot
             // disagree about the same row, and printed only when the payload
             // carries the evidence for it.
-            if (alt_digest_single_report($l)) $detail[] = 'single report, unconfirmed';
+            /*
+              THE LABEL SAYS THE TIER THE METHODOLOGY PUBLISHES, NOT A WORD
+              THAT CONTRADICTS THE HEADLINE ABOVE IT.
+
+              THE DEFECT, live in the Week 37 edition of 2026-09-14. The lead
+              read "employers verified N job cuts" and a row four lines below
+              it read "single report, unconfirmed". Both sentences were about
+              the same rows. Read together they say the employer confirmed
+              something we could not confirm, which is not a caution, it is a
+              contradiction, and a reader cannot tell which half to believe.
+
+              THE TWO WORDS WERE NEVER ON THE SAME AXIS. "Verified" is the
+              TIER NAME for a cut that is source-linked and not an
+              announcement-stage estimate (methodology #m-cards: "cuts with a
+              filing or an independently reported source behind them"). How
+              STRONG that source is is the separate evidence-tier question,
+              and the methodology's own weakest tier is "Reported: a single
+              named outlet reports the cut ... it stays the weakest tier until
+              a document or a second source arrives" (#m-tiers). That is
+              exactly what this row is, and that is now what it says.
+
+              THE FIGURE IS NOT WIDENED TO RESCUE THE WORD AND THE CAUTION IS
+              NOT SOFTENED. The row still carries a qualifier, it is still the
+              same test (alt_digest_single_report) as the dominant line up top
+              so the two cannot disagree about one row, and a dominant
+              single-report entry is still taken OUT of the lead entirely
+              (2.20.187, the owner's 2026-09-12 ruling). What changed is a
+              word that was making a claim about confirmation the tier name
+              never made.
+            */
+            if (alt_digest_single_report($l)) $detail[] = 'one outlet reporting, no document yet';
             /*
               THE TIER, ON THE ROW, AND WHY THIS LIST IS NOT FILTERED INSTEAD.
 

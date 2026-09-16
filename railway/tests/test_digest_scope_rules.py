@@ -1682,14 +1682,14 @@ class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
     def test_the_united_states_figure_drops_only_when_the_row_was_in_it(self):
         # No country: the row was never in the United States figure.
         text = self._dominant(verification_level="bronze")
-        self.assertIn("employers verified 7,862 US job cuts", self._lead(text))
+        self.assertIn("the tracker recorded 7,862 US job cuts", self._lead(text))
         self.assertIn("  United States: 7,862 verified job cuts", self._pair(text))
         # A United States row: the figure is the country total minus the row.
         fixture = self._coherent(verification_level="bronze",
                                  country="United States", state="CA")
         fixture["layoff"]["top_countries"][1] = _tuple("United States", 12000, 12000)
         text = compose(fixture)["text"]
-        self.assertIn("employers verified 3,000 US job cuts", self._lead(text))
+        self.assertIn("the tracker recorded 3,000 US job cuts", self._lead(text))
         self.assertIn("  United States: 3,000 verified job cuts", self._pair(text))
         self.assertNotIn("12,000", self._lead(text))
 
@@ -1729,7 +1729,7 @@ class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
         text = self._dominant(verification_level="bronze")
         block = text.split("Biggest cuts")[1]
         row = [l for l in block.splitlines() if "Applied Aerospace" in l][0]
-        self.assertIn("single report, unconfirmed", row)
+        self.assertIn("one outlet reporting, no document yet", row)
         self.assertIn("9,000 jobs", row)
         self.assertIn("location not recorded", row)
 
@@ -1747,7 +1747,7 @@ class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
             self.assertTrue(line, "a confirmed dominant entry lost its line")
             self.assertIn("49% of the 18,390 verified job cuts worldwide", line[0])
             self.assertNotIn("One report we have not independently confirmed", text)
-            self.assertNotIn("single report, unconfirmed", text)
+            self.assertNotIn("one outlet reporting, no document yet", text)
             self.assertIn("We reviewed 74 entries", text)
 
     def test_a_window_with_no_dominant_entry_is_unchanged(self):
@@ -1763,7 +1763,7 @@ class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
         self.assertIn("We reviewed 74 entries", text)
         row = [l for l in text.split("Biggest cuts")[1].splitlines()
                if "Applied Aerospace" in l][0]
-        self.assertIn("single report, unconfirmed", row)
+        self.assertIn("one outlet reporting, no document yet", row)
 
     def test_a_provisional_row_with_one_source_report_counts_too(self):
         for row in (dict(review_status="provisional", report_count=1),
