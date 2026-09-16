@@ -1,0 +1,447 @@
+{
+  "note": "Cause per unmatched event for the US WARN wave-2 reference set. DIAGNOSTIC ONLY: nothing here is a match decision, nothing here feeds a numerator, and the relaxed probe this module uses is NOT the matching rule. The buckets are the definition's \u00a78 and UNKNOWN is a verdict.",
+  "reference_set_id": "us-warn-il-oh-pa-2025-07_2026-06",
+  "definition_document": "docs/recall-reference-sets/US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md",
+  "classified_at": "2026-09-16T10:42:44Z",
+  "cause_counts": {
+    "no_source": 0,
+    "walked_not_read": 0,
+    "fetched_rejected": 0,
+    "extracted_dropped": 0,
+    "stored_unmatched": 5,
+    "UNKNOWN": 11
+  },
+  "state_coverage_evidence": {
+    "IL": {
+      "warn_rows_seen": 157,
+      "page_was_full": false,
+      "months_with_rows": 16,
+      "span_judged": [
+        "2025-06",
+        "2026-09"
+      ],
+      "months_beyond_today_not_judged": [],
+      "empty_months_inside_the_span": [],
+      "verdict": "continuous -- no collection outage in this span"
+    },
+    "OH": {
+      "warn_rows_seen": 154,
+      "page_was_full": false,
+      "months_with_rows": 21,
+      "span_judged": [
+        "2025-06",
+        "2026-09"
+      ],
+      "months_beyond_today_not_judged": [
+        "2026-10",
+        "2026-11",
+        "2026-12",
+        "2027-04",
+        "2027-07"
+      ],
+      "empty_months_inside_the_span": [],
+      "verdict": "continuous -- no collection outage in this span"
+    },
+    "PA": {
+      "warn_rows_seen": 90,
+      "page_was_full": false,
+      "months_with_rows": 17,
+      "span_judged": [
+        "2025-06",
+        "2026-09"
+      ],
+      "months_beyond_today_not_judged": [
+        "2026-10"
+      ],
+      "empty_months_inside_the_span": [],
+      "verdict": "continuous -- no collection outage in this span"
+    }
+  },
+  "causes": [
+    {
+      "id": "warn-il-2025-08-05-claires-stores",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Claires Stores, Inc.",
+      "notice_date": "2025-08-05",
+      "stated_job_count": 46,
+      "size_band": "S",
+      "official_source_url": "https://www.illinoisworknet.com/_layouts/download.aspx?SourceUrl=https://www.illinoisworknet.com/DownloadPrint/Aug%202025%20Monthly%20WARN%20Report.xlsx",
+      "cause": "stored_unmatched",
+      "line": "we hold row 137973 in IL inside this notice's own match window carrying 46 jobs, which the notice publishes; the strict rule missed it because we store the employer as \"Claire's - Hoffman Estates\" and the state publishes 'Claires Stores, Inc.', and the alias test is a token PREFIX",
+      "evidence": {
+        "tracker_row_id": 137973,
+        "tracker_event_id": 110808,
+        "stored_company_name": "Claire's - Hoffman Estates",
+        "stored_job_count": 46,
+        "stored_layoff_date": "2025-08-05",
+        "stored_source_type": "warn",
+        "relaxed_terms": [
+          "Claires",
+          "Claire",
+          "Stores"
+        ]
+      }
+    },
+    {
+      "id": "warn-il-2025-08-18-zeco-systems",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Zeco Systems, Inc.",
+      "notice_date": "2025-08-18",
+      "stated_job_count": 6,
+      "size_band": "S",
+      "official_source_url": "https://www.illinoisworknet.com/_layouts/download.aspx?SourceUrl=https://www.illinoisworknet.com/DownloadPrint/Aug%202025%20Monthly%20WARN%20Report.xlsx",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Systems",
+          "System"
+        ],
+        "rows_seen_by_the_relaxed_probe": 1,
+        "published_counts_looked_for": [
+          6
+        ]
+      }
+    },
+    {
+      "id": "warn-il-2025-12-01-adare-pharmaceuticals",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Adare Pharmaceuticals, Inc.",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 21,
+      "size_band": "S",
+      "official_source_url": "https://www.illinoisworknet.com/_layouts/download.aspx?SourceUrl=https://www.illinoisworknet.com/DownloadPrint/Dec%202025%20Monthly%20WARN%20Report.xlsx",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Pharmaceuticals",
+          "Pharma",
+          "Adare"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          21
+        ]
+      }
+    },
+    {
+      "id": "warn-il-2026-04-13-gerresheimer-moulded-glass-chicago",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Gerresheimer Moulded Glass Chicago Inc.",
+      "notice_date": "2026-04-13",
+      "stated_job_count": 172,
+      "size_band": "M",
+      "official_source_url": "https://www.illinoisworknet.com/_layouts/download.aspx?SourceUrl=https://www.illinoisworknet.com/DownloadPrint/April2026MonthlyWARNReport.xlsx",
+      "cause": "stored_unmatched",
+      "line": "we hold row 135563 in IL inside this notice's own match window carrying 172 jobs, which the notice publishes; the strict rule missed it because we store the employer as 'GERRESHEIMER GLASS INC.' and the state publishes 'Gerresheimer Moulded Glass Chicago Inc.', and the alias test is a token PREFIX",
+      "evidence": {
+        "tracker_row_id": 135563,
+        "tracker_event_id": 108398,
+        "stored_company_name": "GERRESHEIMER GLASS INC.",
+        "stored_job_count": 172,
+        "stored_layoff_date": "2026-04-13",
+        "stored_source_type": "warn",
+        "relaxed_terms": [
+          "Gerresheimer",
+          "Gerres",
+          "Moulded",
+          "Moulde"
+        ]
+      }
+    },
+    {
+      "id": "warn-oh-2026-04-28-gxo-logistics-supply-chain",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "GXO Logistics Supply Chain, Inc",
+      "notice_date": "2026-04-28",
+      "stated_job_count": 102,
+      "size_band": "M",
+      "official_source_url": "https://dam.assets.ohio.gov/raw/upload/jfs.ohio.gov/2026/2026-warn-notice.csv",
+      "cause": "stored_unmatched",
+      "line": "we hold row 135258 in OH inside this notice's own match window carrying 102 jobs, which the notice publishes; the strict rule missed it because we store the employer as 'UPDATE GXO Logistics Supply Chain, Inc' and the state publishes 'GXO Logistics Supply Chain, Inc', and the alias test is a token PREFIX",
+      "evidence": {
+        "tracker_row_id": 135258,
+        "tracker_event_id": 108093,
+        "stored_company_name": "UPDATE GXO Logistics Supply Chain, Inc",
+        "stored_job_count": 102,
+        "stored_layoff_date": "2026-05-02",
+        "stored_source_type": "warn",
+        "relaxed_terms": [
+          "Logistics",
+          "Logist",
+          "Supply"
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2025-10-01-fourth-street-barbecue",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Fourth Street Barbecue, Inc.",
+      "notice_date": "2025-10-01",
+      "stated_job_count": 252,
+      "size_band": "M",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2025-10",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Barbecue",
+          "Barbec",
+          "Fourth"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          252
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2025-11-01-dubois-logistics",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "DuBois Logistics, LLC",
+      "notice_date": "2025-11-01",
+      "stated_job_count": 110,
+      "size_band": "M",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2025-11",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Logistics",
+          "Logist",
+          "DuBois"
+        ],
+        "rows_seen_by_the_relaxed_probe": 7,
+        "published_counts_looked_for": [
+          110
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2025-12-01-adare-pharmaceuticals",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Adare Pharmaceuticals, Inc.",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 137,
+      "size_band": "M",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2025-12",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Pharmaceuticals",
+          "Pharma",
+          "Adare"
+        ],
+        "rows_seen_by_the_relaxed_probe": 1,
+        "published_counts_looked_for": [
+          137
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2025-12-01-s-s-activewear",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "S&S Activewear",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 128,
+      "size_band": "M",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2025-12",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Activewear",
+          "Active"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          128
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2026-01-01-miller-s-ale-house",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Miller\u2019s Ale House",
+      "notice_date": "2026-01-01",
+      "stated_job_count": 49,
+      "size_band": "S",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2026-01",
+      "cause": "stored_unmatched",
+      "line": "we hold row 135782 in PA inside this notice's own match window carrying 49 jobs, which the notice publishes; the strict rule missed it because we store the employer as \"Miller's Ale House\" and the state publishes 'Miller\u2019s Ale House', and the alias test is a token PREFIX",
+      "evidence": {
+        "tracker_row_id": 135782,
+        "tracker_event_id": 23826,
+        "stored_company_name": "Miller's Ale House",
+        "stored_job_count": 49,
+        "stored_layoff_date": "2026-03-30",
+        "stored_source_type": "warn",
+        "relaxed_terms": [
+          "Miller",
+          "House"
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2026-02-01-bpm",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "BPM Limited",
+      "notice_date": "2026-02-01",
+      "stated_job_count": 248,
+      "size_band": "M",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2026-02",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Limited",
+          "Limite"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          248
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2026-05-01-dometic",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Dometic",
+      "notice_date": "2026-05-01",
+      "stated_job_count": 89,
+      "size_band": "S",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2026-05",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Dometic",
+          "Dometi"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          89
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2026-05-01-juvenile-justice-center-of",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Juvenile Justice Center of Philadelphia",
+      "notice_date": "2026-05-01",
+      "stated_job_count": 17,
+      "size_band": "S",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2026-05",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Philadelphia",
+          "Philad",
+          "Juvenile",
+          "Juveni"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "warn-pa-2026-06-01-american-expediting-logistics",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "American Expediting Logistics, LLC",
+      "notice_date": "2026-06-01",
+      "stated_job_count": 86,
+      "size_band": "S",
+      "official_source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices#2026-06",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Expediting",
+          "Expedi",
+          "Logistics",
+          "Logist"
+        ],
+        "rows_seen_by_the_relaxed_probe": 6,
+        "published_counts_looked_for": [
+          86
+        ]
+      }
+    },
+    {
+      "id": "warn-il-2026-01-28-amazon-fresh",
+      "stratum": "large_census",
+      "state": "IL",
+      "employer_published": "Amazon Fresh",
+      "notice_date": "2026-01-28",
+      "stated_job_count": 1545,
+      "size_band": "L",
+      "official_source_url": "https://www.illinoisworknet.com/_layouts/15/download.aspx?SourceUrl=https://www.illinoisworknet.com/DownloadPrint/Jan2026MonthlyWARNReport.xlsx",
+      "cause": "UNKNOWN",
+      "line": "no row in this state carries any published count of this notice inside its own match window, so we appear not to hold it; WHICH of walked_not_read / fetched_rejected / extracted_dropped applies cannot be established from public reads, because all three are statements about the collector's own output",
+      "evidence": {
+        "relaxed_terms": [
+          "Amazon",
+          "Fresh"
+        ],
+        "rows_seen_by_the_relaxed_probe": 0,
+        "published_counts_looked_for": [
+          118,
+          132,
+          134,
+          155,
+          170,
+          173,
+          179,
+          220,
+          1545
+        ]
+      }
+    },
+    {
+      "id": "warn-il-2026-02-05-franciscan-alliance",
+      "stratum": "large_census",
+      "state": "IL",
+      "employer_published": "Franciscan Alliance, Inc.",
+      "notice_date": "2026-02-05",
+      "stated_job_count": 1864,
+      "size_band": "L",
+      "official_source_url": "https://www.illinoisworknet.com/_layouts/download.aspx?SourceUrl=https://www.illinoisworknet.com/DownloadPrint/Feb2026MonthlyWARNReport.xlsx",
+      "cause": "stored_unmatched",
+      "line": "we hold row 136173 in IL inside this notice's own match window carrying 1535 jobs, which the notice publishes; the strict rule missed it because we store the employer as 'Franciscan Health Olympia Fields' and the state publishes 'Franciscan Alliance, Inc.', and the alias test is a token PREFIX",
+      "evidence": {
+        "tracker_row_id": 136173,
+        "tracker_event_id": 109008,
+        "stored_company_name": "Franciscan Health Olympia Fields",
+        "stored_job_count": 1535,
+        "stored_layoff_date": "2026-02-05",
+        "stored_source_type": "warn",
+        "relaxed_terms": [
+          "Franciscan",
+          "Franci",
+          "Alliance",
+          "Allian"
+        ]
+      }
+    }
+  ],
+  "cost_usd": 0.0
+}

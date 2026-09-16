@@ -210,12 +210,19 @@ def _name_note(event, stored_name):
             f"{published!r}")
 
 
-def build_pack(manifest=None, measurement=None, refetch=True):
-    """The pack. Pure given the two documents and the fetcher, so tests can drive it."""
+def build_pack(manifest=None, measurement=None, refetch=True,
+               manifest_path=None, measurement_path=None):
+    """The pack. Pure given the two documents and the fetcher, so tests can drive it.
+
+    The two path arguments exist so a SECOND wave of states gets its sheet from
+    this renderer rather than from a copy of it; they default to wave 1's pair.
+    """
     if manifest is None:
-        manifest = json.loads(W.MANIFEST_PATH.read_text(encoding="utf-8"))
+        manifest = json.loads((manifest_path or W.MANIFEST_PATH)
+                              .read_text(encoding="utf-8"))
     if measurement is None:
-        measurement = json.loads(W.WARN_MEASUREMENT_PATH.read_text(encoding="utf-8"))
+        measurement = json.loads((measurement_path or W.WARN_MEASUREMENT_PATH)
+                                 .read_text(encoding="utf-8"))
     by_id = {e["reference_row_id"]: e
              for e in manifest["reference_events"] + manifest["large_event_census"]}
 
@@ -753,11 +760,14 @@ def rerender():
     print(f"sheet re-rendered from {PACK_PATH.name} (nothing fetched): {SHEET_PATH}")
 
 
-def write_pack():
+def write_pack(manifest_path=None, measurement_path=None,
+               queue_json=None, queue_md=None):
+    pack_path, sheet_path = queue_json or PACK_PATH, queue_md or SHEET_PATH
     built_at = W._utc_now()
-    manifest, measurement, entries, no_candidate = build_pack()
+    manifest, measurement, entries, no_candidate = build_pack(
+        manifest_path=manifest_path, measurement_path=measurement_path)
     arith = arithmetic(measurement, entries, no_candidate)
-    PACK_PATH.write_text(json.dumps({
+    pack_path.write_text(json.dumps({
         "note": ("Adjudication queue for the US WARN reference set. Every statement is "
                  "attributed to the ONE candidate row it describes, by id; no line in "
                  "the sheet summarises more than one row. See the module docstring for "
@@ -774,11 +784,11 @@ def write_pack():
         "entries": entries,
         "no_candidate": no_candidate,
     }, indent=2) + "\n", encoding="utf-8")
-    SHEET_PATH.write_text(
+    sheet_path.write_text(
         render_sheet(manifest, measurement, entries, no_candidate, arith, built_at),
         encoding="utf-8")
-    print(f"pack written:  {PACK_PATH}")
-    print(f"sheet written: {SHEET_PATH}")
+    print(f"pack written:  {pack_path}")
+    print(f"sheet written: {sheet_path}")
     print(f"{len(entries)} events pending, "
           f"{sum(len(e['candidates']) for e in entries)} candidate rows, "
           f"{len(no_candidate)} with no candidate row")

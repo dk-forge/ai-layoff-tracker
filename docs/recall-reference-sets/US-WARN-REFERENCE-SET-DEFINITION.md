@@ -36,6 +36,18 @@ the answer is allowed to differ per state. It is designed so that it does.
 
 ## 2. Which states, and why those four
 
+> **2026-09-16: three of the states excluded below have since been re-probed and
+> admitted, and NONE of the verdicts in this section is revised.** They were
+> true of the documents probed on 2026-08-13 and the git history is the record.
+> What changed is where the probe looked: PA's URL here 404s and the live page
+> is elsewhere, Illinois publishes a monthly spreadsheet archive behind the
+> dashboard this section stopped at, and Ohio's data files resolve while its
+> index pages do not. New York is unchanged and still out. The new states are a
+> SEPARATE set with its own definition and its own manifest —
+> [`US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md`](US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md)
+> — because this set is frozen and adjudicated and must not be re-cut.
+
+
 **Selection rule, fixed before any tracker query.** Walk the US states in
 descending order of total nonfarm employment. Include a state if and only if its
 **official state WARN publication** satisfies all four of:
