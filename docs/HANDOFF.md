@@ -6,6 +6,18 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Claude, 2026-09-16, US WARN recall wave 2 (NY/IL/OH/PA).**
+  Worktree: `/tmp/wt-recall`; branch: `measure/us-recall-ny-il-oh-pa`, based on
+  `origin/main`. **No plugin file is touched and no plugin version is
+  reserved**, and no workflow file is touched either, so this cannot collide
+  with the still-open `ci/host-jobs-run-on-the-vps` branch above. Taken under
+  the owner's explicit instruction for this task; the entry below it reads as
+  a closeout of the 2026-09-13 session (protocol step 4, takeover noted here).
+  Scope: build blinded reference sets for four more US states against their own
+  official WARN publications, following
+  `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`. Read-only
+  GETs to state agencies and to the public `/query` read API only; $0.00 of
+  model spend; nothing is merged and nothing deploys.
 - **Claude, 2026-09-13 late afternoon, VPS/traffic/handover session:** branch
   `ci/host-jobs-run-on-the-vps` (PR open, unmerged) moves every host-touching
   workflow to the Contabo self-hosted runner; no plugin version claimed.
