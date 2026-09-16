@@ -1,3 +1,101 @@
+## 2026-09-16 - US WARN wave 2 adjudicated (reviewer B): 58 of 75 through the recorder, 64 of 75 by verdict, and the six between them are matches the recorder cannot take
+
+**Class:** novel. The shape is a guard refusing a TRUE decision: the recorder only
+accepts a row the adjudication pack proposed, the pack proposes only what the
+frozen matching rule reached, so a match the rule could not reach cannot enter
+the numerator even after a human has read both sides. Candidate slug:
+`guard-refuses-a-true-decision`. Sub-shapes named below carry their own slugs.
+**Guard:** `railway/tests/test_warn_reference_set_wave2.py`
+(`NothingIsMatchedUntilAnEditorSaysSo`, moved from "everything is zero" to wave
+1's post-review shape: a `matched` event needs a named decision with a ledger
+entry behind it, and the confirmed numerator must equal the ledger's live
+accepts), `railway/tests/test_warn_recall_pooled.py` unchanged.
+
+Every one of the 81 wave-2 events (75 primary, 6 census) was decided by
+reviewer `agent-b-2026-09-16`, independently of reviewer A, through
+`railway/warn_adjudicate.py` driven against wave 2's manifest, pack and a new
+ledger `railway/warn_recall_adjudications_wave2.json` (the recorder is
+unchanged; its `main()` already takes the three paths). Before any decision the
+three official frames were re-read from the publishers (`frame_il`, `frame_oh`,
+`frame_pa`) and every component row of every event reproduced: employer, count,
+effective date. The tracker side was read with paced single `/query` requests.
+No model, $0.00.
+
+**The figures, and which is which.**
+
+- Recorder-confirmed (the numerator the derived block reports): **58/75 =
+  77.3% (Wilson [66.7%, 85.3%])**; IL 20/25, OH 23/25, PA 15/25; census 4/6.
+  Pooled seven-state editor-confirmed, equal allocation: 157/175 = 89.7%
+  [84.3%, 93.4%]. 62 accepts, 5 rejects, ledger `--verify` clean.
+- Reviewer verdict (the committed file
+  `docs/recall-reference-sets/us-warn-il-oh-pa-2025-07_2026-06.review.agent-b-2026-09-16.json`,
+  one verdict per event): **MATCHED 64, MISSED 11, UNKNOWN 0** on the primary
+  sample; census MATCHED 5, MISSED 1. Per state MATCHED 23/25, 25/25, 16/25.
+- The six-event gap is not disagreement. It is six matches the recorder
+  REFUSES by design: Claire's (137973), Gerresheimer (135563), GXO (135258),
+  Miller's Ale House (135782), First Brands Albion IL (136396) and First Brands
+  Cuyahoga 4 OH (136059), plus Franciscan Alliance in the census (136173 +
+  136174). Each row carries the notice's exact count, state, site and source,
+  and none was in the pack's proposed set, because the pack proposes what the
+  token-prefix rule reached and the no-candidate section applies the same name
+  test before printing "No row of any kind, at any date, for this employer".
+  That sentence is false for Claire's and Franciscan (sub-shape
+  `absent-read-as-ok`). Where the recorder could take a REJECT of the wrong row
+  it did, with the reason naming the right one; four events have no row it
+  could name at all. **The derived figure is therefore a floor, and the
+  verdict file says so in its own note.** The machine bound was 61 before review (58 after, because a rejected row is not proposed again, as in wave 1): the human
+  read is three below it (three proposed rows rejected: First Brands McHenry,
+  Weaber Crawford, the Cuyahoga pair) and six above it.
+
+**Defect-masked matches are matches, and the defects are separate findings:**
+row 135258 and row 136059 begin with Ohio's amendment marker `UPDATE` in
+`company_name` (importer stores the marker, `sources/warn_custom.fetch_oh`);
+row 135782 is stored with U+0027 where Pennsylvania publishes U+2019, and the
+`/query?company=` filter found nothing for the published spelling. A third
+finding on that filter: it is a WHOLE-WORD match, not the substring LIKE the
+pack and `warn_miss_causes.py` document (`Jenius` returns nothing, `JeniusBank`
+returns both rows), so the miss-cause probe's truncated six-character prefixes
+(`Barbec`, `Logist`, `Dometi`, `Juveni`, `Expedi`) can never retrieve anything
+and that half of the diagnostic is inert (sub-shape `guard-went-vacuous`).
+
+**Duplicates found in the table** (sub-shape `wrong-scope-or-key`, the dedup
+hash keys on the date): TOPS Products OH stored twice (136862 dated 2025-12-01,
+176824 dated 2027-04-02, one PDF); Premier Healthcare / Contigo Health OH stored
+twice (176837, 136620); Advanced Specialty Hospitals of Toledo held as a WARN
+row and an unfolded news row. Two count discrepancies against the monthly
+report, same event on every other field: Rising Pharma 99 held vs 86 published,
+Everest Insurance 38 vs 37. One event survives only in the press: Walgreens'
+469-worker Illinois notice has no WARN-tier row; the Bloomberg row's own
+excerpt itemises 628 as 469 across Deerfield, Chicago and Danville plus 159 in
+Houston, so it was accepted as the same event with the collector miss recorded.
+
+**The misses.** Eleven primary events and one census event are held nowhere,
+under any spelling, in any state (each verdict lists the queries tried):
+Zeco Systems IL (held in nine OTHER states, cross-state excluded), Adare
+Pharmaceuticals in BOTH IL and PA, Fourth Street Barbecue, DuBois Logistics,
+S&S Activewear (we hold its February 2025 notice, not this one), BPM Limited,
+Dometic PA, Juvenile Justice Center of Philadelphia, American Expediting
+Logistics, Weaber Lebanon (we hold its June Crawford notice), and **Amazon Fresh
+Illinois: ten store closings, 1,545 workers, January 2026, absent in every
+form** while the sibling Pennsylvania notice (983) is held. Nine of the eleven
+are Pennsylvania. The stage inside the collector is not observable from a
+public read, so every miss keeps the definition's `UNKNOWN` bucket.
+
+**Three reference-frame notes, recorded and not acted on** (the set is frozen):
+Heartland Human Care Services' 240 is two identical 120-worker rows from
+consecutive monthly reports (one notice listed twice); BPM Limited appears as
+January 148 and February 248 `UPDATED TO REVISE AFFECTED TOTAL` (one closure,
+two events); the First Brands Albion notice is dated 2026-01-15 on the DCEO page
+we ingest and 2026-02-23 in the monthly XLSX the frame reads.
+
+**What this entry does not do.** It does not change a row, a threshold, the
+matching rule, the pack, the recorder or the reference set. It does not let
+the verdict file feed a numerator. The follow-up it asks for is one pack
+change, on the Wood Group precedent: list, in the no-candidate section, the
+in-state in-window WARN-tier rows that carry a published count of the notice
+(what `warn_miss_causes.probe` already retrieves), so the recorder can take the
+decision the sheet asked a human to make.
+
 ## 2026-09-16 - Spain (Illes Balears): the one European set that CAN be built, defined before it is built
 
 **Class:** novel

@@ -24,16 +24,21 @@ python3 railway/warn_recall_pooled.py --render
 
 ## 1. The one sentence that may honestly be said first
 
-**Wave 2 has NOT been adjudicated, so it has no recall figure yet.** Its
-editor-confirmed numerator is **zero by construction**: every candidate the
-machine proposes ships `match_decision: not_matched`, and only a reviewer
-working through `railway/warn_adjudicate.py` may promote one. What wave 2 has
-today is a **machine upper bound**, an adjudication queue of 65 events and 78
-candidate rows, 16 events the rule proposed nothing for, and a cause per miss.
+**Wave 2 was adjudicated on 2026-09-16 by reviewer `agent-b-2026-09-16`**, every
+one of the 81 events across both strata, through `railway/warn_adjudicate.py`
+against a wave-2 ledger (`railway/warn_recall_adjudications_wave2.json`), with
+every component row re-verified against a fresh read of the three state
+publications first. The editor-confirmed figures in the block below are that
+review's recorder-confirmed numerator.
 
-That is exactly where wave 1 stood on 2026-08-13, the day before the owner
-adjudicated it, and it is the honest state of a set whose gate has not been
-passed. **Do not quote the machine bound as recall.**
+**Read them as a floor.** The reviewer's per-event verdict file,
+[`us-warn-il-oh-pa-2025-07_2026-06.review.agent-b-2026-09-16.json`](us-warn-il-oh-pa-2025-07_2026-06.review.agent-b-2026-09-16.json),
+holds 64 MATCHED, 11 MISSED and 0 UNKNOWN on the primary sample; the block
+reports 58, because six matched events are held under rows the frozen rule
+could not reach and the recorder refuses a row the pack did not propose. Those
+six (and one census event) are named in the verdict file and in TECHLOG
+2026-09-16. The set remains single-reviewer internal and is **not** posted to
+`/benchmarks/recall`. **Do not quote the machine bound as recall.**
 
 ---
 
@@ -52,9 +57,9 @@ passed. **Do not quote the machine bound as recall.**
 |---|---|---|---|---|
 | CA | wave 1 | 812 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) |
 | FL | wave 1 | 140 | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) |
-| IL | wave 2 | 103 | 0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%) | 21/25 = 84.0%  (Wilson 95% CI [65.3%, 93.6%], width 28.3%) |
-| OH | wave 2 | 81 | 0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%) | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) |
-| PA | wave 2 | 79 | 0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%) | 16/25 = 64.0%  (Wilson 95% CI [44.5%, 79.8%], width 35.2%) |
+| IL | wave 2 | 103 | 20/25 = 80.0%  (Wilson 95% CI [60.9%, 91.1%], width 30.3%) | 20/25 = 80.0%  (Wilson 95% CI [60.9%, 91.1%], width 30.3%) |
+| OH | wave 2 | 81 | 23/25 = 92.0%  (Wilson 95% CI [75.0%, 97.8%], width 22.7%) | 23/25 = 92.0%  (Wilson 95% CI [75.0%, 97.8%], width 22.7%) |
+| PA | wave 2 | 79 | 15/25 = 60.0%  (Wilson 95% CI [40.7%, 76.6%], width 35.9%) | 15/25 = 60.0%  (Wilson 95% CI [40.7%, 76.6%], width 35.9%) |
 | TN | wave 1 | 62 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) |
 | TX | wave 1 | 166 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) |
 
@@ -64,22 +69,20 @@ passed. **Do not quote the machine bound as recall.**
 
 | Basis | Figure |
 |---|---|
-| Editor-confirmed, equal allocation, ALL measured states | 99/175 = 56.6%  (Wilson 95% CI [49.2%, 63.7%], width 14.5%) |
-| Editor-confirmed, ADJUDICATED sets only (wave 1) | 99/100 = 99.0%  (Wilson 95% CI [94.6%, 99.8%], width 5.3%) |
-| Machine upper bound, equal allocation | 160/175 = 91.4%  (Wilson 95% CI [86.3%, 94.7%], width 8.4%) |
-| Machine upper bound, notice-volume weighted | 0.962 |
+| Editor-confirmed, equal allocation, ALL measured states | 157/175 = 89.7%  (Wilson 95% CI [84.3%, 93.4%], width 9.1%) |
+| Editor-confirmed, ADJUDICATED sets only (wave 1, wave 2) | 157/175 = 89.7%  (Wilson 95% CI [84.3%, 93.4%], width 9.1%) |
+| Machine upper bound, equal allocation | 157/175 = 89.7%  (Wilson 95% CI [84.3%, 93.4%], width 9.1%) |
+| Machine upper bound, notice-volume weighted | 0.9547 |
 
 Allocation is **equal, not proportional**: every state contributes 25 events regardless of how many notices it publishes, so the pooled figure is the mean of the state samples and **not** a population-weighted national estimate. The volume-weighted row is beside it for exactly that reason.
-
-> **The editor-confirmed pooled figure is held down by wave 2, which has not been adjudicated.** Its numerator is zero BY CONSTRUCTION, not by measurement: every candidate in that set ships `not_matched` and only a reviewer may promote one. Until that review happens, the honest reading of the pooled editor-confirmed row is *a floor over a denominator that includes an unreviewed set*, and the machine bound beside it is the ceiling. **Neither is 'our WARN recall'.**
 
 ### By event size, pooled
 
 | Band | Affected workers | Editor-confirmed | Machine upper bound |
 |---|---|---|---|
-| S | 1-99 | 56/104 = 53.8%  (Wilson 95% CI [44.3%, 63.1%], width 18.8%) | 97/104 = 93.3%  (Wilson 95% CI [86.8%, 96.7%], width 9.9%) |
-| M | 100-499 | 36/62 = 58.1%  (Wilson 95% CI [45.7%, 69.5%], width 23.9%) | 54/62 = 87.1%  (Wilson 95% CI [76.6%, 93.3%], width 16.8%) |
-| L | 500+ | 7/9 = 77.8%  (Wilson 95% CI [45.3%, 93.7%], width 48.4%) | 9/9 = 100.0%  (Wilson 95% CI [70.1%, 100.0%], width 29.9%) |
+| S | 1-99 | 96/104 = 92.3%  (Wilson 95% CI [85.6%, 96.1%], width 10.5%) | 97/104 = 93.3%  (Wilson 95% CI [86.8%, 96.7%], width 9.9%) |
+| M | 100-499 | 53/62 = 85.5%  (Wilson 95% CI [74.7%, 92.2%], width 17.5%) | 52/62 = 83.9%  (Wilson 95% CI [72.8%, 91.0%], width 18.2%) |
+| L | 500+ | 8/9 = 88.9%  (Wilson 95% CI [56.5%, 98.0%], width 41.5%) | 8/9 = 88.9%  (Wilson 95% CI [56.5%, 98.0%], width 41.5%) |
 
 ### The frames, before any matching
 
@@ -107,7 +110,7 @@ This is **event size, not employer size**. WARN publishes how many workers a not
 | Set | Editor-confirmed | Machine upper bound |
 |---|---|---|
 | wave 1 | 32/33 = 97.0%  (Wilson 95% CI [84.7%, 99.5%], width 14.8%) | 33/33 = 100.0%  (Wilson 95% CI [89.6%, 100.0%], width 10.4%) |
-| wave 2 | 0/6 = 0.0%  (Wilson 95% CI [0.0%, 39.0%], width 39.0%) | 4/6 = 66.7%  (Wilson 95% CI [30.0%, 90.3%], width 60.3%) |
+| wave 2 | 4/6 = 66.7%  (Wilson 95% CI [30.0%, 90.3%], width 60.3%) | 4/6 = 66.7%  (Wilson 95% CI [30.0%, 90.3%], width 60.3%) |
 
 Pooling a census with a systematic sample double-counts the events in both and silently reweights the result, so it is not done.
 
@@ -122,7 +125,7 @@ Pooling a census with a systematic sample double-counts the events in both and s
 
 **Unreachable / UNKNOWN events excluded from every numerator and denominator above: 0.**
 
-Measured at: wave 1 2026-08-14T19:57:05Z; wave 2 2026-09-16T10:30:33Z.
+Measured at: wave 1 2026-08-14T19:57:05Z; wave 2 2026-09-16T12:31:23Z.
 
 <!-- END DERIVED: warn_recall_pooled.py -->
 
@@ -200,6 +203,8 @@ UNKNOWNs about the notice rather than findings about the frame.
 ---
 
 ## 5. The misses, as a worklist
+
+> **Superseded in part by the 2026-09-16 review.** The five "rows we already hold" below were each confirmed as the same event by the reviewer (plus First Brands Albion IL and First Brands Cuyahoga 4 OH, which the machine had proposed other rows for); of the eleven `UNKNOWN`-cause events, every one was confirmed MISSED after nationwide queries under alternative spellings, and the census Amazon Fresh Illinois notice (1,545 workers) is the largest. Per-event verdicts and the queries tried are in the review file linked in section 1. The text below is the pre-review machine reading, kept as written.
 
 Five of the sixteen unmatched events are rows **we already hold**, which the
 strict §6 rule could not reach. All five fail on the same thing — the alias test

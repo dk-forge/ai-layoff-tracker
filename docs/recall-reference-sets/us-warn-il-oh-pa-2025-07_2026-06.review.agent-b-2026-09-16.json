@@ -1,0 +1,1563 @@
+{
+  "note": "Reviewer B's per-event verdicts on the US WARN wave-2 reference set (IL/OH/PA), one per reference event across both strata. THE RECORDER (railway/warn_adjudicate.py) IS THE AUTHORITY FOR THE NUMERATOR: every accept and reject here is also in railway/warn_recall_adjudications_wave2.json and in the manifest, written by the recorder. This file exists for the decisions the recorder cannot take: a MISSED event with no row to name, and a MATCHED event whose row the adjudication pack could not propose (it lies outside the frozen rule's reach), which the recorder refuses by design. A MATCHED verdict with recorded_in_ledger=false or ledger_decision='reject' is therefore NOT in the editor-confirmed numerator; the derived figure is a floor and the tally below states both. UNKNOWN is a verdict; none was rounded into a match.",
+  "reference_set_id": "us-warn-il-oh-pa-2025-07_2026-06",
+  "reviewer": "agent-b-2026-09-16",
+  "reviewed_on": "2026-09-16",
+  "evidence": {
+    "adjudication_pack_built_at": "2026-09-16T10:30:40Z",
+    "official_sources_re_read": "2026-09-16 via warn_reference_set_wave2.frame_il/frame_oh/frame_pa; every component row of every event reproduced (employer, count, effective date)",
+    "tracker_reads": "paced single /query requests (1/s) with the project User-Agent; no model call; $0.00"
+  },
+  "tally": {
+    "primary_by_state": {
+      "IL": {
+        "n": 25,
+        "MATCHED": 23,
+        "MATCHED_in_ledger": 20,
+        "MISSED": 2,
+        "UNKNOWN": 0
+      },
+      "OH": {
+        "n": 25,
+        "MATCHED": 25,
+        "MATCHED_in_ledger": 23,
+        "MISSED": 0,
+        "UNKNOWN": 0
+      },
+      "PA": {
+        "n": 25,
+        "MATCHED": 16,
+        "MATCHED_in_ledger": 15,
+        "MISSED": 9,
+        "UNKNOWN": 0
+      }
+    },
+    "primary_pooled": {
+      "n": 75,
+      "MATCHED_reviewer_verdict": 64,
+      "MATCHED_in_ledger": 58,
+      "MISSED": 11,
+      "UNKNOWN": 0
+    },
+    "large_census": {
+      "n": 6,
+      "MATCHED_reviewer_verdict": 5,
+      "MATCHED_in_ledger": 4,
+      "MISSED": 1,
+      "UNKNOWN": 0
+    }
+  },
+  "verdicts": [
+    {
+      "reference_row_id": "warn-il-2025-07-14-compass",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Compass Group",
+      "notice_date": "2025-07-14",
+      "stated_job_count": 73,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        138181
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-07-14-compass@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 138181 (source warn, IL): exact — 27 is one of the 4 rows the state published under this notice (total 73). Dates: agree on the NOTICE basis — our 2025-07-14 is the notice date; the state published effective 2025-08-28. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-08-05-claires-stores",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Claires Stores, Inc.",
+      "notice_date": "2025-08-05",
+      "stated_job_count": 46,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137973
+      ],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder"
+      ],
+      "note": "Held: row 137973 \"Claire's - Hoffman Estates\", 46 jobs exact, Hoffman Estates, IL WARN, dated 2025-08-05 = the notice date (effective 2025-08-04 published). Same employer, site and count. The rule missed it because the state publishes 'Claires Stores, Inc.' (no apostrophe) and we store the site form with an apostrophe; token-prefix alias cannot bridge it. Not a defect-masked match in the tracker sense (our spelling is the ordinary one); the pack's text 'No row of any kind, at any date, for this employer' is wrong for this event (pack wording defect: the section applies the name test before saying 'no row of any kind')."
+    },
+    {
+      "reference_row_id": "warn-il-2025-08-18-zeco-systems",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Zeco Systems, Inc.",
+      "notice_date": "2025-08-18",
+      "stated_job_count": 6,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No Illinois row for Zeco Systems at any date (queries 'Zeco', 'ZECO' in IL: 0). Nationwide we hold ten Zeco Systems WARN rows from GA, NC, CA, WA, MD, MN, FL, AZ, MT; WA row 137195 carries 6 workers effective 2025-10-31, the same count and date as this Illinois listing, but a cross-state row is not this state's notice and the protocol excludes cross-jurisdiction matches. The Illinois report lists a Los Angeles, CA address for this notice, which is a plausible reason a state-scoped importer dropped or re-homed it; hypothesis only, the stage is not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-il-2025-09-05-penske-logistics",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Penske Logistics LLC",
+      "notice_date": "2025-09-05",
+      "stated_job_count": 37,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137667
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-09-05-penske-logistics@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137667 (source warn, IL): exact — 37, the whole notice. Dates: our 2025-09-09 is neither the notice date (+4 days) nor a published effective date (-56 days from 2025-11-04). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. The row's date 2025-09-09 is 4 days after the notice date and is neither published date; count 37 is exact, employer and Naperville site agree, and Illinois lists one Penske notice in this window. Same event."
+    },
+    {
+      "reference_row_id": "warn-il-2025-09-15-rising-pharma",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Rising Pharma Holdings",
+      "notice_date": "2025-09-15",
+      "stated_job_count": 86,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137637
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-09-15-rising-pharma@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "count_differs_from_notice"
+      ],
+      "note": "Row 137637 (source warn, IL): DIFFERS by +13 — we hold 99, the notice totals 86 across rows of 86. Dates: agree on the NOTICE basis — our 2025-09-15 is the notice date; the state published effective 2025-11-15. Employer name: we store the employer as 'Rising Pharma Holdings, Inc.'; the state publishes it as 'Rising Pharma Holdings'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. COUNT DIFFERS: we hold 99, the monthly report publishes 86 (Decatur, notice 2025-09-15, effective 2025-11-15). Same employer, same site, same notice date, and the only Rising Pharma notice in the window: the same event, held with a count that disagrees with the state's monthly report by +13. The count is a data-quality item on one of the two surfaces (our IL collector reads the DCEO page, not the monthly XLSX); which surface is right is not established here."
+    },
+    {
+      "reference_row_id": "warn-il-2025-09-26-carolina-therapeutic-services",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Carolina Therapeutic Services",
+      "notice_date": "2025-09-26",
+      "stated_job_count": 27,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137546
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-09-26-carolina-therapeutic-services@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137546 (source warn, IL): exact — 27, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-09-26 is a date the state published as effective for this notice; the notice date 2025-09-26 is 0 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-10-01-chartwells-at-depaul-university",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Chartwells at DePaul University",
+      "notice_date": "2025-10-01",
+      "stated_job_count": 138,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137443
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-10-01-chartwells-at-depaul-university@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137443 (source warn, IL): exact — 138, the whole notice. Dates: agree on the NOTICE basis — our 2025-10-01 is the notice date; the state published effective 2025-11-30. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-10-08-fervalue",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Fervalue USA LLC",
+      "notice_date": "2025-10-08",
+      "stated_job_count": 72,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137334
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-10-08-fervalue@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137334 (source warn, IL): exact — 72, the whole notice. Dates: agree on the NOTICE basis — our 2025-10-08 is the notice date; the state published effective 2026-01-01. Employer name: we store the employer as 'Fervalue USA, LLC'; the state publishes it as 'Fervalue USA LLC'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-10-23-winston-brands",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Winston Brands, Inc.",
+      "notice_date": "2025-10-23",
+      "stated_job_count": 163,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137259,
+        137258
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-10-23-winston-brands@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137259 (source warn, IL): exact — 90 is one of the 2 rows the state published under this notice (total 163). Dates: agree on the NOTICE basis — our 2025-10-23 is the notice date; the state published effective 2025-12-15. Row 137258 (source warn, IL): exact — 73 is one of the 2 rows the state published under this notice (total 163). Dates: agree on the NOTICE basis — our 2025-10-23 is the notice date; the state published effective 2025-12-15. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-11-05-consolidated-hospitality-supplies",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Consolidated Hospitality Supplies",
+      "notice_date": "2025-11-05",
+      "stated_job_count": 45,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137082
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-11-05-consolidated-hospitality-supplies@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137082 (source warn, IL): exact — 45, the whole notice. Dates: agree on the NOTICE basis — our 2025-11-05 is the notice date; the state published effective 2026-01-04. Employer name: we store the employer as 'Consolidated Hospitality Supplies, LLC'; the state publishes it as 'Consolidated Hospitality Supplies'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-11-14-pharmacann",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "PharmaCann, Inc.",
+      "notice_date": "2025-11-14",
+      "stated_job_count": 82,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137008
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-11-14-pharmacann@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137008 (source warn, IL): exact — 82, the whole notice. Dates: agree on the NOTICE basis — our 2025-11-14 is the notice date; the state published effective 2026-01-13. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2025-12-01-adare-pharmaceuticals",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Adare Pharmaceuticals, Inc.",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 21,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row for Adare anywhere in the tracker (nationwide query 'Adare': 0), so the Aurora IL closing of 21 (effective 2026-02-02) is not held. Stage not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-il-2025-12-22-everest-insurance",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Everest Insurance",
+      "notice_date": "2025-12-22",
+      "stated_job_count": 37,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136700
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2025-12-22-everest-insurance@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "count_differs_from_notice"
+      ],
+      "note": "Row 136700 (source warn, IL): DIFFERS by +1 — we hold 38, the notice totals 37 across rows of 37. Dates: agree on the NOTICE basis — our 2025-12-22 is the notice date; the state published effective 2026-03-31. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. COUNT DIFFERS by +1: we hold 38, the monthly report publishes 37 (Chicago 60606, notice 2025-12-22, effective 2026-03-31). Same employer, site and notice date, the only Everest notice in the window: the same event; the one-worker difference is a data-quality item, not a second event."
+    },
+    {
+      "reference_row_id": "warn-il-2026-01-27-alton-steel",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Alton Steel, Inc.",
+      "notice_date": "2026-01-27",
+      "stated_job_count": 253,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136291
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-01-27-alton-steel@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136291 (source warn, IL): exact — 253, the whole notice. Dates: agree on the NOTICE basis — our 2026-01-27 is the notice date; the state published effective 2026-01-31. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-02-02-alverno-laboratories",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Alverno Laboratories (at Franciscan Health Olympia Fields)",
+      "notice_date": "2026-02-02",
+      "stated_job_count": 66,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136195
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-02-02-alverno-laboratories@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136195 (source warn, IL): exact — 66, the whole notice. Dates: agree on the NOTICE basis — our 2026-02-02 is the notice date; the state published effective 2026-04-01. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-02-10-walgreens",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Walgreens",
+      "notice_date": "2026-02-10",
+      "stated_job_count": 469,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        175785
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-02-10-walgreens@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "news_row_only_no_warn_tier_row"
+      ],
+      "note": "Row 175785 (source news, IL): DIFFERS by +159 — we hold 628, the notice totals 469 across rows of 416, 52, 1. Dates: our 2026-02-19 is neither the notice date (+9 days) nor a published effective date (+9 days from 2026-02-10). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. The only row we hold is a NEWS row (Bloomberg, 2026-02-19, 628). Its stored excerpt reads: 628 jobs across Illinois and Texas via WARN filings, including corporate roles in Deerfield, Chicago and Danville and 159 at a Houston distribution center. 628 - 159 = 469, exactly the Illinois notice total (Deerfield 416 + Chicago 52 + Danville 1), and the three Illinois sites named are the notice's three rows. The row therefore describes this WARN filing (plus one Texas filing) and is the same underlying event. FINDING (collector): we hold NO WARN-tier row for a 469-worker Illinois notice; the IL WARN collector missed it and the event survives in the tracker only through the press."
+    },
+    {
+      "reference_row_id": "warn-il-2026-02-23-first-brands",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "First Brands Group, LLC (Albion Air Facility)",
+      "notice_date": "2026-02-23",
+      "stated_job_count": 642,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136396
+      ],
+      "rejected_tracker_row_ids": [
+        136187
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "reject",
+      "ledger_entry_id": "warn-il-2026-02-23-first-brands@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder"
+      ],
+      "note": "Row 136187 (First Brands Group, LLC (Midwest Distribution Center), 389, McHenry, 2026-02-03) is Illinois' separate 2026-02-03 McHenry notice (2026-02 monthly report data row 2) and is NOT the Albion notice. The Albion notice IS held: row 136396 'First Brands Group (Champion Laboratories, Inc.-multiple sites)', 642 jobs = exactly the notice total (114+48+435+45), Albion, source IL WARN, dated 2026-01-15 from the DCEO page, nine days before the frozen window opens (the monthly report carries the four itemised rows under 2026-02-23). The recorder cannot name 136396 because the pack does not propose it, so this match is recorded in the reviewer verdict file only."
+    },
+    {
+      "reference_row_id": "warn-il-2026-03-06-aspira-of-illinois",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Aspira Inc. of Illinois",
+      "notice_date": "2026-03-06",
+      "stated_job_count": 57,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135973
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-03-06-aspira-of-illinois@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135973 (source warn, IL): exact — 57, the whole notice. Dates: agree on the NOTICE basis — our 2026-03-06 is the notice date; the state published effective 2026-04-03. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-03-20-trinity-christian-college",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Trinity Christian College",
+      "notice_date": "2026-03-20",
+      "stated_job_count": 107,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135845
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-03-20-trinity-christian-college@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135845 (source warn, IL): exact — 107, the whole notice. Dates: agree on the NOTICE basis — our 2026-03-20 is the notice date; the state published effective 2026-05-04. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-04-01-heartland-human-care-services",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Heartland Human Care Services",
+      "notice_date": "2026-04-01",
+      "stated_job_count": 240,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135690
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-04-01-heartland-human-care-services@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "reference_frame_note"
+      ],
+      "note": "Row 135690 (source warn, IL): exact — 120 is one of the 2 rows the state published under this notice (total 240). Dates: agree on the NOTICE basis — our 2026-04-01 is the notice date; the state published effective 2026-03-31. Employer name: we store the employer as 'Heartland Human Care Services (ICRC)'; the state publishes it as 'Heartland Human Care Services'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. FRAME NOTE: the reference event's two 120-worker component rows (2026-03 report data row 2 and 2026-04 report data row 5) share employer, Chicago 60653, count, effective date 2026-03-31 and received date 2026-04-01; they read as one notice listed in two consecutive monthly reports, so the stated total of 240 is probably one notice counted twice. Our row matches the component exactly; the frame question is recorded for the reference-set owner, not decided here."
+    },
+    {
+      "reference_row_id": "warn-il-2026-04-13-gerresheimer-moulded-glass-chicago",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Gerresheimer Moulded Glass Chicago Inc.",
+      "notice_date": "2026-04-13",
+      "stated_job_count": 172,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135563
+      ],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder"
+      ],
+      "note": "Held: row 135563 'GERRESHEIMER GLASS INC.', 172 jobs exact, Chicago Heights, IL WARN, dated 2026-04-13 = the notice date. Same employer (Gerresheimer's Chicago Heights moulded-glass plant), site and count. Missed by the rule only because the stored name omits 'Moulded' and 'Chicago'."
+    },
+    {
+      "reference_row_id": "warn-il-2026-04-29-kleo-community-family-life",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "KLEO Community Family Life Center",
+      "notice_date": "2026-04-29",
+      "stated_job_count": 65,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135340
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-04-29-kleo-community-family-life@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135340 (source warn, IL): exact — 65, the whole notice. Dates: agree on the NOTICE basis — our 2026-04-29 is the notice date; the state published effective 2026-06-30. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-05-04-vistra",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Vistra Corp. - Baldwin Power Plant",
+      "notice_date": "2026-05-04",
+      "stated_job_count": 304,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135231,
+        135230,
+        135229
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-05-04-vistra@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135231 (source warn, IL): exact — 99 is one of the 3 rows the state published under this notice (total 304). Dates: agree on the NOTICE basis — our 2026-05-04 is the notice date; the state published effective 2027-10-05/2028-01-04/2028-02-01. Employer name: we store the employer as 'Vistra Corp.'; the state publishes it as 'Vistra Corp. - Baldwin Power Plant'. Row 135230 (source warn, IL): exact — 83 is one of the 3 rows the state published under this notice (total 304). Dates: agree on the NOTICE basis — our 2026-05-04 is the notice date; the state published effective 2027-10-05/2028-01-04/2028-02-01. Employer name: we store the employer as 'Vistra Corp.'; the state publishes it as 'Vistra Corp. - Baldwin Power Plant'. Row 135229 (source warn, IL): exact — 122 is one of the 3 rows the state published under this notice (total 304). Dates: agree on the NOTICE basis — our 2026-05-04 is the notice date; the state published effective 2027-10-05/2028-01-04/2028-02-01. Employer name: we store the employer as 'Vistra Corp.'; the state publishes it as 'Vistra Corp. - Baldwin Power Plant'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-05-19-mdmartin",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "MDMartin LLC",
+      "notice_date": "2026-05-19",
+      "stated_job_count": 160,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135119
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-05-19-mdmartin@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135119 (source warn, IL): exact — 160, the whole notice. Dates: agree on the NOTICE basis — our 2026-05-19 is the notice date; the state published effective 2026-07-18. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-il-2026-06-05-optum-services",
+      "stratum": "primary",
+      "state": "IL",
+      "employer_published": "Optum Services, Inc.",
+      "notice_date": "2026-06-05",
+      "stated_job_count": 98,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        134921
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-06-05-optum-services@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 134921 (source warn, IL): exact — 98, the whole notice. Dates: agree on the NOTICE basis — our 2026-06-05 is the notice date; the state published effective 2026-08-06. Employer name: we store the employer as 'Optum Services, Inc'; the state publishes it as 'Optum Services, Inc.'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-07-07-quality-built",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Quality Built, LLC",
+      "notice_date": "2025-07-07",
+      "stated_job_count": 1,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        138286
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-07-07-quality-built@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 138286 (source warn, OH): exact — 1, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-07-03 is a date the state published as effective for this notice; the notice date 2025-07-07 is 4 day(s) later. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-07-16-sarepta-therapeutics",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Sarepta Therapeutics, Inc.",
+      "notice_date": "2025-07-16",
+      "stated_job_count": 80,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        138133
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-07-16-sarepta-therapeutics@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 138133 (source warn, OH): exact — 80, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-07-18 is a date the state published as effective for this notice; the notice date 2025-07-16 is 2 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-08-18-first-student",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "First Student",
+      "notice_date": "2025-08-18",
+      "stated_job_count": 39,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137882
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-08-18-first-student@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137882 (source warn, OH): exact — 39, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-08-20 is a date the state published as effective for this notice; the notice date 2025-08-18 is 2 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-08-28-fedex-supply-chain",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "FedEx Supply Chain, Inc",
+      "notice_date": "2025-08-28",
+      "stated_job_count": 56,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137188
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-08-28-fedex-supply-chain@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137188 (source warn, OH): exact — 56, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-10-31 is a date the state published as effective for this notice; the notice date 2025-08-28 is 64 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-09-24-tops-products",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "TOPS Products",
+      "notice_date": "2025-09-24",
+      "stated_job_count": 207,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136862
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-09-24-tops-products@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "tracker_defect_noted"
+      ],
+      "note": "Row 136862 (source warn, OH): exact — 207, the whole notice. Dates: our 2025-12-01 is neither the notice date (+68 days) nor a published effective date (-487 days from 2027-04-02). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Same employer, Logan/Hocking, count 207 exact, the same notice PDF. The row's date 2025-12-01 matches nothing the CSV publishes today (effective 2027-04-02); a second row 176824 (207, 2027-04-02, same PDF) carries the published date but lies outside the +400-day match window and is not proposed, so it is not named here. DEFECT (tracker): one notice stored twice under two dates."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-10-08-augusta-sportswear",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Augusta Sportswear, Inc.",
+      "notice_date": "2025-10-08",
+      "stated_job_count": 58,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136264
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-10-08-augusta-sportswear@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136264 (source warn, OH): exact — 58, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-01-30 is a date the state published as effective for this notice; the notice date 2025-10-08 is 114 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-10-27-premier-healthcare-solutions-dba",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Premier Healthcare Solutions DBA Contigo Health",
+      "notice_date": "2025-10-27",
+      "stated_job_count": 175,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        176837,
+        136620
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-10-27-premier-healthcare-solutions-dba@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "tracker_defect_noted"
+      ],
+      "note": "Row 176837 (source warn, OH): exact — 175, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-01-16 is a date the state published as effective for this notice; the notice date 2025-10-27 is 81 day(s) earlier. Row 136620 (source warn, OH): exact — 175, the whole notice. Dates: our 2025-12-31 is neither the notice date (+65 days) nor a published effective date (-16 days from 2026-01-16). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Both rows are this one notice (same employer, Summit/Hudson, 175, same notice PDF): 176837 carries the published effective date 2026-01-16, 136620 carries 2025-12-31, which the state's CSV does not publish. DEFECT (tracker): one notice stored twice because the dedup hash keys on the date; the second row is a duplicate."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-11-19-nordstrom-credit-operations",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Nordstrom Credit Operations",
+      "notice_date": "2025-11-19",
+      "stated_job_count": 1,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136221
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-11-19-nordstrom-credit-operations@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136221 (source warn, OH): exact — 1, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-11-19 is 74 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2025-12-04-pk-management",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "PK Management",
+      "notice_date": "2025-12-04",
+      "stated_job_count": 67,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136220
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2025-12-04-pk-management@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136220 (source warn, OH): exact — 67, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-12-04 is 59 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-01-06-double-tree-cleveland",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Double Tree Cleveland",
+      "notice_date": "2026-01-06",
+      "stated_job_count": 66,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136284
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-01-06-double-tree-cleveland@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136284 (source warn, OH): exact — 66, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-01-28 is a date the state published as effective for this notice; the notice date 2026-01-06 is 22 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-01-08-jeniusbank-smbc-manubank",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "JeniusBank SMBC Manubank",
+      "notice_date": "2026-01-08",
+      "stated_job_count": 2,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135932
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-01-08-jeniusbank-smbc-manubank@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135932 (source warn, OH): exact — 2, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-03-10 is a date the state published as effective for this notice; the notice date 2026-01-08 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. The other candidate, row 134233 (2 jobs, 2026-08-03), is the state's separate 2026-06-08 notice for the same employer (2026 CSV data row 23, effective 2026-08-03) and is not this event."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-01-12-turf-care-supply",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Turf Care Supply Corp.",
+      "notice_date": "2026-01-12",
+      "stated_job_count": 46,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136036
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-01-12-turf-care-supply@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136036 (source warn, OH): exact — 46, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-02-28 is a date the state published as effective for this notice; the notice date 2026-01-12 is 47 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-01-29-fresenius-manufacturing",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Fresenius USA Manufacturing",
+      "notice_date": "2026-01-29",
+      "stated_job_count": 54,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135598
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-01-29-fresenius-manufacturing@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135598 (source warn, OH): exact — 54, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-04-10 is a date the state published as effective for this notice; the notice date 2026-01-29 is 71 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-02-09-astrion",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Astrion",
+      "notice_date": "2026-02-09",
+      "stated_job_count": 61,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135005
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-02-09-astrion@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135005 (source warn, OH): exact — 61, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-31 is a date the state published as effective for this notice; the notice date 2026-02-09 is 111 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-02-16-lowe-s-companies",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Lowe's Companies",
+      "notice_date": "2026-02-16",
+      "stated_job_count": 17,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135485
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-02-16-lowe-s-companies@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135485 (source warn, OH): exact — 17, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-04-19 is a date the state published as effective for this notice; the notice date 2026-02-16 is 62 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-02-23-parsec",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Parsec, LLC",
+      "notice_date": "2026-02-23",
+      "stated_job_count": 115,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135293
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-02-23-parsec@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135293 (source warn, OH): exact — 115, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-01 is a date the state published as effective for this notice; the notice date 2026-02-23 is 67 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-02-27-first-brands-darke",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "First Brands Group Darke",
+      "notice_date": "2026-02-27",
+      "stated_job_count": 302,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135331
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-02-27-first-brands-darke@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135331 (source warn, OH): exact — 302, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-04-30 is a date the state published as effective for this notice; the notice date 2026-02-27 is 62 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 135331 is also proposed for warn-oh-2026-05-01-first-brands-cuyahoga-4, where it is rejected: Darke (Greenville, 302, effective 2026-04-30) and Cuyahoga 4 (Cleveland, 110, effective 2026-02-27) are different sites and different notices. Row 136086 (First Brands Group Cuyahoga, 146, 2026-02-23) is the 2026-02-23 Cleveland notice, and 175799 is a news roundup; neither is this event."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-03-06-saks-beachwood",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Saks & Company LLC Beachwood",
+      "notice_date": "2026-03-06",
+      "stated_job_count": 70,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135219
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-03-06-saks-beachwood@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135219 (source warn, OH): exact — 70, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-06 is a date the state published as effective for this notice; the notice date 2026-03-06 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 135579 (Saks & Company LLC Columbus, 41, 2026-04-11) is the state's separate 2026-02-10 Columbus notice and is not this event."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-03-19-ten-sixty-logistics",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Ten Sixty Logistics LLC",
+      "notice_date": "2026-03-19",
+      "stated_job_count": 125,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135765
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-03-19-ten-sixty-logistics@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135765 (source warn, OH): exact — 125, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-03-31 is a date the state published as effective for this notice; the notice date 2026-03-19 is 12 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-03-25-technicote-dba-beontag",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Technicote Inc dba Beontag",
+      "notice_date": "2026-03-25",
+      "stated_job_count": 53,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135079
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-03-25-technicote-dba-beontag@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135079 (source warn, OH): exact — 53, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-24 is a date the state published as effective for this notice; the notice date 2026-03-25 is 60 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-04-09-advanced-specialty-hospitals-of",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Advanced Specialty Hospitals of Toledo",
+      "notice_date": "2026-04-09",
+      "stated_job_count": 116,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        134903
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-04-09-advanced-specialty-hospitals-of@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "tracker_defect_noted"
+      ],
+      "note": "Row 134903 (source warn, OH): exact — 116, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-06-08 is a date the state published as effective for this notice; the notice date 2026-04-09 is 60 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 175819 (news, Spectrum News 1, 116, 2026-04-14) reports the same closure and is a same-event duplicate of the WARN row rather than a second event; the WARN-tier row pins the match. DEFECT (tracker, minor): the news report was not folded under the WARN row."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-04-22-venture-solutions-taylor-technology",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Venture Solutions/Taylor Technology Services",
+      "notice_date": "2026-04-22",
+      "stated_job_count": 60,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        134735
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-04-22-venture-solutions-taylor-technology@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 134735 (source warn, OH): exact — 60, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-06-22 is a date the state published as effective for this notice; the notice date 2026-04-22 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-04-28-gxo-logistics-supply-chain",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "GXO Logistics Supply Chain, Inc",
+      "notice_date": "2026-04-28",
+      "stated_job_count": 102,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135258
+      ],
+      "rejected_tracker_row_ids": [
+        143143
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "reject",
+      "ledger_entry_id": "warn-oh-2026-04-28-gxo-logistics-supply-chain@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder",
+        "defect_masked_match"
+      ],
+      "note": "Row 143143 (GXO Logistics, 192, Groveport, 2024-01-15) is a 2023 notice and not this event. This notice IS held: row 135258 'UPDATE GXO Logistics Supply Chain, Inc', 102 jobs exact, effective 2026-05-02 exact, West Jefferson/Madison, source OH WARN, linking the state's UPDATEGXOLogisticsSupplyChainInc.pdf. A DEFECT-MASKED MATCH: company_name begins with Ohio's amendment marker UPDATE, which the importer stores and the reference side cuts. The recorder cannot name 135258 because the pack's no-candidate section shows only rows passing the token-prefix name test, so the match is recorded in the reviewer verdict file only."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-05-01-first-brands-cuyahoga-4",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "First Brands Group Cuyahoga 4",
+      "notice_date": "2026-05-01",
+      "stated_job_count": 110,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136059
+      ],
+      "rejected_tracker_row_ids": [
+        175799,
+        135331
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "reject",
+      "ledger_entry_id": "warn-oh-2026-05-01-first-brands-cuyahoga-4@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder",
+        "defect_masked_match"
+      ],
+      "note": "Neither candidate is this notice: 175799 is a news roundup (256, Spectrum News 1) and 135331 is the Darke County notice (302, Greenville). The notice IS held: row 136059 'UPDATE First Brands Group Cuyahoga 4', 110 jobs exact, effective 2026-02-27 exact, Cleveland/Cuyahoga, source OH WARN, the state's own UPDATE-marked CSV row. The rule could not reach it because our importer stores Ohio's amendment marker in company_name (a DEFECT-MASKED MATCH: the match stands, the UPDATE prefix is a separate tracker defect, sources/warn_custom.fetch_oh). The recorder cannot name 136059 because the pack does not propose it, so the match is recorded in the reviewer verdict file only."
+    },
+    {
+      "reference_row_id": "warn-oh-2026-06-10-pioneer-cladding-glazing-systems",
+      "stratum": "primary",
+      "state": "OH",
+      "employer_published": "Pioneer Cladding & Glazing Systems, Inc.",
+      "notice_date": "2026-06-10",
+      "stated_job_count": 43,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        134191
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-oh-2026-06-10-pioneer-cladding-glazing-systems@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 134191 (source warn, OH): exact — 43, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-08-09 is a date the state published as effective for this notice; the notice date 2026-06-10 is 60 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-07-01-acc-premiere",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "ACC Premiere",
+      "notice_date": "2025-07-01",
+      "stated_job_count": 67,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137598
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-07-01-acc-premiere@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137598 (source warn, PA): exact — 67, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-09-19 is a date the state published as effective for this notice; the notice date 2025-07-01 is 80 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-07-01-century-therapeutics",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Century Therapeutics, LLC",
+      "notice_date": "2025-07-01",
+      "stated_job_count": 72,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        138208
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-07-01-century-therapeutics@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 138208 (source warn, PA): exact — 72, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-07-11 is a date the state published as effective for this notice; the notice date 2025-07-01 is 10 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-07-01-weaber",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Weaber, Inc.",
+      "notice_date": "2025-07-01",
+      "stated_job_count": 145,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "rejected_tracker_row_ids": [
+        137844
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "reject",
+      "ledger_entry_id": "warn-pa-2025-07-01-weaber@2026-09-16T12:24:38Z",
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "Row 137844 (Weaber, Inc., 46, 2025-08-25) is Pennsylvania's June 2025 Crawford County notice (2025 > June > accordion item 109, 46 workers, effective 2025-08-25), which the frame excluded as outside the window. This reference event is the July 2025 Lebanon notice (145 workers, effective 2025-08-26) and we hold no row for it: a miss. Stage within the collector not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-09-01-air-products-and-chemicals",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Air Products and Chemicals, Inc.",
+      "notice_date": "2025-09-01",
+      "stated_job_count": 14,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136970
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-09-01-air-products-and-chemicals@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136970 (source warn, PA): exact — 14, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-11-17 is a date the state published as effective for this notice; the notice date 2025-09-01 is 77 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-09-01-hms-host",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "HMS Host (located within the Philadelphia International Airport)",
+      "notice_date": "2025-09-01",
+      "stated_job_count": 13,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137230
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-09-01-hms-host@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137230 (source warn, PA): exact — 13, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-10-27 is a date the state published as effective for this notice; the notice date 2025-09-01 is 56 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-09-01-trujacodi-delivery-express",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Trujacodi Delivery Express",
+      "notice_date": "2025-09-01",
+      "stated_job_count": 42,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        137652
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-09-01-trujacodi-delivery-express@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 137652 (source warn, PA): exact — 42, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-09-12 is a date the state published as effective for this notice; the notice date 2025-09-01 is 11 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-10-01-fourth-street-barbecue",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Fourth Street Barbecue, Inc.",
+      "notice_date": "2025-10-01",
+      "stated_job_count": 252,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row in PA or nationwide ('Barbecue', 'Fourth Street', 'Fourth Street Barbecue': 0). The Charleroi closure of 252 (effective 2025-10-09) is not held. Stage not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-10-01-peraton",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Peraton, Inc.",
+      "notice_date": "2025-10-01",
+      "stated_job_count": 153,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136768
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-10-01-peraton@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136768 (source warn, PA): exact — 153, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-12-13 is a date the state published as effective for this notice; the notice date 2025-10-01 is 73 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-10-01-vifor-pharma",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Vifor Pharma, Inc.",
+      "notice_date": "2025-10-01",
+      "stated_job_count": 55,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136851
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-10-01-vifor-pharma@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136851 (source warn, PA): exact — 55, the whole notice. Dates: agree on the EFFECTIVE basis — our 2025-12-01 is a date the state published as effective for this notice; the notice date 2025-10-01 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-11-01-dubois-logistics",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "DuBois Logistics, LLC",
+      "notice_date": "2025-11-01",
+      "stated_job_count": 110,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row in PA or nationwide ('DuBois', 'Dubois', 'DuBois Logistics': 0). The DuBois closure of 110 (effective 2026-01-31) is not held."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-11-01-pottstown-hospital",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Pottstown Hospital",
+      "notice_date": "2025-11-01",
+      "stated_job_count": 131,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136561
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-11-01-pottstown-hospital@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136561 (source warn, PA): exact — 131, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-01-01 is a date the state published as effective for this notice; the notice date 2025-11-01 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 176699 (Pottstown Hospital, LLC., 160, 2026-09-28) is the state's separate July 2026 notice (2026 > July > accordion item 15) and is not this event."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-12-01-adare-pharmaceuticals",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Adare Pharmaceuticals, Inc.",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 137,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row for Adare anywhere in the tracker (nationwide query 'Adare': 0), so the Philadelphia closure of 137 (effective 2026-03-01) is not held. Same employer missed in two states in the same month; stage not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-12-01-giant",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "GIANT Company, LLC",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 204,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136136,
+        136049
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-12-01-giant@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136136 (source warn, PA): exact — 128 is one of the 2 rows the state published under this notice (total 204). Dates: agree on the EFFECTIVE basis — our 2026-02-13 is a date the state published as effective for this notice; the notice date 2025-12-01 is 74 day(s) earlier. Row 136049 (source warn, PA): exact — 76 is one of the 2 rows the state published under this notice (total 204). Dates: agree on the EFFECTIVE basis — our 2026-02-27 is a date the state published as effective for this notice; the notice date 2025-12-01 is 88 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-12-01-s-s-activewear",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "S&S Activewear",
+      "notice_date": "2025-12-01",
+      "stated_job_count": 128,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "rejected_tracker_row_ids": [
+        139254
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "reject",
+      "ledger_entry_id": "warn-pa-2025-12-01-s-s-activewear@2026-09-16T12:24:38Z",
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "Row 139254 (S&S Activewear, 218, effective 2025-04-09) is Pennsylvania's February 2025 notice for the same Lewisberry site (2025 > February > accordion item 142) and is not this event. This reference event is the December 2025 notice of 128 workers (effective 2025-12-04) and we hold no row for it: a miss. Stage within the collector not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-01-01-amazon-fresh",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Amazon Fresh",
+      "notice_date": "2026-01-01",
+      "stated_job_count": 983,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135412
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-01-01-amazon-fresh@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135412 (source warn, PA): exact — 983, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-04-28 is a date the state published as effective for this notice; the notice date 2026-01-01 is 117 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-01-01-miller-s-ale-house",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Miller’s Ale House",
+      "notice_date": "2026-01-01",
+      "stated_job_count": 49,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135782
+      ],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder",
+        "defect_masked_match"
+      ],
+      "note": "Held: row 135782 \"Miller's Ale House\", 49 jobs exact, effective 2026-03-30 exact, PA WARN. DEFECT-MASKED MATCH: the state publishes a typographic apostrophe (U+2019) and we store a straight one (U+0027); every query term carried the curly form and the /query company filter found nothing. The match stands; the apostrophe normalisation is a separate finding (both the tracker's query filter and the reference set's alias derivation)."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-02-01-bpm",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "BPM Limited",
+      "notice_date": "2026-02-01",
+      "stated_job_count": 248,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row for BPM anywhere ('BPM', 'BPM Limited': 0). FRAME NOTE: Pennsylvania lists BPM Limited twice, January 2026 (148, Chesterbrook, effective 2026-03-29) and this February 2026 entry (248, same effective date, location text '**UPDATED TO REVISE AFFECTED TOTAL**'); the February entry is an amendment of the January notice, so the frame holds one closure as two events. We hold neither, so this is a miss either way."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-02-01-post-consumer-brands",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Post Consumer Brands, LLC",
+      "notice_date": "2026-02-01",
+      "stated_job_count": 11,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135281
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-02-01-post-consumer-brands@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135281 (source warn, PA): exact — 11, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-01 is a date the state published as effective for this notice; the notice date 2026-02-01 is 89 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-03-01-federal-express",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Federal Express Corporation",
+      "notice_date": "2026-03-01",
+      "stated_job_count": 63,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135251
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-03-01-federal-express@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135251 (source warn, PA): exact — 63, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-03-01 is 62 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-03-01-pharmacann",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "PharmaCann, Inc.",
+      "notice_date": "2026-03-01",
+      "stated_job_count": 60,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135113
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-03-01-pharmacann@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135113 (source warn, PA): exact — 60, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-20 is a date the state published as effective for this notice; the notice date 2026-03-01 is 80 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-04-01-advantest",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Advantest, Inc.",
+      "notice_date": "2026-04-01",
+      "stated_job_count": 55,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        134613
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-04-01-advantest@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 134613 (source warn, PA): exact — 55, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-06-30 is a date the state published as effective for this notice; the notice date 2026-04-01 is 90 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-04-01-lns-chipblaster",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "LNS Chipblaster",
+      "notice_date": "2026-04-01",
+      "stated_job_count": 67,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        133970
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-04-01-lns-chipblaster@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 133970 (source warn, PA): exact — 67, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-09-30 is a date the state published as effective for this notice; the notice date 2026-04-01 is 182 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-05-01-dometic",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Dometic",
+      "notice_date": "2026-05-01",
+      "stated_job_count": 89,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No PA row for Dometic ('Dometic' in PA: 0). Nationwide we hold Dometic Corporation TX (54, 2026-01-12) and IN (2020, 2022) and three ERM rows; none is the Limerick PA closure of 89 (effective 2026-09-21)."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-05-01-juvenile-justice-center-of",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "Juvenile Justice Center of Philadelphia",
+      "notice_date": "2026-05-01",
+      "stated_job_count": 17,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row in PA or nationwide ('Juvenile', 'Juvenile Justice': 0). The Philadelphia closure of 17 (effective 2026-04-30) is not held."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-06-01-american-expediting-logistics",
+      "stratum": "primary",
+      "state": "PA",
+      "employer_published": "American Expediting Logistics, LLC",
+      "notice_date": "2026-06-01",
+      "stated_job_count": 86,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No row in PA or nationwide ('Expediting', 'American Expediting': 0). The Media PA closure of 86 (effective 2026-06-04) is not held."
+    },
+    {
+      "reference_row_id": "warn-il-2026-01-28-amazon-fresh",
+      "stratum": "large_census",
+      "state": "IL",
+      "employer_published": "Amazon Fresh",
+      "notice_date": "2026-01-28",
+      "stated_job_count": 1545,
+      "verdict": "MISSED",
+      "tracker_row_ids": [],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": "UNKNOWN",
+      "flags": [
+        "no_row_held"
+      ],
+      "note": "No Illinois Amazon Fresh row at any date ('Amazon' in IL returns only a 2024 fulfillment-centre row; 'Fresh' in IL returns other employers; 'Amazon Fresh' nationwide returns PA 983, WA 125 and a 2023 news row). The January 2026 Illinois notice of ten store closings totalling 1,545 workers is not held in any form. The largest miss in the set; the sibling Pennsylvania Amazon Fresh notice of the same programme (983) IS held. Stage not observable from a public read."
+    },
+    {
+      "reference_row_id": "warn-il-2026-02-05-franciscan-alliance",
+      "stratum": "large_census",
+      "state": "IL",
+      "employer_published": "Franciscan Alliance, Inc.",
+      "notice_date": "2026-02-05",
+      "stated_job_count": 1864,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136173,
+        136174
+      ],
+      "recorded_in_ledger": false,
+      "ledger_decision": null,
+      "ledger_entry_id": null,
+      "miss_cause": null,
+      "flags": [
+        "match_unrecordable_by_recorder"
+      ],
+      "note": "Held, both component rows: 136173 'Franciscan Health Olympia Fields' 1,535 (Olympia Fields) and 136174 'Specialty Physicians of Illinois, LLC' 329 (Chicago Heights), both IL WARN dated 2026-02-05 = the notice date, summing to the notice total 1,864. The state publishes the parent 'Franciscan Alliance, Inc.' with the dba in a separate column; we store the dba. The pack's 'No row of any kind, at any date, for this employer' is wrong for this event (same pack wording defect as Claire's)."
+    },
+    {
+      "reference_row_id": "warn-il-2026-05-04-ideal-talent-worker-opco",
+      "stratum": "large_census",
+      "state": "IL",
+      "employer_published": "Ideal US Talent Worker OpCo LLC",
+      "notice_date": "2026-05-04",
+      "stated_job_count": 1395,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135233
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-il-2026-05-04-ideal-talent-worker-opco@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135233 (source warn, IL): exact — 1,395, the whole notice. Dates: agree on the NOTICE basis — our 2026-05-04 is the notice date; the state published effective 2026-07-01. Employer name: we store the employer as 'Ideal US Talent Systems Worker Opco LLC'; the state publishes it as 'Ideal US Talent Worker OpCo LLC'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2025-11-01-crothall-and-morrison-healthcare",
+      "stratum": "large_census",
+      "state": "PA",
+      "employer_published": "Crothall and Morrison Healthcare",
+      "notice_date": "2025-11-01",
+      "stated_job_count": 795,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        136211
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2025-11-01-crothall-and-morrison-healthcare@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 136211 (source warn, PA): exact — 795, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-11-01 is 92 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-03-01-liberty-home-choices",
+      "stratum": "large_census",
+      "state": "PA",
+      "employer_published": "Liberty Home Choices",
+      "notice_date": "2026-03-01",
+      "stated_job_count": 615,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        135077
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-03-01-liberty-home-choices@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 135077 (source warn, PA): exact — 615, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-05-24 is a date the state published as effective for this notice; the notice date 2026-03-01 is 84 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    },
+    {
+      "reference_row_id": "warn-pa-2026-06-01-jbs-souderton",
+      "stratum": "large_census",
+      "state": "PA",
+      "employer_published": "JBS Souderton",
+      "notice_date": "2026-06-01",
+      "stated_job_count": 1485,
+      "verdict": "MATCHED",
+      "tracker_row_ids": [
+        134165
+      ],
+      "recorded_in_ledger": true,
+      "ledger_decision": "accept",
+      "ledger_entry_id": "warn-pa-2026-06-01-jbs-souderton@2026-09-16T12:24:38Z",
+      "miss_cause": null,
+      "flags": [],
+      "note": "Row 134165 (source warn, PA): exact — 1,485, the whole notice. Dates: agree on the EFFECTIVE basis — our 2026-08-14 is a date the state published as effective for this notice; the notice date 2026-06-01 is 74 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce."
+    }
+  ]
+}
