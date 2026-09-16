@@ -1,0 +1,70 @@
+name: VPS watch
+
+# Runs OFF the Contabo box, on a GitHub-hosted runner, so it can still speak
+# when the box cannot. Hourly it asks the GitHub API whether each of the
+# three repositories' `atr-runner-*` runner is online, and whether
+# vps-heartbeat.yml's most recent run is under two hours old and green. A box
+# that is up but whose heartbeat stopped is also a fault.
+#
+# Every fault is ONE deduped email through railway/ops_notify.py, keyed
+# `vps:offline:<repo>` or `vps:heartbeat-stale`, with RECOVERED once when it
+# clears. The open/resolved ledger is railway/alert_state.json and the claim
+# is COMMITTED BEFORE THE SEND (ALERT_STATE_COMMIT), the same as ci-alert.yml,
+# so two racing runs cannot both mail one cause. That is why this job has
+# contents: write and a git identity.
+#
+# A GitHub API error is UNKNOWN: nothing raised, nothing resolved, exit 3.
+# A fault exits 0, because the email has already gone through the ledger and
+# a red run here would make ci-alert.yml mail the same cause a second time.
+#
+# No pip install. vps_watch.py, ops_notify.py, ci_alert.py, alert_state.py and
+# opsmail.py are stdlib-only, so the watchdog cannot be broken by dependency
+# resolution. The `gh` CLI is preinstalled on ubuntu-latest.
+
+on:
+  schedule:
+    - cron: '27 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Read and print, send nothing, record nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # commit the alarm claim to railway/alert_state.json
+  actions: read     # runner registrations and workflow runs, all three repos
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Identify the committer
+        run: |
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+
+      - name: Read the runners and the heartbeat
+        working-directory: railway
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+          ALERT_STATE_COMMIT: '1'
+          # The repo token cannot read another repository's runners. This
+          # is a fine-grained PAT with Administration: read on the three
+          # repos (runner registrations are an admin-scoped read). Without it
+          # the other two repos read UNKNOWN, never a pass.
+          GH_TOKEN: ${{ secrets.VPS_WATCH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python3 vps_watch.py ${DRY:-}
