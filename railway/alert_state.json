@@ -72,6 +72,11 @@
       "last": 1789306127,
       "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
     },
+    "merge-train:main:9ad58029cf7f0cb6": {
+      "first": 1789572956,
+      "last": 1789572956,
+      "subject": "CI RED: Merge train \u2014 You are not logged into any GitHub hosts. To log in, run: gh auth login"
+    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -98,6 +103,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-16T13:35:24+00:00",
+  "updated_at": "2026-09-16T15:35:56+00:00",
   "version": 1
 }
