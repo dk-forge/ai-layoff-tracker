@@ -147,15 +147,25 @@ is a judgement call. **Adjudicate, do not assume.**
 | published (announced basis) | **86,035** | as live on 2026-09-16 |
 | less row 176990 (Aeternum / HHS) | −20,000 | unambiguous, verified against the primary filing |
 | less one LAUSD copy | −6,000 | unambiguous, identical article URL |
-| **after the proven corrections** | **60,035** | |
+| **after the proven corrections** | **60,035** | entries 354 → 352 |
 | *less the Meta WA superset, if adjudicated as one event* | *−1,395* | *not applied* |
 | *less the RI misparse, if adjudicated* | *up to −9,889* | *not applied* |
 
-On the `notice` basis the same two rows are worth the same 26,000, taking
-**56,023 → 30,023**.
+**The two bases are not affected equally, and this is worth stating carefully.**
+Row 176990 is *not* in the `notice`-basis July set at all: on that basis it is
+dated by its `announcement_date` of 2025-03-27 and lands in March **2025**. So
+on the `notice` basis only the LAUSD duplicate applies, taking **56,023 →
+50,023** (entries 287 → 286).
 
-Hypothesis A therefore explains **26,000 jobs of the July figure with certainty,
-and up to 37,284 if both open questions resolve against the stored values.**
+That asymmetry is itself a finding. The same row is simultaneously a 20,000-job
+July event on one published basis and a March-2025 event on the other, because
+its two date fields describe two different things — which is what a row whose
+number was lifted from a third party's press language looks like from the
+outside.
+
+Hypothesis A therefore explains **26,000 jobs of the July announced figure with
+certainty (6,000 of the notice figure), and up to 37,284 announced if both open
+questions resolve against the stored values.**
 
 ---
 
@@ -258,7 +268,8 @@ defect a correction clears and a unit suite cannot act on. The daily
    `railway/correction_specs/2026-09-16-july-us-overcount.json`. Both are
    `trash` actions through `apply_correction.py`, which suppresses the dedup
    hash so the nightly re-scrape cannot resurrect them. Needs `WP_API_KEY`.
-   Expected result: July announced 86,035 → 60,035, notice 56,023 → 30,023.
+   Expected result: July announced 86,035 → 60,035 (entries 354 → 352), notice
+   56,023 → 50,023 (entries 287 → 286).
 2. **Adjudicate the two open rows** (134521 RI misparse, 70479/134376 Meta WA)
    through `adjudicate_row.py`'s two referees. Apply only on agreement; list
    disagreement for the owner. Both are UNKNOWN until then.
