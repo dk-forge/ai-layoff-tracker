@@ -138,6 +138,8 @@ FORBIDDEN = (
     "railway/headline_baseline.json",
     "railway/recall_adjudications.json",
     "railway/warn_recall_adjudications.json",
+    # Wave 2 has its OWN ledger, and a new file is not covered by an old name.
+    "railway/warn_recall_adjudications_wave2.json",
     "railway/deferral_ledger.json",
     # The copy standard and its ceiling. A sentence that overran the ceiling is
     # MECHANICAL and the healer should rewrite the sentence; the ceiling that

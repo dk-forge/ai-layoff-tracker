@@ -376,6 +376,17 @@ class InvariantCoverage(unittest.TestCase):
         # field values; the LIVE reading is data-integrity.yml, daily.
         "filing_shape_tells": ("test_filing_shape_guards",
                                "TheInvariantOnTheKnownInstances"),
+        # Delegated on the same trade as the two above, and for a defect of the
+        # same family one key further out. The Week 37 reader digest carried ONE
+        # Jaguar Land Rover event three times -- a Chinese-language name, the
+        # parent's possessive, the abbreviation -- across THREE outlets, so the
+        # url key above could not group them and every name-bucketed dedup
+        # upstream made three buckets. Whether it is failing live right now
+        # depends on whether the correction has run, which a unit suite must not
+        # depend on; the arming is proved offline on the live triple's own field
+        # values, and the LIVE reading is data-integrity.yml, daily, exit 2.
+        "same_event_many_spellings": ("test_same_event_many_spellings",
+                                      "TheInvariantContract"),
     }
 
     @staticmethod

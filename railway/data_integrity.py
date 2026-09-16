@@ -2497,6 +2497,275 @@ def duplicated_article_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES):
     return out
 
 
+#: The cross-spelling sweep's own window and page size. Shorter than the
+#: article sweep's 180d because this key is weaker: it does not hold a url, so
+#: a wider window buys coincidences rather than duplicates.
+SAME_EVENT_WINDOW_DAYS = 45
+SAME_EVENT_ROWS = 200
+
+#: Unicode ranges whose scripts carry no Latin letters, so a token comparison
+#: against a Latin spelling is not merely unreliable, it is undefined. Written
+#: from the live instance: a Chinese-language rendering of one employer.
+_NON_LATIN_RANGES = (
+    (0x0370, 0x03FF),   # Greek
+    (0x0400, 0x04FF),   # Cyrillic
+    (0x0590, 0x05FF),   # Hebrew
+    (0x0600, 0x06FF),   # Arabic
+    (0x0E00, 0x0E7F),   # Thai
+    (0x3040, 0x30FF),   # Hiragana, Katakana
+    (0x3400, 0x4DBF),   # CJK extension A
+    (0x4E00, 0x9FFF),   # CJK unified
+    (0xAC00, 0xD7AF),   # Hangul
+)
+
+#: Words that carry no employer identity, so they must not make two names look
+#: different (or an initialism look wrong).
+_NAME_NOISE = {
+    "the", "inc", "inc.", "llc", "ltd", "ltd.", "limited", "plc", "corp",
+    "corp.", "corporation", "company", "co", "co.", "group", "holdings",
+    "holding", "gmbh", "sa", "nv", "ag", "spa", "srl", "oy", "ab", "as",
+}
+
+
+def _name_tokens(name):
+    """Lowercased identity words of a company name, punctuation removed.
+
+    A possessive is stripped rather than kept, because "Tata Motors' Jaguar
+    Land Rover" and "Jaguar Land Rover" are the same employer named at two
+    levels of the corporate tree and the apostrophe is the only thing saying
+    so.
+    """
+    out = []
+    for raw in re.split(r"[^0-9A-Za-z\u00C0-\u024F]+", str(name or "")):
+        word = raw.strip().lower()
+        if word.endswith("'s"):
+            word = word[:-2]
+        if not word or word in _NAME_NOISE:
+            continue
+        out.append(word)
+    return out
+
+
+def _is_non_latin(name):
+    """True when a name carries a character from a non-Latin script."""
+    for ch in str(name or ""):
+        code = ord(ch)
+        for lo, hi in _NON_LATIN_RANGES:
+            if lo <= code <= hi:
+                return True
+    return False
+
+
+def _initialism_of(short, long_tokens):
+    """True when `short` is the initialism of `long_tokens`.
+
+    "JLR" against ["jaguar", "land", "rover"]. Two letters is the floor: a
+    single letter matches far too much to mean anything.
+    """
+    letters = "".join(ch for ch in str(short or "").lower() if ch.isalpha())
+    if len(letters) < 2 or len(long_tokens) < 2:
+        return False
+    return letters == "".join(t[0] for t in long_tokens)
+
+
+def names_may_be_one_employer(a, b):
+    """Whether two spellings can be the same employer, and why.
+
+    Returns a reason string, or None when the two names give no reason to be
+    compared. THREE BRANCHES, each written from one of the three spellings in
+    the live instance this exists for:
+
+      initialism  -- "JLR" is the initialism of "Jaguar Land Rover".
+      contains    -- "Tata Motors' Jaguar Land Rover" carries every identity
+                     word of "Jaguar Land Rover"; the parent's possessive is a
+                     second name for one subsidiary's event.
+      script      -- a non-Latin rendering cannot be token-compared with a
+                     Latin one at all. It is reported on the strength of the
+                     count and the date alone, and the reason SAYS so, because
+                     that is the weakest of the three and a reviewer must know
+                     which branch put a pair in front of them.
+
+    Identical names return None: two rows under ONE spelling are the ordinary
+    duplicate the existing url key already sees, and reporting them here would
+    make two checks argue over one row.
+    """
+    ta, tb = _name_tokens(a), _name_tokens(b)
+    if ta and tb and ta == tb:
+        return None
+    if _is_non_latin(a) != _is_non_latin(b):
+        return ("one name is written in a non-Latin script, so the two cannot "
+                "be compared as words; count and date are the only signal")
+    if _initialism_of(a, tb):
+        return f"{str(a).strip()!r} is the initialism of {str(b).strip()!r}"
+    if _initialism_of(b, ta):
+        return f"{str(b).strip()!r} is the initialism of {str(a).strip()!r}"
+    if ta and tb:
+        sa, sb = set(ta), set(tb)
+        if sa < sb or sb < sa:
+            inner, outer = (a, b) if sa < sb else (b, a)
+            return (f"{str(outer).strip()!r} carries every identity word of "
+                    f"{str(inner).strip()!r}")
+    return None
+
+
+def same_event_under_many_spellings(rows, register_types=REGISTER_URL_SOURCE_TYPES):
+    """Rows that are ONE event stored under several spellings of one employer.
+
+    THE KEY IS (job_count, layoff_date) AND HOLDS NO URL. That is the whole
+    point, and it is why this is a second check rather than a widening of
+    `duplicated_article_rows`. That one keys on (source_url, job_count) and so
+    can only see a duplicate whose rows cite the SAME article. The live
+    instance this is written from cites three different outlets: one Jaguar
+    Land Rover event carried into the Week 37 digest three times, under a
+    Chinese-language name, under the parent's possessive and under the
+    abbreviation, inflating the week's total by about 8,000 jobs and the
+    Automotive figure with it. Three urls, so the url key was blind to it, and
+    three spellings, so every name-bucketed dedup upstream was blind too.
+
+    COUNT AND DATE ALONE ARE NOT ENOUGH AND ARE NOT USED ALONE. Two different
+    employers really can cut the same number on the same day. A group is only
+    reported when some pair of its names is related by
+    `names_may_be_one_employer`, and the reported reason names the branch.
+
+    Register-sourced rows are exempt for the reason WARN rows are exempt from
+    fuzzy dedup everywhere else in this repo: an employer may legally file
+    several notices for one event, and those are not duplicates.
+
+    Rows already joined under one `event_id` are one observation by
+    construction and are not reported.
+
+    Pure: no network, no keys. Groups worst-excess first, where excess is what
+    a sum carries beyond a single copy.
+    """
+    buckets = {}
+    for row in rows or ():
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("source_type") or "").lower() in register_types:
+            continue
+        when = str(row.get("layoff_date") or "").strip()
+        if not when:
+            continue
+        try:
+            jobs = int(row.get("job_count") or 0)
+        except (TypeError, ValueError):
+            continue
+        if jobs <= 0:
+            continue
+        buckets.setdefault((jobs, when), []).append(row)
+
+    out = []
+    for (jobs, when), members in buckets.items():
+        if len(members) < 2:
+            continue
+        if len({m.get("event_id") for m in members}) < 2:
+            continue
+        reasons = []
+        seen = set()
+        for i, left in enumerate(members):
+            for right in members[i + 1:]:
+                if left.get("event_id") == right.get("event_id"):
+                    continue
+                why = names_may_be_one_employer(left.get("company_name"),
+                                                right.get("company_name"))
+                if why and why not in seen:
+                    seen.add(why)
+                    reasons.append(why)
+        if not reasons:
+            continue
+        out.append({
+            "job_count": jobs,
+            "layoff_date": when,
+            "rows": sorted(members, key=lambda m: str(m.get("id"))),
+            "reasons": reasons,
+            "excess": jobs * (len(members) - 1),
+        })
+    out.sort(key=lambda g: (-g["excess"], g["layoff_date"]))
+    return out
+
+
+class SameEventManySpellingsInvariant:
+    """One event may not be counted once per spelling of its employer.
+
+    WHAT IT ASSERTS. Over the largest rows of a trailing window, read from the
+    same superset-deduped population the headline sums: no two of them carry
+    one job_count on one layoff_date under names that can be the same employer.
+
+    WHY IT IS A SECOND CHECK AND NOT A WIDER FIRST ONE. `DuplicateArticleRows`
+    keys on the article url, so it sees a duplicate only when both rows cite
+    the same page. The Week 37 Jaguar Land Rover triple cited three different
+    outlets under three spellings, which is invisible to a url key and equally
+    invisible to every name-bucketed dedup upstream. The two checks are blind
+    in opposite directions on purpose; neither subsumes the other.
+
+    MISSING DATA IS NOT A PASS. An unreadable body, no rows, or a page that
+    does not reach its own stated total is UNKNOWN, named as such.
+    """
+
+    key = "same_event_many_spellings"
+    label = "One event, one row, whatever the employer is called"
+    reads_live_data = True
+
+    WINDOW_DAYS = SAME_EVENT_WINDOW_DAYS
+    ROWS = SAME_EVENT_ROWS
+
+    def run(self, ctx):
+        since = ctx.today - timedelta(days=self.WINDOW_DAYS)
+        params = {"from": since.isoformat(), "to": ctx.today.isoformat(),
+                  "sort": "job_count", "dir": "desc",
+                  "per_page": self.ROWS, "page": 1,
+                  "exclude_supersets": 1, "cb": ctx.cachebust}
+        url = BASE + "query?" + urllib.parse.urlencode(params)
+        try:
+            payload = json.loads(ctx.fetch(url, ctx.timeout)) or {}
+        except urllib.error.HTTPError as exc:
+            why = ("site is in its deploy maintenance window (HTTP 503)"
+                   if exc.code == 503 else f"/query returned HTTP {exc.code}")
+            return Result(self, UNKNOWN, detail=why, error=exc)
+        except Exception as exc:
+            return Result(self, UNKNOWN,
+                          detail=f"could not read /query ({exc})", error=exc)
+
+        rows = payload.get("data")
+        if not isinstance(rows, list) or not rows:
+            return Result(self, UNKNOWN,
+                          detail="/query returned no rows for the window — this check "
+                                 "did not run, which is not the same as finding nothing")
+        counts = []
+        for row in rows:
+            try:
+                counts.append(int((row or {}).get("job_count") or 0))
+            except (TypeError, ValueError):
+                pass
+        floor = min(counts) if counts else 0
+        try:
+            total = int(payload.get("total") or 0)
+        except (TypeError, ValueError):
+            total = 0
+        scope = (f"{len(rows)} largest of {total:,} rows in the last "
+                 f"{self.WINDOW_DAYS}d, down to {floor:,} jobs")
+
+        groups = same_event_under_many_spellings(rows)
+        if groups:
+            worst = groups[0]
+            ids = ", ".join(str(r.get("id")) for r in worst["rows"])
+            names = " / ".join(sorted({str(r.get("company_name") or "?")
+                                       for r in worst["rows"]}))
+            excess = sum(g["excess"] for g in groups)
+            return Result(self, FAIL, observed=excess,
+                          detail=f"{len(groups)} event(s) counted once per spelling, "
+                                 f"{excess:,} jobs of excess in the headline. Worst: rows "
+                                 f"{ids} each carry {worst['job_count']:,} jobs on "
+                                 f"{worst['layoff_date']} as {names} — {worst['reasons'][0]}. "
+                                 f"Verify against the sources, then correct through the "
+                                 f"machinery (RUNBOOK: a published row is wrong) — never "
+                                 f"by hand ({scope})")
+        return Result(self, PASS, observed=0,
+                      detail=f"no event is counted under two spellings ({scope}); a "
+                             f"duplicate below {floor:,} jobs is outside this sweep and "
+                             f"is NOT claimed clean")
+
+
 class DuplicateArticleInvariant:
     """One article reporting one number may not be counted twice.
 
@@ -2665,6 +2934,14 @@ INVARIANTS = (
     # one article, 7% each of a headline bounded at far more. This one asks
     # that question, on a key that holds no company name at all.
     DuplicateArticleInvariant(),
+    # And DuplicateArticleInvariant keys on the ARTICLE, so it sees a duplicate
+    # only when both rows cite the same page. The Week 37 Jaguar Land Rover
+    # triple cited three outlets under three spellings -- a Chinese-language
+    # name, the parent's possessive and the abbreviation -- which is invisible
+    # to a url key and equally invisible to every name-bucketed dedup upstream.
+    # This one keys on (job_count, layoff_date) and holds no url. The two are
+    # blind in opposite directions on purpose; neither subsumes the other.
+    SameEventManySpellingsInvariant(),
     MovementInvariant(),
     # The movement guard measures a headline's move against how many ROWS
     # ARRIVED, and a re-scoring moves a headline while nothing arrives. This one
