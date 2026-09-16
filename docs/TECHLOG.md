@@ -50,6 +50,129 @@ register is not downloaded, the frame is not enumerated and the tracker is not
 queried. Section 8 lists the five steps for a session with egress, and the editor
 still decides every row.
 
+## 2026-09-16 - Four of seventy-nine countries can carry the word "recall", and now a test says so
+
+**Class:** novel
+**Guard:** `railway/tests/test_worldwide_claim_matrix.py`
+
+A measurement brief asked for per-country samples across the world. Most
+countries cannot carry one, and the reason is a property of what their
+authority publishes rather than anything about our collectors. Answering that
+one country at a time, by hand, is how a wrong answer gets typed into a launch
+surface and quoted for months - the exact defect the cadence work of 2026-08-14
+and the US jurisdiction registry of 2026-09-15 both punished.
+
+`railway/worldwide_claim_matrix.py` derives the answer instead, from this repo's
+own committed, dated assessments in `country_coverage.py`, and writes
+`docs/recall-reference-sets/WORLDWIDE-CLAIM-MATRIX.md`. Four tiers:
+
+- EVENT_RECALL - a register NAMES the employer, so the denominator is a set of
+  identifiable events. **4 countries.**
+- OFFICIAL_SHARE - a periodic aggregate exists, so our total over it is a SHARE
+  and never recall. **19.**
+- DISCOVERY_ONLY - a regime with no complete periodic count, or no regime at
+  all. Nothing beyond discovery is provable. **50.**
+- REFUSED - the publisher declines automated access. **6.**
+
+**Four of seventy-nine.** That is the number the launch needs and it is a fact
+about the world's disclosure regimes, not a shortfall here. The four are US
+state WARN units, Quebec, Mazowieckie and the Illes Balears; the first three are
+ingested and Balears is not, which bounds what may be claimed from it.
+
+The tier order is load-bearing in one non-obvious way: a REFUSAL outranks a
+known aggregate. France demonstrably has the figure and blocks us, and the point
+of the refusal ledger is that such a figure is not ours to take - so it must not
+be promoted to OFFICIAL_SHARE just because we know it exists.
+
+A test pins the rule rather than the rendering: nothing reaches EVENT_RECALL
+without a register that names employers, a masked-identifier register never
+does (Euskadi, settled by download - a masked CIF on 216 of 216 rows), an
+aggregate never yields the word recall, and the matrix carries no collection
+timestamp as data, because "did the collector run?" and "could a number exist?"
+are different questions and a dashboard that mixes them makes a stale source
+and an unmeasurable country look alike.
+
+No network, no model, $0.00. The generator reads two committed Python
+structures and writes Markdown.
+
+## 2026-09-16 - US WARN recall goes from four states to seven, and the frame was wrong in a way that read as a result
+
+**Class:** novel
+**Guard:** `railway/tests/test_warn_reference_set_wave2.py`, `railway/tests/test_warn_recall_pooled.py`
+
+Wave 1 of the US WARN reference set (CA/TX/FL/TN, 99 of 100 editor-confirmed)
+said in its own definition, before it measured anything, that it had no Midwest
+and no Northeast state because NY, PA, IL, OH, MI, NJ and MA were each excluded
+by the format of their own publication, and that its figure was therefore an
+optimistic bound on national WARN recall. Nothing measured that.
+
+A live re-probe of the four largest excluded states on 2026-09-16 admitted
+three. **None flipped because a rule was softened; each flipped because the
+probe went somewhere wave 1's probe did not.** PA's recorded verdict was against
+a URL that 404s, and the live page under `workforce-development-home/` is fully
+server-side rendered, 2023 to 2026. Illinois publishes a monthly WARN report
+XLSX for every month since 1999, behind the dashboard wave 1 stopped at. Ohio's
+index pages are still a hard 404 to a plain browser UA - a month-old, unreported
+breakage of Ohio's own WARN index, reported again here - while its per-year CSVs
+on the state asset host resolve. **A 404 is not evidence about a publisher, and
+treating it as one cost this measurement a state for a month.**
+
+New York is still out and the evidence is fresher than wave 1's: the legacy list
+is frozen at 2025-04-01, three months before the window opens, and the Tableau
+workbook wave 1 could at least download now returns 404 as well. The third
+largest labour market in the country publishes no machine-readable WARN list to
+anyone without a BI tool. That is recorded as a finding about a publisher.
+
+**The defect worth the entry is this one.** Pennsylvania renders the year
+heading as `<h2 class="cmp-accordion__main-heading--large">2025</h2>` for 2026
+and 2025 and as a bare `<h2>2024</h2>` for 2024 and 2023. The first parse matched
+only the classed form, so every 2024 and 2023 notice inherited `year = 2025`:
+PA's in-window frame filled to 147 events with notices from one and two years
+earlier, and the measurement came back **PA 36%**. It looked like a coverage
+finding. The "missed" rows were in the table with the published headcount exactly
+right - CVS Health 157, AMES 57, Sodexo 83, Joriki 226 - each stored against an
+effective date in 2023 or 2024, because that is when those notices were.
+**A frame that is wrong in a way that reads as a result is worse than a frame
+that fails**, and no guard anywhere in this repo watches a reference frame.
+
+What caught it was a field the definition had already decided to capture as
+evidence and never as a basis: PA's per-item CMS `repo:modifyDate`. An entry
+filed under August 2025 whose CMS record was authored 2024-09-19 cannot be an
+August 2025 notice. That is now `_pa_year_month_is_sane`, one-sided on purpose
+(an entry may be edited long after its month and cannot be authored long before
+it) and judged on the median so one re-published old entry cannot trip it.
+Corrected frame: 79 events, bound 64%.
+
+A second self-inflicted one, same shape, opposite direction: the Ohio
+transcription check had two states and called 17 of 25 notices `disagrees`.
+Every one was the checker's own blind spot - a WARN notice is a letter, the
+employer is usually a letterhead image and the total is usually a per-title
+table, and three of those PDFs have no text layer at all. Four states now, and
+**no transcription disagreement was found**.
+
+**Results, and what may be said about them.** Wave 2 is NOT adjudicated: its
+editor-confirmed numerator is zero by construction, which is where wave 1 stood
+the day before the owner went through it. Machine upper bound 61 of 75 (81.3%,
+Wilson [71.1%, 88.5%]); IL 21/25, OH 24/25, PA 16/25; census 4 of 6. Sixteen
+unmatched events: **five are rows we already hold** that the strict token-prefix
+alias could not reach, and one of those five is a real tracker defect - row
+135258's `company_name` literally begins with the word `UPDATE`, because our
+Ohio importer stores the state's amendment marker while the reference side cuts
+it. The other eleven are UNKNOWN and stay UNKNOWN: which of `walked_not_read`,
+`fetched_rejected` or `extracted_dropped` applies is a statement about a
+collector's own output that a public read cannot see. What the evidence does
+rule out is a collection outage - the held WARN series is continuous in all
+three states across every month judged.
+
+Every figure in the results document is GENERATED from the committed
+measurements by `warn_recall_pooled.py`, on the `test_cadence_is_derived`
+precedent, and the staleness guard is proved by mutation rather than by a clean
+run. Wave 1's build, measure, summarise and pack were parameterised rather than
+copied - two waves whose unit of measurement drifted apart could not be pooled
+at all - and verified byte-identical against wave 1's committed measurement
+first. Wave 1's manifest, adjudications and 99/100 are untouched, and the SEC
+set's files are unreachable from any of this. $0.00: no model was called.
+
 ## 2026-09-16 - Per-request plugin work is cheap again: the build stamp is cached by what is on disk, and a page that exists is not looked up forever (2.20.197)
 
 **Class:** novel. None of the slugs in docs/INCIDENT_CLASSES.md names this shape: work that is correct, bounded and idempotent, repeated on every request because nothing records that it was done. Candidate slug: `never-recorded-done`.

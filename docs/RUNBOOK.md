@@ -2103,6 +2103,50 @@ lines below the headcount floor were being counted as coverage misses. The
 denominator admits only items with a parseable headcount and employer; the
 lesson histogram is deliberately wider.
 
+## Re-run the US WARN reference set (either wave)
+
+Two frozen sets over the same twelve months, 2025-07-01 to 2026-06-30, counted
+on the published notice date. Wave 1 is **CA/TX/FL/TN and is adjudicated**
+(99 of 100 editor-confirmed, owner `Dakotta`, 2026-08-14). Wave 2 is
+**IL/OH/PA and is NOT** - its editor-confirmed numerator is zero by
+construction and it has a machine upper bound and a queue.
+
+```bash
+python3 railway/warn_reference_set.py --measure          # wave 1, frozen set vs live API
+python3 railway/warn_reference_set_wave2.py --build      # wave 2, re-enumerate + redraw
+python3 railway/warn_reference_set_wave2.py --measure
+python3 railway/warn_reference_set_wave2.py --pack       # the per-row adjudication sheet
+python3 railway/warn_miss_causes.py --classify           # a cause per unmatched event
+python3 railway/warn_recall_pooled.py --render           # regenerate every published figure
+```
+
+**Do these three things in this order and do not skip the last one.** A
+`--measure` that moves a number leaves the results document stale until
+`--render` runs, and `railway/tests/test_warn_recall_pooled.py` will redden CI
+saying exactly that. It is not a flaky test; it is the point.
+
+**Never type a WARN recall figure into a document.** Everything in
+`US-WARN-WAVE2-RESULTS-2026-09.md` between the `BEGIN DERIVED` / `END DERIVED`
+markers is generated. Edit the measurement, not the markdown.
+
+**The machine bound is not recall and must never be quoted as one.** Only an
+editor may promote a candidate, through `railway/warn_adjudicate.py`, with a
+reviewer name, a reason and the row id. Until that happens a wave's confirmed
+figure is 0 of n, and that zero is an absence of review rather than an absence
+of coverage - the derived block says so in words for exactly this reason.
+
+**A frame that is short is a bug, not a smaller denominator.** All three wave-2
+readers raise rather than return a partial frame: Illinois if the archive index
+does not offer all twelve months, Ohio if a per-year CSV does not resolve, and
+Pennsylvania if a month bucket holds notices its own CMS authored long before it
+(the guard that caught a 36% figure which was really a mis-parented year -
+TECHLOG 2026-09-16). **Do not answer any of the three by widening a tolerance.**
+
+New York is deliberately not in either set. Its current WARN list is a Tableau
+Public embed and its legacy database is frozen at 2025-04-01; the reason is in
+`US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md` §2 and the `vizql` route is not
+called.
+
 ## "Would we find them if we searched every major city?" (the city recall sweep)
 
 `railway/city_recall_sweep.py` is the THIRD recall probe and the same kind of

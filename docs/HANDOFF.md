@@ -16,18 +16,39 @@ holder, so the start-of-session ritual surfaces it automatically.
   Shipped as PRs #369 (findings + correction spec) and #370 (the guard),
   neither merged. Editing finished; this baton is NOT held.
 
-- **HELD by Claude, 2026-09-16, US WARN recall wave 2 (NY/IL/OH/PA).**
+- **RELEASED — Claude, 2026-09-16, US WARN recall wave 2 (IL/OH/PA). Work complete.**
   Worktree: `/tmp/wt-recall`; branch: `measure/us-recall-ny-il-oh-pa`, based on
   `origin/main`. **No plugin file is touched and no plugin version is
   reserved**, and no workflow file is touched either, so this cannot collide
   with the still-open `ci/host-jobs-run-on-the-vps` branch above. Taken under
   the owner's explicit instruction for this task; the entry below it reads as
   a closeout of the 2026-09-13 session (protocol step 4, takeover noted here).
-  Scope: build blinded reference sets for four more US states against their own
-  official WARN publications, following
-  `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`. Read-only
-  GETs to state agencies and to the public `/query` read API only; $0.00 of
-  model spend; nothing is merged and nothing deploys.
+  Scope was four more US states against their own official WARN publications,
+  following `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`.
+  Read-only GETs to state agencies and to the public `/query` read API only;
+  $0.00 of model spend; nothing merged and nothing deployed.
+
+  **Shipped as PR #371, NOT merged.** Three states in (IL, OH, PA); **New York
+  is out** and recorded with its evidence — its legacy WARN list is frozen at
+  2025-04-01, three months before the window opens, and the Tableau workbook
+  wave 1 could at least download now 404s, leaving only the undocumented
+  `vizql` route, which is not called.
+
+  **Wave 2 is NOT adjudicated and therefore has no recall figure.** Its
+  editor-confirmed numerator is zero by construction; the next step is an
+  editor through `railway/warn_adjudicate.py` on
+  `docs/recall-reference-sets/us-warn-wave2-adjudication-queue.md` — 65 events,
+  78 candidate rows, 16 with no candidate row. Machine upper bound (NOT recall)
+  61/75; IL 21/25, OH 24/25, PA 16/25.
+
+  **Two items the next session may want, both in the PR body and TECHLOG.**
+  (1) Row `135258`'s `company_name` literally begins with the word `UPDATE`,
+  because `sources/warn_custom.fetch_oh` stores Ohio's amendment marker; that is
+  a real tracker defect, not a matching-rule limit. (2) Ohio's own WARN index
+  pages have returned 404 to a plain browser UA since at least 2026-07-18 and
+  still do; our collector survives on the asset-host CSVs.
+
+  Editing finished; this baton is NOT held.
 - **Claude alongside, 2026-09-16, branch `fix/per-request-plugin-work-is-cheap` (PR #348), worktree `/tmp/wt-t348`.**
   Does NOT take the baton: the holder above touches no `wordpress-plugin/`
   file and no workflow, so this cannot collide with it. **Reserves plugin

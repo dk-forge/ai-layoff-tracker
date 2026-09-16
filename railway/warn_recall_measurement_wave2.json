@@ -1,0 +1,2446 @@
+{
+  "note": "Recall of the frozen US WARN reference set against the live API. The numerator is EDITOR-CONFIRMED ONLY; machine_* figures are an upper bound and must never be quoted as recall. This file is separate from the SEC Item 2.05 set's own measurement file on purpose \u2014 that published figure is not this set's business, and tests/test_warn_reference_set.py asserts no module here can reach it.",
+  "reference_set_id": "us-warn-il-oh-pa-2025-07_2026-06",
+  "definition_document": "docs/recall-reference-sets/US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md",
+  "measured_at": "2026-09-16T10:30:33Z",
+  "unreachable": 0,
+  "unreachable_events": [],
+  "results": {
+    "primary": [
+      {
+        "id": "warn-il-2025-07-14-compass",
+        "state": "IL",
+        "employer": "Compass Group",
+        "notice_date": "2025-07-14",
+        "stated_job_count": 73,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 111016,
+            "tracker_row_id": 138181,
+            "company_name": "Compass Group",
+            "job_count": 27,
+            "row_date": "2025-07-14",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-08-05-claires-stores",
+        "state": "IL",
+        "employer": "Claires Stores, Inc.",
+        "notice_date": "2025-08-05",
+        "stated_job_count": 46,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-il-2025-08-18-zeco-systems",
+        "state": "IL",
+        "employer": "Zeco Systems, Inc.",
+        "notice_date": "2025-08-18",
+        "stated_job_count": 6,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-il-2025-09-05-penske-logistics",
+        "state": "IL",
+        "employer": "Penske Logistics LLC",
+        "notice_date": "2025-09-05",
+        "stated_job_count": 37,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110502,
+            "tracker_row_id": 137667,
+            "company_name": "Penske Logistics LLC",
+            "job_count": 37,
+            "row_date": "2025-09-09",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 4 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-09-15-rising-pharma",
+        "state": "IL",
+        "employer": "Rising Pharma Holdings",
+        "notice_date": "2025-09-15",
+        "stated_job_count": 86,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "loose",
+            "tracker_event_id": 110472,
+            "tracker_row_id": 137637,
+            "company_name": "Rising Pharma Holdings, Inc.",
+            "job_count": 99,
+            "row_date": "2025-09-15",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count 99 matches neither a component row nor the notice total 86",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Rising Pharma Holdings, Inc.' differs from the published 'Rising Pharma Holdings'"
+            ]
+          }
+        ],
+        "machine_tier": "loose"
+      },
+      {
+        "id": "warn-il-2025-09-26-carolina-therapeutic-services",
+        "state": "IL",
+        "employer": "Carolina Therapeutic Services",
+        "notice_date": "2025-09-26",
+        "stated_job_count": 27,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110381,
+            "tracker_row_id": 137546,
+            "company_name": "Carolina Therapeutic Services",
+            "job_count": 27,
+            "row_date": "2025-09-26",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-10-01-chartwells-at-depaul-university",
+        "state": "IL",
+        "employer": "Chartwells at DePaul University",
+        "notice_date": "2025-10-01",
+        "stated_job_count": 138,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110278,
+            "tracker_row_id": 137443,
+            "company_name": "Chartwells at DePaul University",
+            "job_count": 138,
+            "row_date": "2025-10-01",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-10-08-fervalue",
+        "state": "IL",
+        "employer": "Fervalue USA LLC",
+        "notice_date": "2025-10-08",
+        "stated_job_count": 72,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110169,
+            "tracker_row_id": 137334,
+            "company_name": "Fervalue USA, LLC",
+            "job_count": 72,
+            "row_date": "2025-10-08",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Fervalue USA, LLC' differs from the published 'Fervalue USA LLC'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-10-23-winston-brands",
+        "state": "IL",
+        "employer": "Winston Brands, Inc.",
+        "notice_date": "2025-10-23",
+        "stated_job_count": 163,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110094,
+            "tracker_row_id": 137259,
+            "company_name": "Winston Brands, Inc.",
+            "job_count": 90,
+            "row_date": "2025-10-23",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          },
+          {
+            "tier": "exact",
+            "tracker_event_id": 110093,
+            "tracker_row_id": 137258,
+            "company_name": "Winston Brands, Inc.",
+            "job_count": 73,
+            "row_date": "2025-10-23",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-11-05-consolidated-hospitality-supplies",
+        "state": "IL",
+        "employer": "Consolidated Hospitality Supplies",
+        "notice_date": "2025-11-05",
+        "stated_job_count": 45,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109917,
+            "tracker_row_id": 137082,
+            "company_name": "Consolidated Hospitality Supplies, LLC",
+            "job_count": 45,
+            "row_date": "2025-11-05",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Consolidated Hospitality Supplies, LLC' differs from the published 'Consolidated Hospitality Supplies'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-11-14-pharmacann",
+        "state": "IL",
+        "employer": "PharmaCann, Inc.",
+        "notice_date": "2025-11-14",
+        "stated_job_count": 82,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109843,
+            "tracker_row_id": 137008,
+            "company_name": "PharmaCann, Inc.",
+            "job_count": 82,
+            "row_date": "2025-11-14",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2025-12-01-adare-pharmaceuticals",
+        "state": "IL",
+        "employer": "Adare Pharmaceuticals, Inc.",
+        "notice_date": "2025-12-01",
+        "stated_job_count": 21,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-il-2025-12-22-everest-insurance",
+        "state": "IL",
+        "employer": "Everest Insurance",
+        "notice_date": "2025-12-22",
+        "stated_job_count": 37,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "loose",
+            "tracker_event_id": 109535,
+            "tracker_row_id": 136700,
+            "company_name": "Everest Insurance",
+            "job_count": 38,
+            "row_date": "2025-12-22",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count 38 matches neither a component row nor the notice total 37",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "loose"
+      },
+      {
+        "id": "warn-il-2026-01-27-alton-steel",
+        "state": "IL",
+        "employer": "Alton Steel, Inc.",
+        "notice_date": "2026-01-27",
+        "stated_job_count": 253,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109126,
+            "tracker_row_id": 136291,
+            "company_name": "Alton Steel, Inc.",
+            "job_count": 253,
+            "row_date": "2026-01-27",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-02-02-alverno-laboratories",
+        "state": "IL",
+        "employer": "Alverno Laboratories (at Franciscan Health Olympia Fields)",
+        "notice_date": "2026-02-02",
+        "stated_job_count": 66,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109030,
+            "tracker_row_id": 136195,
+            "company_name": "Alverno Laboratories (at Franciscan Health Olympia Fields)",
+            "job_count": 66,
+            "row_date": "2026-02-02",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-02-10-walgreens",
+        "state": "IL",
+        "employer": "Walgreens",
+        "notice_date": "2026-02-10",
+        "stated_job_count": 469,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "loose",
+            "tracker_event_id": 148617,
+            "tracker_row_id": 175785,
+            "company_name": "Walgreens",
+            "job_count": 628,
+            "row_date": "2026-02-19",
+            "state": "IL",
+            "source_type": "news",
+            "source_name": "Bloomberg",
+            "source_url": "https://www.bloomberg.com/news/articles/2026-02-19/walgreens-cuts-hundreds-of-workers-after-private-equity-buyout",
+            "flags": [
+              "row source is news/filing, not a WARN-tier row",
+              "job_count 628 matches neither a component row nor the notice total 469",
+              "row date is 9 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "loose"
+      },
+      {
+        "id": "warn-il-2026-02-23-first-brands",
+        "state": "IL",
+        "employer": "First Brands Group, LLC (Albion Air Facility)",
+        "notice_date": "2026-02-23",
+        "stated_job_count": 642,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "loose",
+            "tracker_event_id": 109022,
+            "tracker_row_id": 136187,
+            "company_name": "First Brands Group, LLC (Midwest Distribution Center)",
+            "job_count": 389,
+            "row_date": "2026-02-03",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count 389 matches neither a component row nor the notice total 642",
+              "row date is -20 day(s) after the notice date",
+              "stored name 'First Brands Group, LLC (Midwest Distribution Center)' differs from the published 'First Brands Group, LLC (Albion Air Facility)'"
+            ]
+          }
+        ],
+        "machine_tier": "loose"
+      },
+      {
+        "id": "warn-il-2026-03-06-aspira-of-illinois",
+        "state": "IL",
+        "employer": "Aspira Inc. of Illinois",
+        "notice_date": "2026-03-06",
+        "stated_job_count": 57,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108808,
+            "tracker_row_id": 135973,
+            "company_name": "Aspira Inc. of Illinois",
+            "job_count": 57,
+            "row_date": "2026-03-06",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-03-20-trinity-christian-college",
+        "state": "IL",
+        "employer": "Trinity Christian College",
+        "notice_date": "2026-03-20",
+        "stated_job_count": 107,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108680,
+            "tracker_row_id": 135845,
+            "company_name": "Trinity Christian College",
+            "job_count": 107,
+            "row_date": "2026-03-20",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-04-01-heartland-human-care-services",
+        "state": "IL",
+        "employer": "Heartland Human Care Services",
+        "notice_date": "2026-04-01",
+        "stated_job_count": 240,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108525,
+            "tracker_row_id": 135690,
+            "company_name": "Heartland Human Care Services (ICRC)",
+            "job_count": 120,
+            "row_date": "2026-04-01",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Heartland Human Care Services (ICRC)' differs from the published 'Heartland Human Care Services'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-04-13-gerresheimer-moulded-glass-chicago",
+        "state": "IL",
+        "employer": "Gerresheimer Moulded Glass Chicago Inc.",
+        "notice_date": "2026-04-13",
+        "stated_job_count": 172,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-il-2026-04-29-kleo-community-family-life",
+        "state": "IL",
+        "employer": "KLEO Community Family Life Center",
+        "notice_date": "2026-04-29",
+        "stated_job_count": 65,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108175,
+            "tracker_row_id": 135340,
+            "company_name": "KLEO Community Family Life Center",
+            "job_count": 65,
+            "row_date": "2026-04-29",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-05-04-vistra",
+        "state": "IL",
+        "employer": "Vistra Corp. - Baldwin Power Plant",
+        "notice_date": "2026-05-04",
+        "stated_job_count": 304,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108066,
+            "tracker_row_id": 135231,
+            "company_name": "Vistra Corp.",
+            "job_count": 99,
+            "row_date": "2026-05-04",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Vistra Corp.' differs from the published 'Vistra Corp. - Baldwin Power Plant'"
+            ]
+          },
+          {
+            "tier": "exact",
+            "tracker_event_id": 108065,
+            "tracker_row_id": 135230,
+            "company_name": "Vistra Corp.",
+            "job_count": 83,
+            "row_date": "2026-05-04",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Vistra Corp.' differs from the published 'Vistra Corp. - Baldwin Power Plant'"
+            ]
+          },
+          {
+            "tier": "exact",
+            "tracker_event_id": 108064,
+            "tracker_row_id": 135229,
+            "company_name": "Vistra Corp.",
+            "job_count": 122,
+            "row_date": "2026-05-04",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Vistra Corp.' differs from the published 'Vistra Corp. - Baldwin Power Plant'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-05-19-mdmartin",
+        "state": "IL",
+        "employer": "MDMartin LLC",
+        "notice_date": "2026-05-19",
+        "stated_job_count": 160,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107954,
+            "tracker_row_id": 135119,
+            "company_name": "MDMartin LLC",
+            "job_count": 160,
+            "row_date": "2026-05-19",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-il-2026-06-05-optum-services",
+        "state": "IL",
+        "employer": "Optum Services, Inc.",
+        "notice_date": "2026-06-05",
+        "stated_job_count": 98,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107756,
+            "tracker_row_id": 134921,
+            "company_name": "Optum Services, Inc",
+            "job_count": 98,
+            "row_date": "2026-06-05",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Optum Services, Inc' differs from the published 'Optum Services, Inc.'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-07-07-quality-built",
+        "state": "OH",
+        "employer": "Quality Built, LLC",
+        "notice_date": "2025-07-07",
+        "stated_job_count": 1,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 111121,
+            "tracker_row_id": 138286,
+            "company_name": "Quality Built, LLC",
+            "job_count": 1,
+            "row_date": "2025-07-03",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/QualityBuiltLLC.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-07-16-sarepta-therapeutics",
+        "state": "OH",
+        "employer": "Sarepta Therapeutics, Inc.",
+        "notice_date": "2025-07-16",
+        "stated_job_count": 80,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110968,
+            "tracker_row_id": 138133,
+            "company_name": "Sarepta Therapeutics, Inc.",
+            "job_count": 80,
+            "row_date": "2025-07-18",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/SareptaTherapeuticsInc.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-08-18-first-student",
+        "state": "OH",
+        "employer": "First Student",
+        "notice_date": "2025-08-18",
+        "stated_job_count": 39,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110717,
+            "tracker_row_id": 137882,
+            "company_name": "First Student",
+            "job_count": 39,
+            "row_date": "2025-08-20",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/FirstStudent2.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-08-28-fedex-supply-chain",
+        "state": "OH",
+        "employer": "FedEx Supply Chain, Inc",
+        "notice_date": "2025-08-28",
+        "stated_job_count": 56,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 110023,
+            "tracker_row_id": 137188,
+            "company_name": "FedEx Supply Chain, Inc",
+            "job_count": 56,
+            "row_date": "2025-10-31",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/FedExSupplyChainInc.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-09-24-tops-products",
+        "state": "OH",
+        "employer": "TOPS Products",
+        "notice_date": "2025-09-24",
+        "stated_job_count": 207,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109697,
+            "tracker_row_id": 136862,
+            "company_name": "TOPS Products",
+            "job_count": 207,
+            "row_date": "2025-12-01",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/TOPSProducts.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 68 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-10-08-augusta-sportswear",
+        "state": "OH",
+        "employer": "Augusta Sportswear, Inc.",
+        "notice_date": "2025-10-08",
+        "stated_job_count": 58,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109099,
+            "tracker_row_id": 136264,
+            "company_name": "Augusta Sportswear, Inc.",
+            "job_count": 58,
+            "row_date": "2026-01-30",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/AugustaSportswearInc.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-10-27-premier-healthcare-solutions-dba",
+        "state": "OH",
+        "employer": "Premier Healthcare Solutions DBA Contigo Health",
+        "notice_date": "2025-10-27",
+        "stated_job_count": 175,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109455,
+            "tracker_row_id": 136620,
+            "company_name": "Premier Healthcare Solutions DBA Contigo Health",
+            "job_count": 175,
+            "row_date": "2025-12-31",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/PremierHealthcareSolutionsDBAContigo.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 65 day(s) after the notice date"
+            ]
+          },
+          {
+            "tier": "exact",
+            "tracker_event_id": 149570,
+            "tracker_row_id": 176837,
+            "company_name": "Premier Healthcare Solutions DBA Contigo Health",
+            "job_count": 175,
+            "row_date": "2026-01-16",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/warn/WARN%202025/PremierHealthcareSolutionsDBAContigo.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-11-19-nordstrom-credit-operations",
+        "state": "OH",
+        "employer": "Nordstrom Credit Operations",
+        "notice_date": "2025-11-19",
+        "stated_job_count": 1,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109056,
+            "tracker_row_id": 136221,
+            "company_name": "Nordstrom Credit Operations",
+            "job_count": 1,
+            "row_date": "2026-02-01",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1763665597/jfs.ohio.gov/warn/WARN%202025/NordstromCreditOperations.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2025-12-04-pk-management",
+        "state": "OH",
+        "employer": "PK Management",
+        "notice_date": "2025-12-04",
+        "stated_job_count": 67,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109055,
+            "tracker_row_id": 136220,
+            "company_name": "PK Management",
+            "job_count": 67,
+            "row_date": "2026-02-01",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1764957000/jfs.ohio.gov/warn/WARN%202025/PKManagement.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-01-06-double-tree-cleveland",
+        "state": "OH",
+        "employer": "Double Tree Cleveland",
+        "notice_date": "2026-01-06",
+        "stated_job_count": 66,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 109119,
+            "tracker_row_id": 136284,
+            "company_name": "Double Tree Cleveland",
+            "job_count": 66,
+            "row_date": "2026-01-28",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1767803703/jfs.ohio.gov/warn/WARN%202026/DoubleTreeClevelandCrescentHotelsResorts.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-01-08-jeniusbank-smbc-manubank",
+        "state": "OH",
+        "employer": "JeniusBank SMBC Manubank",
+        "notice_date": "2026-01-08",
+        "stated_job_count": 2,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108767,
+            "tracker_row_id": 135932,
+            "company_name": "JeniusBank SMBC Manubank",
+            "job_count": 2,
+            "row_date": "2026-03-10",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1767988814/jfs.ohio.gov/warn/WARN%202026/JeniusBankManubankSMBC.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          },
+          {
+            "tier": "exact",
+            "tracker_event_id": 107068,
+            "tracker_row_id": 134233,
+            "company_name": "JeniusBank SMBC Manubank",
+            "job_count": 2,
+            "row_date": "2026-08-03",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1781208657/jfs.ohio.gov/warn/WARN%202026/JeniusBankSMBCManubank2.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 207 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-01-12-turf-care-supply",
+        "state": "OH",
+        "employer": "Turf Care Supply Corp.",
+        "notice_date": "2026-01-12",
+        "stated_job_count": 46,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108871,
+            "tracker_row_id": 136036,
+            "company_name": "Turf Care Supply Corp.",
+            "job_count": 46,
+            "row_date": "2026-02-28",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1768499755/jfs.ohio.gov/warn/WARN%202026/TurfCareSupplyCorp.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-01-29-fresenius-manufacturing",
+        "state": "OH",
+        "employer": "Fresenius USA Manufacturing",
+        "notice_date": "2026-01-29",
+        "stated_job_count": 54,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108433,
+            "tracker_row_id": 135598,
+            "company_name": "Fresenius USA Manufacturing",
+            "job_count": 54,
+            "row_date": "2026-04-10",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1769797238/jfs.ohio.gov/warn/WARN%202026/FreseniusUSAManufacturing.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-02-09-astrion",
+        "state": "OH",
+        "employer": "Astrion",
+        "notice_date": "2026-02-09",
+        "stated_job_count": 61,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107840,
+            "tracker_row_id": 135005,
+            "company_name": "Astrion",
+            "job_count": 61,
+            "row_date": "2026-05-31",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1770735265/jfs.ohio.gov/warn/WARN%202026/Astrion.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-02-16-lowe-s-companies",
+        "state": "OH",
+        "employer": "Lowe's Companies",
+        "notice_date": "2026-02-16",
+        "stated_job_count": 17,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108320,
+            "tracker_row_id": 135485,
+            "company_name": "Lowe's Companies",
+            "job_count": 17,
+            "row_date": "2026-04-19",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1771342002/jfs.ohio.gov/warn/WARN%202026/LowesCompanies.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-02-23-parsec",
+        "state": "OH",
+        "employer": "Parsec, LLC",
+        "notice_date": "2026-02-23",
+        "stated_job_count": 115,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108128,
+            "tracker_row_id": 135293,
+            "company_name": "Parsec, LLC",
+            "job_count": 115,
+            "row_date": "2026-05-01",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1771873177/jfs.ohio.gov/warn/WARN%202026/ParsecLLC.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-02-27-first-brands-darke",
+        "state": "OH",
+        "employer": "First Brands Group Darke",
+        "notice_date": "2026-02-27",
+        "stated_job_count": 302,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108166,
+            "tracker_row_id": 135331,
+            "company_name": "First Brands Group Darke",
+            "job_count": 302,
+            "row_date": "2026-04-30",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1772219472/jfs.ohio.gov/warn/WARN%202026/FirstBrandsGroupDarke.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 108921,
+            "tracker_row_id": 136086,
+            "company_name": "First Brands Group Cuyahoga",
+            "job_count": 146,
+            "row_date": "2026-02-23",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1771966685/jfs.ohio.gov/warn/WARN%202026/FirstBrandsGroup.pdf",
+            "flags": [
+              "job_count 146 matches neither a component row nor the notice total 302",
+              "row date is -4 day(s) after the notice date",
+              "stored name 'First Brands Group Cuyahoga' differs from the published 'First Brands Group Darke'"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 148624,
+            "tracker_row_id": 175799,
+            "company_name": "First Brands Group",
+            "job_count": 256,
+            "row_date": "2026-04-30",
+            "state": "OH",
+            "source_type": "news",
+            "source_name": "Spectrum News 1",
+            "source_url": "https://spectrumnews1.com/oh/cleveland/news/2026/03/02/first-brands-group-laying-off-1-000-employees-ohio",
+            "flags": [
+              "row source is news/filing, not a WARN-tier row",
+              "job_count 256 matches neither a component row nor the notice total 302",
+              "row date equals this notice's earliest published effective date",
+              "stored name 'First Brands Group' differs from the published 'First Brands Group Darke'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-03-06-saks-beachwood",
+        "state": "OH",
+        "employer": "Saks & Company LLC Beachwood",
+        "notice_date": "2026-03-06",
+        "stated_job_count": 70,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108054,
+            "tracker_row_id": 135219,
+            "company_name": "Saks & Company LLC Beachwood",
+            "job_count": 70,
+            "row_date": "2026-05-06",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1773064650/jfs.ohio.gov/warn/WARN%202026/SaksCompanyLLCBeachwood.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 108414,
+            "tracker_row_id": 135579,
+            "company_name": "Saks & Company LLC Columbus",
+            "job_count": 41,
+            "row_date": "2026-04-11",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1770832754/jfs.ohio.gov/warn/WARN%202026/SaksCompanyLLC.pdf",
+            "flags": [
+              "job_count 41 matches neither a component row nor the notice total 70",
+              "row date is 36 day(s) after the notice date",
+              "stored name 'Saks & Company LLC Columbus' differs from the published 'Saks & Company LLC Beachwood'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-03-19-ten-sixty-logistics",
+        "state": "OH",
+        "employer": "Ten Sixty Logistics LLC",
+        "notice_date": "2026-03-19",
+        "stated_job_count": 125,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108600,
+            "tracker_row_id": 135765,
+            "company_name": "Ten Sixty Logistics LLC",
+            "job_count": 125,
+            "row_date": "2026-03-31",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1774022043/jfs.ohio.gov/warn/WARN%202026/Ten_Sixty_Logistics.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-03-25-technicote-dba-beontag",
+        "state": "OH",
+        "employer": "Technicote Inc dba Beontag",
+        "notice_date": "2026-03-25",
+        "stated_job_count": 53,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107914,
+            "tracker_row_id": 135079,
+            "company_name": "Technicote Inc dba Beontag",
+            "job_count": 53,
+            "row_date": "2026-05-24",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1774539368/jfs.ohio.gov/warn/WARN%202026/TechnicoteIncdbaBeontag.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-04-09-advanced-specialty-hospitals-of",
+        "state": "OH",
+        "employer": "Advanced Specialty Hospitals of Toledo",
+        "notice_date": "2026-04-09",
+        "stated_job_count": 116,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107738,
+            "tracker_row_id": 134903,
+            "company_name": "Advanced Specialty Hospitals of Toledo",
+            "job_count": 116,
+            "row_date": "2026-06-08",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1775847051/jfs.ohio.gov/warn/WARN%202026/AdvancedSpecialtyHospitalsofToledo.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 148634,
+            "tracker_row_id": 175819,
+            "company_name": "Advanced Specialty Hospital of Toledo",
+            "job_count": 116,
+            "row_date": "2026-04-14",
+            "state": "OH",
+            "source_type": "news",
+            "source_name": "Spectrum News 1",
+            "source_url": "https://spectrumnews1.com/oh/columbus/news/2026/04/14/advanced-specialty-hospital-of-toledo",
+            "flags": [
+              "row source is news/filing, not a WARN-tier row",
+              "job_count equals one published component row of this notice",
+              "row date is 5 day(s) after the notice date",
+              "stored name 'Advanced Specialty Hospital of Toledo' differs from the published 'Advanced Specialty Hospitals of Toledo'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-04-22-venture-solutions-taylor-technology",
+        "state": "OH",
+        "employer": "Venture Solutions/Taylor Technology Services",
+        "notice_date": "2026-04-22",
+        "stated_job_count": 60,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107570,
+            "tracker_row_id": 134735,
+            "company_name": "Venture Solutions/Taylor Technology Services",
+            "job_count": 60,
+            "row_date": "2026-06-22",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1776886905/jfs.ohio.gov/warn/WARN%202026/VentureSolutionsInc_TaylorTechnologyServices.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-oh-2026-04-28-gxo-logistics-supply-chain",
+        "state": "OH",
+        "employer": "GXO Logistics Supply Chain, Inc",
+        "notice_date": "2026-04-28",
+        "stated_job_count": 102,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-oh-2026-05-01-first-brands-cuyahoga-4",
+        "state": "OH",
+        "employer": "First Brands Group Cuyahoga 4",
+        "notice_date": "2026-05-01",
+        "stated_job_count": 110,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "loose",
+            "tracker_event_id": 148624,
+            "tracker_row_id": 175799,
+            "company_name": "First Brands Group",
+            "job_count": 256,
+            "row_date": "2026-04-30",
+            "state": "OH",
+            "source_type": "news",
+            "source_name": "Spectrum News 1",
+            "source_url": "https://spectrumnews1.com/oh/cleveland/news/2026/03/02/first-brands-group-laying-off-1-000-employees-ohio",
+            "flags": [
+              "row source is news/filing, not a WARN-tier row",
+              "job_count 256 matches neither a component row nor the notice total 110",
+              "row date is -1 day(s) after the notice date",
+              "stored name 'First Brands Group' differs from the published 'First Brands Group Cuyahoga 4'"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 108166,
+            "tracker_row_id": 135331,
+            "company_name": "First Brands Group Darke",
+            "job_count": 302,
+            "row_date": "2026-04-30",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1772219472/jfs.ohio.gov/warn/WARN%202026/FirstBrandsGroupDarke.pdf",
+            "flags": [
+              "job_count 302 matches neither a component row nor the notice total 110",
+              "row date is -1 day(s) after the notice date",
+              "stored name 'First Brands Group Darke' differs from the published 'First Brands Group Cuyahoga 4'"
+            ]
+          }
+        ],
+        "machine_tier": "loose"
+      },
+      {
+        "id": "warn-oh-2026-06-10-pioneer-cladding-glazing-systems",
+        "state": "OH",
+        "employer": "Pioneer Cladding & Glazing Systems, Inc.",
+        "notice_date": "2026-06-10",
+        "stated_job_count": 43,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 107026,
+            "tracker_row_id": 134191,
+            "company_name": "Pioneer Cladding & Glazing Systems, Inc.",
+            "job_count": 43,
+            "row_date": "2026-08-09",
+            "state": "OH",
+            "source_type": "warn",
+            "source_name": "OH WARN notice",
+            "source_url": "https://dam.assets.ohio.gov/image/upload/v1781208658/jfs.ohio.gov/warn/WARN%202026/PioneerCladding_GlazingSystemsInc.pdf",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-07-01-acc-premiere",
+        "state": "PA",
+        "employer": "ACC Premiere",
+        "notice_date": "2025-07-01",
+        "stated_job_count": 67,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23930,
+            "tracker_row_id": 137598,
+            "company_name": "ACC Premiere",
+            "job_count": 67,
+            "row_date": "2025-09-19",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-07-01-century-therapeutics",
+        "state": "PA",
+        "employer": "Century Therapeutics, LLC",
+        "notice_date": "2025-07-01",
+        "stated_job_count": 72,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23957,
+            "tracker_row_id": 138208,
+            "company_name": "Century Therapeutics, LLC",
+            "job_count": 72,
+            "row_date": "2025-07-11",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-07-01-weaber",
+        "state": "PA",
+        "employer": "Weaber, Inc.",
+        "notice_date": "2025-07-01",
+        "stated_job_count": 145,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "loose",
+            "tracker_event_id": 23942,
+            "tracker_row_id": 137844,
+            "company_name": "Weaber, Inc.",
+            "job_count": 46,
+            "row_date": "2025-08-25",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count 46 matches neither a component row nor the notice total 145",
+              "row date is 55 day(s) after the notice date"
+            ]
+          }
+        ],
+        "machine_tier": "loose"
+      },
+      {
+        "id": "warn-pa-2025-09-01-air-products-and-chemicals",
+        "state": "PA",
+        "employer": "Air Products and Chemicals, Inc.",
+        "notice_date": "2025-09-01",
+        "stated_job_count": 14,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23894,
+            "tracker_row_id": 136970,
+            "company_name": "Air Products and Chemicals, Inc.",
+            "job_count": 14,
+            "row_date": "2025-11-17",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-09-01-hms-host",
+        "state": "PA",
+        "employer": "HMS Host (located within the Philadelphia International Airport)",
+        "notice_date": "2025-09-01",
+        "stated_job_count": 13,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23906,
+            "tracker_row_id": 137230,
+            "company_name": "HMS Host (located within the Philadelphia International Airport)",
+            "job_count": 13,
+            "row_date": "2025-10-27",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-09-01-trujacodi-delivery-express",
+        "state": "PA",
+        "employer": "Trujacodi Delivery Express",
+        "notice_date": "2025-09-01",
+        "stated_job_count": 42,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23933,
+            "tracker_row_id": 137652,
+            "company_name": "Trujacodi Delivery Express",
+            "job_count": 42,
+            "row_date": "2025-09-12",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-10-01-fourth-street-barbecue",
+        "state": "PA",
+        "employer": "Fourth Street Barbecue, Inc.",
+        "notice_date": "2025-10-01",
+        "stated_job_count": 252,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2025-10-01-peraton",
+        "state": "PA",
+        "employer": "Peraton, Inc.",
+        "notice_date": "2025-10-01",
+        "stated_job_count": 153,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23885,
+            "tracker_row_id": 136768,
+            "company_name": "Peraton, Inc.",
+            "job_count": 153,
+            "row_date": "2025-12-13",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-10-01-vifor-pharma",
+        "state": "PA",
+        "employer": "Vifor Pharma, Inc.",
+        "notice_date": "2025-10-01",
+        "stated_job_count": 55,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23891,
+            "tracker_row_id": 136851,
+            "company_name": "Vifor Pharma, Inc.",
+            "job_count": 55,
+            "row_date": "2025-12-01",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-11-01-dubois-logistics",
+        "state": "PA",
+        "employer": "DuBois Logistics, LLC",
+        "notice_date": "2025-11-01",
+        "stated_job_count": 110,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2025-11-01-pottstown-hospital",
+        "state": "PA",
+        "employer": "Pottstown Hospital",
+        "notice_date": "2025-11-01",
+        "stated_job_count": 131,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23877,
+            "tracker_row_id": 136561,
+            "company_name": "Pottstown Hospital",
+            "job_count": 131,
+            "row_date": "2026-01-01",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 149432,
+            "tracker_row_id": 176699,
+            "company_name": "Pottstown Hospital, LLC.",
+            "job_count": 160,
+            "row_date": "2026-09-28",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count 160 matches neither a component row nor the notice total 131",
+              "row date is 331 day(s) after the notice date",
+              "stored name 'Pottstown Hospital, LLC.' differs from the published 'Pottstown Hospital'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-12-01-adare-pharmaceuticals",
+        "state": "PA",
+        "employer": "Adare Pharmaceuticals, Inc.",
+        "notice_date": "2025-12-01",
+        "stated_job_count": 137,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2025-12-01-giant",
+        "state": "PA",
+        "employer": "GIANT Company, LLC",
+        "notice_date": "2025-12-01",
+        "stated_job_count": 204,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23847,
+            "tracker_row_id": 136136,
+            "company_name": "GIANT Company, LLC",
+            "job_count": 128,
+            "row_date": "2026-02-13",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          },
+          {
+            "tier": "exact",
+            "tracker_event_id": 23839,
+            "tracker_row_id": 136049,
+            "company_name": "GIANT Company, LLC",
+            "job_count": 76,
+            "row_date": "2026-02-27",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 88 day(s) after the notice date"
+            ]
+          },
+          {
+            "tier": "loose",
+            "tracker_event_id": 23821,
+            "tracker_row_id": 135665,
+            "company_name": "The GIANT Company, LLC.",
+            "job_count": 105,
+            "row_date": "2026-04-03",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count 105 matches neither a component row nor the notice total 204",
+              "row date is 123 day(s) after the notice date",
+              "stored name 'The GIANT Company, LLC.' differs from the published 'GIANT Company, LLC'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-12-01-s-s-activewear",
+        "state": "PA",
+        "employer": "S&S Activewear",
+        "notice_date": "2025-12-01",
+        "stated_job_count": 128,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2026-01-01-amazon-fresh",
+        "state": "PA",
+        "employer": "Amazon Fresh",
+        "notice_date": "2026-01-01",
+        "stated_job_count": 983,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23810,
+            "tracker_row_id": 135412,
+            "company_name": "Amazon Fresh",
+            "job_count": 983,
+            "row_date": "2026-04-28",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-01-01-miller-s-ale-house",
+        "state": "PA",
+        "employer": "Miller\u2019s Ale House",
+        "notice_date": "2026-01-01",
+        "stated_job_count": 49,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2026-02-01-bpm",
+        "state": "PA",
+        "employer": "BPM Limited",
+        "notice_date": "2026-02-01",
+        "stated_job_count": 248,
+        "size_band": "M",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2026-02-01-post-consumer-brands",
+        "state": "PA",
+        "employer": "Post Consumer Brands, LLC",
+        "notice_date": "2026-02-01",
+        "stated_job_count": 11,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23807,
+            "tracker_row_id": 135281,
+            "company_name": "Post Consumer Brands, LLC",
+            "job_count": 11,
+            "row_date": "2026-05-01",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-03-01-federal-express",
+        "state": "PA",
+        "employer": "Federal Express Corporation",
+        "notice_date": "2026-03-01",
+        "stated_job_count": 63,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23806,
+            "tracker_row_id": 135251,
+            "company_name": "Federal Express Corporation",
+            "job_count": 63,
+            "row_date": "2026-05-02",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-03-01-pharmacann",
+        "state": "PA",
+        "employer": "PharmaCann, Inc.",
+        "notice_date": "2026-03-01",
+        "stated_job_count": 60,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23796,
+            "tracker_row_id": 135113,
+            "company_name": "PharmaCann, Inc.",
+            "job_count": 60,
+            "row_date": "2026-05-20",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-04-01-advantest",
+        "state": "PA",
+        "employer": "Advantest, Inc.",
+        "notice_date": "2026-04-01",
+        "stated_job_count": 55,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23783,
+            "tracker_row_id": 134613,
+            "company_name": "Advantest, Inc.",
+            "job_count": 55,
+            "row_date": "2026-06-30",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-04-01-lns-chipblaster",
+        "state": "PA",
+        "employer": "LNS Chipblaster",
+        "notice_date": "2026-04-01",
+        "stated_job_count": 67,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23769,
+            "tracker_row_id": 133970,
+            "company_name": "LNS Chipblaster",
+            "job_count": 67,
+            "row_date": "2026-09-30",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-05-01-dometic",
+        "state": "PA",
+        "employer": "Dometic",
+        "notice_date": "2026-05-01",
+        "stated_job_count": 89,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2026-05-01-juvenile-justice-center-of",
+        "state": "PA",
+        "employer": "Juvenile Justice Center of Philadelphia",
+        "notice_date": "2026-05-01",
+        "stated_job_count": 17,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-pa-2026-06-01-american-expediting-logistics",
+        "state": "PA",
+        "employer": "American Expediting Logistics, LLC",
+        "notice_date": "2026-06-01",
+        "stated_job_count": 86,
+        "size_band": "S",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      }
+    ],
+    "large_census": [
+      {
+        "id": "warn-il-2026-01-28-amazon-fresh",
+        "state": "IL",
+        "employer": "Amazon Fresh",
+        "notice_date": "2026-01-28",
+        "stated_job_count": 1545,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-il-2026-02-05-franciscan-alliance",
+        "state": "IL",
+        "employer": "Franciscan Alliance, Inc.",
+        "notice_date": "2026-02-05",
+        "stated_job_count": 1864,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [],
+        "machine_tier": "none"
+      },
+      {
+        "id": "warn-il-2026-05-04-ideal-talent-worker-opco",
+        "state": "IL",
+        "employer": "Ideal US Talent Worker OpCo LLC",
+        "notice_date": "2026-05-04",
+        "stated_job_count": 1395,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 108068,
+            "tracker_row_id": 135233,
+            "company_name": "Ideal US Talent Systems Worker Opco LLC",
+            "job_count": 1395,
+            "row_date": "2026-05-04",
+            "state": "IL",
+            "source_type": "warn",
+            "source_name": "IL WARN notice",
+            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date is 0 day(s) after the notice date",
+              "stored name 'Ideal US Talent Systems Worker Opco LLC' differs from the published 'Ideal US Talent Worker OpCo LLC'"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2025-11-01-crothall-and-morrison-healthcare",
+        "state": "PA",
+        "employer": "Crothall and Morrison Healthcare",
+        "notice_date": "2025-11-01",
+        "stated_job_count": 795,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23857,
+            "tracker_row_id": 136211,
+            "company_name": "Crothall and Morrison Healthcare",
+            "job_count": 795,
+            "row_date": "2026-02-01",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-03-01-liberty-home-choices",
+        "state": "PA",
+        "employer": "Liberty Home Choices",
+        "notice_date": "2026-03-01",
+        "stated_job_count": 615,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23794,
+            "tracker_row_id": 135077,
+            "company_name": "Liberty Home Choices",
+            "job_count": 615,
+            "row_date": "2026-05-24",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      },
+      {
+        "id": "warn-pa-2026-06-01-jbs-souderton",
+        "state": "PA",
+        "employer": "JBS Souderton",
+        "notice_date": "2026-06-01",
+        "stated_job_count": 1485,
+        "size_band": "L",
+        "match_decision": "not_matched",
+        "candidates": [
+          {
+            "tier": "exact",
+            "tracker_event_id": 23773,
+            "tracker_row_id": 134165,
+            "company_name": "JBS Souderton",
+            "job_count": 1485,
+            "row_date": "2026-08-14",
+            "state": "PA",
+            "source_type": "warn",
+            "source_name": "PA WARN notice",
+            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
+            "flags": [
+              "job_count equals one published component row of this notice",
+              "row date equals this notice's earliest published effective date"
+            ]
+          }
+        ],
+        "machine_tier": "exact"
+      }
+    ]
+  },
+  "cost_usd": 0.0,
+  "summary": {
+    "editor_confirmed_overall": {
+      "n": 75,
+      "k": 0,
+      "interval": "0/75 = 0.0%  (Wilson 95% CI [0.0%, 4.9%], width 4.9%)",
+      "point": 0.0,
+      "low": 0.0,
+      "high": 0.04872554590470005
+    },
+    "machine_upper_bound_any_candidate": {
+      "n": 75,
+      "k": 61,
+      "interval": "61/75 = 81.3%  (Wilson 95% CI [71.1%, 88.5%], width 17.5%)",
+      "point": 0.8133333333333334,
+      "low": 0.7107120474561753,
+      "high": 0.8854199437768794
+    },
+    "machine_exact_tier": {
+      "n": 75,
+      "k": 55,
+      "interval": "55/75 = 73.3%  (Wilson 95% CI [62.4%, 82.0%], width 19.7%)",
+      "point": 0.7333333333333333,
+      "low": 0.6236898715426942,
+      "high": 0.8202382070351124
+    },
+    "by_state": {
+      "IL": {
+        "editor_confirmed": {
+          "n": 25,
+          "k": 0,
+          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.13319649395317873
+        },
+        "machine_any": {
+          "n": 25,
+          "k": 21,
+          "interval": "21/25 = 84.0%  (Wilson 95% CI [65.3%, 93.6%], width 28.3%)",
+          "point": 0.84,
+          "low": 0.6534598601976183,
+          "high": 0.9359665239142201
+        },
+        "machine_exact": {
+          "n": 25,
+          "k": 17,
+          "interval": "17/25 = 68.0%  (Wilson 95% CI [48.4%, 82.8%], width 34.4%)",
+          "point": 0.68,
+          "low": 0.48409913734576715,
+          "high": 0.8279501248310887
+        }
+      },
+      "OH": {
+        "editor_confirmed": {
+          "n": 25,
+          "k": 0,
+          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.13319649395317873
+        },
+        "machine_any": {
+          "n": 25,
+          "k": 24,
+          "interval": "24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%)",
+          "point": 0.96,
+          "low": 0.8045552759497747,
+          "high": 0.9929039496133008
+        },
+        "machine_exact": {
+          "n": 25,
+          "k": 23,
+          "interval": "23/25 = 92.0%  (Wilson 95% CI [75.0%, 97.8%], width 22.7%)",
+          "point": 0.92,
+          "low": 0.7503348787704218,
+          "high": 0.977780066308908
+        }
+      },
+      "PA": {
+        "editor_confirmed": {
+          "n": 25,
+          "k": 0,
+          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.13319649395317873
+        },
+        "machine_any": {
+          "n": 25,
+          "k": 16,
+          "interval": "16/25 = 64.0%  (Wilson 95% CI [44.5%, 79.8%], width 35.2%)",
+          "point": 0.64,
+          "low": 0.44518154601046633,
+          "high": 0.7975234356826436
+        },
+        "machine_exact": {
+          "n": 25,
+          "k": 15,
+          "interval": "15/25 = 60.0%  (Wilson 95% CI [40.7%, 76.6%], width 35.9%)",
+          "point": 0.6,
+          "low": 0.40739127785127344,
+          "high": 0.7659694233580909
+        }
+      }
+    },
+    "by_size_band": {
+      "S": {
+        "editor_confirmed": {
+          "n": 47,
+          "k": 0,
+          "interval": "0/47 = 0.0%  (Wilson 95% CI [0.0%, 7.6%], width 7.6%)",
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.07556017119838872
+        },
+        "machine_any": {
+          "n": 47,
+          "k": 40,
+          "interval": "40/47 = 85.1%  (Wilson 95% CI [72.3%, 92.6%], width 20.3%)",
+          "point": 0.851063829787234,
+          "low": 0.7231410342888723,
+          "high": 0.925933739125025
+        },
+        "machine_exact": {
+          "n": 47,
+          "k": 38,
+          "interval": "38/47 = 80.9%  (Wilson 95% CI [67.5%, 89.6%], width 22.1%)",
+          "point": 0.8085106382978723,
+          "low": 0.674557199356223,
+          "high": 0.8958418439468988
+        }
+      },
+      "M": {
+        "editor_confirmed": {
+          "n": 26,
+          "k": 0,
+          "interval": "0/26 = 0.0%  (Wilson 95% CI [0.0%, 12.9%], width 12.9%)",
+          "point": 0.0,
+          "low": 1.3877787807814457e-17,
+          "high": 0.12873304380462175
+        },
+        "machine_any": {
+          "n": 26,
+          "k": 19,
+          "interval": "19/26 = 73.1%  (Wilson 95% CI [53.9%, 86.3%], width 32.4%)",
+          "point": 0.7307692307692307,
+          "low": 0.5391659658023868,
+          "high": 0.8629572447493261
+        },
+        "machine_exact": {
+          "n": 26,
+          "k": 16,
+          "interval": "16/26 = 61.5%  (Wilson 95% CI [42.5%, 77.6%], width 35.0%)",
+          "point": 0.6153846153846154,
+          "low": 0.42534520039420076,
+          "high": 0.7757164048816557
+        }
+      },
+      "L": {
+        "editor_confirmed": {
+          "n": 2,
+          "k": 0,
+          "interval": "0/2 = 0.0%  (Wilson 95% CI [0.0%, 65.8%], width 65.8%)",
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.6576280471103807
+        },
+        "machine_any": {
+          "n": 2,
+          "k": 2,
+          "interval": "2/2 = 100.0%  (Wilson 95% CI [34.2%, 100.0%], width 65.8%)",
+          "point": 1.0,
+          "low": 0.34237195288961925,
+          "high": 1.0
+        },
+        "machine_exact": {
+          "n": 2,
+          "k": 1,
+          "interval": "1/2 = 50.0%  (Wilson 95% CI [9.5%, 90.5%], width 81.1%)",
+          "point": 0.5,
+          "low": 0.09452865480086614,
+          "high": 0.9054713451991339
+        }
+      }
+    },
+    "large_event_census": {
+      "editor_confirmed": {
+        "n": 6,
+        "k": 0,
+        "interval": "0/6 = 0.0%  (Wilson 95% CI [0.0%, 39.0%], width 39.0%)",
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.3903430336530645
+      },
+      "machine_any": {
+        "n": 6,
+        "k": 4,
+        "interval": "4/6 = 66.7%  (Wilson 95% CI [30.0%, 90.3%], width 60.3%)",
+        "point": 0.6666666666666666,
+        "low": 0.29998832134152864,
+        "high": 0.9032306674407831
+      }
+    },
+    "machine_any_volume_weighted": 0.8169
+  }
+}
