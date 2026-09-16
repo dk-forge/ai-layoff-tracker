@@ -2103,6 +2103,38 @@ lines below the headcount floor were being counted as coverage misses. The
 denominator admits only items with a parseable headcount and employer; the
 lesson histogram is deliberately wider.
 
+**Using it as a retrospective MONTH reference (first done 2026-09-16 for
+August 2026 US announcements).** The same machine answers "did we miss the
+announcements of a month that has ended", with three rules the first run
+taught:
+
+1. **Seal the reference before the first `/query` read.** Write the manifest
+   (employer, count as stated, date announced, one source URL, employer-self
+   flag) to `scratchpad/` first, dated, then build the worklist from it. Search
+   results labelled with a month are padded with the previous month's late
+   announcements and the next month's early ones; date every line from its own
+   source and keep an "excluded, outside the window" list so nobody re-adds them.
+2. **Read the machine figure as a floor and do the editor pass on every miss.**
+   The token match is the first capitalised word against one headcount within
+   2%, so a multi-site closure held as several state WARN rows, a company whose
+   rows carry a two-word spelling, and a monthly tranche of a larger total all
+   score as misses. Query `/query` by fuller name for each miss and record the
+   same-event decision beside the machine one; report both numbers, and say
+   which is which. Six of twelve machine misses were held on 2026-09-16.
+3. **A vocabulary lesson from a hand-written line is an artefact. Do not adopt
+   it.** The probe judges the line as if it were the outlet's headline, so when
+   you wrote the line yourself, "no discovery term matches this wording" is a
+   fact about your typing. Paste the outlet's own headline when a vocabulary
+   lesson matters; otherwise adopt outlet lessons only. Outlet lessons stay
+   valid because they are about the host, not the words.
+
+The shape of miss it found is worth knowing before the next run: 8-K item 2.05
+filings that state a percentage and no headcount are held by nothing, because
+the SEC path has no number to store and the news path only sees the derived
+figure if an outlet we read prints it. Count them in the reference as
+"no stated headcount" (they enter the lesson histogram, never the recall
+denominator) and list them separately in the report.
+
 ## Re-run the US WARN reference set (either wave)
 
 Two frozen sets over the same twelve months, 2025-07-01 to 2026-06-30, counted
