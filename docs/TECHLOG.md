@@ -1,3 +1,53 @@
+## 2026-09-16 - The queue stalled with everything green, because the only thing that merges a pull request was a session
+
+**Class:** novel
+**Guard:** `railway/tests/test_merge_train.py` (53 assertions, every guard
+mutation-proved) and `railway/tests/test_merge_train_config.py` (this repo's
+floor, deploy window, forbidden-path parity with `self_heal.FORBIDDEN`, and
+the absence of auto-merge).
+
+Pull requests sat open and mergeable for days. Nothing was wrong with any of
+them. The merge step simply had no owner that outlives a session: a session
+ends, hits a rate limit, or hands off badly, and a green queue is exactly as
+stuck as a red one.
+
+`.github/workflows/merge-train.yml` runs every 30 minutes on the VPS runner
+and merges AT MOST ONE pull request per run. One per run is deliberate twice
+over: the single self-hosted runner must not be flooded, and in this repo it
+buys deploy spacing for free.
+
+**It verifies everything itself rather than reading a rollup.** The head SHA is
+resolved first and every check is judged against that exact SHA, because after
+a force-push the rollup reports the previous commit. `cancelled` counts as
+failing, alongside `timed_out`, `startup_failure` and `action_required`. An
+empty or tiny check list is "CI has not started", not "no failures", so there
+is a MEASURED floor (7 check runs on every one of the last 30 merged pull
+requests here; the floor is 5). `fixture:` jobs are excluded from all of it.
+It never uses auto-merge, which landed PR #954 untested in the sandbox, and it
+never re-runs a live run, which would cancel it.
+
+**It may also unstick a queue, and the licence is bookkeeping only.** It
+resolves conflicts in `docs/TECHLOG.md` (keep both entries) and nothing else,
+rebases when nothing outside that set conflicts, and re-runs ONE completed job
+that failed in an infrastructure shape, twice per head SHA and three times per
+pull request, then stops permanently. `inspect_diff()` reads the patch before
+it is pushed and refuses a removed assertion, an added suppression, a moved
+threshold, or any path outside the mechanical allowlist;
+`self_heal.FORBIDDEN` is refused by name. A failing assertion, a code defect,
+and ANY data-integrity or live-data red are labelled `needs-human` and mailed
+once, never healed: a wrong number already published needs a person.
+
+It unsticks OR it merges in a given run, never both, so the thing judging green
+is never the thing that just changed the branch.
+
+**It ships DISARMED.** Every scheduled tick is a dry run that prints its
+reasoning until `MERGE_TRAIN_ARMED` is set to `true` on the repository. The
+rebase push is refused outright unless `MERGE_TRAIN_TOKEN` exists, because a
+push made with the default Actions token starts no workflows, and the rebased
+head would then carry no checks at all.
+
+---
+
 ## 2026-09-16 - One email said the employer verified it and, four lines down, that we could not confirm it (2.20.199)
 
 **Class:** two-copies-drifted
