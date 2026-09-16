@@ -368,6 +368,14 @@ class InvariantCoverage(unittest.TestCase):
         # data-integrity.yml, daily, exit 2 on FAIL.
         "duplicate_article_rows": ("test_duplicate_article_guard",
                                    "TheKnownInstance"),
+        # Delegated for the same reason again: IT FAILS LIVE TODAY, on purpose.
+        # Row 176490 (Aon, 3,500 jobs, 8-K) carries an announcement_date of
+        # 2014-04-01 against a layoff_date of 2020-05-12, 2,233 days, which is
+        # the tell row 176990 (Aeternum/HHS, 467 days) left in its own fields
+        # before it was trashed. The arming is proved offline on both rows'
+        # field values; the LIVE reading is data-integrity.yml, daily.
+        "filing_shape_tells": ("test_filing_shape_guards",
+                               "TheInvariantOnTheKnownInstances"),
         # Delegated on the same trade as the two above, and for a defect of the
         # same family one key further out. The Week 37 reader digest carried ONE
         # Jaguar Land Rover event three times -- a Chinese-language name, the

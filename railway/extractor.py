@@ -26,6 +26,8 @@ import re
 import openai
 
 import spend
+from filing_shapes import (MAX_8K_LEAD_DAYS, RISK_FACTORS_SECTION, count_only_as_cost,
+                           filing_lead_verdict, projection_language)
 
 # THE EXTRACTION MODEL, AND THE ONLY ONE ANYTHING HAS MEASURED.
 #
@@ -1606,6 +1608,29 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     # English-language 8-Ks; applying it to multilingual news would trade the
     # integrity fix for a large, silent global-recall loss.
     if raw_entry.get("source_type") == "8K":
+        # THE FILER'S OWN HEADCOUNT, OR NOTHING (filing_shapes; TECHLOG
+        # 2026-09-16). A Risk Factors block is the registrant describing the
+        # world, and a workforce number inside one belongs to whoever it is
+        # describing: row 176990 bound HHS's "reduce our workforce by 10,000"
+        # to a shell company because nothing asked which section the sentence
+        # sat in. The collector now says (`sec_section`), and a headcount from
+        # a risk-factor section is refused whatever the excerpt looks like.
+        if raw_entry.get("sec_section") == RISK_FACTORS_SECTION:
+            print(f"Extraction rejected: 8-K job_count {job_count} was read from a "
+                  f"Risk Factors section, which describes third parties, not the "
+                  f"filer's own cuts — source: {raw_entry.get('source_url')}")
+            return None
+        # A count that appears in the filing ONLY as money or as a cell in a
+        # numbers table is not a count of people (row 177216: $4,320K of
+        # restructuring cost, in thousands, stored as 4,320 jobs). Checked on
+        # the whole window, before the excerpt is consulted, so a plausible
+        # excerpt cannot vouch for a figure the document never states as a
+        # headcount.
+        if count_only_as_cost(job_count, raw_text):
+            print(f"Extraction rejected: 8-K job_count {job_count} appears in the "
+                  f"filing only as a cost, scale or table figure, never as a "
+                  f"headcount — source: {raw_entry.get('source_url')}")
+            return None
         excerpt = extracted.get("excerpt")
         if not _quote_is_supported(excerpt, raw_text):
             print(f"Extraction rejected: 8-K excerpt is not verbatim source evidence "
@@ -1668,6 +1693,40 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
         if _quote_is_supported(announcement_evidence, raw_text) else None
     )
     extracted["announcement_evidence"] = announcement_evidence.strip() if extracted["announcement_date"] else None
+    # A FILING IS ABOUT SOMETHING THAT JUST HAPPENED. An Item 2.05 8-K is due
+    # within four business days of the commitment, so an announcement dated a
+    # year before the filing's own effective date (or before the filing itself)
+    # is history or somebody else's event: row 176990 carried 2025-03-27
+    # against 2026-07-07, 467 days, and said so in its own fields. Refused past
+    # MAX_8K_LEAD_DAYS; named for adjudication past REVIEW_8K_LEAD_DAYS, where
+    # year-end plant closures and third-party figures both live.
+    if raw_entry.get("source_type") == "8K":
+        verdict, days = filing_lead_verdict(extracted["announcement_date"],
+                                            extracted["layoff_date"],
+                                            _normalize_date(raw_entry.get("filing_date")))
+        if verdict == "refuse":
+            print(f"Extraction rejected: 8-K announcement_date "
+                  f"{extracted['announcement_date']} leads the filing's own dates by "
+                  f"{days} days (limit {MAX_8K_LEAD_DAYS}); the figure is an older or "
+                  f"third-party event, not this filing's — source: "
+                  f"{raw_entry.get('source_url')}")
+            return None
+        if verdict == "review":
+            print(f"Extraction flagged for adjudication: 8-K announcement_date "
+                  f"{extracted['announcement_date']} leads the filing's own dates by "
+                  f"{days} days; stored, adjudicate through adjudicate_row.py — "
+                  f"source: {raw_entry.get('source_url')}")
+    # A projection about a region is not an employer's announcement (rows
+    # 178667 and 177173: a county economic-impact report's "could cost about
+    # 4,500 film and TV jobs" stored under the studio's name). WARN-level by
+    # design: the same words also report genuine announcements, so this
+    # prints and never decides.
+    if raw_entry.get("source_type") == "news":
+        hints = projection_language(extracted.get("excerpt") or raw_text)
+        if hints:
+            print(f"Extraction warning: job_count {job_count} sits in projection "
+                  f"language ({', '.join(hints[:3])}); verify it is the employer's "
+                  f"own announcement — source: {raw_entry.get('source_url')}")
     domicile_evidence = extracted.get("employer_country_evidence")
     if not _quote_is_supported(domicile_evidence, raw_text):
         extracted["employer_country"] = None

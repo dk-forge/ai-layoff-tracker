@@ -94,13 +94,13 @@ class ExitCostHelperTests(unittest.TestCase):
 class MainPullTaggingTests(unittest.TestCase):
     def setUp(self):
         self._orig_search = edgar._search_keyword
-        self._orig_fetch = edgar._fetch_filing_text
+        self._orig_fetch = edgar._fetch_filing
         edgar._search_keyword = lambda kw, s, e: [_apple_hit(), _msft_hit()]
-        edgar._fetch_filing_text = lambda url: "The company will reduce its workforce."
+        edgar._fetch_filing = lambda url: ("The company will reduce its workforce.", None)
 
     def tearDown(self):
         edgar._search_keyword = self._orig_search
-        edgar._fetch_filing_text = self._orig_fetch
+        edgar._fetch_filing = self._orig_fetch
 
     def test_item_205_hit_is_marked_gold_exit_cost(self):
         start = datetime(2026, 7, 1, tzinfo=timezone.utc)
@@ -129,15 +129,15 @@ class SearchCompanyFilingsTests(unittest.TestCase):
         # sentinel so tearDown restores or deletes correctly either way.
         self._orig_get = getattr(edgar.requests, "get", self._SENTINEL)
         self._orig_sleep = getattr(edgar.time, "sleep", self._SENTINEL)
-        self._orig_fetch = edgar._fetch_filing_text
+        self._orig_fetch = edgar._fetch_filing
         edgar.requests.get = lambda *a, **k: _FakeResp(
             {"hits": {"hits": [_apple_hit(alt_form=False), _msft_hit(alt_form=False)]}}
         )
-        edgar._fetch_filing_text = lambda url: "The company will reduce its workforce."
+        edgar._fetch_filing = lambda url: ("The company will reduce its workforce.", None)
         edgar.time.sleep = lambda *_a, **_k: None
 
     def tearDown(self):
-        edgar._fetch_filing_text = self._orig_fetch
+        edgar._fetch_filing = self._orig_fetch
         if self._orig_get is self._SENTINEL:
             del edgar.requests.get
         else:
