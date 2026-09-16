@@ -357,6 +357,17 @@ class InvariantCoverage(unittest.TestCase):
         # published-number defect belongs.
         "country_identity": ("test_country_identity",
                              "TheInvariantFailsOnASplitIdentity"),
+        # Delegated for the same reason as country_identity, and with the same
+        # trade: IT IS CURRENTLY FAILING LIVE, on purpose. Rows 177161 and
+        # 176442 each carry 6,000 jobs from ONE article under two spellings of
+        # one school district, and both are summed into the published July 2026
+        # headline (docs/findings-july-august-2026-us-accuracy.md). A live claim
+        # here would redden every push over a data defect that a correction
+        # clears and that a unit suite cannot act on. The arming is proved
+        # offline, on the live pair's own field values; the LIVE reading is
+        # data-integrity.yml, daily, exit 2 on FAIL.
+        "duplicate_article_rows": ("test_duplicate_article_guard",
+                                   "TheKnownInstance"),
     }
 
     @staticmethod

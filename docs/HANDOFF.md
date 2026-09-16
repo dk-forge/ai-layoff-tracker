@@ -6,6 +6,14 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Claude (2026-09-16) — July/August US accuracy audit.**
+  Worktree `/tmp/wt-accuracy`, branch `fix/july-august-accuracy`, based on
+  `origin/main`. Touches `railway/data_integrity.py` (one new invariant),
+  one new test, one `railway/correction_specs/` entry, a findings doc and
+  TECHLOG. **No plugin change and no version reserved** — nothing here edits
+  the WordPress plugin. No write to live data: the corrections it identifies
+  ship as a reviewed spec and need the owner's keys and sign-off.
+
 - **HELD by Claude, 2026-09-16, US WARN recall wave 2 (NY/IL/OH/PA).**
   Worktree: `/tmp/wt-recall`; branch: `measure/us-recall-ny-il-oh-pa`, based on
   `origin/main`. **No plugin file is touched and no plugin version is
