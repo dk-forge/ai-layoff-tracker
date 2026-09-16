@@ -18,7 +18,7 @@ on:
 
 jobs:
   admit:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 5
     steps:
       - name: Submit reviewed mappings

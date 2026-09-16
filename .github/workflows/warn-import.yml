@@ -42,7 +42,7 @@ permissions:
 
 jobs:
   warn:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5

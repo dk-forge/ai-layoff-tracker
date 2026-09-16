@@ -25,7 +25,7 @@ on:
 
 jobs:
   backfill:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Sized from measurement, 2026-08-05: the one dispatch run measured
     # 300.6 min - 86% of the old 350 ceiling. 360 is the hosted-runner
     # job maximum, so this is the most headroom a single run can have;

@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   backfill:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # DERIVED from the script's own deadline, not chosen. The runner timeout is
     # only a backstop now: reason_backfill.py stops itself first, because a
     # cancelled run skips its write step and loses the day's tagging (run

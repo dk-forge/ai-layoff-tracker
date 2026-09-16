@@ -35,7 +35,7 @@ on:
 
 jobs:
   correct:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # This was the ONE workflow in this repo carrying no ceiling, so it inherited
     # GitHub's 6-hour default while holding WP_API_KEY.
     #
