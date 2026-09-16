@@ -1,0 +1,153 @@
+{
+  "spec_version": 1,
+  "prepared": "2026-09-16",
+  "status": "PREPARED, NOT APPLIED. Dry run only. A verifier reads this before anything is written.",
+  "finding": "One layoff event, four published rows, four employer names. Jaguar Land Rover's 4,000 job cuts, confirmed by the employer on Monday 2026-09-07.",
+  "how_it_reached_a_reader": "The Week 37 reader digest (2026-09-07 to 2026-09-13), sent 2026-09-14 13:07 UTC, listed three of the four as three separate entries under 'Biggest cuts': the Chinese-language name, the parent's possessive and the abbreviation. Worldwide verified, the blank-country figure and the Automotive industry figure in that same email each carried 8,000 jobs that do not exist.",
+  "why_no_guard_saw_it": "Every dedup defence in the repo buckets on a company name before anything is compared, so four spellings make four buckets and the pairs are never proposed. DuplicateArticleInvariant was written for exactly that blind spot and keys on (source_url, job_count) with no name in it, which bounds it to one article stored twice: these four rows cite four different outlets, so it reads four unrelated rows and passes. ConcentrationInvariant cannot see it either: each row is a routine share of the week.",
+  "measured": "2026-09-16, plugin 2.20.197, /query and /aggregate with cb=, browser UA, paced.",
+  "rows": [
+    {
+      "id": 179163,
+      "role": "CANONICAL, keep",
+      "company_name": "Jaguar Land Rover",
+      "job_count": 4000,
+      "layoff_date": "2026-09-05",
+      "country_stored": "United States",
+      "country_correct": "United Kingdom",
+      "event_id": 151896,
+      "source_type": "news",
+      "source_url": "https://www.moneycontrol.com/news/business/jaguar-land-rover-set-to-cut-4-000-jobs-amid-falling-sales-us-tariffs-report-14023352.html",
+      "retained_source_reports": 20,
+      "why_canonical": "Earliest layoff_date of the four, and by a wide margin the best sourced: 20 retained source reports against 4, 1 and 1. They include the BBC ('JLR confirmed to the BBC it is opening a voluntary redundancy programme'), the Guardian, the Evening Standard ('JLR has revealed plans to axe 4,000 jobs across its global workforce. The UK's largest car manufacturer confirmed the major cuts on Monday morning'), Le Figaro, thebusinessdesk.com ('Jaguar Land Rover confirms 4,000 job cuts amid GBP 1.7bn cost-cutting drive'), Livemint and Business Today. The repo's own canonical rule (dedupe_llm.canonical: verified over announced, then earliest, then strongest source) selects this row."
+    },
+    {
+      "id": 179186,
+      "role": "duplicate, trash",
+      "company_name": "JLR",
+      "job_count": 4000,
+      "layoff_date": "2026-09-08",
+      "country_stored": "",
+      "event_id": 151919,
+      "source_type": "news",
+      "source_url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPTVNmOW9qSVZoY2hORjBOU0VaTGRSUGwtY3Rma0NCRVcwNm5LOXV1cXVqY3RFb0xoLWF6OHhCQ2hEUjdOVkpsWjdibWxvUFo5M1Z1NU5jNlpidUlodUJfVldqZDFJWExRSUpoOWUwcGtMSmJ1MC11cGljLXNSNkVwZ2NrRG94VUNGbVI5UDVuMmRROUhyd0N1aWZB?oc=5",
+      "retained_source_reports": 4,
+      "evidence_it_is_the_same_announcement": "Its own first report is Wards Auto, 'JLR confirms 4,000 job cuts, citing significant challenges', and Business Today's auto desk, 'JLR, a wholly-owned subsidiary of Tata Motors Passenger Vehicles Ltd, on Monday confirmed that it will reduce its global workforce by around 4,000 roles over the next two years'. Same employer, same figure, same Monday confirmation as 179163."
+    },
+    {
+      "id": 179194,
+      "role": "duplicate, trash",
+      "company_name": "Tata Motors’ JLR",
+      "job_count": 4000,
+      "layoff_date": "2026-09-07",
+      "country_stored": "",
+      "event_id": 151927,
+      "source_type": "news",
+      "source_url": "https://www.livemint.com/market/commodities/gold-prediction-will-gold-prices-fall-further-experts-reveal-key-levels-for-investors-to-watch-11788776900146.html",
+      "retained_source_reports": 1,
+      "evidence_it_is_the_same_announcement": "Its single source report's excerpt is the Livemint headline 'Tata Motors' JLR to lay off 4,000 jobs, reduce costs by INR 21,700 crore', which is the same Livemint story already held on 179163 under its correct URL. The name is the parent's possessive plus the subsidiary's abbreviation.",
+      "second_defect_on_this_row": "Its stored source_url is a Livemint GOLD PRICE article. The headline the extractor read and the URL it stored are different articles. That is a separate ingest defect (a feed item whose link does not match its title) and is NOT fixed by this correction; recorded here so it is not lost. Because this row's only retained report carries that wrong URL, nothing of evidentiary value is lost when the row goes."
+    },
+    {
+      "id": 179237,
+      "role": "duplicate, trash",
+      "company_name": "捷豹路虎",
+      "job_count": 4000,
+      "layoff_date": "2026-09-08",
+      "country_stored": "United Kingdom",
+      "event_id": 151970,
+      "source_type": "news",
+      "source_url": "https://news.google.com/rss/articles/CBMioANBVV95cUxOWTBBWm4tUEhLd0hZOUlsQ2pURDB6WFFiY2FDeG1CTFpiSFNhdWw4bTdPUl9VNVZWTTEtTmx4UzFkcWFleURIQ1lWZHIxWU54dXpuVHp3SWdHa1ZNVUpqbzl2Rjktck5PZlVMOUlGRF9ST3FyenI5VUlSTklid1N4dkY4Q2pTemI4WnAtMFpwNEl5ZnRUMzZ6ZmNsMG81eWJoejB0ZkpkbGpNajhyVHB4cEZMSkJvSWlmal9XRnh0MFR2R19jZE5sVnBYZzQyOWZuWmVxbnN2aGdrN3RNNk5WR0NtVG56eWV5OVhkWEtXQUdITzg0TzhZNF9aWHRLNjBZcUJsamoxdnJTRVRXTFRCem9qd2pJMklmUXRhYm5oVkdoTTBzSVhLTVlqNDEzUDBLTW9ZcXdrWURmRW5NeU9peTZCX0Fya2xfUnVPS1RpbDlvcTRVWFBmSzFSeTU1MlQ1dGlxZUtxVDlmYWJXYTFMaDRkVmlLbGJya2F5Y3lMTFRRYkpLOGVaODcwV0g2Z1JCUWZMOVpBYmlUS2xsMHF4Rg?oc=5",
+      "retained_source_reports": 1,
+      "evidence_it_is_the_same_announcement": "捷豹路虎 is the standard Chinese name for Jaguar Land Rover. The row's own Yahoo新聞 report, and the 香港01 report already held on 179163, describe the same 4,000-job plan ('目標兩年節約180億 英媒：或裁4000人'). Same figure, same days.",
+      "why_it_had_no_company_key_at_all": "alt_company_key() strips every character outside [a-z0-9 ], so this name normalised to the EMPTY STRING and has since the function existed. Every row whose employer is named in a non-Latin script has had no company key, so none of them can fuzzy-dedup against anything. Fixed in this PR by alt_nonlatin_company_alias(), consulted before the strip."
+    }
+  ],
+  "corrections_in_order": [
+    {
+      "step": 1,
+      "action": "move-sources",
+      "from_id": 179186,
+      "to_id": 179163,
+      "urls": [
+        "https://news.google.com/rss/articles/CBMimgFBVV95cUxPTVNmOW9qSVZoY2hORjBOU0VaTGRSUGwtY3Rma0NCRVcwNm5LOXV1cXVqY3RFb0xoLWF6OHhCQ2hEUjdOVkpsWjdibWxvUFo5M1Z1NU5jNlpidUlodUJfVldqZDFJWExRSUpoOWUwcGtMSmJ1MC11cGljLXNSNkVwZ2NrRG94VUNGbVI5UDVuMmRROUhyd0N1aWZB?oc=5",
+        "https://www.businesstoday.in/auto/story/beginning-first-round-of-reductions-jlr-confirms-4000-job-cuts-over-next-2-years-553795-2026-09-07",
+        "https://www.cityam.com/can-john-healey-deliver-the-growth-the-uk-needs/"
+      ],
+      "dry_run_result": "exit 0, 'would move 3 link(s); the rows' own facts (count, date, country) are untouched'",
+      "note": "A source link is evidence, not disposable duplicate clutter, and /trash cleans the orphan event with the row. So the links that genuinely describe this event move to the canonical row FIRST."
+    },
+    {
+      "step": 2,
+      "action": "move-sources",
+      "from_id": 179237,
+      "to_id": 179163,
+      "urls": [
+        "https://news.google.com/rss/articles/CBMioANBVV95cUxOWTBBWm4tUEhLd0hZOUlsQ2pURDB6WFFiY2FDeG1CTFpiSFNhdWw4bTdPUl9VNVZWTTEtTmx4UzFkcWFleURIQ1lWZHIxWU54dXpuVHp3SWdHa1ZNVUpqbzl2Rjktck5PZlVMOUlGRF9ST3FyenI5VUlSTklid1N4dkY4Q2pTemI4WnAtMFpwNEl5ZnRUMzZ6ZmNsMG81eWJoejB0ZkpkbGpNajhyVHB4cEZMSkJvSWlmal9XRnh0MFR2R19jZE5sVnBYZzQyOWZuWmVxbnN2aGdrN3RNNk5WR0NtVG56eWV5OVhkWEtXQUdITzg0TzhZNF9aWHRLNjBZcUJsamoxdnJTRVRXTFRCem9qd2pJMklmUXRhYm5oVkdoTTBzSVhLTVlqNDEzUDBLTW9ZcXdrWURmRW5NeU9peTZCX0Fya2xfUnVPS1RpbDlvcTRVWFBmSzFSeTU1MlQ1dGlxZUtxVDlmYWJXYTFMaDRkVmlLbGJya2F5Y3lMTFRRYkpLOGVaODcwV0g2Z1JCUWZMOVpBYmlUS2xsMHF4Rg?oc=5"
+      ],
+      "dry_run_result": "exit 0, 'would move 1 link(s)'"
+    },
+    {
+      "step": 3,
+      "action": "trash",
+      "ids": [179186, 179194, 179237],
+      "dry_run_result": "exit 0. Run one id at a time with its OWN name in --verify-company, or the before/after read shows nothing: the names differ, which is the whole defect. Each row read back correctly that way (179186 JLR 4000 2026-09-08; 179194 Tata Motors’ JLR 4000 2026-09-07; 179237 捷豹路虎 4000 2026-09-08).",
+      "note": "/trash suppresses each row's dedup hash, so the nightly re-scrape cannot resurrect them. Two source reports are deliberately NOT moved and die with their rows: the Livemint gold-price URL on 179194 and businesstoday.in's personal-finance story on 179186, both of which carry a JLR headline over an article about something else."
+    },
+    {
+      "step": 4,
+      "action": "edit",
+      "ids": [179163],
+      "fields": {"country": "United Kingdom"},
+      "dry_run_result": "exit 0, 'would set: {'country': 'United Kingdom'}'",
+      "why": "The canonical row is stored under country United States. Every cited report says otherwise: 'cut around 4,000 jobs in the UK over the next two years' (Livemint, Business Today), 'the UK's largest car manufacturer' (Evening Standard), 'almost 12% of its British workforce' (Livemint). country is not in any dedup hash, so a plain edit is enough (RUNBOOK: no /bulk-purge, no re-import).",
+      "the_one_judgement_call": "Several reports say '4,000 jobs across its global workforce'. 'Multiple countries' is therefore defensible and a reviewer may prefer it. United Kingdom is proposed because the majority of the cited reports state the jobs are UK jobs and give a UK denominator, and because the employer's domicile is the UK either way. It is NOT defensible to leave it as United States, which no source supports."
+    }
+  ],
+  "expected_after": {
+    "basis": "Arithmetic on sums: removing a row subtracts its job_count from every slice that contained it. Read the same endpoints with cb= after applying and compare.",
+    "week_37_2026-09-07_to_2026-09-13": {
+      "jobs_before": 23820, "jobs_after": 11820,
+      "entries_before": 65, "entries_after": 62,
+      "verified_jobs_before": 21837, "verified_jobs_after": 9837,
+      "announced_jobs_unchanged": 1983,
+      "united_kingdom_before": 4331, "united_kingdom_after": 331,
+      "automotive_before": 12107, "automotive_after": 107,
+      "blank_country_effect": "-8,000 (rows 179186 and 179194 both carry no country)"
+    },
+    "week_36_2026-08-31_to_2026-09-06": {
+      "note": "Unchanged in total. The canonical row is dated 2026-09-05 and sits in THIS window, so only the country edit moves here.",
+      "jobs_unchanged": 118025,
+      "united_states_before": 16301, "united_states_after": 12301,
+      "united_kingdom_effect": "+4,000"
+    },
+    "corpus_wide": {"jobs": -12000, "entries": -3}
+  },
+  "protocol": [
+    "Never edit or purge a row by hand. Every step goes through apply_correction.py / apply-correction.yml, which suppresses the dedup hash and appends to the PUBLIC corrections log.",
+    "Steps 1 and 2 (move-sources) MUST run before step 3 (trash), or the evidence is deleted with the rows.",
+    "Run every step without --apply first. All four dry runs are recorded above and all four exited 0.",
+    "Re-read Week 37 and Week 36 after applying and compare against expected_after. A figure that does not match means something else moved and the run is not verified.",
+    "The headline_movement baseline will see a 12,000-job drop. It is a DISCLOSED removal: it goes through the corrections log so the movement guard accounts for it rather than opening an incident.",
+    "Applying this closes the CrossAliasDuplicateInvariant FAIL for this cluster. Re-run python3 railway/ops_status.py and confirm it reads PASS."
+  ],
+  "open_and_deliberately_excluded": [
+    {
+      "what": "Ten more clusters the new guard reports over the same 90-day window",
+      "status": "UNKNOWN, not adjudicated, NOT part of this correction",
+      "why": "The guard was run over the whole 378-row non-register population of the last 90 days and returned 11 groups. Only the JLR one was verified against its sources here. The other ten, worst first: Ex Ilva / Ilva / ex-ILVA plant (2,500, Italy, 5,000 excess); Servicio Agricola y Ganadero (SAG) / SAG (400, Chile); MERCER INTERNATIONAL INC. / Mercer Torgau (350, one 8-K, two countries); Pohde / The Wellbeing Services County of North Ostrobothnia Pohde (302, Finland, news over ERM); Post / Swiss Post / Die Post (110, Switzerland, 220 excess); Vodafone / Vodafone Intelligent Solutions (180, Spain); Samsung / Samsung India (100); Supermassive Games / Supermassive (75); SANGAMO THERAPEUTICS, INC / Sangamo (51, 8-K over news); Department of Public Works / Department of Public Works and Highways (2, Philippines). Every one of them LOOKS like a real duplicate and none of them was read against its sources. They are a worklist, not a verdict.",
+      "worth": "about 6,800 jobs beyond the 12,000 here"
+    },
+    {
+      "what": "The layoff_date on the canonical row (2026-09-05)",
+      "status": "left as stored, deliberately",
+      "why": "The cuts run 'over the next two years', so no single effective date is right, and the employer's confirmation was Monday 2026-09-07 while the first report (The Times, via moneycontrol) was 2026-09-05. Moving a date is a judgement call and is not needed to remove the double count."
+    }
+  ],
+  "commands": {
+    "step_1": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 179186 --action move-sources --fields '{\"to_id\":179163,\"urls\":[...]}' --verify-company 'Jaguar Land Rover' --reason '<step 1 reason>' --apply",
+    "step_3": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 179186 --action trash --verify-company 'JLR' --reason '<step 3 reason>' --apply   (then 179194 with --verify-company \"Tata Motors’ JLR\", then 179237 with --verify-company 捷豹路虎)",
+    "step_4": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 179163 --action edit --fields '{\"country\":\"United Kingdom\"}' --verify-company 'Jaguar Land Rover' --reason '<step 4 reason>' --apply",
+    "or_by_dispatch": "gh workflow run apply-correction.yml -f ids=... -f action=... -f reason=... -f verify_company=... -f apply=false"
+  }
+}
