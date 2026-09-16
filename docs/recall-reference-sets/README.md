@@ -159,6 +159,33 @@ later will find MORE items, because the tracker keeps storing rows; that is a
 new frozen set, not a correction of this one, and a model comparison must not
 straddle two of them.
 
+## US state WARN set, wave 2 (IL/OH/PA, 2025-07 → 2026-06)
+
+`us-warn-il-oh-pa-2025-07_2026-06.goldset.json` is the **same set over three
+more states**, on the same window, through the same imported code. Its
+definition —
+[`US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md`](US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md)
+— was committed before the first frame was fetched, and its results are in
+[`US-WARN-WAVE2-RESULTS-2026-09.md`](US-WARN-WAVE2-RESULTS-2026-09.md).
+
+It exists because wave 1 stated, before measuring anything, that it had **no
+Midwest state and no Northeast state** and that its figure was therefore an
+optimistic bound on national WARN recall. A live re-probe on 2026-09-16 found
+three of the four largest excluded states now readable; **New York is still
+not**, and is recorded as excluded with its evidence rather than quietly
+dropped.
+
+**It is NOT adjudicated.** Its editor-confirmed numerator is zero by
+construction and it has a machine upper bound and a queue, which is where wave 1
+stood the day before the owner went through it. Nothing in it may be quoted as
+recall.
+
+**Every figure in its results document is generated** by
+`railway/warn_recall_pooled.py` from the committed measurement files, and
+`railway/tests/test_warn_recall_pooled.py` fails on a stale one. That module is
+also the only place a POOLED seven-state figure exists, because neither wave's
+own document can compute one.
+
 ## US state WARN set (CA/TX/FL/TN, 2025-07 → 2026-06)
 
 `us-warn-ca-tx-fl-tn-2025-07_2026-06.goldset.json` is the **fourth kind of file**

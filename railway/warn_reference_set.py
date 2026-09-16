@@ -137,6 +137,18 @@ _SUFFIX = {"inc", "corp", "corporation", "co", "company", "ltd", "limited", "llc
 _RESCINDED = re.compile(r"\b(rescind\w*|cancell?ed|withdraw\w*|void(?:ed)?)\b", re.I)
 COLLAPSE_TOKENS = 4
 
+# The fields every published row carries, which build_events lifts onto the
+# component row by name. ANY OTHER KEY A FRAME READER SETS IS CARRIED THROUGH
+# VERBATIM: a second wave's frame may hold evidence wave 1 never needed (the
+# state's raw pre-cut employer string, a per-notice PDF link, the CMS modify
+# date), and a component row that silently dropped it would leave a reviewer
+# unable to check the thing the definition promised was checkable. Wave 1's own
+# frames set exactly these keys, so nothing is added to its manifest.
+_CORE_ROW_KEYS = frozenset((
+    "state", "employer_published", "notice_date", "state_received_date",
+    "effective_date", "job_count", "location", "notice_type", "industry",
+    "source_url", "source_locator"))
+
 
 def clean_published_name(raw):
     """The state's published employer string, with markup and entities removed."""
@@ -478,6 +490,7 @@ def build_events(rows):
         if row.get("effective_date"):
             ev["effective_dates"].append(row["effective_date"])
         ev["component_rows"].append({
+            **{k: v for k, v in row.items() if k not in _CORE_ROW_KEYS},
             "employer_published": name, "job_count": row["job_count"],
             "effective_date": row.get("effective_date"),
             "location": row.get("location"), "notice_type": row.get("notice_type"),
@@ -532,12 +545,29 @@ def _seed(state):
 
 
 # ---------------------------------------------------------------------------
-def build():
+def build(states=STATES, sources=SOURCES, frames_by_state=FRAMES,
+          manifest_path=MANIFEST_PATH, reference_set_id=REFERENCE_SET_ID,
+          definition_document=(
+              "docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md"),
+          date_field_note=("published notice date; TN publishes a posting "
+                           "date and the window is counted on it \u2014 \u00a73"),
+          sample_n=SAMPLE_N):
+    """Enumerate, collapse, sample and write one WARN reference manifest.
+
+    THE ARGUMENTS EXIST SO A SECOND WAVE OF STATES IS MEASURED THROUGH THIS
+    FUNCTION RATHER THAN THROUGH A COPY OF IT. Their defaults are wave 1's own
+    constants, so `build()` with no arguments is exactly what it was before the
+    parameters existed. Two copies of a collapse rule that drift apart is the
+    `two-copies-drifted` shape, and a reference set whose unit quietly differs
+    between two waves cannot be pooled at all.
+
+    """
+    states = tuple(states)
     frames, excluded_all, draws, events_all = {}, [], {}, []
     lag_samples = []
-    for st in STATES:
-        print(f"[{st}] fetching {SOURCES[st]['document']} ...")
-        rows = FRAMES[st]()
+    for st in states:
+        print(f"[{st}] fetching {sources[st]['document']} ...")
+        rows = frames_by_state[st]()
         print(f"[{st}] {len(rows)} published rows")
         events, excluded = build_events(rows)
         for ev in events:
@@ -549,7 +579,7 @@ def build():
         frames[st] = events
         excluded_all += excluded
         print(f"[{st}] {len(events)} in-window events, {len(excluded)} rows excluded")
-        picked, meta = systematic_sample(events, SAMPLE_N, _seed(st))
+        picked, meta = systematic_sample(events, sample_n, _seed(st))
         draws[st] = meta
         for ev in picked:
             ev["stratum"] = "primary"
@@ -557,7 +587,7 @@ def build():
     # The L census: every 500+ event in every state's frame, reported apart.
     chosen = {e["reference_row_id"] for e in events_all}
     large = []
-    for st in STATES:
+    for st in states:
         for ev in frames[st]:
             if ev["size_band"] == "L" and ev["reference_row_id"] not in chosen:
                 ev["stratum"] = "large_census"
@@ -570,24 +600,23 @@ def build():
                "mean": round(sum(lag_samples) / len(lag_samples), 2)}
     manifest = {
         "manifest_version": 1,
-        "reference_set_id": REFERENCE_SET_ID,
+        "reference_set_id": reference_set_id,
         "publication_status": ("internal_reference_not_published_to_benchmarks_recall"),
         "reference_basis": "official_state_warn_publications_systematic_enumeration",
         "country": "United States",
-        "states": list(STATES),
-        "definition_document": "docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md",
+        "states": list(states),
+        "definition_document": definition_document,
         "period": {"from": WINDOW[0], "to": WINDOW[1],
-                   "date_field": ("published notice date; TN publishes a posting "
-                                  "date and the window is counted on it — §3")},
+                   "date_field": date_field_note},
         "assembled_at": _utc_now(),
         "assembled_by": ("Claude Code session, single actor. NOT through the "
                          "three-actor review chain docs/RECALL_BENCHMARK_PROTOCOL.md "
                          "requires before a recall number may be posted to "
                          "/benchmarks/recall, and therefore NOT posted there."),
-        "sources": SOURCES,
+        "sources": sources,
         "ca_notice_to_processed_lag_days": lag,
-        "frame_sizes": {st: len(frames[st]) for st in STATES},
-        "frame_jobs": {st: sum(e["stated_job_count"] for e in frames[st]) for st in STATES},
+        "frame_sizes": {st: len(frames[st]) for st in states},
+        "frame_jobs": {st: sum(e["stated_job_count"] for e in frames[st]) for st in states},
         # Recorded because a state that publishes on a lag has an EMPTY tail to
         # the window, and a frame that stops early is a smaller denominator, not
         # a recall result. Read this before comparing two states' figures.
@@ -595,12 +624,12 @@ def build():
             st: {"min": min((e["notice_date"] for e in frames[st]), default=None),
                  "max": max((e["notice_date"] for e in frames[st]), default=None),
                  "months_covered": len({e["notice_date"][:7] for e in frames[st]})}
-            for st in STATES},
+            for st in states},
         "frame_size_bands": {
             st: {b: sum(1 for e in frames[st] if e["size_band"] == b)
-                 for b in ("S", "M", "L")} for st in STATES},
+                 for b in ("S", "M", "L")} for st in states},
         "frame_multi_row_events": {
-            st: sum(1 for e in frames[st] if e["published_rows"] > 1) for st in STATES},
+            st: sum(1 for e in frames[st] if e["published_rows"] > 1) for st in states},
         "sample_draws": draws,
         "collapse_rule": (f"one event per (state, first-{COLLAPSE_TOKENS}-token "
                           f"normalised employer name, notice date); component rows kept"),
@@ -620,8 +649,8 @@ def build():
         "large_event_census": large,
         "excluded_rows": excluded_all,
     }
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    print(f"\nmanifest written: {MANIFEST_PATH}")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print(f"\nmanifest written: {manifest_path}")
     print(f"  primary sample     {len(events_all)} events")
     print(f"  large-event census {len(large)} events (reported separately)")
     print(f"  excluded rows      {len(excluded_all)}")
@@ -749,8 +778,17 @@ def _flags(event, name, jobs, when_d, row_state, is_warn):
     return flags
 
 
-def measure(manifest=None):
-    manifest = manifest or json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+def measure(manifest=None, manifest_path=None, out_path=None):
+    """Run the frozen set against the live read API and write its measurement.
+
+    `manifest_path` / `out_path` default to wave 1's pair. A second wave passes
+    its own two files; nothing here may write the other wave's, and
+    `tests/test_warn_reference_set_wave2.py` asserts the four paths are four
+    distinct files.
+    """
+    manifest_path = manifest_path or MANIFEST_PATH
+    out_path = out_path or WARN_MEASUREMENT_PATH
+    manifest = manifest or json.loads(manifest_path.read_text(encoding="utf-8"))
     results = {"primary": [], "large_census": []}
     unreachable = []
     for stratum, key in (("primary", "reference_events"),
@@ -815,8 +853,8 @@ def measure(manifest=None):
         "cost_usd": 0.0,
     }
     out["summary"] = summarise(out, manifest)
-    WARN_MEASUREMENT_PATH.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
-    print(f"measurement written: {WARN_MEASUREMENT_PATH}")
+    out_path.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
+    print(f"measurement written: {out_path}")
     return out
 
 
@@ -830,6 +868,11 @@ def _rate(rows, pred):
 
 
 def summarise(measurement, manifest):
+    # The states come from the MANIFEST being summarised, not from the module's
+    # wave-1 constant. A summary that iterated a hardcoded state list would
+    # report a second wave's sample as four empty cells and call it a result --
+    # `true-but-empty`, on a file nobody would re-read.
+    states = tuple(manifest.get("states") or STATES)
     prim = measurement["results"]["primary"]
     confirmed = lambda r: r["match_decision"] == "matched"          # noqa: E731
     any_cand = lambda r: bool(r["candidates"])                      # noqa: E731
@@ -849,7 +892,7 @@ def summarise(measurement, manifest):
             "machine_any": _rate(measurement["results"]["large_census"], any_cand),
         },
     }
-    for st in STATES:
+    for st in states:
         rows = [r for r in prim if r["state"] == st]
         summary["by_state"][st] = {
             "editor_confirmed": _rate(rows, confirmed),
@@ -865,12 +908,12 @@ def summarise(measurement, manifest):
         }
     # Notice-volume-weighted machine bound: each state's own frame size as weight.
     weights = manifest["frame_sizes"]
-    total_w = sum(weights.get(st, 0) for st in STATES)
+    total_w = sum(weights.get(st, 0) for st in states)
     if total_w:
         summary["machine_any_volume_weighted"] = round(sum(
             (weights.get(st, 0) / total_w) *
             (summary["by_state"][st]["machine_any"]["point"] or 0.0)
-            for st in STATES), 4)
+            for st in states), 4)
     return summary
 
 
