@@ -9155,6 +9155,71 @@
    "truncated": "paid reads were switched off for this run (ALT_PAID_READS=off)"
   },
   {
+   "calls": 1778,
+   "ceiling_usd": 0.2,
+   "complete": true,
+   "completion_tokens": 103511,
+   "cost_usd": 0.170978,
+   "date": "2026-09-15",
+   "gate_mode": "live",
+   "items": 1337,
+   "job": "railway-cron",
+   "max_call_usd": 0.000529,
+   "prompt_tokens": 1295733,
+   "run_id": "railway-20260915T2223",
+   "sources": {
+    "edgar": {
+     "calls": 34,
+     "cost_usd": 0.005571,
+     "dropped": 4,
+     "items": 19,
+     "kept": 15,
+     "stored": 0
+    },
+    "gdelt": {
+     "calls": 1003,
+     "cost_usd": 0.065737,
+     "dropped": 837,
+     "items": 920,
+     "kept": 83,
+     "stored": 5
+    },
+    "google_news": {
+     "calls": 270,
+     "cost_usd": 0.037112,
+     "dropped": 10,
+     "items": 140,
+     "kept": 130,
+     "stored": 5
+    },
+    "local_news": {
+     "calls": 462,
+     "cost_usd": 0.060937,
+     "dropped": 44,
+     "items": 253,
+     "kept": 209,
+     "stored": 0
+    },
+    "national_feeds": {
+     "calls": 5,
+     "cost_usd": 0.000724,
+     "dropped": 1,
+     "items": 3,
+     "kept": 2,
+     "stored": 0
+    },
+    "warn_mn_letters": {
+     "calls": 4,
+     "cost_usd": 0.000897,
+     "dropped": 0,
+     "items": 2,
+     "kept": 2,
+     "stored": 0
+    }
+   },
+   "stored": 10
+  },
+  {
    "attempt": "1",
    "calls": 0,
    "ceiling_usd": 0.005,
@@ -9186,6 +9251,40 @@
    "prompt_tokens": 0,
    "run_id": "34948975889",
    "stored": null,
+   "truncated": "paid reads were switched off for this run (ALT_PAID_READS=off)"
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "ceiling_usd": 0.025,
+   "changed": 0,
+   "complete": false,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-09-16",
+   "items": 0,
+   "job": "dedupe-llm",
+   "max_call_usd": 0.0,
+   "prompt_tokens": 0,
+   "run_id": "35133251949",
+   "stored": null,
+   "truncated": "paid reads were switched off for this run (ALT_PAID_READS=off)"
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "ceiling_usd": 0.03,
+   "changed": null,
+   "complete": false,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-09-16",
+   "items": null,
+   "job": "supplemental-news",
+   "max_call_usd": 0.0,
+   "prompt_tokens": 0,
+   "run_id": "35132337012",
+   "stored": 0,
    "truncated": "paid reads were switched off for this run (ALT_PAID_READS=off)"
   }
  ],
