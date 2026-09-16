@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.196
+ * Version:           2.20.197
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.196');
+define('ALT_VERSION', '2.20.197');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -837,6 +837,21 @@ function alt_ensure_contact_page_once() {
 add_action('init', 'alt_ensure_contact_page_once');
 
 /**
+ * EVERY PAGE HOOK BELOW RECORDS THAT ITS PAGE EXISTS, SINCE 2.20.197.
+ *
+ * They ran on public init at priority 20 and each called get_page_by_path on
+ * every request forever, returning early without writing anything down; the
+ * quarterly one had no guard at all and queried twice. Per-request plugin
+ * work ranked third among the causes of the host's four outages on
+ * 2026-09-12/13. Each hook now has the shape alt_ensure_contact_page_once
+ * has: a done-option read first (autoloaded, so it rides the options load
+ * every request already does and costs no query of its own), written only
+ * once the page is verified to exist, and a short-lived lock around the
+ * create so concurrent first requests cannot insert the page twice. What
+ * they create is unchanged.
+ */
+
+/**
  * The name of a secondary page, read from the template that heads it. Returns
  * '' when the template cannot be read plainly (see alt_template_heading), and
  * every caller below treats '' as "retry on the next request" rather than
@@ -847,7 +862,13 @@ function alt_secondary_page_title($template) {
 }
 
 function alt_ensure_tracker_health_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/ai-tracker-health')) return;
+    if (get_option('alt_tracker_health_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/ai-tracker-health')) {
+        update_option('alt_tracker_health_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_tracker_health_page_lock')) return;
+    set_transient('alt_tracker_health_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned health page
     $title = alt_secondary_page_title('page-health.php');
@@ -859,15 +880,22 @@ function alt_ensure_tracker_health_page_once() {
 add_action('init', 'alt_ensure_tracker_health_page_once', 20);
 
 function alt_ensure_report_page_once() {
+    if (get_option('alt_report_page_done')) return;
     $existing = get_page_by_path('ai-layoff-tracker/report');
     if ($existing) {
+        // The done-option is written only after the one-time rename below
+        // has had its chance, so a page that still carries the old title
+        // is renamed before this hook goes quiet for good.
         // One-time rename of the original "Monthly Report" title.
         if ($existing->post_title === 'Monthly Report' && !get_option('alt_report_title_v2')) {
             wp_update_post(array('ID' => $existing->ID, 'post_title' => 'Monthly Job Cuts Report'));
             update_option('alt_report_title_v2', 1, false);
         }
+        update_option('alt_report_page_done', 1, true);
         return;
     }
+    if (get_transient('alt_report_page_lock')) return;
+    set_transient('alt_report_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned report page
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',
@@ -877,7 +905,13 @@ function alt_ensure_report_page_once() {
 add_action('init', 'alt_ensure_report_page_once', 20);
 
 function alt_ensure_sources_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/sources')) return;
+    if (get_option('alt_sources_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/sources')) {
+        update_option('alt_sources_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_sources_page_lock')) return;
+    set_transient('alt_sources_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned sources page
     $title = alt_secondary_page_title('page-sources.php');
@@ -889,7 +923,13 @@ function alt_ensure_sources_page_once() {
 add_action('init', 'alt_ensure_sources_page_once', 20);
 
 function alt_ensure_ai_quotes_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/ai-quotes')) return;
+    if (get_option('alt_ai_quotes_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/ai-quotes')) {
+        update_option('alt_ai_quotes_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_ai_quotes_page_lock')) return;
+    set_transient('alt_ai_quotes_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return;
     $title = alt_secondary_page_title('page-ai-quotes.php');
@@ -901,7 +941,13 @@ function alt_ensure_ai_quotes_page_once() {
 add_action('init', 'alt_ensure_ai_quotes_page_once', 20);
 
 function alt_ensure_methodology_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/methodology')) return;
+    if (get_option('alt_methodology_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/methodology')) {
+        update_option('alt_methodology_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_methodology_page_lock')) return;
+    set_transient('alt_methodology_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return;
     $title = alt_secondary_page_title('page-methodology.php');
@@ -913,7 +959,13 @@ function alt_ensure_methodology_page_once() {
 add_action('init', 'alt_ensure_methodology_page_once', 20);
 
 function alt_ensure_publisher_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/publisher-tools')) return;
+    if (get_option('alt_publisher_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/publisher-tools')) {
+        update_option('alt_publisher_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_publisher_page_lock')) return;
+    set_transient('alt_publisher_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned page
     $title = alt_secondary_page_title('page-publisher.php');
@@ -925,7 +977,13 @@ function alt_ensure_publisher_page_once() {
 add_action('init', 'alt_ensure_publisher_page_once', 20);
 
 function alt_ensure_press_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/press')) return;
+    if (get_option('alt_press_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/press')) {
+        update_option('alt_press_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_press_page_lock')) return;
+    set_transient('alt_press_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned page
     $title = alt_secondary_page_title('page-press.php');
@@ -1047,7 +1105,13 @@ foreach (array('rank_math/sitemap/entry', 'wpseo_sitemap_entry') as $alt_sm_hook
 }
 
 function alt_ensure_quarterly_report_page_once() {
-    if (get_page_by_path('ai-layoff-tracker/state-of-layoffs')) return;
+    if (get_option('alt_quarterly_report_page_done')) return;
+    if (get_page_by_path('ai-layoff-tracker/state-of-layoffs')) {
+        update_option('alt_quarterly_report_page_done', 1, true);
+        return;
+    }
+    if (get_transient('alt_quarterly_report_page_lock')) return;
+    set_transient('alt_quarterly_report_page_lock', 1, MINUTE_IN_SECONDS);
     $parent = get_page_by_path('ai-layoff-tracker');
     if (!$parent) return; // retry later; never create an orphaned report page
     wp_insert_post(array('post_type' => 'page', 'post_status' => 'publish',

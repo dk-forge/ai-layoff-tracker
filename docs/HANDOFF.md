@@ -28,6 +28,16 @@ holder, so the start-of-session ritual surfaces it automatically.
   `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`. Read-only
   GETs to state agencies and to the public `/query` read API only; $0.00 of
   model spend; nothing is merged and nothing deploys.
+- **Claude alongside, 2026-09-16, branch `fix/per-request-plugin-work-is-cheap` (PR #348), worktree `/tmp/wt-t348`.**
+  Does NOT take the baton: the holder above touches no `wordpress-plugin/`
+  file and no workflow, so this cannot collide with it. **Reserves plugin
+  version 2.20.197.** Touches `includes/build-stamp.php` (stamp cached in a
+  transient keyed by version plus a stat pass), `includes/api.php`
+  (`/status?build=1` forces a fresh hash), the eight
+  `alt_ensure_*_page_once` hooks in `ai-layoff-tracker.php` (done-options),
+  one new test, TECHLOG and this line. The branch was rebuilt on `origin/main`
+  after its first commit was found to carry a pre-#347 copy of
+  `ai-layoff-tracker.php` and silently revert #347; see TECHLOG 2026-09-16.
 - **Claude, 2026-09-13 late afternoon, VPS/traffic/handover session:** branch
   `ci/host-jobs-run-on-the-vps` (PR open, unmerged) moves every host-touching
   workflow to the Contabo self-hosted runner; no plugin version claimed.
