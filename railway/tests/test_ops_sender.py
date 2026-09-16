@@ -366,6 +366,10 @@ class EveryJobThatMailsCarriesTheKeyThatLetsItMail(unittest.TestCase):
         # the one mail this map exists to guarantee never left.
         "warn_import.py": "warn-import.yml",
         "vps_watch.py": "vps-watch.yml",
+        # The merge train reports a merge, a red pull request and a
+        # needs-human escalation through ops_notify. A new mailing
+        # caller absent from this map is the 18-day defect above.
+        "merge_train.py": "merge-train.yml",
     }
 
     def test_the_sender_override_travels_with_the_key(self):
