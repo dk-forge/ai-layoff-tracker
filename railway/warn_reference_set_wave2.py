@@ -465,16 +465,23 @@ def frame_oh():
 # ---------------------------------------------------------------------------
 # Pennsylvania: the department's own listing, year -> month -> notice.
 # ---------------------------------------------------------------------------
-# Two markers, read in document order. The YEAR is a standalone heading
-# (`cmp-accordion__main-heading--large`), not an accordion title, so a parser
-# that read only accordion titles saw 355 months and notices with no year to
-# hang them on and returned an EMPTY frame -- which would have been a recall
-# figure over a denominator of zero if anything downstream had accepted it.
+# Two markers, read in document order. The YEAR is a standalone <h2> and not an
+# accordion title, so a parser that read only accordion titles saw 355 months
+# and notices with no year to hang them on and returned an EMPTY frame.
+#
+# AND THE YEAR HEADING IS NOT ALWAYS CLASSED. 2026 and 2025 render as
+# `<h2 class="cmp-accordion__main-heading--large">2025</h2>`; **2024 and 2023
+# render as a bare `<h2>2024</h2>`**. A first version matched only the classed
+# form, so every 2024 and 2023 notice inherited year=2025: PA's in-window frame
+# filled with notices from one and two years earlier, and the measurement read
+# 36% because it was asking whether we hold 2023 notices under 2025 dates. The
+# rows we "missed" were in the table with the published headcount exactly right.
+# The class is therefore NOT part of the match, and `_pa_year_month_is_sane`
+# below makes the same mistake impossible to repeat silently.
 _PA_TITLE = re.compile(
     r'class="cmp-accordion__title"[^>]*>(.*?)</span>'
-    r'|class="cmp-accordion__main-heading[^"]*"[^>]*>(.*?)</h\d>', re.S)
+    r'|<h\d[^>]*>\s*(20\d\d)\s*</h\d>', re.S)
 _PA_MODIFY = re.compile(r'repo:modifyDate&#34;:&#34;([0-9T:\-]+Z)&#34;')
-_PA_YEAR = re.compile(r"^(20\d\d)$")
 
 
 def _pa_text(segment):
@@ -511,13 +518,13 @@ def frame_pa():
     year = month = None
     out, seq = [], 0
     for idx, m in enumerate(hits):
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
-        title = _html.unescape(re.sub(r"\s+", " ", W._TAGS.sub("", raw or ""))).strip()
         end = hits[idx + 1].start() if idx + 1 < len(hits) else len(markup)
         segment = markup[m.end():end]
-        if _PA_YEAR.match(title):
-            year, month = int(title), None
+        if m.group(2):                     # a bare-year heading, classed or not
+            year, month = int(m.group(2)), None
             continue
+        title = _html.unescape(
+            re.sub(r"\s+", " ", W._TAGS.sub("", m.group(1) or ""))).strip()
         if title.lower() in _MONTHS:
             month = _MONTHS[title.lower()]
             continue
@@ -558,7 +565,53 @@ def frame_pa():
             "source_locator": (f"{year} > {date(year, month, 1):%B} > accordion "
                                f"item {seq}"),
         })
+    _pa_year_month_is_sane(out)
     return out
+
+
+PA_MAX_AUTHORED_BEFORE_DAYS = 120
+
+
+def _pa_year_month_is_sane(rows):
+    """Raise if a month bucket holds notices the CMS authored long before it.
+
+    THIS EXISTS BECAUSE THE FIRST PA PARSE WAS WRONG AND NOTHING SAID SO. The
+    year heading is `<h2 class="...">2025</h2>` for recent years and a bare
+    `<h2>2024</h2>` for older ones; matching only the classed form filed every
+    2024 and 2023 notice under 2025, and the ONLY symptom was a recall figure of
+    36% that looked like a coverage finding. A frame that is wrong in a way that
+    reads as a result is worse than a frame that fails.
+
+    The check is one-sided on purpose. An entry may be edited long AFTER the
+    month it is filed under -- a correction, a re-publish -- and that is
+    ordinary. An entry cannot be AUTHORED months before the month the department
+    received the notice. So a month whose MEDIAN authored date sits more than
+    `PA_MAX_AUTHORED_BEFORE_DAYS` before its own first day means the rows are
+    parented to the wrong year, and the median (not the minimum) is used so one
+    re-published old entry cannot trip it.
+    """
+    buckets = {}
+    for r in rows:
+        if r.get("cms_modify_date"):
+            buckets.setdefault(r["published_month"], []).append(r["cms_modify_date"])
+    bad = []
+    for month, dates in sorted(buckets.items()):
+        if len(dates) < 3:
+            continue
+        dates.sort()
+        median = date.fromisoformat(dates[len(dates) // 2])
+        first = date.fromisoformat(month + "-01")
+        lead = (first - median).days
+        if lead > PA_MAX_AUTHORED_BEFORE_DAYS:
+            bad.append(f"{month} (median authored {median}, {lead} days before "
+                       f"the month it is filed under, n={len(dates)})")
+    if bad:
+        raise RuntimeError(
+            "Pennsylvania: the year/month parse is wrong -- these month buckets "
+            "hold notices the CMS authored long before them: " + "; ".join(bad)
+            + ". Do NOT widen PA_MAX_AUTHORED_BEFORE_DAYS; find which heading "
+              "form the walk stopped recognising.")
+    return True
 
 
 FRAMES = {"IL": frame_il, "OH": frame_oh, "PA": frame_pa}
@@ -568,17 +621,37 @@ FRAMES = {"IL": frame_il, "OH": frame_oh, "PA": frame_pa}
 # Ohio transcription verification: the sampled events against the state's own
 # notice PDFs. It does not make the Ohio frame independent and is not claimed to.
 # ---------------------------------------------------------------------------
+def _distinctive_tokens(name):
+    """Tokens worth looking for in a notice: no corporate suffixes, 4+ chars."""
+    toks = [w for w in re.sub(r"[^A-Za-z0-9]+", " ", name or "").split()
+            if len(w) >= 4 and w.lower() not in W._SUFFIX]
+    return toks or [w for w in re.sub(r"[^A-Za-z0-9]+", " ", name or "").split()]
+
+
 def verify_oh_transcription(manifest):
     """Read each sampled Ohio event's own notice PDF and check what we recorded.
 
-    A disagreement is RECORDED ON THE EVENT AND CARRIED INTO THE QUEUE, never
-    corrected in place: the frame is what the state published, and an editor
-    deciding a match is entitled to see that the CSV and the notice disagree.
-    An unreadable PDF is `not_verified` with its reason, which is a third state
-    and not a pass.
+    FOUR STATES, NOT TWO, AND THE THIRD ONE IS THE POINT. A WARN letter is a
+    letter: the employer is very often only in a letterhead IMAGE, and the total
+    headcount is very often only the sum of a per-job-title table. So a notice
+    whose extractable text carries neither is **not** a disagreement and must
+    never be recorded as one -- on the first run this check called 17 of 25
+    Ohio notices `disagrees_or_not_stated`, every one of which was the checker's
+    own blind spot rather than a transcription fault.
+
+      confirmed            both a distinctive employer token and the headcount
+                           appear in the notice's own text
+      partially_confirmed  one of the two appears
+      not_stated_in_text   neither appears, AND the notice has a text layer --
+                           an honest UNKNOWN about this notice, not a fault
+      not_verified         no PDF link, no text layer, or the fetch failed
+
+    A disagreement is never corrected in place either way: the frame is what the
+    state published, and an editor deciding a match is entitled to see it.
     """
     from warn_pdf import PDF, page_items                            # noqa: PLC0415
-    checked = 0
+    tally = {"confirmed": 0, "partially_confirmed": 0,
+             "not_stated_in_text": 0, "not_verified": 0}
     for key in ("reference_events", "large_event_census"):
         for ev in manifest.get(key, []):
             if ev["state"] != "OH":
@@ -589,36 +662,59 @@ def verify_oh_transcription(manifest):
                 ev["transcription_check"] = {
                     "status": "not_verified",
                     "why": "the state's CSV row carries no notice PDF link"}
+                tally["not_verified"] += 1
                 continue
             try:
                 text = []
                 pdf = PDF(_get(urls[0], timeout=60))
                 for content in pdf.pages():
-                    text += [t for _, _, t in page_items(content)]
+                    text += [x for _, _, x in page_items(content)]
                 flat = re.sub(r"\s+", " ", " ".join(text))
             except Exception as exc:                                # noqa: BLE001
                 ev["transcription_check"] = {
                     "status": "not_verified", "notice_pdf": urls[0],
                     "why": f"{type(exc).__name__}: {exc}"}
+                tally["not_verified"] += 1
                 time.sleep(1)
                 continue
-            checked += 1
-            head = W.collapse_key_name(ev["employer_published"]).split()
-            name_seen = bool(head) and head[0].lower() in flat.lower()
-            count_seen = re.search(r"\b" + str(ev["stated_job_count"]) + r"\b", flat)
+            time.sleep(1)
+            if len(flat) < 80:
+                # An EMPTY READ IS NOT A ZERO. A scanned notice with no text
+                # layer tells us nothing and says so.
+                ev["transcription_check"] = {
+                    "status": "not_verified", "notice_pdf": urls[0],
+                    "why": (f"the notice has no usable text layer "
+                            f"({len(flat)} characters extracted), so it is a "
+                            f"scan and this check cannot read it")}
+                tally["not_verified"] += 1
+                continue
+            low = flat.lower()
+            name_seen = any(tok.lower() in low for tok in
+                            _distinctive_tokens(ev["employer_published"]))
+            wanted = {ev["stated_job_count"]}
+            wanted |= {c["job_count"] for c in ev["component_rows"] if c["job_count"]}
+            count_seen = any(re.search(r"(?<![\d,])" + f"{n:,}".replace(",", "[,]?")
+                                       + r"(?![\d,])", flat)
+                             for n in wanted if n)
+            status = ("confirmed" if (name_seen and count_seen)
+                      else ("partially_confirmed" if (name_seen or count_seen)
+                            else "not_stated_in_text"))
+            tally[status] += 1
             ev["transcription_check"] = {
-                "status": ("agrees" if (name_seen and count_seen)
-                           else "disagrees_or_not_stated"),
+                "status": status,
                 "notice_pdf": urls[0],
                 "employer_token_in_notice": name_seen,
-                "headcount_in_notice": bool(count_seen),
+                "headcount_in_notice": count_seen,
+                "extracted_characters": len(flat),
                 "note": ("The CSV row and the employer's own notice are compared "
-                         "BEFORE any tracker query exists. A disagreement is "
-                         "recorded, never corrected: the frame is what the state "
-                         "published."),
+                         "BEFORE any tracker query exists. `not_stated_in_text` "
+                         "is an UNKNOWN about this notice and NOT a "
+                         "disagreement: a WARN letter commonly carries the "
+                         "employer only in a letterhead image and the total only "
+                         "as a per-job-title table. Nothing is corrected from "
+                         "the notice; the frame is what the state published."),
             }
-            time.sleep(1)
-    return checked
+    return tally
 
 
 # ---------------------------------------------------------------------------
@@ -640,10 +736,15 @@ def build():
                "tool. This set says NOTHING about our New York coverage."),
     }
     manifest["site_user_agent"] = SITE_UA
-    checked = verify_oh_transcription(manifest)
-    manifest["ohio_transcription_verified"] = checked
+    manifest["il_monthly_footer_check"] = list(IL_FOOTER_CHECK)
+    manifest["status_marker_rows_cut"] = {
+        st: sum(1 for key in ("reference_events", "large_event_census")
+                for ev in manifest[key] if ev["state"] == st
+                for c in ev["component_rows"] if c.get("status_marker_cut"))
+        for st in STATES}
+    manifest["ohio_transcription_check"] = verify_oh_transcription(manifest)
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    print(f"  ohio notices transcription-checked against their own PDFs: {checked}")
+    print(f"  ohio notices vs their own PDFs: {manifest['ohio_transcription_check']}")
     return manifest
 
 

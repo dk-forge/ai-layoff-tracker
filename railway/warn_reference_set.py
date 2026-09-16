@@ -137,6 +137,18 @@ _SUFFIX = {"inc", "corp", "corporation", "co", "company", "ltd", "limited", "llc
 _RESCINDED = re.compile(r"\b(rescind\w*|cancell?ed|withdraw\w*|void(?:ed)?)\b", re.I)
 COLLAPSE_TOKENS = 4
 
+# The fields every published row carries, which build_events lifts onto the
+# component row by name. ANY OTHER KEY A FRAME READER SETS IS CARRIED THROUGH
+# VERBATIM: a second wave's frame may hold evidence wave 1 never needed (the
+# state's raw pre-cut employer string, a per-notice PDF link, the CMS modify
+# date), and a component row that silently dropped it would leave a reviewer
+# unable to check the thing the definition promised was checkable. Wave 1's own
+# frames set exactly these keys, so nothing is added to its manifest.
+_CORE_ROW_KEYS = frozenset((
+    "state", "employer_published", "notice_date", "state_received_date",
+    "effective_date", "job_count", "location", "notice_type", "industry",
+    "source_url", "source_locator"))
+
 
 def clean_published_name(raw):
     """The state's published employer string, with markup and entities removed."""
@@ -478,6 +490,7 @@ def build_events(rows):
         if row.get("effective_date"):
             ev["effective_dates"].append(row["effective_date"])
         ev["component_rows"].append({
+            **{k: v for k, v in row.items() if k not in _CORE_ROW_KEYS},
             "employer_published": name, "job_count": row["job_count"],
             "effective_date": row.get("effective_date"),
             "location": row.get("location"), "notice_type": row.get("notice_type"),
