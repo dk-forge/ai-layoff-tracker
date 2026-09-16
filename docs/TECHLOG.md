@@ -450,6 +450,88 @@ well inside the allowance, so it should resolve to PASS with no human action. If
 it instead renders FAIL it opens an incident, and that one is closed by the same
 path used here.
 
+## 2026-09-16 - August 2026 US announcements: the curated probe run as a retrospective month reference, and what the machine figure needed an editor for
+
+**Class:** novel
+**Guard:** none. The reference set is a gitignored local manifest by design (a runner that could read it is the leak), so no test can re-measure it; the committed trend row in `railway/curated_probe_state.json` is the only repo-side trace, and `railway/tests/test_curated_probe_leak.py` keeps it nameless.
+
+**The question.** An independent public monthly series rose July to August while
+ours fell. The July half was a proven over-count and was corrected the same day
+(two rows trashed through `apply_correction.py`). The August half was UNKNOWN,
+because no shipped instrument answers "did we miss the announcements of a month
+that has already ended" - the learning loop reads a rolling window and the WARN
+reference sets measure filings, not announcements. The owner asked for an
+answer rather than an UNKNOWN, and ruled that two agents verify instead of him.
+
+**The reference.** Assembled under `docs/RECALL_BENCHMARK_PROTOCOL.md`'s
+independence gate and sealed to `scratchpad/` BEFORE any read of our own API:
+28 SEC 8-K filings carrying item 2.05 filed in the window (enumerated from
+EDGAR full-text search, every filing's 2.05 text read), employer releases and
+named public reporting from about 80 web searches. No commercial tracker or
+aggregator was a source; every count that first appeared in one was re-sourced
+or dropped. Result: 40 lines, 37 with a parseable employer and headcount. Twelve
+events of 200 or more workers (one listed per plant), 24 of 50 to 199, and three
+August 8-K announcements that state no headcount at all. Twenty-two candidates
+that search returned as "August" were excluded on the date: the tech roundups
+that dominate search are padded with late-July announcements and early-
+September ones, which is a reason the public series and ours should never be
+compared by headline month without a manifest.
+
+**The machine figure, then the editor figure, and why both are reported.**
+`railway/curated_probe.py` scored 25 of 37 held (67.6%, method c1), with 16
+lessons on 66.7% of items. An editor same-event pass over the twelve misses,
+against `/query` with fuller names, moved six of them to HELD: the probe's
+company token is the first capitalised word and its match is one headcount
+within 2%, so a 1,278-job wholesaler closure held as six state WARN rows plus a
+news row, a 457-job closure held as three state rows, a 374-job closure held
+under the employer's two-word spelling, a 100-job August tranche held as the
+165-job total it belongs to, and two more held on a site-level count. Editor
+figure: **31 of 37 held, 5 missed, 1 UNKNOWN** (a batch of small July notices
+that may or may not be the August filing the reference names). On the 200+
+stratum, 10 of 12 events held, and by jobs about 91% of the stratum's stated
+headcount.
+
+**What the five misses have in common is one shape.** Three are 8-K item 2.05
+filings that state a PERCENTAGE of the workforce and no headcount; the press
+derived the number, we hold none of them as an announcement (one appears only
+as a 65-job state notice two months later). The three no-headcount 8-Ks are the
+same shape and we hold none of those either. The other two misses are Texas
+WARN notices with effective dates in October and December that had not arrived
+when measured, so they are late rather than lost, and are UNKNOWN until the
+next Texas run. Percentage-only filings are a real, small, describable gap in
+the SEC path; it is not the August divergence.
+
+**The answer to the question is "definitional", with the numbers.** The whole
+reference sums to roughly 10,400 stated jobs, of which we hold roughly 9,300.
+The comparator's published August figure is five times the entire reference.
+No public search over ten sectors surfaced any August announcement above 1,000
+workers other than the two we hold. Whatever the public series counts in
+August, it is not a set of employer announcements that public search can find
+and we cannot; the July over-count was ours and is fixed, the August gap is not
+ours to close. Recorded in the private benchmark note, never on a public page.
+
+**Two defects in the instrument surfaced by using it retrospectively.**
+(1) Every vocabulary lesson the run produced was an artefact of the worklist's
+own wording: a hand-written line is judged as if it were the outlet's headline,
+so "we do not search these words" was true of MY phrasing, not the press's. The
+eight terms were NOT adopted and the RUNBOOK now says when a vocabulary lesson
+is real. (2) The four outlet lessons are real and stay in the local report: a
+freight-industry trade title carried five of the WARN items in one piece, a
+payer trade title, a distribution trade title and a higher-education title each
+carried one. They are review instructions, not sources; none is wired here.
+
+**Not sent.** `emailed False`: no `RESEND_API_KEY` in this environment, so the
+named report is in `scratchpad/recall-lessons.md` only. Re-running with the key
+exported mails it through the existing sink; nothing else may.
+
+**Still UNKNOWN, honestly.** The web search tool cannot reach five of the
+largest US business wires and the local business-journal network, and several
+trade titles refused the fetch; local-press-only announcements are
+under-sampled, so 31 of 37 is a floor on a sample, not the tracker's recall.
+One item is UNKNOWN. Two are pending a state's own publication. The protocol's
+second-editor review has not happened, so no figure here is eligible for
+`/benchmarks/recall` and none is quoted on a public surface.
+
 ## 2026-09-16 - Spain (Illes Balears): the one European set that CAN be built, defined before it is built
 
 **Class:** novel

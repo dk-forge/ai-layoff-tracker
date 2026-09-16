@@ -9,6 +9,16 @@
       "method": "c1",
       "taught_pct": null,
       "unmatched": 0
+    },
+    {
+      "curated_recall_pct": 67.6,
+      "date": "2026-09-16",
+      "judged": 37,
+      "lessons": 16,
+      "matched": 25,
+      "method": "c1",
+      "taught_pct": 66.7,
+      "unmatched": 12
     }
   ]
 }
