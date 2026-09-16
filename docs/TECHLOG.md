@@ -74,7 +74,12 @@ spread is not.
 
 Corrections prepared, not applied (no key in the session, and a numeric change
 needs the owner): `railway/correction_specs/2026-09-16-july-us-overcount.json`.
-July announced 86,035 -> 60,035, notice 56,023 -> 30,023. Full audit in
+July announced 86,035 -> 60,035 (entries 354 -> 352). The NOTICE basis is
+not affected equally: row 176990 is dated there by its announcement_date of
+2025-03-27 and falls in March 2025, so that basis loses only the duplicate,
+56,023 -> 50,023. The same row being a 20,000-job July event on one published
+basis and a March-2025 event on the other is itself what a lifted number looks
+like from the outside. Full audit in
 `docs/findings-july-august-2026-us-accuracy.md`.
 
 ## 2026-09-13 - Host jobs move to the whitelisted VPS runner: a green run that did nothing
