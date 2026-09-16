@@ -48,7 +48,7 @@ permissions:
 
 jobs:
   reconcile:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5

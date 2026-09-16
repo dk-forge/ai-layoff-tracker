@@ -20,7 +20,7 @@ on:
         default: ''
 jobs:
   sweep:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # DERIVED from the script's own deadline. The old 20 sat 23% above the
     # then-measured max with the script owning no clock at all; run 31469499159
     # (2026-08-11) then took 17.6 min, which would have left that ceiling 12%

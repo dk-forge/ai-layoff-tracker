@@ -69,7 +69,7 @@ concurrency:
 
 jobs:
   diff:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5

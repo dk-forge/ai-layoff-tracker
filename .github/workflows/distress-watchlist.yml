@@ -20,7 +20,7 @@ on:
 
 jobs:
   distress:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, contabo]
     # Sized from measurement, 2026-08-05: median 19.0 min, max 26.1 over
     # the last 15 runs. 26.1 was 75% of the old 35 ceiling. 3x the median
     # rounded: 60.
