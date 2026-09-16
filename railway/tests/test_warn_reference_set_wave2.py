@@ -33,8 +33,23 @@ import warn_reference_set as W                                    # noqa: E402
 import warn_reference_set_wave2 as V                              # noqa: E402
 
 
+LEDGER_PATH = V.HERE / "warn_recall_adjudications_wave2.json"  # wave 2's own ledger
+
+
 def _manifest():
     return json.loads(V.MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def _live_accepts():
+    """Reference ids with a live `accept` in the wave-2 ledger (reverts undone)."""
+    ledger = json.loads(LEDGER_PATH.read_text(encoding="utf-8"))
+    live = {}
+    for e in ledger["decisions"]:
+        if e["decision"] == "revert":
+            live.pop(e["reverts"].split("@")[0], None)
+        else:
+            live[e["reference_row_id"]] = e["decision"]
+    return {rid for rid, d in live.items() if d == "accept"}
 
 
 class TheUnitIsImportedAndNotCopied(unittest.TestCase):
@@ -81,19 +96,48 @@ class FourFilesNotTwo(unittest.TestCase):
 
 
 class NothingIsMatchedUntilAnEditorSaysSo(unittest.TestCase):
-    def test_every_event_in_the_committed_manifest_arrives_not_matched(self):
+    # Until 2026-09-16 these two tests asserted that every event arrives
+    # `not_matched` and that the committed numerator is zero. That was the
+    # correct assertion for a set nobody had reviewed. Wave 2 was adjudicated
+    # on 2026-09-16 (reviewer agent-a-2026-09-16, ledger
+    # railway/warn_recall_adjudications_wave2.json), so the assertion is now
+    # wave 1's stronger form: a match may exist, but ONLY with a named
+    # adjudicator and a live ledger accept behind it, and the measurement's
+    # numerator must be exactly the ledger's accepts -- no larger (a machine
+    # promoted itself) and no smaller (a signed decision never reached the
+    # measurement).
+    def test_the_committed_manifest_has_no_self_awarded_match(self):
         m = _manifest()
+        accepted = _live_accepts()
         for key in ("reference_events", "large_event_census"):
             for ev in m[key]:
-                self.assertEqual(ev["match_decision"], "not_matched", ev["reference_row_id"])
+                rid = ev["reference_row_id"]
+                if ev.get("match_decision") == "matched":
+                    self.assertTrue(ev.get("adjudicated_by"),
+                                    f"{rid} is matched with no adjudicator")
+                    self.assertIn(rid, accepted,
+                                  f"{rid} is matched with no live accept in the "
+                                  f"wave-2 ledger")
+                else:
+                    self.assertEqual(ev["match_decision"], "not_matched", rid)
+                    self.assertNotIn(rid, accepted,
+                                     f"{rid} has a live accept but is not matched")
 
-    def test_the_committed_measurement_has_a_zero_confirmed_numerator(self):
+    def test_the_committed_measurements_numerator_is_exactly_the_ledgers_accepts(self):
         if not V.MEASUREMENT_PATH.exists():
             self.skipTest("UNKNOWN, NOT RUN: no wave-2 measurement is committed")
-        s = json.loads(V.MEASUREMENT_PATH.read_text(encoding="utf-8"))["summary"]
-        self.assertEqual(s["editor_confirmed_overall"]["k"], 0,
-                         "a confirmed numerator appeared without an adjudication "
-                         "pass; the machine may not promote its own recall")
+        meas = json.loads(V.MEASUREMENT_PATH.read_text(encoding="utf-8"))
+        accepted = _live_accepts()
+        for stratum in ("primary", "large_census"):
+            ids = {r["id"] for r in meas["results"][stratum]}
+            confirmed = {r["id"] for r in meas["results"][stratum]
+                         if r["match_decision"] == "matched"}
+            self.assertEqual(confirmed, accepted & ids,
+                             f"{stratum}: the measurement's matched ids and the "
+                             f"ledger's live accepts disagree; re-run --measure or "
+                             f"find the hand edit")
+        k = meas["summary"]["editor_confirmed_overall"]["k"]
+        self.assertEqual(k, len(accepted & {r["id"] for r in meas["results"]["primary"]}))
 
 
 class PennsylvaniaYearParse(unittest.TestCase):

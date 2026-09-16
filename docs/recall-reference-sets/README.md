@@ -175,10 +175,10 @@ three of the four largest excluded states now readable; **New York is still
 not**, and is recorded as excluded with its evidence rather than quietly
 dropped.
 
-**It is NOT adjudicated.** Its editor-confirmed numerator is zero by
-construction and it has a machine upper bound and a queue, which is where wave 1
-stood the day before the owner went through it. Nothing in it may be quoted as
-recall.
+**It was adjudicated by ONE reviewer on 2026-09-16** (`agent-a-2026-09-16`;
+ledger `railway/warn_recall_adjudications_wave2.json`, separate from wave 1's).
+Its editor-confirmed figure is a single-reviewer figure and a second
+independent review is expected. Nothing in it may be quoted as recall.
 
 **Every figure in its results document is generated** by
 `railway/warn_recall_pooled.py` from the committed measurement files, and

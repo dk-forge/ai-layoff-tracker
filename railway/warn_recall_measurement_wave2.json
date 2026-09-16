@@ -2,7 +2,7 @@
   "note": "Recall of the frozen US WARN reference set against the live API. The numerator is EDITOR-CONFIRMED ONLY; machine_* figures are an upper bound and must never be quoted as recall. This file is separate from the SEC Item 2.05 set's own measurement file on purpose \u2014 that published figure is not this set's business, and tests/test_warn_reference_set.py asserts no module here can reach it.",
   "reference_set_id": "us-warn-il-oh-pa-2025-07_2026-06",
   "definition_document": "docs/recall-reference-sets/US-WARN-WAVE2-REFERENCE-SET-DEFINITION.md",
-  "measured_at": "2026-09-16T10:30:33Z",
+  "measured_at": "2026-09-16T12:31:33Z",
   "unreachable": 0,
   "unreachable_events": [],
   "results": {
@@ -14,7 +14,7 @@
         "notice_date": "2025-07-14",
         "stated_job_count": 73,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -42,7 +42,7 @@
         "notice_date": "2025-08-05",
         "stated_job_count": 46,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [],
         "machine_tier": "none"
       },
@@ -64,7 +64,7 @@
         "notice_date": "2025-09-05",
         "stated_job_count": 37,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -92,7 +92,7 @@
         "notice_date": "2025-09-15",
         "stated_job_count": 86,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "loose",
@@ -121,7 +121,7 @@
         "notice_date": "2025-09-26",
         "stated_job_count": 27,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -149,7 +149,7 @@
         "notice_date": "2025-10-01",
         "stated_job_count": 138,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -177,7 +177,7 @@
         "notice_date": "2025-10-08",
         "stated_job_count": 72,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -206,7 +206,7 @@
         "notice_date": "2025-10-23",
         "stated_job_count": 163,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -250,7 +250,7 @@
         "notice_date": "2025-11-05",
         "stated_job_count": 45,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -279,7 +279,7 @@
         "notice_date": "2025-11-14",
         "stated_job_count": 82,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -318,7 +318,7 @@
         "notice_date": "2025-12-22",
         "stated_job_count": 37,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "loose",
@@ -346,7 +346,7 @@
         "notice_date": "2026-01-27",
         "stated_job_count": 253,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -374,7 +374,7 @@
         "notice_date": "2026-02-02",
         "stated_job_count": 66,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -402,7 +402,7 @@
         "notice_date": "2026-02-10",
         "stated_job_count": 469,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "loose",
@@ -432,26 +432,8 @@
         "stated_job_count": 642,
         "size_band": "L",
         "match_decision": "not_matched",
-        "candidates": [
-          {
-            "tier": "loose",
-            "tracker_event_id": 109022,
-            "tracker_row_id": 136187,
-            "company_name": "First Brands Group, LLC (Midwest Distribution Center)",
-            "job_count": 389,
-            "row_date": "2026-02-03",
-            "state": "IL",
-            "source_type": "warn",
-            "source_name": "IL WARN notice",
-            "source_url": "https://dceo.illinois.gov/workforcedevelopment/warn.html",
-            "flags": [
-              "job_count 389 matches neither a component row nor the notice total 642",
-              "row date is -20 day(s) after the notice date",
-              "stored name 'First Brands Group, LLC (Midwest Distribution Center)' differs from the published 'First Brands Group, LLC (Albion Air Facility)'"
-            ]
-          }
-        ],
-        "machine_tier": "loose"
+        "candidates": [],
+        "machine_tier": "none"
       },
       {
         "id": "warn-il-2026-03-06-aspira-of-illinois",
@@ -460,7 +442,7 @@
         "notice_date": "2026-03-06",
         "stated_job_count": 57,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -488,7 +470,7 @@
         "notice_date": "2026-03-20",
         "stated_job_count": 107,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -516,7 +498,7 @@
         "notice_date": "2026-04-01",
         "stated_job_count": 240,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -545,7 +527,7 @@
         "notice_date": "2026-04-13",
         "stated_job_count": 172,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [],
         "machine_tier": "none"
       },
@@ -556,7 +538,7 @@
         "notice_date": "2026-04-29",
         "stated_job_count": 65,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -584,7 +566,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 304,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -647,7 +629,7 @@
         "notice_date": "2026-05-19",
         "stated_job_count": 160,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -675,7 +657,7 @@
         "notice_date": "2026-06-05",
         "stated_job_count": 98,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -704,7 +686,7 @@
         "notice_date": "2025-07-07",
         "stated_job_count": 1,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -732,7 +714,7 @@
         "notice_date": "2025-07-16",
         "stated_job_count": 80,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -760,7 +742,7 @@
         "notice_date": "2025-08-18",
         "stated_job_count": 39,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -788,7 +770,7 @@
         "notice_date": "2025-08-28",
         "stated_job_count": 56,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -816,7 +798,7 @@
         "notice_date": "2025-09-24",
         "stated_job_count": 207,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -844,7 +826,7 @@
         "notice_date": "2025-10-08",
         "stated_job_count": 58,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -872,7 +854,7 @@
         "notice_date": "2025-10-27",
         "stated_job_count": 175,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -916,7 +898,7 @@
         "notice_date": "2025-11-19",
         "stated_job_count": 1,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -944,7 +926,7 @@
         "notice_date": "2025-12-04",
         "stated_job_count": 67,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -972,7 +954,7 @@
         "notice_date": "2026-01-06",
         "stated_job_count": 66,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1000,7 +982,7 @@
         "notice_date": "2026-01-08",
         "stated_job_count": 2,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1044,7 +1026,7 @@
         "notice_date": "2026-01-12",
         "stated_job_count": 46,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1072,7 +1054,7 @@
         "notice_date": "2026-01-29",
         "stated_job_count": 54,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1100,7 +1082,7 @@
         "notice_date": "2026-02-09",
         "stated_job_count": 61,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1128,7 +1110,7 @@
         "notice_date": "2026-02-16",
         "stated_job_count": 17,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1156,7 +1138,7 @@
         "notice_date": "2026-02-23",
         "stated_job_count": 115,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1184,7 +1166,7 @@
         "notice_date": "2026-02-27",
         "stated_job_count": 302,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1247,7 +1229,7 @@
         "notice_date": "2026-03-06",
         "stated_job_count": 70,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1292,7 +1274,7 @@
         "notice_date": "2026-03-19",
         "stated_job_count": 125,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1320,7 +1302,7 @@
         "notice_date": "2026-03-25",
         "stated_job_count": 53,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1348,7 +1330,7 @@
         "notice_date": "2026-04-09",
         "stated_job_count": 116,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1394,7 +1376,7 @@
         "notice_date": "2026-04-22",
         "stated_job_count": 60,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1422,7 +1404,7 @@
         "notice_date": "2026-04-28",
         "stated_job_count": 102,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [],
         "machine_tier": "none"
       },
@@ -1433,7 +1415,7 @@
         "notice_date": "2026-05-01",
         "stated_job_count": 110,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "loose",
@@ -1480,7 +1462,7 @@
         "notice_date": "2026-06-10",
         "stated_job_count": 43,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1508,7 +1490,7 @@
         "notice_date": "2025-07-01",
         "stated_job_count": 67,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1536,7 +1518,7 @@
         "notice_date": "2025-07-01",
         "stated_job_count": 72,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1565,25 +1547,8 @@
         "stated_job_count": 145,
         "size_band": "M",
         "match_decision": "not_matched",
-        "candidates": [
-          {
-            "tier": "loose",
-            "tracker_event_id": 23942,
-            "tracker_row_id": 137844,
-            "company_name": "Weaber, Inc.",
-            "job_count": 46,
-            "row_date": "2025-08-25",
-            "state": "PA",
-            "source_type": "warn",
-            "source_name": "PA WARN notice",
-            "source_url": "https://www.pa.gov/agencies/dli/programs-services/workforce-development-home/warn-requirements/warn-notices",
-            "flags": [
-              "job_count 46 matches neither a component row nor the notice total 145",
-              "row date is 55 day(s) after the notice date"
-            ]
-          }
-        ],
-        "machine_tier": "loose"
+        "candidates": [],
+        "machine_tier": "none"
       },
       {
         "id": "warn-pa-2025-09-01-air-products-and-chemicals",
@@ -1592,7 +1557,7 @@
         "notice_date": "2025-09-01",
         "stated_job_count": 14,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1620,7 +1585,7 @@
         "notice_date": "2025-09-01",
         "stated_job_count": 13,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1648,7 +1613,7 @@
         "notice_date": "2025-09-01",
         "stated_job_count": 42,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1687,7 +1652,7 @@
         "notice_date": "2025-10-01",
         "stated_job_count": 153,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1715,7 +1680,7 @@
         "notice_date": "2025-10-01",
         "stated_job_count": 55,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1754,7 +1719,7 @@
         "notice_date": "2025-11-01",
         "stated_job_count": 131,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1810,7 +1775,7 @@
         "notice_date": "2025-12-01",
         "stated_job_count": 204,
         "size_band": "M",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1882,7 +1847,7 @@
         "notice_date": "2026-01-01",
         "stated_job_count": 983,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1910,7 +1875,7 @@
         "notice_date": "2026-01-01",
         "stated_job_count": 49,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [],
         "machine_tier": "none"
       },
@@ -1932,7 +1897,7 @@
         "notice_date": "2026-02-01",
         "stated_job_count": 11,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1960,7 +1925,7 @@
         "notice_date": "2026-03-01",
         "stated_job_count": 63,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -1988,7 +1953,7 @@
         "notice_date": "2026-03-01",
         "stated_job_count": 60,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2016,7 +1981,7 @@
         "notice_date": "2026-04-01",
         "stated_job_count": 55,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2044,7 +2009,7 @@
         "notice_date": "2026-04-01",
         "stated_job_count": 67,
         "size_band": "S",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2118,7 +2083,7 @@
         "notice_date": "2026-02-05",
         "stated_job_count": 1864,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [],
         "machine_tier": "none"
       },
@@ -2129,7 +2094,7 @@
         "notice_date": "2026-05-04",
         "stated_job_count": 1395,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2158,7 +2123,7 @@
         "notice_date": "2025-11-01",
         "stated_job_count": 795,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2186,7 +2151,7 @@
         "notice_date": "2026-03-01",
         "stated_job_count": 615,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2214,7 +2179,7 @@
         "notice_date": "2026-06-01",
         "stated_job_count": 1485,
         "size_band": "L",
-        "match_decision": "not_matched",
+        "match_decision": "matched",
         "candidates": [
           {
             "tier": "exact",
@@ -2241,19 +2206,19 @@
   "summary": {
     "editor_confirmed_overall": {
       "n": 75,
-      "k": 0,
-      "interval": "0/75 = 0.0%  (Wilson 95% CI [0.0%, 4.9%], width 4.9%)",
-      "point": 0.0,
-      "low": 0.0,
-      "high": 0.04872554590470005
+      "k": 63,
+      "interval": "63/75 = 84.0%  (Wilson 95% CI [74.1%, 90.6%], width 16.5%)",
+      "point": 0.84,
+      "low": 0.7408308420225468,
+      "high": 0.9060357867622572
     },
     "machine_upper_bound_any_candidate": {
       "n": 75,
-      "k": 61,
-      "interval": "61/75 = 81.3%  (Wilson 95% CI [71.1%, 88.5%], width 17.5%)",
-      "point": 0.8133333333333334,
-      "low": 0.7107120474561753,
-      "high": 0.8854199437768794
+      "k": 59,
+      "interval": "59/75 = 78.7%  (Wilson 95% CI [68.1%, 86.4%], width 18.3%)",
+      "point": 0.7866666666666666,
+      "low": 0.6811982171013853,
+      "high": 0.86419913657992
     },
     "machine_exact_tier": {
       "n": 75,
@@ -2267,19 +2232,19 @@
       "IL": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
+          "k": 22,
+          "interval": "22/25 = 88.0%  (Wilson 95% CI [70.0%, 95.8%], width 25.8%)",
+          "point": 0.88,
+          "low": 0.7004380781662651,
+          "high": 0.9583325864293191
         },
         "machine_any": {
           "n": 25,
-          "k": 21,
-          "interval": "21/25 = 84.0%  (Wilson 95% CI [65.3%, 93.6%], width 28.3%)",
-          "point": 0.84,
-          "low": 0.6534598601976183,
-          "high": 0.9359665239142201
+          "k": 20,
+          "interval": "20/25 = 80.0%  (Wilson 95% CI [60.9%, 91.1%], width 30.3%)",
+          "point": 0.8,
+          "low": 0.6086866446346176,
+          "high": 0.9113954589934753
         },
         "machine_exact": {
           "n": 25,
@@ -2293,11 +2258,11 @@
       "OH": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
+          "k": 25,
+          "interval": "25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%)",
+          "point": 1.0,
+          "low": 0.8668035060468213,
+          "high": 1.0
         },
         "machine_any": {
           "n": 25,
@@ -2319,19 +2284,19 @@
       "PA": {
         "editor_confirmed": {
           "n": 25,
-          "k": 0,
-          "interval": "0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.13319649395317873
-        },
-        "machine_any": {
-          "n": 25,
           "k": 16,
           "interval": "16/25 = 64.0%  (Wilson 95% CI [44.5%, 79.8%], width 35.2%)",
           "point": 0.64,
           "low": 0.44518154601046633,
           "high": 0.7975234356826436
+        },
+        "machine_any": {
+          "n": 25,
+          "k": 15,
+          "interval": "15/25 = 60.0%  (Wilson 95% CI [40.7%, 76.6%], width 35.9%)",
+          "point": 0.6,
+          "low": 0.40739127785127344,
+          "high": 0.7659694233580909
         },
         "machine_exact": {
           "n": 25,
@@ -2347,11 +2312,11 @@
       "S": {
         "editor_confirmed": {
           "n": 47,
-          "k": 0,
-          "interval": "0/47 = 0.0%  (Wilson 95% CI [0.0%, 7.6%], width 7.6%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.07556017119838872
+          "k": 42,
+          "interval": "42/47 = 89.4%  (Wilson 95% CI [77.4%, 95.4%], width 18.0%)",
+          "point": 0.8936170212765957,
+          "low": 0.7740546030798722,
+          "high": 0.9536959004448006
         },
         "machine_any": {
           "n": 47,
@@ -2373,19 +2338,19 @@
       "M": {
         "editor_confirmed": {
           "n": 26,
-          "k": 0,
-          "interval": "0/26 = 0.0%  (Wilson 95% CI [0.0%, 12.9%], width 12.9%)",
-          "point": 0.0,
-          "low": 1.3877787807814457e-17,
-          "high": 0.12873304380462175
+          "k": 20,
+          "interval": "20/26 = 76.9%  (Wilson 95% CI [57.9%, 89.0%], width 31.0%)",
+          "point": 0.7692307692307693,
+          "low": 0.5794807424804321,
+          "high": 0.8896630031632332
         },
         "machine_any": {
           "n": 26,
-          "k": 19,
-          "interval": "19/26 = 73.1%  (Wilson 95% CI [53.9%, 86.3%], width 32.4%)",
-          "point": 0.7307692307692307,
-          "low": 0.5391659658023868,
-          "high": 0.8629572447493261
+          "k": 18,
+          "interval": "18/26 = 69.2%  (Wilson 95% CI [50.0%, 83.5%], width 33.5%)",
+          "point": 0.6923076923076923,
+          "low": 0.5001138848576876,
+          "high": 0.8349887906020732
         },
         "machine_exact": {
           "n": 26,
@@ -2399,19 +2364,19 @@
       "L": {
         "editor_confirmed": {
           "n": 2,
-          "k": 0,
-          "interval": "0/2 = 0.0%  (Wilson 95% CI [0.0%, 65.8%], width 65.8%)",
-          "point": 0.0,
-          "low": 0.0,
-          "high": 0.6576280471103807
+          "k": 1,
+          "interval": "1/2 = 50.0%  (Wilson 95% CI [9.5%, 90.5%], width 81.1%)",
+          "point": 0.5,
+          "low": 0.09452865480086614,
+          "high": 0.9054713451991339
         },
         "machine_any": {
           "n": 2,
-          "k": 2,
-          "interval": "2/2 = 100.0%  (Wilson 95% CI [34.2%, 100.0%], width 65.8%)",
-          "point": 1.0,
-          "low": 0.34237195288961925,
-          "high": 1.0
+          "k": 1,
+          "interval": "1/2 = 50.0%  (Wilson 95% CI [9.5%, 90.5%], width 81.1%)",
+          "point": 0.5,
+          "low": 0.09452865480086614,
+          "high": 0.9054713451991339
         },
         "machine_exact": {
           "n": 2,
@@ -2426,11 +2391,11 @@
     "large_event_census": {
       "editor_confirmed": {
         "n": 6,
-        "k": 0,
-        "interval": "0/6 = 0.0%  (Wilson 95% CI [0.0%, 39.0%], width 39.0%)",
-        "point": 0.0,
-        "low": 0.0,
-        "high": 0.3903430336530645
+        "k": 5,
+        "interval": "5/6 = 83.3%  (Wilson 95% CI [43.6%, 97.0%], width 53.3%)",
+        "point": 0.8333333333333334,
+        "low": 0.43649056343635395,
+        "high": 0.9699474141282697
       },
       "machine_any": {
         "n": 6,
@@ -2441,6 +2406,6 @@
         "high": 0.9032306674407831
       }
     },
-    "machine_any_volume_weighted": 0.8169
+    "machine_any_volume_weighted": 0.7892
   }
 }

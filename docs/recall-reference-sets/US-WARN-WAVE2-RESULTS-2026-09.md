@@ -24,16 +24,29 @@ python3 railway/warn_recall_pooled.py --render
 
 ## 1. The one sentence that may honestly be said first
 
-**Wave 2 has NOT been adjudicated, so it has no recall figure yet.** Its
-editor-confirmed numerator is **zero by construction**: every candidate the
-machine proposes ships `match_decision: not_matched`, and only a reviewer
-working through `railway/warn_adjudicate.py` may promote one. What wave 2 has
-today is a **machine upper bound**, an adjudication queue of 65 events and 78
-candidate rows, 16 events the rule proposed nothing for, and a cause per miss.
+**Wave 2 was adjudicated on 2026-09-16 by ONE reviewer (`agent-a-2026-09-16`),
+so its editor-confirmed figure exists and is a single-reviewer figure.** Every
+one of the 81 events (75 primary + 6 census) was read against the state's own
+publication and against the candidate row(s) in the live API; 68 accepts and 3
+rejects went through the shared ledger mechanism into
+`railway/warn_recall_adjudications_wave2.json` (wave 1's ledger is untouched),
+and the ten events with no row at all carry their verdict in `match_notes`
+because the recorder requires a row id and a miss with no row has none.
 
-That is exactly where wave 1 stood on 2026-08-13, the day before the owner
-adjudicated it, and it is the honest state of a set whose gate has not been
-passed. **Do not quote the machine bound as recall.**
+The numbers are in the generated block below. Two things to read before them:
+
+- **Six confirmed matches lie OUTSIDE the machine's "upper bound".** The strict
+  §6 rule proposes rows by token-prefix alias inside a window; six rows we hold
+  (Claire's, Gerresheimer, both Franciscan components, GXO, First Brands
+  Cuyahoga 4, Miller's) fail the alias or the window and were found by the
+  relaxed probe and a live read. The machine figure is therefore the bound of
+  the RULE, not a ceiling on what we hold, and the confirmed cell exceeds it in
+  IL, OH and the census. Two proposed rows were rejected as different notices,
+  which is why the machine bound also moved (61 to 59): a rejected row is not
+  proposed again.
+- **This is one reviewer.** A second independent reviewer's file is expected;
+  until the two agree, a disagreement on any row is an open question, not a
+  figure. Nothing here is posted to `/benchmarks/recall`.
 
 ---
 
@@ -52,9 +65,9 @@ passed. **Do not quote the machine bound as recall.**
 |---|---|---|---|---|
 | CA | wave 1 | 812 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) |
 | FL | wave 1 | 140 | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) |
-| IL | wave 2 | 103 | 0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%) | 21/25 = 84.0%  (Wilson 95% CI [65.3%, 93.6%], width 28.3%) |
-| OH | wave 2 | 81 | 0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%) | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) |
-| PA | wave 2 | 79 | 0/25 = 0.0%  (Wilson 95% CI [0.0%, 13.3%], width 13.3%) | 16/25 = 64.0%  (Wilson 95% CI [44.5%, 79.8%], width 35.2%) |
+| IL | wave 2 | 103 | 22/25 = 88.0%  (Wilson 95% CI [70.0%, 95.8%], width 25.8%) | 20/25 = 80.0%  (Wilson 95% CI [60.9%, 91.1%], width 30.3%) |
+| OH | wave 2 | 81 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) |
+| PA | wave 2 | 79 | 16/25 = 64.0%  (Wilson 95% CI [44.5%, 79.8%], width 35.2%) | 15/25 = 60.0%  (Wilson 95% CI [40.7%, 76.6%], width 35.9%) |
 | TN | wave 1 | 62 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) |
 | TX | wave 1 | 166 | 25/25 = 100.0%  (Wilson 95% CI [86.7%, 100.0%], width 13.3%) | 24/25 = 96.0%  (Wilson 95% CI [80.5%, 99.3%], width 18.8%) |
 
@@ -64,22 +77,20 @@ passed. **Do not quote the machine bound as recall.**
 
 | Basis | Figure |
 |---|---|
-| Editor-confirmed, equal allocation, ALL measured states | 99/175 = 56.6%  (Wilson 95% CI [49.2%, 63.7%], width 14.5%) |
-| Editor-confirmed, ADJUDICATED sets only (wave 1) | 99/100 = 99.0%  (Wilson 95% CI [94.6%, 99.8%], width 5.3%) |
-| Machine upper bound, equal allocation | 160/175 = 91.4%  (Wilson 95% CI [86.3%, 94.7%], width 8.4%) |
-| Machine upper bound, notice-volume weighted | 0.962 |
+| Editor-confirmed, equal allocation, ALL measured states | 162/175 = 92.6%  (Wilson 95% CI [87.7%, 95.6%], width 7.9%) |
+| Editor-confirmed, ADJUDICATED sets only (wave 1, wave 2) | 162/175 = 92.6%  (Wilson 95% CI [87.7%, 95.6%], width 7.9%) |
+| Machine upper bound, equal allocation | 158/175 = 90.3%  (Wilson 95% CI [85.0%, 93.8%], width 8.9%) |
+| Machine upper bound, notice-volume weighted | 0.957 |
 
 Allocation is **equal, not proportional**: every state contributes 25 events regardless of how many notices it publishes, so the pooled figure is the mean of the state samples and **not** a population-weighted national estimate. The volume-weighted row is beside it for exactly that reason.
-
-> **The editor-confirmed pooled figure is held down by wave 2, which has not been adjudicated.** Its numerator is zero BY CONSTRUCTION, not by measurement: every candidate in that set ships `not_matched` and only a reviewer may promote one. Until that review happens, the honest reading of the pooled editor-confirmed row is *a floor over a denominator that includes an unreviewed set*, and the machine bound beside it is the ceiling. **Neither is 'our WARN recall'.**
 
 ### By event size, pooled
 
 | Band | Affected workers | Editor-confirmed | Machine upper bound |
 |---|---|---|---|
-| S | 1-99 | 56/104 = 53.8%  (Wilson 95% CI [44.3%, 63.1%], width 18.8%) | 97/104 = 93.3%  (Wilson 95% CI [86.8%, 96.7%], width 9.9%) |
-| M | 100-499 | 36/62 = 58.1%  (Wilson 95% CI [45.7%, 69.5%], width 23.9%) | 54/62 = 87.1%  (Wilson 95% CI [76.6%, 93.3%], width 16.8%) |
-| L | 500+ | 7/9 = 77.8%  (Wilson 95% CI [45.3%, 93.7%], width 48.4%) | 9/9 = 100.0%  (Wilson 95% CI [70.1%, 100.0%], width 29.9%) |
+| S | 1-99 | 98/104 = 94.2%  (Wilson 95% CI [88.0%, 97.3%], width 9.3%) | 97/104 = 93.3%  (Wilson 95% CI [86.8%, 96.7%], width 9.9%) |
+| M | 100-499 | 56/62 = 90.3%  (Wilson 95% CI [80.5%, 95.5%], width 15.0%) | 53/62 = 85.5%  (Wilson 95% CI [74.7%, 92.2%], width 17.5%) |
+| L | 500+ | 8/9 = 88.9%  (Wilson 95% CI [56.5%, 98.0%], width 41.5%) | 8/9 = 88.9%  (Wilson 95% CI [56.5%, 98.0%], width 41.5%) |
 
 ### The frames, before any matching
 
@@ -107,7 +118,7 @@ This is **event size, not employer size**. WARN publishes how many workers a not
 | Set | Editor-confirmed | Machine upper bound |
 |---|---|---|
 | wave 1 | 32/33 = 97.0%  (Wilson 95% CI [84.7%, 99.5%], width 14.8%) | 33/33 = 100.0%  (Wilson 95% CI [89.6%, 100.0%], width 10.4%) |
-| wave 2 | 0/6 = 0.0%  (Wilson 95% CI [0.0%, 39.0%], width 39.0%) | 4/6 = 66.7%  (Wilson 95% CI [30.0%, 90.3%], width 60.3%) |
+| wave 2 | 5/6 = 83.3%  (Wilson 95% CI [43.6%, 97.0%], width 53.3%) | 4/6 = 66.7%  (Wilson 95% CI [30.0%, 90.3%], width 60.3%) |
 
 Pooling a census with a systematic sample double-counts the events in both and silently reweights the result, so it is not done.
 
@@ -122,7 +133,7 @@ Pooling a census with a systematic sample double-counts the events in both and s
 
 **Unreachable / UNKNOWN events excluded from every numerator and denominator above: 0.**
 
-Measured at: wave 1 2026-08-14T19:57:05Z; wave 2 2026-09-16T10:30:33Z.
+Measured at: wave 1 2026-08-14T19:57:05Z; wave 2 2026-09-16T12:31:33Z.
 
 <!-- END DERIVED: warn_recall_pooled.py -->
 
@@ -201,6 +212,14 @@ UNKNOWNs about the notice rather than findings about the frame.
 
 ## 5. The misses, as a worklist
 
+*Written before adjudication; kept as the record of what the rule saw. The
+adjudication (2026-09-16) confirmed all five rows below as matches, found a
+sixth outside the rule (row 136059, `UPDATE First Brands Group Cuyahoga 4`, 110,
+whose effective date precedes its own UPDATE notice by 63 days and so falls
+outside the window), and found the second Franciscan component held too (row
+136174, `Specialty Physicians of Illinois, LLC`, 329). The confirmed misses are
+twelve primary events and one census event, listed at the end of this section.*
+
 Five of the sixteen unmatched events are rows **we already hold**, which the
 strict §6 rule could not reach. All five fail on the same thing — the alias test
 is a token PREFIX of the state's published name, and our stored name is a
@@ -243,6 +262,47 @@ judged: WARN rows store the *effective* date, so a state's series runs years
 ahead on a handful of future-dated closures, and treating those as holes made
 Ohio read as broken when it is not.) So these are scattered per-notice gaps, not
 a dark window — which is a materially different worklist.
+
+### 5.1 The confirmed misses (adjudicated 2026-09-16, reviewer `agent-a-2026-09-16`)
+
+Twelve primary events and one census event. Every one is `UNKNOWN` in §8's
+vocabulary, because a public read cannot say which collector stage lost it.
+
+| State | Notice | Count | What the review found |
+|---|---|---|---|
+| IL | Zeco Systems, Inc. (received 2025-08-18) | 6 | No IL row. The notice's only address is Los Angeles, CA. We hold the same employer's filings in nine other states, none under IL. |
+| IL | Adare Pharmaceuticals, Inc. (2025-12-01) | 21 | No row for `Adare` in ANY state; the PA notice below is missed too. |
+| IL | First Brands Group, LLC, Albion (2026-02-23) | 642 | The only candidate, row 136187 (389), is the separate McHenry notice received 2026-02-03. Rejected. None of the four Albion rows is held. |
+| PA | Weaber, Inc., Lebanon (July 2025) | 145 | The only candidate, row 137844 (46), is the separate Titusville closing. Rejected. |
+| PA | Fourth Street Barbecue, Inc. (October 2025) | 252 | No row. |
+| PA | DuBois Logistics, LLC (November 2025) | 110 | No row. |
+| PA | Adare Pharmaceuticals, Inc. (December 2025) | 137 | No row; see the IL Adare notice. |
+| PA | S&S Activewear (December 2025) | 128 | We hold the same site's April 2025 notice (row 139254, 218), not this one. Rejected. |
+| PA | BPM Limited (February 2026, updated total) | 248 | No row for either the original 148 or the updated 248 entry. |
+| PA | Dometic (May 2026) | 89 | No row. |
+| PA | Juvenile Justice Center of Philadelphia (May 2026) | 17 | No row. |
+| PA | American Expediting Logistics, LLC (June 2026) | 86 | No row. |
+| IL (census) | Amazon Fresh, 10 stores (2026-01-28) | 1,545 | No IL row at any date, while the same chain's PA notice (983, same effective date) is held. The largest miss by headcount. |
+
+Three data-quality defects the review met on the way to a match, none of which
+changed a verdict (a defect-masked match is still a match):
+
+- **Ohio's `UPDATE` marker is stored in `company_name`** (rows 135258, 136059,
+  135003, 135004, 136294 and others). Reference side cuts it; the importer does
+  not.
+- **A typographic apostrophe (U+2019) is stored as U+0027** for Miller's Ale
+  House, and Claire's is stored with an apostrophe the state does not publish,
+  so a `LIKE` on the published spelling finds neither.
+- **An amended effective date makes a second row.** TOPS Products (rows 136862
+  and 176824) and Premier Healthcare Solutions (rows 136620 and 176837) each
+  hold one Ohio notice twice because the dedup hash includes the date the state
+  later changed.
+
+And one thing about the reference set itself, recorded rather than edited:
+Heartland Human Care Services' two published rows (March report and April
+report; same 120, same Chicago 60653 address, same received and effective
+dates) read as one notice listed in two consecutive monthly reports, so the
+240 total may double-count one closing.
 
 ---
 
