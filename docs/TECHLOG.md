@@ -50,6 +50,180 @@ register is not downloaded, the frame is not enumerated and the tracker is not
 queried. Section 8 lists the five steps for a session with egress, and the editor
 still decides every row.
 
+## 2026-09-16 - Per-request plugin work is cheap again: the build stamp is cached by what is on disk, and a page that exists is not looked up forever (2.20.197)
+
+**Class:** novel. None of the slugs in docs/INCIDENT_CLASSES.md names this shape: work that is correct, bounded and idempotent, repeated on every request because nothing records that it was done. Candidate slug: `never-recorded-done`.
+**Guard:** `railway/tests/test_per_request_plugin_work_is_cheap.py`
+
+The blog host fell over four times in twenty hours on 2026-09-12/13, and the
+investigation ranked per-request plugin work third among the causes. Two
+shapes, both in wordpress-plugin/ai-layoff-tracker.
+
+**1. alt_build_stamp() hashed the whole plugin on every uncached render.**
+66 files, about 3.1 MB, sha256, on every plugin surface and since 2.20.191 on
+the contact page too. The docblock refused a cross-request cache on purpose:
+a stamp cached during an FTPS upload would outlive the race that produced it
+and turn a two-minute mismatch into a permanent one. That guarantee is kept a
+cheaper way. The stamp lives in a transient keyed by ALT_VERSION and a stat
+pass over the same file set (alt_build_stat_key: count, every size, every
+mtime, folded into one digest). A half-uploaded tree has a different key from
+the finished one, so a stamp cached mid-upload is invalidated by the next
+file that lands; an ordinary render now costs one directory walk of stat()
+calls, not 66 digests. alt_build_stamp(true) bypasses the cache and /status
+with build=1 uses it, because that is what reader_freshness.py grades a
+deploy against, twice a deploy. Without WordPress (the php CLI in tests, or a
+request that arrives before the plugin is loadable) there is no transient and
+it hashes as before, and the Python half is untouched: the cached number is
+the same number.
+
+**2. Eight page hooks queried the database on every request and never wrote
+anything down.** Seven alt_ensure_*_page_once hooks at init priority 20 each
+called get_page_by_path per request and returned early on success without
+recording it; alt_ensure_quarterly_report_page_once had no guard at all and
+called it twice. Each now has the shape alt_ensure_contact_page_once has had
+since the contact page: a done-option read first, written only once the page
+is verified to exist, and a short-lived transient lock around the create so
+two concurrent first requests cannot insert the page twice. One deliberate
+difference from the contact hook: the done-options are autoloaded, so they
+ride the options load every request already performs and cost no query of
+their own. A non-autoloaded flag would have replaced one query with another.
+The report hook keeps its one-time title rename ahead of the flag, so a page
+still carrying the old title is renamed before the hook goes quiet. What the
+hooks create is unchanged.
+
+The test reads the PHP as text for the shape (every hook reads its own
+distinct done-option before any page lookup, writes it only inside the branch
+that found the page, takes the lock) and runs the stamp under the php CLI with
+fake transient functions for the behaviour: a cached stamp under a matching
+key is served without hashing, the forced path ignores it, a file that lands
+after the cache was written changes the key, and the cached value equals what
+reader_freshness.checkout_build_stamp computes. Proven red on 2.20.192 (10 of
+11 failing) before the change.
+
+**The branch shipped as a mass revert first, and CI caught it as two of its
+sibling's tests.** This work was written as 2.20.194 against a checkout that
+predated #347, then committed on top of a main that already held it. The
+result was not a merge conflict and not a failure anyone could read as a
+revert: the commit simply carried a whole pre-#347 copy of
+`ai-layoff-tracker.php`, which silently undid the deploy hook's dated sweep
+guard, the ten-minute-out Nevada schedule, the coalesced rewrite flush and
+the `wp_get_schedule() !== 'daily'` fix, and also dropped the `us-registry`
+and `country-coverage` includes and 650 lines of this file. The only thing
+that said so was `test_deploy_first_request_is_cheap.py`, which #347 had
+brought with it: one ERROR (the coalesced-flush function no longer existed)
+and one FAIL (the daily mirror was checked by `wp_next_scheduled` again). The
+tests were right and the code was wrong. The branch was rebuilt on main
+carrying only the two changes above, and its own test file, and this entry.
+A whole-file copy from an old checkout defeats every review that reads a diff
+for intent, because the diff it produces IS the intent plus a revert nobody
+wrote down.
+
+## 2026-09-16 - July 2026 US headline over-counts by 26,000 jobs: one third party's number, one article stored twice
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_duplicate_article_guard.py` (new invariant `duplicate_article_rows`, keyed on `(source_url, job_count)` with no company name in it)
+
+The published July 2026 US figure fell month-over-month while an independent
+public series rose. Changing the date basis did not reconcile it, so the basis
+was not the cause. Two rows are.
+
+**Row 176990, 20,000 jobs, 23.2% of the whole July headline.** An 8-K row
+attributed to the filer, `Aeternum Health, Inc.`. The filing was read in full:
+the number comes out of a regulatory RISK FACTOR describing the US Department
+of Health and Human Services' March 2025 restructuring. The trap is one word --
+the filing quotes HHS's press language verbatim, "HHS announced that it intends
+to reduce OUR workforce by approximately 10,000 full-time employees ... in
+combination ... a reduction of force by 20,000 employees" -- and the extractor
+bound "our" to the registrant, a micro-cap shell with negative shareholders'
+equity and $10,000/month of consulting fees. The row contradicts itself in its
+own fields: `announcement_date` 2025-03-27 sits 467 days before its
+`layoff_date` of 2026-07-07. HHS reductions are separately carried under
+`federal_rif`, so it also double counts a population we already hold. It was
+stored at verification level `gold`.
+
+**Rows 177161 and 176442, 6,000 jobs each, one article.** Byte-identical
+`source_url`, identical count, one day apart, under "Los Angeles Unified School
+District" and "LAUSD". Different `event_id`s, so `/aggregate` summed both.
+
+**Why nothing caught the second one, which is the reusable half.** Every dedup
+defence we have buckets on a company name before anything is compared, so two
+spellings of one employer make two buckets and the pair is never proposed,
+never compared, never judged, at zero cost, forever -- the same blind spot
+`duplicate_shape_scan.py` was written for in September, which names LAUSD in its
+own docstring and which reports but never merges. `headline_concentration` could
+not see it either: each row is 7% of the month, individually unremarkable. A
+guard that shares its target's blind spot is worthless, so the new invariant's
+key holds NO company name at all. `job_count` is part of the key rather than a
+second test because one article really can be the cited source for several
+different facts -- the OPM workforce-changes portal is one URL behind four
+federal agencies with four different counts. Register-style source types
+(`warn`, `federal_rif`) are excluded outright: one CA WARN register URL is the
+`source_url` of 129 unrelated July rows. Over the 656 live US rows of July and
+August it reports exactly one group, the real one, and no false positives. One
+request, largest-first, floor printed in its own PASS sentence, never a page
+walk.
+
+It is DELEGATED in `test_dedup_live.InvariantCoverage.DELEGATED` rather than
+claimed by a live assertion, for the reason `country_identity` is: it fails live
+right now, on purpose, and a live claim would redden every push over a data
+defect that a correction clears and that a unit suite cannot act on.
+
+**Not closed, and deliberately not rounded into the correction.** Row 134521
+(`Ideal US Talent`, 9,891, state RI) says "in Minneapolis, MN" in its own
+excerpt, and sibling row 26778 holds the same URL and the same excerpt at a
+count of 2. `test_headline_guards.py` has named that exact shape -- "RI 98,912,
+a 9,891 ... (2 from RI) misparse" -- as a known incident since August, and it is
+still live in the published number. Rows 70479/134376 are a Meta news-over-WARN
+superset that was never joined, about 1,400 jobs. Both are judgement calls and
+are UNKNOWN pending two-model adjudication.
+
+**The August half is UNKNOWN and is reported as UNKNOWN.** Neither named
+instrument can answer a retrospective question: `tracker_diff --learn` reads a
+GDELT window anchored to now and capped at 168 hours (it answered "cadence
+quiet" on the day, which is correct shipped behaviour and was not overridden),
+and `curated_probe` needs a hand-fed worklist only the owner can supply. What
+the corpus does show is shape, not a number: August carries 6 rows flagged
+`announced` worth 5,123 jobs against July's 10 and 14,474.
+
+**And the comparison itself is not like-for-like.** 88% of July's rows and 87%
+of August's are state WARN notices. An announcement-based series does not count
+a WARN notice at all, so a WARN-inclusive series should normally read higher,
+and a month-over-month direction disagreement between the two is expected
+rather than diagnostic. The 26,000 is a real defect; most of the remaining
+spread is not.
+
+Corrections prepared, not applied (no key in the session, and a numeric change
+needs the owner): `railway/correction_specs/2026-09-16-july-us-overcount.json`.
+July announced 86,035 -> 60,035 (entries 354 -> 352). The NOTICE basis is
+not affected equally: row 176990 is dated there by its announcement_date of
+2025-03-27 and falls in March 2025, so that basis loses only the duplicate,
+56,023 -> 50,023. The same row being a 20,000-job July event on one published
+basis and a March-2025 event on the other is itself what a lifted number looks
+like from the outside. Full audit in
+`docs/findings-july-august-2026-us-accuracy.md`.
+
+## 2026-09-14 - The deploy's three-state checks died silently on UNKNOWN, because the step ran under errexit
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_deploy_check_unknown_is_a_warning.py`
+
+Three verification steps in `deploy-plugin.yml` run a checker that answers
+PASS, FAIL or UNKNOWN and branch on `STATUS=$?`: FAIL fails the deploy,
+UNKNOWN (the host could not be reached) warns, so that a host outage cannot
+manufacture red runs that manufacture alerts that also fail. Each step opened
+with `set -uo pipefail` and nothing else, and GitHub runs `run:` blocks under
+`bash -e`. Under errexit the checker's exit 3 ended the step before the line
+that reads `$?`, with exit code 3 and no annotation, which is the opposite of
+what the step documents. The 2.20.191 and 2.20.192 deploys went red that way
+on 2026-09-12/13 while the host sat behind its bot wall, and the alert ledger
+kept the bare `AssertionError` and `JSONDecodeError` causes this checker was
+written to replace, because no newer cause was ever printed.
+
+Fix: `set +e` in each of the three status-reading steps, with the reason
+beside it. The test parses the workflow and requires every `run:` block that
+reads `STATUS=$?` to turn errexit off before the command it measures. Proven
+red on origin/main. No behaviour of the checks changes: FAIL still fails the
+deploy and UNKNOWN now warns, as the comments always said it did.
 ## 2026-09-13 - Host jobs move to the whitelisted VPS runner: a green run that did nothing
 
 **Class:** true-but-empty
