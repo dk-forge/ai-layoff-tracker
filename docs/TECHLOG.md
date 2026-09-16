@@ -1,3 +1,55 @@
+## 2026-09-16 - Spain (Illes Balears): the one European set that CAN be built, defined before it is built
+
+**Class:** novel
+**Guard:** the document itself, committed before the register is enumerated, as
+`UK-REFERENCE-SET-DEFINITION.md` and `US-WARN-REFERENCE-SET-DEFINITION.md` were.
+
+A follow-up brief asked for first event-recall samples for DE, FR, NL, ES, IT
+and the UK. That was already answered on 2026-09-15 (#361): the label is a
+category error for five of the six, and for France, Italy and the Netherlands
+the blocker is a publisher instruction naming ClaudeBot, which a different agent
+fetching the same host does not cure.
+
+Spain is the exception, and the reason is narrow: naming the employer is what
+turns an official total into a set of events, and by this repo's own survey four
+jurisdictions on earth do it, of which the Illes Balears is the only European
+one. `docs/recall-reference-sets/ES-BALEARS-REFERENCE-SET-DEFINITION.md` fixes
+that set before any number exists.
+
+**The eligibility rule removes most of the file, and that is the point.** Three
+filters, each cutting rows whose absence would otherwise be scored as our miss:
+
+- `MESURA = EXTINCIO` only. The register splits SUSPENSIO 1,747 / RED. JOR. 971
+  / blank 740 / EXTINCIO 359, and only the 359 are collective dismissals. A
+  layoff tracker is not wrong to be absent from a short-time-work row.
+- `DATA PRESENTACIO` in 2015-01-01..2022-12-31. The upper bound is the
+  publisher's: the 2023-2025 companion file is ERTO-only and the catalogue marks
+  the dataset "No s'actualitza". The lower bound is OURS and was the find that
+  shaped the document: `erm_import.py` documents `ERM_MODE=full` as "entire
+  history >= 2015-01-01". Europe reaches this tracker mainly through ERM, so a
+  2009 Balearic dismissal is outside what any collector we run was asked to
+  hold. Counting it as a miss would measure our backfill boundary.
+- ERM's own inclusion threshold, also read from `erm_import.py`: >=100 jobs, or
+  >=10% of a 250+ site. Holding a tracker to account for an event its declared
+  threshold excludes is the same category error in miniature.
+
+**The most important line is `in_tracker: False`.** We do not ingest Balears, so
+a miss here does not mean a collector failed; it means the general net did not
+independently pick the event up. That is a weaker and different claim than the
+US WARN set makes, and the document forbids quoting it as "recall of our Spanish
+collector", because there is no Spanish collector.
+
+Small n is declared in advance as an acceptable outcome rather than something to
+engineer around afterwards, and section 9 records what to publish if the frame
+is too small to carry a point estimate: Europe has exactly one per-employer
+dismissal register, it stops in 2022, and we do not ingest it.
+
+Nothing was fetched. The session had no outbound HTTP at all (only api.github.com
+answered; everything else, including example.com, returned a proxy 403), so the
+register is not downloaded, the frame is not enumerated and the tracker is not
+queried. Section 8 lists the five steps for a session with egress, and the editor
+still decides every row.
+
 ## 2026-09-16 - Four of seventy-nine countries can carry the word "recall", and now a test says so
 
 **Class:** novel
