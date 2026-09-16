@@ -133,7 +133,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 BASE = "https://asktherecruiter.com/blog/wp-json/layoffs/v1/"
@@ -2429,6 +2429,8 @@ class ArchiveRecheckInvariant:
 #: URL is meaningless for these: one CA WARN register URL carried 129 unrelated
 #: July rows, and the OPM workforce-changes portal carries every federal agency.
 #: Excluding them is what makes the remaining signal exact rather than noisy.
+from entity_resolution import same_entity, why_same_entity  # noqa: E402
+
 REGISTER_URL_SOURCE_TYPES = {"warn", "federal_rif"}
 
 #: How far back the sweep looks, and how many rows it reads. ONE request: this
@@ -2577,6 +2579,213 @@ class DuplicateArticleInvariant:
                              f"{floor:,} jobs is outside this sweep and is NOT claimed clean")
 
 
+#: How far back the cross-alias sweep looks, and how many rows it reads. ONE
+#: request, like its sibling. 90 days rather than 180 because this key is
+#: looser than (source_url, job_count) -- it joins rows that cite DIFFERENT
+#: articles -- so its reach is deliberately the window a correction can still
+#: be reasoned about from the sources, not the whole corpus.
+CROSS_ALIAS_WINDOW_DAYS = 90
+CROSS_ALIAS_ROWS = 200
+
+#: Two filings of one round land days apart and are legitimately two rows; two
+#: OUTLETS reporting one announcement land within a day or two of each other on
+#: the SAME effective date. Two days is the tolerance that holds the live
+#: instance (Sep 7 and Sep 8 on one Monday confirmation) without reaching for
+#: the next week's round.
+CROSS_ALIAS_MAX_DATE_GAP_DAYS = 2
+
+
+def _row_date(row):
+    raw = str((row or {}).get("layoff_date") or "")[:10]
+    try:
+        return date(*(int(part) for part in raw.split("-")))
+    except (TypeError, ValueError):
+        return None
+
+
+def cross_alias_duplicate_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES,
+                               max_gap_days=CROSS_ALIAS_MAX_DATE_GAP_DAYS):
+    """Rows that are ONE event under different names, counted more than once.
+
+    THE KEY IS (job_count, effective date within `max_gap_days`, one employer).
+
+    WHY THIS EXISTS BESIDE duplicated_article_rows. That one holds no company
+    name because a spelling cannot be wrong in a field that is not there -- and
+    it is bounded by exactly that: it only fires when the two rows cite the SAME
+    article. On 2026-09-07/08 Jaguar Land Rover's 4,000 job cuts were stored
+    four times from FOUR DIFFERENT outlets, under "Jaguar Land Rover", "JLR",
+    "Tata Motors' JLR" and the Chinese "捷豹路虎". Four URLs, so that key sees
+    four unrelated rows; four spellings, so every name-bucketed dedup pass sees
+    four unrelated employers. Three of them summed into a reader digest.
+
+    WHY ALL THREE CONDITIONS, AND NOT TWO. The count alone repeats constantly
+    (round numbers are round). The date alone is a week of unrelated layoffs.
+    The employer alone is a company with two genuine rounds. It is the
+    conjunction that is the duplicate shape, and the employer test is the
+    deliberately conservative one: `entity_resolution.same_entity` answers False
+    for anything it cannot establish, so the cost of an unknown name is a missed
+    duplicate (visible, countable, reversible) and never a false one.
+
+    REGISTER SOURCES ARE EXCLUDED OUTRIGHT, same as the sibling and for a
+    stronger reason here: WARN notices are EXEMPT from fuzzy dedup by policy
+    because one employer legally files several notices close together, often for
+    the same headcount at neighbouring sites. That shape is this key exactly,
+    and it is correct data.
+
+    Rows already joined into one `event_id` are one observation by construction
+    and are never reported. Pure: no network, no keys, no model.
+    """
+    eligible = []
+    for row in rows or ():
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("source_type") or "").lower() in register_types:
+            continue
+        when = _row_date(row)
+        if when is None:
+            continue
+        try:
+            jobs = int(row.get("job_count") or 0)
+        except (TypeError, ValueError):
+            continue
+        if jobs <= 0:
+            continue
+        eligible.append((jobs, when, row))
+
+    by_count = {}
+    for jobs, when, row in eligible:
+        by_count.setdefault(jobs, []).append((when, row))
+
+    groups = []
+    for jobs, items in by_count.items():
+        items.sort(key=lambda pair: (pair[0], str(pair[1].get("id") or "")))
+        parent = list(range(len(items)))
+
+        def find(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        reasons = {}
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                when_i, row_i = items[i]
+                when_j, row_j = items[j]
+                if abs((when_i - when_j).days) > max_gap_days:
+                    continue
+                if str(row_i.get("event_id") or "") == str(row_j.get("event_id") or ""):
+                    continue
+                if not same_entity(row_i.get("company_name"), row_j.get("company_name")):
+                    continue
+                reasons.setdefault(find(i), why_same_entity(
+                    row_i.get("company_name"), row_j.get("company_name")))
+                parent[find(i)] = find(j)
+
+        clusters = {}
+        for i in range(len(items)):
+            clusters.setdefault(find(i), []).append(items[i][1])
+        for root, cluster in clusters.items():
+            if len(cluster) < 2:
+                continue
+            # Distinct events only: a cluster that is one event id is one
+            # observation, whatever its rows are called.
+            if len({str(r.get("event_id") or "") for r in cluster}) < 2:
+                continue
+            groups.append({
+                "job_count": jobs,
+                "rows": sorted(cluster, key=lambda r: str(r.get("id") or "")),
+                "excess": jobs * (len(cluster) - 1),
+                "why": reasons.get(root) or "one employer under two names",
+            })
+    groups.sort(key=lambda g: (-g["excess"], str(g["rows"][0].get("id") or "")))
+    return groups
+
+
+class CrossAliasDuplicateInvariant:
+    """One event may not be counted twice because it has two names.
+
+    WHAT IT ASSERTS. Over the largest rows of a trailing window, read from the
+    same superset-deduped population the headline sums: no two of them carry the
+    same job_count, effective dates within two days, and employer names that
+    resolve to one employer, under different event ids.
+
+    WHY IT IS BOUNDED, AND WHY IT SAYS SO. One /query page, largest first, no
+    parallelism, never a page walk. The headline is a sum, so a duplicate's cost
+    is its job_count and the page reaches a floor far below anything that could
+    move a published number. The floor is PRINTED in the PASS sentence rather
+    than left to be assumed, and a duplicate below it is explicitly not claimed
+    clean.
+
+    MISSING DATA IS NOT A PASS. An unreadable body, a response with no rows, or
+    a 503 deploy window is UNKNOWN, named as such.
+    """
+
+    key = "cross_alias_duplicate_rows"
+    label = "One event, one row, whatever it is called"
+    reads_live_data = True
+
+    WINDOW_DAYS = CROSS_ALIAS_WINDOW_DAYS
+    ROWS = CROSS_ALIAS_ROWS
+
+    def run(self, ctx):
+        since = ctx.today - timedelta(days=self.WINDOW_DAYS)
+        params = {"from": since.isoformat(), "to": ctx.today.isoformat(),
+                  "sort": "job_count", "dir": "desc",
+                  "per_page": self.ROWS, "page": 1,
+                  "exclude_supersets": 1, "cb": ctx.cachebust}
+        url = BASE + "query?" + urllib.parse.urlencode(params)
+        try:
+            payload = json.loads(ctx.fetch(url, ctx.timeout)) or {}
+        except urllib.error.HTTPError as exc:
+            why = ("site is in its deploy maintenance window (HTTP 503)"
+                   if exc.code == 503 else f"/query returned HTTP {exc.code}")
+            return Result(self, UNKNOWN, detail=why, error=exc)
+        except Exception as exc:
+            return Result(self, UNKNOWN,
+                          detail=f"could not read /query ({exc})", error=exc)
+
+        rows = payload.get("data")
+        if not isinstance(rows, list) or not rows:
+            return Result(self, UNKNOWN,
+                          detail="/query returned no rows for the window — this check "
+                                 "did not run, which is not the same as finding nothing")
+        counts = []
+        for row in rows:
+            try:
+                counts.append(int((row or {}).get("job_count") or 0))
+            except (TypeError, ValueError):
+                pass
+        floor = min(counts) if counts else 0
+        try:
+            total = int(payload.get("total") or 0)
+        except (TypeError, ValueError):
+            total = 0
+        scope = (f"{len(rows)} largest of {total:,} rows in the last "
+                 f"{self.WINDOW_DAYS}d, down to {floor:,} jobs")
+
+        groups = cross_alias_duplicate_rows(rows)
+        if groups:
+            worst = groups[0]
+            ids = ", ".join(str(r.get("id")) for r in worst["rows"])
+            names = " / ".join(sorted({str(r.get("company_name") or "") for r in worst["rows"]}))
+            excess = sum(g["excess"] for g in groups)
+            return Result(self, FAIL, observed=excess,
+                          detail=f"{len(groups)} event(s) counted more than once under "
+                                 f"different employer names, {excess:,} jobs of excess in "
+                                 f"the headline. Worst: rows {ids} each carry "
+                                 f"{worst['job_count']:,} jobs within "
+                                 f"{CROSS_ALIAS_MAX_DATE_GAP_DAYS} days as {names} "
+                                 f"({worst['why']}), under different event ids. Verify them "
+                                 f"against their own sources, then correct through the "
+                                 f"machinery (RUNBOOK: a published row is wrong) — never by "
+                                 f"hand ({scope})")
+        return Result(self, PASS, observed=0,
+                      detail=f"no event is counted twice under two names ({scope}); a "
+                             f"duplicate below {floor:,} jobs is outside this sweep and is "
+                             f"NOT claimed clean")
+
+
 def _php_function_body(src, name):
     """Source between `function name(` and the next top-level closing brace."""
     start = src.find(f"function {name}(")
@@ -2665,6 +2874,13 @@ INVARIANTS = (
     # one article, 7% each of a headline bounded at far more. This one asks
     # that question, on a key that holds no company name at all.
     DuplicateArticleInvariant(),
+    # DuplicateArticleInvariant holds no company name, which is what lets it
+    # see through a spelling -- and is exactly what bounds it: it only fires
+    # when both rows cite the SAME article. Four outlets reporting one event
+    # under four spellings produce four URLs, and it sees four ordinary rows.
+    # This one asks the other half: same count, same couple of days, one
+    # employer, different event ids. See the 2026-09-16 JLR entry in TECHLOG.
+    CrossAliasDuplicateInvariant(),
     MovementInvariant(),
     # The movement guard measures a headline's move against how many ROWS
     # ARRIVED, and a re-scoring moves a headline while nothing arrives. This one

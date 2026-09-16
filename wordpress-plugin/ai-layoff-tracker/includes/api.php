@@ -189,6 +189,21 @@ add_action('rest_api_init', 'alt_register_routes');
  */
 function alt_company_key($name) {
     $k = strtolower((string) $name);
+    /*
+      A NON-LATIN NAME IS STRIPPED TO NOTHING BY THE LINE BELOW, AND ALWAYS WAS.
+      preg_replace('/[^a-z0-9 ]/') removes every CJK, Cyrillic, Greek, Arabic or
+      Devanagari character, so "\u6377\u8c79\u8def\u864e" (Jaguar Land Rover, in Chinese) has
+      had an EMPTY company key since this function existed -- and so has every
+      other row whose employer is named in a non-Latin script. An empty key
+      matches nothing, so those rows never fuzzy-dedup against anything, and on
+      2026-09-07/08 one 4,000-job JLR announcement was stored four times, once
+      under that name. Nothing can normalise a name it cannot read, so the fold
+      is a lookup: alt_nonlatin_company_alias() is a hand-kept list of spellings
+      somebody identified by reading the row's own source, consulted BEFORE the
+      strip, and it is never grown by inference.
+    */
+    $nonlatin = alt_nonlatin_company_alias($k);
+    if ($nonlatin !== '') return $nonlatin;
     $k = preg_replace('/[^a-z0-9 ]/', ' ', $k);
     $k = preg_replace('/\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|group|holdings|holding|technologies|technology|systems|solutions|the|com)\b/', ' ', $k);
     // Trailing geographic qualifiers name the same employer ("Oracle America" is
@@ -198,6 +213,27 @@ function alt_company_key($name) {
     $k = preg_replace('/\b(america|americas|usa|us|international|global|worldwide|na)\b/', ' ', $k);
     $k = trim(preg_replace('/\s+/', ' ', $k));
     return alt_canonical_company($k);
+}
+
+/**
+ * Canonical key for an employer named in a script alt_company_key() cannot
+ * read, or '' when the name is not one we have identified.
+ *
+ * Keyed on the lowercased name with all whitespace removed. Deliberately tiny:
+ * every entry is a fact established from a row's own source, never a guess, and
+ * a name that is not here is UNKNOWN rather than assumed. Mirrored in
+ * railway/entity_resolution.py NON_LATIN_ALIASES; the mirror is tested.
+ */
+function alt_nonlatin_company_alias($lowercased_name) {
+    static $map = null;
+    if ($map === null) {
+        $map = array(
+            "\xe6\x8d\xb7\xe8\xb1\xb9\xe8\xb7\xaf\xe8\x99\x8e" => 'jaguar land rover',
+            "\xe3\x82\xb8\xe3\x83\xa3\xe3\x82\xac\xe3\x83\xbc\xe3\x83\xbb\xe3\x83\xa9\xe3\x83\xb3\xe3\x83\x89\xe3\x83\xad\xe3\x83\xbc\xe3\x83\x90\xe3\x83\xbc" => 'jaguar land rover',
+        );
+    }
+    $compact = preg_replace('/\s+/u', '', (string) $lowercased_name);
+    return isset($map[$compact]) ? $map[$compact] : '';
 }
 
 /**
@@ -233,6 +269,14 @@ function alt_canonical_company($stripped_key) {
             'tata consultancy services' => 'tcs',
             'bristol myers squibb' => 'bristol myers', 'bristol-myers squibb' => 'bristol myers', 'bms' => 'bristol myers',
             'alphabet' => 'alphabet', 'meta' => 'meta',
+            // 2026-09-16. One 4,000-job announcement, four rows, four names:
+            // "Jaguar Land Rover", "JLR", "Tata Motors' JLR" and the Chinese
+            // name above. JLR is the employer's own trading name; the legal
+            // name is the canonical side because the corpus already holds
+            // history under it.
+            'jlr' => 'jaguar land rover',
+            'tata motors jlr' => 'jaguar land rover',
+            'jaguar land rover automotive' => 'jaguar land rover',
         );
     }
     return $map[$stripped_key] ?? $stripped_key;
