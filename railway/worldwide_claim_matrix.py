@@ -107,6 +107,17 @@ def tier_for(country, entry, naming):
     return DISCOVERY_ONLY, "unassessed"
 
 
+def search_languages():
+    """Languages the native layoff vocabulary covers.
+
+    Keyed by language, NOT by country — there is no country-to-language map in
+    this repo, and inventing one to fill a per-country column is how a typed
+    coverage claim gets published. Reported as a capability instead.
+    """
+    from sources import native_layoff_terms
+    return tuple(native_layoff_terms.languages())
+
+
 def build():
     """Rows for every country in the committed register, sorted by tier then name."""
     naming = naming_jurisdictions()
@@ -188,6 +199,19 @@ def render(rows=None):
     A("|---|---|---|---|")
     for r in rows:
         A(f"| {r['country']} | {r['tier']} | {r['why']} | {r['assessed'] or 'UNKNOWN'} |")
+    A("")
+    A("## Search vocabulary: a capability, not a per-country claim")
+    A("")
+    langs = search_languages()
+    A(f"The native layoff vocabulary is keyed by LANGUAGE, and carries "
+      f"**{len(langs)}**: {', '.join(langs)}.")
+    A("")
+    A("**There is no country-to-language map in this repository**, so this "
+      "file does not print one. A per-country 'languages searched' column "
+      "would have to be invented and typed, and a typed claim about coverage "
+      "is the defect the cadence work of 2026-08-14 punished across seven "
+      "surfaces. What is true and derivable is the list above: these are the "
+      "languages the vocabulary covers, everywhere it is applied.")
     A("")
     A("## What this file deliberately does NOT say")
     A("")

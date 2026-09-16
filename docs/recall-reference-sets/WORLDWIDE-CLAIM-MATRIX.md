@@ -112,6 +112,12 @@ A register we do **not** ingest still bounds what is provable: a miss there meas
 | Lithuania | REFUSED | the publisher declines automated access | 2026-08-18 |
 | Philippines | REFUSED | the publisher declines automated access | 2026-08-18 |
 
+## Search vocabulary: a capability, not a per-country claim
+
+The native layoff vocabulary is keyed by LANGUAGE, and carries **23**: de, fr, es, it, nl, pl, sv, pt, zh, ar, ru, tr, ja, ko, da, no, fi, cs, ro, hu, th, vi, et.
+
+**There is no country-to-language map in this repository**, so this file does not print one. A per-country 'languages searched' column would have to be invented and typed, and a typed claim about coverage is the defect the cadence work of 2026-08-14 punished across seven surfaces. What is true and derivable is the list above: these are the languages the vocabulary covers, everywhere it is applied.
+
 ## What this file deliberately does NOT say
 
 - **Nothing about last successful collection.** That reads the live health ledger, which is a different question (did the collector run?) from this one (could a number exist?). Mixing them is how a stale source and an unmeasurable country come to look alike.

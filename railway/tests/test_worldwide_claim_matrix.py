@@ -135,3 +135,34 @@ class TheDocumentSaysWhatItDoesNotKnow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SearchVocabularyIsACapabilityNotACountryClaim(unittest.TestCase):
+    """The brief asked for "languages searched" PER COUNTRY. It cannot be had.
+
+    The vocabulary is keyed by language; no country-to-language map exists in
+    this repo. Filling a per-country column would mean inventing and typing
+    one, which is the defect the 2026-08-14 cadence work punished across seven
+    surfaces. These tests keep the honest framing from drifting back.
+    """
+
+    def test_languages_come_from_the_shipped_vocabulary(self):
+        from sources import native_layoff_terms
+        self.assertEqual(wcm.search_languages(),
+                         tuple(native_layoff_terms.languages()))
+
+    def test_the_document_says_there_is_no_country_to_language_map(self):
+        self.assertIn("no country-to-language map in this repository",
+                      wcm.render())
+
+    def test_no_country_row_carries_a_language(self):
+        """A language must never appear as per-country DATA."""
+        langs = set(wcm.search_languages())
+        body = wcm.render().split("## Every country", 1)[1]
+        for ln in body.splitlines():
+            if not ln.startswith("|"):
+                continue
+            cells = [c.strip() for c in ln.strip("|").split("|")]
+            for c in cells:
+                self.assertNotIn(c, langs,
+                                 f"a country row carries a language code: {ln}")
