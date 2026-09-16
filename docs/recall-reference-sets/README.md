@@ -175,10 +175,16 @@ three of the four largest excluded states now readable; **New York is still
 not**, and is recorded as excluded with its evidence rather than quietly
 dropped.
 
-**It is NOT adjudicated.** Its editor-confirmed numerator is zero by
-construction and it has a machine upper bound and a queue, which is where wave 1
-stood the day before the owner went through it. Nothing in it may be quoted as
-recall.
+**It was adjudicated by TWO INDEPENDENT REVIEWERS on 2026-09-16**
+(`agent-a-2026-09-16` and `agent-b-2026-09-16`; ledger
+`railway/warn_recall_adjudications_wave2.json`, separate from wave 1's). Its
+published figure is the **conservative machine-recordable floor, 58 of 75
+primary and 4 of 6 census**, and it is a floor because six further events are
+confirmed held but cannot be recorded — the frozen rule could not propose the
+row. Counting those six the reviewers' verdict is 63 of 75 and 5 of 6; the two
+conventions are named in the results document and must never be blended.
+Nothing in it may be quoted as recall through `/benchmarks/recall`, which needs
+the three-actor chain.
 
 **Every figure in its results document is generated** by
 `railway/warn_recall_pooled.py` from the committed measurement files, and
@@ -207,7 +213,7 @@ cover exactly the employers Item 2.05 cannot.
 | Unit | one filing | one (state, employer, notice date) — several notices for one action collapse |
 | Denominator | 57 | 100 primary + a 33-event large-event census |
 | Stratified by | nothing | state and event size |
-| Editor-confirmed | 56 of 57 | **0 of 100 — nothing is adjudicated** |
+| Editor-confirmed | 56 of 57 | **99 of 100** (adjudicated 2026-08-14; census 32 of 33) |
 | Machine upper bound | — | 99 of 100 |
 | Read by | `recall_goldset.py`, `data_integrity`, CI | `warn_reference_set.py` only |
 
@@ -220,8 +226,10 @@ Four rules about it:
    name them outside a docstring.
 2. **It is never posted to `/benchmarks/recall`.** One author, no three-actor
    chain, same rule as the SEC set.
-3. **Its 99 of 100 is not recall.** Nothing is adjudicated; the editor-confirmed
-   figure is zero and the queue is
+3. **Its 99 of 100 is not recall.** It WAS adjudicated by the owner on
+   2026-08-14 — editor-confirmed 99 of 100, and 32 of 33 in the census — but a
+   single-author internal reference set is still not a published recall figure,
+   for the same reason the SEC set's is not. The queue it came from is
    [`us-warn-adjudication-queue.md`](us-warn-adjudication-queue.md). Every line
    of that sheet describes exactly one candidate row, named by its id, because on
    2026-08-12 a pooled line lost the SEC set a correct Dow acceptance — and a row

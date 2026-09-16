@@ -80,20 +80,63 @@ class FourFilesNotTwo(unittest.TestCase):
                               f"and must not be able to move another set's figure")
 
 
-class NothingIsMatchedUntilAnEditorSaysSo(unittest.TestCase):
-    def test_every_event_in_the_committed_manifest_arrives_not_matched(self):
-        m = _manifest()
-        for key in ("reference_events", "large_event_census"):
-            for ev in m[key]:
-                self.assertEqual(ev["match_decision"], "not_matched", ev["reference_row_id"])
+WAVE2_LEDGER = V.HERE / "warn_recall_adjudications_wave2.json"
 
-    def test_the_committed_measurement_has_a_zero_confirmed_numerator(self):
+
+def _ledger():
+    if not WAVE2_LEDGER.exists():
+        return {"decisions": []}
+    return json.loads(WAVE2_LEDGER.read_text(encoding="utf-8"))
+
+
+class NothingIsMatchedUntilAnEditorSaysSo(unittest.TestCase):
+    """Wave 2 was adjudicated on 2026-09-16 (reviewer agent-b-2026-09-16), so the
+    guard is wave 1's: a `matched` event must carry a named decision with a
+    ledger entry behind it, and the confirmed numerator in the committed
+    measurement must equal the number of live accepts in that ledger. Before
+    the review the same two tests asserted zero; a zero is now a regression,
+    not a virtue, and a nonzero that the ledger does not account for is the
+    machine promoting its own recall."""
+
+    def test_the_committed_manifest_has_no_self_awarded_match(self):
+        m = _manifest()
+        for ev in m["reference_events"] + m["large_event_census"]:
+            if ev.get("match_decision") == "matched":
+                self.assertTrue(ev.get("adjudicated_by"),
+                                f"{ev['reference_row_id']} is matched with no "
+                                f"adjudicator; only warn_adjudicate.py may set that")
+
+    def test_the_committed_manifest_and_wave2_ledger_verify(self):
+        import adjudication_ledger as AL
+        import warn_adjudicate as wa
+        ok, problems = AL.verify(wa.PROFILE, manifest=_manifest(), ledger=_ledger())
+        self.assertTrue(ok, "the committed wave-2 set has a `matched` event with no "
+                            "named decision behind it:\n  " + "\n  ".join(problems))
+
+    def test_the_wave2_ledger_is_its_own_file(self):
+        # The recorder writes wave 1's ledger by default; a wave-2 decision that
+        # landed there would move the wrong set's audit trail.
+        self.assertNotEqual(WAVE2_LEDGER, W.HERE / "warn_recall_adjudications.json")
+        for d in _ledger()["decisions"]:
+            self.assertTrue(d["reference_row_id"].startswith(("warn-il-", "warn-oh-", "warn-pa-")),
+                            f"{d['reference_row_id']} is not a wave-2 event")
+
+    def test_the_confirmed_numerator_equals_the_ledgers_live_accepts(self):
         if not V.MEASUREMENT_PATH.exists():
             self.skipTest("UNKNOWN, NOT RUN: no wave-2 measurement is committed")
-        s = json.loads(V.MEASUREMENT_PATH.read_text(encoding="utf-8"))["summary"]
-        self.assertEqual(s["editor_confirmed_overall"]["k"], 0,
-                         "a confirmed numerator appeared without an adjudication "
-                         "pass; the machine may not promote its own recall")
+        import adjudication_ledger as AL
+        meas = json.loads(V.MEASUREMENT_PATH.read_text(encoding="utf-8"))
+        ledger = _ledger()
+        for stratum in ("primary", "large_census"):
+            rows = meas["results"][stratum]
+            confirmed = sum(1 for r in rows if r["match_decision"] == "matched")
+            accepted = sum(1 for r in rows
+                           if any(d["decision"] == "accept"
+                                  for d in AL.live_entries(ledger, r["id"])))
+            self.assertEqual(confirmed, accepted,
+                             f"{stratum}: {confirmed} events read `matched` in the "
+                             f"measurement but the ledger holds {accepted} live "
+                             f"accepts for them")
 
 
 class PennsylvaniaYearParse(unittest.TestCase):
