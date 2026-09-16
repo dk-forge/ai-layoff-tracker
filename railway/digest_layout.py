@@ -258,8 +258,22 @@ VARIANT_STYLES = {
     ("p", "source"): (f"margin:0 0 16px;font-family:{FONT};font-size:13px;"
                       f"line-height:1.5;color:{MUTED};"),
     # The small print a block earns: a reconciliation, a definition, a basis.
+    #
+    # `overflow-wrap` IS NOT COSMETIC HERE, because this variant is where the
+    # citation URL is printed as PLAIN TEXT - deliberately, a citation is meant
+    # to be pasted, so it is not a link. The tracker's own URL is a 61-
+    # character token with no space and no hyphen in it, at 13px inside a
+    # content box about 240px wide on a 320px viewport, and an unbreakable
+    # token that does not fit is not wrapped by a mail client: it is clipped,
+    # or it widens the card and takes the whole section sideways with it. Both
+    # the layoff and the talent citation sit in this variant, so one
+    # declaration covers both. `break-word` rather than `anywhere`: the former
+    # has the wider client support and only breaks a token that has no other
+    # way to fit, which leaves every ordinary sentence in this variant
+    # wrapping exactly as it did.
     ("p", "note"): (f"margin:0 0 14px;font-family:{FONT};font-size:13px;"
-                    f"line-height:1.55;color:{MUTED};"),
+                    f"line-height:1.55;color:{MUTED};"
+                    f"overflow-wrap:break-word;word-break:break-word;"),
     # ------------------------------------------------------------------
     # The article item. THE SECTION THIS EMAIL WAS WEAKEST AT, and the one a
     # general reader most wants: it printed a title and a severed first

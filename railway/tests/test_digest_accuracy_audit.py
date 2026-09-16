@@ -91,9 +91,17 @@ class AHeadcountIsJobsOnlyWhenTheRowSaysItNamesRoles(unittest.TestCase):
         self.assertIn("20 jobs", text)
         self.assertNotIn("30 jobs", text)
 
-    def test_a_rescue_does_not_outrank_a_hiring_row(self):
+    def test_a_rescue_is_not_listed_under_a_hiring_heading_at_all(self):
+        """WAS: the rescue merely sorted below the hiring row. Sorting was
+        never enough, because the slice then took the list's full width and
+        PADDED the leftover slots from the endpoint's own order, which put the
+        rescue back on the page under "Biggest hiring signals". A row whose own
+        stored scope says its figure is not roles named cannot be ranked by
+        size, so it is selected out before the slice rather than merely
+        demoted."""
         text = talent_rows([RESCUE, HIRING])["text"]
-        self.assertLess(text.index("Grupo Purdy"), text.index("Beacon Park Boats"))
+        self.assertIn("Grupo Purdy", text)
+        self.assertNotIn("Beacon Park Boats", text)
 
     def test_a_displacement_is_not_printed_as_jobs(self):
         text = talent_rows([DISPLACEMENT, HIRING])["text"]
@@ -128,11 +136,33 @@ class TheWindowIsDescribedAsWhatItIs(unittest.TestCase):
                       "no date, the day we captured it", text)
 
     def test_the_undated_note_does_not_deny_the_substitution(self):
-        # The default fixture's Northwind row has no date and reaches the list.
-        text = compose(talent_fixture())["text"]
+        """The note is asked of a row built for it, not of the default fixture.
+
+        It used to read the fixture's Northwind row, which carries no date and
+        reached the list only as padding. Padding is gone, so that row is no
+        longer rendered and the assertion would have gone vacuous rather than
+        false. An undated row that CAN be ranked is what the note is actually
+        about, so this builds one: the note must still appear, and must still
+        admit the substitution the window performed.
+        """
+        undated = dict(HIRING, company="Northwind Air", published_date=None,
+                       headline="Northwind Air to add 40 cabin crew",
+                       headcount=40)
+        text = talent_rows([undated])["text"]
         self.assertIn("shows no date", text)
         self.assertNotIn("We do not substitute", text)
         self.assertIn("the window placed it by the day we captured it", text)
+
+    def test_the_undated_note_counts_only_rows_that_are_listed(self):
+        """It says "signals listed", so it must mean the ones on the page.
+
+        A row that is not rankable is not listed, and counting it here would
+        promise a line the reader cannot find.
+        """
+        undated_unrankable = dict(RESCUE, published_date=None)
+        text = talent_rows([HIRING, undated_unrankable])["text"]
+        self.assertNotIn("shows no date", text)
+        self.assertNotIn("show no date", text)
 
     def test_every_edition_says_the_window_is_provisional(self):
         text = compose(talent_fixture())["text"]
