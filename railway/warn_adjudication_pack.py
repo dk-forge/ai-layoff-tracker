@@ -349,9 +349,23 @@ def _no_candidate_entry(ev, stratum, rows, error):
     therefore still applied here. Widening both at once produces a section full
     of other employers, which reads as evidence and is not.
     """
-    keep = [r for r in (rows or {}).values()
+    returned = list((rows or {}).values())
+    keep = [r for r in returned
             if any(W.name_matches(a, r.get("company_name") or "")
                    for a in ev["employer_aliases"])]
+    # WHAT WAS ACTUALLY CHECKED, kept so the renderer cannot overstate it.
+    # Two filters stand between "we hold nothing" and this list, and until
+    # 2026-09-16 the section claimed the first and printed neither: the
+    # `/query?company=` LIKE on this event's own terms, and the token-prefix
+    # name test applied to what that returned. Both reviewers of wave 2 found
+    # the claim false for real events (Claire's 137973, Franciscan
+    # 136173/136174, and four more) that are held under a spelling neither
+    # filter can reach.
+    dropped = [{"tracker_row_id": r.get("id"),
+                "company_name": r.get("company_name"),
+                "job_count": r.get("job_count"),
+                "layoff_date": r.get("layoff_date")}
+               for r in returned if r not in keep]
     held = []
     for row in sorted(keep, key=lambda r: str(r.get("layoff_date"))):
         held.append({
@@ -387,6 +401,9 @@ def _no_candidate_entry(ev, stratum, rows, error):
         "match_window": ev["match_window"],
         "query_terms": ev.get("query_terms") or [],
         "rows_for_this_employer_at_any_date": held,
+        "rows_returned_by_the_query": len(returned),
+        "rows_dropped_by_the_name_test": dropped,
+        "employer_aliases_tested": list(ev["employer_aliases"]),
         "refetch_error": error,
     }
 
@@ -608,7 +625,39 @@ def _render_no_candidate(entry):
           "evidence that we hold nothing. Do not decide this event on this build.")
         a("")
     elif not entry["rows_for_this_employer_at_any_date"]:
-        a("**No row of any kind, at any date, for this employer.**")
+        # NOT "no row of any kind". That sentence was false for at least six
+        # wave-2 events (found independently by both reviewers, 2026-09-16):
+        # Claire's, Franciscan, Gerresheimer, GXO, First Brands Cuyahoga 4 and
+        # Miller's Ale House are all held, under a spelling this section's own
+        # two filters cannot reach. An absent read is not a zero; say what was
+        # checked and let the reader decide what it rules out.
+        terms = ", ".join(f"`{_md(q)}`" for q in (entry.get("query_terms") or [])) \
+            or "(no query term)"
+        aliases = ", ".join(f"`{_md(al)}`"
+                            for al in (entry.get("employer_aliases_tested") or [])) \
+            or "(none)"
+        dropped = entry.get("rows_dropped_by_the_name_test") or []
+        returned = entry.get("rows_returned_by_the_query", 0)
+        a("**Nothing to show here, and here is exactly what was checked.** This is "
+          "NOT the claim that we hold no row for this employer.")
+        a("")
+        a(f"- `/query?company=` was called with {terms}, at any date, with no window "
+          f"applied. That filter is a **whole-word** match on the stored name, not a "
+          f"free substring: a different spelling, a glued-on site name, a typographic "
+          f"apostrophe (U+2019 vs U+0027) or a stored status marker will not be "
+          f"returned by it.")
+        a(f"- it returned **{returned}** row(s).")
+        a(f"- the token-prefix name test was then applied against {aliases}, and it "
+          f"dropped **{len(dropped)}** of them.")
+        for row in dropped:
+            a(f"  - dropped row `{row['tracker_row_id']}` "
+              f"{_md(str(row['company_name']))} — {row['job_count']} — "
+              f"{row['layoff_date']}")
+        a("")
+        a("So this says the frozen rule reached nothing, which is what it is for. It "
+          "does **not** say the event is unheld. If you believe we hold it, name the "
+          "row in the reviewer verdict file rather than forcing it through the "
+          "recorder: see `--help` and the refusal message.")
         a("")
     for row in entry["rows_for_this_employer_at_any_date"]:
         a(f"**What we hold — row `{row['tracker_row_id']}` (event "

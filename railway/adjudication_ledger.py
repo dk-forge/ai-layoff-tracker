@@ -212,11 +212,31 @@ def decide(profile, reference_row_id, decision, reviewed_by, reason, ids,
                 f"`{profile.pack_rebuild_command}` and read the entry before deciding")
         unknown = sorted(set(ids) - proposed)
         if unknown:
+            # THE RECORDER STAYS CLOSED, AND THIS IS THE DECIDED ANSWER.
+            # Wave 2 (2026-09-16) produced six events that are genuinely held
+            # and that the frozen rule could not propose. One reviewer recorded
+            # them anyway, with `pack=None` and an `evidence_outside_pack` key;
+            # the other refused and wrote them to a verdict file. The refusal is
+            # the right convention and is kept: an accept whose row no evidence
+            # block covers is an editor matching with the answer already in
+            # view, which is the one thing a frozen rule exists to prevent, and
+            # a ledger that admits it can no longer be read as a floor. So the
+            # published figure stays machine-recordable and UNDERSTATES, and the
+            # understatement is named in the results document rather than
+            # quietly closed here. See docs/recall-reference-sets/
+            # US-WARN-WAVE2-RESULTS-2026-09.md section 1.
             raise Refused(
                 f"{profile.id_noun}(s) {unknown} are not proposed for {reference_row_id}; "
                 f"the pack proposes {sorted(proposed)}. A typed id that no evidence block "
                 f"covers is exactly the mistake this check exists for. Rebuild the pack if "
-                f"the live data has moved")
+                f"the live data has moved.\n\n"
+                f"IF THE ROW IS REALLY THIS EVENT and the frozen rule simply could not "
+                f"reach it (a different stored spelling, a glued-on site name, a "
+                f"typographic apostrophe, a stored status marker), this refusal is "
+                f"WORKING, not in your way. Do not widen the rule to admit it and do not "
+                f"hand-edit the ledger. Record it as a confirmed match OUTSIDE the "
+                f"recordable set, in the reviewer verdict file beside the manifest, so "
+                f"the published figure stays a floor and says by how much it understates")
 
     existing = live_entries(ledger, reference_row_id)
     if existing:

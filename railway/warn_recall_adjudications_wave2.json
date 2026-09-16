@@ -1,0 +1,1150 @@
+{
+  "note": "Append-only ledger of every editor decision on the US WARN reference set, and of every reversal. Written ONLY by railway/warn_adjudicate.py. `manifest_before` is the snapshot --revert restores; do not hand-edit this file, and do not hand-edit match_decision in the manifest -- `--verify` fails on a matched event that has no entry here, and the test suite runs it.",
+  "decisions": [
+    {
+      "entry_id": "warn-il-2025-07-14-compass@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-07-14-compass",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 138181 (source warn, IL): exact \u2014 27 is one of the 4 rows the state published under this notice (total 73). Dates: agree on the NOTICE basis \u2014 our 2025-07-14 is the notice date; the state published effective 2025-08-28. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        138181
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-09-26-carolina-therapeutic-services@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-09-26-carolina-therapeutic-services",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137546 (source warn, IL): exact \u2014 27, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-26 is a date the state published as effective for this notice; the notice date 2025-09-26 is 0 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137546
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-10-01-chartwells-at-depaul-university@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-10-01-chartwells-at-depaul-university",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137443 (source warn, IL): exact \u2014 138, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2025-10-01 is the notice date; the state published effective 2025-11-30. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137443
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-11-14-pharmacann@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-11-14-pharmacann",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137008 (source warn, IL): exact \u2014 82, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2025-11-14 is the notice date; the state published effective 2026-01-13. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137008
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-01-27-alton-steel@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-01-27-alton-steel",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136291 (source warn, IL): exact \u2014 253, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-01-27 is the notice date; the state published effective 2026-01-31. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136291
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-02-02-alverno-laboratories@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-02-02-alverno-laboratories",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136195 (source warn, IL): exact \u2014 66, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-02-02 is the notice date; the state published effective 2026-04-01. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136195
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-03-06-aspira-of-illinois@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-03-06-aspira-of-illinois",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135973 (source warn, IL): exact \u2014 57, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-03-06 is the notice date; the state published effective 2026-04-03. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135973
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-03-20-trinity-christian-college@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-03-20-trinity-christian-college",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135845 (source warn, IL): exact \u2014 107, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-03-20 is the notice date; the state published effective 2026-05-04. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135845
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-04-29-kleo-community-family-life@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-04-29-kleo-community-family-life",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135340 (source warn, IL): exact \u2014 65, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-04-29 is the notice date; the state published effective 2026-06-30. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135340
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-05-19-mdmartin@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-05-19-mdmartin",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135119 (source warn, IL): exact \u2014 160, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-05-19 is the notice date; the state published effective 2026-07-18. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135119
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-07-07-quality-built@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-07-07-quality-built",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 138286 (source warn, OH): exact \u2014 1, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-07-03 is a date the state published as effective for this notice; the notice date 2025-07-07 is 4 day(s) later. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        138286
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-07-16-sarepta-therapeutics@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-07-16-sarepta-therapeutics",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 138133 (source warn, OH): exact \u2014 80, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-07-18 is a date the state published as effective for this notice; the notice date 2025-07-16 is 2 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        138133
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-08-18-first-student@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-08-18-first-student",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137882 (source warn, OH): exact \u2014 39, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-08-20 is a date the state published as effective for this notice; the notice date 2025-08-18 is 2 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137882
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-08-28-fedex-supply-chain@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-08-28-fedex-supply-chain",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137188 (source warn, OH): exact \u2014 56, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-31 is a date the state published as effective for this notice; the notice date 2025-08-28 is 64 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137188
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-10-08-augusta-sportswear@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-10-08-augusta-sportswear",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136264 (source warn, OH): exact \u2014 58, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-30 is a date the state published as effective for this notice; the notice date 2025-10-08 is 114 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136264
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-11-19-nordstrom-credit-operations@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-11-19-nordstrom-credit-operations",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136221 (source warn, OH): exact \u2014 1, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-11-19 is 74 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136221
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-12-04-pk-management@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-12-04-pk-management",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136220 (source warn, OH): exact \u2014 67, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-12-04 is 59 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136220
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-01-06-double-tree-cleveland@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-01-06-double-tree-cleveland",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136284 (source warn, OH): exact \u2014 66, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-28 is a date the state published as effective for this notice; the notice date 2026-01-06 is 22 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136284
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-01-12-turf-care-supply@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-01-12-turf-care-supply",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136036 (source warn, OH): exact \u2014 46, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-28 is a date the state published as effective for this notice; the notice date 2026-01-12 is 47 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136036
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-01-29-fresenius-manufacturing@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-01-29-fresenius-manufacturing",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135598 (source warn, OH): exact \u2014 54, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-10 is a date the state published as effective for this notice; the notice date 2026-01-29 is 71 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135598
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-02-09-astrion@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-02-09-astrion",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135005 (source warn, OH): exact \u2014 61, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-31 is a date the state published as effective for this notice; the notice date 2026-02-09 is 111 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135005
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-02-16-lowe-s-companies@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-02-16-lowe-s-companies",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135485 (source warn, OH): exact \u2014 17, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-19 is a date the state published as effective for this notice; the notice date 2026-02-16 is 62 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135485
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-02-23-parsec@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-02-23-parsec",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135293 (source warn, OH): exact \u2014 115, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-01 is a date the state published as effective for this notice; the notice date 2026-02-23 is 67 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135293
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-03-19-ten-sixty-logistics@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-03-19-ten-sixty-logistics",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135765 (source warn, OH): exact \u2014 125, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-31 is a date the state published as effective for this notice; the notice date 2026-03-19 is 12 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135765
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-03-25-technicote-dba-beontag@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-03-25-technicote-dba-beontag",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135079 (source warn, OH): exact \u2014 53, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-24 is a date the state published as effective for this notice; the notice date 2026-03-25 is 60 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135079
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-04-22-venture-solutions-taylor-technology@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-04-22-venture-solutions-taylor-technology",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 134735 (source warn, OH): exact \u2014 60, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-22 is a date the state published as effective for this notice; the notice date 2026-04-22 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        134735
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-06-10-pioneer-cladding-glazing-systems@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-06-10-pioneer-cladding-glazing-systems",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 134191 (source warn, OH): exact \u2014 43, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-08-09 is a date the state published as effective for this notice; the notice date 2026-06-10 is 60 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        134191
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-07-01-acc-premiere@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-07-01-acc-premiere",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137598 (source warn, PA): exact \u2014 67, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-19 is a date the state published as effective for this notice; the notice date 2025-07-01 is 80 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137598
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-07-01-century-therapeutics@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-07-01-century-therapeutics",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 138208 (source warn, PA): exact \u2014 72, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-07-11 is a date the state published as effective for this notice; the notice date 2025-07-01 is 10 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        138208
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-09-01-air-products-and-chemicals@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-09-01-air-products-and-chemicals",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136970 (source warn, PA): exact \u2014 14, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-11-17 is a date the state published as effective for this notice; the notice date 2025-09-01 is 77 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136970
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-09-01-hms-host@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-09-01-hms-host",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137230 (source warn, PA): exact \u2014 13, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-10-27 is a date the state published as effective for this notice; the notice date 2025-09-01 is 56 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137230
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-09-01-trujacodi-delivery-express@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-09-01-trujacodi-delivery-express",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137652 (source warn, PA): exact \u2014 42, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-09-12 is a date the state published as effective for this notice; the notice date 2025-09-01 is 11 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137652
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-10-01-peraton@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-10-01-peraton",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136768 (source warn, PA): exact \u2014 153, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-13 is a date the state published as effective for this notice; the notice date 2025-10-01 is 73 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136768
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-10-01-vifor-pharma@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-10-01-vifor-pharma",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136851 (source warn, PA): exact \u2014 55, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2025-12-01 is a date the state published as effective for this notice; the notice date 2025-10-01 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136851
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-01-01-amazon-fresh@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-01-01-amazon-fresh",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135412 (source warn, PA): exact \u2014 983, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-28 is a date the state published as effective for this notice; the notice date 2026-01-01 is 117 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135412
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-02-01-post-consumer-brands@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-02-01-post-consumer-brands",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135281 (source warn, PA): exact \u2014 11, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-01 is a date the state published as effective for this notice; the notice date 2026-02-01 is 89 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135281
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-03-01-federal-express@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-03-01-federal-express",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135251 (source warn, PA): exact \u2014 63, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-02 is a date the state published as effective for this notice; the notice date 2026-03-01 is 62 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135251
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-03-01-pharmacann@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-03-01-pharmacann",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135113 (source warn, PA): exact \u2014 60, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-20 is a date the state published as effective for this notice; the notice date 2026-03-01 is 80 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135113
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-04-01-advantest@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-04-01-advantest",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 134613 (source warn, PA): exact \u2014 55, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-30 is a date the state published as effective for this notice; the notice date 2026-04-01 is 90 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        134613
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-04-01-lns-chipblaster@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-04-01-lns-chipblaster",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 133970 (source warn, PA): exact \u2014 67, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-09-30 is a date the state published as effective for this notice; the notice date 2026-04-01 is 182 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        133970
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-10-23-winston-brands@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-10-23-winston-brands",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137259 (source warn, IL): exact \u2014 90 is one of the 2 rows the state published under this notice (total 163). Dates: agree on the NOTICE basis \u2014 our 2025-10-23 is the notice date; the state published effective 2025-12-15. Row 137258 (source warn, IL): exact \u2014 73 is one of the 2 rows the state published under this notice (total 163). Dates: agree on the NOTICE basis \u2014 our 2025-10-23 is the notice date; the state published effective 2025-12-15. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137258,
+        137259
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-10-08-fervalue@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-10-08-fervalue",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137334 (source warn, IL): exact \u2014 72, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2025-10-08 is the notice date; the state published effective 2026-01-01. Employer name: we store the employer as 'Fervalue USA, LLC'; the state publishes it as 'Fervalue USA LLC'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137334
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-11-05-consolidated-hospitality-supplies@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-11-05-consolidated-hospitality-supplies",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137082 (source warn, IL): exact \u2014 45, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2025-11-05 is the notice date; the state published effective 2026-01-04. Employer name: we store the employer as 'Consolidated Hospitality Supplies, LLC'; the state publishes it as 'Consolidated Hospitality Supplies'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        137082
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-06-05-optum-services@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-06-05-optum-services",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 134921 (source warn, IL): exact \u2014 98, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-06-05 is the notice date; the state published effective 2026-08-06. Employer name: we store the employer as 'Optum Services, Inc'; the state publishes it as 'Optum Services, Inc.'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        134921
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-05-04-vistra@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-05-04-vistra",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135231 (source warn, IL): exact \u2014 99 is one of the 3 rows the state published under this notice (total 304). Dates: agree on the NOTICE basis \u2014 our 2026-05-04 is the notice date; the state published effective 2027-10-05/2028-01-04/2028-02-01. Employer name: we store the employer as 'Vistra Corp.'; the state publishes it as 'Vistra Corp. - Baldwin Power Plant'. Row 135230 (source warn, IL): exact \u2014 83 is one of the 3 rows the state published under this notice (total 304). Dates: agree on the NOTICE basis \u2014 our 2026-05-04 is the notice date; the state published effective 2027-10-05/2028-01-04/2028-02-01. Employer name: we store the employer as 'Vistra Corp.'; the state publishes it as 'Vistra Corp. - Baldwin Power Plant'. Row 135229 (source warn, IL): exact \u2014 122 is one of the 3 rows the state published under this notice (total 304). Dates: agree on the NOTICE basis \u2014 our 2026-05-04 is the notice date; the state published effective 2027-10-05/2028-01-04/2028-02-01. Employer name: we store the employer as 'Vistra Corp.'; the state publishes it as 'Vistra Corp. - Baldwin Power Plant'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135229,
+        135230,
+        135231
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-11-01-crothall-and-morrison-healthcare@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-11-01-crothall-and-morrison-healthcare",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136211 (source warn, PA): exact \u2014 795, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-01 is a date the state published as effective for this notice; the notice date 2025-11-01 is 92 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136211
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-03-01-liberty-home-choices@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-03-01-liberty-home-choices",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135077 (source warn, PA): exact \u2014 615, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-24 is a date the state published as effective for this notice; the notice date 2026-03-01 is 84 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135077
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2026-06-01-jbs-souderton@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2026-06-01-jbs-souderton",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 134165 (source warn, PA): exact \u2014 1,485, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-08-14 is a date the state published as effective for this notice; the notice date 2026-06-01 is 74 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        134165
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-05-04-ideal-talent-worker-opco@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-05-04-ideal-talent-worker-opco",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135233 (source warn, IL): exact \u2014 1,395, the whole notice. Dates: agree on the NOTICE basis \u2014 our 2026-05-04 is the notice date; the state published effective 2026-07-01. Employer name: we store the employer as 'Ideal US Talent Systems Worker Opco LLC'; the state publishes it as 'Ideal US Talent Worker OpCo LLC'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        135233
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-12-01-giant@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-12-01-giant",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136136 (source warn, PA): exact \u2014 128 is one of the 2 rows the state published under this notice (total 204). Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-13 is a date the state published as effective for this notice; the notice date 2025-12-01 is 74 day(s) earlier. Row 136049 (source warn, PA): exact \u2014 76 is one of the 2 rows the state published under this notice (total 204). Dates: agree on the EFFECTIVE basis \u2014 our 2026-02-27 is a date the state published as effective for this notice; the notice date 2025-12-01 is 88 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce.",
+      "tracker_row_ids": [
+        136049,
+        136136
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-10-27-premier-healthcare-solutions-dba@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-10-27-premier-healthcare-solutions-dba",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 176837 (source warn, OH): exact \u2014 175, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-16 is a date the state published as effective for this notice; the notice date 2025-10-27 is 81 day(s) earlier. Row 136620 (source warn, OH): exact \u2014 175, the whole notice. Dates: our 2025-12-31 is neither the notice date (+65 days) nor a published effective date (-16 days from 2026-01-16). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Both rows are this one notice (same employer, Summit/Hudson, 175, same notice PDF): 176837 carries the published effective date 2026-01-16, 136620 carries 2025-12-31, which the state's CSV does not publish. DEFECT (tracker): one notice stored twice because the dedup hash keys on the date; the second row is a duplicate.",
+      "tracker_row_ids": [
+        136620,
+        176837
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-01-08-jeniusbank-smbc-manubank@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-01-08-jeniusbank-smbc-manubank",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135932 (source warn, OH): exact \u2014 2, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-03-10 is a date the state published as effective for this notice; the notice date 2026-01-08 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. The other candidate, row 134233 (2 jobs, 2026-08-03), is the state's separate 2026-06-08 notice for the same employer (2026 CSV data row 23, effective 2026-08-03) and is not this event.",
+      "tracker_row_ids": [
+        135932
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-03-06-saks-beachwood@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-03-06-saks-beachwood",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135219 (source warn, OH): exact \u2014 70, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-05-06 is a date the state published as effective for this notice; the notice date 2026-03-06 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 135579 (Saks & Company LLC Columbus, 41, 2026-04-11) is the state's separate 2026-02-10 Columbus notice and is not this event.",
+      "tracker_row_ids": [
+        135219
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-04-09-advanced-specialty-hospitals-of@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-04-09-advanced-specialty-hospitals-of",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 134903 (source warn, OH): exact \u2014 116, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-06-08 is a date the state published as effective for this notice; the notice date 2026-04-09 is 60 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 175819 (news, Spectrum News 1, 116, 2026-04-14) reports the same closure and is a same-event duplicate of the WARN row rather than a second event; the WARN-tier row pins the match. DEFECT (tracker, minor): the news report was not folded under the WARN row.",
+      "tracker_row_ids": [
+        134903
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-11-01-pottstown-hospital@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-11-01-pottstown-hospital",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136561 (source warn, PA): exact \u2014 131, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-01-01 is a date the state published as effective for this notice; the notice date 2025-11-01 is 61 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 176699 (Pottstown Hospital, LLC., 160, 2026-09-28) is the state's separate July 2026 notice (2026 > July > accordion item 15) and is not this event.",
+      "tracker_row_ids": [
+        136561
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-04-01-heartland-human-care-services@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-04-01-heartland-human-care-services",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135690 (source warn, IL): exact \u2014 120 is one of the 2 rows the state published under this notice (total 240). Dates: agree on the NOTICE basis \u2014 our 2026-04-01 is the notice date; the state published effective 2026-03-31. Employer name: we store the employer as 'Heartland Human Care Services (ICRC)'; the state publishes it as 'Heartland Human Care Services'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. FRAME NOTE: the reference event's two 120-worker component rows (2026-03 report data row 2 and 2026-04 report data row 5) share employer, Chicago 60653, count, effective date 2026-03-31 and received date 2026-04-01; they read as one notice listed in two consecutive monthly reports, so the stated total of 240 is probably one notice counted twice. Our row matches the component exactly; the frame question is recorded for the reference-set owner, not decided here.",
+      "tracker_row_ids": [
+        135690
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-09-05-penske-logistics@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-09-05-penske-logistics",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137667 (source warn, IL): exact \u2014 37, the whole notice. Dates: our 2025-09-09 is neither the notice date (+4 days) nor a published effective date (-56 days from 2025-11-04). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. The row's date 2025-09-09 is 4 days after the notice date and is neither published date; count 37 is exact, employer and Naperville site agree, and Illinois lists one Penske notice in this window. Same event.",
+      "tracker_row_ids": [
+        137667
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-09-15-rising-pharma@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-09-15-rising-pharma",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137637 (source warn, IL): DIFFERS by +13 \u2014 we hold 99, the notice totals 86 across rows of 86. Dates: agree on the NOTICE basis \u2014 our 2025-09-15 is the notice date; the state published effective 2025-11-15. Employer name: we store the employer as 'Rising Pharma Holdings, Inc.'; the state publishes it as 'Rising Pharma Holdings'. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. COUNT DIFFERS: we hold 99, the monthly report publishes 86 (Decatur, notice 2025-09-15, effective 2025-11-15). Same employer, same site, same notice date, and the only Rising Pharma notice in the window: the same event, held with a count that disagrees with the state's monthly report by +13. The count is a data-quality item on one of the two surfaces (our IL collector reads the DCEO page, not the monthly XLSX); which surface is right is not established here.",
+      "tracker_row_ids": [
+        137637
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2025-12-22-everest-insurance@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2025-12-22-everest-insurance",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136700 (source warn, IL): DIFFERS by +1 \u2014 we hold 38, the notice totals 37 across rows of 37. Dates: agree on the NOTICE basis \u2014 our 2025-12-22 is the notice date; the state published effective 2026-03-31. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. COUNT DIFFERS by +1: we hold 38, the monthly report publishes 37 (Chicago 60606, notice 2025-12-22, effective 2026-03-31). Same employer, site and notice date, the only Everest notice in the window: the same event; the one-worker difference is a data-quality item, not a second event.",
+      "tracker_row_ids": [
+        136700
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-02-10-walgreens@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-02-10-walgreens",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 175785 (source news, IL): DIFFERS by +159 \u2014 we hold 628, the notice totals 469 across rows of 416, 52, 1. Dates: our 2026-02-19 is neither the notice date (+9 days) nor a published effective date (+9 days from 2026-02-10). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. The only row we hold is a NEWS row (Bloomberg, 2026-02-19, 628). Its stored excerpt reads: 628 jobs across Illinois and Texas via WARN filings, including corporate roles in Deerfield, Chicago and Danville and 159 at a Houston distribution center. 628 - 159 = 469, exactly the Illinois notice total (Deerfield 416 + Chicago 52 + Danville 1), and the three Illinois sites named are the notice's three rows. The row therefore describes this WARN filing (plus one Texas filing) and is the same underlying event. FINDING (collector): we hold NO WARN-tier row for a 469-worker Illinois notice; the IL WARN collector missed it and the event survives in the tracker only through the press.",
+      "tracker_row_ids": [
+        175785
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2025-09-24-tops-products@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2025-09-24-tops-products",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136862 (source warn, OH): exact \u2014 207, the whole notice. Dates: our 2025-12-01 is neither the notice date (+68 days) nor a published effective date (-487 days from 2027-04-02). Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Same employer, Logan/Hocking, count 207 exact, the same notice PDF. The row's date 2025-12-01 matches nothing the CSV publishes today (effective 2027-04-02); a second row 176824 (207, 2027-04-02, same PDF) carries the published date but lies outside the +400-day match window and is not proposed, so it is not named here. DEFECT (tracker): one notice stored twice under two dates.",
+      "tracker_row_ids": [
+        136862
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-02-27-first-brands-darke@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-02-27-first-brands-darke",
+      "decision": "accept",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 135331 (source warn, OH): exact \u2014 302, the whole notice. Dates: agree on the EFFECTIVE basis \u2014 our 2026-04-30 is a date the state published as effective for this notice; the notice date 2026-02-27 is 62 day(s) earlier. Component rows re-verified against a fresh read of the state's own list on 2026-09-16 (IL monthly XLSX / OH per-year CSV / PA notices page): employer, count and effective date reproduce. Row 135331 is also proposed for warn-oh-2026-05-01-first-brands-cuyahoga-4, where it is rejected: Darke (Greenville, 302, effective 2026-04-30) and Cuyahoga 4 (Cleveland, 110, effective 2026-02-27) are different sites and different notices. Row 136086 (First Brands Group Cuyahoga, 146, 2026-02-23) is the 2026-02-23 Cleveland notice, and 175799 is a news roundup; neither is this event.",
+      "tracker_row_ids": [
+        135331
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-il-2026-02-23-first-brands@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-il-2026-02-23-first-brands",
+      "decision": "reject",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 136187 (First Brands Group, LLC (Midwest Distribution Center), 389, McHenry, 2026-02-03) is Illinois' separate 2026-02-03 McHenry notice (2026-02 monthly report data row 2) and is NOT the Albion notice. The Albion notice IS held: row 136396 'First Brands Group (Champion Laboratories, Inc.-multiple sites)', 642 jobs = exactly the notice total (114+48+435+45), Albion, source IL WARN, dated 2026-01-15 from the DCEO page, nine days before the frozen window opens (the monthly report carries the four itemised rows under 2026-02-23). The recorder cannot name 136396 because the pack does not propose it, so this match is recorded in the reviewer verdict file only.",
+      "tracker_row_ids": [
+        136187
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-07-01-weaber@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-07-01-weaber",
+      "decision": "reject",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 137844 (Weaber, Inc., 46, 2025-08-25) is Pennsylvania's June 2025 Crawford County notice (2025 > June > accordion item 109, 46 workers, effective 2025-08-25), which the frame excluded as outside the window. This reference event is the July 2025 Lebanon notice (145 workers, effective 2025-08-26) and we hold no row for it: a miss. Stage within the collector not observable from a public read.",
+      "tracker_row_ids": [
+        137844
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-05-01-first-brands-cuyahoga-4@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-05-01-first-brands-cuyahoga-4",
+      "decision": "reject",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Neither candidate is this notice: 175799 is a news roundup (256, Spectrum News 1) and 135331 is the Darke County notice (302, Greenville). The notice IS held: row 136059 'UPDATE First Brands Group Cuyahoga 4', 110 jobs exact, effective 2026-02-27 exact, Cleveland/Cuyahoga, source OH WARN, the state's own UPDATE-marked CSV row. The rule could not reach it because our importer stores Ohio's amendment marker in company_name (a DEFECT-MASKED MATCH: the match stands, the UPDATE prefix is a separate tracker defect, sources/warn_custom.fetch_oh). The recorder cannot name 136059 because the pack does not propose it, so the match is recorded in the reviewer verdict file only.",
+      "tracker_row_ids": [
+        135331,
+        175799
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-oh-2026-04-28-gxo-logistics-supply-chain@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-oh-2026-04-28-gxo-logistics-supply-chain",
+      "decision": "reject",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 143143 (GXO Logistics, 192, Groveport, 2024-01-15) is a 2023 notice and not this event. This notice IS held: row 135258 'UPDATE GXO Logistics Supply Chain, Inc', 102 jobs exact, effective 2026-05-02 exact, West Jefferson/Madison, source OH WARN, linking the state's UPDATEGXOLogisticsSupplyChainInc.pdf. A DEFECT-MASKED MATCH: company_name begins with Ohio's amendment marker UPDATE, which the importer stores and the reference side cuts. The recorder cannot name 135258 because the pack's no-candidate section shows only rows passing the token-prefix name test, so the match is recorded in the reviewer verdict file only.",
+      "tracker_row_ids": [
+        143143
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    },
+    {
+      "entry_id": "warn-pa-2025-12-01-s-s-activewear@2026-09-16T12:24:38Z",
+      "reference_row_id": "warn-pa-2025-12-01-s-s-activewear",
+      "decision": "reject",
+      "reviewed_by": "agent-b-2026-09-16",
+      "reviewed_at": "2026-09-16T12:24:38Z",
+      "reason": "Row 139254 (S&S Activewear, 218, effective 2025-04-09) is Pennsylvania's February 2025 notice for the same Lewisberry site (2025 > February > accordion item 142) and is not this event. This reference event is the December 2025 notice of 128 workers (effective 2025-12-04) and we hold no row for it: a miss. Stage within the collector not observable from a public read.",
+      "tracker_row_ids": [
+        139254
+      ],
+      "evidence_pack_built_at": "2026-09-16T10:30:40Z",
+      "manifest_before": {
+        "match_decision": "not_matched",
+        "match_notes": "NOT ADJUDICATED. Every candidate goes to the adjudication queue; the numerator counts only what an editor has confirmed.",
+        "rejected_candidate_event_ids": []
+      }
+    }
+  ]
+}
