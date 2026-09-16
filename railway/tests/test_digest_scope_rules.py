@@ -1122,11 +1122,18 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
         self.assertIn("Sanad Service Centres", self.rows[0])
         self.assertIn("2,200 jobs", self.rows[0])
 
-    def test_a_signal_naming_no_jobs_sorts_below_every_signal_that_does(self):
-        placed = [i for i, r in enumerate(self.rows) if "jobs)" in r or "job," in r]
-        unplaced = [i for i, r in enumerate(self.rows) if "jobs" not in r]
-        if placed and unplaced:
-            self.assertLess(max(placed), min(unplaced))
+    def test_a_signal_naming_no_jobs_is_not_listed_at_all(self):
+        """WAS: it sorts below every signal that does. That was true and it
+        was not enough, because the slice then took five rows regardless and
+        PADDED the leftover slots with exactly those rows. The delivered
+        edition of 2026-09-14 printed two funding headlines under "Biggest
+        hiring signals". A list headed "biggest" may only hold rows that have
+        a size, so the ones that do not are now selected out before the slice.
+        """
+        for r in self.rows:
+            self.assertRegex(
+                r, r"\((?:[\d,]+ (?:jobs?|more postings? listed))",
+                f"a row with no ranking figure was listed: {r}")
 
     def test_the_number_that_did_the_ranking_is_shown(self):
         """A list claiming to lead with the biggest signals and printing no
@@ -1134,12 +1141,19 @@ class TheTalentSignalsAreRankedByMateriality(unittest.TestCase):
         self.assertIn("(2,200 jobs, location not recorded, August 14, 2026)",
                       self.text)
 
-    def test_a_row_naming_no_jobs_prints_no_count_rather_than_a_zero(self):
+    def test_no_row_anywhere_prints_a_zero_as_a_count(self):
         """Absent, null and zero all mean "the source stated no number", and
-        none of them is a measured zero."""
-        row = [r for r in self.rows if "Concentrix" in r][0]
-        self.assertNotIn("0 jobs", row)
-        self.assertIn("August 16, 2026", row)
+        none of them is a measured zero.
+
+        This used to read the Concentrix row, which named no jobs and reached
+        the list as padding. It no longer reaches the list, so the assertion
+        that the row prints no zero would now pass on a row that is not
+        rendered at all - a guard proving nothing. It is asked of the whole
+        edition instead, where it cannot go vacuous.
+        """
+        self.assertNotIn("Concentrix", self.text)
+        # A standalone zero, not the zero inside "2,200 jobs".
+        self.assertNotRegex(self.text, r"(?<![\d,])0 (?:jobs?|more postings)")
 
     def test_a_headline_that_is_mostly_not_latin_does_not_take_a_slot(self):
         """Script, not language: the schema has no language column, so

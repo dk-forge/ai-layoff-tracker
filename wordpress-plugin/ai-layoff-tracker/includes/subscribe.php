@@ -3994,6 +3994,41 @@ function alt_digest_talent_rank($rows, $limit) {
         if ($a[1] !== $b[1]) return $b[1] - $a[1];
         return $b[2] - $a[2];
     });
+    /*
+      A LIST HEADED "BIGGEST" MAY ONLY HOLD ROWS THAT HAVE A SIZE.
+
+      THE DEFECT, DELIVERED ON 2026-09-14. The sort above puts every
+      job-carrying row ahead of every other one, and then the slice took five
+      rows regardless, so the leftover slots were PADDED from the endpoint's
+      own order. Under "Biggest hiring signals" the reader met "Creative
+      Investments Holding secures $20 million first close" and "PayTabs
+      strikes $100 million+ deal", neither of which names a job and neither of
+      which was ranked by anything. The list always showed five rows because it
+      was always allowed five.
+
+      THE HEADING WAS NEVER THE PLACE TO FIX IT. It derives from scan-vs-
+      reported counts, which is a question about WHICH KIND of figure a row
+      carries and cannot see a row that carries NONE. Widening the caption
+      instead would have been fixed prose apologising for the rows underneath
+      it, which is the fault this file has been corrected for three times.
+
+      So the selection happens here, before the slice: if ANY row can be
+      ranked, only rankable rows may be listed, and a thin week ships a short
+      list. A week where nothing names a figure ships no list at all and the
+      caller's `if ($rows)` omits the block, which is honest - those rows are
+      already counted in the headline and named in "Other talent activity".
+
+      A ROW WITH NO FIGURE IS NOT A ROW WITH A ZERO. alt_digest_talent_roles_named
+      returns 0 both for "the source stated no number" and for a headcount the
+      row itself says is not roles named (a rescue, a displacement). Neither
+      can be ranked by size, so neither may stand under this heading.
+    */
+    $rankable = array();
+    foreach ($keyed as $entry) {
+        if ($entry[0] === 1) $rankable[] = $entry;
+    }
+    if ($rankable) $keyed = $rankable;
+    else $keyed = array();
     $out = array();
     foreach (array_slice($keyed, 0, max(0, (int) $limit)) as $entry) {
         $out[] = $entry[3];
@@ -7697,8 +7732,22 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
         if ($ytd_res && !$ytd_res->is_error() && $ytd_range !== '') {
             $ytd_total = (int) (((array) $ytd_res->get_data())['total'] ?? 0);
             if ($ytd_total > 0) {
-                $ytd_scope = $ytd_range . ', worldwide, '
-                           . alt_digest_talent_basis() . '.';
+                /*
+                  THE BASIS IS STATED ONCE PER EDITION, NOT ONCE PER FIGURE.
+
+                  Both scope lines printed the whole 27-word basis sentence,
+                  about eighty lines apart in the same email, and the delivered
+                  edition of 2026-09-14 read as though the second figure were
+                  hedging separately. One definition still governs both - this
+                  line is inside the same composer and after the window scope
+                  line unconditionally, so the sentence the reader is referred
+                  back to is the one alt_digest_talent_basis() returned.
+                  test_digest_talent_observation holds that ordering, because
+                  a back-reference to a sentence that is not there is worse
+                  than the repetition it replaced.
+                */
+                $ytd_scope = $ytd_range . ', worldwide, counted on the same '
+                           . 'basis as the window figure above.';
                 // "2026 YTD", the year first, matching the layoff section. A
                 // reader scanning headings meets the year before the
                 // abbreviation, which is the same principle the month-first

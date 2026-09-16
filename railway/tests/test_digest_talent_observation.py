@@ -273,13 +273,30 @@ class TheDateBasisAdmitsTheReadingsItCounts(unittest.TestCase):
                       "the day we captured it",
                       self.text)
 
-    def test_the_year_to_date_figure_names_the_same_two(self):
-        """ONE DEFINITION. The two figures each carried their own copy of the
-        old clause, so a fix applied to one would have left the other saying
-        something else about the same table."""
+    BASIS = ("counted by the date the source published, or, for a job-board "
+             "reading or a source that carries no date, the day we captured it")
+
+    def test_the_basis_sentence_is_stated_exactly_once(self):
+        """ONE DEFINITION, AND ONE STATEMENT OF IT.
+
+        Both scope lines used to print the whole 27-word sentence, about
+        eighty lines apart in the same email, and the delivered edition of
+        2026-09-14 read as though the second figure were hedging separately.
+        One definition was the right half of the rule and it was enforced by
+        printing the answer twice, which is not what one definition means.
+        """
+        self.assertEqual(self.text.count(self.BASIS), 1, self.text)
+
+    def test_the_year_to_date_figure_refers_back_to_it(self):
+        """A back-reference is only honest if the thing referred back to is
+        above it, so the ordering is pinned and not assumed."""
         ytd = self.text.split("2026 YTD", 1)[1]
-        self.assertIn("or, for a job-board reading or a source that carries "
-                      "no date, the day we captured it", ytd)
+        self.assertIn("counted on the same basis as the window figure above",
+                      ytd)
+        self.assertLess(self.text.index(self.BASIS),
+                        self.text.index("2026 YTD"),
+                        "the year-to-date figure points back at a sentence "
+                        "the reader has not met yet")
 
 
 if __name__ == "__main__":
