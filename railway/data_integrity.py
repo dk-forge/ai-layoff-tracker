@@ -3003,6 +3003,18 @@ from published_figures import FIGURE_INVARIANTS      # noqa: E402
 
 INVARIANTS = INVARIANTS + FIGURE_INVARIANTS
 
+# The 8-K filing-shape guard, appended the same way and for the same reason.
+# It asks what neither of the duplicate guards can: was an 8-K number ever the
+# filer's to begin with? A row whose announcement predates its own effective
+# date by more than a year is quoting somebody else (the 2026-07 Aeternum/HHS
+# 20,000; live row 176490, Aon). It lives in its own module so the rule is
+# shared byte-for-byte with the INGEST gate in extractor.finalize_extraction
+# rather than copied, and so this file's diff stays small.
+from filing_shape_check import (FilingShapeInvariant,  # noqa: E402
+                                filing_shape_findings)
+
+INVARIANTS = INVARIANTS + (FilingShapeInvariant(),)
+
 
 class Result:
     def __init__(self, inv, state, observed=None, detail="", error=None, pending=False):
