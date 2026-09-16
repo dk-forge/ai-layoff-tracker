@@ -97,7 +97,13 @@ class TheKnownInstance(unittest.TestCase):
         self.assertIn("4,000", res.detail)
         # The sentence has to say WHY two names were read as one employer, or a
         # reader cannot check the judgement it just made.
-        self.assertIn("non-Latin", res.detail)
+        self.assertIn("the same canonical company key", res.detail)
+
+    def test_the_chinese_row_is_joined_by_its_recorded_alias(self):
+        pair = [dict(r) for r in JLR if r["id"] in (179186, 179237)]
+        groups = di.cross_alias_duplicate_rows(pair)
+        self.assertEqual(1, len(groups))
+        self.assertIn("non-Latin spelling", groups[0]["why"])
 
     def test_it_still_fires_when_the_cluster_is_buried_in_ordinary_rows(self):
         res = di.CrossAliasDuplicateInvariant().run(
@@ -151,21 +157,47 @@ class TheMutations(unittest.TestCase):
             row["event_id"] = 151896
         self.assertEqual([], di.cross_alias_duplicate_rows(rows))
 
-    def test_the_chinese_row_needs_its_recorded_alias(self):
-        """An unknown non-Latin name is UNKNOWN, and the guard says nothing.
+    def test_an_unrecorded_non_latin_name_still_joins_on_the_same_day_only(self):
+        """The alias list is exact and blind to the next spelling; the script
+        branch is general and weak, and they are not the same claim.
 
         alt_company_key strips every character outside [a-z0-9 ], so a CJK name
-        has no company key at all. Nothing can INFER that four glyphs are
-        Jaguar Land Rover: the NON_LATIN_ALIASES entry is a fact somebody
-        established by reading the row's source, and without it this row is
-        simply not joined -- a missed duplicate, never a false one.
+        has no company key and nothing can INFER that four glyphs are Jaguar
+        Land Rover. Remove the recorded alias and the row is no longer joined
+        by NAME. But a Latin and a non-Latin name cannot be compared as words
+        at all, so a pair carrying the same count on the SAME DAY is still
+        reported, on the count and the date alone, with a reason that says so.
+        (That branch is adapted from PR #377, which reached the general case
+        this module's alias list does not.)
         """
         import entity_resolution as er
         recorded = er.NON_LATIN_ALIASES.pop("捷豹路虎")
         try:
-            ids = {r["id"] for g in di.cross_alias_duplicate_rows(JLR) for r in g["rows"]}
-            self.assertNotIn(179237, ids)
-            self.assertEqual({179163, 179186, 179194}, ids)
+            # In isolation: the CJK row and the same-day Latin row, joined
+            # on the count and the date alone.
+            same_day = [dict(r) for r in JLR if r["id"] in (179186, 179237)]
+            cluster = di.cross_alias_duplicate_rows(same_day)
+            self.assertEqual(1, len(cluster), "the same-day pair must still be reported")
+            self.assertIn("non-Latin script", cluster[0]["why"])
+            self.assertIn("only signal", cluster[0]["why"])
+            self.assertEqual({179186, 179237}, {r["id"] for r in cluster[0]["rows"]})
+            # And in the full set it is still held, now inside the cluster the
+            # three Latin spellings already form.
+            groups = di.cross_alias_duplicate_rows(JLR)
+            self.assertEqual(1, len(groups))
+            self.assertIn(179237, {r["id"] for r in groups[0]["rows"]})
+        finally:
+            er.NON_LATIN_ALIASES["捷豹路虎"] = recorded
+
+    def test_the_script_branch_does_not_reach_across_the_two_day_window(self):
+        """No name evidence means same day only, or the weakest branch would
+        also be the widest one."""
+        import entity_resolution as er
+        recorded = er.NON_LATIN_ALIASES.pop("捷豹路虎")
+        try:
+            # 2026-09-07 and 2026-09-08: inside the window, one day apart.
+            rows = [dict(r) for r in JLR if r["id"] in (179194, 179237)]
+            self.assertEqual([], di.cross_alias_duplicate_rows(rows))
         finally:
             er.NON_LATIN_ALIASES["捷豹路虎"] = recorded
 

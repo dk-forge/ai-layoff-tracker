@@ -201,6 +201,48 @@ def _is_contained_in(short_key, long_key):
     return any(t not in _WEAK_TOKENS and len(t) > 2 for t in short)
 
 
+#: Unicode ranges whose scripts carry no Latin letters, so a token comparison
+#: against a Latin spelling is not unreliable, it is undefined.
+_NON_LATIN_RANGES = (
+    (0x0370, 0x03FF),   # Greek
+    (0x0400, 0x04FF),   # Cyrillic
+    (0x0590, 0x05FF),   # Hebrew
+    (0x0600, 0x06FF),   # Arabic
+    (0x0E00, 0x0E7F),   # Thai
+    (0x3040, 0x30FF),   # Hiragana, Katakana
+    (0x3400, 0x4DBF),   # CJK extension A
+    (0x4E00, 0x9FFF),   # CJK unified
+    (0xAC00, 0xD7AF),   # Hangul
+)
+
+
+def is_non_latin(name):
+    """True when a name carries a character from a script with no Latin letters."""
+    for ch in str(name or ""):
+        code = ord(ch)
+        for low, high in _NON_LATIN_RANGES:
+            if low <= code <= high:
+                return True
+    return False
+
+
+def script_mismatch(name_a, name_b):
+    """One name in a non-Latin script, the other not.
+
+    THE GENERAL CASE OF THE ALIAS LIST, AND WEAKER THAN IT ON PURPOSE.
+    NON_LATIN_ALIASES can only recognise a spelling somebody already recorded,
+    so it is exact and it is blind to the next one. This says something much
+    smaller and always true: these two names CANNOT be compared as words, so
+    nothing can be concluded from the fact that they look different. A caller
+    may use it to let a pair through on other evidence, and it must then say
+    that is what it did -- the reason line carries it, because a reviewer has
+    to know which branch put a pair in front of them. Adapted from the
+    independent implementation in PR #377, which reached the general case the
+    alias list does not.
+    """
+    return is_non_latin(name_a) != is_non_latin(name_b)
+
+
 def same_entity(name_a, name_b):
     """True when two employer names resolve to ONE employer.
 

@@ -97,6 +97,16 @@ the three duplicates, and correct the canonical row's country from United States
 (which no source supports) to United Kingdom. Expected after, Week 37: 23,820
 jobs to 11,820, 65 entries to 62, UK 4,331 to 331, Automotive 12,107 to 107.
 
+**A second agent built the same guard independently (PR #377), and one branch
+of it was stronger.** Its script rule is the general case of this one's alias
+list: a Latin and a non-Latin name cannot be compared as words at all, so
+nothing follows from their looking different, and a pair may be let through on
+the count and the date alone provided the sentence SAYS that is what happened.
+Folded in here, narrowed to the same calendar day (that branch carries no name
+evidence, so it must not also be the widest one) and re-measured: no new group
+over the 90-day population and no false positive. #377 is otherwise a subset of
+this PR and was closed as superseded.
+
 Delegated in `test_dedup_live.InvariantCoverage.DELEGATED` for the same reason
 as `country_identity` and `duplicate_article_rows`: it is failing live on
 purpose, and a live claim would redden every push over a data defect a

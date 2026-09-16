@@ -2429,7 +2429,8 @@ class ArchiveRecheckInvariant:
 #: URL is meaningless for these: one CA WARN register URL carried 129 unrelated
 #: July rows, and the OPM workforce-changes portal carries every federal agency.
 #: Excluding them is what makes the remaining signal exact rather than noisy.
-from entity_resolution import same_entity, why_same_entity  # noqa: E402
+from entity_resolution import (  # noqa: E402
+    same_entity, script_mismatch, why_same_entity)
 
 REGISTER_URL_SOURCE_TYPES = {"warn", "federal_rif"}
 
@@ -2603,6 +2604,34 @@ def _row_date(row):
         return None
 
 
+def _pair_reason(row_i, row_j, when_i, when_j, max_gap_days):
+    """Why these two rows could be one event, or '' when they could not.
+
+    The one place the three conditions are applied, so the pass that BUILDS a
+    cluster and the sentence that EXPLAINS it cannot disagree.
+    """
+    if abs((when_i - when_j).days) > max_gap_days:
+        return ""
+    if str(row_i.get("event_id") or "") == str(row_j.get("event_id") or ""):
+        return ""
+    name_i, name_j = row_i.get("company_name"), row_j.get("company_name")
+    if same_entity(name_i, name_j):
+        return why_same_entity(name_i, name_j) or "one employer under two names"
+    # A NAME IN ANOTHER SCRIPT CANNOT BE COMPARED AS WORDS AT ALL, and the
+    # alias list can only recognise a spelling somebody already recorded. So a
+    # Latin/non-Latin pair is let through on the count and the date alone --
+    # but only on the SAME DAY, never across the two-day window, because this
+    # branch has no name evidence under it, and the reason says so out loud.
+    # Measured over the whole 378-row non-register population of the trailing
+    # 90 days it adds no group the alias list did not already hold, and no
+    # false positive. Adapted from the independent implementation in PR #377.
+    if script_mismatch(name_i, name_j) and when_i == when_j:
+        return ("one name is written in a non-Latin script, so the two cannot be "
+                "compared as words; the count and the effective date are the only "
+                "signal")
+    return ""
+
+
 def cross_alias_duplicate_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES,
                                max_gap_days=CROSS_ALIAS_MAX_DATE_GAP_DAYS):
     """Rows that are ONE event under different names, counted more than once.
@@ -2667,20 +2696,12 @@ def cross_alias_duplicate_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES,
                 i = parent[i]
             return i
 
-        reasons = {}
         for i in range(len(items)):
             for j in range(i + 1, len(items)):
                 when_i, row_i = items[i]
                 when_j, row_j = items[j]
-                if abs((when_i - when_j).days) > max_gap_days:
-                    continue
-                if str(row_i.get("event_id") or "") == str(row_j.get("event_id") or ""):
-                    continue
-                if not same_entity(row_i.get("company_name"), row_j.get("company_name")):
-                    continue
-                reasons.setdefault(find(i), why_same_entity(
-                    row_i.get("company_name"), row_j.get("company_name")))
-                parent[find(i)] = find(j)
+                if _pair_reason(row_i, row_j, when_i, when_j, max_gap_days):
+                    parent[find(i)] = find(j)
 
         clusters = {}
         for i in range(len(items)):
@@ -2692,11 +2713,29 @@ def cross_alias_duplicate_rows(rows, register_types=REGISTER_URL_SOURCE_TYPES,
             # observation, whatever its rows are called.
             if len({str(r.get("event_id") or "") for r in cluster}) < 2:
                 continue
+            # THE REASON IS RE-DERIVED FROM THE FINISHED CLUSTER, never
+            # remembered from the pass that built it: a union-find root moves
+            # as unions happen, so a reason filed under the root at the time
+            # is filed under a key that no longer exists, and the sentence
+            # silently falls back to a generic phrase. A reviewer has to know
+            # WHICH branch put a pair in front of them, most of all when it is
+            # the weak one.
+            why = ""
+            by_date = {id(r): w for w, r in items}
+            for a_i in range(len(cluster)):
+                for b_i in range(a_i + 1, len(cluster)):
+                    row_a, row_b = cluster[a_i], cluster[b_i]
+                    why = _pair_reason(row_a, row_b, by_date[id(row_a)],
+                                       by_date[id(row_b)], max_gap_days)
+                    if why:
+                        break
+                if why:
+                    break
             groups.append({
                 "job_count": jobs,
                 "rows": sorted(cluster, key=lambda r: str(r.get("id") or "")),
                 "excess": jobs * (len(cluster) - 1),
-                "why": reasons.get(root) or "one employer under two names",
+                "why": why or "one employer under two names",
             })
     groups.sort(key=lambda g: (-g["excess"], str(g["rows"][0].get("id") or "")))
     return groups
