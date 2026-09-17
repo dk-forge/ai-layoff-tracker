@@ -198,10 +198,12 @@ def fetch_new_issues(hours: int = 1, fetch=None):
     headers = {"Authorization": f"Bearer {token}", "User-Agent": UA,
                "Accept": "application/json"}
     getter = fetch or _http_get
+    print(f"DEBUG new_error_watch url={url}")
     try:
         status, body = getter(url, headers)
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         return None, f"could not reach Sentry: {exc}"
+    print(f"DEBUG new_error_watch status={status} body={body!r}")
     if status != 200:
         # Sentry's own error body (e.g. {"detail": "..."}) is not a secret -
         # it is the API telling us what was wrong with OUR request - and
