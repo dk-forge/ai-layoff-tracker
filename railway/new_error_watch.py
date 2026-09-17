@@ -173,7 +173,11 @@ def _http_get(url: str, headers: dict):
         with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
-        return exc.code, (exc.read().decode("utf-8", "replace") if exc.fp else "")
+        try:
+            body = exc.read().decode("utf-8", "replace")
+        except Exception:  # noqa: BLE001 - best-effort diagnostics only
+            body = ""
+        return exc.code, body
 
 
 def fetch_new_issues(hours: int = 1, fetch=None):
