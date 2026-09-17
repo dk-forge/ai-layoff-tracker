@@ -1,6 +1,6 @@
 # US WARN eight-state re-probe
 
-Generated 2026-09-15T16:53:13Z. Definition document: `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`.
+Generated 2026-09-17T17:22:10Z. Definition document: `docs/recall-reference-sets/US-WARN-REFERENCE-SET-DEFINITION.md`.
 
 This re-probes NY, IL, OH, PA, WA, GA, NJ and MI against the four eligibility criteria fixed in the definition document. **It has NOT produced a recall figure for any of these states and does not build a frame or draw a sample.** Cost: $0.00, no model calls.
 
