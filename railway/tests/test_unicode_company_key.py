@@ -25,6 +25,7 @@ import json
 import shutil
 import subprocess
 import sys
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -73,15 +74,17 @@ def _php(expr_per_name, names, raw=False):
         "  eval(substr($src, $start, $end - $start + 3)); }"
         "eval($argv[4]);"
         "$out = [];"
-        "foreach (json_decode($argv[2]) as $i => $n) {"
+        "foreach (json_decode(stream_get_contents(STDIN)) as $i => $n) {"
         + ("  $n = hex2bin($n);" if raw else "")
         + f"  $out[] = {expr_per_name}; }}"
         "echo json_encode($out, JSON_INVALID_UTF8_SUBSTITUTE);")
     payload = [n.hex() for n in names] if raw else names
     run = subprocess.run(
-        [PHP, "-r", code, str(API_PHP_PATH), json.dumps(payload),
+        [PHP, "-r", code, str(API_PHP_PATH), "-",
          json.dumps(LIFTED), LEGACY_PHP],
-        capture_output=True, text=True, timeout=120)
+        # Names go on stdin: Linux caps ONE argv string at 128 KiB, and the
+        # exhaustive sweeps below are larger than that (CI run 35175726292).
+        input=json.dumps(payload), capture_output=True, text=True, timeout=120)
     if run.returncode != 0:
         raise AssertionError(f"php failed: {run.stderr[:800]}")
     return json.loads(run.stdout)
@@ -242,12 +245,30 @@ class PhpAndPythonAgree(unittest.TestCase):
 
     def test_the_character_strip_is_identical_code_point_by_code_point(self):
         """Every BMP letter, digit and mark block the tracker is likely to meet,
-        so a Unicode-category disagreement between PCRE and Python shows up."""
+        so a Unicode-category disagreement between PCRE and Python shows up.
+
+        A code point PHP's own PCRE calls unassigned (\\p{Cn}) is left out:
+        the two sides ship different Unicode versions (CI's PCRE predates
+        Unicode 15, so U+0CF3 and U+0ECE are letters to Python and nothing to
+        PHP). Which code points those are is ASKED of PHP, never typed here,
+        and the excluded set must stay small, so a real disagreement on an
+        assigned character still fails.
+        """
         names = [chr(c) for c in range(0x0370, 0x3100) if not 0xD800 <= c <= 0xDFFF]
-        php = _php("alt_company_key_chars(strtolower($n))", names)
+        got = _php("[alt_company_key_chars(strtolower($n)), preg_match('/^\\p{Cn}$/u', $n)]", names)
+        unassigned_in_php = {n for n, (_, cn) in zip(names, got) if cn == 1}
         bad = [(hex(ord(n)), k, er.company_key_chars(n))
-               for n, k in zip(names, php) if k != er.company_key_chars(n)]
-        self.assertFalse(bad[:20], f"{len(bad)} code points disagree")
+               for n, (k, _) in zip(names, got)
+               if n not in unassigned_in_php and k != er.company_key_chars(n)]
+        self.assertFalse(bad[:20], f"{len(bad)} assigned code points disagree")
+        # The exclusion only ever covers what PHP cannot classify at all, and
+        # only a version gap's worth of it. Python must call each one a letter,
+        # digit, mark or unassigned; anything else is not a version gap.
+        skipped_that_differ = [n for n in unassigned_in_php
+                               if got[names.index(n)][0] != er.company_key_chars(n)]
+        self.assertLess(len(skipped_that_differ), 50, [hex(ord(n)) for n in skipped_that_differ])
+        for n in skipped_that_differ:
+            self.assertIn(unicodedata.category(n)[0], "LNMC", hex(ord(n)))
 
     def test_norm_company_matches_the_server_key_where_the_lists_agree(self):
         """norm_company carries three extra legal forms (sa, ag, platforms) and
