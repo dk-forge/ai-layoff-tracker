@@ -19,6 +19,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -304,6 +305,38 @@ class SentryApiBaseIsRegionAware(unittest.TestCase):
     def test_trailing_slash_on_the_region_var_is_tolerated(self):
         os.environ["SENTRY_REGION_URL"] = "https://de.sentry.io/"
         self.assertEqual(watch.sentry_api_base(), "https://de.sentry.io/api/0")
+
+
+class StatsPeriodIsNeverAnArbitraryDuration(_Base):
+    """statsPeriod on the project-issues endpoint only shapes the per-issue
+    stats graph and Sentry rejects anything but '', '24h' or '14d' with an
+    HTTP 400 -- the region fix in #386 pointed requests at a host that
+    actually validates this and turned a silent 404 into a live 400. The
+    "last N hours" window belongs in the search query's age filter, which
+    accepts any duration, not in statsPeriod."""
+
+    def test_the_request_carries_no_stats_period_param(self):
+        seen = {}
+
+        def fetch(url, headers):
+            seen["url"] = url
+            return 200, "[]"
+
+        watch.fetch_new_issues(hours=1, fetch=fetch)
+        self.assertNotIn("statsPeriod", seen["url"])
+
+    def test_the_hour_window_is_encoded_as_an_age_filter(self):
+        seen = {}
+
+        def fetch(url, headers):
+            seen["url"] = url
+            return 200, "[]"
+
+        watch.fetch_new_issues(hours=1, fetch=fetch)
+        query = urllib.parse.unquote(seen["url"].split("query=", 1)[1].split("&", 1)[0])
+        self.assertIn("age:-1h", query)
+        self.assertIn("is:unresolved", query)
+        self.assertIn("is:new", query)
 
 
 if __name__ == "__main__":

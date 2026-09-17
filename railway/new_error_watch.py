@@ -188,9 +188,15 @@ def fetch_new_issues(hours: int = 1, fetch=None):
         # own and a green one. See run() for why the difference matters.
         return None, (ABSENT_NOTE + ": SENTRY_ORG, SENTRY_PROJECT or "
                       "SENTRY_AUTH_TOKEN is not set, so nothing is armed")
+    # statsPeriod on this endpoint only shapes the per-issue stats graph and
+    # is restricted by Sentry to '', '24h' or '14d' -- an arbitrary "Nh" (the
+    # region-404 masked this until #386 pointed requests at the right host)
+    # is rejected with HTTP 400. It was never what limited results to the
+    # last N hours anyway; the actual issue-age filter belongs in the search
+    # query itself, which accepts any duration.
+    query = f"is:unresolved is:new age:-{hours}h"
     url = (f"{sentry_api_base()}/projects/{org}/{project}/issues/"
-           f"?query={urllib.parse.quote('is:unresolved is:new', safe='')}"
-           f"&statsPeriod={hours}h&limit=25")
+           f"?query={urllib.parse.quote(query, safe='')}&limit=25")
     headers = {"Authorization": f"Bearer {token}", "User-Agent": UA,
                "Accept": "application/json"}
     getter = fetch or _http_get
