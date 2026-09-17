@@ -62,11 +62,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "hawaii-warn-ocr-import:main:d8e39d53df62398e": {
-      "first": 1789590873,
-      "last": 1789590873,
-      "subject": "CI SELF-TIMEOUT: Hawaii WARN OCR import \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 30m0s"
-    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1789591030,
       "last": 1789591030,
@@ -123,6 +118,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-17T19:46:49+00:00",
+  "updated_at": "2026-09-17T20:11:30+00:00",
   "version": 1
 }
