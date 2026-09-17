@@ -1,6 +1,6 @@
 ## 2026-09-17 - The Wayback sweep called a total Internet Archive outage "a defect here", because the reachability probe asks a different host than the captures do
 
-**Class:** unreachable-read-as-broken
+**Class:** wrong-scope-or-key
 **Guard:** `railway/tests/test_unreachable_is_not_broken.py`,
 `TheSweepsOwnAttemptsOutrankTheProbeTests` (9 tests; the behavioural pair is
 red against the pre-fix file).
