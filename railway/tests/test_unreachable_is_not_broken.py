@@ -102,6 +102,94 @@ class ArchiveZeroSnapshotsTests(unittest.TestCase):
             arch.verdict(attempted=54, ok=51, total=54, done=54, reachable=True), 0)
 
 
+class TheSweepsOwnAttemptsOutrankTheProbeTests(unittest.TestCase):
+    """The gap the guard above left open, closed on 2026-09-17.
+
+    `IA_PROBE` asks `archive.org`. Every capture goes to
+    `web.archive.org/save/`. Different hosts, failing independently. On
+    2026-09-14 all 54 attempts returned HTTP 500, HTTP 429 or `Connection
+    refused` from `web.archive.org` while `archive.org` answered the probe
+    normally, so `reachable` was True and the run reported a third-party
+    outage as "a defect here" and reddened CI for three days.
+
+    The sweep's own 54 observations are evidence about the host that actually
+    matters; the probe is not. So they decide. What is NOT softened: a single
+    coherent non-capture answer still goes red, because that is what an empty
+    URL list, a changed /save/ contract and a rejected UA look like.
+    """
+
+    def test_an_all_outage_sweep_is_held_even_though_the_probe_answered(self):
+        """The 2026-09-14 run, reproduced. Old code returned 1 here."""
+        code = arch.verdict(attempted=54, ok=0, total=54, done=54,
+                            reachable=True, unavailable=54, contract=0)
+        self.assertEqual(code, 0)
+
+    def test_one_coherent_non_capture_is_still_red(self):
+        """53 outages and ONE answer that was not a capture stays red: that
+        one is the shape a real defect arrives in."""
+        code = arch.verdict(attempted=54, ok=0, total=54, done=54,
+                            reachable=True, unavailable=53, contract=1)
+        self.assertEqual(code, 1)
+
+    def test_contract_failures_are_red_even_when_the_probe_says_unreachable(self):
+        """A coherent non-capture outranks the probe in the red direction too,
+        so an outage cannot be used to hide a broken /save/ contract."""
+        code = arch.verdict(attempted=54, ok=0, total=54, done=54,
+                            reachable=False, unavailable=0, contract=54)
+        self.assertEqual(code, 1)
+
+    def test_an_unclassified_wipeout_is_still_red(self):
+        """Tallies that do not account for every attempt prove nothing, so the
+        verdict falls back to the probe rather than assuming an outage."""
+        code = arch.verdict(attempted=54, ok=0, total=54, done=54,
+                            reachable=True, unavailable=10, contract=0)
+        self.assertEqual(code, 1)
+
+    def test_archive_classifies_a_transport_error_as_unavailable(self):
+        def boom(url, **kw):
+            raise OSError("Connection refused")
+        with mock.patch.object(arch.requests, "get", boom):
+            snap, outcome = arch.archive("https://example.gov/warn")
+        self.assertIsNone(snap)
+        self.assertEqual(outcome, arch.UNAVAILABLE)
+
+    def test_archive_classifies_429_and_5xx_as_unavailable(self):
+        for status in (429, 500, 502, 503):
+            with self.subTest(status=status):
+                with mock.patch.object(arch.requests, "get",
+                                       lambda u, s=status, **k: _Resp(s)):
+                    snap, outcome = arch.archive("https://example.gov/warn")
+                self.assertIsNone(snap)
+                self.assertEqual(outcome, arch.UNAVAILABLE)
+
+    def test_archive_classifies_a_coherent_refusal_as_contract(self):
+        """403 is the shape a rejected User-Agent arrives in, and 404 the shape
+        a dead URL does. Neither is an outage."""
+        for status in (403, 404):
+            with self.subTest(status=status):
+                with mock.patch.object(arch.requests, "get",
+                                       lambda u, s=status, **k: _Resp(s)):
+                    snap, outcome = arch.archive("https://example.gov/warn")
+                self.assertIsNone(snap)
+                self.assertEqual(outcome, arch.CONTRACT)
+
+    def test_archive_still_reports_a_capture_as_saved(self):
+        hdr = {"Content-Location": "/web/20260917/https://example.gov/warn"}
+        with mock.patch.object(arch.requests, "get",
+                               lambda u, **k: _Resp(200, b"", hdr)):
+            snap, outcome = arch.archive("https://example.gov/warn")
+        self.assertEqual(outcome, arch.SAVED)
+        self.assertTrue(snap.startswith("https://web.archive.org/web/"))
+
+    def test_the_probe_and_the_save_endpoint_are_different_hosts(self):
+        """The root cause, pinned. If these ever become the same host the
+        reasoning above stops applying and this test should be revisited
+        deliberately rather than silently."""
+        from urllib.parse import urlparse
+        self.assertNotEqual(urlparse(arch.IA_PROBE).netloc,
+                            urlparse(arch.SAVE).netloc)
+
+
 # ---------------------------------------------------------------------------
 # 2. national_feeds: every failing feed is named, and a bot wall is not a break.
 # ---------------------------------------------------------------------------

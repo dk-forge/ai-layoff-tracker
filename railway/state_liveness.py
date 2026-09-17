@@ -91,6 +91,12 @@ WATCHED_FILES = (
     "railway/deferral_ledger.json",
     "railway/warn_state_baselines.json",
     "railway/new_error_state.json",
+    # A HEARTBEAT, not event-driven: sandbox_uptime_check.py rewrites this
+    # every run whatever the probe found (the `updated_at` stamp moves even
+    # when consecutive_fails does not), so a gap here really does mean the
+    # writer stopped. Shipped undeclared with the check itself on 2026-09-17
+    # (#389), which is precisely the hole this registry exists to close.
+    "railway/sandbox_uptime_state.json",
 )
 
 # STALENESS IS THE WRONG LENS FOR AN EVENT-DRIVEN FILE, and the first cut of

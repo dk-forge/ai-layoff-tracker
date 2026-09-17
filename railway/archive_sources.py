@@ -178,17 +178,56 @@ def wayback_reachable(get=None, timeout=20):
     return True
 
 
-def verdict(*, attempted, ok, total, done, reachable):
+def verdict(*, attempted, ok, total, done, reachable,
+            unavailable=0, contract=0):
     """The exit code, as a pure function of what the sweep observed.
 
     Split out from `main` so both branches are testable without a network and
     without a process exit. Returns 0 (green or held) or 1 (red).
+
+    THE SWEEP'S OWN ATTEMPTS OUTRANK THE PROBE, because they are evidence about
+    the right host. `IA_PROBE` asks `archive.org`; every capture goes to
+    `web.archive.org/save/`. Those are different hosts and they fail
+    independently. On 2026-09-14 all 54 attempts came back HTTP 500, HTTP 429
+    or `Connection refused` from `web.archive.org` while `archive.org` answered
+    the probe normally, so `reachable` was True, and this function called a
+    total third-party outage "a defect here". That is the exact inversion
+    test_unreachable_is_not_broken.py exists to prevent, arrived at through the
+    one gap it left: the guard read a proxy signal instead of the thing it was
+    judging.
+
+    So a wipeout is HELD when nothing the sweep saw was contract-shaped AND
+    either the probe says unreachable or every single attempt was the host
+    declining to serve us. It is still RED the moment any attempt came back as
+    a coherent non-capture: that is what an empty URL list, a changed /save/
+    contract and a rejected UA all look like, and all three still exit 1.
+
+    `unavailable`/`contract` default to 0 so the older three-argument calls
+    keep their exact previous meaning.
     """
     if total and not attempted:
         print("ERROR: the deadline left room for no captures at all — "
               "ARCHIVE_DEADLINE_SECONDS is smaller than one URL's timeout.")
         return 1
     if attempted and ok == 0:
+        if contract:
+            print(f"ERROR: zero snapshots from {attempted} attempt(s), and "
+                  f"{contract} of them got a coherent answer from "
+                  f"web.archive.org that was not a capture — this is a defect "
+                  f"here, not an outage. Check the URL list, the /save/ "
+                  f"contract and the UA.")
+            return 1
+        if unavailable and unavailable == attempted:
+            print(f"HELD: all {attempted} attempt(s) were refused by "
+                  f"web.archive.org itself (transport error, HTTP 429 or a "
+                  f"5xx). The archive.org probe answered, but that is a "
+                  f"different host from the one the captures use, so the "
+                  f"sweep's own attempts are the better evidence and they say "
+                  f"outage. Nothing is lost — /save/ is idempotent and next "
+                  f"week's sweep re-attempts every document; "
+                  f"archive_recheck_cadence is the backstop if this outlasts "
+                  f"the promised cycle.")
+            return 0
         if not reachable:
             # HELD, not lost. Nothing is recorded and nothing needs to be: the
             # next weekly run re-attempts every one of these documents, and
@@ -210,8 +249,22 @@ def verdict(*, attempted, ok, total, done, reachable):
     return 0
 
 
+#: How a single failed capture is classified. The verdict below turns on the
+#: TALLY of these, because the sweep's own attempts are direct evidence about
+#: `web.archive.org/save/` and the IA_PROBE is not (see `wayback_reachable`).
+UNAVAILABLE = "unavailable"   # transport error, 429, or 5xx: the host is not serving us
+CONTRACT = "contract"         # it answered, and the answer was not a capture
+SAVED = "saved"
+
+
 def archive(url):
-    """Trigger a Wayback capture. Returns the snapshot URL or None (fail-soft)."""
+    """Trigger a Wayback capture.
+
+    Returns `(snapshot_url_or_None, outcome)` where outcome is SAVED,
+    UNAVAILABLE or CONTRACT. The outcome is NOT decoration: it is the evidence
+    `verdict` uses to tell a Wayback outage from a defect in this script, and
+    it was thrown away until 2026-09-17 (see the tally note in `verdict`).
+    """
     try:
         r = requests.get(SAVE + url, headers={"User-Agent": UA},
                          timeout=PER_URL_TIMEOUT, allow_redirects=True)
@@ -219,14 +272,20 @@ def archive(url):
         # the canonical latest-snapshot URL, which resolves once a capture exists.
         loc = r.headers.get("Content-Location") or ""
         if loc:
-            return "https://web.archive.org" + loc
+            return "https://web.archive.org" + loc, SAVED
         if r.status_code in (200, 301, 302):
-            return "https://web.archive.org/web/*/" + url
+            return "https://web.archive.org/web/*/" + url, SAVED
         print(f"  archive HTTP {r.status_code}: {url}")
-        return None
+        # 429 and 5xx are the host declining to serve THIS runner right now.
+        # Any other answer is a coherent reply that was not a capture, which
+        # is what a changed /save/ contract or a rejected UA looks like.
+        status = getattr(r, "status_code", 0) or 0
+        if status == 429 or status >= 500:
+            return None, UNAVAILABLE
+        return None, CONTRACT
     except Exception as exc:
         print(f"  archive failed ({exc}): {url}")
-        return None
+        return None, UNAVAILABLE
 
 
 def main():
@@ -240,6 +299,8 @@ def main():
 
     ok = 0
     done = 0
+    unavailable = 0
+    contract = 0
     for i, url in enumerate(urls, 1):
         spent = time.monotonic() - started
         # Checked BEFORE the request, against the worst case of the request
@@ -250,11 +311,15 @@ def main():
             print(f"\nDeadline: {spent / 60:.1f} min spent, stopping before "
                   f"URL {i} of {total} so the runner does not have to.")
             break
-        snap = archive(url)
+        snap, outcome = archive(url)
         done = i
         if snap:
             ok += 1
             print(f"[{i}/{total}] saved: {url}")
+        elif outcome == UNAVAILABLE:
+            unavailable += 1
+        else:
+            contract += 1
         if i < len(urls):
             time.sleep(GAP_SECONDS)
 
@@ -273,7 +338,8 @@ def main():
     if attempted and ok == 0:
         reachable = wayback_reachable()
     code = verdict(attempted=attempted, ok=ok, total=total, done=done,
-                   reachable=reachable)
+                   reachable=reachable, unavailable=unavailable,
+                   contract=contract)
     if code:
         sys.exit(code)
 
