@@ -87,6 +87,11 @@
       "last": 1789674367,
       "subject": "CI RED: Rolling recall measurement \u2014 coverage could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."
     },
+    "self-heal:main:546478a37ca6511e": {
+      "first": 1789674408,
+      "last": 1789674408,
+      "subject": "CI RED: Self-heal \u2014 Action failed with error: Claude execution failed: result is_error:true"
+    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -118,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-17T19:46:08+00:00",
+  "updated_at": "2026-09-17T19:46:49+00:00",
   "version": 1
 }
