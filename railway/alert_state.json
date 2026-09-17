@@ -82,6 +82,11 @@
       "last": 1789306127,
       "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
     },
+    "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
+      "first": 1789615249,
+      "last": 1789615249,
+      "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
+    },
     "new-error-watch:main:665302c7ad45bc64": {
       "first": 1789615153,
       "last": 1789615153,
@@ -113,6 +118,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-17T03:19:13+00:00",
+  "updated_at": "2026-09-17T03:20:50+00:00",
   "version": 1
 }
