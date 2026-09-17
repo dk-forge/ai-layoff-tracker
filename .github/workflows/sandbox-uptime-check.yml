@@ -1,0 +1,94 @@
+name: Sandbox uptime check
+
+# Every 15 minutes, free: the private sandbox repo's own uptime-cert-monitor.yml
+# runs on the single busy self-hosted runner shared by three repositories and
+# has been getting to run only every 2-3 hours. This repo is public, so
+# GitHub-hosted ubuntu-latest is free and unmetered here, and this check needs
+# nothing the sandbox repo has that this one does not.
+#
+# WHAT IT CHECKS. https://sandbox.asktherecruiter.com/healthz,
+# /healthz/deep (every nested check must report ok:true), and the Railway
+# origin directly (asktherecruiter-sandbox-production.up.railway.app), so a
+# DNS/proxy failure and an application failure read as separate diagnostics
+# in the same alert body.
+#
+# WHY TWO CONSECUTIVE FAILURES. A single failed run is as likely to be a
+# transient blip as a real outage. Two consecutive (a real ~15-minute
+# window) is the bar; see railway/sandbox_uptime_check.py's docstring.
+#
+# THE ONE DOOR, THE SAME SHAPE AS EVERY OTHER ALARM HERE.
+# railway/sandbox_uptime_check.py never builds a mail client; every alert
+# leaves through railway/ops_notify.py (RESEND_API_KEY, OPS_MAIL_TO,
+# OPS_MAIL_FROM - no secret beyond what ops_notify already uses). Dedupe by
+# cause, remind at 14 days, RECOVERED once, own committed ledger
+# (railway/sandbox_uptime_state.json) in its own namespace - same pattern as
+# new_error_watch.py's new_error_state.json.
+#
+# THIS JOB NEVER GOES RED ON A FAILED CHECK. Its entire purpose is the
+# alarm; asserting on itself too would be a second alarm for one cause. Same
+# shape as the sibling repo's host-watch.yml.
+#
+# Stdlib only. No pip install on the alerting path, the same rule as
+# ci_alert.py, opsmail.py and new_error_watch.py.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: sandbox-uptime-check
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # commit railway/sandbox_uptime_state.json
+
+jobs:
+  check:
+    name: Probe the sandbox and alert on a sustained failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Check the sandbox and alert
+        working-directory: railway
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+        run: python3 sandbox_uptime_check.py
+
+      # Same fetch-reset-commit-push retry shape as every other committed
+      # ledger here (new-error-watch.yml, host-watch.yml, alert-drain.yml):
+      # re-derive on a rejected push rather than replay a diff.
+      - name: Commit the ledger
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git add railway/sandbox_uptime_state.json
+            if git diff --staged --quiet; then
+              echo "Nothing changed."
+              exit 0
+            fi
+            git commit -q -m "sandbox-uptime-check: ledger update $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push origin HEAD:main; then
+              echo "Recorded on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), re-deriving on current main."
+            git fetch origin main
+            git reset --hard origin/main
+            (cd railway && python3 sandbox_uptime_check.py) || true
+            sleep $((attempt * 5))
+          done
+          echo "::warning::could not record the sandbox-uptime ledger after 5 attempts; a cause already alerted this run may alert again next run."
