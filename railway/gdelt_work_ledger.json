@@ -1,18 +1,5 @@
 {
   "slots": {
-    "broad|7ea059d8ce|20260901T100746Z|20260902T220746Z": {
-      "family": "broad",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "complete",
-      "returned": 7816,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260902T221337Z",
-      "updated": "20260902T221337Z",
-      "oldest": "20260901T101500Z",
-      "newest": "20260902T220000Z"
-    },
     "broad|7ea059d8ce|20260903T101002Z|20260904T221002Z": {
       "family": "broad",
       "window_start": "20260903T101002Z",
@@ -156,6 +143,19 @@
       "oldest": "20260914T084500Z",
       "newest": "20260915T203000Z"
     },
+    "broad|f060b27756|20260915T083813Z|20260916T203813Z": {
+      "family": "broad",
+      "window_start": "20260915T083813Z",
+      "window_end": "20260916T203813Z",
+      "status": "complete",
+      "returned": 8233,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20260916T221018Z",
+      "updated": "20260916T221018Z",
+      "oldest": "20260915T084500Z",
+      "newest": "20260916T203000Z"
+    },
     "euphemism|05f1448314|20260907T100640Z|20260908T220640Z": {
       "family": "euphemism",
       "window_start": "20260907T100640Z",
@@ -203,18 +203,6 @@
       "first_seen": "20260907T222229Z",
       "updated": "20260910T155842Z",
       "query_text": "\"strategic realignment\" employees"
-    },
-    "euphemism|36fc3169e0|20260901T100746Z|20260902T220746Z": {
-      "family": "euphemism",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "\"branch\" \"optimization\" jobs"
     },
     "euphemism|36fc3169e0|20260909T000000Z|20260910T000000Z": {
       "family": "euphemism",
@@ -275,18 +263,6 @@
       "first_seen": "20260908T222031Z",
       "updated": "20260910T155842Z",
       "query_text": "\"headcount optimization\""
-    },
-    "euphemism|7207ba736e|20260901T100746Z|20260902T220746Z": {
-      "family": "euphemism",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "\"store rationalization\""
     },
     "euphemism|7207ba736e|20260909T000000Z|20260910T000000Z": {
       "family": "euphemism",
@@ -432,18 +408,6 @@
       "updated": "20260910T155842Z",
       "query_text": "\"Stellenabbau\" OR \"Entlassungen\" OR \"Arbeitspl\u00e4tze streichen\""
     },
-    "euro|957268bc89|20260901T100746Z|20260902T220746Z": {
-      "family": "euro",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "\"plan social\" OR \"licenciements\" OR \"suppressions de postes\""
-    },
     "euro|957268bc89|20260905T100833Z|20260906T220833Z": {
       "family": "euro",
       "window_start": "20260905T100833Z",
@@ -539,18 +503,6 @@
       "first_seen": "20260908T222031Z",
       "updated": "20260910T155842Z",
       "query_text": "\"recorte de plantilla\""
-    },
-    "native|7a01f3161d|20260901T100746Z|20260902T220746Z": {
-      "family": "native",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "\"licenziamento collettivo\""
     },
     "native|7a01f3161d|20260908T100758Z|20260909T220758Z": {
       "family": "native",
@@ -672,18 +624,6 @@
       "updated": "20260910T155842Z",
       "query_text": "\"suppression de postes\""
     },
-    "native|ea551e73eb|20260901T100746Z|20260902T220746Z": {
-      "family": "native",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "\"esuberi\""
-    },
     "native|ea551e73eb|20260908T100758Z|20260909T220758Z": {
       "family": "native",
       "window_start": "20260908T100758Z",
@@ -791,18 +731,6 @@
       "first_seen": "20260909T222449Z",
       "updated": "20260910T155842Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"lay off\" OR \"lays off\" OR \"laying off\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"AI adoption\" \"headcount\""
-    },
-    "segment|5f116b81ee|20260901T100746Z|20260902T220746Z": {
-      "family": "segment",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260902T222031Z",
-      "updated": "20260910T155842Z",
-      "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"aerospace\""
     },
     "segment|60952fa470|20260903T101002Z|20260904T221002Z": {
       "family": "segment",
@@ -912,18 +840,6 @@
       "updated": "20260910T155842Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"lay off\" OR \"lays off\" OR \"laying off\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"AI-first\" layoffs"
     },
-    "segment|a40818ddda|20260901T100746Z|20260902T220746Z": {
-      "family": "segment",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"replaced by AI\""
-    },
     "segment|a481676f0e|20260909T000000Z|20260910T000000Z": {
       "family": "segment",
       "window_start": "20260909T000000Z",
@@ -971,18 +887,6 @@
       "first_seen": "20260908T222030Z",
       "updated": "20260910T155842Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"lay off\" OR \"lays off\" OR \"laying off\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"generative AI\" \"job cuts\""
-    },
-    "segment|b43dec9fec|20260901T100746Z|20260902T220746Z": {
-      "family": "segment",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"because of AI\""
     },
     "segment|ba586f9d63|20260907T100640Z|20260908T220640Z": {
       "family": "segment",
@@ -1056,18 +960,6 @@
       "updated": "20260910T155842Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"job cuts\" \"earnings\""
     },
-    "segment|dcde7f8c30|20260901T100746Z|20260902T220746Z": {
-      "family": "segment",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"AI layoffs\""
-    },
     "segment|e25d100bc9|20260904T100901Z|20260905T220901Z": {
       "family": "segment",
       "window_start": "20260904T100901Z",
@@ -1127,18 +1019,6 @@
       "first_seen": "20260907T222229Z",
       "updated": "20260910T155842Z",
       "query_text": "(layoff OR layoffs OR \"laid off\" OR \"job cuts\" OR \"cutting jobs\" OR \"cut jobs\" OR \"job losses\" OR redundancy OR redundancies OR \"staff cuts\" OR \"workforce reduction\" OR \"headcount reduction\" OR \"headcount cuts\" OR \"reduction in force\" OR RIF OR downsizing OR \"position eliminations\" OR \"role eliminations\" OR \"workforce realignment\" OR \"organizational realignment\" OR \"restructuring plan\" OR \"collective redundancy\" OR \"collective dismissal\" OR \"plant closure\" OR \"site closure\" OR retrenchment OR retrenchments OR \"mass dismissal\" OR dismissals OR sacked OR \"jobs axed\" OR rightsizing OR \"workforce optimization\" OR \"workforce rebalancing\" OR \"job eliminations\" OR \"voluntary separation\" OR \"organizational simplification\" OR \"lay off\" OR \"lays off\" OR \"laying off\" OR \"WARN notice\" OR \"mass layoff\" OR restructuring OR \"termination notice\" OR \"mass termination\" OR \"redundancy consultation\" OR \"section 189\" OR demiss\u00f5es OR \"cortes de empregos\" OR despidos OR \"recorte de personal\") \"agentic AI\" workforce"
-    },
-    "theme|3673d0338b|20260901T100746Z|20260902T220746Z": {
-      "family": "theme",
-      "window_start": "20260901T100746Z",
-      "window_end": "20260902T220746Z",
-      "status": "superseded",
-      "returned": 0,
-      "cap_hit": false,
-      "attempts": 0,
-      "first_seen": "20260902T222032Z",
-      "updated": "20260910T155842Z",
-      "query_text": "(theme:WB_2806_DISMISSAL_PROCEDURES OR theme:WB_2790_LABOR_REDUNDANCY OR theme:WB_2792_COLLECTIVE_REDUNDANCY_PROCEDURES)"
     },
     "theme|3673d0338b|20260903T101002Z|20260904T221002Z": {
       "family": "theme",
