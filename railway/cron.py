@@ -28,6 +28,9 @@ from extractor import extract_layoff_data, spend_deferral_count
 from wp_poster import post_to_wordpress
 from source_health import report_source_health
 import spend
+from sentry_init import init_sentry
+
+init_sentry(component="cron")
 
 # Pre-extraction gate mode (cost-funnel port; see extractor.gate_verdict):
 #   off    - no gate calls at all (pre-funnel behaviour)

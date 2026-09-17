@@ -112,7 +112,18 @@ SPEND_LEDGER_PATH = ROOT / "new_error_spend.json"
 MONTHLY_CAP_USD = 3.00
 MODEL = "google/gemini-2.5-flash-lite"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-SENTRY_API = "https://sentry.io/api/0"
+
+#: The Sentry organisation lives on the EU region (de.sentry.io), not the
+#: default sentry.io/api/0 host — a request to the wrong region's API returns
+#: 404s that would otherwise read as "Sentry could not be checked" (UNKNOWN)
+#: forever. Read from SENTRY_REGION_URL so a region move is a variable change,
+#: never a code change; default matches this org's actual region.
+DEFAULT_SENTRY_REGION_URL = "https://de.sentry.io"
+
+
+def sentry_api_base() -> str:
+    region = os.environ.get("SENTRY_REGION_URL", "").strip() or DEFAULT_SENTRY_REGION_URL
+    return region.rstrip("/") + "/api/0"
 
 # Prefix on the note fetch_new_issues returns when this watch is simply not
 # configured. ABSENT and UNKNOWN are different states and the digest mailer
@@ -177,7 +188,7 @@ def fetch_new_issues(hours: int = 1, fetch=None):
         # own and a green one. See run() for why the difference matters.
         return None, (ABSENT_NOTE + ": SENTRY_ORG, SENTRY_PROJECT or "
                       "SENTRY_AUTH_TOKEN is not set, so nothing is armed")
-    url = (f"{SENTRY_API}/projects/{org}/{project}/issues/"
+    url = (f"{sentry_api_base()}/projects/{org}/{project}/issues/"
            f"?query={urllib.parse.quote('is:unresolved is:new', safe='')}"
            f"&statsPeriod={hours}h&limit=25")
     headers = {"Authorization": f"Bearer {token}", "User-Agent": UA,
@@ -440,7 +451,7 @@ def fetch_issue_status(issue_id: str, fetch_status=None):
     org, project, token = sentry_org(), sentry_project(), sentry_token()
     if not (org and project and token and issue_id):
         return None
-    url = f"{SENTRY_API}/issues/{issue_id}/"
+    url = f"{sentry_api_base()}/issues/{issue_id}/"
     headers = {"Authorization": f"Bearer {token}", "User-Agent": UA,
                "Accept": "application/json"}
     getter = fetch_status or _http_get

@@ -282,5 +282,29 @@ class UnknownWhenSentryCannotBeRead(_Base):
         self.assertEqual(self.notified, [])
 
 
+class SentryApiBaseIsRegionAware(unittest.TestCase):
+    """The org lives on the EU region, not sentry.io. A hardcoded base would
+    404 every request and read as UNKNOWN forever without anyone noticing
+    (fetch_new_issues never raises on a non-200 status, it just reports the
+    HTTP code). SENTRY_REGION_URL makes the host a variable, not code."""
+
+    def setUp(self):
+        self._prev = os.environ.pop("SENTRY_REGION_URL", None)
+        self.addCleanup(lambda: self._prev is not None and
+                         os.environ.__setitem__("SENTRY_REGION_URL", self._prev))
+        self.addCleanup(lambda: os.environ.pop("SENTRY_REGION_URL", None))
+
+    def test_default_is_the_eu_region_not_sentry_io(self):
+        self.assertEqual(watch.sentry_api_base(), "https://de.sentry.io/api/0")
+
+    def test_region_var_overrides_the_default(self):
+        os.environ["SENTRY_REGION_URL"] = "https://us.sentry.io"
+        self.assertEqual(watch.sentry_api_base(), "https://us.sentry.io/api/0")
+
+    def test_trailing_slash_on_the_region_var_is_tolerated(self):
+        os.environ["SENTRY_REGION_URL"] = "https://de.sentry.io/"
+        self.assertEqual(watch.sentry_api_base(), "https://de.sentry.io/api/0")
+
+
 if __name__ == "__main__":
     unittest.main()
