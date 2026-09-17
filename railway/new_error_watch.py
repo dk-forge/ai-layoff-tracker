@@ -173,7 +173,11 @@ def _http_get(url: str, headers: dict):
         with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
-        return exc.code, (exc.read().decode("utf-8", "replace") if exc.fp else "")
+        try:
+            body = exc.read().decode("utf-8", "replace")
+        except Exception:  # noqa: BLE001 - best-effort diagnostics only
+            body = ""
+        return exc.code, body
 
 
 def fetch_new_issues(hours: int = 1, fetch=None):
@@ -188,9 +192,13 @@ def fetch_new_issues(hours: int = 1, fetch=None):
         # own and a green one. See run() for why the difference matters.
         return None, (ABSENT_NOTE + ": SENTRY_ORG, SENTRY_PROJECT or "
                       "SENTRY_AUTH_TOKEN is not set, so nothing is armed")
+    # "is:new" is not a valid Sentry search token (Sentry confirmed this with
+    # a plain HTTP 400 and no body worth surfacing) - "new" is a SORT value,
+    # not a filter. "age:-{h}h" is the actual filter for "first seen within
+    # the last N hours", which is what this watch means by "new".
     url = (f"{sentry_api_base()}/projects/{org}/{project}/issues/"
-           f"?query={urllib.parse.quote('is:unresolved is:new', safe='')}"
-           f"&statsPeriod={hours}h&limit=25")
+           f"?query={urllib.parse.quote(f'is:unresolved age:-{hours}h', safe='')}"
+           f"&limit=25")
     headers = {"Authorization": f"Bearer {token}", "User-Agent": UA,
                "Accept": "application/json"}
     getter = fetch or _http_get
@@ -199,7 +207,14 @@ def fetch_new_issues(hours: int = 1, fetch=None):
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         return None, f"could not reach Sentry: {exc}"
     if status != 200:
-        return None, f"Sentry returned HTTP {status}"
+        # Sentry's own error body (e.g. {"detail": "..."}) is not a secret -
+        # it is the API telling us what was wrong with OUR request - and
+        # surfacing it is the difference between "Sentry returned HTTP 400"
+        # (which says nothing actionable) and knowing which query token or
+        # parameter to fix.
+        detail = (body or "").strip()[:300]
+        return None, (f"Sentry returned HTTP {status}: {detail}" if detail
+                       else f"Sentry returned HTTP {status}")
     try:
         issues = json.loads(body or "[]")
     except ValueError:

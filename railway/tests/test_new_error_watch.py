@@ -306,5 +306,25 @@ class SentryApiBaseIsRegionAware(unittest.TestCase):
         self.assertEqual(watch.sentry_api_base(), "https://de.sentry.io/api/0")
 
 
+class FetchQueryUsesAgeNotIsNew(_Base):
+    """"is:new" is not a valid Sentry search token - Sentry's issues API
+    returns a plain HTTP 400 for it, which this watch then reported as an
+    opaque, permanent UNKNOWN. "age:-Nh" is the real filter for "first seen
+    within the last N hours". This pins the query shape so a future edit
+    cannot silently reintroduce "is:new"."""
+
+    def test_query_uses_age_filter_not_is_new(self):
+        seen = {}
+
+        def fetch(url, headers):
+            seen["url"] = url
+            return 200, "[]"
+
+        watch.fetch_new_issues(hours=1, fetch=fetch)
+        self.assertIn("age%3A-1h", seen["url"])
+        self.assertNotIn("is%3Anew", seen["url"])
+        self.assertNotIn("is:new", seen["url"])
+
+
 if __name__ == "__main__":
     unittest.main()
