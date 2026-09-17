@@ -1,3 +1,49 @@
+## 2026-09-17 - The Wayback sweep called a total Internet Archive outage "a defect here", because the reachability probe asks a different host than the captures do
+
+**Class:** unreachable-read-as-broken
+**Guard:** `railway/tests/test_unreachable_is_not_broken.py`,
+`TheSweepsOwnAttemptsOutrankTheProbeTests` (9 tests; the behavioural pair is
+red against the pre-fix file).
+
+`Archive WARN sources to Wayback` run 10 (2026-09-14 14:38 UTC) went red with
+"zero snapshots from 54 attempt(s) while the Internet Archive IS answering -
+this is a defect here, not an outage" and stayed an open alert cause for three
+days. Runs 6 through 9 had all been green.
+
+Every one of the 54 attempts failed, and the log says how: HTTP 500, HTTP 429,
+`Connection refused` and read timeouts, all from `web.archive.org`. That is an
+outage, and the run said the opposite with confidence.
+
+**Root cause: the verdict read a proxy signal instead of the thing it was
+judging.** `IA_PROBE` is `https://archive.org/wayback/available?...`; `SAVE` is
+`https://web.archive.org/save/`. Different hosts, failing independently. The
+availability lookup on `archive.org` answered normally, so `wayback_reachable()`
+returned True, so `verdict()` took the "the archive is fine, so this is our bug"
+branch. `archive()` had already observed 54 direct, unambiguous answers from the
+host that actually mattered and threw every one of them away.
+
+This is the same inversion `test_unreachable_is_not_broken.py` was written for
+on 2026-08-18, arriving through the one gap that file left: the guard checked
+reachability, but not of the endpoint whose failure it was explaining.
+
+**The fix makes the sweep's own attempts the evidence.** `archive()` now
+returns `(snapshot, outcome)` with outcome in SAVED / UNAVAILABLE (transport
+error, 429, 5xx) / CONTRACT (a coherent answer that was not a capture).
+`verdict()` takes the tallies and holds a wipeout only when nothing was
+CONTRACT-shaped and either the probe says unreachable or every single attempt
+was UNAVAILABLE.
+
+**Nothing is softened.** A single CONTRACT-shaped answer is red even when the
+probe says unreachable, so an outage cannot mask a broken `/save/` contract; an
+empty URL list, a changed contract and a rejected UA (403) all still exit 1; a
+tally that does not account for every attempt falls back to the probe rather
+than assuming an outage. `unavailable`/`contract` default to 0, so the three
+pre-existing `verdict()` tests keep their exact previous meaning and still pass.
+
+Red-before/green-after on the real numbers: `verdict(attempted=54, ok=0,
+reachable=True)` returned 1 before and returns 0 after with
+`unavailable=54, contract=0`.
+
 ## 2026-09-16 - Every employer named wholly in a non-Latin script had an empty company key, and an empty key is never deduplicated (2.20.203)
 
 **Class:** wrong-scope-or-key
