@@ -146,7 +146,7 @@
     },
     "warn:FL": {
       "label": "FL WARN",
-      "last_checked": "2026-09-16",
+      "last_checked": "2026-09-17",
       "max_effective": null,
       "rate_per_year": 273.25,
       "rate_long_run_per_year": 272.25,
@@ -160,11 +160,11 @@
       "frontier": "2026-10-15",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 30
+      "observation_seq": 31
     },
     "warn:GA": {
       "label": "GA WARN",
-      "last_checked": "2026-09-16",
+      "last_checked": "2026-09-17",
       "max_effective": null,
       "rate_per_year": 96.65,
       "rate_long_run_per_year": 80.0,
@@ -178,7 +178,7 @@
       "frontier": "2026-09-14",
       "frontier_advanced_at": "2026-09-15",
       "state": "HEALTHY",
-      "observation_seq": 30
+      "observation_seq": 31
     },
     "warn:GU": {
       "label": "Guam WARN",
@@ -208,7 +208,7 @@
     },
     "warn:ID": {
       "label": "ID WARN",
-      "last_checked": "2026-09-16",
+      "last_checked": "2026-09-17",
       "max_effective": null,
       "rate_per_year": 8.77,
       "rate_long_run_per_year": 11.89,
@@ -222,7 +222,7 @@
       "frontier": "2026-10-09",
       "frontier_advanced_at": "2026-08-20",
       "state": "HEALTHY",
-      "observation_seq": 30
+      "observation_seq": 31
     },
     "warn:IL": {
       "label": "IL WARN",
