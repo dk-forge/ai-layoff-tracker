@@ -27,6 +27,9 @@ import source_freshness
 from sources.warn import pull_warn
 from sources.warn_custom import pull_warn_custom
 from source_health import report_source_health
+from sentry_init import init_sentry
+
+init_sentry(component="warn_import")
 
 # States whose FRESH notices arrive through a pipeline OTHER than this monthly
 # WARN scrape, so this run's own `entries` under-report how current the state

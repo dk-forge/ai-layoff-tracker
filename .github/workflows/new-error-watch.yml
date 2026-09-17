@@ -63,6 +63,7 @@ jobs:
         env:
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_REGION_URL: ${{ vars.SENTRY_REGION_URL }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           OPENROUTER_OPS_KEY: ${{ secrets.OPENROUTER_OPS_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

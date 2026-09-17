@@ -102,6 +102,7 @@ jobs:
         env:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           WP_SITE_URL: https://asktherecruiter.com/blog
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           # Scheduled runs have no inputs — default to a full nationwide sweep.
           WARN_STATES: ${{ github.event.inputs.states || 'all' }}
           WARN_MIN_EMPLOYEES: ${{ github.event.inputs.min_employees || '0' }}
