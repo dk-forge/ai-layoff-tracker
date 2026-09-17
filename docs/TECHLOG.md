@@ -1,3 +1,48 @@
+## 2026-09-17 - The Hawaii OCR import had no wall clock, so the runner killed it at 30m0s, and the guard written for exactly that could not see it
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_hi_deadline.py` (6 tests; 5 fail against the
+pre-fix file, the sixth pins a naming property it already had), plus
+`railway/tests/test_deadline_below_workflow_timeout.py`, which now covers this
+script for the first time.
+
+`Hawaii WARN OCR import` was cancelled by its own `timeout-minutes: 30` on
+2026-09-16 at exactly 30m0s and has been an open alert cause since. A run
+killed that way loses everything: nothing is upserted, no terminal health note
+is posted, and the alert names the clock rather than a cause.
+
+`sources/warn_hi_ocr.fetch_hi_ocr()` had no wall clock at all. It has a
+per-request `timeout=45`, and nothing else: it crawls every notice of three
+years, fetching and OCR-ing each one, and runs until the runner stops it.
+
+**The guard for this already existed and was blind to it.**
+`test_deadline_below_workflow_timeout.py` pairs each scheduled workflow's
+`timeout-minutes` with its script's module-level `DEADLINE*` constant. It
+catches a deadline that is too large. A script with NO deadline has no
+constant to read, so it is not merely unchecked, it is invisible: absence read
+as OK, on the very test written to stop a job overrunning its kill.
+
+**The fix declares the budget where that guard looks and enforces it where the
+loop is.** `hi_warn_import.DEADLINE_SECONDS` is clamped
+(`max(60, min(1500, env))`) so raising `HI_DEADLINE_SECONDS` cannot push it
+past the kill, and `fetch_hi_ocr(deadline_seconds=...)` checks the elapsed
+clock BEFORE each notice against `PER_NOTICE_WORST_CASE_SECONDS`, so the run
+never starts work it cannot finish. Mutation-proved: raise the ceiling to 1800
+and the existing guard fails naming both numbers.
+
+**A partial run is safe but is NOT reported `ok`.** The crawl returns the full
+cumulative set each run and the upsert is idempotent, so whatever a truncated
+run misses, the next one re-reads; that is the bar RUNBOOK sets for a job that
+may defer. But a short sweep reports `degraded`, because `ok` on a partial is
+the started-not-finished shape and would reset the staleness clock while part
+of the register went unread. And a truncated run that reached nothing
+countable no longer borrows the "page changed or OCR broke" message, which
+would send someone hunting a defect that is not there.
+
+**Truncation is a FLAG, not a count.** The loop breaks without walking the
+rest of the crawl, so the number of notices left is unknown, and this repo
+does not publish a number it did not measure.
+
 ## 2026-09-17 - The Wayback sweep called a total Internet Archive outage "a defect here", because the reachability probe asks a different host than the captures do
 
 **Class:** wrong-scope-or-key

@@ -17,7 +17,9 @@ in an environment without pytesseract/tesseract.
 """
 from __future__ import annotations
 
+import os
 import re
+import time
 
 import requests
 
@@ -82,6 +84,19 @@ _TRUSTED_LABELS = {"grand_total", "of_them_separated", "total_affected"}
 # check can't catch that (the number IS in the text), so a floor does. The
 # trusted regex set bottoms out at 5, so 5 is the plausibility floor.
 _LLM_MIN_COUNT = 5
+
+#: The worst case one notice can cost: the PDF fetch (TIMEOUT), the OCR of up
+#: to four pages, and the constrained LLM fallback when the deterministic
+#: extractor skips. Checked BEFORE a notice is started, against the budget
+#: below, so the run stops itself rather than being killed mid-OCR.
+PER_NOTICE_WORST_CASE_SECONDS = 150
+
+#: True when the budget below stopped this run early. Read by hi_warn_import
+#: for its health note, the same way it reads warn_import.FAILED_BATCHES.
+#: Deliberately a FLAG and not a count: the loop stops without walking the
+#: rest of the crawl, so the number of notices left is not known and must not
+#: be invented. Reset at the top of every fetch_hi_ocr().
+DEADLINE_TRUNCATED = False
 
 
 def _to_int(raw: str) -> int:
@@ -285,7 +300,8 @@ def _llm_affected_count(text: str):
     return v, "llm_fallback"
 
 
-def fetch_hi_ocr(years=None, limit=None, dry_run=False):
+def fetch_hi_ocr(years=None, limit=None, dry_run=False, deadline_seconds=None,
+                 now=time.monotonic):
     """OCR each Hawaii notice PDF and emit a countable WARN entry.
 
     dry_run=True prints a reviewable table (date, company, count, pattern, url)
@@ -296,12 +312,32 @@ def fetch_hi_ocr(years=None, limit=None, dry_run=False):
     if years is None:
         y = _date.today().year
         years = sorted({y - 1, y, y + 1})
+    global DEADLINE_TRUNCATED
+    DEADLINE_TRUNCATED = False
     out, skipped = [], []
     seen_urls = set()
+    started = now()
     for date, company, url in _hi_notices(years):
         if url in seen_urls:
             continue
         seen_urls.add(url)
+        # Checked BEFORE the work, against the worst case of the notice about
+        # to be OCR'd. Stopping only once the clock has run out is how you get
+        # killed inside a notice, which is the failure this replaces: the run
+        # of 2026-09-16 was cancelled by `timeout-minutes` at 30m0s and lost
+        # everything it had. The crawl is cumulative and the upsert is
+        # idempotent, so whatever this run does not reach, the next one
+        # re-reads; nothing has to be remembered for tomorrow to be equivalent
+        # to today.
+        if deadline_seconds is not None:
+            spent = now() - started
+            if spent + PER_NOTICE_WORST_CASE_SECONDS > deadline_seconds:
+                print(f"Deadline: {spent / 60:.1f} min spent, stopping before "
+                      f"the next notice so the runner does not have to. "
+                      f"{len(out)} notice(s) collected; the rest is deferred "
+                      f"to the next run.")
+                DEADLINE_TRUNCATED = True
+                break
         try:
             resp = requests.get(url, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200 or not resp.content[:4] == b"%PDF":
