@@ -6,7 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **Claude alongside, 2026-09-16, branch `fix/unicode-company-key`, worktree
+- **RELEASED - Claude alongside, 2026-09-16, branch `fix/unicode-company-key` (PR #385), worktree
   `/tmp/wt-ckey`. Reserves plugin version 2.20.203.** Does not take the baton:
   every entry above is RELEASED. Touches `includes/api.php`
   (`alt_company_key()`), one keyed dry-run-first endpoint in `includes/db.php`,
