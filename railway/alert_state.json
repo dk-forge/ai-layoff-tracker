@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "archive-warn-sources-to-wayback:main:3a45c13fb500d229": {
-      "first": 1789397772,
-      "last": 1789397772,
-      "subject": "CI RED: Archive WARN sources to Wayback \u2014 ERROR: zero snapshots from 54 attempt(s) while the Internet Archive IS answering \u2014 this is a defect here, not an outage. Check the URL lis"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -123,6 +118,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-17T15:44:31+00:00",
+  "updated_at": "2026-09-17T15:53:28+00:00",
   "version": 1
 }
