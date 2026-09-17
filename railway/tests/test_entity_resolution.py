@@ -33,7 +33,8 @@ def _php_company_keys(names):
     """alt_company_key() as the SERVER computes it, for the names given."""
     code = (
         "$src = file_get_contents($argv[1]);"
-        "foreach (['alt_company_key','alt_canonical_company','alt_nonlatin_company_alias'] as $fn) {"
+        "foreach (['alt_company_key','alt_company_key_body','alt_company_key_is_utf8','alt_company_key_chars',"
+        "          'alt_canonical_company','alt_nonlatin_company_alias'] as $fn) {"
         "  $start = strpos($src, \"function $fn(\");"
         "  if ($start === false) { fwrite(STDERR, \"missing $fn\"); exit(2); }"
         "  $end = strpos($src, \"\\n}\\n\", $start);"
@@ -107,12 +108,14 @@ class TheNamesThatMustStayApart(unittest.TestCase):
     def test_an_unresolvable_name_is_never_a_match(self):
         """A name the module cannot normalise answers False, not "probably".
 
-        An unknown CJK name has no key at all -- alt_company_key strips it to
-        the empty string -- and an empty key must never match another empty
-        key, or every unreadable name in the corpus becomes one employer.
+        An empty key must never match another empty key, or every unreadable
+        name in the corpus becomes one employer. Since 2.20.203 an unknown CJK
+        name keys as itself rather than as '', and two different names in one
+        script still stay apart.
         """
-        self.assertEqual("", er.entity_key("トヨタ自動車"))
+        self.assertEqual("トヨタ自動車", er.entity_key("トヨタ自動車"))
         self.assertFalse(er.same_entity("トヨタ自動車", "東京電力"))
+        self.assertFalse(er.same_entity("トヨタ自動車", "Toyota"))
         self.assertFalse(er.same_entity("", ""))
         self.assertFalse(er.same_entity(None, None))
 
@@ -174,12 +177,14 @@ class ThePluginAgreesWithThisModule(unittest.TestCase):
                 self.JLR + ["Tata Steel", "Tata Motors", "Amazon.com, Inc.", "Google"]).items():
             self.assertEqual(php_key, er.entity_key(name), name)
 
-    def test_a_non_latin_name_the_lists_do_not_know_still_has_no_key(self):
-        """Unchanged behaviour, stated: the strip empties it, and an empty key
-        matches nothing. That is the honest state, not a defect to paper over."""
+    def test_a_non_latin_name_the_lists_do_not_know_keys_as_itself(self):
+        """2.20.203: the strip used to empty it, and an empty key is excluded
+        from every dedup pass, so the row could never be deduplicated. It now
+        keys as itself on both sides, untransliterated, so it can only equal
+        the same name in the same script."""
         unknown = "\u6771\u4eac\u96fb\u529b"
-        self.assertEqual("", _php_company_keys([unknown])[unknown])
-        self.assertEqual("", er.entity_key(unknown))
+        self.assertEqual(unknown, _php_company_keys([unknown])[unknown])
+        self.assertEqual(unknown, er.entity_key(unknown))
 
 
 if __name__ == "__main__":

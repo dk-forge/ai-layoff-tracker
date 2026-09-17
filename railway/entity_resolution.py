@@ -125,6 +125,49 @@ _WEAK_TOKENS = {
 }
 
 
+#: Code point ranges that are Latin in all but number (Latin-1 and Latin
+#: Extended, IPA, combining diacritics, fullwidth Latin, ligatures, letterlike
+#: and mathematical letters, variation selectors). alt_company_key_chars()
+#: strips them to a space exactly as the old [^a-z0-9 ] strip did, so no stored
+#: Latin key moves. Same list, same order, as the PHP.
+_KEY_LATIN_RANGES = (
+    (0x0080, 0x036F), (0x1D00, 0x1DFF), (0x1E00, 0x1EFF), (0x2070, 0x218F),
+    (0x20D0, 0x20FF), (0x2C60, 0x2C7F), (0xA720, 0xA7FF), (0xAB30, 0xAB6F),
+    (0xFB00, 0xFB06), (0xFF00, 0xFF5F), (0x10780, 0x107BF), (0x1D400, 0x1D7FF),
+    (0x1DF00, 0x1DFFF), (0x1AB0, 0x1AFF), (0xFE00, 0xFE0F), (0xFE20, 0xFE2F),
+    (0xE0100, 0xE01EF),
+)
+_KEY_ASCII_KEEP = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ')
+
+
+def company_key_chars(name, ascii_only=False):
+    """The character strip of alt_company_key_chars(), lowercased.
+
+    With `ascii_only` it is the original [^a-z0-9 ] strip. Otherwise it keeps [a-z0-9 ] and every letter, digit or mark of a script OUTSIDE the
+    Latin ranges above; everything else becomes a space. It does not
+    transliterate: a non-Latin key only equals a name in the same script.
+
+    The strip runs BEFORE the Unicode lowercase, as it does in the plugin
+    (which lowercases ASCII only until after the strip). str.lower() maps
+    U+0130 to "i" plus a combining dot and U+212A to "k"; lowercasing first
+    would turn a stripped Latin character into an ASCII letter and move a key.
+    """
+    out = []
+    for ch in str(name or ''):
+        code = ord(ch)
+        if code < 0x80:
+            out.append(ch if ch in _KEY_ASCII_KEEP else ' ')
+        elif ascii_only:
+            out.append(' ')
+        elif any(low <= code <= high for low, high in _KEY_LATIN_RANGES):
+            out.append(' ')
+        elif unicodedata.category(ch)[0] in 'LNM':
+            out.append(ch)
+        else:
+            out.append(' ')
+    return ''.join(out).lower()
+
+
 def _fold(name):
     """NFKC, lowercased, and with the width/quote variants folded out.
 
@@ -135,14 +178,22 @@ def _fold(name):
     return text.replace('’', "'").replace('‘', "'").strip()
 
 
+def _strip_forms(chars):
+    key = _LEGAL_RX.sub(' ', chars)
+    key = _GEO_RX.sub(' ', key)
+    return re.sub(r'\s+', ' ', key).strip()
+
+
 def entity_key(name):
     """The employer identity key, or '' when the name yields none.
 
-    Mirrors alt_company_key(): strip to [a-z0-9 ], drop legal forms and
+    Mirrors alt_company_key(): company_key_chars(), drop legal forms and
     trailing geographic qualifiers, collapse whitespace, then the alias map.
-    A name with no Latin characters returns its NON_LATIN_ALIASES canonical
-    key if it has one, and otherwise '' -- exactly as the plugin's key does,
-    stated rather than papered over.
+    A recorded non-Latin spelling returns its NON_LATIN_ALIASES canonical key.
+    A name whose ASCII key is empty (wholly non-Latin) keys as itself in its
+    own script (2.20.203; it used to be '' here and in the plugin), so it can
+    only ever equal a name written in the same script. A non-empty ASCII key
+    is never replaced.
     """
     folded = _fold(name)
     if not folded:
@@ -150,10 +201,16 @@ def entity_key(name):
     compact = re.sub(r'\s+', '', folded)
     if compact in NON_LATIN_ALIASES:
         return NON_LATIN_ALIASES[compact]
-    key = re.sub(r'[^a-z0-9 ]', ' ', folded)
-    key = _LEGAL_RX.sub(' ', key)
-    key = _GEO_RX.sub(' ', key)
-    key = re.sub(r'\s+', ' ', key).strip()
+    # The strip reads the NFKC name BEFORE lowercasing, as the plugin does;
+    # `folded` is already lowercased, and str.lower() turns U+0130 into an
+    # ASCII "i" the plugin never sees. ASCII first; the Unicode strip only
+    # fills a key the ASCII strip left empty (2.20.203, see the plugin).
+    raw = unicodedata.normalize('NFKC', str(name or ''))
+    key = ''
+    for ascii_only in (True, False):
+        key = _strip_forms(company_key_chars(raw, ascii_only))
+        if key:
+            break
     if not key:
         return ''
     return ALIASES.get(key, key)

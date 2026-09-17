@@ -1,3 +1,79 @@
+## 2026-09-16 - Every employer named wholly in a non-Latin script had an empty company key, and an empty key is never deduplicated (2.20.203)
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_unicode_company_key.py` (21 tests; 18 mutations
+of the fix, each one red), plus the updated mirrors in
+`test_entity_resolution.py` and `test_warn_revision_dedup.py`.
+
+`alt_company_key()` stripped with `preg_replace('/[^a-z0-9 ]/')`: an ASCII
+class with no `/u`. "우버", "위워크", "渣打銀行" and "مصر للغزل والنسيج" all keyed
+as `''`, and every fuzzy and superset pass excludes `company_key <> ''`
+(`db.php` superset pass, the cross-outlet join, `dedupe_llm` buckets). Worse,
+the `/add` rebadge check compares `company_key = %s` against the incoming key,
+so a new non-Latin row was compared with EVERY other empty-keyed row of the same
+count more than 180 days older, and could be refused as a republished event it
+had nothing to do with. The JLR incident of 2026-09-07/08 was the visible case;
+2.20.199 fixed that one name with a hand-kept alias. This fixes the class.
+
+**Measured blast radius (read-only, 2026-09-16).** One `/companies?limit=50000`
+read returned all 42,801 distinct names (count below the limit, so complete).
+1,971 carry a non-ASCII character. Under the old key exactly **12 names** key as
+`''`, and every one keys non-empty now; **no non-empty key moves**. A paced
+`/query company=` read per name found **13 rows**: 54975, 176955, 177076,
+177077, 177078, 177080, 177102, 179231, 179232, 179234, 179235, 179236, 179240
+(Korean 5, Chinese 7, Arabic 1; four have a blank country, which is why an
+earlier by-country sample of 12,669 rows found only nine). Among them, same new
+key AND count within 5% AND dates within 3 days: **0 pairs**. The one shared key
+is "普利司通" (179234 at 800, 179235 at 500, same day), outside the 5% rule.
+Not reachable by this fix, and handed to review instead: most of the 13 are the
+same event as a Latin-named row. 54975 "우버" 3,000 on 2020-05-18 against 54974
+"Uber" 3,000 the same day; 177077 "위워크" 2,400 against 177400 "WeWork" 2,400
+two days earlier; 177102 "아틀라시안" 1,600 against 70131 "Atlassian" 1,600
+a day earlier; 179231 against "Samsung India" 179202 and "Samsung" 179201 (all
+100, 2026-09-08); 179236 "滙豐" 134 against 179183 "HSBC" 134, 16 days apart;
+177078 "渣打銀行" 7,000 against 70469 "Standard Chartered" 7,800 the same day.
+Those need an alias entry and a reviewed correction, not a key change.
+
+**The fix only fills an empty key.** The ASCII key is computed exactly as
+before; only when it is empty is the name read again through a Unicode strip
+that keeps letters, digits and marks of non-Latin scripts (marks, so Thai vowels
+and Arabic harakat do not split a word) and still strips every Latin range
+(accents, fullwidth, ligatures, letterlike and mathematical letters, variation
+selectors) to a space, as before. The first cut replaced the key outright, and
+the live sample showed why that is wrong: "普利司通 (Bridgestone)" keyed
+"bridgestone" and met every Bridgestone row, and a two-script key would have
+stopped that; two of three mixed names were that shape. No transliteration:
+a non-Latin key only equals a name in the same script. The legal-form and
+geographic strips now run with `/u` on valid UTF-8, so "Co" glued to a Cyrillic
+word is not taken for "Co.". Invalid UTF-8 keeps the old ASCII path, and
+`alt_nonlatin_company_alias()` no longer indexes an array with `null` on it.
+`dedupe_llm.norm_company` and `entity_resolution.entity_key` share
+`entity_resolution.company_key_chars()`, which strips before it lowercases as
+the plugin does (Python's `lower()` turns U+0130 into an ASCII "i").
+Pre-existing differences are stated in the parity test, not hidden: norm_company
+strips three more legal forms and has no alias map, entity_key NFKC-folds first.
+
+**`dedup_hash` does not read company_key** (`extractor.py` and
+`apply_correction.dedup_hash` both hash lowercased name + date + count), so no
+row's identity hash changes and no suppressed hash is released.
+
+**Not run: the backfill.** Stored keys are derived on write, so the 13 rows keep
+`''` until re-derived. `POST /company-key-rederive` (keyed) does it, and is a
+DRY RUN unless the body carries the boolean `"apply": true`. It touches a row
+only when the stored key is `''`, the name is not pure ASCII, the pre-2.20.203
+key is also `''`, and the new key is not; anything else is reported as `drift`
+and left alone. The write is guarded on the old value. On today's data it would
+set 13 keys and nothing else; it runs no dedup pass. Its effect afterwards: the
+two "普利司通" rows share a key but fail the 75% count gate, so no pass would
+merge anything on name alone. Needs two reviewers before it is applied.
+
+**One public side effect closed in the same change.** The weekly directory
+autopilot (`min_events` 1) has never seen a non-Latin key, and would have
+`sanitize_title()`d the name into a percent-encoded slug and published a page.
+It now parks such a key as `pending` until a person gives it a Latin slug.
+
+---
+
 ## 2026-09-16 - The queue stalled with everything green, because the only thing that merges a pull request was a session
 
 **Class:** novel
