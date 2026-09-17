@@ -140,6 +140,11 @@ def _keys(names):
         # that lifts the key function without it dies at the call rather than
         # measuring anything. See 2.20.199.
         _extract(API, "alt_nonlatin_company_alias"),
+        # 2.20.203: the strip itself is a function now, and it needs the
+        # UTF-8 test to choose its pattern.
+        _extract(API, "alt_company_key_is_utf8"),
+        _extract(API, "alt_company_key_chars"),
+        _extract(API, "alt_company_key_body"),
         _extract(API, "alt_company_key"),
         _extract(DB, "alt_strip_revision_marker"),
         _extract(DB, "alt_warn_revision_key"),

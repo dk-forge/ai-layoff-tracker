@@ -35,6 +35,7 @@ import urllib.request
 from collections import defaultdict
 
 import host_call
+from entity_resolution import company_key_chars
 from source_health import report_source_health
 import spend
 
@@ -118,10 +119,19 @@ def norm_company(name):
     # Kept in sync with the plugin's alt_company_key (includes/api.php) so the two
     # dedup layers reach the same same-company verdict: same legal-suffix set plus
     # the trailing geographic qualifiers (America/USA/International/Global).
-    n = re.sub(r"[^a-z0-9]+", " ", (name or "").lower())   # punctuation -> space, like the PHP key ("Amazon.com" -> "amazon com")
-    n = re.sub(r"\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|sa|ag|group|holdings|holding|technologies|technology|systems|solutions|platforms|the|com)\b", "", n)
-    n = re.sub(r"\b(america|americas|usa|us|international|global|worldwide|na)\b", "", n)
-    return re.sub(r"\s+", " ", n).strip()
+    # Punctuation -> space, like the PHP key ("Amazon.com" -> "amazon com").
+    # Until 2.20.203 only the ASCII pass existed, which emptied every wholly
+    # non-Latin name and so dropped it from every bucket. As in the plugin, the
+    # Unicode pass only fills a key the ASCII pass left empty; a non-empty
+    # ASCII key never moves.
+    for ascii_only in (True, False):
+        n = company_key_chars(name or "", ascii_only)
+        n = re.sub(r"\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|sa|ag|group|holdings|holding|technologies|technology|systems|solutions|platforms|the|com)\b", "", n)
+        n = re.sub(r"\b(america|americas|usa|us|international|global|worldwide|na)\b", "", n)
+        n = re.sub(r"\s+", " ", n).strip()
+        if n:
+            return n
+    return n
 
 
 # ---------------------------------------------------------------------------

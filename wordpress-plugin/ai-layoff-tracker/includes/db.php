@@ -1713,6 +1713,12 @@ function alt_register_query_routes() {
         'methods' => 'POST', 'callback' => 'alt_api_enrich_roles',
         'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
     ));
+    // Key-protected company_key re-derivation for the 2.20.203 Unicode key.
+    // DRY RUN unless the body says apply=true; see the function.
+    register_rest_route('layoffs/v1', '/company-key-rederive', array(
+        'methods' => 'POST', 'callback' => 'alt_api_company_key_rederive',
+        'permission_callback' => function_exists('alt_api_permission') ? 'alt_api_permission' : '__return_false',
+    ));
     // Key-protected, blank-only industry fill restricted to the closed
     // canonical vocabulary. It never overwrites a non-blank industry, never
     // pins rows or touches dedup hashes, and rejects any label outside
@@ -2223,6 +2229,15 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
         // heavily-reported employers the pages are most useful for. The page
         // prints each row's own reported name, so a reader sees the variants.
         // What still parks is a name that fails the sanity gate below.
+        // A non-Latin key exists only since 2.20.203 (it used to be '', which
+        // the candidate query excludes). sanitize_title() would turn its name
+        // into a percent-encoded slug and publish a page nobody reviewed, so
+        // such a key is parked until a person gives it a reviewed Latin slug.
+        if (preg_match('/[^\x00-\x7F]/', $key)) {
+            $skipped[] = array('company_key' => $key, 'why' => 'non-Latin company key; parked pending a reviewed Latin slug');
+            alt_company_directory_park_pending($key, $name);
+            continue;
+        }
         $why = alt_company_directory_name_rejection($name);
         if ($why !== '') {
             $skipped[] = array('company_key' => $key, 'why' => $why . '; parked pending manual identity review');
@@ -2458,6 +2473,76 @@ function alt_api_industry_backfill(WP_REST_Request $r) {
             'Automated industry classification: company identity + retained excerpt, double-confirmed by two model passes, fixed vocabulary, blank fields only');
         if (function_exists('alt_flush_caches')) alt_flush_caches();
     }
+    return rest_ensure_response($out);
+}
+
+/**
+ * RE-DERIVE company_key FOR ROWS THE 2.20.203 KEY CHANGE EXPLAINS, AND NO OTHERS.
+ *
+ * company_key is derived on write, so a row stored before 2.20.203 whose
+ * employer is named wholly in a non-Latin script still carries ''. Until it is
+ * re-derived it stays outside every fuzzy and superset pass, and a new row with
+ * the same name will not meet it. 2.20.203 only fills an EMPTY key (a mixed
+ * name keeps its Latin key), so '' is the only stored value it can supersede.
+ *
+ * A row is changed ONLY when all four hold:
+ *   1. its stored key is '';
+ *   2. its company name has a byte outside ASCII (nothing else can move);
+ *   3. the PRE-2.20.203 key of its name is also '', so the stored value is
+ *      exactly what this change supersedes; and
+ *   4. the current key is not ''.
+ * A row failing (3) is reported under `drift` and left alone: its name keys
+ * non-empty even under the old rule (an alias added since it was written, a
+ * name edited without a re-key), and that is not this endpoint's to settle.
+ *
+ * DRY RUN BY DEFAULT. Nothing is written unless the JSON body carries
+ * `"apply": true` (the boolean, not a string). Pages by id: `after_id`,
+ * `limit` (max 2000); the response carries `next_after_id` and `done`.
+ * It never touches dedup_hash (which does not read company_key), event_id,
+ * superset_of, the `edited` pin or any reader-facing field, and it runs no
+ * dedup pass. Whether and when to run one afterwards is a separate decision.
+ */
+function alt_api_company_key_rederive(WP_REST_Request $r) {
+    global $wpdb;
+    $apply = ($r->get_param('apply') === true);
+    $after = max(0, (int) $r->get_param('after_id'));
+    $limit = (int) ($r->get_param('limit') ?: 500);
+    if ($limit < 1 || $limit > 2000) {
+        return new WP_Error('alt_bad_request', 'limit must be 1..2000.', array('status' => 400));
+    }
+    $table = alt_db_table();
+    // company <> CONVERT(company USING ascii) is true exactly when a character
+    // does not survive the ascii conversion, i.e. the name is not pure ASCII.
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, company, company_key FROM $table
+         WHERE id > %d AND company_key = '' AND company <> '' AND CAST(company AS BINARY) <> CAST(CONVERT(company USING ascii) AS BINARY)
+         ORDER BY id ASC LIMIT %d", $after, $limit), ARRAY_A) ?: array();
+    $out = array(
+        'dry_run' => !$apply, 'scanned' => count($rows), 'changed' => array(),
+        'unchanged' => 0, 'drift' => array(),
+        'next_after_id' => $after, 'done' => count($rows) < $limit,
+    );
+    foreach ($rows as $row) {
+        $out['next_after_id'] = (int) $row['id'];
+        $name = alt_normalize_company_ws($row['company']);
+        $stored = (string) $row['company_key'];
+        $legacy = substr(alt_company_key($name, true), 0, 255);
+        $current = substr(alt_company_key($name), 0, 255);
+        if ($current === $stored) { $out['unchanged']++; continue; }
+        if ($legacy !== $stored) {
+            $out['drift'][] = array('id' => (int) $row['id'], 'stored' => $stored, 'current' => $current);
+            continue;
+        }
+        $out['changed'][] = array('id' => (int) $row['id'], 'from' => $stored, 'to' => $current);
+        if ($apply) {
+            $ok = $wpdb->update($table, array('company_key' => $current), array('id' => (int) $row['id'], 'company_key' => $stored));
+            if ($ok === false) {
+                return new WP_Error('alt_db_error', 'company_key update failed on id ' . (int) $row['id'] . ': ' . $wpdb->last_error,
+                    array('status' => 500, 'changed_so_far' => $out['changed']));
+            }
+        }
+    }
+    if ($apply && $out['changed'] && function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
 }
 

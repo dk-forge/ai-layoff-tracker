@@ -187,32 +187,94 @@ add_action('rest_api_init', 'alt_register_routes');
  * Normalize a company name to a comparison key so "Amazon", "Amazon.com Inc",
  * and "Amazon.com, Inc." all collapse to the same event when deduping.
  */
-function alt_company_key($name) {
+function alt_company_key($name, $legacy_ascii = false) {
     $k = strtolower((string) $name);
     /*
-      A NON-LATIN NAME IS STRIPPED TO NOTHING BY THE LINE BELOW, AND ALWAYS WAS.
-      preg_replace('/[^a-z0-9 ]/') removes every CJK, Cyrillic, Greek, Arabic or
-      Devanagari character, so "\u6377\u8c79\u8def\u864e" (Jaguar Land Rover, in Chinese) has
-      had an EMPTY company key since this function existed -- and so has every
-      other row whose employer is named in a non-Latin script. An empty key
-      matches nothing, so those rows never fuzzy-dedup against anything, and on
-      2026-09-07/08 one 4,000-job JLR announcement was stored four times, once
-      under that name. Nothing can normalise a name it cannot read, so the fold
-      is a lookup: alt_nonlatin_company_alias() is a hand-kept list of spellings
-      somebody identified by reading the row's own source, consulted BEFORE the
-      strip, and it is never grown by inference.
+      A NON-LATIN NAME USED TO KEY AS NOTHING, AND FOR YEARS IT DID.
+      The strip was preg_replace('/[^a-z0-9 ]/'), which removes every CJK,
+      Cyrillic, Greek, Arabic or Thai character, so every row whose employer is
+      named wholly in a non-Latin script had an EMPTY company key, and an empty
+      key is excluded from every fuzzy and superset pass (`company_key <> ''`).
+      On 2026-09-07/08 one 4,000-job JLR announcement was stored four times,
+      once as "\u6377\u8c79\u8def\u864e".
+
+      THE FIX ONLY FILLS AN EMPTY KEY; IT NEVER MOVES ONE (2.20.203). The ASCII
+      key is computed first, exactly as before. Only when it comes out empty is
+      the name read again through the Unicode strip, which keeps letters,
+      digits and marks of non-Latin scripts. A mixed name keeps its Latin key
+      on purpose: "\u666e\u5229\u53f8\u901a (Bridgestone)" keys "bridgestone" and
+      meets every other Bridgestone row, which a longer two-script key would
+      stop doing. Measured on the live sample, every mixed name was that shape.
+
+      IT DOES NOT TRANSLITERATE. A non-Latin key only ever equals another name
+      in the SAME script. Cross-script identity is a lookup:
+      alt_nonlatin_company_alias() is a hand-kept list of spellings somebody
+      identified by reading the row's own source, consulted BEFORE the strip,
+      and it is never grown by inference.
+
+      $legacy_ascii returns the pre-2.20.203 key exactly. Only the key
+      re-derivation endpoint passes it.
     */
     $nonlatin = alt_nonlatin_company_alias($k);
     if ($nonlatin !== '') return $nonlatin;
-    $k = preg_replace('/[^a-z0-9 ]/', ' ', $k);
-    $k = preg_replace('/\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|group|holdings|holding|technologies|technology|systems|solutions|the|com)\b/', ' ', $k);
+    $key = alt_company_key_body($k, true);
+    if ($key === '' && !$legacy_ascii) $key = alt_company_key_body($k, false);
+    return alt_canonical_company($key);
+}
+
+/**
+ * alt_company_key() without the alias lookups: the character strip, then the
+ * legal forms and trailing geographic qualifiers, then whitespace.
+ */
+function alt_company_key_body($lowercased, $ascii_only) {
+    $k = alt_company_key_chars($lowercased, $ascii_only);
+    $u = alt_company_key_is_utf8($k) ? 'u' : '';
+    $k = preg_replace('/\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|llc|lp|group|holdings|holding|technologies|technology|systems|solutions|the|com)\b/' . $u, ' ', $k);
     // Trailing geographic qualifiers name the same employer ("Oracle America" is
     // Oracle, "Amazon.com" already handled). Strip them so a US-subsidiary WARN
     // row and the parent's news event share a key for fuzzy dedup + display
     // grouping. (WARN's exact hash is unaffected; WARN rows never fuzzy-merge.)
-    $k = preg_replace('/\b(america|americas|usa|us|international|global|worldwide|na)\b/', ' ', $k);
-    $k = trim(preg_replace('/\s+/', ' ', $k));
-    return alt_canonical_company($k);
+    $k = preg_replace('/\b(america|americas|usa|us|international|global|worldwide|na)\b/' . $u, ' ', $k);
+    return trim(preg_replace('/\s+/' . $u, ' ', $k));
+}
+
+/** True when $s is valid UTF-8, i.e. a /u pattern will not fail on it. */
+function alt_company_key_is_utf8($s) {
+    return preg_match('//u', (string) $s) === 1;
+}
+
+/**
+ * The character strip inside alt_company_key(). With $ascii_only it is the
+ * original [^a-z0-9 ] strip. Otherwise every character becomes a space unless
+ * it is [a-z0-9 ] or a letter, digit or mark from a script OUTSIDE the Latin
+ * ranges below, and the result is lowercased.
+ *
+ * THE LATIN RANGES ARE STRIPPED ON PURPOSE, exactly as before 2.20.203, so
+ * "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale" still keys "soci t g n rale" and no stored Latin key
+ * changes. Folding diacritics would be an improvement, and it would also move
+ * every stored accented key at once; that is a separate, reviewed change.
+ * Fullwidth Latin, ligatures, letterlike symbols and mathematical letters are
+ * Latin in all but code point and stay stripped too.
+ *
+ * Invalid UTF-8 cannot go through a /u pattern (preg_replace returns null), so
+ * it takes the old ASCII strip, which is what it always had.
+ *
+ * Mirrored by entity_resolution.company_key_chars(); the mirror is tested
+ * against this function by railway/tests/test_unicode_company_key.py.
+ */
+function alt_company_key_chars($lowercased, $ascii_only = false) {
+    $s = (string) $lowercased;
+    if ($ascii_only || !alt_company_key_is_utf8($s)) {
+        return preg_replace('/[^a-z0-9 ]/', ' ', $s);
+    }
+    $latin = '\x{0080}-\x{036F}\x{1D00}-\x{1DFF}\x{1E00}-\x{1EFF}\x{2070}-\x{218F}'
+        . '\x{20D0}-\x{20FF}\x{2C60}-\x{2C7F}\x{A720}-\x{A7FF}\x{AB30}-\x{AB6F}'
+        . '\x{FB00}-\x{FB06}\x{FF00}-\x{FF5F}\x{10780}-\x{107BF}\x{1D400}-\x{1D7FF}'
+        . '\x{1DF00}-\x{1DFFF}\x{1AB0}-\x{1AFF}\x{FE00}-\x{FE0F}\x{FE20}-\x{FE2F}'
+        . '\x{E0100}-\x{E01EF}';
+    $out = preg_replace('/[' . $latin . ']|[^a-z0-9 \p{L}\p{N}\p{M}]/u', ' ', $s);
+    if ($out === null) return preg_replace('/[^a-z0-9 ]/', ' ', $s);
+    return function_exists('mb_strtolower') ? mb_strtolower($out, 'UTF-8') : $out;
 }
 
 /**
@@ -233,6 +295,8 @@ function alt_nonlatin_company_alias($lowercased_name) {
         );
     }
     $compact = preg_replace('/\s+/u', '', (string) $lowercased_name);
+    // Invalid UTF-8 makes a /u pattern return null, and null is not a name.
+    if ($compact === null) return '';
     return isset($map[$compact]) ? $map[$compact] : '';
 }
 
