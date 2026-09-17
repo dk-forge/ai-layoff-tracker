@@ -199,7 +199,13 @@ def fetch_new_issues(hours: int = 1, fetch=None):
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         return None, f"could not reach Sentry: {exc}"
     if status != 200:
-        return None, f"Sentry returned HTTP {status}"
+        # Sentry's own error body (e.g. {"detail": "..."}) is not a secret -
+        # it is the API telling us what was wrong with OUR request - and
+        # surfacing it is the difference between "Sentry returned HTTP 400"
+        # (which says nothing actionable) and knowing which query token or
+        # parameter to fix.
+        detail = (body or "").strip()[:300]
+        return None, f"Sentry returned HTTP {status}: {detail}" if detail else f"Sentry returned HTTP {status}"
     try:
         issues = json.loads(body or "[]")
     except ValueError:
