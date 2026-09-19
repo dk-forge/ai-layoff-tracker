@@ -72,6 +72,11 @@
       "last": 1789591030,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,537,375 jobs / 65,633 entries"
     },
+    "live-surface-check:live.data:a776cc402ee88703": {
+      "first": 1789802734,
+      "last": 1789802734,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: live API returned HTTP 500 \u2014 server regression, not a blip"
+    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1789306127,
       "last": 1789306127,
@@ -118,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-18T19:54:53+00:00",
+  "updated_at": "2026-09-19T07:25:34+00:00",
   "version": 1
 }
