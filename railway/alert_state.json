@@ -92,11 +92,6 @@
       "last": 1789923767,
       "subject": "CI RED: Rendered contrast audit \u2014 no error line could be extracted from the log"
     },
-    "rolling-recall-measurement:main:f19bd5cba2fdc86a": {
-      "first": 1789674367,
-      "last": 1789674367,
-      "subject": "CI RED: Rolling recall measurement \u2014 coverage could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."
-    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -128,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-20T18:51:36+00:00",
+  "updated_at": "2026-09-20T18:57:46+00:00",
   "version": 1
 }
