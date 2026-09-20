@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from mailbox_janitor import OK, REJECTED, _classify, sweep  # noqa: E402
+from mailbox_janitor import OK, REJECTED, UNKNOWN, _classify, sweep  # noqa: E402
 
 NOW = datetime.now(timezone.utc)
 
@@ -227,6 +227,28 @@ def test_a_refused_login_is_rejected_and_touches_nothing(monkeypatch) -> None:
     state, _f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=False)
     assert state == REJECTED
     assert conn.deleted == []
+
+
+def test_a_dropped_socket_during_login_is_unknown_not_rejected(monkeypatch) -> None:
+    """MEASURED on the mailbox janitor run: `LOGIN => socket error: EOF`.
+
+    `imaplib.IMAP4.abort` is a SUBCLASS of `imaplib.IMAP4.error`, and imaplib
+    raises exactly that abort when the socket drops mid-handshake -- not when
+    the server refuses a bad credential. Catching it as a plain `error` would
+    tell the owner to rotate a password that was never the problem, the same
+    mistake the digest mailer's credential check was written to avoid.
+    """
+    import imaplib
+
+    class _AbortsOnLogin(_Conn):
+        def login(self, u, p):
+            raise imaplib.IMAP4.abort("socket error: EOF")
+
+    conn = _AbortsOnLogin([_msg("x", "y@z", 40)])
+    _patch(conn, monkeypatch)
+    state, _f, detail = sweep("h", "u", "pw", retain_days=14, dry_run=False)
+    assert state == UNKNOWN, "a dropped socket is not a login refusal"
+    assert "EOF" in detail
 
 
 def test_the_observed_traffic_classifies_rather_than_falling_to_other() -> None:

@@ -185,6 +185,12 @@ def sweep(host: str, user: str, password: str, retain_days: int,
         try:
             try:
                 m.login(user, password)
+            except imaplib.IMAP4.abort as exc:
+                # `abort` is a subclass of `error`: imaplib raises it for a
+                # dropped socket ("socket error: EOF"), not a refused
+                # credential. Catching it as `error` would send the owner
+                # to rotate a password that was never the problem.
+                return UNKNOWN, {}, _scrub(exc, secrets)
             except imaplib.IMAP4.error as exc:
                 return REJECTED, {}, _scrub(exc, secrets)
             typ, _ = m.select("INBOX")
