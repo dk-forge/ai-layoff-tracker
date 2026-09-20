@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "apply-a-signed-off-correction:main:df9e667ad4f63604": {
-      "first": 1789930193,
-      "last": 1789930193,
-      "subject": "CI RED: Apply a signed-off correction \u2014 links not moved: ['https://www.businesstoday.in/technology/news/story/find-a-new-job-till-adidas-india-lays-off-nearly-50-of-its-india-tech-"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -133,6 +128,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-20T18:49:54+00:00",
+  "updated_at": "2026-09-20T18:51:36+00:00",
   "version": 1
 }
