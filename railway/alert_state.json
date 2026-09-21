@@ -107,6 +107,11 @@
       "last": 1789559250,
       "subject": "VPS runner offline: asktherecruiter-sandbox"
     },
+    "weekly-health-digest-autonomy-tripwire:main:1109e286f7553809": {
+      "first": 1790010985,
+      "last": 1790010985,
+      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE dedupe_llm: last reported 11.0d ago (expected <= 4d): collector may have stopped"
+    },
     "weekly-health-digest-autonomy-tripwire:main:27358af34b528c7a": {
       "first": 1789405631,
       "last": 1789405631,
@@ -123,6 +128,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T14:13:05+00:00",
+  "updated_at": "2026-09-21T17:16:25+00:00",
   "version": 1
 }
