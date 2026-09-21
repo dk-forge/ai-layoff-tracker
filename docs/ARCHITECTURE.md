@@ -231,6 +231,7 @@ complaint. Measured against production 2026-07-30, `/query` total on an unfilter
 | `?states=NV` | **63,671** | param name not recognised → filter dropped, **everything** returned |
 | `?industries=Technology` | **63,671** | same (`?industry=Technology` → 3,993) |
 | `?countries=US` | **63,671** | same |
+| `?search=<company>` | **whole table** | same, found 2026-09-21: `search` is not a param. The company filters are `q=` (free text) and `company=` |
 | `?state=nv` | 15 | values are case-insensitive |
 | `?state=Nevada` | **0** | value shape wrong (2-letter codes only) → **nothing** returned |
 | `?country=US` / `?country=USA` | **0** | same (`?country=United States` → 43,378; full names, not ISO codes) |
