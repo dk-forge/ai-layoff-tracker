@@ -140,6 +140,10 @@ class Config:
     plugin_paths: tuple[str, ...] = ()
     deploy_workflow: str = ""
     deploy_window_minutes: int = 60
+    # Workflows dispatched on main when main's head carries no run of them.
+    post_merge_workflows: tuple[str, ...] = ()
+    main_branch: str = "main"
+    push_grace_minutes: int = 10
     hold_labels: tuple[str, ...] = ("hold", "needs-human", "do-not-merge")
     fixture_prefix: str = "fixture:"
     # Unstick
@@ -187,6 +191,9 @@ class Config:
             plugin_paths=tup("plugin_paths"),
             deploy_workflow=str(raw.get("deploy_workflow", "")),
             deploy_window_minutes=int(raw.get("deploy_window_minutes", 60)),
+            post_merge_workflows=tup("post_merge_workflows"),
+            main_branch=str(raw.get("main_branch", "main")),
+            push_grace_minutes=int(raw.get("push_grace_minutes", 10)),
             hold_labels=tup("hold_labels", ("hold", "needs-human", "do-not-merge")),
             fixture_prefix=str(raw.get("fixture_prefix", "fixture:")),
             unstick_enabled=bool(raw.get("unstick_enabled", True)),
@@ -758,6 +765,50 @@ class GitHubClient:
         _run(["gh", "pr", "edit", str(number), "-R", self.repo, "--add-label", label],
              check=False)
 
+    # -- main, after a merge ----------------------------------------------
+    def main_head(self, branch: str) -> tuple[str, datetime]:
+        data = self._api(f"repos/{self.repo}/commits/{branch}")
+        sha = str(data.get("sha") or "")
+        when = str(((data.get("commit") or {}).get("committer") or {}).get("date") or "")
+        if not sha or not when:
+            raise MergeTrainError(f"could not read the head of {branch} (NOREAD)")
+        return sha, datetime.fromisoformat(when.replace("Z", "+00:00"))
+
+    def last_successful_deploy_sha(self, workflow_file: str, branch: str) -> str | None:
+        """The SHA the last GREEN deploy on `branch` shipped, or None if no
+        green deploy is on record. None is UNKNOWN, never 'nothing to ship'."""
+        data = self._api(
+            f"repos/{self.repo}/actions/workflows/{workflow_file}/runs"
+            f"?branch={branch}&status=success&per_page=1")
+        if "total_count" not in data:
+            raise MergeTrainError("deploy runs response had no total_count (NOREAD)")
+        runs = data.get("workflow_runs") or []
+        return str(runs[0].get("head_sha") or "") or None if runs else None
+
+    def changed_files_between(self, base: str, head: str) -> list[str] | None:
+        """Paths that differ. None means the list was truncated (the compare
+        API stops at 300 files), which the caller must read as 'may differ'."""
+        data = self._api(f"repos/{self.repo}/compare/{base}...{head}")
+        if "files" not in data:
+            raise MergeTrainError("compare response had no files (NOREAD)")
+        files = data.get("files") or []
+        if len(files) >= 300:
+            return None
+        return [str(f.get("filename", "")) for f in files]
+
+    def workflow_has_run_for(self, workflow_file: str, sha: str) -> bool:
+        data = self._api(
+            f"repos/{self.repo}/actions/workflows/{workflow_file}/runs"
+            f"?head_sha={sha}&per_page=1")
+        if "total_count" not in data:
+            raise MergeTrainError(f"{workflow_file} runs response had no total_count (NOREAD)")
+        return int(data["total_count"]) > 0
+
+    def dispatch(self, workflow_file: str, ref: str) -> None:
+        # workflow_dispatch is the ONE event the default Actions token may
+        # raise. A push made with it starts nothing, by GitHub's design.
+        _run(["gh", "workflow", "run", workflow_file, "-R", self.repo, "--ref", ref])
+
     def rerun_failed(self, run_id: int) -> None:
         _run(["gh", "run", "rerun", str(run_id), "-R", self.repo, "--failed"])
 
@@ -825,6 +876,7 @@ class Report:
     action: str = "nothing to do"
     merged: list[int] = field(default_factory=list)
     unstuck: list[int] = field(default_factory=list)
+    dispatched: list[str] = field(default_factory=list)
     dry_run: bool = True
 
     def say(self, text: str) -> None:
@@ -912,6 +964,99 @@ def run(client: GitHubClient, cfg: Config, *, dry_run: bool = True,
         rep.action = f"nothing ready to merge ({len(verdicts)} open)"
         rep.say(rep.action)
     return rep
+
+
+def deploy_paths(cfg: Config) -> tuple[str, ...]:
+    """Mirror of the deploy workflow's own `paths` filter."""
+    if not cfg.deploy_workflow:
+        return ()
+    return tuple(cfg.plugin_paths) + (f".github/workflows/{cfg.deploy_workflow}",)
+
+
+def sync_main(client: GitHubClient, cfg: Config, rep: Report, *,
+              dry_run: bool = True, now: datetime | None = None) -> list[str]:
+    """START ON MAIN WHAT A TOKEN MERGE CANNOT START.
+
+    The train merges with the default Actions token, and GitHub never starts
+    an `on: push` workflow for a push made with that token. So a train merge
+    of a plugin change never deployed, and main's tests never ran. PR #393
+    merged as 8603269b and a person had to dispatch the deploy by hand.
+
+    This is written as a RECONCILE, not as "after I merge": it compares main
+    with what was last shipped and tested, so a dispatch that failed, or was
+    skipped because a deploy ran inside the hour, is caught by the next tick.
+
+    Returns the problems it hit. It never raises and never undoes a merge.
+    """
+    now = now or datetime.now(timezone.utc)
+    problems: list[str] = []
+    try:
+        head, head_at = client.main_head(cfg.main_branch)
+    except MergeTrainError as exc:
+        problems.append(f"main could not be read, nothing dispatched: {exc}")
+        rep.say(f"  sync main: {problems[-1]}")
+        return problems
+
+    paths = deploy_paths(cfg)
+    if paths:
+        try:
+            _sync_deploy(client, cfg, rep, head, paths, dry_run=dry_run, now=now)
+        except MergeTrainError as exc:
+            problems.append(f"deploy dispatch UNKNOWN or FAILED: {exc}")
+            rep.say(f"  sync main: {problems[-1]}")
+
+    # A push by a person starts its own runs, a moment after the push. Only a
+    # head old enough to have had that chance, or one this run made itself, is
+    # treated as having been left without one.
+    settled = bool(rep.merged) or (now - head_at) >= timedelta(minutes=cfg.push_grace_minutes)
+    for wf in cfg.post_merge_workflows:
+        try:
+            if client.workflow_has_run_for(wf, head):
+                continue
+            if not settled:
+                rep.say(f"  sync main: {wf} has no run on {head[:8]} yet, head is fresh; waiting")
+                continue
+            if dry_run:
+                rep.say(f"  sync main: WOULD DISPATCH {wf} on {head[:8]} (no run on main's head)")
+                continue
+            client.dispatch(wf, cfg.main_branch)
+            rep.dispatched.append(wf)
+            rep.say(f"  sync main: dispatched {wf} on {head[:8]} (no run on main's head)")
+        except MergeTrainError as exc:
+            problems.append(f"{wf} dispatch UNKNOWN or FAILED: {exc}")
+            rep.say(f"  sync main: {problems[-1]}")
+    return problems
+
+
+def _sync_deploy(client: GitHubClient, cfg: Config, rep: Report, head: str,
+                 paths: Sequence[str], *, dry_run: bool, now: datetime) -> None:
+    shipped = client.last_successful_deploy_sha(cfg.deploy_workflow, cfg.main_branch)
+    if not shipped:
+        raise MergeTrainError("no green deploy on record, so what is live is "
+                              "UNKNOWN; a person should dispatch the deploy")
+    if shipped == head:
+        return
+    changed = client.changed_files_between(shipped, head)
+    if changed is not None and not any(touches_plugin([f], paths) for f in changed):
+        return
+    last = client.last_deploy_at(cfg.deploy_workflow)
+    if last is None:
+        raise MergeTrainError("the last plugin deploy time could not be read")
+    age = now - last
+    if age < timedelta(minutes=cfg.deploy_window_minutes):
+        # NEVER TWICE IN AN HOUR. The next tick will find the same difference.
+        rep.say(f"  sync main: main's plugin differs from the last green deploy "
+                f"({shipped[:8]}) but a deploy ran {int(age.total_seconds() // 60)} "
+                f"min ago; left for a later tick")
+        return
+    if dry_run:
+        rep.say(f"  sync main: WOULD DISPATCH {cfg.deploy_workflow} "
+                f"(live is {shipped[:8]}, main is {head[:8]})")
+        return
+    client.dispatch(cfg.deploy_workflow, cfg.main_branch)
+    rep.dispatched.append(cfg.deploy_workflow)
+    rep.say(f"  sync main: dispatched {cfg.deploy_workflow} "
+            f"(live was {shipped[:8]}, main is {head[:8]})")
 
 
 def _report_blocked(client: GitHubClient, cfg: Config,
@@ -1185,7 +1330,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         _write_summary(f"merge train FAILED: {exc}")
         return 1
 
-    _write_summary(rep.summary + ("  (dry run)" if dry_run else ""))
+    problems = sync_main(client, cfg, rep, dry_run=dry_run)
+    tail = f"; dispatched {', '.join(rep.dispatched)}" if rep.dispatched else ""
+    _write_summary(rep.summary + tail + ("  (dry run)" if dry_run else ""))
+    if problems:
+        # LOUD, AND AFTER THE FACT. The merge stands; the run goes red so the
+        # alerter mails it, and the next tick reconciles main again.
+        for p in problems:
+            print(f"::error::merge train sync main: {p}")
+        _write_summary("sync main FAILED: " + " | ".join(problems))
+        return 1
     return 0
 
 

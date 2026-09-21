@@ -1,3 +1,45 @@
+## 2026-09-21 - Every merge the train made started no workflow, so a merged plugin change never deployed and main was never tested
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_merge_train.py::TheTokenMergeStartsNothing` and
+`::TheShippedWiring`
+
+The merge train merges with `secrets.MERGE_TRAIN_TOKEN || github.token`. No
+`MERGE_TRAIN_TOKEN` secret exists, so every merge is made with the default
+Actions token, and GitHub by design starts no `on: push` workflow for a push
+made with that token. PR #393 was merged by `app/github-actions` as `8603269b`,
+touched `wordpress-plugin/`, and "Deploy WordPress plugin" never ran on push. A
+person dispatched it by hand. `tests.yml` and `version-collision.yml` did not
+run on that commit either, so main's colour was unknown. Nothing reported any
+of it, because a workflow that is never started produces no run, no red and no
+alert. With the train armed this would have been true of every merge.
+
+The fix needs no new secret. `workflow_dispatch` is the one event the default
+token may raise, and the train already holds `actions: write`. After every run
+(merge or not, armed or dry) `merge_train.sync_main()` reconciles main:
+
+- **Deploy.** It reads the SHA of the last GREEN deploy on main, compares it
+  with main's head, and if any changed path falls under the deploy workflow's
+  own `paths` filter it dispatches `deploy-plugin.yml`. It refuses while a
+  deploy ran inside `deploy_window_minutes` (60) or is in flight, and leaves
+  the difference for a later tick. Because it is a comparison and not an
+  "after I merged" hook, a dispatch that failed or was skipped heals itself.
+  The deploy's concurrency group is `deploy-plugin` with
+  `cancel-in-progress: false`, so a dispatch can never cancel a live deploy.
+- **Tests.** For each entry in `post_merge_workflows` (`tests.yml`, which
+  gained a `workflow_dispatch` trigger) it dispatches on main when main's head
+  carries no run of that workflow. A head under `push_grace_minutes` (10) old
+  that the train did not make itself is left alone, so a person's push is not
+  tested twice while its own run is still registering.
+- No green deploy on record, an unreadable deploy time, or a failed dispatch
+  is a problem, never a pass: the run prints `::error::`, goes red (which the
+  CI alerter mails, deduped by cause) and the next tick tries again. Nothing
+  is ever un-merged. A compare truncated at 300 files reads as "may differ".
+
+Still one pull request per run. `version-collision.yml` is not dispatched: it
+runs on every pull request against main, and the train merges one at a time.
+The rebase path is unchanged and still refuses to push without a real token.
+
 ## 2026-09-21 - country-coverage.json was not regenerated when its own measurements moved, and reddened every PR built from main
 
 **Class:** two-copies-drifted
