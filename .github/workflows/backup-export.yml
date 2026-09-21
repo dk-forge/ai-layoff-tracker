@@ -199,20 +199,34 @@ jobs:
           set -euo pipefail
           git config user.name  'ai-layoff-tracker-bot'
           git config user.email 'bot@users.noreply.github.com'
+          # COMMIT ONCE, THEN RETRY ONLY THE PUSH. Until 2026-09-21 the add and
+          # the "unchanged" test sat INSIDE the retry loop. A rejected push was
+          # rebased, the loop came round, found nothing STAGED (the baseline
+          # was already committed, one line above, on the previous lap), said
+          # "Baseline unchanged." and exited 0 without ever pushing. main takes
+          # a bot commit every ten minutes and this job runs for five, so the
+          # race was lost on 2026-09-13 and again on 2026-09-20: two green runs,
+          # two published exports, no baseline, and state_liveness calling the
+          # file STALE at 15 days. "Nothing staged" is only evidence of "nothing
+          # changed" BEFORE the commit exists.
+          git add railway/backup_state.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "Baseline unchanged."
+            exit 0
+          fi
+          git commit -q -m "backup: export baseline $(date -u +%Y-%m-%dT%H:%MZ)"
           for attempt in 1 2 3; do
-            git add railway/backup_state.json 2>/dev/null || true
-            if git diff --staged --quiet; then
-              echo "Baseline unchanged."
-              exit 0
-            fi
-            git commit -q -m "backup: export baseline $(date -u +%Y-%m-%dT%H:%MZ)"
             if git push origin HEAD:main; then
               echo "Recorded on attempt $attempt."
               exit 0
             fi
             echo "Push rejected (attempt $attempt) - rebasing onto current main."
             git fetch origin main
-            git rebase origin/main || { git rebase --abort; exit 0; }
+            if ! git rebase origin/main; then
+              git rebase --abort
+              echo "::warning::The baseline commit does not rebase onto main; it was NOT recorded."
+              exit 0
+            fi
             sleep $((attempt * 5))
           done
           # Not fatal to the EXPORT, which has already been published. A

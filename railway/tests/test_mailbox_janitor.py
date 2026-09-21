@@ -41,6 +41,9 @@ class _Conn:
         self.refuse_login = refuse_login
         self.unreadable = {str(i).encode() for i in unreadable}
         self.deleted: list[bytes] = []
+        self.marked: list = []
+        self.tagged: set[bytes] = set()
+        self.flags_after_literal = False
         self.expunged = False
 
     def __enter__(self): return self
@@ -67,12 +70,21 @@ class _Conn:
         for n in nums:
             if n in self.unreadable:
                 continue
-            out.append((b"%s (BODY[HEADER] {%d}" % (n, len(self.map[n])), self.map[n]))
-            out.append(b")")
+            fl = b"FLAGS (\\Seen $AltEscalated)" if n in self.tagged else b"FLAGS (\\Seen)"
+            if self.flags_after_literal:
+                out.append((b"%s (BODY[HEADER] {%d}" % (n, len(self.map[n])), self.map[n]))
+                out.append(b" " + fl + b")")
+            else:
+                out.append((b"%s (%s BODY[HEADER] {%d}" % (n, fl, len(self.map[n])), self.map[n]))
+                out.append(b")")
         return ("OK", out)
 
     def store(self, num, flags, value):
-        self.deleted.append(num); return ("OK", [b""])
+        if value == "\\Deleted":
+            self.deleted.append(num)
+        else:
+            self.marked.append((num, value))
+        return ("OK", [b""])
 
     def expunge(self):
         self.expunged = True; return ("OK", [b""])
@@ -81,6 +93,9 @@ class _Conn:
 def _patch(conn, monkeypatch):
     import mailbox_janitor
     monkeypatch.setattr(mailbox_janitor.imaplib, "IMAP4_SSL", lambda *a, **k: conn)
+    # The fixtures are dated relative to NOW, so pin the epoch behind them;
+    # otherwise every escalation test would change verdict on a calendar date.
+    monkeypatch.setattr(mailbox_janitor, "_KEYWORD_EPOCH", NOW - timedelta(days=365))
 
 
 def test_only_messages_older_than_the_window_are_cleared(monkeypatch) -> None:
@@ -380,6 +395,97 @@ def test_a_session_that_dies_at_logout_does_not_erase_the_sweep(monkeypatch) -> 
     assert f["removed"] == 1
     assert f["unclean_logout"] is True, "and it must be reported, not swallowed"
     assert "logout" in detail
+
+# --- new versus still in the window (2026-09-21) ---------------------------
+
+CRASH = _msg("Deployment crashed for svc", "notify@railway.app", 0.2)
+
+
+def _future_epoch(monkeypatch):
+    import mailbox_janitor as mj
+    monkeypatch.setattr(mj, "_KEYWORD_EPOCH", NOW - timedelta(days=365))
+
+
+def test_a_new_escalation_is_red_and_is_tagged_in_one_store(monkeypatch) -> None:
+    _future_epoch(monkeypatch)
+    conn = _Conn([CRASH, _msg("Deployment crashed for other", "notify@railway.app", 0.1)])
+    _patch(conn, monkeypatch)
+    state, f, _ = sweep("h", "u", "p", 14, dry_run=False)
+    assert state == OK and len(f["escalate"]) == 2 and f["still_in_window"] == []
+    assert conn.marked == [("1,2", "$AltEscalated")] and f["marked"] == 2
+    assert conn.deleted == []
+
+
+def test_an_already_tagged_escalation_is_a_note_not_a_finding(monkeypatch) -> None:
+    _future_epoch(monkeypatch)
+    for after in (False, True):
+        conn = _Conn([CRASH])
+        conn.tagged = {b"1"}
+        conn.flags_after_literal = after
+        _patch(conn, monkeypatch)
+        state, f, _ = sweep("h", "u", "p", 14, dry_run=False)
+        assert state == OK and f["escalate"] == [] and len(f["still_in_window"]) == 1
+        assert conn.marked == []
+
+
+def test_a_dry_run_tags_nothing_so_the_message_stays_new(monkeypatch) -> None:
+    _future_epoch(monkeypatch)
+    conn = _Conn([CRASH])
+    _patch(conn, monkeypatch)
+    _, f, _ = sweep("h", "u", "p", 14, dry_run=True)
+    assert len(f["escalate"]) == 1 and conn.marked == [] and f["marked"] == 0
+
+
+def test_a_refused_tag_leaves_the_message_new(monkeypatch) -> None:
+    _future_epoch(monkeypatch)
+
+    class _NoKeywords(_Conn):
+        def store(self, num, flags, value):
+            if value != "\\Deleted":
+                return ("NO", [b"keywords not permitted"])
+            return super().store(num, flags, value)
+
+    conn = _NoKeywords([CRASH])
+    _patch(conn, monkeypatch)
+    state, f, _ = sweep("h", "u", "p", 14, dry_run=False)
+    assert state == OK and len(f["escalate"]) == 1 and f["marked"] == 0
+
+
+def test_mail_from_before_the_epoch_was_already_escalated_by_the_old_regime(monkeypatch) -> None:
+    import mailbox_janitor as mj
+    conn = _Conn([_msg("Deployment crashed for svc", "notify@railway.app", 3),
+                  _msg("Deployment crashed again", "notify@railway.app", 0.5),
+                  _msg("Deployment crashed undated", "notify@railway.app", None)])
+    _patch(conn, monkeypatch)
+    monkeypatch.setattr(mj, "_KEYWORD_EPOCH", NOW - timedelta(days=1))
+    _, f, _ = sweep("h", "u", "p", 14, dry_run=False)
+    assert len(f["still_in_window"]) == 1
+    # An undated message can never be shown to predate anything: it is NEW.
+    assert len(f["escalate"]) == 2 and conn.marked == [("2,3", "$AltEscalated")]
+
+
+def test_main_is_green_on_old_mail_and_red_on_new(monkeypatch) -> None:
+    import contextlib
+    import io
+    import mailbox_janitor as mj
+    _future_epoch(monkeypatch)
+    for k, v in {"JANITOR_IMAP_HOST": "h", "JANITOR_IMAP_USER": "u",
+                 "JANITOR_IMAP_PASSWORD": "p", "JANITOR_DRY_RUN": "false"}.items():
+        monkeypatch.setenv(k, v)
+    conn = _Conn([CRASH])
+    conn.tagged = {b"1"}
+    _patch(conn, monkeypatch)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert mj.main() == 0
+    assert "ALREADY ESCALATED" in out.getvalue() and "NEW SUBJECTS" not in out.getvalue()
+    conn2 = _Conn([CRASH])
+    _patch(conn2, monkeypatch)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert mj.main() == 2
+    assert "NEW SUBJECTS" in out.getvalue()
+
 
 
 # This suite is unittest, not pytest (#288). Without this, every test above is
