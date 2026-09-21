@@ -1,0 +1,65 @@
+name: Company key re-derive (non-Latin backfill)
+
+# Runs the keyed POST /company-key-rederive that 2.20.203 shipped and nothing
+# ever called. Stored company_key values are derived on write, so the rows that
+# keyed as '' under the old ASCII-only strip keep '' until re-derived. The
+# endpoint touches a row only when its stored key is '', its name is not pure
+# ASCII, the pre-2.20.203 key is also '' and the new key is not; anything else
+# is reported as drift and left alone. It runs no dedup pass and changes no
+# dedup hash. Manual only: there is no schedule, because a new non-Latin row
+# is keyed correctly on write. DRY RUN unless apply is ticked.
+# Required secret: WP_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Actually write. Leave false for a dry run."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: company-key-rederive
+  cancel-in-progress: false
+
+jobs:
+  rederive:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 10
+    steps:
+      - name: One keyed request, dry run unless apply
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WP_API_KEY:-}" ]; then
+            echo "::error::WP_API_KEY is not set, so nothing was checked"
+            exit 1
+          fi
+          if [ "$APPLY" = "true" ]; then BODY='{"apply": true, "limit": 2000}'; else BODY='{"limit": 2000}'; fi
+          curl --silent --show-error --fail-with-body --max-time 120 \
+            -A "AiLayoffTracker/1.0 (+https://asktherecruiter.com)" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" \
+            -H "Content-Type: application/json" \
+            -X POST --data "$BODY" \
+            "https://asktherecruiter.com/blog/wp-json/layoffs/v1/company-key-rederive" \
+            -o out.json
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          out = json.load(open("out.json"))
+          changed = out.get("changed") or []
+          drift = out.get("drift") or []
+          print("dry_run:", out.get("dry_run"), "| scanned:", out.get("scanned"),
+                "| changed:", len(changed), "| unchanged:", out.get("unchanged"),
+                "| drift:", len(drift), "| done:", out.get("done"))
+          print("changed ids:", ", ".join(str(c.get("id")) for c in changed) or "none")
+          print("drift ids:", ", ".join(str(d.get("id")) for d in drift) or "none")
+          if not out.get("done"):
+              print("::error::more rows than one request covers; this run is incomplete")
+              sys.exit(1)
+          PY

@@ -1,3 +1,22 @@
+## 2026-09-21 - The non-Latin company key backfill was built on 2026-09-16 and had no caller, so 13 rows kept an empty key
+
+**Class:** silent-stop
+**Guard:** none. The endpoint's own rules are the guard (it writes only where
+the stored key is `''`, the name is not pure ASCII and the pre-2.20.203 key is
+also `''`; anything else is reported as drift), and the workflow fails when
+one request does not cover every candidate row.
+
+`POST /company-key-rederive` shipped in 2.20.203 with the note "Not run: the
+backfill". Nothing in `railway/` or `.github/workflows/` named it, and a
+session without `WP_API_KEY` cannot call a keyed route, so the fix for the
+class stayed unapplied to the rows that showed the class.
+`.github/workflows/company-key-rederive.yml` is the caller: dispatch only, one
+keyed request, a dry run unless `apply` is ticked, ids (never names) in the job
+summary. There is no schedule on purpose, because a new non-Latin row is keyed
+correctly on write and a second run has nothing to do.
+
+---
+
 ## 2026-09-21 - Nothing independently asked "what is main's actual state?", so a day of unknown read as green
 
 **Class:** absent-read-as-ok
