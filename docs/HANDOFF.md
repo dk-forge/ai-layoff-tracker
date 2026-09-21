@@ -6,6 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-21, branch `main-green-check` (PR #395). Work
+  complete.** Daily main-green check. Adds ONLY `railway/main_green.py`, `railway/tests/test_main_green.py`,
+  `.github/workflows/main-green-check.yml`, a TECHLOG entry and this line. No
+  plugin file, no version reserved, no existing file edited.
 - **RELEASED - Claude alongside, 2026-09-21, branch `fix/train-lifts-its-own-stale-hold`.
   Does not take the baton: every entry below is RELEASED.** Touches only
   `railway/merge_train.py`, the new `railway/merge_train_holds.py`, the new
