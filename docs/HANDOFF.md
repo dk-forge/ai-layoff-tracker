@@ -6,6 +6,24 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Claude (agent), 2026-09-21 night, declared superset membership,
+  branch `feat/declared-supersets`.** Builds the reviewer-declared membership
+  store the reconciler re-applies after its clean slate, a keyed route, the
+  `superset` action of `apply-correction.yml` and one data_integrity invariant.
+  Touches `includes/declared-supersets.php` (new), the tail of
+  `alt_reconcile_supersets()` in `includes/db.php`, `apply_correction.py`,
+  `data_integrity.py`, docs. RESERVES the next plugin version past main. Does
+  NOT touch dedupe_llm, mailbox_janitor, backup state or headline incident
+  tooling (PR #401 owns those).
+- **RELEASED - Claude (agent), 2026-09-21 late night, tie-break rulings session,
+  branch `docs/rulings-0921-tiebreak`. Work complete.** Rows 178738, 54971 and
+  68408 retracted, JPMorgan Chase 8,000 (2014-02-25) seeded as 179423, 176911
+  moved to Multiple countries, all through `apply-correction.yml`. **Open:**
+  four restatement rows (178740, 178882, 132845, 62215) could not be marked
+  members of 176911, because nothing can declare a `superset_of` that survives
+  the reconciler's clean slate; 15,200 jobs still stack worldwide (TECHLOG
+  2026-09-21, top entry). Touches only TECHLOG, ARCHITECTURE and this line. No
+  plugin file, no version reserved.
 - **RELEASED - Claude (agent), 2026-09-21 late, branch `fix/standing-reds-0921`.
   Work complete.** Standing reds: `dedupe_llm` now reports a budget deferral as
   `degraded` instead of going silent (the cause is the runners' OpenRouter KEY
@@ -17,11 +35,12 @@ holder, so the start-of-session ritual surfaces it automatically.
   plus the explained move; never edit the JSON), then commit BOTH
   `railway/headline_incidents.json` and `railway/headline_baseline.json`:**
   ```bash
-  python3 railway/data_integrity.py --close-incident us_all_time --reviewed-by "two independent agent reviewers under the owner's standing delegation" --reason "Signed-off corrections of 2026-09-21 (TECHLOG): eight US 8-K rows that were not the filer's own headcount were trashed (20,689 jobs) and row 178798 (2,000) left country_basis=any when its employer country moved to Canada; -22,689 jobs on -9 entries, closed to the row" --rows "176882,178626,49074,176640,49094,60742,48884,177155,178798" --replacement-jobs 7067633 --replacement-entries 43958
-  python3 railway/data_integrity.py --close-incident worldwide_all_time --reviewed-by "two independent agent reviewers under the owner's standing delegation" --reason "Signed-off corrections of 2026-09-21 (TECHLOG): 21 rows trashed as duplicates or as figures that are not the filer's headcount (-42,573 jobs) and row 179233 recounted to 551 (+191); -42,382 jobs on -21 entries, closed to the row" --rows "54975,177077,177102,179231,179201,177078,179234,179235,179204,179112,176666,179236,176882,178626,49074,176640,49094,60742,48884,175851,177155,179233" --replacement-jobs 20512998 --replacement-entries 65673
+  python3 railway/data_integrity.py --close-incident us_all_time --reviewed-by "two independent agent reviewers under the owner's standing delegation" --reason "Signed-off corrections of 2026-09-21 (TECHLOG): eight US 8-K rows that were not the filer's own headcount were trashed (20,689 jobs) and row 178798 (2,000) left country_basis=any when its employer country moved to Canada (-22,689 on -9); then the tie-break rulings retracted 178738, 54971 and 68408 and seeded 179423 (-3,142 on -2); -25,831 jobs on -11 entries, closed to the row" --rows "176882,178626,49074,176640,49094,60742,48884,177155,178798,178738,54971,68408,179423,176911" --replacement-jobs 7064491 --replacement-entries 43956
+  python3 railway/data_integrity.py --close-incident worldwide_all_time --reviewed-by "two independent agent reviewers under the owner's standing delegation" --reason "Signed-off corrections of 2026-09-21 (TECHLOG): 21 rows trashed as duplicates or as figures that are not the filer's headcount (-42,573 jobs) and row 179233 recounted to 551 (+191), -42,382 on -21; then the tie-break rulings retracted 178738, 54971 and 68408 and seeded 179423 (-3,142 on -2); -45,524 jobs on -23 entries, closed to the row" --rows "54975,177077,177102,179231,179201,177078,179234,179235,179204,179112,176666,179236,176882,178626,49074,176640,49094,60742,48884,175851,177155,179233,178738,54971,68408,179423,176911" --replacement-jobs 20509856 --replacement-entries 65671
   ```
   Run the second only if `worldwide_all_time` is actually open. If the open
-  incident's own figures differ from -22,689 / -9 (other rows arrived), do NOT
+  incident's own figures differ from -25,831 / -11 (US) or -45,524 / -23
+  (worldwide) because other rows arrived or left, do NOT
   reuse these numbers: re-derive the replacement from the pinned baseline.
 - **RELEASED - Claude (agent), 2026-09-21 night, open-items session. Work
   complete.** The non-Latin `company_key` backfill ran (13 keys), 21 rows were
