@@ -6,6 +6,12 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Claude (agent), 2026-09-21 evening, open-items session, branch
+  `ops/company-key-rederive-run`.** Closing the 2026-09-16 open items: the
+  non-Latin `company_key` backfill (new dispatch-only workflow
+  `company-key-rederive.yml`), the cross-script duplicate candidates and the
+  `filing_shape_tells` adjudication buckets, each through two independent
+  reviewers and `apply-correction.yml`. No plugin file, no version reserved.
 - **RELEASED - Claude (agent), 2026-09-21, branch `main-green-check` (PR #395). Work
   complete.** Daily main-green check. Adds ONLY `railway/main_green.py`, `railway/tests/test_main_green.py`,
   `.github/workflows/main-green-check.yml`, a TECHLOG entry and this line. No
