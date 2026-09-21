@@ -6,6 +6,15 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD by Claude (agent), 2026-09-21 night, declared superset membership,
+  branch `feat/declared-supersets`.** Builds the reviewer-declared membership
+  store the reconciler re-applies after its clean slate, a keyed route, the
+  `superset` action of `apply-correction.yml` and one data_integrity invariant.
+  Touches `includes/declared-supersets.php` (new), the tail of
+  `alt_reconcile_supersets()` in `includes/db.php`, `apply_correction.py`,
+  `data_integrity.py`, docs. RESERVES the next plugin version past main. Does
+  NOT touch dedupe_llm, mailbox_janitor, backup state or headline incident
+  tooling (PR #401 owns those).
 - **RELEASED - Claude (agent), 2026-09-21 late night, tie-break rulings session,
   branch `docs/rulings-0921-tiebreak`. Work complete.** Rows 178738, 54971 and
   68408 retracted, JPMorgan Chase 8,000 (2014-02-25) seeded as 179423, 176911
