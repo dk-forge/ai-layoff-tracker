@@ -57,14 +57,13 @@ def build_passage(row):
 
 
 def report_health(status, entries=0, detail=""):
-    try:
-        requests.post(
-            f"{SITE}/wp-json/layoffs/v1/source-health",
-            json={"source": "role_enrichment", "status": status, "entries": entries, "detail": detail},
-            headers={"X-Layoff-API-Key": KEY, "User-Agent": UA}, timeout=30,
-        ).raise_for_status()
-    except Exception as exc:
-        print(f"role-enrichment health report failed: {exc}")
+    # Through the shared, retrying writer, not a POST of its own. This job's
+    # terminal note was a single attempt until 2026-09-21: on 2026-09-17 one
+    # connection reset dropped it (run 35205609389, which finished its work
+    # and wrote its end-of-run spend record), and the `running` note it left
+    # behind read as a collector that died mid-flight (ops_status [2e]).
+    from source_health import report_source_health
+    return report_source_health("role_enrichment", status, entries, detail)
 
 
 def main():

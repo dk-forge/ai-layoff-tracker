@@ -97,13 +97,11 @@ def _resolve():
 def _report(status, entries, detail):
     if not (SITE and KEY):
         return
-    try:
-        requests.post(f"{SITE}/wp-json/layoffs/v1/source-health",
-                      json={"source": "link_check", "status": status,
-                            "entries": entries, "detail": detail},
-                      headers={"X-Layoff-API-Key": KEY, **UA}, timeout=25)
-    except Exception as exc:
-        print(f"health report failed: {exc}")
+    # Through the shared, retrying writer, not a POST of its own. A single
+    # attempt is how one connection reset on 2026-09-17 dropped a sibling
+    # job's terminal note and made it read as a dead collector ([2e]).
+    from source_health import report_source_health
+    report_source_health("link_check", status, entries, detail)
 
 
 def check_pages():

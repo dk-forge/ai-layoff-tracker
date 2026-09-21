@@ -253,6 +253,38 @@ def _hi_notices(years):
             yield date, company, href
 
 
+def guaranteed_per_run(deadline_seconds):
+    """How many notices a run is CERTAIN to start, every one at its worst case.
+
+    A notice is started only while spent + worst case fits the deadline, so
+    with every notice costing the worst case the starts land at 0, W, 2W, ...
+    Derived from the two constants that enforce it, never typed."""
+    return max(1, (int(deadline_seconds) - PER_NOTICE_WORST_CASE_SECONDS)
+               // PER_NOTICE_WORST_CASE_SECONDS + 1)
+
+
+def crawl_order(notices, deadline_seconds, now=None):
+    """The crawl as a ring, entered where THIS run's slice begins.
+
+    The crawl used to start at the top every run, and the deadline cuts it from
+    the bottom, so a runner that is always slow would read the same head
+    forever and never reach the tail: 2026-09-17 and 2026-09-21 stopped at 14
+    and 9 of 24. The start now advances by `guaranteed_per_run` each scheduled
+    run, which is the most a worst-case run is sure to cover, so consecutive
+    runs tile the ring and every notice is reached within
+    ceil(len / guaranteed) runs however slow the runner is. A fast run still
+    reads the whole ring. The run counter is run_slice's, read from the
+    schedule; this module does not derive one (CLAUDE.md, rotating query sets).
+    """
+    notices = list(notices)
+    if not notices or deadline_seconds is None:
+        return notices
+    import run_slice
+    step = min(len(notices), guaranteed_per_run(deadline_seconds))
+    start = run_slice.rotate(range(len(notices)), step, now=now)[0]
+    return notices[start:] + notices[:start]
+
+
 def _llm_affected_count(text: str):
     """DeepSeek fallback for notices the deterministic extractor skipped.
 
@@ -317,7 +349,13 @@ def fetch_hi_ocr(years=None, limit=None, dry_run=False, deadline_seconds=None,
     out, skipped = [], []
     seen_urls = set()
     started = now()
-    for date, company, url in _hi_notices(years):
+    # De-duplicated BEFORE ordering, so a position in the ring is a notice.
+    _listed, _listed_urls = [], set()
+    for _n in _hi_notices(years):
+        if _n[2] not in _listed_urls:
+            _listed_urls.add(_n[2])
+            _listed.append(_n)
+    for date, company, url in crawl_order(_listed, deadline_seconds):
         if url in seen_urls:
             continue
         seen_urls.add(url)

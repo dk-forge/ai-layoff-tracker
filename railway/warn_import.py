@@ -24,6 +24,7 @@ import requests
 
 import source_alert
 import source_freshness
+import warn_relay
 from sources.warn import pull_warn
 from sources.warn_custom import pull_warn_custom
 from source_health import report_source_health
@@ -594,8 +595,13 @@ def main():
               "state-scoped reload would wipe the other states)")
         sys.exit(1)
     report_source_health("warn_us", "running", 0, f"WARN import in progress: {scope}")
+    # The US seams may already have been scraped from a US address (see
+    # warn_relay.py: the VPS this job posts from is refused by a third of the
+    # state sites). None means "scrape here", which is the pre-relay behaviour.
+    _relay = warn_relay.load(os.environ.get("WARN_RELAY_FILE"), states, min_emp, start)
     try:
-        entries = pull_warn(states, min_employees=min_emp, start_date=start)
+        entries = (list(_relay["generic"]) if _relay
+                   else pull_warn(states, min_employees=min_emp, start_date=start))
     except Exception as exc:
         report_source_health("warn_us", "degraded", 0, f"WARN scrape failed: {exc}")
         raise
@@ -708,7 +714,13 @@ def main():
                   f"site/parser (WARN_GENERIC_MONITOR narrows the set, WARN_GENERIC_BASELINE "
                   f"tunes per-state floors).")
 
-    customs = pull_warn_custom(states)
+    if _relay:
+        import sources.warn_custom as _wc
+        customs = list(_relay["custom"])
+        _wc.SOURCE_UNREACHABLE.clear()
+        _wc.SOURCE_UNREACHABLE.update(_relay["custom_unreachable"])
+    else:
+        customs = pull_warn_custom(states)
     # Structural-drift tripwire for the LEGACY custom scrapers (parity with the
     # new-states check below): these are high-volume states (TX, FL, GA, ...), so
     # a requested state returning 0 almost always means its page changed and the
@@ -804,7 +816,12 @@ def main():
         drift_states = []
         for st in wanted:
             try:
-                got = NEW_CUSTOM_STATES[st]()
+                if _relay and st in _relay["new"]:
+                    if _relay["new"][st]["error"]:
+                        raise RuntimeError(_relay["new"][st]["error"])
+                    got = list(_relay["new"][st]["entries"])
+                else:
+                    got = NEW_CUSTOM_STATES[st]()
                 print(f"WARN {st} (new importer): {len(got)} notices kept")
                 new_entries.extend(got)
                 # Structural-drift tripwire: a custom scraper normally returns

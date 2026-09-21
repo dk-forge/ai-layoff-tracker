@@ -1,3 +1,94 @@
+## 2026-09-21 - Eighteen US state registers read zero for five days because the only address our host accepts is an address they refuse
+
+**Class:** silent-stop
+**Guard:** `tests/test_warn_relay.py` (an accepted relay replaces all three US
+scrape seams and reaches `/bulk`; anything short of a fresh, matching relay
+falls back to a local scrape) and
+`tests/test_health_notes_use_the_retrying_writer.py` (no module but
+`source_health.py` may POST `/source-health`), plus `tests/test_archive_relay.py`
+and `tests/test_hi_ocr_crawl_reaches_every_notice.py`, described below.
+
+`warn_us`, `warn_custom_legacy` and `warn_custom_states` went degraded on
+2026-09-16 and stayed there. The notes said "likely open-scraper drift" and
+"likely site drift". Neither was true and no parser was touched.
+
+**What the logs say.** #344 moved every job that touches the host onto the
+one VPS the host whitelists, the same day. That VPS is in Europe. Run
+35603483336 shows connect timeouts to `www.labor.idaho.gov` and
+`ccwd.hecc.oregon.gov`, an HTTP 403 from mass.gov, a DNS refusal for New
+Mexico, block pages where Georgia's nonce and Michigan's JSON should be, and
+the warn-scraper subprocess timing out on Nebraska. The week before, on a
+US-hosted runner (34703757687, 34379977984), the only collapsed state was MN.
+One paced request each from a second European address, by hand, reproduced it:
+Idaho and Oregon never answered in 25s, New Mexico answered 403. Dark since
+the move: AZ, CT, DE, ME, MO, NE, OR, RI, TN, UT, VT (generic), FL, GA, ID,
+KY, LA (legacy custom), KS, NM (new states).
+
+**The fix is a seam, not a parser.** `railway/warn_relay.py`: a `scrape` job on
+`ubuntu-latest` runs the three US seams (`pull_warn`, `pull_warn_custom` with
+`SOURCE_UNREACHABLE`, each `NEW_CUSTOM_STATES` fetcher with its exception
+text) and uploads the result; the VPS `warn` job loads it in place of scraping
+and everything after the seam runs once, where it always did. The scrape job
+holds no secret at all. A missing, stale (6h), malformed or differently
+parameterised relay is ignored out loud and the VPS scrapes for itself, so the
+worst case is the run we already had. Quebec and Mazowieckie stay on the VPS;
+they were never refused. No floor, baseline or threshold moved.
+
+**`archive_backfill` is the same wall, and the same shape fixes it.**
+Save-Page-Now throttled 0 of 80 captures on 2026-09-09 and 4 of 80 on
+2026-09-03 from a hosted runner; from the VPS it has throttled 80 of 80 on
+every run since 2026-09-16. That is not the slow climb the backfill is
+designed for, and `ARCHIVE_SPN_MAX`, the gaps and the back-off are untouched.
+The candidate list is a keyed route, so the split is three jobs
+(`railway/archive_relay.py`): `backfill` on the VPS does the availability pass
+and writes the misses it would have captured (the same first 80) to a plan;
+`capture` on `ubuntu-latest`, holding no secret, calls Save Page Now; `record`
+on the VPS posts the outcome and writes the terminal note. `record` trusts
+only the plan the VPS wrote: a URL that was not planned, or a link that is not
+an `https://web.archive.org/web/` permalink, is never recorded, and a capture
+job that failed leaves every planned URL `pending`, which is what the VPS
+observed. Guard: `tests/test_archive_relay.py`, which also fails if either
+hosted relay job ever names a secret or the host.
+
+**`warn_hi_ocr` was a deferral working as designed, with a hole in it.**
+2026-09-20 read all 24 notices; 2026-09-21 stopped itself at 24.7 minutes with
+9, under a busier runner. But the crawl restarted from the top every run and
+the deadline cuts from the bottom, so a runner that is ALWAYS slow would read
+the same head forever. The start of the crawl now rotates through
+`run_slice.rotate`, stepping by the number of notices a worst-case run is
+certain to start (derived from the deadline and the per-notice worst case, 10
+today), so every notice is reached within ceil(n / 10) runs however slow the
+runner is, and a fast run still reads the whole ring. It derives no run
+counter of its own. Guard: `tests/test_hi_ocr_crawl_reaches_every_notice.py`
+walks rings of 1 to 120. A listing that grows between runs shifts positions by
+the growth; the bound is then approximate by that much.
+
+**Three "runs that never finished", three different stories, none a dying
+collector.** `gdelt_historical` 2026-09-10 06:46Z was a manual dispatch
+cancelled from outside at 9.5 minutes of a 45 minute budget (34446693697).
+`warn_hi_ocr` 2026-09-16 was the 30m0s self-timeout already fixed on
+2026-09-17. `role_enrichment` 2026-09-17 finished, wrote its end-of-run record
+to `spend_jobs.json` (35205609389) and lost its terminal note to one
+connection reset, because `enrich_roles`, `enrich_context` and `link_check`
+each POSTed the ledger themselves, once. All three now go through
+`source_health.report_source_health`, which retries. `GRACE` was not touched.
+
+**`warn:MS` reads DARK and the register says QUIET.** One request to the MDES
+landing page: the newest quarterly PDF is April to June 2026, which is exactly
+our frontier (2026-06-30). July to September is not published. The judge's
+numbers: 22.0/yr trailing, 22.45/yr long run, p90 gap 45 days, 83 days silent,
+p=0.00672. A register that publishes once a quarter, after the quarter ends,
+is silent for 90 to 120 days by construction and its p90 gap was fitted on
+effective dates inside each PDF. Nothing was changed: no threshold, no
+UNAVAILABLE, no ledger edit. The incident stays open for a human.
+
+**The recall and precision red was an unreadable host graded as a wrong
+number.** All 10 misses were unresolved Google News redirectors, which
+`robots.txt` forbids us to fetch and which return a stub. Healer PR #398 skips
+them before the request and counts them under their own reason, leaving the
+80% floor and the 20-row minimum alone. Reviewed in this session and found
+correct; it touches no FORBIDDEN path. It is merged separately from this entry.
+
 ## 2026-09-21 - Superset membership could only be derived, never declared, so a two-reviewer ruling had nowhere to live and 15,200 jobs stacked
 
 **Class:** novel

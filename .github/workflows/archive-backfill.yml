@@ -169,6 +169,7 @@ jobs:
           # deadline can actually reach this limit, so the pair cannot drift back
           # into a capacity the run never delivers.
           ARCHIVE_BACKFILL_DEADLINE_SECONDS: '5400'
+          ARCHIVE_SPN_HANDOFF_FILE: ${{ runner.temp }}/archive_plan.json
         # Data-changing job fails loudly: an unreachable candidate feed or a
         # failed /archive-record batch exits non-zero above.
         run: |
@@ -185,3 +186,76 @@ jobs:
         uses: ./.github/actions/commit-deferral-ledger
         with:
           job: archive-backfill
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive-plan
+          path: ${{ runner.temp }}/archive_plan.json
+          retention-days: 3
+          if-no-files-found: ignore
+
+  # SAVE PAGE NOW, FROM AN ADDRESS THE ARCHIVE ANSWERS (railway/archive_relay.py).
+  # The VPS above was throttled on 80 of 80 captures every run from 2026-09-16;
+  # a hosted runner the week before, 0 to 4 of 80. Same ARCHIVE_SPN_MAX, same
+  # gaps, same back-off: the backfill is slow on purpose and stays slow. This
+  # job holds NO secret and calls no route on asktherecruiter.com.
+  capture:
+    needs: backfill
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      # No plan is an ordinary day (a dry run, or nothing missed Wayback):
+      # the capture stage then reads an empty plan and captures nothing.
+      - name: Fetch the plan
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: archive-plan
+          path: ${{ runner.temp }}/plan
+      - name: Capture the planned URLs
+        working-directory: railway
+        env:
+          ARCHIVE_SPN_MAX: ${{ github.event.inputs.spn_max || '80' }}
+        run: python archive_relay.py capture "${{ runner.temp }}/plan/archive_plan.json" "${{ runner.temp }}/archive_results.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive-results
+          path: ${{ runner.temp }}/archive_results.json
+          retention-days: 3
+
+  # Back on the whitelisted VPS: record what was captured. It trusts only the
+  # plan the `backfill` job wrote; a capture job that failed or never ran
+  # leaves every planned URL `pending`, which is what `backfill` observed.
+  record:
+    needs: [backfill, capture]
+    if: ${{ !cancelled() && needs.backfill.result == 'success' }}
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Fetch the plan
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: archive-plan
+          path: ${{ runner.temp }}/plan
+      - name: Fetch the capture results (absent = everything stays pending)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: archive-results
+          path: ${{ runner.temp }}/results
+      - name: Record the captures
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python archive_relay.py post "${{ runner.temp }}/plan/archive_plan.json" "${{ runner.temp }}/results/archive_results.json"

@@ -41,11 +41,65 @@ permissions:
   contents: write   # commit the ratcheted per-state baselines
 
 jobs:
+  # SCRAPE FROM A US ADDRESS, POST FROM THE WHITELISTED ONE (railway/warn_relay.py).
+  # The `warn` job below must run on the VPS because the host challenges every
+  # other datacenter address. The VPS is in Europe, and from 2026-09-16 (the
+  # day this workflow moved there) AZ, CT, DE, ME, MO, NE, OR, RI, TN, UT, VT,
+  # FL, GA, ID, KY, LA, KS and NM read zero every day: connect timeouts, 403s
+  # and block pages, where the US-hosted runs of the week before lost none.
+  # This job touches no route on asktherecruiter.com and holds NO secret: no
+  # WP_API_KEY, no OpenRouter key (so the count fallback stays regex-only
+  # here), which also takes the third-party scraper out of the keyed runner.
+  # If it fails, `warn` still runs and scrapes for itself, as it did before.
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: railway/requirements.lock
+      - name: Install deps
+        working-directory: railway
+        run: |
+          pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+          BASE=https://raw.githubusercontent.com/biglocalnews/warn-scraper/f7b3dd26af1f3ad700762504bd7c5c0d23979507
+          SCRAPERS_DIR=$(python -c "import warn.scrapers, os; print(os.path.dirname(warn.scrapers.__file__))")
+          curl -sSf "$BASE/warn/scrapers/nd.py" -o "$SCRAPERS_DIR/nd.py"
+          python -c "import warn.scrapers.nd; print('injected ND scraper import OK')"
+      - name: Scrape the US registers
+        working-directory: railway
+        env:
+          ALT_PAID_READS: 'off'
+          WARN_STATES: ${{ github.event.inputs.states || 'all' }}
+          WARN_MIN_EMPLOYEES: ${{ github.event.inputs.min_employees || '0' }}
+          WARN_START: ${{ github.event.inputs.start || '' }}
+          WARN_RELAY_FILE: ${{ runner.temp }}/warn_relay.json
+        run: python warn_relay.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: warn-relay
+          path: ${{ runner.temp }}/warn_relay.json
+          retention-days: 3
+          if-no-files-found: error
+
   warn:
+    needs: scrape
+    # A failed or timed-out scrape must not cost the day's import: without a
+    # relay this job scrapes for itself. Only an outside cancel stops it.
+    if: ${{ !cancelled() }}
     runs-on: [self-hosted, linux, contabo]
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
+      - name: Fetch the US scrape (absent = scrape here instead)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: warn-relay
+          path: ${{ runner.temp }}/warn-relay
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -109,6 +163,7 @@ jobs:
           WARN_START: ${{ github.event.inputs.start || '' }}
           WARN_LIMIT: ${{ github.event.inputs.limit || '' }}
           WARN_PURGE: ${{ github.event.inputs.purge || '' }}
+          WARN_RELAY_FILE: ${{ runner.temp }}/warn-relay/warn_relay.json
           # Quebec reads the last 4 monthly PDFs on a scheduled run, which is
           # all a daily job needs. The CDN holds 36 months, so a BACKFILL is a
           # manual dispatch with quebec_months=40: it costs nothing but

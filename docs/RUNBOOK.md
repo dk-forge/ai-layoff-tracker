@@ -108,6 +108,16 @@ The rule, per workflow, in `.github/workflows/`:
   contabo]`. 72 workflows here, including `deploy-plugin`,
   `live-surface-check`, every collector, every correction, `data-integrity`,
   `health-digest`, `digest-send`, `backup-export` and `contrast-audit`.
+- **One workflow is both, in two jobs.** `warn-import` scrapes the US
+  registers in a `scrape` job on `ubuntu-latest` and posts them from the VPS in
+  `warn` (`railway/warn_relay.py`). The VPS is in Europe and about a third of
+  the state sites refuse it: 18 states read zero from 2026-09-16 until the
+  split. A collector that goes to zero the day its job moved runners has a
+  network problem, not a parser problem; check the log for connect timeouts and
+  403s before opening a scraper. The scrape job holds no secret.
+  `archive-backfill` is the same shape for the same reason (web.archive.org
+  throttles the VPS): plan on the VPS, `capture` hosted with no secret, `record`
+  on the VPS (`railway/archive_relay.py`).
 - **Class (b), never touches the host** (repo-only checks, DNS and IMAP mail
   checks, Resend mail, GitHub API only): stays on `ubuntu-latest`. That is
   `tests`, `card-contract`, `style-standard`, `version-collision`,
