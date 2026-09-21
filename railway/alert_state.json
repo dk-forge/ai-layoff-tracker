@@ -92,11 +92,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "rendered-contrast-audit:main:3d5fca8bc7deefee": {
-      "first": 1789923767,
-      "last": 1789923767,
-      "subject": "CI RED: Rendered contrast audit \u2014 no error line could be extracted from the log"
-    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -128,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T08:34:51+00:00",
+  "updated_at": "2026-09-21T14:13:05+00:00",
   "version": 1
 }
