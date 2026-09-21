@@ -1,3 +1,46 @@
+## 2026-09-21 - Nothing independently asked "what is main's actual state?", so a day of unknown read as green
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_main_green.py::JudgeTests::test_no_run_at_all_is_unknown_not_green`
+and `::CheckTests::test_unknown_never_exits_zero`
+
+The entry below fixed the cause: the train now dispatches what a token merge
+cannot start. It did not fix the class. Every surface that reports CI here
+(`ci-alert.yml`, `ops_status [4]`) reacts to a run that EXISTS and went red. A
+workflow that never starts produces no run, so for a day main had no colour at
+all and every surface read that as quiet. The train checking its own
+dispatches is the train marking its own homework.
+
+`railway/main_green.py` runs daily at 08:37 UTC from `main-green-check.yml`
+(and on dispatch). Stdlib only, nothing installed, reads through `gh api` with
+the workflow token (`actions: read`, `contents: read`, `issues: write`). For
+each of `tests.yml`, `style-standard.yml`, `card-contract.yml`,
+`version-collision.yml` and `deploy-plugin.yml` it reports PASS, FAIL or
+UNKNOWN. UNKNOWN is: no run on main at all; no completed run with a verdict
+(cancelled and skipped are looked past); the newest green run older than 3
+days while main's head carries no run and is past a 2 hour grace; or a read
+that failed or came back empty. The two path-filtered or push-only workflows
+(`deploy-plugin.yml`, `version-collision.yml`) carry no age ceiling, because a
+quiet week is normal for them; "no run at all" is still UNKNOWN. Cron data jobs
+are deliberately not in the list: they have their own health rows.
+
+Exit 0 only on all PASS (1 = a FAIL, 3 = UNKNOWN without a FAIL), so
+`ci-alert.yml` mails it like any red workflow, deduped by cause. It also keeps
+ONE issue, "Main is not green", found by a hidden marker: opened on the first
+non-green run, its body rewritten only when the SET of failing or unknown
+workflows changes (the key holds no SHA, age or URL), closed by the next
+all-PASS run. An unreadable issue list raises rather than opening a duplicate.
+
+It also PRINTS, and never judges, whether main's plugin tree differs from the
+last green deploy, by importing `merge_train.sync_main` in dry-run with
+`post_merge_workflows=()`. No second copy of that logic exists.
+
+Mutation-proved once: `if not runs` in `judge` was made to return PASS and
+three tests went red, then the guard was restored. The default test run opens
+no connection; every read is a fake `api` or a patched `subprocess.run`.
+`ops_status` was left alone: section `[4]` already lists any red workflow, and
+this is one.
+
 ## 2026-09-21 - Every merge the train made started no workflow, so a merged plugin change never deployed and main was never tested
 
 **Class:** silent-stop
