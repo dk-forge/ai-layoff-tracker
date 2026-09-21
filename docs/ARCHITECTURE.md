@@ -111,6 +111,20 @@ automatable or licensed for reuse.
   revisions (Tyson 1,761 Amarillo). Aggregate job SUMs use `superset_of = 0` (headline/bars/monthly), so an event
   counts ONCE; the row LIST still shows every member (no lost site detail). Self-maintaining (daily), reversible
   (unmark). Live guard: `railway/tests/test_dedup_live.py`.
+- **Declared superset membership** (`includes/declared-supersets.php`, option `alt_declared_supersets`, 2.20.205):
+  the three passes above are RULES, recomputed from a clean slate over `edited = 0` rows, so they cannot hold a
+  DECISION. A reviewer ruling that several rows are staged announcements of one programme is stored keyed by
+  member id (`primary_id`, `reviewer`, `reason`, `declared_at`, `key_mismatch_allowed`) and
+  `alt_reconcile_supersets()` re-applies it as pass (4), LAST, whatever `edited` says: a declared member is always
+  marked, a declared primary is never left a member, an automatic mark pointing at a member is re-pointed (no
+  chains), and a declaration whose member or primary row is gone is RELEASED and named in the report's `declared`
+  block (a trashed primary's members count again, visibly). Write door: keyed `POST /declare-superset` (dry run by
+  default, `apply=1`, `remove=1`, all-or-nothing, idempotent, one `alt_company_key()` for member and primary unless
+  `allow_key_mismatch=1`, which is recorded), reached through `apply-correction.yml` `action=superset`. Read door:
+  public `GET /declared-supersets`, one request, read by the `declared_supersets_reflected` invariant. Every
+  downstream surface keys on the `superset_of` column alone, so a declared member behaves exactly like an automatic
+  one: its own row and receipt, never summed; `/aggregate` `totals.entries` drops by one per member and
+  `excluded` rises by the same. Tests: `railway/tests/test_declared_supersets.py` (mutation-proven in the suite).
   **Pass (3) does NOT group on `company_key`, and that is load-bearing** (TECHLOG 2026-08-18): it ran inside the
   per-company loop from the day it shipped, and a state that republishes a notice writes the word into the employer
   cell (`... Operations` vs `... Operations) Updated`), so the pair keys as two companies and a per-company pass can

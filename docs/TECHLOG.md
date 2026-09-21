@@ -1,3 +1,61 @@
+## 2026-09-21 - Superset membership could only be derived, never declared, so a two-reviewer ruling had nowhere to live and 15,200 jobs stacked
+
+**Class:** novel
+**Guard:** `railway/tests/test_declared_supersets.py` (the reconciler run for
+real against a fake `$wpdb`, and the same scenario run against a db.php with
+the re-application removed, which must come out wrong) plus the live invariant
+`declared_supersets_reflected` in `railway/data_integrity.py`.
+
+**The gap.** `alt_reconcile_supersets()` zeroes `superset_of` on the whole
+table on every run and re-marks from three rules, reading `edited = 0` only.
+That is right for a rule and leaves no place for a decision. The entry below
+records the consequence: four staged announcements of one programme (178740,
+178882, 132845, 62215) summing beside its latest total (176911, pinned, so
+invisible to the reconciler in any case).
+
+**What was built (plugin 2.20.205).**
+- `includes/declared-supersets.php`, a new guarded include. Store: option
+  `alt_declared_supersets`, keyed by MEMBER id, so two primaries for one member
+  is unrepresentable. Fields: `primary_id`, `reviewer`, `reason`,
+  `declared_at`, `key_mismatch_allowed`.
+- Pass (4) in `alt_reconcile_supersets()`, applied LAST, behind
+  `function_exists` so a half-uploaded deploy reconciles the old way. A
+  declared member is marked whatever `edited` says; a declared primary is never
+  left a member; an automatic mark pointing at a member is re-pointed (no
+  chains); a declaration whose member or primary row is gone is RELEASED and
+  named in the report's new `declared` block. The automatic
+  `jobs_before/excluded/after` keep their old meaning; the declared side has
+  its own `jobs_excluded`. There is still exactly one clean slate and one write
+  loop.
+- Keyed `POST /declare-superset`: dry run by default, `apply=1`, `remove=1`,
+  all-or-nothing, idempotent (`unchanged`). Member and primary must share an
+  `alt_company_key()` recomputed from the NAME, not the stored key;
+  `allow_key_mismatch=1` overrides and is recorded on the declaration and in
+  the corrections log.
+- Public `GET /declared-supersets`: each declaration beside the member's live
+  `superset_of`. One request, no page walk.
+- `apply_correction.py --action superset` and the workflow option. Its dry run
+  asks the SERVER with `apply=0`, so the verdict read before applying is the
+  one that will apply. `--verify-company` is required and every id must be
+  visible under it (`q=`), before anything is sent.
+- No other surface changed, and none needed to: /aggregate, /query
+  `exclude_supersets`, exports, report, press and directory pages all key on
+  the `superset_of` column alone. Permalink pages do not name a primary for
+  automatic members either, so none was added for declared ones. WARN's
+  exemption, the dedup hash and the `edited` pin are untouched.
+- Methodology gained one sentence. Sources and Health copy did not change: no
+  collector or reader-facing source claim moved.
+
+**Why the override exists on day one.** Three spellings of one employer key
+three ways: the unaccented upper-case filer name keys `estee lauder companies`,
+the accented forms key `est e lauder companies` and `est e lauder`, because the
+ASCII strip turns the accented letter into a space. So 132845 and 62215 need
+`allow_key_mismatch`, and 178740 and 178882 do not. The accent fold in
+`alt_company_key()` is a separate defect and was NOT changed here: it moves
+fuzzy dedup and the directory for every accented employer.
+
+---
+
 ## 2026-09-21 - The owner's new MERGE_TRAIN_TOKEN stopped every merge train: the check-runs API refuses fine-grained tokens
 
 **Class:** silent-stop
@@ -61,6 +119,9 @@ entry lists without pairing: trash 35654479454 is 179236; edit 35654610408 is
 179234 and 179235 together (the Bridgestone duplicates of 179233, whose first
 attempt, 35654494275, was cancelled before any step); 179201 and 179231 are the two Samsung rows folded
 into 179202.
+
+---
+
 ## 2026-09-21 - The three rows left for the owner were ruled by a tie-break pair: 3 retracted, 1 seeded, 1 edited, and the employer's restatement chain cannot be expressed as members
 
 **Class:** novel
