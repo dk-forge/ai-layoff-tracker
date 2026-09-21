@@ -54,6 +54,42 @@ ASCII strip turns the accented letter into a space. So 132845 and 62215 need
 `alt_company_key()` is a separate defect and was NOT changed here: it moves
 fuzzy dedup and the directory for every accented employer.
 
+**Shipped and applied (PR #402, merged b3003b1a, plugin 2.20.205).** Origin
+`/status` reads 2.20.205; `reader_freshness.py` PASS on both pages, build
+fb67784f9940e7df. Every write went through `apply-correction.yml`
+`action=superset`, `verify_company=Lauder`, primary 176911:
+
+| members | override | dry run | apply | moved |
+|---|---|---|---|---|
+| 178740 (5,800), 178882 (1,800) | none needed | 35667502933 | 35667624421 | -7,600 jobs, -2 entries |
+| 132845 (1,800), 62215 (5,800) | `allow_key_mismatch`, recorded | 35667563287 | 35667686754 | -7,600 jobs, -2 entries |
+
+Then the real clean slate, `reconcile-supersets.yml` apply run 35667808578:
+`declared` = 4 declarations, 4 applied, 0 released, 0 primary_unmarked,
+0 repointed, 15,200 jobs. The members survived it.
+
+**Arithmetic, for the `headline_movement` incident.** `/aggregate`, worldwide:
+- Before: 20,532,644 jobs over 65,679 entries; `excluded` 133,797 over 434.
+- After both applies: 20,517,444 over 65,675. **Exactly -15,200 jobs on -4
+  entries.** A member leaves `totals` and enters `excluded`, so `entries`
+  falls by one per member; the rows still list under `/query` with their own
+  source URLs (four SEC and ERM receipts read back).
+- The same reconcile run also made 2 AUTOMATIC changes that are not this
+  ruling: 135827 (Leidos WARN, 93, was a member of 178626) and 167950
+  (JPMorgan Chase WARN, 63, was a member of 54971) were un-marked because
+  their primaries were retracted earlier today. **+156 jobs on +2 entries.**
+- End state: 20,517,600 over 65,677; `excluded` 148,841 over 436. Both close:
+  20,532,644 - 15,200 + 156, and 133,797 + 15,200 - 156.
+- The employer's own slice (`q=Lauder`): 13,843 over 7, `excluded` 15,200
+  over 4. None of this is in the United States job-location slice.
+Affected ids for `--close-incident`: 178740, 178882, 132845, 62215, 176911,
+135827, 167950.
+
+**Integrity after.** 23 PASS including `declared_supersets_reflected` ("4
+declared member(s) carrying 15,200 jobs are all marked"), and one UNKNOWN,
+`headline_movement`, on a 5.9h baseline. `filing_shape_tells` still lists
+178882 as an advisory lead row; it is a member now, so it no longer sums.
+
 ---
 
 ## 2026-09-21 - The owner's new MERGE_TRAIN_TOKEN stopped every merge train: the check-runs API refuses fine-grained tokens

@@ -6,15 +6,15 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Claude (agent), 2026-09-21 night, declared superset membership,
-  branch `feat/declared-supersets`.** Builds the reviewer-declared membership
-  store the reconciler re-applies after its clean slate, a keyed route, the
-  `superset` action of `apply-correction.yml` and one data_integrity invariant.
-  Touches `includes/declared-supersets.php` (new), the tail of
-  `alt_reconcile_supersets()` in `includes/db.php`, `apply_correction.py`,
-  `data_integrity.py`, docs. RESERVES the next plugin version past main. Does
-  NOT touch dedupe_llm, mailbox_janitor, backup state or headline incident
-  tooling (PR #401 owns those).
+- **RELEASED - Claude (agent), 2026-09-21 night, declared superset membership
+  (PR #402, plugin 2.20.205, live). Work complete.** Reviewer-declared
+  memberships now survive the reconciler's clean slate; the four restatement
+  rows are members of 176911 and the worldwide headline fell by exactly 15,200
+  jobs on 4 entries (TECHLOG 2026-09-21, top entry, holds the arithmetic and
+  the ids). **Next session:** close the `headline_movement` incident with
+  `--close-incident` once the baseline ages in. Open and NOT done here:
+  `alt_company_key()` turns an accented letter into a space, so one employer
+  keys three ways; 178740 still carries 2025-05-01 (should be 2025-02-04).
 - **RELEASED - Claude alongside, 2026-09-21 late night, branch `ci/train-reads-with-builtin-token`. One workflow line plus a TECHLOG entry; did not take the baton (another agent may hold it for ops reds and the superset PR #402).**
 - **RELEASED - Claude (agent), 2026-09-21 late night, tie-break rulings session,
   branch `docs/rulings-0921-tiebreak`. Work complete.** Rows 178738, 54971 and
