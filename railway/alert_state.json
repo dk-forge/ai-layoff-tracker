@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "apply-a-signed-off-correction:main:3b3015d058315c93": {
-      "first": 1790025297,
-      "last": 1790025297,
-      "subject": "CI RED: Apply a signed-off correction \u2014 no error line could be extracted from the log"
-    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -128,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T21:14:58+00:00",
+  "updated_at": "2026-09-21T21:21:40+00:00",
   "version": 1
 }
