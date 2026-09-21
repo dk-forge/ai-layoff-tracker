@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "apply-a-signed-off-correction:main:810776b187025eba": {
+      "first": 1790023057,
+      "last": 1790023057,
+      "subject": "CI RED: Apply a signed-off correction \u2014 refusing: every url must be a report currently held by the from-row"
+    },
     "apply-a-signed-off-correction:main:9a62e416e8430162": {
       "first": 1789933451,
       "last": 1789933451,
@@ -128,6 +133,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T20:28:45+00:00",
+  "updated_at": "2026-09-21T20:37:37+00:00",
   "version": 1
 }
