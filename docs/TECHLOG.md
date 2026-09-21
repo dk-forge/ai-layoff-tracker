@@ -5,7 +5,8 @@
 scrape seams and reaches `/bulk`; anything short of a fresh, matching relay
 falls back to a local scrape) and
 `tests/test_health_notes_use_the_retrying_writer.py` (no module but
-`source_health.py` may POST `/source-health`).
+`source_health.py` may POST `/source-health`), plus `tests/test_archive_relay.py`
+and `tests/test_hi_ocr_crawl_reaches_every_notice.py`, described below.
 
 `warn_us`, `warn_custom_legacy` and `warn_custom_states` went degraded on
 2026-09-16 and stayed there. The notes said "likely open-scraper drift" and

@@ -115,6 +115,9 @@ The rule, per workflow, in `.github/workflows/`:
   split. A collector that goes to zero the day its job moved runners has a
   network problem, not a parser problem; check the log for connect timeouts and
   403s before opening a scraper. The scrape job holds no secret.
+  `archive-backfill` is the same shape for the same reason (web.archive.org
+  throttles the VPS): plan on the VPS, `capture` hosted with no secret, `record`
+  on the VPS (`railway/archive_relay.py`).
 - **Class (b), never touches the host** (repo-only checks, DNS and IMAP mail
   checks, Resend mail, GitHub API only): stays on `ubuntu-latest`. That is
   `tests`, `card-contract`, `style-standard`, `version-collision`,
