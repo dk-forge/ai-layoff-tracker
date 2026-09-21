@@ -158,5 +158,56 @@ class TemplateTests(unittest.TestCase):
         self.assertNotIn("$wpdb", _read(self.INCLUDE))
 
 
+class MeasurementCommitWorkflowsTests(unittest.TestCase):
+    """The two measurement crons that feed country-coverage.json must
+    regenerate and commit it in the SAME run as their own measurement file,
+    or the committed tiers can go stale on main again (2026-09-18: the
+    rolling-recall and national-denominators measurements updated and
+    country-coverage.json was not regenerated, so test_country_tiers.py
+    failed on main and on every PR built from it)."""
+
+    WORKFLOWS = {
+        os.path.join(ROOT, ".github", "workflows", "rolling-recall.yml"):
+            "railway/rolling_recall_measurement.json",
+        os.path.join(ROOT, ".github", "workflows", "national-denominators.yml"):
+            "railway/national_denominators_measurement.json",
+    }
+    COVERAGE_PATH = "wordpress-plugin/ai-layoff-tracker/data/country-coverage.json"
+
+    def test_each_measurement_workflow_regenerates_and_commits_the_tiers(self):
+        for path, measurement_path in self.WORKFLOWS.items():
+            yml = _read(path)
+            self.assertIn(
+                "generate_country_tiers.py", yml,
+                f"{path} must run railway/generate_country_tiers.py before "
+                "committing its measurement, or country-coverage.json can "
+                "disagree with what it was just derived from.")
+            # The regeneration must happen BEFORE the commit step, not after,
+            # or the stale file ships and the fresh one is left uncommitted.
+            gen_pos = yml.index("generate_country_tiers.py")
+            commit_pos = yml.index("Commit the measurement")
+            self.assertLess(
+                gen_pos, commit_pos,
+                f"{path} regenerates country-coverage.json AFTER committing "
+                "the measurement; it must run before the commit step.")
+            # And the commit step must stage the regenerated file alongside
+            # its own measurement file, in the same commit.
+            commit_step = yml[commit_pos:]
+            self.assertIn(measurement_path, commit_step, path)
+            self.assertIn(self.COVERAGE_PATH, commit_step, path)
+
+    def test_committed_tiers_agree_with_both_measurement_files(self):
+        # A generator run against what is actually committed right now must
+        # match what is actually committed right now. This is a direct check
+        # of the disagreement class (measurement file moved, tiers file did
+        # not), independent of test_committed_json_matches_regeneration's own
+        # date-anchored comparison.
+        self.assertTrue(gt.committed_matches(), (
+            "data/country-coverage.json disagrees with a fresh regeneration "
+            "from the currently committed measurement files. Run "
+            "`python3 railway/generate_country_tiers.py` and commit the "
+            "result."))
+
+
 if __name__ == "__main__":
     unittest.main()
