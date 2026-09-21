@@ -5714,6 +5714,36 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
             }
         }
     }
+    // (4) REVIEWER-DECLARED memberships, applied LAST so nothing above can
+    //     un-mark one. The clean slate below erases every stored mark and the
+    //     passes above read only `edited = 0`, so a membership two reviewers
+    //     ruled on had nowhere to live (Estee Lauder, 2026-09-21: four staged
+    //     announcements of one programme stacking 15,200 jobs on primary
+    //     176911, itself edited). The store and the rules are in
+    //     includes/declared-supersets.php; `$mark` leaves here holding them, and
+    //     the write loop below is the only writer either kind goes through.
+    //     The automatic jobs_before/excluded/after figures stay what they
+    //     always were (edited = 0 rows, automatic rules); the declared side is
+    //     reported in its own block so neither number changes meaning.
+    $declared_report = array('declarations' => 0, 'applied' => array(), 'released' => array(),
+        'primary_unmarked' => array(), 'repointed' => array(), 'jobs_excluded' => 0);
+    $declared_rows = array();
+    if (function_exists('alt_declared_supersets_resolve')) {
+        $declared = alt_declared_supersets();
+        if ($declared) {
+            $dids = array();
+            foreach ($declared as $m => $d) { $dids[] = (int) $m; $dids[] = (int) ($d['primary_id'] ?? 0); }
+            $declared_rows = alt_declared_supersets_rows($dids);
+            $res = alt_declared_supersets_resolve($mark, $declared, array_fill_keys(array_keys($declared_rows), true));
+            $mark = $res['mark'];
+            $declared_report = array('declarations' => count($declared), 'applied' => $res['applied'],
+                'released' => $res['released'], 'primary_unmarked' => $res['primary_unmarked'],
+                'repointed' => $res['repointed'], 'jobs_excluded' => 0);
+            foreach ($res['applied'] as $ap) {
+                $declared_report['jobs_excluded'] += (int) ($declared_rows[$ap['member_id']]['job_count'] ?? 0);
+            }
+        }
+    }
     // What this run CHANGES versus what is already stored. The marking is a
     // clean-slate recompute, so a silent drift (a pair that quietly stops
     // matching and starts double-counting, which is exactly how the Spirit
@@ -5737,6 +5767,20 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
             'now'         => $now,
         );
     }
+    // Declared rows the automatic SELECT never loaded (edited = 1) still belong
+    // in the diff, or a dry run would hide exactly the rows a reviewer moved.
+    $loaded = array();
+    foreach ($rows as $r) $loaded[(int) $r['id']] = true;
+    foreach ($declared_rows as $did => $r) {
+        if (isset($loaded[$did])) continue;
+        $now = isset($mark[$did]) ? (int) $mark[$did] : 0;
+        $was = (int) $r['superset_of'];
+        if ($now === $was) continue;
+        $changed[] = array('id' => (int) $did, 'company' => (string) $r['company'],
+            'company_key' => (string) $r['company_key'], 'layoff_date' => $r['layoff_date'],
+            'state' => '', 'source_type' => (string) $r['source_type'],
+            'job_count' => (int) $r['job_count'], 'was' => $was, 'now' => $now);
+    }
     if (!$dry_run) {
         $wpdb->query("UPDATE $table SET superset_of = 0, updated_at = UTC_TIMESTAMP() WHERE superset_of <> 0");  // clean slate, then re-mark
         foreach ($mark as $id => $primary) {
@@ -5751,6 +5795,7 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
         'jobs_excluded'  => (int) $excluded,
         'jobs_after'     => (int) ($before - $excluded),
         'changes'        => count($changed),
+        'declared'       => $declared_report,
     );
     // Bounded: this is an ops diagnostic on a keyed endpoint, not a data feed.
     // Compare `changes` against count($out['changed']) before reading the list

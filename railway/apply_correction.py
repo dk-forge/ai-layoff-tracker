@@ -6,7 +6,7 @@ source. Published corrections governance says a numeric change ALWAYS needs a
 human sign-off, so this is deliberately a manual, dispatch-only tool: it never
 runs on a schedule and it refuses to do anything without a written reason.
 
-Five actions, matching the things a review can conclude:
+Six actions, matching the things a review can conclude:
 
     trash        - the row's number is not supported by its source at all (the
                    count belongs to a different event, or the source states no
@@ -31,6 +31,19 @@ Five actions, matching the things a review can conclude:
                    Unlike add, this requires the ORIGINAL source-specific hash
                    and succeeds only when that hash is still suppressed with a
                    `merged:` reason. The server inserts first, then unsuppresses.
+
+    superset     - the rows are all real and all correctly sourced, and they
+                   are ONE programme announced in stages (1,800, then 5,800,
+                   then 9,000). Nothing is removed or edited: --ids are declared
+                   MEMBERS of the programme total named in --fields
+                   {"primary": N}, so each keeps its own row and receipt and
+                   the programme is counted once. The declaration is stored
+                   server-side and re-applied after every reconcile clean slate
+                   (includes/declared-supersets.php). --verify-company is
+                   REQUIRED here: every id must be visible under it, and the
+                   server separately requires one company key unless --fields
+                   carries "allow_key_mismatch": true, which is recorded.
+                   {"remove": true} withdraws a declaration.
 
 Every path fails loudly (non-zero exit) on any not-found or rejected id, so a
 correction that silently did nothing can never be reported as applied.
@@ -185,6 +198,88 @@ def run_move_sources(site, key, ids, fields, reason, apply):
     return 0
 
 
+def _rows_q(site, company):
+    """Rows matching q=<company>, keyed by id, or None when the read failed.
+    None is UNKNOWN and is never read as "no such rows"."""
+    try:
+        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+                         params={"q": company, "per_page": 200, "cb": str(uuid.uuid4())},
+                         headers=UA, timeout=TIMEOUT)
+        if r.status_code != 200:
+            return None
+        return {int(x["id"]): x for x in r.json().get("data", []) if x.get("id")}
+    except Exception:
+        return None
+
+
+def run_superset(site, key, ids, fields, reason, company, apply, pause=3):
+    primary = int(fields.get("primary") or 0)
+    remove = bool(fields.get("remove"))
+    allow = bool(fields.get("allow_key_mismatch"))
+    if not ids or primary < 1:
+        return _fail('superset needs --ids (the members) and --fields {"primary": <row id>}')
+    if primary in ids:
+        return _fail("the primary cannot also be one of its own members")
+    if not company.strip():
+        return _fail("superset requires --verify-company: it is the guard against a mistyped id")
+    if not key:
+        return _fail("WP_API_KEY required even for a dry run: the server is what judges a declaration")
+
+    verb = "withdraw" if remove else "declare"
+    print(f"{'APPLY' if apply else 'DRY RUN'}: superset {verb} {ids} -> primary {primary} - {reason}")
+    rows = _rows_q(site, company)
+    if rows is None:
+        return _fail(f"could not read /query?q={company}; UNKNOWN is not a pass, nothing sent")
+    missing = [i for i in ids + [primary] if i not in rows]
+    for i in ids + [primary]:
+        row = rows.get(i)
+        tag = "primary" if i == primary else "member "
+        if row:
+            print(f"  {tag} id={i}  {row.get('company_name')}  {row.get('job_count')} jobs  "
+                  f"{row.get('layoff_date')}  {row.get('country')}  {row.get('source_type')}")
+    if missing:
+        return _fail(f"id(s) {missing} are not rows matching --verify-company {company!r}; refusing")
+    before = _totals(site)
+    print("  headline before: " + ("UNKNOWN (aggregate unread)" if before is None
+          else f"worldwide {before[0]:,} jobs over {before[1]:,} entries"))
+
+    payload = {"members": ids, "primary": primary, "reason": reason,
+               "reviewer": str(fields.get("reviewer") or ""),
+               "apply": "1" if apply else "0",
+               "remove": "1" if remove else "0",
+               "allow_key_mismatch": "1" if allow else "0"}
+    time.sleep(pause)
+    r = requests.post(f"{site}/wp-json/layoffs/v1/declare-superset", json=payload,
+                      headers={"X-Layoff-API-Key": key, **UA}, timeout=TIMEOUT)
+    if r.status_code != 200:
+        return _fail(f"/declare-superset answered HTTP {r.status_code} {r.text[:400]}")
+    out = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    shown = {k: v for k, v in out.items() if k != "rows"}
+    print("response:", json.dumps(shown, indent=2)[:2000])
+    if out.get("rejected"):
+        return _fail(f"refused, nothing written: {out['rejected']}")
+    done = set(out.get("removed" if remove else "declared") or []) | set(out.get("unchanged") or [])
+    if done != set(ids):
+        return _fail(f"server accounted for {sorted(done)}, asked for {sorted(ids)}")
+    moved = int(out.get("jobs_moved") or 0)
+    sign = "+" if remove else "-"
+    print(f"  jobs that {'would ' if not apply else ''}leave the headline sum: {sign}{moved:,} "
+          "(entries fall by the same number of rows: /aggregate counts only non-member rows)")
+    if not apply:
+        print("DRY RUN - nothing written. Re-run with --apply to commit.")
+        return 0
+    if bool(out.get("dry_run")):
+        return _fail("asked to apply and the server answered dry_run; nothing was written")
+    time.sleep(pause)
+    after = _totals(site)
+    if after is None or before is None:
+        print("  headline after: UNKNOWN (aggregate unread); verify by hand")
+    else:
+        print(f"  headline after: worldwide {after[0]:,} jobs over {after[1]:,} entries "
+              f"(moved {after[0] - before[0]:+,} jobs, {after[1] - before[1]:+,} entries)")
+    return 0
+
+
 ADD_REQUIRED = ("company_name", "job_count", "layoff_date", "source_url", "source_name")
 RESTORE_REQUIRED = ADD_REQUIRED + ("dedup_hash", "original_id")
 
@@ -282,7 +377,7 @@ def run_add(site, key, fields, reason, apply):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ids", required=True, help="comma-separated table row ids (0 for add)")
-    ap.add_argument("--action", required=True, choices=("trash", "edit", "move-sources", "add", "restore-merged"))
+    ap.add_argument("--action", required=True, choices=("trash", "edit", "move-sources", "add", "restore-merged", "superset"))
     ap.add_argument("--reason", required=True, help="why (recorded on the suppression list / corrections log)")
     ap.add_argument("--fields", default="", help='edit: JSON of fields; move-sources: {"to_id", "urls"}; add: the entry JSON')
     ap.add_argument("--verify-company", default="", help="company filter used to show before/after")
@@ -300,7 +395,7 @@ def main():
 
     ids = [int(x) for x in a.ids.replace(" ", "").split(",") if x]
     fields = {}
-    if a.action in ("edit", "move-sources", "add", "restore-merged"):
+    if a.action in ("edit", "move-sources", "add", "restore-merged", "superset"):
         try:
             fields = json.loads(a.fields or "{}")
         except ValueError as exc:
@@ -313,6 +408,8 @@ def main():
         return run_move_sources(site, key, ids, fields, a.reason, a.apply)
     if a.action == "add":
         return run_add(site, key, fields, a.reason, a.apply)
+    if a.action == "superset":
+        return run_superset(site, key, ids, fields, a.reason, a.verify_company, a.apply)
     if a.action == "restore-merged":
         return run_restore_merged(site, key, fields, a.reason, a.apply)
 

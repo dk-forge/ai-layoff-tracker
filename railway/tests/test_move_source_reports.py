@@ -407,7 +407,7 @@ class FalseMergeCorrectionSpec(unittest.TestCase):
 class WorkflowOffersBoth(unittest.TestCase):
     def test_choices(self):
         wf = _read(WORKFLOW)
-        self.assertIn("options: [trash, edit, move-sources, add, restore-merged]", wf)
+        self.assertIn("options: [trash, edit, move-sources, add, restore-merged, superset]", wf)
         self.assertIn("default: false", wf, "apply must default to a dry run")
 
 

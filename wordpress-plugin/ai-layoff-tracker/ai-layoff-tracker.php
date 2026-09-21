@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.204
+ * Version:           2.20.205
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.204');
+define('ALT_VERSION', '2.20.205');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -40,6 +40,13 @@ require_once ALT_PLUGIN_DIR . 'includes/db.php';
 $alt_restore_merged = ALT_PLUGIN_DIR . 'includes/restore-merged.php';
 if (is_readable($alt_restore_merged)) {
     require_once $alt_restore_merged;
+}
+// Reviewer-declared superset membership (2.20.205). GUARDED with is_readable
+// like every new include: FTPS uploads one file at a time. db.php calls into it
+// only behind function_exists, so a half-landed deploy reconciles as before.
+$alt_declared_supersets = ALT_PLUGIN_DIR . 'includes/declared-supersets.php';
+if (is_readable($alt_declared_supersets)) {
+    require_once $alt_declared_supersets;
 }
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';

@@ -3015,6 +3015,15 @@ from filing_shape_check import (FilingShapeInvariant,  # noqa: E402
 
 INVARIANTS = INVARIANTS + (FilingShapeInvariant(),)
 
+# Reviewer-DECLARED superset memberships (2026-09-21), appended the same way.
+# The reconciler erases and re-derives every mark on each run; a membership two
+# reviewers ruled on lives in its own store and is re-applied after that clean
+# slate. This asks whether the re-application landed on the live rows.
+from declared_supersets_check import (DeclaredSupersetsInvariant,  # noqa: E402
+                                      declared_superset_findings)
+
+INVARIANTS = INVARIANTS + (DeclaredSupersetsInvariant(),)
+
 
 class Result:
     def __init__(self, inv, state, observed=None, detail="", error=None, pending=False):

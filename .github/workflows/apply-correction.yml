@@ -11,16 +11,16 @@ on:
         description: "Table row id(s), comma-separated (the id the /query API returns)"
         required: true
       action:
-        description: "trash, edit, move-sources, add, or restore-merged (reinsert source-proven rows removed by a false merge)"
+        description: "trash, edit, move-sources, add, restore-merged (reinsert source-proven rows removed by a false merge), or superset (declare ids members of a programme total)"
         required: true
         default: trash
         type: choice
-        options: [trash, edit, move-sources, add, restore-merged]
+        options: [trash, edit, move-sources, add, restore-merged, superset]
       reason:
         description: "Why, in plain words. Recorded permanently."
         required: true
       fields:
-        description: 'edit: JSON object. move-sources: {"to_id": N, "urls": [...]}. add: entry object. restore-merged: array of original source-proven entry objects including original_id and dedup_hash.'
+        description: 'edit: JSON object. move-sources: {"to_id": N, "urls": [...]}. add: entry object. restore-merged: array of original source-proven entry objects including original_id and dedup_hash. superset: {"primary": N} (optional "reviewer", "allow_key_mismatch": true, "remove": true).'
         required: false
         default: ""
       verify_company:

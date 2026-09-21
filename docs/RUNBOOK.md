@@ -1741,6 +1741,55 @@ No paid model call happens anywhere in this path; the only cost is bandwidth.
   when a third-party site redesigns (now auto-detected + emailed), refreshing the
   private benchmark, and novel-source judgment. Do not claim "100% automated".
 
+## Declare a programme total (reviewer-declared superset membership)
+
+**When.** Several rows are all real and all correctly sourced, and they are ONE
+programme announced in stages or restated upward (1,800, then 5,800, then
+9,000). Trashing the earlier rows would be a different public record. The
+ruling is "members": count the programme once at its latest announced size and
+keep every announcement as its own row with its own receipt. Two independent
+reviewers first; only a disagreement goes to the owner.
+
+**How.** `apply-correction.yml`, the same dry-run-then-apply door as every
+other correction:
+
+| input | value |
+|---|---|
+| `action` | `superset` |
+| `ids` | the MEMBER row ids, comma-separated |
+| `fields` | `{"primary": <row id of the programme total>, "reviewer": "..."}` |
+| `verify_company` | REQUIRED. A `q=` filter under which every id, members and primary, must be visible. It is the guard against a mistyped id. |
+| `reason` | the ruling, in plain words. Recorded in the store and the public corrections log. |
+| `apply` | leave false, read the log, then run again with true |
+
+1. Dry run. The tool asks the server with `apply=0`; the server judges. Read
+   `declared`, `rejected` and `jobs_moved`. One rejected member refuses the
+   whole call, because half a ruling is a state nobody ruled on.
+2. **`company keys differ`** means member and primary do not share an
+   `alt_company_key()`. Check it is not a typo. If the rows really are one
+   employer spelled two ways, add `"allow_key_mismatch": true` to `fields` for
+   THOSE members only; the override is recorded on the declaration.
+3. Apply. The members are marked at once; dispatch `reconcile-supersets.yml`
+   with `apply=1`, `detail=1` and read its `declared` block: `applied` must list
+   every member and `released` must be empty.
+4. Verify: `/aggregate` worldwide drops by exactly the members' job sum, and
+   `totals.entries` by the number of members (members leave `totals` and enter
+   `excluded`; the rows still list and still render). `python3
+   railway/data_integrity.py` must show `declared_supersets_reflected` PASS.
+5. A headline that moves opens a `headline_movement` incident. Record the
+   arithmetic and the row ids in TECHLOG and close it with `--close-incident`.
+
+**Withdraw:** the same call with `"remove": true` in `fields`.
+
+**`declared_supersets_reflected` is FAILING.** A stored declaration is not on
+the live rows. `GET /declared-supersets` names it. A missing primary (someone
+trashed the programme row) RELEASES its members, so they count again:
+re-declare them against the surviving total or withdraw them. A present
+primary with an unmarked member means the reconciler did not re-apply: check
+that `includes/declared-supersets.php` landed on the host (a half-uploaded
+deploy reconciles the old way, by design) and re-run the reconcile. Never set
+`superset_of` by hand; the next clean slate erases it.
+
 ## Quarterly source-verification audit (the accuracy claim)
 
 What it produces: the number we publish in the FAQ ("How do you check your own

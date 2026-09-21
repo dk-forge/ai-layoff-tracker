@@ -387,6 +387,10 @@ class InvariantCoverage(unittest.TestCase):
         # field values; the LIVE reading is data-integrity.yml, daily.
         "filing_shape_tells": ("test_filing_shape_guards",
                                "TheInvariantOnTheKnownInstances"),
+        # A stored declaration the live rows do not reflect. Armed offline on
+        # the 2026-09-21 shape (member 178740, primary 176911, mark missing);
+        # the LIVE reading is data-integrity.yml, daily.
+        "declared_supersets_reflected": ("test_declared_supersets", "Invariant"),
     }
 
     @staticmethod
