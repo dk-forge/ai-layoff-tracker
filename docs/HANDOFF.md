@@ -10,6 +10,13 @@ holder, so the start-of-session ritual surfaces it automatically.
   complete.** Daily main-green check. Adds ONLY `railway/main_green.py`, `railway/tests/test_main_green.py`,
   `.github/workflows/main-green-check.yml`, a TECHLOG entry and this line. No
   plugin file, no version reserved, no existing file edited.
+- **RELEASED - Claude alongside, 2026-09-21, branch `fix/train-lifts-its-own-stale-hold`.
+  Does not take the baton: every entry below is RELEASED.** Touches only
+  `railway/merge_train.py`, the new `railway/merge_train_holds.py`, the new
+  `railway/tests/test_merge_train_holds.py`, TECHLOG and this line. The train
+  now lifts a `needs-human` it placed itself once the head it judged is gone,
+  and escalations record the real head SHA. No plugin file, no workflow file,
+  no version reserved, no request to the live host.
 - **RELEASED - Claude, 2026-09-21, branch `fix/train-dispatches-deploy` (PR #394,
   merged). Work complete.** The merge train merges with the default Actions
   token, which starts no on-push workflow, so a train-merged plugin change
