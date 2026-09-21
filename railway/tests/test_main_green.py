@@ -91,6 +91,9 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(judge(listing(run("cancelled"), run("failure", 5))).state, mg.FAIL)
         self.assertEqual(judge(listing(run("cancelled"), run("success", 5))).state, mg.PASS)
 
+    def test_the_listing_order_is_not_trusted(self):
+        self.assertEqual(judge(listing(run("success", 50), run("failure", 1))).state, mg.FAIL)
+
     def test_no_run_at_all_is_unknown_not_green(self):
         self.assertEqual(judge(listing()).state, mg.UNKNOWN)
 

@@ -126,7 +126,9 @@ def judge(wf: Workflow, payload: Any, head_sha: str, head_at: datetime,
     if not decided:
         return Verdict(wf.file, UNKNOWN,
                        f"{len(runs)} run(s) on main, none completed with a verdict")
-    newest = decided[0]
+    # Never trust the listing's order: one live read on 2026-09-21 put a
+    # six day old run first. ISO timestamps sort as text.
+    newest = max(decided, key=lambda r: str(r.get("created_at") or ""))
     url = str(newest.get("html_url") or "")
     sha = str(newest.get("head_sha") or "")[:8]
     conclusion = str(newest.get("conclusion"))
