@@ -81,11 +81,18 @@ jobs:
           set +e
           python3 railway/national_denominators.py --write
           echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Regenerate the country coverage tiers
+        # data/country-coverage.json is DERIVED from this measurement (among
+        # other registries); regenerating it in the same run means the two
+        # can never disagree, and test_country_tiers.py can never go stale on
+        # main again the way it did on 2026-09-18.
+        run: python3 railway/generate_country_tiers.py
       - name: Commit the measurement
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add railway/national_denominators_measurement.json
+          git add wordpress-plugin/ai-layoff-tracker/data/country-coverage.json
           # A quiet week legitimately produces no delta but the timestamp, and
           # that is committed on purpose: a measurement whose age cannot be read
           # resolves to UNKNOWN, not to a pass.
