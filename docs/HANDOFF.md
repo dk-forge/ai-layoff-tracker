@@ -6,6 +6,15 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-21 late night, tie-break rulings session,
+  branch `docs/rulings-0921-tiebreak`. Work complete.** Rows 178738, 54971 and
+  68408 retracted, JPMorgan Chase 8,000 (2014-02-25) seeded as 179423, 176911
+  moved to Multiple countries, all through `apply-correction.yml`. **Open:**
+  four restatement rows (178740, 178882, 132845, 62215) could not be marked
+  members of 176911, because nothing can declare a `superset_of` that survives
+  the reconciler's clean slate; 15,200 jobs still stack worldwide (TECHLOG
+  2026-09-21, top entry). Touches only TECHLOG, ARCHITECTURE and this line. No
+  plugin file, no version reserved.
 - **RELEASED - Claude (agent), 2026-09-21 night, open-items session. Work
   complete.** The non-Latin `company_key` backfill ran (13 keys), 21 rows were
   retracted and 5 edited through `apply-correction.yml` on two-reviewer

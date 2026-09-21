@@ -1,3 +1,91 @@
+## 2026-09-21 - The three rows left for the owner were ruled by a tie-break pair: 3 retracted, 1 seeded, 1 edited, and the employer's restatement chain cannot be expressed as members
+
+**Class:** novel
+**Guard:** none. These are signed-off corrections, not a defect. The gap found
+(below) is a missing capability, recorded so nobody hand-edits around it.
+
+The earlier reviewer pair split on 54971 and 178738 and warned off the agreed
+edit to 178882. Under the owner's standing delegation a second, independent
+pair reviewed all three and agreed. Every write went through
+`apply-correction.yml`: a dry run, its log read, then a separate apply.
+
+| row | action | dry run | apply | end state |
+|---|---|---|---|---|
+| 178738 (1,382, filed under United States) | trash | 35660238269 | 35660303153 | gone |
+| 54971 (7,900, 2015-02-25) | trash | 35660384856 | 35660442091 | gone |
+| new: JPMorgan Chase 8,000, 2014-02-25 | add | 35660561164 | 35660638918 | stored as 179423 |
+| 68408 (1,860, 2024-02-05) | trash | 35660708721 | 35660774085 | gone |
+| 176911 (9,000; max 10,000; 2026-05-01) | edit country | 35660850131 | 35660920525 | Multiple countries, employer United States |
+
+**Reasoning, in brief.**
+- 178738: the 1,382 is the difference between two period-end headcounts in a
+  6-K ("the reduction of 1,382 employees between 1Q24 and 1Q25, mostly
+  explained by the PDV concluded in 2024"), not an announced event. The stored
+  excerpt never contains the figure, and United States was only the filing
+  venue. Both reviewers: retract.
+- 54971: slide 6 of the 2015-02-25 investor day deck, "Achieved ~7.9K
+  headcount reduction in 2014", a retrospective scorecard that includes
+  contractors, dated by its disclosure and not by its event. Both reviewers:
+  retract, and both confirmed the underlying event is real and was held by no
+  row. It was seeded through `action=add` (the `/add` door, every server guard,
+  hash derived not typed): 8,000, announced 2014-02-25, source HousingWire,
+  read and confirmed (6,000 in mortgage banking plus 2,000 in consumer
+  banking, card and auto). Second source, recorded in the reason because
+  `/add` takes one URL and the outlet refuses automated reads:
+  thedailyrecord.com/2014/02/25/jpmorgan-adds-cuts-to-lay-off-8000-total-this-year/
+- The cosmetics employer: one programme, restated upward twice (1,800 to 3,000
+  on 2024-02-05; 5,800 to 7,000 on 2025-02-04; 9,000 to 10,000 on 2026-05-01).
+  Ruling: count it ONCE at its latest size. 176911 stays as the programme row
+  and its country moved to Multiple countries. 68408 retracted: its source
+  states only "3% to 5% of its global workforce" and the 1,860 was computed.
+  61562 (one country's slice) and the 2020 programme rows were not touched.
+
+**NOT DONE, and exactly why: rows 178740, 178882, 132845 and 62215 could not be
+marked as members of 176911.** The ruling asked for the `superset_of`
+mechanism. It cannot express this:
+1. No keyed endpoint or workflow sets `superset_of`. `/edit` allows 16 fields
+   and it is not one of them.
+2. The only writer is `alt_reconcile_supersets()`, which on every real run sets
+   `superset_of = 0` on the whole table and re-marks from its own rules. A
+   hand-set value would not survive the next run.
+3. Its rules pair a news total with WARN rows inside a 45-day window. A
+   restatement chain across 27 months of 8-K rows matches none of them.
+4. It reads `edited = 0` only, and 176911 is now pinned, so it is invisible to
+   the reconciler in any case.
+What is missing is a DECLARED membership: a committed list of (member id,
+primary id, reviewer, reason) that the reconciler re-applies after its clean
+slate, with a keyed route to add to it. Until that exists the four rows still
+stack: **15,200 jobs over-counted worldwide** (5,800 + 1,800 + 1,800 + 5,800),
+none of it in the United States location slice. Do not close this by trashing
+the four rows; the ruling was members, not retractions, and that is a
+different public record. 178740's date (2025-05-01, should be 2025-02-04) was
+also left: every `/edit` re-hashes the row, and `announcement_date` is not an
+editable field.
+
+**Arithmetic, for the `headline_movement` incident.** Read before and after
+from `/aggregate`, and it closes to the row:
+- Worldwide: 20,512,998 over 65,673 to 20,509,856 over 65,671. That is -1,382
+  -7,900 +8,000 -1,860 = **-3,142 jobs on -2 entries**.
+- United States, `country_basis=any` (the slice the invariant reads): the same
+  four, **-3,142 on -2**. 176911 stays in it through its employer country. On
+  top of this morning's -22,689 on -9 the invariant now reads -25,831 on -11,
+  which is exactly the sum.
+- United States, strict job location: 6,121,297 over 43,813 to 6,109,155 over
+  43,810, **-12,142 on -3**: the four above plus 176911's 9,000 leaving.
+Affected ids for `--close-incident`: 178738, 54971, 179423, 68408, 176911,
+plus the ids in the entry below.
+
+**Integrity.** Before: 22 PASS, `headline_movement` UNKNOWN (baseline 4.3h
+old). After: the same 22 PASS and the same UNKNOWN, moved by exactly the
+figures above. `filing_shape_tells` still lists 178882 as its one lead row,
+which is the unexpressed membership above and nothing new.
+
+**An API trap found on the way.** `/query?search=<name>` is not a filter. The
+name is ignored and the whole table comes back; the company filters are `q=`
+and `company=`. Recorded in ARCHITECTURE beside the other dropped-name cases.
+
+---
+
 ## 2026-09-21 - The 2026-09-16 open items closed: 13 empty company keys filled, 21 rows retracted, 5 edited, 3 left for the owner
 
 **Class:** novel
