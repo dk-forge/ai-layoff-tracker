@@ -33,19 +33,34 @@ parameterised relay is ignored out loud and the VPS scrapes for itself, so the
 worst case is the run we already had. Quebec and Mazowieckie stay on the VPS;
 they were never refused. No floor, baseline or threshold moved.
 
-**`archive_backfill` is the same wall and is NOT fixed here.** Save-Page-Now
-throttled 0 of 80 captures on 2026-09-09 and 4 of 80 on 2026-09-03 from a
-hosted runner; from the VPS it has throttled 80 of 80 on every run since
-2026-09-16 and archived nothing by capture. That is not the slow climb the
-backfill is designed for and raising `ARCHIVE_SPN_MAX` would make it worse.
-The repair is the same split (captures from a hosted runner, host writes from
-the VPS) or authenticated SPN keys, which only the owner can create. Left
-open, on purpose, for a session that can test it.
+**`archive_backfill` is the same wall, and the same shape fixes it.**
+Save-Page-Now throttled 0 of 80 captures on 2026-09-09 and 4 of 80 on
+2026-09-03 from a hosted runner; from the VPS it has throttled 80 of 80 on
+every run since 2026-09-16. That is not the slow climb the backfill is
+designed for, and `ARCHIVE_SPN_MAX`, the gaps and the back-off are untouched.
+The candidate list is a keyed route, so the split is three jobs
+(`railway/archive_relay.py`): `backfill` on the VPS does the availability pass
+and writes the misses it would have captured (the same first 80) to a plan;
+`capture` on `ubuntu-latest`, holding no secret, calls Save Page Now; `record`
+on the VPS posts the outcome and writes the terminal note. `record` trusts
+only the plan the VPS wrote: a URL that was not planned, or a link that is not
+an `https://web.archive.org/web/` permalink, is never recorded, and a capture
+job that failed leaves every planned URL `pending`, which is what the VPS
+observed. Guard: `tests/test_archive_relay.py`, which also fails if either
+hosted relay job ever names a secret or the host.
 
-**`warn_hi_ocr` is a deferral working as designed.** 2026-09-20 read all 24
-notices; 2026-09-21 stopped itself at 24.7 minutes with 9, under a busier
-runner. Worth knowing: the crawl restarts from the top, so a run that is
-always slow would never reach the tail. It is not always slow.
+**`warn_hi_ocr` was a deferral working as designed, with a hole in it.**
+2026-09-20 read all 24 notices; 2026-09-21 stopped itself at 24.7 minutes with
+9, under a busier runner. But the crawl restarted from the top every run and
+the deadline cuts from the bottom, so a runner that is ALWAYS slow would read
+the same head forever. The start of the crawl now rotates through
+`run_slice.rotate`, stepping by the number of notices a worst-case run is
+certain to start (derived from the deadline and the per-notice worst case, 10
+today), so every notice is reached within ceil(n / 10) runs however slow the
+runner is, and a fast run still reads the whole ring. It derives no run
+counter of its own. Guard: `tests/test_hi_ocr_crawl_reaches_every_notice.py`
+walks rings of 1 to 120. A listing that grows between runs shifts positions by
+the growth; the bound is then approximate by that much.
 
 **Three "runs that never finished", three different stories, none a dying
 collector.** `gdelt_historical` 2026-09-10 06:46Z was a manual dispatch
@@ -70,7 +85,8 @@ UNAVAILABLE, no ledger edit. The incident stays open for a human.
 number.** All 10 misses were unresolved Google News redirectors, which
 `robots.txt` forbids us to fetch and which return a stub. Healer PR #398 skips
 them before the request and counts them under their own reason, leaving the
-80% floor and the 20-row minimum alone; merged after review.
+80% floor and the 20-row minimum alone. Reviewed in this session and found
+correct; it touches no FORBIDDEN path. It is merged separately from this entry.
 
 ## 2026-09-21 - Superset membership could only be derived, never declared, so a two-reviewer ruling had nowhere to live and 15,200 jobs stacked
 

@@ -102,6 +102,16 @@ DRY_RUN = os.environ.get("ARCHIVE_BACKFILL_DRY_RUN", "").lower() in {"1", "true"
 # caller backs off instead of treating it as a permanent failure.
 RATE_LIMITED = "__rate_limited__"
 
+#: CAPTURES FROM ANOTHER ADDRESS (railway/archive_relay.py). This job must run
+#: on the one VPS the host whitelists, and web.archive.org throttles that
+#: address: 80 of 80 Save-Page-Now captures on every run from 2026-09-16,
+#: against 0 to 4 of 80 from a hosted runner the week before. When this names a
+#: file, the misses that WOULD have been captured here (the same first SPN_MAX,
+#: no more) are written to it and left unrecorded; a secret-free hosted job
+#: captures them and a third job posts the outcome. Unset = capture here, as
+#: before. SPN_MAX, the gaps and the back-off do not change with the address.
+HANDOFF_FILE = os.environ.get("ARCHIVE_SPN_HANDOFF_FILE", "")
+
 
 # --- pure helpers (unit-tested) -------------------------------------------
 
@@ -250,6 +260,8 @@ def run():
             except Exception as exc:
                 print(f"::warning::flush failed ({exc}); will retry the batch next flush")
 
+    handoff = []
+
     def process(urls):
         """One batch: the free availability pass, then the bounded SPN pass."""
         nonlocal archived, pending, checked, saves, rate_limited
@@ -284,6 +296,10 @@ def run():
                 pending += 1
                 records.append({"url": url, "archived_url": "", "status": "pending"})
                 flush()
+                continue
+            if HANDOFF_FILE:
+                saves += 1          # it spends this run's capture budget
+                handoff.append(url)  # recorded by archive_relay's post stage
                 continue
             spn = save_page_now(url, session)
             saves += 1
@@ -349,6 +365,9 @@ def run():
         return {"archived": 0, "pending": dry_misses, "checked": checked}
 
     flush(force=True)  # post the remainder
+    if HANDOFF_FILE:
+        import archive_relay
+        archive_relay.write_plan(HANDOFF_FILE, handoff)
     # FAIL LOUD: flush() swallows a failed post so it can retry, but if the
     # final forced flush also failed the records were never persisted and are
     # still buffered here. A run that captured nothing because every write
@@ -371,6 +390,12 @@ def run():
               f"{coverage_after.get('distinct_source_urls', 0)} distinct source URLs "
               f"({coverage_after.get('coverage_pct', 0)}%), "
               f"{coverage_after.get('unavailable', 0)} recorded unavailable")
+    if HANDOFF_FILE and handoff:
+        # Not terminal: the capture and post stages finish this run and write
+        # the note that carries the throttle count. Closing it here would make
+        # "handed off" read as "0 captured".
+        print(detail + f"; {len(handoff)} handed to the capture job")
+        return {"archived": archived, "pending": pending, "checked": checked}
     print(detail)
     # A run that captured nothing AND could not even find existing snapshots,
     # only because every save was throttled, is a degraded (not failed) state:
