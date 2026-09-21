@@ -91,7 +91,10 @@ jobs:
       - name: Publish
         run: cat /tmp/janitor.txt >> "$GITHUB_STEP_SUMMARY"
 
-      # Exit 2 means something matched the escalation vocabulary
+      # Exit 2 means something NEW matched the escalation vocabulary: a message no
+      # earlier live sweep has tagged. Mail already escalated once and still
+      # inside the retention window is a note in the summary and exits 0.
+      # Exit 2 used to mean anything matched the escalation vocabulary
       # (production / main / payment / data loss). That is the whole point of
       # reading this mailbox, so it goes red and ci-alert emails the cause.
       - name: Fail when something needs a human, or the mailbox is unreadable

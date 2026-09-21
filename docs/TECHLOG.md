@@ -1,3 +1,59 @@
+## 2026-09-21 - Three standing reds, three different defects: a deferred job that looked stopped, a baseline that was committed and never pushed, and a janitor that was red about mail it had already reported
+
+**Class:** silent-stop
+**Guard:** `tests/test_commit_retry_loops_push.py` (fails on any retry loop that
+rebases and re-tests the index), `DeferredRunReportsItselfTest` in
+`tests/test_dedupe_window.py`, and six new-versus-old tests in
+`tests/test_mailbox_janitor.py`.
+
+`ops_status` had exited 2 on these for days. Each was diagnosed from the run
+logs, and in no case was a threshold, ceiling or window touched.
+
+**`dedupe_llm` STALE at 11 days (and with it the weekly health digest).** The
+workflow ran green every day. Every run since 2026-09-10 printed `DEGRADED:
+paid reads are OFF (OpenRouter provider key exhausted)`: the key the runners
+hold has reached its own key limit, which is a lifetime ceiling on the key and
+is separate from the account (balance 32.87 USD on 2026-09-21) and from the
+monthly allowance (3.71 of 10.00 USD spent). The spend guard deferred every
+paid call, which is correct and is UNDECIDED, not a fault. The defect is that
+the deferral path in `dedupe_llm._run()` returned before posting any health
+note, so "ran and was told not to spend" aged into "collector may have
+STOPPED" and sent the owner to repair a scraper. It now posts `degraded` with
+the cause (`report_deferred`), never `ok`, because nothing was judged. **No
+money was spent and none may be until the owner raises or replaces the limit
+on that key in the OpenRouter dashboard.** Every other paid GitHub job is
+deferring for the same reason; they already report it.
+
+**`backup_state.json` STALE at 15 days.** `backup-export.yml` ran green on
+2026-09-13 and 2026-09-20, published both exports, and recorded no baseline.
+Its commit step tested `git diff --staged --quiet` INSIDE the push retry loop.
+A rejected push was rebased, the loop came round, found nothing staged because
+the commit already existed, printed "Baseline unchanged." and exited 0 without
+pushing. main takes a bot commit every ten minutes and the export runs for
+five, so the race is now lost more often than won. The commit happens once,
+before the loop; the loop retries only the push. No other workflow has the
+shape (the others reset and re-derive, where the question is about fresh work).
+
+**Mailbox janitor red on every run.** After #392 the remaining reds were
+exit 2 on the sandbox mailbox: 15 escalating subjects, all already reported,
+all still inside the 14-day window. One message therefore reddened fourteen
+consecutive runs, and a job that is always red escalates nothing. The runner
+holds no state, so the mailbox does: a LIVE sweep tags what it escalated with
+the IMAP keyword `$AltEscalated` in one STORE, and a tagged message is printed
+as "already escalated" and exits 0. A dry run tags nothing, a refused STORE
+tags nothing, an undated message is always new; all three fail towards red.
+Mail dated before 2026-09-22 counts as already escalated, because the old
+regime reported it daily. This is not an age rule: a rolling "older than a day"
+would let one skipped schedule swallow a message nobody had been told about.
+One run in the sample (35655167521) was a genuine `SEARCH => socket error:
+EOF`, which is UNKNOWN and stays red, as it should.
+
+**Addendum to the corrections entry below.** Run to row, for the four the
+entry lists without pairing: trash 35654479454 is 179236; edit 35654610408 is
+179233 (Bridgestone Taiwan, 551); the re-dispatched trash 35656613079 is
+179234 and 179235 together (the Bridgestone duplicates of 179233, whose first
+attempt, 35654494275, was cancelled before any step); 179201 and 179231 are the two Samsung rows folded
+into 179202.
 ## 2026-09-21 - The three rows left for the owner were ruled by a tie-break pair: 3 retracted, 1 seeded, 1 edited, and the employer's restatement chain cannot be expressed as members
 
 **Class:** novel
