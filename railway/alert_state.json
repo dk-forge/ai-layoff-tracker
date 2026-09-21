@@ -87,6 +87,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "recall-precision-measurement:main:34dbeb3d8a8eb361": {
+      "first": 1790022525,
+      "last": 1790022525,
+      "subject": "CI RED: Recall + precision measurement \u2014 recall/precision bound breached (exit 2) - see the step above for the failing assertion"
+    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -123,6 +128,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T18:13:25+00:00",
+  "updated_at": "2026-09-21T20:28:45+00:00",
   "version": 1
 }
