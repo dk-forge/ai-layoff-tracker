@@ -15,6 +15,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   `data_integrity.py`, docs. RESERVES the next plugin version past main. Does
   NOT touch dedupe_llm, mailbox_janitor, backup state or headline incident
   tooling (PR #401 owns those).
+- **RELEASED - Claude alongside, 2026-09-21 late night, branch `ci/train-reads-with-builtin-token`. One workflow line plus a TECHLOG entry; did not take the baton (another agent may hold it for ops reds and the superset PR #402).**
 - **RELEASED - Claude (agent), 2026-09-21 late night, tie-break rulings session,
   branch `docs/rulings-0921-tiebreak`. Work complete.** Rows 178738, 54971 and
   68408 retracted, JPMorgan Chase 8,000 (2014-02-25) seeded as 179423, 176911
@@ -24,6 +25,24 @@ holder, so the start-of-session ritual surfaces it automatically.
   the reconciler's clean slate; 15,200 jobs still stack worldwide (TECHLOG
   2026-09-21, top entry). Touches only TECHLOG, ARCHITECTURE and this line. No
   plugin file, no version reserved.
+- **RELEASED - Claude (agent), 2026-09-21 late, branch `fix/standing-reds-0921`.
+  Work complete.** Standing reds: `dedupe_llm` now reports a budget deferral as
+  `degraded` instead of going silent (the cause is the runners' OpenRouter KEY
+  LIMIT, exhausted since 2026-09-10; only the owner can raise it, nothing was
+  spent); `backup-export.yml` pushes the baseline it commits; the mailbox
+  janitor is red only on mail no live sweep has tagged. No plugin file, no
+  version reserved. **If `python3 railway/data_integrity.py --incidents` shows
+  an open incident, close it with exactly these (baseline 2026-09-21T17:37Z
+  plus the explained move; never edit the JSON), then commit BOTH
+  `railway/headline_incidents.json` and `railway/headline_baseline.json`:**
+  ```bash
+  python3 railway/data_integrity.py --close-incident us_all_time --reviewed-by "two independent agent reviewers under the owner's standing delegation" --reason "Signed-off corrections of 2026-09-21 (TECHLOG): eight US 8-K rows that were not the filer's own headcount were trashed (20,689 jobs) and row 178798 (2,000) left country_basis=any when its employer country moved to Canada (-22,689 on -9); then the tie-break rulings retracted 178738, 54971 and 68408 and seeded 179423 (-3,142 on -2); -25,831 jobs on -11 entries, closed to the row" --rows "176882,178626,49074,176640,49094,60742,48884,177155,178798,178738,54971,68408,179423,176911" --replacement-jobs 7064491 --replacement-entries 43956
+  python3 railway/data_integrity.py --close-incident worldwide_all_time --reviewed-by "two independent agent reviewers under the owner's standing delegation" --reason "Signed-off corrections of 2026-09-21 (TECHLOG): 21 rows trashed as duplicates or as figures that are not the filer's headcount (-42,573 jobs) and row 179233 recounted to 551 (+191), -42,382 on -21; then the tie-break rulings retracted 178738, 54971 and 68408 and seeded 179423 (-3,142 on -2); -45,524 jobs on -23 entries, closed to the row" --rows "54975,177077,177102,179231,179201,177078,179234,179235,179204,179112,176666,179236,176882,178626,49074,176640,49094,60742,48884,175851,177155,179233,178738,54971,68408,179423,176911" --replacement-jobs 20509856 --replacement-entries 65671
+  ```
+  Run the second only if `worldwide_all_time` is actually open. If the open
+  incident's own figures differ from -25,831 / -11 (US) or -45,524 / -23
+  (worldwide) because other rows arrived or left, do NOT
+  reuse these numbers: re-derive the replacement from the pinned baseline.
 - **RELEASED - Claude (agent), 2026-09-21 night, open-items session. Work
   complete.** The non-Latin `company_key` backfill ran (13 keys), 21 rows were
   retracted and 5 edited through `apply-correction.yml` on two-reviewer

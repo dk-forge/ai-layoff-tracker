@@ -167,5 +167,39 @@ class CandidateClusterWindowTest(unittest.TestCase):
         self.assertNotIn("federal_rif", requested[0])
 
 
+class DeferredRunReportsItselfTest(unittest.TestCase):
+    """A budget-deferred run is not a stopped collector (2026-09-10..21)."""
+
+    def _run_with_paid_reads_off(self):
+        notes = []
+        with mock.patch.object(d, "SITE", "https://example.invalid"), \
+                mock.patch.object(d, "KEY", "k"), mock.patch.object(d, "OR_KEY", "k"), \
+                mock.patch.object(d, "fetch_all", return_value=[]), \
+                mock.patch.object(d, "candidate_clusters", return_value=[[1], [2], [3]]), \
+                mock.patch.object(d, "select_candidate_clusters", return_value=[[1]]), \
+                mock.patch.object(d.spend, "paid_reads_enabled", return_value=False), \
+                mock.patch.object(d.spend, "record_job_run"), \
+                mock.patch.object(d, "report_source_health",
+                                  side_effect=lambda *a: notes.append(a)):
+            code = d._run()
+        return code, notes
+
+    def test_a_deferred_run_posts_a_degraded_note_and_stays_green(self):
+        code, notes = self._run_with_paid_reads_off()
+        self.assertEqual(code, 0)
+        self.assertEqual(len(notes), 1)
+        source, status, entries, detail = notes[0]
+        self.assertEqual((source, entries), ("dedupe_llm", 0))
+        # Never `ok`: nothing was judged, and UNDECIDED must not read as a pass.
+        self.assertEqual(status, "degraded")
+        self.assertIn("DEFERRED", detail)
+        self.assertIn("0 of 3", detail)
+        self.assertIn("UNDECIDED", detail)
+
+    def test_a_failed_health_write_never_fails_the_deferred_run(self):
+        with mock.patch.object(d, "report_source_health", side_effect=OSError("down")):
+            d.report_deferred(5)
+
+
 if __name__ == "__main__":
     unittest.main()
