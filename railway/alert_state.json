@@ -67,11 +67,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "dmarc-report-check:main:27939f9597a6c6c5": {
-      "first": 1789909300,
-      "last": 1789909300,
-      "subject": "CI RED: DMARC report check \u2014 DMARC reports could not be read. That is UNKNOWN, not a pass."
-    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1789677077,
       "last": 1789677077,
@@ -133,6 +128,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T02:15:09+00:00",
+  "updated_at": "2026-09-21T08:34:51+00:00",
   "version": 1
 }
