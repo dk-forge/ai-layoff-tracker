@@ -57,6 +57,11 @@
       "last": 1789933451,
       "subject": "CI RED: Apply a signed-off correction \u2014 ids not applied: [179379]"
     },
+    "ci-noise:2026-w39": {
+      "first": 1790014405,
+      "last": 1790014405,
+      "subject": "CI noise, week 2026-w39: 3 noisy run(s) in ai-layoff-tracker"
+    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -118,6 +123,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T17:38:10+00:00",
+  "updated_at": "2026-09-21T18:13:25+00:00",
   "version": 1
 }
