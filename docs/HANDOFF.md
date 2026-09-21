@@ -6,6 +6,16 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HOLDS - Claude, 2026-09-21, branch `fix/country-coverage-regenerates-with-the-measurement`,
+  worktree `/tmp/wt-country-cov`. Reserves plugin version 2.20.204.** Fixing
+  `test_country_tiers.py` staleness (country-coverage.json not regenerated
+  after the 2026-09-18/09-20 rolling-recall and national-denominators
+  measurements) and wiring both measurement workflows to regenerate+commit it
+  together going forward; then PR #392 (mailbox_janitor abort-as-UNKNOWN).
+  Touches the two measurement workflows, `country-coverage.json`, the version
+  bump, a new test class and TECHLOG. No correction spec touched, no backfill
+  or dedupe run against live. Releasing when both are merged, the plugin
+  deploy for this commit is confirmed live, and #392 is merged.
 - **RELEASED - Claude alongside, 2026-09-16, branch `fix/unicode-company-key` (PR #385), worktree
   `/tmp/wt-ckey`. Reserves plugin version 2.20.203.** Does not take the baton:
   every entry above is RELEASED. Touches `includes/api.php`

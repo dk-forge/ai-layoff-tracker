@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "apply-a-signed-off-correction:main:9a62e416e8430162": {
+      "first": 1789933451,
+      "last": 1789933451,
+      "subject": "CI RED: Apply a signed-off correction \u2014 ids not applied: [179379]"
+    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -61,11 +66,6 @@
       "first": 1788899985,
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
-    },
-    "dmarc-report-check:main:27939f9597a6c6c5": {
-      "first": 1789909300,
-      "last": 1789909300,
-      "subject": "CI RED: DMARC report check \u2014 DMARC reports could not be read. That is UNKNOWN, not a pass."
     },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1789677077,
@@ -81,6 +81,11 @@
       "first": 1789306127,
       "last": 1789306127,
       "subject": "CI RED: Mailbox janitor \u2014 Something in the notification mailbox needs a human, or the login was refused. See the job summary."
+    },
+    "mailbox-janitor:main:819dd5ba32cdd289": {
+      "first": 1789956909,
+      "last": 1789956909,
+      "subject": "CI RED: Mailbox janitor \u2014 The mailbox could not be read. UNKNOWN, not a pass."
     },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
@@ -123,6 +128,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-20T18:57:46+00:00",
+  "updated_at": "2026-09-21T08:34:51+00:00",
   "version": 1
 }

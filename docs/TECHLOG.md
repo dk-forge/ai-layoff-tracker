@@ -1,3 +1,43 @@
+## 2026-09-21 - country-coverage.json was not regenerated when its own measurements moved, and reddened every PR built from main
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_country_tiers.py::MeasurementCommitWorkflowsTests`
+(new: pins both measurement workflows to regenerate-then-commit in one step,
+and a second check that the currently committed tiers agree with a fresh
+regeneration independent of the existing date-anchored comparison).
+
+`wordpress-plugin/ai-layoff-tracker/data/country-coverage.json` is generated
+by `railway/generate_country_tiers.py` from, among other registries, the two
+committed weekly measurement files: `railway/rolling_recall_measurement.json`
+(`rolling-recall.yml`, Thursdays) and `railway/national_denominators_measurement.json`
+(`national-denominators.yml`, Fridays). Both workflows commit their own
+measurement file straight to `main` on a schedule; neither ever regenerated
+the derived tiers file. On 2026-09-18 `national-denominators.yml` committed a
+new Estonia/GB denominator (2968, period 2025-08..2026-07, measured 19:04:47Z)
+and on 2026-09-20 `rolling-recall.yml` committed a new EDGAR window; the
+committed `country-coverage.json` still carried the 2026-09-14 figures.
+`test_country_tiers.py::CommittedTiersTests::test_committed_json_matches_regeneration`
+failed on `main` from that point on, and therefore on every PR built from it,
+including #392.
+
+The fix regenerates the tiers file in the SAME run as each measurement, right
+before the existing "Commit the measurement" step, and stages both files in
+one commit (`git add railway/<measurement>.json`,
+`git add wordpress-plugin/ai-layoff-tracker/data/country-coverage.json`) so
+the two can never disagree again. This mirrors the existing convention for a
+bot-committed plugin data file: `recall-precision.yml` already commits
+`wordpress-plugin/ai-layoff-tracker/data/recall-measurement.json` on its own
+schedule with no version bump, because an automated data commit is not itself
+a deploy decision. This PR's own manual regeneration IS a human-reviewed
+change that a merge deploys, so it bumps `Version:` / `ALT_VERSION` to
+2.20.204.
+
+Verified: `python3 railway/generate_country_tiers.py` in a fresh worktree from
+`origin/main` changed only the 17 lines the two stale measurements account for
+(`generated_on`, the Estonia and GB denominator/period/coverage/measured_at
+fields, and the rolling-recall EDGAR window/measured_at); everything else
+byte-identical. `test_country_tiers.py` (18 tests, 2 new) passes.
+
 ## 2026-09-17 - The Hawaii OCR import had no wall clock, so the runner killed it at 30m0s, and the guard written for exactly that could not see it
 
 **Class:** absent-read-as-ok
