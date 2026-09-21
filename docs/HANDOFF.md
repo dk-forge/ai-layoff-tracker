@@ -6,12 +6,13 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD - Claude, 2026-09-21, branch `fix/train-dispatches-deploy`, own
-  worktree.** The merge train merges with the default Actions token, which
-  starts no on-push workflow; teaching it to dispatch the deploy and the tests
-  on main. Touches `railway/merge_train.py`, its test, `.github/merge-train.json`,
-  `.github/workflows/tests.yml` (one trigger), TECHLOG and this line. **No
-  plugin file, no plugin version reserved.**
+- **RELEASED - Claude, 2026-09-21, branch `fix/train-dispatches-deploy` (PR #394,
+  merged). Work complete.** The merge train merges with the default Actions
+  token, which starts no on-push workflow, so a train-merged plugin change
+  never deployed (#393). `merge_train.sync_main()` now reconciles main after
+  every run by dispatch: `deploy-plugin.yml` when main's plugin tree differs
+  from the last green deploy and no deploy ran inside 60 min, `tests.yml` when
+  main's head has no run. No plugin file touched, no version reserved.
 - **RELEASED - Claude, 2026-09-21, branch `fix/country-coverage-regenerates-with-the-measurement`
   (PR #393, merged as `8603269b`, 2.20.204) then PR #392 (`6d8550be`). Work
   complete.** Fixed `test_country_tiers.py` staleness: country-coverage.json
