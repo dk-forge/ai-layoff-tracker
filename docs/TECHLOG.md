@@ -1,3 +1,10 @@
+## 2026-09-21 - The owner's new MERGE_TRAIN_TOKEN stopped every merge train: the check-runs API refuses fine-grained tokens
+
+**Class:** silent-stop
+**Guard:** none yet in this repo. The sandbox's train watchdog (its PR #1089) raises an issue when the latest scheduled train run failed; port it here.
+
+The owner added a fine-grained personal access token as `MERGE_TRAIN_TOKEN` in all three repos at 22:03 UTC so the train could push mechanical conflict fixes. The workflow used that secret for EVERY call (`GH_TOKEN: secrets.MERGE_TRAIN_TOKEN || github.token`), and the train's first read is `commits/<sha>/check-runs`, which answers a fine-grained token with HTTP 403 "Resource not accessible by personal access token" whatever permissions it holds. Every train run from that minute would have died on its first pull request, in all three repos, with nothing merged overnight. Found in 30 minutes only because a dry run was dispatched to prove the token worked. Fix: the train reads and merges with the built-in token again, and `MERGE_TRAIN_TOKEN` is used only as `MERGE_TRAIN_PUSH_TOKEN`, to push a conflict fix. Nothing for the owner to redo. A credential that has never been exercised is a belief, not a capability.
+
 ## 2026-09-21 - Three standing reds, three different defects: a deferred job that looked stopped, a baseline that was committed and never pushed, and a janitor that was red about mail it had already reported
 
 **Class:** silent-stop

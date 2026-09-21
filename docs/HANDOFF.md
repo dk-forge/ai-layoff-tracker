@@ -15,6 +15,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   `data_integrity.py`, docs. RESERVES the next plugin version past main. Does
   NOT touch dedupe_llm, mailbox_janitor, backup state or headline incident
   tooling (PR #401 owns those).
+- **RELEASED - Claude alongside, 2026-09-21 late night, branch `ci/train-reads-with-builtin-token`. One workflow line plus a TECHLOG entry; did not take the baton (another agent may hold it for ops reds and the superset PR #402).**
 - **RELEASED - Claude (agent), 2026-09-21 late night, tie-break rulings session,
   branch `docs/rulings-0921-tiebreak`. Work complete.** Rows 178738, 54971 and
   68408 retracted, JPMorgan Chase 8,000 (2014-02-25) seeded as 179423, 176911
