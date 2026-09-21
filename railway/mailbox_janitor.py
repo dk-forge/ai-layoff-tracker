@@ -98,6 +98,28 @@ _ESCALATE = re.compile(
 )
 
 
+#: NEW versus STILL IN THE WINDOW. Until 2026-09-21 every sweep went red on any
+#: escalating subject it could see, and a message stays visible for the whole
+#: 14-day retention window, so ONE crash notice reddened fourteen consecutive
+#: daily runs. The sandbox leg was red on every run on record for that reason
+#: alone, and a job that is always red escalates nothing: on 2026-09-21 it sat
+#: in ops_status [4] beside two real faults and read the same as them.
+#:
+#: The runner keeps no state (contents: read), so the mailbox carries it. A
+#: LIVE sweep tags what it has escalated with this IMAP keyword, in one STORE,
+#: and the next sweep reports a tagged message as "still in the window": a
+#: note, not a red run. A dry run tags nothing, and a STORE the server refuses
+#: tags nothing, and both leave the message NEW, which is the safe direction.
+#: This is not an age rule on purpose: "older than a day is old" would let a
+#: skipped schedule swallow a message that was never reported once.
+_SEEN_KEYWORD = "$AltEscalated"
+
+#: Mail dated before this was already escalated, daily, by the regime above.
+#: A fixed instant and never a rolling age: nothing dated after it can be
+#: waved through without having been red once.
+_KEYWORD_EPOCH = datetime(2026, 9, 22, tzinfo=timezone.utc)
+
+
 def _scrub(text, secrets: list[str]) -> str:
     out = str(text)
     for s in secrets:
@@ -160,6 +182,9 @@ def sweep(host: str, user: str, password: str, retain_days: int,
     now = datetime.now(timezone.utc)
     classes: Counter[str] = Counter()
     escalate_counts: dict[str, int] = {}
+    old_counts: dict[str, int] = {}
+    new_nums: list[bytes] = []
+    marked = 0
     deletable: list[bytes] = []
     unreadable = 0
     total = 0
@@ -209,7 +234,7 @@ def sweep(host: str, user: str, password: str, retain_days: int,
             # three header fields this needs is one round trip per hundred
             # messages instead of one per message.
             CHUNK = 100
-            fields = "(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])"
+            fields = "(FLAGS BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])"
             for i in range(0, len(ids), CHUNK):
                 chunk = ids[i:i + CHUNK]
                 spec = b",".join(chunk).decode()
@@ -225,9 +250,15 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                 # bare separators. Pair each payload back to its message id
                 # from the metadata prefix, which is the only reliable link.
                 parsed = 0
-                for item in raw:
+                for pos, item in enumerate(raw):
                     if not isinstance(item, tuple) or len(item) < 2:
                         continue
+                    # FLAGS may arrive before the literal (in the metadata) or
+                    # after it (in the bare bytes that close the response).
+                    tail = raw[pos + 1] if pos + 1 < len(raw) else b""
+                    flags_blob = (item[0] if isinstance(item[0], (bytes, bytearray)) else b"") + \
+                                 (tail if isinstance(tail, (bytes, bytearray)) else b"")
+                    already = _SEEN_KEYWORD.encode().lower() in bytes(flags_blob).lower()
                     meta = item[0] if isinstance(item[0], (bytes, bytearray)) else b""
                     mnum = meta.split(b" ", 1)[0].strip() if meta else b""
                     if not mnum.isdigit():
@@ -242,7 +273,14 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                         # Collapse duplicates: 16 copies of one subject is one
                         # finding, and printing it 16 times buries the others.
                         key = re.sub(r"\s+", " ", subject[:110]).strip()
-                        escalate_counts[key] = escalate_counts.get(key, 0) + 1
+                        age_e = _age_days(msg, now)
+                        pre_epoch = (age_e is not None and
+                                     now - timedelta(days=age_e) < _KEYWORD_EPOCH)
+                        if already or pre_epoch:
+                            old_counts[key] = old_counts.get(key, 0) + 1
+                        else:
+                            escalate_counts[key] = escalate_counts.get(key, 0) + 1
+                            new_nums.append(mnum)
                     age = _age_days(msg, now)
                     if age is not None and age > retain_days:
                         deletable.append(mnum)
@@ -253,6 +291,19 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                 if parsed < len(chunk):
                     unreadable += len(chunk) - parsed
             removed = 0
+            if new_nums and not dry_run:
+                # BEFORE any delete: an expunge renumbers, and these are
+                # sequence numbers. ONE command for the whole set, because the
+                # server drops a session after about a hundred STOREs.
+                try:
+                    typ, _ = m.store(b",".join(new_nums).decode(), "+FLAGS",
+                                     _SEEN_KEYWORD)
+                    if typ == "OK":
+                        marked = len(new_nums)
+                except (imaplib.IMAP4.error, OSError, ssl.SSLError):
+                    # Untagged means NEW again next run. Red twice beats a
+                    # message nobody was ever told about.
+                    marked = 0
             if broke_early:
                 # Do not delete on a truncated pass. The counts are partial and
                 # a delete decision taken on partial information is the kind of
@@ -300,6 +351,9 @@ def sweep(host: str, user: str, password: str, retain_days: int,
         "total": total, "classes": classes,
         "escalate": [f"x{n:<4} {sub}" for sub, n in
                      sorted(escalate_counts.items(), key=lambda kv: -kv[1])[:15]],
+        "still_in_window": [f"x{n:<4} {sub}" for sub, n in
+                            sorted(old_counts.items(), key=lambda kv: -kv[1])[:15]],
+        "marked": marked,
         "unreadable": unreadable, "eligible": len(deletable),
         "removed": 0 if dry_run else removed, "dry_run": dry_run,
         "retain_days": retain_days, "partial": broke_early,
@@ -335,6 +389,7 @@ def main() -> int:
     total_removed = 0
     zero_passes = 0
     seen_escalations: dict[str, int] = {}
+    seen_old: dict[str, int] = {}
     for n in range(1, max_passes + 1):
         state, f, detail = sweep(host, user, pw, retain, dry)
         if n > 1:
@@ -353,6 +408,8 @@ def main() -> int:
         # crash notices that were already fixed, and left thousands behind.
         for line in f["escalate"]:
             seen_escalations[line] = seen_escalations.get(line, 0) + 1
+        for line in f["still_in_window"]:
+            seen_old[line] = seen_old.get(line, 0) + 1
         if dry or f["eligible"] == 0:
             break
         # A pass that removed nothing is usually the server dropping the
@@ -362,7 +419,11 @@ def main() -> int:
         if zero_passes >= 2:
             break
     if max_passes > 1:
+        # A later pass sees what an earlier pass tagged, so a subject that was
+        # NEW in any pass of this run is reported NEW, never as old.
         f = dict(f, removed=total_removed,
+                 still_in_window=[s for s in sorted(seen_old, key=lambda s: -seen_old[s])
+                                  if s not in seen_escalations][:15],
                  escalate=sorted(seen_escalations, key=lambda s: -seen_escalations[s])[:15])
         detail = f"{detail}; {n} pass(es), {total_removed} removed in total"
     print(f"MAILBOX JANITOR: {state} -- {detail}\n")
@@ -375,10 +436,20 @@ def main() -> int:
     print("  " + (f"DRY RUN, nothing deleted. Set JANITOR_DRY_RUN=false to clear."
                   if f["dry_run"] else f"deleted: {f['removed']}"))
 
+    if f["still_in_window"]:
+        print("\n  ALREADY ESCALATED, still inside the retention window (a note, not a red run):")
+        for s in f["still_in_window"]:
+            print(f"    - {s}")
     if f["escalate"]:
-        print("\n  SUBJECTS A HUMAN SHOULD SEE (matched production/main/payment/etc):")
+        print("\n  NEW SUBJECTS A HUMAN SHOULD SEE (not escalated by any earlier live sweep):")
         for s in f["escalate"]:
             print(f"    - {s}")
+        if f["dry_run"]:
+            print("  DRY RUN: nothing was tagged, so these stay NEW until a live sweep reports them.")
+        elif f.get("marked"):
+            print(f"  tagged {f['marked']} message(s) {_SEEN_KEYWORD}; the next sweep lists them as already escalated.")
+        else:
+            print("  The server did not accept the tag, so these will be reported NEW again.")
         return 2
     print("\n  Nothing in this mailbox matched the escalation vocabulary.")
     return 0

@@ -462,6 +462,32 @@ def canonical(group):
     ))[0]
 
 
+def report_deferred(candidates):
+    """Say "ran, reviewed nothing, paid reads are off" on the health ledger.
+
+    From 2026-09-10 to 2026-09-21 this job ran green every day and reviewed
+    nothing, because the OpenRouter key on the runners had reached its own
+    limit and the spend guard (correctly) deferred every paid call. The early
+    return above posted no health note, so the ledger aged into "11d old,
+    collector may have STOPPED" and the weekly digest went red sending the
+    owner to repair a scraper that was not broken. The fix a human can make is
+    on the key, and nothing said so.
+
+    `degraded`, never `ok`: a deferred review is UNDECIDED, and a note that
+    read green would turn a budget stop into a clean bill for the duplicates
+    nobody looked at. Observability only, so it never raises.
+    """
+    detail = (f"DEFERRED, not stopped: the run started and reviewed 0 of {candidates} "
+              "candidate cluster(s) because paid reads are OFF (spend guard: key limit or "
+              "monthly allowance, see the run's Spend guard step). No duplicate was "
+              "judged, which is UNDECIDED and not a pass. Clears by itself on the first "
+              "run after paid access returns")
+    try:
+        report_source_health("dedupe_llm", "degraded", 0, detail)
+    except Exception as e:
+        print(f"  dedup health write failed (non-fatal): {e}")
+
+
 def _run():
     if not (SITE and KEY and OR_KEY):
         print("WP_SITE_URL / WP_API_KEY / OPENROUTER_API_KEY required")
@@ -490,6 +516,7 @@ def _run():
         print("paid reads are OFF (spend ceiling) — skipping the LLM dedup "
               "review this run; the rotation resumes on the next schedule")
         spend.record_job_run(items=0, changed=0)
+        report_deferred(len(all_clusters))
         return 0
 
     merges, skipped = [], 0
