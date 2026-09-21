@@ -1,3 +1,40 @@
+## 2026-09-21 - A `needs-human` the train placed on an old head was never lifted, so a fixed pull request would be skipped forever with every gate green
+
+**Class:** silent-stop
+**Guard:** `railway/tests/test_merge_train_holds.py::LiftStaleHolds::test_the_trains_hold_on_THIS_head_stays` and `::TheWriterRecordsTheRealHead`
+
+`needs-human` is a hold label, so the train skips any pull request carrying it.
+The train adds it when it escalates (a human-only failure, a conflict it may
+not resolve, the unstick cap). Nothing ever removed it. In the sibling sandbox
+repo on 2026-09-21 a pull request was labelled for a red check, the cause was
+fixed with a new commit, the label stayed, and the train would have skipped it
+forever. A held pull request produces no red and no alert, only a HOLD line in
+a log nobody reads. This train had the identical shape and had not hit it yet.
+
+The fix is a port of the sandbox module, same semantics.
+`railway/merge_train_holds.py` runs before anything is judged and removes
+`needs-human` only when ALL of this holds: a train marker comment is on the
+pull request; no train marker names the current head SHA; every legacy
+`sha=escalated` marker is older than the head commit's committer date. It posts
+one "hold lifted" comment, deduped by the new head SHA. Anything unreadable
+keeps the hold. A `needs-human` with no train marker was set by a person and is
+never touched. `hold`, `do-not-merge` and `blocked` are never removed. A dry
+run prints and writes nothing. Lifting is not merging: the pull request is
+judged from scratch, and a head that is still red is escalated again against
+the new SHA.
+
+The escalation writer also changed. `_escalate` wrote `sha=escalated`, a
+placeholder that can only be dated, never matched. It now records the real head
+SHA, so "escalated against this head" is an exact comparison and the dated
+legacy path is only for markers written before today. `unstick_attempts` skips
+`action=needs-human` markers in its per-SHA count, so naming the head in an
+escalation does not spend an unstick attempt; the per-pull-request count is
+unchanged.
+
+Mutation-proved: with the "the train escalated THIS head" return deleted, the
+two guard tests above fail; restored, all 15 pass. No existing test was changed.
+No plugin file touched, no version reserved.
+
 ## 2026-09-21 - Every merge the train made started no workflow, so a merged plugin change never deployed and main was never tested
 
 **Class:** silent-stop
