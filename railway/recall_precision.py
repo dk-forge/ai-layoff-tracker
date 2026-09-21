@@ -53,6 +53,7 @@ import requests
 
 from recall_goldset import (format_interval, judge, measure, wilson,
                             write_measurement)
+from sources.google_news_url import is_redirector
 
 SITE = (os.environ.get("WP_SITE_URL") or "https://asktherecruiter.com/blog").rstrip("/")
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -160,7 +161,19 @@ def measure_precision():
     ok = bad = 0
     reasons = {}
     for x in rows:
-        text, err = _fetch_text(x["source_url"])
+        url = x["source_url"]
+        if is_redirector(url):
+            # A news.google.com/rss/articles/... link that our own offline
+            # resolver (sources/google_news_url.py) could not decode. Its
+            # robots.txt is Disallow: / for every UA including this one, and
+            # a fetch anyway returns an 11-byte redirect stub (measured
+            # 2026-08-18, blank_country_census.py UNREADABLE_HOSTS) that can
+            # never contain the job count. Counting that stub as a checked
+            # source misreads "we refuse to fetch this" as "the number is
+            # fabricated" -- excluded from the rate, like source_unreachable.
+            reasons["google_news_redirector"] = reasons.get("google_news_redirector", 0) + 1
+            continue
+        text, err = _fetch_text(url)
         time.sleep(0.3)
         if text is None:
             reasons["source_unreachable"] = reasons.get("source_unreachable", 0) + 1
