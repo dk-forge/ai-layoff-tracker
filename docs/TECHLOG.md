@@ -1,3 +1,82 @@
+## 2026-09-21 - The 2026-09-16 open items closed: 13 empty company keys filled, 21 rows retracted, 5 edited, 3 left for the owner
+
+**Class:** novel
+**Guard:** none. Nothing failed quietly here; this is the record of signed-off
+corrections. The guards that did the finding already exist:
+`filing_shape_tells` named the 8-K rows and `cross_alias_duplicate_rows` caught
+a third copy of one event the moment a rename made it visible (below).
+
+**The key backfill ran.** `company-key-rederive.yml` dry run 35653158807 read 13
+changed, 0 drift, exactly the 13 ids measured on 2026-09-16; apply run
+35654236922 wrote 13; a second dry run 35654446988 scanned 0. No dedup pass
+ran and no hash moved.
+
+**Every data decision went to two independent read-only reviewers, and only
+agreements were applied**, each through `apply-correction.yml` as a dry run,
+read, then a separate apply. One action per event, never more than two rows.
+
+Cross-script and cross-name duplicates, trashed (keeper in brackets): 54975
+[54974], 177077 [177400], 177102 [70131], 179231 and 179201 [179202, after
+moving the one on-topic link from 179201; its two other links were unrelated
+articles and went with the row], 177078 [70469], 179234 and 179235 [179233],
+179204 and 179112 [179162], 176666 [16, whose 350 contains this 250].
+179236 was not a duplicate of 179183 (a matching 134 and nothing else) and was
+retracted on its own merits: a retrospective annual pay-disclosure figure.
+**179112 was in nobody's list.** Renaming 179162 to the supplier firms put
+"AIGI" in its name, and `cross_alias_duplicate_rows` went FAIL on the pair
+within the hour. Two more reviewers, same verdict, trashed.
+
+8-K rows that are not the filer's own headcount, trashed: 176882 (a third
+party's estimate on another company's slide), 178626 (employees contributed to
+a joint venture), 49074 (a superseded target, dateless), 176640 (the pool
+eligible for a voluntary offer), 49094 (a percent-change column), 60742 (a
+chart axis label), 48884 (an INCREASE in average headcount), 175851 (the
+subsidiary's copy of parent row 175853), 177155 (only a percentage stated).
+
+Edits: 179233 to "Bridgestone Taiwan", 551 (the company's own figure, read
+from the cited report; the two reviewers said 551 and "about 550"); 179162 to
+"Ex-ILVA supplier firms (AIGI), Taranto"; 179232 to "HSBC", Germany (it was
+stored under China); 177080 to "Cirque du Soleil", Canada, 2020-06-29; 178798
+employer_country Canada. Kept unchanged by agreement: 48993, 179144, 19,
+175853, 179183.
+
+**Left for the owner, because the reviewers disagreed or the agreed edit was
+unsafe:**
+- 54971 (7,900): one says keep and date it 2014-12-31, one leans retract as a
+  retrospective net headcount change that includes contractors.
+- 178738 (1,382, stored under United States): one says keep and move it to
+  Brazil, one says retract as a year-over-year change in total headcount. Both
+  agree the stored country is wrong.
+- 178882 (1,800): both said edit to 5,800, and both warned of a double count.
+  The warning is live: 178740 already holds that 5,800 and 68408 holds the
+  February 2024 figure, so the agreed edit was NOT applied. The likely right
+  answer is a retraction as a restatement, and the employer's three cumulative
+  rows (1,860, 5,800, 9,000) want one ruling together.
+
+**Run ids (apply).** Move 35654256793. Trash 35654449895, 35654457331,
+35654464870, 35654472504, 35654479454, 35654486631, 35656613079 (the first
+attempt, 35654494275, was cancelled by the runner before any step ran and
+wrote nothing; verified by a read before the one re-dispatch), 35654501576,
+35654509815, 35654535307, 35654543510, 35654551920, 35654560114, 35654567951,
+35654575907, 35654584442, 35654592854, 35654601638, 35657269011. Edit
+35654610408, 35654619298, 35654628656, 35654637939, 35654646908. Every dry run
+preceded its apply and exited 0; run 35652172980 is a dry run I dispatched
+with a placeholder URL, refused by the tool as it should be.
+
+**Integrity.** Before: 23 of 23 PASS. After: 22 PASS and `headline_movement`
+UNKNOWN, which is the honest reading inside one ingest cycle. **The next daily
+run will probably open an incident, and it will be right to.** United States,
+all time, moved -22,689 jobs on -9 entries, which closes exactly: eight US rows
+trashed (176882, 178626, 49074, 176640, 49094, 60742, 48884, 177155 = 20,689)
+plus 178798 (2,000) leaving `country_basis=any` when its employer country
+moved to Canada. Worldwide loses 42,573 across the 21 trashed rows and gains
+191 on the 179233 recount. Close it the documented way with `--close-incident`
+and these row ids; do not wait it out. `filing_shape_tells` now lists 1 lead
+row (178882) and 9 count-absent rows, of which the reviewed ones were ruled
+real counts stated in another form.
+
+---
+
 ## 2026-09-21 - The non-Latin company key backfill was built on 2026-09-16 and had no caller, so 13 rows kept an empty key
 
 **Class:** silent-stop
