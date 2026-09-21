@@ -6,8 +6,8 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD - Claude (agent), 2026-09-21, branch `main-green-check`, scratch worktree.**
-  Adds ONLY `railway/main_green.py`, `railway/tests/test_main_green.py`,
+- **RELEASED - Claude (agent), 2026-09-21, branch `main-green-check` (PR #395). Work
+  complete.** Daily main-green check. Adds ONLY `railway/main_green.py`, `railway/tests/test_main_green.py`,
   `.github/workflows/main-green-check.yml`, a TECHLOG entry and this line. No
   plugin file, no version reserved, no existing file edited.
 - **RELEASED - Claude, 2026-09-21, branch `fix/train-dispatches-deploy` (PR #394,
