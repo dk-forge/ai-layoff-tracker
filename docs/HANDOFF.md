@@ -6,12 +6,14 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Claude (agent), 2026-09-21 evening, open-items session, branch
-  `ops/company-key-rederive-run`.** Closing the 2026-09-16 open items: the
-  non-Latin `company_key` backfill (new dispatch-only workflow
-  `company-key-rederive.yml`), the cross-script duplicate candidates and the
-  `filing_shape_tells` adjudication buckets, each through two independent
-  reviewers and `apply-correction.yml`. No plugin file, no version reserved.
+- **RELEASED - Claude (agent), 2026-09-21 night, open-items session. Work
+  complete.** The non-Latin `company_key` backfill ran (13 keys), 21 rows were
+  retracted and 5 edited through `apply-correction.yml` on two-reviewer
+  agreement, and three rows (54971, 178738, 178882) are written up for the
+  owner in TECHLOG 2026-09-21. **Next session:** the daily data-integrity run
+  will likely open a `headline_movement` incident for the US slice (-22,689 on
+  -9, explained to the row in that TECHLOG entry); close it with
+  `--close-incident`, never by waiting. No plugin file, no version reserved.
 - **RELEASED - Claude (agent), 2026-09-21, branch `main-green-check` (PR #395). Work
   complete.** Daily main-green check. Adds ONLY `railway/main_green.py`, `railway/tests/test_main_green.py`,
   `.github/workflows/main-green-check.yml`, a TECHLOG entry and this line. No
