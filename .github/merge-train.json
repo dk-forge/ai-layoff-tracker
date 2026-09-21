@@ -9,6 +9,10 @@
   ],
   "deploy_workflow": "deploy-plugin.yml",
   "deploy_window_minutes": 60,
+  "_post_merge": "The train merges with the default Actions token, and a push made with that token starts no on-push workflow. After every run the train reconciles main: it dispatches deploy_workflow when main's plugin tree differs from the last green deploy and no deploy ran inside the window, and it dispatches each workflow below when main's head carries no run of it. Each must declare workflow_dispatch.",
+  "post_merge_workflows": [
+    "tests.yml"
+  ],
   "hold_labels": [
     "hold",
     "needs-human",

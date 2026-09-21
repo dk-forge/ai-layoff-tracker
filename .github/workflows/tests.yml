@@ -13,6 +13,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  # The merge train merges with the default Actions token, and a push made with
+  # that token starts no workflow. The train dispatches this on main instead,
+  # so main's colour is known (railway/merge_train.py sync_main).
+  workflow_dispatch:
 
 concurrency:
   # SUPERSEDED PR RUNS ONLY. A newer commit on the same pull request makes the

@@ -649,6 +649,205 @@ class TheLabelItRelieson(_Quiet):
         self.assertIn("--force", calls[0])
         self.assertIn("--add-label", calls[1])
 
+# ---------------------------------------------------------------- sync main
+
+HEAD_SHA = "b" * 40
+LIVE_SHA = "c" * 40
+PLUGIN_FILE = "wordpress-plugin/ai-layoff-tracker/includes/api.php"
+
+
+class MainClient:
+    """Answers what `sync_main()` asks, and records every dispatch."""
+
+    def __init__(self, *, head=HEAD_SHA, head_age_min=120, shipped=LIVE_SHA,
+                 changed=(PLUGIN_FILE,), last_deploy_min=180, has_run=False,
+                 fail_dispatch=(), fail_reads=False):
+        self.head, self.head_age_min, self.shipped = head, head_age_min, shipped
+        self.changed, self.last_deploy_min = changed, last_deploy_min
+        self.has_run, self.fail_dispatch = has_run, set(fail_dispatch)
+        self.fail_reads = fail_reads
+        self.dispatched = []
+
+    def main_head(self, branch):
+        if self.fail_reads:
+            raise mt.MergeTrainError("NOREAD")
+        return self.head, NOW - timedelta(minutes=self.head_age_min)
+
+    def last_successful_deploy_sha(self, wf, branch):
+        return self.shipped
+
+    def changed_files_between(self, base, head):
+        return None if self.changed is None else list(self.changed)
+
+    def last_deploy_at(self, wf):
+        if self.last_deploy_min is None:
+            return None
+        return NOW - timedelta(minutes=self.last_deploy_min)
+
+    def workflow_has_run_for(self, wf, sha):
+        return self.has_run
+
+    def dispatch(self, wf, ref):
+        if wf in self.fail_dispatch:
+            raise mt.MergeTrainError(f"HTTP 403 dispatching {wf}")
+        self.dispatched.append((wf, ref))
+
+
+def sync_cfg(**over):
+    base = dict(plugin_paths=["wordpress-plugin/ai-layoff-tracker/"],
+                deploy_workflow="deploy-plugin.yml",
+                post_merge_workflows=["tests.yml"])
+    base.update(over)
+    return cfg(**base)
+
+
+class TheTokenMergeStartsNothing(_Quiet):
+    """A merge made with the default Actions token starts no on-push workflow,
+    so PR #393 merged as 8603269b and never deployed. The train reconciles
+    main itself, by dispatch, which that token IS allowed to raise."""
+
+    def sync(self, client, *, dry_run=False, merged=(), **over):
+        rep = mt.Report(dry_run=dry_run)
+        rep.merged.extend(merged)
+        problems = mt.sync_main(client, sync_cfg(**over), rep, dry_run=dry_run, now=NOW)
+        return rep, problems
+
+    def test_a_plugin_change_on_main_is_deployed_and_tested(self):
+        c = MainClient()
+        rep, problems = self.sync(c, merged=[393])
+        self.assertEqual(c.dispatched, [("deploy-plugin.yml", "main"), ("tests.yml", "main")])
+        self.assertEqual(rep.dispatched, ["deploy-plugin.yml", "tests.yml"])
+        self.assertEqual(problems, [])
+
+    def test_never_two_deploys_inside_the_hour(self):
+        c = MainClient(last_deploy_min=59, has_run=True)
+        rep, problems = self.sync(c)
+        self.assertEqual(c.dispatched, [])
+        self.assertEqual(problems, [])
+        self.assertTrue(any("later tick" in l for l in rep.lines))
+
+    def test_the_next_tick_catches_up_a_deploy_that_was_skipped(self):
+        c = MainClient(last_deploy_min=61, has_run=True)
+        self.sync(c)   # nothing merged in THIS run: it is a reconcile
+        self.assertEqual(c.dispatched, [("deploy-plugin.yml", "main")])
+
+    def test_an_in_flight_deploy_keeps_the_window_shut(self):
+        c = MainClient(last_deploy_min=0, has_run=True)
+        self.sync(c)
+        self.assertEqual(c.dispatched, [])
+
+    def test_a_change_outside_the_plugin_deploys_nothing(self):
+        c = MainClient(changed=("railway/cron.py", "docs/TECHLOG.md"), has_run=True)
+        self.sync(c)
+        self.assertEqual(c.dispatched, [])
+
+    def test_the_deploy_workflow_file_is_in_its_own_paths_filter(self):
+        c = MainClient(changed=(".github/workflows/deploy-plugin.yml",), has_run=True)
+        self.sync(c)
+        self.assertEqual(c.dispatched, [("deploy-plugin.yml", "main")])
+
+    def test_live_already_matches_main(self):
+        c = MainClient(shipped=HEAD_SHA, has_run=True)
+        self.sync(c)
+        self.assertEqual(c.dispatched, [])
+
+    def test_a_truncated_compare_is_read_as_may_differ(self):
+        c = MainClient(changed=None, has_run=True)
+        self.sync(c)
+        self.assertEqual(c.dispatched, [("deploy-plugin.yml", "main")])
+
+    def test_no_green_deploy_on_record_is_unknown_and_loud(self):
+        c = MainClient(shipped=None, has_run=True)
+        _, problems = self.sync(c)
+        self.assertEqual(c.dispatched, [])
+        self.assertEqual(len(problems), 1)
+        self.assertIn("UNKNOWN", problems[0])
+
+    def test_an_unreadable_deploy_time_dispatches_nothing(self):
+        c = MainClient(last_deploy_min=None, has_run=True)
+        _, problems = self.sync(c)
+        self.assertEqual(c.dispatched, [])
+        self.assertEqual(len(problems), 1)
+
+    def test_a_dry_run_dispatches_nothing(self):
+        c = MainClient()
+        rep, problems = self.sync(c, dry_run=True)
+        self.assertEqual(c.dispatched, [])
+        self.assertEqual(sum("WOULD DISPATCH" in l for l in rep.lines), 2)
+
+    def test_main_already_tested_is_not_tested_twice(self):
+        c = MainClient(shipped=HEAD_SHA, has_run=True)
+        self.sync(c, merged=[1])
+        self.assertEqual(c.dispatched, [])
+
+    def test_a_fresh_push_by_a_person_is_given_time_to_start_its_own_run(self):
+        c = MainClient(shipped=HEAD_SHA, head_age_min=2)
+        self.sync(c)
+        self.assertEqual(c.dispatched, [])
+
+    def test_a_fresh_head_the_train_made_itself_is_not_waited_on(self):
+        c = MainClient(shipped=HEAD_SHA, head_age_min=0)
+        self.sync(c, merged=[7])
+        self.assertEqual(c.dispatched, [("tests.yml", "main")])
+
+    def test_a_failed_deploy_dispatch_is_loud_and_tests_still_dispatch(self):
+        c = MainClient(fail_dispatch=["deploy-plugin.yml"])
+        rep, problems = self.sync(c, merged=[393])
+        self.assertEqual(c.dispatched, [("tests.yml", "main")])
+        self.assertEqual(len(problems), 1)
+        self.assertIn("deploy", problems[0])
+        self.assertEqual(rep.merged, [393])   # nothing is undone
+
+    def test_an_unreadable_main_is_a_problem_not_an_exception(self):
+        c = MainClient(fail_reads=True)
+        _, problems = self.sync(c)
+        self.assertEqual(c.dispatched, [])
+        self.assertEqual(len(problems), 1)
+
+    def test_dispatch_uses_the_workflow_run_command_on_the_branch(self):
+        calls = []
+
+        def fake_run(cmd, **kw):
+            calls.append(list(cmd))
+
+        real = mt._run
+        mt._run = fake_run
+        try:
+            mt.GitHubClient("dk-forge/test", Path(".")).dispatch("tests.yml", "main")
+        finally:
+            mt._run = real
+        self.assertEqual(calls, [["gh", "workflow", "run", "tests.yml",
+                                  "-R", "dk-forge/test", "--ref", "main"]])
+
+
+class TheShippedWiring(unittest.TestCase):
+    """The config and the workflows must agree, or a dispatch is a 422."""
+
+    ROOT = Path(__file__).resolve().parents[2]
+
+    def test_every_dispatched_workflow_declares_workflow_dispatch(self):
+        c = mt.Config.load(self.ROOT / ".github" / "merge-train.json")
+        names = list(c.post_merge_workflows) + [c.deploy_workflow]
+        self.assertIn("tests.yml", names)
+        self.assertIn("deploy-plugin.yml", names)
+        for name in names:
+            text = (self.ROOT / ".github" / "workflows" / name).read_text()
+            self.assertRegex(text, r"(?m)^  workflow_dispatch:", name)
+
+    def test_the_deploy_paths_mirror_the_deploy_workflow_filter(self):
+        c = mt.Config.load(self.ROOT / ".github" / "merge-train.json")
+        text = (self.ROOT / ".github" / "workflows" / c.deploy_workflow).read_text()
+        block = text.split("paths:", 1)[1].split("workflow_dispatch", 1)[0]
+        declared = sorted(l.strip()[2:].strip("'\"").replace("**", "")
+                          for l in block.splitlines() if l.strip().startswith("- "))
+        self.assertEqual(declared, sorted(mt.deploy_paths(c)))
+
+    def test_the_train_may_dispatch_and_never_cancels_a_deploy(self):
+        train = (self.ROOT / ".github" / "workflows" / "merge-train.yml").read_text()
+        self.assertRegex(train, r"(?m)^  actions: write")
+        deploy = (self.ROOT / ".github" / "workflows" / "deploy-plugin.yml").read_text()
+        self.assertIn("cancel-in-progress: false", deploy)
+
 
 if __name__ == "__main__":
     unittest.main()
