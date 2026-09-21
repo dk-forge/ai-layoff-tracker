@@ -67,11 +67,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "live-data-integrity-check:live.data:24f634c770a74434": {
-      "first": 1789677077,
-      "last": 1789677077,
-      "subject": "CI RED: Live data-integrity check \u2014 FAIL    8-K rows are the filer's own current cuts: 1 8-K row(s) carry an announcement more than 365 days before their own effective date, the th"
-    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1789306127,
       "last": 1789306127,
@@ -123,6 +118,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-21T17:38:08+00:00",
+  "updated_at": "2026-09-21T17:38:10+00:00",
   "version": 1
 }
