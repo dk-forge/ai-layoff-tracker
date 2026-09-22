@@ -1705,6 +1705,41 @@ $alt_hero_basis  = 'counted by filing date';
     </section>
     <?php endif; ?>
 
+    <?php
+    // THE ONE LINE THIS PAGE OWED ITS OWN READERS.
+    //
+    // The company pages have carried an "If a layoff affects you" block since
+    // 2.20.x and this page, which is where most people actually arrive, carried
+    // nothing: it linked to blog categories and offered no next step at all.
+    // The readers here are people who were just laid off or expect to be.
+    //
+    // It is ONE sentence and ONE link, placed BELOW the record: after the
+    // table, the charts and the browse index, beside the journalist note that
+    // already sits here for a different audience. Nothing floats, nothing
+    // sticks, nothing interrupts a figure.
+    //
+    // The copy is deliberately flat. The tool is in testing and is not
+    // launched, so what is claimed is exactly what is true: it exists, the
+    // first draft is free, and nothing is promised about the outcome.
+    //
+    // The destination is alt_next_step_tool_url() and is NOT repeated here.
+    // That function is the single definition (ai-layoff-tracker.php), it is
+    // filterable, and repointing it at the real domain on launch day is one
+    // edit that every server-rendered page picks up at once. function_exists
+    // is the FTP-deploy race guard: an upload can land this template before
+    // ai-layoff-tracker.php, and with no destination the sentence is not said
+    // rather than fatalling the page.
+    if (function_exists('alt_next_step_tool_url')) : ?>
+    <aside class="alt-next-step alt-next-step-line" aria-label="If a layoff affects you">
+        <span class="alt-detail-h">Not part of the record</span>
+        <p>If one of these rounds is your own, we also build a resume and cover
+        letter tool. It is still being tested, the first draft is free, and it has
+        no bearing on what this tracker records.
+        <a href="<?php echo esc_url(alt_next_step_tool_url()); ?>" target="_blank"
+           rel="noopener nofollow">Try the draft tool</a>.</p>
+    </aside>
+    <?php endif; ?>
+
     <div class="alt-journalist">
         <div class="alt-journalist-text">
             <strong>Built for journalists &amp; researchers</strong>

@@ -2529,6 +2529,14 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
    list's spacing rather than the lead paragraph's. */
 p.alt-next-step-list { padding-left: 0; }
 .alt-next-step-note { margin: 0 !important; font-size: 13px !important; color: var(--alt-ink-2) !important; }
+/* The tracker page's one-sentence variant. Same block, no heading and no list,
+   so it reads as an aside to the record rather than a second section of it: a
+   slighter top rule and the smaller note size. It carries .alt-next-step too,
+   so the min-width:0 and overflow-wrap:anywhere above apply unchanged and the
+   375px no-bleed bar is met by the same rule that already holds it. */
+.alt-next-step-line { margin-top: 22px; border-top-width: 1px; }
+.alt-next-step-line p { margin: 6px 0 0; font-size: 13.5px; color: var(--alt-ink-2); max-width: 720px; }
+.alt-next-step-line a { color: var(--alt-accent); font-weight: 600; }
 @media (max-width: 480px) {
     .alt-next-step { padding: 16px 14px; }
 }

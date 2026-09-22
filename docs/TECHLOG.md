@@ -1,3 +1,44 @@
+## 2026-09-22 - The tracker page offered its own readers no next step; only the company pages did
+
+**Class:** two-copies-drifted
+**Guard:** none added. This is one sentence of reader copy behind an existing
+`function_exists` race guard, on a single template, reusing a destination that
+already has one definition and one test-worthy property (it is a function, not a
+literal). A guard here would assert the presence of a marketing line, which is
+taste, not an invariant.
+
+The "If a layoff affects you" block shipped on the ~7,500 company pages and on
+nothing else. The tracker page itself, which is the URL that is linked, shared
+and searched, carried a journalist note, a digest signup, a browse index and
+links to blog categories, and no path to the resume and cover letter tool at
+all. Its readers are the single most qualified audience the product will ever
+have: people who were just laid off or expect to be within weeks. The drift was
+invisible because both surfaces were individually correct, and nobody read them
+as one set.
+
+**What shipped** (2.20.206) is one sentence and one link in
+`templates/page-tracker.php`, in an `aside.alt-next-step.alt-next-step-line`
+placed BELOW the record, after the table, the charts and the browse index, and
+beside the journalist block that already serves a different audience there.
+Nothing floats, sticks, overlays or animates, and no figure is interrupted. The
+copy claims exactly what is true today: the tool exists, it is still being
+tested, the first draft is free, and it has no bearing on what the tracker
+records. No outcome is promised.
+
+**The destination is not repeated.** `alt_next_step_tool_url()` in
+`ai-layoff-tracker.php` remains the single definition and is filterable, so
+repointing it from the Railway sandbox hostname at the real domain on launch day
+is still one edit that every server-rendered page picks up at once. The new
+block reads that function and is skipped entirely when an FTPS deploy has not
+yet landed the main file, which is the 2.20.21 lesson applied rather than
+restated.
+
+**No other surface changed.** The Sources and Health pages describe collectors
+and say nothing about the product, so the four-surface ritual has nothing to
+update here; the benchmark is unaffected because no metric moved.
+
+---
+
 ## 2026-09-22 - The sandbox's hosted watchdogs cost real money and its train watchdog cannot move here yet: the token answers no Actions door
 
 **Class:** novel

@@ -6,6 +6,12 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD - Claude (agent), 2026-09-22 13:20Z, branch `feat/tracker-product-cta`.**
+  Adding one honest line plus one link to the resume tool at the foot of the
+  tracker page, below the data, reusing the existing `alt_next_step_tool_url()`
+  definition. Touches `templates/page-tracker.php`, `assets/layoffs.css`,
+  `ai-layoff-tracker.php` (version), TECHLOG. Release when the PR is merged and
+  verified live.
 - **RELEASED - Claude (agent), 2026-09-22, branch `ops/sandbox-watchdogs-move`.
   Work complete.** The sandbox's hosted backend probe is retired in favour of
   `sandbox-uptime-check.yml` here, which now reads the public TLS certificates
