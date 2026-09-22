@@ -1423,7 +1423,7 @@ $alt_hero_basis  = 'counted by filing date';
         </details>
         <?php endforeach; ?>
     <details class="alt-methodology" id="alt-metric-definitions" open>
-        <summary>Methodology &amp; sources (for journalists &amp; researchers)</summary>
+        <summary>Methodology &amp; Sources (for journalists &amp; researchers)</summary>
         <div class="alt-method-body">
             <p><b>The short version.</b> <b>Verified job cuts</b> are cuts with a filing or named source behind them; the main figure. By default we count each on the day it was filed or announced, the basis used elsewhere. The &ldquo;Count layoffs by&rdquo; control recounts the page on the effective date instead. <b>AI-attributed</b> is the subset where the employer named AI in words we can quote. <b>Announced</b> is a separate, labeled tier of announcement-stage plans, never mixed into the verified total. Nothing is estimated; every number links to a legal filing or named report, and country/US-state filters describe where the jobs were, not an employer's headquarters.</p>
             <p><b>How the AI tag works.</b> Only a primary or contributing cause counts, and each one needs an exact supporting quote. Investment in AI, future projections, or AI used to pick who goes do not qualify. A separate broader measure is labeled and never merged in.</p>
