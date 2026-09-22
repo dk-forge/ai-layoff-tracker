@@ -1,3 +1,20 @@
+## 2026-09-22 - The sandbox's hosted watchdogs cost real money and its train watchdog cannot move here yet: the token answers no Actions door
+
+**Class:** novel
+**Guard:** `railway/tests/test_sandbox_uptime_check.py` (the certificate half of the free probe: under 14 days is its own cause with no streak, an unreadable certificate is UNKNOWN and neither raises nor resolves, and the outage streak is untouched) and `.github/workflows/sandbox-token-probe.yml` (manual: which sandbox doors `MERGE_TRAIN_TOKEN` opens, re-run before any move).
+
+The private sandbox repo billed 4,829 GitHub-hosted minutes in September ($10.00 net); the org's $10 budget tripped on 2026-09-22 02:17 UTC and every hosted job there died in two seconds, including the watchdogs placed on hosted runners precisely so they would not die with the VPS. Both trackers are public and their minutes are free, so the plan was to host the sandbox's watchdogs from this repo, the way `sandbox-uptime-check.yml` already probes the sandbox every 15 minutes for nothing.
+
+**What the bill actually was.** Read from the Actions API per workflow: the backend liveness probe's hosted job ran 348 times in September at six seconds each, and GitHub bills a job as a whole minute, so ~350 minutes for a check this repo already made; the hourly ops check 147 minutes; the train watchdog 19. The remaining hosted crons there (retention sweep 606, production e2e gate 457, security scan 396, LLM canary 380, inactivity 264, SCC expiry 27) are not watchdogs of the VPS and were outside this change; they are the reason the sandbox will not read "$1 to $3" until they move to the VPS as well.
+
+**What moved.** The probe's hosted job is gone from the sandbox (its VPS twin stays) and this repo's `sandbox_uptime_check.py` now also reads the public certificates (`asktherecruiter.com`, `sandbox.asktherecruiter.com`) at the TLS layer, warning under 14 days as the cause `sandbox-uptime:cert`, separate from the outage streak. The sandbox's hourly ops check was retired there: its facts and its Claude step are what the hourly Cloud Checker routine does from Anthropic's cloud, and its new-error step is that routine's Sentry read.
+
+**What could not move, measured.** `sandbox-token-probe.yml` (run 35715373460) exercised every door the train watchdog and the main-green check use, with `MERGE_TRAIN_TOKEN`, against the sandbox. OK: `gh pr list`, `pulls?state=closed`, `issues/N/comments`, `gh issue list --search`, `gh label create`/`delete`, `contents/VERSION`. Refused with 403 "Resource not accessible by personal access token": `commits/SHA/check-runs`, `commits/SHA/status`, `actions/runs?head_sha=`, `actions/runs?status=queued`, `actions/runs/ID/jobs`, `actions/workflows`, `actions/workflows/FILE/runs`, `gh run view --log-failed`, `actions/runners`, `gh workflow enable`, `gh workflow list`. A watchdog that cannot read a run cannot say whether the train is stuck, and a main-green check that cannot list runs is UNKNOWN on every line, so both stay in the sandbox. The 2026-09-21 entry blamed the check-runs endpoint's treatment of fine-grained tokens; the measurement says the token simply carries no Actions, Checks or Commit statuses permission, and the fix is the owner's: on the fine-grained token `MERGE_TRAIN_TOKEN`, add repository permissions Actions: read and write, Checks: read, Commit statuses: read, Issues: read and write, then re-run the probe. Until every line reads OK nothing else should be moved on the strength of a belief about that token.
+
+**Costs are now written down** in the sandbox's `docs/OPERATIONS-STATUS.md` and mirrored in RUNBOOK "Monthly costs, and where each one is read", with the policy in one line: hosted runners only for the smoke detector of the VPS, everything else on the VPS.
+
+---
+
 ## 2026-09-21 - Eighteen US state registers read zero for five days because the only address our host accepts is an address they refuse
 
 **Class:** silent-stop

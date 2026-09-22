@@ -47,6 +47,21 @@ prevent. Same shape as `host-watch.yml` in the sibling repo: a probe that
 finds an outage reports it through the one door and keeps running on
 schedule.
 
+THE TLS CERT, TOO (2026-09-22). The sandbox repo's own probe also read the
+public certificate's expiry with openssl and opened an issue under 14 days
+of runway. On 2026-09-22 that probe's GitHub-hosted job was retired: a
+private repo pays for every hosted minute and a six-second job is billed
+as one, so 96 runs a day was the single largest line on the sandbox's
+Actions bill (~350 of its 4,829 September minutes), for a check this free
+job already made. Its VPS twin still runs there; THIS is now the copy that
+does not depend on the VPS. So this check reads the certificate too, at
+the TLS layer (no HTTP request, so Cloudflare does not stand in the way),
+for the public site and the sandbox host. A certificate that cannot be
+read is UNKNOWN: printed, never an alarm, never a pass, and never a
+RECOVERED. Expiry is its own cause (`sandbox-uptime:cert`), because two
+weeks of runway is a warning and not an outage, and it must not count
+toward the outage streak or be silenced by it.
+
 Stdlib only. This is the notification path and no dependency resolution
 failure may take it down, the same rule as ci_alert.py, opsmail.py and
 new_error_watch.py.
@@ -55,7 +70,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
+import ssl
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -80,6 +98,47 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 
 #: A real outage two runs running is the bar; see module docstring.
 CONSECUTIVE_FAILS_TO_ALERT = 2
+
+#: The certificates the retired hosted probe read, plus the sandbox's own.
+CERT_HOSTS = ("asktherecruiter.com", "sandbox.asktherecruiter.com")
+CERT_WARN_DAYS = 14
+CERT_CAUSE_KEY = "sandbox-uptime:cert"
+
+
+def _cert_not_after(host: str, timeout: int = 15) -> float:
+    """The certificate's notAfter as a unix time, read at the TLS layer.
+    Raises on any transport or handshake failure (the caller reads that
+    as UNKNOWN)."""
+    ctx = ssl.create_default_context()
+    with socket.create_connection((host, 443), timeout=timeout) as raw:
+        with ctx.wrap_socket(raw, server_hostname=host) as tls:
+            cert = tls.getpeercert()
+    not_after = (cert or {}).get("notAfter")
+    if not not_after:
+        raise ValueError("certificate carries no notAfter")
+    return float(ssl.cert_time_to_seconds(not_after))
+
+
+def check_certs(read_cert=None, now: float | None = None
+                ) -> tuple[list[str], list[str], dict[str, int]]:
+    """-> (expiring, unknown, days_left). `expiring` names hosts with fewer
+    than CERT_WARN_DAYS of runway; `unknown` names hosts whose certificate
+    could not be read (never a pass, never an alarm). `read_cert(host)`
+    returns notAfter as a unix time; injectable so tests open no socket."""
+    reader = read_cert or _cert_not_after
+    now = time.time() if now is None else now
+    expiring, unknown, days_left = [], [], {}
+    for host in CERT_HOSTS:
+        try:
+            not_after = float(reader(host))
+        except Exception as exc:  # noqa: BLE001 - any failure to read is UNKNOWN
+            unknown.append(f"{host} ({type(exc).__name__}: {exc})")
+            continue
+        days = int((not_after - now) // 86400)
+        days_left[host] = days
+        if days < CERT_WARN_DAYS:
+            expiring.append(f"{host} expires in {days} day(s)")
+    return expiring, unknown, days_left
 
 
 def _http_get(url: str, timeout: int = 15):
@@ -168,21 +227,76 @@ def build_body(detail: str, consecutive: int) -> str:
         f"  {detail}\n\n"
         "This checks https://sandbox.asktherecruiter.com/healthz, "
         "/healthz/deep, and the Railway origin directly "
-        "(asktherecruiter-sandbox-production.up.railway.app). It is a "
-        "stand-in for the sandbox repo's own uptime-cert-monitor.yml, which "
-        "has been running late on its shared self-hosted runner.\n\n"
+        "(asktherecruiter-sandbox-production.up.railway.app). It is the "
+        "copy of the sandbox's backend probe that does not depend on the "
+        "VPS: the sandbox repo's own uptime-cert-monitor.yml runs only on "
+        "the VPS runner since 2026-09-22.\n\n"
         "You will get ONE more email about this cause: a note when it "
         "recovers. A repeat within 14 days is suppressed on purpose."
     )
 
 
+def _run_cert_check(state: dict, *, read_cert, now, notify) -> None:
+    """The certificate half. Own cause, no streak: expiry is not transient.
+    UNKNOWN changes nothing in the ledger, in either direction."""
+    expiring, unknown, days_left = check_certs(read_cert=read_cert,
+                                               now=None if now is None else float(now))
+    for host, days in sorted(days_left.items()):
+        print(f"sandbox_uptime_check: cert {host}: {days} day(s) left")
+    for text in unknown:
+        print(f"sandbox_uptime_check: cert UNKNOWN, could not read {text}")
+    if expiring:
+        detail = "; ".join(expiring)
+        decision = alert_state.decide(
+            state,
+            {"subject": f"TLS certificate expiring: {detail}"[:180],
+             "body": ("A public TLS certificate is inside its renewal window "
+                      f"(under {CERT_WARN_DAYS} days):\n\n  {detail}\n\n"
+                      "Read at the TLS layer by the sandbox uptime check, which "
+                      "took this over from the sandbox repo's retired hosted "
+                      "probe on 2026-09-22. Renewal is normally automatic "
+                      "(Cloudflare, Railway); this is the alarm for when it is "
+                      "not. You will get ONE more email about this cause: a "
+                      "note when every certificate is past the window again."),
+             "dedupe_key": CERT_CAUSE_KEY},
+            now=now)
+        if decision.kind == "raise":
+            if notify(decision.subject, decision.body):
+                alert_state.apply(state, decision, now=now)
+                print(f"sandbox_uptime_check: {decision.subject}: sent")
+            else:
+                print("sandbox_uptime_check: cert alert NOT sent, cause stays "
+                      "new so the next run retries it")
+        else:
+            print(f"sandbox_uptime_check: cert {decision.note or decision.kind}")
+        return
+    if unknown:
+        # Nothing read short, but not every host was read: not a recovery.
+        return
+    decision = alert_state.decide(
+        state,
+        {"subject": "RECOVERED: TLS certificate renewed",
+         "body": "Every public certificate the sandbox uptime check reads is "
+                 f"past the {CERT_WARN_DAYS}-day window again.",
+         "resolve_scope": CERT_CAUSE_KEY},
+        now=now)
+    if decision.kind == "resolve":
+        if notify(decision.subject, decision.body):
+            alert_state.apply(state, decision, now=now)
+            print("sandbox_uptime_check: cert RECOVERED sent")
+        else:
+            print("sandbox_uptime_check: cert RECOVERED NOT sent "
+                  "(cause stays open, next run retries)")
+
+
 def run(*, fetch=None, state_path: Path | str = STATE_PATH,
-        now: int | None = None, notify=None) -> int:
+        now: int | None = None, notify=None, read_cert=None) -> int:
     """-> exit code, always 0. This job's whole purpose is the alarm; see
     module docstring on why it never also reddens itself."""
     notify = notify or ops_notify.notify
     ok, detail = check_all(fetch=fetch)
     state = alert_state.load(state_path)
+    _run_cert_check(state, read_cert=read_cert, now=now, notify=notify)
 
     if ok:
         state["consecutive_fails"] = 0
