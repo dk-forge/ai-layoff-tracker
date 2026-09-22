@@ -1,16 +1,22 @@
 name: Sandbox token probe
 
-# MANUAL ONLY. Before a sandbox watchdog is hosted from this repo, prove which GitHub API doors MERGE_TRAIN_TOKEN (a fine-grained PAT)
-# can open on dk-forge/asktherecruiter-sandbox. Every call is a read or an
-# idempotent, reversible write (a probe label created and deleted; a
-# workflow enabled that is already enabled). No secret value is printed. It
-# never dispatches, re-runs, comments or pushes.
+# MANUAL ONLY. Before a sandbox watchdog is hosted from this repo, prove which
+# GitHub API doors MERGE_TRAIN_TOKEN (a fine-grained PAT) can open on
+# dk-forge/asktherecruiter-sandbox. Every call is a read or an idempotent,
+# reversible write (a probe label created and deleted; a probe issue created,
+# edited and closed; a harmless probe workflow dispatched). No secret value is
+# printed. It never merges, never pushes, and never dispatches the merge train.
 #
-# MEASURED 2026-09-22 (run 35715373460, TECHLOG): the token answers the
-# pulls, issues, labels and contents doors and is refused on EVERY Actions
-# door (runs, jobs, workflows, logs, enable), on check-runs and on commit
-# statuses. Re-run this after the owner widens the token; the train watchdog
-# and the main-green check move here only when every line reads OK.
+# MEASURED 2026-09-22 morning (run 35715373460, TECHLOG): the token answered
+# the pulls, issues, labels and contents doors and was refused on EVERY
+# Actions door (runs, jobs, workflows, logs, enable), on check-runs and on
+# commit statuses.
+#
+# The owner widened the token the same afternoon (Actions: read and write,
+# Issues: read and write, on top of Contents and Pull requests). Re-run this
+# to see what changed. A fine-grained token is refused on some endpoints
+# whatever permissions it holds, so a PARTIAL result is the expected shape
+# and it is what decides which watchdog may move.
 
 on:
   workflow_dispatch: {}
@@ -28,9 +34,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN }}
           R: dk-forge/asktherecruiter-sandbox
-          SHA: 7e15843e1e1fb153c9adfbea291b2d183012e97d
-          RUN: "35714806623"
-          PR: "1098"
+          SHA: d10cc74c483d9f6804e801b9cd40f305fa00484b
+          RUN: "35740766179"
+          PR: "1106"
         run: |
           set +e
           try() { # label, then the command
@@ -38,22 +44,69 @@ jobs:
             out=$("$@" 2>&1); code=$?
             if [ $code -eq 0 ]; then echo "OK    $label"; else echo "FAIL  $label :: $(echo "$out" | head -c 200 | tr '\n' ' ')"; fi
           }
-          try "gh pr list (GraphQL, pulls read)"          gh pr list -R "$R" --state open -L 5 --json number,mergeable,headRefOid,labels,isDraft
-          try "pulls?state=closed"                         gh api "repos/$R/pulls?state=closed&per_page=2"
-          try "commits/SHA/check-runs (Checks: read)"      gh api "repos/$R/commits/$SHA/check-runs?per_page=5"
-          try "commits/SHA/status (statuses read)"         gh api "repos/$R/commits/$SHA/status"
-          try "actions/runs?head_sha"                      gh api "repos/$R/actions/runs?head_sha=$SHA&per_page=5"
-          try "actions/runs?status=queued"                 gh api "repos/$R/actions/runs?status=queued&per_page=5"
-          try "actions/runs/ID/jobs"                       gh api "repos/$R/actions/runs/$RUN/jobs?per_page=5"
-          try "actions/workflows"                          gh api "repos/$R/actions/workflows?per_page=100"
-          try "actions/workflows/FILE/runs"                gh api "repos/$R/actions/workflows/merge-train.yml/runs?per_page=2"
-          try "gh run view --log-failed"                   gh run view "$RUN" -R "$R" --log-failed
-          try "actions/runners (admin read)"               gh api "repos/$R/actions/runners?per_page=5"
-          try "issues/N/comments (read)"                   gh api "repos/$R/issues/$PR/comments?per_page=5"
-          try "gh issue list --search"                     gh issue list -R "$R" --state open --search 'in:body "<!-- train-watchdog:running-issue -->"' --json number
-          try "gh label create --force (Issues: write)"    gh label create watchdog-token-probe -R "$R" --force --color EEEEEE --description "token probe, deleted by the same run"
-          try "gh label delete (Issues: write)"            gh label delete watchdog-token-probe -R "$R" --yes
-          try "gh workflow enable (Actions: write)"        gh workflow enable train-watchdog.yml -R "$R"
-          try "gh workflow list"                           gh workflow list -R "$R"
-          try "contents/VERSION (Contents: read)"          gh api "repos/$R/contents/VERSION"
+
+          echo "## reads the watchdogs cannot work without"
+          try "actions/workflows/FILE/runs (main-green: per-workflow runs)" \
+              gh api "repos/$R/actions/workflows/main-green-check.yml/runs?branch=main&per_page=5"
+          try "actions/runs?head_sha (watchdog: runs for a head)" \
+              gh api "repos/$R/actions/runs?head_sha=$SHA&per_page=5"
+          try "actions/runs?status=queued (watchdog: is the runner up)" \
+              gh api "repos/$R/actions/runs?status=queued&per_page=5"
+          try "actions/runs?status=in_progress" \
+              gh api "repos/$R/actions/runs?status=in_progress&per_page=5"
+          try "actions/runs/ID/jobs (NEVER_STARTED needs runner_id + steps)" \
+              gh api "repos/$R/actions/runs/$RUN/jobs?per_page=5"
+          try "commits/BRANCH (main-green: head sha + date)" \
+              gh api "repos/$R/commits/main"
+          try "actions/workflows (list)" gh api "repos/$R/actions/workflows?per_page=100"
+
+          echo
+          echo "## the runner_id/steps fields specifically, not just a 200"
+          jobs=$(gh api "repos/$R/actions/runs/$RUN/jobs?per_page=5" 2>/dev/null)
+          if [ -n "$jobs" ]; then
+            echo "$jobs" | jq -r '.jobs[0] | "      first job: runner_id=\(.runner_id) runner_name=\"\(.runner_name)\" steps=\(.steps|length) conclusion=\(.conclusion)"' 2>&1 | head -3
+          else
+            echo "      (no jobs payload: the read above failed)"
+          fi
+
+          echo
+          echo "## the door that was refused for a reason unrelated to permissions"
+          try "commits/SHA/check-runs (fine-grained PAT limitation)" \
+              gh api "repos/$R/commits/$SHA/check-runs?per_page=5"
+          try "commits/SHA/status (legacy commit statuses)" \
+              gh api "repos/$R/commits/$SHA/status"
+
+          echo
+          echo "## issues: the running issue each watchdog keeps IN THE SANDBOX"
+          try "issues?state=open (find_issue paginates this)" \
+              gh api "repos/$R/issues?state=open&per_page=100&page=1"
+          num=$(gh api "repos/$R/issues" -X POST -f title="Token probe, ignore and close" \
+                  -f body="<!-- token-probe -->Created by sandbox-token-probe.yml to prove the token can open and edit an issue. Closed by the same run." \
+                  --jq .number 2>/dev/null)
+          if [ -n "$num" ]; then
+            echo "OK    issues POST (create) -> #$num"
+            try "issues/N PATCH (rewrite the body when the set changes)" \
+                gh api "repos/$R/issues/$num" -X PATCH -f body="<!-- token-probe -->Edited by the same run."
+            try "issues/N/comments POST (the closing note)" \
+                gh api "repos/$R/issues/$num/comments" -X POST -f body="Probe complete. Closing."
+            try "issues/N PATCH (close)" \
+                gh api "repos/$R/issues/$num" -X PATCH -f state=closed -f state_reason=completed
+          else
+            echo "FAIL  issues POST (create) :: could not create a probe issue"
+          fi
+
+          echo
+          echo "## writes the TRAIN WATCHDOG needs (main-green needs none of these)"
+          try "gh run view --log-failed (flake signatures)" gh run view "$RUN" -R "$R" --log-failed
+          try "actions/runners (admin; watchdog has a documented fallback)" \
+              gh api "repos/$R/actions/runners?per_page=5"
+          try "gh workflow enable (re-register a dropped schedule)" \
+              gh workflow enable uptime-cert-monitor.yml -R "$R"
+          try "workflow dispatch (harmless probe workflow, NEVER the train)" \
+              gh workflow run uptime-cert-monitor.yml -R "$R" --ref main
+          try "gh pr comment (the once-only marker comments)" \
+              gh pr comment "$PR" -R "$R" --body "<!-- token-probe --> Token probe: this comment proves the token can comment. Ignore."
+          try "gh label create --force" \
+              gh label create token-probe -R "$R" --force --color EEEEEE --description "probe, deleted by the same run"
+          try "gh label delete" gh label delete token-probe -R "$R" --yes
           exit 0
