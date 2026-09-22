@@ -218,6 +218,36 @@ class TheRunningIssueStaysInTheSandbox(unittest.TestCase):
         self.assertEqual([c for c in calls if c[0] != "GET"], [])
 
 
+class TheIssueIdentityIsUnchangedByTheMove(unittest.TestCase):
+    """The marker, the set prefix and the title are the SAME strings the
+    sandbox's own copy used.
+
+    This is what makes the handover seamless rather than duplicating.
+    `find_issue` locates the running issue by the marker alone, so if the
+    port had been given a marker of its own, it would not have recognised an
+    issue that was already open and would have opened a SECOND one beside
+    it, leaving two issues about one problem and neither closing the other.
+    Any future rename has to happen in both repos in the same change.
+    """
+
+    def test_the_marker_and_prefix_and_title_are_the_originals(self):
+        self.assertEqual(mg.MARKER, "<!-- main-green-check:running-issue -->")
+        self.assertEqual(mg.SET_PREFIX, "<!-- main-green-check:set=")
+        self.assertEqual(mg.ISSUE_TITLE, "Main is not green")
+
+    def test_an_issue_the_sandbox_copy_opened_is_adopted_not_duplicated(self):
+        """An issue whose body carries the old marker and a DIFFERENT set is
+        rewritten in place; nothing new is created."""
+        existing = {"number": 77,
+                    "body": "<!-- main-green-check:running-issue -->\n"
+                            "<!-- main-green-check:set=0000000000000000 -->"}
+        bad = [mg.Verdict("x.yml", mg.FAIL, "boom")]
+        api, calls = _api({}, issues=[existing])
+        said = mg.sync_issue(SANDBOX, bad, api, NOW)
+        self.assertIn("updated issue #77", said)
+        self.assertEqual([c for c in calls if c[0] == "POST"], [])
+
+
 class TheWorkflowWiresItCorrectly(unittest.TestCase):
     WF = (Path(__file__).resolve().parents[2] / ".github" / "workflows"
           / "sandbox-main-green.yml")
