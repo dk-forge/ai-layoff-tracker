@@ -216,7 +216,7 @@ add_filter('render_block', 'alt_drop_theme_post_title', 10, 2);
  * pages it said something different from the heading the page renders:
  *
  *     /press/            "Press & Media"            vs "Press kit and soundbites"
- *     /methodology/      "Methodology & Sources"    vs "Methodology & sources"
+ *     /methodology/      "Methodology & Sources"    vs "Methodology & sources" (ALIGNED 2026-09-22)
  *     /publisher-tools/  "Embed the Layoff Tracker" vs "Embed the layoff tracker"
  *     /ai-quotes/        "AI layoffs, in their own words"
  *                                 vs "AI layoffs, in the employer's own words"

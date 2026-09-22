@@ -66,8 +66,8 @@ BEHAVIOURALLY, with nav-submenu.php present and alt_nav_children() reduced to
 ones at both widths:
 
     at 1280x900 the submenu under "AI Layoff Tracker" reads
-    ['Methodology & sources', 'Data Sources'] but the pages head themselves
-    ['Methodology & sources', 'Data Sources', 'Press kit and soundbites',
+    ['Methodology & Sources', 'Data Sources'] but the pages head themselves
+    ['Methodology & Sources', 'Data Sources', 'Press kit and soundbites',
      "AI layoffs, in the employer's own words"]
 
     /press/ is missing from the SERIALISED menu. The block array may hold it
