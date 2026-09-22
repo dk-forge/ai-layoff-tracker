@@ -35,7 +35,7 @@ jobs:
           GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN }}
           R: dk-forge/asktherecruiter-sandbox
           SHA: d10cc74c483d9f6804e801b9cd40f305fa00484b
-          RUN: "35740766179"
+          RUN: "35528397515"
           PR: "1106"
         run: |
           set +e
