@@ -502,3 +502,44 @@ function alt_nav_find($blocks, $url) {
     }
     return null;
 }
+
+/**
+ * The hamburger belongs beside the CTA, not in the middle of the header.
+ *
+ * MEASURED ON THE LIVE SITE AT 768px, not reasoned about. The header row is
+ * `space-between` over the site title, the navigation and the "Adapt my
+ * resume" button. The nav is 269px wide and carries the theme's
+ * `items-justified-center`, so once it collapses to a hamburger the button is
+ * centred INSIDE that 269px -- x=360 in a 753px header, floating between the
+ * title and the CTA and reading as a third, unrelated control. flex-end puts
+ * it at x=478, next to the CTA at 526, so the two read as one group.
+ *
+ * IT LIVES HERE AND NOT IN assets/blog-reading.css. That sheet is scoped to
+ * single posts and a test enforces it -- correctly, because a stylesheet is
+ * global once loaded, so an unscoped rule there would style the header of
+ * every page from a post's stylesheet. This file already owns the nav, so the
+ * nav's presentation belongs with it.
+ *
+ * `!important` is required rather than lazy: the theme applies
+ * `.items-justified-center` with enough specificity that the plain rule
+ * computed to `center` anyway. Verified by reading getComputedStyle back.
+ *
+ * WHAT NOT TO DO. The first attempt also set `flex: 0 0 auto` and
+ * `margin-left: auto`, reasoning the nav should shrink to its content. It
+ * made the hamburger AND the CTA vanish. It was caught only by injecting it
+ * into the live page and looking; reasoning did not catch it and no test
+ * would have. Test any change here in a browser.
+ */
+if (!function_exists('alt_nav_header_layout_css')) {
+    function alt_nav_header_layout_css() {
+        wp_register_style('alt-nav-header', false, array(), ALT_VERSION);
+        wp_enqueue_style('alt-nav-header');
+        wp_add_inline_style('alt-nav-header',
+            '@media (max-width:900px){'
+            . 'header.wp-block-template-part '
+            . 'nav.wp-block-navigation.is-responsive.items-justified-center'
+            . '{justify-content:flex-end !important;}}'
+        );
+    }
+    add_action('wp_enqueue_scripts', 'alt_nav_header_layout_css', 99);
+}
