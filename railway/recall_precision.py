@@ -157,22 +157,27 @@ def measure_precision():
     except Exception as exc:
         print(f"precision: could not sample ({exc})")
         return None
-    rows = [x for x in rows if (x.get("source_url") or "").startswith("http")][:SAMPLE]
+    rows = [x for x in rows if (x.get("source_url") or "").startswith("http")]
     ok = bad = 0
     reasons = {}
+    # A news.google.com/rss/articles/... link that our own offline resolver
+    # (sources/google_news_url.py) could not decode. Its robots.txt is
+    # Disallow: / for every UA including this one, and a fetch anyway returns
+    # an 11-byte redirect stub (measured 2026-08-18, blank_country_census.py
+    # UNREADABLE_HOSTS) that can never contain the job count. Counting that
+    # stub as a checked source misread "we refuse to fetch this" as "the
+    # number is fabricated" (run 35650796130, 10 of 10 misses). They are set
+    # aside BEFORE the sample is cut to SAMPLE, not inside it: on 2026-09-22
+    # 23 of 40 sampled rows were redirectors and the 15 left could not reach
+    # the 20-row minimum, so the run read UNKNOWN for a reason that is not
+    # about our numbers at all. The rate is over sources that CAN be read;
+    # how many could not is still printed, so the share stays visible.
+    redirectors = [x for x in rows if is_redirector(x["source_url"])]
+    if redirectors:
+        reasons["google_news_redirector"] = len(redirectors)
+    rows = [x for x in rows if not is_redirector(x["source_url"])][:SAMPLE]
     for x in rows:
         url = x["source_url"]
-        if is_redirector(url):
-            # A news.google.com/rss/articles/... link that our own offline
-            # resolver (sources/google_news_url.py) could not decode. Its
-            # robots.txt is Disallow: / for every UA including this one, and
-            # a fetch anyway returns an 11-byte redirect stub (measured
-            # 2026-08-18, blank_country_census.py UNREADABLE_HOSTS) that can
-            # never contain the job count. Counting that stub as a checked
-            # source misreads "we refuse to fetch this" as "the number is
-            # fabricated" -- excluded from the rate, like source_unreachable.
-            reasons["google_news_redirector"] = reasons.get("google_news_redirector", 0) + 1
-            continue
         text, err = _fetch_text(url)
         time.sleep(0.3)
         if text is None:
