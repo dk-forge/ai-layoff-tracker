@@ -1,0 +1,66 @@
+name: Sandbox main green check
+
+# Once a day, from OUTSIDE the sandbox: is dk-forge/asktherecruiter-sandbox's
+# main verifiably green?
+#
+# It used to run inside that repo, on `${{ vars.CI_RUNNER }}`, which is the one
+# VPS box that also runs its CI and its merge train. So the thing answering
+# "is main green?" died with the thing that makes main green, and a VPS
+# outage read as silence rather than as UNKNOWN. That is the
+# /alert-on-the-host-it-reports-about mistake this repo's CLAUDE.md already
+# names twice.
+#
+# THIS MOVE SAVES NO MONEY AND IS NOT CLAIMED TO. The job it replaces was
+# already on the VPS, so its GitHub bill was already zero. What it buys is
+# independence: this repo is public, hosted runners here are free, and this
+# job cannot be taken down by the box it reports on.
+#
+# THE RUNNING ISSUE STAYS IN THE SANDBOX ("Main is not green"), so that
+# repo's issue list is still the one place to look.
+#
+# The token: MERGE_TRAIN_TOKEN, a fine-grained PAT the owner widened on
+# 2026-09-22 to Actions read/write and Issues read/write. Every endpoint this
+# job needs was measured against the sandbox by sandbox-token-probe.yml first
+# (see railway/sandbox_watch/__init__.py for the full result). It needs no
+# check-runs and no commit statuses, which are the two doors a fine-grained
+# token is refused whatever it is granted, and which are why the sandbox's
+# TRAIN WATCHDOG could not move with it.
+#
+# Stdlib only, a few API reads: seconds of a free runner.
+
+on:
+  schedule:
+    # 10:13 UTC daily. The sandbox's own check ran at 09:43; this is clear of
+    # it so that during any overlap the two cannot race to create the issue.
+    - cron: "13 10 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: sandbox-main-green
+  cancel-in-progress: false
+
+permissions:
+  contents: read   # nothing here writes to THIS repo
+
+jobs:
+  check:
+    name: Is the sandbox's main verifiably green
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Read the sandbox's main from the Actions API
+        working-directory: railway
+        env:
+          # The sandbox's own token. GITHUB_TOKEN would be scoped to THIS
+          # repo and could not read the private one at all.
+          GH_TOKEN: ${{ secrets.MERGE_TRAIN_TOKEN }}
+          SANDBOX_REPO: dk-forge/asktherecruiter-sandbox
+        run: python3 -m sandbox_watch.main_green
