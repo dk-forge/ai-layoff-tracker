@@ -9,6 +9,9 @@ name: Sandbox token probe
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [ops/sandbox-watchdogs-move]
+    paths: ['.github/workflows/sandbox-token-probe.yml']
 
 permissions:
   contents: read
