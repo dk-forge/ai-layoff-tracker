@@ -10,7 +10,12 @@ name: Sandbox uptime check
 # /healthz/deep (every nested check must report ok:true), and the Railway
 # origin directly (asktherecruiter-sandbox-production.up.railway.app), so a
 # DNS/proxy failure and an application failure read as separate diagnostics
-# in the same alert body.
+# in the same alert body. Since 2026-09-22 also the public TLS certificates
+# (asktherecruiter.com, sandbox.asktherecruiter.com) at the TLS layer, under
+# 14 days as its own cause: the sandbox repo's uptime-cert-monitor.yml lost
+# its GitHub-hosted job that day (a private repo's largest Actions line, for
+# a probe this free job already made) and runs only on the VPS now, so THIS
+# is the copy that does not depend on the VPS.
 #
 # WHY TWO CONSECUTIVE FAILURES. A single failed run is as likely to be a
 # transient blip as a real outage. Two consecutive (a real ~15-minute

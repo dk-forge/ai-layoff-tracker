@@ -6,6 +6,14 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-22, branch `ops/sandbox-watchdogs-move`.
+  Work complete.** The sandbox's hosted backend probe is retired in favour of
+  `sandbox-uptime-check.yml` here, which now reads the public TLS certificates
+  too; `sandbox-token-probe.yml` measured `MERGE_TRAIN_TOKEN` (no Actions,
+  Checks or Commit statuses door answers it) so the train watchdog and the
+  main-green check stay in the sandbox until the owner widens the token
+  (TECHLOG 2026-09-22). RUNBOOK gained the monthly-costs mirror. No plugin
+  file, no version reserved, no request to the live host.
 - **RELEASED - Claude (agent), 2026-09-22 early, ops green sweep (PR #404,
   #398 merged). Work complete.** WARN and archive-backfill split so third-party
   fetches leave from a hosted runner and host writes stay on the VPS; the first

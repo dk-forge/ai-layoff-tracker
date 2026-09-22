@@ -300,6 +300,32 @@ Skip, do not cancel, and do not start. In order of what it saves:
    and a small LOSS on the light one. Do it for `npm ci`; do not assume it
    for pip.
 
+### Monthly costs, and where each one is read (2026-09-22)
+
+The full register lives in the sandbox's `docs/OPERATIONS-STATUS.md`
+("Monthly costs and where each is read"); this is the short mirror so an ops
+session here knows what a bill looks like before it looks wrong.
+
+| Line | Where it is read | Shape |
+|---|---|---|
+| GitHub Actions | `gh api "orgs/dk-forge/settings/billing/usage?year=Y&month=M"`, `usageItems` summed per `repositoryName` | Both trackers are public: gross only, net $0. The sandbox is private: September 2026 read 4,829 hosted minutes, $10.00 net; the org budget is $15 with "Stop usage" on, and it tripped on 2026-09-22 and darkened every hosted watchdog there. |
+| OpenRouter | openrouter.ai keys page, per-key monthly caps ($30 layoff, $30 talent, $100 sandbox); the blocker in practice is the prepaid credit balance at openrouter.ai/settings/credits, not a cap | ~$5/month per tracker by design (`railway/spend_jobs.json` is this repo's ledger, `ops_status [5]`); the sandbox meters per call into its `llm_invocations` table. |
+| Claude routines | The owner's Claude plan: the hourly Cloud Checker and the two-hourly Sandbox Builder | No invoice line; a weekly limit silences both at once. |
+| Contabo VPS | Fixed monthly, the one self-hosted runner for all three repos | Unchanged by anything in a repo. |
+| Railway, Supabase | Their dashboards | Unchanged. |
+
+**Hosted minutes policy.** A GitHub-hosted runner is for the smoke detector
+of the VPS and nothing else: a probe that must keep running when the VPS is
+down. In this repo that is free; in the private sandbox every such job bills
+a whole minute, so the sandbox's backend probe lost its hosted job on
+2026-09-22 and `sandbox-uptime-check.yml` HERE is the hosted copy (it reads
+the TLS certificates too). Everything else runs on the VPS. The sandbox's
+train watchdog and main-green check could NOT move here yet:
+`sandbox-token-probe.yml` measured `MERGE_TRAIN_TOKEN` and every Actions
+door (runs, jobs, workflows, logs), check-runs and commit statuses answer
+403; re-run that probe after the owner widens the token and move them only
+when every line reads OK (TECHLOG 2026-09-22).
+
 ## "X is broken" playbooks
 
 ### The deploy is green and the site does not move

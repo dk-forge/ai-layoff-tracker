@@ -1,7 +1,8 @@
 """The sandbox uptime check: two consecutive failures before it alerts, once
 per cause, with a RECOVERED on the next healthy run.
 
-Everything here is offline: every URL fetch is stubbed.
+Everything here is offline: every URL fetch and every certificate read is
+stubbed (`_far_cert`: both hosts a year out).
 """
 import json
 import sys
@@ -37,6 +38,13 @@ def _deep_check_failing_fetch(url, timeout=15):
     return 200, "ok"
 
 
+_NOW = 1_800_000_000
+
+
+def _far_cert(host):
+    return _NOW + 365 * 86400
+
+
 class _Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -48,9 +56,9 @@ class _Base(unittest.TestCase):
         self.notified.append((subject, body))
         return True
 
-    def _run(self, fetch):
+    def _run(self, fetch, read_cert=_far_cert):
         return suc.run(fetch=fetch, state_path=self.state_path,
-                       notify=self._notify)
+                       notify=self._notify, now=_NOW, read_cert=read_cert)
 
 
 class CheckAllJudgesAllThreeEndpoints(unittest.TestCase):
@@ -127,7 +135,7 @@ class RecoveryPairsWithTheOriginalAlert(_Base):
             return False
 
         code = suc.run(fetch=_failing_fetch, state_path=self.state_path,
-                       notify=failing_notify)
+                       notify=failing_notify, now=_NOW, read_cert=_far_cert)
         self.assertEqual(code, 0)  # never reddens itself
         state = alert_state.load(self.state_path)
         self.assertIn(suc.CAUSE_KEY, state.get("open", {}))
@@ -152,3 +160,91 @@ class NeverGoesRedOnAFailedCheck(_Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _short_cert(host):
+    return _NOW + 3 * 86400 if host == "asktherecruiter.com" else _NOW + 365 * 86400
+
+
+def _unreadable_cert(host):
+    raise OSError("handshake refused")
+
+
+class CheckCertsJudgesEveryHost(unittest.TestCase):
+    def test_a_year_of_runway_is_clear(self):
+        expiring, unknown, days = suc.check_certs(read_cert=_far_cert, now=_NOW)
+        self.assertEqual((expiring, unknown), ([], []))
+        self.assertEqual(set(days), set(suc.CERT_HOSTS))
+
+    def test_under_fourteen_days_names_the_host_and_the_days(self):
+        expiring, unknown, _ = suc.check_certs(read_cert=_short_cert, now=_NOW)
+        self.assertEqual(expiring, ["asktherecruiter.com expires in 3 day(s)"])
+        self.assertEqual(unknown, [])
+
+    def test_exactly_fourteen_days_is_still_clear_and_thirteen_is_not(self):
+        at_ceiling = suc.check_certs(read_cert=lambda h: _NOW + 14 * 86400, now=_NOW)
+        self.assertEqual(at_ceiling[0], [])
+        below = suc.check_certs(read_cert=lambda h: _NOW + 14 * 86400 - 1, now=_NOW)
+        self.assertEqual(len(below[0]), len(suc.CERT_HOSTS))
+
+    def test_an_unreadable_certificate_is_unknown_not_expiring(self):
+        expiring, unknown, days = suc.check_certs(read_cert=_unreadable_cert, now=_NOW)
+        self.assertEqual(expiring, [])
+        self.assertEqual(len(unknown), len(suc.CERT_HOSTS))
+        self.assertIn("handshake refused", unknown[0])
+        self.assertEqual(days, {})
+
+    def test_the_real_reader_is_the_default(self):
+        """The injection seam must not silently replace the real read."""
+        self.assertIs(suc.check_certs.__defaults__[0], None)
+        self.assertTrue(callable(suc._cert_not_after))
+
+
+class CertExpiryIsItsOwnCause(_Base):
+    def test_a_short_certificate_alerts_on_the_first_run(self):
+        """No streak: expiry is not a transient blip."""
+        self._run(_ok_fetch, read_cert=_short_cert)
+        self.assertEqual(len(self.notified), 1)
+        self.assertIn("TLS certificate expiring", self.notified[0][0])
+        self.assertIn("asktherecruiter.com expires in 3 day(s)", self.notified[0][0])
+        state = alert_state.load(self.state_path)
+        self.assertIn(suc.CERT_CAUSE_KEY, state.get("open", {}))
+        self.assertNotIn(suc.CAUSE_KEY, state.get("open", {}))
+
+    def test_a_repeat_is_suppressed_and_renewal_recovers_once(self):
+        self._run(_ok_fetch, read_cert=_short_cert)
+        self._run(_ok_fetch, read_cert=_short_cert)
+        self.assertEqual(len(self.notified), 1)
+        self._run(_ok_fetch, read_cert=_far_cert)
+        self.assertEqual(len(self.notified), 2)
+        self.assertIn("RECOVERED: TLS certificate", self.notified[1][0])
+        self._run(_ok_fetch, read_cert=_far_cert)
+        self.assertEqual(len(self.notified), 2)
+        self.assertNotIn(suc.CERT_CAUSE_KEY, alert_state.load(self.state_path).get("open", {}))
+
+    def test_unknown_neither_raises_nor_resolves(self):
+        self._run(_ok_fetch, read_cert=_unreadable_cert)
+        self.assertEqual(self.notified, [])
+        self._run(_ok_fetch, read_cert=_short_cert)   # opens the cause
+        self._run(_ok_fetch, read_cert=_unreadable_cert)
+        self.assertEqual(len(self.notified), 1, "an unreadable cert is not a renewal")
+        self.assertIn(suc.CERT_CAUSE_KEY, alert_state.load(self.state_path).get("open", {}))
+
+    def test_the_certificate_does_not_touch_the_outage_streak(self):
+        self._run(_ok_fetch, read_cert=_short_cert)
+        state = alert_state.load(self.state_path)
+        self.assertEqual(int(state.get("consecutive_fails", 0)), 0)
+        self._run(_failing_fetch, read_cert=_short_cert)
+        self._run(_failing_fetch, read_cert=_short_cert)
+        subjects = [s for s, _ in self.notified]
+        self.assertEqual(len(subjects), 2)
+        self.assertTrue(any("uptime check failing" in s for s in subjects))
+
+    def test_a_failed_cert_send_leaves_the_cause_new_for_a_retry(self):
+        def failing_notify(subject, body):
+            return False
+        suc.run(fetch=_ok_fetch, state_path=self.state_path, notify=failing_notify,
+                now=_NOW, read_cert=_short_cert)
+        self.assertNotIn(suc.CERT_CAUSE_KEY, alert_state.load(self.state_path).get("open", {}))
+        self._run(_ok_fetch, read_cert=_short_cert)
+        self.assertEqual(len(self.notified), 1)

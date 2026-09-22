@@ -1,17 +1,19 @@
 name: Sandbox token probe
 
-# ONE-OFF, manual only. Before the sandbox's watchdogs are hosted from this
-# repo, prove which GitHub API doors MERGE_TRAIN_TOKEN (a fine-grained PAT)
+# MANUAL ONLY. Before a sandbox watchdog is hosted from this repo, prove which GitHub API doors MERGE_TRAIN_TOKEN (a fine-grained PAT)
 # can open on dk-forge/asktherecruiter-sandbox. Every call is a read or an
 # idempotent, reversible write (a probe label created and deleted; a
 # workflow enabled that is already enabled). No secret value is printed. It
 # never dispatches, re-runs, comments or pushes.
+#
+# MEASURED 2026-09-22 (run 35715373460, TECHLOG): the token answers the
+# pulls, issues, labels and contents doors and is refused on EVERY Actions
+# door (runs, jobs, workflows, logs, enable), on check-runs and on commit
+# statuses. Re-run this after the owner widens the token; the train watchdog
+# and the main-green check move here only when every line reads OK.
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [ops/sandbox-watchdogs-move]
-    paths: ['.github/workflows/sandbox-token-probe.yml']
 
 permissions:
   contents: read
