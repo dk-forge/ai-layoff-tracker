@@ -113,6 +113,43 @@ function alt_nav_children() {
 }
 
 /**
+ * The class on the "View AI Layoff Tracker" item. The header stylesheet
+ * already styles it bold and green; naming it here rather than inlining the
+ * string keeps the two ends of that contract in one findable place.
+ */
+const ALT_NAV_VIEW_CLASS = 'atr-nav-view';
+
+/**
+ * The tracker itself, as the FIRST item in its own dropdown.
+ *
+ * WHY THIS EXISTS. The parent of a dropdown opens the dropdown; it does not
+ * navigate. So a reader who wanted the tracker got a list of pages ABOUT the
+ * tracker and no way to reach the thing itself. The four children were
+ * methodology, sources, press and quotes, which is everything except the
+ * product.
+ *
+ * Returned separately from alt_nav_children() because it is a link to the
+ * PARENT url, and the ownership rule in alt_nav_rebuild_children() keys on
+ * "below the parent path" -- deliberately, so the parent's own entry is not
+ * mistaken for a child. This item is the one exception and is matched by its
+ * class, not by its url.
+ */
+function alt_nav_view_child() {
+    // The PERMALINK, not alt_nav_parent_url()'s normalised form. Normalising
+    // drops the scheme and the trailing slash, which is right for COMPARING
+    // two urls and wrong for writing one into a menu: the item would render
+    // as a relative link. The children all use get_permalink() and this must
+    // match them, or the menu carries two shapes of the same site's urls.
+    $page = get_page_by_path(alt_nav_parent_path(), OBJECT, 'page');
+    if (!$page) return array();
+    return array(
+        'url'       => get_permalink($page),
+        'label'     => 'View AI Layoff Tracker →',
+        'className' => ALT_NAV_VIEW_CLASS,
+    );
+}
+
+/**
  * The children we intend the menu to carry, in order, each
  * array('url' => the canonical permalink, 'label' => the page's own <h1>).
  *
@@ -128,6 +165,13 @@ function alt_nav_desired_children() {
     $secondary = alt_secondary_pages();
     $parent = alt_nav_parent_path();
     $out = array();
+
+    // FIRST, the tracker itself. A dropdown parent opens the dropdown rather
+    // than navigating, so without this the reader gets four pages ABOUT the
+    // tracker and no way to reach it.
+    $view = alt_nav_view_child();
+    if (!$view) return array();          // not ready is not a partial menu
+    $out[] = $view;
 
     foreach (alt_nav_children() as $slug) {
         $path = $parent . '/' . $slug;
@@ -214,19 +258,33 @@ function alt_nav_rebuild_children($existing, $desired, $parent_url) {
         // Ours to manage: anything below the tracker page. Note the '/' so the
         // parent's own URL is not treated as one of its own children.
         if ($url !== '' && $parent_url !== '' && strpos($url, $parent_url . '/') === 0) continue;
+        // AND the one item that points AT the parent and carries our class.
+        // Matched on the CLASS, never on the url alone: an item the owner
+        // added pointing at the tracker is theirs, and dropping it because it
+        // shares a url with ours would be this plugin overreaching in exactly
+        // the way "keep theirs" exists to prevent.
+        $cls = isset($attrs['className']) ? (string) $attrs['className'] : '';
+        if ($url !== '' && $url === $parent_url
+            && strpos($cls, ALT_NAV_VIEW_CLASS) !== false) continue;
         $kept[] = $child;
     }
 
     $mine = array();
     foreach ($desired as $child) {
+        $child_attrs = array(
+            'label' => $child['label'],
+            'type'  => 'custom',
+            'kind'  => 'custom',
+            'url'   => $child['url'],
+        );
+        // Only the View item carries one; the rest must not gain an empty
+        // className attribute, which would be a difference on every run.
+        if (!empty($child['className'])) {
+            $child_attrs['className'] = $child['className'];
+        }
         $mine[] = array(
             'blockName'    => 'core/navigation-link',
-            'attrs'        => array(
-                'label' => $child['label'],
-                'type'  => 'custom',
-                'kind'  => 'custom',
-                'url'   => $child['url'],
-            ),
+            'attrs'        => $child_attrs,
             'innerBlocks'  => array(),
             'innerHTML'    => '',
             'innerContent' => array(),
@@ -354,9 +412,25 @@ function alt_nav_submenu_sync() {
             $found_anywhere = true;
             if (!$changed) continue;            // already right: no write at all
 
+            // wp_slash() IS LOAD-BEARING AND ITS ABSENCE CAUSED BOTH BUGS.
+            // wp_insert_post() runs wp_unslash() over everything it is given,
+            // so content handed over unslashed comes back one level of
+            // escaping shorter. Block attributes are JSON, and JSON writes
+            // "&" as "\u0026" -- lose that backslash and the stored label
+            // becomes the literal "Methodology u0026 Sources", which is what
+            // the live menu showed.
+            //
+            // The second symptom was the same defect wearing a different
+            // coat. This function only writes when the stored blocks differ
+            // from the desired ones, which SHOULD make a second run a no-op.
+            // But the value that landed could never equal the value intended,
+            // so every single run found a difference and wrote again: a menu
+            // that rewrote itself forever and clobbered the owner's manual
+            // edits each time. The idempotence was correct; the write was
+            // corrupting the thing idempotence was measured against.
             wp_update_post(array(
                 'ID'           => (int) $menu->ID,
-                'post_content' => serialize_blocks($blocks),
+                'post_content' => wp_slash(serialize_blocks($blocks)),
             ));
         }
 
@@ -398,7 +472,17 @@ function alt_nav_verify($parent_url, $desired) {
         foreach ((array) $item['innerBlocks'] as $child) {
             $attrs = isset($child['attrs']) && is_array($child['attrs']) ? $child['attrs'] : array();
             $url = isset($attrs['url']) ? alt_nav_normalize_url($attrs['url']) : '';
-            if ($url !== '' && strpos($url, $parent_url . '/') === 0) {
+            $cls = isset($attrs['className']) ? (string) $attrs['className'] : '';
+            // The SAME ownership rule the rebuild uses, and it has to be the
+            // same or verification is measuring a different set from the one
+            // that was written. A stricter check here never passes, the
+            // synced flag is never set, and the sync retries on every single
+            // request forever -- which is the shape of the bug this file just
+            // fixed, arriving by another door.
+            $ours = ($url !== '' && strpos($url, $parent_url . '/') === 0)
+                 || ($url !== '' && $url === $parent_url
+                     && strpos($cls, ALT_NAV_VIEW_CLASS) !== false);
+            if ($ours) {
                 $got[$url] = isset($attrs['label']) ? $attrs['label'] : '';
             }
         }

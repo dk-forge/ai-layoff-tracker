@@ -103,6 +103,13 @@ PARENT_URL = "https://asktherecruiter.com/blog/ai-layoff-tracker/"
 # The four, and the two that are deliberately out. Named here so a change to
 # either list is a decision somebody made in a diff, not a drift.
 EXPECTED_SLUGS = ["methodology", "sources", "press", "ai-quotes"]
+
+# The dropdown's FIRST item is the tracker itself, which is not one of the
+# slugs above because its url IS the parent's. A dropdown parent opens the
+# dropdown rather than navigating, so without this a reader got four pages
+# ABOUT the tracker and no way to reach it.
+VIEW_LABEL = "View AI Layoff Tracker \u2192"
+EXPECTED_URLS = [PARENT_URL] + [PARENT_URL + s + "/" for s in EXPECTED_SLUGS]
 EXCLUDED_SLUGS = ["ai-tracker-health", "publisher-tools"]
 
 
@@ -159,9 +166,23 @@ function get_permalink($page) { return 'https://asktherecruiter.com/blog/' . $pa
 function has_shortcode($content, $tag) { return strpos((string) $content, '[' . $tag . ']') !== false; }
 
 function get_posts($args) { return $GLOBALS['menus']; }
+
+/* THE STUB NOW MODELS THE SLASHING, because the absence of it was the bug.
+   WordPress runs wp_unslash() over everything handed to wp_insert_post(), so
+   content given unslashed is STORED one level of escaping shorter. Block
+   attributes are JSON and JSON writes "&" as "\u0026"; lose that backslash
+   and the stored label reads "Methodology u0026 Sources" -- which is what the
+   live site showed for days.
+
+   A stub that simply kept whatever it was given could never fail on that, so
+   it would have passed the broken code and passes the fixed code, which is a
+   test proving nothing. */
+function wp_slash($v) { return addslashes((string) $v); }
+function wp_unslash($v) { return stripslashes((string) $v); }
 function wp_update_post($args) {
+    $content = wp_unslash($args['post_content']);   // core does this, always
     foreach ($GLOBALS['menus'] as $m) {
-        if ((int) $m->ID === (int) $args['ID']) { $m->post_content = $args['post_content']; }
+        if ((int) $m->ID === (int) $args['ID']) { $m->post_content = $content; }
     }
     $GLOBALS['writes'][] = (int) $args['ID'];
     return $args['ID'];
@@ -206,7 +227,15 @@ function parse_blocks($content) {
 
 function get_comment_delimited_block_content($name, $attrs, $content) {
     $short = strpos($name, 'core/') === 0 ? substr($name, 5) : $name;
-    $json = $attrs ? json_encode($attrs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ' ' : '';
+    /* JSON_HEX_AMP IS THE WHOLE REASON THE u0026 BUG EXISTS, so the stub has
+       to do it. WordPress's serialize_block_attributes() encodes with
+       JSON_HEX_TAG | JSON_HEX_AMP, which writes "&" as "\u0026". Without
+       that flag here the stub produced a bare "&", nothing in the pipeline
+       ever carried a backslash, and removing wp_slash() from the plugin left
+       all 25 tests green -- a guard with the same blind spot as the thing it
+       guards. Verified by mutation: with this flag, dropping wp_slash() turns
+       the label into "Methodology u0026 sources" and the tests go red. */
+    $json = $attrs ? json_encode($attrs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_AMP) . ' ' : '';
     if ($content === '') return '<!-- wp:' . $short . ' ' . $json . '/-->';
     return '<!-- wp:' . $short . ' ' . $json . '-->' . $content . '<!-- /wp:' . $short . ' -->';
 }
@@ -362,7 +391,8 @@ class TheChildrenAreTheRightPages(unittest.TestCase):
     def test_every_label_is_the_destinations_own_h1(self):
         got = self.h.run("echo json_encode(alt_nav_desired_children());")
         pages = secondary_pages()
-        want = [template_h1(pages["ai-layoff-tracker/" + s][0]) for s in EXPECTED_SLUGS]
+        want = [VIEW_LABEL] + [template_h1(pages["ai-layoff-tracker/" + s][0])
+                               for s in EXPECTED_SLUGS]
         self.assertEqual(
             [c["label"] for c in got], want,
             "the menu would read %r while the pages head themselves %r, so a "
@@ -373,7 +403,7 @@ class TheChildrenAreTheRightPages(unittest.TestCase):
         got = self.h.run("echo json_encode(alt_nav_desired_children());")
         self.assertEqual(
             [c["url"] for c in got],
-            [PARENT_URL + s + "/" for s in EXPECTED_SLUGS])
+            EXPECTED_URLS)
 
     def test_no_dash_in_any_label(self):
         # style_check.py needs 12 characters and 3 real words before a string is
@@ -449,7 +479,7 @@ echo json_encode(array('one' => $after_one, 'two' => $after_two,
     def test_registering_twice_leaves_one_item_per_page(self):
         r = self._twice()
         self.assertEqual(
-            r["kids"], [PARENT_URL + s + "/" for s in EXPECTED_SLUGS],
+            r["kids"], EXPECTED_URLS,
             "after two registrations the submenu holds %r. Each destination is "
             "offered once." % (r["kids"],))
         self.assertEqual(len(r["kids"]), len(set(r["kids"])),
@@ -499,7 +529,7 @@ echo json_encode(array('kids' => $kids, 'content' => $GLOBALS['menus'][0]->post_
             "a page that is no longer offered kept its menu item. A retired or "
             "renamed page's item must follow it, not linger pointing at a page "
             "the navigation still claims is there.")
-        self.assertEqual(r["kids"], [PARENT_URL + s + "/" for s in EXPECTED_SLUGS])
+        self.assertEqual(r["kids"], EXPECTED_URLS)
 
     def test_a_child_the_owner_added_elsewhere_survives(self):
         theirs = "https://asktherecruiter.com/blog/contact/"
@@ -700,15 +730,23 @@ class TheSubmenuRenders(unittest.TestCase):
             self.skipTest("Chrome unavailable: %s" % exc)
 
     def _labels(self):
-        """What the four pages head themselves, read from the templates.
+        """The view item, then what the four pages head themselves.
 
         Deliberately NOT [c["label"] for c in self.children]: the rendered
         markup is built from what the plugin produced, so comparing it back to
         the same source would pass on a submenu that had lost two of the four.
         The expectation comes from the destinations.
+
+        VIEW_LABEL is the one entry that cannot come from a destination's
+        <h1>, because its destination is the tracker page itself and that
+        page heads itself with the tracker's own title. It is a literal here
+        and a literal in the plugin, which is the price of the item existing
+        at all; the ORDER is what this test protects, and the view item being
+        first is the entire point of it.
         """
         pages = secondary_pages()
-        return [template_h1(pages["ai-layoff-tracker/" + s][0]) for s in EXPECTED_SLUGS]
+        return [VIEW_LABEL] + [template_h1(pages["ai-layoff-tracker/" + s][0])
+                               for s in EXPECTED_SLUGS]
 
     def test_the_four_read_as_the_pages_head_themselves_at_1280(self):
         r = self._render(1280, 900, OPEN_DESKTOP)
