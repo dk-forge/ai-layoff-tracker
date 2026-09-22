@@ -6,13 +6,15 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD by Claude (agent), 2026-09-22 early, ops green sweep, branch
-  `ops/green-sweep-0921`.** Splits `warn-import` and `archive-backfill` so the
-  third-party fetches leave from a hosted runner and the host writes stay on
-  the VPS (`warn_relay.py`, `archive_relay.py`), rotates the Hawaii OCR crawl
-  start, routes three health posters through the retrying writer, merges healer
-  PR #398. No plugin file, no version reserved. Does NOT touch thresholds,
-  GRACE, `source_state.json`, headline incidents or any spend setting.
+- **RELEASED - Claude (agent), 2026-09-22 early, ops green sweep (PR #404,
+  #398 merged). Work complete.** WARN and archive-backfill split so third-party
+  fetches leave from a hosted runner and host writes stay on the VPS; the first
+  relayed WARN run (35668731673) upserted 45,121 rows against 34,552 and no
+  state read dark. Hawaii crawl rotates its start; three health posters retry.
+  No plugin file. **Left for a human:** `warn:MS` DARK is quiet by evidence
+  (register's newest PDF is Apr-Jun 2026, our frontier; 22.0/yr, p90 gap 45d,
+  84d silent); `dedupe_llm` and the digest wait on the owner's OpenRouter key;
+  `headline_movement` closes with the commands below.
 - **RELEASED - Claude (agent), 2026-09-21 night, declared superset membership
   (PR #402, plugin 2.20.205, live). Work complete.** Reviewer-declared
   memberships now survive the reconciler's clean slate; the four restatement
