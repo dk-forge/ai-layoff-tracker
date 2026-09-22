@@ -1183,3 +1183,40 @@ body.single-post .entry-content p.alt-clap-note {
 @media (prefers-reduced-motion: reduce) {
   body.single-post .entry-content a { transition: none; }
 }
+
+/* --------------------------------------------------------- 10. header: the
+   hamburger belongs beside the button, not in the middle of the header
+
+   MEASURED ON THE LIVE SITE AT 768px, not guessed. The header row is
+   `justify-content: space-between` over three visible children: the site
+   title, the navigation, and the "Adapt my resume" button. The navigation is
+   269px wide and carries the theme's `items-justified-center`, so once it
+   collapses to a hamburger the button sits CENTRED inside that 269px -- which
+   puts it at x=360 in a 753px header, floating between the title and the CTA
+   and reading as a third, unrelated thing.
+
+   `justify-content: flex-end` moves it to x=478, immediately left of the CTA
+   at 526, so the two controls read as one group. Nothing else changes: the
+   nav keeps its width, the title keeps its place, and the desktop menu above
+   900px is untouched.
+
+   !important IS REQUIRED and is not laziness: `.items-justified-center` is
+   applied by the theme with enough specificity that the plain rule computed
+   to `center` anyway. Verified by reading back `getComputedStyle(nav)
+   .justifyContent` rather than assuming the rule had landed.
+
+   WHAT NOT TO DO HERE. The first attempt also set `flex: 0 0 auto` and
+   `margin-left: auto` on the nav, reasoning that it should shrink to its
+   content. That made the hamburger AND the CTA disappear entirely. It was
+   caught because it was injected into the live page and screenshotted before
+   any of it was written down; it would not have been caught by reasoning. If
+   this rule ever needs to change, test it in a browser first.
+
+   375px is unaffected in position (the hamburger is already at the right
+   edge, 347 of 375) and re-checked for horizontal overflow, which is clean. */
+@media (max-width: 900px) {
+  header.wp-block-template-part
+    nav.wp-block-navigation.is-responsive.items-justified-center {
+    justify-content: flex-end !important;
+  }
+}
