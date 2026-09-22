@@ -95,3 +95,26 @@ class MeasurePrecisionRedirectorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RedirectorsDoNotEatTheSample(unittest.TestCase):
+    def test_the_sample_is_cut_from_readable_sources(self):
+        rows = ([{"company_name": f"R{i}", "job_count": 10, "source_url": REDIRECTOR}
+                 for i in range(rp.SAMPLE)]
+                + [{"company_name": f"C{i}", "job_count": 10,
+                    "source_url": f"https://www.realpublisher.com/{i}"}
+                   for i in range(rp.SAMPLE)])
+
+        def fake_get(url, **kw):
+            if "wp-json" in url:
+                return _query_rows(rows)
+            if url == REDIRECTOR:
+                raise AssertionError("news.google.com must never be fetched")
+            return FakeResponse(200, text="cutting 10 jobs")
+
+        with mock.patch("recall_precision.requests.get", side_effect=fake_get), \
+             mock.patch("recall_precision.time.sleep"):
+            result = rp.measure_precision()
+        self.assertEqual(result["checked"], rp.SAMPLE)
+        self.assertEqual(result["reasons"]["google_news_redirector"], rp.SAMPLE)
+        self.assertEqual(rp.judge_precision(result)[0], "pass")

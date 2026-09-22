@@ -87,7 +87,12 @@ number.** All 10 misses were unresolved Google News redirectors, which
 `robots.txt` forbids us to fetch and which return a stub. Healer PR #398 skips
 them before the request and counts them under their own reason, leaving the
 80% floor and the 20-row minimum alone. Reviewed in this session and found
-correct; it touches no FORBIDDEN path. It is merged separately from this entry.
+correct; it touches no FORBIDDEN path, and was merged as 42db52fd. The first
+run after it (35670736233) read UNKNOWN instead: 23 of the 40 sampled rows
+were redirectors and the 15 left could not reach the 20-row minimum. The
+redirectors are now set aside before the sample is cut, so the 40 are drawn
+from sources that can be read; the floor and the minimum did not move, and
+the redirector count is still printed.
 
 ## 2026-09-21 - Superset membership could only be derived, never declared, so a two-reviewer ruling had nowhere to live and 15,200 jobs stacked
 
