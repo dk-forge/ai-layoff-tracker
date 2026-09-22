@@ -6,6 +6,17 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-22 afternoon, branch
+  `ops/sandbox-main-green`. Work complete.** After the owner widened
+  `MERGE_TRAIN_TOKEN` (Actions and Issues read/write), the probe was re-run
+  BEFORE anything was built on it: the Actions doors now answer, but
+  `check-runs` and `commit statuses` are still 403 for a fine-grained token.
+  So the sandbox's daily main-green check moved here
+  (`railway/sandbox_watch/`, `sandbox-main-green.yml`, free hosted runner) and
+  its TRAIN WATCHDOG did not, and cannot until those two endpoints change.
+  This buys VPS-independence, not hosted minutes: that check already ran on
+  the VPS and cost nothing. No plugin file, no version reserved, no request to
+  the live host.
 - **RELEASED - Claude (agent), 2026-09-22, branch `ops/sandbox-watchdogs-move`.
   Work complete.** The sandbox's hosted backend probe is retired in favour of
   `sandbox-uptime-check.yml` here, which now reads the public TLS certificates

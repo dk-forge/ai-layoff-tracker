@@ -1,3 +1,24 @@
+## 2026-09-22 - The widened token moved the main-green check out of the VPS it reports on, and measured why the train watchdog still cannot follow
+
+**Class:** novel
+**Guard:** `railway/tests/test_sandbox_main_green.py` (the ported judge: it targets the SANDBOX and never `GITHUB_REPOSITORY`, absence of a run is UNKNOWN, NEVER_STARTED is never a pass, the running issue is opened on the sandbox, and the workflow cannot resolve to a self-hosted runner) and `.github/workflows/sandbox-token-probe.yml` (re-runnable: which doors the token opens).
+
+Earlier today the token probe found `MERGE_TRAIN_TOKEN` refused 403 on every Actions endpoint, so neither of the sandbox's two API-reading watchdogs could be hosted from here. The owner then granted that token Actions read/write and Issues read/write. **The grant was verified before anything was built on it**, which mattered: it did not fix everything.
+
+Re-probed (runs 35740963473 and 35741071577). **Now OK:** `actions/workflows/<file>/runs`, `actions/runs?head_sha=`, `actions/runs?status=queued|in_progress`, `actions/runs/<id>/jobs` (returning real `runner_id`, `runner_name` and `steps`, which the NEVER_STARTED classifier needs), `commits/<branch>`, `actions/workflows`, `gh run view --log-failed` on a completed run, `gh workflow enable`, workflow dispatch, issues list/create/patch/comment/close, pull request list and comment, labels. **Still refused 403:** `commits/<sha>/check-runs` and `commits/<sha>/status`, which a fine-grained token cannot reach whatever it is granted (the 2026-09-21 entry blamed check-runs alone; the morning probe showed the Actions refusals were a missing permission and these two are the genuine limitation), and `actions/runners`, which is admin-only and for which `train_watchdog` already carries a documented fallback.
+
+**So the daily main-green check moved and the train watchdog did not.** The watchdog's first question is whether the five `Merge gate:` checks are green on a head SHA, which is precisely check-runs plus commit statuses. It stays in the sandbox with a comment naming the two endpoints, so nobody tries this a third time.
+
+**This move saves no money and is not claimed to.** `main-green-check.yml` already ran on `${{ vars.CI_RUNNER }}`, the VPS, so its GitHub bill was already zero and it was never one of the hosted workflows in this morning's $10 accounting. What it buys is independence: that repo's CI, its merge train and its main-green check all ran on one box, so the thing answering "is main green?" died with the thing that makes main green, and a VPS outage read as silence rather than as UNKNOWN. That is the `/alert`-on-the-host-it-reports-about shape, twice named in CLAUDE.md.
+
+**Two hazards handled rather than discovered later.** First, the ported module read its target from `GITHUB_REPOSITORY`, correct while it ran inside the repo it judged and silently wrong here: it would have judged the layoff tracker's own workflows, found none by those names, and reported a wall of UNKNOWN about the wrong repository while the run looked fine. It reads `SANDBOX_REPO` now and a test fails on any mention of the old variable. Second, the sandbox's `main_green.py` is NOT deleted, because `live_look.py`, `hosted_billing_sentinel.py` and `train_watchdog.py` import `sync_issue`, `find_issue`, `problem_set`, `never_started`, `Verdict`, `gh_json` and `ReadError` from it and all three still run there. Only the SCHEDULE moved, so the judging half now exists in two repositories and can drift. That is a real cost, accepted knowingly and written down here rather than hidden; the copy that runs daily is this repo's.
+
+**A third coupling is fixed in the sandbox's own change:** `train_watchdog.py` reports "main has not been verifiably green for N hours" by reading `main-green-check.yml`'s runs in the sandbox. With that workflow gone, the read returns an empty list and the watchdog stops reporting main red with no error at all, which is the exact `silent-stop` shape. It is repointed at this repo's `sandbox-main-green.yml`, which it can read because this repo is public.
+
+The running issue stays in the sandbox, so its issue list remains the one place to look.
+
+---
+
 ## 2026-09-22 - The sandbox's hosted watchdogs cost real money and its train watchdog cannot move here yet: the token answers no Actions door
 
 **Class:** novel
