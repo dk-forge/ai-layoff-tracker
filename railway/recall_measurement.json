@@ -9,7 +9,7 @@
       "tracker_event_ids": []
     }
   ],
-  "matched": 54,
+  "matched": 55,
   "matched_floor": 52,
   "matched_ids": [
     "sec-205-0001751788-25-000139",
@@ -47,6 +47,7 @@
     "sec-205-0001705110-26-000005",
     "sec-205-0000769397-26-000006",
     "sec-205-0001751788-26-000009",
+    "sec-205-0001104659-26-007986",
     "sec-205-0002055592-26-000008",
     "sec-205-0001193125-26-048738",
     "sec-205-0001650372-26-000021",
@@ -67,7 +68,7 @@
     "sec-205-0001628280-26-039805",
     "sec-205-0001193125-26-278582"
   ],
-  "measured_at": "2026-09-22T00:13:31Z",
+  "measured_at": "2026-09-22T00:24:41Z",
   "missed": 2,
   "missed_events": [
     {
@@ -85,11 +86,6 @@
   "reference_events": 57,
   "reference_set_id": "sec-item-205-us-2025-07_2026-06",
   "reference_set_path": "docs/recall-reference-sets/sec-item-205-us-2025-07_2026-06.goldset.json",
-  "unreachable": 1,
-  "unreachable_events": [
-    {
-      "id": "sec-205-0001104659-26-007986",
-      "why": "RemoteDisconnected: Remote end closed connection without response"
-    }
-  ]
+  "unreachable": 0,
+  "unreachable_events": []
 }
