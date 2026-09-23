@@ -29,3 +29,12 @@ scratchpad/
 # Written by railway/host_call.py so the deferral-ledger commit loop can
 # re-derive its record after resetting onto main. Per-run, never committed.
 deferral_envelope.json
+
+# Local MCP server configuration. NEVER COMMITTED, and this repository is
+# PUBLIC: a project-scoped .mcp.json names the infrastructure a session can
+# reach (on 2026-09-22 it pointed at the sandbox product's PRODUCTION Supabase
+# project). None of that is a credential -- the project ref is already visible
+# to any browser using the app -- but publishing a map of what a developer
+# machine can connect to is free reconnaissance and belongs in nobody's clone.
+# Keep the file local; add servers with `claude mcp add` per checkout.
+.mcp.json

@@ -16,6 +16,19 @@
 # with 2,000 real messages in it deletes nothing. The scheduled run is live and
 # only ever touches messages older than the retention window.
 
+# SECRET NAMES, 2026-09-23. One shape, repeated: IMAP_<what>_JANITOR_<which>,
+# with a single IMAP_HOST because both mailboxes are on one server.
+#
+# The old names (JANITOR_IMAP_HOST, JANITOR_PRODUCTION_USER,
+# JANITOR_SANDBOX_PASSWORD...) mixed two conventions in one list and the
+# owner could not tell which parts were load-bearing. He renamed them to
+# something he could follow, which broke every workflow, because a
+# secret's name is its address. The code follows HIS naming now: he
+# maintains this, so the names should serve him.
+#
+# The same five names are set in all three repos even where nothing reads
+# them yet, so a future error-tracking job has one pattern to match.
+
 name: Mailbox janitor
 
 on:
@@ -57,18 +70,18 @@ jobs:
       matrix:
         include:
           - label: sandbox
-            user_secret: JANITOR_SANDBOX_USER
-            pass_secret: JANITOR_SANDBOX_PASSWORD
+            user_secret: IMAP_USER_2_JANITOR_SANDBOX
+            pass_secret: IMAP_PASSWORD_2_JANITOR_SANDBOX
           - label: production
-            user_secret: JANITOR_PRODUCTION_USER
-            pass_secret: JANITOR_PRODUCTION_PASSWORD
+            user_secret: IMAP_USER_JANITOR_PRODUCTION
+            pass_secret: IMAP_PASSWORD_JANITOR_PRODUCTION
     steps:
       - uses: actions/checkout@v5
 
       - name: Sweep
         id: sweep
         env:
-          JANITOR_IMAP_HOST: ${{ secrets.JANITOR_IMAP_HOST }}
+          JANITOR_IMAP_HOST: ${{ secrets.IMAP_HOST }}
           JANITOR_IMAP_USER: ${{ secrets[matrix.user_secret] }}
           JANITOR_IMAP_PASSWORD: ${{ secrets[matrix.pass_secret] }}
           JANITOR_RETAIN_DAYS: ${{ inputs.retain_days || '14' }}

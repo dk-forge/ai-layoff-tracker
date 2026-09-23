@@ -1,0 +1,118 @@
+{
+  "spec_version": 1,
+  "prepared": "2026-09-16",
+  "status": "PREPARED \u2014 NOT APPLIED. Needs WP_API_KEY and the owner's sign-off.",
+  "finding": "docs/findings-july-august-2026-us-accuracy.md",
+  "why_not_applied": "A published numeric change always needs a human sign-off, and this session held no WP_API_KEY. This spec was prepared by a SECOND, independent reader who fetched each row from the live /query API and read each row's own source_url in full before ruling; it agrees with the first reader on all three rows. All three are unambiguous (no judgement call, no referee needed): one figure is a dollar amount in thousands from an EBITDA reconciliation, and two are a county economist's projection of what a merger that is on hold MIGHT cost a regional industry over three years, which no employer announced.",
+  "headline_before": {
+    "measured": "2026-09-16, plugin 2.20.195, /aggregate country=United States from=2026-08-01 to=2026-08-31",
+    "august_announced_jobs": 41138,
+    "august_announced_entries": 302,
+    "august_announced_flag_jobs": 5123,
+    "august_announced_flag_entries": 6,
+    "august_notice_jobs": 41688,
+    "august_notice_entries": 325,
+    "august_notice_flag_jobs": 5123,
+    "august_notice_flag_entries": 6,
+    "basis_note": "'announced' here follows the finding document's column label and is the request date_basis=announced, which alt_db_date_expr() does not recognise and therefore resolves to the DEFAULT layoff_date basis (verified: it returns byte-identical totals to a request with no date_basis). 'notice' is date_basis=notice, COALESCE(announcement_date, layoff_date). The *_flag_* figures are totals.announced_jobs / totals.announced_entries, the rows carrying announced=1."
+  },
+  "headline_after_expected": {
+    "august_announced_jobs": 32318,
+    "august_announced_entries": 300,
+    "august_announced_flag_jobs": 623,
+    "august_announced_flag_entries": 5,
+    "august_notice_jobs": 32868,
+    "august_notice_entries": 323,
+    "august_notice_flag_jobs": 623,
+    "august_notice_flag_entries": 5,
+    "note": "THE TWO BASES MOVE BY THE SAME AMOUNT THIS TIME, for a checkable reason: row 177216 has no announcement_date (notice basis falls back to its 2026-08-12 layoff_date) and row 178667's announcement_date equals its layoff_date (2026-08-19), so both rows sit in August 2026 on both bases. US loses -8,820 jobs and -2 entries on each basis. Row 177173 does NOT appear in either US figure: it is stored under country 'Multiple countries', and the headline country filter is strict job-location (verified: /query country=United States from=2026-08-01 to=2026-08-31 company=Paramount returns only 178667). Its removal moves the 'Multiple countries' August total (2,746 -> 246 jobs, 5 -> 4 entries, default basis; 2,618 -> 118, 4 -> 3, notice) and the worldwide August total, see worldwide_after_expected. Verifying the US figures against a number that includes 177173 would be wrong."
+  },
+  "worldwide_after_expected": {
+    "measured_before": "2026-09-16, /aggregate from=2026-08-01 to=2026-08-31, no country filter",
+    "default_basis": {
+      "before_jobs": 109107,
+      "before_entries": 428,
+      "before_announced_flag_jobs": 20726,
+      "before_announced_flag_entries": 45,
+      "after_jobs": 97787,
+      "after_entries": 425,
+      "after_announced_flag_jobs": 13726,
+      "after_announced_flag_entries": 43
+    },
+    "notice_basis": {
+      "before_jobs": 109709,
+      "before_entries": 451,
+      "before_announced_flag_jobs": 20906,
+      "before_announced_flag_entries": 46,
+      "after_jobs": 98389,
+      "after_entries": 448,
+      "after_announced_flag_jobs": 13906,
+      "after_announced_flag_entries": 44
+    },
+    "note": "All three rows fall in August 2026 on both bases (177173 also has no announcement_date, so notice falls back to 2026-08-11). Worldwide loses -11,320 jobs and -3 entries on each basis; the announced flag loses -7,000 and -2 (177216 is announced=0)."
+  },
+  "corrections": [
+    {
+      "id": 177216,
+      "action": "trash",
+      "company_name": "Applied Aerospace & Defense, Inc.",
+      "job_count": 4320,
+      "source_type": "8K",
+      "layoff_date": "2026-08-12",
+      "stored_announcement_date": "",
+      "announced": false,
+      "country": "United States",
+      "event_id": 149949,
+      "source_url": "https://www.sec.gov/Archives/edgar/data/2118195/000162828026055948/appliedearningsrelease2q26.htm",
+      "judgement_call": false,
+      "reason": "audit 2026-09-16: the 4,320 is a DOLLAR figure, not a headcount. The document is a Q2 2026 earnings release (Exhibit 99.1 to an 8-K). Its only occurrence of 4,320 is a line in the Adjusted EBITDA reconciliation table headed '(in thousands, except percentages)': 'Integration and restructuring costs (2) 2,047 1,336 4,320 3,377', i.e. $4.32 million of integration and restructuring cost for the six months ended June 30, 2026. Footnote (2), which is the row's stored excerpt, reads in full 'Includes acquisition integration and restructuring costs, including plant consolidation and reconfiguration, reductions in force, and executive severance expense.' The release states no number of employees, positions or reductions anywhere; every match for 'employees', 'positions', 'workforce' or 'reduction in force' in the text was read and none carries a count. A reduction in force did occur at some size, but the source supports NO count, which is the trash case, not a recount.",
+      "evidence": "The earnings release was fetched and read in full for this audit (283 KB HTML, 20,776 characters of text); the table line and footnote are quoted above verbatim.",
+      "command": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 177216 --action trash --verify-company 'Applied Aerospace & Defense, Inc.' --reason '<the reason field above>' --apply"
+    },
+    {
+      "id": 178667,
+      "action": "trash",
+      "company_name": "Paramount-Warner Bros.",
+      "job_count": 4500,
+      "source_type": "news",
+      "layoff_date": "2026-08-19",
+      "stored_announcement_date": "2026-08-19",
+      "announced": true,
+      "country": "United States",
+      "state": "CA",
+      "event_id": 151400,
+      "source_url": "https://variety.com/2026/film/news/paramount-warner-bros-merger-la-job-loss-production-1236838567/",
+      "judgement_call": false,
+      "reason": "audit 2026-09-16: a third-party economic-impact PROJECTION, not an employer announcement, and not the employer's own jobs. The article's first sentence: 'The merger of Paramount and Warner Bros. could cost about 4,500 film and TV jobs over three years, according to a new report issued by Los Angeles County.' The report is by a consultancy commissioned by a county supervisor; the 4,500 are regional film and TV production jobs across the L.A. economy over three years, not positions at the registrant, and the article goes on to size a 'ripple effect' at 10,360. The employer did not announce this and disputes its framing: 'In response, Paramount issued a statement arguing that the report proves its point about the dire state of Hollywood's production economy.' The event itself has not happened: 'The Paramount-Warner Bros. merger is on hold at least through March 2027, when a trial is scheduled on the antitrust lawsuit brought by 12 state attorneys general.' Under adjudication rule 3 the count is unsupported for any employer event; the row is also wrongly flagged announced=1 and wrongly attributes the number to a combined company that does not exist. Reclassifying to announced=0 would still leave a 4,500 row for a layoff nobody announced and no employer will conduct, so the action is trash.",
+      "evidence": "The article was fetched and read in full for this audit; the four sentences above are quoted verbatim.",
+      "command": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 178667 --action trash --verify-company 'Paramount-Warner Bros.' --reason '<the reason field above>' --apply"
+    },
+    {
+      "id": 177173,
+      "action": "trash",
+      "company_name": "Paramount Skydance",
+      "job_count": 2500,
+      "source_type": "news",
+      "layoff_date": "2026-08-11",
+      "stored_announcement_date": "",
+      "announced": true,
+      "country": "Multiple countries",
+      "state": "CA",
+      "event_id": 149906,
+      "source_url": "https://www.aljazeera.com/economy/2026/8/11/paramount-ceo-may-remove-operations-from-california-over-stalled-merger",
+      "judgement_call": false,
+      "not_in_us_headline": true,
+      "reason": "audit 2026-09-16: the same county projection as row 178667, at its earlier (June) size, read out of a background paragraph. The article's sentence: 'In Los Angeles County alone, the merger could result in a loss of nearly 2,500 jobs, according to an analysis by the Los Angeles County Department of Economic Opportunity, published in June.' The next sentence is speculative too: 'As many as 6,000 employees around the world could also see their positions cut.' The article is about the CEO threatening to move operations out of California over the stalled merger; the merger is paused ('On July 24, Paramount Skydance agreed to pause the merger until a ruling in the states' case is ultimately made or until June 1, 2027'). The only employer-attributed headcount in the piece is retrospective and a different event: 'when the Paramount and Skydance merger was completed in 2025, the company laid off roughly 2,000 people.' No employer announced a 2,500-job cut on or around 2026-08-11, so the count is unsupported (adjudication rule 3) and announced=1 is wrong. The row also sits in a different month-bucket from 178667 for the same projection, so it double counts a number that should not be present once. Trash.",
+      "evidence": "The article was fetched and read in full for this audit; the sentences above are quoted verbatim. This row is stored under country 'Multiple countries' and does not enter the US August figures on either basis; it is included here because the first reader flagged it as a US row and the reading is the same.",
+      "command": "WP_SITE_URL=... WP_API_KEY=... python3 railway/apply_correction.py --ids 177173 --action trash --verify-company 'Paramount Skydance' --reason '<the reason field above>' --apply"
+    }
+  ],
+  "open_and_deliberately_excluded": [],
+  "protocol": [
+    "Never edit or purge a row by hand. All three corrections go through apply_correction.py, which suppresses the dedup hash so the nightly re-scrape of the same pages cannot resurrect the rows.",
+    "Run without --apply first: that is a dry run showing exactly what would change. Each row holds exactly ONE source report (verified via /event/<id>/sources on 2026-09-16) and superset_of is null on all three, so no member rows resurface on trash.",
+    "Re-read the August headline on BOTH bases for country=United States after applying and compare against headline_after_expected: -8,820 jobs and -2 entries on each basis, announced_jobs 5,123 -> 623. Then re-read WORLDWIDE August on both bases and compare against worldwide_after_expected: -11,320 and -3. A figure that does not match means something else moved and the run is not verified.",
+    "The two Paramount rows come from GDELT/Google News reads of MERGER coverage. If the same LA County projection has been stored a third time under another spelling (the June preliminary report sized it at 2,495), the /query check by company=Paramount, no date window, is the place to look; on 2026-09-16 only these two rows and no June row were present.",
+    "The headline_movement baseline will see an 8,820-job US drop and an 11,320-job worldwide drop. It is a DISCLOSED removal: record it through the corrections log so the movement guard accounts for it rather than opening an incident."
+  ]
+}
