@@ -1,3 +1,23 @@
+## 2026-09-23 - The mailbox janitor's cPanel login is refused, for both mailboxes, since at least the day before
+
+**Class:** novel
+**Guard:** none yet — this is a found-not-fixed entry from the hourly ops check; `railway/mailbox_janitor.py`'s existing `REJECTED` exit code is what caught it.
+
+`mailbox-janitor.yml`'s two jobs (`Sweep production`, `Sweep sandbox`) have both gone red on their last two scheduled runs: 2026-09-22T08:54Z and 2026-09-23T08:54Z. Both jobs' logs read identically for both mailboxes:
+
+```
+MAILBOX JANITOR: REJECTED -- b'[AUTHENTICATIONFAILED] Authentication failed.'
+  Login refused. Rotate the mailbox password and update the secret.
+```
+
+This is `mailbox_janitor.py`'s own designed signal for a rejected IMAP login (exit code 2, distinct from "mailbox holds new mail" exit code 4 and "could not be read at all" exit code 3+), so the guard worked as built — this entry exists only because the failure had not yet been written down anywhere a future session would find it without re-reading the same job logs.
+
+Both `errornotifications-production@asktherecruiter.com` (production) and its sandbox counterpart reject the same `JANITOR_IMAP_PASSWORD` secret, which strongly suggests one shared cPanel credential was changed or expired rather than two independent mailbox failures. Per the CLAUDE.md header (`mailbox-janitor.yml` sweeps daily and clears past a 14-day window, and this same secret is shared with the error-triage cron and the DMARC report check per this file's own "rotate ... AND the error-triage / DMARC secrets that share it" instruction), an unrotated credential here likely also breaks error-triage's IMAP read and the DMARC report checker on the same mailbox family — not yet individually confirmed in this session.
+
+**Not self-fixable from a session**: this needs the owner to log into cPanel, rotate (or re-confirm) the mailbox password, and update the `JANITOR_IMAP_PASSWORD` (and sibling `JANITOR_IMAP_USER`/host) GitHub secret(s) for both the production and sandbox mailbox configs, then re-run `mailbox-janitor.yml` to confirm green. Until then the mailbox is not being swept (so it can fill toward its size/reject limit) and nothing genuinely new arriving there is being escalated.
+
+---
+
 ## 2026-09-23 - A hiring announcement was published as a layoff; remove it, unstack one restructuring, and reject that failure shape before write
 
 **Class:** novel
