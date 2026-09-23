@@ -1601,6 +1601,28 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
         print(f"Extraction rejected: job_count {job_count} not found verbatim in source "
               f"(model likely derived it) — source: {raw_entry.get('source_url')}")
         return None
+    # A job-creation figure is not a layoff count. Row 182100 was published
+    # from a sentence saying an expansion "will create 20 new jobs" because
+    # the model marked it as a layoff and every earlier deterministic check
+    # only proved that 20 appeared beside the word jobs. Judge the sentence
+    # that contains the selected number: creation language rejects that figure
+    # unless the same sentence also states an actual workforce reduction.
+    creation = (r"\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|hire(?:s|d|ing)?|"
+                r"recruit(?:s|ed|ing)?|open(?:s|ed|ing)?)\b[^.;\r\n]{0,35}"
+                r"\b(?:new\s+)?(?:jobs?|roles?|positions?|employees?|workers?)\b")
+    reduction = (r"\b(?:lay(?:s|ing)?\s+off|laid\s+off|job\s+cuts?|"
+                 r"redundan(?:cy|cies|t)|dismiss(?:al|als|ed|ing)?|"
+                 r"eliminat(?:e|es|ed|ing)|terminat(?:e|es|ed|ing)|"
+                 r"workforce\s+reductions?|reductions?\s+in\s+force|"
+                 r"site\s+closure|plant\s+closure)\b")
+    count_pattern = _number_pattern(job_count)
+    count_sentences = [s for s in re.split(r"(?<=[.!?])\s+|[\r\n]+", raw_text)
+                       if re.search(count_pattern, s)]
+    if count_sentences and all(re.search(creation, s, re.I) for s in count_sentences) \
+            and not any(re.search(reduction, s, re.I) for s in count_sentences):
+        print(f"Extraction rejected: job_count {job_count} describes jobs being "
+              f"created, not removed - source: {raw_entry.get('source_url')}")
+        return None
     # SEC earnings exhibits contain dense tables full of dates, shares and
     # dollar amounts. A matching sequence of digits is not evidence that the
     # number counts workers. Require the model's verbatim receipt to contain

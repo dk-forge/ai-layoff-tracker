@@ -2029,9 +2029,14 @@ comments in `includes/subscribe.php` (plus one in
 slot that no longer exists. **Claiming 2.20.118**, and re-reading main
 immediately before the merge, per the 2.20.92 collision note below.
 
-- **STATUS:** HELD
-- **HOLDER:** Codex buddy
-- **WORKING ON (2026-09-23):** citation-grade ingest protection and current-feed audit after a confirmed job-creation item was published as a layoff; resolve overlapping event totals, add regression coverage, and make one plugin deployment only if required.
+- **STATUS:** FREE
+- **HOLDER:** -
+- **RELEASED (2026-09-23): Codex buddy, citation-grade ingest protection and
+  current-feed audit.** Removed the Freeport job-creation false positive,
+  declared four Microsoft/Xbox restatements and geographic subsets under the
+  retained 3,200-role program record, and added the sentence-level creation
+  guard with regression coverage. Ingestion code and documentation only; no
+  plugin file, version reservation, FTPS deployment, or live-host write.
 - **RELEASED (2026-08-30): NO VERSION CONSUMED - ai_all_time incident traced
   and closed** (row 70557 BAT re-scored by the nightly cron; owner-signed
   trashes + dedupe merges explain the complement). New read-only
