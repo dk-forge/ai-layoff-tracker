@@ -57,11 +57,6 @@
       "last": 1790157774,
       "subject": "CI RED: Apply a signed-off correction \u2014 id(s) [182103, 182098] are not rows matching --verify-company 'Microsoft'; refusing"
     },
-    "apply-a-signed-off-correction:main:801ef77255108cde": {
-      "first": 1790157719,
-      "last": 1790157719,
-      "subject": "CI RED: Apply a signed-off correction \u2014 superset requires --verify-company: it is the guard against a mistyped id"
-    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -138,6 +133,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-23T10:04:01+00:00",
+  "updated_at": "2026-09-23T10:04:04+00:00",
   "version": 1
 }
