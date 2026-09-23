@@ -67,11 +67,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "live-surface-check:main:17eb7a2b76d25e8f": {
-      "first": 1790131234,
-      "last": 1790131234,
-      "subject": "CI RED: Live surface check \u2014 ValueError: invalid literal for int() with base 16: b''"
-    },
     "mailbox-janitor:main:147a366b787e9eb0": {
       "first": 1790039090,
       "last": 1790039090,
@@ -118,6 +113,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-23T02:40:35+00:00",
+  "updated_at": "2026-09-23T08:40:43+00:00",
   "version": 1
 }
