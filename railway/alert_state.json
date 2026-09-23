@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "apply-a-signed-off-correction:main:226bc32c9d2c32d9": {
+      "first": 1790157774,
+      "last": 1790157774,
+      "subject": "CI RED: Apply a signed-off correction \u2014 id(s) [182103, 182098] are not rows matching --verify-company 'Microsoft'; refusing"
+    },
     "apply-a-signed-off-correction:main:801ef77255108cde": {
       "first": 1790157719,
       "last": 1790157719,
@@ -138,6 +143,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-23T10:01:59+00:00",
+  "updated_at": "2026-09-23T10:02:55+00:00",
   "version": 1
 }
