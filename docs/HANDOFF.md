@@ -2031,12 +2031,18 @@ immediately before the merge, per the 2.20.92 collision note below.
 
 - **STATUS:** FREE
 - **HOLDER:** -
+- **RELEASED (2026-09-23): Codex buddy, citation-grade ingest protection and
+  current-feed audit.** Removed the Freeport job-creation false positive,
+  declared four Microsoft/Xbox restatements and geographic subsets under the
+  retained 3,200-role program record, and added the sentence-level creation
+  guard with regression coverage. Ingestion code and documentation only; no
+  plugin file, version reservation, FTPS deployment, or live-host write.
 - **RELEASED (2026-08-30): NO VERSION CONSUMED - ai_all_time incident traced
   and closed** (row 70557 BAT re-scored by the nightly cron; owner-signed
   trashes + dedupe merges explain the complement). New read-only
   trace-changed-rows dispatch workflow. TECHLOG 2026-08-30. NEXT: consider
   stamping updated_at in the dedupe merge path so merges are traceable.
-- **SINCE:** 2026-08-30
+- **SINCE:** 2026-09-23
 - **RELEASED (2026-08-30): no version claimed - the registry that reports
   unregistered files did not fail on one.** `ops_status [2f]` had printed
   `UNREGISTERED railway/deferral_ledger.json` and

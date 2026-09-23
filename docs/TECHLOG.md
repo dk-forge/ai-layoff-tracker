@@ -1,3 +1,16 @@
+## 2026-09-23 - A hiring announcement was published as a layoff; remove it, unstack one restructuring, and reject that failure shape before write
+
+**Class:** novel
+**Guard:** `railway/tests/test_job_creation_guard.py` (the selected layoff count is rejected when every sentence containing it describes jobs being created and none describes a workforce reduction; a separate real cut and a mixed sentence remain eligible for the existing extraction rules).
+
+Live row 182100 said Freeport Aggregates would **create 20 new jobs**. It was not a layoff. The signed correction workflow trashed row 182100 and its orphan event 154833, removed 20 jobs from the public headline, and suppressed the source hash so the same item cannot be re-ingested. Both the bare reader query and an uncached query no longer return it.
+
+The current Microsoft/Xbox feed also stacked restatements and geographic subsets of one 3,200-role restructuring program. Row 176369 remains the primary sourced program record. Rows 182102, 182103, 182098, and 182092 remain available as source-linked evidence but are declared members of 176369, so they no longer add 3,200, 250, 268, and 300 jobs or four entries to the headline. The two correction applications changed the worldwide headline by exactly -4,018 jobs and -4 entries. A preliminary source-move attempt moved two supporting URLs from 182102 to 176369 and refused the Livemint URL; no row was removed by that attempt, and the final superset declarations preserve all source-linked records.
+
+The preventive fix is in `finalize_extraction()`, after the existing verbatim-number receipt. It examines only sentences containing the selected count. Creation language alone rejects the record; reduction language in the same count-bearing evidence prevents this narrow guard from suppressing a real cut. This changes the ingestion pipeline only. No WordPress plugin file changed, no plugin version was reserved, and no FTPS deployment was triggered.
+
+---
+
 ## 2026-09-22 - The widened token moved the main-green check out of the VPS it reports on, and measured why the train watchdog still cannot follow
 
 **Class:** novel
