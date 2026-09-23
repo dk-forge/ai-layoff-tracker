@@ -24,6 +24,7 @@ exactly that mistake. The behavioural checks go further and execute the real
 layoffs.js in node through jsrun.
 """
 import html
+import http.client
 import json
 import os
 import re
@@ -698,7 +699,8 @@ class RenderedPageHeadingTests(unittest.TestCase):
     def _headings(self, page):
         try:
             html = self._fetch(page)
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
+        except (urllib.error.URLError, OSError, TimeoutError,
+                http.client.HTTPException) as e:
             self.skipTest("UNKNOWN, NOT passing: could not reach %s (%s)" % (page, e))
         if "<h1" not in html and "wp-block-post-title" not in html:
             self.skipTest("UNKNOWN, NOT passing: %s returned no page body" % page)
