@@ -397,7 +397,7 @@ def main() -> int:
         if state == REJECTED:
             print(f"MAILBOX JANITOR: {state} -- {detail}\n")
             print("  Login refused. Rotate the mailbox password and update the secret.")
-            return 2
+            return 2  # REJECTED. Distinct from 4; see the note at the escalation return.
         if state != OK:
             print(f"MAILBOX JANITOR: {state} -- {detail}\n")
             print("  Could not read the mailbox. UNKNOWN, not a pass.")
@@ -450,7 +450,20 @@ def main() -> int:
             print(f"  tagged {f['marked']} message(s) {_SEEN_KEYWORD}; the next sweep lists them as already escalated.")
         else:
             print("  The server did not accept the tag, so these will be reported NEW again.")
-        return 2
+        # 4, NOT 2. These two failures share nothing except being red.
+        #
+        # 2 means the credential is broken and a human must rotate a
+        # password. 4 means the janitor worked perfectly and found mail
+        # worth reading. Collapsed into one code, the workflow could only
+        # say "needs a human, OR the login was refused", and on
+        # 2026-09-23 that sent a reader to reset two WORKING mailbox
+        # passwords -- which would have broken the error-triage cron and
+        # the DMARC check, both of which share those credentials.
+        #
+        # An alarm that cannot say which of two unrelated things happened
+        # makes the reader guess, and the guess is expensive in exactly
+        # one direction.
+        return 4
     print("\n  Nothing in this mailbox matched the escalation vocabulary.")
     return 0
 

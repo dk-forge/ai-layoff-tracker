@@ -101,6 +101,7 @@ jobs:
         run: |
           case "${{ steps.sweep.outputs.code }}" in
             0) echo "Swept. Nothing matched the escalation vocabulary." ;;
-            2) echo "::error::Something in the notification mailbox needs a human, or the login was refused. See the job summary."; exit 1 ;;
+            2) echo "::error::LOGIN REFUSED for the ${{ matrix.label }} mailbox. Rotate its cPanel password, then update JANITOR_*_PASSWORD here AND the error-triage / DMARC secrets that share it."; exit 1 ;;
+            4) echo "::error::The ${{ matrix.label }} mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."; exit 1 ;;
             *) echo "::error::The mailbox could not be read. UNKNOWN, not a pass."; exit 1 ;;
           esac
