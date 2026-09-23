@@ -483,8 +483,48 @@ def test_main_is_green_on_old_mail_and_red_on_new(monkeypatch) -> None:
     _patch(conn2, monkeypatch)
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
-        assert mj.main() == 2
+        # 4, not 2. A mailbox holding new mail is a WORKING janitor.
+        assert mj.main() == 4
     assert "NEW SUBJECTS" in out.getvalue()
+
+
+def test_a_found_escalation_is_never_confused_with_a_refused_login(monkeypatch):
+    """THE AMBIGUITY THIS CLOSES.
+
+    Both returned 2, so the workflow could only say "needs a human, OR
+    the login was refused". On 2026-09-23 that reading sent someone to
+    reset two WORKING mailbox passwords -- which would also have broken
+    the error-triage cron and the DMARC check, since all three share
+    those credentials.
+
+    The two states share nothing but being red. 2 means rotate a
+    password. 4 means read your mail. An alarm that makes the reader
+    guess between them is expensive in exactly one direction.
+    """
+    import contextlib
+    import io
+
+    import mailbox_janitor as mj
+
+    _future_epoch(monkeypatch)
+    for k, v in {"JANITOR_IMAP_HOST": "h", "JANITOR_IMAP_USER": "u",
+                 "JANITOR_IMAP_PASSWORD": "p", "JANITOR_DRY_RUN": "false"}.items():
+        monkeypatch.setenv(k, v)
+
+    conn = _Conn([CRASH])
+    _patch(conn, monkeypatch)
+    with contextlib.redirect_stdout(io.StringIO()):
+        found = mj.main()
+
+    rejected = _Conn([], refuse_login=True)
+    _patch(rejected, monkeypatch)
+    with contextlib.redirect_stdout(io.StringIO()) as out:
+        refused = mj.main()
+
+    assert found == 4, "mail to read is not a credential fault"
+    assert refused == 2, "a refused login must keep its own code"
+    assert found != refused
+    assert "Rotate the mailbox password" in out.getvalue()
 
 
 
