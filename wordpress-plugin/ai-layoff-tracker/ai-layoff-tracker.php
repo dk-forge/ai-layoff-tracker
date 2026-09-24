@@ -333,13 +333,34 @@ function alt_resume_cta_url($surface) {
 }
 
 /**
+ * The lines the block rotates through. NOT LAYOFF-ONLY (owner, 2026-09-24):
+ * the readers who can use a resume tool include job seekers, career changers,
+ * new graduates and people returning to work. Each is [lead, rest].
+ */
+function alt_resume_cta_lines() {
+    return array(
+        array('Changing jobs?', 'Tailor your r&eacute;sum&eacute; to the role you want.'),
+        array('Laid off?', 'Tailor your r&eacute;sum&eacute; for the next role.'),
+        array('Returning to work?', 'Tailor your r&eacute;sum&eacute; to the job in front of you.'),
+        array('New grad or student?', 'Tailor your first r&eacute;sum&eacute; to the role.'),
+    );
+}
+
+/**
  * The small block itself. A plain link in a bordered line, never a popup, a
  * modal, a timer or a script. nofollow for the reason test_next_step_block.py
  * gives: a data page must not pass ranking signal to a product it owns.
+ *
+ * The line is chosen by crc32(surface|seed), not at random: the page cache
+ * would otherwise freeze one arbitrary variant per URL anyway, and a
+ * deterministic pick lets a test see every variant. Callers pass the period,
+ * slug or chart id as the seed so different pages show different lines.
  */
-function alt_resume_cta_html($surface) {
+function alt_resume_cta_html($surface, $seed = '') {
+    $lines = alt_resume_cta_lines();
+    $pick = $lines[abs(crc32((string) $surface . '|' . (string) $seed)) % count($lines)];
     return '<aside class="alt-resume-cta" aria-label="Resume help">'
-        . '<b>Laid off?</b> Tailor your r&eacute;sum&eacute; for the next role. '
+        . '<b>' . $pick[0] . '</b> ' . $pick[1] . ' '
         . '<a href="' . esc_url(alt_resume_cta_url($surface)) . '" target="_blank" rel="noopener nofollow">'
         . 'Try the AskTheRecruiter r&eacute;sum&eacute; tool</a></aside>';
 }

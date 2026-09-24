@@ -144,7 +144,7 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
 </div>
 <p class="alt-embed-foot">Source: <a href="<?php echo esc_url($alt_tracker_url); ?>" target="_top">AI Layoff Tracker · AskTheRecruiter.com &#8599;</a>
   · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="license noopener">CC BY 4.0</a>
-  <?php if (function_exists('alt_resume_cta_url')) : ?>· <a href="<?php echo esc_url(alt_resume_cta_url('embed')); ?>" target="_blank" rel="noopener nofollow">Laid off? Tailor your r&eacute;sum&eacute;</a><?php endif; ?></p>
+  <?php if (function_exists('alt_resume_cta_url')) : ?>· <a href="<?php echo esc_url(alt_resume_cta_url('embed')); ?>" target="_blank" rel="noopener nofollow">Tailor your r&eacute;sum&eacute; to the role</a><?php endif; ?></p>
 <?php // Same hex flags page-tracker.php uses on its own bootstrap. Without them a
       // value containing "</script>" ends the block early and the rest of the
       // JSON is parsed as HTML; wp_json_encode's defaults escape neither the

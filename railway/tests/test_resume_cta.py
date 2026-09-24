@@ -38,7 +38,7 @@ sys.path.insert(0, str(ROOT / "railway"))
 import digest_layout as layout  # noqa: E402
 
 FUNCS = ("alt_resume_cta_base", "alt_resume_cta_url", "alt_next_step_tool_url",
-         "alt_resume_cta_html")
+         "alt_resume_cta_lines", "alt_resume_cta_html")
 
 
 def _run_php(body, option=None):
@@ -122,10 +122,22 @@ class TaggedPerSurface(unittest.TestCase):
             url = _run_php("echo alt_resume_cta_url('report');", option=junk)
             self.assertTrue(url.startswith("https://asktherecruiter.com"), (junk, url))
 
+    def test_the_line_is_not_layoff_only(self):
+        """Owner 2026-09-24: job seekers, career changers, new grads and people
+        returning to work are the audience too. The line rotates by page, and
+        deterministically, so a cached page does not flip on every request."""
+        seen = set()
+        for i in range(60):
+            seen.add(_run_php(f"echo alt_resume_cta_html('report', 'seed{i}');").split("</b>")[0])
+        joined = " ".join(seen)
+        for lead in ("Laid off?", "Changing jobs?", "Returning to work?", "New grad"):
+            self.assertIn(lead, joined)
+        a = _run_php("echo alt_resume_cta_html('report', 'same');")
+        self.assertEqual(a, _run_php("echo alt_resume_cta_html('report', 'same');"))
+
     def test_the_html_block_is_a_link_not_a_popup(self):
         html = _run_php("echo alt_resume_cta_html('report');")
-        self.assertIn("Laid off?", html)
-        self.assertIn("Tailor your r", html)
+        self.assertIn("r&eacute;sum&eacute;", html)
         self.assertIn("utm_campaign=report", html)
         self.assertIn('rel="noopener nofollow"', html)
         for popup in ("<script", "onload", "position:fixed", "dialog"):
@@ -135,8 +147,8 @@ class TaggedPerSurface(unittest.TestCase):
 class Placement(unittest.TestCase):
     def test_report_renders_it_after_the_citable_card(self):
         src = REPORT.read_text(encoding="utf-8")
-        self.assertIn("alt_resume_cta_html('report')", src)
-        self.assertLess(src.rindex("</article>"), src.index("alt_resume_cta_html('report')"))
+        self.assertTrue("alt_resume_cta_html('report'" in src)
+        self.assertLess(src.rindex("</article>"), src.index("alt_resume_cta_html('report'"))
 
     def test_embed_carries_it(self):
         self.assertIn("alt_resume_cta_url('embed')", EMBED.read_text(encoding="utf-8"))
@@ -152,6 +164,7 @@ class DigestFooter(unittest.TestCase):
         html = layout._footer(self.UNSUB, "")
         self.assertIn("utm_campaign=digest", html)
         self.assertIn("Tailor your résumé", html)
+        self.assertNotIn("Laid off?", html, "the footer goes to every reader; keep it broad")
 
     def test_text_part_carries_it_too(self):
         text = layout.render_text([], kicker="", unsub_url=self.UNSUB, manage_url="")

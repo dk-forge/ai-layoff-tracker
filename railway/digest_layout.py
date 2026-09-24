@@ -1186,8 +1186,8 @@ FOOTER_BLOCKS = (
     # The resume call to action (owner decision 2026-09-24). Always present,
     # like the address; its URL is the plugin's alt_resume_cta_url('digest')
     # from the payload, or resume_cta_url()'s default when a build sends none.
-    ("resume", ("Laid off? Tailor your résumé for the next role with the "
-                "AskTheRecruiter résumé tool.",),
+    ("resume", ("Changing jobs, returning to work or starting out? Tailor "
+                "your résumé to the role with the AskTheRecruiter résumé tool.",),
      "Tailor your résumé"),
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because

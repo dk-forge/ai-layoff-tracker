@@ -8456,7 +8456,7 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
         'url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
         'anchor' => 'Tailor your résumé',
         'sentences' => array(
-            'Laid off? Tailor your résumé for the next role with the AskTheRecruiter résumé tool.',
+            'Changing jobs, returning to work or starting out? Tailor your résumé to the role with the AskTheRecruiter résumé tool.',
         ),
     );
     // CAN-SPAM 15 U.S.C. 7704(a)(5): a commercial message must carry the
