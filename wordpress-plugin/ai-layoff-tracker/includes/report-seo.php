@@ -71,13 +71,23 @@ function alt_report_period_identity() {
             : array('kind' => 'invalid', 'slug' => '');
     }
     if (preg_match('/^(\d{4})-Q([1-4])$/', $raw, $m)) {
-        $y = (int) $m[1];
-        return ($y >= 2015 && $y <= $now_y)
+        // Same rule as the month: a quarter that has not begun is not a report
+        // (?period=2026-Q4 in September must not get a self-canonical).
+        $y = (int) $m[1]; $q = (int) $m[2];
+        $now_q = (int) ceil(((int) gmdate('n')) / 3);
+        $future = ($y > $now_y) || ($y === $now_y && $q > $now_q);
+        return ($y >= 2015 && !$future)
             ? array('kind' => 'quarter', 'slug' => $raw)
             : array('kind' => 'invalid', 'slug' => '');
     }
-    if (preg_match('/^(\d{4})-W(0[1-9]|[1-4]\d|5[0-3])$/', $raw)) {
-        return array('kind' => 'week', 'slug' => $raw);
+    if (preg_match('/^(\d{4})-W(0[1-9]|[1-4]\d|5[0-3])$/', $raw, $m)) {
+        // ISO week-year/week, compared against the current ISO week.
+        $y = (int) $m[1]; $w = (int) $m[2];
+        $now_iy = (int) gmdate('o'); $now_w = (int) gmdate('W');
+        $future = ($y > $now_iy) || ($y === $now_iy && $w > $now_w);
+        return ($y >= 2015 && !$future)
+            ? array('kind' => 'week', 'slug' => $raw)
+            : array('kind' => 'invalid', 'slug' => '');
     }
     return array('kind' => 'invalid', 'slug' => '');
 }
