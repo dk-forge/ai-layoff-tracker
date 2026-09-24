@@ -6,6 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-24 overnight, branch
+  `claude/overnight-fixes-2026-09-24` (PR #415). Reserves plugin version
+  2.20.208** for the `report-seo.php` future-period fix. Work complete; see
+  TECHLOG 2026-09-24.
 - **RELEASED - Claude (agent), 2026-09-22 afternoon, branch
   `ops/sandbox-main-green`. Work complete.** After the owner widened
   `MERGE_TRAIN_TOKEN` (Actions and Issues read/write), the probe was re-run
