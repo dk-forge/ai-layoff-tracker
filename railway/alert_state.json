@@ -87,6 +87,11 @@
       "last": 1790153695,
       "subject": "CI RED: Mailbox janitor \u2014 LOGIN REFUSED for the production mailbox. Rotate its cPanel password, then update JANITOR_*_PASSWORD here AND the error-triage / DMARC secrets that share "
     },
+    "main-green-check:main:dbefdbe0763bb095": {
+      "first": 1790239812,
+      "last": 1790239812,
+      "subject": "CI RED: Main green check \u2014 error: main is NOT verifiably green: deploy-plugin.yml FAIL (newest completed run is failure on 64c478b0)"
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -133,6 +138,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-24T01:28:11+00:00",
+  "updated_at": "2026-09-24T08:50:13+00:00",
   "version": 1
 }
