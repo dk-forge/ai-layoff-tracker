@@ -7,9 +7,8 @@
  * release a newsroom can plan around:
  *
  *   - alt_mr_first_business_day(): release day = first business day of the
- *     following month. Challenger, Gray & Christmas publishes its job-cuts
- *     report around the first Thursday; the first business day is never later
- *     than that (tests/test_monthly_report.py walks 2024-2030).
+ *     following month. The national job-cuts announcement survey publishes around
+ *     the first Thursday; the first business day is never later than that (tests/test_monthly_report.py walks 2024-2030).
  *   - alt_mr_latest_period(): the newest released month.
  *   - alt_mr_figures(): the numbers, same population and basis as the report
  *     page (superset_of=0, effective date, verified = announced=0).
@@ -174,7 +173,7 @@ add_action('alt_monthly_report_tick', 'alt_monthly_report_tick');
 
 add_action('init', function () {
     if (!wp_next_scheduled('alt_monthly_report_tick')) {
-        // 10:00 UTC = 06:00 ET: before the US news day and before Challenger.
+        // 10:00 UTC = 06:00 ET: before the US news day and before the national announcement survey.
         $next = strtotime(gmdate('Y-m-d') . ' 10:00:00 UTC');
         if ($next <= time()) $next += DAY_IN_SECONDS;
         wp_schedule_event($next, 'daily', 'alt_monthly_report_tick');

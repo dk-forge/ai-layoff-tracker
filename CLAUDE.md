@@ -142,6 +142,7 @@ and so anything genuinely NEW is escalated. It is not a place to go looking.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System map: components, data flow, endpoints, DB schema, filter semantics |
 | [docs/TECHLOG.md](docs/TECHLOG.md) | Chronological log of every change + every incident and its root cause |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Ops playbooks: deploy, caches, imports, "X is broken → do Y", add/tune/enhance a source |
+| [docs/RUNBOOK_GROWTH.md](docs/RUNBOOK_GROWTH.md) | Growth features (resume CTA, company/state pages, embeds, monthly report, press list, follow alerts, author box): where each lives, how it is scheduled, how to tell it broke, how to fix it |
 
 ## The 60-second mental model
 1. **`wordpress-plugin/ai-layoff-tracker/`** — a WP plugin on ChemiCloud (install lives at `/blog`, with Cloudflare in front).

@@ -6,8 +6,8 @@ it, in includes/monthly-report.php:
 
 - alt_mr_first_business_day(): the first weekday of a month that is not a US
   federal holiday that can land in days 1-7 (New Year's Day and its Monday
-  observance, Labor Day). Challenger, Gray & Christmas publishes its job-cuts
-  report around the first Thursday; ours is published on or before that day.
+  observance, Labor Day). The national job-cuts announcement survey publishes
+  around the first Thursday; ours is published on or before that day.
 - alt_mr_latest_period(): the newest month whose report is "released", i.e.
   the previous month once today reaches this month's first business day.
 - alt_mr_pitch(): the press-release summary built ONLY from figures passed in.
