@@ -265,6 +265,10 @@ function alt_api_digest_recipients($request) {
         // everything. Built here, from home_url(), so the relay never carries
         // a hard coded site address it could get wrong or out of date.
         'manage_url' => function_exists('alt_digest_manage_url') ? alt_digest_manage_url() : '',
+        // The relay links the footer's resume line here. One definition, in
+        // the plugin (alt_resume_cta_url); the relay only falls back to its
+        // mirror of the default when an older build sends nothing.
+        'resume_cta_url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
         'recipients' => $recipients,
     ), 200);
     // Addresses are never cached, at the edge or anywhere else.

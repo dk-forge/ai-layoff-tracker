@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.208
+ * Version:           2.20.210
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.208');
+define('ALT_VERSION', '2.20.210');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -298,10 +298,50 @@ function alt_cite_box_html($name, $url) {
  * and that is exactly what the copy says.
  */
 function alt_next_step_tool_url() {
-    return apply_filters(
-        'alt_next_step_tool_url',
-        'https://asktherecruiter-sandbox-production.up.railway.app/'
-    );
+    return apply_filters('alt_next_step_tool_url', alt_resume_cta_url('company'));
+}
+
+/**
+ * THE RESUME CALL TO ACTION: ONE BASE URL, TAGGED PER SURFACE.
+ *
+ * Owner decision 2026-09-24: a quiet "Laid off? Tailor your resume" link on the
+ * report pages, company pages, digest footer and chart embeds, pointing at
+ * asktherecruiter.com. The base is this constant, overridable by the
+ * `alt_resume_cta_base` option; railway/digest_layout.py mirrors the literal for
+ * the relay footer and tests/test_resume_cta.py fails on a difference.
+ *
+ * Every link carries utm_source/medium/campaign so the owner can tell which
+ * surface sends people. A junk option value falls back to the default rather
+ * than printing it into ~10,000 pages.
+ */
+define('ALT_RESUME_CTA_DEFAULT_BASE', 'https://asktherecruiter.com');
+
+function alt_resume_cta_base() {
+    $base = trim((string) get_option('alt_resume_cta_base', ALT_RESUME_CTA_DEFAULT_BASE));
+    $ok = $base !== '' && preg_match('#^https?://[^/\s]+#i', $base)
+        && wp_http_validate_url($base);
+    return apply_filters('alt_resume_cta_base', $ok ? $base : ALT_RESUME_CTA_DEFAULT_BASE);
+}
+
+function alt_resume_cta_url($surface) {
+    $surface = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $surface));
+    return add_query_arg(array(
+        'utm_source'   => 'ai-layoff-tracker',
+        'utm_medium'   => 'referral',
+        'utm_campaign' => $surface !== '' ? $surface : 'tracker',
+    ), alt_resume_cta_base());
+}
+
+/**
+ * The small block itself. A plain link in a bordered line, never a popup, a
+ * modal, a timer or a script. nofollow for the reason test_next_step_block.py
+ * gives: a data page must not pass ranking signal to a product it owns.
+ */
+function alt_resume_cta_html($surface) {
+    return '<aside class="alt-resume-cta" aria-label="Resume help">'
+        . '<b>Laid off?</b> Tailor your r&eacute;sum&eacute; for the next role. '
+        . '<a href="' . esc_url(alt_resume_cta_url($surface)) . '" target="_blank" rel="noopener nofollow">'
+        . 'Try the AskTheRecruiter r&eacute;sum&eacute; tool</a></aside>';
 }
 
 function alt_output_jsonld($blocks) {

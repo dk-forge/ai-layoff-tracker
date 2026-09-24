@@ -8449,6 +8449,16 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
             ),
         );
     }
+    // The resume call to action (owner decision 2026-09-24). UNCONDITIONAL
+    // like the address, so the sentence is identical on all three renderers;
+    // only the link depends on the helper being loaded (FTP-deploy race).
+    $blocks[] = array(
+        'url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
+        'anchor' => 'Tailor your résumé',
+        'sentences' => array(
+            'Laid off? Tailor your résumé for the next role with the AskTheRecruiter résumé tool.',
+        ),
+    );
     // CAN-SPAM 15 U.S.C. 7704(a)(5): a commercial message must carry the
     // sender's valid PHYSICAL postal address. It is a block like any other
     // so it cannot be added to one renderer and forgotten in the other two,

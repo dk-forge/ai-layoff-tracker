@@ -2532,6 +2532,22 @@ p.alt-next-step-list { padding-left: 0; }
 @media (max-width: 480px) {
     .alt-next-step { padding: 16px 14px; }
 }
+/* The resume call to action (alt_resume_cta_html): one quiet line under the
+   report card, never inside it, never sticky, never animated. Same tokens as
+   .alt-next-step so the contrast audit already covers it. */
+.alt-resume-cta {
+    margin: 18px 0 0;
+    padding: 12px 16px;
+    border: 1px solid var(--alt-border);
+    border-radius: 10px;
+    background: var(--alt-surface-2);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--alt-ink);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.alt-resume-cta a { color: var(--alt-accent); }
 
 /* single entry page */
 .alt-single { max-width: 720px; }

@@ -6,6 +6,11 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD - Claude (agent), 2026-09-24, branch `claude/growth-press-magnet`
+  (worktree, not pushed). Reserves plugin version 2.20.210** (PR #417,
+  `claude/brevo-subscriber-sync`, holds 2.20.209). Growth slice: resume call
+  to action, company/state pages, embed attribution, monthly report + press,
+  follow-a-company/state alerts. See TECHLOG 2026-09-24 (growth).
 - **RELEASED - Claude (agent), 2026-09-24 overnight, branch
   `claude/overnight-fixes-2026-09-24` (PR #415). Reserves plugin version
   2.20.208** for the `report-seo.php` future-period fix. Work complete; see

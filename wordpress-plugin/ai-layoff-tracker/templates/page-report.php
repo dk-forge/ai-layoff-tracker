@@ -405,4 +405,8 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
       <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html($alt_stamp); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a></p>
     </footer>
   </article>
+  <?php // AFTER the card, never in it: the PNG/PDF export captures
+        // #alt-report-card, and a chart quoted in the press must not carry an
+        // advert. function_exists is the FTP-deploy race guard. ?>
+  <?php if (function_exists('alt_resume_cta_html')) echo alt_resume_cta_html('report'); ?>
 </main>

@@ -557,13 +557,19 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     edition_note = (digest_layout.WEEK_CONVENTION
                     if str(payload.get("freq") or "").strip().lower() == "weekly"
                     else "")
+    # The resume line's link comes from the site like the manage URL, and is
+    # held to the same rule: a link printed under our name has to go home.
+    resume = str(payload.get("resume_cta_url") or "").strip()
+    if not _same_site(resume, unsub):
+        resume = ""
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
         kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
-        edition_note=edition_note)
+        edition_note=edition_note, resume_url=resume)
     text = digest_layout.render_text(parts, kicker=kicker, notice=notice,
                                      unsub_url=unsub,
-                                     manage_url=manage, edition_note=edition_note)
+                                     manage_url=manage, edition_note=edition_note,
+                                     resume_url=resume)
 
     return Message(
         to=str(recipient.get("email") or ""),
