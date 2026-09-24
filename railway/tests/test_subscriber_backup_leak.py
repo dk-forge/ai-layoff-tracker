@@ -81,6 +81,7 @@ def _poisoned_rows():
             "created_at": "2026-01-01 00:00:00", "confirmed_at": "2026-01-01 00:01:00",
             "unsubscribed_at": None, "last_sent_at": None,
             "last_sent_daily": None, "last_sent_weekly": None, "last_sent_monthly": None,
+            "consent_partners": 0, "partners_consent_at": None,
         })
     return rows
 

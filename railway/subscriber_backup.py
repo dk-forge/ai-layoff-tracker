@@ -90,6 +90,9 @@ COLUMNS = [
     "status", "confirm_token", "unsub_token", "pending_prefs",
     "created_at", "confirmed_at", "unsubscribed_at",
     "last_sent_at", "last_sent_daily", "last_sent_weekly", "last_sent_monthly",
+    # Partner-offers consent + proof stamp (2026-09-24), mirrored in
+    # includes/subscriber-backup.php alt_sbk_columns().
+    "consent_partners", "partners_consent_at",
 ]
 
 
@@ -508,6 +511,7 @@ def _synthetic_rows(n=SELFTEST_ROWS):
             "unsubscribed_at": None,
             "last_sent_at": None, "last_sent_daily": None,
             "last_sent_weekly": None, "last_sent_monthly": None,
+            "consent_partners": 0, "partners_consent_at": None,
         })
     return out
 

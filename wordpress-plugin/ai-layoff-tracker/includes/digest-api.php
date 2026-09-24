@@ -634,7 +634,22 @@ function alt_digest_webhook_brevo($request, $body) {
         $action = alt_digest_brevo_action($event['event'] ?? '');
         if ($action === '') continue;      // soft bounces and engagement
         $address = sanitize_email((string) ($event['email'] ?? ''));
-        if (alt_digest_stop_sending($address, $action)) $stopped++;
+        // A MARKETING-CAMPAIGN unsubscribe (Brevo's marketing webhook carries
+        // camp_id) is not a digest unsubscribe. Owner decision 2026-09-24:
+        // it only takes the contact off the Brevo lists; digest consent is
+        // managed on the site and every digest has its own one-click link.
+        // A spam complaint still stops everything (deliverability first).
+        if (!empty($event['camp_id'])
+            && strpos(strtolower((string) ($event['event'] ?? '')), 'unsub') === 0) {
+            if (function_exists('alt_brevo_campaign_unsubscribed')) {
+                alt_brevo_campaign_unsubscribed($address);
+            }
+            continue;
+        }
+        if (alt_digest_stop_sending($address, $action)) {
+            $stopped++;
+            if (function_exists('alt_digest_mirror')) alt_digest_mirror($address);
+        }
     }
     // Counts only, here and in anything that could be logged.
     return new WP_REST_Response(array('ok' => true, 'stopped' => $stopped), 200);

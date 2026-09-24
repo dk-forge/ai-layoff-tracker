@@ -12,6 +12,10 @@ holder, so the start-of-session ritual surfaces it automatically.
   to action, company/state pages, embed attribution, monthly report + press,
   follow-a-company/state alerts, press list, author box. Work complete; see
   TECHLOG 2026-09-24 (Growth) and docs/RUNBOOK_GROWTH.md.
+- **RELEASED - Claude (agent), 2026-09-24, branch
+  `claude/brevo-subscriber-sync`. Reserves plugin version 2.20.209** for the
+  Brevo subscriber mirror + partner-offers consent. Committed, not pushed (the
+  parent session opens the PR). See TECHLOG 2026-09-24.
 - **RELEASED - Claude (agent), 2026-09-24 overnight, branch
   `claude/overnight-fixes-2026-09-24` (PR #415). Reserves plugin version
   2.20.208** for the `report-seo.php` future-period fix. Work complete; see

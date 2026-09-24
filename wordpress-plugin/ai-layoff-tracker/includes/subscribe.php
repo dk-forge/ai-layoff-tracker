@@ -797,6 +797,13 @@ function alt_digest_subscribe_form($context = '') {
     }
     /* A 13px box in a flex row is a flex item, and flex items shrink. */
     .alt-digest-lists input, .alt-digest-freq input { flex: none; }
+    /* The separate partner-offers consent, below the Subscribe button: a
+       consent box, so the same 44px target as the list boxes above. */
+    .alt-digest-partners {
+        display: flex; align-items: center; gap: 10px;
+        min-height: 44px; margin: 8px 0 0; font-size: 14px;
+    }
+    .alt-digest-partners input { flex: none; }
     /* THE LINKS INSIDE THE SENTENCES, which are the other thing a thumb aims
        at in here: the "privacy note" jump in the intro and the contact-page
        link in the privacy note. 44px is the wrong answer for a word inside a
@@ -966,7 +973,8 @@ function alt_digest_subscribe_form($context = '') {
                  tests/test_digest_route_is_findable.py that reads the signup's
                  own <h2> out of this file, and `[^>]*` inside that pattern
                  cannot survive a PHP echo, whose `?>` is a literal `>`. */ ?>
-        <form class="alt-digest-form" data-alt-context="<?php echo esc_attr($context); ?>"
+        <?php static $alt_dg_form_n = 0; $alt_dg_form_id = 'alt-digest-form-' . (++$alt_dg_form_n); ?>
+        <form class="alt-digest-form" id="<?php echo esc_attr($alt_dg_form_id); ?>" data-alt-context="<?php echo esc_attr($context); ?>"
               method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <input type="hidden" name="action" value="alt_digest_subscribe">
             <?php wp_nonce_field('alt_digest_subscribe', 'alt_digest_nonce'); ?>
@@ -1010,6 +1018,15 @@ function alt_digest_subscribe_form($context = '') {
                 <button type="submit" class="alt-digest-submit">Subscribe</button>
             </div>
         </form>
+        <?php /* PARTNER OFFERS: a separate consent, UNTICKED by default,
+                 never implied by a digest box. It sits AFTER </form> and joins
+                 the form through the HTML form="" attribute, so it is submitted
+                 with it while staying outside the phone-fold region, which
+                 ends at the Subscribe button (railway/signup_fold.py hashes
+                 the copy up to </form>). The id is per render because the form
+                 can appear more than once on a page. */ ?>
+        <label class="alt-digest-partners"><input type="checkbox" name="alt_partners" value="1" form="<?php echo esc_attr($alt_dg_form_id); ?>">
+            Also send me occasional offers from Ask The Recruiter and selected partners.</label>
         <?php endif; ?>
 
         <?php /* THE TRACKING DISCLOSURE, IN THE FLOW AND OUT OF THE BUDGET.
@@ -1102,7 +1119,10 @@ function alt_digest_subscribe_form($context = '') {
                 identifier, no IP address and no browser details, so it counts how many times a link
                 was followed and can never say who followed it.</p>
             <p><strong>What it is used for:</strong> sending you exactly the emails you ticked, nothing
-                else. The address is never shared, sold, or used for any other purpose.</p>
+                else. Occasional offers from Ask The Recruiter and selected partners are sent only if you
+                tick that separate box, and they come from us: partners never receive your address. A copy
+                of your address and choices is kept in Brevo, our mail provider, to send those emails. The
+                address is never sold or used for any other purpose.</p>
             <p><strong>How to erase it:</strong> click the unsubscribe link in any email. That stops all
                 sending immediately, and unsubscribed addresses, along with signups that were never
                 confirmed, are hard-deleted automatically after <?php echo (int) ALT_DIGEST_RETENTION_DAYS; ?> days.
@@ -1160,11 +1180,40 @@ function alt_digest_subscribe_submit() {
     $prefs = alt_digest_prefs_from_post($_POST);
     if ($prefs === null) $fail('lists');   // zero boxes ticked: politely refused
 
-    $ok = alt_digest_signup($email, $prefs);
+    $ok = alt_digest_signup($email, $prefs, alt_digest_partner_choice($_POST));
     $fail($ok ? 'check' : 'mail');
 }
 add_action('admin_post_alt_digest_subscribe', 'alt_digest_subscribe_submit');
 add_action('admin_post_nopriv_alt_digest_subscribe', 'alt_digest_subscribe_submit');
+
+/**
+ * PARTNER OFFERS: a SEPARATE consent (owner decision 2026-09-24, GDPR/PECR).
+ * Its own box, unticked by default, never counted as a digest choice (ticking
+ * only this box still subscribes to nothing and is refused), never inferred
+ * for anyone who signed up before it existed (the column defaults to 0). It is
+ * stored on the row as consent_partners with partners_consent_at stamped at
+ * CONFIRMATION, the moment the consent is proven. Only confirmed rows with it
+ * ticked are linked to the Brevo partner list (includes/brevo-sync.php).
+ *
+ * Written with separate updates, never merged into the insert: the deploy that
+ * adds the column can land this file first, and an insert naming a column the
+ * table does not have yet would lose the signup itself.
+ */
+function alt_digest_partner_choice($post) {
+    return empty($post['alt_partners']) ? 0 : 1;
+}
+
+function alt_digest_store_partner_choice($id, $partners) {
+    global $wpdb;
+    $wpdb->update(alt_subscribers_table(), array('consent_partners' => (int) $partners),
+                  array('id' => $id));
+}
+
+/** Mirror the row to Brevo if the mirror is deployed. Never breaks the flow. */
+function alt_digest_mirror($email) {
+    if (!function_exists('alt_brevo_sync_email')) return;
+    try { alt_brevo_sync_email($email); } catch (Throwable $e) { /* mirror only */ }
+}
 
 /**
  * Consent flags + frequency out of a submitted form. Returns null when no
@@ -1271,7 +1320,7 @@ function alt_digest_change_delta($row, array $prefs) {
  * were not shown. Fixing that means a distinct notice code on the form, which
  * is a new message in a fold-measured block; it is not this change.
  */
-function alt_digest_signup($email, array $prefs) {
+function alt_digest_signup($email, array $prefs, $partners = 0) {
     global $wpdb;
     if (!alt_subscribers_table_ready()) return false;
     $table = alt_subscribers_table();
@@ -1291,13 +1340,18 @@ function alt_digest_signup($email, array $prefs) {
             'unsub_token'   => alt_digest_new_token(),
             'created_at'    => $now,
         )));
+        $new = alt_digest_get_by_email($email);
+        if ($new) alt_digest_store_partner_choice($new['id'], $partners);
     } elseif ($row['status'] === 'confirmed') {
         // Computed BEFORE the update, from the row as it stands, because after
         // it the only record of what this person had is the parked JSON's
         // complement and nothing reads it that way.
         $delta = alt_digest_change_delta($row, $prefs);
         $wpdb->update($table, array(
-            'pending_prefs' => wp_json_encode($prefs),
+            // The partner box rides in the parked set too, so unticking it
+            // is a change like any other and applies only once confirmed.
+            'pending_prefs' => wp_json_encode(array_merge($prefs,
+                                   array('consent_partners' => (int) $partners))),
             'confirm_token' => $confirm,
         ), array('id' => $row['id']));
     } else {
@@ -1306,6 +1360,7 @@ function alt_digest_signup($email, array $prefs) {
             'confirm_token'   => $confirm,
             'unsubscribed_at' => null,
         )), array('id' => $row['id']));
+        alt_digest_store_partner_choice($row['id'], $partners);
     }
 
     // Per-address resend throttle so the form cannot be used to bombard a
@@ -1472,6 +1527,21 @@ function alt_digest_confirm() {
         $was_change = true;
     }
     $wpdb->update(alt_subscribers_table(), $update, array('id' => $row['id']));
+    // Partner consent, applied and stamped separately (see
+    // alt_digest_partner_choice). A parked change carries its own value; a
+    // first confirmation keeps what the signup stored.
+    $partners = !empty($row['consent_partners']) ? 1 : 0;
+    if ($was_change && isset($parked) && is_array($parked) && isset($parked['consent_partners'])) {
+        $partners = (int) $parked['consent_partners'] ? 1 : 0;
+    }
+    $stamp = null;
+    if ($partners) {
+        $stamp = (!empty($row['consent_partners']) && !empty($row['partners_consent_at']))
+            ? $row['partners_consent_at'] : gmdate('Y-m-d H:i:s');
+    }
+    $wpdb->update(alt_subscribers_table(), array('consent_partners' => $partners,
+                  'partners_consent_at' => $stamp), array('id' => $row['id']));
+    alt_digest_mirror($row['email']);
     // The reader proved they own the inbox: anything that was waiting on that
     // proof (a pending company/state follow, includes/follows.php) may start.
     if (function_exists('do_action')) do_action('alt_digest_confirmed', (int) $row['id']);
@@ -1585,6 +1655,7 @@ function alt_digest_unsubscribe() {
             'pending_prefs'   => null,
             'confirm_token'   => null,
         ), array('id' => $row['id']));
+        alt_digest_mirror($row['email']);
     }
 
     // THE MACHINE CASE IS ANSWERED FIRST, AND THAT ORDER IS THE POINT.
@@ -8860,6 +8931,8 @@ function alt_digest_stats() {
     $out['frequency'] = array('daily' => $daily, 'weekly' => max(0, $confirmed - $daily));
 
     $out['last_send'] = alt_digest_last_send_stats();
+    // The Brevo mirror's private status: counts and an HTTP code, no address.
+    $out['brevo_mirror'] = function_exists('alt_brevo_sync_status') ? alt_brevo_sync_status() : null;
     return $out;
 }
 

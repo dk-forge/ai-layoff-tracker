@@ -5,12 +5,14 @@
 
 One base URL (`ALT_RESUME_CTA_DEFAULT_BASE`, option `alt_resume_cta_base`) with `utm_source=ai-layoff-tracker&utm_medium=referral&utm_campaign=<surface>`. The company next-step link no longer points at the sandbox Railway hostname. The line rotates across audiences (job changers, laid off, returners, new grads), picked by page so it stays stable in cache. The digest footer gained one broad sentence, mirrored in all three renderers (parity test in test_digest_sender.py). **Not added to state/facet pages:** `test_next_step_block.py` pins the product off them, and the owner must change that ruling first. asktherecruiter.com root was described as a "coming soon" page in the 2.20.115 notes. **Owner:** confirm the root now serves the tool, or set `alt_resume_cta_base`. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
 
+
 ## 2026-09-24 - Growth: year-by-year timeline on company, country and US state pages
 
 **Class:** novel
 **Guard:** `railway/tests/test_facet_timeline.py`
 
 Audit of item 2 found the canonical, title/meta, Dataset + BreadcrumbList, headline, sources, noindex floor and sitemaps already in place. Only a timeline was missing. `alt_timeline_by_year()` counts an in-progress month as of today, using the aggregate's `to_date` block. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
+
 
 ## 2026-09-24 - Growth: company pages keep up as rows arrive (daily autopilot + promotion)
 
@@ -19,12 +21,14 @@ Audit of item 2 found the canonical, title/meta, Dataset + BreadcrumbList, headl
 
 The autopilot only looked at UNMAPPED keys, so an employer admitted `noindex` on its first event stayed out of the index forever. It now runs daily, and each call promotes its own noindex admissions that have reached the floor. A new `admitted_by` column tells those rows apart from editorial noindex. **Owner:** pre-2.20.210 rows have `admitted_by=''`; see RUNBOOK_GROWTH section 2 for the one-line backfill, and run it only if no editor ever set noindex by hand. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
 
+
 ## 2026-09-24 - Growth: embed snippet carries a followed Source backlink and CC BY 4.0
 
 **Class:** novel
 **Guard:** `railway/tests/test_embed_attribution.py`
 
 A link inside an iframe credits our page, not the host's. So the copyable code now adds a plain paragraph under the iframe: "Source: AI Layoff Tracker" (followed) and CC BY 4.0. The framed footer repeats both. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
+
 
 ## 2026-09-24 - Growth: monthly report released on the first business day, with press summary
 
@@ -33,12 +37,14 @@ A link inside an iframe credits our page, not the host's. So the copyable code n
 
 WP-cron `alt_monthly_report_tick` (daily, 10:00 UTC) freezes the released month into `alt_monthly_report_latest` from the first business day onward. Weekends, New Year's and Labor Day are skipped, so it lands on or before the national announcement survey's first Thursday. The report page gained top employers, states and countries, a CSV link for the period, a press contact line and a copyable press-release summary. `/press` gained "Latest monthly report". **Journalist outreach needs an owner-approved list:** nothing is emailed automatically, and no list exists or may be bought or scraped. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
 
+
 ## 2026-09-24 - Growth: admin-only press list with click-to-send pitch and recorded opt-out
 
 **Class:** novel
 **Guard:** `railway/tests/test_press_list.py`
 
 Tools > Press list: contacts table, CSV import (header required), copy of the opted-in /press signups. The monthly pitch goes out only on an admin click, once per contact per period, with an opt-out that needs a POST confirm and survives re-import. **Owner:** decide who is on it and record the basis in each consent note. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
+
 
 ## 2026-09-24 - Growth: follow a company or US state; matches ride in the digest
 
@@ -47,12 +53,68 @@ Tools > Press list: contacts table, CSV import (header required), copy of the op
 
 New `wp_alt_follows` table. The form reuses `alt_digest_signup()` (the existing double opt-in), and a follow activates only on the `alt_digest_confirmed` action fired from `alt_digest_confirm()`. Only active follows of confirmed subscribers are read, so unsubscribe stops them. Both senders append a per-recipient "What you follow" section for layoff-list readers. Orphans are purged daily. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
 
+
 ## 2026-09-24 - Growth: author box with Person schema, hidden until the owner fills it
 
 **Class:** novel
 **Guard:** `railway/tests/test_author_box.py`
 
 `ALT_AUTHOR_PROFILE` in `includes/author-box.php` ships empty and is marked `TODO_OWNER_BIO`. No box and no Person node render until name and bio are filled. Placed on the report, company, US state, methodology and press pages. Runbook: `docs/RUNBOOK_GROWTH.md`. Branch `claude/growth-press-magnet`, plugin 2.20.210 (PR #417 holds 2.20.209).
+
+## 2026-09-24 - Brevo contact mirror of digest subscribers + separate partner-offers consent (2.20.209)
+
+**Class:** novel (a new feature, owner decision 2026-09-24, not an incident)
+**Guard:** `railway/tests/test_brevo_subscriber_sync.py` (runs the real handlers through `tests/fixtures/brevo_sync_harness.php`)
+
+1. **Mirror, not source.** `wp_alt_subscribers` still decides who gets a digest.
+   New `includes/brevo-sync.php` (guarded include) copies each CONFIRMED row to
+   Brevo on confirm (first confirm and every preference change, which always
+   goes through the confirm link), unsubscribe, and webhook bounce/complaint.
+   `POST /v3/contacts` with `updateEnabled` and `listIds`, then
+   `PUT /v3/contacts/{email}` with `unlinkListIds` for every other configured
+   list. A pending row is never sent (it has consented to nothing); any
+   non-confirmed status only unlinks and never creates a contact (404 = fine).
+2. **List ids** (owner's final): 15 Layoff Daily, 16 Layoff Weekly, 17 Talent
+   Daily, 18 Talent Weekly, 20 Partner Offers. **No monthly lists**: a monthly
+   subscriber goes on the WEEKLY list of their tracker. Override with
+   `ALT_BREVO_LIST_<KEY>` constants or the `alt_brevo_list_ids` option; 0 skips.
+   The articles box has no Brevo list.
+3. **Key:** `ALT_BREVO_API_KEY` in wp-config wins; otherwise the key the
+   official Brevo WP plugin stores (`sib_main_option['access_key']`, must start
+   `xkeysib-`). No key = silent no-op, status `unconfigured`. Attributes
+   (`ATR_TRACKERS`, `ATR_TIER`) are sent only if `ALT_BREVO_SEND_ATTRIBUTES` is
+   true, because Brevo rejects attributes the account has not created.
+4. **Failure never breaks the flow:** 5 s timeout, every path wrapped in
+   try/catch Throwable, outcome kept in the private option
+   `alt_brevo_sync_status` (result, HTTP code, counts; never an address) and
+   exposed as `brevo_mirror` in the keyed digest stats payload. Deliberately NOT
+   the source-health ledger: that renders on the PUBLIC health page and its
+   staleness ceilings cannot fit an event-driven mirror.
+5. **Backfill:** `POST /wp-json/layoffs/v1/brevo-backfill?after_id=0&limit=100`
+   (the `X-Layoff-API-Key` gate, `alt_api_permission`), repeat with the
+   returned `next_after_id` until null; or `wp alt-brevo-backfill`. Idempotent
+   (set operations), confirmed rows only.
+6. **Brevo campaign unsubscribes do NOT stop digests (owner decision).** A
+   Brevo webhook event whose name starts `unsub` AND carries `camp_id` (the
+   marketing webhook shape) only unlinks the contact from every Brevo list and
+   records a SHA-256 of the address in `alt_brevo_marketing_optout` so later
+   preference changes do not relink it. Digest consent is managed on the site;
+   every digest carries its own one-click unsubscribe. Transactional
+   `unsubscribed` (no `camp_id`) and spam complaints still stop the digest as
+   before. For that to arrive, the owner must add a MARKETING webhook in Brevo
+   (event "unsubscribed") pointing at `/digest-webhook` with the same token.
+7. **Partner offers, a separate GDPR/PECR consent.** New columns
+   `consent_partners` (default 0, never inferred for existing rows) and
+   `partners_consent_at` (stamped at CONFIRMATION; cleared on untick). The box
+   is unticked by default and sits after `</form>`, joined by `form=""`, so the
+   phone-fold copy region (hashed up to `</form>`) is untouched and no
+   re-measure was needed. Ticking only it subscribes to nothing. Stored by
+   separate updates so the deploy race (file before column) cannot lose a
+   signup. Unticking goes through the normal parked-change confirm. Privacy
+   note now says partner offers come from us, partners never get the address,
+   and Brevo holds a copy. Backup column lists gained both columns.
+   **Browser-only checks (tap targets, tab order) were skipped here: no Chrome
+   in the cloud session. Verify the new 44px box on a phone.**
 
 ## 2026-09-24 - Overnight fixes: future report periods, a duplicate-key workflow guard, probe debris; two reported reds were already fixed
 

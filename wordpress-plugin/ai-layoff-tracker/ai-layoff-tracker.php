@@ -142,6 +142,13 @@ $alt_subscriber_backup = ALT_PLUGIN_DIR . 'includes/subscriber-backup.php';
 if (is_readable($alt_subscriber_backup)) {
     require_once $alt_subscriber_backup;
 }
+// Brevo contact mirror of confirmed digest subscribers (2026-09-24). GUARDED
+// with is_readable like every new include; its callers use function_exists, so
+// its absence degrades to "Brevo is not updated", never to a white screen.
+$alt_brevo_sync = ALT_PLUGIN_DIR . 'includes/brevo-sync.php';
+if (is_readable($alt_brevo_sync)) {
+    require_once $alt_brevo_sync;
+}
 // Read-only, keyed access to the Rank Math 404 log and redirect table, so the
 // question "which links are dead and what is generating redirect traffic" can
 // be measured from outside wp-admin instead of guessed. GUARDED with

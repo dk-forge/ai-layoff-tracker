@@ -67,6 +67,11 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "deploy-wordpress-plugin:main:307a6ae50b58a68a": {
+      "first": 1790241310,
+      "last": 1790241310,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 /home/atr/runners/ai-layoff-tracker/_work/_temp/7fd441b7-6b7d-4a79-8fdd-4b4cdb57a530.sh: line 1: php: command not found"
+    },
     "deploy-wordpress-plugin:main:f348fe3f574871ed": {
       "first": 1790213248,
       "last": 1790213248,
@@ -138,6 +143,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-24T08:50:13+00:00",
+  "updated_at": "2026-09-24T09:15:10+00:00",
   "version": 1
 }
