@@ -92,6 +92,9 @@ function alt_sbk_columns() {
         'status', 'confirm_token', 'unsub_token', 'pending_prefs',
         'created_at', 'confirmed_at', 'unsubscribed_at',
         'last_sent_at', 'last_sent_daily', 'last_sent_weekly', 'last_sent_monthly',
+        // Partner-offers consent and its proof stamp (2026-09-24): consent
+        // evidence belongs in the backup like every other consent column.
+        'consent_partners', 'partners_consent_at',
     );
 }
 

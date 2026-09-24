@@ -245,6 +245,8 @@ function alt_db_install() {
         consent_layoff TINYINT(1) NOT NULL DEFAULT 0,
         consent_talent TINYINT(1) NOT NULL DEFAULT 0,
         consent_articles TINYINT(1) NOT NULL DEFAULT 0,
+        consent_partners TINYINT(1) NOT NULL DEFAULT 0,
+        partners_consent_at DATETIME NULL,
         freq_layoff VARCHAR(10) NOT NULL DEFAULT 'weekly',
         freq_talent VARCHAR(10) NOT NULL DEFAULT 'weekly',
         freq_articles VARCHAR(10) NOT NULL DEFAULT 'weekly',

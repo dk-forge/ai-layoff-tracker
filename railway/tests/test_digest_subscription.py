@@ -241,7 +241,9 @@ class StaticGuards(unittest.TestCase):
 
     def test_form_starts_with_every_consent_box_unticked(self):
         boxes = re.findall(r'<input type="checkbox"[^>]*>', self.src)
-        self.assertEqual(len(boxes), 3, "the form offers exactly three consent boxes")
+        # Four since 2026-09-24: the three digest lists plus the SEPARATE
+        # partner-offers consent. Every one of them must still start unticked.
+        self.assertEqual(len(boxes), 4, "the form offers exactly four consent boxes")
         for box in boxes:
             self.assertNotIn("checked", box, f"pre-ticked consent is not consent: {box}")
         # The single frequency default is weekly.
