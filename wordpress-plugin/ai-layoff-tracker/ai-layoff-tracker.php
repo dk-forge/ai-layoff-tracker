@@ -98,6 +98,15 @@ $alt_company_index = ALT_PLUGIN_DIR . 'includes/company-index.php';
 if (is_readable($alt_company_index)) {
     require_once $alt_company_index;
 }
+// Growth modules (2.20.210): monthly report timing + press summary, the
+// admin-only press list, the author box. NEW files, so GUARDED with
+// is_readable for the FTP-deploy race described above; every caller checks
+// function_exists. Runbook: docs/RUNBOOK_GROWTH.md.
+foreach (array('monthly-report.php', 'press-list.php', 'author-box.php') as $alt_growth_file) {
+    if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file)) {
+        require_once ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file;
+    }
+}
 // Where the signup renders beyond the two tracker pages (blog posts, company
 // profiles, the facet pages, entry permalinks). GUARDED with is_readable for
 // the reason spelled out below: this file is NEW, so the deploy that

@@ -884,6 +884,21 @@ if (!is_array($alt_ps)) {
     <?php if ($alt_box > 0 && $alt_resid > 0) : ?>Tier 1 and Tier 2 add to <?php echo number_format($alt_t12); ?> of the tracker's verified AI box of <?php echo number_format($alt_box); ?>. The <?php echo number_format($alt_resid); ?>-job difference is rows where the employer named AI as context rather than as a stated cause. Those rows count in the box and in no tier here.<?php elseif ($alt_box > 0 && $alt_resid === 0) : ?>Tier 1 and Tier 2 add to <?php echo number_format($alt_t12); ?>, which is the tracker's verified AI box exactly.<?php else : ?>The tier columns count the stored cause on each row. The tracker's verified AI box counts every row where the employer named AI, so it is the wider of the two.<?php endif; ?> Tier 3 is reported on its own and is never folded into either figure above. Nothing is double counted and nothing is invented for this table.</p>
   <p class="alt-muted">Counts are <b>verified-tier</b> jobs (announced-stage plans excluded) for rows where the employer's stated reason is on record. The tier columns count the stored cause on each row; the tracker's AI box counts every row where the employer named AI, which is the wider of the two. Our headline AI figure is <b>Tiers 1 and 2 only</b>: the employer's own words. Investment in AI, a future automation projection, or AI used to pick who goes does not qualify by itself. If you want the wider lens, cite Tier 3 explicitly and say so.</p>
 
+  <?php
+  // LATEST MONTHLY REPORT. Frozen by the daily alt_monthly_report_tick
+  // (includes/monthly-report.php) on the first business day of each month, so
+  // the summary a reporter copies is the one that was released, not a live
+  // number that moves under them. Absent until the first tick has run.
+  $alt_mr_latest = get_option('alt_monthly_report_latest');
+  if (is_array($alt_mr_latest) && !empty($alt_mr_latest['period'])) : ?>
+  <h2 id="alt-latest-monthly">Latest monthly report: <?php echo esc_html($alt_mr_latest['label'] ?? $alt_mr_latest['period']); ?></h2>
+  <p>Released on the first business day of the following month, ahead of the national job-cuts announcement survey. <a href="<?php echo esc_url($alt_mr_latest['report_url'] ?? ''); ?>">Open the report</a><?php if (!empty($alt_mr_latest['csv_url'])) : ?> · <a href="<?php echo esc_url($alt_mr_latest['csv_url']); ?>">Download the month as CSV</a><?php endif; ?>.</p>
+  <details class="alt-mr-press-summary">
+    <summary>Press release summary (copy and paste)</summary>
+    <textarea readonly rows="12" aria-label="Press release summary"><?php echo esc_textarea((string) ($alt_mr_latest['pitch'] ?? '')); ?></textarea>
+  </details>
+  <?php endif; ?>
+
   <h2 id="alt-monthly-release">Monthly release schedule</h2>
   <p>Each month's figures are final once that month has closed, and the one-page report for it lives at a permanent link. The release date is the <b>1st of the following month</b>. Nothing is embargoed and nothing is held back: the link is live the moment the month closes.</p>
   <div class="alt-health-table-wrap"><table class="alt-sortable alt-sources-table">

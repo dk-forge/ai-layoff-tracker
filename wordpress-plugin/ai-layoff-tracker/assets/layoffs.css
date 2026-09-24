@@ -4497,3 +4497,9 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
    colour variable is defined here because these pages are not .alt-report-page. */
 .alt-timeline { --op-green: var(--alt-accent); margin: 22px 0; min-width: 0; }
 .alt-timeline h2 { font-size: 17px; margin: 0 0 10px; }
+
+/* Monthly report press summary (report page + press page). A textarea, so a
+   reporter can select-all and copy; never auto-copied, never a popup. */
+.alt-mr-press-summary { margin: 18px 0 0; }
+.alt-mr-press-summary summary { cursor: pointer; font-weight: 600; }
+.alt-mr-press-summary textarea { width: 100%; box-sizing: border-box; margin-top: 8px; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--alt-ink); background: var(--alt-surface); border: 1px solid var(--alt-border); border-radius: 8px; padding: 10px; }
