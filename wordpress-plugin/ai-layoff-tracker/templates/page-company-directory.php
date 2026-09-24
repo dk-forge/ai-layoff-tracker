@@ -278,6 +278,12 @@ $alt_verif = array(
         <?php endif; ?></p>
     </aside>
 
+    <?php // Follow this company (includes/follows.php), through the digest's
+          // own double opt-in.
+          if (function_exists('alt_follow_form_html')) {
+              echo alt_follow_form_html('company', $alt_company['company_key'], $alt_name);
+          } ?>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('company'); ?>

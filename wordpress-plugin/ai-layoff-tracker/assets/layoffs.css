@@ -4503,3 +4503,10 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
 .alt-mr-press-summary { margin: 18px 0 0; }
 .alt-mr-press-summary summary { cursor: pointer; font-weight: 600; }
 .alt-mr-press-summary textarea { width: 100%; box-sizing: border-box; margin-top: 8px; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--alt-ink); background: var(--alt-surface); border: 1px solid var(--alt-border); border-radius: 8px; padding: 10px; }
+
+/* Follow a company / state (includes/follows.php). */
+.alt-follow { margin: 26px 0 0; padding: 14px 16px; border: 1px solid var(--alt-border); border-radius: 10px; min-width: 0; }
+.alt-follow h2 { font-size: 16px; margin: 0 0 6px; }
+.alt-follow p { margin: 0 0 10px; font-size: 14px; }
+.alt-follow form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.alt-follow input[type="email"] { min-width: 0; max-width: 100%; }

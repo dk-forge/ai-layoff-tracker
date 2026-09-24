@@ -1472,6 +1472,9 @@ function alt_digest_confirm() {
         $was_change = true;
     }
     $wpdb->update(alt_subscribers_table(), $update, array('id' => $row['id']));
+    // The reader proved they own the inbox: anything that was waiting on that
+    // proof (a pending company/state follow, includes/follows.php) may start.
+    if (function_exists('do_action')) do_action('alt_digest_confirmed', (int) $row['id']);
     // Read the row back rather than reasoning about $update: on the change
     // path the stored preferences are whatever the parked JSON turned out to
     // contain, and the panel must read back what is stored, not what was sent.
@@ -8599,6 +8602,13 @@ function alt_digest_send($freq) {
             }
         }
         if (!$parts_html) continue;   // nothing to say to this person today
+        // Company/state follows (includes/follows.php), after the consented
+        // sections and only for layoff-list readers. Same as the relay.
+        if ((int) $row['consent_layoff'] === 1 && $row['freq_layoff'] === $freq
+            && function_exists('alt_follows_section_for')) {
+            $alt_fs = alt_follows_section_for((int) $row['id'], $from_date, $to_date);
+            if ($alt_fs) { $parts_html[] = $alt_fs['html']; }
+        }
         $subject = alt_digest_subject_line($freq, $from_date, $to_date, $headings,
                                            $fallback_subject, $subject_parts);
 

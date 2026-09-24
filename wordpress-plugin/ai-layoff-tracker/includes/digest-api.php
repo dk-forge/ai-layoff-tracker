@@ -226,12 +226,19 @@ function alt_api_digest_recipients($request) {
         $has = false;
         foreach ($lists as $list) { if (isset($sections[$list])) $has = true; }
         if (!$has) continue;
-        $recipients[] = array(
+        $recipient = array(
             'id'        => (int) $row['id'],
             'email'     => (string) $row['email'],
             'unsub_url' => alt_digest_unsub_url($row['unsub_token']),
             'lists'     => $lists,
         );
+        // Company/state follows, composed here because they carry figures.
+        // Layoff-list readers only; the relay appends it after their sections.
+        if (in_array('layoff', $lists, true) && function_exists('alt_follows_section_for')) {
+            $follow = alt_follows_section_for((int) $row['id'], $from_date, $to_date);
+            if ($follow) $recipient['follow_section'] = $follow;
+        }
+        $recipients[] = $recipient;
     }
 
     alt_digest_record_claim($freq);

@@ -102,7 +102,7 @@ if (is_readable($alt_company_index)) {
 // admin-only press list, the author box. NEW files, so GUARDED with
 // is_readable for the FTP-deploy race described above; every caller checks
 // function_exists. Runbook: docs/RUNBOOK_GROWTH.md.
-foreach (array('monthly-report.php', 'press-list.php', 'author-box.php') as $alt_growth_file) {
+foreach (array('monthly-report.php', 'press-list.php', 'author-box.php', 'follows.php') as $alt_growth_file) {
     if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file)) {
         require_once ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file;
     }

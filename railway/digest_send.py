@@ -529,6 +529,15 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     parts = usable_sections(payload, recipient.get("lists") or [])
     if not parts:
         return None
+    # COMPANY / STATE FOLLOWS (plugin includes/follows.php). Composed by the
+    # site per recipient, because it carries figures; appended AFTER the
+    # sections the reader consented to, and only for layoff-list readers. It
+    # is never a reason to send on its own: the check above already returned.
+    follow = recipient.get("follow_section")
+    if (isinstance(follow, dict) and "layoff" in (recipient.get("lists") or [])
+            and (follow.get("html") or "").strip() and (follow.get("text") or "").strip()):
+        parts.append(("follows", follow["html"].strip(), follow["text"].strip(),
+                      "", ("", True)))
 
     # A way to change WHAT you get, beside the way to stop everything. One
     # click unsubscribe is a blunt instrument: a reader who wants one of three
