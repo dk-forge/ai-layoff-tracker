@@ -112,6 +112,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
+      "first": 1790281661,
+      "last": 1790281661,
+      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
+    },
     "rolling-recall-measurement:main:f19bd5cba2fdc86a": {
       "first": 1790280867,
       "last": 1790280867,
@@ -158,6 +163,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-24T20:15:10+00:00",
+  "updated_at": "2026-09-24T20:27:42+00:00",
   "version": 1
 }
