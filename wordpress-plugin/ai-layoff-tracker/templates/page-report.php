@@ -443,4 +443,6 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
         // #alt-report-card, and a chart quoted in the press must not carry an
         // advert. function_exists is the FTP-deploy race guard. ?>
   <?php if (function_exists('alt_resume_cta_html')) echo alt_resume_cta_html('report', $alt_slug); ?>
+  <?php // Author box (includes/author-box.php): renders nothing until the owner fills ALT_AUTHOR_PROFILE.
+      if (function_exists('alt_author_box')) echo alt_author_box(); ?>
 </main>

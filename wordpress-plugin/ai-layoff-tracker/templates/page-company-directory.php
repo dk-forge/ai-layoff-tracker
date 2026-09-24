@@ -284,6 +284,9 @@ $alt_verif = array(
               echo alt_follow_form_html('company', $alt_company['company_key'], $alt_name);
           } ?>
 
+    <?php // Author box (includes/author-box.php): renders nothing until the owner fills ALT_AUTHOR_PROFILE.
+      if (function_exists('alt_author_box')) echo alt_author_box(); ?>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('company'); ?>

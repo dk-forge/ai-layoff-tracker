@@ -4510,3 +4510,7 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
 .alt-follow p { margin: 0 0 10px; font-size: 14px; }
 .alt-follow form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
 .alt-follow input[type="email"] { min-width: 0; max-width: 100%; }
+
+/* Author box (includes/author-box.php); hidden entirely until filled. */
+.alt-author-box { margin: 26px 0 0; padding: 14px 16px; border-top: 1px solid var(--alt-border); font-size: 14px; line-height: 1.6; color: var(--alt-ink); min-width: 0; overflow-wrap: anywhere; }
+.alt-author-box p { margin: 4px 0 0; }

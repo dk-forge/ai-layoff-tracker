@@ -411,6 +411,9 @@ $alt_bd_titles = array(
               echo alt_follow_form_html('state', $alt_f['value'], $alt_f['display']);
           } ?>
 
+    <?php // Author box on US state pages (owner scope); nothing until filled.
+          if ($alt_f['dim'] === 'state' && function_exists('alt_author_box')) echo alt_author_box(); ?>
+
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.
           if (function_exists('alt_digest_placement')) echo alt_digest_placement('facet'); ?>

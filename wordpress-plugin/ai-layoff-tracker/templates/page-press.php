@@ -1016,4 +1016,6 @@ if (!is_array($alt_ps)) {
     </form>
     <?php endif; ?>
   </section>
+  <?php // Author box (includes/author-box.php): renders nothing until the owner fills ALT_AUTHOR_PROFILE.
+      if (function_exists('alt_author_box')) echo alt_author_box(); ?>
 </main>
