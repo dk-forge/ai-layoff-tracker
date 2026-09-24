@@ -1,3 +1,54 @@
+## 2026-09-24 - Overnight fixes: future report periods, a duplicate-key workflow guard, probe debris; two reported reds were already fixed
+
+**Class:** wrong-scope-or-key (report periods); silent-stop (workflow file)
+**Guard:** `railway/tests/test_report_future_periods.py`, `railway/tests/test_workflow_no_duplicate_keys.py`
+
+1. **Future quarters and weeks were indexable reports.** `alt_report_period_identity()`
+   (`includes/report-seo.php`) rejected a future year and month but accepted
+   `?period=2026-Q4` in Q3, giving an empty future page a self-canonical and
+   leaving it indexable. Quarters now use the month rule (not later than the
+   current quarter); ISO weeks are rejected past the current ISO week-year/week
+   (and before 2015, like every other kind). Rejected periods fall into the
+   existing `invalid` -> noindex path. The test runs the real PHP with WordPress
+   stubbed and derives its dates from the clock (no date bomb). Red first
+   (future quarter classified `quarter`), green after.
+2. **`dedupe_llm` STALE 11 days: already fixed, nothing changed.** The digest
+   alert fired 2026-09-21 17:16Z; the fix (`report_deferred()` posting a
+   `degraded` note when the spend guard defers, see the 2026-09-21 entry) is on
+   main with `DeferredRunReportsItselfTest`, and every other exit path of
+   `_run()`/`main()` already posts health (success, empty, and host deferral via
+   `host_call.defer(..., source="dedupe_llm")`). If the digest still reads STALE
+   after a scheduled run, the health POST itself is failing: read that run's log
+   for "dedup health write failed".
+3. **`source-verification-audit.yml` failed every push with no jobs.** Cause:
+   `OPS_MAIL_FROM` appeared twice in one `env:` block (lines 60 and 66 at
+   687033a), which GitHub rejects as a workflow-file error and PyYAML silently
+   accepts. The duplicate was already removed on main (no failed run since
+   2026-09-09; actionlint clean over all workflows apart from the custom
+   `contabo` runner label). New guard parses every workflow with a
+   duplicate-key-refusing loader and was proven to catch the old file.
+   `ci-alert-selftest.yml` is NOT dead: it is dispatch-only by design (the
+   July red run is its intended "simulated failure" leg, the next run was
+   RECOVERED). Left as is.
+4. **Removed probe debris at repo root:** `c.bin`, `pr.bin`, `pr2.bin`, `rb.bin`
+   (robots.txt/HTTP probe captures), `mites.html` (a 302 page), `rd.html`.
+   Nothing in the repo referenced them.
+
+**Needs the owner (not self-fixable from a session):**
+- (a) Rotate the `JANITOR_IMAP_*` mailbox credential (login refused since
+  2026-09-22, entry below) and update the secret.
+- (b) Check the Railway cron logs for why EDGAR and GDELT are stale; sessions
+  cannot see Railway.
+- (c) Confirm the WARN relay recovered FL/GA/ID/KS. The AZ and MS scrapers have
+  been broken since 2026-06-29/30 and still need repair.
+
+Tests run locally (Python 3.11, CI uses 3.12): the two new modules and
+`test_dedupe_window` green; `run_tests.py --group rest` 2603 tests with 7
+errors, all in `test_adjudicate_row`, `test_federal_rif` and
+`test_unreachable_is_not_broken`, none touching these files (local environment);
+`--group rest-2` cannot import `test_cost_funnel.py` on 3.11 ("too many
+statically nested blocks"), a 3.11 limitation, not a change here. `php -l` clean.
+
 ## 2026-09-23 - The mailbox janitor's cPanel login is refused, for both mailboxes, since at least the day before
 
 **Class:** novel
