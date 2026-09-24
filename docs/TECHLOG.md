@@ -1,6 +1,6 @@
 ## 2026-09-24 - Brevo contact mirror of digest subscribers + separate partner-offers consent (2.20.209)
 
-**Class:** new feature (owner decision 2026-09-24)
+**Class:** novel (a new feature, owner decision 2026-09-24, not an incident)
 **Guard:** `railway/tests/test_brevo_subscriber_sync.py` (runs the real handlers through `tests/fixtures/brevo_sync_harness.php`)
 
 1. **Mirror, not source.** `wp_alt_subscribers` still decides who gets a digest.
