@@ -221,6 +221,8 @@ class FakeWpdb {
             consent_layoff INTEGER NOT NULL DEFAULT 0,
             consent_talent INTEGER NOT NULL DEFAULT 0,
             consent_articles INTEGER NOT NULL DEFAULT 0,
+            consent_partners INTEGER NOT NULL DEFAULT 0,
+            partners_consent_at TEXT NULL,
             freq_layoff TEXT NOT NULL DEFAULT "weekly",
             freq_talent TEXT NOT NULL DEFAULT "weekly",
             freq_articles TEXT NOT NULL DEFAULT "weekly",
@@ -309,6 +311,9 @@ require $argv[1];
 // here as the fatal it is on the live site, rather than passing one file at a
 // time. See tests/test_digest_sender.py NoRedeclaredFunction.
 if (isset($argv[2]) && $argv[2] !== '') require $argv[2];
+// Stubs + real files only, for a harness that drives its own scenario
+// (tests/fixtures/brevo_sync_harness.php).
+if (defined('ALT_HARNESS_STUBS_ONLY')) return;
 
 /* ------------------------------------------------------------------ */
 /* Drive the real functions                                            */

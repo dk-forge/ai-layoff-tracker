@@ -1,3 +1,58 @@
+## 2026-09-24 - Brevo contact mirror of digest subscribers + separate partner-offers consent (2.20.209)
+
+**Class:** new feature (owner decision 2026-09-24)
+**Guard:** `railway/tests/test_brevo_subscriber_sync.py` (runs the real handlers through `tests/fixtures/brevo_sync_harness.php`)
+
+1. **Mirror, not source.** `wp_alt_subscribers` still decides who gets a digest.
+   New `includes/brevo-sync.php` (guarded include) copies each CONFIRMED row to
+   Brevo on confirm (first confirm and every preference change, which always
+   goes through the confirm link), unsubscribe, and webhook bounce/complaint.
+   `POST /v3/contacts` with `updateEnabled` and `listIds`, then
+   `PUT /v3/contacts/{email}` with `unlinkListIds` for every other configured
+   list. A pending row is never sent (it has consented to nothing); any
+   non-confirmed status only unlinks and never creates a contact (404 = fine).
+2. **List ids** (owner's final): 15 Layoff Daily, 16 Layoff Weekly, 17 Talent
+   Daily, 18 Talent Weekly, 20 Partner Offers. **No monthly lists**: a monthly
+   subscriber goes on the WEEKLY list of their tracker. Override with
+   `ALT_BREVO_LIST_<KEY>` constants or the `alt_brevo_list_ids` option; 0 skips.
+   The articles box has no Brevo list.
+3. **Key:** `ALT_BREVO_API_KEY` in wp-config wins; otherwise the key the
+   official Brevo WP plugin stores (`sib_main_option['access_key']`, must start
+   `xkeysib-`). No key = silent no-op, status `unconfigured`. Attributes
+   (`ATR_TRACKERS`, `ATR_TIER`) are sent only if `ALT_BREVO_SEND_ATTRIBUTES` is
+   true, because Brevo rejects attributes the account has not created.
+4. **Failure never breaks the flow:** 5 s timeout, every path wrapped in
+   try/catch Throwable, outcome kept in the private option
+   `alt_brevo_sync_status` (result, HTTP code, counts; never an address) and
+   exposed as `brevo_mirror` in the keyed digest stats payload. Deliberately NOT
+   the source-health ledger: that renders on the PUBLIC health page and its
+   staleness ceilings cannot fit an event-driven mirror.
+5. **Backfill:** `POST /wp-json/layoffs/v1/brevo-backfill?after_id=0&limit=100`
+   (the `X-Layoff-API-Key` gate, `alt_api_permission`), repeat with the
+   returned `next_after_id` until null; or `wp alt-brevo-backfill`. Idempotent
+   (set operations), confirmed rows only.
+6. **Brevo campaign unsubscribes do NOT stop digests (owner decision).** A
+   Brevo webhook event whose name starts `unsub` AND carries `camp_id` (the
+   marketing webhook shape) only unlinks the contact from every Brevo list and
+   records a SHA-256 of the address in `alt_brevo_marketing_optout` so later
+   preference changes do not relink it. Digest consent is managed on the site;
+   every digest carries its own one-click unsubscribe. Transactional
+   `unsubscribed` (no `camp_id`) and spam complaints still stop the digest as
+   before. For that to arrive, the owner must add a MARKETING webhook in Brevo
+   (event "unsubscribed") pointing at `/digest-webhook` with the same token.
+7. **Partner offers, a separate GDPR/PECR consent.** New columns
+   `consent_partners` (default 0, never inferred for existing rows) and
+   `partners_consent_at` (stamped at CONFIRMATION; cleared on untick). The box
+   is unticked by default and sits after `</form>`, joined by `form=""`, so the
+   phone-fold copy region (hashed up to `</form>`) is untouched and no
+   re-measure was needed. Ticking only it subscribes to nothing. Stored by
+   separate updates so the deploy race (file before column) cannot lose a
+   signup. Unticking goes through the normal parked-change confirm. Privacy
+   note now says partner offers come from us, partners never get the address,
+   and Brevo holds a copy. Backup column lists gained both columns.
+   **Browser-only checks (tap targets, tab order) were skipped here: no Chrome
+   in the cloud session. Verify the new 44px box on a phone.**
+
 ## 2026-09-24 - Overnight fixes: future report periods, a duplicate-key workflow guard, probe debris; two reported reds were already fixed
 
 **Class:** wrong-scope-or-key (report periods); silent-stop (workflow file)

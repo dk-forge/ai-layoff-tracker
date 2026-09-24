@@ -6,6 +6,10 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-24, branch
+  `claude/brevo-subscriber-sync`. Reserves plugin version 2.20.209** for the
+  Brevo subscriber mirror + partner-offers consent. Committed, not pushed (the
+  parent session opens the PR). See TECHLOG 2026-09-24.
 - **RELEASED - Claude (agent), 2026-09-24 overnight, branch
   `claude/overnight-fixes-2026-09-24` (PR #415). Reserves plugin version
   2.20.208** for the `report-seo.php` future-period fix. Work complete; see
