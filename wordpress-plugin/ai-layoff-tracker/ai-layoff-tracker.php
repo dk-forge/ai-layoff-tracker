@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.209
+ * Version:           2.20.210
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.209');
+define('ALT_VERSION', '2.20.210');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -97,6 +97,15 @@ if (is_readable($alt_digest_archive)) {
 $alt_company_index = ALT_PLUGIN_DIR . 'includes/company-index.php';
 if (is_readable($alt_company_index)) {
     require_once $alt_company_index;
+}
+// Growth modules (2.20.210): monthly report timing + press summary, the
+// admin-only press list, the author box. NEW files, so GUARDED with
+// is_readable for the FTP-deploy race described above; every caller checks
+// function_exists. Runbook: docs/RUNBOOK_GROWTH.md.
+foreach (array('monthly-report.php', 'press-list.php', 'author-box.php', 'follows.php') as $alt_growth_file) {
+    if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file)) {
+        require_once ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file;
+    }
 }
 // Where the signup renders beyond the two tracker pages (blog posts, company
 // profiles, the facet pages, entry permalinks). GUARDED with is_readable for
@@ -305,10 +314,71 @@ function alt_cite_box_html($name, $url) {
  * and that is exactly what the copy says.
  */
 function alt_next_step_tool_url() {
-    return apply_filters(
-        'alt_next_step_tool_url',
-        'https://asktherecruiter-sandbox-production.up.railway.app/'
+    return apply_filters('alt_next_step_tool_url', alt_resume_cta_url('company'));
+}
+
+/**
+ * THE RESUME CALL TO ACTION: ONE BASE URL, TAGGED PER SURFACE.
+ *
+ * Owner decision 2026-09-24: a quiet "Laid off? Tailor your resume" link on the
+ * report pages, company pages, digest footer and chart embeds, pointing at
+ * asktherecruiter.com. The base is this constant, overridable by the
+ * `alt_resume_cta_base` option; railway/digest_layout.py mirrors the literal for
+ * the relay footer and tests/test_resume_cta.py fails on a difference.
+ *
+ * Every link carries utm_source/medium/campaign so the owner can tell which
+ * surface sends people. A junk option value falls back to the default rather
+ * than printing it into ~10,000 pages.
+ */
+define('ALT_RESUME_CTA_DEFAULT_BASE', 'https://asktherecruiter.com');
+
+function alt_resume_cta_base() {
+    $base = trim((string) get_option('alt_resume_cta_base', ALT_RESUME_CTA_DEFAULT_BASE));
+    $ok = $base !== '' && preg_match('#^https?://[^/\s]+#i', $base)
+        && wp_http_validate_url($base);
+    return apply_filters('alt_resume_cta_base', $ok ? $base : ALT_RESUME_CTA_DEFAULT_BASE);
+}
+
+function alt_resume_cta_url($surface) {
+    $surface = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $surface));
+    return add_query_arg(array(
+        'utm_source'   => 'ai-layoff-tracker',
+        'utm_medium'   => 'referral',
+        'utm_campaign' => $surface !== '' ? $surface : 'tracker',
+    ), alt_resume_cta_base());
+}
+
+/**
+ * The lines the block rotates through. NOT LAYOFF-ONLY (owner, 2026-09-24):
+ * the readers who can use a resume tool include job seekers, career changers,
+ * new graduates and people returning to work. Each is [lead, rest].
+ */
+function alt_resume_cta_lines() {
+    return array(
+        array('Changing jobs?', 'Tailor your r&eacute;sum&eacute; to the role you want.'),
+        array('Laid off?', 'Tailor your r&eacute;sum&eacute; for the next role.'),
+        array('Returning to work?', 'Tailor your r&eacute;sum&eacute; to the job in front of you.'),
+        array('New grad or student?', 'Tailor your first r&eacute;sum&eacute; to the role.'),
     );
+}
+
+/**
+ * The small block itself. A plain link in a bordered line, never a popup, a
+ * modal, a timer or a script. nofollow for the reason test_next_step_block.py
+ * gives: a data page must not pass ranking signal to a product it owns.
+ *
+ * The line is chosen by crc32(surface|seed), not at random: the page cache
+ * would otherwise freeze one arbitrary variant per URL anyway, and a
+ * deterministic pick lets a test see every variant. Callers pass the period,
+ * slug or chart id as the seed so different pages show different lines.
+ */
+function alt_resume_cta_html($surface, $seed = '') {
+    $lines = alt_resume_cta_lines();
+    $pick = $lines[abs(crc32((string) $surface . '|' . (string) $seed)) % count($lines)];
+    return '<aside class="alt-resume-cta" aria-label="Resume help">'
+        . '<b>' . $pick[0] . '</b> ' . $pick[1] . ' '
+        . '<a href="' . esc_url(alt_resume_cta_url($surface)) . '" target="_blank" rel="noopener nofollow">'
+        . 'Try the AskTheRecruiter r&eacute;sum&eacute; tool</a></aside>';
 }
 
 function alt_output_jsonld($blocks) {

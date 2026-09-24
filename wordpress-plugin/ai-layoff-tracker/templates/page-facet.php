@@ -73,6 +73,9 @@ $alt_bd_titles = array(
         <?php endif; ?>
     </div>
 
+    <?php $alt_timeline = $alt_f['timeline'] ?? array();
+          include ALT_PLUGIN_DIR . 'templates/partials/timeline.php'; ?>
+
     <?php // The basis, said plainly, because the tracker's results list uses a
           // different one on purpose and a reader comparing the two numbers
           // deserves to know why they differ. ?>
@@ -401,6 +404,15 @@ $alt_bd_titles = array(
         <p class="alt-next-step-note">This is background, not legal advice.</p>
     </aside>
     <?php endif; ?>
+
+    <?php // Follow this state (includes/follows.php): new entries in the digest,
+          // through the digest's own double opt-in. US state pages only.
+          if ($alt_f['dim'] === 'state' && function_exists('alt_follow_form_html')) {
+              echo alt_follow_form_html('state', $alt_f['value'], $alt_f['display']);
+          } ?>
+
+    <?php // Author box on US state pages (owner scope); nothing until filled.
+          if ($alt_f['dim'] === 'state' && function_exists('alt_author_box')) echo alt_author_box(); ?>
 
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.

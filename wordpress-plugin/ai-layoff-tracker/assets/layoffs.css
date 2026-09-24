@@ -2532,6 +2532,22 @@ p.alt-next-step-list { padding-left: 0; }
 @media (max-width: 480px) {
     .alt-next-step { padding: 16px 14px; }
 }
+/* The resume call to action (alt_resume_cta_html): one quiet line under the
+   report card, never inside it, never sticky, never animated. Same tokens as
+   .alt-next-step so the contrast audit already covers it. */
+.alt-resume-cta {
+    margin: 18px 0 0;
+    padding: 12px 16px;
+    border: 1px solid var(--alt-border);
+    border-radius: 10px;
+    background: var(--alt-surface-2);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--alt-ink);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.alt-resume-cta a { color: var(--alt-accent); }
 
 /* single entry page */
 .alt-single { max-width: 720px; }
@@ -4475,3 +4491,26 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-wrap .alt-sub-form input,
     .alt-wrap .alt-sub-form button { min-height: 44px; box-sizing: border-box; }
 }
+
+/* Year-by-year timeline on company / country / state pages
+   (templates/partials/timeline.php). Reuses the report's bar rows; the bar
+   colour variable is defined here because these pages are not .alt-report-page. */
+.alt-timeline { --op-green: var(--alt-accent); margin: 22px 0; min-width: 0; }
+.alt-timeline h2 { font-size: 17px; margin: 0 0 10px; }
+
+/* Monthly report press summary (report page + press page). A textarea, so a
+   reporter can select-all and copy; never auto-copied, never a popup. */
+.alt-mr-press-summary { margin: 18px 0 0; }
+.alt-mr-press-summary summary { cursor: pointer; font-weight: 600; }
+.alt-mr-press-summary textarea { width: 100%; box-sizing: border-box; margin-top: 8px; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--alt-ink); background: var(--alt-surface); border: 1px solid var(--alt-border); border-radius: 8px; padding: 10px; }
+
+/* Follow a company / state (includes/follows.php). */
+.alt-follow { margin: 26px 0 0; padding: 14px 16px; border: 1px solid var(--alt-border); border-radius: 10px; min-width: 0; }
+.alt-follow h2 { font-size: 16px; margin: 0 0 6px; }
+.alt-follow p { margin: 0 0 10px; font-size: 14px; }
+.alt-follow form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.alt-follow input[type="email"] { min-width: 0; max-width: 100%; }
+
+/* Author box (includes/author-box.php); hidden entirely until filled. */
+.alt-author-box { margin: 26px 0 0; padding: 14px 16px; border-top: 1px solid var(--alt-border); font-size: 14px; line-height: 1.6; color: var(--alt-ink); min-width: 0; overflow-wrap: anywhere; }
+.alt-author-box p { margin: 4px 0 0; }

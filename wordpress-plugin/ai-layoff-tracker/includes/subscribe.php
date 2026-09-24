@@ -1542,6 +1542,9 @@ function alt_digest_confirm() {
     $wpdb->update(alt_subscribers_table(), array('consent_partners' => $partners,
                   'partners_consent_at' => $stamp), array('id' => $row['id']));
     alt_digest_mirror($row['email']);
+    // The reader proved they own the inbox: anything that was waiting on that
+    // proof (a pending company/state follow, includes/follows.php) may start.
+    if (function_exists('do_action')) do_action('alt_digest_confirmed', (int) $row['id']);
     // Read the row back rather than reasoning about $update: on the change
     // path the stored preferences are whatever the parked JSON turned out to
     // contain, and the panel must read back what is stored, not what was sent.
@@ -8520,6 +8523,16 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
             ),
         );
     }
+    // The resume call to action (owner decision 2026-09-24). UNCONDITIONAL
+    // like the address, so the sentence is identical on all three renderers;
+    // only the link depends on the helper being loaded (FTP-deploy race).
+    $blocks[] = array(
+        'url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
+        'anchor' => 'Tailor your résumé',
+        'sentences' => array(
+            'Changing jobs, returning to work or starting out? Tailor your résumé to the role with the AskTheRecruiter résumé tool.',
+        ),
+    );
     // CAN-SPAM 15 U.S.C. 7704(a)(5): a commercial message must carry the
     // sender's valid PHYSICAL postal address. It is a block like any other
     // so it cannot be added to one renderer and forgotten in the other two,
@@ -8660,6 +8673,13 @@ function alt_digest_send($freq) {
             }
         }
         if (!$parts_html) continue;   // nothing to say to this person today
+        // Company/state follows (includes/follows.php), after the consented
+        // sections and only for layoff-list readers. Same as the relay.
+        if ((int) $row['consent_layoff'] === 1 && $row['freq_layoff'] === $freq
+            && function_exists('alt_follows_section_for')) {
+            $alt_fs = alt_follows_section_for((int) $row['id'], $from_date, $to_date);
+            if ($alt_fs) { $parts_html[] = $alt_fs['html']; }
+        }
         $subject = alt_digest_subject_line($freq, $from_date, $to_date, $headings,
                                            $fallback_subject, $subject_parts);
 

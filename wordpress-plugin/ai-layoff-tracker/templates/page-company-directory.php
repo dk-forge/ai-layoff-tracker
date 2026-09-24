@@ -64,6 +64,9 @@ $alt_verif = array(
         <?php endif; ?>
     </p>
 
+    <?php $alt_timeline = $alt_dir['timeline'] ?? array();
+          include ALT_PLUGIN_DIR . 'templates/partials/timeline.php'; ?>
+
     <p><a href="<?php echo esc_url($alt_dir['tracker_url']); ?>">Search this company name in the full tracker</a></p>
 
     <ol class="alt-company-event-list">
@@ -274,6 +277,15 @@ $alt_verif = array(
         this page records.
         <?php endif; ?></p>
     </aside>
+
+    <?php // Follow this company (includes/follows.php), through the digest's
+          // own double opt-in.
+          if (function_exists('alt_follow_form_html')) {
+              echo alt_follow_form_html('company', $alt_company['company_key'], $alt_name);
+          } ?>
+
+    <?php // Author box (includes/author-box.php): renders nothing until the owner fills ALT_AUTHOR_PROFILE.
+      if (function_exists('alt_author_box')) echo alt_author_box(); ?>
 
     <?php // Our own signup, once, as the last block. function_exists is the
           // FTP-deploy race guard every optional call in this plugin uses.

@@ -18,7 +18,11 @@ name: Company directory autopilot
 
 on:
   schedule:
-    - cron: '20 14 * * 2'
+    # DAILY since 2.20.210 (owner, 2026-09-24: a page for every company, kept
+    # current as rows arrive). A drained backlog costs one call, and this runs
+    # on the self-hosted runner, so daily is free. Each run also promotes the
+    # autopilot's noindex pages that have reached the index floor.
+    - cron: '20 14 * * *'
   workflow_dispatch:
     inputs:
       min_events:
@@ -127,6 +131,7 @@ jobs:
             echo
             echo "- Calls: **$call** (ceiling $MAX_CALLS)"
             echo "- Admitted this run: **$admitted_total** (approved $approved_total, noindex $noindex_total)"
+            python3 -c 'import json; print("- Promoted to indexable (final call): **%d**" % len(json.load(open("/tmp/last.json")).get("promoted") or []))'
             python3 - <<'PY'
           import json
           r = json.load(open('/tmp/last.json'))

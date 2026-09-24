@@ -1183,12 +1183,33 @@ FOOTER_BLOCKS = (
                 "form and tick the lists you want.",
                 "The change applies when you confirm by email."),
      "re-enter your address on the signup form"),
+    # The resume call to action (owner decision 2026-09-24). Always present,
+    # like the address; its URL is the plugin's alt_resume_cta_url('digest')
+    # from the payload, or resume_cta_url()'s default when a build sends none.
+    ("resume", ("Changing jobs, returning to work or starting out? Tailor "
+                "your résumé to the role with the AskTheRecruiter résumé tool.",),
+     "Tailor your résumé"),
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because
     # unlike the manage block it is not ours to omit -- `footer_blocks()`
     # filters on the "manage" key only, so this survives a thin payload.
     ("", ("AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.",), ""),
 )
+
+
+# Mirror of ALT_RESUME_CTA_DEFAULT_BASE in ai-layoff-tracker.php; the plugin
+# is the authority and tests/test_resume_cta.py fails on a difference.
+RESUME_CTA_DEFAULT_BASE = "https://asktherecruiter.com"
+RESUME_CTA_DEFAULT_URL = (RESUME_CTA_DEFAULT_BASE + "/?utm_source=ai-layoff-tracker"
+                          "&utm_medium=referral&utm_campaign=digest")
+
+
+def resume_cta_url(candidate: str = "") -> str:
+    """The footer's resume link: the payload's URL when it is https, else ours."""
+    url = (candidate or "").strip()
+    if url.startswith("https://") and " " not in url and '"' not in url:
+        return url
+    return RESUME_CTA_DEFAULT_URL
 
 
 def footer_blocks(manage: bool = True) -> tuple:
@@ -1229,7 +1250,8 @@ def _link_anchor(text: str, anchor: str, url: str, style: str) -> str:
         needle, f'<a href="{url}" style="{style}">{needle}</a>', 1)
 
 
-def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
+def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
+            resume_url: str = "") -> str:
     """The two things a reader may need, then the small print, in that order.
 
     EVERY SENTENCE COMES FROM FOOTER_BLOCKS. Nothing reader-facing is typed
@@ -1251,7 +1273,8 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
     fine = (f'margin:0 0 6px;font-family:{FONT};font-size:11px;'
             f'line-height:1.6;color:{MUTED};')
     link = f'color:{LINK};text-decoration:underline;'
-    urls = {"unsub": unsub_url, "manage": manage_url}
+    urls = {"unsub": unsub_url, "manage": manage_url,
+            "resume": resume_cta_url(resume_url)}
     rendered = []
     for key, sentences, anchor in footer_blocks(bool(manage_url)):
         # The anchor belongs to the block's FIRST sentence, which is the one
@@ -1280,7 +1303,8 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "") -> str:
 
 def render_html(parts, *, subject: str, preheader: str, kicker: str,
                 unsub_url: str, manage_url: str,
-                edition_note: str = "", notice: str = "") -> str:
+                edition_note: str = "", notice: str = "",
+                resume_url: str = "") -> str:
     """The whole message. Inline styles only, tables only, no style block."""
     rows = []
     for index, part in enumerate(parts):
@@ -1288,7 +1312,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         padding = "22px 28px 8px" if index else "24px 28px 8px"
         rows.append(_cell(restyle(section_html), padding=padding,
                           top_rule=bool(index)))
-    rows.append(_cell(_footer(unsub_url, manage_url, edition_note),
+    rows.append(_cell(_footer(unsub_url, manage_url, edition_note, resume_url),
                       padding="18px 28px 26px", top_rule=True))
 
     # Hidden, and first, so it is the snippet the client picks up. The colour
@@ -1379,7 +1403,8 @@ def _reflow(block: str) -> str:
 
 
 def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
-                edition_note: str = "", notice: str = "") -> str:
+                edition_note: str = "", notice: str = "",
+                resume_url: str = "") -> str:
     """A real alternative, not a stripped tag byproduct.
 
     Every figure, every entry and both ways out are here, because for a text
@@ -1404,7 +1429,8 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     # it may not be a shorter or older version of what everyone else was told.
     # A block that carries a link ends on a colon and the bare URL follows,
     # which is what a link looks like when there is no anchor to put it in.
-    urls = {"unsub": unsub_url, "manage": manage_url}
+    urls = {"unsub": unsub_url, "manage": manage_url,
+            "resume": resume_cta_url(resume_url)}
     footer = [rule]
     for index, (key, sentences, _anchor) in enumerate(
             footer_blocks(bool(manage_url))):

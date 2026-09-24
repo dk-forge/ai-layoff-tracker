@@ -226,12 +226,19 @@ function alt_api_digest_recipients($request) {
         $has = false;
         foreach ($lists as $list) { if (isset($sections[$list])) $has = true; }
         if (!$has) continue;
-        $recipients[] = array(
+        $recipient = array(
             'id'        => (int) $row['id'],
             'email'     => (string) $row['email'],
             'unsub_url' => alt_digest_unsub_url($row['unsub_token']),
             'lists'     => $lists,
         );
+        // Company/state follows, composed here because they carry figures.
+        // Layoff-list readers only; the relay appends it after their sections.
+        if (in_array('layoff', $lists, true) && function_exists('alt_follows_section_for')) {
+            $follow = alt_follows_section_for((int) $row['id'], $from_date, $to_date);
+            if ($follow) $recipient['follow_section'] = $follow;
+        }
+        $recipients[] = $recipient;
     }
 
     alt_digest_record_claim($freq);
@@ -265,6 +272,10 @@ function alt_api_digest_recipients($request) {
         // everything. Built here, from home_url(), so the relay never carries
         // a hard coded site address it could get wrong or out of date.
         'manage_url' => function_exists('alt_digest_manage_url') ? alt_digest_manage_url() : '',
+        // The relay links the footer's resume line here. One definition, in
+        // the plugin (alt_resume_cta_url); the relay only falls back to its
+        // mirror of the default when an older build sends nothing.
+        'resume_cta_url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
         'recipients' => $recipients,
     ), 200);
     // Addresses are never cached, at the edge or anywhere else.

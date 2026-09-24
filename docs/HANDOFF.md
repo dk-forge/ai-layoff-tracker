@@ -6,6 +6,12 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-24, branch `claude/growth-press-magnet`
+  (committed in a worktree, NOT pushed). Reserves plugin version 2.20.210** (PR #417,
+  `claude/brevo-subscriber-sync`, holds 2.20.209). Growth slice: resume call
+  to action, company/state pages, embed attribution, monthly report + press,
+  follow-a-company/state alerts, press list, author box. Work complete; see
+  TECHLOG 2026-09-24 (Growth) and docs/RUNBOOK_GROWTH.md.
 - **RELEASED - Claude (agent), 2026-09-24, branch
   `claude/brevo-subscriber-sync`. Reserves plugin version 2.20.209** for the
   Brevo subscriber mirror + partner-offers consent. Committed, not pushed (the

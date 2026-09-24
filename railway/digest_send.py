@@ -529,6 +529,15 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     parts = usable_sections(payload, recipient.get("lists") or [])
     if not parts:
         return None
+    # COMPANY / STATE FOLLOWS (plugin includes/follows.php). Composed by the
+    # site per recipient, because it carries figures; appended AFTER the
+    # sections the reader consented to, and only for layoff-list readers. It
+    # is never a reason to send on its own: the check above already returned.
+    follow = recipient.get("follow_section")
+    if (isinstance(follow, dict) and "layoff" in (recipient.get("lists") or [])
+            and (follow.get("html") or "").strip() and (follow.get("text") or "").strip()):
+        parts.append(("follows", follow["html"].strip(), follow["text"].strip(),
+                      "", ("", True)))
 
     # A way to change WHAT you get, beside the way to stop everything. One
     # click unsubscribe is a blunt instrument: a reader who wants one of three
@@ -557,13 +566,19 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     edition_note = (digest_layout.WEEK_CONVENTION
                     if str(payload.get("freq") or "").strip().lower() == "weekly"
                     else "")
+    # The resume line's link comes from the site like the manage URL, and is
+    # held to the same rule: a link printed under our name has to go home.
+    resume = str(payload.get("resume_cta_url") or "").strip()
+    if not _same_site(resume, unsub):
+        resume = ""
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
         kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
-        edition_note=edition_note)
+        edition_note=edition_note, resume_url=resume)
     text = digest_layout.render_text(parts, kicker=kicker, notice=notice,
                                      unsub_url=unsub,
-                                     manage_url=manage, edition_note=edition_note)
+                                     manage_url=manage, edition_note=edition_note,
+                                     resume_url=resume)
 
     return Message(
         to=str(recipient.get("email") or ""),

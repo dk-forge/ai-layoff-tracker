@@ -400,9 +400,49 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
       </section>
     </div>
 
+    <?php
+    // MONTHLY EXTRAS (owner scope 2026-09-24): employers aggregated across the
+    // month, the top US states and countries. alt_mr_figures() counts the same
+    // population as this page (verified tier, effective date, superset_of=0).
+    $alt_mr = (!$alt_is_year && !$alt_is_week && !$alt_is_quarter && function_exists('alt_mr_figures'))
+        ? alt_mr_figures($alt_slug, $alt_us) : null;
+    if ($alt_mr) :
+        $alt_mr_blocks = array(
+            'Employers with the most verified cuts' => array($alt_mr['top_companies'], 'company'),
+            'Top US states' => array($alt_mr['top_states'], 'state'),
+        );
+        if (!$alt_us) $alt_mr_blocks['Top countries'] = array($alt_mr['top_countries'], 'country'); ?>
+    <div class="alt-op-grid alt-mr-tops">
+      <?php foreach ($alt_mr_blocks as $alt_mr_h => $alt_mr_b) : if (!$alt_mr_b[0]) continue; ?>
+      <section class="alt-op-block">
+        <h3><?php echo esc_html($alt_mr_h); ?></h3>
+        <table class="alt-op-table"><tbody>
+        <?php foreach ($alt_mr_b[0] as $alt_mr_r) : ?>
+          <tr><td class="alt-op-co"><a href="<?php echo $alt_rlink(array($alt_mr_b[1] => $alt_mr_r[0])); ?>" target="_blank" rel="noopener"><?php echo esc_html($alt_mr_r[0]); ?></a></td>
+              <td class="alt-op-num"><?php echo number_format((int) $alt_mr_r[1]); ?></td></tr>
+        <?php endforeach; ?>
+        </tbody></table>
+      </section>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
     <footer class="alt-op-footer">
       <p><b>Methodology:</b> Verified cuts have a document or report behind each figure: an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
       <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html($alt_stamp); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a></p>
+      <p><?php if (function_exists('alt_mr_csv_url')) : ?><b>Data:</b> <a href="<?php echo esc_url(alt_mr_csv_url($alt_from, $alt_to, $alt_us)); ?>">Download this period as CSV</a> (CC BY 4.0) · <?php endif; ?><b>Press contact:</b> <a href="<?php echo esc_url(home_url('/contact/')); ?>">contact page</a>, reporter requests answered first.</p>
     </footer>
   </article>
+  <?php if ($alt_mr && function_exists('alt_mr_pitch')) : ?>
+  <details class="alt-mr-press-summary">
+    <summary>Press release summary for <?php echo esc_html($alt_mr['label']); ?> (copy and paste)</summary>
+    <textarea readonly rows="12" aria-label="Press release summary"><?php echo esc_textarea(alt_mr_pitch($alt_mr)); ?></textarea>
+  </details>
+  <?php endif; ?>
+  <?php // AFTER the card, never in it: the PNG/PDF export captures
+        // #alt-report-card, and a chart quoted in the press must not carry an
+        // advert. function_exists is the FTP-deploy race guard. ?>
+  <?php if (function_exists('alt_resume_cta_html')) echo alt_resume_cta_html('report', $alt_slug); ?>
+  <?php // Author box (includes/author-box.php): renders nothing until the owner fills ALT_AUTHOR_PROFILE.
+      if (function_exists('alt_author_box')) echo alt_author_box(); ?>
 </main>

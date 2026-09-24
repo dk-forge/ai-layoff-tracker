@@ -255,6 +255,12 @@ function alt_company_directory_data($slug) {
     }
     $data = array(
         'facet_links' => $facet_links,
+        // Year-by-year, from the same rows the page lists (so it adds up to
+        // the total above it). function_exists: FTP-deploy race guard.
+        'timeline'    => function_exists('alt_timeline_by_year') ? alt_timeline_by_year(array_map(function ($r) {
+            return array('date' => (string) ($r['layoff_date'] ?? ''), 'jobs' => (int) ($r['job_count'] ?? 0),
+                         'ai_jobs' => !empty($r['ai_explicit']) ? (int) ($r['job_count'] ?? 0) : 0);
+        }, $event_rows), (int) gmdate('Y')) : array(),
         'company'     => $company,
         'events'      => $event_rows,
         'total_jobs'  => $total_jobs,
@@ -527,6 +533,35 @@ function alt_company_directory_supported_count($company_key) {
           WHERE l.company_key = %s AND l.event_id > 0 AND l.superset_of = 0
             AND EXISTS (SELECT 1 FROM $reports r2 WHERE r2.event_id = l.event_id AND r2.source_url <> '')",
         (string) $company_key));
+}
+
+/**
+ * Promote the autopilot's own `noindex` admissions that now clear the floor.
+ *
+ * Only rows with admitted_by = 'autopilot' (set since 2.20.210): a row an
+ * editor marked noindex, or one admitted before provenance was recorded, has
+ * admitted_by = '' and is left alone. Counts come from the same
+ * supported-events SQL the sitemap and the page use, so a promoted page is
+ * exactly one the sitemap will list. Returns the promoted slugs.
+ */
+function alt_company_directory_promote_autopilot($floor, $limit = 500) {
+    global $wpdb;
+    $directory = alt_company_directory_table();
+    $supported = alt_company_directory_supported_events_sql();
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT d.id, d.slug FROM $directory d
+           INNER JOIN ($supported) s ON s.company_key = d.company_key AND s.supported >= %d
+          WHERE d.review_status = 'noindex' AND d.admitted_by = 'autopilot'
+          ORDER BY d.id ASC LIMIT %d", (int) $floor, (int) $limit), ARRAY_A) ?: array();
+    $now = current_time('mysql', true);
+    $promoted = array();
+    foreach ($rows as $row) {
+        $wpdb->update($directory,
+            array('review_status' => 'approved', 'reviewed_at' => $now, 'updated_at' => $now),
+            array('id' => (int) $row['id']));
+        if (!$wpdb->last_error) $promoted[] = (string) $row['slug'];
+    }
+    return $promoted;
 }
 
 function alt_company_directory_indexable_urls() {
