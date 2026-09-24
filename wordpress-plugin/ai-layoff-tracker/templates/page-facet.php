@@ -73,6 +73,9 @@ $alt_bd_titles = array(
         <?php endif; ?>
     </div>
 
+    <?php $alt_timeline = $alt_f['timeline'] ?? array();
+          include ALT_PLUGIN_DIR . 'templates/partials/timeline.php'; ?>
+
     <?php // The basis, said plainly, because the tracker's results list uses a
           // different one on purpose and a reader comparing the two numbers
           // deserves to know why they differ. ?>

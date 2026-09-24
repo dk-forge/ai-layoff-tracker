@@ -4491,3 +4491,9 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-wrap .alt-sub-form input,
     .alt-wrap .alt-sub-form button { min-height: 44px; box-sizing: border-box; }
 }
+
+/* Year-by-year timeline on company / country / state pages
+   (templates/partials/timeline.php). Reuses the report's bar rows; the bar
+   colour variable is defined here because these pages are not .alt-report-page. */
+.alt-timeline { --op-green: var(--alt-accent); margin: 22px 0; min-width: 0; }
+.alt-timeline h2 { font-size: 17px; margin: 0 0 10px; }

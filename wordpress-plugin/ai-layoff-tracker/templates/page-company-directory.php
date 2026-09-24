@@ -64,6 +64,9 @@ $alt_verif = array(
         <?php endif; ?>
     </p>
 
+    <?php $alt_timeline = $alt_dir['timeline'] ?? array();
+          include ALT_PLUGIN_DIR . 'templates/partials/timeline.php'; ?>
+
     <p><a href="<?php echo esc_url($alt_dir['tracker_url']); ?>">Search this company name in the full tracker</a></p>
 
     <ol class="alt-company-event-list">

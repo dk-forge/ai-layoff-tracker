@@ -255,6 +255,12 @@ function alt_company_directory_data($slug) {
     }
     $data = array(
         'facet_links' => $facet_links,
+        // Year-by-year, from the same rows the page lists (so it adds up to
+        // the total above it). function_exists: FTP-deploy race guard.
+        'timeline'    => function_exists('alt_timeline_by_year') ? alt_timeline_by_year(array_map(function ($r) {
+            return array('date' => (string) ($r['layoff_date'] ?? ''), 'jobs' => (int) ($r['job_count'] ?? 0),
+                         'ai_jobs' => !empty($r['ai_explicit']) ? (int) ($r['job_count'] ?? 0) : 0);
+        }, $event_rows), (int) gmdate('Y')) : array(),
         'company'     => $company,
         'events'      => $event_rows,
         'total_jobs'  => $total_jobs,

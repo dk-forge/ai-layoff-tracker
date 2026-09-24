@@ -236,7 +236,38 @@ function alt_facet_aggregate_blocks($dim) {
     // States on a country page (empty and unrendered for a non-US country,
     // since only US rows carry a state) and on an industry page.
     if ($dim !== 'state') $blocks[] = 'top_states';
+    // The monthly series, over the page's own population, for the year-by-year
+    // timeline (alt_timeline_by_year). Same WHERE as the headline, so the
+    // timeline's years add up to the number printed above them.
+    $blocks[] = 'series';
     return $blocks;
+}
+
+/**
+ * Year-by-year timeline from dated points, oldest year first. Pure.
+ *
+ * A point is {date: 'YYYY-MM' or 'YYYY-MM-DD', jobs, ai_jobs, to_date?}. A month
+ * still in progress carries the aggregate's `to_date` block, and THAT is what is
+ * counted: a notice for next week has not happened yet, and a timeline that
+ * counted it would show a year's history including the future. Years before
+ * 2015 (outside the accepted date range) are dropped; the current year is
+ * flagged `partial` so the template can say "so far".
+ */
+function alt_timeline_by_year(array $points, $current_year) {
+    $years = array();
+    foreach ($points as $p) {
+        $y = (int) substr((string) ($p['date'] ?? ''), 0, 4);
+        if ($y < 2015 || $y > (int) $current_year + 1) continue;
+        $src = (isset($p['to_date']) && is_array($p['to_date'])) ? $p['to_date'] : $p;
+        if (!isset($years[$y])) $years[$y] = array('year' => $y, 'jobs' => 0, 'ai_jobs' => 0, 'partial' => false);
+        $years[$y]['jobs'] += max(0, (int) ($src['jobs'] ?? 0));
+        $years[$y]['ai_jobs'] += max(0, (int) ($src['ai_jobs'] ?? 0));
+    }
+    ksort($years);
+    foreach ($years as $y => $row) {
+        $years[$y]['partial'] = ($y >= (int) $current_year);
+    }
+    return array_values($years);
 }
 
 /**
@@ -400,6 +431,11 @@ function alt_facet_data($dim, $slug) {
         'shown'      => count($events),
         'employers'  => $employers,
         'breakdowns' => $breakdowns,
+        'timeline'   => alt_timeline_by_year(array_map(function ($m) {
+            $m = (array) $m;
+            $m['date'] = (string) ($m['month'] ?? '');
+            return $m;
+        }, (array) ($agg['series'] ?? array())), (int) gmdate('Y')),
         'indexable'  => $entries >= alt_facet_indexable_floor(),
         'tracker_url' => add_query_arg($dim, $value, home_url('/ai-layoff-tracker/')),
     );
