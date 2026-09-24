@@ -176,6 +176,7 @@ function alt_db_install() {
         display_name VARCHAR(255) NOT NULL,
         aliases LONGTEXT NULL,
         review_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        admitted_by VARCHAR(16) NOT NULL DEFAULT '',
         reviewed_at DATETIME NULL,
         created_at DATETIME NOT NULL,
         updated_at DATETIME NOT NULL,
@@ -2058,6 +2059,10 @@ function alt_company_directory_admit_mappings(array $mappings) {
             'reviewed_at' => in_array($status, array('approved', 'noindex'), true) ? $now : null,
             'updated_at' => $now,
         );
+        // Provenance, so the autopilot's promotion pass can tell its own
+        // noindex admissions from an editor's deliberate noindex. Absent =
+        // left as it is (a manual edit never rewrites who admitted a row).
+        if (isset($m['admitted_by'])) $data['admitted_by'] = sanitize_key((string) $m['admitted_by']);
         if ($existing) {
             $wpdb->update($directory, $data, array('id' => (int) $existing));
         } else {
@@ -2257,7 +2262,8 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
         // the entry permalink does not already say.
         $indexable = $supported_by_key[$key] >= $floor;
         $mappings[] = array('company_key' => $key, 'slug' => $slug, 'display_name' => $name,
-                            'review_status' => $indexable ? 'approved' : 'noindex');
+                            'review_status' => $indexable ? 'approved' : 'noindex',
+                            'admitted_by' => 'autopilot');
     }
     $out = $mappings ? alt_company_directory_admit_mappings($mappings) : array('admitted' => array(), 'rejected' => array());
     // Validator-rejected keys (e.g. slug owned by another mapping) are parked
@@ -2283,6 +2289,12 @@ function alt_api_company_directory_autopilot(WP_REST_Request $r) {
         . "Admitted 'approved' (indexable, sitemapped) at >=$floor such events and 'noindex' (page renders, "
         . 'stays out of the index) below that; validated by the same server-side admission rules as manual '
         . 'review. Unadmittable keys are parked as pending for manual review.';
+    // PROMOTION. A key admitted `noindex` on its first event used to stay out
+    // of the index forever, because this endpoint only looks at unmapped keys.
+    // Now every run also promotes the autopilot's own noindex rows that have
+    // since reached the floor. An editor's noindex is never touched.
+    $out['promoted'] = function_exists('alt_company_directory_promote_autopilot')
+        ? alt_company_directory_promote_autopilot($floor) : array();
     // Flush BEFORE reading coverage: the coverage numbers are cached against
     // alt_data_ver, so computing them first would report the state this run
     // started from and make a working indexer look stalled.

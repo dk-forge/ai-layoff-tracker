@@ -535,6 +535,35 @@ function alt_company_directory_supported_count($company_key) {
         (string) $company_key));
 }
 
+/**
+ * Promote the autopilot's own `noindex` admissions that now clear the floor.
+ *
+ * Only rows with admitted_by = 'autopilot' (set since 2.20.210): a row an
+ * editor marked noindex, or one admitted before provenance was recorded, has
+ * admitted_by = '' and is left alone. Counts come from the same
+ * supported-events SQL the sitemap and the page use, so a promoted page is
+ * exactly one the sitemap will list. Returns the promoted slugs.
+ */
+function alt_company_directory_promote_autopilot($floor, $limit = 500) {
+    global $wpdb;
+    $directory = alt_company_directory_table();
+    $supported = alt_company_directory_supported_events_sql();
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT d.id, d.slug FROM $directory d
+           INNER JOIN ($supported) s ON s.company_key = d.company_key AND s.supported >= %d
+          WHERE d.review_status = 'noindex' AND d.admitted_by = 'autopilot'
+          ORDER BY d.id ASC LIMIT %d", (int) $floor, (int) $limit), ARRAY_A) ?: array();
+    $now = current_time('mysql', true);
+    $promoted = array();
+    foreach ($rows as $row) {
+        $wpdb->update($directory,
+            array('review_status' => 'approved', 'reviewed_at' => $now, 'updated_at' => $now),
+            array('id' => (int) $row['id']));
+        if (!$wpdb->last_error) $promoted[] = (string) $row['slug'];
+    }
+    return $promoted;
+}
+
 function alt_company_directory_indexable_urls() {
     global $wpdb;
     $cache_key = 'alt_company_dir_sitemap_' . md5((string) get_option('alt_data_ver', 1));
