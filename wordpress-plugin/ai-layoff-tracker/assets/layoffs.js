@@ -6120,7 +6120,12 @@
         var f = qs(currentParams());
         var src = shareBase() + '?alt_chart_embed=1&chart=' + encodeURIComponent(id) + (f ? '&' + f : '');
         var h = id === 'alt-chart-aimap' ? 470 : 360;
-        return '<iframe src="' + src + '" width="100%" height="' + h + '" style="border:1px solid #e5e7eb;border-radius:12px;max-width:640px" title="AI Layoff Tracker" loading="lazy"></iframe>';
+        // THE ATTRIBUTION TRAVELS OUTSIDE THE FRAME. A link inside the iframe
+        // sits on our page, not the host's, so the credit CC BY 4.0 asks for is
+        // a plain, followed link under it (tests/test_embed_attribution.py).
+        var home = shareBase() + (f ? '?' + f : '');
+        return '<iframe src="' + src + '" width="100%" height="' + h + '" style="border:1px solid #e5e7eb;border-radius:12px;max-width:640px" title="AI Layoff Tracker" loading="lazy"></iframe>' +
+            '\n<p style="font:12px/1.5 system-ui,sans-serif;margin:4px 0 0">Source: <a href="' + home + '">AI Layoff Tracker</a> by AskTheRecruiter.com, <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a></p>';
     }
     function closeEmbedPops(except) { document.querySelectorAll('.alt-embed-pop').forEach(function (p) { if (p !== except) p.remove(); }); }
     function openEmbedPop(btns, id) {
@@ -6130,7 +6135,7 @@
         var pop = document.createElement('div'); pop.className = 'alt-embed-pop';
         pop.innerHTML = '<h4>Embed this chart</h4><textarea readonly></textarea>' +
             '<button type="button" class="alt-btn alt-btn-sm alt-embed-copy">Copy embed code</button>' +
-            '<p class="alt-embed-hint">Reflects the filters active right now.</p>';
+            '<p class="alt-embed-hint">Reflects the filters active right now. Free to publish under CC BY 4.0; keep the source line under the chart.</p>';
         var ta = pop.querySelector('textarea'); ta.value = embedSnippet(id);
         pop.addEventListener('click', function (e) { e.stopPropagation(); });
         pop.querySelector('.alt-embed-copy').addEventListener('click', function () {
