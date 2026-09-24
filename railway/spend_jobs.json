@@ -10689,6 +10689,71 @@
    "truncated": null
   },
   {
+   "calls": 1774,
+   "ceiling_usd": 0.2,
+   "complete": true,
+   "completion_tokens": 104216,
+   "cost_usd": 0.17032,
+   "date": "2026-09-23",
+   "gate_mode": "live",
+   "items": 1343,
+   "job": "railway-cron",
+   "max_call_usd": 0.000546,
+   "prompt_tokens": 1286339,
+   "run_id": "railway-20260923T2224",
+   "sources": {
+    "edgar": {
+     "calls": 20,
+     "cost_usd": 0.00347,
+     "dropped": 2,
+     "items": 11,
+     "kept": 9,
+     "stored": 1
+    },
+    "gdelt": {
+     "calls": 1041,
+     "cost_usd": 0.070837,
+     "dropped": 857,
+     "items": 949,
+     "kept": 92,
+     "stored": 6
+    },
+    "google_news": {
+     "calls": 254,
+     "cost_usd": 0.034425,
+     "dropped": 14,
+     "items": 134,
+     "kept": 120,
+     "stored": 4
+    },
+    "local_news": {
+     "calls": 452,
+     "cost_usd": 0.060604,
+     "dropped": 36,
+     "items": 244,
+     "kept": 208,
+     "stored": 2
+    },
+    "national_feeds": {
+     "calls": 3,
+     "cost_usd": 0.000126,
+     "dropped": 3,
+     "items": 3,
+     "kept": 0,
+     "stored": 0
+    },
+    "warn_mn_letters": {
+     "calls": 4,
+     "cost_usd": 0.000859,
+     "dropped": 0,
+     "items": 2,
+     "kept": 2,
+     "stored": 0
+    }
+   },
+   "stored": 13
+  },
+  {
    "attempt": "1",
    "calls": 40,
    "ceiling_usd": 0.005,
@@ -10719,6 +10784,91 @@
    "max_call_usd": 0.0,
    "prompt_tokens": 0,
    "run_id": "35814983079",
+   "stored": null,
+   "truncated": null
+  },
+  {
+   "attempt": "1",
+   "calls": 400,
+   "ceiling_usd": 0.15,
+   "changed": null,
+   "complete": false,
+   "completion_tokens": 97313,
+   "cost_usd": 0.133359,
+   "date": "2026-09-24",
+   "items": 400,
+   "job": "edgar-history-sweep",
+   "max_call_usd": 0.000475,
+   "prompt_tokens": 944341,
+   "run_id": "35960156593",
+   "stored": 23,
+   "truncated": "BACKFILL_MAX_CALLS=400 reached"
+  },
+  {
+   "attempt": "1",
+   "calls": 40,
+   "ceiling_usd": 0.01,
+   "changed": 3,
+   "complete": true,
+   "completion_tokens": 582,
+   "cost_usd": 0.001657,
+   "date": "2026-09-24",
+   "items": 40,
+   "job": "enrich-roles",
+   "max_call_usd": 5.3e-05,
+   "prompt_tokens": 14246,
+   "run_id": "35956280686",
+   "stored": null,
+   "truncated": null
+  },
+  {
+   "attempt": "1",
+   "calls": 337,
+   "ceiling_usd": 0.025,
+   "changed": 128,
+   "complete": true,
+   "completion_tokens": 3854,
+   "cost_usd": 0.010791,
+   "date": "2026-09-24",
+   "items": 200,
+   "job": "industry-backfill",
+   "max_call_usd": 3.9e-05,
+   "prompt_tokens": 92493,
+   "run_id": "35957753192",
+   "stored": null,
+   "truncated": null
+  },
+  {
+   "attempt": "1",
+   "calls": 39,
+   "ceiling_usd": 0.005,
+   "changed": 3,
+   "complete": true,
+   "completion_tokens": 717,
+   "cost_usd": 0.002225,
+   "date": "2026-09-24",
+   "items": 39,
+   "job": "reason-backfill",
+   "max_call_usd": 6.6e-05,
+   "prompt_tokens": 19385,
+   "run_id": "35957194463",
+   "stored": null,
+   "truncated": null
+  },
+  {
+   "attempt": "1",
+   "calls": 0,
+   "ceiling_usd": 0.005,
+   "changed": 0,
+   "complete": true,
+   "completion_tokens": 0,
+   "cost_usd": 0.0,
+   "date": "2026-09-24",
+   "items": 3,
+   "job": "reclassify-legacy-ai",
+   "max_call_usd": 0.0,
+   "prompt_tokens": 0,
+   "run_id": "35952085893",
    "stored": null,
    "truncated": null
   }
