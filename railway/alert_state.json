@@ -87,11 +87,6 @@
       "last": 1790271485,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
-    "mailbox-janitor:main:09cd0cb19bd940f2": {
-      "first": 1790168082,
-      "last": 1790168082,
-      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
-    },
     "main-green-check:main:dbefdbe0763bb095": {
       "first": 1790239812,
       "last": 1790239812,
@@ -153,6 +148,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-25T08:55:18+00:00",
+  "updated_at": "2026-09-25T08:55:20+00:00",
   "version": 1
 }
