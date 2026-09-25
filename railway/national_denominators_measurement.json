@@ -10,7 +10,7 @@
     "pl_group_layoffs",
     "is_hopuppsagnir"
   ],
-  "measured_at": "2026-09-18T19:04:47Z",
+  "measured_at": "2026-09-25T20:03:05Z",
   "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
   "slices": {
     "ee_collective_redundancy_notices": {
@@ -46,7 +46,7 @@
         "label": "2025-08..2026-07",
         "to": "2026-07-31"
       },
-      "period_age_days": 49,
+      "period_age_days": 56,
       "publisher_updated": "2026-09-08T11:24:05.663Z",
       "robots": "avaandmed.eesti.ee and andmed.eesti.ee both serve no robots.txt (404). tootukassa.ee allows the statistics path with Crawl-delay: 10, and is not fetched by this collector",
       "secondary": {
@@ -75,15 +75,15 @@
       "country": "United Kingdom",
       "counts": "potential redundancies on HR1 forms, by month of RECEIPT",
       "coverage_lower": 0.168765600747174,
-      "coverage_upper": 0.273409845546371,
+      "coverage_upper": 0.27008611778626435,
       "denominator": 300867,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "of the 300,867 workers notified to Insolvency Service, published by ONS in 2025-08..2026-07, we hold between 50,776 (16.9%) and 82,260 (27.3%) jobs",
+      "detail": "of the 300,867 workers notified to Insolvency Service, published by ONS in 2025-08..2026-07, we hold between 50,776 (16.9%) and 81,260 (27.0%) jobs",
       "held_detail": {
-        "entries_any": 25,
+        "entries_any": 24,
         "entries_strict": 22
       },
-      "held_jobs_any": 82260,
+      "held_jobs_any": 81260,
       "held_jobs_strict": 50776,
       "key": "gb_hr1_potential_redundancies",
       "label": "Great Britain HR1 potential redundancies (TULRCA 1992 s.193)",
@@ -94,7 +94,7 @@
         "label": "2025-08..2026-07",
         "to": "2026-07-31"
       },
-      "period_age_days": 49,
+      "period_age_days": 56,
       "publisher_updated": "2026-09-14T23:00:00.000Z",
       "robots": "ons.gov.uk serves no robots.txt (404) — no directive to obey",
       "secondary": {
@@ -154,7 +154,7 @@
         "label": "2024/25",
         "to": "2025-03-31"
       },
-      "period_age_days": 536,
+      "period_age_days": 543,
       "publisher_updated": "2026-09",
       "robots": "www.nisra.gov.uk's robots.txt disallows '/*.xlsx', '/*.ods' and '/*.zip' for every agent (re-read 2026-09-04), so the redundancy workbook and the ODS bundle are refused to us and are NOT fetched; the refusal is recorded in country_coverage.REFUSAL_LEDGER, whose ruling names the HTML report as the alternative. The two www.nisra.gov.uk HTML pages read to find the latest report are 'Allow' under the same file. datavis.nisra.gov.uk serves no readable robots.txt: /robots.txt answers HTTP 200 with the host's HTML 'Unavailable' placeholder, which robots_gate reads as UNKNOWN",
       "secondary": {
@@ -226,7 +226,7 @@
         "label": "2025",
         "to": "2025-12-31"
       },
-      "period_age_days": 261,
+      "period_age_days": 268,
       "publisher_updated": "20260611T154255",
       "robots": "apiservice.mol.gov.tw returns an F5 'Request Rejected' page for /robots.txt itself, so no directive could be read. The data endpoints answer 200 to our own identifying agent string under an explicit open-data licence, and no block aimed at agents was found. Recorded as PERMITTED WITH THE ROBOTS FILE UNREADABLE — if that ever becomes a 403 to this agent it is a refusal and stays one. statfy.mol.gov.tw was unreachable and its robots.txt has never been read: treat as NOT permitted",
       "secondary": {
