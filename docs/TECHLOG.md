@@ -1,3 +1,65 @@
+## 2026-09-27 - Ops: archive re-check cadence red since 09-24 is NOT a throughput shortfall; requeue keyed on updated_at
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_archive_promise.py`
+
+**Symptom.** `Live data-integrity check` failed 09-24..09-27 on one invariant
+(`archive_recheck_cadence`), 23 others PASS: oldest un-archived attempt 7.3d,
+3,071 due at a measured 258/day = 11.9d cycle, 12.9d worst age vs the 8d
+projected bound (run 36337584963). It printed "raise throughput in
+archive-backfill.yml" for the third time (see the 08-13 and 08-19 notes in that file).
+
+**Numbers (from the runs' own logs).** Required: 3,071 / 7d = 439/day (384/day
+for the 8d bound). Configured: min(LIMIT 2,000, 5,400s x 0.513 URL/s = 2,770) =
+2,000/day, 4.5x the need. Delivered: exactly ONE 500-URL server batch per run
+(09-26, 09-27), then "batch 2: 0 candidate URL(s)". The oldest attempt moved
+09-20 11:22:23 -> 09-20 11:33:52 in 24h (eleven minutes), and 48h
+`rechecked_recent` fell 516 -> 39 although the 09-26 run recorded ~500 URLs.
+So the stamps the run writes are not surviving to the next reading, and the
+same NULL-first slice is handed out every day while the aged pool starves.
+
+**Root cause (fixed in code).** `alt_archive_requeue_recited()` (db.php)
+reset `checked_at` to NULL whenever `l.updated_at > a.checked_at`. It was meant
+for orphans re-cited after a purge (2026-08-26), but the nightly WARN import
+re-upserts ~44k rows and bumps `updated_at` on rows whose citation never
+changed. So every night ~500 URLs checked that morning went back to NULL,
+sorted first (NULLs lead the candidate ORDER BY), filled the next day's batch,
+and the aged pool never reached the front. `rechecked_recent` collapsed for the
+same reason (NULL stamps are outside the 48h window), which is the 258/day.
+Client side, `run()` also hid it by printing a re-served batch as
+"0 candidates".
+
+**Fix (no data touched, bound and invariant unchanged).**
+- **db.php:** new nullable `uncited_since` column on the archive table, via
+  the existing dbDelta install, with `alt_archive_uncited_ready()` self-healing
+  a host that missed it. New `alt_archive_mark_uncited()` stamps
+  pending/unavailable rows that no layoff row cites. The requeue now resets
+  only rows with `uncited_since` set that are cited again, and never reads
+  `updated_at`. The oldest reading in `alt_archive_coverage_counts()` excludes
+  the same set.
+- **Tests:** `railway/tests/test_archive_promise.py::RequeueRecitedOrphans`
+  runs the real SQL in sqlite. An import-only update keeps the stamp; a
+  re-cited orphan is requeued (idempotently); archived rows are never touched.
+- **Transition:** rows orphaned before deploy have `uncited_since` NULL. The
+  first run marks current orphans; any re-cited in between age normally
+  rather than being requeued, which is the conservative direction.
+
+**Verification after deploy.** Run these against the live DB:
+- `SELECT COUNT(*) FROM wp_alt_archive WHERE status IN ('pending','unavailable') AND checked_at IS NULL`:
+  a few dozen at most, not ~500.
+- The next runs' logs should show `batch 2` handing out new URLs.
+- `oldest_unarchived_checked_at` should advance by days per run, and the
+  invariant should be green within about 4 runs.
+
+**Earlier diagnostics, same PR.**  `archive_backfill.py`
+now counts URLs re-served after being recorded (`split_batch`, excluding the
+Save-Page-Now handoff) and writes the server did not acknowledge
+(`unacknowledged`), and prints a `::warning::` naming this entry instead of
+"0 candidates". A test pins that configured capacity covers the live pool
+inside the 7d promise, so the next red is not answered by raising the limit.
+These warnings stay as a tripwire for any future write drop. Tests:
+`railway/tests/test_archive_backfill.py::TestRecheckStampsMustStick`.
+
 ## 2026-09-24 - Growth: resume call to action on report, company, embed and digest surfaces (2.20.210)
 
 **Class:** novel

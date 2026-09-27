@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-27, branch `claude/archive-backlog-drain` (PR #419). Reserves plugin version 2.20.211.** Archive requeue fix: re-check stamps survive the nightly WARN import; see TECHLOG 2026-09-27.
 - **RELEASED - Claude (agent), 2026-09-24, branch `claude/growth-press-magnet`
   (committed in a worktree, NOT pushed). Reserves plugin version 2.20.210** (PR #417,
   `claude/brevo-subscriber-sync`, holds 2.20.209). Growth slice: resume call

@@ -202,6 +202,31 @@ def save_page_now(url, session):
         return None
 
 
+
+def split_batch(raw_urls, seen, unrecorded=()):
+    """(new URLs, count the server RE-SERVED that this run already recorded).
+
+    `unrecorded` are URLs this run saw but deliberately did not record (the
+    Save-Page-Now handoff); the server re-serving those is expected.
+
+    Every URL this run records is stamped checked_at, so it must leave the
+    oldest-first due set. A batch made only of URLs we already recorded is
+    therefore NOT "the pool is drained": it means our writes did not move
+    checked_at (a dropped /archive-record, or a server-side reset of the stamp).
+    Folding it into "0 candidates" hid exactly that from 2026-09-24 (see
+    docs/TECHLOG.md 2026-09-27)."""
+    new = [u for u in raw_urls if u not in seen]
+    skip = set(unrecorded)
+    return new, sum(1 for u in raw_urls if u in seen and u not in skip)
+
+
+def unacknowledged(items, response):
+    """How many posted items /archive-record did not count as written."""
+    if not isinstance(response, dict):
+        return len(items)
+    written = sum(int(response.get(k, 0) or 0) for k in ("archived", "pending", "unavailable"))
+    return max(0, len(items) - written)
+
 # --- server I/O ------------------------------------------------------------
 
 def fetch_candidates():
@@ -255,12 +280,19 @@ def run():
             return
         if force or len(records) >= FLUSH_EVERY:
             try:
-                post_records(records)
+                resp = post_records(records)
+                lost = unacknowledged(records, resp)
+                if lost:
+                    dropped_writes[0] += lost
+                    print(f"::warning::/archive-record acknowledged {len(records) - lost} of "
+                          f"{len(records)} item(s); {lost} re-check stamp(s) did not land")
                 records = []
             except Exception as exc:
                 print(f"::warning::flush failed ({exc}); will retry the batch next flush")
 
     handoff = []
+    dropped_writes = [0]
+    reserved_total = 0
 
     def process(urls):
         """One batch: the free availability pass, then the bounded SPN pass."""
@@ -338,11 +370,19 @@ def run():
             raise
         if coverage_before is None:
             coverage_before = coverage
-        urls = [u for u in urls if u not in seen][: LIMIT - len(seen)]
+        urls, reserved = split_batch(urls, seen, handoff)
+        urls = urls[: LIMIT - len(seen)]
         batches += 1
-        print(f"archive backfill: batch {batches}: {len(urls)} candidate URL(s); "
-              f"coverage before: {coverage}")
+        print(f"archive backfill: batch {batches}: {len(urls)} candidate URL(s)"
+              + (f" (+{reserved} re-served that this run already recorded)" if reserved else "")
+              + f"; coverage before: {coverage}")
+        reserved_total += reserved
         if not urls:
+            if reserved:
+                print(f"::warning::the server re-served {reserved} URL(s) this run already "
+                      f"recorded and nothing new: the due pool is NOT drained, this run's "
+                      f"checked_at stamps are not sticking, so the re-check cadence cannot "
+                      f"advance past one batch a day. See docs/TECHLOG.md 2026-09-27.")
             break
         seen.update(urls)
         dry_misses += len(process(urls))
@@ -373,6 +413,12 @@ def run():
     # still buffered here. A run that captured nothing because every write
     # failed must NOT report "ok" (that was the whole "succeeds while writing
     # nothing" trap). Raise so main() degrades health and exits non-zero.
+    if dropped_writes[0] or reserved_total:
+        # Loud, not silent: persisted-but-not-sticking is the 2026-09-24
+        # cadence failure. A warning, not a health close: with a handoff the
+        # relay stage writes this run's note.
+        print(f"::warning::re-check stamps not sticking this run: "
+              f"{dropped_writes[0]} unacknowledged, {reserved_total} re-served")
     if records:
         raise RuntimeError(
             f"archive backfill could not persist {len(records)} record(s) to "
