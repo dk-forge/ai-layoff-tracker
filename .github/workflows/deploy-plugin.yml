@@ -66,6 +66,20 @@ jobs:
         with:
           php-version: '8.3'
 
+      # 2026-09-27: deploy 376 failed with `php: command not found` on the
+      # VPS runner (the "ships php-cli" assumption above no longer held), so
+      # the self-hosted box installs php-cli itself when it is missing, the
+      # same way the lftp step below does. A no-op when php is present.
+      - name: Ensure a PHP CLI on the self-hosted runner
+        if: runner.environment == 'self-hosted'
+        run: |
+          if command -v php >/dev/null 2>&1; then
+            echo "php already present: $(php --version | head -1)"
+            exit 0
+          fi
+          APT_OPTS="-o DPkg::Lock::Timeout=60"
+          timeout 90 sudo apt-get update -qq $APT_OPTS || true
+          timeout 180 sudo apt-get install -y -qq $APT_OPTS php-cli
       - name: Confirm a PHP CLI exists on this runner
         run: php --version
 

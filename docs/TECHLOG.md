@@ -1,3 +1,22 @@
+## 2026-09-27 - Ops: plugin deploy 376 failed, `php: command not found` on the VPS runner
+
+**Class:** absent-read-as-ok
+**Guard:** `railway/tests/test_deploy_ensures_php.py`
+
+**Symptom.** Deploy WordPress plugin run 376 (2.20.211, the archive requeue fix)
+failed at "Confirm a PHP CLI exists on this runner": `php: command not found`
+on the Contabo self-hosted runner; the later lftp step also found no lftp. The
+plugin was NOT uploaded, so 2.20.211 is not live yet.
+
+**Root cause.** The workflow skipped setup-php on self-hosted runners on the
+assumption (2026-09-13) that the VPS ships php-cli 8.3. That no longer holds on
+this runner, and nothing checked it before relying on it.
+
+**Fix.** A self-hosted-only step installs php-cli via apt when `php` is
+missing (a no-op when present), mirroring the existing lftp install step. Test
+pins the step's presence and order before the lint step. Re-run the deploy
+after merge (not twice within an hour).
+
 ## 2026-09-27 - Ops: archive re-check cadence red since 09-24 is NOT a throughput shortfall; requeue keyed on updated_at
 
 **Class:** wrong-scope-or-key
