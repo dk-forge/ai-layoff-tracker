@@ -1179,10 +1179,15 @@ FOOTER_BLOCKS = (
     # the sentences name the form, name the three steps, and warn that
     # confirmation is required before anything changes. A reader who reads
     # them is never surprised by the page.
-    ("manage", ("To change what you get, re-enter your address on the signup "
-                "form and tick the lists you want.",
-                "The change applies when you confirm by email."),
-     "re-enter your address on the signup form"),
+    #
+    # 2026-09-27 (owner decision): the link is now the reader's OWN signed
+    # preferences page (plugin includes/subscriber-prefs.php), carried per
+    # recipient. It applies less mail at once and emails a confirmation for
+    # anything that adds mail, which is what the second sentence says.
+    ("manage", ("To change lists, frequency or follows, open your preferences "
+                "page.",
+                "Anything that adds mail applies when you confirm by email."),
+     "open your preferences page"),
     # The resume call to action (owner decision 2026-09-24). Always present,
     # like the address; its URL is the plugin's alt_resume_cta_url('digest')
     # from the payload, or resume_cta_url()'s default when a build sends none.

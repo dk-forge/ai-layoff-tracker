@@ -34,7 +34,7 @@ import digest_transport as dt            # noqa: E402
 
 UNSUB = ("https://asktherecruiter.com/blog/wp-admin/admin-post.php"
          "?action=alt_digest_unsub&t=" + "a" * 64)
-MANAGE = "https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-digest"
+MANAGE = "https://asktherecruiter.com/blog/ai-layoff-tracker/preferences/1-" + "b" * 64 + "/"
 FROM = "AskTheRecruiter Trackers <digest@asktherecruiter.com>"
 REPLY = "info@asktherecruiter.com"
 
@@ -136,7 +136,10 @@ def payload(sections=("layoff",), **over):
         "manage_url": MANAGE,
         "sections": {name: available[name] for name in sections},
         "recipients": [{"id": 1, "email": "reader@example.com",
-                        "unsub_url": UNSUB, "lists": list(sections)}],
+                        "unsub_url": UNSUB, "lists": list(sections),
+                        # Per RECIPIENT since 2026-09-27: the reader's own
+                        # signed preferences page.
+                        "manage_url": over.pop("manage_url", MANAGE)}],
     }
     base.update(over)
     return base
@@ -532,11 +535,12 @@ class TheManageLinkPromisesWhatTheReaderWillActuallyGet(unittest.TestCase):
                              "the footer is naming a preference centre again, "
                              "and there is still no preference centre")
 
-    def test_it_says_the_reader_re_enters_their_address_on_the_form(self):
-        """The single most useful sentence in the fix. A reader who knows a
-        Subscribe form is coming is not surprised by one."""
+    def test_it_names_the_readers_own_preferences_page(self):
+        """Since 2026-09-27 (owner decision) the link IS a preferences page,
+        the reader's own, so the footer may and must say so, and link it."""
         for part in self._parts():
-            self.assertIn("re-enter your address on the signup form", part)
+            self.assertIn("open your preferences page", part)
+            self.assertIn(MANAGE, part)
 
     def test_it_warns_that_nothing_changes_until_they_confirm(self):
         """alt_digest_signup() parks a confirmed subscriber's new choices in

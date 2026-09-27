@@ -979,10 +979,12 @@ class ManageYourSubscriptions(unittest.TestCase):
     wants one of three lists and gets three has exactly one button, and using
     it costs us the other two."""
 
-    MANAGE = "https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-digest"
+    MANAGE = "https://asktherecruiter.com/blog/ai-layoff-tracker/preferences/1-" + "c" * 64 + "/"
 
     def _msg(self):
-        payload = _payload(manage_url=self.MANAGE)
+        # Per RECIPIENT since 2026-09-27: each reader's own signed page.
+        payload = _payload()
+        payload["recipients"][0]["manage_url"] = self.MANAGE
         return digest_send.build_message(
             payload, payload["recipients"][0],
             "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
@@ -1007,12 +1009,13 @@ class ManageYourSubscriptions(unittest.TestCase):
         msg = digest_send.build_message(
             payload, payload["recipients"][0],
             "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
-        self.assertNotIn("To change what you get", msg.html)
-        self.assertNotIn("To change what you get", msg.text)
+        self.assertNotIn("preferences page", msg.html)
+        self.assertNotIn("preferences page", msg.text)
         dt.assert_message_is_clean(msg)
 
     def test_a_manage_url_off_our_own_site_is_refused(self):
-        payload = _payload(manage_url="https://evil.example/prefs")
+        payload = _payload()
+        payload["recipients"][0]["manage_url"] = "https://evil.example/prefs"
         msg = digest_send.build_message(
             payload, payload["recipients"][0],
             "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
@@ -1030,7 +1033,8 @@ class ManageYourSubscriptions(unittest.TestCase):
         self.assertIn("function alt_digest_manage_url", sub)
         self.assertIn("#alt-digest", sub)
         sender = _php_function(sub, "alt_digest_send")
-        self.assertIn("alt_digest_manage_url()", sender)
+        # The reader's own preferences page (2026-09-27), signed per row.
+        self.assertIn("alt_prefs_url($row)", sender)
         self.assertIn("alt_digest_footer_html(", sender)
 
     def test_the_route_hands_the_relay_the_url_rather_than_the_relay_building_it(self):
@@ -1218,8 +1222,8 @@ class TheTwoFootersAreOneDefinition(unittest.TestCase):
         self.assertEqual(_visible(run.stdout), relay)
 
         # And the link is on the same words, pointing at the same place.
-        self.assertIn(f'<a href="{self.MANAGE}">re-enter your address on the '
-                      f'signup form</a>', run.stdout)
+        self.assertIn(f'<a href="{self.MANAGE}">open your preferences page</a>',
+                      run.stdout)
         self.assertIn(f'<a href="{self.UNSUB}">Unsubscribe with one click</a>',
                       run.stdout)
 

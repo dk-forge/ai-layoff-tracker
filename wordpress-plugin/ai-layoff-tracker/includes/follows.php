@@ -161,7 +161,7 @@ function alt_follows_matches($subscriber_id, $from, $to) {
 }
 
 /** Compose the per-recipient section. Pure. Null when there is nothing to say. */
-function alt_follow_section(array $rows) {
+function alt_follow_section(array $rows, array $stops = array()) {
     if (!$rows) return null;
     $html = '<h2>What you follow</h2><ul>';
     $text = "What you follow\n";
@@ -179,13 +179,27 @@ function alt_follow_section(array $rows) {
         $html .= '<li>' . esc_html($line) . ' (<a href="' . esc_url($r['url']) . '">' . esc_html($r['follow']) . '</a>)</li>';
         $text .= '- ' . $line . ' (' . $r['follow'] . '): ' . $r['url'] . "\n";
     }
-    return array('html' => $html . '</ul>', 'text' => rtrim($text));
+    $html .= '</ul>';
+    // A STOP LINK PER FOLLOW (owner decision 2026-09-27). Each goes to a page
+    // that asks; only its button (a POST) stops, so a link scanner cannot.
+    // The token is signed for this subscriber and this follow alone
+    // (includes/subscriber-prefs.php).
+    if ($stops) {
+        $links = array();
+        foreach ($stops as $st) {
+            $links[] = '<a href="' . esc_url($st[1]) . '">Stop following ' . esc_html($st[0]) . '</a>';
+            $text .= 'Stop following ' . $st[0] . ': ' . $st[1] . "\n";
+        }
+        $html .= '<p style="font-size:13px;">' . implode(' &middot; ', $links) . '</p>';
+    }
+    return array('html' => $html, 'text' => rtrim($text));
 }
 
 /** What the senders call. Guarded so a missing table is "no section", never a fatal. */
 function alt_follows_section_for($subscriber_id, $from, $to) {
     if (get_option('alt_follows_db_version') === false) return null;
-    return alt_follow_section(alt_follows_matches($subscriber_id, $from, $to));
+    $stops = function_exists('alt_follow_stop_links') ? alt_follow_stop_links($subscriber_id) : array();
+    return alt_follow_section(alt_follows_matches($subscriber_id, $from, $to), $stops);
 }
 
 /**

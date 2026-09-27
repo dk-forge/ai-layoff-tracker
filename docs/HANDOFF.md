@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-27, branch `claude/email-owner-decisions` (pushed, not merged, not deployed). Reserves plugin version 2.20.213.** Owner email decisions: welcome email, per-follow stop, fallback plain text, preferences page; see TECHLOG 2026-09-27 (Email audit).
 - **RELEASED - Claude (agent), 2026-09-27, branch `claude/daily-subscriber-watch` (pushed, not merged). No plugin file, no version reserved.** Daily subscriber watch; see TECHLOG 2026-09-27 (Daily subscriber watch).
 - **RELEASED - Claude (agent), 2026-09-27, branch `claude/email-audit-2026-09-27` (pushed, not merged, not deployed). Reserves plugin version 2.20.212.** Subscriber email audit; see TECHLOG 2026-09-27 (Email audit).
 - **RELEASED - Claude (agent), 2026-09-27, branch `claude/archive-backlog-drain` (PR #419). Reserves plugin version 2.20.211.** Archive requeue fix: re-check stamps survive the nightly WARN import; see TECHLOG 2026-09-27.
