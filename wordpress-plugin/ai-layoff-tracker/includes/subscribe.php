@@ -1370,7 +1370,7 @@ function alt_digest_signup($email, array $prefs, $partners = 0) {
     set_transient($throttle, 1, 15 * MINUTE_IN_SECONDS);
 
     $fresh = alt_digest_get_by_email($email);
-    return alt_digest_send_confirm_email($email, $confirm, $fresh ? $fresh['unsub_token'] : '', $delta);
+    return alt_digest_send_confirm_email($email, $confirm, $fresh ? $fresh['unsub_token'] : '', $delta, $prefs);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1848,9 +1848,33 @@ function alt_digest_change_lines($delta) {
  * subscriber gets, with nobody present. One link, and the reader's other
  * option is to not click it.
  */
-function alt_digest_confirm_body($confirm_url, $delta = null) {
+/**
+ * WHAT A FIRST SIGNUP ASKED FOR, restated in the confirmation (email audit
+ * 2026-09-27). The signup body used to say only "the email digest", so a
+ * reader who ticked two lists could not tell from the email what the click
+ * would start. Every comparable double opt-in restates the lists and the
+ * cadence before the button. Pure; empty when nothing is ticked, so a caller
+ * that passes no prefs gets the old body unchanged.
+ */
+function alt_digest_signup_lines($prefs) {
+    if (!is_array($prefs)) return '';
+    $names = alt_digest_list_names();
+    $out = '';
+    foreach (array('layoff', 'talent', 'articles') as $list) {
+        if (empty($prefs['consent_' . $list])) continue;
+        $line = '    - ' . (isset($names[$list]) ? $names[$list] : $list);
+        $freq = (string) ($prefs['freq_' . $list] ?? '');
+        if ($list !== 'articles' && $freq !== '') $line .= ', ' . $freq;
+        $out .= $line . "\n";
+    }
+    return $out === '' ? '' : "  You asked for:\n" . $out;
+}
+
+function alt_digest_confirm_body($confirm_url, $delta = null, $prefs = null) {
     if (!is_array($delta)) {
+        $asked = alt_digest_signup_lines($prefs);
         return "You (or someone typing your address) asked for the email digest at asktherecruiter.com.\n\n"
+             . ($asked === '' ? '' : $asked . "\n")
              . "Confirm by clicking this link:\n\n"
              . $confirm_url . "\n\n"
              . "Nothing is sent until you confirm. If you did not request this, ignore this email: "
@@ -1886,9 +1910,9 @@ function alt_digest_confirm_body($confirm_url, $delta = null) {
  * that is what keeps the tracking removable by changing provider. See the file
  * docblock and docs/RUNBOOK.md "Open and click tracking".
  */
-function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token, $delta = null) {
+function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token, $delta = null, $prefs = null) {
     $confirm_url = alt_digest_confirm_url($confirm_token);
-    $body = alt_digest_confirm_body($confirm_url, $delta);
+    $body = alt_digest_confirm_body($confirm_url, $delta, $prefs);
     // A change that takes something away is a different message from one that
     // only adds, and both are different from a first signup. See the three
     // subject functions above.
