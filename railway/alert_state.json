@@ -72,6 +72,11 @@
       "last": 1790241310,
       "subject": "CI RED: Deploy WordPress plugin \u2014 /home/atr/runners/ai-layoff-tracker/_work/_temp/7fd441b7-6b7d-4a79-8fdd-4b4cdb57a530.sh: line 1: php: command not found"
     },
+    "deploy-wordpress-plugin:main:38e8f4ebe7891bf5": {
+      "first": 1790534212,
+      "last": 1790534212,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 /home/atr/runners/ai-layoff-tracker/_work/_temp/f2190321-c52c-4c59-8902-885f342260df.sh: line 1: php: command not found"
+    },
     "deploy-wordpress-plugin:main:d5bb030623ec749b": {
       "first": 1790243438,
       "last": 1790243438,
@@ -143,6 +148,6 @@
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE digest_weekly: last reported 11.8d ago (expected <= 9d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-27T14:31:46+00:00",
+  "updated_at": "2026-09-27T18:36:52+00:00",
   "version": 1
 }
