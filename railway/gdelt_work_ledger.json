@@ -155,6 +155,19 @@
       "updated": "20260925T220757Z",
       "oldest": "20260924T084500Z",
       "newest": "20260925T203000Z"
+    },
+    "broad|f060b27756|20260925T083735Z|20260926T203735Z": {
+      "family": "broad",
+      "window_start": "20260925T083735Z",
+      "window_end": "20260926T203735Z",
+      "status": "complete",
+      "returned": 5882,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20260926T220758Z",
+      "updated": "20260926T220758Z",
+      "oldest": "20260925T084500Z",
+      "newest": "20260926T203000Z"
     }
   }
 }
