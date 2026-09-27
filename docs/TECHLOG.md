@@ -1,4 +1,7 @@
-## 2026-09-27 - Ops: archive re-check cadence red since 09-24 is NOT a throughput shortfall; backfill now says so
+## 2026-09-27 - Ops: archive re-check cadence red since 09-24 is NOT a throughput shortfall; requeue keyed on updated_at
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_archive_promise.py`
 
 **Symptom.** `Live data-integrity check` failed 09-24..09-27 on one invariant
 (`archive_recheck_cadence`), 23 others PASS: oldest un-archived attempt 7.3d,
@@ -15,24 +18,46 @@ for the 8d bound). Configured: min(LIMIT 2,000, 5,400s x 0.513 URL/s = 2,770) =
 So the stamps the run writes are not surviving to the next reading, and the
 same NULL-first slice is handed out every day while the aged pool starves.
 
-**Root cause (partly open).** Client side, proven: `run()` filtered the server
-batch through `seen` BEFORE printing it, so "server re-served the URLs we just
-recorded" printed as "0 candidates" and read as a drained pool. Server side,
-NOT proven from here (no DB access): which step undoes the stamps. Suspects,
-in order: `alt_archive_requeue_recited()` re-NULLing rows whose layoff side is
-re-touched (nightly WARN import restamps `updated_at`, which the 08-26 guard
-assumed only happens on genuine re-citation); `/archive-record` dropping items.
-Queries for the owner: count archive rows with `checked_at IS NULL` and status
-pending/unavailable; and for those, `MAX(l.updated_at)` vs yesterday's run.
+**Root cause (fixed in code).** `alt_archive_requeue_recited()` (db.php)
+reset `checked_at` to NULL whenever `l.updated_at > a.checked_at`. It was meant
+for orphans re-cited after a purge (2026-08-26), but the nightly WARN import
+re-upserts ~44k rows and bumps `updated_at` on rows whose citation never
+changed. So every night ~500 URLs checked that morning went back to NULL,
+sorted first (NULLs lead the candidate ORDER BY), filled the next day's batch,
+and the aged pool never reached the front. `rechecked_recent` collapsed for the
+same reason (NULL stamps are outside the 48h window), which is the 258/day.
+Client side, `run()` also hid it by printing a re-served batch as
+"0 candidates".
 
-**Fix (pipeline, no data touched, bound unchanged).** `archive_backfill.py`
+**Fix (no data touched, bound and invariant unchanged).**
+- **db.php:** new nullable `uncited_since` column on the archive table, via
+  the existing dbDelta install, with `alt_archive_uncited_ready()` self-healing
+  a host that missed it. New `alt_archive_mark_uncited()` stamps
+  pending/unavailable rows that no layoff row cites. The requeue now resets
+  only rows with `uncited_since` set that are cited again, and never reads
+  `updated_at`. The oldest reading in `alt_archive_coverage_counts()` excludes
+  the same set.
+- **Tests:** `railway/tests/test_archive_promise.py::RequeueRecitedOrphans`
+  runs the real SQL in sqlite. An import-only update keeps the stamp; a
+  re-cited orphan is requeued (idempotently); archived rows are never touched.
+- **Transition:** rows orphaned before deploy have `uncited_since` NULL. The
+  first run marks current orphans; any re-cited in between age normally
+  rather than being requeued, which is the conservative direction.
+
+**Verification after deploy.** Run these against the live DB:
+- `SELECT COUNT(*) FROM wp_alt_archive WHERE status IN ('pending','unavailable') AND checked_at IS NULL`:
+  a few dozen at most, not ~500.
+- The next runs' logs should show `batch 2` handing out new URLs.
+- `oldest_unarchived_checked_at` should advance by days per run, and the
+  invariant should be green within about 4 runs.
+
+**Earlier diagnostics, same PR.**  `archive_backfill.py`
 now counts URLs re-served after being recorded (`split_batch`, excluding the
 Save-Page-Now handoff) and writes the server did not acknowledge
 (`unacknowledged`), and prints a `::warning::` naming this entry instead of
 "0 candidates". A test pins that configured capacity covers the live pool
 inside the 7d promise, so the next red is not answered by raising the limit.
-Expected effect: tomorrow's run log states which failure it is; the invariant
-stays red until the server-side reset is fixed. Tests:
+These warnings stay as a tripwire for any future write drop. Tests:
 `railway/tests/test_archive_backfill.py::TestRecheckStampsMustStick`.
 
 ## 2026-09-24 - Growth: resume call to action on report, company, embed and digest surfaces (2.20.210)

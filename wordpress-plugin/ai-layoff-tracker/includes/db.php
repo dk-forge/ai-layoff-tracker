@@ -226,6 +226,7 @@ function alt_db_install() {
         attempts INT UNSIGNED NOT NULL DEFAULT 0,
         checked_at DATETIME NULL,
         archived_at DATETIME NULL,
+        uncited_since DATETIME NULL,
         PRIMARY KEY (id),
         UNIQUE KEY url_hash (url_hash),
         KEY status (status),
@@ -3340,21 +3341,59 @@ if (!defined('ALT_ARCHIVE_THROUGHPUT_WINDOW_HOURS')) define('ALT_ARCHIVE_THROUGH
  */
 function alt_archive_requeue_recited() {
     global $wpdb;
+    if (!alt_archive_uncited_ready()) return 0;
     $layoffs = alt_db_table();
     $archive = alt_archive_table();
-    // Multi-table UPDATE (target `a`, joined to `l`) — no subquery on the target,
-    // so MySQL runs it directly. LIKE 'http%' is a literal here (not $wpdb->prepare),
-    // so the single % is correct. An archive row cited by several layoff rows is
-    // reset once; it qualifies if ANY citing row was re-ingested after the check.
+    // 2026-09-27: keyed on uncited_since, NOT on l.updated_at. The old
+    // predicate (l.updated_at > a.checked_at) fired every night for every WARN
+    // row the import merely re-upserted, re-NULLing ~500 freshly checked URLs a
+    // day; they sorted first, filled the daily batch, and the aged pool starved
+    // (oldest attempt moved 11 minutes in 24h; archive_recheck_cadence red
+    // 09-24..09-27). A row is re-queued only if it was actually an ORPHAN
+    // (alt_archive_mark_uncited stamped uncited_since while nothing cited it)
+    // and is now cited again. See docs/TECHLOG.md 2026-09-27.
     return $wpdb->query(
         "UPDATE $archive a
             JOIN $layoffs l ON a.url_hash = MD5(TRIM(l.source_url))
-            SET a.checked_at = NULL
+            SET a.checked_at = NULL, a.uncited_since = NULL
           WHERE a.status IN ('pending','unavailable')
-            AND a.checked_at IS NOT NULL
-            AND l.source_url <> '' AND l.source_url LIKE 'http%'
-            AND l.updated_at IS NOT NULL
-            AND l.updated_at > a.checked_at");
+            AND a.uncited_since IS NOT NULL
+            AND l.source_url <> '' AND l.source_url LIKE 'http%'");
+}
+
+/**
+ * Stamp uncited_since on pending/unavailable archive rows that no layoff row
+ * cites any more (purged or re-sourced). Runs after the requeue in the daily
+ * candidate pre-fetch, so an orphan re-cited later is recognised by
+ * alt_archive_requeue_recited() however many import runs touched other rows.
+ */
+function alt_archive_mark_uncited() {
+    global $wpdb;
+    if (!alt_archive_uncited_ready()) return 0;
+    $layoffs = alt_db_table();
+    $archive = alt_archive_table();
+    return $wpdb->query(
+        "UPDATE $archive a
+            LEFT JOIN (SELECT DISTINCT MD5(TRIM(source_url)) AS h FROM $layoffs
+                        WHERE source_url <> '' AND source_url LIKE 'http%') c
+                   ON c.h = a.url_hash
+            SET a.uncited_since = UTC_TIMESTAMP()
+          WHERE a.status IN ('pending','unavailable')
+            AND a.uncited_since IS NULL
+            AND c.h IS NULL");
+}
+
+/** The uncited_since column arrives through dbDelta; heal a host that missed it. */
+function alt_archive_uncited_ready() {
+    static $ok = null;
+    if ($ok !== null) return $ok;
+    global $wpdb;
+    $table = alt_archive_table();
+    $has = function () use ($wpdb, $table) {
+        return (bool) $wpdb->get_var("SHOW COLUMNS FROM $table LIKE 'uncited_since'");
+    };
+    if (!$has()) alt_db_install();
+    return $ok = $has();
 }
 
 /**
@@ -3379,6 +3418,7 @@ function alt_api_archive_candidates(WP_REST_Request $r) {
     // front and are drained in THIS run rather than sitting stale until tomorrow.
     // See alt_archive_requeue_recited() for why this cannot mask a real stall.
     alt_archive_requeue_recited();
+    alt_archive_mark_uncited();
     $limit = min(500, max(1, (int) ($r->get_param('limit') ?: 200)));
     $retry_hours = min(720, max(1, (int) ($r->get_param('retry_hours') ?: ALT_ARCHIVE_RETRY_HOURS)));
     $retry_before = gmdate('Y-m-d H:i:s', time() - $retry_hours * HOUR_IN_SECONDS);
@@ -3983,15 +4023,15 @@ function alt_archive_coverage_counts() {
     // and a wholesale stop trips the zero-recheck branch within 48h regardless.
     // railway/tests/test_archive_promise.py runs this exact SQL and pins its
     // exclusion set equal to the requeue's reset set.
-    $oldest = $wpdb->get_var(
-        "SELECT MIN(t.checked_at)
-           FROM (SELECT a.url_hash, a.checked_at, MAX(l.updated_at) AS recited_at
-                   FROM $layoffs l
-                   JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
-                  WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
-                    AND a.status IN ('pending','unavailable')
-                  GROUP BY a.url_hash, a.checked_at) t
-          WHERE t.recited_at IS NULL OR t.recited_at <= t.checked_at");
+    // 2026-09-27: the exclusion is now the requeue's own key (uncited_since),
+    // not MAX(l.updated_at), which every nightly WARN re-upsert moved.
+    $oldest = alt_archive_uncited_ready() ? $wpdb->get_var(
+        "SELECT MIN(a.checked_at)
+           FROM $layoffs l
+           JOIN $archive a ON a.url_hash = MD5(TRIM(l.source_url))
+          WHERE l.source_url <> '' AND l.source_url LIKE 'http%'
+            AND a.status IN ('pending','unavailable')
+            AND a.uncited_since IS NULL") : null;
     // THE MARGIN, not just the reading. $oldest says whether the promise is
     // ALREADY broken; these two say whether it is ABOUT to break, which is the
     // only version of this number a human can act on in time. On 2026-08-04 the
