@@ -1,6 +1,6 @@
 ## 2026-09-27 - Email audit: every subscriber email benchmarked; three fixes, four decisions (2.20.212)
 
-**Class:** contract-drift
+**Class:** novel (a benchmark audit of reader email, not a defect shape in the vocabulary)
 **Guard:** `railway/tests/test_digest_confirm_names_lists.py`, `railway/tests/test_follow_alerts.py`
 
 Owner request: audit every email the trackers send to readers against comparable
