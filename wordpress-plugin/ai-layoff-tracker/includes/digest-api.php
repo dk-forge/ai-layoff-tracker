@@ -232,6 +232,9 @@ function alt_api_digest_recipients($request) {
             'unsub_url' => alt_digest_unsub_url($row['unsub_token']),
             'lists'     => $lists,
         );
+        // The reader's OWN preferences page (2026-09-27): signed per row, so
+        // it rides per recipient. The relay omits the manage line without it.
+        if (function_exists('alt_prefs_url')) $recipient['manage_url'] = alt_prefs_url($row);
         // Company/state follows, composed here because they carry figures.
         // Layoff-list readers only; the relay appends it after their sections.
         if (in_array('layoff', $lists, true) && function_exists('alt_follows_section_for')) {

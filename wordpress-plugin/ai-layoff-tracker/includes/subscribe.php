@@ -1526,7 +1526,14 @@ function alt_digest_confirm() {
         $update['pending_prefs'] = null;
         $was_change = true;
     }
-    $wpdb->update(alt_subscribers_table(), $update, array('id' => $row['id']));
+    // THE CLAIM IS THE UPDATE ITSELF (owner decision 2026-09-27, welcome
+    // email). Conditional on the token still being there, so of two clicks
+    // racing the same link exactly one writes, and only that one goes on to
+    // send the welcome below. A re-click finds the token gone: 'expired'.
+    $claim = array('id' => $row['id']);
+    $claim['confirm_token'] = $row['confirm_token'];
+    $claimed = $wpdb->update(alt_subscribers_table(), $update, $claim);
+    if (!$claimed) alt_digest_redirect('expired');
     // Partner consent, applied and stamped separately (see
     // alt_digest_partner_choice). A parked change carries its own value; a
     // first confirmation keeps what the signup stored.
@@ -1549,6 +1556,11 @@ function alt_digest_confirm() {
     // path the stored preferences are whatever the parked JSON turned out to
     // contain, and the panel must read back what is stored, not what was sent.
     $final = alt_digest_get_by_email($row['email']);
+    // ONE welcome, on a first confirmation only (a change confirmation is not
+    // a new subscriber). includes/subscriber-prefs.php; guarded for the FTP race.
+    if (!$was_change && function_exists('alt_digest_send_welcome')) {
+        try { alt_digest_send_welcome($final); } catch (Throwable $e) { /* never blocks the confirm */ }
+    }
     alt_digest_redirect($was_change ? 'updated' : 'confirmed',
                         alt_digest_make_receipt($final));
 }
@@ -8484,6 +8496,13 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
  * per-recipient URL, which means the payload contract in digest-api.php and
  * railway/digest_send.py both move; it is not a copy change wearing a
  * token's clothes.
+ *
+ * AND IT WAS BUILT, 2026-09-27, by owner decision: includes/subscriber-prefs.php
+ * serves a per-reader page behind a signed token, and the payload carries it
+ * per RECIPIENT (`manage_url`). The stranger-proofing above is kept: that page
+ * only ever REDUCES mail at once; anything that adds mail still goes through
+ * the confirm-by-email branch. This function remains the signup-form anchor
+ * for surfaces that have no reader to sign for.
  */
 function alt_digest_manage_url() {
     return home_url('/ai-layoff-tracker/') . '#alt-digest';
@@ -8540,10 +8559,10 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
     if ($manage_url) {
         $blocks[] = array(
             'url' => $manage_url,
-            'anchor' => 're-enter your address on the signup form',
+            'anchor' => 'open your preferences page',
             'sentences' => array(
-                'To change what you get, re-enter your address on the signup form and tick the lists you want.',
-                'The change applies when you confirm by email.',
+                'To change lists, frequency or follows, open your preferences page.',
+                'Anything that adds mail applies when you confirm by email.',
             ),
         );
     }
@@ -8702,12 +8721,14 @@ function alt_digest_send($freq) {
         if ((int) $row['consent_layoff'] === 1 && $row['freq_layoff'] === $freq
             && function_exists('alt_follows_section_for')) {
             $alt_fs = alt_follows_section_for((int) $row['id'], $from_date, $to_date);
-            if ($alt_fs) { $parts_html[] = $alt_fs['html']; }
+            if ($alt_fs) { $parts_html[] = $alt_fs['html']; $parts_text[] = $alt_fs['text']; }
         }
         $subject = alt_digest_subject_line($freq, $from_date, $to_date, $headings,
                                            $fallback_subject, $subject_parts);
 
         $unsub = alt_digest_unsub_url($row['unsub_token']);
+        // The reader's own preferences page, or no manage block at all.
+        $manage = function_exists('alt_prefs_url') ? alt_prefs_url($row) : '';
         // Text-first HTML: no images, no pixels, no external assets. See the
         // file header for why tracking is deliberately absent.
         /*
@@ -8750,14 +8771,24 @@ function alt_digest_send($freq) {
               // different language, with nothing keeping the two in step. It
               // now renders alt_digest_footer_blocks(), the single definition
               // the relay's FOOTER_BLOCKS mirrors and a test compares.
-              . alt_digest_footer_html($unsub, alt_digest_manage_url())
+              . alt_digest_footer_html($unsub, $manage)
               . '</div>';
-        $headers = array_merge(
-            array('Content-Type: text/html; charset=UTF-8'),
-            alt_digest_from_header(),
-            alt_digest_list_unsub_headers($row['unsub_token'])
-        );
-        if (wp_mail($row['email'], $subject, $html, $headers)) {
+        // THE PLAIN-TEXT PART (owner decision 2026-09-27). alt_digest_deliver
+        // sends both parts through Brevo's API; without that file loaded the
+        // old HTML-only wp_mail path is what runs.
+        $text = implode("\n\n----------\n\n", $parts_text) . "\n\n"
+              . (function_exists('alt_digest_footer_text') ? alt_digest_footer_text($unsub, $manage) : '');
+        if (function_exists('alt_digest_deliver')) {
+            $delivered = alt_digest_deliver($row['email'], $subject, $html, $text, $row['unsub_token']);
+        } else {
+            $headers = array_merge(
+                array('Content-Type: text/html; charset=UTF-8'),
+                alt_digest_from_header(),
+                alt_digest_list_unsub_headers($row['unsub_token'])
+            );
+            $delivered = wp_mail($row['email'], $subject, $html, $headers);
+        }
+        if ($delivered) {
             $sent++;
             // The TIER's own stamp is what the guard reads. last_sent_at is
             // written beside it and is not read here any more: it is what an
@@ -8957,6 +8988,8 @@ function alt_digest_stats() {
     $out['last_send'] = alt_digest_last_send_stats();
     // The Brevo mirror's private status: counts and an HTTP code, no address.
     $out['brevo_mirror'] = function_exists('alt_brevo_sync_status') ? alt_brevo_sync_status() : null;
+    // Welcome mails today against their share of Brevo's 300/day (2026-09-27).
+    $out['welcome_mail'] = function_exists('alt_welcome_budget_status') ? alt_welcome_budget_status() : null;
     return $out;
 }
 

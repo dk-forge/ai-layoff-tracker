@@ -152,6 +152,16 @@ with matching rows. Check that `alt_follows_db_version` is set, that the row's
 status is `active` (the reader clicked confirm), and that the subscriber is
 `confirmed` with the layoff list at this frequency. **Test:** `test_follow_alerts.py`.
 
+**Stop / preferences / welcome (2.20.213, owner decisions 2026-09-27).**
+`includes/subscriber-prefs.php`. Each follow in the digest carries a
+"Stop following X" link (`/ai-layoff-tracker/stop-follow/<token>/`, GET asks,
+POST stops); every footer links the reader's own
+`/ai-layoff-tracker/preferences/<token>/` page (less mail at once, more mail
+by confirmation email); a first confirmation sends one welcome, capped at
+`ALT_WELCOME_DAILY_CAP` (40) a day, seen as `welcome_mail` in
+`/subscriber-stats`. A dead link page means the row is gone or unsubscribed.
+**Test:** `test_email_owner_decisions.py`.
+
 ## 7. Author box
 
 **What it does.** "About the author" plus a Person JSON-LD node on report,

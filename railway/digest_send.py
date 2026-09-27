@@ -547,7 +547,12 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # The URL comes from the site, never from here. An older plugin build does
     # not send the field, and a link guessed into a million inboxes is worse
     # than no link, so an absent or foreign one is simply omitted.
-    manage = str(payload.get("manage_url") or "").strip()
+    #
+    # 2026-09-27: the link is the reader's OWN preferences page, signed per
+    # row, so it comes per RECIPIENT. The payload-level manage_url is the
+    # signup form and no longer matches the footer's words, so it is not used;
+    # an older plugin that sends no per-recipient URL gets no manage line.
+    manage = str(recipient.get("manage_url") or "").strip()
     if not (manage.startswith("https://") and _same_site(manage, unsub)):
         manage = ""
     # Presentation lives in digest_layout: a table shell, every rule inline on

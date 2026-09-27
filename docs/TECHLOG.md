@@ -1,7 +1,55 @@
 ## 2026-09-27 - Email audit: every subscriber email benchmarked; three fixes, four decisions (2.20.212)
 
 **Class:** novel (a benchmark audit of reader email, not a defect shape in the vocabulary)
-**Guard:** `railway/tests/test_digest_confirm_names_lists.py`, `railway/tests/test_follow_alerts.py`
+**Guard:** `railway/tests/test_digest_confirm_names_lists.py`, `railway/tests/test_follow_alerts.py`, `railway/tests/test_email_owner_decisions.py`
+
+**Owner rulings, 2026-09-27: all four in, before launch.** Built on branch
+`claude/email-owner-decisions`, plugin 2.20.213, merge-only (not deployed).
+Every item is closed by `railway/tests/test_email_owner_decisions.py`, which
+drives the real handlers through `tests/fixtures/email_prefs_harness.php`.
+New code lives in `includes/subscriber-prefs.php` (guarded include).
+1. CLOSED - welcome email: one plain-text mail from the confirm handler on a
+   FIRST confirmation (lists, cadence, next send day in New York time from
+   the relay schedule, preferences link, postal address, List-Unsubscribe +
+   One-Click). Once per confirmation: the confirm UPDATE is now conditional on
+   the token still being present, so of two racing clicks one writes and only
+   it welcomes; a re-click is 'expired'. A change confirmation sends none.
+   Budget: `ALT_WELCOME_DAILY_CAP` = 40/day out of Brevo's 300 (option
+   `alt_mail_budget`, reported as `welcome_mail` in `/subscriber-stats`); past
+   the cap the welcome is skipped and counted, the confirm still lands.
+   Guard: `WelcomeEmail`.
+2. CLOSED - stop one follow: "What you follow" lists "Stop following X" per
+   active follow in both parts. `/ai-layoff-tracker/stop-follow/<id>-<follow>-<hmac>/`:
+   GET renders a button, only the POST deletes; HMAC keyed by site salt + the
+   row's unsub_token over purpose+subscriber+follow, so it cannot stop another
+   follow or double as a preferences link. Guard: `StopOneFollow`.
+3. CLOSED - fallback plain text. The recommendation to leave it was
+   overruled. The Brevo plugin replaces wp_mail and hands Brevo one body
+   (plugin source could not be fetched from this session: egress to
+   wordpress.org is blocked, so its hooks were not re-read); rather than race
+   it, `alt_digest_deliver()` posts to Brevo's transactional API
+   (`/v3/smtp/email`, htmlContent + textContent + List-Unsubscribe headers)
+   with the key brevo-sync already reads, i.e. the same provider and account
+   as the relay. No key: wp_mail with a `phpmailer_init` AltBody, which does
+   work on core wp_mail. Guard: `FallbackPlainText` (asserts both parts on
+   the outgoing request).
+4. CLOSED - preferences page, `/ai-layoff-tracker/preferences/<id>-<hmac>/`,
+   linked from every digest footer (relay and fallback, per recipient
+   `manage_url`) and the welcome. One form: lists, frequency, follows.
+   Less mail (a list off, a slower cadence, a follow unticked) applies at
+   once; more mail (a list on, a faster cadence) is parked through the
+   existing `alt_digest_signup` pending_prefs flow and needs the emailed
+   click. Labels wrap every control, fieldset/legend, 44px targets,
+   focus-visible outline, 4.5:1 colours, single column at phone width.
+   Footer copy changed in BOTH definitions ("open your preferences page";
+   "Anything that adds mail applies when you confirm by email."); the relay
+   uses the per-recipient URL only, so an older plugin build yields no manage
+   line rather than the wrong promise. Guard: `PreferencesPage`.
+- Weekly header "week ending Friday": NOT real. The relay prints the
+  payload's `to`, and `alt_digest_weekly_window()` always ends on a Sunday;
+  the Friday came from a synthetic sample. Guard:
+  `WeeklyMastheadEndsOnSunday` (60 consecutive days, every window Mon-Sun,
+  every dateline "week ending Sunday").
 
 Owner request: audit every email the trackers send to readers against comparable
 products (layoff alerts, Morning Brew / Axios style newsletters, job-alert and

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.212
+ * Version:           2.20.213
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.212');
+define('ALT_VERSION', '2.20.213');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -102,7 +102,7 @@ if (is_readable($alt_company_index)) {
 // admin-only press list, the author box. NEW files, so GUARDED with
 // is_readable for the FTP-deploy race described above; every caller checks
 // function_exists. Runbook: docs/RUNBOOK_GROWTH.md.
-foreach (array('monthly-report.php', 'press-list.php', 'author-box.php', 'follows.php') as $alt_growth_file) {
+foreach (array('monthly-report.php', 'press-list.php', 'author-box.php', 'follows.php', 'subscriber-prefs.php') as $alt_growth_file) {
     if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file)) {
         require_once ALT_PLUGIN_DIR . 'includes/' . $alt_growth_file;
     }
