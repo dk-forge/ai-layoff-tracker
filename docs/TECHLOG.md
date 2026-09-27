@@ -1,3 +1,26 @@
+## 2026-09-27 - Daily subscriber watch: welcome-cap and Brevo budget flags
+
+**Class:** novel (a new daily watchdog, not a defect shape in the vocabulary)
+**Guard:** `railway/tests/test_subscriber_watch.py`
+
+Owner request 2026-09-27: review subscriber numbers daily and say when
+`ALT_WELCOME_DAILY_CAP` (default 40, plugin 2.20.213, PR #422) should be
+revisited. New `.github/workflows/subscriber-watch.yml` (daily 23:40 UTC) runs
+`railway/subscriber_watch.py` against the keyed `/subscriber-stats` with the
+existing `WP_API_KEY`. Runner is the VPS, not GitHub-hosted: the job reads the
+host, which is Class (a) in RUNBOOK "Which jobs run on the VPS and why".
+Summary to the job summary; 60-day history in the Actions cache; WARN emails
+go through `ops_notify` (deduped per day), never a red run. Thresholds are
+module constants pinned by the test: welcome >= 75% of cap or any skipped,
+total sends >= 80% of 300, 0 new for 3 days after a non-zero week, a day >= 3x
+the prior 7-day average; recommended cap = peak demand x 1.5, bounded to
+leave 20% of 300 plus the peak digest.
+Limits: the route has no per-day confirmation count, so the day's figure is
+the NET change in the confirmed total (labelled net); follows added/stopped
+are not in the route and print UNKNOWN. Before #422 is live `welcome_mail` is
+absent: the summary says "welcome counter not live yet" and no welcome rule
+fires. No plugin file touched, no version reserved.
+
 ## 2026-09-27 - Email audit: every subscriber email benchmarked; three fixes, four decisions (2.20.212)
 
 **Class:** novel (a benchmark audit of reader email, not a defect shape in the vocabulary)

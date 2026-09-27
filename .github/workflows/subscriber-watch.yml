@@ -1,0 +1,65 @@
+# Daily subscriber watch (owner request 2026-09-27).
+#
+# Reads the keyed /subscriber-stats route (counts only, no address), writes a
+# plain-English summary to the job summary, keeps a 60-day rolling history in
+# the Actions cache for the trend, and emails the owner through
+# railway/ops_notify.py (deduped per day) when the welcome-mail cap
+# (ALT_WELCOME_DAILY_CAP) or Brevo's 300/day budget needs revisiting, or
+# signups drop or spike. Thresholds: railway/subscriber_watch.py, pinned by
+# railway/tests/test_subscriber_watch.py.
+#
+# RUNNER: this job READS asktherecruiter.com, so it is Class (a) in
+# docs/RUNBOOK.md "Which jobs run on the VPS and why": a GitHub-hosted runner
+# is challenged by Imunify360 and would read a 403 page. It runs on the VPS
+# like health-digest, which calls the same route with the same WP_API_KEY.
+#
+# A WARN is an email, NOT a red run (one alarm per cause). A run that cannot
+# read the route exits 3 (UNKNOWN is not a pass), which ci-alert turns into
+# one email naming the cause.
+#
+# 23:40 UTC: late in the UTC day the plugin's welcome counter covers, after
+# every digest slot.
+
+name: Subscriber watch
+
+on:
+  schedule:
+    - cron: '40 23 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: subscriber-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore rolling history
+        uses: actions/cache/restore@v4
+        with:
+          path: subscriber_watch_history.json
+          key: subscriber-watch-${{ github.run_id }}
+          restore-keys: subscriber-watch-
+
+      - name: Read stats, summarise, alert on WARN
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+        run: python3 railway/subscriber_watch.py subscriber_watch_history.json
+
+      - name: Save rolling history
+        if: ${{ !cancelled() && hashFiles('subscriber_watch_history.json') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: subscriber_watch_history.json
+          key: subscriber-watch-${{ github.run_id }}
