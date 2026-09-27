@@ -168,7 +168,12 @@ function alt_follow_section(array $rows) {
     foreach ($rows as $r) {
         $bits = array((string) $r['company']);
         if ((int) ($r['jobs'] ?? 0) > 0) $bits[] = number_format((int) $r['jobs']) . ' jobs';
-        if (!empty($r['date'])) $bits[] = (string) $r['date'];
+        // "9 Aug 2026", the date style every other digest section prints
+        // (email audit 2026-09-27: this was the only raw ISO date in the mail).
+        if (!empty($r['date'])) {
+            $ts = strtotime((string) $r['date'] . ' 00:00:00 UTC');
+            $bits[] = $ts ? gmdate('j M Y', $ts) : (string) $r['date'];
+        }
         if (!empty($r['place'])) $bits[] = (string) $r['place'];
         $line = implode(', ', $bits);
         $html .= '<li>' . esc_html($line) . ' (<a href="' . esc_url($r['url']) . '">' . esc_html($r['follow']) . '</a>)</li>';

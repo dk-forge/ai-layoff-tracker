@@ -75,6 +75,14 @@ class SectionComposer(unittest.TestCase):
         self.assertNotIn(", 0 jobs", out["text"])
         self.assertIn('href="https://asktherecruiter.com/blog/state-layoffs/texas/"', out["html"])
 
+    def test_dates_read_like_the_rest_of_the_digest(self):
+        # Email audit 2026-09-27: the follow section was the only place in the
+        # digest printing a raw ISO date.
+        out = self.run_php(self.ROWS)
+        self.assertIn("20 Sep 2026", out["text"])
+        self.assertNotIn("2026-09-20", out["text"])
+        self.assertNotIn("2026-09-20", out["html"])
+
 
 class Consent(unittest.TestCase):
     def test_follow_submit_goes_through_the_existing_double_opt_in(self):

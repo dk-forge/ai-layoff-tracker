@@ -1,3 +1,63 @@
+## 2026-09-27 - Email audit: every subscriber email benchmarked; three fixes, four decisions (2.20.212)
+
+**Class:** contract-drift
+**Guard:** `railway/tests/test_digest_confirm_names_lists.py`, `railway/tests/test_follow_alerts.py`
+
+Owner request: audit every email the trackers send to readers against comparable
+products (layoff alerts, Morning Brew / Axios style newsletters, job-alert and
+data-digest mail) and fix what is clear. Branch `claude/email-audit-2026-09-27`,
+not deployed. Plugin version 2.20.212 reserved on this branch.
+
+**Inventory (reader-facing).** (1) Double opt-in confirmation, and its two
+change variants, `alt_digest_send_confirm_email` (wp_mail via the Brevo WP
+plugin, plain text, List-Unsubscribe + One-Click headers). (2) The digest,
+daily / weekly / monthly, one message per reader with the layoff, talent and
+articles sections they consented to plus "What you follow": primary sender
+`railway/digest_send.py` + `digest_layout.py` (Brevo SMTP relay, HTML + real
+text part, preheader, dark-mode-safe palette, RFC 8058 headers, postal
+address, why-you-got-this, manage link); fallback `alt_digest_send()` via
+wp_mail (HTML only). (3) Press pitch, `alt_press_admin_send`, admin click only,
+plain text. The Talent Intelligence Tracker sends no reader mail of its own;
+its section is composed here (`alt_digest_compose_talent`). Contact form and
+every `[AI Layoff Tracker]` mail go to the owner, not readers.
+
+**Fixed.**
+- Signup confirmation now restates what the click starts ("You asked for:
+  AI Layoff Tracker digest, weekly ...") above the link. It said only "the
+  email digest"; every comparable double opt-in restates lists and cadence.
+  A caller passing no prefs gets the old body unchanged.
+- Press pitch carried an opt-out but no postal address (CAN-SPAM
+  7704(a)(5)); it now carries the same address line as the digest footer.
+- "What you follow" printed raw ISO dates (2026-09-20), the only place in the
+  digest that did; it now prints "20 Sep 2026" like every other section.
+
+**Needs the owner (recommended option first).**
+1. *No welcome email after confirming.* Morning Brew and The Hustle send one
+   the moment the click lands, saying when the first edition arrives. Ours
+   shows a confirmation page only, so the first thing in the inbox is a digest
+   up to a week later. Recommend: one short plain-text welcome from the
+   confirm handler (lists, cadence, next send day, manage link); costs one
+   Brevo send per signup out of the 300/day. Alternative: leave as is, the
+   confirmation page already names the lists.
+2. *No per-follow stop.* A reader following a company or state can only stop
+   it by unsubscribing from everything or re-filling the form. Job-alert mail
+   (LinkedIn, Indeed) puts "stop this alert" beside each alert. Recommend: a
+   signed per-follow stop link in the "What you follow" section, POST-confirmed
+   like the unsubscribe (scanners follow links).
+3. *The wp_mail fallback digest has no plain-text part.* The Brevo plugin
+   replaces wp_mail wholesale, so `phpmailer_init` AltBody does not reach it.
+   Low impact while the relay is primary. Recommend: leave, and keep the relay
+   as the only scheduled sender; revisit if the fallback ever carries a send.
+4. *Preference centre.* "Manage" re-uses the signup form and needs a
+   confirmation email per change. Newsletter norm is a one-page preference
+   centre behind the per-reader token. Recommend: defer until list size makes
+   churn measurable; the current path is safe and honest.
+
+Rendered samples (synthetic data, scratch only) confirmed the relay digest
+already meets the benchmark: figure-first subject, non-repeating preheader,
+600px fluid table, inline styles, 4.5:1 contrast in both schemes, plain-text
+part, one-click unsubscribe, postal address, reason-for-receipt.
+
 ## 2026-09-27 - Ops: plugin deploy 376 failed, `php: command not found` on the VPS runner
 
 **Class:** absent-read-as-ok
