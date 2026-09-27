@@ -122,3 +122,40 @@ class FailOpenTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRecheckStampsMustStick(unittest.TestCase):
+    """2026-09-27: the run processed one 500-URL batch a day, then read the
+    server re-serving those same URLs as "0 candidates" and stopped, so the
+    oldest attempt advanced 11 minutes a day. A re-served recorded URL must be
+    counted, and an unacknowledged write must be counted, never hidden."""
+
+    def test_reserved_recorded_urls_are_counted_not_hidden(self):
+        new, reserved = ab.split_batch(["a", "b", "c"], {"a", "b"})
+        self.assertEqual(new, ["c"])
+        self.assertEqual(reserved, 2)
+
+    def test_handoff_urls_are_expected_to_come_back(self):
+        new, reserved = ab.split_batch(["a", "h"], {"a", "h"}, ["h"])
+        self.assertEqual(new, [])
+        self.assertEqual(reserved, 1)
+
+    def test_empty_server_batch_is_drained_not_reserved(self):
+        self.assertEqual(ab.split_batch([], {"a"}), ([], 0))
+
+    def test_unacknowledged_writes_are_counted(self):
+        items = [{"url": "a"}, {"url": "b"}, {"url": "c"}]
+        self.assertEqual(ab.unacknowledged(items, {"archived": 1, "pending": 1, "unavailable": 1}), 0)
+        self.assertEqual(ab.unacknowledged(items, {"pending": 1, "rejected": ["b", "c"]}), 2)
+        self.assertEqual(ab.unacknowledged(items, None), 3)
+
+    def test_configured_capacity_covers_the_live_pool_inside_the_promise(self):
+        # Live 2026-09-27: 3,071 due, 7d promise -> 439/day needed. Capacity is
+        # not the constraint; the stamps not sticking is. Pin that it stays so.
+        import re
+        wf = open(os.path.join(os.path.dirname(__file__), "..", "..", ".github",
+                               "workflows", "archive-backfill.yml")).read()
+        limit = int(re.search(r"inputs\.limit \|\| '(\d+)'", wf).group(1))
+        deadline = int(re.search(r"ARCHIVE_BACKFILL_DEADLINE_SECONDS: '(\d+)'", wf).group(1))
+        per_day = min(limit, int(deadline * 0.513))
+        self.assertGreaterEqual(per_day, -(-3071 // 7))

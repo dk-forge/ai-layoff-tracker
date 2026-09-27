@@ -1,3 +1,40 @@
+## 2026-09-27 - Ops: archive re-check cadence red since 09-24 is NOT a throughput shortfall; backfill now says so
+
+**Symptom.** `Live data-integrity check` failed 09-24..09-27 on one invariant
+(`archive_recheck_cadence`), 23 others PASS: oldest un-archived attempt 7.3d,
+3,071 due at a measured 258/day = 11.9d cycle, 12.9d worst age vs the 8d
+projected bound (run 36337584963). It printed "raise throughput in
+archive-backfill.yml" for the third time (see the 08-13 and 08-19 notes in that file).
+
+**Numbers (from the runs' own logs).** Required: 3,071 / 7d = 439/day (384/day
+for the 8d bound). Configured: min(LIMIT 2,000, 5,400s x 0.513 URL/s = 2,770) =
+2,000/day, 4.5x the need. Delivered: exactly ONE 500-URL server batch per run
+(09-26, 09-27), then "batch 2: 0 candidate URL(s)". The oldest attempt moved
+09-20 11:22:23 -> 09-20 11:33:52 in 24h (eleven minutes), and 48h
+`rechecked_recent` fell 516 -> 39 although the 09-26 run recorded ~500 URLs.
+So the stamps the run writes are not surviving to the next reading, and the
+same NULL-first slice is handed out every day while the aged pool starves.
+
+**Root cause (partly open).** Client side, proven: `run()` filtered the server
+batch through `seen` BEFORE printing it, so "server re-served the URLs we just
+recorded" printed as "0 candidates" and read as a drained pool. Server side,
+NOT proven from here (no DB access): which step undoes the stamps. Suspects,
+in order: `alt_archive_requeue_recited()` re-NULLing rows whose layoff side is
+re-touched (nightly WARN import restamps `updated_at`, which the 08-26 guard
+assumed only happens on genuine re-citation); `/archive-record` dropping items.
+Queries for the owner: count archive rows with `checked_at IS NULL` and status
+pending/unavailable; and for those, `MAX(l.updated_at)` vs yesterday's run.
+
+**Fix (pipeline, no data touched, bound unchanged).** `archive_backfill.py`
+now counts URLs re-served after being recorded (`split_batch`, excluding the
+Save-Page-Now handoff) and writes the server did not acknowledge
+(`unacknowledged`), and prints a `::warning::` naming this entry instead of
+"0 candidates". A test pins that configured capacity covers the live pool
+inside the 7d promise, so the next red is not answered by raising the limit.
+Expected effect: tomorrow's run log states which failure it is; the invariant
+stays red until the server-side reset is fixed. Tests:
+`railway/tests/test_archive_backfill.py::TestRecheckStampsMustStick`.
+
 ## 2026-09-24 - Growth: resume call to action on report, company, embed and digest surfaces (2.20.210)
 
 **Class:** novel
