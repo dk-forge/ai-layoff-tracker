@@ -1,3 +1,19 @@
+## 2026-09-28 - deploy-plugin.yml failed 3x: edge cache stuck above origin
+
+**Class:** novel (third-party edge cache, not a defect shape in the vocabulary)
+**Guard:** none - the stale layer is Cloudflare/Railway proxy cache, which no repo test can reach
+
+**Symptom.** deploy-plugin.yml failed at 16:49, 18:29 and 19:43 UTC. The plugin
+uploads and verifies at the origin (origin reports v2.20.214), but readers keep
+getting the older build hash.
+
+**Cause.** Per RUNBOOK, a cache above the origin is serving the old build.
+Redeploying cannot purge it, so the hourly check stopped after the third failure
+instead of redeploying again.
+
+**Needs owner.** Purge the Cloudflare cache for the tracker site (Caching ->
+Configuration -> Purge Everything), then re-run deploy-plugin.yml once.
+
 ## 2026-09-28 - VPS ingest proven by manual dispatch
 
 **Class:** novel (config value, not a defect shape in the vocabulary)
