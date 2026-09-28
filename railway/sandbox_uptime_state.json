@@ -1,5 +1,5 @@
 {
-  "consecutive_fails": 373,
+  "consecutive_fails": 374,
   "open": {
     "sandbox-uptime:down": {
       "first": 1790242634,
@@ -7,6 +7,6 @@
       "subject": "sandbox uptime check failing: https://sandbox.asktherecruiter.com/healthz/deep: check(s) not ok: checks.mailjet"
     }
   },
-  "updated_at": "2026-09-28T16:52:14+00:00",
+  "updated_at": "2026-09-28T17:01:25+00:00",
   "version": 1
 }
