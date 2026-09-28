@@ -350,6 +350,12 @@ def run():
             print(f"  [{status}:{'save' if permalink else 'pending'}] {url}"
                   + (f" -> {permalink}" if permalink else ""))
             flush()
+        # Stamp EVERYTHING this batch recorded before the next
+        # /archive-candidates fetch. flush() only posts every FLUSH_EVERY
+        # records, so a batch left up to FLUSH_EVERY-1 URLs unstamped; the
+        # next fetch re-served exactly those (500 mod 25 = 15 a batch on
+        # 2026-09-28, run 36427170270) and read as "stamps not sticking".
+        flush(force=True)
         return misses
 
     # Batch loop: page through the due pool (the server hands out at most 500
