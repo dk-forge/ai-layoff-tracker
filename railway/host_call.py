@@ -92,6 +92,7 @@ raises the ordinary decode error: that is our bug and it stays loud.
 
 from __future__ import annotations
 
+import uuid
 import argparse
 import json
 import os
@@ -235,6 +236,11 @@ def get_json(url, *, params=None, headers=None, timeout=60):
     `Deferred` when every attempt died transiently; a settled refusal (403, a
     missing route) raises through `raise_for_status` exactly as it always did.
     """
+    # A keyed GET reads live state; the Cloudflare rule on layoffs/v1/* would
+    # otherwise hand back an earlier response (2026-09-28: the archive backfill
+    # was re-served its own first batch; tests/test_host_call_edge_cache.py).
+    if any(k.lower() == "x-layoff-api-key" for k in (headers or {})):
+        params = {**(params or {}), "_fresh": uuid.uuid4().hex}
     response = http_retry.get_with_retry(url, params=params, headers=headers,
                                          timeout=timeout)
     if response is None:

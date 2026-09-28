@@ -84,6 +84,42 @@ for its 75% warn, and prints "cap auto-raised to 100 on <date>" (UNKNOWN,
 never a guessed 40, before the plugin ships). Branch
 `claude/adaptive-welcome-cap`, not merged, not deployed.
 
+## 2026-09-28 - Ops: archive re-check cadence still red after #419. The Cloudflare edge was replaying /archive-candidates
+
+**Class:** wrong-scope-or-key
+**Guard:** `railway/tests/test_host_call_edge_cache.py`
+
+**Symptom.** `Live data-integrity check` was red again on 09-28 (archive_recheck_cadence,
+12.9d worst age). #419 (2.20.211) went live at deploy 377, 09-27 19:14 UTC, but
+the 09-28 05:45 archive-backfill run still logged `batch 2: 0 candidate URL(s)
+(+420 re-served that this run already recorded)`.
+
+**The tell.** Batch 1 and batch 2 printed a byte-identical `coverage before` dict
+(archived 22,940, pending 164, rechecked_recent 517), yet ten URLs had been
+archived and acknowledged in between. A live SQL count cannot do that. A cached
+response can.
+
+**Root cause.** docs/ARCHITECTURE.md:279: the owner's Cloudflare Cache Rule
+(2026-07-15) edge-caches EVERY GET under `/blog/wp-json/layoffs/v1/*`, and its
+Edge TTL overrides the origin's no-store. `/archive-candidates` is a keyed GET
+under that path with a fixed query string (`?limit=2000`), so batch 2, and on
+some days even the NEXT day's batch 1, was served from the edge. #419's
+server-side requeue fix was correct but could not show through the cache.
+
+**Fix (client, no Cloudflare change needed).** `host_call.get_json` adds a
+fresh `_fresh=<uuid>` query value to any GET that carries `X-Layoff-API-Key`.
+All nine keyed readers go through it. Public reads (no key) are unchanged and
+still cached. WordPress ignores the unknown arg.
+
+**Owner-side hardening (optional, not blocking).** Narrow the Cloudflare rule to
+the public read endpoints (query|aggregate|facets|stats|all|conversion|claims|
+reconciliation|quality-status). As it stands, a keyed response can be served
+from the edge to a request WITHOUT the key for the TTL. The data it can leak is
+public source URLs, so it is low-severity, but that is the wrong default.
+
+**Verify.** On the next archive-backfill run, batch 2 must hand out new URLs, and
+`coverage before` must change between batches.
+
 ## 2026-09-27 - Daily subscriber watch: welcome-cap and Brevo budget flags
 
 **Class:** novel (a new daily watchdog, not a defect shape in the vocabulary)
