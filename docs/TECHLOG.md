@@ -84,6 +84,24 @@ for its 75% warn, and prints "cap auto-raised to 100 on <date>" (UNKNOWN,
 never a guessed 40, before the plugin ships). Branch
 `claude/adaptive-welcome-cap`, not merged, not deployed.
 
+## 2026-09-28 - Ops: daily ingest moved from Railway to the VPS
+
+**Class:** novel
+**Guard:** `railway/tests/test_ingest_moved_to_vps.py`
+
+Proof dispatch of `ingest-cron-vps.yml` (run 36421789998, 12:26 UTC) was clean:
+secrets present, 850 pulled, 5 posted, 0 failed, $0.1220 of LLM spend (ceiling
+$0.20). The 403s came only from paywalled or bot-walled publishers (zeit.de,
+elpais, lefigaro, jeune_afrique), which the collector already counts as refusals.
+The owner's Railway `layoff-cron` variables were compared: only `GDELT_PREFER_BQ=1`
+differs from the code defaults, so it is now set in the workflow. FMP,
+FINNHUB, MARKETAUX, NEWSDATA and JOBINDSATS keys are not read by `cron.py`.
+
+The switch: `railway.toml` `startCommand` becomes a print (Railway keeps
+`cronSchedule`, which the rotation reads), and the owner sets repo variable
+`ALT_INGEST_ON_VPS=true`. **Rollback:** restore `startCommand = "python cron.py"`
+and delete the variable.
+
 ## 2026-09-28 - Ops: archive re-check cadence still red after #419. The Cloudflare edge was replaying /archive-candidates
 
 **Class:** wrong-scope-or-key

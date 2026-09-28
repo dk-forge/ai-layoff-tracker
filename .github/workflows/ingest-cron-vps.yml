@@ -85,4 +85,7 @@ jobs:
           OPENDART_API_KEY_KR: ${{ secrets.OPENDART_API_KEY_KR }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           EDGAR_USER_AGENT: 'AiLayoffTracker contact@asktherecruiter.com'
+          # Copied from the Railway layoff-cron service (owner paste 2026-09-28);
+          # the other GDELT_* and OPENROUTER_MODEL values there equal the code defaults.
+          GDELT_PREFER_BQ: '1'
         run: python cron.py

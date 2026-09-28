@@ -55,7 +55,12 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "python cron.py"
+# 2026-09-28: the daily ingest moved to the VPS (.github/workflows/ingest-cron-vps.yml,
+# switched on by the repo variable ALT_INGEST_ON_VPS). Railway still owns the
+# SCHEDULE (cronSchedule below is what run_slice.py and generate_ingest_schedule.py
+# read), but its container no longer ingests: running both would pay for the
+# same candidates twice. Revert this one line to hand the ingest back to Railway.
+startCommand = "python -c \"print('daily ingest runs on the VPS: ingest-cron-vps.yml')\""
 cronSchedule = "0 22 * * *"
 restartPolicyType = "NEVER"
 # Railway sends SIGTERM to the old deployment when a code release becomes
