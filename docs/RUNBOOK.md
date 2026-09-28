@@ -135,8 +135,20 @@ The rule, per workflow, in `.github/workflows/`:
   queue behind the VPS runner. `self-heal` stays because it runs an
   autonomous agent with `gh` and a merge gate; the one whitelisted address
   should not also be the box that agent gets a shell on.
-- The Railway cron (`railway/railway.toml`) is not a GitHub job and is not
-  affected.
+- The Railway cron (`railway/railway.toml`, `python cron.py`, 22:00 UTC) has a
+  VPS twin since 2026-09-28: `ingest-cron-vps.yml`, class (a), same schedule
+  string (run_slice and the public "next update" derive from railway.toml, so
+  keep them identical). It is DORMANT: the schedule only fires when the repo
+  variable `ALT_INGEST_ON_VPS` is `true`. **Owner steps to switch, in this
+  order:** (1) dispatch `ingest-cron-vps.yml` once by hand and read the log for
+  403s/timeouts on Google News, SEC EDGAR, GDELT and the EDINET/OpenDART/CVM
+  probes (the WARN lesson: third parties may refuse the VPS); (2) copy every
+  variable set on the Railway `layoff-cron` service that the workflow does not
+  set (e.g. `ALT_GATE_MODE`, `GDELT_PREFER_BQ`, `GOOGLE_NEWS_MAX`) into the
+  workflow or repo variables; (3) in Railway, clear the `layoff-cron` Cron
+  Schedule (or delete the service); (4) set `ALT_INGEST_ON_VPS=true`. Never
+  run both: the second run re-pays for every candidate the first did not post.
+  Rollback: unset the variable, restore the Railway schedule.
 
 **One runner serialises everything.** GitHub's scheduler already delays cron
 jobs by hours and then fires them in a bunch, which is part of what overloads
@@ -313,7 +325,7 @@ session here knows what a bill looks like before it looks wrong.
 | OpenRouter | openrouter.ai keys page, per-key monthly caps ($30 layoff, $30 talent, $100 sandbox); the blocker in practice is the prepaid credit balance at openrouter.ai/settings/credits, not a cap | ~$5/month per tracker by design (`railway/spend_jobs.json` is this repo's ledger, `ops_status [5]`); the sandbox meters per call into its `llm_invocations` table. |
 | Claude routines | The owner's Claude plan: the hourly Cloud Checker and the two-hourly Sandbox Builder | No invoice line; a weekly limit silences both at once. |
 | Contabo VPS | Fixed monthly, the one self-hosted runner for all three repos | Unchanged by anything in a repo. |
-| Railway, Supabase | Their dashboards | Unchanged. |
+| Railway, Supabase | Their dashboards | Railway's `layoff-cron` can be retired once `ingest-cron-vps.yml` is switched on (steps under "Which jobs run on the VPS and why"). |
 
 **Hosted minutes policy.** A GitHub-hosted runner is for the smoke detector
 of the VPS and nothing else: a probe that must keep running when the VPS is

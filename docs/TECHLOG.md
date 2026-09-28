@@ -1,3 +1,65 @@
+## 2026-09-28 - Cost trims: Google News title prefilter; Railway ingest gets a dormant VPS twin (branch)
+
+**Class:** novel (cost trim, not a defect shape in the vocabulary)
+**Guard:** `railway/tests/test_google_news_prefilter.py`
+
+**1. Google News prefilter.** `railway/sources/google_news_prefilter.py`
+drops a BROAD-sweep item before any gate or extraction call unless its title
+carries a reduction term in the edition's language: English via
+`regional_feeds.relevance` (EN_TERMS/EN_PATTERNS/PAIRED_TERMS) plus one
+verb+figure+workforce-noun shape (`HEADCOUNT_PATTERN`: "cuts up to 600 ...
+jobs", "may slash 20,000 roles", "to cut thousands of jobs"); every other
+language via `native_layoff_terms.PHRASES_BY_LANG`. No term list is written in
+the new module. A script check drops an English wire headline in a
+non-English edition (a paid duplicate of the US pull). Company chases and
+explicit `queries=` callers (`ai_evidence_sweep`) are untouched. Each run prints
+`Google News prefilter: kept N, dropped M {reasons}` and sets
+`pull_google_news.prefilter_counts`. Switch off: `GOOGLE_NEWS_PREFILTER=off`.
+Dropped items do not use up a query's slice, so the same response can fill it
+with layoff titles at no extra request.
+
+Evidence: synthetic merger/deal/earnings titles (English + de/fr/es/zh/ja) are
+all dropped; real layoff headlines incl. "X lays off 250" are kept in 11
+languages; every headline-shaped primary-URL slug in
+`news-corroborated-2026-08.goldset.json` (30+) is kept. Named slug
+exclusions, with reasons, are in the test; one is a REAL gap: Spanish "Uber
+elimina tres mil empleos" matches nothing in the `es` table. Not fixed here
+because adding a phrase there also changes the Spanish Google News queries.
+**Not proven:** the "~550 deferred merger items" are not in the repo (no
+ledger holds deferred candidate titles), so the drop is shown on the synthetic
+set only. cron.py records a 29.6% false-drop for a vocabulary over EXCERPTS;
+this filter reads headlines of broad sweeps only, where the headcount usually
+sits, but the first weeks of `prefilter_counts` should be checked against
+`gate_false_drops`.
+
+Savings: Google News costs ~$0.035/run (~$1.05/month,
+`spend_jobs.json` railway-cron sources, 09-09..09-26). `MAX_ITEMS` still caps
+kept items, so money is saved only on days when fewer than 150 titles pass;
+the main gain is fewer merger/earnings reads per dollar. Expect $0 to ~$0.50
+a month on LLM spend.
+
+**2. GOOGLE_NEWS_MAX left at 150.** No offline test can show recall is kept at
+a lower cap; with the prefilter the cap now counts only on-topic titles.
+Revisit after a month of `prefilter_counts`.
+
+**3. Railway cron -> VPS.** New `.github/workflows/ingest-cron-vps.yml` runs
+`python cron.py` on the Contabo runner at 22:00 UTC (already the VPS's quiet
+window), `ALT_JOB=railway-cron` so the spend ledger keeps its identity,
+timeout 150 min (railway.toml overlapSeconds 7200). DORMANT until the repo
+variable `ALT_INGEST_ON_VPS=true`, because running both would pay twice and
+Railway env vars are invisible from here. Owner steps are in RUNBOOK "Which
+jobs run on the VPS and why". Railway was not touched. Saving: the Railway
+service line (dashboard; not readable from the repo). Side benefit: the ingest
+then posts from the whitelisted address and escapes the deploy-SIGTERM problem
+(2026-09-05, 2026-09-11).
+
+Tests: new module 9/9; google_news_url, collector_backoff,
+worldwide_vocabulary, rotation_covers_ring green. `run_tests.py --group rest`:
+2682 run, 1 failure, `test_offline_suite_is_offline...test_a_module_that_fetches_is_caught`,
+the same on clean main (sandbox proxy). `rest-2`: `test_cost_funnel.py` cannot
+load in this environment ("too many statically nested blocks", same on main);
+the other 2690 tests OK.
+
 ## 2026-09-27 - Daily subscriber watch: welcome-cap and Brevo budget flags
 
 **Class:** novel (a new daily watchdog, not a defect shape in the vocabulary)
