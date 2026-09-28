@@ -106,13 +106,8 @@
       "first": 1790010985,
       "last": 1790010985,
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE dedupe_llm: last reported 11.0d ago (expected <= 4d): collector may have stopped"
-    },
-    "weekly-health-digest-autonomy-tripwire:main:5710bf5ff5c00c01": {
-      "first": 1789659871,
-      "last": 1789659871,
-      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE backup_export: last reported 11.2d ago (expected <= 10d): collector may have stopped"
     }
   },
-  "updated_at": "2026-09-28T12:02:46+00:00",
+  "updated_at": "2026-09-28T12:02:48+00:00",
   "version": 1
 }
