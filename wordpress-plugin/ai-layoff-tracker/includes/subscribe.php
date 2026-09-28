@@ -1953,7 +1953,10 @@ function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token, $de
     if ($unsub_token !== '') {
         $headers = array_merge($headers, alt_digest_list_unsub_headers($unsub_token));
     }
-    return wp_mail($email, $subject, $body, $headers);
+    $ok = wp_mail($email, $subject, $body, $headers);
+    // Recorded for the adaptive welcome cap's "yesterday's sends" (2026-09-28).
+    if ($ok && function_exists('alt_mail_budget_record')) alt_mail_budget_record('confirm');
+    return $ok;
 }
 
 function alt_digest_list_unsub_headers($unsub_token) {
@@ -8989,7 +8992,11 @@ function alt_digest_stats() {
     // The Brevo mirror's private status: counts and an HTTP code, no address.
     $out['brevo_mirror'] = function_exists('alt_brevo_sync_status') ? alt_brevo_sync_status() : null;
     // Welcome mails today against their share of Brevo's 300/day (2026-09-27).
-    $out['welcome_mail'] = function_exists('alt_welcome_budget_status') ? alt_welcome_budget_status() : null;
+    $wm = function_exists('alt_welcome_budget_status') ? alt_welcome_budget_status() : null;
+    $out['welcome_mail'] = $wm;
+    // Adaptive cap (owner ruling 2026-09-28), top level for subscriber_watch.py.
+    $out['welcome_cap_effective'] = $wm ? (int) $wm['welcome_cap_effective'] : null;
+    $out['welcome_cap_reason'] = $wm ? (string) $wm['welcome_cap_reason'] : null;
     return $out;
 }
 

@@ -59,6 +59,30 @@ worldwide_vocabulary, rotation_covers_ring green. `run_tests.py --group rest`:
 the same on clean main (sandbox proxy). `rest-2`: `test_cost_funnel.py` cannot
 load in this environment ("too many statically nested blocks", same on main);
 the other 2690 tests OK.
+## 2026-09-28 - Adaptive welcome cap: 40/day, auto-raised to 100 when signups grow (2.20.214)
+
+**Class:** novel (an owner-ruled self-adjusting budget, not a defect shape in the vocabulary)
+**Guard:** `railway/tests/test_email_owner_decisions.py` (AdaptiveWelcomeCap), `railway/tests/test_subscriber_watch.py` (AdaptiveCap)
+
+Owner ruling 2026-09-28: the welcome cap starts at 40/day and goes up to 100
+by itself when signups grow, checked daily. `includes/subscriber-prefs.php`:
+`alt_welcome_cap_decide()` (pure) runs at the UTC day roll-over of
+`alt_mail_budget`. It raises to 100 when on any of the last 3 completed days
+welcome demand (sent + skipped) was >= 30 AND yesterday's recorded reader
+sends (digest recipients from the sends log + welcomes + confirmations) + 60
+<= 300. Once raised it stays (`raised_on` in the option, no flapping).
+`ALT_WELCOME_DAILY_CAP`, if defined in wp-config, is the manual override and
+always wins; the plugin no longer defines it itself. The option keeps a
+per-day `history` bounded to 7 days; confirmations are now counted
+(`alt_mail_budget_record('confirm')` after the confirm mail). Limits:
+"recorded" digest sends are the sends log's `recipients`; relay sends not in
+that log are invisible to the rule, and a day with no ledger read (no
+confirm, no stats call) has no history row, which reads as zero demand.
+`/subscriber-stats` exposes top-level `welcome_cap_effective` and
+`welcome_cap_reason`; `subscriber_watch.py` reads them, uses the effective cap
+for its 75% warn, and prints "cap auto-raised to 100 on <date>" (UNKNOWN,
+never a guessed 40, before the plugin ships). Branch
+`claude/adaptive-welcome-cap`, not merged, not deployed.
 
 ## 2026-09-27 - Daily subscriber watch: welcome-cap and Brevo budget flags
 

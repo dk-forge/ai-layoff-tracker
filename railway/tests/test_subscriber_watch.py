@@ -131,3 +131,35 @@ class TrendRules(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AdaptiveCap(unittest.TestCase):
+    """Owner ruling 2026-09-28: the plugin raises 40 -> 100 by itself."""
+
+    def snap(self, **extra):
+        p = payload(welcome=10)
+        p.update(extra)
+        return sw.parse(p, "2026-09-28")
+
+    def test_effective_cap_and_reason_are_read(self):
+        s = self.snap(welcome_cap_effective=100, welcome_cap_reason="auto-raised to 100 on 2026-09-27")
+        self.assertEqual(s["cap_effective"], 100)
+        self.assertEqual(s["welcome"]["cap"], 100)
+
+    def test_summary_says_auto_raised_with_date(self):
+        s = self.snap(welcome_cap_effective=100, welcome_cap_reason="auto-raised to 100 on 2026-09-27")
+        self.assertIn("cap auto-raised to 100 on 2026-09-27", sw.summary([s], sw.evaluate([s])))
+
+    def test_warn_fraction_follows_the_raised_cap(self):
+        s = sw.parse(dict(payload(welcome=40), welcome_cap_effective=100,
+                          welcome_cap_reason="auto-raised to 100 on 2026-09-27"), "2026-09-28")
+        self.assertEqual(sw.evaluate([s]), [])
+
+    def test_default_reason_is_reported(self):
+        s = self.snap(welcome_cap_effective=40, welcome_cap_reason="default; welcome demand under 30/day")
+        self.assertIn("Welcome cap: 40/day (default", sw.summary([s], []))
+
+    def test_absent_fields_are_unknown_not_40(self):
+        s = self.snap()
+        self.assertIsNone(s["cap_effective"])
+        self.assertIn("adaptive cap not live yet", sw.summary([s], []))
