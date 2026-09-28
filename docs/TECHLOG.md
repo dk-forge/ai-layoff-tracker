@@ -1,3 +1,14 @@
+## 2026-09-28 - VPS ingest proven by manual dispatch
+
+**Class:** novel (config value, not a defect shape in the vocabulary)
+**Guard:** none - a repo variable value is owner-set config, not code a test can pin
+
+VPS ingest proven by manual dispatch (run 36490465653, success, 22:07-22:31 UTC on
+the contabo self-hosted runner: 977 items pulled, 2 rows stored/posted, LLM spend
+$0.1283 over 1328 calls against a $0.20 ceiling). Tonight's 22:00 scheduled run was
+skipped because repo variable `ALT_INGEST_ON_VPS` is not read as exactly 'true';
+owner to set the value to exactly `true`.
+
 ## 2026-09-28 - Archive backfill: "+15 re-served" per batch was our own unflushed buffer, not the edge or the plugin
 
 **Class:** novel (client write-before-read ordering)
