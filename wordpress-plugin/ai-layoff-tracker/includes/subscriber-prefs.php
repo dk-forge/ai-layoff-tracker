@@ -309,19 +309,107 @@ function alt_prefs_handle($token) {
 /* Welcome email                                                       */
 /* ------------------------------------------------------------------ */
 
-/** Welcome mails per UTC day, out of Brevo's 300/day. The rest is the digest's. */
-if (!defined('ALT_WELCOME_DAILY_CAP')) define('ALT_WELCOME_DAILY_CAP', 40);
+/*
+ * Welcome mails per UTC day, out of Brevo's 300/day. The rest is the digest's.
+ *
+ * Owner ruling 2026-09-28: the cap starts at 40 and steps up to 100 by itself
+ * when signups grow, checked once a day (at the UTC day roll-over). It steps
+ * up when, on any of the last 3 completed days, welcome demand (sent +
+ * skipped) was >= 30, AND the previous day's reader sends as recorded
+ * (digest recipients + welcomes + confirmations) + 60 fit in Brevo's 300.
+ * Once raised it stays raised (no flapping). Defining ALT_WELCOME_DAILY_CAP
+ * (wp-config) is the manual override and always wins.
+ */
+const ALT_WELCOME_CAP_BASE = 40;
+const ALT_WELCOME_CAP_RAISED = 100;
+const ALT_WELCOME_DEMAND_TRIGGER = 30;
+const ALT_BREVO_DAILY_LIMIT = 300;
+const ALT_MAIL_HISTORY_DAYS = 7;
 
-/** The plugin's own reader-mail ledger for today: array(day, welcome, skipped). */
+/**
+ * Pure decision. $history: array(day => array(welcome, welcome_skipped,
+ * confirm, digest)) of COMPLETED days; $raised_on: the day it was raised or ''.
+ * Returns array(cap, reason, raised_on).
+ */
+function alt_welcome_cap_decide($history, $raised_on, $today, $override = null) {
+    if ($override !== null) {
+        return array((int) $override, 'manual override (ALT_WELCOME_DAILY_CAP)', (string) $raised_on);
+    }
+    if ((string) $raised_on !== '') {
+        return array(ALT_WELCOME_CAP_RAISED, 'auto-raised to ' . ALT_WELCOME_CAP_RAISED . ' on ' . $raised_on, (string) $raised_on);
+    }
+    $t = strtotime($today . ' 00:00:00 UTC');
+    $demand = false;
+    for ($i = 1; $i <= 3; $i++) {
+        $d = $history[gmdate('Y-m-d', $t - $i * 86400)] ?? null;
+        if (is_array($d) && (int) ($d['welcome'] ?? 0) + (int) ($d['welcome_skipped'] ?? 0) >= ALT_WELCOME_DEMAND_TRIGGER) {
+            $demand = true;
+        }
+    }
+    $y = $history[gmdate('Y-m-d', $t - 86400)] ?? array();
+    $y_total = (int) ($y['digest'] ?? 0) + (int) ($y['welcome'] ?? 0) + (int) ($y['confirm'] ?? 0);
+    $room = $y_total + (ALT_WELCOME_CAP_RAISED - ALT_WELCOME_CAP_BASE) <= ALT_BREVO_DAILY_LIMIT;
+    if ($demand && $room) {
+        return array(ALT_WELCOME_CAP_RAISED, 'auto-raised to ' . ALT_WELCOME_CAP_RAISED . ' on ' . $today, $today);
+    }
+    $why = !$demand
+        ? 'default; welcome demand under ' . ALT_WELCOME_DEMAND_TRIGGER . '/day on each of the last 3 days'
+        : 'default; demand met but yesterday used ' . $y_total . ' of ' . ALT_BREVO_DAILY_LIMIT . ', no room for +60';
+    return array(ALT_WELCOME_CAP_BASE, $why, '');
+}
+
+/** Digest recipients recorded in the sends log for one UTC day (0 when unseen). */
+function alt_mail_digest_recipients_on($day) {
+    global $wpdb;
+    if (!function_exists('alt_digest_sends_table') || !function_exists('alt_digest_table_present')) return 0;
+    if (!alt_digest_table_present(alt_digest_sends_table())) return 0;
+    return (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COALESCE(SUM(recipients), 0) FROM ' . alt_digest_sends_table()
+        . ' WHERE sent_at >= %s AND sent_at < %s',
+        $day . ' 00:00:00', gmdate('Y-m-d', strtotime($day . ' 00:00:00 UTC') + 86400) . ' 00:00:00'));
+}
+
+/**
+ * The plugin's reader-mail ledger for today, rolled over (and the cap
+ * re-decided) on the first read of a new UTC day. Persists on roll-over.
+ */
 function alt_welcome_budget_status() {
     $b = get_option('alt_mail_budget', array());
+    if (!is_array($b)) $b = array();
     $today = gmdate('Y-m-d');
-    if (!is_array($b) || ($b['day'] ?? '') !== $today) {
-        $b = array('day' => $today, 'welcome' => 0, 'welcome_skipped' => 0);
+    $history = (isset($b['history']) && is_array($b['history'])) ? $b['history'] : array();
+    $raised_on = (string) ($b['raised_on'] ?? '');
+    $rolled = ($b['day'] ?? '') !== $today || !isset($b['welcome_cap_effective']);
+    if (($b['day'] ?? '') !== $today) {
+        if (!empty($b['day'])) {
+            $history[$b['day']] = array(
+                'welcome'         => (int) ($b['welcome'] ?? 0),
+                'welcome_skipped' => (int) ($b['welcome_skipped'] ?? 0),
+                'confirm'         => (int) ($b['confirm'] ?? 0),
+                'digest'          => alt_mail_digest_recipients_on($b['day']),
+            );
+        }
+        $b = array('day' => $today, 'welcome' => 0, 'welcome_skipped' => 0, 'confirm' => 0);
     }
-    $b['welcome_cap'] = (int) ALT_WELCOME_DAILY_CAP;
-    $b['brevo_daily_limit'] = 300;
+    ksort($history);
+    $history = array_slice($history, -ALT_MAIL_HISTORY_DAYS, null, true);
+    list($cap, $reason, $raised_on) = alt_welcome_cap_decide(
+        $history, $raised_on, $today, defined('ALT_WELCOME_DAILY_CAP') ? ALT_WELCOME_DAILY_CAP : null);
+    $b['history'] = $history;
+    $b['raised_on'] = $raised_on;
+    $b['welcome_cap'] = $cap;
+    $b['welcome_cap_effective'] = $cap;
+    $b['welcome_cap_reason'] = $reason;
+    $b['brevo_daily_limit'] = ALT_BREVO_DAILY_LIMIT;
+    if ($rolled) update_option('alt_mail_budget', $b, false);
     return $b;
+}
+
+/** Count one reader mail the plugin sent (e.g. 'confirm') in today's ledger. */
+function alt_mail_budget_record($kind) {
+    $b = alt_welcome_budget_status();
+    $b[$kind] = (int) ($b[$kind] ?? 0) + 1;
+    update_option('alt_mail_budget', $b, false);
 }
 
 /** The next scheduled send for a tier, in New York time (railway/digest_slot.py SEND_TIMES). */
@@ -374,7 +462,7 @@ function alt_welcome_body($row, $prefs_url) {
 function alt_digest_send_welcome($row) {
     if (!is_array($row) || ($row['status'] ?? '') !== 'confirmed') return false;
     $b = alt_welcome_budget_status();
-    if ((int) $b['welcome'] >= (int) ALT_WELCOME_DAILY_CAP) {
+    if ((int) $b['welcome'] >= (int) $b['welcome_cap_effective']) {
         $b['welcome_skipped'] = (int) $b['welcome_skipped'] + 1;
         update_option('alt_mail_budget', $b, false);
         return false;

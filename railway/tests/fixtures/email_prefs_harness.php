@@ -106,7 +106,7 @@ $out['change_confirm'] = confirm(row('welcome@example.com')['confirm_token']);
 $out['mails_from_change_confirm'] = count(mails_to('welcome@example.com')) - $before;
 
 /* 1c. Budget spent: the welcome is skipped and counted, the confirm still lands. */
-$GLOBALS['__options']['alt_mail_budget'] = array('day' => gmdate('Y-m-d'), 'welcome' => ALT_WELCOME_DAILY_CAP, 'welcome_skipped' => 0);
+$GLOBALS['__options']['alt_mail_budget'] = array('day' => gmdate('Y-m-d'), 'welcome' => ALT_WELCOME_CAP_BASE, 'welcome_skipped' => 0);
 sub('capped@example.com', array('layoff'), 'daily');
 $out['capped_confirm'] = confirm(row('capped@example.com')['confirm_token']);
 $out['capped_status'] = row('capped@example.com')['status'];
@@ -209,4 +209,27 @@ $out['next'] = array(
     'daily_before_slot' => alt_welcome_next_send('daily', strtotime('2026-09-28 09:00:00 UTC')),
 );
 
+
+/* 9. ADAPTIVE WELCOME CAP (owner ruling 2026-09-28). */
+$td = gmdate('Y-m-d');
+$ago = function ($n) { return gmdate('Y-m-d', time() - $n * 86400); };
+$h = function ($w, $sk = 0, $c = 0, $d = 0) { return array('welcome' => $w, 'welcome_skipped' => $sk, 'confirm' => $c, 'digest' => $d); };
+$out['cap_quiet'] = alt_welcome_cap_decide(array($ago(1) => $h(10, 0, 12, 100)), '', $td);
+$out['cap_grow'] = alt_welcome_cap_decide(array($ago(3) => $h(25, 5), $ago(1) => $h(5, 0, 10, 150)), '', $td);
+$out['cap_old_demand'] = alt_welcome_cap_decide(array($ago(4) => $h(40, 10), $ago(1) => $h(5)), '', $td);
+$out['cap_no_room'] = alt_welcome_cap_decide(array($ago(2) => $h(40, 5), $ago(1) => $h(40, 0, 40, 170)), '', $td);
+$out['cap_edge_room'] = alt_welcome_cap_decide(array($ago(1) => $h(30, 0, 40, 170)), '', $td);
+$out['cap_sticky'] = alt_welcome_cap_decide(array(), '2026-09-01', $td);
+$out['cap_override'] = alt_welcome_cap_decide(array(), '2026-09-01', $td, 55);
+// Roll-over through the real ledger: yesterday's counters become history,
+// digest recipients come from the sends log, and the raise persists.
+$GLOBALS['__options']['alt_mail_budget'] = array('day' => $ago(1), 'welcome' => 28, 'welcome_skipped' => 4, 'confirm' => 35,
+    'history' => array('2026-01-01' => $h(1), '2026-01-02' => $h(1), '2026-01-03' => $h(1), '2026-01-04' => $h(1),
+                       '2026-01-05' => $h(1), '2026-01-06' => $h(1), '2026-01-07' => $h(1)));
+$out['rolled'] = alt_welcome_budget_status();
+$out['rolled_saved'] = get_option('alt_mail_budget');
+$out['stats_cap'] = array_intersect_key(alt_digest_stats(), array('welcome_cap_effective' => 1, 'welcome_cap_reason' => 1));
+$c0 = (int) get_option('alt_mail_budget')['confirm'];
+sub('confirmcount@example.com', array('layoff'), 'weekly');
+$out['confirm_recorded'] = (int) get_option('alt_mail_budget')['confirm'] - $c0;
 echo json_encode($out);

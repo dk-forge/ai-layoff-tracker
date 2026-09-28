@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import sys
 import urllib.request
 from datetime import datetime, timezone
@@ -69,6 +70,10 @@ def parse(payload: dict, today: str) -> dict:
         "follows": None,
         "welcome": None,
         "digest_today": None,
+        # Adaptive welcome cap (owner ruling 2026-09-28); None when the plugin
+        # predates it, never a guessed 40.
+        "cap_effective": _int(p.get("welcome_cap_effective")),
+        "cap_reason": p.get("welcome_cap_reason") if isinstance(p.get("welcome_cap_reason"), str) else None,
     }
     f = p.get("follows")
     if isinstance(f, dict):
@@ -79,13 +84,25 @@ def parse(payload: dict, today: str) -> dict:
             "day": str(w.get("day") or today),
             "sent": _int(w.get("welcome")),
             "skipped": _int(w.get("welcome_skipped")) or 0,
-            "cap": _int(w.get("welcome_cap")) or WELCOME_CAP_DEFAULT,
+            "cap": (_int(p.get("welcome_cap_effective")) or _int(w.get("welcome_cap"))
+                    or WELCOME_CAP_DEFAULT),
             "limit": _int(w.get("brevo_daily_limit")) or BREVO_DAILY_LIMIT,
         }
     last = p.get("last_send")
     if isinstance(last, dict) and str(last.get("sent_at") or "")[:10] == today:
         snap["digest_today"] = _int(last.get("recipients"))
     return snap
+
+
+def cap_line(snap: dict) -> str:
+    """The plugin's own word on the welcome cap, and when it auto-raised."""
+    eff, reason = snap.get("cap_effective"), snap.get("cap_reason")
+    if eff is None:
+        return "Welcome cap: adaptive cap not live yet (effective cap UNKNOWN)"
+    m = re.search(r"auto-raised to (\d+) on (\d{4}-\d{2}-\d{2})", reason or "")
+    if m:
+        return f"Welcome cap: {eff}/day (cap auto-raised to {m.group(1)} on {m.group(2)})"
+    return f"Welcome cap: {eff}/day ({reason or 'no reason given'})"
 
 
 def total_sends(snap: dict):
@@ -185,6 +202,7 @@ def summary(history: list, warns: list) -> str:
     if w:
         lines.append(f"- Welcome emails: {w['sent']} sent of cap {w['cap']}, "
                      f"{w['skipped']} skipped over cap")
+        lines.append(f"- {cap_line(s)}")
         lines.append(f"- Total Brevo sends today: {_v(total_sends(s))} of {BREVO_DAILY_LIMIT}")
     else:
         lines.append("- Welcome emails: welcome counter not live yet (needs plugin 2.20.213)")

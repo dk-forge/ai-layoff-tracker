@@ -261,3 +261,56 @@ class WeeklyMastheadEndsOnSunday(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which("php"), "UNKNOWN, NOT RUN: php not installed")
+class AdaptiveWelcomeCap(unittest.TestCase):
+    """Owner ruling 2026-09-28: 40/day, auto-raised to 100 when signups grow."""
+
+    def test_quiet_days_keep_the_cap_at_40(self):
+        self.assertEqual(run()["cap_quiet"][0], 40)
+        self.assertIn("default", run()["cap_quiet"][1])
+
+    def test_demand_of_30_in_the_last_3_days_with_room_raises_to_100(self):
+        cap, reason, raised = run()["cap_grow"]
+        self.assertEqual(cap, 100)
+        self.assertEqual(raised, datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
+        self.assertIn("auto-raised to 100 on " + raised, reason)
+
+    def test_demand_older_than_3_days_does_not_count(self):
+        self.assertEqual(run()["cap_old_demand"][0], 40)
+
+    def test_no_room_in_brevos_300_blocks_the_raise(self):
+        cap, reason, raised = run()["cap_no_room"]
+        self.assertEqual((cap, raised), (40, ""))
+        self.assertIn("250 of 300", reason)
+
+    def test_exactly_240_yesterday_still_has_room(self):
+        self.assertEqual(run()["cap_edge_room"][0], 100)
+
+    def test_once_raised_it_stays_raised(self):
+        self.assertEqual(run()["cap_sticky"][:1] + [run()["cap_sticky"][2]], [100, "2026-09-01"])
+
+    def test_the_constant_is_a_manual_override(self):
+        cap, reason, _ = run()["cap_override"]
+        self.assertEqual(cap, 55)
+        self.assertIn("manual override", reason)
+
+    def test_rollover_records_history_bounded_to_7_and_persists_the_raise(self):
+        o = run()
+        r = o["rolled"]
+        self.assertEqual((r["welcome"], r["welcome_skipped"], r["confirm"]), (0, 0, 0))
+        self.assertEqual(len(r["history"]), 7)
+        self.assertNotIn("2026-01-01", r["history"])
+        y = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        self.assertEqual(r["history"][y]["welcome_skipped"], 4)
+        self.assertEqual(r["welcome_cap_effective"], 100)       # 28+4 >= 30, 63+digest <= 240
+        self.assertEqual(o["rolled_saved"]["raised_on"], r["raised_on"])
+
+    def test_stats_expose_effective_cap_and_reason(self):
+        s = run()["stats_cap"]
+        self.assertEqual(s["welcome_cap_effective"], 100)
+        self.assertIn("auto-raised to 100 on", s["welcome_cap_reason"])
+
+    def test_confirmation_sends_are_recorded(self):
+        self.assertEqual(run()["confirm_recorded"], 1)
