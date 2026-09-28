@@ -1,3 +1,27 @@
+## 2026-09-28 - Archive backfill: "+15 re-served" per batch was our own unflushed buffer, not the edge or the plugin
+
+**Class:** novel (client write-before-read ordering)
+**Guard:** `railway/tests/test_archive_backfill.py::BatchStampsLandBeforeNextFetch`
+
+**Symptom.** Run 36427170270 (on 53f7814, after the #426 `_fresh` edge-cache
+fix) still warned "re-check stamps not sticking this run: 0 unacknowledged,
+60 re-served", with "+15 re-served that this run already recorded" on each batch.
+
+**Root cause.** `archive_backfill.flush()` posts to `/archive-record` only once
+`FLUSH_EVERY` (25) records are buffered. `process()` returned with the batch's
+remainder (up to 24 records) still in the buffer, and the loop immediately
+fetched `/archive-candidates` again. Those URLs had no `checked_at` stamp yet,
+so the server correctly handed them back as due. A 500-URL batch leaves
+500 mod 25 plus the carried remainder, which was 15 here; 4 batches gave 60.
+Not the Cloudflare cache (`get_json` does add `_fresh` to the keyed candidates
+GET; a cached reply would re-serve the whole batch), and not the plugin: the
+candidates query excludes rows with fresh `checked_at`, `url_hash` is UNIQUE,
+and `/archive-record` stamps `checked_at` on every item. Plugin code on main is
+unchanged since the last deploy (1c948bc), so no plugin deploy is needed.
+
+**Fix.** `process()` ends with `flush(force=True)`, so every record a batch
+made is stamped before the next fetch. The warning now means what it says.
+
 ## 2026-09-28 - Cost trims: Google News title prefilter; Railway ingest gets a dormant VPS twin (branch)
 
 **Class:** novel (cost trim, not a defect shape in the vocabulary)

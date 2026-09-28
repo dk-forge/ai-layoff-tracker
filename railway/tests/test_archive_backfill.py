@@ -12,7 +12,9 @@ Invariants:
 """
 import os
 import sys
+import io
 import unittest
+from contextlib import redirect_stdout
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -119,6 +121,37 @@ class FailOpenTests(unittest.TestCase):
         self.assertEqual(ab.save_page_now("https://x.test/a", session),
                          "https://web.archive.org/web/20240101/https://x.test/a")
 
+
+
+class BatchStampsLandBeforeNextFetch(unittest.TestCase):
+    """2026-09-28: a batch's sub-FLUSH_EVERY remainder was still buffered when
+    the next /archive-candidates fetch ran, so the server re-served it."""
+
+    def test_no_url_is_reserved_when_the_server_honours_stamps(self):
+        pool = [f"https://example.com/{i}" for i in range(40)]
+        stamped = set()
+
+        def fetch():
+            due = [u for u in pool if u not in stamped][:15]
+            return due, {}
+
+        def post(items):
+            stamped.update(i["url"] for i in items)
+            return {"pending": len(items)}
+
+        out = io.StringIO()
+        with mock.patch.object(ab, "fetch_candidates", side_effect=fetch), \
+             mock.patch.object(ab, "post_records", side_effect=post), \
+             mock.patch.object(ab, "check_availability", return_value=None), \
+             mock.patch.object(ab, "report_source_health", return_value=True), \
+             mock.patch.object(ab, "LIMIT", 40), mock.patch.object(ab, "FLUSH_EVERY", 25), \
+             mock.patch.object(ab, "SPN_MAX", 0), mock.patch.object(ab, "DRY_RUN", False), \
+             mock.patch.object(ab, "HANDOFF_FILE", ""), \
+             mock.patch.object(ab.requests.Session, "get", side_effect=Exception("offline")), \
+             redirect_stdout(out):
+            ab.run()
+        self.assertEqual(stamped, set(pool))
+        self.assertNotIn("re-served", out.getvalue())
 
 if __name__ == "__main__":
     unittest.main()
