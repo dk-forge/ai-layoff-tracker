@@ -49,6 +49,7 @@ import http_retry
 
 import run_slice
 from sources.google_news_url import resolve as resolve_article_url
+from sources import google_news_prefilter
 
 RSS = "https://news.google.com/rss/search"
 # Google News serves python-requests fine, but a browser-ish UA is safest and
@@ -282,6 +283,11 @@ def pull_google_news(queries=None, company_names=None):
     # assumed: 'direct' and 'decoded' cite the publisher, 'unresolved' still
     # carries a Google News redirector because robots.txt forbids following it.
     pull_google_news.citation_states = {"direct": 0, "decoded": 0, "unresolved": 0}
+    # Free title prefilter (sources/google_news_prefilter.py) on the BROAD
+    # sweeps only: a caller that passes its own `queries` (ai_evidence_sweep's
+    # targeted search) and every company chase keep today's behaviour.
+    prefilter_on = queries is None and google_news_prefilter.enabled()
+    pull_google_news.prefilter_counts = {"kept": 0, "dropped": 0, "reasons": {}}
     qs = list(queries or DISCOVERY_QUERIES)
     # Company-targeted queries are the surgical fix for the exact miss list
     # (Google, HP, Accenture, SAP, Uber...): the watchlist supplies the names.
@@ -322,7 +328,8 @@ def pull_google_news(queries=None, company_names=None):
     # cap, so a later job (the euphemism sweep, a company chase, a non-US
     # edition) can never be starved by an earlier one returning ~100 items.
     per_q = max(8, MAX_ITEMS // max(1, len(jobs)))
-    for q, loc in jobs:
+    for job_i, (q, loc) in enumerate(jobs):
+        filter_this_job = prefilter_on and job_i >= n_company
         if len(results) >= MAX_ITEMS:
             break
         taken_this_q = 0
@@ -363,6 +370,13 @@ def pull_google_news(queries=None, company_names=None):
                 continue
             if tkey:
                 seen_titles.add(tkey)
+            if filter_this_job:
+                keep, why = google_news_prefilter.title_verdict(title, loc[1])
+                pc = pull_google_news.prefilter_counts
+                pc["kept" if keep else "dropped"] += 1
+                if not keep:
+                    pc["reasons"][why] = pc["reasons"].get(why, 0) + 1
+                    continue
             desc = _clean(it.get("description"))
             source = (it.get("source") or "").strip()
             # The headcount lives in the title; the description is usually just a
@@ -401,6 +415,13 @@ def pull_google_news(queries=None, company_names=None):
     print(f"Google News: {len(results)} unique items; {len(jobs)} query-edition "
           f"jobs planned across editions [{', '.join(l[0] for l in locales)}]"
           + (f" ({errors} error(s))" if errors else ""))
+    pc = pull_google_news.prefilter_counts
+    if prefilter_on:
+        print(f"Google News prefilter: kept {pc['kept']}, dropped {pc['dropped']} "
+              f"broad-sweep titles before any model call {pc['reasons']}")
+    else:
+        print("Google News prefilter: off for this call (explicit queries, "
+              "company chase only, or GOOGLE_NEWS_PREFILTER=off)")
     print(f"Google News citations: {citation_summary(pull_google_news.citation_states)}")
     return results
 
