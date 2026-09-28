@@ -62,7 +62,7 @@ the other 2690 tests OK.
 
 ## 2026-09-28 - Ops: daily ingest moved from Railway to the VPS
 
-**Class:** cost
+**Class:** novel
 **Guard:** `railway/tests/test_ingest_moved_to_vps.py`
 
 Proof dispatch of `ingest-cron-vps.yml` (run 36421789998, 12:26 UTC) was clean:
