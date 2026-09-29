@@ -73,6 +73,13 @@ function alt_mr_pitch(array $f) {
         $out[] = 'Employers attributed ' . $nf($ai) . ' of those cuts ('
             . (int) round(100 * $ai / $v) . '%) to AI or automation in their own words.';
     }
+    $named = (array) (($f['ai_rank'] ?? array())['named'] ?? array());
+    if ($named) {
+        $who = array();
+        foreach (array_slice($named, 0, 3) as $e) $who[] = $e['company'] . ' (' . $nf($e['jobs']) . ')';
+        $out[] = 'Employers that named AI as a reason: ' . implode(', ', $who)
+            . (count($named) > 3 ? ', and ' . (count($named) - 3) . ' more in the full report' : '') . '.';
+    }
     $list = function ($rows) use ($nf) {
         $parts = array();
         foreach (array_slice((array) $rows, 0, 5) as $r) {
@@ -96,6 +103,63 @@ function alt_mr_csv_url($from, $to, $us_only = false) {
     $args = array('action' => 'alt_export_csv', 'from' => $from, 'to' => $to, 'date_basis' => 'effective');
     if ($us_only) $args['country'] = 'United States';
     return add_query_arg($args, admin_url('admin-post.php'));
+}
+
+/**
+ * "Who said AI caused their cuts", ranked. PURE: rows in, two lists out.
+ *
+ * NAMED = the employer's own statement named AI (ai_explicit=1). Only these
+ * count toward the "because of AI" total, the same rule as ai_verified_jobs.
+ * MENTIONED = AI linked loosely or by the press (ai_causation 'ai_linked'),
+ * listed apart so the headline figure is never inflated by it. A row whose
+ * employer explicitly denied AI is in neither list. Each entry keeps the quote
+ * and the source link of its LARGEST row, so the link backs the biggest number.
+ */
+function alt_mr_ai_rank($rows, $limit = 10) {
+    $groups = array('named' => array(), 'mentioned' => array());
+    foreach ((array) $rows as $r) {
+        $cause = (string) ($r['ai_causation'] ?? '');
+        if ($cause === 'explicitly_denied') continue;
+        if (!empty($r['ai_explicit'])) $g = 'named';
+        elseif ($cause === 'ai_linked') $g = 'mentioned';
+        else continue;
+        $co = trim((string) ($r['company'] ?? ''));
+        if ($co === '') continue;
+        $jobs = (int) ($r['job_count'] ?? 0);
+        $url = trim((string) ($r['source_url'] ?? ''));
+        if (!preg_match('#^https?://#i', $url)) $url = '';
+        $quote = trim(preg_replace('/\s+/', ' ', (string) ($r['ai_language'] ?? '')));
+        if (strlen($quote) > 200) $quote = rtrim(substr($quote, 0, 199)) . "\u{2026}";
+        if (!isset($groups[$g][$co])) {
+            $groups[$g][$co] = array('company' => $co, 'jobs' => 0, 'country' => '', 'industry' => '',
+                                     'quote' => '', 'source_url' => '', '_top' => -1);
+        }
+        $e =& $groups[$g][$co];
+        $e['jobs'] += $jobs;
+        if ($jobs > $e['_top']) {
+            $e['_top'] = $jobs;
+            $e['country'] = (string) ($r['country'] ?? '');
+            $e['industry'] = (string) ($r['industry'] ?? '');
+            if ($url !== '') $e['source_url'] = $url;
+            if ($quote !== '') $e['quote'] = $quote;
+        } else {
+            if ($e['source_url'] === '' && $url !== '') $e['source_url'] = $url;
+            if ($e['quote'] === '' && $quote !== '') $e['quote'] = $quote;
+        }
+        unset($e);
+    }
+    $out = array();
+    foreach ($groups as $g => $list) {
+        $list = array_values($list);
+        usort($list, function ($a, $b) {
+            return $b['jobs'] <=> $a['jobs'] ?: strcmp($a['company'], $b['company']);
+        });
+        $list = array_slice($list, 0, max(0, (int) $limit));
+        foreach ($list as &$e) unset($e['_top']);
+        unset($e);
+        $out[$g] = $list;
+    }
+    return $out;
 }
 
 /** Figures for one month. Same population as templates/page-report.php. */
@@ -126,6 +190,11 @@ function alt_mr_figures($period, $us_only = false) {
         return array_map(function ($r) { return array((string) $r['k'], (int) $r['j']); }, $rows);
     };
     $cur = $sum($from, $to); $prev = $sum($pfrom, $pto);
+    // Rows for "who said AI" (alt_mr_ai_rank). Verified tier only, like $sum.
+    $ai_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT company, job_count, ai_explicit, ai_causation, ai_language, source_url, country, industry
+         FROM $t WHERE superset_of=0 AND announced=0 AND layoff_date BETWEEN %s AND %s
+           AND (ai_explicit=1 OR ai_causation='ai_linked')$geo", $from, $to), ARRAY_A) ?: array();
     $months = array(1=>'January','February','March','April','May','June','July','August','September','October','November','December');
     $fig = array(
         'period'              => $period,
@@ -139,6 +208,7 @@ function alt_mr_figures($period, $us_only = false) {
         'top_companies'       => $top('company'),
         'top_states'          => $top('state', " AND country = 'United States'"),
         'top_countries'       => $us_only ? array() : $top('country'),
+        'ai_rank'             => alt_mr_ai_rank($ai_rows, 10),
         'report_url'          => add_query_arg(array_filter(array('period' => $period, 'scope' => $us_only ? 'us' : '')),
                                                home_url('/ai-layoff-tracker/report/')),
         'csv_url'             => alt_mr_csv_url($from, $to, $us_only),

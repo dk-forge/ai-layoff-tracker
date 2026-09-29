@@ -427,6 +427,33 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
     </div>
     <?php endif; ?>
 
+    <?php
+    // WHO SAID AI (owner ask 2026-09-29). Named = the employer's own words named
+    // AI and the cuts count toward the AI total; mentioned = AI linked loosely or
+    // by the press, shown apart and never counted. Quote + source on every row.
+    $alt_air = $alt_mr['ai_rank'] ?? array();
+    $alt_air_blocks = array(
+        'Employers that named AI as a reason' => (array) ($alt_air['named'] ?? array()),
+        'AI mentioned alongside other reasons (not counted as AI cuts)' => (array) ($alt_air['mentioned'] ?? array()),
+    );
+    if ($alt_mr && array_filter($alt_air_blocks)) : ?>
+    <section class="alt-op-block alt-mr-ai-rank" id="who-said-ai">
+      <?php foreach ($alt_air_blocks as $alt_air_h => $alt_air_list) : if (!$alt_air_list) continue; ?>
+      <h3><?php echo esc_html($alt_air_h); ?></h3>
+      <table class="alt-op-table"><thead><tr><th>Employer</th><th>What they said</th><th class="alt-op-num">Jobs</th></tr></thead><tbody>
+      <?php foreach ($alt_air_list as $alt_air_e) : ?>
+        <tr><td class="alt-op-co"><a href="<?php echo $alt_rlink(array('company' => $alt_air_e['company'])); ?>" target="_blank" rel="noopener"><?php echo esc_html($alt_air_e['company']); ?></a><?php
+          $alt_air_meta = trim(implode(' · ', array_filter(array($alt_air_e['country'], $alt_air_e['industry']))));
+          if ($alt_air_meta !== '') : ?><br><span class="alt-muted"><?php echo esc_html($alt_air_meta); ?></span><?php endif; ?></td>
+            <td><?php if ($alt_air_e['quote'] !== '') : ?>&ldquo;<?php echo esc_html($alt_air_e['quote']); ?>&rdquo;<?php endif;
+              if ($alt_air_e['source_url'] !== '') : ?> <a href="<?php echo esc_url($alt_air_e['source_url']); ?>" target="_blank" rel="noopener nofollow">Source</a><?php endif; ?></td>
+            <td class="alt-op-num"><?php echo number_format((int) $alt_air_e['jobs']); ?></td></tr>
+      <?php endforeach; ?>
+      </tbody></table>
+      <?php endforeach; ?>
+    </section>
+    <?php endif; ?>
+
     <footer class="alt-op-footer">
       <p><b>Methodology:</b> Verified cuts have a document or report behind each figure: an SEC filing, a state WARN notice, or a named news report with a quote. AI attribution requires the employer's own words. Machine-extracted numbers are double-checked and every correction is <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>#alt-corrections">disclosed openly</a>.</p>
       <p><b>Cite as:</b> "AskTheRecruiter.com <?php echo esc_html($alt_kind); ?> Job Cuts Report, <?php echo esc_html($alt_label); ?> (accessed <?php echo esc_html($alt_stamp); ?>)." · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">Live tracker</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Data sources</a> · <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/press/')); ?>">Press kit and soundbites</a></p>

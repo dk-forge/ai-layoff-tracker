@@ -1,3 +1,18 @@
+## 2026-09-29 - Monthly report: who said AI caused their cuts
+
+**Class:** novel (new feature for press citations, not a defect)
+**Guard:** `railway/tests/test_monthly_ai_rank.py` (named vs mentioned split, per-company totals, source of the largest row, quote length, non-http source dropped, pitch sentence)
+
+Owner ask 2026-09-29: the monthly report shows which employers said AI caused
+their cuts. `alt_mr_ai_rank()` (pure) splits the month's verified rows into
+NAMED (the employer's own words named AI, ai_explicit=1; the only rows counted
+as AI cuts, same rule as ai_verified_jobs) and MENTIONED (ai_causation
+'ai_linked', shown apart, never counted). Explicit denials are in neither.
+Each entry carries the quote and the source link of its largest row. The
+report page renders both tables under `#who-said-ai`, and the press summary
+names the top three NAMED employers. Plugin 2.20.217. First release: the
+September 2026 report on Thu 2026-10-01.
+
 ## 2026-09-29 - Digest: an unconfirmed report left the lead but stayed in every other figure
 
 **Class:** two-copies-drifted (the lead subtracted the row by hand; every other figure kept the query that contained it)
