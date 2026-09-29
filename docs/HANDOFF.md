@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-09-29, branch `claude/auto-posts` (pushed, not merged, not deployed). Reserves plugin version 2.20.218.** NewsArticle markup with publish/modified dates on archived editions; see TECHLOG 2026-09-29.
 - **RELEASED - Claude (agent), 2026-09-29, branch `claude/press-ai-top10` (pushed, not merged, not deployed). Reserves plugin version 2.20.217.** Monthly report: "who said AI" ranked list with quote + source; see TECHLOG 2026-09-29.
 - **RELEASED - Claude (agent), 2026-09-29, branch `claude/digest-unverified-leak` (pushed, not merged, not deployed). Reserves plugin version 2.20.216.** Digest: unconfirmed report leaves every figure, not only the lead; see TECHLOG 2026-09-29.
 - **RELEASED - Claude (agent), 2026-09-29, branch `claude/footer-drop-suite` (pushed, not merged, not deployed). Reserves plugin version 2.20.215.** Email footer drops the #E313 suite number (owner ruling); see TECHLOG 2026-09-29.
