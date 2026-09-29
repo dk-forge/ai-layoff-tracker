@@ -1,3 +1,48 @@
+## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
+
+**Class:** novel (follow-up closure, no new incident)
+**Guard:** `railway/tests/test_changed_rows_endpoint.py::AMergeLeavesATraceOnTheKeeper`
+
+Owner goal: launch at zero open items. There are no open GitHub issues; every
+open item lives in this log as a "Still open / Not done / Needs the owner"
+paragraph. All 25 were read and classified against origin/main.
+
+**Fixed here (2.20.219).** `alt_api_merge_events` hard-deleted the duplicate
+and wrote nothing to the keeper, so `/changed-rows` could not see a merge
+(noted 2026-08-30 "Follow-up noted, not done", and 2026-09-16 "Left open,
+deliberately"). The keeper now gets `updated_at` after each merged duplicate.
+Plugin deploy follows the usual merge path and the 1h spacing.
+
+**Already fixed, closed by this entry:** 2026-09-27 email "Needs the owner"
+(welcome email and the other three decisions shipped in 2.20.213, #422);
+2026-09-21 "Left for the owner" rows (ruled by the tie-break pair, entry
+2026-09-21 above it); 2026-09-08 containment guard blind to corrections
+(`/corrections` endpoint, read by `data_integrity.py`); 2026-08-12 `us_all_time`
+incident (closed 2026-08-19T02:35:40Z); 2026-08-14 tap-floor follow-up
+(shipped 2.20.49).
+
+**Note only, nothing to do:** 2026-09-06 reverted GDELT timeout hypothesis;
+2026-09-05 editions before 2026-09-06 not re-archived (by rule); 2026-08-28
+no write-path change (by design); 2026-08-19 Kansas pre-window history gap;
+2026-08-17 no delta/citation for talent (by design); 2026-08-12 industry
+backfill gate wording.
+
+**Still open, needs the owner (not code a session can close):** JANITOR IMAP
+rotation, Railway EDGAR/GDELT logs, WARN AZ/MS repair (2026-09-24);
+`superset_of` has no writer that survives a reconcile (2026-09-21, design
+ruling); Cloudflare purge token (2026-09-12); `JANITOR_PRODUCTION_IMAP_HOST`
+orphan (2026-09-09); MN shrinking slice decision (2026-09-06); outlet
+registries NL/IT/DE/UK and ES/FR/TR approval (2026-09-02/03); GDELT BQ/budget
+decision (2026-09-02); Oklahoma listed as read while a declared gap
+(2026-08-19); four heading wording mismatches (2026-08-13); From display name
+(2026-08-19).
+
+**Still open, real code work, not in this change:** 2026-09-05 security list
+(no branch protection is owner-side; `setup-php@v2` tag pin and lftp
+`ssl:verify-certificate no` in `deploy-plugin.yml`; Railway floors outside the
+hash-pin policy; REMOTE_ADDR behind Cloudflare; untrusted text in the alert
+paste line); 2026-09-05 GitHub-run orphans (gdelt_historical, archive_backfill).
+
 ## 2026-09-29 - Archived editions: NewsArticle markup with real dates
 
 **Class:** novel (SEO feature, not a defect)
