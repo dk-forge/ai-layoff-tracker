@@ -14,6 +14,11 @@ instead of redeploying again.
 **Needs owner.** Purge the Cloudflare cache for the tracker site (Caching ->
 Configuration -> Purge Everything), then re-run deploy-plugin.yml once.
 
+**Resolved 2026-09-28 23:37 UTC.** Owner purged the full Cloudflare cache; the
+re-run of deploy-plugin.yml (run 36498827922, dispatched 23:35) succeeded,
+including the reader-side build-hash check. An automatic run at 22:42 had also
+succeeded, so the edge may have expired on its own before the purge.
+
 ## 2026-09-28 - VPS ingest proven by manual dispatch
 
 **Class:** novel (config value, not a defect shape in the vocabulary)
