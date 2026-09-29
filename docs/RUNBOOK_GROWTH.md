@@ -168,3 +168,24 @@ by confirmation email); a first confirmation sends one welcome, capped at
 company, US state, methodology and press pages. **It is invisible until the
 owner fills `ALT_AUTHOR_PROFILE` in `includes/author-box.php`** (look for
 `TODO_OWNER_BIO`). Both name and bio are required. **Test:** `test_author_box.py`.
+
+## Press targets for the monthly report (drafted 2026-09-29)
+
+The press list stays the owner's call (includes/press-list.php): no scraped or
+bought addresses. This is where to look, not who to add. For each outlet, find
+the reporter who covered AI and layoffs in the last 30 days (their byline page
+usually lists a public email or a tips form), and record the basis in
+`consent_note` ("public byline email, covers AI and jobs").
+
+| Beat | Outlets to check first |
+|---|---|
+| AI and work | Axios (Markets, AI+), Business Insider (Tech, Careers), Fortune (Future of Work), The Information, Semafor Tech |
+| Layoffs and labor | Bloomberg (Work Shift), Reuters (US and Europe business), CNBC (Work), HR Dive, Fast Company (Work Life) |
+| Data and charts | Visual Capitalist, Statista news, Axios Visuals, Chartr, The Economist data team |
+| Europe | Handelsblatt, FT (work and careers), Sifted, Les Echos, NRC |
+| Newsletters | Morning Brew, TLDR AI, Ben's Bites, The Neuron, Exponential View |
+
+Send once a month, on the report's release day, from the Press list screen.
+The pitch text is generated from the frozen monthly figures (alt_mr_pitch),
+now including "Employers that named AI as a reason". Keep the list to people
+who cover this beat; unsubscribes are honoured automatically.
