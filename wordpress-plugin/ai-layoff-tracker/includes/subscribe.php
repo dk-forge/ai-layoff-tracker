@@ -8631,7 +8631,7 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
         'url' => '',
         'anchor' => '',
         'sentences' => array(
-            'AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.',
+            'AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.',
         ),
     );
     return $blocks;

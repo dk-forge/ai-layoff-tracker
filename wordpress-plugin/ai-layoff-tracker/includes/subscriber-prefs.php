@@ -451,7 +451,7 @@ function alt_welcome_body($row, $prefs_url) {
          . ($next !== '' ? "Your first edition is due " . $next . " (New York time).\n\n" : '')
          . "Change lists, frequency or follows here:\n" . $prefs_url . "\n\n"
          . "Every edition has a one-click unsubscribe at the foot.\n\n"
-         . "AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.\n";
+         . "AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.\n";
 }
 
 /**

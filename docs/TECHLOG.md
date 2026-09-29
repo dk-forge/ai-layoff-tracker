@@ -15,6 +15,15 @@ could not be corrected in place. Fix: `/aggregate` takes an optional
 subject included, comes from one read that does not contain it. Biggest cuts
 keeps the row with its qualifier. A failed re-read falls back to the old
 subtraction. Plugin 2.20.216.
+## 2026-09-29 - Email footer: suite number left out
+
+**Class:** novel (owner copy decision, not a defect)
+**Guard:** `railway/tests/test_digest_confirm_names_lists.py` asserts "#E313" appears in no digest or confirm email
+
+Owner ruling 2026-09-29: leave "#E313" out of the postal address in every email.
+Changed in `railway/digest_layout.py` (digest footer), `includes/press-list.php`,
+`includes/subscribe.php` and `includes/subscriber-prefs.php`. Footer now reads
+"AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102." Plugin 2.20.215.
 
 ## 2026-09-28 - deploy-plugin.yml failed 3x: edge cache stuck above origin
 
