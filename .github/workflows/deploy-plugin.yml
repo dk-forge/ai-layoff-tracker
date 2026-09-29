@@ -62,7 +62,7 @@ jobs:
       # PPA build on every deploy. GitHub-hosted runners still get the action.
       - name: Set up PHP for syntax validation
         if: runner.environment != 'self-hosted'
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.3'
 
@@ -240,7 +240,7 @@ jobs:
           # would have caught the 2026-07-27 hex-dir incident.
           if ! timeout 60 lftp -c "
             set cmd:fail-exit true;
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate yes; set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
@@ -304,7 +304,7 @@ jobs:
           # still serves while the flag is up (admin-ajax, cron, REST).
           timeout 180 lftp -c "
             set cmd:fail-exit true;
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate yes; set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
@@ -335,7 +335,7 @@ jobs:
         run: |
           WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
           timeout 60 lftp -c "
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate yes; set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
@@ -403,7 +403,7 @@ jobs:
           rm -f readback.php
           timeout 90 lftp -c "
             set cmd:fail-exit true;
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate yes; set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
