@@ -5023,6 +5023,10 @@ function alt_api_merge_events(WP_REST_Request $r) {
             $out['merged_rows'][] = $duplicate_id;
             $out['merged_records'][] = array('keeper' => $keeper_record, 'duplicate' => $duplicate_record);
             $out['net_jobs_removed'] += (int) ($duplicate['job_count'] ?? 0);
+            // The keeper absorbed the duplicate's evidence, so it is the row
+            // that changed. Without this stamp /changed-rows is blind to a
+            // merge (TECHLOG 2026-08-30, 2026-09-16).
+            $wpdb->update($table, array('updated_at' => alt_db_touch_utc()), array('id' => $keeper_id));
         }
     }
     if (!empty($out['merged_rows'])) {
