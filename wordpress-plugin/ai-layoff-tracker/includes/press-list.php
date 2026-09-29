@@ -91,7 +91,7 @@ function alt_press_email_body($contact, $pitch, $optout_url) {
         // CAN-SPAM 7704(a)(5): the digest footer carries the postal address
         // and this pitch did not (email audit 2026-09-27). Same string as the
         // digest's address block.
-        . "AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.\n";
+        . "AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.\n";
 }
 
 function alt_press_optout_url($contact) {
