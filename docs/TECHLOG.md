@@ -1,3 +1,14 @@
+## 2026-09-29 - Archived editions: NewsArticle markup with real dates
+
+**Class:** novel (SEO feature, not a defect)
+**Guard:** `railway/tests/test_edition_news_schema.py` (datePublished, dateModified from the newest correction, nothing for unpublished, headline length, guarded include)
+
+Owner ask 2026-09-29 ("SEO and dates"). New `includes/edition-schema.php`
+prints NewsArticle JSON-LD on each permanent edition page: datePublished is
+the edition's published_at, dateModified the newest correction date. The page
+already shows "Sent <date>" and the corrections list. Loaded behind
+is_readable like the archive itself. Plugin 2.20.218.
+
 ## 2026-09-29 - Monthly report: who said AI caused their cuts
 
 **Class:** novel (new feature for press citations, not a defect)
