@@ -1,3 +1,21 @@
+## 2026-09-29 - Digest: an unconfirmed report left the lead but stayed in every other figure
+
+**Class:** mixed-scope (one figure's tier differs from the figure it sits under)
+**Guard:** `railway/tests/test_digest_scope_rules.py::test_the_excluded_report_leaves_every_figure_not_only_the_lead`
+
+Week 39 (sent 2026-09-28): the lead said 24,623 verified job cuts and that the
+unconfirmed Dax-Konzerne 46,000 (spiegel.de) was "not in the figures above",
+while the subject said 70,623 and the region ("Multiple countries 46,096"),
+reason ("Cost reduction 46,907"), source and data-notes lines all still carried
+it. Cause: the composer subtracted the row by hand from the lead only; the
+leaders payload has no reason/industry/source-tier fields, so the breakdowns
+could not be corrected in place. Fix: `/aggregate` takes an optional
+`exclude_id` (db.php `alt_db_where`, and in the cache key), leaders now carry
+`id`, and the digest re-reads the window without the row, so every figure,
+subject included, comes from one read that does not contain it. Biggest cuts
+keeps the row with its qualifier. A failed re-read falls back to the old
+subtraction. Plugin 2.20.216.
+
 ## 2026-09-28 - deploy-plugin.yml failed 3x: edge cache stuck above origin
 
 **Class:** novel (third-party edge cache, not a defect shape in the vocabulary)

@@ -5120,7 +5120,50 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         (int) ($totals['ai_verified_jobs'] ?? 0), $range);
     $excluded = is_array($dominant['excluded'] ?? null) ? $dominant['excluded'] : null;
     $ex_jobs = 0; $ex_us = false; $ex_ai = false; $ex_entries = 0;
-    if ($excluded !== null && empty($excluded['announced'])) {
+    /*
+      THE WINDOW RE-READ WITHOUT THE ROW (2026-09-29).
+
+      Subtracting the row by hand reached only the lead: the subject metric,
+      the region block (its 'Multiple countries' bucket was never reduced),
+      the industry, reason and source lines all kept reading the full window,
+      because the row's reasons, industry and source tier are not in the
+      leaders payload and cannot be taken out here. Week 39 printed 24,623
+      verified in the lead and 70,623 in the subject. So the window is read
+      once more with exclude_id, and every figure below comes from that one
+      read. The leaders list is kept from the first read, so Biggest cuts
+      still shows the row with its qualifier. If the re-read fails, the old
+      in-place subtraction runs, which is no worse than before.
+    */
+    $ex_reread = false;
+    $ex_id = ($excluded !== null) ? (int) ($excluded['id'] ?? 0) : 0;
+    if ($excluded !== null && empty($excluded['announced']) && $ex_id > 0) {
+        $x_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
+        $x_req->set_param('from', $from);
+        $x_req->set_param('to', $to);
+        $x_req->set_param('date_basis', alt_digest_layoff_basis('query'));
+        $x_req->set_param('include', $req->get_param('include'));
+        $x_req->set_param('exclude_id', $ex_id);
+        $x_res = rest_do_request($x_req);
+        $x_data = ($x_res && !$x_res->is_error()) ? $x_res->get_data() : null;
+        $x_totals = is_array($x_data) ? ($x_data['totals'] ?? null) : null;
+        if (is_object($x_totals)) $x_totals = (array) $x_totals;
+        if (is_array($x_totals) && (int) ($x_totals['entries'] ?? 0) > 0) {
+            $x_data['leaders'] = $data['leaders'] ?? null;
+            $data = $x_data;
+            $totals = $x_totals;
+            $all_jobs = (int) ($totals['jobs'] ?? 0);
+            $all_entries = (int) ($totals['entries'] ?? 0);
+            $ann_jobs = (int) ($totals['announced_jobs'] ?? 0);
+            $ann_entries = (int) ($totals['announced_entries'] ?? 0);
+            $ver_jobs = max(0, $all_jobs - $ann_jobs);
+            $ver_entries = max(0, $all_entries - $ann_entries);
+            $companies_n = (int) ($totals['companies'] ?? 0);
+            $has_announced = ($ann_jobs > 0 || $ann_entries > 0);
+            list($countries_all, $multi, $covered) = $verified_split($data['top_countries'] ?? null);
+            $ex_reread = true;
+        }
+    }
+    if (!$ex_reread && $excluded !== null && empty($excluded['announced'])) {
         $ex_jobs = max(0, (int) ($excluded['job_count'] ?? 0));
         $ex_entries = 1;
         $ex_us = (strcasecmp(trim((string) ($excluded['country'] ?? '')), 'United States') === 0);

@@ -266,6 +266,18 @@ function rest_do_request($req) {
       all. So the existing fixtures keep exercising the no-comparison branch
       rather than acquiring an invented one.
     */
+    /*
+      THE WINDOW RE-READ WITHOUT ONE ROW (2026-09-29). When the digest leaves
+      a single unconfirmed report out, it asks /aggregate for the same window
+      with `exclude_id`. A fixture supplies that answer as `layoff_excluded`;
+      one that does not answers with an ERROR, and the composer's documented
+      response is the old in-place subtraction, so earlier fixtures keep
+      exercising the path they were written for.
+    */
+    if ((int) $req->get_param('exclude_id') > 0) {
+        if (empty($FIXTURE['layoff_excluded'])) return new WP_REST_Response_Stub(null, true);
+        return new WP_REST_Response_Stub($FIXTURE['layoff_excluded']);
+    }
     $from = $req->get_param('from');
     if ($from === $FIXTURE['from']) $key = 'layoff';
     elseif (isset($FIXTURE['prior_from']) && $from === $FIXTURE['prior_from']) $key = 'prior';
