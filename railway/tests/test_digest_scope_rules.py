@@ -1689,6 +1689,37 @@ class ASingleUnconfirmedReportIsNamedAsProvisional(unittest.TestCase):
         html = compose(self._coherent(verification_level="bronze"))["html"]
         self.assertIn('<p data-alt="finding">' + self.SENTENCE, html)
 
+    def test_the_excluded_report_leaves_every_figure_not_only_the_lead(self):
+        """Week 39, 2026 (owner's inbox, 2026-09-28): the lead said 24,623
+        verified and that the unconfirmed 46,000 was "not in the figures
+        above", while the subject said 70,623 and the region, reason and
+        source lines still carried the 46,000 ("Multiple countries 46,096").
+        The row now leaves the window through one re-read with exclude_id, so
+        the subject metric and every breakdown come from rows without it."""
+        fixture = self._coherent(verification_level="bronze", id=77,
+                                 country="Multiple countries")
+        excluded = json.loads(json.dumps(fixture["layoff"]))
+        excluded["totals"]["jobs"] = 21406 - 9000
+        excluded["totals"]["entries"] = fixture["layoff"]["totals"]["entries"] - 1
+        excluded["top_countries"] = [
+            _tuple("United States", 7862, 7862),
+            _tuple("Brazil", 476, 476),
+        ]
+        fixture["layoff_excluded"] = excluded
+        out = compose(fixture)
+        # The re-read was asked for, with the row's id.
+        self.assertTrue(any(int(r["params"].get("exclude_id") or 0) == 77
+                            for r in out["requests"]),
+                        "the digest did not re-read the window without the row")
+        # The subject metric is the confirmed figure, never the one with the row.
+        self.assertEqual("9,390 verified job cuts", out["metric"])
+        text = out["text"]
+        self.assertNotIn("18,390", text)
+        # The row is not inside the region block under any label.
+        self.assertNotIn("Multiple countries, no split given 9,", text)
+        # It is still named once, under the pair, as before.
+        self.assertIn(self.SENTENCE, text)
+
     def test_a_row_with_no_source_url_says_so(self):
         text = self._dominant(verification_level="bronze", source_url="")
         self.assertIn("9,000 job cuts, source not recorded. It is listed", text)

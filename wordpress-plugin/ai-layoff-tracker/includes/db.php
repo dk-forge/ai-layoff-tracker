@@ -1088,6 +1088,7 @@ function alt_filter_param_names() {
         'ai', 'ai_broad', 'ai_primary', 'review_status',
         'context_missing', 'industry_missing', 'roles_missing',
         'company_key', 'sourced', 'exclude_supersets',
+        'exclude_id',   // one row left out by id (digest, 2026-09-29)
     );
 }
 
@@ -1320,6 +1321,19 @@ function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
     // What a correlated subquery must call the outer row.
     $self = ($alias !== '') ? $alias : alt_db_table();
     $date_col = alt_db_date_col($r);
+
+    /*
+      ONE ROW LEFT OUT, BY ID (2026-09-29). The email digest names a single
+      unconfirmed report under figures it says that report is not in. It used
+      to subtract that row from the headline by hand and leave it inside
+      every breakdown (regions, reasons, industries, sources, subject line),
+      so Week 39 printed 24,623 verified in the lead and 70,623 in the
+      subject. The digest now re-reads the window with the row excluded here,
+      so every figure comes out of one query that does not contain it.
+      Public and read-only; an absent or non-positive value changes nothing.
+    */
+    $exclude_id = (int) $r->get_param('exclude_id');
+    if ($exclude_id > 0) { $where[] = "$self.id <> %d"; $params[] = $exclude_id; }
 
     $from = $r->get_param('from');
     $to = $r->get_param('to');
@@ -6911,13 +6925,14 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     */
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
-        "SELECT company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url,
+        "SELECT id, company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url,
                 verification_level, review_status,
                 (SELECT COUNT(*) FROM " . alt_source_reports_table() . " r WHERE r.event_id = $table.event_id AND $table.event_id > 0) AS report_count
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
         $leaders[] = array(
+            'id' => (int) $row->id,
             'company_name' => $row->company, 'job_count' => (int) $row->job_count,
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,

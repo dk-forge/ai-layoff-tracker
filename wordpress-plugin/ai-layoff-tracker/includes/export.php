@@ -94,7 +94,8 @@ function alt_export_is_filtered() {
             'employer_country', 'state', 'sources', 'reasons', 'roles', 'q',
             'company', 'keyword', 'min_jobs', 'stage', 'ai', 'ai_broad',
             'ai_primary', 'review_status', 'context_missing', 'industry_missing',
-            'roles_missing', 'company_key', 'sourced', 'exclude_supersets');
+            'roles_missing', 'company_key', 'sourced', 'exclude_supersets',
+            'exclude_id');
     foreach ($keys as $k) {
         if (!empty($_GET[$k])) return true;
     }
