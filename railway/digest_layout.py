@@ -1198,7 +1198,7 @@ FOOTER_BLOCKS = (
     # address. LAST because it is small print, and UNCONDITIONAL because
     # unlike the manage block it is not ours to omit -- `footer_blocks()`
     # filters on the "manage" key only, so this survives a thin payload.
-    ("", ("AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.",), ""),
+    ("", ("AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.",), ""),
 )
 
 

@@ -62,9 +62,12 @@ class SignupConfirmation(unittest.TestCase):
 class PressPitchFooter(unittest.TestCase):
     def test_pitch_carries_the_postal_address(self):
         body = _fn("alt_press_email_body", PRESS)
-        self.assertIn("601 Van Ness Ave #E313, San Francisco, CA 94102", body)
+        self.assertIn("601 Van Ness Ave, San Francisco, CA 94102", body)
         digest = SUB.read_text(encoding="utf-8")
-        self.assertIn("AskTheRecruiter.com, 601 Van Ness Ave #E313, San Francisco, CA 94102.", digest)
+        self.assertIn("AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.", digest)
+        # Owner 2026-09-29: the suite number is left out of every email.
+        self.assertNotIn("#E313", body)
+        self.assertNotIn("#E313", digest)
 
 
 if __name__ == "__main__":
