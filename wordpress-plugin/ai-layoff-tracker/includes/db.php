@@ -1088,6 +1088,7 @@ function alt_filter_param_names() {
         'ai', 'ai_broad', 'ai_primary', 'review_status',
         'context_missing', 'industry_missing', 'roles_missing',
         'company_key', 'sourced', 'exclude_supersets',
+        'exclude_id',   // one row left out by id (digest, 2026-09-29)
     );
 }
 
@@ -6270,7 +6271,7 @@ function alt_cached_route_param_names() {
         'date_basis', 'country_basis', 'except',            // reinterpret filters
         'page', 'per_page', 'sort', 'dir',                  // /query
         'after_id', 'limit',                                // /facets
-        'include', 'exclude_id',                            // /aggregate
+        'include',                                          // /aggregate
         'window_months',                                    // /conversion
     ));
 }

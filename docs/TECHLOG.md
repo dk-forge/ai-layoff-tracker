@@ -1,6 +1,6 @@
 ## 2026-09-29 - Digest: an unconfirmed report left the lead but stayed in every other figure
 
-**Class:** mixed-scope (one figure's tier differs from the figure it sits under)
+**Class:** two-copies-drifted (the lead subtracted the row by hand; every other figure kept the query that contained it)
 **Guard:** `railway/tests/test_digest_scope_rules.py::test_the_excluded_report_leaves_every_figure_not_only_the_lead`
 
 Week 39 (sent 2026-09-28): the lead said 24,623 verified job cuts and that the
