@@ -122,6 +122,11 @@
       "last": 1790617243,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,854,993 jobs / 68,498 entries"
     },
+    "live-surface-check:main:a3a08f5b44bb843f": {
+      "first": 1790800425,
+      "last": 1790800425,
+      "subject": "CI RED: Live surface check \u2014 /opt/actions-runners/ai-layoff-tracker/_work/_temp/80b5533a-d720-489a-8f68-c8b2387ec30b.sh: /opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3"
+    },
     "live-surface-check:main:cc12661af4db339c": {
       "first": 1790779051,
       "last": 1790779051,
@@ -178,6 +183,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-09-30T18:51:47+00:00",
+  "updated_at": "2026-09-30T20:33:45+00:00",
   "version": 1
 }
