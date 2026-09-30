@@ -102,6 +102,11 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
+    "hawaii-warn-ocr-import:main:50c5fa9db1622e90": {
+      "first": 1790786331,
+      "last": 1790786331,
+      "subject": "CI RED: Hawaii WARN OCR import \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This may"
+    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1790271485,
       "last": 1790271485,
@@ -163,6 +168,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-09-30T16:31:35+00:00",
+  "updated_at": "2026-09-30T16:38:52+00:00",
   "version": 1
 }
