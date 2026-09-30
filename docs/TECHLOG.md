@@ -28697,7 +28697,8 @@ PR #328 and still awaits explicit merge authorization.
 
 ## 2026-09-30 - Self-hosted runner (atr-runner-ai-layoff-tracker) Python toolcache broken: "bad interpreter: Permission denied"
 
-**Class:** external-dependency-issue (self-hosted runner infrastructure, not app code)
+**Class:** novel (none of the existing shapes fit a VPS file-permission/toolcache fault on a self-hosted runner; add a dedicated slug only if this recurs)
+**Guard:** none - infrastructure fault on the Contabo VPS host, not something a test in this repo can pin; no code changed here
 
 Hourly ops-check found `data-integrity.yml` ("Live data-integrity check") failed
 its scheduled 2026-09-30 17:39 UTC run at the `pip install` step, before it could
