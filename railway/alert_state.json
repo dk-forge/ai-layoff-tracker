@@ -62,6 +62,11 @@
       "last": 1790779000,
       "subject": "CI RED: Company directory autopilot \u2014 ^[[36;1m          echo \"::error::Autopilot call $call failed after $attempt attempts (last HTTP $http)\"^[[0m"
     },
+    "cross-source-dedup-daily-deep-scan:main:d4ef02ea956d6bc6": {
+      "first": 1790779196,
+      "last": 1790779196,
+      "subject": "CI RED: Cross-source dedup (daily deep scan) \u2014 no error line could be extracted from the log"
+    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -128,6 +133,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 6.2d ago (142 pending, 2,971 not yet in Wayback), but NOTHING "
     }
   },
-  "updated_at": "2026-09-30T14:37:31+00:00",
+  "updated_at": "2026-09-30T14:39:56+00:00",
   "version": 1
 }
