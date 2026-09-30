@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "ai-evidence-sweep:main:dc90f0ef16f24c9b": {
+      "first": 1790785895,
+      "last": 1790785895,
+      "subject": "CI RED: AI evidence sweep \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This may indi"
+    },
     "broken-link-check:main:35f3d7822f7c5107": {
       "first": 1790779228,
       "last": 1790779228,
@@ -158,6 +163,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-09-30T15:56:13+00:00",
+  "updated_at": "2026-09-30T16:31:35+00:00",
   "version": 1
 }
