@@ -28694,3 +28694,50 @@ Both guards failed first on their absent register keys. Green after the two
 entries and backlog removals: 57/57 country tests and a live measurement PASS.
 The branch reports one remaining item only because Morocco is green in separate
 PR #328 and still awaits explicit merge authorization.
+
+## 2026-09-30 - Self-hosted runner (atr-runner-ai-layoff-tracker) Python toolcache broken: "bad interpreter: Permission denied"
+
+**Class:** external-dependency-issue (self-hosted runner infrastructure, not app code)
+
+Hourly ops-check found `data-integrity.yml` ("Live data-integrity check") failed
+its scheduled 2026-09-30 17:39 UTC run at the `pip install` step, before it could
+run any invariant:
+
+```
+/opt/actions-runners/ai-layoff-tracker/_work/_temp/4c896241-6178-49db-a7c1-a3e83aae0920.sh:
+/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip:
+/home/atr/runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/python:
+bad interpreter: Permission denied
+##[error]Process completed with exit code 126.
+```
+
+Same signature, same runner (`atr-runner-ai-layoff-tracker`, self-hosted/linux/contabo),
+same cached Python 3.12.14 toolcache path, across at least 12 other scheduled
+workflows between 14:36 and 17:40 UTC today: `ai-evidence-sweep`,
+`broken-link-check`, `company-directory-autopilot` (14:36), `company-watchlist`
+(15:47), `cross-source-dedup` (daily deep scan), `data-quality` (anomaly flags),
+`hi-warn-import` (Hawaii OCR), `process-tips`, `supplemental-news`,
+`tracker-crosscheck` (discovery tripwire), `live-surface-check` (14:36),
+`sandbox-main-green.yml`. All fail at the same `pip install --require-hashes`
+step with `bad interpreter: Permission denied` (exit 126) — this is the
+runner's Python binary itself losing execute permission in the shared
+`_work/_tool` toolcache, not a code or dependency defect. Confirmed NOT a
+regression in `data_integrity.py` itself: the prior day's run (2026-09-28,
+17:39 UTC) got past `pip install` cleanly and ran the real invariants (result:
+20/24 PASS, 4/24 UNKNOWN — mostly transient `IncompleteRead` on live-site
+reads plus two legitimate structural UNKNOWNs already known: Jamaica/Zimbabwe
+unclassified, and the `sec_item_205_us` coverage slice's small denominator).
+
+This is self-hosted-runner host state (a file-permission/toolcache fault on
+the Contabo VPS), not something a PR can fix — no SSH access from this cloud
+session. Dispatched `reliability-clock.yml` (hosted `ubuntu-latest` runner, so
+unaffected) as an independent cross-check of overall data health while this is
+open; it does not exercise the broken self-hosted toolcache.
+
+**Needs Dakotta:** on the `atr-runner-ai-layoff-tracker` box, check/fix exec
+permission on `/home/atr/runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/python`
+(and the mirrored `/opt/actions-runners/...` path), or clear and let
+`actions/setup-python` re-provision that toolcache entry. Until fixed, the
+daily "Live data-integrity check" cannot run its real invariants and roughly a
+dozen other scheduled collectors/maintenance jobs on this runner will keep
+failing at the same step.
