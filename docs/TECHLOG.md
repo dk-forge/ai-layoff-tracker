@@ -150,6 +150,24 @@ One row per card:
 
 Supersedes the matching "Still open, needs the owner" items in the 2026-09-29
 triage entry as decisions; the implementation work is still to do.
+## 2026-09-30 - hourly ops-check: two docs-only PRs here never triggered `pull_request` CI
+
+**Class:** process
+**Guard:** none new (docs-only finding)
+
+Same defect already logged on 2026-09-30 in `talent-intelligence-tracker`'s
+TECHLOG, now seen here too: PR #440 (`claude/owner-rulings-0930`, opened via
+the GitHub API/MCP) and PR #439 (`claude/pensive-knuth-scfe65`, also
+API-opened, draft) both show zero check runs on their head SHA — `pull_request`
+never fired, so `merge_train.py` reads "CI has not started" and neither PR
+can ever be judged mergeable without a further push. #438 (opened normally,
+same session) has full CI and is fine. Neither #440 nor #439 is urgent or
+blocking anything: #440 is fresh owner-ruling documentation, #439 is a draft
+recording a live mobile-contrast finding for the owner (WP/hosting-side, not
+a code regression here). Left both open. A work session should either land a
+real `git push` to each branch (a normal push, not the API, fires
+`pull_request` and lets the train judge them) or close #440/#439 once their
+content is otherwise captured.
 
 ## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
 
