@@ -112,6 +112,11 @@
       "last": 1790271485,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
+    "live-data-integrity-check:main:7b8046cfebcb30de": {
+      "first": 1790790036,
+      "last": 1790790036,
+      "subject": "CI RED: Live data-integrity check \u2014 /opt/actions-runners/ai-layoff-tracker/_work/_temp/4c896241-6178-49db-a7c1-a3e83aae0920.sh: /opt/actions-runners/ai-layoff-tracker/_work/_tool/P"
+    },
     "live-data-integrity-check:main:aa0eaf87db8c4614": {
       "first": 1790617243,
       "last": 1790617243,
@@ -168,6 +173,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-09-30T16:38:52+00:00",
+  "updated_at": "2026-09-30T17:40:37+00:00",
   "version": 1
 }
