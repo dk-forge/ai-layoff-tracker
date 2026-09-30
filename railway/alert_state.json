@@ -82,11 +82,6 @@
       "last": 1790617243,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,854,993 jobs / 68,498 entries"
     },
-    "mailbox-janitor:main:09cd0cb19bd940f2": {
-      "first": 1790672284,
-      "last": 1790672284,
-      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -113,6 +108,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 6.2d ago (142 pending, 2,971 not yet in Wayback), but NOTHING "
     }
   },
-  "updated_at": "2026-09-30T08:34:55+00:00",
+  "updated_at": "2026-09-30T08:58:04+00:00",
   "version": 1
 }
