@@ -77,11 +77,6 @@
       "last": 1790783269,
       "subject": "CI RED: Company watchlist sweep \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This ma"
     },
-    "cross-source-dedup-daily-deep-scan:main:d4ef02ea956d6bc6": {
-      "first": 1790779196,
-      "last": 1790779196,
-      "subject": "CI RED: Cross-source dedup (daily deep scan) \u2014 no error line could be extracted from the log"
-    },
     "data-quality-report-anomaly-flags:main:67bb44b62e7d8818": {
       "first": 1790780585,
       "last": 1790780585,
@@ -173,6 +168,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T14:37:58+00:00",
+  "updated_at": "2026-10-01T14:40:36+00:00",
   "version": 1
 }
