@@ -72,11 +72,6 @@
       "last": 1790783269,
       "subject": "CI RED: Company watchlist sweep \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This ma"
     },
-    "data-quality-report-anomaly-flags:main:67bb44b62e7d8818": {
-      "first": 1790780585,
-      "last": 1790780585,
-      "subject": "CI RED: Data quality report (anomaly flags) \u2014 /opt/actions-runners/ai-layoff-tracker/_work/_temp/230b77ac-bbf3-4373-b482-d3ef0a6c714f.sh: /opt/actions-runners/ai-layoff-tracker/_wo"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -158,6 +153,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T14:47:29+00:00",
+  "updated_at": "2026-10-01T15:02:04+00:00",
   "version": 1
 }
