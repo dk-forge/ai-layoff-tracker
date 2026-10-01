@@ -28790,3 +28790,10 @@ exact CI assertion locally) and green after; ran the full
 Files: `railway/source_inventory.py`, `railway/tests/test_inventory_not_yet_due.py`.
 No TECHNICAL_DEBT entry — landing as a fix via PR, merge train +
 `needs-2-ai-checks` judges it.
+
+**Class:** novel — none of the existing slugs describe a *test* that silently
+depends on the real wall-clock date instead of an explicit `today=`, the way
+every sibling assertion in the same class already pinned it; the production
+code (`not_yet_due()`) was correct throughout.
+**Guard:** `railway/tests/test_inventory_not_yet_due.py::test_a_not_yet_due_collector_leaves_never_reported`
+(now pins `today="2026-09-30"`).
