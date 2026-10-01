@@ -28742,3 +28742,58 @@ permission on `/home/atr/runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x6
 daily "Live data-integrity check" cannot run its real invariants and roughly a
 dozen other scheduled collectors/maintenance jobs on this runner will keep
 failing at the same step.
+
+## 2026-10-01 — `test_a_not_yet_due_collector_leaves_never_reported` went red the day digest_monthly's exemption lapsed
+
+`Tests` failed on main (run
+https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36799752159,
+railway-tests (rest-2)):
+
+```
+AssertionError: 'digest_monthly' unexpectedly found in ('archive_backfill', ...)
+```
+(filed as self-heal issue #443).
+
+`railway/source_inventory.NOT_YET_DUE["digest_monthly"] = "2026-10-01"` — the
+monthly digest slot was armed 2026-09-06 and first fires 2026-10-01, and
+`not_yet_due()` deliberately lifts the exemption *on* the due date itself
+("on and after that date the collector is judged like every other one").
+That boundary is correct and is itself pinned by
+`test_on_the_due_date_it_is_judged_like_any_other`.
+
+The bug was in the test, not the production code.
+`test_a_not_yet_due_collector_leaves_never_reported` called
+`si.never_reported(self._health(), path=si.HEALTH_JS)` with no `today=`
+override — and `never_reported()` had no `today` parameter to pass, so it
+always read the real wall-clock date via `not_yet_due(c)`. Every sibling
+assertion in the same test class pins `today=` explicitly; this one didn't,
+so it silently depended on being run before 2026-10-01. The moment the
+calendar reached the due date, `digest_monthly` correctly stopped being
+exempt and — since the digest's actual first run (9:00 ET) hadn't happened
+yet when CI ran at 01:09 UTC — correctly showed up in `never_reported()`,
+and the un-pinned test went red.
+
+Fix: added an optional `today=None` parameter to
+`never_reported()` (threaded to `not_yet_due`, mirroring `awaiting_first_run`
+— both existing callers, `source_inventory.py`'s own summary dict and
+`health_digest.py`, call it positionally with no `today`, so this is
+backward compatible and changes no production behavior). Pinned the test to
+`today="2026-09-30"`, matching the "before due date" scenario it was
+actually meant to exercise. Confirmed red before the fix (reproduced the
+exact CI assertion locally) and green after; ran the full
+`source_inventory`-touching test surface (209 tests across
+`test_inventory_not_yet_due`, `test_inventory_unread_ledger_is_unknown`,
+`test_source_freshness`, `test_one_health_id_per_collector`,
+`test_country_tiers`, `test_credential_copy_is_derived`, `test_self_heal`,
+`test_source_registry_parity`, `test_us_registry`) clean.
+
+Files: `railway/source_inventory.py`, `railway/tests/test_inventory_not_yet_due.py`.
+No TECHNICAL_DEBT entry — landing as a fix via PR, merge train +
+`needs-2-ai-checks` judges it.
+
+**Class:** novel — none of the existing slugs describe a *test* that silently
+depends on the real wall-clock date instead of an explicit `today=`, the way
+every sibling assertion in the same class already pinned it; the production
+code (`not_yet_due()`) was correct throughout.
+**Guard:** `railway/tests/test_inventory_not_yet_due.py::test_a_not_yet_due_collector_leaves_never_reported`
+(now pins `today="2026-09-30"`).

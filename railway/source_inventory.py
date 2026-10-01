@@ -153,18 +153,22 @@ def not_yet_due(collector, today=None):
     return str(today) < due
 
 
-def never_reported(health, path=HEALTH_JS):
+def never_reported(health, path=HEALTH_JS, today=None):
     """Declared but never seen in the health ledger. The fourth state.
 
     Raises ValueError when the declaration cannot be read, because an empty
     inventory would answer "nothing is missing" — a true-but-empty signal, which
     is the class of bug this whole change is about.
+
+    ``today`` defaults to the real wall-clock date (production behavior,
+    unchanged); tests pin it so a date-boundary assertion does not start
+    failing the day the exemption lapses.
     """
     declared = declared_collectors(path)
     if not declared:
         raise ValueError(f"could not read the collector registry from {path}")
     missing = set(declared) - set(reporting_collectors(health))
-    return tuple(sorted(c for c in missing if not not_yet_due(c)))
+    return tuple(sorted(c for c in missing if not not_yet_due(c, today=today)))
 
 
 def awaiting_first_run(health, path=HEALTH_JS, today=None):

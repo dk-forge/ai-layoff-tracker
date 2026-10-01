@@ -45,7 +45,11 @@ class TheTwoListsDoNotOverlap(unittest.TestCase):
         return {"gdelt": {"status": "ok"}}
 
     def test_a_not_yet_due_collector_leaves_never_reported(self):
-        never = si.never_reported(self._health(), path=si.HEALTH_JS)
+        # Pinned before digest_monthly's 2026-10-01 due date: never_reported()
+        # otherwise reads the real wall clock, and this exact assertion went
+        # red the day the exemption lapsed because nothing pinned it here.
+        never = si.never_reported(self._health(), path=si.HEALTH_JS,
+                                   today="2026-09-30")
         self.assertNotIn("digest_monthly", never)
 
     def test_and_appears_in_awaiting_first_run_instead(self):
