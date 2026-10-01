@@ -28840,3 +28840,7 @@ issue or a second one.
 ## 2026-10-01: talent digest section shows signals before caveats
 
 Owner read the daily edition and said it "is not helpful": the talent section printed the headline count, then four paragraphs of method (unit note, verified split, provisional, hiring mix) before any company. Those four notes keep their exact wording and now print under "How to read these numbers" after the ranked signals and activity counts (`alt_digest_compose_talent`, subscribe.php). Pinned by railway/tests/test_digest_talent_signals_first.py. Takes effect on the next WordPress plugin deploy.
+
+**Class:** novel (reader-facing layout: method notes ahead of content)
+
+**Guard:** `railway/tests/test_digest_talent_signals_first.py`
