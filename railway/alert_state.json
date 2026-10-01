@@ -87,11 +87,6 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "hawaii-warn-ocr-import:main:50c5fa9db1622e90": {
-      "first": 1790786331,
-      "last": 1790786331,
-      "subject": "CI RED: Hawaii WARN OCR import \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This may"
-    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1790271485,
       "last": 1790271485,
@@ -143,6 +138,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 6.2d ago (142 pending, 2,971 not yet in Wayback), but NOTHING "
     }
   },
-  "updated_at": "2026-10-01T16:58:39+00:00",
+  "updated_at": "2026-10-01T17:04:23+00:00",
   "version": 1
 }
