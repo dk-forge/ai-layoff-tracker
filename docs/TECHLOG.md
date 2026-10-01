@@ -28797,3 +28797,42 @@ every sibling assertion in the same class already pinned it; the production
 code (`not_yet_due()`) was correct throughout.
 **Guard:** `railway/tests/test_inventory_not_yet_due.py::test_a_not_yet_due_collector_leaves_never_reported`
 (now pins `today="2026-09-30"`).
+
+## 2026-10-01 — Second symptom on the same broken Contabo runner: `evidence-hash-backfill.yml` fails writing its own response file
+
+**Class:** novel (same host, different manifestation from the 2026-09-30 entry
+above; not merging the two under one slug because the failing step differs —
+a `curl -o` write, not `pip install` — and the cause is unconfirmed)
+**Guard:** none — infrastructure fault on the Contabo VPS host, not something
+a test in this repo can pin; no code changed here
+
+Hourly ops-check found `evidence-hash-backfill.yml` ("Retained evidence hash
+backfill", `runs-on: [self-hosted, linux, contabo]`, same `atr-runner-ai-layoff-tracker`
+box as the 2026-09-30 toolcache entry above) failed its 2026-10-01 07:01 UTC
+run (https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36827751313)
+at its single step, all 4 retry attempts:
+
+```
+curl: (23) Failure writing output to destination
+Transient HTTP 000 on attempt 1; retrying in 45s
+... (repeats for attempts 2-4)
+Evidence-hash call failed after 4 attempts (last HTTP 000)
+##[error]Process completed with exit code 22.
+```
+
+`curl -o /tmp/resp.json` could not write its own output file on all four
+attempts — not a network/host-side failure (no HTTP response was ever
+received; `http=000` every time). The run before this one (2026-09-30 18:49
+UTC) failed identically; the run before that (2026-09-30 06:58 UTC) succeeded.
+Not yet confirmed whether this shares a root cause with the Python-toolcache
+permission fault above (both are host/filesystem-state faults on the same
+VPS) or is a separate issue (e.g. `/tmp` disk space or permissions on that
+box) — no SSH access from this cloud session to check `df`/`ls -la /tmp`
+directly. `data-integrity.yml`'s 2026-09-30 17:39 UTC run (same runner) is
+still failing on the original toolcache signature as of this check, so the
+runner has not had any host-side remediation applied yet either way.
+
+**Needs Dakotta:** same box as the entry above (`atr-runner-ai-layoff-tracker`).
+Once there to fix the Python toolcache permission, also check `/tmp` disk
+space/permissions on that runner — this may be the same underlying host
+issue or a second one.
