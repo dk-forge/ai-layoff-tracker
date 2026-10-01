@@ -57,6 +57,11 @@
       "last": 1790785895,
       "subject": "CI RED: AI evidence sweep \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This may indi"
     },
+    "ai-evidence-sweep:main:fd4fbe1a2357ac97": {
+      "first": 1790873723,
+      "last": 1790873723,
+      "subject": "CI SELF-TIMEOUT: AI evidence sweep \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 27m0s"
+    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -143,6 +148,6 @@
       "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 6.2d ago (142 pending, 2,971 not yet in Wayback), but NOTHING "
     }
   },
-  "updated_at": "2026-10-01T15:57:18+00:00",
+  "updated_at": "2026-10-01T16:55:23+00:00",
   "version": 1
 }
