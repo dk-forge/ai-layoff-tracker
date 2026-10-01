@@ -122,6 +122,11 @@
       "last": 1790617243,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,854,993 jobs / 68,498 entries"
     },
+    "live-surface-check:main:2b08b8b63bcac915": {
+      "first": 1790865478,
+      "last": 1790865478,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: Regex didn't match: '^(\\\\s*[-|\u00b7]\\\\s*\\\\S.*)?$' not found in ': Layoffs by Month in 2026' : report/ appends ': Layoffs by Month in 2026' "
+    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1790845145,
       "last": 1790845145,
@@ -168,6 +173,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T14:27:20+00:00",
+  "updated_at": "2026-10-01T14:37:58+00:00",
   "version": 1
 }
