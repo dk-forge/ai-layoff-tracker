@@ -67,11 +67,6 @@
       "last": 1790779000,
       "subject": "CI RED: Company directory autopilot \u2014 ^[[36;1m          echo \"::error::Autopilot call $call failed after $attempt attempts (last HTTP $http)\"^[[0m"
     },
-    "company-watchlist-sweep:main:968cc1ba0aa99040": {
-      "first": 1790783269,
-      "last": 1790783269,
-      "subject": "CI RED: Company watchlist sweep \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This ma"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -153,6 +148,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T15:02:04+00:00",
+  "updated_at": "2026-10-01T15:46:52+00:00",
   "version": 1
 }
