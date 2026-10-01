@@ -132,11 +132,6 @@
       "last": 1790281661,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
-    "process-public-layoff-tips:main:0ba9f7029791b788": {
-      "first": 1790779726,
-      "last": 1790779726,
-      "subject": "CI RED: Process public layoff tips \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This"
-    },
     "retained-evidence-hash-backfill:main:7a6b29ad202c8d39": {
       "first": 1790794307,
       "last": 1790794307,
@@ -163,6 +158,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T14:41:33+00:00",
+  "updated_at": "2026-10-01T14:47:29+00:00",
   "version": 1
 }
