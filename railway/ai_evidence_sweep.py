@@ -292,7 +292,8 @@ def main():
         if pull_google_news:
             try:
                 for a in pull_google_news(queries=[
-                        f'"{company}" (AI OR automation) (layoffs OR "job cuts")']):
+                        f'"{company}" (AI OR automation) (layoffs OR "job cuts")'],
+                        deadline_check=past_deadline):
                     texts.append(str(a.get("raw_text") or a.get("description") or ""))
             except Exception:
                 pass
