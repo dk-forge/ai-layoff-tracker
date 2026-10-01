@@ -57,11 +57,6 @@
       "last": 1790785895,
       "subject": "CI RED: AI evidence sweep \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'. This may indi"
     },
-    "broken-link-check:main:35f3d7822f7c5107": {
-      "first": 1790779228,
-      "last": 1790779228,
-      "subject": "CI RED: Broken-link check \u2014 no error line could be extracted from the log"
-    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -168,6 +163,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T14:40:36+00:00",
+  "updated_at": "2026-10-01T14:41:33+00:00",
   "version": 1
 }
