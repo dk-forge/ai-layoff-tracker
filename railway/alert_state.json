@@ -152,11 +152,6 @@
       "last": 1790280867,
       "subject": "CI RED: Rolling recall measurement \u2014 coverage could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."
     },
-    "sandbox-main-green-check:main:604d3a86309a507c": {
-      "first": 1790764025,
-      "last": 1790764025,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml FAIL (newest completed run is failure on 5bdd0dc5)"
-    },
     "supplemental-news-ingest-newsdata-io-marketaux-f:main:6b2014bd22248bc8": {
       "first": 1790778318,
       "last": 1790778318,
@@ -178,6 +173,6 @@
       "subject": "CI RED: Tracker-diff discovery tripwire \u2014 There was an error when attempting to execute the process '/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip'."
     }
   },
-  "updated_at": "2026-10-01T08:59:05+00:00",
+  "updated_at": "2026-10-01T10:26:55+00:00",
   "version": 1
 }
