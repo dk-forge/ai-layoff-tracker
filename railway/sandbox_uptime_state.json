@@ -1,12 +1,6 @@
 {
-  "consecutive_fails": 3,
-  "open": {
-    "sandbox-uptime:down": {
-      "first": 1790858261,
-      "last": 1790858261,
-      "subject": "sandbox uptime check failing: https://sandbox.asktherecruiter.com/healthz/deep: check(s) not ok: checks.resend"
-    }
-  },
-  "updated_at": "2026-10-01T12:59:00+00:00",
+  "consecutive_fails": 0,
+  "open": {},
+  "updated_at": "2026-10-01T13:22:20+00:00",
   "version": 1
 }
