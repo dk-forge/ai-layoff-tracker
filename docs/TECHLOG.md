@@ -28844,3 +28844,50 @@ Owner read the daily edition and said it "is not helpful": the talent section pr
 **Class:** novel (reader-facing layout: method notes ahead of content)
 
 **Guard:** `railway/tests/test_digest_talent_signals_first.py`
+
+## 2026-10-01 — `data-integrity.yml` runner toolcache fault (17:0x entries above) self-resolved; the workflow is still red for a different, pre-existing reason
+
+**Class:** novel (a previously-masked finding becoming visible once the
+blocking infra fault cleared — not a new code defect and not the same shape
+as the fault it was hiding behind)
+
+**Guard:** none — `country_coverage.py`'s own register is the mechanism
+(`railway/country_coverage_measurement.json`, `unassessed` list); no test in
+this repo should pin a specific country's classification status
+
+Hourly ops-check at 17:4x UTC found `data-integrity.yml` run #83
+(https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36901144452,
+17:40-17:41 UTC) failed, same as run #82 the day before. Reading the full job
+log shows the cause has changed:
+
+- `pip install --require-hashes -r railway/requirements-min.lock` on the
+  `atr-runner-ai-layoff-tracker` Contabo runner now completes cleanly
+  ("Requirement already satisfied" for every package) — the Python-toolcache
+  `bin/python` permission fault reported in the 2026-09-30 18:1x TECHLOG entry
+  above (needs-Dakotta) is **no longer reproducing**. Something restored exec
+  permission on that cached interpreter between 2026-09-30 17:39 UTC (run #82)
+  and 2026-10-01 17:40 UTC (run #83) — not done by this session, no SSH
+  access; noting it so the next session doesn't re-file it as still broken.
+- `data_integrity.py --report --record-baseline` then ran in full: 23 of 24
+  checks PASS, 1 UNVERIFIED (exit 3, the honest UNKNOWN state, not a FAIL):
+  `country_coverage_fresh` — `railway/country_coverage_measurement.json`
+  (measured 2026-10-01T17:22:36Z, 18 minutes before this run — well inside the
+  9-day freshness window) lists two countries as `unassessed`: **Jamaica,
+  Zimbabwe**. This is the exact pair already named as a standing,
+  pre-existing, non-regression UNKNOWN in the 2026-09-30 18:1x TECHLOG entry
+  ("confirmed the live data itself is fine ... only the same 2 pre-existing,
+  non-regression UNKNOWNs"), surfacing now as the run's own exit code for the
+  first time because the toolcache fault previously stopped the script before
+  it could reach this check at all.
+
+Per `country_coverage.py`'s own docstring, an `unassessed` entry is "somebody's
+outstanding work, not a pass" — classifying whether Jamaica and Zimbabwe have
+an established layoff-disclosure regime is a research/citation judgment call
+(`docs/RUNBOOK.md` "classify a country's disclosure regime"), not a code fix,
+and outside an hourly ops-check's scope. **Needs Dakotta** (or a work session
+with research budget) to classify the two countries in `REGISTER`
+(`railway/country_coverage.py`); `country-coverage.yml` then re-commits the
+register and this clears on its own next Thursday run, or can be forced with
+`workflow_dispatch`. No TECHNICAL_DEBT-equivalent row needed — ai-layoff-tracker
+has no `TECHNICAL_DEBT.md`; tracked here per CLAUDE.md §-equivalent guidance for
+this repo.
