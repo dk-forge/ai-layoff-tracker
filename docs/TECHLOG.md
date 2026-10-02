@@ -119,6 +119,38 @@ changed this run — writing to a live Yoast meta field or guessing the
 intended report title without being able to read wp-admin would risk
 publishing the wrong fix.
 
+## 2026-09-30 - Owner rulings: nine open decision cards answered "all recommended"
+
+**Class:** novel (owner rulings on open decisions, not a mechanism that stopped)
+**Guard:** none yet; each ruling below names who acts next. No code changed in this entry.
+
+The owner answered "all recommended" to nine decision cards on 2026-09-30.
+One row per card:
+
+1. 2026-09-30 - JANITOR_IMAP_PASSWORD rotation: approved. OWNER step: rotate
+   at the email host, then paste it into GitHub Secrets as
+   `JANITOR_IMAP_PASSWORD` (never in chat).
+2. 2026-09-30 - Cloudflare cache staleness (up to 5 days): approved option A,
+   a scoped Cloudflare API token with only "Cache Purge" permission, used by
+   deploys to purge automatically. OWNER step: create the token and add it as
+   a GitHub secret; then Claude wires the purge into the deploy.
+3. 2026-09-30 - New-country news sources (NL, IT, DE, UK, ES, FR, TR):
+   approved, all of them, with the same accuracy checks.
+4. 2026-09-30 - GDELT: stay on the free raw feed, not BigQuery.
+5. 2026-09-30 - Oklahoma on the sources page: mark as "gap: state doesn't
+   publish".
+6. 2026-09-30 - Minnesota health check: a shrunken history is "unknown, check
+   again", not healthy.
+7. 2026-09-30 - Staged announcements of one layoff program: review and mark
+   them as one program with the existing merge tool (logged), so they are not
+   double-counted.
+8. 2026-09-30 - Email "From" name is "AI Layoff Tracker"; make the four page
+   headings consistent.
+9. 2026-09-30 - Arizona and Mississippi WARN feeds broken: Claude fixes them.
+
+Supersedes the matching "Still open, needs the owner" items in the 2026-09-29
+triage entry as decisions; the implementation work is still to do.
+
 ## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
 
 **Class:** novel (follow-up closure, no new incident)
