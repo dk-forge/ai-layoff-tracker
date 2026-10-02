@@ -1,3 +1,40 @@
+## 2026-10-02 - Two self-hosted-runner workflows wrote scratch files to a bare `/tmp/` path and collided with each other
+
+**Class:** novel (shared mutable scratch space on one self-hosted machine, not yet in the vocabulary)
+**Guard:** `railway/tests/test_self_hosted_tmp_collision.py`
+
+Found by the hourly ops check. `company-directory-autopilot.yml` and
+`evidence-hash-backfill.yml` both `runs-on: [self-hosted, linux, contabo]` --
+the same physical machine, shared by every workflow pinned to it, with no
+per-job filesystem isolation. Both wrote scratch files to fixed names
+directly under `/tmp/` (`/tmp/resp.json`, `/tmp/summary.txt`,
+`/tmp/last.json`, `/tmp/vars.sh`). Two distinct-looking failures turned out
+to be the same root cause: `company-directory-autopilot.yml` died with
+`/tmp/summary.txt: Permission denied` on two consecutive daily runs
+(2026-09-30 14:36 UTC, run 36730357949; 2026-10-01 14:35 UTC, run
+36877552925), and `evidence-hash-backfill.yml` died with
+`curl: (23) Failure writing output to destination` trying to write
+`/tmp/resp.json` (2026-10-02 06:57 UTC, run 36976068264) -- a stale file left
+in the shared `/tmp` by some other job on the same machine, with permissions
+this job's user could not overwrite.
+
+**Fixed.** Moved every scratch path in both workflows to `$RUNNER_TEMP`
+(a directory GitHub Actions creates fresh per job and cleans up afterward,
+so it cannot collide with another job's leftovers the way a hardcoded
+`/tmp/<name>` can). Inside the embedded Python, the path is read via
+`os.environ['RUNNER_TEMP']` rather than bash-interpolated, since a
+quoted heredoc delimiter (`<<'PY'`) is not shell-expanded. Verified the
+exact Python snippets end-to-end locally with `RUNNER_TEMP` set before
+pushing. PR: `claude/ops-fix-selfhosted-tmp-collision`.
+
+**Not fixed here, same latent risk:** `deploy-plugin.yml`,
+`ftp-target-probe.yml`, `quarterly-report.yml`,
+`recall-benchmark-publish.yml`, and `tracker-crosscheck.yml` are also
+`self-hosted` and also write to a bare `/tmp/` path. None of them has
+demonstrably failed this way yet, so widening the fix to all of them was left
+alone rather than folded into this PR -- a session picking this up next
+should do that as its own deliberate slice, not assume it's covered.
+
 ## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
 
 **Class:** novel (follow-up closure, no new incident)
