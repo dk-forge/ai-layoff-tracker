@@ -28891,3 +28891,43 @@ register and this clears on its own next Thursday run, or can be forced with
 `workflow_dispatch`. No TECHNICAL_DEBT-equivalent row needed — ai-layoff-tracker
 has no `TECHNICAL_DEBT.md`; tracked here per CLAUDE.md §-equivalent guidance for
 this repo.
+
+## 2026-10-02 — `tests` went red on `main` with zero code change: a ledger-fixture date aged past its own 60-day trim window
+
+Hourly ops-check found `tests` workflow run #1757
+(https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36948734636,
+00:59-01:04 UTC) failed on the `rest-2` shard, while the immediately prior run
+(#1756, 23:43-23:48 UTC the previous day) was green — and the only diff
+between the two commits was an unrelated `railway/sandbox_uptime_state.json`
+bot update, no code touched.
+
+Root cause: `railway/tests/test_spend_ledger.py::HarvestParsing.LOG` hardcoded
+a ledger JSON payload with `"date": "2026-08-02"`. `spend._merge_ledger_entries`
+trims any entry older than `LEDGER_KEEP_DAYS` (60) on every call — correct,
+intended behavior for the real ledger. On 2026-10-02 that fixture date turned
+61 days old, one day past the cutoff, so the function trimmed it immediately
+after the *first* merge in `test_merge_is_idempotent_across_reharvests`. The
+second merge call then saw an empty ledger and re-added the entry, so
+`_merge_ledger_entries(ledger, entries)` returned `1` where the test expected
+`0` ("AssertionError: 1 != 0") — a correct idempotency check defeated by a
+fixture that silently aged out from under it. Nothing else in the 2,755-test
+run was affected.
+
+Fixed in `railway/tests/test_spend_ledger.py`: `HarvestParsing.LOG`'s date is
+now computed as `now - 1 day` (UTC) at import time instead of a literal
+string, so it can never again drift past the keep window. Reproduced the
+exact red locally (reverted the fix, same `AssertionError: 1 != 0`), confirmed
+green after, then added
+`test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff`, which pins
+the general boundary case (an entry dated exactly `LEDGER_KEEP_DAYS` old must
+still survive one merge and be idempotent on the next) so the shape can't
+recur under a different literal date. Full `tests/test_spend_ledger.py` (41
+tests) green under Python 3.12 (matching CI's `python-version: '3.12'`); nothing
+in `_merge_ledger_entries` or the trim logic changed. PR:
+dk-forge/ai-layoff-tracker (branch `claude/ops-fix-spend-ledger-fixture-date`),
+left for that repo's merge train.
+
+**Class:** derived-value-typed-by-hand (a computed fact — "a recent date" —
+hardcoded as a literal in a test fixture, then went stale)
+
+**Guard:** `railway/tests/test_spend_ledger.py::HarvestParsing::test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff`
