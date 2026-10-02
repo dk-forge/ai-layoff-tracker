@@ -1,3 +1,156 @@
+## 2026-10-02 - Two self-hosted-runner workflows wrote scratch files to a bare `/tmp/` path and collided with each other
+
+**Class:** novel (shared mutable scratch space on one self-hosted machine, not yet in the vocabulary)
+**Guard:** `railway/tests/test_self_hosted_tmp_collision.py`
+
+Found by the hourly ops check. `company-directory-autopilot.yml` and
+`evidence-hash-backfill.yml` both `runs-on: [self-hosted, linux, contabo]` --
+the same physical machine, shared by every workflow pinned to it, with no
+per-job filesystem isolation. Both wrote scratch files to fixed names
+directly under `/tmp/` (`/tmp/resp.json`, `/tmp/summary.txt`,
+`/tmp/last.json`, `/tmp/vars.sh`). Two distinct-looking failures turned out
+to be the same root cause: `company-directory-autopilot.yml` died with
+`/tmp/summary.txt: Permission denied` on two consecutive daily runs
+(2026-09-30 14:36 UTC, run 36730357949; 2026-10-01 14:35 UTC, run
+36877552925), and `evidence-hash-backfill.yml` died with
+`curl: (23) Failure writing output to destination` trying to write
+`/tmp/resp.json` (2026-10-02 06:57 UTC, run 36976068264) -- a stale file left
+in the shared `/tmp` by some other job on the same machine, with permissions
+this job's user could not overwrite.
+
+**Fixed.** Moved every scratch path in both workflows to `$RUNNER_TEMP`
+(a directory GitHub Actions creates fresh per job and cleans up afterward,
+so it cannot collide with another job's leftovers the way a hardcoded
+`/tmp/<name>` can). Inside the embedded Python, the path is read via
+`os.environ['RUNNER_TEMP']` rather than bash-interpolated, since a
+quoted heredoc delimiter (`<<'PY'`) is not shell-expanded. Verified the
+exact Python snippets end-to-end locally with `RUNNER_TEMP` set before
+pushing. PR: `claude/ops-fix-selfhosted-tmp-collision`.
+
+**Not fixed here, same latent risk:** `deploy-plugin.yml`,
+`ftp-target-probe.yml`, `quarterly-report.yml`,
+`recall-benchmark-publish.yml`, and `tracker-crosscheck.yml` are also
+`self-hosted` and also write to a bare `/tmp/` path. None of them has
+demonstrably failed this way yet, so widening the fix to all of them was left
+alone rather than folded into this PR -- a session picking this up next
+should do that as its own deliberate slice, not assume it's covered.
+
+## 2026-10-02 - `live-surface-check.yml` found 7 secondary pages headed differently than their browser tab, watching not fixing
+
+**Class:** novel (live-content drift, not a code defect)
+**Guard:** none yet — `railway/tests/test_secondary_surface_consistency.py::RenderedPageHeadingTests::test_the_browser_tab_says_what_the_heading_says` is the LIVE check that already caught it; no local repro exists because the mismatch is in the deployed WordPress post titles, not in the plugin code
+
+Found by the hourly ops check. `live-surface-check.yml`'s latest completed run
+(2026-10-02 02:43 UTC, run 36956906879) failed with 7 assertion failures: the
+on-page heading and the browser-tab title (post_title/og:title) disagree on
+`press/`, `sources/`, `methodology/`, `ai-tracker-health/`,
+`publisher-tools/`, `ai-quotes/`, and `report/`. Same failure recurred twice
+before that (2026-10-01 20:35 UTC run 36922675191, 2026-10-01 14:36 UTC run
+36877676320); the prior run (2026-10-01 08:43 UTC) was clean.
+
+The plugin already owns the fix: `alt_sync_secondary_page_titles()` (hooked on
+`init`, gated by `get_option('alt_page_titles_synced') === ALT_VERSION`)
+rewrites exactly these post titles to match their headings, and keeps
+re-running on every page load until every page verifies. Its own unit test
+(`PostTitleFollowsTheHeadingTests`) passes against current code, so the sync
+logic itself is not the bug — the deployed site just hasn't re-run it since
+the last version bump that changed a heading, or the gate option is stuck on
+an older `ALT_VERSION` than what is live.
+
+Deliberately not touched this run: nothing here is a local code change (the
+mismatch is in live WordPress option/post state, not in a file this session
+edited), and `deploy-plugin.yml` ran again at 2026-10-02 04:48 UTC — after
+the last failing check and before this entry — which may have already
+re-triggered the `init` hook and cleared it. `live-surface-check.yml` next
+runs on its own 3-hourly/post-merge cadence; if it's still red after that,
+the next session should check `alt_page_titles_synced` against the live
+`ALT_VERSION` directly rather than re-guessing from the test output.
+
+**Update, 2026-10-02 15:0x UTC (hourly ops check):** still red, 5 more runs
+since the above (08:39, 14:36 UTC today plus the 2 named above), unchanged
+after the 04:48 UTC deploy and every deploy since — so "hasn't re-run the
+`init` hook yet" does not hold; the `init` hook fires on every page view and
+there have been many in 24+ hours. Read the actual assertion text this run
+(job 110883742564, run 37021000364) rather than re-guessing, and it splits
+into two different causes, not one:
+
+- **6 pages** (`press/`, `sources/`, `methodology/`, `ai-tracker-health/`,
+  `publisher-tools/`, `ai-quotes/`) fail `assertTrue(title.startswith(heading))`
+  outright — e.g. `press/` is headed `'Press kit and soundbites'` but its tab
+  says `'Layoff Tracker Press Kit: Key Stats and Soundbites'`, a different
+  string, not a truncation or a suffix. `alt_sync_secondary_page_titles()`
+  only calls `wp_update_post()` on `post_title`. This codebase already has a
+  SEPARATE, established pattern for pages whose rendered `<title>` does not
+  come from `post_title` at all: `company-directory.php`, `company-index.php`,
+  `digest-archive.php`, `facet-pages.php` and `report-seo.php` each register
+  their own `wpseo_title` (Yoast) filter, which is required because Yoast, when
+  a per-page SEO title is set, overrides `post_title` entirely for the
+  rendered `<title>`/og:title — a `wp_update_post()` alone cannot touch it.
+  None of the six secondary pages in `alt_secondary_pages()` has a matching
+  `wpseo_title` filter. **Hypothesis, not yet confirmed from this checkout**
+  (no live WP-admin access from here): these six pages carry a manually-set
+  Yoast SEO title left over from before the heading rename, and
+  `alt_sync_secondary_page_titles()` has been "fixing" `post_title` on every
+  request while Yoast keeps serving its own stored title regardless — which
+  is exactly why the done-flag logic (retry until the DB agrees) can never
+  converge: `post_title` already agrees after the first successful write, the
+  flag gets set, and the rendered page still disagrees because the title was
+  never coming from `post_title` in the first place.
+- **`report/` is a DIFFERENT failure, not the same bug.** It is not even in
+  `alt_secondary_pages()` (excluded by design — see the comment at
+  `shortcodes.php:180`) and has its own `alt_report_seo_title()` in
+  `report-seo.php`. Its failure is a regex failure, not a string mismatch:
+  the live title is `'<heading>: Layoffs by Month in 2026'`, and the test
+  only accepts a `-`, `|` or `·` separator after the heading, not a colon.
+  **The string `"Layoffs by Month in 2026"` does not appear anywhere in this
+  repo's code** (checked via grep across `wordpress-plugin/`) — so whatever
+  is generating that title live is either a manually-set Yoast SEO title on
+  that page, or code that predates this checkout's history. This is not
+  something `alt_sync_secondary_page_titles()` ever touched or could fix.
+
+**Needs Dakotta, not a code fix from here:** (1) confirm whether Yoast SEO is
+the live site's active SEO plugin and whether these 7 pages carry manually-set
+per-page SEO titles in wp-admin — if so, either clear them (falls back to
+`post_title`) or extend the sync to also filter `wpseo_title` for these six
+pages the way the other five files already do; (2) decide what `/report/`
+(the bare archive view) should actually be titled, since the live title
+doesn't match anything `alt_report_seo_title()` generates today. No code
+changed this run — writing to a live Yoast meta field or guessing the
+intended report title without being able to read wp-admin would risk
+publishing the wrong fix.
+
+## 2026-09-30 - Owner rulings: nine open decision cards answered "all recommended"
+
+**Class:** novel (owner rulings on open decisions, not a mechanism that stopped)
+**Guard:** none yet; each ruling below names who acts next. No code changed in this entry.
+
+The owner answered "all recommended" to nine decision cards on 2026-09-30.
+One row per card:
+
+1. 2026-09-30 - JANITOR_IMAP_PASSWORD rotation: approved. OWNER step: rotate
+   at the email host, then paste it into GitHub Secrets as
+   `JANITOR_IMAP_PASSWORD` (never in chat).
+2. 2026-09-30 - Cloudflare cache staleness (up to 5 days): approved option A,
+   a scoped Cloudflare API token with only "Cache Purge" permission, used by
+   deploys to purge automatically. OWNER step: create the token and add it as
+   a GitHub secret; then Claude wires the purge into the deploy.
+3. 2026-09-30 - New-country news sources (NL, IT, DE, UK, ES, FR, TR):
+   approved, all of them, with the same accuracy checks.
+4. 2026-09-30 - GDELT: stay on the free raw feed, not BigQuery.
+5. 2026-09-30 - Oklahoma on the sources page: mark as "gap: state doesn't
+   publish".
+6. 2026-09-30 - Minnesota health check: a shrunken history is "unknown, check
+   again", not healthy.
+7. 2026-09-30 - Staged announcements of one layoff program: review and mark
+   them as one program with the existing merge tool (logged), so they are not
+   double-counted.
+8. 2026-09-30 - Email "From" name is "AI Layoff Tracker"; make the four page
+   headings consistent.
+9. 2026-09-30 - Arizona and Mississippi WARN feeds broken: Claude fixes them.
+
+Supersedes the matching "Still open, needs the owner" items in the 2026-09-29
+triage entry as decisions; the implementation work is still to do.
+
 ## 2026-09-30 - Live mobile contrast audit FAILing on two consecutive deploys; root cause NOT in this repo's diff (OPS-CHECK-2026-09-30-CONTRAST-375)
 
 **Class:** live/infra, unresolved — needs a human on the WordPress/hosting side
@@ -28757,3 +28910,240 @@ Both guards failed first on their absent register keys. Green after the two
 entries and backlog removals: 57/57 country tests and a live measurement PASS.
 The branch reports one remaining item only because Morocco is green in separate
 PR #328 and still awaits explicit merge authorization.
+
+## 2026-09-30 - Self-hosted runner (atr-runner-ai-layoff-tracker) Python toolcache broken: "bad interpreter: Permission denied"
+
+**Class:** novel (none of the existing shapes fit a VPS file-permission/toolcache fault on a self-hosted runner; add a dedicated slug only if this recurs)
+**Guard:** none - infrastructure fault on the Contabo VPS host, not something a test in this repo can pin; no code changed here
+
+Hourly ops-check found `data-integrity.yml` ("Live data-integrity check") failed
+its scheduled 2026-09-30 17:39 UTC run at the `pip install` step, before it could
+run any invariant:
+
+```
+/opt/actions-runners/ai-layoff-tracker/_work/_temp/4c896241-6178-49db-a7c1-a3e83aae0920.sh:
+/opt/actions-runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/pip:
+/home/atr/runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/python:
+bad interpreter: Permission denied
+##[error]Process completed with exit code 126.
+```
+
+Same signature, same runner (`atr-runner-ai-layoff-tracker`, self-hosted/linux/contabo),
+same cached Python 3.12.14 toolcache path, across at least 12 other scheduled
+workflows between 14:36 and 17:40 UTC today: `ai-evidence-sweep`,
+`broken-link-check`, `company-directory-autopilot` (14:36), `company-watchlist`
+(15:47), `cross-source-dedup` (daily deep scan), `data-quality` (anomaly flags),
+`hi-warn-import` (Hawaii OCR), `process-tips`, `supplemental-news`,
+`tracker-crosscheck` (discovery tripwire), `live-surface-check` (14:36),
+`sandbox-main-green.yml`. All fail at the same `pip install --require-hashes`
+step with `bad interpreter: Permission denied` (exit 126) — this is the
+runner's Python binary itself losing execute permission in the shared
+`_work/_tool` toolcache, not a code or dependency defect. Confirmed NOT a
+regression in `data_integrity.py` itself: the prior day's run (2026-09-28,
+17:39 UTC) got past `pip install` cleanly and ran the real invariants (result:
+20/24 PASS, 4/24 UNKNOWN — mostly transient `IncompleteRead` on live-site
+reads plus two legitimate structural UNKNOWNs already known: Jamaica/Zimbabwe
+unclassified, and the `sec_item_205_us` coverage slice's small denominator).
+
+This is self-hosted-runner host state (a file-permission/toolcache fault on
+the Contabo VPS), not something a PR can fix — no SSH access from this cloud
+session. Dispatched `reliability-clock.yml` (hosted `ubuntu-latest` runner, so
+unaffected) as an independent cross-check of overall data health while this is
+open; it does not exercise the broken self-hosted toolcache.
+
+**Needs Dakotta:** on the `atr-runner-ai-layoff-tracker` box, check/fix exec
+permission on `/home/atr/runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/python`
+(and the mirrored `/opt/actions-runners/...` path), or clear and let
+`actions/setup-python` re-provision that toolcache entry. Until fixed, the
+daily "Live data-integrity check" cannot run its real invariants and roughly a
+dozen other scheduled collectors/maintenance jobs on this runner will keep
+failing at the same step.
+
+## 2026-10-01 — `test_a_not_yet_due_collector_leaves_never_reported` went red the day digest_monthly's exemption lapsed
+
+`Tests` failed on main (run
+https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36799752159,
+railway-tests (rest-2)):
+
+```
+AssertionError: 'digest_monthly' unexpectedly found in ('archive_backfill', ...)
+```
+(filed as self-heal issue #443).
+
+`railway/source_inventory.NOT_YET_DUE["digest_monthly"] = "2026-10-01"` — the
+monthly digest slot was armed 2026-09-06 and first fires 2026-10-01, and
+`not_yet_due()` deliberately lifts the exemption *on* the due date itself
+("on and after that date the collector is judged like every other one").
+That boundary is correct and is itself pinned by
+`test_on_the_due_date_it_is_judged_like_any_other`.
+
+The bug was in the test, not the production code.
+`test_a_not_yet_due_collector_leaves_never_reported` called
+`si.never_reported(self._health(), path=si.HEALTH_JS)` with no `today=`
+override — and `never_reported()` had no `today` parameter to pass, so it
+always read the real wall-clock date via `not_yet_due(c)`. Every sibling
+assertion in the same test class pins `today=` explicitly; this one didn't,
+so it silently depended on being run before 2026-10-01. The moment the
+calendar reached the due date, `digest_monthly` correctly stopped being
+exempt and — since the digest's actual first run (9:00 ET) hadn't happened
+yet when CI ran at 01:09 UTC — correctly showed up in `never_reported()`,
+and the un-pinned test went red.
+
+Fix: added an optional `today=None` parameter to
+`never_reported()` (threaded to `not_yet_due`, mirroring `awaiting_first_run`
+— both existing callers, `source_inventory.py`'s own summary dict and
+`health_digest.py`, call it positionally with no `today`, so this is
+backward compatible and changes no production behavior). Pinned the test to
+`today="2026-09-30"`, matching the "before due date" scenario it was
+actually meant to exercise. Confirmed red before the fix (reproduced the
+exact CI assertion locally) and green after; ran the full
+`source_inventory`-touching test surface (209 tests across
+`test_inventory_not_yet_due`, `test_inventory_unread_ledger_is_unknown`,
+`test_source_freshness`, `test_one_health_id_per_collector`,
+`test_country_tiers`, `test_credential_copy_is_derived`, `test_self_heal`,
+`test_source_registry_parity`, `test_us_registry`) clean.
+
+Files: `railway/source_inventory.py`, `railway/tests/test_inventory_not_yet_due.py`.
+No TECHNICAL_DEBT entry — landing as a fix via PR, merge train +
+`needs-2-ai-checks` judges it.
+
+**Class:** novel — none of the existing slugs describe a *test* that silently
+depends on the real wall-clock date instead of an explicit `today=`, the way
+every sibling assertion in the same class already pinned it; the production
+code (`not_yet_due()`) was correct throughout.
+**Guard:** `railway/tests/test_inventory_not_yet_due.py::test_a_not_yet_due_collector_leaves_never_reported`
+(now pins `today="2026-09-30"`).
+
+## 2026-10-01 — Second symptom on the same broken Contabo runner: `evidence-hash-backfill.yml` fails writing its own response file
+
+**Class:** novel (same host, different manifestation from the 2026-09-30 entry
+above; not merging the two under one slug because the failing step differs —
+a `curl -o` write, not `pip install` — and the cause is unconfirmed)
+**Guard:** none — infrastructure fault on the Contabo VPS host, not something
+a test in this repo can pin; no code changed here
+
+Hourly ops-check found `evidence-hash-backfill.yml` ("Retained evidence hash
+backfill", `runs-on: [self-hosted, linux, contabo]`, same `atr-runner-ai-layoff-tracker`
+box as the 2026-09-30 toolcache entry above) failed its 2026-10-01 07:01 UTC
+run (https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36827751313)
+at its single step, all 4 retry attempts:
+
+```
+curl: (23) Failure writing output to destination
+Transient HTTP 000 on attempt 1; retrying in 45s
+... (repeats for attempts 2-4)
+Evidence-hash call failed after 4 attempts (last HTTP 000)
+##[error]Process completed with exit code 22.
+```
+
+`curl -o /tmp/resp.json` could not write its own output file on all four
+attempts — not a network/host-side failure (no HTTP response was ever
+received; `http=000` every time). The run before this one (2026-09-30 18:49
+UTC) failed identically; the run before that (2026-09-30 06:58 UTC) succeeded.
+Not yet confirmed whether this shares a root cause with the Python-toolcache
+permission fault above (both are host/filesystem-state faults on the same
+VPS) or is a separate issue (e.g. `/tmp` disk space or permissions on that
+box) — no SSH access from this cloud session to check `df`/`ls -la /tmp`
+directly. `data-integrity.yml`'s 2026-09-30 17:39 UTC run (same runner) is
+still failing on the original toolcache signature as of this check, so the
+runner has not had any host-side remediation applied yet either way.
+
+**Needs Dakotta:** same box as the entry above (`atr-runner-ai-layoff-tracker`).
+Once there to fix the Python toolcache permission, also check `/tmp` disk
+space/permissions on that runner — this may be the same underlying host
+issue or a second one.
+
+## 2026-10-01: talent digest section shows signals before caveats
+
+Owner read the daily edition and said it "is not helpful": the talent section printed the headline count, then four paragraphs of method (unit note, verified split, provisional, hiring mix) before any company. Those four notes keep their exact wording and now print under "How to read these numbers" after the ranked signals and activity counts (`alt_digest_compose_talent`, subscribe.php). Pinned by railway/tests/test_digest_talent_signals_first.py. Takes effect on the next WordPress plugin deploy.
+
+**Class:** novel (reader-facing layout: method notes ahead of content)
+
+**Guard:** `railway/tests/test_digest_talent_signals_first.py`
+
+## 2026-10-01 — `data-integrity.yml` runner toolcache fault (17:0x entries above) self-resolved; the workflow is still red for a different, pre-existing reason
+
+**Class:** novel (a previously-masked finding becoming visible once the
+blocking infra fault cleared — not a new code defect and not the same shape
+as the fault it was hiding behind)
+
+**Guard:** none — `country_coverage.py`'s own register is the mechanism
+(`railway/country_coverage_measurement.json`, `unassessed` list); no test in
+this repo should pin a specific country's classification status
+
+Hourly ops-check at 17:4x UTC found `data-integrity.yml` run #83
+(https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36901144452,
+17:40-17:41 UTC) failed, same as run #82 the day before. Reading the full job
+log shows the cause has changed:
+
+- `pip install --require-hashes -r railway/requirements-min.lock` on the
+  `atr-runner-ai-layoff-tracker` Contabo runner now completes cleanly
+  ("Requirement already satisfied" for every package) — the Python-toolcache
+  `bin/python` permission fault reported in the 2026-09-30 18:1x TECHLOG entry
+  above (needs-Dakotta) is **no longer reproducing**. Something restored exec
+  permission on that cached interpreter between 2026-09-30 17:39 UTC (run #82)
+  and 2026-10-01 17:40 UTC (run #83) — not done by this session, no SSH
+  access; noting it so the next session doesn't re-file it as still broken.
+- `data_integrity.py --report --record-baseline` then ran in full: 23 of 24
+  checks PASS, 1 UNVERIFIED (exit 3, the honest UNKNOWN state, not a FAIL):
+  `country_coverage_fresh` — `railway/country_coverage_measurement.json`
+  (measured 2026-10-01T17:22:36Z, 18 minutes before this run — well inside the
+  9-day freshness window) lists two countries as `unassessed`: **Jamaica,
+  Zimbabwe**. This is the exact pair already named as a standing,
+  pre-existing, non-regression UNKNOWN in the 2026-09-30 18:1x TECHLOG entry
+  ("confirmed the live data itself is fine ... only the same 2 pre-existing,
+  non-regression UNKNOWNs"), surfacing now as the run's own exit code for the
+  first time because the toolcache fault previously stopped the script before
+  it could reach this check at all.
+
+Per `country_coverage.py`'s own docstring, an `unassessed` entry is "somebody's
+outstanding work, not a pass" — classifying whether Jamaica and Zimbabwe have
+an established layoff-disclosure regime is a research/citation judgment call
+(`docs/RUNBOOK.md` "classify a country's disclosure regime"), not a code fix,
+and outside an hourly ops-check's scope. **Needs Dakotta** (or a work session
+with research budget) to classify the two countries in `REGISTER`
+(`railway/country_coverage.py`); `country-coverage.yml` then re-commits the
+register and this clears on its own next Thursday run, or can be forced with
+`workflow_dispatch`. No TECHNICAL_DEBT-equivalent row needed — ai-layoff-tracker
+has no `TECHNICAL_DEBT.md`; tracked here per CLAUDE.md §-equivalent guidance for
+this repo.
+
+## 2026-10-02 — `tests` went red on `main` with zero code change: a ledger-fixture date aged past its own 60-day trim window
+
+Hourly ops-check found `tests` workflow run #1757
+(https://github.com/dk-forge/ai-layoff-tracker/actions/runs/36948734636,
+00:59-01:04 UTC) failed on the `rest-2` shard, while the immediately prior run
+(#1756, 23:43-23:48 UTC the previous day) was green — and the only diff
+between the two commits was an unrelated `railway/sandbox_uptime_state.json`
+bot update, no code touched.
+
+Root cause: `railway/tests/test_spend_ledger.py::HarvestParsing.LOG` hardcoded
+a ledger JSON payload with `"date": "2026-08-02"`. `spend._merge_ledger_entries`
+trims any entry older than `LEDGER_KEEP_DAYS` (60) on every call — correct,
+intended behavior for the real ledger. On 2026-10-02 that fixture date turned
+61 days old, one day past the cutoff, so the function trimmed it immediately
+after the *first* merge in `test_merge_is_idempotent_across_reharvests`. The
+second merge call then saw an empty ledger and re-added the entry, so
+`_merge_ledger_entries(ledger, entries)` returned `1` where the test expected
+`0` ("AssertionError: 1 != 0") — a correct idempotency check defeated by a
+fixture that silently aged out from under it. Nothing else in the 2,755-test
+run was affected.
+
+Fixed in `railway/tests/test_spend_ledger.py`: `HarvestParsing.LOG`'s date is
+now computed as `now - 1 day` (UTC) at import time instead of a literal
+string, so it can never again drift past the keep window. Reproduced the
+exact red locally (reverted the fix, same `AssertionError: 1 != 0`), confirmed
+green after, then added
+`test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff`, which pins
+the general boundary case (an entry dated exactly `LEDGER_KEEP_DAYS` old must
+still survive one merge and be idempotent on the next) so the shape can't
+recur under a different literal date. Full `tests/test_spend_ledger.py` (41
+tests) green under Python 3.12 (matching CI's `python-version: '3.12'`); nothing
+in `_merge_ledger_entries` or the trim logic changed. PR:
+dk-forge/ai-layoff-tracker (branch `claude/ops-fix-spend-ledger-fixture-date`),
+left for that repo's merge train.
+
+**Class:** derived-value-typed-by-hand (a computed fact — "a recent date" —
+hardcoded as a literal in a test fixture, then went stale)
+
+**Guard:** `railway/tests/test_spend_ledger.py::HarvestParsing::test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff`

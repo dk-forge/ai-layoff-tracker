@@ -7357,7 +7357,13 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                . 'signals are job-board scans, where a rise means the employer '
                . 'listed more active postings than our previous scan, not that '
                . 'it confirmed new openings.';
-    $html .= '<p data-alt="note">' . esc_html($unit_note) . '</p>';
+    // SIGNALS FIRST, CAVEATS LAST (owner, 2026-10-01: "this email is not
+    // helpful"). The four notes below are true and stay byte for byte, but
+    // they used to sit between the headline and the ranked signals, so a
+    // reader met four paragraphs of method before a single company. They are
+    // held here and printed under "How to read these numbers" after the
+    // activity counts. test_digest_talent_signals_first.py holds the order.
+    $notes_html = '<p data-alt="note">' . esc_html($unit_note) . '</p>';
     /*
       NOT "NEW". A daily edition covers yesterday and today (alt_digest_window,
       deliberate), so every signal dated yesterday was also in yesterday's
@@ -7386,7 +7392,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     $preheader = alt_digest_fit_preheader(
         $verified . ' of ' . $totalf . ' verified against a primary document',
         array('from ' . alt_digest_count($companies_n, 'company', 'companies')));
-    $text = "Talent Intelligence Tracker\n{$lede}\n" . $unit_note . "\n";
+    $text = "Talent Intelligence Tracker\n{$lede}\n";
+    $notes_text = $unit_note . "\n";
     $detail = 'From ' . alt_digest_count($companies_n, 'company', 'companies') . ', '
             . $range . '. ' . $verified . ' of the ' . $totalf . ' '
             /*
@@ -7434,8 +7441,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
             . 'independently confirmed, and readings of employers\' own job '
             . 'boards. A board reading is first-party, but it is our '
             . 'measurement rather than a figure the employer filed.';
-    $html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
-    $text .= $detail . "\n";
+    $notes_html .= '<p data-alt="note">' . esc_html($detail) . '</p>';
+    $notes_text .= $detail . "\n";
 
     /*
       PROVISIONAL, AND THE LAYOFF SECTION HAS SAID SO FOR WEEKS. Measured on
@@ -7459,8 +7466,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
         $provisional .= ' A daily edition covers yesterday and today, so a '
                       . 'signal dated yesterday was also in yesterday\'s edition.';
     }
-    $html .= '<p data-alt="note">' . esc_html($provisional) . '</p>';
-    $text .= $provisional . "\n";
+    $notes_html .= '<p data-alt="note">' . esc_html($provisional) . '</p>';
+    $notes_text .= $provisional . "\n";
 
     /*
       THE MEASURED HIRING SHARE, PRINTED WHERE IT ALWAYS WAS. The reading
@@ -7484,8 +7491,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
              . 'activity in the same window: funding, leadership, pay and '
              . 'site news. That activity names no roles, and this tracker '
              . 'follows it because it tends to come before hiring.';
-        $html .= '<p data-alt="note">' . esc_html($mix) . '</p>';
-        $text .= $mix . "\n";
+        $notes_html .= '<p data-alt="note">' . esc_html($mix) . '</p>';
+        $notes_text .= $mix . "\n";
     }
 
     /*
@@ -7924,6 +7931,9 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     // alt_digest_compose_layoff: this data revises upward, so any
     // period-over-period delta manufactures a fall out of a reporting lag.
     // Year to date only grows. Do not add a delta here later either.
+    $html .= '<h3>How to read these numbers</h3>' . $notes_html;
+    $text .= "\nHow to read these numbers\n" . $notes_text;
+
     $year = substr((string) $to, 0, 4);
     if (preg_match('/^\d{4}$/', $year)) {
         $ytd_req = new WP_REST_Request('GET', '/talent/v1/aggregate');
