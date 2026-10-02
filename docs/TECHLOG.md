@@ -66,6 +66,59 @@ runs on its own 3-hourly/post-merge cadence; if it's still red after that,
 the next session should check `alt_page_titles_synced` against the live
 `ALT_VERSION` directly rather than re-guessing from the test output.
 
+**Update, 2026-10-02 15:0x UTC (hourly ops check):** still red, 5 more runs
+since the above (08:39, 14:36 UTC today plus the 2 named above), unchanged
+after the 04:48 UTC deploy and every deploy since — so "hasn't re-run the
+`init` hook yet" does not hold; the `init` hook fires on every page view and
+there have been many in 24+ hours. Read the actual assertion text this run
+(job 110883742564, run 37021000364) rather than re-guessing, and it splits
+into two different causes, not one:
+
+- **6 pages** (`press/`, `sources/`, `methodology/`, `ai-tracker-health/`,
+  `publisher-tools/`, `ai-quotes/`) fail `assertTrue(title.startswith(heading))`
+  outright — e.g. `press/` is headed `'Press kit and soundbites'` but its tab
+  says `'Layoff Tracker Press Kit: Key Stats and Soundbites'`, a different
+  string, not a truncation or a suffix. `alt_sync_secondary_page_titles()`
+  only calls `wp_update_post()` on `post_title`. This codebase already has a
+  SEPARATE, established pattern for pages whose rendered `<title>` does not
+  come from `post_title` at all: `company-directory.php`, `company-index.php`,
+  `digest-archive.php`, `facet-pages.php` and `report-seo.php` each register
+  their own `wpseo_title` (Yoast) filter, which is required because Yoast, when
+  a per-page SEO title is set, overrides `post_title` entirely for the
+  rendered `<title>`/og:title — a `wp_update_post()` alone cannot touch it.
+  None of the six secondary pages in `alt_secondary_pages()` has a matching
+  `wpseo_title` filter. **Hypothesis, not yet confirmed from this checkout**
+  (no live WP-admin access from here): these six pages carry a manually-set
+  Yoast SEO title left over from before the heading rename, and
+  `alt_sync_secondary_page_titles()` has been "fixing" `post_title` on every
+  request while Yoast keeps serving its own stored title regardless — which
+  is exactly why the done-flag logic (retry until the DB agrees) can never
+  converge: `post_title` already agrees after the first successful write, the
+  flag gets set, and the rendered page still disagrees because the title was
+  never coming from `post_title` in the first place.
+- **`report/` is a DIFFERENT failure, not the same bug.** It is not even in
+  `alt_secondary_pages()` (excluded by design — see the comment at
+  `shortcodes.php:180`) and has its own `alt_report_seo_title()` in
+  `report-seo.php`. Its failure is a regex failure, not a string mismatch:
+  the live title is `'<heading>: Layoffs by Month in 2026'`, and the test
+  only accepts a `-`, `|` or `·` separator after the heading, not a colon.
+  **The string `"Layoffs by Month in 2026"` does not appear anywhere in this
+  repo's code** (checked via grep across `wordpress-plugin/`) — so whatever
+  is generating that title live is either a manually-set Yoast SEO title on
+  that page, or code that predates this checkout's history. This is not
+  something `alt_sync_secondary_page_titles()` ever touched or could fix.
+
+**Needs Dakotta, not a code fix from here:** (1) confirm whether Yoast SEO is
+the live site's active SEO plugin and whether these 7 pages carry manually-set
+per-page SEO titles in wp-admin — if so, either clear them (falls back to
+`post_title`) or extend the sync to also filter `wpseo_title` for these six
+pages the way the other five files already do; (2) decide what `/report/`
+(the bare archive view) should actually be titled, since the live title
+doesn't match anything `alt_report_seo_title()` generates today. No code
+changed this run — writing to a live Yoast meta field or guessing the
+intended report title without being able to read wp-admin would risk
+publishing the wrong fix.
+
 ## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
 
 **Class:** novel (follow-up closure, no new incident)
