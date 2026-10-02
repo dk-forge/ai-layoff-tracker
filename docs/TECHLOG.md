@@ -1,3 +1,34 @@
+## 2026-10-02 - `live-surface-check.yml` found 7 secondary pages headed differently than their browser tab, watching not fixing
+
+**Class:** novel (live-content drift, not a code defect)
+**Guard:** none yet — `railway/tests/test_secondary_surface_consistency.py::RenderedPageHeadingTests::test_the_browser_tab_says_what_the_heading_says` is the LIVE check that already caught it; no local repro exists because the mismatch is in the deployed WordPress post titles, not in the plugin code
+
+Found by the hourly ops check. `live-surface-check.yml`'s latest completed run
+(2026-10-02 02:43 UTC, run 36956906879) failed with 7 assertion failures: the
+on-page heading and the browser-tab title (post_title/og:title) disagree on
+`press/`, `sources/`, `methodology/`, `ai-tracker-health/`,
+`publisher-tools/`, `ai-quotes/`, and `report/`. Same failure recurred twice
+before that (2026-10-01 20:35 UTC run 36922675191, 2026-10-01 14:36 UTC run
+36877676320); the prior run (2026-10-01 08:43 UTC) was clean.
+
+The plugin already owns the fix: `alt_sync_secondary_page_titles()` (hooked on
+`init`, gated by `get_option('alt_page_titles_synced') === ALT_VERSION`)
+rewrites exactly these post titles to match their headings, and keeps
+re-running on every page load until every page verifies. Its own unit test
+(`PostTitleFollowsTheHeadingTests`) passes against current code, so the sync
+logic itself is not the bug — the deployed site just hasn't re-run it since
+the last version bump that changed a heading, or the gate option is stuck on
+an older `ALT_VERSION` than what is live.
+
+Deliberately not touched this run: nothing here is a local code change (the
+mismatch is in live WordPress option/post state, not in a file this session
+edited), and `deploy-plugin.yml` ran again at 2026-10-02 04:48 UTC — after
+the last failing check and before this entry — which may have already
+re-triggered the `init` hook and cleared it. `live-surface-check.yml` next
+runs on its own 3-hourly/post-merge cadence; if it's still red after that,
+the next session should check `alt_page_titles_synced` against the live
+`ALT_VERSION` directly rather than re-guessing from the test output.
+
 ## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
 
 **Class:** novel (follow-up closure, no new incident)
