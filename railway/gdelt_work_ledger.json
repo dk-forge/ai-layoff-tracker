@@ -1,44 +1,5 @@
 {
   "slots": {
-    "broad|f060b27756|20260914T083533Z|20260915T203533Z": {
-      "family": "broad",
-      "window_start": "20260914T083533Z",
-      "window_end": "20260915T203533Z",
-      "status": "complete",
-      "returned": 8353,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260915T220806Z",
-      "updated": "20260915T220806Z",
-      "oldest": "20260914T084500Z",
-      "newest": "20260915T203000Z"
-    },
-    "broad|f060b27756|20260915T083813Z|20260916T203813Z": {
-      "family": "broad",
-      "window_start": "20260915T083813Z",
-      "window_end": "20260916T203813Z",
-      "status": "complete",
-      "returned": 8233,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260916T221018Z",
-      "updated": "20260916T221018Z",
-      "oldest": "20260915T084500Z",
-      "newest": "20260916T203000Z"
-    },
-    "broad|f060b27756|20260916T083721Z|20260917T203721Z": {
-      "family": "broad",
-      "window_start": "20260916T083721Z",
-      "window_end": "20260917T203721Z",
-      "status": "complete",
-      "returned": 8744,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260917T220931Z",
-      "updated": "20260917T220931Z",
-      "oldest": "20260916T084500Z",
-      "newest": "20260917T203000Z"
-    },
     "broad|f060b27756|20260917T084147Z|20260918T204147Z": {
       "family": "broad",
       "window_start": "20260917T084147Z",
