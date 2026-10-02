@@ -1,18 +1,5 @@
 {
   "slots": {
-    "broad|f060b27756|20260916T083721Z|20260917T203721Z": {
-      "family": "broad",
-      "window_start": "20260916T083721Z",
-      "window_end": "20260917T203721Z",
-      "status": "complete",
-      "returned": 8744,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260917T220931Z",
-      "updated": "20260917T220931Z",
-      "oldest": "20260916T084500Z",
-      "newest": "20260917T203000Z"
-    },
     "broad|f060b27756|20260917T084147Z|20260918T204147Z": {
       "family": "broad",
       "window_start": "20260917T084147Z",
