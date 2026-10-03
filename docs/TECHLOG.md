@@ -151,6 +151,78 @@ One row per card:
 Supersedes the matching "Still open, needs the owner" items in the 2026-09-29
 triage entry as decisions; the implementation work is still to do.
 
+## 2026-09-30 - Live mobile contrast audit FAILing on two consecutive deploys; root cause NOT in this repo's diff (OPS-CHECK-2026-09-30-CONTRAST-375)
+
+**Class:** novel (a correct, unchanged deploy rendered wrong on the live site;
+suspected host-side CSS override, not a cache and not this repo's code —
+unresolved, needs a human on the WordPress/hosting side)
+
+**Guard:** none - no network path from this repo's tests to
+asktherecruiter.com; confirming the cause needs WordPress admin access to
+inspect Autoptimize's CSS cache and any Customizer-added CSS, which cannot be
+automated from here. `contrast_audit.py` (run live in `deploy-plugin.yml`) is
+what already caught it and will go green again once the live override is
+cleared.
+
+**What's failing:** `deploy-plugin.yml`'s "Verify the deployed page is readable
+in both themes" step (the `contrast_audit.py` rendered check) has FAILed the
+last two consecutive completed runs on main:
+- run 396 (2026-09-29T23:21, deployed commit `3fbfed7`)
+- run 397 (2026-09-30T01:02, deployed commit `b4f3ecf`, a docs-only ledger
+  commit)
+
+Both report the identical result: at `@375` (mobile) width, in all four
+theme reads (light/dark/light-chosen/dark-chosen), 23 filter controls
+(`#alt-f-from`, `#alt-f-to`, `#alt-search`, `#alt-sort`, `.alt-dp`, `.alt-qv`,
+`#alt-range-btn`, `.alt-datebasis-opt`, `#alt-filters-toggle`,
+`#alt-f-reset`, etc.) measure ~19-24px tall instead of the required 44px
+(WCAG 2.5.5 target size / `--alt-ctl-h`). The `@1280` desktop reads all PASS.
+The immediately-preceding run (395, 2026-09-29T19:21, commit `217cf12`)
+PASSED this same step cleanly.
+
+**Why this is NOT a code regression from #437 (2.20.219) or any commit since
+217cf12:** `git log --oneline 217cf12..3fbfed7 -- wordpress-plugin/ai-layoff-tracker/assets/`
+returns nothing — zero CSS/JS/template changes between the passing deploy and
+the first failing one (the only real commit in that range, #437, touched only
+`docs/HANDOFF.md`, `docs/TECHLOG.md`, a backend test, and two lines of PHP in
+`includes/db.php` unrelated to rendering). And main's current
+`wordpress-plugin/ai-layoff-tracker/assets/layoffs.css` (checked at HEAD
+`b691eb0`) already has the correct rule and always has, per the file's own
+`@media (max-width: 767px) { :root { --alt-ctl-h: 44px; } }` (line 208) plus
+the shared selector block at line ~950 giving every one of the 23 failing
+selectors `min-height: var(--alt-ctl-h)`. The deployed bytes for this file
+were provably identical across the passing and both failing runs (the FTPS
+step uploads the whole plugin directory every deploy, and the file didn't
+change in git).
+
+**Working hypothesis, unverified from this environment (cloud session has no
+network path to asktherecruiter.com):** something on the WordPress/hosting
+side — not in this git repo — is overriding or bypassing this CSS between
+19:21 and 23:21 UTC on 2026-09-29: an Autoptimize CSS-aggregation rebuild
+gone wrong (parallel to the exact failure mode `talent-intelligence-tracker`'s
+CLAUDE.md documents for its own Autoptimize incident), a WordPress
+Customizer/admin-set CSS override, or a plugin/theme update landing directly
+on the host. Two consecutive checks over more than an hour apart with
+byte-identical results argues against a transient cache-purge race.
+
+**What I did NOT do:** push a speculative CSS change. The source is already
+correct for this rule; editing it again would likely be a no-op against
+whatever is actually live, and per the CLAUDE.md third-party-outage rule
+("two failed attempts at a third party: stop and write it up") this needs a
+human with WordPress admin / Autoptimize access to inspect the live page
+source and cache state, not another blind deploy.
+
+**Needs the owner:** log into WP admin, check Autoptimize's CSS cache
+(regenerate it) and check for any Customizer/admin-added CSS touching
+`.alt-filter`/`.alt-dp`/`.alt-qv`/`#alt-search` etc. at mobile widths, then
+re-run `gh workflow run deploy-plugin.yml` (respecting the ≥1h deploy
+spacing) or dispatch the contrast-audit workflow directly to confirm the fix
+without another plugin deploy.
+
+**Impact:** live, right now, on asktherecruiter.com/blog/ai-layoff-tracker/ —
+23 filter controls at 375px (all phone users) are below the WCAG 2.5.5
+44px touch-target floor and below the 3:1 boundary-contrast requirement.
+
 ## 2026-09-29 - Open-item triage: 25 "still open" notes classified; dedupe merges now stamp the keeper (2.20.219)
 
 **Class:** novel (follow-up closure, no new incident)
