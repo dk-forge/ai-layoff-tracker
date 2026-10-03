@@ -395,6 +395,23 @@
       "rules": 2,
       "unknown": 2,
       "unmatched": 118
+    },
+    {
+      "candidates": 38,
+      "causes": {
+        "not_wired": 34,
+        "vocabulary_gap": 4
+      },
+      "date": "2026-10-03",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 9.2,
+      "recall_low_pct": 0.0,
+      "rules": 9,
+      "unknown": 2,
+      "unmatched": 38
     }
   ],
   "quiet_runs": 0
