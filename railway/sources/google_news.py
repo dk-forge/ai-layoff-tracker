@@ -273,11 +273,22 @@ def citation_summary(states):
             f"robots.txt forbids following it)")
 
 
-def pull_google_news(queries=None, company_names=None):
+def pull_google_news(queries=None, company_names=None, deadline_check=None):
     """Return a list of raw dicts ready for extract_layoff_data.
 
     Fail-loud: on an HTTP/parse error, set pull_google_news.last_error so the
-    cron caller can degrade the source instead of masking a dead feed as 'ok'."""
+    cron caller can degrade the source instead of masking a dead feed as 'ok'.
+
+    `deadline_check`, if given, is called before every (query, edition) job
+    and stops the sweep the moment it returns true. Without it a caller whose
+    own wall-clock budget is checked only BEFORE and AFTER this whole call
+    (ai_evidence_sweep.py) has no way to bound it: up to ~45 jobs can each run
+    3 attempts at a 30s timeout before giving up (measured 2026-10-01, run
+    36892178511 - 14 jobs on one edition slice, all transient, pushed one
+    event's call past 450s and the whole job past its 27-minute wall). This
+    caps the overshoot to one in-flight job, matching the single-fetch
+    headroom ai-evidence-sweep.yml's timeout-minutes was actually sized for.
+    """
     pull_google_news.last_error = None
     # Citation quality, counted per run so a rotting link is visible rather than
     # assumed: 'direct' and 'decoded' cite the publisher, 'unresolved' still
@@ -331,6 +342,11 @@ def pull_google_news(queries=None, company_names=None):
     for job_i, (q, loc) in enumerate(jobs):
         filter_this_job = prefilter_on and job_i >= n_company
         if len(results) >= MAX_ITEMS:
+            break
+        if deadline_check is not None and deadline_check():
+            pull_google_news.last_error = (
+                pull_google_news.last_error
+                or f"caller deadline reached after {job_i}/{len(jobs)} job(s)")
             break
         taken_this_q = 0
         try:
