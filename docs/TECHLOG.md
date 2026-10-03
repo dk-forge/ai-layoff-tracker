@@ -153,7 +153,16 @@ triage entry as decisions; the implementation work is still to do.
 
 ## 2026-09-30 - Live mobile contrast audit FAILing on two consecutive deploys; root cause NOT in this repo's diff (OPS-CHECK-2026-09-30-CONTRAST-375)
 
-**Class:** live/infra, unresolved — needs a human on the WordPress/hosting side
+**Class:** novel (a correct, unchanged deploy rendered wrong on the live site;
+suspected host-side CSS override, not a cache and not this repo's code —
+unresolved, needs a human on the WordPress/hosting side)
+
+**Guard:** none - no network path from this repo's tests to
+asktherecruiter.com; confirming the cause needs WordPress admin access to
+inspect Autoptimize's CSS cache and any Customizer-added CSS, which cannot be
+automated from here. `contrast_audit.py` (run live in `deploy-plugin.yml`) is
+what already caught it and will go green again once the live override is
+cleared.
 
 **What's failing:** `deploy-plugin.yml`'s "Verify the deployed page is readable
 in both themes" step (the `contrast_audit.py` rendered check) has FAILed the
