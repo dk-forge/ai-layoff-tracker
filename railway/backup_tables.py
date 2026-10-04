@@ -126,7 +126,7 @@ TABLES: Dict[str, dict] = {
         ),
         "columns": [
             "id", "url_hash", "source_url", "archived_url", "status",
-            "attempts", "checked_at", "archived_at",
+            "attempts", "checked_at", "archived_at", "uncited_since",
         ],
     },
     "company_directory": {
