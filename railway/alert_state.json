@@ -92,11 +92,6 @@
       "last": 1790865478,
       "subject": "CI RED: Live surface check \u2014 AssertionError: Regex didn't match: '^(\\\\s*[-|\u00b7]\\\\s*\\\\S.*)?$' not found in ': Layoffs by Month in 2026' : report/ appends ': Layoffs by Month in 2026' "
     },
-    "mailbox-janitor:main:09cd0cb19bd940f2": {
-      "first": 1790845145,
-      "last": 1790845145,
-      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
-    },
     "mailbox-janitor:main:c34578eded35e961": {
       "first": 1790931365,
       "last": 1790931365,
@@ -128,6 +123,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-04T08:43:53+00:00",
+  "updated_at": "2026-10-04T10:46:28+00:00",
   "version": 1
 }
