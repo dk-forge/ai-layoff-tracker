@@ -73,6 +73,11 @@ $alt_bd_titles = array(
         <?php endif; ?>
     </div>
 
+    <?php // Official figure for scale, only on an EXACT industry/country match. ?>
+    <?php if (($alt_f['dim'] === 'industry' || $alt_f['dim'] === 'country') && function_exists('alt_labour_context_stat')) {
+        echo alt_labour_context_stat($alt_f['dim'], $alt_f['display']);
+    } ?>
+
     <?php $alt_timeline = $alt_f['timeline'] ?? array();
           include ALT_PLUGIN_DIR . 'templates/partials/timeline.php'; ?>
 

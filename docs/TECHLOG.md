@@ -25,6 +25,27 @@ to `data/archive/fred/`; `qwi-archive.yml` commits one CSV per quarter to
 Sources page: FRED and QWI rows added (BLS and OECD already listed); a render
 test (`SourcesPageTest`) fails if any reference source lacks a row, and the
 source register in OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md lists all five.
+## 2026-10-05 (2.20.225) - Labour-market context on the Sources page and facet pages
+
+**Class:** novel (reader surface for stored reference data, additive)
+**Guard:** `railway/tests/test_labour_context.py` (renders the real PHP through `fixtures/labour_context_harness.php`)
+
+The BLS JOLTS+CPS and OECD documents stored in 2.20.223/224 are now shown.
+`includes/labour-context.php` registers `[alt_labour_context]`, rendered at the
+end of the Sources page (`/ai-layoff-tracker/sources/#labour-context`) by
+`page-sources.php`, so no page content or navigation changed. Three Chart.js
+panels (`assets/labour-context.js`, enqueued only there, reads the public
+`/reference/<source>` endpoints, colours from `--alt-*` tokens, repaints on
+`alt:themechange`): JOLTS layoffs/openings/quits with an industry filter, CPS
+unemployment by sex/age/race/education, OECD unemployment with country picker
+(max 6), sex and age filters. Each panel carries a caption, the source line and
+a data-as-of line. No per-chart CSV: the existing dashboard charts offer none.
+Facet pages get `alt_labour_context_stat()` beside the tracker count ONLY on an
+exact match: an industry facet whose name equals a JOLTS supersector label
+(today only Manufacturing; US-only, said so) and a country facet whose name is
+in `alt_labour_context_oecd_names()`. Missing/malformed data hides the panel or
+block, never an error. Copy states these are official all-cause aggregates,
+not tracker counts, and do not show AI caused anything.
 
 ## 2026-10-05 (2.20.224) - OECD monthly unemployment by sex and age
 
