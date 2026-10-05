@@ -47,7 +47,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           title="Ingest silent: no collector has run for 2+ days"
-          open=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq 'length')
+          # Exact-title match: `--search ... in:title` is a fuzzy word match and
+          # skipped creation when unrelated open issues shared words (2026-10-05).
+          open=$(gh issue list --state open --limit 200 --json title | jq --arg t "$title" '[.[] | select(.title == $t)] | length')
           if [ "$open" = "0" ]; then
             gh issue create --title "$title" --body "$(cat silence.txt)
 
