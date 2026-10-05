@@ -1,3 +1,18 @@
+## 2026-10-05 - Subscriber watch now emits its counts as one GitHub annotation
+
+**Class:** novel (observability: run results unreadable through the API)
+**Guard:** `railway/tests/test_subscriber_watch.py` (`AnnotationLineTest`)
+
+The daily welcome-cap check reads `subscriber-watch.yml` runs through the API,
+which here exposes check-run annotations but not job logs or step summaries,
+so it could not see the counts. `railway/subscriber_watch.py` now prints one
+`::notice title=subscriber-watch::subscribers=N confirmations_24h=N
+welcome_sent=N cap=N welcome_skipped_over_cap=N brevo_sent_24h=N
+brevo_limit=N` line per run (counts only, no addresses; absent values read
+UNKNOWN, never 0). Pinned by `AnnotationLineTest` in
+`railway/tests/test_subscriber_watch.py`. No plugin file, no version reserved.
+Branch `claude/subscriber-watch-annotation`.
+
 ## 2026-10-02 - Two self-hosted-runner workflows wrote scratch files to a bare `/tmp/` path and collided with each other
 
 **Class:** novel (shared mutable scratch space on one self-hosted machine, not yet in the vocabulary)

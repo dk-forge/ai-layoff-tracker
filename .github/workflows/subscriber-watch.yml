@@ -17,6 +17,9 @@
 # read the route exits 3 (UNKNOWN is not a pass), which ci-alert turns into
 # one email naming the cause.
 #
+# The script also prints one `::notice title=subscriber-watch::` annotation
+# with the counts: the API can read annotations, not logs or summaries.
+#
 # 23:40 UTC: late in the UTC day the plugin's welcome counter covers, after
 # every digest slot.
 

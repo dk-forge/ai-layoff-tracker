@@ -224,6 +224,28 @@ def summary(history: list, warns: list) -> str:
     return "\n".join(lines)
 
 
+def annotation_line(history: list) -> str:
+    """One GitHub `::notice` annotation with today's counts (counts only, no PII).
+
+    The daily welcome-cap check reads runs through the API, which exposes
+    check-run annotations but not job logs or step summaries (2026-10-05).
+    Absent values print UNKNOWN, never 0.
+    """
+    s = history[-1]
+    w = s.get("welcome") or {}
+    n = daily_new(history)[-1][1] if s.get("available") else None
+    fields = [
+        ("subscribers", s.get("total")),
+        ("confirmations_24h", n),
+        ("welcome_sent", w.get("sent")),
+        ("cap", w.get("cap") or s.get("cap_effective")),
+        ("welcome_skipped_over_cap", w.get("skipped")),
+        ("brevo_sent_24h", total_sends(s)),
+        ("brevo_limit", w.get("limit") or BREVO_DAILY_LIMIT),
+    ]
+    return "::notice title=subscriber-watch::" + " ".join(f"{k}={_v(v)}" for k, v in fields)
+
+
 def merge_history(history: list, snap: dict) -> list:
     h = [s for s in history if isinstance(s, dict) and s.get("day") != snap["day"]]
     h.append(snap)
@@ -258,6 +280,7 @@ def main(argv=None) -> int:  # pragma: no cover - network
     warns = evaluate(history) if snap["available"] else []
     text = summary(history, warns)
     print(text)
+    print(annotation_line(history))
     with open(hist_path, "w") as fh:
         json.dump(history, fh)
     out = os.environ.get("GITHUB_STEP_SUMMARY")
