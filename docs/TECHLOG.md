@@ -1,3 +1,20 @@
+## 2026-10-05 (2.20.221) - blog posts showed the featured image twice
+
+**Class:** novel (reader-visible live-content defect)
+**Guard:** `railway/tests/test_blog_dup_images.py` (real PHP on sample HTML)
+
+Cause: no code in this repo (or the sibling repos) writes blog posts; ~122
+posts were published with their featured image ALSO inserted as an image
+block in post_content, and the theme renders the featured image above the
+title, so readers saw it twice. Fix: `includes/blog-dup-images.php` (a) strips,
+at render time on single posts, the first content block whose `<img>` is the
+featured attachment (wp-image-ID or same upload file in any size variant), so
+any future post published the same way cannot duplicate; (b) keyed
+`layoffs/v1/blog-dup-images` lists / (POST apply=1) removes that block from
+stored content. Driven by `blog-dup-images.yml` (dry_run default true; emits a
+`dup-images` notice with count + ids). Posts without a featured-image match
+are never touched.
+
 ## 2026-10-05 11:1x UTC (hourly ops check) - `live-surface-check.yml` still red, unchanged since the 2026-10-02 diagnosis
 
 **Class:** novel (live-content drift, not a code defect) — continuation of the 2026-10-02 entry below, not a new finding

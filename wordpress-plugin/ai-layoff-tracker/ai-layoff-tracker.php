@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.220
+ * Version:           2.20.221
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.220');
+define('ALT_VERSION', '2.20.221');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -176,6 +176,13 @@ if (is_readable($alt_seo_diagnostics)) {
 // "articles keep the old type", never to a white screen. Nothing outside the
 // file calls into it - it wires itself to wp_enqueue_scripts - so there is no
 // stub accessor to declare here.
+// Featured image shown twice on blog posts (2026-10-05): render-time strip of
+// the in-content duplicate + keyed cleanup route. GUARDED with is_readable like
+// every NEW include (the deploy can land this file first, 2.19.20).
+$alt_blog_dup_images = ALT_PLUGIN_DIR . 'includes/blog-dup-images.php';
+if (is_readable($alt_blog_dup_images)) {
+    require_once $alt_blog_dup_images;
+}
 $alt_blog_typography = ALT_PLUGIN_DIR . 'includes/blog-typography.php';
 if (is_readable($alt_blog_typography)) {
     require_once $alt_blog_typography;
