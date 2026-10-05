@@ -1,0 +1,60 @@
+{
+ "attribution": "Exposure scores: Eloundou, Manning, Mishkin and Rock, \"GPTs are GPTs\" (Science, 2024), data from github.com/openai/GPTs-are-GPTs (MIT licence). Occupation titles: O*NET 31.0 Database by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA), used under the CC BY 4.0 licence; O*NET is a trademark of USDOL/ETA. Employment and wages: U.S. Bureau of Labor Statistics, Occupational Employment and Wage Statistics (May 2025). Projections: U.S. Bureau of Labor Statistics, Employment Projections (2025-35).",
+ "columns": {
+  "metro_occupations": [
+   "area",
+   "soc",
+   "employment"
+  ],
+  "metros": [
+   "area",
+   "title",
+   "total_employment",
+   "exposed_employment"
+  ],
+  "occupations": [
+   "soc",
+   "title",
+   "exposure",
+   "employment",
+   "median_wage",
+   "growth_pct"
+  ]
+ },
+ "files": {
+  "metro_occupations-M2025.csv": {
+   "bytes": 9857,
+   "rows": 500,
+   "sha256": "5ab3ad6cbf51aacbd8b4c868876533c698b2ad7ef47ee5b24e7fd677f68e61cc"
+  },
+  "metros-M2025.csv": {
+   "bytes": 2687,
+   "rows": 50,
+   "sha256": "defc766f16281915d5bc8648dc6cc5f4f0f856278b710c8c891d593f2a99a77a"
+  },
+  "occupations-M2025.csv": {
+   "bytes": 51705,
+   "rows": 771,
+   "sha256": "641f9af3f3c72193f7feaaf15a2de23b895bdac6591b04b22dc447951bbcbe84"
+  }
+ },
+ "licence": "Mixed open: study data MIT; O*NET CC BY 4.0; BLS OEWS and Employment Projections public domain",
+ "releases": {
+  "M2025": {
+   "ep": "2025-35",
+   "oews": "May 2025",
+   "onet": "31.0"
+  }
+ },
+ "source": "ai_exposure",
+ "study": {
+  "citation": "Eloundou, T., Manning, S., Mishkin, P. and Rock, D. (2024). GPTs are GPTs: Labor market impact potential of LLMs. Science 384(6702), 1306-1308. Preprint: arXiv:2303.10130 (2023).",
+  "commit": "0471612fef3cc22b74fb884d27bff9dbd3770582",
+  "data": "https://github.com/openai/GPTs-are-GPTs",
+  "licence": "MIT",
+  "measure": "dv_rating_beta (GPT-4 rated, E1 + 0.5 x E2)",
+  "name": "GPTs are GPTs",
+  "short": "Eloundou et al. (2024)"
+ },
+ "threshold": 0.5
+}
