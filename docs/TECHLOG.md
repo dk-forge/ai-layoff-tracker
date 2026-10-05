@@ -1,3 +1,22 @@
+## 2026-10-05 11:1x UTC (hourly ops check) - `live-surface-check.yml` still red, unchanged since the 2026-10-02 diagnosis
+
+**Class:** novel (live-content drift, not a code defect) — continuation of the 2026-10-02 entry below, not a new finding
+**Guard:** none yet — same live check, same root cause
+
+Still failing every run: latest completed run (2026-10-05 08:52:50 UTC, job
+111686213817) shows the identical 7-page mismatch (`press/`, `sources/`,
+`methodology/`, `ai-tracker-health/`, `publisher-tools/`, `ai-quotes/`,
+`report/`), same assertion text as 2026-10-02. The open alert
+(`live-surface-check:main:2b08b8b63bcac915` in `railway/alert_state.json`,
+first raised 2026-10-01 14:37:58 UTC) is still open — this has now been red
+for 4 days straight, already mailed once per dedup, nothing new to alert on.
+No code change attempted this run, for the same reason as 2026-10-02: the
+2026-10-02 entry below already root-caused this as live WordPress/Yoast
+per-page SEO-title state, not a bug in this checkout, and said explicitly
+"Needs Dakotta, not a code fix from here." That conclusion still holds — no
+live wp-admin access from this session to confirm or clear the Yoast titles.
+Surfaced as an `ACTION:` line on sandbox #1259 rather than re-diagnosing.
+
 ## 2026-10-05 - Subscriber email: the approved visual design (colours, headings, charts)
 
 **Class:** novel (design rollout, owner request TRACKER-EMAIL-QUALITY)
