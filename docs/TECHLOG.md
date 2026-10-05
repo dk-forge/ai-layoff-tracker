@@ -1,3 +1,23 @@
+## 2026-10-05 (2.20.227) - FRED trend, QWI hiring vs separations, early-warning view
+
+**Class:** novel (additive display of stored reference data; issue #478 item 1)
+**Guard:** `railway/tests/test_early_warning.py` (status rule, WARN never moves the status, hide-when-missing, credits + as-of, Sources-page rows for every panel)
+
+Labour-market context gains a FRED trend chart (picker: weekly initial claims,
+unemployment rate, payrolls, information-sector jobs; only stored series are
+offered) and a Census QWI "Hiring vs separations" chart (state, industry
+sector, split by sex/age/education/race/ethnicity; the split covers all
+sectors because QWI publishes groups across all industries only). Captions say
+separations are all-cause. New "Early warning by industry" view lines up our
+own US WARN notice counts, FRED initial claims (monthly mean), JOLTS layoffs and
+QWI separations on one 36-month indexed timeline. Status label (Heating up /
+Stable / Cooling) uses ONLY the official series: monthly = last 3 months vs the
+12 before, QWI = latest quarter vs a year earlier, +/-5%, two judged series
+minimum, majority of at least two. It claims nothing about AI. Files:
+`includes/labour-trends.php`, `includes/early-warning.php`, two new partials,
+`assets/labour-context.js`, `assets/layoffs.css`. Real-browser check at 1280
+and 375, light and dark: no horizontal scroll, no console errors.
+
 ## 2026-10-05 - FRED/QWI first live runs: two query fixes
 
 **Class:** novel (first live contact with two new APIs)

@@ -13,7 +13,7 @@ $alt_lc_ages = array('Y_GE15' => '15 and over', 'Y15T24' => '15 to 24', 'Y25T74'
          data-api="<?php echo esc_attr($alt_lc_api); ?>">
     <h2 id="alt-lc-h">Labour-market context</h2>
     <p class="alt-lc-intro"><strong>These are official aggregate statistics, not the tracker's own counts.</strong>
-    They come from government and OECD surveys, cover every cause of job loss, and are never added to
+    They come from government and OECD surveys and records, cover every cause of job loss, and are never added to
     the entries we record. They are here for scale only and do not show that AI caused any of the changes.</p>
 
     <div class="alt-chart-grid">
@@ -93,6 +93,9 @@ $alt_lc_ages = array('Y_GE15' => '15 and over', 'Y15T24' => '15 to 24', 'Y25T74'
             </figcaption>
         </figure>
     <?php endif; ?>
+
+    <?php include __DIR__ . '/labour-trends.php'; ?>
     </div>
+    <?php include __DIR__ . '/early-warning.php'; ?>
     <p class="alt-lc-status" role="status" aria-live="polite"></p>
 </section>
