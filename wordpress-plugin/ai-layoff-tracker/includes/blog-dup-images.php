@@ -114,12 +114,19 @@ function alt_dup_images_route($request) {
         'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1,
         'fields' => 'ids', 'meta_key' => '_thumbnail_id', 'suppress_filters' => true,
     ));
-    $found = array(); $fixed = array();
+    $found = array(); $fixed = array(); $sample = array(); $with_img = 0;
     foreach ($ids as $pid) {
         list($tid, $url) = alt_dup_image_thumb($pid);
         if ($tid <= 0) continue;
         $raw = (string) get_post_field('post_content', $pid, 'raw');
         $span = alt_dup_image_find($raw, $tid, $url);
+        // Read-only diagnostics: how unmatched posts carry images, so a miss
+        // can be explained from outside the host (no content is changed).
+        if ($span === null && preg_match('~<img\b[^>]*>~i', $raw, $im)) {
+            $with_img++;
+            if (count($sample) < 12) $sample[] = array('id' => (int) $pid, 'thumb_url' => $url,
+                'first_img' => substr($im[0], 0, 300), 'imgs' => preg_match_all('~<img\b~i', $raw));
+        }
         if ($span === null) continue;
         $found[] = array('id' => (int) $pid, 'thumb' => $tid,
                          'removed' => substr(substr($raw, $span[0], $span[1]), 0, 300));
@@ -130,5 +137,6 @@ function alt_dup_images_route($request) {
         }
     }
     return rest_ensure_response(array('scanned' => count($ids), 'count' => count($found),
-        'posts' => $found, 'applied' => $apply, 'fixed' => $fixed));
+        'posts' => $found, 'applied' => $apply, 'fixed' => $fixed,
+        'unmatched_with_img' => $with_img, 'sample' => $sample));
 }

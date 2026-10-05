@@ -73,7 +73,7 @@ class Notices(unittest.TestCase):
         lines = notices({"count": 2, "scanned": 9, "fixed": [], "posts": [
             {"id": 5, "thumb": 42, "removed": "<figure>\n<img></figure>"}, {"id": 8, "thumb": 3, "removed": ""}]}, True)
         self.assertEqual(lines[0], "::notice title=dup-images::count=2 dry_run=1 scanned=9 fixed=0 ids=5,8")
-        self.assertEqual(len(lines), 3)
+        self.assertEqual(len(lines), 4)
         self.assertNotIn("\n", lines[1])
 
 

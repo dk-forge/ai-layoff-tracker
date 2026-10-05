@@ -20,6 +20,10 @@ def notices(data, dry_run):
     for p in data.get("posts", []):
         snippet = " ".join(str(p.get("removed", "")).split())[:160].replace("::", ": :")
         lines.append(f"::notice title=dup-image post {p['id']}::thumb={p.get('thumb')} block={snippet}")
+    lines.append(f"::notice title=dup-images-unmatched::posts_with_img_but_no_match={data.get('unmatched_with_img', 0)}")
+    for p in data.get("sample", []):
+        img = " ".join(str(p.get("first_img", "")).split())[:240].replace("::", ": :")
+        lines.append(f"::notice title=dup-sample {p.get('id')}::thumb={p.get('thumb_url')} imgs={p.get('imgs')} first={img}")
     return lines
 
 
