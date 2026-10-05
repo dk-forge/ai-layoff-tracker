@@ -1,0 +1,91 @@
+ONETFAIL https://www.onetcenter.org/dl_files/database/db_31_0_text/Occupation%20Data.txt ", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 404: Not Found
+
+ONET https://www.onetcenter.org/dl_files/database/db_31_0_text.zip 13183034
+b"PK\x03\x04\n\x00\x00\x00\x00\x00g\x0b\x1e]\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\r\x00\x1c\x00db_31_0_text/UT\t\x00\x032\xbf\x93j\xa4\xc0\x93jux\x0b\x00\x01\x04\xf5\x01\x00\x00\x04X\x02\x00\x00PK\x03\x04\x14\x00\x00\x00\x08\x00\x05\x0b\x1e]\xf0g\xe6r\xa7\xe7\x00\x00B\xbe\x04\x00*\x00\x1c\x00db_31_0_text/Sample of Reported Titles.txtUT\t\x00\x03z\xbe\x93j\x06\xc1\x93jux\x0b\x00\x01\x04\xf5\x01\x00\x00\x04X\x02\x00\x00\xac\xfdIw\x1b=\xf2/\x08\xaf\xdd\xe7\xf4w\xe0\xaaK|\xdf\xf2\xbd%j\xb0\xb5\xd4,Ui`\x89z\xec\xbf\xee.E\xa6\xa4,'\x99\xacdR\xb6\x9eO\xdf\x98\x11c\x92\xae\xea\x8d\x8e\x88\xf8E \x80\xc4\x10\x00\x02\x81\xfb\xff\xdf\xdd\xf9\xe3\xe7\xc9\xfd\xe9\xe0\xb4\x99\x95\x9f\x1e\xcae\xd3v\xe5l\xf0\xf7\xe6y\xf0Xuu\xf9i\xf2\xd6\xfc\\\x0c\xaa\xc5\xe0\xf6cpW\xfe\xea\x06\xb7\xcd{\xf9\x7f\xff_\xbb\xbb\x9fw\xff\xb6\xbb\xfb\xbf\xfe\xf6\xb7O\xa7\xe7\xf7\x83\x9d\xd3\xb7\xaa|\x19\x9c\xff*\xa7\xeb\xaez/\x07\xf7//\xd5\xb4l\x87\x9f\x9e0\xd6\xc1\xce\x0c\xa2]U\xddG\x84\x19\xfe\xb3\xfb\xe1\xa7;\x01{Q-\x8a\xc5\xb4*j\x80\xbd\xb8\x97\xe5^/^\x9av^tU\xb3\x00\xe8kE\xf2\xfd\xb2l\rv\xf1\n\xb0\xf7\x8a\xe4\xc7r\xfa\xb6\xa8\xa6H\x8bG&7\x17\xff\xacj\xcbi\xd7\xb4*\xe0\x9b\x112\x18\xb7\xe5\xaa\x9a\x95\x8bn\xb0s\xfemL\xa5\x05\xfd\x9a\xc5\x8a\xa1!\x89\xf1%\x1c*\xc9^(\xc9d\xbd\xea\nS\xa7\xcfU\x8d?\xc0\x84\x14\xdd04\xadi\x0eEWR\xa6q\xdbL\xcb\xd5jp[,\x8a\xd7\x12\x17\xd2\xb0M\x1e\x06\xc5bF\x99\xbe\x8dM&Yb\xe3\xbe\xe9C\xb9Z\x9aRT\x01#\xb1\xa1\xa2\x0fI^\x04|\xfaf\xdaJY\xd7\r\xd5\x89\xe1LU\xf4C\xd2\x17|\xeaC]/\xaa\xae*\xec\x17\xe5\x1f\xa9\x0f:\xdeP\x90X\xb3\xbd\x99\x9b\xcf\xf0\xda\x16\xf3\x95\xdc\xda\x00\xbc6\r\xd2\xa8\xf5\xba\xe0\xa5\x1a\xb9&s\xb2^U\x0b\xe9\x8bz\xf2\xa9)\x8fi#2\xf1\xac\\\x16m7\xb7EV\x00\xd5"
+['db_31_0_text/', 'db_31_0_text/Sample of Reported Titles.txt', 'db_31_0_text/Task Categories.txt', 'db_31_0_text/Task Ratings.txt', 'db_31_0_text/Occupation Level Metadata.txt', 'db_31_0_text/Work Context.txt', 'db_31_0_text/Occupation Data.txt', 'db_31_0_text/Work Styles.txt', 'db_31_0_text/Abilities.txt', 'db_31_0_text/Work Activities.txt', 'db_31_0_text/Work Context Categories.txt', 'db_31_0_text/Job Zone Reference.txt', 'db_31_0_text/Task Statements.txt', 'db_31_0_text/Survey Booklet Locations.txt', 'db_31_0_text/Scales Reference.txt', 'db_31_0_text/Abilities to Work Context.txt', 'db_31_0_text/Content Model Reference.txt', 'db_31_0_text/Emerging Tasks.txt', 'db_31_0_text/Tasks to DWAs.txt', 'db_31_0_text/Abilities to Work Activities.txt', 'db_31_0_text/Job Zones.txt', 'db_31_0_text/Knowledge.txt', 'db_31_0_text/Related Occupations.txt', 'db_31_0_text/Level Scale Anchors.txt', 'db_31_0_text/Interests Illustrative Activities.txt', 'db_31_0_text/Interests Illustrative Occupations.txt', 'db_31_0_text/Job Titles.txt', 'db_31_0_text/Career Interest Types.txt', 'db_31_0_text/Software Skills.txt', 'db_31_0_text/GWAs to IWAs.txt', 'db_31_0_text/GWAs to IWAs to DWAs.txt', 'db_31_0_text/Career Interest Type Keywords.txt', 'db_31_0_text/Specific Interest Areas to Career Interest Types.txt', 'db_31_0_text/Education.txt', 'db_31_0_text/Education Categories.txt', 'db_31_0_text/Essential Skills.txt', 'db_31_0_text/Essential Skills to Work Activities.txt', 'db_31_0_text/Essential Skills to Work Context.txt', 'db_31_0_text/Specific Interest Areas.txt', 'db_31_0_text/Training and Experience.txt', 'db_31_0_text/Training and Experience Categories.txt', 'db_31_0_text/Transferable Skills.txt', 'db_31_0_text/Transferable Skills to Work Activities.txt', 'db_31_0_text/Transferable Skills to Work Context.txt', 'db_31_0_text/Work Styles to Work Activities.txt', 'db_31_0_text/Work Styles to Work Context.txt', 'db_31_0_text/Read Me.txt']
+EPSHEET Index
+   ('Occupation.xlsx contents',)
+   ('Table 1.1 Employment by major occupational group',)
+   ('Table 1.2 Occupational projections and worker characteristics',)
+   ('Table 1.3 Fastest growing occupations',)
+EPSHEET Table 1.1
+   ('Table 1.1 Employment by major occupational group, 2025 and projected 2035 (Employment in thousands)', None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Median annual wage, dollars, 2025')
+   ('Total, all occupations', '00-0000', 170280.8, 176198.5, 5917.6, 3.5, 50980)
+   ('  Management occupations', '11-0000', 13683.4, 14527.6, 844.2, 6.2, 126520)
+EPSHEET Table 1.2
+   ('Table 1.2 Occupational projections, 2025–35, and worker characteristics, 2025 (Employment in thousands)', None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Occupation type', 'Employment, 2025', 'Employment, 2035', 'Employment distribution, percent, 2025', 'Employment distribution, percent, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Percent self-employed, 2025', 'Occupational openings, 2025–35 annual average', 'Median annual wage, dollars, 2025', 'Typical education needed for entry', 'Work experience in a related occupation', 'Typical on-the-job training needed to attain competency in the occupation', 'Related Occupational Outlook Handbook (OOH) content', 'Related Occupational Outlook Handbook (OOH) content')
+   ('Total, all occupations', '00-0000', 'Summary', 170280.8, 176198.5, 100, 100, 5917.6, 3.5, 5.8, 17461.8, 50980, '—', '—', '—', '—', '—')
+   ('  Management occupations', '11-0000', 'Summary', 13683.4, 14527.6, 8, 8.2, 844.2, 6.2, 14.4, 1081.7, 126520, '—', '—', '—', '—', '—')
+   ('    Top executives', '11-1000', 'Summary', 3904.1, 4095.2, 2.3, 2.3, 191.1, 4.9, 2.7, 305.1, 108510, '—', '—', '—', '—', '—')
+   ('      Chief executives', '11-1011', 'Line item', 291.6, 300.9, 0.2, 0.2, 9.3, 3.2, 26.6, 19.1, 213990, "Bachelor's degree", '5 years or more', 'None', 'OOH Content', '<a href="https://www.bls.gov/ooh/management/top-executives.htm">OOH Content</a>')
+   ('      General and operations managers', '11-1021', 'Line item', 3599, 3780.3, 2.1, 2.1, 181.3, 5, 0.8, 285, 105770, "Bachelor's degree", '5 years or more', 'None', 'OOH Content', '<a href="https://www.bls.gov/ooh/management/top-executives.htm">OOH Content</a>')
+   ('    Advertising, marketing, promotions, public relations, and sales managers', '11-2000', 'Summary', 1234.5, 1298.6, 0.7, 0.7, 64.1, 5.2, 3.2, 93.4, 155780, '—', '—', '—', '—', '—')
+   ('      Advertising and promotions managers', '11-2011', 'Line item', 33.2, 31.9, 0, 0, -1.2, -3.7, 35.1, 2.3, 133660, "Bachelor's degree", 'Less than 5 years', 'None', 'OOH Content', '<a href="https://www.bls.gov/ooh/management/advertising-promotions-and-marketing-managers.htm">OOH Content</a>')
+   ('      Marketing and sales managers', '11-2020', 'Summary', 1071.7, 1129.9, 0.6, 0.6, 58.1, 5.4, 2.6, 81.2, 158040, '—', '—', '—', '—', '—')
+   ('        Marketing managers', '11-2021', 'Line item', 421.6, 450.8, 0.2, 0.3, 29.1, 6.9, 5.3, 34, 166790, "Bachelor's degree", '5 years or more', 'None', 'OOH Content', '<a href="https://www.bls.gov/ooh/management/advertising-promotions-and-marketing-managers.htm">OOH Content</a>')
+   ('        Sales managers', '11-2022', 'Line item', 650.1, 679.1, 0.4, 0.4, 29, 4.5, 0.8, 47.3, 148270, "Bachelor's degree", 'Less than 5 years', 'None', 'OOH Content', '<a href="https://www.bls.gov/ooh/management/sales-managers.htm">OOH Content</a>')
+EPSHEET Table 1.3
+   ('Table 1.3 Fastest growing occupations, 2025 and projected 2035 (Employment in thousands)', None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Median annual wage, dollars, 2025')
+   ('Total, all occupations', '00-0000', 170280.8, 176198.5, 5917.6, 3.5, 50980)
+   ('  Nurse practitioners', '29-1171', 336.3, 474.1, 137.8, 41, 132300)
+EPSHEET Table 1.4
+   ('Table 1.4 Occupations with the most job growth, 2025 and projected 2035 (Employment in thousands)', None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Median annual wage, dollars, 2025')
+   ('Total, all occupations', '00-0000', 170280.8, 176198.5, 5917.6, 3.5, 50980)
+   ('  Home health and personal care aides', '31-1120', 4677.1, 5524.4, 847.3, 18.1, 35800)
+EPSHEET Table 1.5
+   ('Table 1.5 Fastest declining occupations, 2025 and projected 2035 (Employment in thousands)', None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Median annual wage, dollars, 2025')
+   ('Total, all occupations', '00-0000', 170280.8, 176198.5, 5917.6, 3.5, 50980)
+   ('  Word processors and typists', '43-9022', 40.4, 26.5, -13.9, -34.4, 49280)
+EPSHEET Table 1.6
+   ('Table 1.6 Occupations with the largest job declines, 2025 and projected 2035 (Employment in thousands)', None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Median annual wage, dollars, 2025')
+   ('Total, all occupations', '00-0000', 170280.8, 176198.5, 5917.6, 3.5, 50980)
+   ('  Cashiers', '41-2011', 3106.3, 2905.7, -200.6, -6.5, 32880)
+EPSHEET Table 1.8
+   ('Table 1.8 2025–35 Industry-occupation matrix data, by occupation', None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Occupation type', 'National Employment Matrix Link')
+   ('Total, all occupations', '00-0000', 'Summary', 'Projections for 00-0000')
+   ('  Management occupations', '11-0000', 'Summary', 'Projections for 11-0000')
+EPSHEET Table 1.9
+   ('Table 1.9 2025–35 Industry-occupation matrix data, by industry', None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Industry type', 'National Employment Matrix Link')
+   ('Total, all industries', 'TE1000', 'Summary', 'Projections for TE1000')
+   ('  Self-employed workers', 'TE1100', 'Line item', 'Projections for TE1100')
+EPSHEET Table 1.10
+   ('Table 1.10 Occupational separations and openings, projected 2025–35 (Employment in thousands)', None, None, None, None, None, None, None, None, None, None, None, None, None)
+   ('2025 National Employment Matrix title', '2025 National Employment Matrix code', 'Occupation type', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Labor force exit rate, 2025–35 annual average', 'Occupational transfer rate, 2025–35 annual average', 'Total occupational separations rate, 2025–35 annual average', 'Labor force exits, 2025–35 annual average', 'Occupational transfers, 2025–35 annual average', 'Total occupational separations, 2025–35 annual average', 'Occupational openings, 2025–35 annual average')
+   ('Total, all occupations', '00-0000', 'Summary', 170280.8, 176198.5, 5917.6, 3.5, 4.2, 5.5, 9.7, 7362.4, 9507.6, 16870, 17461.8)
+   ('  Management occupations', '11-0000', 'Summary', 13683.4, 14527.6, 844.2, 6.2, 2.5, 4.6, 7.1, 355.4, 641.9, 997.3, 1081.7)
+EPSHEET Table 1.11
+   ('Table 1.11 Employment in STEM occupations, 2025 and projected 2035 (Employment in thousands)', None, None, None, None, None)
+   ('Occupation category', 'Employment, 2025', 'Employment, 2035', 'Employment change, numeric, 2025–35', 'Employment change, percent, 2025–35', 'Median annual wage, dollars, 2025')
+   ('Total, all occupations', 170280.8, 176198.5, 5917.6, 3.5, 50980)
+   ('  STEM occupations', 10910.5, 11718.2, 807.7, 7.4, 106360)
+EPSHEET Table 1.12
+   ('Table 1.12 Factors affecting occupational utilization, projected 2025–35', None, None, None, None)
+   ('2025 National Employment Matrix occupation title', '2025 National Employment Matrix occupation code', '2025 National Employment Matrix industry title', '2025 National Employment Matrix industry code', 'Factors affecting occupational utilization')
+   ('Advertising and promotions managers', '11-2011', 'Total, all industries', 'TE1000', 'Productivity change - share decreases as managers increasingly utilize artificial intelligence (AI) tools to test, modify, and oversee ad campaigns, allowing fewer managers to oversee more staff.')
+   ('Advertising and promotions managers', '11-2011', 'Automobile dealers', '441100', 'Productivity change - share decreases as consolidation of back office jobs allows same amount of output to be produced by fewer advertising and promotions managers.')
+nat ('AREA', 'AREA_TITLE', 'AREA_TYPE', 'PRIM_STATE', 'NAICS', 'NAICS_TITLE', 'I_GROUP', 'OWN_CODE', 'OCC_CODE', 'OCC_TITLE', 'O_GROUP', 'TOT_EMP', 'EMP_PRSE', 'JOBS_1000', 'LOC_QUOTIENT', 'PCT_TOTAL', 'PCT_RPT', 'H_MEAN', 'A_MEAN', 'MEAN_PRSE', 'H_PCT10', 'H_PCT25', 'H_MEDIAN', 'H_PCT75', 'H_PCT90', 'A_PCT10', 'A_PCT25', 'A_MEDIAN', 'A_PCT75', 'A_PCT90', 'ANNUAL', 'HOURLY')
+nat ('99', 'U.S.', '1', 'US', '000000', 'Cross-industry', 'cross-industry', '1235', '00-0000', 'All Occupations', 'total', 155495730, 0, None, None, None, None, 33.54, 69770, 0.1, 15, 18.07, 24.51, 38.71, 61.81, 31200, 37590, 50980, 80520, 128560, '', '')
+nat ('99', 'U.S.', '1', 'US', '000000', 'Cross-industry', 'cross-industry', '1235', '11-0000', 'Management Occupations', 'major', 11132700, 0.2, None, None, None, None, 69.84, 145260, 0.2, 28.91, 39.89, 60.83, 84.75, 123.71, 60130, 82970, 126520, 176280, 257310, '', '')
+nat ('99', 'U.S.', '1', 'US', '000000', 'Cross-industry', 'cross-industry', '1235', '11-1000', 'Top Executives', 'minor', 3720520, 0.3, None, None, None, None, 68.33, 142120, 0.3, 24.27, 35.22, 52.17, 82.85, 134.48, 50480, 73260, 108510, 172330, 279710, '', '')
+nat rows 1402 secs 0
+ma ('AREA', 'AREA_TITLE', 'AREA_TYPE', 'PRIM_STATE', 'NAICS', 'NAICS_TITLE', 'I_GROUP', 'OWN_CODE', 'OCC_CODE', 'OCC_TITLE', 'O_GROUP', 'TOT_EMP', 'EMP_PRSE', 'JOBS_1000', 'LOC_QUOTIENT', 'PCT_TOTAL', 'PCT_RPT', 'H_MEAN', 'A_MEAN', 'MEAN_PRSE', 'H_PCT10', 'H_PCT25', 'H_MEDIAN', 'H_PCT75', 'H_PCT90', 'A_PCT10', 'A_PCT25', 'A_MEDIAN', 'A_PCT75', 'A_PCT90', 'ANNUAL', 'HOURLY')
+ma ('10180', 'Abilene, TX', '4', 'TX', '000000', 'Cross-industry', 'cross-industry', '1235', '00-0000', 'All Occupations', 'total', 75070, 0, 1000, 1, None, None, 26.13, 54360, 0.6, 11.97, 14.9, 21.32, 29.92, 45.19, 24900, 30980, 44340, 62230, 93990, '', '')
+ma ('10180', 'Abilene, TX', '4', 'TX', '000000', 'Cross-industry', 'cross-industry', '1235', '11-0000', 'Management Occupations', 'major', 5470, 2.1, 72.874, 1.02, None, None, 53.94, 112190, 0.9, 22.98, 31.25, 45.9, 64.34, 92.98, 47790, 64990, 95480, 133840, 193390, '', '')
+ma ('10180', 'Abilene, TX', '4', 'TX', '000000', 'Cross-industry', 'cross-industry', '1235', '11-1011', 'Chief Executives', 'detailed', 40, 10, 0.542, 0.41, None, None, 99.14, 206200, 6.3, 42.5, 58.65, 79.7, 113.51, 187.68, 88400, 121980, 165770, 236100, 390370, '', '')
+ma rows 150024 secs 19
