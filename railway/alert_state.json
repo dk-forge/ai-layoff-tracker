@@ -57,6 +57,11 @@
       "last": 1791232862,
       "subject": "CI RED: Alert drain \u2014 no error line could be extracted from the log"
     },
+    "census-qwi-reference-data:main:941c42d3b54ac214": {
+      "first": 1791235615,
+      "last": 1791235615,
+      "subject": "CI RED: Census QWI reference data \u2014 no rows parsed; stored data left intact. by_sector: HTTP Error 400:  error: wildcard not supported in 'for' clause for this hierarchy. Please se"
+    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -138,6 +143,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T21:19:20+00:00",
+  "updated_at": "2026-10-05T21:26:56+00:00",
   "version": 1
 }
