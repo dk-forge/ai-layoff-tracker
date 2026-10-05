@@ -193,6 +193,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">BLS JOLTS &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>OECD unemployment</b></td><td>OECD member countries, by sex and age</td>
+        <td>The official monthly unemployment rate for each OECD member country, by sex and age group. Collected weekly as a separate context metric, never added to our layoff counts. Source: OECD, Infra-annual labour statistics, licensed under CC BY 4.0.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://data-explorer.oecd.org/" target="_blank" rel="noopener">OECD Data Explorer &#8599;</a></td>
+      </tr>
+      <tr>
         <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
         <td>Official corporate-filing systems. We <em>retired</em> them as discovery probes after months live yielded zero layoff rows, because these filings essentially never announce layoffs. Worldwide news covers Japan, South Korea and Brazil instead. Client kept, re-runnable on demand.</td>
         <td>Retired probe</td>

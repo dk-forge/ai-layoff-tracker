@@ -19,6 +19,7 @@ if (!defined('ABSPATH')) exit;
 function alt_reference_sources() {
     return array(
         'bls_jolts_cps' => 'alt_ref_bls_jolts_cps',
+        'oecd_unemployment' => 'alt_ref_oecd_unemployment',
     );
 }
 

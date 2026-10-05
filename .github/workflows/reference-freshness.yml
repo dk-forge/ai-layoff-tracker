@@ -1,6 +1,6 @@
 # Reference-data freshness alarm: "is each official dataset still current?"
 #
-# The reference collectors (bls-import.yml, ...) fail soft by design and never
+# The reference collectors (bls-import.yml, oecd-import.yml) fail soft by design and never
 # overwrite stored data with a bad pull, so a broken collector leaves an old
 # document that looks fine. railway/reference_freshness.py reads the public
 # /reference/<source> GET daily and goes red, opening ONE issue, when the
@@ -50,7 +50,7 @@ jobs:
           if [ "$open" = "0" ]; then
             gh issue create --title "$title" --body "$(sed 's/^::[a-z]* title=[^:]*:://' fresh.txt)
 
-          Check the collector workflow for the named source (bls-import.yml, ...). Raised by .github/workflows/reference-freshness.yml."
+          Check the collector workflow for the named source (bls-import.yml, oecd-import.yml). Raised by .github/workflows/reference-freshness.yml."
           fi
       - name: Fail the run on stale or unknown
         if: steps.probe.outputs.code != '0'
