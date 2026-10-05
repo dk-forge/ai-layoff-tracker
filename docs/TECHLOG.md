@@ -27,7 +27,8 @@ test (`SourcesPageTest`) fails if any reference source lacks a row, and the
 source register in OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md lists all five.
 ## 2026-10-05 - Hourly ops check: `sandbox-uptime-check.yml` stuck unable to get a GitHub-hosted runner
 
-**Class:** ops note (no code change; monitoring-channel finding, not an app outage)
+**Class:** novel (ops note: no code change; monitoring-channel finding, not an app outage)
+**Guard:** none - hosted-runner capacity is outside the repo; nothing to test
 
 Three consecutive scheduled runs of `.github/workflows/sandbox-uptime-check.yml`
 (#1253 19:34Z, #1254 19:48Z, #1255 20:01Z) never got a `ubuntu-latest` runner

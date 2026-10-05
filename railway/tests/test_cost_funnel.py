@@ -13,6 +13,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from contextlib import ExitStack
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -282,29 +283,30 @@ class CronWiringTests(unittest.TestCase):
                 "is running for real. Add it to this `with` block rather than "
                 "letting the suite pay for it; see the comment above.")
 
-        with patch("time.sleep", _offline), \
-             patch("socket.getaddrinfo", _offline), \
-             patch.object(cron, "GATE_MODE", gate_mode), \
-             patch.object(cron, "_mark_phase"), \
-             patch.object(cron, "_spend_preflight"), \
-             patch.object(cron, "report_source_health"), \
-             patch.object(cron, "_post_spend_record") as post_rec, \
-             patch.object(cron, "pull_edgar_filings", return_value=[]), \
-             patch.object(cron, "pull_google_news", return_value=[entry]), \
-             patch.object(cron, "_pull_local_news_rows", return_value=[]), \
-             patch.object(cron, "_pull_regional_feeds_rows", return_value=[]), \
-             patch.object(cron, "_pull_national_feeds_rows", return_value=[]), \
-             patch.object(cron, "pull_press_releases", return_value=[]), \
-             patch.object(cron, "pull_mn_warn_letters", return_value=[]), \
-             patch.object(cron, "reviewed_feed_count", return_value=1), \
-             patch.object(cron, "pull_gdelt_between", return_value=[]), \
-             patch.object(cron, "publishing_host_ready", return_value=host_ready), \
-             patch.object(cron, "filter_already_seen", side_effect=lambda e: e), \
-             patch.object(extractor, "gate_verdict", return_value=verdict) as gate, \
-             patch.object(cron, "extract_layoff_data",
-                          return_value=extracted) as extract, \
-             patch.object(cron, "post_to_wordpress",
-                          side_effect=lambda x: posted.append(x) or "posted"):
+        # ExitStack, not one `with a, b, ...`: CPython caps statically nested
+        # blocks at 20 and this harness needs more patches than that.
+        with ExitStack() as stack:
+            stack.enter_context(patch("time.sleep", _offline))
+            stack.enter_context(patch("socket.getaddrinfo", _offline))
+            stack.enter_context(patch.object(cron, "GATE_MODE", gate_mode))
+            stack.enter_context(patch.object(cron, "_mark_phase"))
+            stack.enter_context(patch.object(cron, "_spend_preflight"))
+            stack.enter_context(patch.object(cron, "report_source_health"))
+            post_rec = stack.enter_context(patch.object(cron, "_post_spend_record"))
+            stack.enter_context(patch.object(cron, "pull_edgar_filings", return_value=[]))
+            stack.enter_context(patch.object(cron, "pull_google_news", return_value=[entry]))
+            stack.enter_context(patch.object(cron, "_pull_local_news_rows", return_value=[]))
+            stack.enter_context(patch.object(cron, "_pull_regional_feeds_rows", return_value=[]))
+            stack.enter_context(patch.object(cron, "_pull_national_feeds_rows", return_value=[]))
+            stack.enter_context(patch.object(cron, "pull_press_releases", return_value=[]))
+            stack.enter_context(patch.object(cron, "pull_mn_warn_letters", return_value=[]))
+            stack.enter_context(patch.object(cron, "reviewed_feed_count", return_value=1))
+            stack.enter_context(patch.object(cron, "pull_gdelt_between", return_value=[]))
+            stack.enter_context(patch.object(cron, "publishing_host_ready", return_value=host_ready))
+            stack.enter_context(patch.object(cron, "filter_already_seen", side_effect=lambda e: e))
+            gate = stack.enter_context(patch.object(extractor, "gate_verdict", return_value=verdict))
+            extract = stack.enter_context(patch.object(cron, "extract_layoff_data", return_value=extracted))
+            stack.enter_context(patch.object(cron, "post_to_wordpress", side_effect=lambda x: posted.append(x) or "posted"))
             self._last_cron_calls = (gate, extract, posted, post_rec)
             cron.run()
         return gate, extract, posted, post_rec
