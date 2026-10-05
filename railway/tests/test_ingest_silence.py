@@ -51,6 +51,21 @@ class IngestSilenceTest(unittest.TestCase):
         self.assertEqual(s.newest_run(rows), datetime(2026, 10, 4, 22, 0, tzinfo=timezone.utc))
         self.assertTrue(s.verdict(rows, now=NOW)[0])
 
+    def test_only_warn_runs_recently_is_still_silent(self):
+        # 2026-10-05 (#1259): ingest dead 6.6 days while the separate WARN
+        # workflow kept writing warn_* notes, and the alarm said "alive".
+        rows = [note("2026-09-28T22:05:00Z", source="edgar"),
+                note("2026-10-05T06:00:00Z", source="warn_us"),
+                note("2026-10-05T06:01:00Z", source="warn_custom_states")]
+        self.assertFalse(s.verdict(rows, now=NOW)[0])
+
+    def test_ingest_sources_are_derived_from_cron(self):
+        names = s.ingest_sources()
+        for src in ("edgar", "press_releases", "gdelt", "regional_feeds",
+                    "national_feeds"):
+            self.assertIn(src, names)
+        self.assertFalse({"warn_us", "warn_custom_states", "warn_quebec"} & names)
+
     def test_threshold_is_two_days(self):
         self.assertEqual(s.MAX_SILENCE, timedelta(days=2))
 

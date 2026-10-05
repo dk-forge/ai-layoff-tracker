@@ -20,7 +20,9 @@ Stdlib only; read-only public GET.
 """
 from __future__ import annotations
 
+import ast
 import json
+import os
 import sys
 import urllib.request
 import uuid
@@ -35,11 +37,44 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 MAX_SILENCE = timedelta(days=2)
 
 
-def newest_run(runs):
-    """The newest parseable `attempted_at` among the rows, or None."""
+CRON_PY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cron.py")
+
+
+def ingest_sources(path=CRON_PY):
+    """Source ids the DAILY ingest (cron.py) writes to /source-runs.
+
+    WHY (2026-10-05, sandbox #1259): the WARN importers run on their own daily
+    workflow and also write /source-runs notes (warn_us, warn_custom_states...).
+    Counting them meant the alarm said "alive" while cron.py had not run for 6.6
+    days. Derived by parsing cron.py (no import: it needs requests + secrets):
+    every literal first argument of report_source_health(...) plus every
+    ("name", collector) pair in its collector table, so a new collector is
+    covered without editing a hand list.
+    """
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+    names = set()
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "report_source_health"
+                and node.args and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)):
+            names.add(node.args[0].value)
+        elif (isinstance(node, ast.Tuple) and len(node.elts) == 2
+              and isinstance(node.elts[0], ast.Constant) and isinstance(node.elts[0].value, str)
+              and isinstance(node.elts[1], (ast.Name, ast.Attribute))):
+            names.add(node.elts[0].value)
+    return names
+
+
+def newest_run(runs, sources=None):
+    """The newest parseable `attempted_at` among the rows, or None.
+
+    With `sources`, only rows whose `source` is in that set count."""
     best = None
     for r in runs or ():
         if not isinstance(r, dict):
+            continue
+        if sources is not None and r.get("source") not in sources:
             continue
         try:
             at = datetime.fromisoformat(
@@ -53,10 +88,11 @@ def newest_run(runs):
     return best
 
 
-def verdict(runs, now=None, max_silence=MAX_SILENCE):
-    """(ok, line). ok is False when no run is recent enough, INCLUDING no runs."""
+def verdict(runs, now=None, max_silence=MAX_SILENCE, sources=None):
+    """(ok, line). ok is False when no DAILY-INGEST run is recent enough,
+    INCLUDING no runs. Other writers (the WARN workflow) do not count."""
     now = now or datetime.now(timezone.utc)
-    newest = newest_run(runs)
+    newest = newest_run(runs, ingest_sources() if sources is None else sources)
     if newest is None:
         return False, (f"INGEST SILENT: no collector run recorded on /source-runs "
                        f"in the window. Check both hosts: Railway cron and the "
