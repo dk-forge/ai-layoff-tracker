@@ -25,6 +25,7 @@ function alt_reference_sources() {
         'oecd_unemployment' => 'alt_ref_oecd_unemployment',
         'fred_labour' => 'alt_ref_fred_labour',
         'census_qwi' => 'alt_ref_census_qwi',
+        'ai_exposure' => 'alt_ref_ai_exposure',
     );
 }
 

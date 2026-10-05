@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.228
+ * Version:           2.20.229
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.228');
+define('ALT_VERSION', '2.20.229');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -122,6 +122,11 @@ foreach (array('labour-trends.php', 'early-warning.php') as $alt_lc_file) {
     if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file)) {
         require_once ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file;
     }
+}
+// AI exposure by job and city (2.20.229): [alt_ai_exposure] at the end of the
+// Sources page. NEW file, GUARDED; callers check function_exists.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/ai-exposure.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/ai-exposure.php';
 }
 // Growth modules (2.20.210): monthly report timing + press summary, the
 // admin-only press list, the author box. NEW files, so GUARDED with
@@ -1394,7 +1399,7 @@ function alt_page_needs_assets() {
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report', 'alt_ai_quotes', 'alt_methodology',
-        'alt_us_registry', 'alt_labour_context',
+        'alt_us_registry', 'alt_labour_context', 'alt_ai_exposure',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
@@ -1589,6 +1594,10 @@ function alt_enqueue_assets() {
     if ($alt_page_content && (has_shortcode($alt_page_content, 'alt_sources') || has_shortcode($alt_page_content, 'alt_labour_context'))) {
         wp_enqueue_script('alt-labour-context-js', ALT_PLUGIN_URL . 'assets/labour-context.js', array('chartjs'),
             $alt_asset_ver('assets/labour-context.js'), array('in_footer' => true, 'strategy' => 'defer'));
+    }
+    if ($alt_page_content && (has_shortcode($alt_page_content, 'alt_sources') || has_shortcode($alt_page_content, 'alt_ai_exposure'))) {
+        wp_enqueue_script('alt-ai-exposure-js', ALT_PLUGIN_URL . 'assets/ai-exposure.js', array(),
+            $alt_asset_ver('assets/ai-exposure.js'), array('in_footer' => true, 'strategy' => 'defer'));
     }
 
     // Pass data to JS
