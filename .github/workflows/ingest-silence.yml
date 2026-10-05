@@ -1,0 +1,60 @@
+# Ingest silence alarm: "is ANY collector running?"
+#
+# 2026-09: Railway's ingest cron was retired and the repo variable
+# ALT_INGEST_ON_VPS was never set, so neither host ran the daily ingest for
+# seven days and every monitor stayed green (see railway/ingest_silence.py for
+# why run_completion and source_freshness cannot see this). This job reads the
+# newest /source-runs note once a day and goes red, and opens ONE issue, when
+# nothing has run for two days.
+#
+# Deliberately on GitHub-hosted runners: a watchdog for "the hosts are off"
+# must not depend on those hosts.
+name: Ingest silence alarm
+
+on:
+  schedule:
+    - cron: '17 9 * * *'   # daily, well after the 22:00 UTC ingest slot
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ingest-silence
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Newest collector run must be under 2 days old
+        id: probe
+        run: |
+          set +e
+          python3 railway/ingest_silence.py | tee silence.txt
+          code=${PIPESTATUS[0]}
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Open (or reuse) one issue when ingest is silent
+        if: steps.probe.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Ingest silent: no collector has run for 2+ days"
+          open=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq 'length')
+          if [ "$open" = "0" ]; then
+            gh issue create --title "$title" --body "$(cat silence.txt)
+
+          Neither ingest host appears to be running. Check Railway's cron and the repo variable ALT_INGEST_ON_VPS (ingest-cron-vps.yml). Raised by .github/workflows/ingest-silence.yml."
+          fi
+      - name: Fail the run on silence or unknown
+        if: steps.probe.outputs.code != '0'
+        run: |
+          echo "::error::$(cat silence.txt)"
+          exit 1
