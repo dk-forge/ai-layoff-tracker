@@ -102,6 +102,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "new-error-watch:main:665302c7ad45bc64": {
+      "first": 1791221062,
+      "last": 1791221062,
+      "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
+    },
     "per-country-coverage-register:main:e3f5ab3efc5443e5": {
       "first": 1790281661,
       "last": 1790281661,
@@ -128,6 +133,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T16:14:57+00:00",
+  "updated_at": "2026-10-05T17:24:22+00:00",
   "version": 1
 }
