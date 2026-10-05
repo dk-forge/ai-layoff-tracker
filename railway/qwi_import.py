@@ -1,6 +1,6 @@
 """Fetch Census QWI hires/separations by state and store them in WordPress.
 
-Six requests (sources/census_qwi.py: by sector, age, sex, education, race,
+Six breakdowns x 51 states (sources/census_qwi.py: by sector, age, sex, education, race,
 ethnicity), latest KEEP_QUARTERS quarters, POSTed to
 /reference-ingest/census_qwi and served at /reference/census_qwi. Same shape
 as bls_import.py and oecd_import.py: LABELED MACRO CONTEXT, never summed into

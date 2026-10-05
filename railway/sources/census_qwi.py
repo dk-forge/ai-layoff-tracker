@@ -16,7 +16,10 @@ document stays small (cross-tabs would multiply it):
   race            state x race,       all industries, all ethnicities (rh)
   ethnicity       state x ethnicity,  all industries, all races    (rh)
 
-QWI is state-level (no national rollup in the API). Needs `CENSUS_API_KEY`;
+QWI is state-level (no national rollup in the API), and the API refuses a
+`state:*` wildcard for this hierarchy ("wildcard not supported in 'for'
+clause"; first live run 2026-10-05), so each breakdown is requested once per
+state: 6 x 51 requests, run on a small thread pool. Needs `CENSUS_API_KEY`;
 the key travels only in the request URL and is scrubbed from every message.
 
 IMPORTANT LABELING
@@ -48,7 +51,7 @@ API = "https://api.census.gov/data/timeseries/qwi/"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 METRICS = ["HirA", "Sep", "EmpEnd"]
 KEEP_QUARTERS = 8
-#: How far back the open-ended `time=from` predicate starts. QWI lags ~3
+#: How far back the bounded `time=from .. to ..` predicate starts. QWI lags ~3
 #: quarters, so 4 years always holds the newest KEEP_QUARTERS.
 LOOKBACK_YEARS = 4
 
@@ -98,13 +101,24 @@ def scrub(text, key: str) -> str:
 
 def time_from(today=None) -> str:
     today = today or date.today()
-    return f"from {today.year - LOOKBACK_YEARS}-Q1"
+    # Bounded on purpose: the API rejects an open `from` ("this dataset
+    # requires a bounded date/time range"; live 2026-10-05).
+    return f"from {today.year - LOOKBACK_YEARS}-Q1 to {today.year}-Q4"
 
 
-def url(breakdown: str, key: str, today=None) -> str:
+#: 50 states + DC, 2-digit FIPS.
+STATES = ["01", "02", "04", "05", "06", "08", "09", "10", "11", "12", "13", "15",
+          "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27",
+          "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39",
+          "40", "41", "42", "44", "45", "46", "47", "48", "49", "50", "51", "53",
+          "54", "55", "56"]
+WORKERS = 6
+
+
+def url(breakdown: str, key: str, today=None, state: str = "06") -> str:
     ep, dim, fixed = QUERIES[breakdown]
     get = ",".join(METRICS + [dim])
-    q = {"get": get, "for": "state:*", "time": time_from(today),
+    q = {"get": get, "for": f"state:{state}", "time": time_from(today),
          "ownercode": "A05", "seasonadj": "U", **fixed}
     if key:
         q["key"] = key
@@ -194,19 +208,40 @@ def describe(exc) -> str:
     return msg
 
 
-def fetch(breakdown: str, key: str, timeout=120, opener=None, today=None) -> str:
+def fetch(breakdown: str, key: str, timeout=120, opener=None, today=None,
+          state: str = "06") -> str:
     opener = opener or urllib.request.urlopen
-    req = urllib.request.Request(url(breakdown, key, today),
+    req = urllib.request.Request(url(breakdown, key, today, state),
                                  headers={"User-Agent": UA, "Accept": "application/json"})
     with opener(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", "replace")
 
 
-def pull(key: str, opener=None, today=None, keep=KEEP_QUARTERS) -> dict:
-    out, errors = {}, []
-    for b in QUERIES:
+def pull(key: str, opener=None, today=None, keep=KEEP_QUARTERS, states=None) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+
+    states = list(states or STATES)
+    jobs = [(b, st) for b in QUERIES for st in states]
+
+    def one(job):
+        b, st = job
         try:
-            out[b] = keep_latest(parse(b, fetch(b, key, opener=opener, today=today)), keep)
-        except Exception as exc:  # one bad breakdown must not sink the rest
-            errors.append(f"{b}: {scrub(describe(exc), key)[:220]}")
+            body = fetch(b, key, opener=opener, today=today, state=st)
+            if not body.strip():  # Census answers 204/empty when a state has no data
+                return b, st, [], None
+            return b, st, parse(b, body), None
+        except Exception as exc:  # one bad state must not sink the rest
+            return b, st, [], scrub(describe(exc), key)[:220]
+
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        results = list(pool.map(one, jobs))
+    out = {b: [] for b in QUERIES}
+    failed = {}
+    for b, st, rows, err in results:
+        out[b].extend(rows)
+        if err:
+            failed.setdefault(b, []).append((st, err))
+    errors = [f"{b}: {len(v)}/{len(states)} states failed, e.g. state {v[0][0]}: {v[0][1]}"
+              for b, v in failed.items()]
+    out = {b: keep_latest(rows, keep) for b, rows in out.items() if rows}
     return build_payload(out, errors)

@@ -59,7 +59,7 @@ railway/
   sources/claims.py          Keyless FRED puller (national ICSA/CCSA + 50 states) for the /claims macro backdrop; claims_import.py POSTs it daily
   sources/bls_jolts_cps.py   Keyless BLS v1 puller (JOLTS by industry/region, CPS by sex/age/race/education); bls_import.py POSTs it weekly to /reference-ingest/bls_jolts_cps, served at /reference/bls_jolts_cps (macro context)
   sources/oecd_unemployment.py OECD SDMX puller (DF_IALFS_UNE_M, unemployment rate by sex/age, all members); oecd_import.py POSTs it weekly to /reference-ingest/oecd_unemployment (macro context, CC BY 4.0)
-  sources/fred_labour.py FRED API puller (UNRATE, PAYEMS, ICSA, CCSA, JTSLDL, USINFO, CES5000000001, LNS14027662; FRED_API_KEY); fred_import.py POSTs it weekly to /reference-ingest/fred_labour (macro context; flat rows filterable by ?series_id=&category=)
+  sources/fred_labour.py FRED API puller (UNRATE, PAYEMS, ICSA, CCSA, JTSLDL, USINFO, LNS14027662; FRED_API_KEY); fred_import.py POSTs it weekly to /reference-ingest/fred_labour (macro context; flat rows filterable by ?series_id=&category=)
   sources/census_qwi.py Census QWI puller (hires/separations/EmpEnd by state x sector, age, sex, education, race, ethnicity; CENSUS_API_KEY); qwi_import.py POSTs it weekly to /reference-ingest/census_qwi (macro context; flat rows filterable by ?state=&industry=&sex=...)
   extractor.py               Extraction prompt + post-processing; source-quote guard and AI causal taxonomy.
                              MODEL=google/gemini-2.5-flash-lite, CLASSIFY_MODEL=google/gemini-2.5-flash-lite (pinned separately, does NOT follow MODEL; moved off deepseek/deepseek-chat 2026-09-03 - compliance, not a benchmark)

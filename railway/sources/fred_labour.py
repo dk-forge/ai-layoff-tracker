@@ -4,7 +4,8 @@ WHAT THIS IS
 ------------
 A puller for the FRED API (https://fred.stlouisfed.org/docs/api/fred/),
 `/fred/series/observations`, for a small curated set of labour series used as
-trend lines: unemployment rate, payrolls, weekly initial and continued
+trend lines: unemployment rate, payrolls (USINFO is the CES information
+supersector, so CES5000000001 is not a FRED id and is not requested), weekly initial and continued
 jobless claims, JOLTS layoffs, information-sector employment, private
 average hourly earnings and unemployment for bachelor's degree holders. One
 request per series, trailing WINDOW_YEARS. Needs `FRED_API_KEY` (a free key);
@@ -50,8 +51,6 @@ SERIES = {
                     "unemployment", "monthly", "percent"),
     "PAYEMS": ("All employees, total nonfarm", "employment", "monthly", "thousands of persons"),
     "USINFO": ("All employees, information sector", "employment", "monthly", "thousands of persons"),
-    "CES5000000001": ("All employees, information (CES)", "employment", "monthly",
-                      "thousands of persons"),
     "JTSLDL": ("JOLTS layoffs and discharges, total nonfarm", "layoffs", "monthly",
                "thousands"),
     "ICSA": ("Initial jobless claims", "claims", "weekly", "number"),

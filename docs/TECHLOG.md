@@ -1,3 +1,17 @@
+## 2026-10-05 - FRED/QWI first live runs: two query fixes
+
+**Class:** novel (first live contact with two new APIs)
+**Guard:** `railway/tests/test_fred_qwi_reference.py` (no CES5000000001; one QWI request per state, never `state:*`)
+
+The first dispatched runs after #479 both failed soft (nothing stored), and
+both keys proved valid. FRED: `CES5000000001` is not a FRED id ("The series
+does not exist"); USINFO is that CES information series, so it is dropped.
+QWI: the Census API refuses `for=state:*` for this hierarchy ("wildcard not
+supported in 'for' clause"), so each breakdown is now requested per state (6 x
+51 on a 6-thread pool; qwi-import timeout 10 -> 20 min), and the time
+predicate is bounded (`from Y-4-Q1 to Y-Q4`; an open `from` is rejected).
+No plugin change.
+
 ## 2026-10-05 (2.20.226) - FRED labour series + Census QWI reference data
 
 **Class:** novel (two new reference-data sources, additive)
