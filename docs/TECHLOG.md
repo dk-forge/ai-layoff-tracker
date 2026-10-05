@@ -1,3 +1,38 @@
+## 2026-10-05 - Hourly ops check: `sandbox-uptime-check.yml` stuck unable to get a GitHub-hosted runner
+
+**Class:** ops note (no code change; monitoring-channel finding, not an app outage)
+
+Three consecutive scheduled runs of `.github/workflows/sandbox-uptime-check.yml`
+(#1253 19:34Z, #1254 19:48Z, #1255 20:01Z) never got a `ubuntu-latest` runner
+assigned (`runner_id: 0`, no `runner_name`): each sat queued for its full
+~15-minute cycle until the next cron trigger fired, then read `completed` /
+`failure` (job conclusion `cancelled`) with no probe ever executed. The
+workflow's own internal alert (`railway/alert_state.json`, key
+`sandbox-uptime-check:main:f509bd86ee200ee7`) already raised through the
+ci-alert path: *"CI RED: Sandbox uptime check — no error line could be
+extracted from the log"* — expected wording, since nothing in the probe
+script ran to produce one.
+
+**This is not a sandbox outage.** Two independent, more recent checks both
+read healthy: `uptime-cert-monitor.yml` in asktherecruiter-sandbox (runs on
+the self-hosted `contabo` runner) completed successfully at 19:52:52Z, and
+that repo's `live-look.yml` (opens the real site on the VPS runner) completed
+successfully at 19:21-19:37Z — both after and during the window
+`sandbox-uptime-check` was stuck. Other `ubuntu-latest`-hosted workflows in
+THIS repo (e.g. `merge-train.yml` run 709, 19:44-19:45Z) got runners fine in
+the same window, so this does not look like an account-wide Actions capacity
+problem — it looks specific to this one workflow/concurrency group
+(`group: sandbox-uptime-check`, `cancel-in-progress: false`): if a queued
+run never gets a runner before the next 15-minute cron fires, GitHub appears
+to supersede the still-queued run rather than let it wait, which can repeat
+indefinitely without the probe ever executing.
+
+Left alone per standing orders (no workflow re-dispatch, no cancelling of
+queued runs, no touching `alert_state.json`). Worth a human look if it is
+still stuck next time this check runs: it means this redundant, free health
+channel has not actually probed the sandbox in a while, even though the
+alerts it raises read as if it had.
+
 ## 2026-10-05 (2.20.225) - Labour-market context on the Sources page and facet pages
 
 **Class:** novel (reader surface for stored reference data, additive)
