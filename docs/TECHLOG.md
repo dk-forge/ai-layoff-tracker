@@ -1,3 +1,12 @@
+## 2026-10-05 (2.20.228) - Phone width: inset the labour-context headings and intro
+
+**Class:** novel (visual spacing, owner report from a phone screenshot)
+**Guard:** none - a spacing-only CSS rule; checked by rendering at 375px
+
+The Early warning heading and intro paragraph ran edge to edge on phones while
+the chart cards below were inset. At 600px and below, the section headings and
+`.alt-lc-intro` now get the same 12px side inset.
+
 ## 2026-10-05 (2.20.227) - FRED trend, QWI hiring vs separations, early-warning view
 
 **Class:** novel (additive display of stored reference data; issue #478 item 1)

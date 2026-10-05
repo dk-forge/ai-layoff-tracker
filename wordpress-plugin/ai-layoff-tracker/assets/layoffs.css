@@ -4519,6 +4519,11 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
    page stat block. Tokens only, so dark mode follows the same overrides. */
 .alt-lc { margin: 34px 0 10px; }
 .alt-lc-intro { max-width: 70ch; color: var(--alt-ink-2); }
+/* Phone width: the heading and intro sit outside the inset chart cards, so give
+   them the same side inset instead of running edge to edge (owner 2026-10-05). */
+@media (max-width: 600px) {
+  .alt-lc > h2, .alt-lc > h3, .alt-ew > h3, .alt-lc-intro { padding-inline: 12px; }
+}
 .alt-lc-panel { margin: 0; min-width: 0; }
 .alt-lc-controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0 0 12px; }
 .alt-lc-controls label { font-size: 13px; font-weight: 600; color: var(--alt-ink-2); }
