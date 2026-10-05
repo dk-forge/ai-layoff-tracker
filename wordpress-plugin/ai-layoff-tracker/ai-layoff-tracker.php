@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.226
+ * Version:           2.20.227
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.226');
+define('ALT_VERSION', '2.20.227');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -115,6 +115,13 @@ if (is_readable(ALT_PLUGIN_DIR . 'includes/reference-data.php')) {
 // way; callers check function_exists.
 if (is_readable(ALT_PLUGIN_DIR . 'includes/labour-context.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/labour-context.php';
+}
+// FRED trend + Census QWI panels and the early-warning view (2.20.227), drawn
+// inside [alt_labour_context]. NEW files, GUARDED; callers check function_exists.
+foreach (array('labour-trends.php', 'early-warning.php') as $alt_lc_file) {
+    if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file)) {
+        require_once ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file;
+    }
 }
 // Growth modules (2.20.210): monthly report timing + press summary, the
 // admin-only press list, the author box. NEW files, so GUARDED with

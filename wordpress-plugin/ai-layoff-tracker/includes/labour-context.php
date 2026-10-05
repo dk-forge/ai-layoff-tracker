@@ -3,8 +3,11 @@
  * Labour-market context: the stored reference data (includes/reference-data.php)
  * put on the page.
  *
- *   [alt_labour_context]                 three charts (JOLTS, CPS, OECD), rendered
- *                                        on the Sources page
+ *   [alt_labour_context]                 the charts (JOLTS, CPS, OECD, FRED, QWI) and
+ *                                        the early-warning view, rendered on the
+ *                                        Sources page (FRED/QWI helpers live in
+ *                                        labour-trends.php, the view in
+ *                                        early-warning.php)
  *   alt_labour_context_stat($dim, $val)  one official figure for a facet page,
  *                                        only where the match is EXACT
  *
@@ -13,7 +16,7 @@
  * implies that AI caused any of the movement shown. Every panel says so in
  * words, and every panel names its source under the chart.
  *
- * A source that is missing, empty or malformed hides its panel; all three
+ * A source that is missing, empty or malformed hides its panel; all of them
  * missing hides the section. Never an error, never an empty chart frame.
  */
 if (!defined('ABSPATH')) exit;
@@ -131,11 +134,24 @@ function alt_shortcode_labour_context() {
         }
         asort($countries);
     }
-    if (!$industries && !$dims && !$countries) {
+    $fred = alt_labour_context_doc('fred_labour');
+    $qwi = alt_labour_context_doc('census_qwi');
+    $fred_opts = ($fred && function_exists('alt_lc_fred_options')) ? alt_lc_fred_options($fred) : array();
+    $qwi_opts = ($qwi && function_exists('alt_lc_qwi_options')) ? alt_lc_qwi_options($qwi) : null;
+    $ew = null;
+    if (function_exists('alt_ew_bundle') && ($bls || $fred || $qwi)) {
+        $ew = alt_ew_bundle($bls, $fred, $qwi, alt_ew_warn_counts());
+    }
+    if (!$industries && !$dims && !$countries && !$fred_opts && !$qwi_opts && !$ew) {
         return '<!-- alt_labour_context: no reference data stored -->';
     }
     $api = function_exists('rest_url') ? rest_url('layoffs/v1/reference/') : '';
     return alt_template('partials/labour-context.php', array(
+        'alt_lc_fred' => $fred,
+        'alt_lc_fred_opts' => $fred_opts,
+        'alt_lc_qwi' => $qwi,
+        'alt_lc_qwi_opts' => $qwi_opts,
+        'alt_lc_ew' => $ew,
         'alt_lc_bls' => $bls,
         'alt_lc_oecd' => $oecd,
         'alt_lc_industries' => $industries,
