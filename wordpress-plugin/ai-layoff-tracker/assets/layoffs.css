@@ -4555,3 +4555,50 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-lc-select, .alt-lc-select[multiple] { width: 100%; min-width: 0; }
     .alt-lc .alt-chart-box { height: 240px; }
 }
+
+/* AI exposure by job and city ([alt_ai_exposure], Sources page). Tokens only,
+   so dark mode follows the same overrides. Tables turn into stacked rows at
+   phone width so nothing scrolls sideways. Scoped under section.alt-ax so the
+   Sources page's own table rules (higher specificity) cannot pad them out. */
+.alt-ax { margin: 34px 0 10px; min-width: 0; }
+.alt-ax-intro { max-width: 70ch; color: var(--alt-ink-2); }
+@media (max-width: 600px) {
+  .alt-ax > h2, .alt-ax-intro { padding-inline: 12px; }
+}
+.alt-ax-card { margin: 16px 0 0; padding: 16px; border: 1px solid var(--alt-grid); border-radius: 10px; background: var(--alt-surface); min-width: 0; }
+.alt-ax-card h3 { margin: 4px 0 10px; font-size: 17px; }
+.alt-ax-table-wrap + h3 { margin-top: 22px; }
+section.alt-ax .alt-ax-table-wrap { min-width: 0; }
+section.alt-ax .alt-ax-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+section.alt-ax .alt-ax-table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--alt-muted);
+    font-weight: 700; padding: 7px 10px; border-bottom: 2px solid var(--alt-grid); background: var(--alt-surface-2); position: static; }
+section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid var(--alt-grid); vertical-align: top; color: var(--alt-ink); overflow-wrap: anywhere; }
+.alt-ax-n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alt-ax-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+    background: var(--alt-retired-bg); color: var(--alt-retired-ink); white-space: nowrap; }
+.alt-ax-tag[data-q="exposed-shrinking"], .alt-ax-q[data-q="exposed-shrinking"] { background: var(--alt-warn-bg); color: var(--alt-warn-ink); }
+.alt-ax-tag[data-q="exposed-growing"], .alt-ax-q[data-q="exposed-growing"] { background: var(--alt-info-bg); color: var(--alt-info-ink); }
+.alt-ax-tag[data-q="less-growing"], .alt-ax-q[data-q="less-growing"] { background: var(--alt-ok-bg); color: var(--alt-ok-ink); }
+.alt-ax-quad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.alt-ax-q { padding: 12px 14px; border-radius: 8px; background: var(--alt-retired-bg); color: var(--alt-retired-ink); min-width: 0; overflow-wrap: anywhere; }
+.alt-ax-q p { margin: 0 0 4px; }
+.alt-ax-q-h { font-weight: 700; font-size: 15px; }
+.alt-ax-q-n { font-size: 14px; font-variant-numeric: tabular-nums; }
+.alt-ax-q-eg { font-size: 13px; }
+.alt-ax-metro-sum { margin: 0 0 10px; color: var(--alt-ink-2); overflow-wrap: anywhere; }
+.alt-ax-big { font-size: 26px; color: var(--alt-ink); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.alt-ax-jobs { margin: 0 0 6px; padding-left: 22px; color: var(--alt-ink); font-size: 14px; }
+.alt-ax-jobs li { margin: 2px 0; overflow-wrap: anywhere; }
+.alt-ax-jobs .alt-ax-n { color: var(--alt-muted); }
+@media (max-width: 600px) {
+    .alt-ax-card { padding: 12px; }
+    .alt-ax-quad { grid-template-columns: 1fr; }
+    section.alt-ax .alt-ax-table thead { display: none; }
+    section.alt-ax .alt-ax-table, section.alt-ax .alt-ax-table tbody, section.alt-ax .alt-ax-table tr, section.alt-ax .alt-ax-table td { display: block; width: 100%; box-sizing: border-box; }
+    section.alt-ax .alt-ax-table tr { padding: 8px 0; border-bottom: 1px solid var(--alt-grid); }
+    section.alt-ax .alt-ax-table td { border: 0; padding: 2px 0; display: flex; justify-content: space-between; gap: 12px; }
+    section.alt-ax .alt-ax-table td::before { content: attr(data-k); color: var(--alt-muted); font-size: 12.5px; flex: 0 0 auto; }
+    section.alt-ax .alt-ax-table td:first-child { display: block; }
+    section.alt-ax .alt-ax-table td:first-child::before { content: none; }
+    .alt-ax-n { white-space: normal; text-align: right; }
+}

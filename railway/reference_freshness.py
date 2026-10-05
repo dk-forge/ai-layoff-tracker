@@ -47,6 +47,12 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #   Census QWI: quarter Q publishes roughly 9-10 months after Q ends and
 #     releases quarterly, so just before the next release the newest
 #     quarter is ~300+92 days old; +7 weekly; +31 margin = 430.
+#   AI exposure (ai_exposure): BLS OEWS reference month is May of year Y,
+#     published around April of Y+1; the next release lands ~April of Y+2,
+#     so just before it the newest month is ~700 days past its end; +31
+#     monthly collection; +29 margin = 760. Employment Projections: base
+#     year Y (stored as Y-12) publishes ~September of Y+1 and the next in
+#     ~September of Y+2, ~640 days; +31; +29 = 700. Monthly job: 31 + 9 = 40.
 #   Collector: weekly job (7) + 3 days for a deferred host call or late
 #     runner = 10, so one missed weekly run alarms.
 SPECS = {
@@ -54,6 +60,7 @@ SPECS = {
     "oecd_unemployment": {"collector_days": 10, "datasets": {"monthly": 95}},
     "fred_labour": {"collector_days": 10, "datasets": {"monthly": 85, "weekly": 30}},
     "census_qwi": {"collector_days": 10, "datasets": {"quarterly": 430}},
+    "ai_exposure": {"collector_days": 40, "datasets": {"oews": 760, "ep": 700}},
 }
 
 

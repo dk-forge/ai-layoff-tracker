@@ -1,3 +1,32 @@
+## 2026-10-05 (2.20.229) - AI exposure by job and city
+
+**Class:** novel (new reference source + plugin-owned display; issue #478 items 2-4)
+**Guard:** `railway/tests/test_ai_exposure.py` (offline collector against the probed file shapes, import/store guard, archive, freshness, real-PHP render, Sources-page row + register entry for every source shown, copy and colour-token checks)
+
+New reference document `ai_exposure` (`railway/sources/ai_exposure.py`, keyless),
+joined on the 6-digit SOC code from four free sources, each probed from a
+GitHub runner on 2026-10-05 (this sandbox has no egress to bls.gov or
+onetcenter.org): the "GPTs are GPTs" occupation scores (Eloundou, Manning,
+Mishkin, Rock; Science 2024; `data/occ_level.csv`, `dv_rating_beta`, MIT
+licence, read at pinned commit `0471612f`); O*NET 31.0 titles (CC BY 4.0,
+attribution carried); BLS OEWS May 2025 national + MSA files (top 50 metros);
+BLS Employment Projections 2025-35 Table 1.2. Felten et al. AIOE was NOT used:
+its repository carries no licence, so republishing is not clearly permitted.
+`ai-exposure-import.yml` (monthly + dispatch) posts to
+`/reference-ingest/ai_exposure` and prints `site=stored` only when the host
+says `stored: true`; fail-soft guards (any source error, <500 occupations,
+<400 with projections, <40 metros, >1 MB). `ai-exposure-archive.yml` commits
+CSVs to `data/archive/ai_exposure/`. Freshness SPECS: oews 760d, ep 700d,
+collector 40d. Display: `[alt_ai_exposure]` (`includes/ai-exposure.php`,
+partial, `assets/ai-exposure.js` for the metro picker only), echoed by
+`page-sources.php` after labour context, so no stored page content changed:
+most/least exposed (>= 25,000 employed) with employment, median wage and
+10-year change; a 2x2 exposed/shrinking quadrant (threshold 0.5); a metro
+picker. Copy: exposure = tasks an AI system could speed up, per the study,
+not jobs lost. Real-browser check at 1280 and 375, light and dark: no
+horizontal scroll, no console errors (the Sources page's own `table td`
+padding initially pushed stacked phone cells 28px wide; scoped selectors fix).
+
 ## 2026-10-05 (2.20.228) - Phone width: inset the labour-context headings and intro
 
 **Class:** novel (visual spacing, owner report from a phone screenshot)

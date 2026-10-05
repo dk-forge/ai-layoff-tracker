@@ -256,6 +256,7 @@ class SourcesPageTest(unittest.TestCase):
             "oecd_unemployment": ("<b>OECD unemployment</b>", "https://data-explorer.oecd.org/"),
             "fred_labour": ("<b>FRED labour series</b>", "https://fred.stlouisfed.org/"),
             "census_qwi": ("<b>Census QWI</b>", "https://lehd.ces.census.gov/data/"),
+            "ai_exposure": ("<b>GPTs are GPTs (AI exposure scores)</b>", "https://github.com/openai/GPTs-are-GPTs"),
         }
         self.assertEqual(set(expect), set(rf.SPECS), "a reference source has no Sources row")
         for src, (name, link) in expect.items():
