@@ -237,12 +237,12 @@ def load_events(tracker: str, days: int = 90) -> list[dict]:
 def probe_qwi(out, events):
     r = {"source": "census_qwi", "licence": "US Gov public domain (cite Census LEHD)", "frequency": "quarterly"}
     found = None
-    for y in range(TODAY.year, TODAY.year - 3, -1):
+    for y in range(TODAY.year, TODAY.year - 5, -1):
         for q in (4, 3, 2, 1):
             u = ("https://api.census.gov/data/timeseries/qwi/sa?get=HirA,Sep,Emp,sex,agegrp"
                  f"&for=state:06&industry=51&year={y}&quarter={q}")
             st, body = get(u)
-            if st == 200 and body.startswith(b"["):
+            if st == 200 and body.lstrip().startswith(b"["):  # 200 + empty body = quarter not released
                 found = (y, q, body)
                 break
             r.setdefault("http_tries", []).append(st)
@@ -375,21 +375,25 @@ def probe_eu(out, events):
 def probe_fred(out, events):
     r = {"source": "fred", "licence": "FRED terms: cite; underlying BLS/DOL series public domain, some third-party series copyrighted",
          "frequency": "weekly/monthly", "key_secret": bool(os.environ.get("FRED_API_KEY"))}
-    st, body = get("https://fred.stlouisfed.org/graph/fredgraph.csv?id=JTSLDL,ICSA,UNRATE,LNS14000002")
-    r["http"] = st
-    r["reachable"] = st == 200 and b"observation_date" in body[:200] or (st == 200 and b"DATE" in body[:200])
-    if st == 200:
-        rows = list(csv.reader(io.StringIO(body.decode())))
-        hdr = rows[0]
-        latest = {}
-        for i, col in enumerate(hdr[1:], 1):
-            for row in reversed(rows[1:]):
-                if i < len(row) and row[i] not in ("", "."):
-                    latest[col] = row[0]
-                    break
-        r["latest"] = latest
-        r["stale_days"] = min((staleness_days(v) or 9999) for v in latest.values()) if latest else None
-        save(out, "fred", "fredgraph_sample.csv", body)
+    latest, blobs, codes = {}, [], []
+    # One series per call: a multi-id request now comes back as a ZIP.
+    for sid in ("JTSLDL", "ICSA", "UNRATE", "LNS14000002"):
+        st, body = get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}")
+        codes.append(st)
+        if st != 200:
+            continue
+        if body[:2] == b"PK":
+            z = zipfile.ZipFile(io.BytesIO(body))
+            body = next((z.read(n) for n in z.namelist() if n.lower().endswith(".csv")), b"")
+        last = fred_latest(body.decode("utf-8", "replace"))
+        if last:
+            latest[sid] = last
+            blobs.append(body)
+            save(out, "fred", f"{sid}.csv", body)
+    r["http"] = codes
+    r["reachable"] = bool(latest)
+    r["latest"] = latest
+    r["stale_days"] = min(staleness_days(v) or 9999 for v in latest.values()) if latest else None
     r["demographics"] = "only via mirrored CPS series (sex/age/race/education unemployment)"
     r["geo"] = "US national/state/county/MSA mirrors; few international"
     r["match"] = match_rate(events, us_ok)
@@ -512,6 +516,15 @@ def xlsx_column(data: bytes, col: str, budget_s=600):
                 timed_out = True
                 break
     return names, {"rows_parsed": rows, "distinct_employers": len(names), "parse_timed_out": timed_out}
+
+
+def fred_latest(text: str) -> str | None:
+    """Newest date with a real value in a single-series fredgraph CSV."""
+    rows = list(csv.reader(io.StringIO(text)))
+    for row in reversed(rows[1:]):
+        if len(row) >= 2 and row[1] not in ("", "."):
+            return row[0]
+    return None
 
 
 PROBES = {"qwi": probe_qwi, "bls": probe_bls, "eu": probe_eu, "fred": probe_fred,
