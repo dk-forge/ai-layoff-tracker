@@ -2,15 +2,18 @@ name: zz exposure probe (temporary, branch only)
 on:
   push:
     branches: [claude/exposure-probe-tmp]
-permissions: {}
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v5
       - name: probe
         shell: python
         run: |
+          import sys; sys.stdout = open('probe-out.txt', 'w')
           import re, urllib.request, io, zipfile
           UAS = {"alt": "AiLayoffTracker/1.0 (+https://asktherecruiter.com; info@asktherecruiter.com)"}
           def get(u, ua="alt", limit=None):
@@ -43,3 +46,7 @@ jobs:
               if st == 200 and u.endswith(".xlsx"):
                   z = zipfile.ZipFile(io.BytesIO(b)); print(z.namelist()); print(z.read("xl/workbook.xml")[:1500])
                   ss = z.read("xl/sharedStrings.xml").decode()[:3000]; print(ss)
+      - name: push result
+        run: |
+          git config user.name bot; git config user.email bot@users.noreply.github.com
+          git add -f probe-out.txt; git commit -qm "probe out [skip ci]"; git push origin HEAD:claude/exposure-probe-out -f
