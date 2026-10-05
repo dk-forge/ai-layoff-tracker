@@ -29212,3 +29212,44 @@ left for that repo's merge train.
 hardcoded as a literal in a test fixture, then went stale)
 
 **Guard:** `railway/tests/test_spend_ledger.py::HarvestParsing::test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff`
+
+## 2026-10-05 — daily ingest has run on NEITHER host for ~7 days: the 2026-09-28 Railway-to-VPS switch was left half-done
+
+**Class:** novel (an infra migration left mid-step, not a code defect)
+**Guard:** none — this is a repo-variable / Railway-dashboard state, not something a repo test can pin
+
+Hourly ops-check found the self-heal watcher in asktherecruiter-sandbox had
+filed ai-layoff-tracker#461 for `Weekly health digest (autonomy tripwire)`
+run 37306722469 (2026-10-05 12:01 UTC) ending `failure`. That workflow's
+`exit 2` is the digest's own designed tripwire (it fails loudly on purpose
+when a source goes stale — see `health_digest.py`'s module docstring), so the
+GitHub "failure" conclusion is not itself a bug. But the specific content is:
+`edgar`, `press_releases`, `gdelt`, `regional_feeds` and `national_feeds` are
+ALL stale at exactly ~6.6 days, each against a 2-3 day ceiling. Five
+unrelated collector ids going stale on the same day, by the same amount, is
+the signature of one shared cause, not five independent scraper breaks.
+
+**Root cause, confirmed from the committed ledger.** The 2026-09-28 entries
+above ("Ops: daily ingest moved from Railway to the VPS") record the planned
+switch: `railway/railway.toml`'s `startCommand` was replaced with a no-op
+`python -c "print(...)"` (confirmed still in place on `main` today), and
+`.github/workflows/ingest-cron-vps.yml` was added as the replacement,
+DORMANT until the owner sets repo variable `ALT_INGEST_ON_VPS=true`. That
+variable was never set: every scheduled run of `ingest-cron-vps.yml` since
+creation (9 runs, 2026-09-28 through today) has ended `skipped` (its `if:`
+guard reads `vars.ALT_INGEST_ON_VPS == 'true'`, which is false). So the
+Railway side stopped running (confirmed: `railway/spend_jobs.json`'s last
+`railway-cron` entry is dated 2026-09-28, nothing since) and the VPS side
+never started. **The daily collector (`python cron.py` — EDGAR, Google News,
+GDELT, the regional/national news feeds) has not run on either host for
+about a week.** WARN-state collection is unaffected (separate
+`warn_import.py` workflow, daily 9 AM ET, not part of `cron.py`).
+
+**Not fixed here.** The fix is a repo variable (`ALT_INGEST_ON_VPS=true`) or
+reverting the Railway `startCommand` — both are owner-reserved per the
+scheduled ops-check's standing rules ("never ... change ... repo
+variables"), not a code change this session can make. Commented the
+diagnosis on ai-layoff-tracker#461 and left it open; flagged as `ACTION` in
+the hourly report (asktherecruiter-sandbox#1259) for Dakotta to flip one of
+the two switches. `docs/RUNBOOK.md` "Which jobs run on the VPS and why" has
+the exact owner steps for the VPS path.
