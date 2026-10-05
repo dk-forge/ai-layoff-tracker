@@ -320,6 +320,8 @@ def pull(opener=None, today=None) -> dict:
             nat = _get(OEWS_ZIP.format(yy=f"{year % 100:02d}", kind="nat"), opener)
         except Exception:
             continue
+        if not zipfile.is_zipfile(io.BytesIO(nat)):
+            continue   # bls.gov answers a future release with a 200 HTML page, not a 404
         try:
             national = parse_oews_national(_xlsx_rows(_zip_member(nat, f"_M{year}_dl.xlsx")))
             ma = _get(OEWS_ZIP.format(yy=f"{year % 100:02d}", kind="ma"), opener)
