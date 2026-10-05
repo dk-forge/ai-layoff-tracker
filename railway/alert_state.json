@@ -122,11 +122,6 @@
       "last": 1790281661,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
-    "self-heal:main:76e9fe4f2ffb240c": {
-      "first": 1791235160,
-      "last": 1791235160,
-      "subject": "CI RED: Self-heal \u2014 no error line could be extracted from the log"
-    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -148,6 +143,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T21:27:30+00:00",
+  "updated_at": "2026-10-05T21:27:38+00:00",
   "version": 1
 }
