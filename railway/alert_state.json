@@ -82,6 +82,11 @@
       "last": 1791216897,
       "subject": "CI RED: Depth source snapshot (test only) \u2014 nothing added to commit but untracked files present (use \"git add\" to track)"
     },
+    "fred-labour-reference-data:main:d4bd7492537941f4": {
+      "first": 1791235649,
+      "last": 1791235649,
+      "subject": "CI RED: FRED labour reference data \u2014 series missing: CES5000000001; stored data left intact. CES5000000001: HTTP Error 400: Bad Request Bad Request.  The series does not exist."
+    },
     "ftps-target-probe:claude-ci-security-pins:05725469d2b3a060": {
       "first": 1790722672,
       "last": 1790722672,
@@ -143,6 +148,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T21:26:56+00:00",
+  "updated_at": "2026-10-05T21:27:30+00:00",
   "version": 1
 }
