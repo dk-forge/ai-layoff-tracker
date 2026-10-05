@@ -1,6 +1,6 @@
 ## 2026-10-05 (2.20.221) - blog posts showed the featured image twice
 
-**Class:** live-content defect (reader-visible)
+**Class:** novel (reader-visible live-content defect)
 **Guard:** `railway/tests/test_blog_dup_images.py` (real PHP on sample HTML)
 
 Cause: no code in this repo (or the sibling repos) writes blog posts; ~122
