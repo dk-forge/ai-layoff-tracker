@@ -82,15 +82,19 @@ class QwiOpener:
                     all(f"{k}={v}" in req.full_url for k, v in fixed.items()):
                 if b == self.bad:
                     return io.BytesIO(b"<html>Invalid Key</html>")
-                return io.BytesIO(qwi_table(b, self.states).encode())
+                st = req.full_url.split("for=state%3A")[1].split("&")[0]
+                if st == "%2A":
+                    raise AssertionError("the API refuses a state wildcard")
+                return io.BytesIO(qwi_table(b, (st,) if st in self.states else ()).encode())
         raise AssertionError("unexpected url")
 
 
 class FredTest(unittest.TestCase):
     def test_curated_series(self):
-        for s in ("UNRATE", "PAYEMS", "ICSA", "CCSA", "JTSLDL", "USINFO",
-                  "CES5000000001", "LNS14027662"):
+        for s in ("UNRATE", "PAYEMS", "ICSA", "CCSA", "JTSLDL", "USINFO", "LNS14027662"):
             self.assertIn(s, fred.SERIES)
+        # Not a FRED id (live 400 "series does not exist", 2026-10-05); USINFO is it.
+        self.assertNotIn("CES5000000001", fred.SERIES)
 
     def test_parse_drops_missing_and_rows_are_flat_with_label_and_category(self):
         rows = fred.parse("UNRATE", fred_body([("2026-08-01", "."), ("2026-09-01", "4.2")]))
@@ -134,8 +138,9 @@ class QwiTest(unittest.TestCase):
         self.assertEqual({v[0] for v in qwi.QUERIES.values()}, {"sa", "se", "rh"})
         self.assertEqual(qwi.QUERIES["education"][0], "se")
         self.assertEqual(qwi.QUERIES["race"][0], "rh")
-        u = qwi.url("by_sector", "abc", date(2026, 10, 5))
-        for needle in ("for=state%3A%2A", "time=from+2022-Q1", "ind_level=S", "ownercode=A05"):
+        u = qwi.url("by_sector", "abc", date(2026, 10, 5), state="36")
+        self.assertEqual(len(qwi.STATES), 51)
+        for needle in ("for=state%3A36", "time=from+2022-Q1", "ind_level=S", "ownercode=A05"):
             self.assertIn(needle, u)
 
     def test_rows_carry_every_dimension(self):
@@ -152,14 +157,17 @@ class QwiTest(unittest.TestCase):
         self.assertEqual({r[2] for r in qwi.keep_latest(rows, 2)}, {"2025-Q2", "2025-Q3"})
 
     def test_pull_store_guard_and_freshness_month(self):
-        states = tuple(f"{i:02d}" for i in range(1, 52))
-        p = qwi.pull("abc", opener=QwiOpener(states))
+        states = tuple(qwi.STATES)
+        op = QwiOpener(states)
+        p = qwi.pull("abc", opener=op)
+        self.assertEqual(len(op.urls), 6 * 51)   # one request per breakdown per state
+        self.assertEqual(len(p["states"]), 51)
         self.assertEqual(p["latest"], {"quarterly": "2025-12"})
         self.assertTrue(qwi_import.should_store(p)[0], qwi_import.should_store(p))
-        self.assertFalse(qwi_import.should_store(qwi.pull("abc", opener=QwiOpener()))[0])
+        self.assertFalse(qwi_import.should_store(qwi.pull("abc", opener=QwiOpener()))[0])  # 2 states
 
     def test_invalid_key_page_is_a_named_error_without_the_key(self):
-        states = tuple(f"{i:02d}" for i in range(1, 52))
+        states = tuple(qwi.STATES)
         p = qwi.pull(SECRET, opener=QwiOpener(states, bad="race"))
         ok, why = qwi_import.should_store(p)
         self.assertFalse(ok)
@@ -168,7 +176,7 @@ class QwiTest(unittest.TestCase):
         self.assertNotIn(SECRET, json.dumps(p))
 
     def test_archive_one_file_per_quarter(self):
-        p = qwi.pull("abc", opener=QwiOpener())
+        p = qwi.pull("abc", opener=QwiOpener(), states=("06", "36"))
         with tempfile.TemporaryDirectory() as d:
             r = qwi_archive.write(d, p["datasets"])
             self.assertEqual(r["written"], ["2025-Q3", "2025-Q4"])
@@ -220,7 +228,7 @@ class PhpFilterTest(unittest.TestCase):
         return json.loads(out.stdout)
 
     def test_filters_rows_by_field_and_ignores_other_params(self):
-        p = qwi.pull("abc", opener=QwiOpener())
+        p = qwi.pull("abc", opener=QwiOpener(), states=("06", "36"))
         out = self.run_filter(p, {"state": "06,99", "education": "E4", "cb": "x"})
         self.assertEqual(list(out["datasets"]["sex"]), [])
         self.assertEqual(len(out["datasets"]["education"]), 2)

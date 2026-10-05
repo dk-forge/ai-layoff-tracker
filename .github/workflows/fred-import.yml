@@ -1,7 +1,7 @@
 name: FRED labour reference data
 
 # FRED API (St. Louis Fed): one request per curated labour series (UNRATE,
-# PAYEMS, ICSA, CCSA, JTSLDL, USINFO, CES5000000001, LNS14027662), trailing 10
+# PAYEMS, ICSA, CCSA, JTSLDL, USINFO, LNS14027662), trailing 10
 # years -> /reference-ingest/fred_labour. LABELED MACRO CONTEXT, never summed
 # into layoff counts and not read by ingest or classification. Needs the
 # FRED_API_KEY secret, passed only through env and never printed. Weekly so

@@ -1,6 +1,6 @@
 name: Census QWI reference data
 
-# Census Data API, timeseries/qwi/{sa,se,rh}: six requests (state x NAICS
+# Census Data API, timeseries/qwi/{sa,se,rh}: six breakdowns x 51 states (state x NAICS
 # sector, and state x age, sex, education, race, ethnicity), hires, separations
 # and end-of-quarter employment, latest 8 quarters -> /reference-ingest/
 # census_qwi. LABELED MACRO CONTEXT: separations are all causes, never summed
@@ -23,7 +23,7 @@ concurrency:
 jobs:
   qwi:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

@@ -56,7 +56,7 @@ apply; each is listed on the public Sources page and watched by
 | `bls_jolts_cps` | BLS JOLTS | U.S. Bureau of Labor Statistics | Layoffs and discharges, openings, quits by industry and region | weekly (`bls-import.yml`) | Public domain; cite BLS | https://www.bls.gov/jlt/ |
 | `bls_jolts_cps` | BLS CPS | U.S. Bureau of Labor Statistics | Unemployment rate by sex, age, race, education | weekly (`bls-import.yml`) | Public domain; cite BLS | https://www.bls.gov/cps/ |
 | `oecd_unemployment` | OECD unemployment | OECD | Monthly unemployment rate by sex and age, every member | weekly (`oecd-import.yml`) | CC BY 4.0, attribution required | https://data-explorer.oecd.org/ |
-| `fred_labour` | FRED labour series | Federal Reserve Bank of St. Louis | UNRATE, LNS14027662, PAYEMS, USINFO, CES5000000001, JTSLDL, ICSA, CCSA (10 years) | weekly (`fred-import.yml`, `FRED_API_KEY`) | Public domain (BLS/ETA via FRED); cite FRED | https://fred.stlouisfed.org/ |
+| `fred_labour` | FRED labour series | Federal Reserve Bank of St. Louis | UNRATE, LNS14027662, PAYEMS, USINFO, JTSLDL, ICSA, CCSA (10 years) | weekly (`fred-import.yml`, `FRED_API_KEY`) | Public domain (BLS/ETA via FRED); cite FRED | https://fred.stlouisfed.org/ |
 | `census_qwi` | Census QWI | U.S. Census Bureau (LEHD) | Hires, separations, end-of-quarter employment by state x NAICS sector / age / sex / education / race / ethnicity (8 quarters) | weekly (`qwi-import.yml`, `CENSUS_API_KEY`) | Public domain; "uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau" | https://lehd.ces.census.gov/data/ |
 
 ## Credential-access boundary
