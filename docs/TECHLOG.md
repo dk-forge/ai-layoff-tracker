@@ -1,5 +1,8 @@
 ## 2026-10-05 - Subscriber watch now emits its counts as one GitHub annotation
 
+**Class:** novel (observability: run results unreadable through the API)
+**Guard:** `railway/tests/test_subscriber_watch.py` (`AnnotationLineTest`)
+
 The daily welcome-cap check reads `subscriber-watch.yml` runs through the API,
 which here exposes check-run annotations but not job logs or step summaries,
 so it could not see the counts. `railway/subscriber_watch.py` now prints one
