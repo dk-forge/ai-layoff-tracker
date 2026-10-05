@@ -25,7 +25,7 @@ jobs:
           python-version: '3.12'
       - name: Fetch snapshots
         run: |
-          for s in qwi bls eu fred; do
+          for s in qwi; do
             python railway/depth_source_probe.py --source "$s" --tracker alt --out "probe-out/$s"
             if [ -d "probe-out/$s/archive" ]; then
               for d in probe-out/$s/archive/*/; do
