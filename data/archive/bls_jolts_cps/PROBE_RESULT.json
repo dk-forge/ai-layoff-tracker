@@ -1,0 +1,33 @@
+{
+ "source": "bls_jolts_cps",
+ "licence": "US Gov public domain (cite BLS)",
+ "frequency": "monthly",
+ "http": 200,
+ "api_status": "REQUEST_SUCCEEDED",
+ "api_msg": [],
+ "latest": {
+  "JTS000000000000000LDL": "2026-08",
+  "JTS510000000000000LDL": "2026-08",
+  "JTS540099000000000LDL": "2026-08",
+  "LNS14000000": "2026-09",
+  "LNS14000001": "2026-09",
+  "LNS14000002": "2026-09",
+  "LNS14000003": "2026-09",
+  "LNS14000006": "2026-09",
+  "LNS14027662": "2026-09"
+ },
+ "stale_days": 5,
+ "reachable": true,
+ "demographics": "JOLTS: none (industry/size/region only). CPS: sex, age, race, ethnicity, education",
+ "geo": "JOLTS: US + 4 regions + 50 states (totals) + NAICS supersector; CPS national (LAUS for states)",
+ "match": {
+  "events": 1826,
+  "industry_pct": 84.6,
+  "region_pct": 76.0,
+  "industry_and_region_pct": 64.0
+ },
+ "full_pull_estimate": "JOLTS+CPS flat files (download.bls.gov/pub/time.series/jt, ln) ~150 MB; <1 MB/month",
+ "note": "v1 keyless: 25 req/day, 10 yrs, 25 series per call; v2 key free",
+ "tracker": "alt",
+ "snapshot_bytes": 26823
+}
