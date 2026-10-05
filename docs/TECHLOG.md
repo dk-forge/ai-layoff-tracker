@@ -1,3 +1,22 @@
+## 2026-10-05 (2.20.224) - OECD monthly unemployment by sex and age
+
+**Class:** novel (new reference-data source, additive)
+**Guard:** `railway/tests/test_oecd_reference.py` (offline, recorded SDMX csv)
+
+Second source from the depth-source probe (#468/#472), on the reference-data
+endpoints added in 2.20.223. `oecd-import.yml` (weekly, GitHub-hosted) runs
+`railway/oecd_import.py`: ONE keyless SDMX request to
+`OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M,1.0` (unemployment rate, seasonally
+adjusted, monthly, every member by sex and age), trailing 60 months, stored
+through `POST /reference-ingest/oecd_unemployment`, served at
+`GET /reference/oecd_unemployment`. Fail-soft: under 25 countries or an
+empty pull is never stored. Freshness: added to `reference_freshness.py`
+SPECS (collector 10 days, newest month 95 days past month end). Archive:
+`oecd-archive.yml` (monthly) commits the full history as a sorted compact CSV
++ MANIFEST to `data/archive/oecd/` (refuses over 40 MB or a >10% shrink).
+Licence CC BY 4.0: attribution in the payload, the manifest and the Sources
+page row. Not read by ingest, the layoff table or classification.
+
 ## 2026-10-05 (2.20.223) - BLS JOLTS + CPS reference data collector
 
 **Class:** novel (new reference-data source, additive)

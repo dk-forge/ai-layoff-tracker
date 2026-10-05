@@ -36,10 +36,14 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #     margin for a slipped release date = 85.
 #   CPS: month M publishes the first Friday of M+1, so just before the next
 #     release the newest month is ~38 days old; +7 weekly; +5 margin = 50.
+#   OECD monthly unemployment: month M publishes mid M+2, so just before
+#     the next release the newest month (max over countries) is ~75 days
+#     old; +7 weekly collection; +13 margin = 95.
 #   Collector: weekly job (7) + 3 days for a deferred host call or late
 #     runner = 10, so one missed weekly run alarms.
 SPECS = {
     "bls_jolts_cps": {"collector_days": 10, "datasets": {"jolts": 85, "cps": 50}},
+    "oecd_unemployment": {"collector_days": 10, "datasets": {"monthly": 95}},
 }
 
 
