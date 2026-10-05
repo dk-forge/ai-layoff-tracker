@@ -54,6 +54,11 @@ class DepthSourceProbe(unittest.TestCase):
         assert p.staleness_days("2000-03-05") == (p.TODAY - p.dt.date(2000, 3, 5)).days
         assert p.staleness_days("junk") is None
 
+    def test_fred_latest_skips_missing(self):
+        txt = "observation_date,X\n2026-07-01,4.1\n2026-08-01,.\n"
+        self.assertEqual(p.fred_latest(txt), "2026-07-01")
+        self.assertIsNone(p.fred_latest("observation_date,X\n"))
+
 
 if __name__ == '__main__':
     unittest.main()
