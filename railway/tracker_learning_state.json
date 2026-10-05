@@ -426,7 +426,23 @@
       "rules": 0,
       "unknown": 0,
       "unmatched": 0
+    },
+    {
+      "candidates": 7,
+      "causes": {
+        "not_wired": 7
+      },
+      "date": "2026-10-05",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 35.4,
+      "recall_low_pct": 0.0,
+      "rules": 0,
+      "unknown": 0,
+      "unmatched": 7
     }
   ],
-  "quiet_runs": 1
+  "quiet_runs": 2
 }
