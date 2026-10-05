@@ -112,12 +112,17 @@
       "last": 1789315684,
       "subject": "CI RED: Tests \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: oldest un-archived attempt 6.2d ago (142 pending, 2,971 not yet in Wayback), but NOTHING "
     },
+    "weekly-health-digest-autonomy-tripwire:main:27358af34b528c7a": {
+      "first": 1791201760,
+      "last": 1791201760,
+      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE national_feeds: last reported 6.6d ago (expected <= 2d): collector may have stopped"
+    },
     "weekly-off-host-backup:main:ae12e05c5976868a": {
       "first": 1791103432,
       "last": 1791103432,
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-04T10:46:29+00:00",
+  "updated_at": "2026-10-05T12:02:40+00:00",
   "version": 1
 }
