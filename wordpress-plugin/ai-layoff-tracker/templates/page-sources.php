@@ -200,7 +200,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
       <tr>
         <td><b>FRED labour series</b></td><td>United States, national</td>
-        <td>Trend lines for the national unemployment rate (overall and for bachelor's degree holders), total and information-sector payrolls, JOLTS layoffs and discharges, and weekly initial and continued jobless claims, from the Federal Reserve Bank of St. Louis (FRED). Collected weekly, about ten years of history, as a separate context metric, never added to our layoff counts. Source: FRED, Federal Reserve Bank of St. Louis; underlying data from the U.S. Bureau of Labor Statistics and the Employment and Training Administration. Public domain.</td>
+        <td>National trend lines from the Federal Reserve Bank of St. Louis (FRED). They cover the unemployment rate, overall and for bachelor's degree holders. They also cover total and information-sector payrolls, JOLTS layoffs and discharges, and weekly jobless claims. Collected weekly, about ten years of history, as a separate context metric, never added to our layoff counts. Source: FRED, Federal Reserve Bank of St. Louis; underlying data from the U.S. Bureau of Labor Statistics and the Employment and Training Administration. Public domain.</td>
         <td>Context (labeled)</td>
         <td><a href="https://fred.stlouisfed.org/" target="_blank" rel="noopener">FRED &#8599;</a></td>
       </tr>
