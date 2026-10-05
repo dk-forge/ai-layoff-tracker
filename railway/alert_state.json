@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "ai-exposure-archive:main:83f04888708e44b7": {
+      "first": 1791241967,
+      "last": 1791241967,
+      "subject": "CI RED: AI exposure archive \u2014 partial pull: oews 2026: File is not a zip file"
+    },
     "ai-exposure-reference-data:main:9072342d1342bf7a": {
       "first": 1791241963,
       "last": 1791241963,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-05T23:12:43+00:00",
+  "updated_at": "2026-10-05T23:12:48+00:00",
   "version": 1
 }
