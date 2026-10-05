@@ -237,15 +237,18 @@ def load_events(tracker: str, days: int = 90) -> list[dict]:
 def probe_qwi(out, events):
     r = {"source": "census_qwi", "licence": "US Gov public domain (cite Census LEHD)", "frequency": "quarterly"}
     found = None
-    for y in range(TODAY.year, TODAY.year - 5, -1):
+    for y in range(TODAY.year, TODAY.year - 3, -1):
         for q in (4, 3, 2, 1):
+            # QWI needs every predicate pinned (owner, firm size/age,
+            # seasonal adj.); without them a 200 comes back with no body.
             u = ("https://api.census.gov/data/timeseries/qwi/sa?get=HirA,Sep,Emp,sex,agegrp"
-                 f"&for=state:06&industry=51&year={y}&quarter={q}")
+                 f"&for=state:06&industry=51&ownercode=A05&firmsize=0&firmage=0&seasonadj=U"
+                 f"&year={y}&quarter={q}")
             st, body = get(u)
             if st == 200 and body.lstrip().startswith(b"["):  # 200 + empty body = quarter not released
                 found = (y, q, body)
                 break
-            r.setdefault("http_tries", []).append(st)
+            r.setdefault("http_tries", []).append(f"{y}Q{q}:{st}:{body[:60]!r}")
         if found:
             break
     r["reachable"] = bool(found)
@@ -256,7 +259,8 @@ def probe_qwi(out, events):
         r["stale_days"] = staleness_days(r["latest"])
         r["rows_sample"] = len(json.loads(body)) - 1
         for ep in ("se", "rh"):
-            st, _ = get(f"https://api.census.gov/data/timeseries/qwi/{ep}?get=HirA&for=state:06&year={y}&quarter={q}")
+            st, _ = get(f"https://api.census.gov/data/timeseries/qwi/{ep}?get=HirA&for=state:06"
+                        f"&ownercode=A05&firmsize=0&firmage=0&seasonadj=U&year={y}&quarter={q}")
             r[f"endpoint_{ep}"] = st
     r["demographics"] = "sex, age group (sa); sex x education (se); race x ethnicity (rh); firm age/size"
     r["geo"] = "US national/state/county/metro/WIB; NAICS 2-4 digit"
