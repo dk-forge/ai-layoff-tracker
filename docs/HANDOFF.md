@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-05, branch `claude/email-design-rollout` (PR). No plugin file, no version reserved.** Subscriber email visual design (colours, headings, charts); see TECHLOG 2026-10-05.
 - **RELEASED - Claude (agent), 2026-09-29, branch `claude/techlog-open-items-triage` (PR, not merged, not deployed). Reserves plugin version 2.20.219.** Open-item triage + dedupe merge stamps the keeper; see TECHLOG 2026-09-29.
 - **RELEASED - Claude (agent), 2026-09-29, branch `claude/auto-posts` (pushed, not merged, not deployed). Reserves plugin version 2.20.218.** NewsArticle markup with publish/modified dates on archived editions; see TECHLOG 2026-09-29.
 - **RELEASED - Claude (agent), 2026-09-29, branch `claude/press-ai-top10` (pushed, not merged, not deployed). Reserves plugin version 2.20.217.** Monthly report: "who said AI" ranked list with quote + source; see TECHLOG 2026-09-29.

@@ -349,7 +349,7 @@ def plain_dashes(text) -> str:
     return re.sub(r"\s*\u2014\s*", " - ", str(text or ""))
 
 
-def restyle(fragment: str) -> str:
+def restyle(fragment: str, accent: str = "") -> str:
     """Put every rule this fragment relies on onto the element itself.
 
     Also drops `class` and `id`: in an email neither can be styled except from
@@ -360,7 +360,16 @@ def restyle(fragment: str) -> str:
     An UNKNOWN variant falls back to the plain style for the tag rather than to
     no style at all. A typo in the site's markup should cost a design detail,
     never the readability of a paragraph in a forwarded copy.
+
+    `accent` is the section's tracker colour (digest_design.accent_for). With
+    one, the design overrides in digest_design.accent_styles win over the
+    plain styles below; without one the plain styles apply unchanged.
     """
+    overrides = {}
+    if accent:
+        import digest_design
+        overrides = digest_design.accent_styles(accent, FONT, INK, MUTED)
+
     def rewrite(match):
         tag = match.group(1).lower()
         raw = match.group(2)
@@ -370,7 +379,10 @@ def restyle(fragment: str) -> str:
             variant = found.group(1).strip().lower()
             raw = _VARIANT_ATTR.sub("", raw)
         attrs = _DEAD_ATTR.sub("", _STYLE_ATTR.sub("", raw)).strip()
-        style = VARIANT_STYLES.get((tag, variant), TAG_STYLES.get(tag))
+        style = (overrides.get((tag, variant))
+                 or VARIANT_STYLES.get((tag, variant))
+                 or overrides.get((tag, ""))
+                 or TAG_STYLES.get(tag))
         head = f"<{tag}" + (f" {attrs}" if attrs else "")
         return head + (f' style="{style}">' if style else ">")
 
@@ -1315,7 +1327,13 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
     for index, part in enumerate(parts):
         section_html = plain_dashes(part[1])
         padding = "22px 28px 8px" if index else "24px 28px 8px"
-        rows.append(_cell(restyle(section_html), padding=padding,
+        # The approved design (TRACKER-EMAIL-QUALITY, 2026-10-05): each
+        # tracker's section wears its own colour and gains small table-bar
+        # charts. See digest_design for why a chart is never an image.
+        import digest_design
+        accent = digest_design.accent_for(str(part[0]) if part else "")
+        section_html = digest_design.add_charts(section_html, accent)
+        rows.append(_cell(restyle(section_html, accent), padding=padding,
                           top_rule=bool(index)))
     rows.append(_cell(_footer(unsub_url, manage_url, edition_note, resume_url),
                       padding="18px 28px 26px", top_rule=True))

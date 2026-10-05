@@ -1,3 +1,25 @@
+## 2026-10-05 - Subscriber email: the approved visual design (colours, headings, charts)
+
+**Class:** novel (design rollout, owner request TRACKER-EMAIL-QUALITY)
+**Guard:** `railway/tests/test_digest_email_design.py`
+
+The design shown to the owner on 2026-09-29 shipped only its content order on
+2026-10-01. This adds the visual half for every digest tier (daily, weekly,
+monthly; one renderer): new `railway/digest_design.py` gives each section its
+tracker colour (red `#b42a18` layoff and follows, blue `#1d4ed8` talent), green
+highlight on `finding` lines and the rule above `why`, bold 22px section
+headings with an accent bar, the lead number 34px -> 40px (pair 28 -> 30px) in
+the accent, and small bar charts under every ranked table row and every
+`series` line. Charts are table cells (`width` %, `bgcolor`, inline style,
+`aria-hidden`), never images, so `assert_message_is_clean` is untouched; a
+block whose figures cannot all be read draws no chart. The plain-text part is
+unchanged. `digest_layout.restyle` takes an optional `accent`; the existing
+lead-size assertion in `test_digest_email_layout.py` moves 34px -> 40px with
+the design. The red avoids a 4-digit run in its hex because
+`test_digest_figures_are_formatted` reads one in a `bgcolor` as a raw figure.
+Python only: no plugin file, no version reserved. Branch
+`claude/email-design-rollout`.
+
 ## 2026-10-05 - Subscriber watch now emits its counts as one GitHub annotation
 
 **Class:** novel (observability: run results unreadable through the API)
