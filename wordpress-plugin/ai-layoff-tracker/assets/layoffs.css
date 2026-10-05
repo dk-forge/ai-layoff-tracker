@@ -4514,3 +4514,28 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
 /* Author box (includes/author-box.php); hidden entirely until filled. */
 .alt-author-box { margin: 26px 0 0; padding: 14px 16px; border-top: 1px solid var(--alt-border); font-size: 14px; line-height: 1.6; color: var(--alt-ink); min-width: 0; overflow-wrap: anywhere; }
 .alt-author-box p { margin: 4px 0 0; }
+
+/* Labour-market context ([alt_labour_context], Sources page) and the facet
+   page stat block. Tokens only, so dark mode follows the same overrides. */
+.alt-lc { margin: 34px 0 10px; }
+.alt-lc-intro { max-width: 70ch; color: var(--alt-ink-2); }
+.alt-lc-panel { margin: 0; min-width: 0; }
+.alt-lc-controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0 0 12px; }
+.alt-lc-controls label { font-size: 13px; font-weight: 600; color: var(--alt-ink-2); }
+.alt-lc-select { min-height: var(--alt-ctl-h); max-width: 100%; padding: 6px 10px; border: 1px solid var(--alt-control-border);
+    border-radius: var(--alt-ctl-r); background: var(--alt-surface); color: var(--alt-ink); font-size: var(--alt-ctl-fs); }
+.alt-lc-select[multiple] { min-height: 90px; min-width: 200px; }
+.alt-lc-select:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
+.alt-lc-caption { margin: 10px 0 4px; font-size: 14px; color: var(--alt-ink-2); }
+.alt-lc-src { margin: 0; font-size: 12.5px; color: var(--alt-muted); }
+.alt-lc-status:empty { display: none; }
+.alt-lc-stat { margin: 14px 0; padding: 12px 14px; border: 1px solid var(--alt-grid); border-left: 3px solid var(--alt-control-border);
+    border-radius: 8px; background: var(--alt-surface-2); color: var(--alt-ink); }
+.alt-lc-stat p { margin: 0 0 4px; }
+.alt-lc-stat-k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--alt-muted); }
+.alt-lc-note { font-size: 13px; color: var(--alt-ink-2); }
+@media (max-width: 600px) {
+    .alt-lc-controls { flex-direction: column; align-items: stretch; }
+    .alt-lc-select, .alt-lc-select[multiple] { width: 100%; min-width: 0; }
+    .alt-lc .alt-chart-box { height: 240px; }
+}

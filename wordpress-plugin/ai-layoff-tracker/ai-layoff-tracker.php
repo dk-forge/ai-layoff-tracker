@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.224
+ * Version:           2.20.225
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.224');
+define('ALT_VERSION', '2.20.225');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -109,6 +109,12 @@ if (is_readable($alt_company_index)) {
 // FTP-deploy race described above; nothing else calls into it.
 if (is_readable(ALT_PLUGIN_DIR . 'includes/reference-data.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/reference-data.php';
+}
+// Labour-market context (2.20.225): [alt_labour_context] on the Sources page
+// and the exact-match stat block on facet pages. NEW file, GUARDED the same
+// way; callers check function_exists.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/labour-context.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/labour-context.php';
 }
 // Growth modules (2.20.210): monthly report timing + press summary, the
 // admin-only press list, the author box. NEW files, so GUARDED with
@@ -1381,7 +1387,7 @@ function alt_page_needs_assets() {
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report', 'alt_ai_quotes', 'alt_methodology',
-        'alt_us_registry',
+        'alt_us_registry', 'alt_labour_context',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
@@ -1571,6 +1577,12 @@ function alt_enqueue_assets() {
         // document.readyState rather than only listening for the event.
         array('in_footer' => true, 'strategy' => 'defer')
     );
+
+    // Labour-market context charts: only on the pages that render the section.
+    if ($alt_page_content && (has_shortcode($alt_page_content, 'alt_sources') || has_shortcode($alt_page_content, 'alt_labour_context'))) {
+        wp_enqueue_script('alt-labour-context-js', ALT_PLUGIN_URL . 'assets/labour-context.js', array('chartjs'),
+            $alt_asset_ver('assets/labour-context.js'), array('in_footer' => true, 'strategy' => 'defer'));
+    }
 
     // Pass data to JS
     wp_localize_script('alt-js', 'altData', array(

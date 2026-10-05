@@ -347,6 +347,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p class="alt-muted">Why we name them at all: a reader checking our numbers should be able to find the other serious measurements quickly, including ones that may disagree with us. We link them because they are good, not because they agree.</p>
 
   <p class="alt-muted" style="margin-top:8px">Tip: click any column header to sort a table.</p>
+<?php if (function_exists('alt_shortcode_labour_context')) echo alt_shortcode_labour_context(); ?>
 </main>
 <style>
   .alt-sources-page { font-size: 15.5px; line-height: 1.6; }
