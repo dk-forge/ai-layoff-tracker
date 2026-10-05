@@ -14,6 +14,13 @@ RAILWAY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if RAILWAY not in sys.path:
     sys.path.insert(0, RAILWAY)
 
+# The suite's one `requests` installer: the real module when it is installed
+# (CI), a complete offline stub otherwise. Called before importing the
+# collector so a later module's partial stub cannot take the slot first.
+from tests import _requests_stub  # noqa: E402
+
+_requests_stub.install()
+
 import bls_archive  # noqa: E402
 import bls_import  # noqa: E402
 import reference_freshness as rf  # noqa: E402
