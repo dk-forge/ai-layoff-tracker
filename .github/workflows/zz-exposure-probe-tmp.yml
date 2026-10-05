@@ -1,0 +1,45 @@
+name: zz exposure probe (temporary, branch only)
+on:
+  push:
+    branches: [claude/exposure-probe-tmp]
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: probe
+        shell: python
+        run: |
+          import re, urllib.request, io, zipfile
+          UAS = {"alt": "AiLayoffTracker/1.0 (+https://asktherecruiter.com; info@asktherecruiter.com)"}
+          def get(u, ua="alt", limit=None):
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UAS[ua], "Accept": "*/*"}), timeout=90)
+                  b = r.read(limit) if limit else r.read()
+                  return r.status, b
+              except Exception as e:
+                  return getattr(e, "code", 0), repr(e).encode()
+          for u in ["https://www.onetcenter.org/database.html", "https://www.onetcenter.org/license_db.html",
+                    "https://www.bls.gov/oes/tables.htm", "https://www.bls.gov/emp/tables.htm",
+                    "https://raw.githubusercontent.com/openai/GPTs-are-GPTs/main/data/occ_level.csv"]:
+              st, b = get(u)
+              t = b.decode("utf-8", "replace")
+              print("::group::", u, st, len(b)); 
+              print(sorted(set(re.findall(r'[\w/.:-]*(?:db_\d+_\d+_text[\w/.%-]*|oesm\d\d\w+\.zip|occupation\.xlsx|\.xlsx)', t)))[:60])
+              for k in ["CC BY", "Creative Commons", "attribut"]:
+                  i = t.find(k); 
+                  if i >= 0: print(k, "::", re.sub(r"<[^>]+>", " ", t[max(0,i-300):i+500]))
+              print("::endgroup::")
+          for y in ["25", "24"]:
+              for kind in ["nat", "ma"]:
+                  u = f"https://www.bls.gov/oes/special-requests/oesm{y}{kind}.zip"
+                  st, b = get(u)
+                  print("ZIP", u, st, len(b))
+                  if st == 200:
+                      z = zipfile.ZipFile(io.BytesIO(b)); print([ (i.filename, i.file_size) for i in z.infolist()])
+          for u in ["https://www.bls.gov/emp/ind-occ-matrix/occupation.xlsx", "https://www.bls.gov/emp/tables/occupational-projections-and-characteristics.htm"]:
+              st, b = get(u); print("EP", u, st, len(b), b[:80])
+              if st == 200 and u.endswith(".xlsx"):
+                  z = zipfile.ZipFile(io.BytesIO(b)); print(z.namelist()); print(z.read("xl/workbook.xml")[:1500])
+                  ss = z.read("xl/sharedStrings.xml").decode()[:3000]; print(ss)
