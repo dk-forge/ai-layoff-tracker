@@ -8,7 +8,9 @@ both keys proved valid. FRED: `CES5000000001` is not a FRED id ("The series
 does not exist"); USINFO is that CES information series, so it is dropped.
 QWI: the Census API refuses `for=state:*` for this hierarchy ("wildcard not
 supported in 'for' clause"), so each breakdown is now requested per state (6 x
-51 on a 6-thread pool; qwi-import timeout 10 -> 20 min). No plugin change.
+51 on a 6-thread pool; qwi-import timeout 10 -> 20 min), and the time
+predicate is bounded (`from Y-4-Q1 to Y-Q4`; an open `from` is rejected).
+No plugin change.
 
 ## 2026-10-05 (2.20.226) - FRED labour series + Census QWI reference data
 

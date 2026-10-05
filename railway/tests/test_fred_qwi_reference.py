@@ -140,7 +140,7 @@ class QwiTest(unittest.TestCase):
         self.assertEqual(qwi.QUERIES["race"][0], "rh")
         u = qwi.url("by_sector", "abc", date(2026, 10, 5), state="36")
         self.assertEqual(len(qwi.STATES), 51)
-        for needle in ("for=state%3A36", "time=from+2022-Q1", "ind_level=S", "ownercode=A05"):
+        for needle in ("for=state%3A36", "time=from+2022-Q1+to+2026-Q4", "ind_level=S", "ownercode=A05"):
             self.assertIn(needle, u)
 
     def test_rows_carry_every_dimension(self):

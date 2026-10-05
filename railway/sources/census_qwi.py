@@ -51,7 +51,7 @@ API = "https://api.census.gov/data/timeseries/qwi/"
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 METRICS = ["HirA", "Sep", "EmpEnd"]
 KEEP_QUARTERS = 8
-#: How far back the open-ended `time=from` predicate starts. QWI lags ~3
+#: How far back the bounded `time=from .. to ..` predicate starts. QWI lags ~3
 #: quarters, so 4 years always holds the newest KEEP_QUARTERS.
 LOOKBACK_YEARS = 4
 
@@ -101,7 +101,9 @@ def scrub(text, key: str) -> str:
 
 def time_from(today=None) -> str:
     today = today or date.today()
-    return f"from {today.year - LOOKBACK_YEARS}-Q1"
+    # Bounded on purpose: the API rejects an open `from` ("this dataset
+    # requires a bounded date/time range"; live 2026-10-05).
+    return f"from {today.year - LOOKBACK_YEARS}-Q1 to {today.year}-Q4"
 
 
 #: 50 states + DC, 2-digit FIPS.
