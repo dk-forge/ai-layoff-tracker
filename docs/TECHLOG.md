@@ -1,3 +1,14 @@
+## 2026-10-05 - AI exposure first live run: OEWS soft 404
+
+**Class:** novel (first live contact)
+**Guard:** `railway/tests/test_ai_exposure.py::test_unpublished_release_answered_with_an_html_page_falls_back`
+
+The first dispatched `ai-exposure-import` and `ai-exposure-archive` runs failed
+soft (nothing stored): bls.gov answers the not-yet-published
+`oesm26nat.zip` with HTTP 200 and an HTML page, so the year fallback never
+fired ("File is not a zip file"). A non-zip body now counts as "not
+released" and the collector falls back to May 2025. No plugin change.
+
 ## 2026-10-05 (2.20.229) - AI exposure by job and city
 
 **Class:** novel (new reference source + plugin-owned display; issue #478 items 2-4)

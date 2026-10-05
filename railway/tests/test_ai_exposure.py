@@ -118,8 +118,9 @@ class Opener:
     """Serves each source by URL. Spreadsheets are marker bytes that the
     patched _xlsx_rows turns into the rows above."""
 
-    def __init__(self, missing=()):
+    def __init__(self, missing=(), soft404=False):
         self.missing = set(missing)
+        self.soft404 = soft404
         self.urls = []
 
     def __call__(self, req, timeout=None):
@@ -139,6 +140,8 @@ class Opener:
             body = zbytes("oesm25ma/MSA_M2025_dl.xlsx", b"MSA")
         elif url == ax.EP_XLSX:
             body = b"EP"
+        elif url.endswith("oesm26nat.zip") and self.soft404:
+            body = b"<!DOCTYPE html><html>Page Not Found</html>"
         if body is None or any(m in url for m in self.missing):
             raise OSError(f"HTTP Error 404: Not Found {url}")
         return _Resp(body)
@@ -219,6 +222,12 @@ class PullTests(unittest.TestCase):
     def test_newest_oews_release_is_found_by_falling_back_a_year(self):
         # today is 2026: oesm26 404s, oesm25 is used.
         self.assertEqual(pull()["payload"]["versions"]["oews"], "May 2025")
+
+    def test_unpublished_release_answered_with_an_html_page_falls_back(self):
+        # 2026-10-05 first live run: oesm26nat.zip returned 200 + HTML, not 404.
+        r = pull(soft404=True)
+        self.assertEqual(r["errors"], [])
+        self.assertEqual(r["payload"]["versions"]["oews"], "May 2025")
 
     def test_missing_source_is_an_error_not_a_silent_gap(self):
         r = pull(missing=["occupation.xlsx"])
