@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "census-qwi-reference-data:fix-fred-qwi-live:d92c71e986a70093": {
-      "first": 1791235732,
-      "last": 1791235732,
-      "subject": "CI RED: Census QWI reference data \u2014 no rows parsed; stored data left intact. by_sector: 51/51 states failed, e.g. state 01: HTTP Error 400:  error: this dataset requires a bounded "
-    },
     "census-qwi-reference-data:main:941c42d3b54ac214": {
       "first": 1791235615,
       "last": 1791235615,
@@ -143,6 +138,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T21:29:45+00:00",
+  "updated_at": "2026-10-05T21:30:55+00:00",
   "version": 1
 }
