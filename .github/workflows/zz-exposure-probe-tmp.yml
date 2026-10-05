@@ -19,8 +19,12 @@ jobs:
           UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com; info@asktherecruiter.com)"
           def get(u):
               return urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UA}), timeout=180).read()
-          b = get("https://www.onetcenter.org/dl_files/database/db_31_0_text/Occupation%20Data.txt")
-          print("ONET", len(b)); print(b.decode()[:600])
+          import traceback
+          for u in ["https://www.onetcenter.org/dl_files/database/db_31_0_text/Occupation%20Data.txt", "https://www.onetcenter.org/dl_files/database/db_31_0_text.zip"]:
+              try:
+                  b = get(u); print("ONET", u, len(b)); print(b[:600])
+                  if u.endswith(".zip"): print(zipfile.ZipFile(io.BytesIO(b)).namelist()[:80])
+              except Exception: print("ONETFAIL", u, traceback.format_exc()[-400:])
           b = get("https://www.bls.gov/emp/ind-occ-matrix/occupation.xlsx")
           wb = openpyxl.load_workbook(io.BytesIO(b), read_only=True)
           for ws in wb.worksheets:
@@ -38,6 +42,7 @@ jobs:
                   if k < 4: print(name, r)
               print(name, "rows", n, "secs", round(time.time() - t))
       - name: push result
+        if: always()
         run: |
           git config user.name bot; git config user.email bot@users.noreply.github.com
           git add -f probe-out.txt; git commit -qm "probe out [skip ci]"; git push origin HEAD:claude/exposure-probe-out -f
