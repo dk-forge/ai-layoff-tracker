@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "alert-drain:main:fe0255e2fe5fd86c": {
+      "first": 1791232862,
+      "last": 1791232862,
+      "subject": "CI RED: Alert drain \u2014 no error line could be extracted from the log"
+    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -133,6 +138,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T20:36:50+00:00",
+  "updated_at": "2026-10-05T20:41:03+00:00",
   "version": 1
 }
