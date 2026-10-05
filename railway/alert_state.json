@@ -127,17 +127,12 @@
       "last": 1791103432,
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     },
-    "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:8f82df2a0445d89b": {
-      "first": 1791240109,
-      "last": 1791240109,
-      "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 urllib.error.HTTPError: HTTP Error 404: Not Found"
-    },
     "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:e209e89eb82e6f01": {
       "first": 1791240775,
       "last": 1791240775,
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-05T22:52:55+00:00",
+  "updated_at": "2026-10-05T22:53:00+00:00",
   "version": 1
 }
