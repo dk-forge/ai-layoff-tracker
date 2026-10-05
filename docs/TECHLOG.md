@@ -1,3 +1,26 @@
+## 2026-10-05 (2.20.223) - BLS JOLTS + CPS reference data collector
+
+**Class:** novel (new reference-data source, additive)
+**Guard:** `railway/tests/test_bls_reference.py` (offline, recorded BLS v1 response)
+
+New free source promoted from the depth-source probe (#468/#472). `bls-import.yml`
+(weekly, GitHub-hosted) runs `railway/bls_import.py`: keyless BLS API v1, 68
+series in 3 batched requests (of 25/day), ten years each, JOLTS layoffs and
+discharges / openings / quits for total nonfarm, 12 supersectors and the 4
+Census regions, plus the CPS unemployment rate by sex, age, race and
+education. Stored like the claims backdrop: one option (`alt_ref_bls_jolts_cps`)
+through the keyed `POST /reference-ingest/bls_jolts_cps`, public
+`GET /reference/bls_jolts_cps` (`includes/reference-data.php`, allowlisted
+sources only). Fail-soft: any failed request means no overwrite. Labelled macro
+context; not read by ingest, the layoff table or event classification.
+Freshness: `reference-freshness.yml` (daily, GitHub-hosted) runs
+`railway/reference_freshness.py`, red + one issue when the collector has not
+stored for 10 days or the newest month is past the real release lag plus
+margin (JOLTS 85 days after month end, CPS 50). Archive: `bls-archive.yml`
+(monthly) attaches the full-history flat files (jt + ln AllData, ~150 MB,
+gzip) to a Release `bls-archive-YYYY-MM`; nothing big is committed. Licence:
+public domain, attribution line on the Sources page.
+
 ## 2026-10-05 (2.20.221) - blog posts showed the featured image twice
 
 **Class:** novel (reader-visible live-content defect)

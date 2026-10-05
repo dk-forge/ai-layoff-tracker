@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.222
+ * Version:           2.20.223
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.222');
+define('ALT_VERSION', '2.20.223');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -103,6 +103,12 @@ if (is_readable($alt_edition_schema)) {
 $alt_company_index = ALT_PLUGIN_DIR . 'includes/company-index.php';
 if (is_readable($alt_company_index)) {
     require_once $alt_company_index;
+}
+// Reference data (2.20.223): official statistics stored as labelled macro
+// context (/reference/<source>). NEW file, GUARDED with is_readable for the
+// FTP-deploy race described above; nothing else calls into it.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/reference-data.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/reference-data.php';
 }
 // Growth modules (2.20.210): monthly report timing + press summary, the
 // admin-only press list, the author box. NEW files, so GUARDED with

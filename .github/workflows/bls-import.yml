@@ -1,0 +1,45 @@
+name: BLS JOLTS + CPS reference data
+
+# Keyless BLS API v1 pull (JOLTS layoffs/openings/quits by industry + region,
+# CPS unemployment rate by sex/age/race/education) -> /reference-ingest/
+# bls_jolts_cps. LABELED MACRO CONTEXT, never summed into layoff counts and not
+# read by ingest or classification. 3 requests of the 25/day keyless budget,
+# weekly. Fail-soft: a failed or empty pull never overwrites stored data.
+# GitHub-hosted on purpose: BLS limits keyless calls per IP, and the WP host
+# already spends some of its own budget on LAUS (alt_state_unemployment).
+# Freshness is judged by reference-freshness.yml; history by bls-archive.yml.
+
+on:
+  schedule:
+    - cron: '25 14 * * 3'   # Wednesdays; JOLTS lands Tue, CPS the first Fri
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
+concurrency:
+  group: bls-import
+
+jobs:
+  bls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Fetch + store BLS reference data
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python bls_import.py
+
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: bls-import
