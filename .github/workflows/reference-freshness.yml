@@ -1,0 +1,57 @@
+# Reference-data freshness alarm: "is each official dataset still current?"
+#
+# The reference collectors (bls-import.yml, ...) fail soft by design and never
+# overwrite stored data with a bad pull, so a broken collector leaves an old
+# document that looks fine. railway/reference_freshness.py reads the public
+# /reference/<source> GET daily and goes red, opening ONE issue, when the
+# collector stopped storing or the newest month is past the publisher's real
+# release lag plus a margin. Same shape as ingest-silence.yml, and on
+# GitHub-hosted runners for the same reason: a watchdog must not depend on the
+# hosts it watches.
+name: Reference data freshness
+
+on:
+  schedule:
+    - cron: '43 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: reference-freshness
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Every reference dataset must be inside its release lag
+        id: probe
+        run: |
+          set +e
+          python3 railway/reference_freshness.py | tee fresh.txt
+          code=${PIPESTATUS[0]}
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Open (or reuse) one issue when reference data is stale
+        if: steps.probe.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Reference data stale: an official dataset stopped refreshing"
+          open=$(gh issue list --state open --limit 200 --json title | jq --arg t "$title" '[.[] | select(.title == $t)] | length')
+          if [ "$open" = "0" ]; then
+            gh issue create --title "$title" --body "$(sed 's/^::[a-z]* title=[^:]*:://' fresh.txt)
+
+          Check the collector workflow for the named source (bls-import.yml, ...). Raised by .github/workflows/reference-freshness.yml."
+          fi
+      - name: Fail the run on stale or unknown
+        if: steps.probe.outputs.code != '0'
+        run: exit 1

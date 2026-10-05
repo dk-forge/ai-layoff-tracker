@@ -187,6 +187,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://www.bls.gov/lau/" target="_blank" rel="noopener">BLS LAUS &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>BLS JOLTS &amp; CPS</b></td><td>United States, by industry, region and worker group</td>
+        <td>Official monthly survey estimates from the Bureau of Labor Statistics. JOLTS gives layoffs and discharges, job openings and quits by industry and region. CPS gives the unemployment rate by sex, age, race and education. Collected weekly as a separate context metric, never added to our layoff counts. Source: U.S. Bureau of Labor Statistics. Public domain.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">BLS JOLTS &#8599;</a></td>
+      </tr>
+      <tr>
         <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
         <td>Official corporate-filing systems. We <em>retired</em> them as discovery probes after months live yielded zero layoff rows, because these filings essentially never announce layoffs. Worldwide news covers Japan, South Korea and Brazil instead. Client kept, re-runnable on demand.</td>
         <td>Retired probe</td>

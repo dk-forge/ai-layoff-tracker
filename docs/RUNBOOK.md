@@ -27,6 +27,9 @@ merge. Read "two merges claimed one plugin version" below before answering one.
 | Workflow | Trigger | Purpose / inputs |
 |---|---|---|
 | deploy-plugin | push to main | FTPS deploy of the plugin |
+| bls-import | weekly Wed 14:25 UTC + manual | BLS JOLTS + CPS reference data -> `/reference-ingest/bls_jolts_cps` (3 keyless API requests). Macro context only |
+| reference-freshness | daily 10:43 UTC + manual | Red + one issue when a stored reference dataset (`/reference/<source>`) is past its release lag. See `railway/reference_freshness.py` SPECS |
+| bls-archive | monthly 12th + manual | Full-history BLS JOLTS + CPS flat files as a Release asset `bls-archive-YYYY-MM` |
 | version-collision | push to main + every PR | Fails the SECOND merge that claims a plugin version. See "two merges claimed one plugin version" |
 | warn-import | daily 15:00 UTC + manual | WARN sweep. Inputs: states (`all` or `CA,NY`), min_employees, start, limit, **purge** (needs states=all, refuses if scrape <5K) |
 | gdelt-backfill | manual | Worldwide news for a date range (costs OpenRouter credits) |

@@ -57,6 +57,7 @@ railway/
   cron.py                    2×daily ingest (EDGAR + Google News + NewsAPI + GDELT 36h) + source health; fails loud if a cycle posts 0 with failures
   sources/google_news.py     FREE keyless layoff-headline discovery (Google News RSS) — leads the news sweep (NewsAPI is effectively dead)
   sources/claims.py          Keyless FRED puller (national ICSA/CCSA + 50 states) for the /claims macro backdrop; claims_import.py POSTs it daily
+  sources/bls_jolts_cps.py   Keyless BLS v1 puller (JOLTS by industry/region, CPS by sex/age/race/education); bls_import.py POSTs it weekly to /reference-ingest/bls_jolts_cps, served at /reference/bls_jolts_cps (macro context)
   extractor.py               Extraction prompt + post-processing; source-quote guard and AI causal taxonomy.
                              MODEL=google/gemini-2.5-flash-lite, CLASSIFY_MODEL=google/gemini-2.5-flash-lite (pinned separately, does NOT follow MODEL; moved off deepseek/deepseek-chat 2026-09-03 - compliance, not a benchmark)
   source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
