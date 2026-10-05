@@ -57,11 +57,6 @@
       "last": 1791241967,
       "subject": "CI RED: AI exposure archive \u2014 partial pull: oews 2026: File is not a zip file"
     },
-    "ai-exposure-reference-data:main:9072342d1342bf7a": {
-      "first": 1791241963,
-      "last": 1791241963,
-      "subject": "CI RED: AI exposure reference data \u2014 source errors: oews 2026: File is not a zip file; stored data left intact. counts={'scores': 798, 'titles': 867, 'national': 0, 'metros': 0, 'g"
-    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -143,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-05T23:12:48+00:00",
+  "updated_at": "2026-10-05T23:18:47+00:00",
   "version": 1
 }
