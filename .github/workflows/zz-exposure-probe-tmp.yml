@@ -10,42 +10,33 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+      - run: pip install --require-hashes -r railway/requirements.lock >/dev/null
       - name: probe
         shell: python
         run: |
-          import sys; sys.stdout = open('probe-out.txt', 'w')
-          import re, urllib.request, io, zipfile
-          UAS = {"alt": "AiLayoffTracker/1.0 (+https://asktherecruiter.com; info@asktherecruiter.com)"}
-          def get(u, ua="alt", limit=None):
-              try:
-                  r = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UAS[ua], "Accept": "*/*"}), timeout=90)
-                  b = r.read(limit) if limit else r.read()
-                  return r.status, b
-              except Exception as e:
-                  return getattr(e, "code", 0), repr(e).encode()
-          for u in ["https://www.onetcenter.org/database.html", "https://www.onetcenter.org/license_db.html",
-                    "https://www.bls.gov/oes/tables.htm", "https://www.bls.gov/emp/tables.htm",
-                    "https://raw.githubusercontent.com/openai/GPTs-are-GPTs/main/data/occ_level.csv"]:
-              st, b = get(u)
-              t = b.decode("utf-8", "replace")
-              print("::group::", u, st, len(b)); 
-              print(sorted(set(re.findall(r'[\w/.:-]*(?:db_\d+_\d+_text[\w/.%-]*|oesm\d\d\w+\.zip|occupation\.xlsx|\.xlsx)', t)))[:60])
-              for k in ["CC BY", "Creative Commons", "attribut"]:
-                  i = t.find(k); 
-                  if i >= 0: print(k, "::", re.sub(r"<[^>]+>", " ", t[max(0,i-300):i+500]))
-              print("::endgroup::")
-          for y in ["25", "24"]:
-              for kind in ["nat", "ma"]:
-                  u = f"https://www.bls.gov/oes/special-requests/oesm{y}{kind}.zip"
-                  st, b = get(u)
-                  print("ZIP", u, st, len(b))
-                  if st == 200:
-                      z = zipfile.ZipFile(io.BytesIO(b)); print([ (i.filename, i.file_size) for i in z.infolist()])
-          for u in ["https://www.bls.gov/emp/ind-occ-matrix/occupation.xlsx", "https://www.bls.gov/emp/tables/occupational-projections-and-characteristics.htm"]:
-              st, b = get(u); print("EP", u, st, len(b), b[:80])
-              if st == 200 and u.endswith(".xlsx"):
-                  z = zipfile.ZipFile(io.BytesIO(b)); print(z.namelist()); print(z.read("xl/workbook.xml")[:1500])
-                  ss = z.read("xl/sharedStrings.xml").decode()[:3000]; print(ss)
+          import sys, io, zipfile, urllib.request, openpyxl, time
+          sys.stdout = open('probe-out.txt', 'w')
+          UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com; info@asktherecruiter.com)"
+          def get(u):
+              return urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UA}), timeout=180).read()
+          b = get("https://www.onetcenter.org/dl_files/database/db_31_0_text/Occupation%20Data.txt")
+          print("ONET", len(b)); print(b.decode()[:600])
+          b = get("https://www.bls.gov/emp/ind-occ-matrix/occupation.xlsx")
+          wb = openpyxl.load_workbook(io.BytesIO(b), read_only=True)
+          for ws in wb.worksheets:
+              print("EPSHEET", ws.title)
+              for k, r in enumerate(ws.iter_rows(values_only=True)):
+                  if k < 4 or (ws.title.startswith("Table 1.2") and k < 12): print("  ", r)
+                  else: break
+          for name, member in [("nat", "oesm25nat/national_M2025_dl.xlsx"), ("ma", "oesm25ma/MSA_M2025_dl.xlsx")]:
+              t = time.time()
+              z = zipfile.ZipFile(io.BytesIO(get(f"https://www.bls.gov/oes/special-requests/oesm25{name}.zip")))
+              ws = openpyxl.load_workbook(io.BytesIO(z.read(member)), read_only=True).worksheets[0]
+              n = 0
+              for k, r in enumerate(ws.iter_rows(values_only=True)):
+                  n += 1
+                  if k < 4: print(name, r)
+              print(name, "rows", n, "secs", round(time.time() - t))
       - name: push result
         run: |
           git config user.name bot; git config user.email bot@users.noreply.github.com
