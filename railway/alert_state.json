@@ -67,6 +67,11 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "depth-source-snapshot-test-only:main:c34a64053cf61a19": {
+      "first": 1791216897,
+      "last": 1791216897,
+      "subject": "CI RED: Depth source snapshot (test only) \u2014 nothing added to commit but untracked files present (use \"git add\" to track)"
+    },
     "ftps-target-probe:claude-ci-security-pins:05725469d2b3a060": {
       "first": 1790722672,
       "last": 1790722672,
@@ -123,6 +128,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T16:01:28+00:00",
+  "updated_at": "2026-10-05T16:14:57+00:00",
   "version": 1
 }
