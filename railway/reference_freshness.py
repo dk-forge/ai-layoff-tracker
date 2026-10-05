@@ -39,11 +39,21 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #   OECD monthly unemployment: month M publishes mid M+2, so just before
 #     the next release the newest month (max over countries) is ~75 days
 #     old; +7 weekly collection; +13 margin = 95.
+#   FRED monthly series: the slowest is JOLTS layoffs (JTSLDL), same 65-day
+#     lag as JOLTS above -> 85. FRED weekly claims (ICSA/CCSA): week ending
+#     Sat publishes the next Thursday (CCSA a week later), stored as the
+#     month of the newest week; month end can be ~2 weeks before the next
+#     newest week + 7 weekly + 6 margin = 30 (generous for a holiday slip).
+#   Census QWI: quarter Q publishes roughly 9-10 months after Q ends and
+#     releases quarterly, so just before the next release the newest
+#     quarter is ~300+92 days old; +7 weekly; +31 margin = 430.
 #   Collector: weekly job (7) + 3 days for a deferred host call or late
 #     runner = 10, so one missed weekly run alarms.
 SPECS = {
     "bls_jolts_cps": {"collector_days": 10, "datasets": {"jolts": 85, "cps": 50}},
     "oecd_unemployment": {"collector_days": 10, "datasets": {"monthly": 95}},
+    "fred_labour": {"collector_days": 10, "datasets": {"monthly": 85, "weekly": 30}},
+    "census_qwi": {"collector_days": 10, "datasets": {"quarterly": 430}},
 }
 
 

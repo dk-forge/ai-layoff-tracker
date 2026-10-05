@@ -3,6 +3,9 @@
  * Reference data: official statistics stored as labelled MACRO CONTEXT.
  *
  *   GET  /layoffs/v1/reference/<source>          public, the stored document
+ *        ?<field>=<value>[,<value>...]             optional row filter, only for
+ *        documents that name their row columns in `fields` (fred_labour,
+ *        census_qwi): every dataset keeps the rows matching ALL filters
  *   POST /layoffs/v1/reference-ingest/<source>   keyed, replaces it wholesale
  *
  * Same pattern as /claims + /claims-ingest (db.php): one non-autoloaded option
@@ -20,6 +23,8 @@ function alt_reference_sources() {
     return array(
         'bls_jolts_cps' => 'alt_ref_bls_jolts_cps',
         'oecd_unemployment' => 'alt_ref_oecd_unemployment',
+        'fred_labour' => 'alt_ref_fred_labour',
+        'census_qwi' => 'alt_ref_census_qwi',
     );
 }
 
@@ -45,7 +50,44 @@ function alt_api_reference_get(WP_REST_Request $r) {
     $src = (string) $r['source'];
     if (!isset($map[$src])) return new WP_Error('alt_not_found', 'Unknown reference source.', array('status' => 404));
     $data = get_option($map[$src], array());
-    return rest_ensure_response(is_array($data) ? $data : array());
+    $data = is_array($data) ? $data : array();
+    return rest_ensure_response(alt_reference_filter($data, $r->get_query_params()));
+}
+
+/**
+ * Keep only rows whose named columns match the query. A document opts in by
+ * listing its row columns in `fields` and storing each dataset as a list of
+ * rows in that order; params that are not fields (cache-busters like `cb`)
+ * are ignored, so an unfiltered GET returns the stored document unchanged.
+ * A value may list alternatives with commas (?state=06,36).
+ */
+function alt_reference_filter($doc, $params) {
+    if (empty($doc['fields']) || !is_array($doc['fields']) || empty($doc['datasets'])
+        || !is_array($doc['datasets']) || !is_array($params)) return $doc;
+    $want = array();
+    foreach ($doc['fields'] as $i => $f) {
+        if (isset($params[$f]) && is_scalar($params[$f]) && (string) $params[$f] !== '') {
+            $want[$i] = array_map('trim', explode(',', (string) $params[$f]));
+        }
+    }
+    if (!$want) return $doc;
+    $total = 0;
+    foreach ($doc['datasets'] as $k => $rows) {
+        if (!is_array($rows)) continue;
+        $keep = array();
+        foreach ($rows as $row) {
+            if (!is_array($row)) continue;
+            foreach ($want as $i => $vals) {
+                if (!array_key_exists($i, $row) || !in_array((string) $row[$i], $vals, true)) continue 2;
+            }
+            $keep[] = $row;
+        }
+        $doc['datasets'][$k] = $keep;
+        $total += count($keep);
+    }
+    $doc['rows'] = $total;
+    $doc['filtered'] = true;
+    return $doc;
 }
 
 function alt_api_reference_ingest(WP_REST_Request $r) {

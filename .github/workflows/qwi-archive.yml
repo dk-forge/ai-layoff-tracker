@@ -1,0 +1,55 @@
+name: Census QWI archive
+
+# Monthly: every pulled Census QWI quarter into data/archive/qwi/<YYYY-Qn>.csv
+# plus MANIFEST.json (one ~100-200 KB file a quarter). The served document
+# keeps 8 quarters; this keeps all of them. Same approach as oecd-archive.yml.
+# railway/qwi_archive.py refuses a partial pull and never replaces a quarter
+# with a much thinner one. CENSUS_API_KEY via env only, never printed.
+on:
+  schedule:
+    - cron: '39 7 16 * *'   # the 16th
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: qwi-archive
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Fetch full history
+        env:
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+        run: python3 railway/qwi_archive.py --out data/archive/qwi
+      - name: Commit when changed
+        run: |
+          set -uo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          git add data/archive/qwi/
+          if git diff --staged --quiet; then
+            echo "::notice title=qwi-archive::unchanged, nothing committed"
+            exit 0
+          fi
+          git commit -q -m "Census QWI archive $(date -u +%F) [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "::notice title=qwi-archive::committed $(git rev-parse --short HEAD)"
+              exit 0
+            fi
+            git fetch -q origin main
+            git rebase -q origin/main || { git rebase --abort; echo "::error::rebase failed"; exit 1; }
+            sleep $((attempt * 5))
+          done
+          echo "::error title=qwi-archive::push failed after 5 attempts"
+          exit 1

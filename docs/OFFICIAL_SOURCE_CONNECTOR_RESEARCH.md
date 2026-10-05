@@ -43,6 +43,22 @@ change that ships the connector, tests, workflow and public methodology.
 - [OpenDART API](https://opendart.fss.or.kr/)
 - [Companies House API](https://developer.company-information.service.gov.uk/)
 
+## Reference (macro-context) sources
+
+Official statistics stored through `/reference-ingest/<source>` and served at
+`/reference/<source>`. They are labelled context, never layoff events, so the
+admission rule above (which governs sources that can create events) does not
+apply; each is listed on the public Sources page and watched by
+`reference-freshness.yml`.
+
+| Source id | Name | Publisher | Covers | Update (ours) | Licence / attribution | Official link |
+|---|---|---|---|---|---|---|
+| `bls_jolts_cps` | BLS JOLTS | U.S. Bureau of Labor Statistics | Layoffs and discharges, openings, quits by industry and region | weekly (`bls-import.yml`) | Public domain; cite BLS | https://www.bls.gov/jlt/ |
+| `bls_jolts_cps` | BLS CPS | U.S. Bureau of Labor Statistics | Unemployment rate by sex, age, race, education | weekly (`bls-import.yml`) | Public domain; cite BLS | https://www.bls.gov/cps/ |
+| `oecd_unemployment` | OECD unemployment | OECD | Monthly unemployment rate by sex and age, every member | weekly (`oecd-import.yml`) | CC BY 4.0, attribution required | https://data-explorer.oecd.org/ |
+| `fred_labour` | FRED labour series | Federal Reserve Bank of St. Louis | UNRATE, LNS14027662, PAYEMS, USINFO, CES5000000001, JTSLDL, ICSA, CCSA (10 years) | weekly (`fred-import.yml`, `FRED_API_KEY`) | Public domain (BLS/ETA via FRED); cite FRED | https://fred.stlouisfed.org/ |
+| `census_qwi` | Census QWI | U.S. Census Bureau (LEHD) | Hires, separations, end-of-quarter employment by state x NAICS sector / age / sex / education / race / ethnicity (8 quarters) | weekly (`qwi-import.yml`, `CENSUS_API_KEY`) | Public domain; "uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau" | https://lehd.ces.census.gov/data/ |
+
 ## Credential-access boundary
 
 On 2026-07-17, the manual, read-only GitHub Actions workflow

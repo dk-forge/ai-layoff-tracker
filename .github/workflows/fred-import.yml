@@ -1,0 +1,46 @@
+name: FRED labour reference data
+
+# FRED API (St. Louis Fed): one request per curated labour series (UNRATE,
+# PAYEMS, ICSA, CCSA, JTSLDL, USINFO, CES5000000001, LNS14027662), trailing 10
+# years -> /reference-ingest/fred_labour. LABELED MACRO CONTEXT, never summed
+# into layoff counts and not read by ingest or classification. Needs the
+# FRED_API_KEY secret, passed only through env and never printed. Weekly so
+# the Thursday claims release lands within a day. Fail-soft: a failed or
+# partial pull never overwrites stored data. Freshness:
+# reference-freshness.yml. History: fred-archive.yml.
+
+on:
+  schedule:
+    - cron: '45 14 * * 5'   # Fridays; claims publish Thursday
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
+concurrency:
+  group: fred-import
+
+jobs:
+  fred:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Fetch + store FRED reference data
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python fred_import.py
+
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: fred-import

@@ -1,6 +1,34 @@
+## 2026-10-05 (2.20.226) - FRED labour series + Census QWI reference data
+
+**Class:** novel (two new reference-data sources, additive)
+**Guard:** `railway/tests/test_fred_qwi_reference.py` (offline; hand-built
+fixtures in the documented response shapes, since the authoring sandbox had no
+egress to either API; the first dispatched run is the live proof)
+
+Same pattern as BLS (2.20.223) and OECD (2.20.224). `fred-import.yml` (weekly)
+runs `railway/fred_import.py`: one FRED `series/observations` request per
+curated series (UNRATE, LNS14027662, PAYEMS, USINFO, CES5000000001, JTSLDL,
+ICSA, CCSA), trailing 10 years, stored at `/reference-ingest/fred_labour`.
+`qwi-import.yml` (weekly) runs `railway/qwi_import.py`: six Census Data API
+requests (`timeseries/qwi/sa|se|rh`; state x NAICS sector, and state x age,
+sex, education, race, ethnicity; HirA, Sep, EmpEnd; private, not seasonally
+adjusted; latest 8 quarters), stored at `/reference-ingest/census_qwi`. Keys
+come only from `secrets.FRED_API_KEY` / `secrets.CENSUS_API_KEY` via env and
+are scrubbed from every message. Fail-soft: a missing series/breakdown, under
+45 states or a payload over 2.8 MB is never stored. Rows are flat arrays with
+a `fields` header; `GET /reference/<source>?<field>=a,b` now filters rows for
+any document that declares `fields` (OECD/BLS untouched). Freshness: SPECS
+fred_labour (monthly 85d, weekly 30d) and census_qwi (quarterly 430d, stored
+as the quarter-end month). Archives: `fred-archive.yml` commits full history
+to `data/archive/fred/`; `qwi-archive.yml` commits one CSV per quarter to
+`data/archive/qwi/`. Not read by ingest, the layoff table or classification.
+Sources page: FRED and QWI rows added (BLS and OECD already listed); a render
+test (`SourcesPageTest`) fails if any reference source lacks a row, and the
+source register in OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md lists all five.
 ## 2026-10-05 - Hourly ops check: `sandbox-uptime-check.yml` stuck unable to get a GitHub-hosted runner
 
-**Class:** ops note (no code change; monitoring-channel finding, not an app outage)
+**Class:** novel (ops note: no code change; monitoring-channel finding, not an app outage)
+**Guard:** none - hosted-runner capacity is outside the repo; nothing to test
 
 Three consecutive scheduled runs of `.github/workflows/sandbox-uptime-check.yml`
 (#1253 19:34Z, #1254 19:48Z, #1255 20:01Z) never got a `ubuntu-latest` runner
