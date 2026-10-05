@@ -72,11 +72,6 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "ingest-silence-alarm:main:4925128255b5aa1f": {
-      "first": 1791209850,
-      "last": 1791209850,
-      "subject": "CI RED: Ingest silence alarm \u2014 INGEST SILENT: no collector run recorded on /source-runs in the window. Check both hosts: Railway cron and the repo variable ALT_INGEST_ON_VPS (inges"
-    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1790271485,
       "last": 1790271485,
@@ -128,6 +123,6 @@
       "subject": "CI RED: Weekly off-host backup \u2014 ^[[36;1m# The outputs are written whatever the exit code. A run that FAILED is^[[0m"
     }
   },
-  "updated_at": "2026-10-05T14:17:30+00:00",
+  "updated_at": "2026-10-05T16:01:28+00:00",
   "version": 1
 }
