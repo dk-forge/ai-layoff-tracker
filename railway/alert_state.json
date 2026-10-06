@@ -92,6 +92,11 @@
       "last": 1790617243,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,854,993 jobs / 68,498 entries"
     },
+    "mailbox-janitor:main:09cd0cb19bd940f2": {
+      "first": 1791277104,
+      "last": 1791277104,
+      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -128,6 +133,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-06T02:45:57+00:00",
+  "updated_at": "2026-10-06T08:58:24+00:00",
   "version": 1
 }
