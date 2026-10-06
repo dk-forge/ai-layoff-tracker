@@ -16,6 +16,27 @@ row links to `/ai-layoff-tracker/?from&to&date_basis&<filter>`); verified the
 page reads country, industry, state, reasons and company from the URL
 (`restoreFiltersFromUrl`, assets/layoffs.js), so no change was needed.
 Helpers in new `includes/digest-sections.php`, loaded guarded.
+## 2026-10-06 (2.20.230) - Subscriber email redesign, slice 1
+
+**Class:** novel (owner-approved redesign, sandbox debt row DIGEST-EMAIL-REDESIGN-APPROVED)
+**Guard:** `railway/tests/test_digest_extras.py` (php CLI drives every helper; wiring, leaders query and footer mirror checked)
+
+Audit of the nine-email redesign list against main: already built were the
+change since last week (stat pair foot), section links pre-filtered to the
+tracker, "Cite this", the region split (no fixed colours), top countries/
+industries (industries capped at 3), and the static AI "why that matters".
+Slice 1 adds, all in the layoff section and all derived from /aggregate:
+the subject now carries the top story ("13,658 verified job cuts, led by
+Intel (2,000)"), the largest verified, non-single-report row, which is the
+first such row of Biggest cuts; an 8-week strip of verified job cuts (weekly
+edition only, six extra /aggregate calls, withheld whole if any week fails);
+the stated reason on the top 3 Biggest cuts rows (the leaders query now
+selects `reason_tags`; AI tags stay with the ai_explicit column); one computed
+"Why it matters" concentration line, silent when the dominant-entry sentence
+fired; and a "Forward this email ... sign up free" footer block in all three
+footers (no tracking). Helpers live in the new `includes/digest-extras.php`,
+loaded guarded; every caller checks `function_exists()`. The #E313 suite
+number was already gone from every email (2.20.215); nothing to remove.
 
 
 ## 2026-10-06 - ftp-target-probe stops reading the retired FTP secrets

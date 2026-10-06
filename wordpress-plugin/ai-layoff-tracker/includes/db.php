@@ -6930,7 +6930,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT id, company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url,
-                verification_level, review_status,
+                verification_level, review_status, reason_tags,
                 (SELECT COUNT(*) FROM " . alt_source_reports_table() . " r WHERE r.event_id = $table.event_id AND $table.event_id > 0) AS report_count
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
@@ -6941,6 +6941,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,
             'location' => alt_short_location($row->state, $row->country),
+            // The stated reason, for the digest's Biggest cuts rows (2026-10-06).
+            'reason_tags' => (string) ($row->reason_tags ?? ''),
             /*
               WHICH TIER THIS ROW IS. Added 2026-08-17, and it closes a real
               defect rather than adding a field somebody might want.

@@ -57,6 +57,13 @@ require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
+// Subscriber email redesign helpers (2026-10-06). Guarded like every NEW
+// include: an FTP deploy can land this file first, and every caller checks
+// function_exists(), so a missing helper drops a line, never the plugin.
+$alt_digest_extras = ALT_PLUGIN_DIR . 'includes/digest-extras.php';
+if (is_readable($alt_digest_extras)) {
+    require_once $alt_digest_extras;
+}
 // Subscriber email redesign stage 2 helpers (2026-10-06). Guarded like every
 // NEW include; every caller checks function_exists().
 $alt_digest_sections = ALT_PLUGIN_DIR . 'includes/digest-sections.php';

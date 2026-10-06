@@ -1206,6 +1206,12 @@ FOOTER_BLOCKS = (
     ("resume", ("Changing jobs, returning to work or starting out? Tailor "
                 "your résumé to the role with the AskTheRecruiter résumé tool.",),
      "Tailor your résumé"),
+    # Forward this (redesign slice 1, 2026-10-06): the signup form, so a
+    # colleague handed one edition can get the next. Mirrors
+    # alt_digest_footer_blocks in the plugin.
+    ("forward", ("Forward this email to a colleague who follows the job "
+                 "market; they can sign up free.",),
+     "sign up free"),
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because
     # unlike the manage block it is not ours to omit -- `footer_blocks()`
@@ -1213,6 +1219,10 @@ FOOTER_BLOCKS = (
     ("", ("AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.",), ""),
 )
 
+
+# The signup form a forwarded reader lands on (home_url('/ai-layoff-tracker/')
+# . '#alt-digest' in the plugin's footer block).
+SIGNUP_URL = "https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-digest"
 
 # Mirror of ALT_RESUME_CTA_DEFAULT_BASE in ai-layoff-tracker.php; the plugin
 # is the authority and tests/test_resume_cta.py fails on a difference.
@@ -1291,7 +1301,7 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
             f'line-height:1.6;color:{MUTED};')
     link = f'color:{LINK};text-decoration:underline;'
     urls = {"unsub": unsub_url, "manage": manage_url,
-            "resume": resume_cta_url(resume_url)}
+            "resume": resume_cta_url(resume_url), "forward": SIGNUP_URL}
     rendered = []
     for key, sentences, anchor in footer_blocks(bool(manage_url)):
         # The anchor belongs to the block's FIRST sentence, which is the one
@@ -1453,7 +1463,7 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     # A block that carries a link ends on a colon and the bare URL follows,
     # which is what a link looks like when there is no anchor to put it in.
     urls = {"unsub": unsub_url, "manage": manage_url,
-            "resume": resume_cta_url(resume_url)}
+            "resume": resume_cta_url(resume_url), "forward": SIGNUP_URL}
     footer = [rule]
     for index, (key, sentences, _anchor) in enumerate(
             footer_blocks(bool(manage_url))):
