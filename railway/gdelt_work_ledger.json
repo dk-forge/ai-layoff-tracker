@@ -1,18 +1,5 @@
 {
   "slots": {
-    "broad|f060b27756|20260920T083527Z|20260921T203527Z": {
-      "family": "broad",
-      "window_start": "20260920T083527Z",
-      "window_end": "20260921T203527Z",
-      "status": "complete",
-      "returned": 5399,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20260921T220625Z",
-      "updated": "20260921T220625Z",
-      "oldest": "20260920T084500Z",
-      "newest": "20260921T203000Z"
-    },
     "broad|f060b27756|20260921T083800Z|20260922T203800Z": {
       "family": "broad",
       "window_start": "20260921T083800Z",
@@ -116,6 +103,32 @@
       "updated": "20260928T221600Z",
       "oldest": "20260927T090000Z",
       "newest": "20260928T204500Z"
+    },
+    "broad|f060b27756|20261004T022309Z|20261005T142309Z": {
+      "family": "broad",
+      "window_start": "20261004T022309Z",
+      "window_end": "20261005T142309Z",
+      "status": "complete",
+      "returned": 4745,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20261005T155335Z",
+      "updated": "20261005T155335Z",
+      "oldest": "20261004T023000Z",
+      "newest": "20261005T141500Z"
+    },
+    "broad|f060b27756|20261004T090155Z|20261005T210155Z": {
+      "family": "broad",
+      "window_start": "20261004T090155Z",
+      "window_end": "20261005T210155Z",
+      "status": "complete",
+      "returned": 5589,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20261005T223228Z",
+      "updated": "20261005T223228Z",
+      "oldest": "20261004T091500Z",
+      "newest": "20261005T210000Z"
     },
     "euphemism|39994768da|20260926T230141Z|20260928T110141Z": {
       "family": "euphemism",
