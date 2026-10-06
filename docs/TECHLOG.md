@@ -1,6 +1,6 @@
 ## 2026-10-06 - ftp-target-probe stops reading the retired FTP secrets
 
-**Class:** cleanup (workflow only, no plugin change)
+**Class:** novel (cleanup, not an incident; workflow only, no plugin change)
 **Guard:** `railway/tests/test_workflow_yaml_parses.py`; `grep secrets.FTP_USERNAME .github` is empty
 
 The probe's credential step still mapped `FTP_USERNAME`, `FTP_PASSWORD`
