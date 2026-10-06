@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.229
+ * Version:           2.20.230
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.229');
+define('ALT_VERSION', '2.20.230');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -57,6 +57,13 @@ require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
+// Subscriber email redesign helpers (2026-10-06). Guarded like every NEW
+// include: an FTP deploy can land this file first, and every caller checks
+// function_exists(), so a missing helper drops a line, never the plugin.
+$alt_digest_extras = ALT_PLUGIN_DIR . 'includes/digest-extras.php';
+if (is_readable($alt_digest_extras)) {
+    require_once $alt_digest_extras;
+}
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
@@ -123,7 +130,7 @@ foreach (array('labour-trends.php', 'early-warning.php') as $alt_lc_file) {
         require_once ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file;
     }
 }
-// AI exposure by job and city (2.20.229): [alt_ai_exposure] at the end of the
+// AI exposure by job and city (2.20.230): [alt_ai_exposure] at the end of the
 // Sources page. NEW file, GUARDED; callers check function_exists.
 if (is_readable(ALT_PLUGIN_DIR . 'includes/ai-exposure.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/ai-exposure.php';
