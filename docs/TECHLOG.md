@@ -1,3 +1,22 @@
+## 2026-10-06 (2.20.231) - Subscriber email redesign, stage 2
+
+**Class:** novel (owner-approved redesign; owner 2026-10-06: ship stage 2 now)
+**Guard:** `railway/tests/test_digest_sections.py` (php CLI helpers, region colours, wiring, tracker filter keys)
+
+Stage 2 of the nine-email redesign (slice 1 is 2.20.230, separate PR):
+regions now wear FIXED colours in the relay's bars (`digest_design.REGION_COLOURS`,
+Okabe-Ito hues, residual lines grey; bars stay aria-hidden, figures stay
+text); a new "Top countries" line (top 5, verified, job-location basis, each
+linked to the tracker filtered to that country); industries widened from 3
+to 5; and the talent digest adds a resume-tailoring line linked to the app
+(`alt_resume_cta_url('digest-talent')`) when one employer names >= 500 jobs in
+a REPORTED signal (job-board scans never trigger it). (f) pre-filtered
+section links were already built (every region/industry/state/reason/company
+row links to `/ai-layoff-tracker/?from&to&date_basis&<filter>`); verified the
+page reads country, industry, state, reasons and company from the URL
+(`restoreFiltersFromUrl`, assets/layoffs.js), so no change was needed.
+Helpers in new `includes/digest-sections.php`, loaded guarded.
+
 ## 2026-10-05 - AI exposure first live run: OEWS soft 404
 
 **Class:** novel (first live contact)

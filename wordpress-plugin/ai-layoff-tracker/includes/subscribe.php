@@ -6563,6 +6563,34 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
                . esc_html($tail) . '</p>';
         $text .= "\nWhere the jobs were\n" . $caption . ': ' . $c_text . $tail . "\n";
     }
+    /*
+      TOP 5 COUNTRIES (redesign stage 2). The region line answers "which part
+      of the world"; this answers "which countries", on the same verified tier,
+      window and job-location basis, each linked to the tracker filtered to
+      that one country. It is a ranking, not a breakdown, so it carries no
+      reconciliation note; the caption says it is the top five.
+    */
+    if (function_exists('alt_digest_top_n')) {
+        $top_countries = alt_digest_top_n($countries_all, 5);
+        if (count($top_countries) > 1) {
+            $rows = array();
+            foreach ($top_countries as $name => $value) {
+                $rows[] = array(
+                    'label'  => $name,
+                    'figure' => alt_digest_number($value),
+                    'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                    $from, $to, array('country' => $name))),
+                );
+            }
+            list($tc_html, $tc_text) = alt_digest_inline_series($rows);
+            $tc_caption = $range . ', verified job cuts, the top ' . count($rows)
+                        . ' countries where the jobs were';
+            $html .= '<h3>Top countries</h3>'
+                   . '<p data-alt="series">' . esc_html($tc_caption . ': ') . $tc_html
+                   . esc_html('.') . '</p>';
+            $text .= "\nTop countries\n" . $tc_caption . ': ' . $tc_text . ".\n";
+        }
+    }
 
     /*
       WHICH INDUSTRIES, which is the block a recruiter or a job hunter reads
@@ -6579,7 +6607,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       below still measures what the printed lines cover, so cutting two rows
       makes the caveat larger and truer rather than hiding anything.
     */
-    $industries = array_slice($industries_all, 0, 3, true);
+    // FIVE since the redesign stage 2 (owner approval 2026-09-29), which
+    // replaces the earlier cut to three. The composition note and the
+    // shortfall note still read the whole block, so nothing else moves.
+    $industries = array_slice($industries_all, 0, 5, true);
     if (count($industries) > 1) {
         $caption = $range . ', verified job cuts, by the industry we classified '
                  . 'the employer into';
@@ -7646,6 +7677,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                    . '<ul>';
             $text .= "\n" . $heading . "\n" . $caption . "\n";
             $undated = 0;
+            $resume_candidates = array();
             foreach ($rows as $row) {
                 $row = (array) $row;
                 /*
@@ -7690,6 +7722,9 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                   that contradicted itself inside four words.
                 */
                 $is_scan = alt_digest_talent_is_scan($row);
+                // Redesign stage 2: the resume line reads the same figure.
+                $resume_candidates[] = array('company' => $co, 'jobs' => (int) $jobs,
+                                             'scan' => $is_scan);
                 if ($jobs > 0) {
                     $facts[] = $is_scan ? alt_digest_postings_phrase($jobs)
                                         : alt_digest_jobs_phrase($jobs);
@@ -7787,6 +7822,18 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 if ($plain !== '') $text .= '    ' . $plain . "\n";
             }
             $html .= '</ul>';
+            /*
+              THE RESUME LINE (redesign stage 2): when one employer in this list
+              names 500 or more jobs in a reported signal, a reader may want to
+              apply. Job-board scans never trigger it (postings, not hires).
+            */
+            if (function_exists('alt_digest_talent_resume_line')
+                    && function_exists('alt_resume_cta_url')) {
+                list($rl_html, $rl_text) = alt_digest_talent_resume_line(
+                    $resume_candidates, alt_resume_cta_url('digest-talent'));
+                $html .= $rl_html;
+                $text .= $rl_text;
+            }
             /*
               THE CAVEAT ONLY WHEN IT IS TRUE, AND COUNTED WHEN IT IS.
 
