@@ -40,6 +40,24 @@ _ACCENTS = {"layoff": RED, "follows": RED, "talent": BLUE}
 BAR_HEIGHT_PX = 8
 MAX_BARS = 8
 
+# FIXED REGION COLOURS (redesign stage 2, 2026-10-06). A region wears the same
+# colour in every edition, so a reader learns it once. Okabe-Ito hues, which
+# stay distinguishable under the common colour-vision deficiencies; the three
+# residual lines share one neutral grey because they are not places. The bars
+# are decoration (aria-hidden): the label and figure are always text.
+REGION_COLOURS = {
+    "United States": "#0b72b2",
+    "Canada": "#d55e00",
+    "United Kingdom": "#cc79a7",
+    "Europe": "#009e73",
+    "Asia Pacific": "#e69f00",
+    "Latin America": "#56b4e9",
+    "Middle East and Africa": "#7a51a5",
+    "Elsewhere": "#6b7a8f",
+    "Multiple countries, no split given": "#6b7a8f",
+    "No country recorded": "#6b7a8f",
+}
+
 
 def accent_for(section: str) -> str:
     """The accent colour of a composed section, by its list key."""
@@ -191,7 +209,7 @@ def _chart_series(match, accent: str) -> str:
     from html import escape
     rows = "".join(
         f'<tr><td data-alt="chart-label">{escape(label)}</td>'
-        f'<td data-alt="chart-cell">{_bar(width, accent)}</td>'
+        f'<td data-alt="chart-cell">{_bar(width, REGION_COLOURS.get(label, accent))}</td>'
         f'<td data-alt="chart-figure" align="right">{escape(fig)}</td></tr>'
         for (label, fig), width in zip(items, widths))
     return (whole + '<table data-alt="series-chart" role="presentation" '
