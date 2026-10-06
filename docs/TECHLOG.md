@@ -17,6 +17,20 @@ page reads country, industry, state, reasons and company from the URL
 (`restoreFiltersFromUrl`, assets/layoffs.js), so no change was needed.
 Helpers in new `includes/digest-sections.php`, loaded guarded.
 
+
+## 2026-10-06 - ftp-target-probe stops reading the retired FTP secrets
+
+**Class:** novel (cleanup, not an incident; workflow only, no plugin change)
+**Guard:** `railway/tests/test_workflow_yaml_parses.py`; `grep secrets.FTP_USERNAME .github` is empty
+
+The probe's credential step still mapped `FTP_USERNAME`, `FTP_PASSWORD`
+(the July/Bluehost pair) and `CHEMICLOUD_FTP` into env, though since
+2026-09-09 it only tries `FTP_HOST` + `CHEMICLOUD_USERNAME` /
+`CHEMICLOUD_PASSWORD_FTP`. Those three env lines are removed; the probe is kept
+because RUNBOOK and deploy-plugin.yml point at it. No workflow now reads
+`FTP_USERNAME`, `FTP_PASSWORD` or `CHEMICLOUD_FTP`, so the owner can delete
+those three secrets once this merges.
+
 ## 2026-10-05 - AI exposure first live run: OEWS soft 404
 
 **Class:** novel (first live contact)
