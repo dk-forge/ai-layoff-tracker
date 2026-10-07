@@ -1,3 +1,27 @@
+## 2026-10-07 — `reconcile-supersets.yml` single failed run on the Contabo runner, logs unavailable
+
+**Class:** recurring (same shape as the already-documented Contabo
+self-hosted-runner flakiness: toolcache permission fault 2026-09-30,
+`curl -o` write failure 2026-10-01 — a different symptom each time, same
+host)
+**Guard:** none — infrastructure fault on the `atr-runner-ai-layoff-tracker`
+Contabo box, not something a test in this repo can pin
+
+Hourly ops-check found `reconcile-supersets.yml` run #84
+(https://github.com/dk-forge/ai-layoff-tracker/actions/runs/37655141524,
+2026-10-07 16:50-16:55 UTC, `runs-on: [self-hosted, linux, contabo]`) ended
+`failure` after running for its full ~5 minutes (not a refused-capacity
+0-duration job). The run before it (#83, 2026-10-06) and the scheduled run
+after it both succeeded — this is an isolated single occurrence, not a
+pattern yet. Could not read the actual error: `get_job_logs` returned
+HTTP 404 for the job's log (self-hosted runner log upload/retention gap,
+not something this session can fix). No code change; noting only, per the
+standing pattern that unexplained faults on this specific runner get a dated
+line here rather than a guess at a root cause with no log to confirm it.
+If this recurs on the next scheduled run, it's worth asking Dakotta to check
+the Contabo box directly (disk space, permissions) the same way the
+2026-10-01 `curl` write-failure entry above asked.
+
 ## 2026-10-06 (2.20.231) - Subscriber email redesign, stage 2
 
 **Class:** novel (owner-approved redesign; owner 2026-10-06: ship stage 2 now)
