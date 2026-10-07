@@ -29561,3 +29561,35 @@ diagnosis on ai-layoff-tracker#461 and left it open; flagged as `ACTION` in
 the hourly report (asktherecruiter-sandbox#1259) for Dakotta to flip one of
 the two switches. `docs/RUNBOOK.md` "Which jobs run on the VPS and why" has
 the exact owner steps for the VPS path.
+
+## 2026-10-06 — `country_coverage_fresh` still UNVERIFIED after the ingest fix had a full cycle; the "lagging read" expectation did not hold
+
+**Class:** novel — a timeline expectation ("lagging read, will clear on its own") not holding doesn't fit an existing shape in docs/INCIDENT_CLASSES.md
+**Guard:** none yet — this is a note correcting an earlier hourly-check assumption, not a code fix
+
+The 2026-10-05 ~15:5x baton entry (`docs/OPS_CHECK_BATON.md`) said, once
+`ALT_INGEST_ON_VPS=true` was set and the daily VPS ingest started succeeding
+again: "if `Live data-integrity` `country_coverage_fresh` still fails, it is
+a lagging read of stale data and should clear after the next scheduled
+ingest (22:00 UTC)." Every subsequent hourly entry through today repeated
+that line without re-checking it.
+
+`Live data-integrity check` run #88 (2026-10-06, 17:39-17:40 UTC — after at
+least one full 22:00 UTC VPS ingest cycle) still reports
+`1/24 live data-integrity check(s) UNVERIFIED (not checked, NOT passing):
+country_coverage_fresh`, same as runs #84-#87 (2026-10-02 through 2026-10-05,
+all before the ingest fix). The other 23/24 invariants all PASS on run #88,
+including the headline-movement and subset-reconciliation checks against a
+genuinely fresh ingest (+1,225 jobs / +11 entries over the prior 1.0 day) —
+so the live data itself is current; only this one check's own verdict never
+printed a PASS/FAIL/UNKNOWN line at all in five consecutive daily runs,
+before or after the fix.
+
+**Not re-diagnosed here** — the fix for the ingest gap was correct and did
+land, but whatever `country_coverage_fresh` actually waits on did not clear
+with it, so "lagging read, will clear on its own" is no longer a safe
+assumption for a future hourly check to repeat verbatim. Per CLAUDE.md, an
+open `data_integrity` FAIL is closed by a human, not patched around by this
+routine; flagged in the 2026-10-06 ~18:0x hourly report
+(asktherecruiter-sandbox#1259) and in `docs/OPS_CHECK_BATON.md` so the next
+session reads the current state instead of the superseded expectation.
