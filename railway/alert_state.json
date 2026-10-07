@@ -62,6 +62,11 @@
       "last": 1790014405,
       "subject": "CI noise, week 2026-w39: 3 noisy run(s) in ai-layoff-tracker"
     },
+    "data-quality-report-anomaly-flags:main:1ac93dad8276f587": {
+      "first": 1791385338,
+      "last": 1791385338,
+      "subject": "CI RED: Data quality report (anomaly flags) \u2014 http.client.IncompleteRead: IncompleteRead(0 bytes read)"
+    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-07T14:40:22+00:00",
+  "updated_at": "2026-10-07T15:02:19+00:00",
   "version": 1
 }
