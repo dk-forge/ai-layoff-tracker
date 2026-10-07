@@ -1,9 +1,12 @@
 ## 2026-10-07 — `reconcile-supersets.yml` single failed run on the Contabo runner, logs unavailable
 
-**Class:** recurring (same shape as the already-documented Contabo
-self-hosted-runner flakiness: toolcache permission fault 2026-09-30,
-`curl -o` write failure 2026-10-01 — a different symptom each time, same
-host)
+**Class:** novel (recurring host-level flakiness with a different symptom
+each time is not in the declared vocabulary; same shape as the
+already-documented Contabo self-hosted-runner flakiness: toolcache
+permission fault 2026-09-30, `curl -o` write failure 2026-10-01 — a
+different symptom each time, same host. If this keeps recurring it is a
+candidate for its own slug in docs/INCIDENT_CLASSES.md, not a reason to
+invent an undeclared one inline)
 **Guard:** none — infrastructure fault on the `atr-runner-ai-layoff-tracker`
 Contabo box, not something a test in this repo can pin
 
