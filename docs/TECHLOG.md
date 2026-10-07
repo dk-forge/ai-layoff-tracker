@@ -29537,7 +29537,7 @@ the exact owner steps for the VPS path.
 
 ## 2026-10-06 — `country_coverage_fresh` still UNVERIFIED after the ingest fix had a full cycle; the "lagging read" expectation did not hold
 
-**Class:** stale expectation, not re-diagnosed
+**Class:** novel — a timeline expectation ("lagging read, will clear on its own") not holding doesn't fit an existing shape in docs/INCIDENT_CLASSES.md
 **Guard:** none yet — this is a note correcting an earlier hourly-check assumption, not a code fix
 
 The 2026-10-05 ~15:5x baton entry (`docs/OPS_CHECK_BATON.md`) said, once
