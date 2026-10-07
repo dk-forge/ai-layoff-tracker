@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "broken-link-check:main:9f49e0764dbe8183": {
+      "first": 1791384022,
+      "last": 1791384022,
+      "subject": "CI RED: Broken-link check \u2014 broken public page(s) detected"
+    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -133,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-06T08:58:24+00:00",
+  "updated_at": "2026-10-07T14:40:22+00:00",
   "version": 1
 }
