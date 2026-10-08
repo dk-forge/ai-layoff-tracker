@@ -1,6 +1,6 @@
 ## 2026-10-08 - Haiku 5.5 eval harness (dispatch-only, no production change)
 
-**Class:** measurement tooling (owner question: can paid call sites move to
+**Class:** novel (measurement tooling; owner question: can paid call sites move to
 `anthropic/claude-haiku-5.5`, $0.10/$0.50 per M?)
 **Guard:** none needed beyond the existing metered-call/workflow tests; the
 harness spends only through `spend.metered_call()`, posts nothing, holds no
