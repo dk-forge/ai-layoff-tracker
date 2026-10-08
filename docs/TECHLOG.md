@@ -29561,3 +29561,37 @@ diagnosis on ai-layoff-tracker#461 and left it open; flagged as `ACTION` in
 the hourly report (asktherecruiter-sandbox#1259) for Dakotta to flip one of
 the two switches. `docs/RUNBOOK.md` "Which jobs run on the VPS and why" has
 the exact owner steps for the VPS path.
+
+## 2026-10-07 — `Broken-link check` found the live `/ai-layoff-tracker/us-warn-registry/` page unreachable
+
+Hourly ops-check found the daily `Broken-link check` run (14:38 UTC today,
+run 37638338249) ended `failure` after six straight green days (10-01
+through 10-06). Read the job log directly: of the 9 sampled public pages,
+`/ai-layoff-tracker/us-warn-registry/` came back `BROKEN 0` (connection
+failure/timeout, not an HTTP error code) while the other 8 returned `200`.
+The job's own `ops mail` step already emailed the owner at run time
+("broken-link alert"), so this entry is the write-down half of that alert,
+not a duplicate channel.
+
+Not the same thing as the source-link sample also reported in the same run
+(28/31 reachable, 9.7% rot) — that figure is this job's own documented
+normal/expected range, backstopped by Wayback archiving, and is not what
+tripped the failure.
+
+**Not fixed here.** This environment's network policy blocks direct
+requests to `asktherecruiter.com`, so the page's current live state could
+not be independently re-checked from this session, and there is no newer
+`Broken-link check` run yet (next scheduled run is tomorrow's ~14:3x UTC) to
+say whether it already recovered. This is a live WordPress page/host
+availability question, not a repo code defect — nothing here to fix with a
+PR. Flagged in the hourly report (asktherecruiter-sandbox#1259) for Dakotta
+to glance at the page directly.
+
+**Class:** novel (a single public page going unreachable while its siblings
+stayed up; doesn't fit an existing slug — the ones tracker-side are about
+collectors and registers going stale or silent, not about a live page
+timing out)
+**Guard:** none — `link_check`-style content availability already has a
+reporting workflow (`Broken-link check`); a repo test cannot assert that a
+remote WordPress page answers, only a live probe can, and this job already
+is that probe.

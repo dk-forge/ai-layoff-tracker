@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (hourly ops-check), 2026-10-07, branch `claude/pensive-knuth-q6gbbs` (PR #490). No plugin file, no version reserved.** Broken-link check finding for `/ai-layoff-tracker/us-warn-registry/` written up in TECHLOG; see TECHLOG 2026-10-07.
 - **RELEASED - Claude (agent), 2026-10-06, branch `claude/digest-extras-stage2` (PR). Reserves plugin version 2.20.231.** Subscriber email redesign stage 2; see TECHLOG 2026-10-06. (2.20.230 is reserved by `claude/digest-extras-slice1`, PR #486.)
 - **RELEASED - Claude (agent), 2026-10-06, branch `claude/digest-extras-slice1` (PR). Reserves plugin version 2.20.230.** Subscriber email redesign slice 1; see TECHLOG 2026-10-06.
 - **RELEASED - Claude (agent), 2026-10-05, branch `claude/ai-exposure` (PR). Reserves plugin version 2.20.229.** AI exposure by job and city; see TECHLOG 2026-10-05 (2.20.229).
