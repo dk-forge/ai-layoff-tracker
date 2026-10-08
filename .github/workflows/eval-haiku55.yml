@@ -1,0 +1,60 @@
+name: Eval Haiku 5.5 vs current models (gold sets)
+
+# Owner question 2026-10-08: can the paid call sites move to
+# anthropic/claude-haiku-5.5 without losing quality? See railway/eval_haiku55.py.
+#
+# MANUAL DISPATCH ONLY, never scheduled. Posts nothing, edits nothing, no
+# WP_API_KEY in scope. Hard cap $1.00 per run (EVAL_CAP_USD, enforced in the
+# script AND as ALT_RUN_CEILING_USD on the metered brake). Results are
+# ::notice:: annotations. Runs on the VPS runner, never a hosted one.
+
+on:
+  workflow_dispatch:
+    inputs:
+      causation:
+        description: 'AI-causation gold items (max 200)'
+        default: '193'
+      referee:
+        description: 'Referee gold items (5 models each, Sonnet/GPT-4o are the dear ones)'
+        default: '40'
+      extraction:
+        description: 'Frozen news extraction events (0 = skip)'
+        default: '20'
+      dry_run:
+        description: 'Build prompts only, spend nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-haiku55
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+      - name: Install deps
+        run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: Score (posts nothing)
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ALT_RUN_CEILING_USD: '1.00'
+          EVAL_CAP_USD: '1.00'
+          EVAL_CAUSATION_N: ${{ github.event.inputs.causation }}
+          EVAL_REFEREE_N: ${{ github.event.inputs.referee }}
+          EVAL_EXTRACTION_N: ${{ github.event.inputs.extraction }}
+          EVAL_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+        run: python eval_haiku55.py

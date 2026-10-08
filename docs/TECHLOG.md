@@ -1,3 +1,21 @@
+## 2026-10-08 - Haiku 5.5 eval harness (dispatch-only, no production change)
+
+**Class:** novel (measurement tooling; owner question: can paid call sites move to
+`anthropic/claude-haiku-5.5`, $0.10/$0.50 per M?)
+**Guard:** none needed beyond the existing metered-call/workflow tests; the
+harness spends only through `spend.metered_call()`, posts nothing, holds no
+WP key, and is capped at $1.00 per run (`EVAL_CAP_USD` + `ALT_RUN_CEILING_USD`).
+
+`railway/eval_haiku55.py` + `eval-haiku55.yml` (VPS runner, dispatch only)
+score current model vs Haiku 5.5 on three call types against gold no
+candidate wrote: AI causation (production prompt + finalize guard vs the
+ai-causation-2026-08 gold labels; `OPENROUTER_MODEL`), the row referee
+(`adjudicate_row.PROMPT`; `ADJ_REFEREE_A/B`, and the panel's
+`ALT_PANEL_MODELS` members) scored on `employer_attributed_to_ai` vs the same
+gold, and news extraction (reuses `ab_extraction_models.judge` over frozen
+Wayback windows). Results are `::notice::` annotations. No model setting and
+no live data changed.
+
 ## 2026-10-07 — `reconcile-supersets.yml` single failed run on the Contabo runner, logs unavailable
 
 **Class:** novel (recurring host-level flakiness with a different symptom
