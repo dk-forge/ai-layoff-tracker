@@ -464,6 +464,24 @@
       "date": "2026-10-07",
       "method": "m4",
       "state": "unknown"
+    },
+    {
+      "candidates": 19,
+      "causes": {
+        "not_wired": 13,
+        "unclassified": 3,
+        "vocabulary_gap": 1
+      },
+      "date": "2026-10-08",
+      "dropped": 0,
+      "independent_recall_pct": 10.5,
+      "matched": 2,
+      "method": "m5",
+      "recall_high_pct": 31.4,
+      "recall_low_pct": 2.9,
+      "rules": 0,
+      "unknown": 7,
+      "unmatched": 17
     }
   ],
   "quiet_runs": 2
