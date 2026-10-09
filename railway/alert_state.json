@@ -72,6 +72,11 @@
       "last": 1791216897,
       "subject": "CI RED: Depth source snapshot (test only) \u2014 nothing added to commit but untracked files present (use \"git add\" to track)"
     },
+    "dmarc-report-check:main:27939f9597a6c6c5": {
+      "first": 1791534988,
+      "last": 1791534988,
+      "subject": "CI RED: DMARC report check \u2014 DMARC reports could not be read. That is UNKNOWN, not a pass."
+    },
     "ftps-target-probe:claude-ci-security-pins:05725469d2b3a060": {
       "first": 1790722672,
       "last": 1790722672,
@@ -133,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-08T17:42:39+00:00",
+  "updated_at": "2026-10-09T08:36:29+00:00",
   "version": 1
 }
