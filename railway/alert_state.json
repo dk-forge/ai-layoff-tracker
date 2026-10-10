@@ -117,11 +117,6 @@
       "last": 1790281661,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
-    "sandbox-main-green-check:main:604d3a86309a507c": {
-      "first": 1791541695,
-      "last": 1791541695,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml FAIL (newest completed run is failure on e8e6cacd)"
-    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -148,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-10T08:29:59+00:00",
+  "updated_at": "2026-10-10T10:24:00+00:00",
   "version": 1
 }
