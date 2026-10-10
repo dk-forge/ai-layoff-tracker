@@ -29613,3 +29613,33 @@ timing out)
 reporting workflow (`Broken-link check`); a repo test cannot assert that a
 remote WordPress page answers, only a live probe can, and this job already
 is that probe.
+## 2026-10-05 — `backup-export.yml`'s "Walk every exportable table" step failed; root cause not reachable from this session
+
+The weekly off-host backup's latest run (37189785049, 2026-10-04 08:42 UTC)
+failed inside `backup_export.py` itself (the `export` step, not the later git
+push/release steps), so this is not the known "commit raced a bot push" shape
+documented above in `backup-export.yml`'s own comments — it died before
+producing a manifest. Not yet diagnosed: both `gh run view --log` and
+`gh run download` return `403 Forbidden` from
+`results-receiver.actions.githubusercontent.com` from this (cloud ops-check)
+session's network policy, so the actual exception/traceback is UNKNOWN here,
+not merely unread. The job never reran afterward — this workflow is weekly
+(Sundays 06:40 UTC cron) and the 2026-10-04 run was a `workflow_dispatch`, so
+the only way to know today's live state is to re-dispatch it or read the job
+log from a session with access.
+
+No immediate data-loss impact: the export is additive off-host insurance, not
+the system of record, and last week's export (2026-09-27, success) is still
+the newest good backup — so the exposure is "this week's ~800 new rows have
+one fewer redundant copy," not "the backup is broken going forward" (unknown
+until re-run). Left for a work session with full Actions-log access to
+reproduce and fix, or for a manual re-dispatch
+(`gh workflow run backup-export.yml -f publish_release=true -f record_baseline=true`)
+to see if it was a transient host/runner issue.
+
+**Class:** environment-visibility-gap (this session's proxy policy blocks the
+Actions log/artifact download hosts, so a real export failure could only be
+localized to one step, not root-caused)
+
+**Guard:** none yet — diagnosis is the open item, tracked via
+asktherecruiter-sandbox#1259 (hourly ops-check report, 2026-10-05 ~10:1x UTC).
