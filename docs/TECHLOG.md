@@ -1,3 +1,28 @@
+## 2026-10-11 - Digest saves a cleaned copy of each sent edition (public Email Archive)
+
+**Class:** novel (new feature; owner approved the Email Archive, "start fresh",
+no backfill of editions sent before this lands)
+**Guard:** `railway/tests/test_digest_archive.py` - archived HTML carries no
+unsubscribe/preferences link or wording, no e-mail address, no image, keeps the
+postal address, is byte-deterministic, monthly is not archived, index.json
+updates idempotently newest-first, and nothing is written unless
+`DIGEST_ARCHIVE_DIR` names a destination.
+
+`railway/digest_archive.py`: after a REAL send (transport sends, at least one
+delivery, not a preview and not a `test_to` send) `_run_tier` renders the
+edition for the recipient with the most sections, strips the per-reader parts
+(signed unsubscribe/preferences links and their sentences, the measurement
+paragraph, addresses, images, token-bearing links) and writes
+`data/email_archive/YYYY/MM/<date>-<daily|weekly>.html` + `.json` (date, kind,
+subject, period, sections, counts) and folds it into `data/email_archive/index.json`.
+It never raises, so a write fault cannot cost a send. `digest-send.yml` now has
+`contents: write`, sets `DIGEST_ARCHIVE_DIR`, and commits the folder with the
+github-actions bot + pull-rebase retry loop tracker-diff.yml uses. Consumer:
+asktherecruiter.com/email-archive (sandbox branch `claude/email-archive-pages`),
+read server-side from raw.githubusercontent.com. Pre-existing local failures
+unrelated to this change: test_offline_suite_is_offline blocker test and
+test_state_liveness NEVER_USED (both fail on origin/main in this checkout).
+
 ## 2026-10-08 - Haiku 5.5 eval harness (dispatch-only, no production change)
 
 **Class:** novel (measurement tooling; owner question: can paid call sites move to
