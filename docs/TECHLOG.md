@@ -1,3 +1,31 @@
+## 2026-10-11 - Trust tiers: verified / reported / measured (2.20.232)
+
+**Class:** novel (owner goal: paid-worthy trust labels; tier names
+owner-approved 2026-10-11)
+**Guard:** `railway/tests/test_trust_tiers.py` - table-driven mapping of every
+source_type/verification_level the collectors write, a news/press/ERM/unknown
+row can never be verified whatever its level, a layoff row is never measured,
+the SQL CASE agrees with the PHP mapper, routes + card are wired, the card
+badge has an accessible name and no em-dash.
+
+New `includes/trust-tiers.php` (guarded include, pure PHP):
+`alt_trust_tier($source_type, $level)` and `alt_trust_tier_sql($prefix)`.
+verified = official source_type (8K, warn, federal_rif, filing) and level not
+bronze; everything else reported; measured is reserved for our own
+job-board measurements and is never a layoff row. Derived, never stored, so no
+migration. Exposed as `tier` on every `/query` row, a `tier=` filter in
+`alt_db_where` (so `/query` and `/aggregate` both filter), an opt-in
+`/aggregate?include=tiers` block (not in the default blocks, to keep the cold
+flagship aggregate cost unchanged), `tiers` in `/facets`, and a plain-text
+Verified/Reported badge on tracker cards. Mapping and the full value list:
+`docs/VERIFICATION_TIERS.md`. Finding: `filing` (foreign regulatory filings) is
+not in `alt_allowed_source_types()`, so those rows are stored as news/gold and
+show as reported; making them verified is a separate allow-list + re-import
+change. Railway does not produce the field, so no Python twin.
+Live check after deploy: `/query?per_page=3` rows carry `tier`,
+`/query?tier=verified&per_page=1` total is below the unfiltered total,
+`/aggregate?include=tiers`, `/facets` `tiers`, page `ver=2.20.232`.
+
 ## 2026-10-11 - Digest saves a cleaned copy of each sent edition (public Email Archive)
 
 **Class:** novel (new feature; owner approved the Email Archive, "start fresh",

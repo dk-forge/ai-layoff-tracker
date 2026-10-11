@@ -2010,6 +2010,8 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
 .alt-badge-warn   { background: var(--alt-ok-bg); color: var(--alt-accent-dark); border: 1px solid var(--alt-tint-border); }
 .alt-badge-silver { background: var(--alt-grid); color: var(--alt-ink-2); border: 1px solid var(--alt-border); }
 .alt-badge-bronze { background: var(--alt-cream-2); color: var(--alt-ai-ink); border: 1px solid var(--alt-warn-border); }
+.alt-tier-verified { background: var(--alt-warn-bg); color: var(--alt-warn-ink); border: 1px solid var(--alt-gold); font-weight: 600; }
+.alt-tier-reported { background: var(--alt-cream-2); color: var(--alt-ai-ink); border: 1px solid var(--alt-warn-border); }
 
 .alt-state {
     display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
