@@ -211,6 +211,7 @@ always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; e
 | Param | Meaning |
 |---|---|
 | `company_key` | **Exact** normalized employer identity, comma-joined. `company` is a LIKE substring match and is the wrong tool for a per-employer view: `company=Meta` also returns Metabolix and Metaswitch. |
+| `tier` | Trust tier, comma-joined: `verified` (official filing) or `reported` (news/press). Derived from source_type + verification_level by `includes/trust-tiers.php`; see docs/VERIFICATION_TIERS.md. Rows also carry `tier`; `/aggregate?include=tiers` and `/facets` `tiers` expose it. |
 | `sourced=1` | Row is the CANONICAL row of a merged event AND that event still retains at least one reachable source URL. Anything else is a duplicate view of an event, or an event we can no longer point a reader at. |
 | `exclude_supersets=1` | Drops rows already folded into a more complete row for the same event by `/reconcile-supersets`. `/aggregate` and the report pages have always appended `AND superset_of = 0` by hand; this names it so a caller can ask for count-once semantics instead of re-deriving them. |
 

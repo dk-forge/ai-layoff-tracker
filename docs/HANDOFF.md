@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-11, branch `claude/verification-tiers` (pushed, no PR). Reserves plugin version 2.20.232.** Verified/reported/measured trust tiers on /query, /aggregate, /facets and the tracker cards; see TECHLOG 2026-10-11 (trust tiers).
 - **RELEASED - Claude (agent), 2026-10-11, branch `claude/email-archive-capture` (pushed, no PR). No plugin file, no version reserved.** Digest saves a sanitized copy of each sent daily/weekly edition for the public Email Archive; see TECHLOG 2026-10-11.
 - **RELEASED - Claude (agent), 2026-10-08, branch `claude/eval-haiku55` (PR). No plugin file, no version reserved.** Dispatch-only Haiku 5.5 eval harness; see TECHLOG 2026-10-08.
 - **RELEASED - Claude (hourly ops-check), 2026-10-07, branch `claude/pensive-knuth-q6gbbs` (PR #490). No plugin file, no version reserved.** Broken-link check finding for `/ai-layoff-tracker/us-warn-registry/` written up in TECHLOG; see TECHLOG 2026-10-07.
