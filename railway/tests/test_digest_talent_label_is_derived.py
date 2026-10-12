@@ -171,7 +171,8 @@ class TheRankedListsHeadingDescribesWhatItRanks(unittest.TestCase):
         would trade one piece of fixed prose around variable data for another.
         """
         text = edition([dict(REPORTED)], hiring=9)["text"]
-        self.assertIn("Biggest hiring signals", text)
+        # A daily edition says "Top hiring today" (owner-approved 2026-10-12).
+        self.assertTrue("Biggest hiring signals" in text or "Top hiring today" in text, text[:400])
 
     def test_the_heading_and_the_caption_never_disagree(self):
         """Both are derived from the same two counts, so a list described as

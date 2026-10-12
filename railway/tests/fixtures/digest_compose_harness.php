@@ -224,6 +224,17 @@ function rest_do_request($req) {
           never be rendered here at all. A fixture without `talent_q` keeps the
           old behaviour, so existing cases are unaffected.
         */
+        // A category-narrowed /query (2026-10-12: top 3 named items per
+        // category) answers from talent_q_<filter>_<value>, or an ERROR.
+        if (strpos($req->route, '/query') !== false) {
+            foreach (array('pillar', 'funding') as $filter) {
+                $value = $req->get_param($filter);
+                if ($value === null || $value === '') continue;
+                $key = 'talent_q_' . $filter . '_' . $value;
+                if (!isset($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
+                return new WP_REST_Response_Stub($FIXTURE[$key]);
+            }
+        }
         if (strpos($req->route, '/query') !== false && !empty($FIXTURE['talent_q'])) {
             return new WP_REST_Response_Stub($FIXTURE['talent_q']);
         }

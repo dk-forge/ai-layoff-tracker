@@ -43,6 +43,10 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
       at all until alt_digest_monthly_enabled() is filtered on, so there is no
       UI path to a talent list set to monthly on its own.
     */
+    $is_daily = (strtolower(trim((string) $freq)) === 'daily');
+    $more_rows = array();
+    $cat_counts = array();
+    $cat_items = array();
     $is_monthly = (alt_digest_valid_freq($freq) === 'monthly'
                    && strtolower(trim((string) $freq)) === 'monthly');
     $agg = new WP_REST_Request('GET', '/talent/v1/aggregate');
@@ -383,8 +387,19 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
     $qres = rest_do_request($q);
     if ($qres && !$qres->is_error()) {
         $qdata = (array) $qres->get_data();
+        /*
+          TOP FIVE, THEN "MORE" (owner-approved 2026-10-12). Ranked by roles
+          named as before; ties now go to US/UK/EU and English-speaking
+          markets (alt_digest_audience_order), and the next ten sit under a
+          compact "More" list instead of being dropped.
+        */
         $rows = alt_digest_talent_rank(
-            is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 5);
+            is_array($qdata['rows'] ?? null) ? $qdata['rows'] : array(), 15);
+        if (function_exists('alt_digest_audience_order')) {
+            $rows = alt_digest_audience_order($rows, 'alt_digest_talent_roles_named');
+        }
+        $more_rows = array_slice($rows, 5);
+        $rows = array_slice($rows, 0, 5);
         if ($rows) {
             /*
               THE CAPTION CARRIES THE LANGUAGE ANSWER, ONCE, FOR THE WHOLE
@@ -494,7 +509,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
             if ($reported_n === 0) {
                 $heading = 'Largest observed job-board increases';
             } elseif ($scan_n === 0) {
-                $heading = 'Biggest hiring signals';
+                $heading = $is_daily ? 'Top hiring today' : 'Biggest hiring signals';
             } else {
                 $heading = 'Biggest signals and job-board increases';
             }
@@ -649,6 +664,11 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 if ($plain !== '') $text .= '    ' . $plain . "\n";
             }
             $html .= '</ul>';
+            if ($more_rows) {
+                list($m_html, $m_text) = alt_digest_talent_compact_list($more_rows, $from, $to, $send_id);
+                $html .= '<h3>More</h3>' . $m_html;
+                $text .= "\nMore\n" . $m_text;
+            }
             /*
               THE RESUME LINE (redesign stage 2): when one employer in this list
               names 500 or more jobs in a reported signal, a reader may want to
@@ -780,6 +800,26 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
           never a pass and never a zero.
         */
         if ((int) $cdata['total'] === $total) continue;
+        $cat_counts[$cat_label] = (int) $cdata['total'];
+        /*
+          THE TOP THREE NAMED ITEMS IN THE CATEGORY (owner-approved
+          2026-10-12): the same filter on /query, audience-ordered, three rows.
+          A failed call prints no list; the count above still stands.
+        */
+        $iq = new WP_REST_Request('GET', '/talent/v1/query');
+        $iq->set_param('since', $from);
+        $iq->set_param('until', $to);
+        $iq->set_param('per_page', 20);
+        $iq->set_param($cat_key, $cat_value);
+        $ires = rest_do_request($iq);
+        if ($ires && !$ires->is_error()) {
+            $idata = (array) $ires->get_data();
+            $irows = is_array($idata['rows'] ?? null) ? $idata['rows'] : array();
+            if (function_exists('alt_digest_audience_order')) {
+                $irows = alt_digest_audience_order($irows, function ($r) { return 0; });
+            }
+            if ($irows) $cat_items[$cat_label] = array_slice($irows, 0, 3);
+        }
         $activity[] = array(
             'label'  => $cat_label,
             'figure' => alt_digest_number((int) $cdata['total']),
@@ -799,14 +839,19 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                . esc_html($act_tail) . '</p>';
         $text .= "\nOther talent activity\n" . $act_caption . ': '
                . $act_text . $act_tail . "\n";
+        foreach ($cat_items as $cat_label => $items) {
+            list($c_html, $c_text) = alt_digest_talent_compact_list($items, $from, $to, $send_id);
+            $html .= '<p data-alt="kicker">' . esc_html($cat_label) . '</p>' . $c_html;
+            $text .= "\n" . $cat_label . "\n" . $c_text;
+        }
     }
 
     // One year-to-date line, for the reason spelled out in
     // alt_digest_compose_layoff: this data revises upward, so any
     // period-over-period delta manufactures a fall out of a reporting lag.
     // Year to date only grows. Do not add a delta here later either.
-    $html .= '<h3>How to read these numbers</h3>' . $notes_html;
-    $text .= "\nHow to read these numbers\n" . $notes_text;
+    // "How to read these numbers" is now the footnote at the bottom
+    // (owner-approved 2026-10-12); see "Notes" before "Cite this".
 
     $year = substr((string) $to, 0, 4);
     if (preg_match('/^\d{4}$/', $year)) {
@@ -939,6 +984,9 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
         $read_date .= ' at ' . gmdate('H:i') . ' UTC';
         list($cite, $cite_url, $cite_note) = alt_digest_cite_note(
             'Talent Intelligence Tracker', $range, $url, $read_date, '');
+        $html .= '<h3>Notes</h3>' . $notes_html;
+        $text .= "\nNotes\n" . $notes_text;
+        $notes_html = '';
         $html .= '<h3>Cite this</h3>'
                . '<p data-alt="note">' . esc_html($cite) . '</p>'
                . '<p data-alt="note">' . esc_html($cite_url) . '</p>';
@@ -961,6 +1009,45 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
       hardcoded claim about variable data. See alt_digest_talent_signal_noun.
     */
     $metric = alt_digest_count($total, $signal_noun);
+    if ($is_daily && function_exists('alt_digest_talent_daily_metric')) {
+        $daily_metric = alt_digest_talent_daily_metric(
+            $cat_counts['Funding rounds'] ?? null, $cat_counts['Leadership moves'] ?? null);
+        if ($daily_metric !== '') $metric = $daily_metric;
+    }
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
                  'metric' => $metric);
+}
+
+/**
+ * A compact list: "Company: headline (place)", the headline linked to its
+ * source exactly as the main list links it. Used for "More" and for the top
+ * three named items per category (owner-approved 2026-10-12).
+ */
+function alt_digest_talent_compact_list($rows, $from, $to, $send_id) {
+    $html = '<ul>';
+    $text = '';
+    foreach ((array) $rows as $row) {
+        $row = (array) $row;
+        $co = trim((string) ($row['company'] ?? ''));
+        $head = trim((string) ($row['headline'] ?? ''));
+        if ($head === '') { $line = $co; }
+        elseif ($co === '' || alt_digest_headline_names_company($co, $head)) { $line = $head; }
+        else { $line = $co . ': ' . $head; }
+        $line = alt_digest_plain_dashes($line);
+        if ($line === '') continue;
+        $place = alt_digest_talent_place($row);
+        $src = trim((string) ($row['source_url'] ?? ''));
+        $href = '';
+        if (alt_digest_external_link_ok($src)) {
+            $href = $src;
+        } elseif ($co !== '') {
+            $href = alt_digest_track_link($send_id, alt_digest_talent_url($from, $to, array('company' => $co)));
+        }
+        $shown = esc_html($line);
+        if ($href !== '') $shown = '<a href="' . esc_url($href) . '">' . $shown . '</a>';
+        if ($place !== '') { $shown .= ' ' . esc_html('(' . $place . ')'); $line .= ' (' . $place . ')'; }
+        $html .= '<li>' . $shown . '</li>';
+        $text .= '  - ' . $line . "\n";
+    }
+    return array($html . '</ul>', $text);
 }

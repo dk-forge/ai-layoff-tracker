@@ -29,16 +29,17 @@ class SignalsComeBeforeCaveats(unittest.TestCase):
         cls.text = compose(talent_fixture())["text"]
 
     def test_caveats_have_their_own_heading(self):
-        self.assertIn("How to read these numbers", self.text)
+        # Renamed "Notes" and moved to the bottom (owner-approved 2026-10-12).
+        self.assertIn("\nNotes\n", self.text)
 
     def test_unit_note_is_printed_once(self):
         self.assertEqual(self.text.count(UNIT_NOTE), 1)
 
     def test_ranked_signals_come_before_the_caveats(self):
-        how = self.text.index("How to read these numbers")
+        how = self.text.index("\nNotes\n")
         note = self.text.index(UNIT_NOTE)
         self.assertLess(how, note)
-        for heading in ("Biggest hiring signals",
+        for heading in ("Biggest hiring signals", "Top hiring today",
                         "Largest observed job-board increases",
                         "Biggest signals and job-board increases"):
             if heading in self.text:
