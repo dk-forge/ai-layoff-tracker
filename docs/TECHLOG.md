@@ -1,3 +1,16 @@
+## 2026-10-12 - Chart canvases get an accessible name (2.20.233, SEO route B item 5)
+
+**Class:** novel (issue #446 item 5, accessibility/SEO)
+**Guard:** `railway/tests/test_chart_canvas_labels.py`
+
+Every `<canvas>` in the plugin templates (dashboard, tracker, AI tracker,
+company page, chart embed) is now `role="img"` with an `aria-label` such as
+"AI layoffs dashboard: chart of jobs cut per month"; the labour partials
+already used `aria-labelledby`. The test fails on any new unlabeled canvas.
+Items 1-4 of #446 (server-rendered totals table, intro + FAQ per shortcode,
+FAQPage JSON-LD from that FAQ, related-link rows) remain open on the issue.
+Branch `claude/seo-chart-aria`.
+
 ## 2026-09-29 - CI: setup-php pinned to a SHA; FTPS certificate verification NOT turned on (probe failed)
 
 **Class:** novel (hardening from the 2026-09-05 security list)

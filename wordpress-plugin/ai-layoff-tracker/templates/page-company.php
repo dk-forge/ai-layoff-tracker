@@ -12,7 +12,7 @@ if (!isset($company)) $company = '';
 
     <div class="alt-chart-card alt-chart-card-wide">
         <h3>Layoff rounds over time</h3>
-        <div class="alt-chart-box"><canvas id="alt-chart-company"></canvas></div>
+        <div class="alt-chart-box"><canvas id="alt-chart-company" role="img" aria-label="Company layoffs: chart of layoff rounds over time"></canvas></div>
     </div>
 
     <table id="alt-company-table" class="alt-plain-table">

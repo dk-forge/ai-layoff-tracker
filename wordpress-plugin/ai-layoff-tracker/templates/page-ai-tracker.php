@@ -14,11 +14,11 @@ if (!defined('ABSPATH')) exit;
     <div class="alt-chart-grid">
         <div class="alt-chart-card alt-chart-card-wide">
             <h3>AI-attributed jobs cut per month <span class="alt-chart-sub">acceleration</span></h3>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-monthly"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-monthly" role="img" aria-label="AI-attributed layoffs: chart of AI-attributed jobs cut per month"></canvas></div>
         </div>
         <div class="alt-chart-card">
             <h3>Industries citing AI most <span class="alt-chart-sub">by number of layoffs</span></h3>
-            <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-industries"></canvas></div>
+            <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-ai-industries" role="img" aria-label="AI-attributed layoffs: chart of industries citing AI most, by number of layoffs"></canvas></div>
         </div>
         <div class="alt-chart-card">
             <h3>In their own words <span class="alt-chart-sub">exact language from sources</span></h3>
