@@ -259,6 +259,9 @@ function alt_timeline_by_year(array $points, $current_year) {
         $y = (int) substr((string) ($p['date'] ?? ''), 0, 4);
         if ($y < 2015 || $y > (int) $current_year + 1) continue;
         $src = (isset($p['to_date']) && is_array($p['to_date'])) ? $p['to_date'] : $p;
+        // A year after this one exists only as notices not yet in effect; it
+        // printed "2027 so far 0" on California at 2.20.233.
+        if ($y > (int) $current_year && (int) ($src['jobs'] ?? 0) <= 0) continue;
         if (!isset($years[$y])) $years[$y] = array('year' => $y, 'jobs' => 0, 'ai_jobs' => 0, 'partial' => false);
         $years[$y]['jobs'] += max(0, (int) ($src['jobs'] ?? 0));
         $years[$y]['ai_jobs'] += max(0, (int) ($src['ai_jobs'] ?? 0));
@@ -438,6 +441,11 @@ function alt_facet_data($dim, $slug) {
         }, (array) ($agg['series'] ?? array())), (int) gmdate('Y')),
         'indexable'  => $entries >= alt_facet_indexable_floor(),
         'tracker_url' => add_query_arg($dim, $value, home_url('/ai-layoff-tracker/')),
+        // This year's WARN notices (includes/state-warn.php). US states only;
+        // null when the state has none this year, and the page keeps its
+        // generic title and copy.
+        'warn'       => ($dim === 'state' && function_exists('alt_state_warn_data'))
+                        ? alt_state_warn_data($value) : null,
     );
     set_transient($cache_key, $data, 30 * MINUTE_IN_SECONDS);
     return $data;
@@ -560,6 +568,12 @@ function alt_facet_heading($data) {
 }
 
 function alt_facet_title($data) {
+    // US states with notices this year answer the query readers type,
+    // "<state> WARN notices <year>" (2026-10-12 scored gap 3).
+    if ($data['dim'] === 'state' && !empty($data['warn']['notices'])) {
+        return $data['display'] . ' WARN notices ' . (int) $data['warn']['year']
+             . ': layoffs, top employers and cities';
+    }
     return alt_facet_heading($data) . ': source-linked record of every entry we hold';
 }
 
@@ -586,6 +600,12 @@ function alt_facet_description($data) {
     }
     if ((int) $data['ai_entries'] > 0) {
         $bits .= number_format((int) $data['ai_entries']) . ' of them the employer attributed to AI. ';
+    }
+    if ($data['dim'] === 'state' && !empty($data['warn']['notices'])) {
+        $w = $data['warn'];
+        $bits = number_format((int) $w['notices']) . ' WARN ' . ((int) $w['notices'] === 1 ? 'notice' : 'notices')
+              . ' in ' . $data['display'] . ' in ' . (int) $w['year'] . ' so far, covering '
+              . number_format((int) $w['jobs']) . ' jobs, by month, employer and city. ' . $bits;
     }
     return $bits . 'Every entry links to the filing, WARN notice or report behind it.';
 }

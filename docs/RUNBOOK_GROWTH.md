@@ -81,6 +81,14 @@ is red. Read the run log. The server decides everything, so a red run is
 usually an HTTP failure. **Tests:** `test_company_pages_auto_update.py`,
 `test_facet_timeline.py`, `test_facet_pages.py`.
 
+**This year's WARN notices (2.20.234).** US state pages with notices dated
+this year add a year block (`includes/state-warn.php`,
+`templates/partials/state-warn.php`): by month, top employers, cities (read
+from the WARN excerpt), latest-notices table, FAQ + FAQPage JSON-LD, and a
+"<State> WARN notices <year>" title. Broken looks like a state page titled
+"Layoffs in <state>" in a year it clearly has notices. **Test:**
+`test_state_warn_pages.py`.
+
 ## 3. Embeddable charts
 
 **What it does.** Every chart card with an id in `EMBED_OK` (`assets/layoffs.js`)

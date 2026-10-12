@@ -4604,3 +4604,15 @@ section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid va
     section.alt-ax .alt-ax-table td:first-child::before { content: none; }
     .alt-ax-n { white-space: normal; text-align: right; }
 }
+
+/* This year's WARN notices on a US state page (2.20.234, includes/state-warn.php).
+   The table scrolls inside its own box so 375px never bleeds. */
+.alt-state-warn { margin: 22px 0; min-width: 0; }
+.alt-state-warn h3 { margin: 18px 0 8px; }
+.alt-state-warn-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid var(--alt-grid); border-radius: 8px; }
+.alt-state-warn-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.alt-state-warn-table th, .alt-state-warn-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--alt-grid); white-space: nowrap; }
+.alt-state-warn-table td:first-child { white-space: normal; min-width: 140px; }
+.alt-state-warn-table .alt-num { text-align: right; font-variant-numeric: tabular-nums; }
+.alt-state-warn-faq dt { font-weight: 600; margin-top: 12px; }
+.alt-state-warn-faq dd { margin: 4px 0 0; }

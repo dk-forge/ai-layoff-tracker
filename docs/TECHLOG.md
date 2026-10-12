@@ -21,6 +21,27 @@ it only talks to the loopback server it starts (pinned by its test).
 **Decision: production routing is UNCHANGED.** `OPENROUTER_MODEL` stays as it
 is until the owner reads the trial numbers and approves a switch. A switch would
 be its own change, with its own guard.
+## 2026-10-12 - State pages answer "<state> WARN notices <year>" (2.20.234, scored gap 3)
+
+**Class:** novel (growth/SEO, owner-approved 2026-10-12 build list item 2)
+**Guard:** `railway/tests/test_state_warn_pages.py`
+
+Each US state page with WARN notices dated this year now carries, above the
+all-time timeline: notices and jobs by month, top employers (linked to their
+company pages), cities, a table of the 25 latest notices (filed / effective /
+city / jobs, scrolling inside its own box), and a short FAQ whose answers are
+computed from the same rows. The FAQ is also emitted as FAQPage JSON-LD, only
+on indexable state pages and only from the visible Q&A. The title becomes
+"<State> WARN notices <year>: layoffs, top employers and cities" and the H1
+"<State> layoffs and WARN notices"; a state with no notice this year keeps the
+old copy. City has no column: it is read back from the sentence `warn.py`
+writes into the excerpt ("... in <city>. N employees affected"), and a notice
+without one is left out of the city list rather than guessed. Population is
+the page's own sourced, superset-deduped WHERE narrowed to `sources=warn` and
+the current year on the tracker's effective-date basis. Also fixed: the
+timeline printed "2027 so far 0" (future year made only of not-yet-effective
+notices); a future year with nothing counted to date is now dropped.
+Code: `includes/state-warn.php`, `templates/partials/state-warn.php`.
 
 ## 2026-10-12 - Scored standing vs the top 3 rivals (issue dk-forge/asktherecruiter-sandbox#1725)
 
