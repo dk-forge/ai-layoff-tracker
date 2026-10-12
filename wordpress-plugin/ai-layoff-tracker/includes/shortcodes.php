@@ -30,7 +30,13 @@ function alt_template($file, $vars = array()) {
     // cannot say: on 2.20.21 a page rendered mid-upload carried the new version
     // around the previous template and every check read green. See
     // includes/build-stamp.php.
-    return alt_build_stamp_comment() . ob_get_clean();
+    $out = ob_get_clean();
+    // The seven secondary pages print their trail HERE, inside their own
+    // <main class="alt-wrap">. A the_content fallback was tried first
+    // (2.20.240) and never showed: an earlier non-visible the_content pass
+    // claimed the once-per-request flag. This path has no flag to lose.
+    if (function_exists('alt_breadcrumbs_template_trail')) $out = alt_breadcrumbs_template_trail($file, $out);
+    return alt_build_stamp_comment() . $out;
 }
 
 function alt_shortcode_tracker() {

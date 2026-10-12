@@ -1,3 +1,16 @@
+## 2026-10-12 - Breadcrumbs on the seven tracker sub-pages, for real (2.20.242, navigation)
+
+**Class:** novel (2.20.240 shipped, after-crawl still vis=0 on these routes)
+**Guard:** `railway/tests/test_breadcrumbs.py` (SecondaryPagesPrintTheirOwnTrail)
+
+press, publisher-tools, ai-quotes, us-warn-registry, methodology, sources and
+ai-tracker-health showed no trail live on 2.20.240. The `the_content` fallback
+was guarded by a once-per-request flag, and an earlier non-visible
+`the_content` pass claimed it, so the visible pass printed nothing.
+`alt_template()` now inserts the trail inside the page's own
+`<main class="alt-wrap">` for every page in `alt_secondary_pages()`, with no
+flag to lose; the content fallback skips content that already has an alt-wrap.
+
 ## 2026-10-12 - Breadcrumbs on every blog page, one BreadcrumbList each (2.20.240, navigation)
 
 **Class:** novel (follow-up to 2.20.237; owner: a visible trail EVERYWHERE)
