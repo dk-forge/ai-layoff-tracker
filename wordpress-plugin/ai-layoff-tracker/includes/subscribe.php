@@ -2833,6 +2833,12 @@ function alt_digest_change($now, $before) {
  * headline already says that, and a row that quietly showed nothing let a
  * reader assume the place was obvious.
  */
+/** Guarded wrapper: an FTP deploy can land this file before digest-extras.php. */
+function alt_digest_change_line_or_null($now, $before, $like_for_like) {
+    if (!function_exists('alt_digest_change_line')) return null;
+    return alt_digest_change_line($now, $before, $like_for_like);
+}
+
 function alt_digest_place($state, $country, $location) {
     $state = trim((string) $state);
     $country = trim((string) $country);
@@ -3397,13 +3403,18 @@ function alt_digest_stat_pair($cells) {
         // THE NUMBER IS THE LINK, because the number is what a reader points
         // at. The label above it stays plain text: two anchors in one cell
         // give a screen reader two destinations for one fact.
+        // OWNER FEEDBACK 2026-10-12: the hero figure is bold plain text, not
+        // an underlined link. The destination survives as a separate, small
+        // "See the data" link under it.
         $shown = esc_html($figure);
-        if ($url !== '') $shown = '<a href="' . esc_url($url) . '">' . $shown . '</a>';
+        $dir = (string) ($cell['dir'] ?? '');
+        $foot_alt = ($dir === 'up' || $dir === 'down') ? 'change-' . $dir : 'change';
         $html .= '<td width="50%" data-alt="' . $role . '">'
                . '<p data-alt="kicker">' . esc_html($label) . '</p>'
                . '<p data-alt="stat-pair">' . $shown . '</p>'
                . ($unit !== '' ? '<p data-alt="unit">' . esc_html($unit) . '</p>' : '')
-               . ($foot !== '' ? '<p data-alt="change">' . esc_html($foot) . '</p>' : '')
+               . ($foot !== '' ? '<p data-alt="' . $foot_alt . '">' . esc_html($foot) . '</p>' : '')
+               . ($url !== '' ? '<p data-alt="more"><a href="' . esc_url($url) . '">See the data &rarr;</a></p>' : '')
                . '</td>';
         $text .= '  ' . $label . ': ' . $figure
                . ($unit !== '' ? ' ' . $unit : '')
@@ -5329,7 +5340,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         } elseif (!$pct_like_for_like) {
             // The number would rest on a window too fresh to compare. State
             // the direction and flag it, never the figure. See the note above.
-            $words = $word . ' ' . $on . ' (early, not like for like)';
+            // Owner feedback 2026-10-12: no per-number caveat. Say nothing
+            // here; "Last week still being counted" is printed once under the
+            // figures and the reason sits in the footnote.
+            return '';
         } else {
             $words = $word . ' ' . $pct . ' ' . $on;
         }
@@ -5410,9 +5424,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             ? alt_digest_edition_label($from, $to)
             : alt_digest_date_range($from, $to));
     $provisional_token = $is_monthly ? 'month to date, provisional' : 'provisional';
+    // Owner feedback 2026-10-12: the counting basis and "provisional" are
+    // stated ONCE, in the footnote at the bottom, not here as well.
     $dateline = $edition_masthead . $sep . 'verified job cuts'
-              . $sep . 'counted by the date the cuts take effect'
-              . $sep . $provisional_token;
+              . ($is_monthly ? $sep . 'month to date' : '');
 
     $lead = array();
     $us_change = $change_phrase($lead_us_jobs, $prior_us, false);
@@ -5604,13 +5619,15 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         array('label' => 'United States',
               'figure' => alt_digest_number($lead_us_jobs),
               'unit' => alt_digest_verb($lead_us_jobs, 'verified job cut', 'verified job cuts'),
-              'foot' => $change_phrase($lead_us_jobs, $prior_us),
+              'foot' => ($us_line = alt_digest_change_line_or_null($lead_us_jobs, $prior_us, $pct_like_for_like)) ? $us_line[0] : '',
+              'dir' => $us_line ? $us_line[1] : '',
               'url' => alt_digest_track_link($send_id, alt_digest_tracker_url(
                            $from, $to, array('country' => 'United States')))),
         array('label' => 'Worldwide',
               'figure' => alt_digest_number($lead_ver_jobs),
               'unit' => alt_digest_verb($lead_ver_jobs, 'verified job cut', 'verified job cuts'),
-              'foot' => $change_phrase($lead_ver_jobs, $prior_all),
+              'foot' => ($all_line = alt_digest_change_line_or_null($lead_ver_jobs, $prior_all, $pct_like_for_like)) ? $all_line[0] : '',
+              'dir' => $all_line ? $all_line[1] : '',
               'url' => alt_digest_track_link($send_id,
                            alt_digest_tracker_url($from, $to))),
     ));
@@ -5669,7 +5686,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
               . 'provisional: it usually rises, and a correction can lower it.';
     // Reuses $settle_days computed above, so the day gap the maturity note
     // states and the like-for-like gate on the percentage cannot disagree.
-    if ($prior_all !== null && $settle_days !== null && $settle_days >= 0) {
+    if ($prior_all !== null && $settle_days !== null && $settle_days >= 0
+        && !$pct_like_for_like) {
         $maturity .= ' The comparison is not yet like for like: this week has had '
                   . alt_digest_count($settle_days, 'day') . ' to settle against '
                   . alt_digest_count($settle_days + 7, 'day') . ' for the week before it.';
@@ -5686,9 +5704,13 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       fine print. The maturity note goes first and alone, directly under the
       pair of figures that carries the direction it qualifies.
     */
-    $html .= $pair_html
-           . '<p data-alt="scope">' . esc_html($scope) . '</p>';
-    $text .= "\n" . $pair_text . $scope . "\n";
+    $html .= $pair_html;
+    $text .= "\n" . $pair_text;
+    // ONCE, not per number (owner feedback 2026-10-12).
+    if ($prior_all !== null && !$pct_like_for_like) {
+        $html .= '<p data-alt="more">Last week still being counted.</p>';
+        $text .= "Last week still being counted.\n";
+    }
 
     /*
       WHAT HAPPENED, IN ONE LINE, WHEN ONE ENTRY IS THE WHOLE STORY.
@@ -5763,10 +5785,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
         $text .= $strip_text;
     }
 
-    if ($maturity !== '') {
-        $html .= '<p data-alt="note">' . esc_html($maturity) . '</p>';
-        $text .= $maturity . "\n";
-    }
+    // The caveats and the counting basis move to ONE footnote at the bottom
+    // (owner feedback 2026-10-12); see the "Notes" block before the snapshot.
+    $footnote = trim($scope . ' ' . $maturity);
     if ($reconcile !== '') {
         $html .= '<p data-alt="note">' . esc_html($reconcile) . '</p>';
         $text .= $reconcile . "\n";
@@ -7100,6 +7121,9 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       covers. It sits before "About this snapshot" because it is about the
       figures, and the snapshot and citation are about the reading of them.
     */
+    if (isset($footnote) && $footnote !== '') {
+        array_unshift($data_notes, $footnote);
+    }
     if ($data_notes) {
         $html .= '<h3>Data notes</h3>';
         $text .= "\nData notes\n";

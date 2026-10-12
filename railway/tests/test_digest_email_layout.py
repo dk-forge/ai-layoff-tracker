@@ -712,7 +712,7 @@ class TheVariantMechanism(unittest.TestCase):
             layout.MUTED)[("p", "stat")]
         self.assertIn(stat, html, "the stat line did not get the stat style")
         self.assertIn("font-size:40px", stat)
-        self.assertIn("font-size:15px", layout.TAG_STYLES["p"])
+        self.assertIn("font-size:16px", layout.TAG_STYLES["p"])  # owner 2026-10-12: body >= 16px
 
     def test_an_unknown_variant_falls_back_to_the_plain_tag_style(self):
         """A typo in the site's markup costs a design detail, never a

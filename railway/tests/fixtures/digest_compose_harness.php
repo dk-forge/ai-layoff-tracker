@@ -342,6 +342,9 @@ function get_the_excerpt($p) { return $p->post_excerpt; }
 function wp_strip_all_tags($s) { return strip_tags((string) $s); }
 
 require $argv[1];
+// The plugin loads digest-extras.php beside subscribe.php; so does the harness.
+$alt_extras = dirname($argv[1]) . '/digest-extras.php';
+if (is_file($alt_extras)) require_once $alt_extras;
 
 /*
   PROBE MODE. The window, validation, period and last-sent-column helpers are

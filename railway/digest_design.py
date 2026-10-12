@@ -85,12 +85,18 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
                           f"line-height:1.3;font-weight:700;letter-spacing:0.09em;"
                           f"text-transform:uppercase;color:{accent};"),
         ("p", "finding"): (f"margin:0 0 14px;padding:10px 12px;font-family:{font};"
-                           f"font-size:15px;line-height:1.5;font-weight:700;"
+                           f"font-size:16px;line-height:1.5;font-weight:700;"
                            f"color:{ink};background-color:{GREEN_BG};"
                            f"border-left:3px solid {GREEN};"),
         ("p", "why"): (f"margin:0 0 20px;padding:10px 0 0;font-family:{font};"
-                       f"font-size:14px;line-height:1.55;color:{ink};"
+                       f"font-size:16px;line-height:1.55;color:{ink};"
                        f"border-top:2px solid {GREEN};"),
+        # Owner default ruling 2026-10-12: layoffs UP is bad news (red), DOWN
+        # is green. Glyph and words carry the direction too, never colour only.
+        ("p", "change-up"): (f"margin:0;font-family:{font};font-size:14px;"
+                             f"line-height:1.4;font-weight:700;color:{RED};"),
+        ("p", "change-down"): (f"margin:0;font-family:{font};font-size:14px;"
+                               f"line-height:1.4;font-weight:700;color:{GREEN};"),
         ("table", "chart"): ("width:100%;border-collapse:collapse;margin:6px 0 0;"
                              "mso-table-lspace:0;mso-table-rspace:0;"),
         ("table", "series-chart"): ("width:100%;border-collapse:collapse;"
@@ -103,7 +109,7 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
                           f"line-height:0;font-family:{font};color:{muted};"
                           f"background-color:{TRACK};"),
         ("td", "chart-label"): (f"padding:4px 10px 4px 0;font-family:{font};"
-                                f"font-size:13px;line-height:1.3;color:{ink};"
+                                f"font-size:14px;line-height:1.3;color:{ink};"
                                 f"white-space:nowrap;vertical-align:middle;"
                                 f"width:30%;"),
         ("td", "chart-cell"): (f"padding:4px 0;font-family:{font};font-size:13px;"
@@ -217,6 +223,40 @@ def _chart_series(match, accent: str) -> str:
             f'border="0">{rows}</table>')
 
 
+_WEEKS = re.compile(r'<p data-alt="weeks">(.*?)</p>', re.S)
+
+
+def _chart_weeks(match, accent: str) -> str:
+    """The 8-week strip as ONE bar table that REPLACES its line.
+
+    Owner feedback 2026-10-12: a sentence of numbers followed by a chart of
+    the same numbers is duplication. Here the label and figure cells are the
+    text (readable by a screen reader); only the bar cell is aria-hidden.
+    A line that cannot be read whole is left as text, never half-drawn.
+    """
+    whole = match.group(0)
+    text = _TAGS.sub("", match.group(1)).replace("&amp;", "&")
+    items = []
+    for item in (i.strip() for i in text.split("·")):
+        found = _SERIES_ITEM.match(item)
+        if not found:
+            return whole
+        items.append((found.group("label"), found.group("fig")))
+    if len(items) < 2:
+        return whole
+    widths = _widths([_value(fig) or 0 for _, fig in items])
+    if widths is None:
+        return whole
+    from html import escape
+    rows = "".join(
+        f'<tr><td data-alt="chart-label">{escape(label)}</td>'
+        f'<td data-alt="chart-cell" aria-hidden="true">{_bar(width, accent)}</td>'
+        f'<td data-alt="chart-figure" align="right">{escape(fig)}</td></tr>'
+        for (label, fig), width in zip(items, widths))
+    return ('<table data-alt="series-chart" role="presentation" width="100%" '
+            f'cellpadding="0" cellspacing="0" border="0">{rows}</table>')
+
+
 def add_charts(fragment: str, accent: str = RED) -> str:
     """Add a small bar chart to every ranked table and every series line.
 
@@ -227,4 +267,5 @@ def add_charts(fragment: str, accent: str = RED) -> str:
     fragment = fragment or ""
     fragment = _RANK_TABLE.sub(lambda m: _chart_rank_table(m.group(0), accent),
                                fragment)
+    fragment = _WEEKS.sub(lambda m: _chart_weeks(m, accent), fragment)
     return _SERIES.sub(lambda m: _chart_series(m, accent), fragment)

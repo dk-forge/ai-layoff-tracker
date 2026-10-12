@@ -132,8 +132,10 @@ class TheDailyMastheadNamesItsDays(unittest.TestCase):
     def test_the_dateline_names_the_two_days(self):
         self.assertIn("August 27-28", _dateline(self.section["html"]))
 
-    def test_the_dateline_still_says_provisional(self):
-        self.assertIn("provisional", _dateline(self.section["html"]))
+    def test_the_edition_still_says_provisional(self):
+        # Owner feedback 2026-10-12: stated ONCE, in the footnote, not the dateline.
+        self.assertIn("provisional", self.section["html"])
+        self.assertNotIn("provisional", _dateline(self.section["html"]))
 
     def test_the_lead_opens_on_its_window_not_a_week(self):
         lead = _lead(self.section["html"])
