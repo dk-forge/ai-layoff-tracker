@@ -55,7 +55,7 @@ if (is_readable($alt_declared_supersets)) {
     require_once $alt_declared_supersets;
 }
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
-// Visible breadcrumbs + their JSON-LD from one trail (2.20.238). NEW file,
+// Visible breadcrumbs + their JSON-LD from one trail (2.20.237). NEW file,
 // GUARDED for the FTP-deploy race; callers check function_exists.
 if (is_readable(ALT_PLUGIN_DIR . 'includes/breadcrumbs.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/breadcrumbs.php';
