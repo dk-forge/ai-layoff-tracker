@@ -29,6 +29,9 @@ function alt_state_warn_city($excerpt) {
     if (!preg_match('/^\S.* at .+ in (.+?)\.\s+[\d,]+ employees affected/u', $excerpt, $m)) return '';
     $city = trim(preg_replace('/\s+/u', ' ', $m[1]));
     if ($city === '' || mb_strlen($city) > 80) return '';
+    // An unbalanced bracket means the " in " sat inside the company name
+    // ("Acme (Store in Los Angeles)"), not before a city warn.py wrote.
+    if (substr_count($city, '(') !== substr_count($city, ')')) return '';
     return $city;
 }
 

@@ -56,6 +56,13 @@ the current year on the tracker's effective-date basis. Also fixed: the
 timeline printed "2027 so far 0" (future year made only of not-yet-effective
 notices); a future year with nothing counted to date is now dropped.
 Code: `includes/state-warn.php`, `templates/partials/state-warn.php`.
+**Follow-up 2.20.236:** live on California the city list read "Los Angeles)"
+out of company names: the CA collector writes NO city into its excerpts, so
+the only " in " was inside a bracketed company name. A city with unbalanced
+brackets is now rejected. CA (and any state whose collector carries no city)
+shows no city list, which is the honest state; adding city to the CA
+collector is a separate change. States whose source has a city column (TX
+and others) do get one.
 
 ## 2026-10-12 - Scored standing vs the top 3 rivals (issue dk-forge/asktherecruiter-sandbox#1725)
 
