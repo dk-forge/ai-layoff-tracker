@@ -1,3 +1,21 @@
+## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
+
+**Class:** novel (bug hunt 2026-10-12, BUG 1)
+**Guard:** `railway/tests/test_country_count_excludes_multiple.py`
+
+The tracker page showed "82 countries · all time" while the coverage ribbon and
+FAQ JSON-LD said 81: the all-time chip (`templates/page-tracker.php`) and the
+aggregate totals (`alt_db` totals in `includes/db.php`, feeding API
+`totals.countries`, the "countries · <year>" chip and the countries tile)
+excluded only '' and counted the 'Multiple countries' placeholder.
+Both now use `COUNT(DISTINCT CASE WHEN country NOT IN ('','Multiple countries')
+THEN country END)`, the rule `alt_coverage_counts()` already had. The year
+chip reads the same aggregate under its date window, so it is fixed by the
+same change (the test runs it in a 2026 window). Chip transient key bumped
+`fresh_alltime` -> `fresh_alltime_v2` so the cached 82 is not served for an hour.
+The test lifts each surface's SQL out of the PHP and runs it on seeded rows
+{US, UK, Multiple countries, ''} -> all three give 2.
+
 ## 2026-10-12 - Breadcrumbs on the seven tracker sub-pages, for real (2.20.242, navigation)
 
 **Class:** novel (2.20.240 shipped, after-crawl still vis=0 on these routes)
