@@ -100,13 +100,78 @@ function alt_report_canonical_url() {
     // view of the same report, so it consolidates into the worldwide URL rather
     // than competing with it for the same query.
     switch ($id['kind']) {
-        case 'archive': return add_query_arg(array('view' => 'archive'), $base);
+        case 'archive':
         case 'year':
         case 'quarter':
-        case 'month':   return add_query_arg(array('period' => $id['slug']), $base);
+        case 'month':   return alt_report_clean_url($id['kind'], $id['slug']);
         default:        return $base;   // current, week, invalid
     }
 }
+
+/**
+ * PURE apart from home_url. The clean path for an indexable report:
+ * /report/archive/, /report/2023/, /report/2023-Q1/, /report/2023-01/.
+ *
+ * SEO audit 2026-10-12 #4: the sitemap listed ?period= and ?view= URLs, which
+ * search engines crawl and index poorly. The old query URLs 301 here
+ * (alt_report_redirect_query_url) and the canonical names this path.
+ */
+function alt_report_clean_url($kind, $slug = '') {
+    $base = home_url('/ai-layoff-tracker/report/');
+    if ($kind === 'archive') return $base . 'archive/';
+    if (!alt_report_clean_slug_ok((string) $slug)) return $base;
+    return $base . $slug . '/';
+}
+
+/** PURE. A slug the clean-path route accepts: YYYY, YYYY-QN or YYYY-MM. */
+function alt_report_clean_slug_ok($slug) {
+    return (bool) preg_match('/^\d{4}(?:-Q[1-4]|-(?:0[1-9]|1[0-2]))?$/', (string) $slug);
+}
+
+/**
+ * The clean paths route to the same WordPress page and hand the period to the
+ * template through $_GET, which is what the template and every SEO filter in
+ * this file already read. One source of truth, no second parser.
+ */
+add_action('init', function () {
+    add_rewrite_rule('^ai-layoff-tracker/report/(archive|\d{4}(?:-Q[1-4]|-(?:0[1-9]|1[0-2]))?)/?$',
+        'index.php?pagename=ai-layoff-tracker/report&alt_rpath=$matches[1]', 'top');
+}, 1);
+add_filter('query_vars', function ($vars) { $vars[] = 'alt_rpath'; return $vars; });
+add_action('parse_request', function ($wp) {
+    $p = isset($wp->query_vars['alt_rpath']) ? (string) $wp->query_vars['alt_rpath'] : '';
+    if ($p === '') return;
+    if ($p === 'archive') { $_GET['view'] = 'archive'; unset($_GET['period']); }
+    elseif (alt_report_clean_slug_ok($p)) { $_GET['period'] = $p; unset($_GET['view']); }
+});
+// WordPress would otherwise "correct" /report/2023/ back to the page's permalink.
+add_filter('redirect_canonical', function ($redirect) {
+    return ((string) get_query_var('alt_rpath') !== '') ? false : $redirect;
+});
+
+/**
+ * PURE. Where a query-string report URL should 301 to, or '' to leave it.
+ * Only the bare ?period= / ?view=archive forms move; anything with another
+ * key (?scope=us, utm tags) stays put and canonicalises to the clean path.
+ */
+function alt_report_query_redirect_target($get, $kind, $slug) {
+    if (!is_array($get) || !$get) return '';
+    $keys = array_keys($get);
+    sort($keys);
+    if ($keys !== array('period') && $keys !== array('view')) return '';
+    if (!in_array($kind, array('archive', 'year', 'quarter', 'month'), true)) return '';
+    return alt_report_clean_url($kind, $slug);
+}
+
+function alt_report_redirect_query_url() {
+    if ((string) get_query_var('alt_rpath') !== '' || !alt_report_is_report_page()) return;
+    $id = alt_report_period_identity();
+    $to = alt_report_query_redirect_target($_GET, $id['kind'], $id['slug']);
+    if ($to === '') return;
+    wp_safe_redirect($to, 301);
+    exit;
+}
+add_action('template_redirect', 'alt_report_redirect_query_url', 1);
 
 function alt_report_filter_canonical($canonical) {
     if (!alt_report_is_report_page()) return $canonical;
@@ -196,14 +261,12 @@ function alt_report_seo_description($desc) {
     $id = alt_report_period_identity();
     $label = alt_report_period_label($id);
     if ($id['kind'] === 'archive') {
-        return 'Every AskTheRecruiter job cuts report, by month, quarter and year. '
-             . 'Each one is a standalone, citable page built from verified layoffs '
-             . 'with a filing, an employer statement, or a named source report behind every number.';
+        return 'Every AskTheRecruiter job cuts report by month, quarter and year: '
+             . 'citable pages built from verified layoffs, each figure linked to its source.';
     }
     if ($label === '') return $desc;
-    return 'Verified job cuts recorded in ' . $label . ': totals by company, industry, '
-         . 'country and US state, plus the layoffs employers themselves attributed to AI. '
-         . 'Every figure links to the filing, WARN notice or named report behind it.';
+    return alt_seo_cap_description('Verified job cuts in ' . $label . ' by company, industry, '
+         . 'country and US state, plus AI-attributed layoffs. Every figure links to its source.');
 }
 add_filter('rank_math/frontend/description', 'alt_report_seo_description', 5);
 add_filter('wpseo_metadesc', 'alt_report_seo_description', 5);
@@ -214,24 +277,42 @@ add_filter('wpseo_metadesc', 'alt_report_seo_description', 5);
  * 2023 is the floor because that is where the archive UI itself starts.
  */
 function alt_report_indexable_urls() {
-    $base = home_url('/ai-layoff-tracker/report/');
-    $urls = array(add_query_arg(array('view' => 'archive'), $base));
+    $urls = array(alt_report_clean_url('archive'));
     $now_y = (int) gmdate('Y');
     $now_m = (int) gmdate('n');
     for ($y = 2023; $y <= $now_y; $y++) {
-        $urls[] = add_query_arg(array('period' => (string) $y), $base);
+        $urls[] = alt_report_clean_url('year', (string) $y);
         $m_hi = ($y === $now_y) ? $now_m : 12;
         for ($q = 1; $q <= 4; $q++) {
             // Only quarters that have fully elapsed; a part-quarter report would
             // be resubmitted with different numbers every day.
             if ($y === $now_y && ($q * 3) > $m_hi) break;
-            $urls[] = add_query_arg(array('period' => sprintf('%04d-Q%d', $y, $q)), $base);
+            $urls[] = alt_report_clean_url('quarter', sprintf('%04d-Q%d', $y, $q));
         }
         for ($m = 1; $m <= $m_hi; $m++) {
-            $urls[] = add_query_arg(array('period' => sprintf('%04d-%02d', $y, $m)), $base);
+            $urls[] = alt_report_clean_url('month', sprintf('%04d-%02d', $y, $m));
         }
     }
     return $urls;
+}
+
+/**
+ * PURE. A report URL's lastmod: the latest entry date among the months it
+ * covers ($months is 'YYYY-MM' => date). The archive hub covers every month.
+ */
+function alt_report_url_lastmod($url, $months) {
+    if (!preg_match('#/report/([^/]+)/$#', (string) $url, $m)) return '';
+    $slug = $m[1];
+    $pick = array();
+    foreach ((array) $months as $ym => $d) {
+        $ym = (string) $ym;
+        if ($slug === 'archive' || $ym === $slug || substr($ym, 0, 4) === $slug) { $pick[] = $d; continue; }
+        if (preg_match('/^(\d{4})-Q([1-4])$/', $slug, $q) && substr($ym, 0, 4) === $q[1]) {
+            $mo = (int) substr($ym, 5, 2);
+            if ((int) ceil($mo / 3) === (int) $q[2]) $pick[] = $d;
+        }
+    }
+    return alt_sitemap_max_date($pick);
 }
 
 function alt_report_sitemap_url() { return home_url('/layoff-reports-sitemap.xml'); }
@@ -257,8 +338,9 @@ function alt_report_render_sitemap() {
     header('X-Robots-Tag: noindex, follow');
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+    $months = alt_sitemap_lastmod_by('month');
     foreach (alt_report_indexable_urls() as $url) {
-        echo '  <url><loc>' . esc_url($url) . '</loc></url>' . "\n";
+        echo alt_sitemap_url_line($url, alt_report_url_lastmod($url, $months));
     }
     echo '</urlset>';
     exit;

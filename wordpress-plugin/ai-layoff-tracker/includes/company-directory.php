@@ -414,7 +414,7 @@ add_filter('rank_math/frontend/title', 'alt_company_directory_seo_title', 5);
  */
 function alt_company_directory_seo_description($desc) {
     $data = alt_company_directory_current();
-    return $data ? alt_company_directory_description($data) : $desc;
+    return $data ? alt_seo_cap_description(alt_company_directory_description($data)) : $desc;
 }
 add_filter('wpseo_metadesc', 'alt_company_directory_seo_description', 5);
 add_filter('rank_math/frontend/description', 'alt_company_directory_seo_description', 5);
@@ -558,8 +558,16 @@ function alt_company_directory_promote_autopilot($floor, $limit = 500) {
 }
 
 function alt_company_directory_indexable_urls() {
+    return array_keys(alt_company_directory_indexable_lastmods());
+}
+
+/**
+ * url => latest entry date ('' when unknown) for every indexable employer
+ * page. The sitemap prints the date as <lastmod> (SEO audit 2026-10-12 #2).
+ */
+function alt_company_directory_indexable_lastmods() {
     global $wpdb;
-    $cache_key = 'alt_company_dir_sitemap_' . md5((string) get_option('alt_data_ver', 1));
+    $cache_key = 'alt_company_dir_sitemap_lm_' . md5((string) get_option('alt_data_ver', 1));
     $cached = get_transient($cache_key);
     if (is_array($cached)) return $cached;
     $directory = alt_company_directory_table();
@@ -573,15 +581,20 @@ function alt_company_directory_indexable_urls() {
     // GROUP BY company_key so an alias pair contributes ONE url. The picked
     // slug matches alt_company_directory_canonical_slug()'s ordering, so the
     // sitemap and the 301 target can never disagree.
-    $slugs = $wpdb->get_col($wpdb->prepare(
-        "SELECT SUBSTRING_INDEX(GROUP_CONCAT(d.slug ORDER BY CHAR_LENGTH(d.slug) ASC, d.id ASC), ',', 1) AS canon_slug
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT SUBSTRING_INDEX(GROUP_CONCAT(d.slug ORDER BY CHAR_LENGTH(d.slug) ASC, d.id ASC), ',', 1) AS canon_slug,
+                d.company_key AS company_key
            FROM $directory d
            INNER JOIN ($supported) s ON s.company_key = d.company_key AND s.supported >= %d
           WHERE d.review_status = 'approved'
-          GROUP BY d.company_key ORDER BY canon_slug ASC", $floor)) ?: array();
-    $urls = array_map('alt_company_directory_url', $slugs);
-    set_transient($cache_key, $urls, 15 * MINUTE_IN_SECONDS);
-    return $urls;
+          GROUP BY d.company_key ORDER BY canon_slug ASC", $floor), ARRAY_A) ?: array();
+    $dates = function_exists('alt_sitemap_lastmod_by') ? alt_sitemap_lastmod_by('company_key') : array();
+    $out = array();
+    foreach ($rows as $r) {
+        $out[alt_company_directory_url((string) $r['canon_slug'])] = (string) ($dates[(string) $r['company_key']] ?? '');
+    }
+    set_transient($cache_key, $out, 15 * MINUTE_IN_SECONDS);
+    return $out;
 }
 
 /**
@@ -642,14 +655,17 @@ function alt_company_directory_render_sitemap() {
     // which is also the source of the published `pages_indexable` coverage
     // figure: the browse hub is a way IN to the employer pages, not one of
     // them, and folding it into that count would overstate coverage by one.
-    $urls = apply_filters('alt_company_sitemap_urls', alt_company_directory_indexable_urls());
+    $lastmods = alt_company_directory_indexable_lastmods();
+    $urls = apply_filters('alt_company_sitemap_urls', array_keys($lastmods));
+    // A URL the filter added (the browse hub) changes whenever any employer does.
+    $newest = function_exists('alt_sitemap_max_date') ? alt_sitemap_max_date(array_values($lastmods)) : '';
     if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
     status_header(200);
     header('Content-Type: application/xml; charset=UTF-8');
     header('X-Robots-Tag: noindex, follow');
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-    foreach ($urls as $url) { echo '  <url><loc>' . esc_url($url) . '</loc></url>' . "\n"; }
+    foreach ($urls as $url) { echo alt_sitemap_url_line($url, $lastmods[$url] ?? $newest); }
     echo '</urlset>';
     exit;
 }
