@@ -137,11 +137,6 @@
       "last": 1791801675,
       "subject": "VPS runner offline: asktherecruiter-sandbox"
     },
-    "weekly-health-digest-autonomy-tripwire:main:27358af34b528c7a": {
-      "first": 1791201760,
-      "last": 1791201760,
-      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE national_feeds: last reported 6.6d ago (expected <= 2d): collector may have stopped"
-    },
     "weekly-off-host-backup:main:ae12e05c5976868a": {
       "first": 1791103432,
       "last": 1791103432,
@@ -153,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-12T10:41:16+00:00",
+  "updated_at": "2026-10-12T12:04:29+00:00",
   "version": 1
 }
