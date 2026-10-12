@@ -535,7 +535,21 @@
       "rules": 1,
       "unknown": 0,
       "unmatched": 4
+    },
+    {
+      "candidates": 0,
+      "causes": {},
+      "date": "2026-10-12",
+      "dropped": 0,
+      "independent_recall_pct": null,
+      "matched": 0,
+      "method": "m4",
+      "recall_high_pct": null,
+      "recall_low_pct": null,
+      "rules": 0,
+      "unknown": 0,
+      "unmatched": 0
     }
   ],
-  "quiet_runs": 0
+  "quiet_runs": 1
 }

@@ -209,8 +209,10 @@ function alt_mr_figures($period, $us_only = false) {
         'top_states'          => $top('state', " AND country = 'United States'"),
         'top_countries'       => $us_only ? array() : $top('country'),
         'ai_rank'             => alt_mr_ai_rank($ai_rows, 10),
-        'report_url'          => add_query_arg(array_filter(array('period' => $period, 'scope' => $us_only ? 'us' : '')),
-                                               home_url('/ai-layoff-tracker/report/')),
+        'report_url'          => (!$us_only && function_exists('alt_report_clean_url'))
+                                   ? alt_report_clean_url('month', $period)
+                                   : add_query_arg(array_filter(array('period' => $period, 'scope' => $us_only ? 'us' : '')),
+                                                   home_url('/ai-layoff-tracker/report/')),
         'csv_url'             => alt_mr_csv_url($from, $to, $us_only),
         'contact_url'         => home_url('/contact/'),
     );

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.243
+ * Version:           2.20.245
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.243');
+define('ALT_VERSION', '2.20.245');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -60,6 +60,7 @@ require_once ALT_PLUGIN_DIR . 'includes/api.php';
 if (is_readable(ALT_PLUGIN_DIR . 'includes/breadcrumbs.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/breadcrumbs.php';
 }
+require_once ALT_PLUGIN_DIR . 'includes/seo-sitemap-meta.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
 require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-seo.php';
@@ -1947,7 +1948,9 @@ function alt_json_ld_freshness($data, $jsonld = null) {
         }
     }
     if (null === $org) {
-        $org = array('@type' => 'Organization', 'name' => get_bloginfo('name'), 'url' => home_url('/'));
+        // The brand, never a person or the WordPress site title (SEO audit 2026-10-12 #5).
+        $org = function_exists('alt_publisher_org') ? alt_publisher_org()
+             : array('@type' => 'Organization', 'name' => 'Ask The Recruiter', 'url' => 'https://asktherecruiter.com/');
     }
 
     foreach ($data as $key => $node) {
@@ -1960,6 +1963,11 @@ function alt_json_ld_freshness($data, $jsonld = null) {
         if (array_intersect($types, array('Article', 'NewsArticle', 'BlogPosting'))) {
             $data[$key]['author']    = $org;
             $data[$key]['publisher'] = $org;
+            // The page's own publish date, never the last data write.
+            if (empty($data[$key]['datePublished'])) {
+                $pub = get_post_time('c', true, get_queried_object_id());
+                if ($pub) $data[$key]['datePublished'] = $pub;
+            }
             $data[$key]['image']     = array(
                 '@type'  => 'ImageObject',
                 'url'    => alt_social_card_url(),

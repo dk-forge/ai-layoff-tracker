@@ -488,8 +488,9 @@ if (!is_array($alt_ps)) {
             'label'    => gmdate('F Y', $ts),
             'released' => gmdate('M j, Y', strtotime(gmdate('Y-m-01', $ts) . ' +1 month')),
             'v' => (int) $st->v, 'ai' => (int) $st->ai,
-            'report'   => esc_url(add_query_arg(array('period' => gmdate('Y-m', $ts)),
-                                                home_url('/ai-layoff-tracker/report/'))),
+            'report'   => esc_url(function_exists('alt_report_clean_url')
+                                ? alt_report_clean_url('month', gmdate('Y-m', $ts))
+                                : add_query_arg(array('period' => gmdate('Y-m', $ts)), home_url('/ai-layoff-tracker/report/'))),
         );
     }
     $alt_ps['releases'] = $alt_rel;

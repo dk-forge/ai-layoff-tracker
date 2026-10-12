@@ -646,7 +646,7 @@ add_filter('rank_math/frontend/title', 'alt_facet_seo_title', 5);
 
 function alt_facet_seo_description($desc) {
     $data = alt_facet_current();
-    return $data ? alt_facet_description($data) : $desc;
+    return $data ? alt_seo_cap_description(alt_facet_description($data)) : $desc;
 }
 add_filter('wpseo_metadesc', 'alt_facet_seo_description', 5);
 add_filter('rank_math/frontend/description', 'alt_facet_seo_description', 5);
@@ -728,7 +728,8 @@ function alt_facet_render_sitemap() {
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
     foreach (alt_facet_index() as $entry) {
-        echo '  <url><loc>' . esc_url($entry['url']) . '</loc></url>' . "\n";
+        $dates = alt_sitemap_lastmod_by($entry['dim']);
+        echo alt_sitemap_url_line($entry['url'], $dates[$entry['value']] ?? '');
     }
     echo '</urlset>';
     exit;
