@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "bls-full-history-archive:main:702b8397656939ae": {
+      "first": 1791791624,
+      "last": 1791791624,
+      "subject": "CI RED: BLS full-history archive \u2014 release not found"
+    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-10T14:38:17+00:00",
+  "updated_at": "2026-10-12T07:53:45+00:00",
   "version": 1
 }
