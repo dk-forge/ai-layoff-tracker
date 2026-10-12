@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) exit;
     <div class="alt-chart-grid">
         <div class="alt-chart-card alt-chart-card-wide">
             <div class="alt-chart-h">Jobs cut per month <span class="alt-chart-sub">full history</span></div>
-            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-weekly" role="img" aria-label="AI layoffs dashboard: chart of jobs cut per month"></canvas></div>
         </div>
         <div class="alt-chart-card">
             <div class="alt-chart-head">
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) exit;
         </div>
         <div class="alt-chart-card">
             <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">jobs by reason tag</span></div>
-            <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-reasons"></canvas></div>
+            <div class="alt-chart-box alt-chart-box-tall"><canvas id="alt-chart-reasons" role="img" aria-label="AI layoffs dashboard: chart of reasons cited, jobs by reason tag"></canvas></div>
         </div>
         <div class="alt-chart-card">
             <div class="alt-chart-head">
@@ -34,7 +34,7 @@ if (!defined('ABSPATH')) exit;
         </div>
         <div class="alt-chart-card alt-chart-card-wide">
             <div class="alt-chart-h">Cumulative AI-attributed job losses <span class="alt-chart-sub">acceleration curve</span></div>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative" role="img" aria-label="AI layoffs dashboard: chart of cumulative AI-attributed job losses"></canvas></div>
         </div>
         <div class="alt-chart-card">
             <div class="alt-chart-h">Largest single job cuts <span class="alt-chart-sub">all time</span></div>

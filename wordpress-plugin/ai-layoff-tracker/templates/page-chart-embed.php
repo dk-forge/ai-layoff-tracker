@@ -87,7 +87,7 @@ $alt_need_geo = ($alt_chart === 'alt-chart-aimap');
       <?php endif; ?>
     </div>
     <?php if ($alt_ctype === 'canvas') : ?>
-      <div class="alt-chart-box"><canvas id="<?php echo esc_attr($alt_chart); ?>"></canvas></div>
+      <div class="alt-chart-box"><canvas id="<?php echo esc_attr($alt_chart); ?>" role="img" aria-label="<?php echo esc_attr('Chart: ' . $alt_ctitle); ?>"></canvas></div>
       <?php // Same reason as the bar note below: the caption that says the last
             // point is an unfinished month, or what basis the bars are on, is
             // written by id into an element the dashboard has and this shell

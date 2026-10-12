@@ -1192,7 +1192,7 @@ $alt_hero_basis  = 'counted by filing date';
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-weekly" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
             <label class="alt-claims-toggle" id="alt-claims-toggle-wrap" hidden><input type="checkbox" id="alt-claims-toggle" checked> <span>Overlay US jobless claims (BLS/DOL), background context</span></label>
-            <div class="alt-chart-box"><canvas id="alt-chart-weekly"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-weekly" role="img" aria-label="AI layoff tracker: chart of jobs cut per month"></canvas></div>
             <?php /* The whole-record trajectory. Filled by layoffs.js (drawTrajectory)
                      and hidden until it has real months to draw, so a failed or
                      skipped fetch leaves no empty frame behind. It is deliberately
@@ -1210,12 +1210,12 @@ $alt_hero_basis  = 'counted by filing date';
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">This year vs last year <span class="alt-chart-sub">verified cuts · select 2+ years to compare more</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-yoy" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
-            <div class="alt-chart-box"><canvas id="alt-chart-yoy"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-yoy" role="img" aria-label="AI layoff tracker: chart of this year vs last year, verified cuts"></canvas></div>
             <p class="alt-chart-note alt-chart-note-partial" id="alt-yoy-partial" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
             <div class="alt-chart-head"><div class="alt-chart-h">AI share of verified cuts, monthly <span class="alt-chart-sub">how attribution is trending · tap a month to scope the page, again to clear</span></div><span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-share-trend" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span></div>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-share-trend"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-share-trend" role="img" aria-label="AI layoff tracker: chart of AI share of verified cuts, monthly"></canvas></div>
             <p class="alt-chart-note alt-chart-note-partial" id="alt-ai-share-partial" hidden></p>
         </div>
         <div class="alt-mini alt-chart-card">
@@ -1223,7 +1223,7 @@ $alt_hero_basis  = 'counted by filing date';
                 <div class="alt-chart-h">Cumulative AI-attributed cuts <span class="alt-chart-sub" id="alt-cum-range"></span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-ai-cumulative" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-ai-cumulative" role="img" aria-label="AI layoff tracker: chart of cumulative AI-attributed cuts"></canvas></div>
         </div>
         <div class="alt-grid-h"><h2>Who is cutting, and why</h2><p>Industries, stated reasons, the biggest single layoffs and repeat cutters, plus which data source each figure came from.</p></div>
         <div class="alt-mini alt-chart-card">
@@ -1243,7 +1243,7 @@ $alt_hero_basis  = 'counted by filing date';
                 <div class="alt-chart-h">Reasons cited <span class="alt-chart-sub">tap to filter</span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-reasons" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-reasons"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-reasons" role="img" aria-label="AI layoff tracker: chart of reasons cited, jobs by reason tag"></canvas></div>
             <?php /* BASIS LINE. This was the one chart in the grid without one, and
                      it was also the one drawing a different basis from the headline.
                      Written by layoffs.js (reasonsBasisNote). */ ?>
@@ -1475,7 +1475,7 @@ $alt_hero_basis  = 'counted by filing date';
               <button type="button" class="alt-conv-btn" data-range="60">Last 5 years</button>
               <button type="button" class="alt-conv-btn" data-range="0">All time</button>
             </div>
-            <div class="alt-chart-box"><canvas id="alt-chart-conversion" aria-label="Announced-to-verified conversion by announcement month"></canvas></div>
+            <div class="alt-chart-box"><canvas id="alt-chart-conversion" role="img" aria-label="Announced-to-verified conversion by announcement month"></canvas></div>
             <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="png" aria-label="Download chart as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><button type="button" class="alt-chart-dl" data-dl="alt-chart-conversion" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button></span>
             <p class="alt-muted" id="alt-conversion-note" style="display:none"></p>
         </div>
