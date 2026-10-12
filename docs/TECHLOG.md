@@ -1,3 +1,17 @@
+## 2026-10-12 - Blog posts ping IndexNow on first publish (2.20.235, SEO hygiene)
+
+**Class:** novel (scored gap 1, indexation)
+**Guard:** `railway/tests/test_indexnow_on_publish.py`
+
+SEO check 2026-10-12: robots.txt allows all and points at the sitemap index;
+all 724 posts are in post-sitemap1-4 (matches `X-WP-Total`); the sampled post,
+/blog/ home, report and state pages carry self canonicals, index robots and
+unique titles/descriptions; the report and facet sitemaps are in the index.
+The gap: IndexNow was only pinged for tracker surfaces when data lands. Now a
+post's first publish (`transition_post_status`, public posts only, not
+re-submitted on edits) submits its permalink non-blocking with the existing
+key; outcome in option `alt_indexnow_last_post`. Search Console status is
+still unknown (no access).
 ## 2026-10-12 - Open-model trial: self-hosted CPU LLM vs the AI-causation gold set (dispatch-only)
 
 **Class:** novel (owner-approved experiment: cut paid tracker classification spend)
