@@ -1,0 +1,56 @@
+name: FRED labour archive
+
+# Monthly full-history snapshot of the curated FRED labour series into
+# data/archive/fred/ as a sorted compact CSV plus MANIFEST.json (well under
+# 1 MB; git stores each refresh as a small delta). Same approach as
+# oecd-archive.yml. railway/fred_archive.py refuses a partial pull, anything
+# over 40 MB or a big shrink. FRED_API_KEY via env only, never printed.
+# Commits to main only when the data changed.
+on:
+  schedule:
+    - cron: '29 7 15 * *'   # the 15th
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fred-archive
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Fetch full history
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python3 railway/fred_archive.py --out data/archive/fred
+      - name: Commit when changed
+        run: |
+          set -uo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          git add data/archive/fred/
+          if git diff --staged --quiet; then
+            echo "::notice title=fred-archive::unchanged, nothing committed"
+            exit 0
+          fi
+          git commit -q -m "FRED labour archive $(date -u +%F) [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "::notice title=fred-archive::committed $(git rev-parse --short HEAD)"
+              exit 0
+            fi
+            git fetch -q origin main
+            git rebase -q origin/main || { git rebase --abort; echo "::error::rebase failed"; exit 1; }
+            sleep $((attempt * 5))
+          done
+          echo "::error title=fred-archive::push failed after 5 attempts"
+          exit 1

@@ -1083,7 +1083,7 @@ function alt_filter_param_names() {
     return array(
         'years', 'quarters', 'months', 'from', 'to',
         'industry', 'country', 'employer_country', 'state',
-        'sources', 'reasons', 'roles',
+        'sources', 'tier', 'reasons', 'roles',
         'q', 'company', 'keyword', 'min_jobs', 'stage',
         'ai', 'ai_broad', 'ai_primary', 'review_status',
         'context_missing', 'industry_missing', 'roles_missing',
@@ -1445,6 +1445,15 @@ function alt_db_where(WP_REST_Request $r, $except = '', $alias = '') {
         foreach ($sources as $s) { $params[] = $s; }
         foreach ($sources as $s) { $params[] = $s; }
     }
+    // `tier` = trust tier (verified/reported), derived by the ONE rule in
+    // includes/trust-tiers.php. `except === 'tier'` keeps the slicer contract.
+    // An unknown value matches nothing (measured is never a layoff row).
+    if ($except !== 'tier' && function_exists('alt_trust_tier_sql')
+        && ($tiers = array_filter(array_map('sanitize_key', explode(',', (string) $r->get_param('tier')))))) {
+        $ph = implode(',', array_fill(0, count($tiers), '%s'));
+        $where[] = alt_trust_tier_sql($alias !== '' ? $alias . '.' : '') . " IN ($ph)";
+        foreach ($tiers as $tv) { $params[] = $tv; }
+    }
     if ($r->get_param('ai') === '1' || $r->get_param('ai') === 'true') { $where[] = "ai_explicit = 1"; }
     if ($r->get_param('ai_primary') === '1' || $r->get_param('ai_primary') === 'true') { $where[] = "ai_causation = 'primary_cause'"; }
     // ai_broad matches the ai_broad_jobs aggregate definition exactly: the
@@ -1555,6 +1564,9 @@ function alt_db_row_to_array($row) {
         'source_type'        => $row->source_type,
         'source_name'        => $row->source_name,
         'verification_level' => $row->verification_level,
+        // Trust tier, derived (never stored): docs/VERIFICATION_TIERS.md.
+        'tier'               => function_exists('alt_trust_tier')
+                                ? alt_trust_tier($row->source_type, $row->verification_level) : '',
         'source_url'         => $row->source_url,
         // A WARN row always has an official state LIST page (derived from its
         // state) in addition to whatever source_url holds. When source_url is
@@ -5415,6 +5427,8 @@ function alt_api_facets(WP_REST_Request $r) {
                 $wpdb->get_col("SELECT DISTINCT verification_level FROM $t WHERE verification_level <> ''") ?: array(),
                 $wpdb->get_col("SELECT DISTINCT source_type FROM $t WHERE source_type <> ''") ?: array()
             ))),
+            'tiers'      => function_exists('alt_trust_tier_sql')
+                ? ($wpdb->get_col("SELECT DISTINCT " . alt_trust_tier_sql() . " FROM $t") ?: array()) : array(),
             'min_date'   => $range ? $range->mn : null,
             'max_date'   => $range ? $range->mx : null,
         );
@@ -6517,7 +6531,9 @@ function alt_api_aggregate(WP_REST_Request $r) {
  * reads. A new block should earn its place in the default, not inherit it.
  */
 function alt_aggregate_blocks() {
-    return array_merge(alt_aggregate_default_blocks(), array('facet_counts'));
+    $blocks = array_merge(alt_aggregate_default_blocks(), array('facet_counts'));
+    $blocks[] = 'tiers';   // opt-in: jobs per trust tier (2.20.232)
+    return $blocks;
 }
 
 function alt_aggregate_default_blocks() {
@@ -6930,7 +6946,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
     list($w2, $p2) = alt_db_where($r);
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT id, company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url,
-                verification_level, review_status,
+                verification_level, review_status, reason_tags,
                 (SELECT COUNT(*) FROM " . alt_source_reports_table() . " r WHERE r.event_id = $table.event_id AND $table.event_id > 0) AS report_count
          FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
     $leaders = array();
@@ -6941,6 +6957,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
             'layoff_date' => $row->layoff_date ?: '', 'ai_explicit' => (bool) $row->ai_explicit,
             'state' => $row->state, 'country' => $row->country,
             'location' => alt_short_location($row->state, $row->country),
+            // The stated reason, for the digest's Biggest cuts rows (2026-10-06).
+            'reason_tags' => (string) ($row->reason_tags ?? ''),
             /*
               WHICH TIER THIS ROW IS. Added 2026-08-17, and it closes a real
               defect rather than adding a field somebody might want.
@@ -7107,6 +7125,9 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         'top_roles'      => $top_roles,
         'facet_counts'   => $facet_counts,
         'source_types'   => $want('source_types') ? $topN('source_type', 'sources') : array(),
+        // Opt-in (include=tiers): jobs per trust tier, same row shape as source_types.
+        'tiers'          => ($want('tiers') && function_exists('alt_trust_tier_sql'))
+                            ? $topN(alt_trust_tier_sql(), 'tier') : array(),
         'reasons'        => $reasons,
         'series'         => $series,
         'leaders'        => $leaders,

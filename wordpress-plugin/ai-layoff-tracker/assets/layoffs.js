@@ -3991,6 +3991,21 @@
     // `extra` carries the shared card contract's evidence class when this badge
     // is rendered inside a card (docs/card-contract.json, badges.card-ev). The
     // badge itself is unchanged everywhere else it appears.
+    // Trust tier (verified / reported, from /query's derived `tier`). Plain-text
+    // label plus an accessible name that says what the tier means, so a screen
+    // reader hears the basis, not just a word. Nothing renders for an older
+    // cached response that has no tier yet.
+    var TIER_MEANING = {
+        verified: 'Verified: from an official filing (SEC 8-K, state WARN notice, federal record or other government document)',
+        reported: 'Reported: from news or press coverage, not yet matched to an official filing'
+    };
+    function tierBadge(row) {
+        var t = row && row.tier;
+        if (!TIER_MEANING[t]) return '';
+        return '<span class="alt-badge alt-tier alt-tier-' + escapeHtml(t) + '" aria-label="' + escapeHtml(TIER_MEANING[t])
+            + '" title="' + escapeHtml(TIER_MEANING[t]) + '">' + (t === 'verified' ? 'Verified' : 'Reported') + '</span>';
+    }
+
     function verificationBadge(level, extra) {
         var safe = escapeHtml(level || 'bronze');
         return '<span class="' + (extra ? extra + ' ' : '') + 'alt-badge alt-badge-' + safe + '">'
@@ -4168,7 +4183,7 @@
             // badges (AI attribution, reason tags) follow them. See
             // docs/card-contract.json -> badges.order.
             +   '<div class="alt-card-badges">'
-            +     dir + verificationBadge(row.verification_level, 'alt-card-ev') + jobs + aiBadge + tags
+            +     dir + tierBadge(row) + verificationBadge(row.verification_level, 'alt-card-ev') + jobs + aiBadge + tags
             +   '</div>'
             +   head
             +   (meaning ? '<p class="alt-card-rt">' + escapeHtml(meaning) + '</p>' : '')

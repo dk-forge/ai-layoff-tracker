@@ -1,0 +1,46 @@
+name: AI exposure reference data
+
+# Joins the "GPTs are GPTs" occupation exposure scores (MIT, pinned commit),
+# O*NET titles (CC BY 4.0), BLS OEWS national + metro employment and wages,
+# and BLS Employment Projections on the SOC code (railway/sources/
+# ai_exposure.py) -> /reference-ingest/ai_exposure. LABELLED CONTEXT: exposure
+# means tasks an AI system could speed up, never a job-loss forecast, never
+# summed into layoff counts. Keyless. Every source releases once a year, so
+# monthly is plenty and keeps the freshness alarm honest. Fail-soft: a failed
+# or partial pull never overwrites stored data. Freshness:
+# reference-freshness.yml. History: ai-exposure-archive.yml.
+
+on:
+  schedule:
+    - cron: '17 15 3 * *'   # the 3rd
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
+concurrency:
+  group: ai-exposure-import
+
+jobs:
+  ai-exposure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: Fetch + store AI exposure reference data
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python ai_exposure_import.py
+
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: ai-exposure-import

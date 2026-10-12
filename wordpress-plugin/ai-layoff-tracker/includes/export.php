@@ -91,7 +91,7 @@ function alt_export_is_filtered() {
     $keys = function_exists('alt_filter_param_names')
         ? alt_filter_param_names()
         : array('years', 'quarters', 'months', 'from', 'to', 'industry', 'country',
-            'employer_country', 'state', 'sources', 'reasons', 'roles', 'q',
+            'employer_country', 'state', 'sources', 'tier', 'reasons', 'roles', 'q',
             'company', 'keyword', 'min_jobs', 'stage', 'ai', 'ai_broad',
             'ai_primary', 'review_status', 'context_missing', 'industry_missing',
             'roles_missing', 'company_key', 'sourced', 'exclude_supersets',

@@ -26,6 +26,10 @@ on:
         description: 'Items to score (0 = the whole frozen corpus)'
         required: false
         default: '0'
+      candidate:
+        description: 'Candidate slug scored against the labellers (AIC_CANDIDATE). Empty = the production model.'
+        required: false
+        default: ''
       dry_run:
         description: 'Build every prompt, call nothing, spend nothing'
         type: boolean
@@ -60,6 +64,7 @@ jobs:
         working-directory: railway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AIC_CANDIDATE: ${{ github.event.inputs.candidate || 'google/gemini-2.5-flash-lite' }}
           AIC_LIMIT: ${{ github.event.inputs.limit != '0' && github.event.inputs.limit || '' }}
           AIC_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
           AIC_OUT: ${{ runner.temp }}/ai-causation.json

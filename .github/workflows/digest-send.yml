@@ -140,8 +140,11 @@ on:
         required: false
         default: ''
 
+# write: the job commits the public Email Archive copy of each sent edition
+# (data/email_archive, see railway/digest_archive.py), the same bot identity
+# and retry loop tracker-diff.yml uses for its learning trend.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   send:
@@ -188,6 +191,10 @@ jobs:
           # at all when real recipients are due. See digest_send._test_payload.
           DIGEST_TEST_TO: ${{ github.event.inputs.test_to }}
           DIGEST_TEST_LISTS: ${{ github.event.inputs.test_lists }}
+          # Where the cleaned public copy of a REAL send is written. Unset, the
+          # archive writes nothing (tests, laptop runs). A dry run, preview or
+          # test_to send never writes here either.
+          DIGEST_ARCHIVE_DIR: ${{ github.workspace }}/data/email_archive
         # THREE STATES, AND ONLY ONE OF THEM IS RED.
         #
         #   0  the pass ran. Sent, or nobody was due, or dormant.
@@ -220,3 +227,20 @@ jobs:
             3) echo "::warning::the digest was NOT sent this run: the site could not be read (its deploy maintenance window, most likely). Nothing was claimed or stamped, the next run repeats the period, and the digest_mailer health row names the skipped tier. UNKNOWN is not a pass - if this repeats, read the health page." ; exit 0 ;;
             *) exit "$code" ;;
           esac
+      - name: Commit the Email Archive copy
+        # Only after a pass that exited cleanly; a send with nobody due, a dry
+        # run or a preview wrote nothing, and the diff check below exits 0.
+        if: success()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Sanitized HTML and counts only: digest_archive strips every
+          # unsubscribe/preferences link, address and image before writing.
+          git add data/email_archive
+          git diff --cached --quiet && { echo "no new archive edition"; exit 0; }
+          git commit -m "archive: digest edition $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push rejected, retrying ($i)"; sleep 10
+          done
+          exit 1

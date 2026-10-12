@@ -1084,6 +1084,16 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
                   f"guard is what stops a second copy, so investigate before "
                   f"the next run.")
 
+    # THE PUBLIC ARCHIVE COPY (asktherecruiter.com/email-archive). Only a real
+    # send to the list: never a dry run, a preview or a single test address.
+    # digest_archive strips everything that belongs to a reader, writes only
+    # where DIGEST_ARCHIVE_DIR points (set by digest-send.yml), and never
+    # raises, so it cannot cost the send that already happened.
+    if (transport.sends and sent_ids and not result["preview"]
+            and not result["test"]):
+        import digest_archive
+        digest_archive.archive_sent_edition(payload, freq)
+
     # A preview stays out of the ledger. Its one placeholder recipient is not
     # a delivery, and a health row that counted it would read as a send.
     if result["preview"]:

@@ -5715,6 +5715,53 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
                . esc_html($dominant['interpretation']) . '</p>';
         $text .= $dominant['interpretation'] . "\n";
     }
+    /*
+      REDESIGN SLICE 1 (owner approval 2026-09-29): the top story, one
+      computed "why it matters" line, and an 8-week strip. All guarded, all
+      derived from /aggregate, and each is simply absent when its input is.
+    */
+    $story = function_exists('alt_digest_top_story')
+        ? alt_digest_top_story($data['leaders'] ?? null, 'alt_digest_single_report')
+        : null;
+    if (function_exists('alt_digest_why_line')) {
+        $why = alt_digest_why_line($story, $lead_ver_jobs, $dominant['event'] !== '');
+        if ($why !== '') {
+            $html .= '<p data-alt="why">' . esc_html($why) . '</p>';
+            $text .= $why . "\n";
+        }
+    }
+    if (function_exists('alt_digest_week_strip') && $is_week_window && !$is_monthly) {
+        $weeks = array();
+        for ($k = 7; $k >= 0; $k--) {
+            $w_from = gmdate('Y-m-d', $mh_ft - 7 * $k * DAY_IN_SECONDS);
+            $w_to = gmdate('Y-m-d', $mh_tt - 7 * $k * DAY_IN_SECONDS);
+            $w_jobs = null;
+            if ($k === 0) {
+                $w_jobs = $lead_ver_jobs;
+            } elseif ($k === 1 && $prior_all !== null) {
+                $w_jobs = $prior_all;
+            } else {
+                $w_req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
+                $w_req->set_param('from', $w_from);
+                $w_req->set_param('to', $w_to);
+                $w_req->set_param('date_basis', alt_digest_layoff_basis('query'));
+                $w_req->set_param('include', 'top_countries');
+                $w_res = rest_do_request($w_req);
+                if ($w_res && !$w_res->is_error()) {
+                    $w_tot = $w_res->get_data();
+                    $w_tot = is_array($w_tot) ? ($w_tot['totals'] ?? null) : null;
+                    if (is_object($w_tot)) $w_tot = (array) $w_tot;
+                    if (is_array($w_tot)) {
+                        $w_jobs = max(0, (int) ($w_tot['jobs'] ?? 0) - (int) ($w_tot['announced_jobs'] ?? 0));
+                    }
+                }
+            }
+            $weeks[] = array('label' => alt_digest_short_range($w_from, $w_from), 'jobs' => $w_jobs);
+        }
+        list($strip_html, $strip_text) = alt_digest_week_strip($weeks);
+        $html .= $strip_html;
+        $text .= $strip_text;
+    }
 
     if ($maturity !== '') {
         $html .= '<p data-alt="note">' . esc_html($maturity) . '</p>';
@@ -6154,6 +6201,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             $detail[] = ($place !== '') ? $place : 'location not recorded';
             if ($when !== '') $detail[] = 'takes effect ' . $when;
             if (!empty($l['ai_explicit'])) $detail[] = 'AI attributed';
+            // THE STATED REASON on the top 3 rows (redesign slice 1). Absent
+            // when the row carries no tag, never guessed.
+            if (count($rows) < 3 && function_exists('alt_digest_reason_phrase')) {
+                $reason = alt_digest_reason_phrase($l['reason_tags'] ?? '');
+                if ($reason !== '') $detail[] = $reason;
+            }
             // ONE UNCONFIRMED REPORT, ON THE ROW. Same test as the dominant
             // line up top (alt_digest_single_report), so the two cannot
             // disagree about the same row, and printed only when the payload
@@ -6563,6 +6616,34 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
                . esc_html($tail) . '</p>';
         $text .= "\nWhere the jobs were\n" . $caption . ': ' . $c_text . $tail . "\n";
     }
+    /*
+      TOP 5 COUNTRIES (redesign stage 2). The region line answers "which part
+      of the world"; this answers "which countries", on the same verified tier,
+      window and job-location basis, each linked to the tracker filtered to
+      that one country. It is a ranking, not a breakdown, so it carries no
+      reconciliation note; the caption says it is the top five.
+    */
+    if (function_exists('alt_digest_top_n')) {
+        $top_countries = alt_digest_top_n($countries_all, 5);
+        if (count($top_countries) > 1) {
+            $rows = array();
+            foreach ($top_countries as $name => $value) {
+                $rows[] = array(
+                    'label'  => $name,
+                    'figure' => alt_digest_number($value),
+                    'url'    => alt_digest_track_link($send_id, alt_digest_tracker_url(
+                                    $from, $to, array('country' => $name))),
+                );
+            }
+            list($tc_html, $tc_text) = alt_digest_inline_series($rows);
+            $tc_caption = $range . ', verified job cuts, the top ' . count($rows)
+                        . ' countries where the jobs were';
+            $html .= '<h3>Top countries</h3>'
+                   . '<p data-alt="series">' . esc_html($tc_caption . ': ') . $tc_html
+                   . esc_html('.') . '</p>';
+            $text .= "\nTop countries\n" . $tc_caption . ': ' . $tc_text . ".\n";
+        }
+    }
 
     /*
       WHICH INDUSTRIES, which is the block a recruiter or a job hunter reads
@@ -6579,7 +6660,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       below still measures what the printed lines cover, so cutting two rows
       makes the caveat larger and truer rather than hiding anything.
     */
-    $industries = array_slice($industries_all, 0, 3, true);
+    // FIVE since the redesign stage 2 (owner approval 2026-09-29), which
+    // replaces the earlier cut to three. The composition note and the
+    // shortfall note still read the whole block, so nothing else moves.
+    $industries = array_slice($industries_all, 0, 5, true);
     if (count($industries) > 1) {
         $caption = $range . ', verified job cuts, by the industry we classified '
                  . 'the employer into';
@@ -7102,6 +7186,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       "signals" would give away the product's whole differentiator.
     */
     $metric = alt_digest_number($ver_jobs) . ' verified job cuts';
+    // THE TOP STORY RIDES ON THE FIGURE (redesign slice 1, 2026-10-06), and it
+    // is the first verified row of "Biggest cuts" below, so subject and body
+    // name the same employer and the same count. No story, no clause.
+    if (function_exists('alt_digest_story_metric') && isset($story)) {
+        $metric = alt_digest_story_metric($metric, $story);
+    }
 
     /*
       THE PREHEADER COMPLETES A TRUNCATED SUBJECT RATHER THAN RESTATING IT.
@@ -7646,6 +7736,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                    . '<ul>';
             $text .= "\n" . $heading . "\n" . $caption . "\n";
             $undated = 0;
+            $resume_candidates = array();
             foreach ($rows as $row) {
                 $row = (array) $row;
                 /*
@@ -7690,6 +7781,9 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                   that contradicted itself inside four words.
                 */
                 $is_scan = alt_digest_talent_is_scan($row);
+                // Redesign stage 2: the resume line reads the same figure.
+                $resume_candidates[] = array('company' => $co, 'jobs' => (int) $jobs,
+                                             'scan' => $is_scan);
                 if ($jobs > 0) {
                     $facts[] = $is_scan ? alt_digest_postings_phrase($jobs)
                                         : alt_digest_jobs_phrase($jobs);
@@ -7787,6 +7881,18 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 if ($plain !== '') $text .= '    ' . $plain . "\n";
             }
             $html .= '</ul>';
+            /*
+              THE RESUME LINE (redesign stage 2): when one employer in this list
+              names 500 or more jobs in a reported signal, a reader may want to
+              apply. Job-board scans never trigger it (postings, not hires).
+            */
+            if (function_exists('alt_digest_talent_resume_line')
+                    && function_exists('alt_resume_cta_url')) {
+                list($rl_html, $rl_text) = alt_digest_talent_resume_line(
+                    $resume_candidates, alt_resume_cta_url('digest-talent'));
+                $html .= $rl_html;
+                $text .= $rl_text;
+            }
             /*
               THE CAVEAT ONLY WHEN IT IS TRUE, AND COUNTED WHEN IT IS.
 
@@ -8630,6 +8736,15 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
         'anchor' => 'Tailor your résumé',
         'sentences' => array(
             'Changing jobs, returning to work or starting out? Tailor your résumé to the role with the AskTheRecruiter résumé tool.',
+        ),
+    );
+    // FORWARD THIS (redesign slice 1, 2026-10-06). The signup form, so a
+    // colleague who was forwarded one edition can get the next. No tracking.
+    $blocks[] = array(
+        'url' => function_exists('home_url') ? home_url('/ai-layoff-tracker/') . '#alt-digest' : '',
+        'anchor' => 'sign up free',
+        'sentences' => array(
+            'Forward this email to a colleague who follows the job market; they can sign up free.',
         ),
     );
     // CAN-SPAM 15 U.S.C. 7704(a)(5): a commercial message must carry the
