@@ -1,6 +1,6 @@
 ## 2026-10-12 - Scored standing vs the top 3 rivals (issue dk-forge/asktherecruiter-sandbox#1725)
 
-**Class:** docs (benchmark snapshot; no code change)
+**Class:** novel (benchmark snapshot, docs only; no code change)
 **Guard:** none. This is a dated snapshot. Rival names and figures stay in the private local benchmark, per the house rule.
 
 Our tracker was scored 0-10 on three axes against three anonymised rivals (A, B, C). Our figures were read live on 2026-10-12: 41,359 companies all time, 68,821 entries, 82 countries, 46 states + DC, updated daily. The API, CC BY data and indexable pages are also counted: 7,721 company, 47 state, 40 country and 19 industry.
