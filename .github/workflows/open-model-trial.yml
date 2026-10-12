@@ -1,0 +1,80 @@
+name: open model trial (self-hosted CPU LLM vs gold set)
+
+# Manual-only experiment, owner-approved 2026-10-12: could a self-hosted open
+# model do the AI-causation classification (today: google/gemini-2.5-flash-lite
+# on OpenRouter) for $0? Runs llama.cpp on the box2 VPS, CPU only, under
+# nice 19 / ionice idle with a bounded thread count, and pauses while CI keeps
+# the box busy. Same prompt, system message, max_tokens, parser and quote guard
+# as production (railway/open_model_trial.py imports them from extractor.py).
+# Scored against the ai-causation-2026-08 gold set; the paid model's answers
+# are the frozen ones in that file, so this makes NO paid call and holds NO
+# secret. Production routing is unchanged whatever this reports: switching
+# needs an owner decision (docs/TECHLOG.md 2026-10-12).
+# Everything it downloads lives in the runner user's ~/.cache/open-model-trial
+# (llama.cpp release build, verified against GitHub's published digest; GGUF
+# files verified against pinned sha256). Nothing system-wide, no root.
+# Dispatch it off-peak. Results: job summary + ::notice annotations.
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: 'Space-separated model keys (qwen2.5-7b llama3.1-8b)'
+        required: false
+        default: 'qwen2.5-7b llama3.1-8b'
+      limit:
+        description: 'Gold rows per model (max 200; stratified order)'
+        required: false
+        default: '200'
+      budget_min:
+        description: 'Wall-clock minutes per model before it stops and reports'
+        required: false
+        default: '55'
+      threads:
+        description: 'CPU threads for llama.cpp (box has 12 cores and runs CI)'
+        required: false
+        default: '6'
+
+permissions: {}
+
+concurrency:
+  group: open-model-trial
+  cancel-in-progress: false
+
+jobs:
+  trial:
+    runs-on: [self-hosted, box2]
+    # 2 models x 55 min budget + 20 min pause budget each, + ~10 GB first
+    # download + model loads.
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the min lock in a venv (extractor imports openai)
+        run: |
+          python -m venv "$RUNNER_TEMP/trial-venv"
+          "$RUNNER_TEMP/trial-venv/bin/pip" install --quiet --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Gold set and paid baseline
+        run: '"$RUNNER_TEMP/trial-venv/bin/python" railway/open_model_trial.py plan'
+      - name: Install llama.cpp and models into ~/.cache (user-local)
+        env:
+          TRIAL_MODELS: ${{ inputs.models }}
+        run: |
+          # shellcheck disable=SC2086
+          nice -n 19 "$RUNNER_TEMP/trial-venv/bin/python" railway/open_model_trial.py install --models $TRIAL_MODELS
+      - name: Score each model
+        env:
+          TRIAL_MODELS: ${{ inputs.models }}
+          TRIAL_LIMIT: ${{ inputs.limit }}
+          TRIAL_BUDGET_MIN: ${{ inputs.budget_min }}
+          TRIAL_THREADS: ${{ inputs.threads }}
+        run: |
+          rc=0
+          for m in $TRIAL_MODELS; do
+            "$RUNNER_TEMP/trial-venv/bin/python" railway/open_model_trial.py run --model "$m" || rc=1
+          done
+          exit $rc
