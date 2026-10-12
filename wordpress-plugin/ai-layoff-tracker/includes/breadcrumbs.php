@@ -253,6 +253,8 @@ add_filter('render_block', 'alt_breadcrumbs_render_block', 10, 2);
  * post body once ours is on the page, so no page shows two.
  */
 function alt_breadcrumbs_content_fallback($content) {
+    // Plugin pages print their own trail (alt_breadcrumbs_template_trail).
+    if (strpos((string) $content, 'class="alt-wrap') !== false) return $content;
     if (is_admin() || is_feed() || !is_singular() || is_front_page() || alt_breadcrumbs_is_plugin_route()) return $content;
     if ((int) get_the_ID() !== (int) get_queried_object_id()) return $content;
     if (!alt_breadcrumbs_done()) {
@@ -289,3 +291,20 @@ function alt_breadcrumbs_rank_math_filter($data) {
     return alt_breadcrumbs_strip_rank_math($data, alt_breadcrumbs_is_plugin_route());
 }
 add_filter('rank_math/json_ld', 'alt_breadcrumbs_rank_math_filter', 99);
+
+/**
+ * Trail for a secondary page template (sources, methodology, ai-quotes, press,
+ * publisher tools, health, US WARN registry), inserted inside its alt-wrap.
+ * No once-per-request flag: every render carries it, so an invisible earlier
+ * pass cannot swallow the visible one.
+ */
+function alt_breadcrumbs_template_trail($file, $out) {
+    if (!function_exists('alt_secondary_pages')) return $out;
+    $files = array();
+    foreach (alt_secondary_pages() as $spec) $files[] = $spec[0];
+    if (!in_array($file, $files, true) || strpos($out, 'class="alt-wrap') === false) return $out;
+    $bc = alt_breadcrumbs_blog_html();
+    if ($bc === '') return $out;
+    alt_breadcrumbs_done(true);
+    return alt_breadcrumbs_insert($out, $bc);
+}

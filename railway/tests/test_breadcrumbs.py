@@ -144,9 +144,44 @@ class ShortcodePageFallback(unittest.TestCase):
           "<a href=\"h\">Home</a><span class=\"last\">Data Sources</span></p></nav>';}")
 
     def test_sources_page_gets_one_trail(self):
-        out = _php(self.WP + "$c = '<main class=\"alt-wrap alt-sources-page\"><h1>Data Sources</h1></main>';"
+        out = _php(self.WP + "$c = '<h2>Data Sources</h2>';"
                    "$a = alt_breadcrumbs_content_fallback($c); echo $a, '|', alt_breadcrumbs_content_fallback($c);")
         first, second = out.split("|")
-        self.assertTrue(first.startswith('<main class="alt-wrap alt-sources-page"><nav aria-label="breadcrumbs"'))
+        self.assertTrue(first.startswith('<nav aria-label="breadcrumbs"'))
         self.assertIn('aria-current="page">Data Sources', first)
         self.assertEqual(second.count("rank-math-breadcrumb\">"), 0)
+
+
+SEVEN = {
+    "press": "page-press.php", "publisher-tools": "page-publisher.php", "ai-quotes": "page-ai-quotes.php",
+    "us-warn-registry": "page-us-registry.php", "methodology": "page-methodology.php",
+    "sources": "page-sources.php", "ai-tracker-health": "page-health.php",
+}
+
+
+class SecondaryPagesPrintTheirOwnTrail(unittest.TestCase):
+    """2.20.240 relied on a the_content fallback guarded by a once-per-request
+    flag; live, an invisible earlier the_content pass claimed the flag and these
+    seven routes showed no trail. Each now carries it from alt_template()."""
+
+    def test_every_route_is_a_secondary_page_with_alt_wrap(self):
+        sc = (PLUGIN / "includes" / "shortcodes.php").read_text(encoding="utf-8")
+        self.assertIn("alt_breadcrumbs_template_trail($file, $out)", sc)
+        for slug, f in SEVEN.items():
+            self.assertIn(f"'ai-layoff-tracker/{slug}'", sc)
+            self.assertIn(f"array('{f}'", sc)
+            self.assertRegex((PLUGIN / "templates" / f).read_text(encoding="utf-8"), r'<main class="alt-wrap')
+
+    @unittest.skipUnless(shutil.which("php"), "UNKNOWN, NOT RUN: php not installed")
+    def test_trail_appears_even_after_flag_was_claimed(self):
+        sc = (PLUGIN / "includes" / "shortcodes.php").read_text(encoding="utf-8")
+        fn = re.search(r"function alt_secondary_pages\(\) \{.*?\n\}", sc, re.S).group(0)
+        rm = ("function rank_math_get_breadcrumbs(){return '<nav aria-label=\"breadcrumbs\" class=\"rank-math-breadcrumb\">"
+              "<p><a href=\"h\">Home</a><span class=\"last\">X</span></p></nav>';}")
+        for slug, f in SEVEN.items():
+            out = _php(fn + rm + "alt_breadcrumbs_done(true);"
+                       f"echo alt_breadcrumbs_template_trail('{f}', '<main class=\"alt-wrap a\"><h1>T</h1></main>');")
+            self.assertTrue(out.startswith('<main class="alt-wrap a"><nav aria-label="breadcrumbs"'), slug)
+            self.assertIn('aria-current="page"', out, slug)
+        self.assertEqual(_php(fn + rm + "echo alt_breadcrumbs_template_trail('page-tracker.php', '<main class=\"alt-wrap\"></main>');"),
+                         '<main class="alt-wrap"></main>')

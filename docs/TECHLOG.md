@@ -1,4 +1,4 @@
-## 2026-10-12 - SEO audit fixes: sitemap lastmod, clean report URLs, 155-char descriptions, brand publisher (2.20.242, seo)
+## 2026-10-12 - SEO audit fixes: sitemap lastmod, clean report URLs, 155-char descriptions, brand publisher (2.20.244, seo)
 
 **Class:** novel (live SEO audit 2026-10-12, items 2, 4, 5 and 10)
 **Guard:** `railway/tests/test_seo_sitemap_meta.py`, `railway/tests/test_edition_news_schema.py`
@@ -21,6 +21,33 @@ published/authored by the Organization "Ask The Recruiter" with a logo (was
 `datePublished` get the page's own publish date. Needs the deploy's rewrite
 flush (already per-version) for the clean paths to resolve.
 
+## 2026-10-12 - Breadcrumbs on the seven tracker sub-pages, for real (2.20.242, navigation)
+
+**Class:** novel (2.20.240 shipped, after-crawl still vis=0 on these routes)
+**Guard:** `railway/tests/test_breadcrumbs.py` (SecondaryPagesPrintTheirOwnTrail)
+
+press, publisher-tools, ai-quotes, us-warn-registry, methodology, sources and
+ai-tracker-health showed no trail live on 2.20.240. The `the_content` fallback
+was guarded by a once-per-request flag, and an earlier non-visible
+`the_content` pass claimed it, so the visible pass printed nothing.
+`alt_template()` now inserts the trail inside the page's own
+`<main class="alt-wrap">` for every page in `alt_secondary_pages()`, with no
+flag to lose; the content fallback skips content that already has an alt-wrap.
+
+## 2026-10-12 - Talent digest: language tag + English summary on non-English items (2.20.241)
+
+**Class:** novel (owner-approved 2026-10-12, presentation only)
+**Guard:** `railway/tests/test_digest_talent_language.py`
+
+The talent tracker now stores `language` (ISO 639-1, free local detector,
+NULL when not confident), `language_confidence` and `summary_language`
+(talent-intelligence-tracker PR #242, plugin 1.97.0). The digest's ranked list
+and its compact lists ("More", top 3 per category) add "in Portuguese" (or
+"language: xx" for a code it has no name for) to the row's facts, and, when the
+tracker says its stored summary is English, a line "English summary: ..."
+(capped at 240 chars). English, NULL or malformed codes print nothing, so
+rows are unchanged until the tracker's backfill/enrich has run. No translation
+call anywhere (no extra AI spend). `alt_digest_talent_language_bits`.
 ## 2026-10-12 - Breadcrumbs on every blog page, one BreadcrumbList each (2.20.240, navigation)
 
 **Class:** novel (follow-up to 2.20.237; owner: a visible trail EVERYWHERE)
