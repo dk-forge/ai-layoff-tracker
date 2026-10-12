@@ -1,3 +1,14 @@
 {
-  "editions": []
+  "editions": [
+    {
+      "date": "2026-10-12",
+      "kind": "daily",
+      "path": "2026/10/2026-10-12-daily.html",
+      "sections": [
+        "talent"
+      ],
+      "slug": "2026-10-12-daily",
+      "subject": "45 talent and employer-activity signals \u00b7 Oct 12"
+    }
+  ]
 }
