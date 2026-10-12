@@ -555,6 +555,8 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                   jobs", so it is omitted rather than printed as a measurement.
                 */
                 $facts = array();
+                list($lang_tag, $gist) = alt_digest_talent_language_bits($row);
+                if ($lang_tag !== '') $facts[] = $lang_tag;
                 $jobs = alt_digest_talent_roles_named($row);
                 /*
                   AND THE UNIT THAT NUMBER IS IN. A board reading's headcount
@@ -657,8 +659,10 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                     $shown .= ' ' . esc_html('(' . implode(', ', $facts) . ')');
                     $line .= ' (' . implode(', ', $facts) . ')';
                 }
+                if ($gist !== '') $shown .= '<br><span data-alt="gist">' . esc_html($gist) . '</span>';
                 $html .= '<li>' . $shown . '</li>';
                 $text .= '  - ' . $line . "\n";
+                if ($gist !== '') $text .= '    ' . $gist . "\n";
                 // The plain destination, never the counted one: a text reader
                 // should not be handed a machine-shaped URL to squint at.
                 if ($plain !== '') $text .= '    ' . $plain . "\n";
@@ -1045,9 +1049,54 @@ function alt_digest_talent_compact_list($rows, $from, $to, $send_id) {
         }
         $shown = esc_html($line);
         if ($href !== '') $shown = '<a href="' . esc_url($href) . '">' . $shown . '</a>';
-        if ($place !== '') { $shown .= ' ' . esc_html('(' . $place . ')'); $line .= ' (' . $place . ')'; }
+        list($lang_tag, $gist) = alt_digest_talent_language_bits($row);
+        $paren = implode(', ', array_filter(array($lang_tag, $place), 'strlen'));
+        if ($paren !== '') { $shown .= ' ' . esc_html('(' . $paren . ')'); $line .= ' (' . $paren . ')'; }
+        if ($gist !== '') $shown .= '<br><span data-alt="gist">' . esc_html($gist) . '</span>';
         $html .= '<li>' . $shown . '</li>';
         $text .= '  - ' . $line . "\n";
+        if ($gist !== '') $text .= '    ' . $gist . "\n";
     }
     return array($html . '</ul>', $text);
+}
+
+/**
+ * THE LANGUAGE TAG AND THE ENGLISH GIST, both read from the talent tracker's
+ * stored columns and never inferred here (owner-approved 2026-10-12).
+ *
+ * The comment in the ranked list above explains why this composer refused to
+ * name a language it would have had to guess. The tracker now stores one
+ * (talent-intelligence-tracker pipeline/language.py: free, local, an ISO
+ * 639-1 code that is NULL whenever its detector is not confident), so the tag
+ * prints exactly that stored code and nothing when it is absent, malformed or
+ * English. The gist is the tracker's own stored summary, printed only when
+ * the tracker says that summary is English; no translation is made here or
+ * anywhere (no extra AI spend). An unknown code is shown as the code.
+ *
+ * Returns array(tag, gist), each '' when it does not apply.
+ */
+function alt_digest_talent_language_bits($row) {
+    $row = (array) $row;
+    $code = strtolower(trim((string) ($row['language'] ?? '')));
+    if (!preg_match('/^[a-z]{2}$/', $code) || $code === 'en') return array('', '');
+    $names = array(
+        'ar' => 'Arabic', 'bn' => 'Bengali', 'cs' => 'Czech', 'da' => 'Danish',
+        'de' => 'German', 'el' => 'Greek', 'es' => 'Spanish', 'fa' => 'Persian',
+        'fr' => 'French', 'he' => 'Hebrew', 'hi' => 'Hindi', 'hy' => 'Armenian',
+        'id' => 'Indonesian', 'it' => 'Italian', 'ja' => 'Japanese',
+        'ka' => 'Georgian', 'ko' => 'Korean', 'nl' => 'Dutch', 'no' => 'Norwegian',
+        'pl' => 'Polish', 'pt' => 'Portuguese', 'ro' => 'Romanian',
+        'ru' => 'Russian', 'sr' => 'Serbian', 'sv' => 'Swedish', 'ta' => 'Tamil',
+        'th' => 'Thai', 'tr' => 'Turkish', 'uk' => 'Ukrainian', 'zh' => 'Chinese',
+    );
+    $tag = isset($names[$code]) ? ('in ' . $names[$code]) : ('language: ' . $code);
+    $gist = '';
+    $summary = trim((string) ($row['summary'] ?? ''));
+    if ($summary !== '' && strtolower((string) ($row['summary_language'] ?? '')) === 'en') {
+        if (function_exists('mb_strlen') && mb_strlen($summary) > 240) {
+            $summary = rtrim(mb_substr($summary, 0, 237)) . '...';
+        }
+        $gist = 'English summary: ' . alt_digest_plain_dashes($summary);
+    }
+    return array($tag, $gist);
 }
