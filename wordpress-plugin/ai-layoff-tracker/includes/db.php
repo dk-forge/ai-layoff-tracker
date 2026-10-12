@@ -6672,7 +6672,7 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
                 COALESCE(SUM(CASE WHEN role_categories NOT IN ('', ',unknown,') THEN job_count END),0) roles_known_jobs,
                 COUNT(DISTINCT company_key) companies,
                 COUNT(DISTINCT NULLIF(industry,'')) industries,
-                COUNT(DISTINCT NULLIF(country,'')) countries,
+                COUNT(DISTINCT CASE WHEN country NOT IN ('','Multiple countries') THEN country END) countries,
                 COUNT(DISTINCT NULLIF(state,'')) states,
                 MIN(CASE WHEN $date_col > '2000-01-01' THEN $date_col END) min_date,
                 MAX($date_col) max_date

@@ -203,14 +203,14 @@ $alt_hero_basis  = 'counted by filing date';
                one cached COUNT query. The headline jobs total is still NOT
                repeated here, for the reason above: entries, companies and
                countries are the record's shape, not a second headline. */
-            $alt_at = get_transient(alt_figure_cache_key('fresh_alltime'));
+            $alt_at = get_transient(alt_figure_cache_key('fresh_alltime_v2'));
             if (!is_array($alt_at)) {
                 global $wpdb; $alt_att = alt_db_table();
                 $alt_at = $wpdb->get_row(
                     "SELECT COUNT(*) e, COUNT(DISTINCT company_key) co,
-                            COUNT(DISTINCT NULLIF(country,'')) c
+                            COUNT(DISTINCT CASE WHEN country NOT IN ('','Multiple countries') THEN country END) c
                      FROM $alt_att WHERE superset_of=0", ARRAY_A) ?: array();
-                set_transient(alt_figure_cache_key('fresh_alltime'), $alt_at, HOUR_IN_SECONDS);
+                set_transient(alt_figure_cache_key('fresh_alltime_v2'), $alt_at, HOUR_IN_SECONDS);
             }
             $alt_yr_label = current_time('Y');
             ?>

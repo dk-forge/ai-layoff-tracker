@@ -348,7 +348,7 @@ class APublishedFigureCacheTracksTheData(unittest.TestCase):
         ("templates/page-press.php",
          ("press_year_stats", "press_sb_groups", "press_statements",
           "press_monthly_compare")),
-        ("templates/page-tracker.php", ("fresh_alltime",)),
+        ("templates/page-tracker.php", ("fresh_alltime_v2",)),
     )
 
     @unittest.skipUnless(PHP, "php is not installed; cannot execute db.php")
