@@ -1,3 +1,18 @@
+## 2026-10-12 - Talent digest: language tag + English summary on non-English items (2.20.241)
+
+**Class:** novel (owner-approved 2026-10-12, presentation only)
+**Guard:** `railway/tests/test_digest_talent_language.py`
+
+The talent tracker now stores `language` (ISO 639-1, free local detector,
+NULL when not confident), `language_confidence` and `summary_language`
+(talent-intelligence-tracker PR #242, plugin 1.97.0). The digest's ranked list
+and its compact lists ("More", top 3 per category) add "in Portuguese" (or
+"language: xx" for a code it has no name for) to the row's facts, and, when the
+tracker says its stored summary is English, a line "English summary: ..."
+(capped at 240 chars). English, NULL or malformed codes print nothing, so
+rows are unchanged until the tracker's backfill/enrich has run. No translation
+call anywhere (no extra AI spend). `alt_digest_talent_language_bits`.
+
 ## 2026-10-12 - Talent daily digest: "Who's hiring today" subject, top 5 + More, top 3 per category, notes at the bottom (2.20.239)
 
 **Class:** novel (owner-approved redesign, presentation only)

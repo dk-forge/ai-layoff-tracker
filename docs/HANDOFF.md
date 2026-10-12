@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-12, branch `claude/digest-talent-language` (PR). Reserves plugin version 2.20.241.** Talent digest language tag + English summary; see TECHLOG 2026-10-12 (2.20.241).
 - **RELEASED - Claude (agent), 2026-10-12, branch `claude/visible-breadcrumbs` (PR). Reserves plugin version 2.20.237.** Visible breadcrumbs on tracker pages and blog posts/archives; see TECHLOG 2026-10-12 (2.20.237).
 - **RELEASED - Claude (agent), 2026-10-12, branch `claude/state-warn-city-fix` (PR). Reserves plugin version 2.20.236.** State-page city list: reject a city read from inside a company-name bracket; see TECHLOG 2026-10-12 (2.20.234).
 - **RELEASED - Claude (agent), 2026-10-12, branch `claude/indexnow-on-publish` (PR). Reserves plugin version 2.20.235.** IndexNow ping on blog post publish; see TECHLOG 2026-10-12 (2.20.235).
