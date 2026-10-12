@@ -23,7 +23,7 @@ def jsonld(row, url="https://example.com/layoff-editions/weekly/2026-w39/", labe
     m = re.search(r"\nfunction alt_edition_news_jsonld\s*\(.*?\n\}", src, re.S)
     assert m, "alt_edition_news_jsonld is missing"
     code = (m.group(0) + "\n$a = json_decode($argv[1], true);"
-            "\necho json_encode(alt_edition_news_jsonld($a['row'], $a['url'], $a['label'], 'AskTheRecruiter.com', 'https://example.com/'));")
+            "\necho json_encode(alt_edition_news_jsonld($a['row'], $a['url'], $a['label'], 'Ask The Recruiter', 'https://example.com/', 'https://example.com/logo.png'));")
     p = subprocess.run(["php", "-r", code, "--", json.dumps({"row": row, "url": url, "label": label})],
                        capture_output=True, text=True, timeout=60)
     assert p.returncode == 0, p.stderr + p.stdout
@@ -39,7 +39,8 @@ class EditionNewsSchema(unittest.TestCase):
         self.assertEqual(out["dateModified"], "2026-09-28T11:30:00Z")
         self.assertIn("Week 39, 2026", out["headline"])
         self.assertEqual(out["mainEntityOfPage"], "https://example.com/layoff-editions/weekly/2026-w39/")
-        self.assertEqual(out["publisher"]["name"], "AskTheRecruiter.com")
+        self.assertEqual(out["publisher"]["name"], "Ask The Recruiter")
+        self.assertEqual(out["publisher"]["logo"]["url"], "https://example.com/logo.png")
         self.assertTrue(out["isAccessibleForFree"])
 
     def test_latest_correction_moves_date_modified(self):

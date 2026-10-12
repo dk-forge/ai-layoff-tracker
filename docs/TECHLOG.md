@@ -1,3 +1,26 @@
+## 2026-10-12 - SEO audit fixes: sitemap lastmod, clean report URLs, 155-char descriptions, brand publisher (2.20.242, seo)
+
+**Class:** novel (live SEO audit 2026-10-12, items 2, 4, 5 and 10)
+**Guard:** `railway/tests/test_seo_sitemap_meta.py`, `railway/tests/test_edition_news_schema.py`
+
+New `includes/seo-sitemap-meta.php` holds the shared pieces. #2: the company,
+facet, report and edition sitemaps now print `<lastmod>` = the latest entry
+date behind each URL (last edit, else announcement, else layoff date, never
+past today; editions use publish/correction date; hubs take the newest of
+their children), cached against `alt_data_ver`. #4: the report sitemap and
+canonical name clean paths (`/report/archive/`, `/report/2023/`,
+`/report/2024-Q2/`, `/report/2026-09/`) served by a rewrite to the same page
+(`alt_rpath` -> `$_GET`, `redirect_canonical` off for it); the bare
+`?period=`/`?view=archive` forms 301 there; `?scope=us` and weeks keep the
+query form. The audit's "trailing `&`" internal links were NOT a defect: the
+crawler cut WordPress's `&#038;` entity at the `#`; the hrefs are well formed.
+#10: company, facet and report meta descriptions are capped at 155 chars at a
+word boundary. #5: edition NewsArticle and the tracker Article nodes are
+published/authored by the Organization "Ask The Recruiter" with a logo (was
+"AskTheRecruiter.com" / the WP site title); Article nodes missing
+`datePublished` get the page's own publish date. Needs the deploy's rewrite
+flush (already per-version) for the clean paths to resolve.
+
 ## 2026-10-12 - Breadcrumbs on every blog page, one BreadcrumbList each (2.20.240, navigation)
 
 **Class:** novel (follow-up to 2.20.237; owner: a visible trail EVERYWHERE)

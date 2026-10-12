@@ -22,11 +22,17 @@ $alt_url = function ($period, $scope = null) use ($alt_report_url, $alt_us) {
     $args = array('period' => (string) $period);
     $s = $scope !== null ? $scope : ($alt_us ? 'us' : 'world');
     if ($s === 'us') $args['scope'] = 'us';
+    // Worldwide links use the clean path the sitemap and canonical name
+    // (SEO audit 2026-10-12 #4); weeks and the US cut keep the query form.
+    if ($s !== 'us' && function_exists('alt_report_clean_slug_ok') && alt_report_clean_slug_ok((string) $period)) {
+        return esc_url(alt_report_clean_url('period', (string) $period));
+    }
     return esc_url(add_query_arg($args, $alt_report_url));
 };
 $alt_arch_url = function () use ($alt_report_url, $alt_us) {
     $args = array('view' => 'archive');
     if ($alt_us) $args['scope'] = 'us';
+    if (!$alt_us && function_exists('alt_report_clean_url')) return esc_url(alt_report_clean_url('archive'));
     return esc_url(add_query_arg($args, $alt_report_url));
 };
 
@@ -42,7 +48,7 @@ if (isset($_GET['view']) && $_GET['view'] === 'archive') :
       <nav class="alt-report-tabs" aria-label="Report views">
         <div class="alt-report-tabrow">
           <span class="alt-report-tablabel">Scope</span>
-          <a class="alt-report-tab<?php echo (!$alt_us ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg(array('view'=>'archive'), $alt_report_url)); ?>">🌐 World</a>
+          <a class="alt-report-tab<?php echo (!$alt_us ? ' on' : ''); ?>" href="<?php echo esc_url(function_exists('alt_report_clean_url') ? alt_report_clean_url('archive') : add_query_arg(array('view'=>'archive'), $alt_report_url)); ?>">🌐 World</a>
           <a class="alt-report-tab<?php echo ($alt_us ? ' on' : ''); ?>" href="<?php echo esc_url(add_query_arg(array('view'=>'archive','scope'=>'us'), $alt_report_url)); ?>">🇺🇸 US only</a>
         </div>
       </nav>

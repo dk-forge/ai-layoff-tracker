@@ -914,6 +914,27 @@ function alt_edition_sitemap_urls() {
     return $urls;
 }
 
+/**
+ * url => lastmod for the editions sitemap: an edition's newest correction,
+ * else its publish date; the hub takes the newest edition's date.
+ */
+function alt_edition_sitemap_lastmods() {
+    $out = array(alt_edition_index_url() => '');
+    $all = array();
+    foreach (alt_edition_all() as $row) {
+        if (!alt_edition_indexable($row['freq'])) continue;
+        $dates = array((string) ($row['published_at'] ?? ''));
+        foreach ((array) ($row['corrections'] ?? array()) as $c) {
+            if (is_array($c)) $dates[] = (string) ($c['at'] ?? '');
+        }
+        $d = alt_sitemap_max_date($dates);
+        $out[alt_edition_url($row['freq'], $row['slug'])] = $d;
+        $all[] = $d;
+    }
+    $out[alt_edition_index_url()] = alt_sitemap_max_date($all);
+    return $out;
+}
+
 function alt_edition_sitemap_url() { return home_url('/layoff-editions-sitemap.xml'); }
 
 add_action('init', function () {
@@ -928,8 +949,8 @@ add_action('template_redirect', function () {
     header('X-Robots-Tag: noindex, follow');
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-    foreach (alt_edition_sitemap_urls() as $url) {
-        echo '  <url><loc>' . esc_url($url) . '</loc></url>' . "\n";
+    foreach (alt_edition_sitemap_lastmods() as $url => $lastmod) {
+        echo alt_sitemap_url_line($url, $lastmod);
     }
     echo '</urlset>';
     exit;
