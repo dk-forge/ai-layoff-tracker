@@ -61,6 +61,7 @@ alt_render_page_header();
 .alt-ed-wrap{padding:0 14px}}
 </style>
 <main class="alt-wrap alt-ed-wrap">
+<?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(alt_breadcrumbs_edition_trail($alt_ed, $alt_ed ? alt_edition_label($alt_ed) : '')); ?>
 <?php if ($alt_ed) :
     $alt_all = alt_edition_all();
     list($alt_prev, $alt_next) = alt_edition_neighbours($alt_ed, $alt_all);

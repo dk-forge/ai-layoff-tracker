@@ -12,6 +12,25 @@ tracker says its stored summary is English, a line "English summary: ..."
 (capped at 240 chars). English, NULL or malformed codes print nothing, so
 rows are unchanged until the tracker's backfill/enrich has run. No translation
 call anywhere (no extra AI spend). `alt_digest_talent_language_bits`.
+## 2026-10-12 - Breadcrumbs on every blog page, one BreadcrumbList each (2.20.240, navigation)
+
+**Class:** novel (follow-up to 2.20.237; owner: a visible trail EVERYWHERE)
+**Guard:** `railway/tests/test_breadcrumbs.py` (EveryPage, ShortcodePageFallback)
+
+A live crawl after 2.20.237 found no visible trail on the shortcode pages
+(sources, methodology, ai-quotes, press, publisher-tools, ai-tracker-health,
+us-warn-registry: their block template has no post-title, so the
+render_block hook never fired), the email archive (/editions/, own template),
+author archives, search and 404; two visible trails on the /students/ pages
+(a Rank Math trail pasted into the post body); and Rank Math's one-item
+"Home" BreadcrumbList beside ours on facet, company and edition routes.
+Fixes: a `the_content` fallback (priority 12, after shortcodes) puts the trail
+inside `<main class="alt-wrap">`; a last-resort hook on the `<main>` group
+block covers 404; author/search/404/other archives get a trail; one
+`alt_breadcrumbs_done()` flag makes every path print once, and a pasted Rank
+Math trail is removed from the body once ours is on the page; editions and
+single entries print and emit the same trail; `rank_math/json_ld` drops Rank
+Math's list (and the WebPage pointer) on plugin routes only.
 
 ## 2026-10-12 - Talent daily digest: "Who's hiring today" subject, top 5 + More, top 3 per category, notes at the bottom (2.20.239)
 
@@ -56,6 +75,7 @@ MUTED darkened to #454950 (>=4.5:1 upright and inverted). Old tests that
 pinned the per-number "(early, not like for like)" flag and the dateline
 basis were rewritten to the new placement. The compose harness now loads
 digest-extras.php, as the plugin does.
+
 ## 2026-10-12 - Visible breadcrumbs on tracker pages and the whole blog (2.20.237, navigation)
 
 **Class:** novel (owner request 2026-10-12)

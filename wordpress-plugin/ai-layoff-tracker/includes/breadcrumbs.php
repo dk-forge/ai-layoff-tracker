@@ -102,7 +102,65 @@ function alt_breadcrumbs_style() {
 
 /** Print a trail (templates call this right after the page header). */
 function alt_breadcrumbs_render($trail) {
-    echo alt_breadcrumbs_html($trail);
+    $html = alt_breadcrumbs_html($trail);
+    if ($html !== '') alt_breadcrumbs_done(true);
+    echo $html;
+}
+
+/** Has a visible trail been printed on this request? One flag, every path. */
+function alt_breadcrumbs_done($set = false) {
+    static $done = false;
+    if ($set) $done = true;
+    return $done;
+}
+
+/** Email archive: Blog > AI Layoff Tracker > Digest archive [> edition]. */
+function alt_breadcrumbs_edition_trail($edition = null, $label = '') {
+    $trail = array_merge(alt_breadcrumbs_root(), array(
+        array('name' => 'Digest archive', 'url' => alt_edition_index_url()),
+    ));
+    if ($edition) {
+        $trail[] = array('name' => (string) $label, 'url' => alt_edition_url($edition['freq'], $edition['slug']));
+    }
+    return $trail;
+}
+
+/** Single layoff entry: Blog > AI Layoff Tracker > Company. */
+function alt_breadcrumbs_layoff_trail($name, $url) {
+    return array_merge(alt_breadcrumbs_root(), array(array('name' => (string) $name, 'url' => (string) $url)));
+}
+
+/**
+ * Put a trail at the top of rendered content: inside our own
+ * <main class="alt-wrap ..."> when there is one (so it lines up with the
+ * page), else before everything. Pure.
+ */
+function alt_breadcrumbs_insert($content, $bc) {
+    if (preg_match('#<main\b[^>]*class="[^"]*\balt-wrap\b[^"]*"[^>]*>#', $content, $m, PREG_OFFSET_CAPTURE)) {
+        $at = $m[0][1] + strlen($m[0][0]);
+        return substr($content, 0, $at) . $bc . substr($content, $at);
+    }
+    return $bc . $content;
+}
+
+/** Remove a Rank Math trail an author pasted into a post body. Pure. */
+function alt_breadcrumbs_strip_content_trail($content) {
+    return preg_replace('#<nav\b[^>]*class="rank-math-breadcrumb"[^>]*>.*?</nav>#s', '', $content);
+}
+
+/**
+ * Rank Math adds a one-item "Home" BreadcrumbList to every virtual route, so
+ * a tracker page carried two lists that disagreed. Where we emit our own, drop
+ * Rank Math's entity and the WebPage pointer to it. Pure.
+ */
+function alt_breadcrumbs_strip_rank_math($data, $ours) {
+    if (!$ours || !is_array($data)) return $data;
+    foreach ($data as $k => $entity) {
+        if (!is_array($entity)) continue;
+        if (($entity['@type'] ?? '') === 'BreadcrumbList') { unset($data[$k]); continue; }
+        if (isset($entity['breadcrumb'])) unset($data[$k]['breadcrumb']);
+    }
+    return $data;
 }
 
 /* ------------------------------------------------------------------ */
@@ -110,7 +168,8 @@ function alt_breadcrumbs_render($trail) {
 /* ------------------------------------------------------------------ */
 
 function alt_breadcrumbs_is_plugin_route() {
-    foreach (array('alt_facet_is_request', 'alt_company_directory_is_request', 'alt_company_index_is_request') as $f) {
+    foreach (array('alt_facet_is_request', 'alt_company_directory_is_request', 'alt_company_index_is_request',
+                   'alt_edition_is_index_request', 'alt_edition_is_single_request') as $f) {
         if (function_exists($f) && $f()) return true;
     }
     return is_singular('layoffs');
@@ -142,6 +201,15 @@ function alt_breadcrumbs_blog_html() {
     } elseif (is_category() || is_tag() || is_tax()) {
         $t = get_queried_object();
         $trail[] = array('name' => $t->name, 'url' => get_term_link($t));
+    } elseif (is_author()) {
+        $a = get_queried_object();
+        $trail[] = array('name' => $a ? $a->display_name : 'Author', 'url' => $a ? get_author_posts_url($a->ID) : '');
+    } elseif (is_search()) {
+        $trail[] = array('name' => 'Search results for "' . get_search_query(false) . '"', 'url' => '');
+    } elseif (is_404()) {
+        $trail[] = array('name' => 'Page not found', 'url' => '');
+    } elseif (is_archive()) {
+        $trail[] = array('name' => wp_strip_all_tags(get_the_archive_title()), 'url' => '');
     } else {
         return '';
     }
@@ -154,16 +222,70 @@ function alt_breadcrumbs_blog_html() {
  * Once per request; never on the front page or plugin routes.
  */
 function alt_breadcrumbs_render_block($content, $block) {
-    static $done = false;
-    if ($done || is_admin() || is_front_page() || is_home() || alt_breadcrumbs_is_plugin_route()) return $content;
+    if (alt_breadcrumbs_done() || is_admin() || is_front_page() || is_home() || alt_breadcrumbs_is_plugin_route()) return $content;
     $name = $block['blockName'] ?? '';
+    $main = $name === 'core/group' && ($block['attrs']['tagName'] ?? '') === 'main';
     $want = (is_singular() && $name === 'core/post-title')
-         || ((is_category() || is_tag() || is_tax()) && $name === 'core/query-title');
+         || ((is_archive() || is_search()) && $name === 'core/query-title')
+         || $main;
     if (!$want) return $content;
     if ($name === 'core/post-title' && (int) get_the_ID() !== (int) get_queried_object_id()) return $content;
     $bc = alt_breadcrumbs_blog_html();
     if ($bc === '') return $content;
-    $done = true;
+    alt_breadcrumbs_done(true);
+    if ($main) {
+        // Last resort (404, or a template with no title block): first thing
+        // inside <main>. Inner blocks render first, so this only fires when
+        // nothing in the page printed a trail.
+        $at = strpos($content, '<main');
+        $end = $at === false ? false : strpos($content, '>', $at);
+        return $end === false ? $bc . $content : substr($content, 0, $end + 1) . $bc . substr($content, $end + 1);
+    }
     return $bc . $content;
 }
 add_filter('render_block', 'alt_breadcrumbs_render_block', 10, 2);
+
+/**
+ * Pages whose block template has no title (every shortcode page: sources,
+ * methodology, ai-quotes, press, publisher tools, health, US WARN registry):
+ * the trail goes inside the plugin's <main class="alt-wrap">, above its <h1>.
+ * Runs after do_shortcode (11). Also removes a Rank Math trail pasted into a
+ * post body once ours is on the page, so no page shows two.
+ */
+function alt_breadcrumbs_content_fallback($content) {
+    if (is_admin() || is_feed() || !is_singular() || is_front_page() || alt_breadcrumbs_is_plugin_route()) return $content;
+    if ((int) get_the_ID() !== (int) get_queried_object_id()) return $content;
+    if (!alt_breadcrumbs_done()) {
+        $bc = alt_breadcrumbs_blog_html();
+        if ($bc === '') return $content;
+        alt_breadcrumbs_done(true);
+        return alt_breadcrumbs_insert(alt_breadcrumbs_strip_content_trail($content), $bc);
+    }
+    return alt_breadcrumbs_strip_content_trail($content);
+}
+add_filter('the_content', 'alt_breadcrumbs_content_fallback', 12);
+
+/** Single entries and the email archive: JSON-LD for the trail they print. */
+function alt_breadcrumbs_head() {
+    if (is_singular('layoffs')) {
+        $id = get_queried_object_id();
+        echo alt_breadcrumbs_jsonld(alt_breadcrumbs_layoff_trail(alt_breadcrumbs_layoff_name($id), get_permalink($id)));
+    } elseif (function_exists('alt_edition_is_index_request') && alt_edition_is_index_request()) {
+        echo alt_breadcrumbs_jsonld(alt_breadcrumbs_edition_trail());
+    } elseif (function_exists('alt_edition_is_single_request') && alt_edition_is_single_request()
+              && ($ed = alt_edition_current())) {
+        echo alt_breadcrumbs_jsonld(alt_breadcrumbs_edition_trail($ed, alt_edition_label($ed)));
+    }
+}
+add_action('wp_head', 'alt_breadcrumbs_head', 21);
+
+/** Name the single-entry template prints; one place, two callers. */
+function alt_breadcrumbs_layoff_name($id) {
+    $e = function_exists('alt_entry_to_array') ? (array) alt_entry_to_array($id) : array();
+    return (string) ($e['company_name'] ?? '') !== '' ? (string) $e['company_name'] : wp_strip_all_tags(get_the_title($id));
+}
+
+function alt_breadcrumbs_rank_math_filter($data) {
+    return alt_breadcrumbs_strip_rank_math($data, alt_breadcrumbs_is_plugin_route());
+}
+add_filter('rank_math/json_ld', 'alt_breadcrumbs_rank_math_filter', 99);
