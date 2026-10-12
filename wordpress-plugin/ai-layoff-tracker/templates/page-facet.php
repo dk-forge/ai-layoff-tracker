@@ -31,7 +31,8 @@ $alt_bd_titles = array(
 ?>
 <main class="alt-wrap alt-facet-page">
     <p class="alt-eyebrow">Source-linked <?php echo esc_html($alt_meta['noun']); ?> record</p>
-    <h1><?php echo esc_html(alt_facet_heading($alt_f)); ?></h1>
+    <h1><?php echo esc_html(($alt_f['dim'] === 'state' && !empty($alt_f['warn']['notices']))
+        ? $alt_f['display'] . ' layoffs and WARN notices' : alt_facet_heading($alt_f)); ?></h1>
 
     <p class="alt-facet-summary">
         This page lists every layoff entry we hold
@@ -77,6 +78,9 @@ $alt_bd_titles = array(
     <?php if (($alt_f['dim'] === 'industry' || $alt_f['dim'] === 'country') && function_exists('alt_labour_context_stat')) {
         echo alt_labour_context_stat($alt_f['dim'], $alt_f['display']);
     } ?>
+
+    <?php // This year's WARN notices, US states only (includes/state-warn.php).
+          if ($alt_f['dim'] === 'state') include ALT_PLUGIN_DIR . 'templates/partials/state-warn.php'; ?>
 
     <?php $alt_timeline = $alt_f['timeline'] ?? array();
           include ALT_PLUGIN_DIR . 'templates/partials/timeline.php'; ?>
