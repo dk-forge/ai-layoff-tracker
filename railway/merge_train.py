@@ -1172,7 +1172,16 @@ def _try_rebase(client: GitHubClient, cfg: Config, pr: dict, rep: Report, *,
     push_token = os.environ.get("MERGE_TRAIN_PUSH_TOKEN", "").strip()
 
     _run(["git", "fetch", "origin", "main", branch], cwd=root, check=False)
-    _run(["git", "checkout", "-B", f"mt/{branch}", f"origin/{branch}"], cwd=root)
+    # --force: an escalation earlier in THIS run (notify() -> ops_notify ->
+    # alert_state.save()) writes railway/alert_state.json in place with no
+    # git, by that file's own design, outside of ci-alert.yml/alert-drain.yml.
+    # That leaves this checkout a dirty tracked file it never intends to
+    # carry forward, and plain `git checkout -B` refuses to switch onto a
+    # branch whose committed copy differs from it (observed on PR #441 after
+    # #439 was escalated in the same run: "Your local changes to the
+    # following files would be overwritten by checkout: alert_state.json").
+    _run(["git", "checkout", "--force", "-B", f"mt/{branch}", f"origin/{branch}"],
+         cwd=root)
     before_files = set(_changed_files(root, "origin/main", "HEAD"))
 
     proc = _run(["git", "rebase", "origin/main"], cwd=root, check=False)
