@@ -1,3 +1,22 @@
+## 2026-09-29 - CI: setup-php pinned to a SHA; FTPS certificate verification NOT turned on (probe failed)
+
+**Class:** novel (hardening from the 2026-09-05 security list)
+**Guard:** `railway/tests/test_workflow_yaml_parses.py` and the other workflow tests; the manual `ftp-target-probe.yml` step "Does the deploy host's FTPS certificate verify?" is the live proof.
+
+`deploy-plugin.yml` pinned `shivammathur/setup-php@v2` by tag in the job that
+holds the FTP secret; it is now `@f3e473d116dcccaddc5834248c87452386958240`
+(v2.37.2, what `v2` resolved to on 2026-09-29). The plan was also to make the
+four lftp blocks verify the certificate against
+`/etc/ssl/certs/ca-certificates.crt`. The new probe step ran on the branch on
+2026-10-12 (run 38235035710) and FAILED (verification or login; the step
+hides lftp output so it does not print the host), so that half was reverted
+before merge: the deploy still says `ssl:verify-certificate no`, and would
+have broken every deploy otherwise. Open item: find the name on the
+ChemiCloud FTPS certificate, point `FTP_HOST` at it, re-run the probe, and
+flip the deploy only on VERIFIED. The probe step is `continue-on-error` so its
+FAILED does not skip the older diagnostics. Skipped: the per-IP limiters
+reading REMOTE_ADDR behind Cloudflare (needs a live check first).
+
 ## 2026-10-11 - Trust tiers: verified / reported / measured (2.20.232)
 
 **Class:** novel (owner goal: paid-worthy trust labels; tier names
