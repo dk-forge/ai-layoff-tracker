@@ -1,6 +1,6 @@
 ## 2026-10-12 - Breadcrumbs on every blog page, one BreadcrumbList each (2.20.240, navigation)
 
-**Class:** follow-up to 2.20.237 (owner: a visible trail EVERYWHERE)
+**Class:** novel (follow-up to 2.20.237; owner: a visible trail EVERYWHERE)
 **Guard:** `railway/tests/test_breadcrumbs.py` (EveryPage, ShortcodePageFallback)
 
 A live crawl after 2.20.237 found no visible trail on the shortcode pages
