@@ -211,6 +211,26 @@ class EveryWriterStamps(unittest.TestCase):
             self.assertIn(stmt, DB, "unstamped bulk re-scoring statement: %s" % stmt)
 
 
+class AMergeLeavesATraceOnTheKeeper(unittest.TestCase):
+    """TECHLOG 2026-08-30 / 2026-09-16: a dedupe merge hard-deleted the
+    duplicate and wrote nothing to the keeper, so /changed-rows returned zero
+    rows around a logged 3-row merge. The keeper absorbs the duplicate's
+    evidence, so it is the row that changed and it must carry the stamp."""
+
+    def test_the_keeper_is_stamped_when_a_duplicate_is_merged_into_it(self):
+        body = function_body(DB, "alt_api_merge_events")
+        self.assertRegex(
+            body,
+            r"\$wpdb->update\(\s*\$table,\s*array\(\s*'updated_at'\s*=>\s*alt_db_touch_utc\(\)\s*\),"
+            r"\s*array\(\s*'id'\s*=>\s*\$keeper_id\s*\)",
+            "a merge that does not restamp the keeper is invisible to /changed-rows")
+
+    def test_the_stamp_comes_after_the_duplicate_is_deleted(self):
+        body = function_body(DB, "alt_api_merge_events")
+        self.assertLess(body.index("$wpdb->delete($table, array('id' => $duplicate_id));"),
+                        body.index("'updated_at' => alt_db_touch_utc()"))
+
+
 class TheEndpointIsGatedLikeEveryOtherOperationalOne(unittest.TestCase):
     def test_registered_get_only_behind_the_shared_api_key_gate(self):
         m = re.search(

@@ -1,0 +1,55 @@
+name: AI exposure archive
+
+# Monthly: the joined AI-exposure tables (occupations, metros, metro
+# occupations) as sorted CSVs per OEWS release into data/archive/ai_exposure/
+# plus MANIFEST.json (study commit, versions, licences, hashes). Same approach
+# as qwi-archive.yml. railway/ai_exposure_archive.py refuses a partial pull and
+# never replaces a file with a much thinner one. Keyless. Commits to main only
+# when the data changed.
+on:
+  schedule:
+    - cron: '27 7 4 * *'   # the 4th, after the import
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-exposure-archive
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: Fetch and write the archive
+        run: python3 railway/ai_exposure_archive.py --out data/archive/ai_exposure
+      - name: Commit when changed
+        run: |
+          set -uo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          git add data/archive/ai_exposure/
+          if git diff --staged --quiet; then
+            echo "::notice title=ai-exposure-archive::unchanged, nothing committed"
+            exit 0
+          fi
+          git commit -q -m "AI exposure archive $(date -u +%F) [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "::notice title=ai-exposure-archive::committed $(git rev-parse --short HEAD)"
+              exit 0
+            fi
+            git fetch -q origin main
+            git rebase -q origin/main || { git rebase --abort; echo "::error::rebase failed"; exit 1; }
+            sleep $((attempt * 5))
+          done
+          echo "::error title=ai-exposure-archive::push failed after 5 attempts"
+          exit 1

@@ -43,6 +43,26 @@ change that ships the connector, tests, workflow and public methodology.
 - [OpenDART API](https://opendart.fss.or.kr/)
 - [Companies House API](https://developer.company-information.service.gov.uk/)
 
+## Reference (macro-context) sources
+
+Official statistics stored through `/reference-ingest/<source>` and served at
+`/reference/<source>`. They are labelled context, never layoff events, so the
+admission rule above (which governs sources that can create events) does not
+apply; each is listed on the public Sources page and watched by
+`reference-freshness.yml`.
+
+| Source id | Name | Publisher | Covers | Update (ours) | Licence / attribution | Official link |
+|---|---|---|---|---|---|---|
+| `bls_jolts_cps` | BLS JOLTS | U.S. Bureau of Labor Statistics | Layoffs and discharges, openings, quits by industry and region | weekly (`bls-import.yml`) | Public domain; cite BLS | https://www.bls.gov/jlt/ |
+| `bls_jolts_cps` | BLS CPS | U.S. Bureau of Labor Statistics | Unemployment rate by sex, age, race, education | weekly (`bls-import.yml`) | Public domain; cite BLS | https://www.bls.gov/cps/ |
+| `oecd_unemployment` | OECD unemployment | OECD | Monthly unemployment rate by sex and age, every member | weekly (`oecd-import.yml`) | CC BY 4.0, attribution required | https://data-explorer.oecd.org/ |
+| `fred_labour` | FRED labour series | Federal Reserve Bank of St. Louis | UNRATE, LNS14027662, PAYEMS, USINFO, JTSLDL, ICSA, CCSA (10 years) | weekly (`fred-import.yml`, `FRED_API_KEY`) | Public domain (BLS/ETA via FRED); cite FRED | https://fred.stlouisfed.org/ |
+| `census_qwi` | Census QWI | U.S. Census Bureau (LEHD) | Hires, separations, end-of-quarter employment by state x NAICS sector / age / sex / education / race / ethnicity (8 quarters) | weekly (`qwi-import.yml`, `CENSUS_API_KEY`) | Public domain; "uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau" | https://lehd.ces.census.gov/data/ |
+| `ai_exposure` | GPTs are GPTs (AI exposure scores) | Eloundou, Manning, Mishkin, Rock; data published by OpenAI on GitHub | Occupation exposure (`dv_rating_beta`, GPT-4 rated) per O*NET-SOC code, averaged to 6-digit SOC; read at pinned commit `0471612f` | monthly (`ai-exposure-import.yml`) | MIT; cite "GPTs are GPTs: Labor market impact potential of LLMs", Science 384(6702), 2024 | https://github.com/openai/GPTs-are-GPTs |
+| `ai_exposure` | O*NET occupation data | USDOL/ETA (O*NET Resource Center) | Occupation titles (`Occupation Data.txt`, current release, 31.0 at first pull) | monthly (`ai-exposure-import.yml`) | CC BY 4.0; "includes information from the O*NET Database by USDOL/ETA, used under the CC BY 4.0 license" | https://www.onetcenter.org/database.html |
+| `ai_exposure` | BLS OEWS | U.S. Bureau of Labor Statistics | Employment and median annual wage per detailed occupation, national and the 50 largest MSAs (annual, May) | monthly (`ai-exposure-import.yml`) | Public domain; cite BLS | https://www.bls.gov/oes/ |
+| `ai_exposure` | BLS Employment Projections | U.S. Bureau of Labor Statistics | 10-year projected percent change per occupation (occupation.xlsx Table 1.2) | monthly (`ai-exposure-import.yml`) | Public domain; cite BLS | https://www.bls.gov/emp/ |
+
 ## Credential-access boundary
 
 On 2026-07-17, the manual, read-only GitHub Actions workflow

@@ -27,6 +27,17 @@ merge. Read "two merges claimed one plugin version" below before answering one.
 | Workflow | Trigger | Purpose / inputs |
 |---|---|---|
 | deploy-plugin | push to main | FTPS deploy of the plugin |
+| bls-import | weekly Wed 14:25 UTC + manual | BLS JOLTS + CPS reference data -> `/reference-ingest/bls_jolts_cps` (3 keyless API requests). Macro context only |
+| reference-freshness | daily 10:43 UTC + manual | Red + one issue when a stored reference dataset (`/reference/<source>`) is past its release lag. See `railway/reference_freshness.py` SPECS |
+| oecd-import | weekly Thu 14:35 UTC + manual | OECD monthly unemployment by sex/age -> `/reference-ingest/oecd_unemployment` (1 keyless SDMX request). Macro context only, CC BY 4.0 |
+| oecd-archive | monthly 14th + manual | Full-history OECD unemployment CSV committed to `data/archive/oecd/` |
+| fred-import | weekly Fri 14:45 UTC + manual | FRED labour series -> `/reference-ingest/fred_labour` (7 requests, `FRED_API_KEY`). Macro context only |
+| fred-archive | monthly 15th + manual | Full-history FRED series CSV committed to `data/archive/fred/` |
+| qwi-import | weekly Tue 14:55 UTC + manual | Census QWI hires/separations by state x sector/age/sex/education/race -> `/reference-ingest/census_qwi` (6 x 51 requests, `CENSUS_API_KEY`). Macro context only |
+| qwi-archive | monthly 16th + manual | Each pulled QWI quarter as `data/archive/qwi/<YYYY-Qn>.csv` |
+| ai-exposure-import | monthly 3rd 15:17 UTC + manual | AI exposure by occupation and metro -> `/reference-ingest/ai_exposure` (GPTs-are-GPTs scores, O*NET titles, BLS OEWS, BLS Employment Projections; keyless). Context only, shown by `[alt_ai_exposure]` on the Sources page |
+| ai-exposure-archive | monthly 4th + manual | Joined exposure tables as CSVs per OEWS release in `data/archive/ai_exposure/` |
+| bls-archive | monthly 12th + manual | Full-history BLS JOLTS + CPS flat files as a Release asset `bls-archive-YYYY-MM` |
 | version-collision | push to main + every PR | Fails the SECOND merge that claims a plugin version. See "two merges claimed one plugin version" |
 | warn-import | daily 15:00 UTC + manual | WARN sweep. Inputs: states (`all` or `CA,NY`), min_employees, start, limit, **purge** (needs states=all, refuses if scrape <5K) |
 | gdelt-backfill | manual | Worldwide news for a date range (costs OpenRouter credits) |

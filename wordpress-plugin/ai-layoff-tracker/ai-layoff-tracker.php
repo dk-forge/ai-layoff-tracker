@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.218
+ * Version:           2.20.232
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.218');
+define('ALT_VERSION', '2.20.232');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -41,6 +41,12 @@ $alt_restore_merged = ALT_PLUGIN_DIR . 'includes/restore-merged.php';
 if (is_readable($alt_restore_merged)) {
     require_once $alt_restore_merged;
 }
+// Trust tiers (2.20.232): verified / reported / measured. Guarded like every
+// new include; db.php calls into it only behind function_exists.
+$alt_trust_tiers = ALT_PLUGIN_DIR . 'includes/trust-tiers.php';
+if (is_readable($alt_trust_tiers)) {
+    require_once $alt_trust_tiers;
+}
 // Reviewer-declared superset membership (2.20.205). GUARDED with is_readable
 // like every new include: FTPS uploads one file at a time. db.php calls into it
 // only behind function_exists, so a half-landed deploy reconciles as before.
@@ -57,6 +63,19 @@ require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
 require_once ALT_PLUGIN_DIR . 'includes/contact.php';
 require_once ALT_PLUGIN_DIR . 'includes/htaccess.php';
+// Subscriber email redesign helpers (2026-10-06). Guarded like every NEW
+// include: an FTP deploy can land this file first, and every caller checks
+// function_exists(), so a missing helper drops a line, never the plugin.
+$alt_digest_extras = ALT_PLUGIN_DIR . 'includes/digest-extras.php';
+if (is_readable($alt_digest_extras)) {
+    require_once $alt_digest_extras;
+}
+// Subscriber email redesign stage 2 helpers (2026-10-06). Guarded like every
+// NEW include; every caller checks function_exists().
+$alt_digest_sections = ALT_PLUGIN_DIR . 'includes/digest-sections.php';
+if (is_readable($alt_digest_sections)) {
+    require_once $alt_digest_sections;
+}
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
@@ -103,6 +122,30 @@ if (is_readable($alt_edition_schema)) {
 $alt_company_index = ALT_PLUGIN_DIR . 'includes/company-index.php';
 if (is_readable($alt_company_index)) {
     require_once $alt_company_index;
+}
+// Reference data (2.20.223): official statistics stored as labelled macro
+// context (/reference/<source>). NEW file, GUARDED with is_readable for the
+// FTP-deploy race described above; nothing else calls into it.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/reference-data.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/reference-data.php';
+}
+// Labour-market context (2.20.225): [alt_labour_context] on the Sources page
+// and the exact-match stat block on facet pages. NEW file, GUARDED the same
+// way; callers check function_exists.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/labour-context.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/labour-context.php';
+}
+// FRED trend + Census QWI panels and the early-warning view (2.20.227), drawn
+// inside [alt_labour_context]. NEW files, GUARDED; callers check function_exists.
+foreach (array('labour-trends.php', 'early-warning.php') as $alt_lc_file) {
+    if (is_readable(ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file)) {
+        require_once ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file;
+    }
+}
+// AI exposure by job and city (2.20.231): [alt_ai_exposure] at the end of the
+// Sources page. NEW file, GUARDED; callers check function_exists.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/ai-exposure.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/ai-exposure.php';
 }
 // Growth modules (2.20.210): monthly report timing + press summary, the
 // admin-only press list, the author box. NEW files, so GUARDED with
@@ -176,6 +219,13 @@ if (is_readable($alt_seo_diagnostics)) {
 // "articles keep the old type", never to a white screen. Nothing outside the
 // file calls into it - it wires itself to wp_enqueue_scripts - so there is no
 // stub accessor to declare here.
+// Featured image shown twice on blog posts (2026-10-05): render-time strip of
+// the in-content duplicate + keyed cleanup route. GUARDED with is_readable like
+// every NEW include (the deploy can land this file first, 2.19.20).
+$alt_blog_dup_images = ALT_PLUGIN_DIR . 'includes/blog-dup-images.php';
+if (is_readable($alt_blog_dup_images)) {
+    require_once $alt_blog_dup_images;
+}
 $alt_blog_typography = ALT_PLUGIN_DIR . 'includes/blog-typography.php';
 if (is_readable($alt_blog_typography)) {
     require_once $alt_blog_typography;
@@ -1368,7 +1418,7 @@ function alt_page_needs_assets() {
         'alt_tracker', 'alt_stats_bar', 'alt_dashboard',
         'alt_ai_tracker', 'alt_tracker_health', 'alt_publisher_tools', 'alt_quarterly_report', 'alt_company_history', 'alt_export_buttons',
         'alt_contact', 'alt_press_media', 'alt_sources', 'alt_report', 'alt_ai_quotes', 'alt_methodology',
-        'alt_us_registry',
+        'alt_us_registry', 'alt_labour_context', 'alt_ai_exposure',
     );
     foreach ($shortcodes as $shortcode) {
         if (has_shortcode($post->post_content, $shortcode)) return true;
@@ -1558,6 +1608,16 @@ function alt_enqueue_assets() {
         // document.readyState rather than only listening for the event.
         array('in_footer' => true, 'strategy' => 'defer')
     );
+
+    // Labour-market context charts: only on the pages that render the section.
+    if ($alt_page_content && (has_shortcode($alt_page_content, 'alt_sources') || has_shortcode($alt_page_content, 'alt_labour_context'))) {
+        wp_enqueue_script('alt-labour-context-js', ALT_PLUGIN_URL . 'assets/labour-context.js', array('chartjs'),
+            $alt_asset_ver('assets/labour-context.js'), array('in_footer' => true, 'strategy' => 'defer'));
+    }
+    if ($alt_page_content && (has_shortcode($alt_page_content, 'alt_sources') || has_shortcode($alt_page_content, 'alt_ai_exposure'))) {
+        wp_enqueue_script('alt-ai-exposure-js', ALT_PLUGIN_URL . 'assets/ai-exposure.js', array(),
+            $alt_asset_ver('assets/ai-exposure.js'), array('in_footer' => true, 'strategy' => 'defer'));
+    }
 
     // Pass data to JS
     wp_localize_script('alt-js', 'altData', array(

@@ -154,15 +154,24 @@ class TheLedgerLineIsTheDurableCopy(_LedgerSandbox):
 
 
 class HarvestParsing(_LedgerSandbox):
+    # The JSON payload's "date" is what parse_ledger_lines/_merge_ledger_entries
+    # actually read (the line's own leading timestamp is unparsed decoration —
+    # see parse_ledger_lines). It must stay within LEDGER_KEEP_DAYS of "now" or
+    # _merge_ledger_entries trims it on every call and the idempotency check
+    # below breaks with no code change: a hardcoded "2026-08-02" aged past the
+    # 60-day cutoff on 2026-10-02 and reddened `tests` on main for a day nobody
+    # touched this file. Derive it from "now" so it can never go stale again.
+    _LOG_DATE = (datetime.datetime.now(datetime.timezone.utc)
+                 - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     LOG = (
-        "2026-08-02T14:55:36.1Z ##[group]Run python dedupe_llm.py\n"
-        "2026-08-02T14:55:36.2Z 21326 entries, 179 candidate clusters\n"
-        "2026-08-02T14:55:36.3Z SPEND_LEDGER_V1 "
-        '{"job": "dedupe-llm", "date": "2026-08-02", "cost_usd": 0.0231, '
+        _LOG_DATE + "T14:55:36.1Z ##[group]Run python dedupe_llm.py\n"
+        + _LOG_DATE + "T14:55:36.2Z 21326 entries, 179 candidate clusters\n"
+        + _LOG_DATE + "T14:55:36.3Z SPEND_LEDGER_V1 "
+        '{"job": "dedupe-llm", "date": "' + _LOG_DATE + '", "cost_usd": 0.0231, '
         '"calls": 60, "prompt_tokens": 1, "completion_tokens": 1, '
         '"items": 60, "stored": null, "changed": 13, "run_id": "1", "attempt": "1"}\n'
-        "2026-08-02T14:55:37.0Z SPEND_LEDGER_V1 {not json at all\n"
-        "2026-08-02T14:55:38.0Z SPEND_LEDGER_V1 {\"date\": \"2026-08-02\"}\n"
+        + _LOG_DATE + "T14:55:37.0Z SPEND_LEDGER_V1 {not json at all\n"
+        + _LOG_DATE + 'T14:55:38.0Z SPEND_LEDGER_V1 {"date": "' + _LOG_DATE + '"}\n'
     )
 
     def test_marker_lines_parse_through_the_timestamp_prefix(self):
@@ -173,6 +182,23 @@ class HarvestParsing(_LedgerSandbox):
     def test_merge_is_idempotent_across_reharvests(self):
         ledger = spend._load_ledger()
         entries = spend.parse_ledger_lines(self.LOG)
+        self.assertEqual(spend._merge_ledger_entries(ledger, entries), 1)
+        self.assertEqual(spend._merge_ledger_entries(ledger, entries), 0)
+        self.assertEqual(len(ledger["entries"]), 1)
+
+    def test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff(self):
+        """2026-10-02: HarvestParsing.LOG hardcoded "date": "2026-08-02". The
+        day that date turned 61 days old it fell outside LEDGER_KEEP_DAYS, so
+        _merge_ledger_entries trimmed it on every call and the "merge the same
+        entries twice -> 0 new" check above started failing on main with zero
+        code change, just because the clock moved. Pin the general case: an
+        entry dated exactly LEDGER_KEEP_DAYS old (still just inside the
+        window) must survive a merge and a re-merge must add nothing."""
+        edge_date = (datetime.datetime.now(datetime.timezone.utc)
+                     - datetime.timedelta(days=spend.LEDGER_KEEP_DAYS)
+                     ).strftime("%Y-%m-%d")
+        ledger = spend._load_ledger()
+        entries = [{"job": "dedupe-llm", "date": edge_date, "cost_usd": 0.01}]
         self.assertEqual(spend._merge_ledger_entries(ledger, entries), 1)
         self.assertEqual(spend._merge_ledger_entries(ledger, entries), 0)
         self.assertEqual(len(ledger["entries"]), 1)

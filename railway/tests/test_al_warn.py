@@ -20,11 +20,17 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-for _m in ("requests", "pdfplumber"):
-    if _m not in sys.modules:
-        _st = types.ModuleType(_m)
-        _st.RequestException = Exception
-        sys.modules[_m] = _st
+# `requests` goes through the suite's one installer (tests/_requests_stub.py):
+# a hand-rolled partial stub here claimed the slot whenever this module was the
+# first in its group to touch `requests`, and test_archive_backfill then failed
+# with "Session does not have the attribute 'get'" (2026-10-05, group reshuffle).
+from tests import _requests_stub  # noqa: E402
+
+_requests_stub.install()
+if "pdfplumber" not in sys.modules:
+    _st = types.ModuleType("pdfplumber")
+    _st.RequestException = Exception
+    sys.modules["pdfplumber"] = _st
 
 from sources.warn import ALL_STATES
 from sources.warn_new_states import NEW_CUSTOM_STATES, _al_name

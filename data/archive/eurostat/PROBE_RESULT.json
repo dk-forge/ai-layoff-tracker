@@ -1,0 +1,58 @@
+{
+ "source": "eurostat_ons_oecd",
+ "frequency": "monthly/quarterly",
+ "parts": {
+  "eurostat": {
+   "http": 200,
+   "latest": "2026-08",
+   "stale_days": 35,
+   "lfs_by_nace_http": 200,
+   "licence": "CC BY 4.0 (Eurostat reuse policy)"
+  },
+  "ons": {
+   "http": 200,
+   "latest": "2026 JUN",
+   "stale_days": 97,
+   "latest_value_thousands": "114",
+   "dataset_api_http": 200,
+   "licence": "Open Government Licence v3 (attribution)"
+  },
+  "oecd": {
+   "http": 200,
+   "latest": "2026-08",
+   "stale_days": 35,
+   "rows": 4,
+   "licence": "CC BY 4.0 (OECD, since 2024)"
+  }
+ },
+ "reachable": {
+  "eurostat": true,
+  "ons": true,
+  "oecd": true
+ },
+ "demographics": "Eurostat/OECD: sex, age (+education in LFS); ONS: redundancies by sex/age/industry (LFS)",
+ "geo": "Eurostat EU27+EEA (NUTS regions, NACE); ONS UK (+regions); OECD 38 members",
+ "match": {
+  "eurostat": {
+   "events": 1826,
+   "industry_pct": 84.6,
+   "region_pct": 7.3,
+   "industry_and_region_pct": 7.0
+  },
+  "ons": {
+   "events": 1826,
+   "industry_pct": 84.6,
+   "region_pct": 1.0,
+   "industry_and_region_pct": 1.0
+  },
+  "oecd": {
+   "events": 1826,
+   "industry_pct": 84.6,
+   "region_pct": 91.8,
+   "industry_and_region_pct": 77.1
+  }
+ },
+ "full_pull_estimate": "selected tables: ~10-50 MB total; <1 MB/month",
+ "tracker": "alt",
+ "snapshot_bytes": 113680
+}

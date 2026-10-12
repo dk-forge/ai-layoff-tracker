@@ -362,7 +362,180 @@
       "rules": 6,
       "unknown": 0,
       "unmatched": 34
+    },
+    {
+      "candidates": 32,
+      "causes": {
+        "not_wired": 28
+      },
+      "date": "2026-10-01",
+      "dropped": 0,
+      "independent_recall_pct": 12.5,
+      "matched": 4,
+      "method": "m5",
+      "recall_high_pct": 28.1,
+      "recall_low_pct": 5.0,
+      "rules": 3,
+      "unknown": 4,
+      "unmatched": 28
+    },
+    {
+      "candidates": 118,
+      "causes": {
+        "not_wired": 112,
+        "vocabulary_gap": 6
+      },
+      "date": "2026-10-02",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 3.2,
+      "recall_low_pct": 0.0,
+      "rules": 2,
+      "unknown": 2,
+      "unmatched": 118
+    },
+    {
+      "candidates": 38,
+      "causes": {
+        "not_wired": 34,
+        "vocabulary_gap": 4
+      },
+      "date": "2026-10-03",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 9.2,
+      "recall_low_pct": 0.0,
+      "rules": 9,
+      "unknown": 2,
+      "unmatched": 38
+    },
+    {
+      "candidates": 0,
+      "causes": {},
+      "date": "2026-10-04",
+      "dropped": 0,
+      "independent_recall_pct": null,
+      "matched": 0,
+      "method": "m4",
+      "recall_high_pct": null,
+      "recall_low_pct": null,
+      "rules": 0,
+      "unknown": 0,
+      "unmatched": 0
+    },
+    {
+      "candidates": 7,
+      "causes": {
+        "not_wired": 7
+      },
+      "date": "2026-10-05",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 35.4,
+      "recall_low_pct": 0.0,
+      "rules": 0,
+      "unknown": 0,
+      "unmatched": 7
+    },
+    {
+      "candidates": 17,
+      "causes": {
+        "not_wired": 16,
+        "unclassified": 1
+      },
+      "date": "2026-10-06",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 18.4,
+      "recall_low_pct": 0.0,
+      "rules": 1,
+      "unknown": 0,
+      "unmatched": 17
+    },
+    {
+      "date": "2026-10-07",
+      "method": "m4",
+      "state": "unknown"
+    },
+    {
+      "candidates": 19,
+      "causes": {
+        "not_wired": 13,
+        "unclassified": 3,
+        "vocabulary_gap": 1
+      },
+      "date": "2026-10-08",
+      "dropped": 0,
+      "independent_recall_pct": 10.5,
+      "matched": 2,
+      "method": "m5",
+      "recall_high_pct": 31.4,
+      "recall_low_pct": 2.9,
+      "rules": 0,
+      "unknown": 7,
+      "unmatched": 17
+    },
+    {
+      "candidates": 15,
+      "causes": {
+        "not_wired": 5,
+        "unclassified": 1,
+        "vocabulary_gap": 7
+      },
+      "date": "2026-10-09",
+      "dropped": 0,
+      "independent_recall_pct": 13.3,
+      "matched": 2,
+      "method": "m5",
+      "recall_high_pct": 37.9,
+      "recall_low_pct": 3.7,
+      "rules": 2,
+      "unknown": 5,
+      "unmatched": 13
+    },
+    {
+      "candidates": 30,
+      "causes": {
+        "not_wired": 18,
+        "vocabulary_gap": 9
+      },
+      "date": "2026-10-10",
+      "dropped": 0,
+      "independent_recall_pct": 10.0,
+      "matched": 3,
+      "method": "m5",
+      "recall_high_pct": 25.6,
+      "recall_low_pct": 3.5,
+      "rules": 6,
+      "unknown": 0,
+      "unmatched": 27
+    },
+    {
+      "candidates": 4,
+      "causes": {
+        "not_wired": 2,
+        "unclassified": 1,
+        "vocabulary_gap": 1
+      },
+      "date": "2026-10-11",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 49.0,
+      "recall_low_pct": 0.0,
+      "rules": 1,
+      "unknown": 0,
+      "unmatched": 4
     }
   ],
-  "quiet_runs": 1
+  "quiet_runs": 0
 }
