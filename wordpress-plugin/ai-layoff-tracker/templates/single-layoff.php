@@ -25,6 +25,7 @@ $cite = sprintf(
 );
 ?>
 <main class="alt-wrap alt-single">
+    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(array_merge(alt_breadcrumbs_root(), array(array('name' => (string) ($e['company_name'] ?? get_the_title($id)), 'url' => get_permalink($id))))); ?>
     <a class="alt-back" href="<?php echo esc_url($tracker); ?>">← All layoffs</a>
 
     <h1 class="alt-single-title">

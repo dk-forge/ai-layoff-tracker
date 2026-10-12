@@ -668,17 +668,9 @@ add_action('wp_head', 'alt_facet_head_fallback', 1);
 function alt_facet_breadcrumbs() {
     $data = alt_facet_current();
     if (!$data) return;
-    $dims = alt_facet_dimensions();
-    echo '<script type="application/ld+json">' . wp_json_encode(array(
-        '@context' => 'https://schema.org',
-        '@type'    => 'BreadcrumbList',
-        'itemListElement' => array(
-            array('@type' => 'ListItem', 'position' => 1, 'name' => 'AskTheRecruiter', 'item' => home_url('/')),
-            array('@type' => 'ListItem', 'position' => 2, 'name' => 'AI Layoff Tracker', 'item' => home_url('/ai-layoff-tracker/')),
-            array('@type' => 'ListItem', 'position' => 3, 'name' => $dims[$data['dim']]['crumb'], 'item' => $data['url']),
-            array('@type' => 'ListItem', 'position' => 4, 'name' => alt_facet_heading($data), 'item' => $data['url']),
-        ),
-    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
+    if (!function_exists('alt_breadcrumbs_facet_trail')) return;
+    // Same trail the page prints visibly (includes/breadcrumbs.php).
+    echo alt_breadcrumbs_jsonld(alt_breadcrumbs_facet_trail($data, alt_facet_heading($data)));
 }
 add_action('wp_head', 'alt_facet_breadcrumbs', 21);
 

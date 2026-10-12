@@ -485,21 +485,14 @@ add_action('wp_head', 'alt_company_directory_dataset_schema', 22);
  * meets the two-event threshold at read time. Cached against the data
  * version so admissions and merges refresh the list.
  */
-// Google breadcrumbs for company pages: Blog > AI Layoff Tracker > {Company}.
+// Google breadcrumbs for company pages: Blog > AI Layoff Tracker > Companies > {Company}.
 // Emitted only for directory requests; the trail mirrors the real link path.
 function alt_company_directory_breadcrumbs() {
     $data = alt_company_directory_current();
     if (!$data) return;
-    $crumbs = array(
-        '@context' => 'https://schema.org',
-        '@type'    => 'BreadcrumbList',
-        'itemListElement' => array(
-            array('@type' => 'ListItem', 'position' => 1, 'name' => 'AskTheRecruiter', 'item' => home_url('/')),
-            array('@type' => 'ListItem', 'position' => 2, 'name' => 'AI Layoff Tracker', 'item' => home_url('/ai-layoff-tracker/')),
-            array('@type' => 'ListItem', 'position' => 3, 'name' => $data['company']['display_name'] . ' layoffs', 'item' => $data['url']),
-        ),
-    );
-    echo '<script type="application/ld+json">' . wp_json_encode($crumbs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
+    if (!function_exists('alt_breadcrumbs_company_trail')) return;
+    // Same trail the page prints visibly (includes/breadcrumbs.php).
+    echo alt_breadcrumbs_jsonld(alt_breadcrumbs_company_trail($data['company']['display_name'] . ' layoffs', $data['url']));
 }
 add_action('wp_head', 'alt_company_directory_breadcrumbs', 21);
 
