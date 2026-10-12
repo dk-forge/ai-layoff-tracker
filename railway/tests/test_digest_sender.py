@@ -947,7 +947,11 @@ class TheThirdList(unittest.TestCase):
         offered = set(re.findall(r"'(\w+)'\s*=>\s*array\('consent'", lists))
         self.assertEqual(offered, {"layoff", "talent", "articles"})
         for name in sorted(offered):
-            self.assertIn(f"function alt_digest_compose_{name}(", self.sub,
+            # The talent composer lives in digest-talent.php since 2026-10-12.
+            talent = os.path.join(PLUGIN, "includes", "digest-talent.php")
+            with open(talent, encoding="utf-8") as fh:
+                both = self.sub + fh.read()
+            self.assertIn(f"function alt_digest_compose_{name}(", both,
                           f"the {name} consent box has no composer behind it")
 
     def test_the_relay_composes_all_three(self):

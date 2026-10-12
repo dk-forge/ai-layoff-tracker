@@ -91,7 +91,8 @@ class RegionColours(unittest.TestCase):
 class Wiring(unittest.TestCase):
     def test_loaded_guarded_and_used_guarded(self):
         self.assertIn("includes/digest-sections.php", read(MAIN))
-        sub = read(SUBSCRIBE)
+        # The talent composer was extracted to digest-talent.php (2026-10-12).
+        sub = read(SUBSCRIBE) + read(SUBSCRIBE.replace("subscribe.php", "digest-talent.php"))
         for fn in ("alt_digest_top_n", "alt_digest_talent_resume_line"):
             self.assertIn(f"function_exists('{fn}')", sub)
         self.assertIn("<h3>Top countries</h3>", sub)

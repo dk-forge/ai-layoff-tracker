@@ -1,3 +1,24 @@
+## 2026-10-12 - Talent daily digest: "Who's hiring today" subject, top 5 + More, top 3 per category, notes at the bottom (2.20.239)
+
+**Class:** novel (owner-approved redesign, presentation only)
+**Guard:** `railway/tests/test_digest_talent_redesign.py`
+
+First commit extracts `alt_digest_compose_talent` into
+`includes/digest-talent.php` (subscribe.php require_once's it, so every loader
+still gets it). Then: the daily subject metric is
+`Who's hiring today · N funding rounds, M leadership moves` from the measured
+category counts (`alt_digest_talent_daily_metric`; an UNKNOWN category drops
+its clause, both unknown keeps the old metric); the ranked list is
+"Top hiring today" on a daily, 5 rows by roles named with ties broken toward
+US/UK/EU/English-speaking markets on the stored ISO2 country
+(`alt_digest_audience_order`), the next 10 under "More"; each of Leadership
+moves / Funding rounds / Pay and benefits lists its top 3 named items from a
+category-filtered /query; "How to read these numbers" becomes "Notes" just
+above "Cite this". NOT done: a language tag and English gist on non-English
+headlines. The talent table stores no language and no English headline
+(`headline`, `summary` only), and this file already refuses to infer a
+language from a headline; it needs a stored field in the sibling repo first.
+
 ## 2026-10-12 - Weekly digest: short subject, plain hero, one comparison line, caveats once (2.20.238)
 
 **Class:** novel (owner feedback: presentation/copy only, same data)

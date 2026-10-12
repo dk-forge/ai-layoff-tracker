@@ -220,3 +220,58 @@ function alt_digest_week_strip($weeks) {
     $text = "\nLast 8 weeks (verified job cuts by week starting)\n" . $line . "\n";
     return array($html, $text);
 }
+
+/**
+ * TALENT DAILY SUBJECT (owner-approved 2026-10-12):
+ *     Who's hiring today · 10 funding rounds, 14 leadership moves
+ * Counts are the category totals the composer measured; a null (an UNKNOWN
+ * category) drops its clause and both null gives '' so the caller keeps its
+ * old metric. Never a zero standing in for a failed call.
+ */
+function alt_digest_talent_daily_metric($funding, $leadership) {
+    $parts = array();
+    if ($funding !== null) {
+        $parts[] = alt_digest_fmt((int) $funding) . ((int) $funding === 1 ? ' funding round' : ' funding rounds');
+    }
+    if ($leadership !== null) {
+        $parts[] = alt_digest_fmt((int) $leadership) . ((int) $leadership === 1 ? ' leadership move' : ' leadership moves');
+    }
+    if (!$parts) return '';
+    return "Who's hiring today \xc2\xb7 " . implode(', ', $parts);
+}
+
+/**
+ * AUDIENCE RELEVANCE, used ONLY to break ties (never to drop a row). There is
+ * no stored reader-priority list, so the owner default (2026-10-12) applies:
+ * US, UK, the EU and the other main English-speaking markets first. Reads the
+ * stored ISO2 `country`; no language or place is inferred.
+ */
+function alt_digest_audience_rank($country) {
+    $c = strtoupper(trim((string) $country));
+    $first = array('US', 'GB', 'UK', 'IE', 'CA', 'AU', 'NZ',
+        'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
+        'HU', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI',
+        'ES', 'SE');
+    return in_array($c, $first, true) ? 0 : 1;
+}
+
+/**
+ * Stable re-order of an already ranked list: within a run of equal $key
+ * values (roles named), audience-relevant rows move ahead. Order between
+ * different key values is untouched.
+ */
+function alt_digest_audience_order($rows, $key_fn) {
+    $rows = array_values((array) $rows);
+    $keyed = array();
+    foreach ($rows as $i => $r) {
+        $r = (array) $r;
+        $keyed[] = array((int) call_user_func($key_fn, $r),
+                         alt_digest_audience_rank($r['country'] ?? ''), $i, $rows[$i]);
+    }
+    usort($keyed, function ($a, $b) {
+        if ($a[0] !== $b[0]) return $b[0] - $a[0];
+        if ($a[1] !== $b[1]) return $a[1] - $b[1];
+        return $a[2] - $b[2];
+    });
+    return array_map(function ($e) { return $e[3]; }, $keyed);
+}
