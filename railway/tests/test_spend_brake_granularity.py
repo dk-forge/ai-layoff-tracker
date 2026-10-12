@@ -190,7 +190,10 @@ class EveryPaidCallSiteUsesIt(unittest.TestCase):
     to exercise."""
 
     # spend.py DEFINES the metered path; the tests exercise the meter directly.
-    EXEMPT = {"spend.py"}
+    # open_model_trial.py talks only to a llama-server it starts on 127.0.0.1
+    # (no key, no charge; pinned by test_open_model_trial.py), so there is
+    # nothing to meter.
+    EXEMPT = {"spend.py", "open_model_trial.py"}
 
     def _paid_sources(self):
         for path in sorted(RAILWAY.rglob("*.py")):

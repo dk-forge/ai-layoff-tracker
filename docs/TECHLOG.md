@@ -1,3 +1,27 @@
+## 2026-10-12 - Open-model trial: self-hosted CPU LLM vs the AI-causation gold set (dispatch-only)
+
+**Class:** novel (owner-approved experiment: cut paid tracker classification spend)
+**Guard:** `railway/tests/test_open_model_trial.py` - unparseable answers count as wrong, the gold set loads with truth and the frozen paid answer, the stratified order keeps positives in a truncated run, the workflow is dispatch-only with no secrets on `[self-hosted, box2]`, the only model endpoint is loopback, GGUF files are sha256-pinned.
+
+`open-model-trial.yml` + `railway/open_model_trial.py` run llama.cpp (release
+build, verified against GitHub's digest, unpacked into the runner user's
+`~/.cache/open-model-trial`, no root) on the box2 VPS: Qwen2.5-7B-Instruct and
+Llama-3.1-8B-Instruct, both Q4_K_M (~4.7/4.9 GB; mature small instruct models
+that follow strict-JSON prompts and fit 12 CPU cores). The prompt, system
+message, max_tokens, parser, verbatim-quote guard and `ai_explicit` rule are
+imported from `extractor.py`, so the candidates do the production task. Truth
+is the ai-causation-2026-08 gold set (200 rows, 166 by labeller agreement, 34
+owner-adjudicated); the paid model's answers are the frozen ones in that file
+(baseline: gemini-2.5-flash-lite 91.0% accuracy, AI-class F1 0.73), so the
+trial makes no paid call. CPU manners: `nice 19`, `ionice -c3`, 6 threads, a
+pause whenever the rest of the box's load is above 6, a per-model time budget.
+`open_model_trial.py` is exempted from the `metered_call` source sweep because
+it only talks to the loopback server it starts (pinned by its test).
+
+**Decision: production routing is UNCHANGED.** `OPENROUTER_MODEL` stays as it
+is until the owner reads the trial numbers and approves a switch. A switch would
+be its own change, with its own guard.
+
 ## 2026-10-12 - Scored standing vs the top 3 rivals (issue dk-forge/asktherecruiter-sandbox#1725)
 
 **Class:** novel (benchmark snapshot, docs only; no code change)
