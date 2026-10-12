@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.234
+ * Version:           2.20.235
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.234');
+define('ALT_VERSION', '2.20.235');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -560,11 +560,17 @@ function alt_indexnow_urls() {
 function alt_indexnow_ping($force = false) {
     if (!$force && get_transient('alt_indexnow_sent')) return false;
     set_transient('alt_indexnow_sent', 1, DAY_IN_SECONDS);
+    alt_indexnow_submit_urls(alt_indexnow_urls(), 'alt_indexnow_last');
+    return true;
+}
+
+/** One non-blocking IndexNow submission; outcome recorded in $log_option. */
+function alt_indexnow_submit_urls(array $urls, $log_option) {
     $body = array(
         'host'        => wp_parse_url(home_url('/'), PHP_URL_HOST),
         'key'         => alt_indexnow_key(),
         'keyLocation' => alt_indexnow_key_url(),
-        'urlList'     => array_values(alt_indexnow_urls()),
+        'urlList'     => array_values($urls),
     );
     $res = wp_remote_post('https://api.indexnow.org/IndexNow', array(
         'timeout'  => 5,
@@ -572,13 +578,26 @@ function alt_indexnow_ping($force = false) {
         'headers'  => array('Content-Type' => 'application/json; charset=utf-8'),
         'body'     => wp_json_encode($body),
     ));
-    update_option('alt_indexnow_last', array(
+    update_option($log_option, array(
         'at'    => time(),
         'urls'  => count($body['urlList']),
         'error' => is_wp_error($res) ? $res->get_error_message() : '',
     ), false);
-    return true;
 }
+
+/**
+ * A blog post's FIRST publish submits that one permalink (2.20.235). Updates
+ * to an already-published post do not re-submit (the protocol asks for real
+ * changes, not every save); password-protected posts are never submitted.
+ */
+function alt_indexnow_on_publish($new, $old, $post) {
+    if ($new !== 'publish' || $old === 'publish') return;
+    if (!$post || $post->post_type !== 'post' || $post->post_password !== '') return;
+    $url = get_permalink($post);
+    if (!$url || strpos($url, home_url('/')) !== 0) return;   // key scope is /blog/
+    alt_indexnow_submit_urls(array($url), 'alt_indexnow_last_post');
+}
+add_action('transition_post_status', 'alt_indexnow_on_publish', 10, 3);
 
 /** New data landed -> tell the engines (throttled to once a day). */
 function alt_indexnow_on_write() { alt_indexnow_ping(); }
