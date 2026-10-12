@@ -190,9 +190,13 @@ def layoff_with_singular_remainders():
     # test; six industries against a top three leaves three, and the sentence
     # would correctly read "3 more sit below" and test nothing. The cut moved,
     # so the fixture moves with it and the assertion is unchanged.
+    # SIX SINCE 2026-10-06: the printed list is a top FIVE again (redesign
+    # stage 2), so six industries leave the remainder of exactly one. The
+    # total is unchanged (8), so the unrecorded line is unchanged too.
     data["layoff"]["top_industries"] = [
-        _tuple("Retail & E-commerce", 5, 5), _tuple("Healthcare & Pharma", 1, 1),
+        _tuple("Retail & E-commerce", 3, 3), _tuple("Healthcare & Pharma", 1, 1),
         _tuple("Logistics & Transport", 1, 1), _tuple("Technology", 1, 1),
+        _tuple("Energy", 1, 1), _tuple("Financial Services", 1, 1),
     ]
     return data
 

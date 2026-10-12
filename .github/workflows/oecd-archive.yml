@@ -1,0 +1,54 @@
+name: OECD unemployment archive
+
+# Monthly full-history snapshot of OECD DF_IALFS_UNE_M (unemployment rate by
+# sex and age, every member) into data/archive/oecd/ as a sorted compact CSV
+# plus MANIFEST.json (a few MB; git stores each refresh as a small delta).
+# railway/oecd_archive.py refuses anything over 40 MB or a big shrink. CC BY
+# 4.0, attribution in the manifest. Commits to main only when the data
+# changed. Large sources go to a Release instead (bls-archive.yml).
+on:
+  schedule:
+    - cron: '19 7 14 * *'   # the 14th, after the OECD monthly release
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: oecd-archive
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Fetch full history
+        run: python3 railway/oecd_archive.py --out data/archive/oecd
+      - name: Commit when changed
+        run: |
+          set -uo pipefail
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          git add data/archive/oecd/unemployment_monthly.csv data/archive/oecd/MANIFEST.json
+          if git diff --staged --quiet; then
+            echo "::notice title=oecd-archive::unchanged, nothing committed"
+            exit 0
+          fi
+          git commit -q -m "OECD unemployment archive $(date -u +%F) [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              echo "::notice title=oecd-archive::committed $(git rev-parse --short HEAD)"
+              exit 0
+            fi
+            git fetch -q origin main
+            git rebase -q origin/main || { git rebase --abort; echo "::error::rebase failed"; exit 1; }
+            sleep $((attempt * 5))
+          done
+          echo "::error title=oecd-archive::push failed after 5 attempts"
+          exit 1

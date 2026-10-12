@@ -1,0 +1,32 @@
+{
+ "source": "fred",
+ "licence": "FRED terms: cite; underlying BLS/DOL series public domain, some third-party series copyrighted",
+ "frequency": "weekly/monthly",
+ "key_secret": false,
+ "http": [
+  200,
+  200,
+  200,
+  200
+ ],
+ "reachable": true,
+ "latest": {
+  "JTSLDL": "2026-08-01",
+  "ICSA": "2026-09-26",
+  "UNRATE": "2026-09-01",
+  "LNS14000002": "2026-09-01"
+ },
+ "stale_days": 9,
+ "demographics": "only via mirrored CPS series (sex/age/race/education unemployment)",
+ "geo": "US national/state/county/MSA mirrors; few international",
+ "match": {
+  "events": 1826,
+  "industry_pct": 84.6,
+  "region_pct": 76.0,
+  "industry_and_region_pct": 64.0
+ },
+ "note": "keyless fredgraph CSV works for small pulls; production should use api.stlouisfed.org with a free FRED_API_KEY",
+ "full_pull_estimate": "per-series CSVs, <5 MB for ~200 series; negligible growth",
+ "tracker": "alt",
+ "snapshot_bytes": 89536
+}

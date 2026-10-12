@@ -163,3 +163,34 @@ class AdaptiveCap(unittest.TestCase):
         s = self.snap()
         self.assertIsNone(s["cap_effective"])
         self.assertIn("adaptive cap not live yet", sw.summary([s], []))
+
+
+class AnnotationLineTest(unittest.TestCase):
+    """One `::notice` line per run: the API can read annotations, not logs."""
+
+    KEYS = ["subscribers", "confirmations_24h", "welcome_sent", "cap",
+            "welcome_skipped_over_cap", "brevo_sent_24h", "brevo_limit"]
+
+    def _fields(self, line):
+        self.assertTrue(line.startswith("::notice title=subscriber-watch::"), line)
+        body = line.split("::", 2)[2]
+        return dict(kv.split("=", 1) for kv in body.split(" "))
+
+    def test_counts_with_welcome_counter(self):
+        h = [sw.parse(payload(total=100), "2026-09-26"),
+             sw.parse(payload(total=103, welcome=12, skipped=2, cap=40, digest=50,
+                              day="2026-09-27"), "2026-09-27")]
+        f = self._fields(sw.annotation_line(h))
+        self.assertEqual(list(f), self.KEYS)
+        self.assertEqual(f, {"subscribers": "103", "confirmations_24h": "3",
+                             "welcome_sent": "12", "cap": "40",
+                             "welcome_skipped_over_cap": "2",
+                             "brevo_sent_24h": "62", "brevo_limit": "300"})
+
+    def test_unknown_not_zero_and_no_pii(self):
+        line = sw.annotation_line([sw.parse(payload(), "2026-09-01")])
+        f = self._fields(line)
+        self.assertEqual(f["welcome_sent"], "UNKNOWN")
+        self.assertEqual(f["brevo_sent_24h"], "UNKNOWN")
+        self.assertNotIn("@", line)
+        self.assertNotIn("\n", line)

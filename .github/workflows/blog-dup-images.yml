@@ -1,0 +1,25 @@
+name: Blog duplicate featured image cleanup
+
+# Lists (dry_run=true, the default) or removes (dry_run=false) the in-content
+# copy of a post's featured image. Only posts whose content holds an image that
+# IS the featured image are listed/touched. See includes/blog-dup-images.php.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List only, change nothing'
+        type: boolean
+        default: true
+
+jobs:
+  run:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Scan / clean
+        env:
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: python3 railway/blog_dup_images.py

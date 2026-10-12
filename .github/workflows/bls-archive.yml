@@ -1,0 +1,46 @@
+name: BLS full-history archive
+
+# Monthly snapshot of the BLS JOLTS + CPS flat files (full history, ~150 MB):
+# far too big for git, so it is attached gzipped to a GitHub Release
+# `bls-archive-YYYY-MM` and nothing is committed. Same idea as
+# depth-source-snapshot.yml, with a Release asset instead of a branch because
+# of size. Public domain data (cite BLS). GitHub-hosted: no secrets beyond the
+# workflow token, no host contact.
+on:
+  schedule:
+    - cron: '11 7 12 * *'   # the 12th: after the monthly JOLTS + CPS releases
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the release
+
+concurrency:
+  group: bls-archive
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Download JOLTS + CPS flat files
+        run: python3 railway/bls_archive.py --out bls-archive
+      - name: Publish as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="bls-archive-$(date -u +%Y-%m)"
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" bls-archive/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$tag" bls-archive/* -R "$GITHUB_REPOSITORY" \
+              --title "BLS JOLTS + CPS archive $(date -u +%Y-%m)" --latest=false \
+              --notes "Full-history BLS flat files (gzip), see MANIFEST.json. Source: U.S. Bureau of Labor Statistics. Public domain."
+          fi
+          echo "::notice title=bls-archive::release $tag"

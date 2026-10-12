@@ -187,6 +187,54 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://www.bls.gov/lau/" target="_blank" rel="noopener">BLS LAUS &#8599;</a></td>
       </tr>
       <tr>
+        <td><b>BLS JOLTS &amp; CPS</b></td><td>United States, by industry, region and worker group</td>
+        <td>Official monthly survey estimates from the Bureau of Labor Statistics. JOLTS gives layoffs and discharges, job openings and quits by industry and region. CPS gives the unemployment rate by sex, age, race and education. Collected weekly as a separate context metric, never added to our layoff counts. Source: U.S. Bureau of Labor Statistics. Public domain.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.bls.gov/jlt/" target="_blank" rel="noopener">BLS JOLTS &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>OECD unemployment</b></td><td>OECD member countries, by sex and age</td>
+        <td>The official monthly unemployment rate for each OECD member country, by sex and age group. Collected weekly as a separate context metric, never added to our layoff counts. Source: OECD, Infra-annual labour statistics, licensed under CC BY 4.0.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://data-explorer.oecd.org/" target="_blank" rel="noopener">OECD Data Explorer &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>FRED labour series</b></td><td>United States, national</td>
+        <td>National trend lines from the Federal Reserve Bank of St. Louis (FRED). They cover the unemployment rate, overall and for bachelor's degree holders. They also cover total and information-sector payrolls, JOLTS layoffs and discharges, and weekly jobless claims. Collected weekly, about ten years of history, as a separate context metric, never added to our layoff counts. Source: FRED, Federal Reserve Bank of St. Louis; underlying data from the U.S. Bureau of Labor Statistics and the Employment and Training Administration. Public domain.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://fred.stlouisfed.org/" target="_blank" rel="noopener">FRED &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>Census QWI</b></td><td>US states, by industry sector, age, sex, education, race and ethnicity</td>
+        <td>Quarterly hires, separations (from all causes, not only layoffs) and employment from the U.S. Census Bureau's Quarterly Workforce Indicators, built from state unemployment-insurance records. Latest eight quarters, collected weekly, as a separate context metric, never added to our layoff counts. Source: U.S. Census Bureau, LEHD Quarterly Workforce Indicators. Public domain. This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://lehd.ces.census.gov/data/" target="_blank" rel="noopener">Census LEHD QWI &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>GPTs are GPTs (AI exposure scores)</b></td><td>United States, by occupation</td>
+        <td>The share of each occupation's tasks that a large language model system could speed up. From Eloundou, Manning, Mishkin and Rock, "GPTs are GPTs: Labor market impact potential of LLMs" (Science, 2024). We use the study's GPT-4 rated measure, averaged to the federal occupation code, read from a fixed version of its published data. Exposure means tasks an AI system could speed up, not jobs lost. Shown in "AI exposure by job and city" below; never added to our layoff counts. MIT licence.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://github.com/openai/GPTs-are-GPTs" target="_blank" rel="noopener">GPTs-are-GPTs data &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>O*NET occupation data</b></td><td>United States, by occupation</td>
+        <td>Occupation titles for the exposure section, from the O*NET Database by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA), used under the CC BY 4.0 licence. O*NET is a trademark of USDOL/ETA. Collected monthly.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.onetcenter.org/database.html" target="_blank" rel="noopener">O*NET Database &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>BLS OEWS</b></td><td>United States, national and the 50 largest metro areas, by occupation</td>
+        <td>Employment and median annual wage for each occupation, nationally and per metro area, from the U.S. Bureau of Labor Statistics Occupational Employment and Wage Statistics (annual, May reference month). Collected monthly for the exposure section. Public domain.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.bls.gov/oes/" target="_blank" rel="noopener">BLS OEWS &#8599;</a></td>
+      </tr>
+      <tr>
+        <td><b>BLS Employment Projections</b></td><td>United States, by occupation</td>
+        <td>Projected 10-year change in employment for each occupation, from every cause, from the U.S. Bureau of Labor Statistics Employment Projections (Table 1.2, released yearly). Collected monthly for the exposure section. Public domain.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.bls.gov/emp/" target="_blank" rel="noopener">BLS Employment Projections &#8599;</a></td>
+      </tr>
+      <tr>
         <td>EDINET / OpenDART / CVM</td><td>Japan · South Korea · Brazil</td>
         <td>Official corporate-filing systems. We <em>retired</em> them as discovery probes after months live yielded zero layoff rows, because these filings essentially never announce layoffs. Worldwide news covers Japan, South Korea and Brazil instead. Client kept, re-runnable on demand.</td>
         <td>Retired probe</td>
@@ -335,6 +383,8 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
   <p class="alt-muted">Why we name them at all: a reader checking our numbers should be able to find the other serious measurements quickly, including ones that may disagree with us. We link them because they are good, not because they agree.</p>
 
   <p class="alt-muted" style="margin-top:8px">Tip: click any column header to sort a table.</p>
+<?php if (function_exists('alt_shortcode_labour_context')) echo alt_shortcode_labour_context(); ?>
+<?php if (function_exists('alt_shortcode_ai_exposure')) echo alt_shortcode_ai_exposure(); ?>
 </main>
 <style>
   .alt-sources-page { font-size: 15.5px; line-height: 1.6; }

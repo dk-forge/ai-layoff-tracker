@@ -702,10 +702,16 @@ class TheVariantMechanism(unittest.TestCase):
                          "mail client gets to decide what it means")
 
     def test_the_headline_figure_is_larger_than_the_prose_around_it(self):
+        # 2026-10-05: the approved design (TRACKER-EMAIL-QUALITY) raised the
+        # lead number from 34px to 40px and gave it the section's accent, so
+        # the style that reaches the message is the accented one.
+        import digest_design
         html = message().html
-        stat = layout.VARIANT_STYLES[("p", "stat")]
+        stat = digest_design.accent_styles(
+            digest_design.RED, layout.FONT, layout.INK,
+            layout.MUTED)[("p", "stat")]
         self.assertIn(stat, html, "the stat line did not get the stat style")
-        self.assertIn("font-size:34px", stat)
+        self.assertIn("font-size:40px", stat)
         self.assertIn("font-size:15px", layout.TAG_STYLES["p"])
 
     def test_an_unknown_variant_falls_back_to_the_plain_tag_style(self):
