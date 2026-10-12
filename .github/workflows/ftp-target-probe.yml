@@ -23,6 +23,32 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install lftp
         run: command -v lftp >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq lftp)
+      # 2026-09-29: probe for turning on FTPS certificate verification in the
+      # deploy. It FAILED on 2026-10-12 (run 38235035710), so the deploy still
+      # says `ssl:verify-certificate no`. Flip the deploy only after this says
+      # VERIFIED (fix FTP_HOST to the name on the certificate first).
+      - name: Does the deploy host's FTPS certificate verify?
+        # Informational: a FAILED here must not skip the diagnostics below.
+        continue-on-error: true
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          if timeout 60 lftp -c "
+            set cmd:fail-exit true;
+            set ssl:verify-certificate yes; set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
+            set ftp:ssl-force true; set ftp:ssl-protect-data true;
+            set net:max-retries 1; set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php;
+          " >/dev/null 2>&1; then
+            echo "TLS: VERIFIED against the system CA bundle"
+          else
+            echo "TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
+            exit 1
+          fi
       - name: Ask cPanel what the FTP accounts and document roots actually are
         env:
           CPANEL_URL: ${{ secrets.CHEMICLOUD_CPANELURL }}
