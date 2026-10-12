@@ -57,6 +57,12 @@ class CityFromNotice(unittest.TestCase):
         self.assertEqual(_call("alt_state_warn_city", ex), "")
         self.assertEqual(_call("alt_state_warn_city", "Some news text about a city."), "")
 
+    def test_in_inside_a_company_parenthesis_is_not_a_city(self):
+        # Live on California at 2.20.234: CA notices carry no city, and
+        # "Los Angeles)" was read out of a company name like this one.
+        ex = "Layoff Permanent at Acme (Store in Los Angeles). 61 employees affected, effective 2026-05-01. Filed under the CA WARN Act."
+        self.assertEqual(_call("alt_state_warn_city", ex), "")
+
     def test_company_with_in_in_its_name(self):
         ex = "Layoff at Built In Inc in Chicago. 9 employees affected, effective 2026-01-02. Filed under the IL WARN Act."
         self.assertEqual(_call("alt_state_warn_city", ex), "Chicago")
