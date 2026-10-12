@@ -1,3 +1,27 @@
+## 2026-10-12 - Scored standing vs the top 3 rivals (issue dk-forge/asktherecruiter-sandbox#1725)
+
+**Class:** novel (benchmark snapshot, docs only; no code change)
+**Guard:** none. This is a dated snapshot. Rival names and figures stay in the private local benchmark, per the house rule.
+
+Our tracker was scored 0-10 on three axes against three anonymised rivals (A, B, C). Our figures were read live on 2026-10-12: 41,359 companies all time, 68,821 entries, 82 countries, 46 states + DC, updated daily. The API, CC BY data and indexable pages are also counted: 7,721 company, 47 state, 40 country and 19 industry.
+
+| Axis | Our score | Our rank (of 4) |
+|---|---|---|
+| Coverage | 9 | 1 |
+| Depth (fields, filters, API, open data, alerts) | 9 | 1 |
+| Search (web-search proxy; no Search Console) | 1 | 4 |
+| Overall, plain mean | 6.3 | tied 1 |
+| Overall, search weighted 2x | 5.0 | tied 3 |
+
+On search we were absent from the top results for all 10 test queries, including our own brand query. Treat that as an indexing problem first.
+
+Gaps, ranked by impact x effort:
+1. Diagnose indexation: robots, noindex, canonicals, sitemap submission, IndexNow (High/S).
+2. A monthly AI-layoffs report released the same day as the main US monthly job-cuts report, pitched to reporters (High/S).
+3. Strengthen the state pages for "[state] warn notices 2026": a matching title/H1, a 2026 table and a latest-notices list (High/M).
+4. Embeddable charts and a dataset DOI, for backlinks and citations (High/S).
+5. Our own domain or subdomain instead of /blog/, with redirects, after gap 1 (High/M).
+
 ## 2026-10-12 - Chart canvases get an accessible name (2.20.233, SEO route B item 5)
 
 **Class:** novel (issue #446 item 5, accessibility/SEO)
