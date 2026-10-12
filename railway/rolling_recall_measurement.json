@@ -3,7 +3,7 @@
     "sec_item_205_us",
     "state_warn_official_totals"
   ],
-  "measured_at": "2026-10-01T16:58:17Z",
+  "measured_at": "2026-10-08T16:41:17Z",
   "note": "Rolling recall against denominators the tracker does not construct. Written by rolling-recall.yml. Committed on purpose: the data being measured changes without a commit. NEVER hand-edit a figure here \u2014 re-run the module. Recall is a BAND, not a point, because no editor adjudicated these matches; see the module docstring.",
   "slices": {
     "sec_item_205_us": {

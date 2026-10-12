@@ -57,6 +57,11 @@ railway/
   cron.py                    2×daily ingest (EDGAR + Google News + NewsAPI + GDELT 36h) + source health; fails loud if a cycle posts 0 with failures
   sources/google_news.py     FREE keyless layoff-headline discovery (Google News RSS) — leads the news sweep (NewsAPI is effectively dead)
   sources/claims.py          Keyless FRED puller (national ICSA/CCSA + 50 states) for the /claims macro backdrop; claims_import.py POSTs it daily
+  sources/bls_jolts_cps.py   Keyless BLS v1 puller (JOLTS by industry/region, CPS by sex/age/race/education); bls_import.py POSTs it weekly to /reference-ingest/bls_jolts_cps, served at /reference/bls_jolts_cps (macro context)
+  sources/oecd_unemployment.py OECD SDMX puller (DF_IALFS_UNE_M, unemployment rate by sex/age, all members); oecd_import.py POSTs it weekly to /reference-ingest/oecd_unemployment (macro context, CC BY 4.0)
+  sources/fred_labour.py FRED API puller (UNRATE, PAYEMS, ICSA, CCSA, JTSLDL, USINFO, LNS14027662; FRED_API_KEY); fred_import.py POSTs it weekly to /reference-ingest/fred_labour (macro context; flat rows filterable by ?series_id=&category=)
+  sources/census_qwi.py Census QWI puller (hires/separations/EmpEnd by state x sector, age, sex, education, race, ethnicity; CENSUS_API_KEY); qwi_import.py POSTs it weekly to /reference-ingest/census_qwi (macro context; flat rows filterable by ?state=&industry=&sex=...)
+  sources/ai_exposure.py GPTs-are-GPTs exposure (MIT, pinned commit) + O*NET titles + BLS OEWS (national, top-50 metros) + BLS Employment Projections joined on SOC; ai_exposure_import.py POSTs it monthly to /reference-ingest/ai_exposure; [alt_ai_exposure] (includes/ai-exposure.php) shows it on the Sources page
   extractor.py               Extraction prompt + post-processing; source-quote guard and AI causal taxonomy.
                              MODEL=google/gemini-2.5-flash-lite, CLASSIFY_MODEL=google/gemini-2.5-flash-lite (pinned separately, does NOT follow MODEL; moved off deepseek/deepseek-chat 2026-09-03 - compliance, not a benchmark)
   source_registry.py         Market status, discovery vocabulary and explicit live-vs-candidate source coverage
@@ -206,6 +211,7 @@ always see what to pivot to. `alt_data_ver` (wp option) salts the micro-cache; e
 | Param | Meaning |
 |---|---|
 | `company_key` | **Exact** normalized employer identity, comma-joined. `company` is a LIKE substring match and is the wrong tool for a per-employer view: `company=Meta` also returns Metabolix and Metaswitch. |
+| `tier` | Trust tier, comma-joined: `verified` (official filing) or `reported` (news/press). Derived from source_type + verification_level by `includes/trust-tiers.php`; see docs/VERIFICATION_TIERS.md. Rows also carry `tier`; `/aggregate?include=tiers` and `/facets` `tiers` expose it. |
 | `sourced=1` | Row is the CANONICAL row of a merged event AND that event still retains at least one reachable source URL. Anything else is a duplicate view of an event, or an event we can no longer point a reader at. |
 | `exclude_supersets=1` | Drops rows already folded into a more complete row for the same event by `/reconcile-supersets`. `/aggregate` and the report pages have always appended `AND superset_of = 0` by hand; this names it so a caller can ask for count-once semantics instead of re-deriving them. |
 

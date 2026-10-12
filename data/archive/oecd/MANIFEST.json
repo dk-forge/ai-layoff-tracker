@@ -1,0 +1,14 @@
+{
+ "source": "oecd_unemployment",
+ "dataflow": "OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M,1.0",
+ "query": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M,1.0/.UNE_LF_M.._Z.Y..._Z.M?format=csvfile",
+ "file": "unemployment_monthly.csv",
+ "rows": 162516,
+ "bytes": 4199420,
+ "sha256": "971a17d4b9c912f2bf0580cb6c9d80561df7a347e6da8303d4bf7816566a7ffb",
+ "first_month": "1953-01",
+ "latest_month": "2026-08",
+ "countries": 43,
+ "licence": "CC BY 4.0",
+ "attribution": "Source: OECD (2026), Infra-annual labour statistics, monthly unemployment rates (DF_IALFS_UNE_M), OECD Data Explorer. Licensed under CC BY 4.0."
+}

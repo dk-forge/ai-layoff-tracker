@@ -527,9 +527,11 @@ class NoFixedProseAroundVariableData(unittest.TestCase):
         # and still computed from the WHOLE block rather than the printed slice,
         # so its arithmetic is identical: it is asserted here in its new home.
         notes = text.split("\nData notes\n")[1].split("\nAbout this snapshot")[0]
-        self.assertIn("These lines cover 8,658 of the 13,710 verified job cuts",
+        # Top FIVE industries since 2026-10-06 (redesign stage 2), so the
+        # printed lines cover more and less sits below.
+        self.assertIn("These lines cover 10,519 of the 13,710 verified job cuts",
                       notes)
-        self.assertIn("3,985 more sit below the lines shown", notes)
+        self.assertIn("2,124 more sit below the lines shown", notes)
         self.assertIn("1,067 are on entries with no industry recorded", notes)
         # AND IT IS NO LONGER WEDGED BETWEEN THE INDUSTRY LINE AND THE YEAR.
         industry = text.split("Which industries")[1].split("2026 YTD")[0]

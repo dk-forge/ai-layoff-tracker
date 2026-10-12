@@ -1,3 +1,438 @@
+## 2026-10-11 - Trust tiers: verified / reported / measured (2.20.232)
+
+**Class:** novel (owner goal: paid-worthy trust labels; tier names
+owner-approved 2026-10-11)
+**Guard:** `railway/tests/test_trust_tiers.py` - table-driven mapping of every
+source_type/verification_level the collectors write, a news/press/ERM/unknown
+row can never be verified whatever its level, a layoff row is never measured,
+the SQL CASE agrees with the PHP mapper, routes + card are wired, the card
+badge has an accessible name and no em-dash.
+
+New `includes/trust-tiers.php` (guarded include, pure PHP):
+`alt_trust_tier($source_type, $level)` and `alt_trust_tier_sql($prefix)`.
+verified = official source_type (8K, warn, federal_rif, filing) and level not
+bronze; everything else reported; measured is reserved for our own
+job-board measurements and is never a layoff row. Derived, never stored, so no
+migration. Exposed as `tier` on every `/query` row, a `tier=` filter in
+`alt_db_where` (so `/query` and `/aggregate` both filter), an opt-in
+`/aggregate?include=tiers` block (not in the default blocks, to keep the cold
+flagship aggregate cost unchanged), `tiers` in `/facets`, and a plain-text
+Verified/Reported badge on tracker cards. Mapping and the full value list:
+`docs/VERIFICATION_TIERS.md`. Finding: `filing` (foreign regulatory filings) is
+not in `alt_allowed_source_types()`, so those rows are stored as news/gold and
+show as reported; making them verified is a separate allow-list + re-import
+change. Railway does not produce the field, so no Python twin.
+Live check after deploy: `/query?per_page=3` rows carry `tier`,
+`/query?tier=verified&per_page=1` total is below the unfiltered total,
+`/aggregate?include=tiers`, `/facets` `tiers`, page `ver=2.20.232`.
+
+## 2026-10-11 - Digest saves a cleaned copy of each sent edition (public Email Archive)
+
+**Class:** novel (new feature; owner approved the Email Archive, "start fresh",
+no backfill of editions sent before this lands)
+**Guard:** `railway/tests/test_digest_archive.py` - archived HTML carries no
+unsubscribe/preferences link or wording, no e-mail address, no image, keeps the
+postal address, is byte-deterministic, monthly is not archived, index.json
+updates idempotently newest-first, and nothing is written unless
+`DIGEST_ARCHIVE_DIR` names a destination.
+
+`railway/digest_archive.py`: after a REAL send (transport sends, at least one
+delivery, not a preview and not a `test_to` send) `_run_tier` renders the
+edition for the recipient with the most sections, strips the per-reader parts
+(signed unsubscribe/preferences links and their sentences, the measurement
+paragraph, addresses, images, token-bearing links) and writes
+`data/email_archive/YYYY/MM/<date>-<daily|weekly>.html` + `.json` (date, kind,
+subject, period, sections, counts) and folds it into `data/email_archive/index.json`.
+It never raises, so a write fault cannot cost a send. `digest-send.yml` now has
+`contents: write`, sets `DIGEST_ARCHIVE_DIR`, and commits the folder with the
+github-actions bot + pull-rebase retry loop tracker-diff.yml uses. Consumer:
+asktherecruiter.com/email-archive (sandbox branch `claude/email-archive-pages`),
+read server-side from raw.githubusercontent.com. Pre-existing local failures
+unrelated to this change: test_offline_suite_is_offline blocker test and
+test_state_liveness NEVER_USED (both fail on origin/main in this checkout).
+
+## 2026-10-08 - Haiku 5.5 eval harness (dispatch-only, no production change)
+
+**Class:** novel (measurement tooling; owner question: can paid call sites move to
+`anthropic/claude-haiku-5.5`, $0.10/$0.50 per M?)
+**Guard:** none needed beyond the existing metered-call/workflow tests; the
+harness spends only through `spend.metered_call()`, posts nothing, holds no
+WP key, and is capped at $1.00 per run (`EVAL_CAP_USD` + `ALT_RUN_CEILING_USD`).
+
+`railway/eval_haiku55.py` + `eval-haiku55.yml` (VPS runner, dispatch only)
+score current model vs Haiku 5.5 on three call types against gold no
+candidate wrote: AI causation (production prompt + finalize guard vs the
+ai-causation-2026-08 gold labels; `OPENROUTER_MODEL`), the row referee
+(`adjudicate_row.PROMPT`; `ADJ_REFEREE_A/B`, and the panel's
+`ALT_PANEL_MODELS` members) scored on `employer_attributed_to_ai` vs the same
+gold, and news extraction (reuses `ab_extraction_models.judge` over frozen
+Wayback windows). Results are `::notice::` annotations. No model setting and
+no live data changed.
+
+## 2026-10-07 — `reconcile-supersets.yml` single failed run on the Contabo runner, logs unavailable
+
+**Class:** novel (recurring host-level flakiness with a different symptom
+each time is not in the declared vocabulary; same shape as the
+already-documented Contabo self-hosted-runner flakiness: toolcache
+permission fault 2026-09-30, `curl -o` write failure 2026-10-01 — a
+different symptom each time, same host. If this keeps recurring it is a
+candidate for its own slug in docs/INCIDENT_CLASSES.md, not a reason to
+invent an undeclared one inline)
+**Guard:** none — infrastructure fault on the `atr-runner-ai-layoff-tracker`
+Contabo box, not something a test in this repo can pin
+
+Hourly ops-check found `reconcile-supersets.yml` run #84
+(https://github.com/dk-forge/ai-layoff-tracker/actions/runs/37655141524,
+2026-10-07 16:50-16:55 UTC, `runs-on: [self-hosted, linux, contabo]`) ended
+`failure` after running for its full ~5 minutes (not a refused-capacity
+0-duration job). The run before it (#83, 2026-10-06) and the scheduled run
+after it both succeeded — this is an isolated single occurrence, not a
+pattern yet. Could not read the actual error: `get_job_logs` returned
+HTTP 404 for the job's log (self-hosted runner log upload/retention gap,
+not something this session can fix). No code change; noting only, per the
+standing pattern that unexplained faults on this specific runner get a dated
+line here rather than a guess at a root cause with no log to confirm it.
+If this recurs on the next scheduled run, it's worth asking Dakotta to check
+the Contabo box directly (disk space, permissions) the same way the
+2026-10-01 `curl` write-failure entry above asked.
+
+## 2026-10-06 (2.20.231) - Subscriber email redesign, stage 2
+
+**Class:** novel (owner-approved redesign; owner 2026-10-06: ship stage 2 now)
+**Guard:** `railway/tests/test_digest_sections.py` (php CLI helpers, region colours, wiring, tracker filter keys)
+
+Stage 2 of the nine-email redesign (slice 1 is 2.20.230, separate PR):
+regions now wear FIXED colours in the relay's bars (`digest_design.REGION_COLOURS`,
+Okabe-Ito hues, residual lines grey; bars stay aria-hidden, figures stay
+text); a new "Top countries" line (top 5, verified, job-location basis, each
+linked to the tracker filtered to that country); industries widened from 3
+to 5; and the talent digest adds a resume-tailoring line linked to the app
+(`alt_resume_cta_url('digest-talent')`) when one employer names >= 500 jobs in
+a REPORTED signal (job-board scans never trigger it). (f) pre-filtered
+section links were already built (every region/industry/state/reason/company
+row links to `/ai-layoff-tracker/?from&to&date_basis&<filter>`); verified the
+page reads country, industry, state, reasons and company from the URL
+(`restoreFiltersFromUrl`, assets/layoffs.js), so no change was needed.
+Helpers in new `includes/digest-sections.php`, loaded guarded.
+## 2026-10-06 (2.20.230) - Subscriber email redesign, slice 1
+
+**Class:** novel (owner-approved redesign, sandbox debt row DIGEST-EMAIL-REDESIGN-APPROVED)
+**Guard:** `railway/tests/test_digest_extras.py` (php CLI drives every helper; wiring, leaders query and footer mirror checked)
+
+Audit of the nine-email redesign list against main: already built were the
+change since last week (stat pair foot), section links pre-filtered to the
+tracker, "Cite this", the region split (no fixed colours), top countries/
+industries (industries capped at 3), and the static AI "why that matters".
+Slice 1 adds, all in the layoff section and all derived from /aggregate:
+the subject now carries the top story ("13,658 verified job cuts, led by
+Intel (2,000)"), the largest verified, non-single-report row, which is the
+first such row of Biggest cuts; an 8-week strip of verified job cuts (weekly
+edition only, six extra /aggregate calls, withheld whole if any week fails);
+the stated reason on the top 3 Biggest cuts rows (the leaders query now
+selects `reason_tags`; AI tags stay with the ai_explicit column); one computed
+"Why it matters" concentration line, silent when the dominant-entry sentence
+fired; and a "Forward this email ... sign up free" footer block in all three
+footers (no tracking). Helpers live in the new `includes/digest-extras.php`,
+loaded guarded; every caller checks `function_exists()`. The #E313 suite
+number was already gone from every email (2.20.215); nothing to remove.
+
+
+## 2026-10-06 - ftp-target-probe stops reading the retired FTP secrets
+
+**Class:** novel (cleanup, not an incident; workflow only, no plugin change)
+**Guard:** `railway/tests/test_workflow_yaml_parses.py`; `grep secrets.FTP_USERNAME .github` is empty
+
+The probe's credential step still mapped `FTP_USERNAME`, `FTP_PASSWORD`
+(the July/Bluehost pair) and `CHEMICLOUD_FTP` into env, though since
+2026-09-09 it only tries `FTP_HOST` + `CHEMICLOUD_USERNAME` /
+`CHEMICLOUD_PASSWORD_FTP`. Those three env lines are removed; the probe is kept
+because RUNBOOK and deploy-plugin.yml point at it. No workflow now reads
+`FTP_USERNAME`, `FTP_PASSWORD` or `CHEMICLOUD_FTP`, so the owner can delete
+those three secrets once this merges.
+
+## 2026-10-05 - AI exposure first live run: OEWS soft 404
+
+**Class:** novel (first live contact)
+**Guard:** `railway/tests/test_ai_exposure.py::test_unpublished_release_answered_with_an_html_page_falls_back`
+
+The first dispatched `ai-exposure-import` and `ai-exposure-archive` runs failed
+soft (nothing stored): bls.gov answers the not-yet-published
+`oesm26nat.zip` with HTTP 200 and an HTML page, so the year fallback never
+fired ("File is not a zip file"). A non-zip body now counts as "not
+released" and the collector falls back to May 2025. No plugin change.
+
+## 2026-10-05 (2.20.229) - AI exposure by job and city
+
+**Class:** novel (new reference source + plugin-owned display; issue #478 items 2-4)
+**Guard:** `railway/tests/test_ai_exposure.py` (offline collector against the probed file shapes, import/store guard, archive, freshness, real-PHP render, Sources-page row + register entry for every source shown, copy and colour-token checks)
+
+New reference document `ai_exposure` (`railway/sources/ai_exposure.py`, keyless),
+joined on the 6-digit SOC code from four free sources, each probed from a
+GitHub runner on 2026-10-05 (this sandbox has no egress to bls.gov or
+onetcenter.org): the "GPTs are GPTs" occupation scores (Eloundou, Manning,
+Mishkin, Rock; Science 2024; `data/occ_level.csv`, `dv_rating_beta`, MIT
+licence, read at pinned commit `0471612f`); O*NET 31.0 titles (CC BY 4.0,
+attribution carried); BLS OEWS May 2025 national + MSA files (top 50 metros);
+BLS Employment Projections 2025-35 Table 1.2. Felten et al. AIOE was NOT used:
+its repository carries no licence, so republishing is not clearly permitted.
+`ai-exposure-import.yml` (monthly + dispatch) posts to
+`/reference-ingest/ai_exposure` and prints `site=stored` only when the host
+says `stored: true`; fail-soft guards (any source error, <500 occupations,
+<400 with projections, <40 metros, >1 MB). `ai-exposure-archive.yml` commits
+CSVs to `data/archive/ai_exposure/`. Freshness SPECS: oews 760d, ep 700d,
+collector 40d. Display: `[alt_ai_exposure]` (`includes/ai-exposure.php`,
+partial, `assets/ai-exposure.js` for the metro picker only), echoed by
+`page-sources.php` after labour context, so no stored page content changed:
+most/least exposed (>= 25,000 employed) with employment, median wage and
+10-year change; a 2x2 exposed/shrinking quadrant (threshold 0.5); a metro
+picker. Copy: exposure = tasks an AI system could speed up, per the study,
+not jobs lost. Real-browser check at 1280 and 375, light and dark: no
+horizontal scroll, no console errors (the Sources page's own `table td`
+padding initially pushed stacked phone cells 28px wide; scoped selectors fix).
+
+## 2026-10-05 (2.20.228) - Phone width: inset the labour-context headings and intro
+
+**Class:** novel (visual spacing, owner report from a phone screenshot)
+**Guard:** none - a spacing-only CSS rule; checked by rendering at 375px
+
+The Early warning heading and intro paragraph ran edge to edge on phones while
+the chart cards below were inset. At 600px and below, the section headings and
+`.alt-lc-intro` now get the same 12px side inset.
+
+## 2026-10-05 (2.20.227) - FRED trend, QWI hiring vs separations, early-warning view
+
+**Class:** novel (additive display of stored reference data; issue #478 item 1)
+**Guard:** `railway/tests/test_early_warning.py` (status rule, WARN never moves the status, hide-when-missing, credits + as-of, Sources-page rows for every panel)
+
+Labour-market context gains a FRED trend chart (picker: weekly initial claims,
+unemployment rate, payrolls, information-sector jobs; only stored series are
+offered) and a Census QWI "Hiring vs separations" chart (state, industry
+sector, split by sex/age/education/race/ethnicity; the split covers all
+sectors because QWI publishes groups across all industries only). Captions say
+separations are all-cause. New "Early warning by industry" view lines up our
+own US WARN notice counts, FRED initial claims (monthly mean), JOLTS layoffs and
+QWI separations on one 36-month indexed timeline. Status label (Heating up /
+Stable / Cooling) uses ONLY the official series: monthly = last 3 months vs the
+12 before, QWI = latest quarter vs a year earlier, +/-5%, two judged series
+minimum, majority of at least two. It claims nothing about AI. Files:
+`includes/labour-trends.php`, `includes/early-warning.php`, two new partials,
+`assets/labour-context.js`, `assets/layoffs.css`. Real-browser check at 1280
+and 375, light and dark: no horizontal scroll, no console errors.
+
+## 2026-10-05 - FRED/QWI first live runs: two query fixes
+
+**Class:** novel (first live contact with two new APIs)
+**Guard:** `railway/tests/test_fred_qwi_reference.py` (no CES5000000001; one QWI request per state, never `state:*`)
+
+The first dispatched runs after #479 both failed soft (nothing stored), and
+both keys proved valid. FRED: `CES5000000001` is not a FRED id ("The series
+does not exist"); USINFO is that CES information series, so it is dropped.
+QWI: the Census API refuses `for=state:*` for this hierarchy ("wildcard not
+supported in 'for' clause"), so each breakdown is now requested per state (6 x
+51 on a 6-thread pool; qwi-import timeout 10 -> 20 min), and the time
+predicate is bounded (`from Y-4-Q1 to Y-Q4`; an open `from` is rejected).
+No plugin change.
+
+## 2026-10-05 (2.20.226) - FRED labour series + Census QWI reference data
+
+**Class:** novel (two new reference-data sources, additive)
+**Guard:** `railway/tests/test_fred_qwi_reference.py` (offline; hand-built
+fixtures in the documented response shapes, since the authoring sandbox had no
+egress to either API; the first dispatched run is the live proof)
+
+Same pattern as BLS (2.20.223) and OECD (2.20.224). `fred-import.yml` (weekly)
+runs `railway/fred_import.py`: one FRED `series/observations` request per
+curated series (UNRATE, LNS14027662, PAYEMS, USINFO, CES5000000001, JTSLDL,
+ICSA, CCSA), trailing 10 years, stored at `/reference-ingest/fred_labour`.
+`qwi-import.yml` (weekly) runs `railway/qwi_import.py`: six Census Data API
+requests (`timeseries/qwi/sa|se|rh`; state x NAICS sector, and state x age,
+sex, education, race, ethnicity; HirA, Sep, EmpEnd; private, not seasonally
+adjusted; latest 8 quarters), stored at `/reference-ingest/census_qwi`. Keys
+come only from `secrets.FRED_API_KEY` / `secrets.CENSUS_API_KEY` via env and
+are scrubbed from every message. Fail-soft: a missing series/breakdown, under
+45 states or a payload over 2.8 MB is never stored. Rows are flat arrays with
+a `fields` header; `GET /reference/<source>?<field>=a,b` now filters rows for
+any document that declares `fields` (OECD/BLS untouched). Freshness: SPECS
+fred_labour (monthly 85d, weekly 30d) and census_qwi (quarterly 430d, stored
+as the quarter-end month). Archives: `fred-archive.yml` commits full history
+to `data/archive/fred/`; `qwi-archive.yml` commits one CSV per quarter to
+`data/archive/qwi/`. Not read by ingest, the layoff table or classification.
+Sources page: FRED and QWI rows added (BLS and OECD already listed); a render
+test (`SourcesPageTest`) fails if any reference source lacks a row, and the
+source register in OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md lists all five.
+## 2026-10-05 - Hourly ops check: `sandbox-uptime-check.yml` stuck unable to get a GitHub-hosted runner
+
+**Class:** novel (ops note: no code change; monitoring-channel finding, not an app outage)
+**Guard:** none - hosted-runner capacity is outside the repo; nothing to test
+
+Three consecutive scheduled runs of `.github/workflows/sandbox-uptime-check.yml`
+(#1253 19:34Z, #1254 19:48Z, #1255 20:01Z) never got a `ubuntu-latest` runner
+assigned (`runner_id: 0`, no `runner_name`): each sat queued for its full
+~15-minute cycle until the next cron trigger fired, then read `completed` /
+`failure` (job conclusion `cancelled`) with no probe ever executed. The
+workflow's own internal alert (`railway/alert_state.json`, key
+`sandbox-uptime-check:main:f509bd86ee200ee7`) already raised through the
+ci-alert path: *"CI RED: Sandbox uptime check — no error line could be
+extracted from the log"* — expected wording, since nothing in the probe
+script ran to produce one.
+
+**This is not a sandbox outage.** Two independent, more recent checks both
+read healthy: `uptime-cert-monitor.yml` in asktherecruiter-sandbox (runs on
+the self-hosted `contabo` runner) completed successfully at 19:52:52Z, and
+that repo's `live-look.yml` (opens the real site on the VPS runner) completed
+successfully at 19:21-19:37Z — both after and during the window
+`sandbox-uptime-check` was stuck. Other `ubuntu-latest`-hosted workflows in
+THIS repo (e.g. `merge-train.yml` run 709, 19:44-19:45Z) got runners fine in
+the same window, so this does not look like an account-wide Actions capacity
+problem — it looks specific to this one workflow/concurrency group
+(`group: sandbox-uptime-check`, `cancel-in-progress: false`): if a queued
+run never gets a runner before the next 15-minute cron fires, GitHub appears
+to supersede the still-queued run rather than let it wait, which can repeat
+indefinitely without the probe ever executing.
+
+Left alone per standing orders (no workflow re-dispatch, no cancelling of
+queued runs, no touching `alert_state.json`). Worth a human look if it is
+still stuck next time this check runs: it means this redundant, free health
+channel has not actually probed the sandbox in a while, even though the
+alerts it raises read as if it had.
+
+## 2026-10-05 (2.20.225) - Labour-market context on the Sources page and facet pages
+
+**Class:** novel (reader surface for stored reference data, additive)
+**Guard:** `railway/tests/test_labour_context.py` (renders the real PHP through `fixtures/labour_context_harness.php`)
+
+The BLS JOLTS+CPS and OECD documents stored in 2.20.223/224 are now shown.
+`includes/labour-context.php` registers `[alt_labour_context]`, rendered at the
+end of the Sources page (`/ai-layoff-tracker/sources/#labour-context`) by
+`page-sources.php`, so no page content or navigation changed. Three Chart.js
+panels (`assets/labour-context.js`, enqueued only there, reads the public
+`/reference/<source>` endpoints, colours from `--alt-*` tokens, repaints on
+`alt:themechange`): JOLTS layoffs/openings/quits with an industry filter, CPS
+unemployment by sex/age/race/education, OECD unemployment with country picker
+(max 6), sex and age filters. Each panel carries a caption, the source line and
+a data-as-of line. No per-chart CSV: the existing dashboard charts offer none.
+Facet pages get `alt_labour_context_stat()` beside the tracker count ONLY on an
+exact match: an industry facet whose name equals a JOLTS supersector label
+(today only Manufacturing; US-only, said so) and a country facet whose name is
+in `alt_labour_context_oecd_names()`. Missing/malformed data hides the panel or
+block, never an error. Copy states these are official all-cause aggregates,
+not tracker counts, and do not show AI caused anything.
+
+## 2026-10-05 (2.20.224) - OECD monthly unemployment by sex and age
+
+**Class:** novel (new reference-data source, additive)
+**Guard:** `railway/tests/test_oecd_reference.py` (offline, recorded SDMX csv)
+
+Second source from the depth-source probe (#468/#472), on the reference-data
+endpoints added in 2.20.223. `oecd-import.yml` (weekly, GitHub-hosted) runs
+`railway/oecd_import.py`: ONE keyless SDMX request to
+`OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M,1.0` (unemployment rate, seasonally
+adjusted, monthly, every member by sex and age), trailing 60 months, stored
+through `POST /reference-ingest/oecd_unemployment`, served at
+`GET /reference/oecd_unemployment`. Fail-soft: under 25 countries or an
+empty pull is never stored. Freshness: added to `reference_freshness.py`
+SPECS (collector 10 days, newest month 95 days past month end). Archive:
+`oecd-archive.yml` (monthly) commits the full history as a sorted compact CSV
++ MANIFEST to `data/archive/oecd/` (refuses over 40 MB or a >10% shrink).
+Licence CC BY 4.0: attribution in the payload, the manifest and the Sources
+page row. Not read by ingest, the layoff table or classification.
+
+## 2026-10-05 (2.20.223) - BLS JOLTS + CPS reference data collector
+
+**Class:** novel (new reference-data source, additive)
+**Guard:** `railway/tests/test_bls_reference.py` (offline, recorded BLS v1 response)
+
+New free source promoted from the depth-source probe (#468/#472). `bls-import.yml`
+(weekly, GitHub-hosted) runs `railway/bls_import.py`: keyless BLS API v1, 68
+series in 3 batched requests (of 25/day), ten years each, JOLTS layoffs and
+discharges / openings / quits for total nonfarm, 12 supersectors and the 4
+Census regions, plus the CPS unemployment rate by sex, age, race and
+education. Stored like the claims backdrop: one option (`alt_ref_bls_jolts_cps`)
+through the keyed `POST /reference-ingest/bls_jolts_cps`, public
+`GET /reference/bls_jolts_cps` (`includes/reference-data.php`, allowlisted
+sources only). Fail-soft: any failed request means no overwrite. Labelled macro
+context; not read by ingest, the layoff table or event classification.
+Freshness: `reference-freshness.yml` (daily, GitHub-hosted) runs
+`railway/reference_freshness.py`, red + one issue when the collector has not
+stored for 10 days or the newest month is past the real release lag plus
+margin (JOLTS 85 days after month end, CPS 50). Archive: `bls-archive.yml`
+(monthly) attaches the full-history flat files (jt + ln AllData, ~150 MB,
+gzip) to a Release `bls-archive-YYYY-MM`; nothing big is committed. Licence:
+public domain, attribution line on the Sources page.
+
+## 2026-10-05 (2.20.221) - blog posts showed the featured image twice
+
+**Class:** novel (reader-visible live-content defect)
+**Guard:** `railway/tests/test_blog_dup_images.py` (real PHP on sample HTML)
+
+Cause: no code in this repo (or the sibling repos) writes blog posts; ~122
+posts were published with their featured image ALSO inserted as an image
+block in post_content, and the theme renders the featured image above the
+title, so readers saw it twice. Fix: `includes/blog-dup-images.php` (a) strips,
+at render time on single posts, the first content block whose `<img>` is the
+featured attachment (wp-image-ID or same upload file in any size variant), so
+any future post published the same way cannot duplicate; (b) keyed
+`layoffs/v1/blog-dup-images` lists / (POST apply=1) removes that block from
+stored content. Driven by `blog-dup-images.yml` (dry_run default true; emits a
+`dup-images` notice with count + ids). Posts without a featured-image match
+are never touched.
+
+## 2026-10-05 11:1x UTC (hourly ops check) - `live-surface-check.yml` still red, unchanged since the 2026-10-02 diagnosis
+
+**Class:** novel (live-content drift, not a code defect) — continuation of the 2026-10-02 entry below, not a new finding
+**Guard:** none yet — same live check, same root cause
+
+Still failing every run: latest completed run (2026-10-05 08:52:50 UTC, job
+111686213817) shows the identical 7-page mismatch (`press/`, `sources/`,
+`methodology/`, `ai-tracker-health/`, `publisher-tools/`, `ai-quotes/`,
+`report/`), same assertion text as 2026-10-02. The open alert
+(`live-surface-check:main:2b08b8b63bcac915` in `railway/alert_state.json`,
+first raised 2026-10-01 14:37:58 UTC) is still open — this has now been red
+for 4 days straight, already mailed once per dedup, nothing new to alert on.
+No code change attempted this run, for the same reason as 2026-10-02: the
+2026-10-02 entry below already root-caused this as live WordPress/Yoast
+per-page SEO-title state, not a bug in this checkout, and said explicitly
+"Needs Dakotta, not a code fix from here." That conclusion still holds — no
+live wp-admin access from this session to confirm or clear the Yoast titles.
+Surfaced as an `ACTION:` line on sandbox #1259 rather than re-diagnosing.
+
+## 2026-10-05 - Subscriber email: the approved visual design (colours, headings, charts)
+
+**Class:** novel (design rollout, owner request TRACKER-EMAIL-QUALITY)
+**Guard:** `railway/tests/test_digest_email_design.py`
+
+The design shown to the owner on 2026-09-29 shipped only its content order on
+2026-10-01. This adds the visual half for every digest tier (daily, weekly,
+monthly; one renderer): new `railway/digest_design.py` gives each section its
+tracker colour (red `#b42a18` layoff and follows, blue `#1d4ed8` talent), green
+highlight on `finding` lines and the rule above `why`, bold 22px section
+headings with an accent bar, the lead number 34px -> 40px (pair 28 -> 30px) in
+the accent, and small bar charts under every ranked table row and every
+`series` line. Charts are table cells (`width` %, `bgcolor`, inline style,
+`aria-hidden`), never images, so `assert_message_is_clean` is untouched; a
+block whose figures cannot all be read draws no chart. The plain-text part is
+unchanged. `digest_layout.restyle` takes an optional `accent`; the existing
+lead-size assertion in `test_digest_email_layout.py` moves 34px -> 40px with
+the design. The red avoids a 4-digit run in its hex because
+`test_digest_figures_are_formatted` reads one in a `bgcolor` as a raw figure.
+Python only: no plugin file, no version reserved. Branch
+`claude/email-design-rollout`.
+
+## 2026-10-05 - Subscriber watch now emits its counts as one GitHub annotation
+
+**Class:** novel (observability: run results unreadable through the API)
+**Guard:** `railway/tests/test_subscriber_watch.py` (`AnnotationLineTest`)
+
+The daily welcome-cap check reads `subscriber-watch.yml` runs through the API,
+which here exposes check-run annotations but not job logs or step summaries,
+so it could not see the counts. `railway/subscriber_watch.py` now prints one
+`::notice title=subscriber-watch::subscribers=N confirmations_24h=N
+welcome_sent=N cap=N welcome_skipped_over_cap=N brevo_sent_24h=N
+brevo_limit=N` line per run (counts only, no addresses; absent values read
+UNKNOWN, never 0). Pinned by `AnnotationLineTest` in
+`railway/tests/test_subscriber_watch.py`. No plugin file, no version reserved.
+Branch `claude/subscriber-watch-annotation`.
+
 ## 2026-10-02 - Two self-hosted-runner workflows wrote scratch files to a bare `/tmp/` path and collided with each other
 
 **Class:** novel (shared mutable scratch space on one self-hosted machine, not yet in the vocabulary)
@@ -29156,3 +29591,78 @@ left for that repo's merge train.
 hardcoded as a literal in a test fixture, then went stale)
 
 **Guard:** `railway/tests/test_spend_ledger.py::HarvestParsing::test_reharvest_merge_stays_idempotent_even_near_the_keep_cutoff`
+
+## 2026-10-05 — daily ingest has run on NEITHER host for ~7 days: the 2026-09-28 Railway-to-VPS switch was left half-done
+
+**Class:** novel (an infra migration left mid-step, not a code defect)
+**Guard:** none — this is a repo-variable / Railway-dashboard state, not something a repo test can pin
+
+Hourly ops-check found the self-heal watcher in asktherecruiter-sandbox had
+filed ai-layoff-tracker#461 for `Weekly health digest (autonomy tripwire)`
+run 37306722469 (2026-10-05 12:01 UTC) ending `failure`. That workflow's
+`exit 2` is the digest's own designed tripwire (it fails loudly on purpose
+when a source goes stale — see `health_digest.py`'s module docstring), so the
+GitHub "failure" conclusion is not itself a bug. But the specific content is:
+`edgar`, `press_releases`, `gdelt`, `regional_feeds` and `national_feeds` are
+ALL stale at exactly ~6.6 days, each against a 2-3 day ceiling. Five
+unrelated collector ids going stale on the same day, by the same amount, is
+the signature of one shared cause, not five independent scraper breaks.
+
+**Root cause, confirmed from the committed ledger.** The 2026-09-28 entries
+above ("Ops: daily ingest moved from Railway to the VPS") record the planned
+switch: `railway/railway.toml`'s `startCommand` was replaced with a no-op
+`python -c "print(...)"` (confirmed still in place on `main` today), and
+`.github/workflows/ingest-cron-vps.yml` was added as the replacement,
+DORMANT until the owner sets repo variable `ALT_INGEST_ON_VPS=true`. That
+variable was never set: every scheduled run of `ingest-cron-vps.yml` since
+creation (9 runs, 2026-09-28 through today) has ended `skipped` (its `if:`
+guard reads `vars.ALT_INGEST_ON_VPS == 'true'`, which is false). So the
+Railway side stopped running (confirmed: `railway/spend_jobs.json`'s last
+`railway-cron` entry is dated 2026-09-28, nothing since) and the VPS side
+never started. **The daily collector (`python cron.py` — EDGAR, Google News,
+GDELT, the regional/national news feeds) has not run on either host for
+about a week.** WARN-state collection is unaffected (separate
+`warn_import.py` workflow, daily 9 AM ET, not part of `cron.py`).
+
+**Not fixed here.** The fix is a repo variable (`ALT_INGEST_ON_VPS=true`) or
+reverting the Railway `startCommand` — both are owner-reserved per the
+scheduled ops-check's standing rules ("never ... change ... repo
+variables"), not a code change this session can make. Commented the
+diagnosis on ai-layoff-tracker#461 and left it open; flagged as `ACTION` in
+the hourly report (asktherecruiter-sandbox#1259) for Dakotta to flip one of
+the two switches. `docs/RUNBOOK.md` "Which jobs run on the VPS and why" has
+the exact owner steps for the VPS path.
+
+## 2026-10-07 — `Broken-link check` found the live `/ai-layoff-tracker/us-warn-registry/` page unreachable
+
+Hourly ops-check found the daily `Broken-link check` run (14:38 UTC today,
+run 37638338249) ended `failure` after six straight green days (10-01
+through 10-06). Read the job log directly: of the 9 sampled public pages,
+`/ai-layoff-tracker/us-warn-registry/` came back `BROKEN 0` (connection
+failure/timeout, not an HTTP error code) while the other 8 returned `200`.
+The job's own `ops mail` step already emailed the owner at run time
+("broken-link alert"), so this entry is the write-down half of that alert,
+not a duplicate channel.
+
+Not the same thing as the source-link sample also reported in the same run
+(28/31 reachable, 9.7% rot) — that figure is this job's own documented
+normal/expected range, backstopped by Wayback archiving, and is not what
+tripped the failure.
+
+**Not fixed here.** This environment's network policy blocks direct
+requests to `asktherecruiter.com`, so the page's current live state could
+not be independently re-checked from this session, and there is no newer
+`Broken-link check` run yet (next scheduled run is tomorrow's ~14:3x UTC) to
+say whether it already recovered. This is a live WordPress page/host
+availability question, not a repo code defect — nothing here to fix with a
+PR. Flagged in the hourly report (asktherecruiter-sandbox#1259) for Dakotta
+to glance at the page directly.
+
+**Class:** novel (a single public page going unreachable while its siblings
+stayed up; doesn't fit an existing slug — the ones tracker-side are about
+collectors and registers going stale or silent, not about a live page
+timing out)
+**Guard:** none — `link_check`-style content availability already has a
+reporting workflow (`Broken-link check`); a repo test cannot assert that a
+remote WordPress page answers, only a live probe can, and this job already
+is that probe.

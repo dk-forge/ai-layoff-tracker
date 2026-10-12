@@ -349,7 +349,7 @@ def plain_dashes(text) -> str:
     return re.sub(r"\s*\u2014\s*", " - ", str(text or ""))
 
 
-def restyle(fragment: str) -> str:
+def restyle(fragment: str, accent: str = "") -> str:
     """Put every rule this fragment relies on onto the element itself.
 
     Also drops `class` and `id`: in an email neither can be styled except from
@@ -360,7 +360,16 @@ def restyle(fragment: str) -> str:
     An UNKNOWN variant falls back to the plain style for the tag rather than to
     no style at all. A typo in the site's markup should cost a design detail,
     never the readability of a paragraph in a forwarded copy.
+
+    `accent` is the section's tracker colour (digest_design.accent_for). With
+    one, the design overrides in digest_design.accent_styles win over the
+    plain styles below; without one the plain styles apply unchanged.
     """
+    overrides = {}
+    if accent:
+        import digest_design
+        overrides = digest_design.accent_styles(accent, FONT, INK, MUTED)
+
     def rewrite(match):
         tag = match.group(1).lower()
         raw = match.group(2)
@@ -370,7 +379,10 @@ def restyle(fragment: str) -> str:
             variant = found.group(1).strip().lower()
             raw = _VARIANT_ATTR.sub("", raw)
         attrs = _DEAD_ATTR.sub("", _STYLE_ATTR.sub("", raw)).strip()
-        style = VARIANT_STYLES.get((tag, variant), TAG_STYLES.get(tag))
+        style = (overrides.get((tag, variant))
+                 or VARIANT_STYLES.get((tag, variant))
+                 or overrides.get((tag, ""))
+                 or TAG_STYLES.get(tag))
         head = f"<{tag}" + (f" {attrs}" if attrs else "")
         return head + (f' style="{style}">' if style else ">")
 
@@ -1194,6 +1206,12 @@ FOOTER_BLOCKS = (
     ("resume", ("Changing jobs, returning to work or starting out? Tailor "
                 "your résumé to the role with the AskTheRecruiter résumé tool.",),
      "Tailor your résumé"),
+    # Forward this (redesign slice 1, 2026-10-06): the signup form, so a
+    # colleague handed one edition can get the next. Mirrors
+    # alt_digest_footer_blocks in the plugin.
+    ("forward", ("Forward this email to a colleague who follows the job "
+                 "market; they can sign up free.",),
+     "sign up free"),
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because
     # unlike the manage block it is not ours to omit -- `footer_blocks()`
@@ -1201,6 +1219,10 @@ FOOTER_BLOCKS = (
     ("", ("AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.",), ""),
 )
 
+
+# The signup form a forwarded reader lands on (home_url('/ai-layoff-tracker/')
+# . '#alt-digest' in the plugin's footer block).
+SIGNUP_URL = "https://asktherecruiter.com/blog/ai-layoff-tracker/#alt-digest"
 
 # Mirror of ALT_RESUME_CTA_DEFAULT_BASE in ai-layoff-tracker.php; the plugin
 # is the authority and tests/test_resume_cta.py fails on a difference.
@@ -1279,7 +1301,7 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
             f'line-height:1.6;color:{MUTED};')
     link = f'color:{LINK};text-decoration:underline;'
     urls = {"unsub": unsub_url, "manage": manage_url,
-            "resume": resume_cta_url(resume_url)}
+            "resume": resume_cta_url(resume_url), "forward": SIGNUP_URL}
     rendered = []
     for key, sentences, anchor in footer_blocks(bool(manage_url)):
         # The anchor belongs to the block's FIRST sentence, which is the one
@@ -1315,7 +1337,13 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
     for index, part in enumerate(parts):
         section_html = plain_dashes(part[1])
         padding = "22px 28px 8px" if index else "24px 28px 8px"
-        rows.append(_cell(restyle(section_html), padding=padding,
+        # The approved design (TRACKER-EMAIL-QUALITY, 2026-10-05): each
+        # tracker's section wears its own colour and gains small table-bar
+        # charts. See digest_design for why a chart is never an image.
+        import digest_design
+        accent = digest_design.accent_for(str(part[0]) if part else "")
+        section_html = digest_design.add_charts(section_html, accent)
+        rows.append(_cell(restyle(section_html, accent), padding=padding,
                           top_rule=bool(index)))
     rows.append(_cell(_footer(unsub_url, manage_url, edition_note, resume_url),
                       padding="18px 28px 26px", top_rule=True))
@@ -1435,7 +1463,7 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     # A block that carries a link ends on a colon and the bare URL follows,
     # which is what a link looks like when there is no anchor to put it in.
     urls = {"unsub": unsub_url, "manage": manage_url,
-            "resume": resume_cta_url(resume_url)}
+            "resume": resume_cta_url(resume_url), "forward": SIGNUP_URL}
     footer = [rule]
     for index, (key, sentences, _anchor) in enumerate(
             footer_blocks(bool(manage_url))):
