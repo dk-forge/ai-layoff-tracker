@@ -1,6 +1,6 @@
 ## 2026-10-12 - Weekly digest: short subject, plain hero, one comparison line, caveats once (2.20.238)
 
-**Class:** owner feedback (presentation/copy only, same data)
+**Class:** novel (owner feedback: presentation/copy only, same data)
 **Guard:** `railway/tests/test_digest_extras.py::OwnerFeedback20261012`, `test_digest_email_design.py::OwnerReadability20261012`, `test_digest_scope_rules.py::...::test_owner_feedback_2026_10_12_hero_and_comparison`
 
 Owner read the Oct 5-11 weekly ("4,139 verified job cuts, led by Community
