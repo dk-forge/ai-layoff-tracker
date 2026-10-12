@@ -1,3 +1,24 @@
+## 2026-10-12 - Visible breadcrumbs on tracker pages and the whole blog (2.20.237, navigation)
+
+**Class:** novel (owner request 2026-10-12)
+**Guard:** `railway/tests/test_breadcrumbs.py`
+
+Pages emitted BreadcrumbList JSON-LD but showed no trail. New
+`includes/breadcrumbs.php` holds ONE trail per page; the visible
+`<nav aria-label="Breadcrumb">` and the JSON-LD are both drawn from it.
+Facet pages: Blog > AI Layoff Tracker > US states|Countries|Industries > page;
+company pages: ... > Companies > Acme layoffs; company index hub/letters and
+entry permalinks too. No /state-layoffs/, /country-layoffs/ or
+/industry-layoffs/ index exists (404), so states link to the US WARN registry
+and countries/industries to the tracker; the old JSON-LD pointed that crumb at
+the page's own URL. Ordinary posts, pages and category/tag archives: Rank Math
+already emits BreadcrumbList in its @graph (verified live on a post and a
+category), so we print only its visible trail (`rank_math_get_breadcrumbs()`,
+falling back to our own from WP data if its setting is off) before the main
+`core/post-title` / `core/query-title` block, never a second JSON-LD. Styling
+is inline and currentColor, so contrast is the body text's in light and dark,
+and the list wraps at 375px.
+
 ## 2026-10-12 - Blog posts ping IndexNow on first publish (2.20.235, SEO hygiene)
 
 **Class:** novel (scored gap 1, indexation)

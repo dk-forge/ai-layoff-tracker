@@ -27,6 +27,7 @@ $alt_verif = array(
 );
 ?>
 <main class="alt-wrap alt-company-directory">
+    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(alt_breadcrumbs_company_trail($alt_name . ' layoffs', $alt_dir['url'])); ?>
     <p class="alt-eyebrow">Source-linked company record</p>
     <h1><?php echo esc_html($alt_name); ?> layoffs</h1>
 

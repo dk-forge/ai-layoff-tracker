@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.236
+ * Version:           2.20.237
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.236');
+define('ALT_VERSION', '2.20.237');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -55,6 +55,11 @@ if (is_readable($alt_declared_supersets)) {
     require_once $alt_declared_supersets;
 }
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
+// Visible breadcrumbs + their JSON-LD from one trail (2.20.237). NEW file,
+// GUARDED for the FTP-deploy race; callers check function_exists.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/breadcrumbs.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/breadcrumbs.php';
+}
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
 require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-seo.php';

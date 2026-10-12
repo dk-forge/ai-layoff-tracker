@@ -30,6 +30,7 @@ $alt_bd_titles = array(
 );
 ?>
 <main class="alt-wrap alt-facet-page">
+    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(alt_breadcrumbs_facet_trail($alt_f, alt_facet_heading($alt_f))); ?>
     <p class="alt-eyebrow">Source-linked <?php echo esc_html($alt_meta['noun']); ?> record</p>
     <h1><?php echo esc_html(($alt_f['dim'] === 'state' && !empty($alt_f['warn']['notices']))
         ? $alt_f['display'] . ' layoffs and WARN notices' : alt_facet_heading($alt_f)); ?></h1>

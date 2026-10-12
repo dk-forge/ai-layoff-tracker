@@ -41,6 +41,7 @@ function alt_company_index_strip($current, array $counts) {
 ?>
 <main class="alt-wrap alt-company-index">
 <?php if ($alt_cur === 'hub') : ?>
+    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(array_merge(alt_breadcrumbs_root(), array(array('name' => 'Companies', 'url' => alt_company_index_url())))); ?>
 
     <p class="alt-eyebrow">Source-linked company records</p>
     <h1>Layoffs by employer</h1>
@@ -79,6 +80,7 @@ function alt_company_index_strip($current, array $counts) {
     $alt_n = count($alt_entries);
     $alt_label = ($alt_cur === '0-9') ? '0-9' : strtoupper($alt_cur);
 ?>
+    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(array_merge(alt_breadcrumbs_root(), array(array('name' => 'Companies', 'url' => alt_company_index_url()), array('name' => $alt_label, 'url' => alt_company_index_url($alt_cur))))); ?>
     <p class="alt-eyebrow"><a href="<?php echo esc_url(alt_company_index_url()); ?>">Layoffs by employer</a></p>
     <h1>Employers: <?php echo esc_html($alt_label); ?></h1>
 
