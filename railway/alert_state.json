@@ -137,6 +137,11 @@
       "last": 1791844004,
       "subject": "CI RED: VPS heartbeat \u2014 runner service actions.runner.dk-forge-asktherecruiter-sandbox.atr-runner-asktherecruiter-sandbox-6.service is activating, not active"
     },
+    "vps:heartbeat-stale": {
+      "first": 1791844508,
+      "last": 1791844508,
+      "subject": "VPS heartbeat is stale: atr-runner may be down"
+    },
     "vps:offline:asktherecruiter-sandbox": {
       "first": 1791801675,
       "last": 1791801675,
@@ -153,6 +158,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-12T22:26:44+00:00",
+  "updated_at": "2026-10-12T22:35:09+00:00",
   "version": 1
 }
