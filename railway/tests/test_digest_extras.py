@@ -66,7 +66,7 @@ class TopStoryAndSubject(unittest.TestCase):
         self.assertEqual(
             php("alt_digest_story_metric('13,658 verified job cuts', "
                 "array('company'=>'Intel','jobs'=>2000))"),
-            "13,658 verified job cuts, led by Intel (2,000)")
+            "13,658 verified job cuts \u00b7 Intel leads")
 
     def test_no_story_leaves_the_metric_alone(self):
         self.assertEqual(php("alt_digest_story_metric('5 verified job cuts', null)"),
@@ -78,7 +78,7 @@ class TopStoryAndSubject(unittest.TestCase):
         self.assertNotRegex(out, r"\bAI\b")
 
     def test_subject_carries_story_through_both_senders(self):
-        metric = "13,658 verified job cuts, led by Intel (2,000)"
+        metric = "13,658 verified job cuts \u00b7 Intel leads"
         payload = {"from": "2026-08-10", "to": "2026-08-16", "freq": "weekly",
                    "subject": "x"}
         parts = [("layoff", "<p>x</p>", "AI Layoff Tracker\nx\n", "",
@@ -124,7 +124,7 @@ class WeekStrip(unittest.TestCase):
         self.assertIn("Aug 21 1,000", text)
         drawn = digest_design.add_charts(html)
         self.assertEqual(drawn.count('data-alt="chart-label"'), 8)
-        # Bars are decoration: hidden from screen readers, figures in text.
+        # The bar cells are decoration; label and figure are real text cells.
         self.assertIn('aria-hidden="true"', drawn)
         self.assertNotIn("<img", drawn)
 
@@ -135,6 +135,44 @@ class WeekStrip(unittest.TestCase):
     def test_fewer_than_eight_withholds(self):
         self.assertEqual(php("alt_digest_week_strip(array(array('label'=>'Aug 3','jobs'=>1)))"),
                          ["", ""])
+
+
+@unittest.skipUnless(PHP, "php is not installed. UNKNOWN, not a pass.")
+class OwnerFeedback20261012(unittest.TestCase):
+    """Owner feedback on the Oct 5-11 weekly: short subject, plain hero,
+    one comparison line per number, caveats once, one bar visual."""
+
+    def test_employer_name_is_cleaned_for_the_subject(self):
+        self.assertEqual(php("alt_digest_clean_employer('Community Healthlink, Inc. (aka CHL)')"),
+                         "Community Healthlink")
+        self.assertEqual(php("alt_digest_clean_employer('Sky Chefs, LLC')"), "Sky Chefs")
+        self.assertEqual(php("alt_digest_clean_employer('Intel')"), "Intel")
+
+    def test_subject_has_no_parenthesised_count(self):
+        out = php("alt_digest_story_metric('4,139 verified job cuts', "
+                  "array('company'=>'Community Healthlink, Inc. (aka CHL)','jobs'=>639))")
+        self.assertEqual(out, "4,139 verified job cuts \u00b7 Community Healthlink leads")
+        self.assertNotIn("(", out)
+        payload = {"from": "2026-10-05", "to": "2026-10-11", "freq": "weekly", "subject": "x"}
+        subject = layout.subject_line(payload, [("layoff", "<p>x</p>", "x", "", (out, False))])
+        self.assertEqual(subject, "4,139 verified job cuts \u00b7 Community Healthlink leads \u00b7 Oct 5-11")
+        self.assertLessEqual(len(subject), 70)
+
+    def test_change_line_is_short_and_directional(self):
+        self.assertEqual(php("alt_digest_change_line(28, 100, true)"),
+                         ["\u25bc 72% vs last week", "down"])
+        self.assertEqual(php("alt_digest_change_line(150, 100, true)"),
+                         ["\u25b2 50% vs last week", "up"])
+        # Not like for like: no figure, no per-number caveat.
+        self.assertIsNone(php("alt_digest_change_line(28, 100, false)"))
+        self.assertIsNone(php("alt_digest_change_line(28, null, true)"))
+
+    def test_strip_is_one_visual_without_duplicated_numbers(self):
+        html, text = php(f"alt_digest_week_strip({WeekStrip.WEEKS})")
+        drawn = digest_design.add_charts(html)
+        self.assertEqual(drawn.count("1,200"), 1, drawn)
+        self.assertNotIn("provisional", drawn)
+        self.assertEqual(text.count("1,200"), 1)
 
 
 class Wiring(unittest.TestCase):

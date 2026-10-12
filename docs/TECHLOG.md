@@ -1,3 +1,25 @@
+## 2026-10-12 - Weekly digest: short subject, plain hero, one comparison line, caveats once (2.20.238)
+
+**Class:** owner feedback (presentation/copy only, same data)
+**Guard:** `railway/tests/test_digest_extras.py::OwnerFeedback20261012`, `test_digest_email_design.py::OwnerReadability20261012`, `test_digest_scope_rules.py::...::test_owner_feedback_2026_10_12_hero_and_comparison`
+
+Owner read the Oct 5-11 weekly ("4,139 verified job cuts, led by Community
+Healthlink, Inc. (aka CHL) (639) · Oct 5-11") as poorly formatted. Now:
+subject `4,139 verified job cuts · Community Healthlink leads · Oct 5-11`
+(employer cleaned by `alt_digest_clean_employer`, no parenthesised count;
+"verified" kept because the unit rule in the composer forbids flattening it);
+hero figures are bold plain text with a separate small "See the data" link;
+one line per number `▲ 71% vs last week` (`alt_digest_change_line`), red up /
+green down with glyph and words, and when the prior week is not like for like
+"Last week still being counted." once; the dateline drops the basis and
+"provisional" (monthly keeps "month to date"); the scope sentence and the
+maturity caveat move to the first Data notes line at the bottom; the 8-week
+strip is one bar table whose label/figure cells are the text (no duplicated
+sentence, `digest_design._chart_weeks`); body text 16px, secondary 14px,
+MUTED darkened to #454950 (>=4.5:1 upright and inverted). Old tests that
+pinned the per-number "(early, not like for like)" flag and the dateline
+basis were rewritten to the new placement. The compose harness now loads
+digest-extras.php, as the plugin does.
 ## 2026-10-12 - Visible breadcrumbs on tracker pages and the whole blog (2.20.237, navigation)
 
 **Class:** novel (owner request 2026-10-12)

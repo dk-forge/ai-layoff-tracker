@@ -54,25 +54,57 @@ function alt_digest_top_story($leaders, $single_report = null) {
 }
 
 /**
+ * An employer name as a reader says it: legal suffixes and "(aka ...)" go.
+ * Owner feedback 2026-10-12: "Community Healthlink, Inc. (aka CHL)" in a
+ * subject is noise. Display only; the stored name is untouched.
+ */
+function alt_digest_clean_employer($name) {
+    $name = trim((string) $name);
+    $name = preg_replace('/\s*\((?:aka|a\.k\.a\.|formerly|dba)\b[^)]*\)/i', '', $name);
+    $name = preg_replace('/[,\s]+(?:Inc|Incorporated|LLC|L\.L\.C|Ltd|Limited|Corp|Corporation|Co|Company|PLC|LLP|LP|GmbH|S\.A|N\.V|AG|Oyj|AB)\.?$/i', '', $name);
+    return trim($name, " ,");
+}
+
+/**
  * The layoff section's subject fragment: its figure, then its top story.
  *
- *     13,658 verified job cuts, led by Intel (2,000)
+ *     4,139 verified job cuts · Community Healthlink leads
  *
- * "Led by" and not a verb about AI: the subject must never leave a reader
- * with a larger AI figure than the email reports
- * (tests/test_digest_subject_never_inflates_ai.py), so the story names an
- * employer and a count and nothing else. A name too long for the line is
- * dropped rather than cut, because a truncated employer is a different one.
+ * Owner feedback 2026-10-12: short, no parenthesised count. The employer and
+ * nothing else, so the subject can never imply an AI figure
+ * (tests/test_digest_subject_never_inflates_ai.py). A name still too long
+ * after cleaning is dropped rather than cut.
  */
 function alt_digest_story_metric($metric, $story) {
     $metric = trim((string) $metric);
     if ($metric === '' || !is_array($story)) return $metric;
-    $name = trim((string) ($story['company'] ?? ''));
+    $name = alt_digest_clean_employer($story['company'] ?? '');
     $jobs = (int) ($story['jobs'] ?? 0);
     if ($name === '' || $jobs <= 0) return $metric;
     $len = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
-    if ($len > 36) return $metric;
-    return $metric . ', led by ' . $name . ' (' . alt_digest_fmt($jobs) . ')';
+    if ($len > 28) return $metric;
+    return $metric . " \xc2\xb7 " . $name . ' leads';
+}
+
+/**
+ * One comparison line under a hero number: "▼ 72% vs last week", or null.
+ *
+ * Null when there is no prior figure or the prior week is not yet comparable
+ * ($like_for_like false). The caller then says "Last week still being
+ * counted" ONCE, and the caveat lives in the footnote, not on every number.
+ * Returns array(line, 'up'|'down'|'level'); the direction picks the colour
+ * (up = red, down = green) and the glyph + words carry it without colour.
+ */
+function alt_digest_change_line($now, $before, $like_for_like) {
+    if ($before === null || !$like_for_like) return null;
+    $now = (int) $now; $before = (int) $before;
+    if ($before <= 0) return null;
+    if ($now === $before) return array('= level with last week', 'level');
+    $share = 100 * abs($now - $before) / $before;
+    $pct = ($share < 1 ? number_format($share, 1) : (string) round($share)) . '%';
+    $up = $now > $before;
+    return array(($up ? "\xe2\x96\xb2 " : "\xe2\x96\xbc ") . $pct . ' vs last week',
+                 $up ? 'up' : 'down');
 }
 
 /**
@@ -175,11 +207,16 @@ function alt_digest_week_strip($weeks) {
         if ($label === '' || !isset($w['jobs']) || $w['jobs'] === null) return array('', '');
         $items[] = $label . ' ' . alt_digest_fmt((int) $w['jobs']);
     }
-    $caption = 'Verified job cuts, last 8 weeks, by week starting';
-    $line = $caption . ': ' . implode(" \xc2\xb7 ", $items)
-          . '. The latest weeks are provisional and usually rise.';
-    $html = '<h3>Last 8 weeks</h3><p data-alt="series">'
-          . htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . '</p>';
-    $text = "\nLast 8 weeks\n" . $line . "\n";
+    /*
+      ONE VISUAL, NO DUPLICATED NUMBERS (owner feedback 2026-10-12). The
+      weeks line is converted by railway/digest_design.py into one bar table
+      whose label and figure cells are the text; without that pass it stays a
+      readable line. The provisional caveat is in the footnote, once.
+    */
+    $line = implode(" \xc2\xb7 ", $items);
+    $html = '<h3>Last 8 weeks</h3>'
+          . '<p data-alt="caption">Verified job cuts by week starting</p>'
+          . '<p data-alt="weeks">' . htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . '</p>';
+    $text = "\nLast 8 weeks (verified job cuts by week starting)\n" . $line . "\n";
     return array($html, $text);
 }

@@ -75,6 +75,17 @@ class ColourPerTracker(unittest.TestCase):
                 f"{ink} on {bg} fails once a dark-mode client inverts it")
 
 
+class OwnerReadability20261012(unittest.TestCase):
+    def test_secondary_text_clears_4_5_both_ways_and_body_is_16px(self):
+        for ink in (layout.MUTED, design.RED, design.GREEN):
+            self.assertGreaterEqual(_ratio(ink, layout.CARD_BG), 4.5, ink)
+            self.assertGreaterEqual(_ratio(_invert(ink), _invert(layout.CARD_BG)), 4.5, ink)
+        for tag in ("p", "li", "td"):
+            self.assertIn("font-size:16px", layout.TAG_STYLES[tag])
+        self.assertIn(design.RED, layout.VARIANT_STYLES[("p", "change-up")])
+        self.assertIn(design.GREEN, layout.VARIANT_STYLES[("p", "change-down")])
+
+
 class HeadingsAndLeadNumber(unittest.TestCase):
     def test_section_heading_is_bold_and_carries_the_accent_bar(self):
         out = layout.restyle('<h2>AI Layoff Tracker</h2>', accent=design.RED)

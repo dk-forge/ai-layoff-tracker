@@ -304,8 +304,9 @@ class NoHeadlineFigureLeavesItsGeographyToBeInferred(unittest.TestCase):
         are read as comparable, so the sentence that says they are has to be
         one sentence covering both rather than two that could drift."""
         section = compose(layoff_fixture())
-        scopes = [re.sub(r"<[^>]+>", "", m) for m in SCOPE_P.findall(section["html"])]
-        both = [s for s in scopes if s.startswith("Both figures are")]
+        # Owner feedback 2026-10-12: the sentence moved into the one footnote.
+        both = [l for l in section["text"].splitlines() if l.startswith("Both figures are")]
+        scopes = both
         self.assertEqual(len(both), 1, f"expected exactly one: {scopes!r}")
         line = both[0]
         self.assertIn("verified job cuts", line)
@@ -462,7 +463,8 @@ class EveryFigureNamesItsWindow(unittest.TestCase):
         lede = self.text.splitlines()[1]
         self.assertIn("verified job cuts", lede)
         self.assertIn("August 9-16", lede)
-        self.assertIn("counted by the date the cuts take effect", lede)
+        # Owner feedback 2026-10-12: the date basis is stated ONCE, in the footnote.
+        self.assertEqual(self.text.count("by the date the cuts take effect."), 2)  # footnote + YTD scope
 
     def test_the_geography_basis_is_attached_to_the_geography_block(self):
         block = self.text.split("Where the jobs were")[1]
@@ -917,9 +919,8 @@ class TheEmailCanBeCited(unittest.TestCase):
         self.assertIn("Filings and notices keep arriving", text,
                       "the provisional warning is true whether or not we can "
                       "date the last write, so it must survive the absence")
-        period = text.split("\n2026 YTD")[0]
-        self.assertIn("Filings and notices keep arriving", period,
-                      "the provisional note is no longer beside the figures")
+        # Owner feedback 2026-10-12: the caveat lives ONCE in the footnote.
+        self.assertEqual(text.count("Filings and notices keep arriving"), 1)
 
     def test_the_provisional_warning_does_not_promise_figures_only_rise(self):
         """Late filings grow a window, and corrections shrink it. The public
@@ -1869,15 +1870,12 @@ class ThePercentageWaitsUntilItIsLikeForLike(unittest.TestCase):
 
     def test_a_fresh_window_states_the_direction_and_withholds_the_number(self):
         # Ends yesterday: one day to settle against the prior week's eight.
+        # Owner feedback 2026-10-12: no per-number flag; one line says the
+        # prior week is still being counted, and no percentage is printed.
         text = compose(self._with_prior(1))["text"]
-        change = [l for l in text.splitlines() if "from Week" in l]
-        self.assertTrue(change, "no comparison was printed at all")
-        for line in change:
-            self.assertIn("(early, not like for like)", line,
-                          "a fresh window published a confident direction")
-            self.assertNotRegex(line, r"\bup \d+%|\bdown \d+%",
-                                "the percentage was published on a window too "
-                                "fresh to compare")
+        self.assertEqual(text.count("Last week still being counted"), 1)
+        self.assertNotIn("not like for like)", text)
+        self.assertNotRegex(text, r"\d+% vs last week|\b(up|down) \d+% from Week")
         self.assertIn("this week has had 1 day to settle against 8 days", text)
 
     def test_a_settled_window_publishes_the_number(self):
@@ -1890,6 +1888,18 @@ class ThePercentageWaitsUntilItIsLikeForLike(unittest.TestCase):
                         "a settled window withheld a like-for-like percentage")
         for line in change:
             self.assertNotIn("(early, not like for like)", line)
+
+    def test_owner_feedback_2026_10_12_hero_and_comparison(self):
+        html = compose(self._with_prior(14))["html"]
+        # One short line per number, coloured by direction.
+        self.assertRegex(html, r'data-alt="change-(up|down)">\u25b2|data-alt="change-(up|down)">\u25bc')
+        self.assertRegex(html, r"\d+% vs last week")
+        # The hero figure is plain bold text, never a link.
+        self.assertNotRegex(html, r'data-alt="stat-pair"><a')
+        self.assertIn("See the data", html)
+        # Caveats once.
+        self.assertLessEqual(html.count("provisional"), 1)
+        self.assertNotIn("not like for like)", html)
 
 
 if __name__ == "__main__":
