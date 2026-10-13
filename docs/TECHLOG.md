@@ -1,3 +1,13 @@
+## 2026-10-13 - Article JSON-LD on dated report pages (2.20.248, seo)
+
+SEO audit 2026-10-13 item 7. Month, quarter and year report pages
+(`/ai-layoff-tracker/report/<period>/`) emit an Article node: headline = the page
+title, datePublished = first day of the period, dateModified = latest entry date
+in the period (same per-month lastmods as the report sitemap), isBasedOn the
+tracker `#dataset`. Week/invalid periods (noindex) get none.
+**Class:** novel (SEO audit 2026-10-13, item 7)
+**Guard:** `railway/tests/test_report_article_schema.py`
+
 ## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
 
 **Class:** novel (bug hunt 2026-10-12, BUG 1)
