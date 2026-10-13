@@ -335,3 +335,40 @@ def why_same_entity(name_a, name_b):
     if _is_contained_in(short, long_key):
         return 'one name contained in the other'
     return ''
+
+
+#: A typo hint, NOT an identity rule. See `typo_variant`.
+TYPO_MIN_SIMILARITY = 0.9
+TYPO_MIN_KEY_LEN = 6
+
+
+def typo_variant(name_a, name_b):
+    """Similarity (0-1) when two names look like one spelling plus a typo, else 0.0.
+
+    WHY THIS IS NOT A FOURTH RULE IN same_entity. "Golman Sachs" against
+    "Goldman Sachs" reached the tracker as two rows and only the company-free
+    shape scan could see the pair (duplicate_shape_scan docstring). A string
+    distance is the obvious answer and also the obvious way to merge "Nissan"
+    into "Nissin". So this answers a smaller question: is it WORTH A HUMAN
+    LOOKING? Callers may rank or annotate a worklist with it; nothing may merge,
+    suppress or bucket on it. Pure stdlib (difflib), no new dependency.
+
+    Gates, all required: both keys non-empty, Latin, at least TYPO_MIN_KEY_LEN
+    characters, the same number of tokens, not already joined by same_entity,
+    and a difflib ratio of at least TYPO_MIN_SIMILARITY on the keys.
+    """
+    import difflib
+
+    if is_non_latin(name_a) or is_non_latin(name_b):
+        return 0.0
+    key_a, key_b = entity_key(name_a), entity_key(name_b)
+    if not key_a or not key_b or key_a == key_b:
+        return 0.0
+    if min(len(key_a), len(key_b)) < TYPO_MIN_KEY_LEN:
+        return 0.0
+    if len(_tokens(key_a)) != len(_tokens(key_b)):
+        return 0.0
+    if same_entity(name_a, name_b):
+        return 0.0
+    ratio = difflib.SequenceMatcher(None, key_a, key_b).ratio()
+    return round(ratio, 3) if ratio >= TYPO_MIN_SIMILARITY else 0.0

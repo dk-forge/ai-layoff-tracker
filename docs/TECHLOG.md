@@ -79,6 +79,21 @@ checked in the 1.2.143 wheel's LICENSE; used as a dependency, nothing vendored).
 README no longer hard-codes counts (it said ~34,500 events / 22 countries while
 the live page showed 68,822 / 81). **Class:** novel (SEO audit 2026-10-13, items 1 and 3)
 **Guard:** `railway/tests/test_page_freshness.py`
+## 2026-10-13 - Company-name typo hint for dedup worklists (data quality, no plugin change)
+
+**Class:** novel (owner-approved data-quality roadmap, item 1)
+**Guard:** `railway/tests/test_company_typo_variant.py`
+
+New `entity_resolution.typo_variant(a, b)` returns a difflib similarity when two
+employer names look like one spelling plus a typo ("Golman Sachs" class), else
+0.0. Gates: Latin, keys of 6+ chars, equal token count, not already joined by
+`same_entity`, ratio >= 0.9. It is a HINT for a human worklist only and is
+deliberately not a fourth rule in `same_entity`: nothing may merge or bucket on
+it. Stdlib only; cleanco/rapidfuzz were not added because `entity_key` already
+does the legal-form clean-up and neither is in the dependencies. Not yet wired
+into a caller; the next slice is annotating `duplicate_shape_scan` worklist
+pairs with it (output only, never membership).
+
 ## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
 
 **Class:** novel (bug hunt 2026-10-12, BUG 1)
