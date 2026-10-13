@@ -465,7 +465,9 @@ function alt_company_directory_dataset_schema() {
         'description'   => alt_company_directory_description($data),
         'url'           => $data['url'],
         'isPartOf'      => array('@id' => home_url('/ai-layoff-tracker/') . '#dataset'),
-        'about'         => array('@type' => 'Organization', 'name' => $name),
+        'about'         => array_merge(array('@type' => 'Organization', 'name' => $name),
+                                   function_exists('alt_company_lei_for_events')
+                                       ? alt_company_lei_jsonld(alt_company_lei_for_events($data['events'])) : array()),
         'creator'       => array('@type' => 'Organization', 'name' => 'AskTheRecruiter'),
         'license'       => 'https://creativecommons.org/licenses/by/4.0/',
         'isAccessibleForFree' => true,
@@ -476,6 +478,7 @@ function alt_company_directory_dataset_schema() {
     if ($data['countries']) {
         $node['spatialCoverage'] = array_values($data['countries']);
     }
+    if (function_exists('alt_page_dataset_freshness')) $node += alt_page_dataset_freshness();
     echo '<script type="application/ld+json">' . wp_json_encode($node, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 }
 add_action('wp_head', 'alt_company_directory_dataset_schema', 22);

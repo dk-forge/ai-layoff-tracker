@@ -82,7 +82,7 @@ function alt_press_email_body($contact, $pitch, $optout_url) {
     $first = trim((string) strtok(trim((string) ($contact['name'] ?? '')), ' '));
     $hello = $first !== '' ? 'Hi ' . $first . ',' : 'Hello,';
     return $hello . "\n\n"
-        . "The AI Layoff Tracker's monthly report is out. The summary is below, and every figure links to its source.\n\n"
+        . "The AI Layoff Tracker's monthly report is out. A short summary is below; the full report links every figure to its source.\n\n"
         . trim((string) $pitch) . "\n\n"
         . "Happy to pull a custom cut of the data for a story.\n\n"
         . "AskTheRecruiter.com\n\n"

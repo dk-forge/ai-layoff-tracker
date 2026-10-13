@@ -9,8 +9,8 @@ outlet with the exact quote.
 **API:** `https://asktherecruiter.com/blog/wp-json/layoffs/v1/` (public, no key needed for reads)
 **Corrections:** https://asktherecruiter.com/blog/contact/ → info@asktherecruiter.com
 
-Current scale: ~34,500 verified events · ~4.8M jobs · 42 US states (37 with
-WARN coverage) · 22 countries · 2015→present, refreshed daily.
+Current scale: see the live page for record, company and country counts (they
+change daily, so they are deliberately not typed here). Coverage runs 2015→present.
 
 ## Why another layoff tracker
 
@@ -124,6 +124,12 @@ requires a descriptive User-Agent with contact info), and the crons do the
 rest. Steady-state cost is a few dollars a month: the data sources (EDGAR,
 WARN, GDELT) are free; only news extraction touches a paid LLM
 (google/gemini-2.5-flash-lite, ~100–200 calls/day).
+
+## Credits
+
+US WARN notices are collected with [warn-scraper](https://github.com/biglocalnews/warn-scraper),
+open-source software by Big Local News at Stanford University, used under the
+Apache License 2.0. It is installed as a dependency; none of its code is copied here.
 
 ## License
 

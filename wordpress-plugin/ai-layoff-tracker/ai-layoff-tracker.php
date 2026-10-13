@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.246
+ * Version:           2.20.251
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.246');
+define('ALT_VERSION', '2.20.251');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -62,8 +62,14 @@ if (is_readable(ALT_PLUGIN_DIR . 'includes/breadcrumbs.php')) {
 }
 require_once ALT_PLUGIN_DIR . 'includes/seo-sitemap-meta.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
+// GLEIF LEI lookup; new include, so guarded for the FTPS upload race.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/company-lei.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/company-lei.php';
+}
 require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
+require_once ALT_PLUGIN_DIR . 'includes/page-freshness.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-seo.php';
+require_once ALT_PLUGIN_DIR . 'includes/report-article.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';
 require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
@@ -81,12 +87,6 @@ if (is_readable($alt_digest_extras)) {
 $alt_digest_sections = ALT_PLUGIN_DIR . 'includes/digest-sections.php';
 if (is_readable($alt_digest_sections)) {
     require_once $alt_digest_sections;
-}
-// Account emails (confirm, welcome) in the subscriber design (2.20.246).
-// Guarded like every NEW include; every caller checks function_exists().
-$alt_account_mail = ALT_PLUGIN_DIR . 'includes/account-mail.php';
-if (is_readable($alt_account_mail)) {
-    require_once $alt_account_mail;
 }
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';

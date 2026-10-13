@@ -1,4 +1,4 @@
-## 2026-10-13 - Account emails (confirm, change confirm, welcome) in the subscriber design (2.20.246, board item "Finish tracker email redesign")
+## 2026-10-13 - Account emails (confirm, change confirm, welcome) in the subscriber design (2.20.251, was 2.20.246 before merging main; board item "Finish tracker email redesign")
 
 **Class:** novel (owner-approved redesign, presentation only)
 **Guard:** `railway/tests/test_account_mail.py` (real-PHP render, snapshot `tests/snapshots/account_mail_welcome.html`, upright + inverted 4.5:1 contrast, no images/fetches, no #E313, footer links)
@@ -16,6 +16,69 @@ unsubscribe or preferences link in the body (2026-08-17 scanner decision; the
 List-Unsubscribe header stays); the welcome footer has preferences +
 unsubscribe + the postal address (no suite). Body wording unchanged.
 
+## 2026-10-13 - GLEIF LEI on company pages, 8-K and news only (2.20.250, dormant until armed)
+
+**Class:** novel (feature, owner-approved)
+**Guard:** `railway/tests/test_gleif_lei.py`
+
+Owner-approved. `railway/gleif_lei.py` reads the public `/query` (read-only,
+`sources=8K,news`, and drops any other `source_type` client-side, so WARN is
+never read) and streams the GLEIF golden copy (CC0 1.0, no key, no model). A
+`company_name` gets an LEI only on a UNIQUE normalised-name match (case,
+accents, punctuation, trailing legal forms) whose legal-address country equals
+the row's one country (employer_country, else country, mapped to ISO2).
+Ambiguous, unknown, or two countries: nothing. Country is required because
+the probe matched "Hook Media, Inc." (US) to "HÖÖK media AB" (SE).
+
+Measured 2026-10-13: 783 of 1,881 8-K/news employer names (41.6%). Output is
+`wordpress-plugin/ai-layoff-tracker/data/company_lei.json` keyed by exact
+`company_name`; `includes/company-lei.php` shows "LEI: <code>" (linked to
+search.gleif.org, GLEIF/CC0 attribution) under the company-page h1 and adds
+`leiCode` + an `identifier` PropertyValue to the Dataset's `about`
+Organization, only when every listed name on the page agrees on ONE code.
+
+`gleif-lei.yml` (VPS, Sundays 05:20 UTC) is a DRY RUN until repo variable
+`GLEIF_LEI_WRITE=true`; `gh workflow run gleif-lei.yml -f write=true` writes
+once and the push-to-main deploy ships the file. Tests:
+`railway/tests/test_gleif_lei.py`. Parent (Level-2) roll-up is a later slice.
+
+## 2026-10-13 - Email review: press pitch no longer claims links it does not carry (2.20.249)
+
+**Class:** novel (owner email review, copy accuracy)
+**Guard:** `railway/tests/test_press_list.py::EmailBody::test_body_claims_only_what_the_plain_text_summary_carries`
+
+Reviewed every reader-facing email (digest tiers via the test harness, account
+mails in PR #509, press pitch). The press pitch body said "every figure links
+to its source", but the pitch is plain text with no links; only the full
+report does. Now: "A short summary is below; the full report links every
+figure to its source." Postal footer and no "#E313" pinned. Open for the owner:
+the pitch and the plain-text confirm/welcome fallback go through bare
+`wp_mail`, so they carry the Brevo plugin's newsletter From identity; whether
+press mail should come from a person-free press address is a sender decision.
+The digest keeps its owner-approved red/blue tracker palette (2026-10-05);
+moving it to the app's green brand would reverse that approval, so it was not
+changed here.
+## 2026-10-13 - Article JSON-LD on dated report pages (2.20.248, seo)
+
+SEO audit 2026-10-13 item 7. Month, quarter and year report pages
+(`/ai-layoff-tracker/report/<period>/`) emit an Article node: headline = the page
+title, datePublished = first day of the period, dateModified = latest entry date
+in the period (same per-month lastmods as the report sitemap), isBasedOn the
+tracker `#dataset`. Week/invalid periods (noindex) get none.
+**Class:** novel (SEO audit 2026-10-13, item 7)
+**Guard:** `railway/tests/test_report_article_schema.py`
+## 2026-10-13 - "Last updated · N sources" on company and facet pages; dateModified + CSV in their Dataset (2.20.247, seo)
+
+SEO audit 2026-10-13 items 1 and 3. Company (`/company-layoffs/<slug>/`) and
+country/state/industry pages now print, under the H1, when the database last
+changed (`alt_last_write`, the stamp Sources and Press already show) and how many
+distinct source URLs the page links. Their Dataset nodes gain `dateModified`
+(same stamp) and a CSV `DataDownload`. One helper, `includes/page-freshness.php`.
+Sources page and README now credit Big Local News' warn-scraper (Apache-2.0,
+checked in the 1.2.143 wheel's LICENSE; used as a dependency, nothing vendored).
+README no longer hard-codes counts (it said ~34,500 events / 22 countries while
+the live page showed 68,822 / 81). **Class:** novel (SEO audit 2026-10-13, items 1 and 3)
+**Guard:** `railway/tests/test_page_freshness.py`
 ## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
 
 **Class:** novel (bug hunt 2026-10-12, BUG 1)
