@@ -30,6 +30,7 @@ $alt_verif = array(
     <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(alt_breadcrumbs_company_trail($alt_name . ' layoffs', $alt_dir['url'])); ?>
     <p class="alt-eyebrow">Source-linked company record</p>
     <h1><?php echo esc_html($alt_name); ?> layoffs</h1>
+    <?php if (function_exists('alt_page_freshness_html')) echo alt_page_freshness_html($alt_dir['events']); ?>
 
     <p class="alt-company-summary">
         This page lists <?php echo (int) $alt_count; ?> recorded layoff entr<?php echo $alt_count === 1 ? 'y' : 'ies'; ?>

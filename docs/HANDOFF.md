@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-13, branch `claude/seo-page-freshness` (PR). Reserves plugin version 2.20.247** (2.20.246 is held by PR #509). Last updated + sources line, Dataset dateModified/CSV; see TECHLOG 2026-10-13 (2.20.247).
 - **RELEASED - Claude (agent), 2026-10-12, branch `seo-oct12-fixes` (PR #507). Reserves plugin version 2.20.244** (2.20.243 is held by PR #508). SEO audit fixes: sitemap lastmod, clean report URLs, 155-char descriptions, brand publisher; see TECHLOG 2026-10-12 (2.20.244).
 - **RELEASED - Claude (agent), 2026-10-12, branch `claude/bc-shortcode-pages` (PR #506). Reserves plugin version 2.20.242.** Breadcrumbs on the seven tracker sub-pages; see TECHLOG 2026-10-12 (2.20.242).
 - **RELEASED - Claude (agent), 2026-10-12, branch `claude/digest-talent-language` (PR). Reserves plugin version 2.20.241.** Talent digest language tag + English summary; see TECHLOG 2026-10-12 (2.20.241).

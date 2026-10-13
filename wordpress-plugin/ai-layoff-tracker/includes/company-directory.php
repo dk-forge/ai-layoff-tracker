@@ -476,6 +476,7 @@ function alt_company_directory_dataset_schema() {
     if ($data['countries']) {
         $node['spatialCoverage'] = array_values($data['countries']);
     }
+    if (function_exists('alt_page_dataset_freshness')) $node += alt_page_dataset_freshness();
     echo '<script type="application/ld+json">' . wp_json_encode($node, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 }
 add_action('wp_head', 'alt_company_directory_dataset_schema', 22);
