@@ -115,6 +115,11 @@ def covered_warn_jurisdictions():
     codes.update(_codes_in_block(
         (HERE / "sources" / "warn_new_states.py").read_text(),
         "NEW_CUSTOM_STATES"))
+    # Hawaii is collected by its own OCR job (hi_warn_import.py), not by the
+    # three sweep lists, so it is added from that job's presence (mirrors
+    # source_inventory.py) rather than vanishing from the public table.
+    if (HERE / "hi_warn_import.py").exists():
+        codes.add("HI")
     unknown = codes - set(STATE_NAMES)
     if unknown:
         raise SystemExit(f"unmapped jurisdiction code(s): {sorted(unknown)}")
