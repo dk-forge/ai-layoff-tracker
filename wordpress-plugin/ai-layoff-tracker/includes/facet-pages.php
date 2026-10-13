@@ -571,8 +571,10 @@ function alt_facet_title($data) {
     // US states with notices this year answer the query readers type,
     // "<state> WARN notices <year>" (2026-10-12 scored gap 3).
     if ($data['dim'] === 'state' && !empty($data['warn']['notices'])) {
-        return $data['display'] . ' WARN notices ' . (int) $data['warn']['year']
-             . ': layoffs, top employers and cities';
+        // Starts with the page's own H1 ("<state> layoffs and WARN notices")
+        // so the tab, the search snippet and the heading agree (2026-10-13).
+        return $data['display'] . ' layoffs and WARN notices ' . (int) $data['warn']['year']
+             . ': top employers and cities';
     }
     return alt_facet_heading($data) . ': source-linked record of every entry we hold';
 }

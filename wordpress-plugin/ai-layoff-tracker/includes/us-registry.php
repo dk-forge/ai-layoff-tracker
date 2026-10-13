@@ -184,3 +184,26 @@ function alt_ensure_us_registry_page_once() {
         'post_name' => 'us-warn-registry', 'post_content' => '[alt_us_registry]'));
 }
 add_action('init', 'alt_ensure_us_registry_page_once', 20);
+
+/**
+ * <title> for the registry page. The SEO plugin's stored title read "US WARN
+ * Registry by State: ..." while the template's H1 says "by Jurisdiction" (the
+ * page covers DC and the territories too). The title now leads with the H1
+ * (2026-10-13), from code rather than the dashboard so it is reviewable.
+ */
+function alt_us_registry_is_page() {
+    if (!is_page()) return false;
+    $id = get_queried_object_id();
+    return $id && trailingslashit(get_permalink($id))
+        === trailingslashit(home_url('/ai-layoff-tracker/us-warn-registry/'));
+}
+function alt_us_registry_seo_title($title) {
+    return alt_us_registry_is_page()
+        ? 'US WARN Registry by Jurisdiction: 50 States, DC & Territories' : $title;
+}
+add_filter('wpseo_title', 'alt_us_registry_seo_title', 5);
+add_filter('rank_math/frontend/title', 'alt_us_registry_seo_title', 5);
+add_filter('document_title_parts', function ($parts) {
+    if (alt_us_registry_is_page()) $parts['title'] = alt_us_registry_seo_title('');
+    return $parts;
+}, 5);

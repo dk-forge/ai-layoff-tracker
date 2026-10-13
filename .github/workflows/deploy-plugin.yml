@@ -33,6 +33,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, linux, contabo]
+    # FTPS certificate verification (2026-10-13). Every lftp call below reads
+    # this instead of a hardcoded `ssl:verify-certificate no`. It stays `no`
+    # until the repo variable ALT_FTPS_VERIFY is 'true', because
+    # ftp-target-probe.yml measured verification FAILING against the current
+    # FTP_HOST on 2026-10-12 (the host is an address, the certificate names a
+    # host), and switching it on blind would stop every deploy. Order: point
+    # FTP_HOST at a name on the certificate (the probe prints them), dispatch
+    # the probe until it says VERIFIED, then set ALT_FTPS_VERIFY=true.
+    env:
+      FTPS_VERIFY: ${{ vars.ALT_FTPS_VERIFY == 'true' && 'yes' || 'no' }}
     # 6 -> 15, MEASURED 2026-08-07. The reader-verification step below polls for
     # up to 600s, and it was added under a 360s job timeout, so the wait could
     # never run to completion. Every deploy from 2026-08-05 08:00 onward ran all
@@ -240,7 +250,8 @@ jobs:
           # would have caught the 2026-07-27 hex-dir incident.
           if ! timeout 60 lftp -c "
             set cmd:fail-exit true;
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate $FTPS_VERIFY;
+            set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
@@ -304,7 +315,8 @@ jobs:
           # still serves while the flag is up (admin-ajax, cron, REST).
           timeout 180 lftp -c "
             set cmd:fail-exit true;
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate $FTPS_VERIFY;
+            set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
@@ -335,7 +347,8 @@ jobs:
         run: |
           WP_ROOT="$(dirname "$(dirname "$(dirname "$REMOTE_DIR")")")"
           timeout 60 lftp -c "
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate $FTPS_VERIFY;
+            set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;
@@ -403,7 +416,8 @@ jobs:
           rm -f readback.php
           timeout 90 lftp -c "
             set cmd:fail-exit true;
-            set ssl:verify-certificate no;
+            set ssl:verify-certificate $FTPS_VERIFY;
+            set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 1;

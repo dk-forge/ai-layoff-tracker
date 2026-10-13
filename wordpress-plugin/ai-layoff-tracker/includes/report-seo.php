@@ -352,3 +352,24 @@ function alt_report_sitemap_index_entry($xml) {
 }
 add_filter('wpseo_sitemap_index', 'alt_report_sitemap_index_entry');
 add_filter('rank_math/sitemap/index', 'alt_report_sitemap_index_entry');
+
+/**
+ * Visible H1 for dated reports. The theme's post-title block printed the page
+ * name "Monthly Job Cuts Report" as the H1 on every archive, year, quarter,
+ * month and week URL while each <title> named its own period (2026-10-13). The
+ * H1 is now the head of that period's title ("Q1 2026 Layoffs Report"), only
+ * for the queried report page itself, so menus and other posts are untouched.
+ */
+function alt_report_heading_text() {
+    $title = alt_report_seo_title('');
+    if ($title === '') return '';
+    $cut = strpos($title, ': ');
+    return $cut === false ? $title : substr($title, 0, $cut);
+}
+function alt_report_filter_post_title($title, $post_id = 0) {
+    if (is_admin() || !$post_id || (int) $post_id !== (int) get_queried_object_id()) return $title;
+    if (!alt_report_is_report_page()) return $title;
+    $h = alt_report_heading_text();
+    return $h === '' ? $title : esc_html($h);
+}
+add_filter('the_title', 'alt_report_filter_post_title', 10, 2);
