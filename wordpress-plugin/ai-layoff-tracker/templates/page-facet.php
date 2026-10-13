@@ -34,6 +34,7 @@ $alt_bd_titles = array(
     <p class="alt-eyebrow">Source-linked <?php echo esc_html($alt_meta['noun']); ?> record</p>
     <h1><?php echo esc_html(($alt_f['dim'] === 'state' && !empty($alt_f['warn']['notices']))
         ? $alt_f['display'] . ' layoffs and WARN notices' : alt_facet_heading($alt_f)); ?></h1>
+    <?php if (function_exists('alt_page_freshness_html')) echo alt_page_freshness_html($alt_f['events']); ?>
 
     <p class="alt-facet-summary">
         This page lists every layoff entry we hold

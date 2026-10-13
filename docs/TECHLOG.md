@@ -7,6 +7,18 @@ in the period (same per-month lastmods as the report sitemap), isBasedOn the
 tracker `#dataset`. Week/invalid periods (noindex) get none.
 **Class:** novel (SEO audit 2026-10-13, item 7)
 **Guard:** `railway/tests/test_report_article_schema.py`
+## 2026-10-13 - "Last updated · N sources" on company and facet pages; dateModified + CSV in their Dataset (2.20.247, seo)
+
+SEO audit 2026-10-13 items 1 and 3. Company (`/company-layoffs/<slug>/`) and
+country/state/industry pages now print, under the H1, when the database last
+changed (`alt_last_write`, the stamp Sources and Press already show) and how many
+distinct source URLs the page links. Their Dataset nodes gain `dateModified`
+(same stamp) and a CSV `DataDownload`. One helper, `includes/page-freshness.php`.
+Sources page and README now credit Big Local News' warn-scraper (Apache-2.0,
+checked in the 1.2.143 wheel's LICENSE; used as a dependency, nothing vendored).
+README no longer hard-codes counts (it said ~34,500 events / 22 countries while
+the live page showed 68,822 / 81). **Class:** novel (SEO audit 2026-10-13, items 1 and 3)
+**Guard:** `railway/tests/test_page_freshness.py`
 
 ## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
 
