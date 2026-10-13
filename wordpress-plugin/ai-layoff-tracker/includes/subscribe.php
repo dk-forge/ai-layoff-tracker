@@ -1953,7 +1953,17 @@ function alt_digest_send_confirm_email($email, $confirm_token, $unsub_token, $de
     if ($unsub_token !== '') {
         $headers = array_merge($headers, alt_digest_list_unsub_headers($unsub_token));
     }
-    $ok = wp_mail($email, $subject, $body, $headers);
+    // THE NEW DESIGN (2.20.246): an HTML part in the subscriber design plus
+    // this exact text as the plain part, through alt_digest_deliver (which
+    // sets the same List-Unsubscribe headers). Either helper missing, or no
+    // token for the header, keeps the old plain-text wp_mail below.
+    if ($unsub_token !== '' && function_exists('alt_account_mail_confirm_html')
+        && function_exists('alt_digest_deliver')) {
+        $html = alt_account_mail_confirm_html($body, $confirm_url, is_array($delta));
+        $ok = alt_digest_deliver($email, $subject, $html, $body, $unsub_token);
+    } else {
+        $ok = wp_mail($email, $subject, $body, $headers);
+    }
     // Recorded for the adaptive welcome cap's "yesterday's sends" (2026-09-28).
     if ($ok && function_exists('alt_mail_budget_record')) alt_mail_budget_record('confirm');
     return $ok;

@@ -1,3 +1,21 @@
+## 2026-10-13 - Account emails (confirm, change confirm, welcome) in the subscriber design (2.20.246, board item "Finish tracker email redesign")
+
+**Class:** novel (owner-approved redesign, presentation only)
+**Guard:** `railway/tests/test_account_mail.py` (real-PHP render, snapshot `tests/snapshots/account_mail_welcome.html`, upright + inverted 4.5:1 contrast, no images/fetches, no #E313, footer links)
+
+Inventory of reader mail this plugin sends: the nine digest editions (relay
+`digest_layout.py` + `digest_design.py`, already in the design); the wp_mail
+fallback digest (`alt_digest_send`, plain sans-serif shell, shared footer
+blocks; NOT restyled, it only runs when the relay is down); signup confirm,
+change confirm and welcome (were plain text, now HTML in the design + the
+SAME text as the plain part via `alt_digest_deliver`); the press pitch
+(`press-list.php`, plain text on purpose: one-to-one pitch to a reporter).
+New guarded `includes/account-mail.php`; every caller falls back to the old
+plain-text wp_mail when a helper is missing. The confirmations still carry NO
+unsubscribe or preferences link in the body (2026-08-17 scanner decision; the
+List-Unsubscribe header stays); the welcome footer has preferences +
+unsubscribe + the postal address (no suite). Body wording unchanged.
+
 ## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
 
 **Class:** novel (bug hunt 2026-10-12, BUG 1)
