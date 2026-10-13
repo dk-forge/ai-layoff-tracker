@@ -78,6 +78,17 @@ class EmailBody(unittest.TestCase):
         self.assertIn("alt_press_optout=tok", body)
         self.assertIn("will not email you again", body)
 
+    def test_body_claims_only_what_the_plain_text_summary_carries(self):
+        # Email review 2026-10-13: the body said "every figure links to its
+        # source", but the pitch is plain text with no links; only the full
+        # report links each figure. Also: postal footer, no suite number.
+        body = _php("echo alt_press_email_body(array('name' => ''), 'PITCH', 'https://x.example/?o=1');")
+        self.assertTrue(body.startswith("Hello,"))
+        self.assertNotIn("every figure links to its source", body)
+        self.assertIn("full report", body)
+        self.assertIn("601 Van Ness Ave, San Francisco, CA 94102.", body)
+        self.assertNotIn("#E313", body)
+
 
 class Safety(unittest.TestCase):
     def test_every_action_is_admin_and_nonce_gated(self):

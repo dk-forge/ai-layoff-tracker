@@ -67,6 +67,7 @@ if (is_readable(ALT_PLUGIN_DIR . 'includes/company-lei.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/company-lei.php';
 }
 require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
+require_once ALT_PLUGIN_DIR . 'includes/page-freshness.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-seo.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-article.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';

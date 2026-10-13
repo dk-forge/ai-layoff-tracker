@@ -24,6 +24,22 @@ Organization, only when every listed name on the page agrees on ONE code.
 once and the push-to-main deploy ships the file. Tests:
 `railway/tests/test_gleif_lei.py`. Parent (Level-2) roll-up is a later slice.
 
+## 2026-10-13 - Email review: press pitch no longer claims links it does not carry (2.20.249)
+
+**Class:** novel (owner email review, copy accuracy)
+**Guard:** `railway/tests/test_press_list.py::EmailBody::test_body_claims_only_what_the_plain_text_summary_carries`
+
+Reviewed every reader-facing email (digest tiers via the test harness, account
+mails in PR #509, press pitch). The press pitch body said "every figure links
+to its source", but the pitch is plain text with no links; only the full
+report does. Now: "A short summary is below; the full report links every
+figure to its source." Postal footer and no "#E313" pinned. Open for the owner:
+the pitch and the plain-text confirm/welcome fallback go through bare
+`wp_mail`, so they carry the Brevo plugin's newsletter From identity; whether
+press mail should come from a person-free press address is a sender decision.
+The digest keeps its owner-approved red/blue tracker palette (2026-10-05);
+moving it to the app's green brand would reverse that approval, so it was not
+changed here.
 ## 2026-10-13 - Article JSON-LD on dated report pages (2.20.248, seo)
 
 SEO audit 2026-10-13 item 7. Month, quarter and year report pages
