@@ -1,3 +1,29 @@
+## 2026-10-13 - GLEIF LEI on company pages, 8-K and news only (2.20.250, dormant until armed)
+
+**Class:** novel (feature, owner-approved)
+**Guard:** `railway/tests/test_gleif_lei.py`
+
+Owner-approved. `railway/gleif_lei.py` reads the public `/query` (read-only,
+`sources=8K,news`, and drops any other `source_type` client-side, so WARN is
+never read) and streams the GLEIF golden copy (CC0 1.0, no key, no model). A
+`company_name` gets an LEI only on a UNIQUE normalised-name match (case,
+accents, punctuation, trailing legal forms) whose legal-address country equals
+the row's one country (employer_country, else country, mapped to ISO2).
+Ambiguous, unknown, or two countries: nothing. Country is required because
+the probe matched "Hook Media, Inc." (US) to "HÖÖK media AB" (SE).
+
+Measured 2026-10-13: 783 of 1,881 8-K/news employer names (41.6%). Output is
+`wordpress-plugin/ai-layoff-tracker/data/company_lei.json` keyed by exact
+`company_name`; `includes/company-lei.php` shows "LEI: <code>" (linked to
+search.gleif.org, GLEIF/CC0 attribution) under the company-page h1 and adds
+`leiCode` + an `identifier` PropertyValue to the Dataset's `about`
+Organization, only when every listed name on the page agrees on ONE code.
+
+`gleif-lei.yml` (VPS, Sundays 05:20 UTC) is a DRY RUN until repo variable
+`GLEIF_LEI_WRITE=true`; `gh workflow run gleif-lei.yml -f write=true` writes
+once and the push-to-main deploy ships the file. Tests:
+`railway/tests/test_gleif_lei.py`. Parent (Level-2) roll-up is a later slice.
+
 ## 2026-10-13 - Email review: press pitch no longer claims links it does not carry (2.20.249)
 
 **Class:** novel (owner email review, copy accuracy)
@@ -35,7 +61,6 @@ checked in the 1.2.143 wheel's LICENSE; used as a dependency, nothing vendored).
 README no longer hard-codes counts (it said ~34,500 events / 22 countries while
 the live page showed 68,822 / 81). **Class:** novel (SEO audit 2026-10-13, items 1 and 3)
 **Guard:** `railway/tests/test_page_freshness.py`
-
 ## 2026-10-12 - "Multiple countries" no longer counted as a country (2.20.243, wrong public number)
 
 **Class:** novel (bug hunt 2026-10-12, BUG 1)
