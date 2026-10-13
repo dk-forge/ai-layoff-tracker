@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-13, branch `claude/email-review-press-copy` (PR). Reserves plugin version 2.20.249** (2.20.246 is claimed by both #509 and #512; 2.20.247/248 by #511/#513). Press pitch copy accuracy; see TECHLOG 2026-10-13.
 - **RELEASED - Claude (agent), 2026-10-13, branch `claude/seo-report-article` (PR). Reserves plugin version 2.20.248** (2.20.247 is held by PR #511). Article JSON-LD on report pages; see TECHLOG 2026-10-13 (2.20.248).
 - **RELEASED - Claude (agent), 2026-10-13, branch `claude/seo-page-freshness` (PR). Reserves plugin version 2.20.247** (2.20.246 is held by PR #509). Last updated + sources line, Dataset dateModified/CSV; see TECHLOG 2026-10-13 (2.20.247).
 - **RELEASED - Claude (agent), 2026-10-12, branch `seo-oct12-fixes` (PR #507). Reserves plugin version 2.20.244** (2.20.243 is held by PR #508). SEO audit fixes: sitemap lastmod, clean report URLs, 155-char descriptions, brand publisher; see TECHLOG 2026-10-12 (2.20.244).
