@@ -465,7 +465,9 @@ function alt_company_directory_dataset_schema() {
         'description'   => alt_company_directory_description($data),
         'url'           => $data['url'],
         'isPartOf'      => array('@id' => home_url('/ai-layoff-tracker/') . '#dataset'),
-        'about'         => array('@type' => 'Organization', 'name' => $name),
+        'about'         => array_merge(array('@type' => 'Organization', 'name' => $name),
+                                   function_exists('alt_company_lei_for_events')
+                                       ? alt_company_lei_jsonld(alt_company_lei_for_events($data['events'])) : array()),
         'creator'       => array('@type' => 'Organization', 'name' => 'AskTheRecruiter'),
         'license'       => 'https://creativecommons.org/licenses/by/4.0/',
         'isAccessibleForFree' => true,

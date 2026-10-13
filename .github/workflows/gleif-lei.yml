@@ -1,0 +1,87 @@
+name: gleif lei
+
+# Attach GLEIF Legal Entity Identifiers to employers (railway/gleif_lei.py),
+# from SEC 8-K and news rows only. NEVER WARN: WARN notices mostly name local
+# employers and site operators, where a name match is a guess.
+#
+# WEEKLY, Sundays 05:20 UTC. An employer's LEI almost never changes.
+#
+# DRY RUN BY DEFAULT. The scheduled run only reads, matches and prints the
+# coverage until the owner arms it with the repository variable
+# GLEIF_LEI_WRITE='true'. A dispatch can write once:
+#
+#   gh workflow run gleif-lei.yml -R dk-forge/ai-layoff-tracker -f write=true
+#
+# A write commits ONE generated file, the plugin's data/company_lei.json; the
+# push-to-main deploy then carries it to the site. It never POSTs to the site:
+# the only host call is the public read-only /query, which is why it is class
+# (a) and runs on the VPS (RUNBOOK "Which jobs run on the VPS").
+# Free: GLEIF data is CC0, no key, no model.
+
+on:
+  schedule:
+    - cron: '20 5 * * 0'      # Sundays 05:20 UTC
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "Commit company_lei.json (false = dry run)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: alt-gleif-lei
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  gleif-lei:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+
+      - name: Match
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WRITE: ${{ inputs.write == true || (github.event_name == 'schedule' && vars.GLEIF_LEI_WRITE == 'true') }}
+        run: |
+          if [ "$WRITE" = "true" ]; then
+            python railway/gleif_lei.py --write
+          else
+            python railway/gleif_lei.py
+          fi
+
+      - name: Commit company_lei.json
+        if: ${{ inputs.write == true || (github.event_name == 'schedule' && vars.GLEIF_LEI_WRITE == 'true') }}
+        run: |
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          path=wordpress-plugin/ai-layoff-tracker/data/company_lei.json
+          cp "$path" "$RUNNER_TEMP/company_lei.json"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$RUNNER_TEMP/company_lei.json" "$path"
+            git add "$path"
+            if git diff --staged --quiet; then
+              echo "No change to commit."
+              exit 0
+            fi
+            git commit -q -m "gleif: refresh company LEIs $(date -u +%Y-%m-%d)"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), replaying onto current main."
+            sleep $((attempt * 5))
+          done
+          echo "::error::Could not push company_lei.json after 5 attempts."
+          exit 1
