@@ -468,8 +468,18 @@ function alt_digest_send_welcome($row) {
         return false;
     }
     $headers = array_merge(alt_digest_from_header(), alt_digest_list_unsub_headers($row['unsub_token']));
-    $ok = wp_mail($row['email'], 'AskTheRecruiter.com: you are subscribed',
-                  alt_welcome_body($row, alt_prefs_url($row)), $headers);
+    $prefs_url = alt_prefs_url($row);
+    $text = alt_welcome_body($row, $prefs_url);
+    // THE NEW DESIGN (2.20.246): HTML in the subscriber design + this text as
+    // the plain part, with preferences and unsubscribe links in the footer.
+    if (function_exists('alt_account_mail_welcome_html') && function_exists('alt_digest_deliver')
+        && !empty($row['unsub_token'])) {
+        $html = alt_account_mail_welcome_html($text, $prefs_url, alt_digest_unsub_url($row['unsub_token']));
+        $ok = alt_digest_deliver($row['email'], 'AskTheRecruiter.com: you are subscribed', $html, $text,
+                                 $row['unsub_token']);
+    } else {
+        $ok = wp_mail($row['email'], 'AskTheRecruiter.com: you are subscribed', $text, $headers);
+    }
     if ($ok) {
         $b['welcome'] = (int) $b['welcome'] + 1;
         update_option('alt_mail_budget', $b, false);
