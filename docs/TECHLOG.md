@@ -1,3 +1,12 @@
+## 2026-10-13 - Article JSON-LD on dated report pages (2.20.248, seo)
+
+SEO audit 2026-10-13 item 7. Month, quarter and year report pages
+(`/ai-layoff-tracker/report/<period>/`) emit an Article node: headline = the page
+title, datePublished = first day of the period, dateModified = latest entry date
+in the period (same per-month lastmods as the report sitemap), isBasedOn the
+tracker `#dataset`. Week/invalid periods (noindex) get none.
+**Class:** novel (SEO audit 2026-10-13, item 7)
+**Guard:** `railway/tests/test_report_article_schema.py`
 ## 2026-10-13 - "Last updated · N sources" on company and facet pages; dateModified + CSV in their Dataset (2.20.247, seo)
 
 SEO audit 2026-10-13 items 1 and 3. Company (`/company-layoffs/<slug>/`) and
