@@ -821,7 +821,7 @@ function alt_edition_request_canonical() {
 
 function alt_edition_request_title() {
     if (alt_edition_is_index_request()) {
-        return 'Digest Archive: Every Edition We Have Emailed';
+        return 'Every Edition We Have Emailed: The Layoff Digest Archive';
     }
     $row = alt_edition_current();
     if (!$row) return '';

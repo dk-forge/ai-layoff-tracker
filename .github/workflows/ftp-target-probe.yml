@@ -49,6 +49,36 @@ jobs:
             echo "TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
             exit 1
           fi
+      # 2026-10-13: split the verdict above. A FAILED there is either an
+      # untrusted chain (self-signed: no setting fixes it) or a hostname
+      # mismatch (FTP_HOST is an address, the certificate names a host: fixed
+      # by pointing FTP_HOST at a name on the certificate). One more login.
+      - name: Does the chain verify with the hostname check off?
+        continue-on-error: true
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.CHEMICLOUD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CHEMICLOUD_PASSWORD_FTP }}
+        run: |
+          set -uo pipefail
+          if timeout 60 lftp -c "
+            set cmd:fail-exit true;
+            set ssl:verify-certificate yes; set ssl:check-hostname no;
+            set ssl:ca-file /etc/ssl/certs/ca-certificates.crt;
+            set ftp:ssl-force true; set ftp:ssl-protect-data true;
+            set net:max-retries 1; set net:timeout 15;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            cls -1 wp-content/plugins/ai-layoff-tracker/ai-layoff-tracker.php;
+          " >/dev/null 2>&1; then
+            echo "TLS CHAIN: VERIFIED (only the hostname differs from FTP_HOST)"
+          else
+            echo "TLS CHAIN: FAILED (untrusted or self-signed certificate)"
+          fi
+          # The certificate's own names, so FTP_HOST can be set to one of them.
+          # Names on a public certificate are not secrets.
+          echo | timeout 20 openssl s_client -starttls ftp -connect "$FTP_HOST:21" 2>/dev/null \
+            | openssl x509 -noout -subject -ext subjectAltName 2>/dev/null \
+            | sed 's/^/  cert: /' || true
       - name: Ask cPanel what the FTP accounts and document roots actually are
         env:
           CPANEL_URL: ${{ secrets.CHEMICLOUD_CPANELURL }}

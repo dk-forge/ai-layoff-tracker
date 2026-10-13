@@ -82,7 +82,7 @@ function alt_company_index_strip($current, array $counts) {
 ?>
     <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(array_merge(alt_breadcrumbs_root(), array(array('name' => 'Companies', 'url' => alt_company_index_url()), array('name' => $alt_label, 'url' => alt_company_index_url($alt_cur))))); ?>
     <p class="alt-eyebrow"><a href="<?php echo esc_url(alt_company_index_url()); ?>">Layoffs by employer</a></p>
-    <h1>Employers: <?php echo esc_html($alt_label); ?></h1>
+    <h1>Employers starting with <?php echo esc_html($alt_label); ?></h1>
 
     <p class="alt-company-index-lede">
         <strong><?php echo number_format($alt_n); ?></strong> employer<?php echo $alt_n === 1 ? '' : 's'; ?>

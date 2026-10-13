@@ -1,3 +1,47 @@
+## 2026-10-13 - Tech-debt sweep: page titles lead with their H1, FTPS verification made switchable, contrast and uptime confirmed (2.20.252)
+
+**Class:** two-copies-drifted
+**Guard:** `railway/tests/test_title_leads_with_h1.py` (5 tests, all red on the pre-fix tree)
+
+**Titles that disagreed with their H1.** A sweep of the page, report and
+facet sitemaps (title vs first H1) found seven page kinds where the tab and
+search snippet said one thing and the heading another: the report archive,
+every year, quarter and month report (theme H1 "Monthly Job Cuts Report"
+under titles naming the period), the US WARN registry ("by State" vs "by
+Jurisdiction"), the edition archive ("Digest Archive: ..." vs "Every edition
+we have emailed"), the A-Z employer pages ("Employers: A" vs "Employers
+starting with A") and the state WARN pages ("California WARN notices 2026"
+vs "California layoffs and WARN notices"). Rule now: the title is the H1 plus
+a colon qualifier. Dated reports get their H1 from a `the_title` filter
+scoped to the queried report page only (head of the period title, e.g.
+"Q1 2026 Layoffs Report"); the registry title is set in code on all three
+title hooks; the other three changed their wording to match.
+
+**FTPS certificate verification.** `deploy-plugin.yml` hardcoded
+`ssl:verify-certificate no` in four lftp calls. It now reads `$FTPS_VERIFY`
+(with the system CA bundle), which is `yes` only when the repo variable
+`ALT_FTPS_VERIFY` is `true`. It is NOT on yet, deliberately:
+`ftp-target-probe.yml` measured verification FAILING against the current
+`FTP_HOST` on 2026-10-12 (run 38235035710), so switching it on today would
+stop every deploy. The probe gained a second check (chain only, hostname off)
+and prints the certificate's names. Owner steps: dispatch the probe; if the
+chain verifies, set `FTP_HOST` to a name on the certificate, re-run the probe
+until it says VERIFIED, then set `ALT_FTPS_VERIFY=true`.
+
+**Phone-width contrast: passing.** `contrast-audit.yml` run 38403946302
+(2026-10-13) measured every surface at 375px in all four theme combinations:
+"RESULT: PASS - every surface, every theme, meets WCAG AA." The last five
+daily runs are green. No colour change was needed; the palette is untouched.
+
+**Uptime check: already on GitHub-hosted.** `sandbox-uptime-check.yml` says
+`runs-on: ubuntu-latest` and its last five runs (every 15 min) completed
+green; nothing in this repo is queued on a runner (checked the Actions API for
+queued/waiting runs). What IS stuck "queued" are seven ghost listener runs,
+all `ubuntu-latest` jobs that never got a runner: Self-heal and CI failure alert
+37655530360, 37655530368, 37655517252, 37655517255, 37655516826, 37655516828
+(2026-10-07) and Self-heal 32210836764 (2026-08-19). Not cancelled from this
+session (permission); cancelling them in the Actions UI is safe.
+
 ## 2026-10-13 - Account emails (confirm, change confirm, welcome) in the subscriber design (2.20.251, was 2.20.246 before merging main; board item "Finish tracker email redesign")
 
 **Class:** novel (owner-approved redesign, presentation only)
