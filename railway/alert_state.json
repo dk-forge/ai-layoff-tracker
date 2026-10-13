@@ -122,6 +122,11 @@
       "last": 1791801247,
       "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on 77c9ab5c)"
     },
+    "sandbox-main-green-check:main:e54d318b58134079": {
+      "first": 1791887400,
+      "last": 1791887400,
+      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml UNKNOWN (30 run(s) on main, none completed with a verdict)"
+    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -148,6 +153,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-13T01:16:18+00:00",
+  "updated_at": "2026-10-13T10:30:00+00:00",
   "version": 1
 }
