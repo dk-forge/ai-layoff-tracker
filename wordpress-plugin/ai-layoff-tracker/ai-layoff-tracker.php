@@ -64,6 +64,7 @@ require_once ALT_PLUGIN_DIR . 'includes/seo-sitemap-meta.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
 require_once ALT_PLUGIN_DIR . 'includes/facet-pages.php';
 require_once ALT_PLUGIN_DIR . 'includes/report-seo.php';
+require_once ALT_PLUGIN_DIR . 'includes/report-article.php';
 require_once ALT_PLUGIN_DIR . 'includes/shortcodes.php';
 require_once ALT_PLUGIN_DIR . 'includes/export.php';
 require_once ALT_PLUGIN_DIR . 'includes/rss.php';
