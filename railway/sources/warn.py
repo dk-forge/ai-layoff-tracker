@@ -53,7 +53,8 @@ STATE_WARN_URL = {
     "ND": "https://www.jobsnd.com/",
     "NV": "https://detr.nv.gov/Page/WARN",
     "NJ": "https://www.nj.gov/labor/employer-services/warn/",
-    "NM": "https://www.dws.state.nm.us/Rapid-Response",
+    # dws.state.nm.us stopped resolving (NM moved to dws.nm.gov); verified 2026-10-13.
+    "NM": "https://www.dws.nm.gov/Rapid-Response",
     "NY": "https://dol.ny.gov/warn-dashboard",
     # JFS retired the /job-services-and-unemployment/... tree; that path is a
     # hard 404 (verified 2026-08-13), so every OH row without a per-notice
@@ -214,12 +215,17 @@ ALL_STATES = [
     # workforce.alabama.gov. check=False swallowed the traceback and Alabama
     # silently fell out of the sweep (851 -> 0). The state's CSV export is not
     # blocked; the custom fetcher reads that.
-    "AK", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
+    "AK", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "IA", "ID",
     "IL", "IN", "LA", "MD", "ME", "MI", "MO", "MT", "ND", "NE",
     # KS moved to warn_new_states.fetch_ks (2026-07-28): the open scraper walks
     # the ENTIRE kansasworks history and started timing out (420s, every run),
     # leaving Kansas dark since ~May. The bounded custom fetcher replaces it.
-    "NJ", "NM", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
+    # NM and HI removed 2026-10-13 (tests/test_dead_generic_states.py): the
+    # released nm.py still targets the dead dws.state.nm.us domain (writes an
+    # empty CSV) and hi.py crashes on Cloudflare email-protection links. NM is
+    # served by warn_new_states.fetch_nm, HI by the hi_ocr job. MS is likewise
+    # custom (fetch_ms) and deliberately NOT listed here.
+    "NJ", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
     "VA", "VT", "WI",
     # WA and KY moved to custom scrapers (warn_new_states.fetch_wa /
     # warn_custom.fetch_ky). Excluded here so they aren't double-run; the generic

@@ -41,7 +41,7 @@ function alt_state_warn_urls() {
         'ND' => 'https://www.jobsnd.com/',
         'NE' => 'https://dol.nebraska.gov/ReemploymentServices/LayoffServices/LayoffsAndDownsizingWARN',
         'NJ' => 'https://www.nj.gov/labor/employer-services/warn/',
-        'NM' => 'https://www.dws.state.nm.us/Rapid-Response',
+        'NM' => 'https://www.dws.nm.gov/Rapid-Response',
         'NV' => 'https://detr.nv.gov/Page/WARN',
         'NY' => 'https://dol.ny.gov/warn-dashboard',
         'OH' => 'https://jfs.ohio.gov/job-workforce-services/job-programs-and-services/submit-a-warn-notice/current-public-notices-of-layoffs-and-closures',
