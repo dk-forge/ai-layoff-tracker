@@ -88,6 +88,12 @@ $alt_digest_sections = ALT_PLUGIN_DIR . 'includes/digest-sections.php';
 if (is_readable($alt_digest_sections)) {
     require_once $alt_digest_sections;
 }
+// Account emails (confirm, welcome) in the subscriber design (2.20.246).
+// Guarded like every NEW include; every caller checks function_exists().
+$alt_account_mail = ALT_PLUGIN_DIR . 'includes/account-mail.php';
+if (is_readable($alt_account_mail)) {
+    require_once $alt_account_mail;
+}
 require_once ALT_PLUGIN_DIR . 'includes/subscribe.php';
 require_once ALT_PLUGIN_DIR . 'includes/digest-api.php';
 require_once ALT_PLUGIN_DIR . 'includes/nav-submenu.php';
