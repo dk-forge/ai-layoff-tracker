@@ -1,3 +1,14 @@
+## 2026-10-14 - SEO route B item 4: server-rendered "Related" link row on every shortcode page (#446, 2.20.255)
+
+**Class:** novel (owner ruling 2026-10-01 route B; link map ruled 2026-10-14)
+**Guard:** `railway/tests/test_related_links.py` - the owner's three rows exactly (Dashboard, Registry, Tracker), every mapped page links Data Sources except Sources itself, no duplicate links, every secondary page is mapped, an unmapped template prints nothing, the row lands inside `</main>` or is appended, and the funnel and include are wired.
+
+`includes/related-links.php` holds ONE map (template file -> target keys) and the targets (label + path). `alt_template()` appends the row after the breadcrumb step, with no once-flag, so an invisible theme pre-pass cannot swallow it. Link text only: no intro or FAQ copy and no FAQ JSON-LD, which wait on the owner's wording (#446 items 2 and 3).
+
+Map: Dashboard -> Methodology, Data Sources, Tracker. Registry -> Tracker, Data Sources. Tracker -> Dashboard, Registry, Methodology, Data Sources. Methodology -> Tracker, Dashboard, Data Sources. Sources -> Tracker, Methodology, Tracker Health. AI quotes -> Tracker, Methodology, Data Sources. Monthly report -> Tracker, Dashboard, State of Layoffs, Data Sources. State of Layoffs -> Tracker, Monthly Report, Data Sources. Press -> Tracker, Monthly Report, Data Sources. Publisher tools -> Tracker, Press, Data Sources. Health -> Tracker, Methodology, Data Sources. AI tracker view -> Tracker, Dashboard, Methodology, Data Sources.
+
+Item 5 re-checked: every template canvas carries `role="img"` and an `aria-label` or an `aria-labelledby` pointing at its visible heading (`test_chart_canvas_labels.py`); the two `createElement('canvas')` calls in `layoffs.js` are offscreen PNG-export buffers, never in the DOM. Nothing missing.
+
 ## 2026-10-14 - SEO route B item 1: server-rendered monthly totals under the dashboard (#446, 2.20.253)
 
 **Class:** novel (owner ruling 2026-10-01, route B)
@@ -8,7 +19,7 @@
 **Remaining for #446 (follow-up checklist, open):**
 - [ ] Item 2: intro + H2 + 3-question FAQ per shortcode page (dashboard, tracker, registry, methodology, sources), live figures and `current_time('Y')`, never a literal year. Needs the owner's FAQ wording per page first; do not invent copy. Test: render each page's FAQ from fixture aggregate data and assert no 4-digit literal year in the template source.
 - [ ] Item 3: FAQPage JSON-LD built from the SAME array as item 2's visible FAQ, emitted only on the page that shows it; keep the existing tracker-page FAQPage. Test: JSON-LD `acceptedAnswer.text` equals the visible answer text byte for byte. Blocked on item 2.
-- [ ] Item 4: "Related" link row per page. Owner gave two mappings (Dashboard -> Methodology, Data Sources, Tracker; Registry -> Tracker); the full page -> links map needs a ruling. Test: every shortcode page has a row and every link resolves to a known plugin page slug.
+- [x] Item 4 (done 2.20.255, see entry above): "Related" link row per page. Owner gave two mappings (Dashboard -> Methodology, Data Sources, Tracker; Registry -> Tracker); the full page -> links map needs a ruling. Test: every shortcode page has a row and every link resolves to a known plugin page slug.
 - [ ] Then: same route B work for talent-intelligence-tracker, after checking how that plugin publishes pages.
 
 ## 2026-10-13 - Tech-debt sweep: page titles lead with their H1, FTPS verification made switchable, contrast and uptime confirmed (2.20.252)
