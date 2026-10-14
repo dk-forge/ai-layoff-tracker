@@ -82,6 +82,11 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
+    "indeed-hiring-lab-postings-reference-data:main:6f356cbd0ac3b587": {
+      "first": 1791973870,
+      "last": 1791973870,
+      "subject": "CI RED: Indeed Hiring Lab postings reference data \u2014 RuntimeError: POST https://asktherecruiter.com/blog/wp-json/layoffs/v1/reference-ingest/indeed_postings: HTTP 404: {\"code\":\"rest"
+    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1790271485,
       "last": 1791481359,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-14T10:26:01+00:00",
+  "updated_at": "2026-10-14T10:31:10+00:00",
   "version": 1
 }
