@@ -82,6 +82,11 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
+    "indeed-hiring-lab-postings-reference-data:main:6f356cbd0ac3b587": {
+      "first": 1791973870,
+      "last": 1791973870,
+      "subject": "CI RED: Indeed Hiring Lab postings reference data \u2014 RuntimeError: POST https://asktherecruiter.com/blog/wp-json/layoffs/v1/reference-ingest/indeed_postings: HTTP 404: {\"code\":\"rest"
+    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1790271485,
       "last": 1791481359,
@@ -112,15 +117,10 @@
       "last": 1790281661,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
-    "sandbox-main-green-check:main:848b64e654796072": {
-      "first": 1791801247,
-      "last": 1791801247,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on 77c9ab5c)"
-    },
-    "sandbox-main-green-check:main:e54d318b58134079": {
-      "first": 1791887400,
-      "last": 1791887400,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml UNKNOWN (30 run(s) on main, none completed with a verdict)"
+    "reference-data-freshness:main:2d92e4409b145abe": {
+      "first": 1791974889,
+      "last": 1791974889,
+      "subject": "CI RED: Reference data freshness \u2014 LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib"
     },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
@@ -148,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-14T08:56:55+00:00",
+  "updated_at": "2026-10-14T10:48:09+00:00",
   "version": 1
 }

@@ -7,6 +7,33 @@
 
 **#446 checklist:** item 2 and item 3 done here (PR on `claude/alt-446-faq`); item 4 is PR #520; item 1 shipped in 2.20.253. Talent tracker: `claude/tit-faq`.
 
+## 2026-10-14 - SEO route B item 4: server-rendered "Related" link row on every shortcode page (#446, 2.20.255)
+
+**Class:** novel (owner ruling 2026-10-01 route B; link map ruled 2026-10-14)
+**Guard:** `railway/tests/test_related_links.py` - the owner's three rows exactly (Dashboard, Registry, Tracker), every mapped page links Data Sources except Sources itself, no duplicate links, every secondary page is mapped, an unmapped template prints nothing, the row lands inside `</main>` or is appended, and the funnel and include are wired.
+
+`includes/related-links.php` holds ONE map (template file -> target keys) and the targets (label + path). `alt_template()` appends the row after the breadcrumb step, with no once-flag, so an invisible theme pre-pass cannot swallow it. Link text only: no intro or FAQ copy and no FAQ JSON-LD, which wait on the owner's wording (#446 items 2 and 3).
+
+Map: Dashboard -> Methodology, Data Sources, Tracker. Registry -> Tracker, Data Sources. Tracker -> Dashboard, Registry, Methodology, Data Sources. Methodology -> Tracker, Dashboard, Data Sources. Sources -> Tracker, Methodology, Tracker Health. AI quotes -> Tracker, Methodology, Data Sources. Monthly report -> Tracker, Dashboard, State of Layoffs, Data Sources. State of Layoffs -> Tracker, Monthly Report, Data Sources. Press -> Tracker, Monthly Report, Data Sources. Publisher tools -> Tracker, Press, Data Sources. Health -> Tracker, Methodology, Data Sources. AI tracker view -> Tracker, Dashboard, Methodology, Data Sources.
+
+Item 5 re-checked: every template canvas carries `role="img"` and an `aria-label` or an `aria-labelledby` pointing at its visible heading (`test_chart_canvas_labels.py`); the two `createElement('canvas')` calls in `layoffs.js` are offscreen PNG-export buffers, never in the DOM. Nothing missing.
+
+## 2026-10-14 - Indeed Hiring Lab job postings into ALT (#478 item 1, collector slice, 2.20.254)
+
+**Class:** novel (owner labour-data roadmap, 2026-10-05)
+**Guard:** `railway/tests/test_indeed_postings.py` - weekly last-value per ISO week, total postings only, SA aggregate, window applied, blank values skipped, store gate refuses an empty pull or one without the aggregate, payload size fits the ceiling, freshness spec, plugin registration, keyless dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and the register entry for `indeed_postings`.
+
+`railway/sources/indeed_postings.py` + `indeed_import.py` + `.github/workflows/indeed-import.yml` (Mondays 15:23 UTC, keyless, CC BY 4.0) read Indeed Hiring Lab's public US CSVs and store total postings per occupational sector (47) plus the national seasonally adjusted aggregate, one value per ISO week for 3 years, at `/reference/indeed_postings` (filter `?sector=`). Live pull 2026-10-14: 7,584 rows, 48 series, latest 2026-10, 343 KB. Labelled macro context: postings are hiring demand, never added to layoff counts, no AI-cause claim. Sources page row + `OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md` register row + RUNBOOK row in the same PR. `reference_freshness.py` will read `indeed_postings` STALE until the first `indeed-import.yml` run after deploy; dispatch it once after merge.
+
+**Remaining for #478 (follow-up checklist, open):**
+- [ ] 1b. Put Indeed postings on the early-warning timeline (`includes/early-warning.php`) next to WARN, FRED claims and QWI separations, per industry. Needs a fixed Indeed-sector -> tracker-industry map (Indeed sectors are occupational, e.g. "Software Development", not NAICS); write the map as data with a test that every Indeed sector maps or is explicitly unmapped. Cooling/stable/heating label from official numbers only.
+- [ ] 5. Census Business Formation Statistics (keyless CSV): new business applications by state, weekly/monthly. Collector + `/reference` + Sources row + register + render test.
+- [ ] 6. DOL ETA 539 state UI claims read directly (today only via FRED in `claims_import.py`). Decide whether it adds anything FRED does not; if not, close as covered.
+- [ ] 7. Eurostat job vacancies (`jvs_q_nace2`) + LFS unemployment by country (keyless SDMX/JSON). Probe exists in `depth_source_probe.py --source eu`.
+- [ ] 8. SEC 8-K Item 2.05 restructuring charges with $ amounts via EDGAR full-text search (keyless, fair-access UA): a separate dataset from the existing 8-K layoff source.
+- [ ] 9. BLS CES average weekly hours + earnings by industry (FRED or BLS API, free).
+- [ ] Narrative templates in the issue body, after 1b exists.
+Each source: Sources-page row, register entry and render test in the same PR (standing owner requirement).
 ## 2026-10-14 - SEO route B item 1: server-rendered monthly totals under the dashboard (#446, 2.20.253)
 
 **Class:** novel (owner ruling 2026-10-01, route B)
@@ -17,7 +44,7 @@
 **Remaining for #446 (follow-up checklist, open):**
 - [ ] Item 2: intro + H2 + 3-question FAQ per shortcode page (dashboard, tracker, registry, methodology, sources), live figures and `current_time('Y')`, never a literal year. Needs the owner's FAQ wording per page first; do not invent copy. Test: render each page's FAQ from fixture aggregate data and assert no 4-digit literal year in the template source.
 - [ ] Item 3: FAQPage JSON-LD built from the SAME array as item 2's visible FAQ, emitted only on the page that shows it; keep the existing tracker-page FAQPage. Test: JSON-LD `acceptedAnswer.text` equals the visible answer text byte for byte. Blocked on item 2.
-- [ ] Item 4: "Related" link row per page. Owner gave two mappings (Dashboard -> Methodology, Data Sources, Tracker; Registry -> Tracker); the full page -> links map needs a ruling. Test: every shortcode page has a row and every link resolves to a known plugin page slug.
+- [x] Item 4 (done 2.20.255, see entry above): "Related" link row per page. Owner gave two mappings (Dashboard -> Methodology, Data Sources, Tracker; Registry -> Tracker); the full page -> links map needs a ruling. Test: every shortcode page has a row and every link resolves to a known plugin page slug.
 - [ ] Then: same route B work for talent-intelligence-tracker, after checking how that plugin publishes pages.
 
 ## 2026-10-13 - Tech-debt sweep: page titles lead with their H1, FTPS verification made switchable, contrast and uptime confirmed (2.20.252)

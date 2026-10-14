@@ -160,10 +160,15 @@ foreach (array('labour-trends.php', 'early-warning.php') as $alt_lc_file) {
         require_once ALT_PLUGIN_DIR . 'includes/' . $alt_lc_file;
     }
 }
-// Dashboard monthly totals table (2.20.253, #446): server-rendered under
+// Dashboard monthly totals table (2.20.254, #446): server-rendered under
 // [alt_dashboard]. NEW file, GUARDED; the template checks function_exists.
 if (is_readable(ALT_PLUGIN_DIR . 'includes/dashboard-totals.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/dashboard-totals.php';
+}
+// Related link row on shortcode pages (2.20.255, #446 item 4). NEW file,
+// GUARDED; alt_template() checks function_exists.
+if (is_readable(ALT_PLUGIN_DIR . 'includes/related-links.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/related-links.php';
 }
 // Intro + FAQ + FAQPage JSON-LD on shortcode pages (2.20.256, #446 items 2
 // and 3). NEW file, GUARDED; alt_template() checks function_exists.

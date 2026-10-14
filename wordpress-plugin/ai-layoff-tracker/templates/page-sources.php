@@ -216,6 +216,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td>Context (labeled)</td>
         <td><a href="https://github.com/openai/GPTs-are-GPTs" target="_blank" rel="noopener">GPTs-are-GPTs data &#8599;</a></td>
       </tr>
+    <tr>
+        <td><b>Indeed Hiring Lab job postings</b></td><td>United States, by occupational sector and nationally</td>
+        <td>Indeed Hiring Lab's job postings index (1 February 2020 = 100), total postings per sector plus the national seasonally adjusted series, kept as one value per week for the last three years. Postings measure hiring demand: they are not layoffs, are never added to our counts, and a change does not show that AI caused it. Updated weekly. CC BY 4.0, source: Indeed Hiring Lab.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://github.com/hiring-lab/job_postings_tracker" target="_blank" rel="noopener">Indeed Hiring Lab data &#8599;</a></td>
+    </tr>
       <tr>
         <td><b>O*NET occupation data</b></td><td>United States, by occupation</td>
         <td>Occupation titles for the exposure section, from the O*NET Database by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA), used under the CC BY 4.0 licence. O*NET is a trademark of USDOL/ETA. Collected monthly.</td>
