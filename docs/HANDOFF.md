@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-14, branch `claude/alt-446-faq` (PR). Reserves plugin version 2.20.256** (2.20.254 is held by PR #519, 2.20.255 by PR #520). Intro + FAQ + FAQPage JSON-LD on shortcode pages (#446 items 2 and 3); see TECHLOG 2026-10-14.
 - **RELEASED - Claude (agent), 2026-10-14, branch `claude/alt-446` (PR). Reserves plugin version 2.20.253.** Server-rendered dashboard totals table (#446 item 1); see TECHLOG 2026-10-14.
 - **RELEASED - Claude (agent), 2026-10-13, branch `claude/email-review-press-copy` (PR). Reserves plugin version 2.20.249** (2.20.246 is claimed by both #509 and #512; 2.20.247/248 by #511/#513). Press pitch copy accuracy; see TECHLOG 2026-10-13.
 - **RELEASED - Claude (agent), 2026-10-13, branch `claude/seo-report-article` (PR). Reserves plugin version 2.20.248** (2.20.247 is held by PR #511). Article JSON-LD on report pages; see TECHLOG 2026-10-13 (2.20.248).
