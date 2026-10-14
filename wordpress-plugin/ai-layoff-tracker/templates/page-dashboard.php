@@ -41,4 +41,5 @@ if (!defined('ABSPATH')) exit;
             <div id="alt-leaderboard" class="alt-leaderboard"></div>
         </div>
     </div>
+    <?php if (function_exists('alt_dashboard_totals_table')) echo alt_dashboard_totals_table(); ?>
 </div>

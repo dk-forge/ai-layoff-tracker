@@ -14,6 +14,18 @@
 - [ ] 9. BLS CES average weekly hours + earnings by industry (FRED or BLS API, free).
 - [ ] Narrative templates in the issue body, after 1b exists.
 Each source: Sources-page row, register entry and render test in the same PR (standing owner requirement).
+## 2026-10-14 - SEO route B item 1: server-rendered monthly totals under the dashboard (#446, 2.20.253)
+
+**Class:** novel (owner ruling 2026-10-01, route B)
+**Guard:** `railway/tests/test_dashboard_totals_table.py` - newest-first rows, future months dropped, current month cut at today via `to_date`, a captioned `<table>` with `scope` headers and no em-dash, the template prints it, the include is loaded, and the query is the chart's own (`alt_api_aggregate`, `date_basis=notice`, `include=series`).
+
+`includes/dashboard-totals.php` prints jobs cut and AI-attributed jobs for the latest 24 months under `[alt_dashboard]`'s charts, with no JS. It goes through the same cached aggregate handler as the chart, so a crawler reads the numbers the chart draws. A failed or empty aggregate renders nothing (the chart still loads). Plugin 2.20.253.
+
+**Remaining for #446 (follow-up checklist, open):**
+- [ ] Item 2: intro + H2 + 3-question FAQ per shortcode page (dashboard, tracker, registry, methodology, sources), live figures and `current_time('Y')`, never a literal year. Needs the owner's FAQ wording per page first; do not invent copy. Test: render each page's FAQ from fixture aggregate data and assert no 4-digit literal year in the template source.
+- [ ] Item 3: FAQPage JSON-LD built from the SAME array as item 2's visible FAQ, emitted only on the page that shows it; keep the existing tracker-page FAQPage. Test: JSON-LD `acceptedAnswer.text` equals the visible answer text byte for byte. Blocked on item 2.
+- [ ] Item 4: "Related" link row per page. Owner gave two mappings (Dashboard -> Methodology, Data Sources, Tracker; Registry -> Tracker); the full page -> links map needs a ruling. Test: every shortcode page has a row and every link resolves to a known plugin page slug.
+- [ ] Then: same route B work for talent-intelligence-tracker, after checking how that plugin publishes pages.
 
 ## 2026-10-13 - Tech-debt sweep: page titles lead with their H1, FTPS verification made switchable, contrast and uptime confirmed (2.20.252)
 
