@@ -1,0 +1,43 @@
+name: Indeed Hiring Lab postings reference data
+
+# Indeed Hiring Lab job postings index (public GitHub CSVs, CC BY 4.0,
+# keyless): total postings per US occupational sector + the national SA
+# aggregate, one value per week for 3 years -> /reference-ingest/indeed_postings.
+# LABELED MACRO CONTEXT, never summed into layoff counts and not read by ingest
+# or classification. Fail-soft: a failed or partial pull never overwrites
+# stored data. Freshness: reference-freshness.yml. Issue #478 item 1.
+
+on:
+  schedule:
+    - cron: '23 15 * * 1'   # Mondays; upstream refreshes weekly
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
+concurrency:
+  group: indeed-import
+
+jobs:
+  indeed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Fetch + store Indeed postings reference data
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python indeed_import.py
+
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: indeed-import

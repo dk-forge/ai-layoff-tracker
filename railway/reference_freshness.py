@@ -61,6 +61,7 @@ SPECS = {
     "fred_labour": {"collector_days": 10, "datasets": {"monthly": 85, "weekly": 30}},
     "census_qwi": {"collector_days": 10, "datasets": {"quarterly": 430}},
     "ai_exposure": {"collector_days": 40, "datasets": {"oews": 760, "ep": 700}},
+    "indeed_postings": {"collector_days": 10, "datasets": {"weekly": 30}},
 }
 
 

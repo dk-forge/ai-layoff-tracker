@@ -26,6 +26,7 @@ function alt_reference_sources() {
         'fred_labour' => 'alt_ref_fred_labour',
         'census_qwi' => 'alt_ref_census_qwi',
         'ai_exposure' => 'alt_ref_ai_exposure',
+        'indeed_postings' => 'alt_ref_indeed_postings',
     );
 }
 

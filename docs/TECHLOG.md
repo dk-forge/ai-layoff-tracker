@@ -1,3 +1,19 @@
+## 2026-10-14 - Indeed Hiring Lab job postings into ALT (#478 item 1, collector slice, 2.20.254)
+
+**Class:** novel (owner labour-data roadmap, 2026-10-05)
+**Guard:** `railway/tests/test_indeed_postings.py` - weekly last-value per ISO week, total postings only, SA aggregate, window applied, blank values skipped, store gate refuses an empty pull or one without the aggregate, payload size fits the ceiling, freshness spec, plugin registration, keyless dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and the register entry for `indeed_postings`.
+
+`railway/sources/indeed_postings.py` + `indeed_import.py` + `.github/workflows/indeed-import.yml` (Mondays 15:23 UTC, keyless, CC BY 4.0) read Indeed Hiring Lab's public US CSVs and store total postings per occupational sector (47) plus the national seasonally adjusted aggregate, one value per ISO week for 3 years, at `/reference/indeed_postings` (filter `?sector=`). Live pull 2026-10-14: 7,584 rows, 48 series, latest 2026-10, 343 KB. Labelled macro context: postings are hiring demand, never added to layoff counts, no AI-cause claim. Sources page row + `OFFICIAL_SOURCE_CONNECTOR_RESEARCH.md` register row + RUNBOOK row in the same PR. `reference_freshness.py` will read `indeed_postings` STALE until the first `indeed-import.yml` run after deploy; dispatch it once after merge.
+
+**Remaining for #478 (follow-up checklist, open):**
+- [ ] 1b. Put Indeed postings on the early-warning timeline (`includes/early-warning.php`) next to WARN, FRED claims and QWI separations, per industry. Needs a fixed Indeed-sector -> tracker-industry map (Indeed sectors are occupational, e.g. "Software Development", not NAICS); write the map as data with a test that every Indeed sector maps or is explicitly unmapped. Cooling/stable/heating label from official numbers only.
+- [ ] 5. Census Business Formation Statistics (keyless CSV): new business applications by state, weekly/monthly. Collector + `/reference` + Sources row + register + render test.
+- [ ] 6. DOL ETA 539 state UI claims read directly (today only via FRED in `claims_import.py`). Decide whether it adds anything FRED does not; if not, close as covered.
+- [ ] 7. Eurostat job vacancies (`jvs_q_nace2`) + LFS unemployment by country (keyless SDMX/JSON). Probe exists in `depth_source_probe.py --source eu`.
+- [ ] 8. SEC 8-K Item 2.05 restructuring charges with $ amounts via EDGAR full-text search (keyless, fair-access UA): a separate dataset from the existing 8-K layoff source.
+- [ ] 9. BLS CES average weekly hours + earnings by industry (FRED or BLS API, free).
+- [ ] Narrative templates in the issue body, after 1b exists.
+Each source: Sources-page row, register entry and render test in the same PR (standing owner requirement).
 ## 2026-10-14 - SEO route B item 1: server-rendered monthly totals under the dashboard (#446, 2.20.253)
 
 **Class:** novel (owner ruling 2026-10-01, route B)
