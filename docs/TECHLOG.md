@@ -1,3 +1,12 @@
+## 2026-10-14 - SEO route B items 2 and 3: intro + FAQ + FAQPage JSON-LD on every tracker shortcode page (#446, 2.20.256)
+
+**Class:** novel (owner ruling 2026-10-14: Claude writes the wording, the owner edits it in the PR)
+**Guard:** `railway/tests/test_page_faq.py` (12 tests, red before `includes/page-faq.php` existed) - every page gets a 2-3 sentence intro, an H2 and exactly 3 questions; figures and the year come from the render-time facts; an unreadable figure drops its sentence (never a printed 0); the JSON-LD question/answer strings equal the visible ones byte for byte and sit inside the same `<section>`; no em/en dash, no blanket primary-source promise, causation only ever denied or asked; Methodology and Data Sources linked; no sentence over 30 words.
+
+`includes/page-faq.php` holds ONE map, template file -> intro, H2, 3 Q/A, for the nine shortcode pages other than the tracker: dashboard, US WARN registry, methodology, sources, press, AI quotes, publisher tools, health, AI view. `alt_template()` inserts the intro after the first `</h1>` (or first, when the template has none) and the FAQ section inside the last `</main>` (or last). Figures: `alt_live_numbers()` (effective-date basis, named in the copy), `alt_coverage_counts()`/`alt_warn_states_phrase()`, `alt_ingest_cadence_phrase()`, `gmdate('Y')`. No once-flag (the 2.20.240 lesson: an invisible the_content pass claims it). Skipped when `[alt_tracker]` rendered in the same request, so the tracker keeps its own FAQ and FAQPage and never gets a second. Not touched: Rank Math fields, the tracker live-numbers meta description, `alt_seo_head()`. The report and quarterly-report pages are not covered: they are per-period documents with their own Article markup. Measured with style_check's scorer on the full copy: grade 6.7, 4 of 132 sentences passive (3 are the owner's "blamed on AI" question).
+
+**#446 checklist:** item 2 and item 3 done here (PR on `claude/alt-446-faq`); item 4 is PR #520; item 1 shipped in 2.20.253. Talent tracker: `claude/tit-faq`.
+
 ## 2026-10-14 - SEO route B item 4: server-rendered "Related" link row on every shortcode page (#446, 2.20.255)
 
 **Class:** novel (owner ruling 2026-10-01 route B; link map ruled 2026-10-14)

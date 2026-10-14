@@ -38,6 +38,8 @@ function alt_template($file, $vars = array()) {
     if (function_exists('alt_breadcrumbs_template_trail')) $out = alt_breadcrumbs_template_trail($file, $out);
     // Related link row (#446 item 4), map in includes/related-links.php.
     if (function_exists('alt_related_links_template')) $out = alt_related_links_template($file, $out);
+    // Intro + FAQ (#446 items 2-3), copy in includes/page-faq.php.
+    if (function_exists('alt_page_faq_template')) $out = alt_page_faq_template($file, $out);
     return alt_build_stamp_comment() . $out;
 }
 
