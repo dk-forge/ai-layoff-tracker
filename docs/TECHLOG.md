@@ -1,3 +1,12 @@
+## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
+
+**Class:** wrong-scope-or-key (the 2026-08-10 override of the site snippet is scoped to `.alt-wrap`; the new surfaces render outside it)
+**Guard:** the deploy workflow's "Verify the deployed page is readable in both themes" step, which is what caught it (runs 38552446418 and 38554837453: `p rgb(42,42,42) on rgb(18,20,26) = 1.28:1`, need 4.5), plus `railway/tests/test_theme_light_dark.py`.
+
+The site-level CSS sets `.entry-content p { color:#2a2a2a !important }`. The plugin defeats that in dark with one-class-more-specific rules scoped to `.alt-wrap`. 2.20.255 (Related row) and 2.20.256 (intro + FAQ) insert their markup OUTSIDE `.alt-wrap` - just inside the last `</main>` and right after the `</h1>` - so the fix never reached them and the deploy verifier went red twice. 2.20.257 adds the same shape of rule for `.alt-related p`, `p.alt-page-intro` and `.alt-page-faq p/h2/h3` (plus the h2 border colour). Light is untouched.
+
+Lesson recorded: a local `contrast_audit.py` run from the cloud sandbox saw 9 text elements where the runner saw 2,285 - the sandbox is served a different page (bot/cache variant), so "passes locally" is a NOREAD there, not a pass. Read the deploy job's log instead.
+
 ## 2026-10-14 - SEO route B items 2 and 3: intro + FAQ + FAQPage JSON-LD on every tracker shortcode page (#446, 2.20.256)
 
 **Class:** novel (owner ruling 2026-10-14: Claude writes the wording, the owner edits it in the PR)

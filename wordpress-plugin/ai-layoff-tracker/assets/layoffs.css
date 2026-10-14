@@ -3935,6 +3935,49 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     }
 }
 
+/* 2.20.257: the Related row (2.20.255) and the intro + FAQ (2.20.256) are
+   inserted by alt_template() AFTER the .alt-wrap closes - the row and the FAQ
+   go just inside the last </main>, the intro right after the </h1> - so the
+   block above never reached them. The deploy verifier measured
+   `p rgb(42,42,42) on rgb(18,20,26) = 1.28:1` on the dark tracker page on
+   2026-10-14 (runs 38552446418 and 38554837453): the same site !important
+   rule, the same defect, on the three new surfaces. Same shape of fix: the
+   site rule's own scope plus OUR class, one class more specific, never wider. */
+:root[data-theme="dark"] .entry-content .alt-related p,
+:root[data-theme="dark"] .entry-content p.alt-page-intro,
+:root[data-theme="dark"] .entry-content .alt-page-faq p,
+:root[data-theme="dark"] .entry-content .alt-page-faq h2,
+:root[data-theme="dark"] .entry-content .alt-page-faq h3,
+:root[data-theme="dark"] .wp-block-post-content .alt-related p,
+:root[data-theme="dark"] .wp-block-post-content p.alt-page-intro,
+:root[data-theme="dark"] .wp-block-post-content .alt-page-faq p,
+:root[data-theme="dark"] .wp-block-post-content .alt-page-faq h2,
+:root[data-theme="dark"] .wp-block-post-content .alt-page-faq h3 {
+    color: var(--alt-ink) !important;
+}
+:root[data-theme="dark"] .entry-content .alt-page-faq h2,
+:root[data-theme="dark"] .wp-block-post-content .alt-page-faq h2 {
+    border-bottom-color: var(--alt-border) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .entry-content .alt-related p,
+    :root:not([data-theme="light"]) .entry-content p.alt-page-intro,
+    :root:not([data-theme="light"]) .entry-content .alt-page-faq p,
+    :root:not([data-theme="light"]) .entry-content .alt-page-faq h2,
+    :root:not([data-theme="light"]) .entry-content .alt-page-faq h3,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-related p,
+    :root:not([data-theme="light"]) .wp-block-post-content p.alt-page-intro,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-page-faq p,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-page-faq h2,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-page-faq h3 {
+        color: var(--alt-ink) !important;
+    }
+    :root:not([data-theme="light"]) .entry-content .alt-page-faq h2,
+    :root:not([data-theme="light"]) .wp-block-post-content .alt-page-faq h2 {
+        border-bottom-color: var(--alt-border) !important;
+    }
+}
+
 /* The derived-totals heading is an h3 inside .entry-content, so the same site
    rule that hard-codes h3 colour also hard-codes `font-size: 1.15rem` and
    `font-weight: 600` on it. That is a page-heading size on what is a caption
