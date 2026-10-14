@@ -117,6 +117,11 @@
       "last": 1790281661,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
+    "reference-data-freshness:main:2d92e4409b145abe": {
+      "first": 1791974889,
+      "last": 1791974889,
+      "subject": "CI RED: Reference data freshness \u2014 LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib"
+    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -143,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-14T10:31:10+00:00",
+  "updated_at": "2026-10-14T10:48:09+00:00",
   "version": 1
 }
