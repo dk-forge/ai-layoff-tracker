@@ -106,7 +106,7 @@ def subscriber_report(data):
     """
     if not isinstance(data, dict) or not data.get("available"):
         return []
-    out = ["Digest subscribers (confirmed, by list and cadence):"]
+    out = ["Digest subscribers (confirmed, by list and how often):"]
     for name, row in (data.get("lists") or {}).items():
         row = row if isinstance(row, dict) else {}
         out.append(f"  {name}: daily {_n(row.get('daily'))}, weekly {_n(row.get('weekly'))}, "
