@@ -1,3 +1,10 @@
+## 2026-10-15 - Search CTR: company page titles, hub title + intro, latest monthly reports linked (2.20.265)
+
+**Class:** novel (weekly search report 2026-10-15)
+**Guard:** `railway/tests/test_seo_ctr_titles.py` (runs the PURE title, hub-title and latest-months functions under php: query first, the records' own year and never today's, "WARN notices" only when a row cites one, 60-char ceiling, complete months newest first across a year boundary).
+
+First weekly search report: company pages sit near position 10 at 0.7 to 0.9% CTR, the hub does not rank for "ai layoffs"/"ai layoff tracker", and `/report/2026-09/` was unknown to Google although the reports sitemap listed it. Company titles move from "X layoffs: source-linked entry history" to "X layoffs YYYY(-YYYY): dates, job counts and WARN notices" (tightening in steps to stay under 60); descriptions lead with the job total, span and latest month. The hub gets a filtered SERP/OG title ("AI Layoffs Tracker YYYY: Live Job Cuts Tied to AI"), a one-sentence intro under the coverage ribbon, and links to the last three complete monthly reports plus the archive. The last two complete months join the daily IndexNow list. The H1 stays "AI Layoff Tracker" (already the exact query; the hero layout notes forbid growing the first screen).
+
 ## 2026-10-15 - Digest subscriber stats: per list, per week, per send (2.20.264)
 
 **Class:** novel (owner request 2026-10-15)

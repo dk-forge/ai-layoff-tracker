@@ -227,6 +227,25 @@ $alt_hero_basis  = 'counted by filing date';
             <span class="alt-ribbon-scope">Covering <?php echo $alt_cov_first ? '<b>' . esc_html($alt_cov_first) . '</b> to ' : ''; ?><b><?php echo esc_html(date_i18n('M j, Y')); ?></b> · <b><?php echo (int) $alt_cov['countries']; ?></b> countries · <b><?php echo (int) $alt_cov['us_states']; ?></b> US states<?php echo !empty($alt_cov['dc']) ? ' + DC' : ''; ?></span>
             <span class="alt-ribbon-links"><a href="<?php echo esc_url(home_url('/ai-layoff-tracker/sources/')); ?>">Sources</a> · <a href="#alt-recall-measured">How complete, measured</a> · <a href="#alt-corrections">Corrections</a> · <a href="<?php echo esc_url(home_url('/talent-intelligence-tracker/')); ?>">Hiring is tracked separately</a></span>
         </p>
+        <?php /* INTRO + LATEST REPORTS (2.20.265). One plain sentence that says
+                 what this AI layoffs tracker is, in the words people search with,
+                 and links to the latest complete monthly reports, which nothing
+                 on the hub linked before (Search Console 2026-10-15: the
+                 September report was unknown to Google). Inline links wrap, so
+                 nothing here can bleed sideways at 375px. */ ?>
+        <p class="alt-intro">This AI layoffs tracker records verified job cuts worldwide, updated daily, and flags the ones employers attribute to AI.<?php
+            if (function_exists('alt_report_latest_months')) {
+                $alt_latest = alt_report_latest_months(3);
+                if ($alt_latest) {
+                    echo ' <span class="alt-intro-reports">Monthly reports: ';
+                    $alt_bits = array();
+                    foreach ($alt_latest as $alt_r) {
+                        $alt_bits[] = '<a href="' . esc_url($alt_r[0]) . '">' . esc_html($alt_r[1]) . '</a>';
+                    }
+                    echo implode(' · ', $alt_bits) . ' · <a href="' . esc_url(home_url('/ai-layoff-tracker/report/archive/')) . '">All reports</a></span>';
+                }
+            }
+        ?></p>
     </section>
 
     <header class="alt-hero">
