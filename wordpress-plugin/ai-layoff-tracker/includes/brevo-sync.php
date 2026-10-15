@@ -65,16 +65,36 @@ function alt_brevo_list_ids() {
  * A wp-config ALT_BREVO_API_KEY wins when set. '' means not configured.
  */
 function alt_brevo_api_key() {
-    if (defined('ALT_BREVO_API_KEY') && ALT_BREVO_API_KEY) return trim((string) ALT_BREVO_API_KEY);
-    $sib = get_option('sib_main_option', array());
-    if (is_array($sib)) {
-        foreach (array('access_key', 'api_key') as $k) {
-            if (!empty($sib[$k]) && is_string($sib[$k]) && strpos($sib[$k], 'xkeysib-') === 0) {
-                return trim($sib[$k]);
+    $r = alt_brevo_key_lookup();
+    return $r['key'];
+}
+
+/**
+ * Where the Brevo v3 key comes from, in order: the ALT_BREVO_API_KEY constant,
+ * then the official Brevo (ex-Sendinblue) plugin's options: `sib_main_option`
+ * ['access_key' | 'api_key'], then `sib_api_key_v3` (a string, or an array
+ * holding 'access_key' / 'api_key'). Returns the key and the NAME of the
+ * source only; callers that report must never print the key.
+ */
+function alt_brevo_key_lookup() {
+    if (defined('ALT_BREVO_API_KEY') && ALT_BREVO_API_KEY) {
+        return array('key' => trim((string) ALT_BREVO_API_KEY), 'source' => 'constant');
+    }
+    $ok = function ($v) {
+        return is_string($v) && strpos(trim($v), 'xkeysib-') === 0;
+    };
+    foreach (array('sib_main_option', 'sib_api_key_v3') as $opt) {
+        $v = get_option($opt, null);
+        if ($ok($v)) return array('key' => trim($v), 'source' => $opt);
+        if (is_array($v)) {
+            foreach (array('access_key', 'api_key') as $k) {
+                if (isset($v[$k]) && $ok($v[$k])) {
+                    return array('key' => trim($v[$k]), 'source' => $opt . '.' . $k);
+                }
             }
         }
     }
-    return '';
+    return array('key' => '', 'source' => '');
 }
 
 /**
@@ -124,7 +144,9 @@ function alt_brevo_record($result, $code = 0) {
 function alt_brevo_sync_status() {
     $s = get_option('alt_brevo_sync_status', array());
     if (!is_array($s)) $s = array();
-    $s['configured'] = alt_brevo_api_key() !== '';
+    $lk = alt_brevo_key_lookup();
+    $s['configured'] = $lk['key'] !== '';
+    $s['key_source'] = $lk['source'];
     return $s;
 }
 

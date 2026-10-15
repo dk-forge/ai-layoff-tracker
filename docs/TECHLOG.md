@@ -1,3 +1,9 @@
+## 2026-10-15 - Brevo key lookup reads the official plugin's v3 option (2.20.268)
+
+**Class:** novel (owner request 2026-10-15)
+**Guard:** `railway/tests/test_brevo_key_lookup.py` (stubbed options: `sib_main_option` access_key/api_key, `sib_api_key_v3` as a string and as an array, a non-v3 key reads empty; the harness output never carries a key).
+
+The first `brevo-backfill.yml` dispatch answered 503 `{"ok":false,"reason":"brevo api key not configured"}` although the owner has the Brevo plugin connected. `alt_brevo_api_key()` only looked in `sib_main_option`. It now goes through `alt_brevo_key_lookup()`: the `ALT_BREVO_API_KEY` constant first, then `sib_main_option`, then `sib_api_key_v3`, accepting only an `xkeysib-` v3 key. `brevo_mirror.key_source` in `/subscriber-stats` names the source (never the key), so a still-empty lookup says so instead of leaving it to inference.
 ## 2026-10-15 - Owner's personal name and emails scrubbed from current repo files; footer address now Netherlands (2.20.267)
 
 **Class:** novel (owner request 2026-10-15)
