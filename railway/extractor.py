@@ -105,6 +105,9 @@ ALLOWED_REASON_TAGS = {
     "closure",
     "bankruptcy",
     "federal_workforce",
+    "tariffs_trade",
+    "contract_loss",
+    "funding_loss",
 }
 
 AI_CAUSATION = {
@@ -189,6 +192,9 @@ Reason tag definitions (only assign if explicitly supported):
 - closure: source states a plant, store, site or facility is closing or shutting permanently
 - bankruptcy: source cites bankruptcy, insolvency, administration, receivership, Chapter 7/11 or liquidation
 - federal_workforce: source describes a government/public-sector workforce action (federal RIF, agency reduction, public-service cuts)
+- tariffs_trade: source cites tariffs, trade policy, duties, import/export restrictions or sanctions as a reason
+- contract_loss: source cites losing, ending or not renewing a customer contract (including a government contract lost by a private contractor)
+- funding_loss: source cites lost or cut grant, government or investor funding (a grant ending, a funding round failing, a budget appropriation cut)
 
 Response format:
 {
@@ -1283,20 +1289,24 @@ def classify_reason_tags(raw_text):
     if not spend.paid_reads_enabled():
         return _defer_for_spend("reason-tag classification")
     prompt = """Assign layoff reason tags for the text below. Return STRICT JSON only:
-{"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic, closure, bankruptcy, federal_workforce"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
+{"reason_tags":["zero or more of: ai_automation, possible_ai, revenue_decline, restructuring, merger_acquisition, offshoring, product_discontinuation, cost_reduction, macroeconomic, closure, bankruptcy, federal_workforce, tariffs_trade, contract_loss, funding_loss"],"ai_evidence":"exact quote where the EMPLOYER states AI/automation as a reason, or null"}
 
 Tag definitions (the ONLY guidance for this call - it uses a minimal system prompt):
 - ai_automation: employer itself names AI/automation/robots/ML as a reason
 - possible_ai: text ties the cuts to AI without the employer stating it
 - revenue_decline: revenue/financial performance/earnings cited
 - restructuring: reorganization/realignment/restructuring language
-- merger_acquisition: M&A cited; offshoring: jobs moving to another country
+- merger_acquisition: M&A cited
+- offshoring: jobs moving to another country
 - product_discontinuation: a product/division shutting down
 - cost_reduction: generic efficiency/cost language with no specific reason
 - macroeconomic: economic conditions/market environment cited
 - closure: a plant/store/site/facility closing permanently
 - bankruptcy: bankruptcy/insolvency/administration/receivership/Chapter 7 or 11/liquidation
-- federal_workforce: a government/public-sector workforce action (federal RIF, agency reduction, public-service cuts) - NOT a private contractor losing government work
+- federal_workforce: a government/public-sector workforce action (federal RIF, agency reduction, public-service cuts) - NOT a private contractor losing government work (that is contract_loss)
+- tariffs_trade: tariffs/trade policy/duties/import or export restrictions/sanctions cited
+- contract_loss: a customer contract lost, ended or not renewed
+- funding_loss: grant, government or investor funding lost or cut
 
 Rules:
 - A tag needs explicit supporting language in this text. Multiple tags are allowed.

@@ -126,7 +126,8 @@
         merger_acquisition: 'Merger / acquisition', offshoring: 'Offshoring',
         product_discontinuation: 'Product discontinued', cost_reduction: 'Cost reduction',
         macroeconomic: 'Macroeconomic', closure: 'Plant / site closure',
-        bankruptcy: 'Bankruptcy / insolvency', federal_workforce: 'Government / public sector'
+        bankruptcy: 'Bankruptcy / insolvency', federal_workforce: 'Government / public sector',
+        tariffs_trade: 'Tariffs / trade', contract_loss: 'Contract loss', funding_loss: 'Funding loss'
     };
     var VERIF_LABELS = { gold: 'SEC filing', warn: 'WARN notice', silver: 'Press release', bronze: 'News' };
     // Mirrors alt_role_categories() (api.php); used by the Roles filter chip.
