@@ -169,19 +169,31 @@ def _visible_tags(html):
 class ForwardingSurvival(unittest.TestCase):
     """The deliverable. A forward deletes the head and the style blocks."""
 
-    def test_there_is_no_style_block_to_lose(self):
-        html = message().html
-        self.assertNotIn("<style", html.lower(),
-                         "a <style> block is deleted on forward, so anything "
-                         "it carries is a design that only exists in the inbox")
+    # OWNER DECISION 2026-10-15: the message may carry ONE style block, the
+    # shared dark-mode override from email_theme. The guarantee these tests
+    # protect is unchanged: nothing a LIGHT-mode reader sees lives in it, so a
+    # forward that deletes it loses only the dark palette.
+    def test_the_only_style_block_is_the_dark_override(self):
+        import email_theme
+        html = message(("layoff", "talent", "articles")).html
+        blocks = _STYLE_BLOCK.findall(html)
+        self.assertEqual(blocks, [email_theme.dark_style_block()],
+                         "a <style> block other than the dark override would "
+                         "be a design that only exists in the inbox")
+        inner = blocks[0][len("<style>"):-len("</style>")]
+        rest = re.sub(r"@media \(prefers-color-scheme: dark\)\{.*\}$", "",
+                      inner.split("}", 1)[1])
+        self.assertEqual(rest, "", "a rule outside the dark media query "
+                                   "would style light mode from a deletable block")
 
     def test_stripping_every_style_block_and_the_head_is_a_no_op(self):
-        """Byte for byte. Not "still looks acceptable": identical."""
+        """Byte for byte, apart from the dark override block itself."""
+        import email_theme
         html = message(("layoff", "talent", "articles")).html
         stripped = _STYLE_BLOCK.sub("", html)
-        self.assertEqual(stripped, html,
-                         "removing the style blocks changed the message, so "
-                         "part of the design lives in one")
+        self.assertEqual(stripped, html.replace(email_theme.dark_style_block(), ""),
+                         "removing the style blocks changed the message beyond "
+                         "the dark override, so part of the design lives in one")
 
     def test_the_layout_still_holds_with_the_head_deleted(self):
         body = forwarded(message(("layoff", "talent", "articles")).html)
@@ -205,11 +217,22 @@ class ForwardingSurvival(unittest.TestCase):
                           f"inherits whatever the quoting client sets")
 
     def test_no_class_or_id_is_load_bearing(self):
-        """A class selector needs a stylesheet, and the stylesheet is gone."""
+        """A class selector needs a stylesheet, and the stylesheet is gone.
+
+        Since 2026-10-15 the shell carries email_theme's classes, which the
+        dark override targets. Each one sits on an element whose light-mode
+        style is inline, and no other class or any id is allowed.
+        """
+        import email_theme
         html = message(("layoff", "talent", "articles")).html
-        self.assertNotRegex(html, r'\sclass\s*=',
-                            "a class attribute in an email can only be styled "
-                            "from a block a forward deletes")
+        allowed = set(email_theme.CLASSES.values())
+        self.assertNotRegex(html, r'\sid\s*=')
+        for tag in re.findall(r"<[a-z][^>]*\sclass=\"[^\"]*\"[^>]*>", html):
+            names = re.search(r'class="([^"]*)"', tag).group(1).split()
+            self.assertTrue(set(names) <= allowed, tag)
+            if not tag.startswith(("<body", "<table", "<td", "<p")):
+                self.fail(f"unexpected classed element {tag}")
+            self.assertIn("style=", tag, f"{tag} relies on its class alone")
 
 
 class NoLayoutTheWordEngineCannotDraw(unittest.TestCase):
@@ -228,9 +251,11 @@ class NoLayoutTheWordEngineCannotDraw(unittest.TestCase):
 
     def test_no_media_query_carries_the_layout(self):
         html = message().html
-        self.assertNotIn("@media", html,
+        self.assertEqual(re.findall(r"@media[^{]*", html),
+                         ["@media (prefers-color-scheme: dark)"],
                          "a media query dies on forward, so it may never be "
-                         "what makes the message fit a phone")
+                         "what makes the message fit a phone; the dark-mode "
+                         "query is the only one allowed")
 
     def test_the_shell_is_a_presentational_table_that_is_fluid_then_capped(self):
         html = message().html

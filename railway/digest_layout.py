@@ -52,16 +52,20 @@ from html import escape
 # grey is darker than it first looks. A mid grey that reads well on white is
 # still a mid grey once the background turns black.
 # ---------------------------------------------------------------------------
-PAGE_BG = "#eef1f5"
-CARD_BG = "#ffffff"
-RULE = "#d5dae1"
-INK = "#15181d"
-MUTED = "#454950"  # darkened 2026-10-12 (owner: secondary text too faint)
-LINK = "#0b4f9c"
+# SHARED SPEC (owner decision 2026-10-15): every colour and the font stack come
+# from email_theme, which the sibling tracker carries byte for byte.
+import email_theme
 
-FONT = ("-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',"
-        "Arial,sans-serif")
+PAGE_BG = email_theme.PANEL
+CARD_BG = email_theme.BACKGROUND
+RULE = email_theme.BORDER
+INK = email_theme.INK
+MUTED = email_theme.MUTED
+LINK = email_theme.ACCENT
 
+FONT = email_theme.FONT
+
+PRODUCT = "AI Layoff Tracker"
 WIDTH_PX = 600
 TEXT_WIDTH = 72
 # THE ONE NAME, and it is the same string the sender identity uses. The owner
@@ -998,26 +1002,31 @@ def preheader_text(parts) -> str:
 
 def _cell(inner: str, *, padding: str, top_rule: bool = False) -> str:
     border = f"border-top:1px solid {RULE};" if top_rule else ""
-    return (f'<tr><td style="padding:{padding};background-color:{CARD_BG};'
-            f'{border}">{inner}</td></tr>')
+    klass = "et-card et-rule" if top_rule else "et-card"
+    return (f'<tr><td class="{klass}" style="padding:{padding};'
+            f'background-color:{CARD_BG};{border}">{inner}</td></tr>')
 
 
-def _masthead(kicker: str, notice: str = "") -> str:
-    brand = (f'<p style="margin:0;font-family:{FONT};font-size:17px;'
-             f'line-height:1.3;font-weight:700;letter-spacing:0.01em;'
-             f'color:{INK};">{escape(BRAND)}</p>')
-    out = brand
-    if kicker:
-        out += (f'<p style="margin:6px 0 0;font-family:{FONT};'
-                f'font-size:12px;line-height:1.4;letter-spacing:0.06em;'
-                f'text-transform:uppercase;color:{MUTED};">'
-                f'{escape(kicker)}</p>')
+def product_name(parts=()) -> str:
+    """The product line under the wordmark: the tracker this edition is from.
+
+    A reader who takes only the talent list is not sent a layoff masthead.
+    """
+    keys = {str(p[0]).strip().lower() for p in (parts or ()) if p}
+    if keys and not (keys & {"layoff", "follows"}) and "talent" in keys:
+        return "Talent Intelligence Tracker"
+    return PRODUCT
+
+
+def _masthead(kicker: str, notice: str = "", product: str = "") -> str:
+    # The shared brand header: the wordmark in small caps, then the product.
+    out = email_theme.brand_header(product or PRODUCT, kicker)
     if notice:
         # SENTENCE CASE AND NOT THE KICKER'S UPPERCASE. This is a sentence a
         # reader reads, not a label they scan past, and uppercasing it would
         # file it with the furniture it exists to be an exception to. It sits
         # under the kicker because that is the line it explains.
-        out += (f'<p style="margin:8px 0 0;font-family:{FONT};'
+        out += (f'<p class="et-muted" style="margin:8px 0 0;font-family:{FONT};'
                 f'font-size:12px;line-height:1.5;color:{MUTED};">'
                 f'{escape(notice)}</p>')
     return out
@@ -1331,7 +1340,8 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
             f'<table role="presentation" width="100%" cellpadding="0" '
             f'cellspacing="0" border="0" style="width:100%;'
             f'border-collapse:collapse;margin:14px 0 0;">'
-            f'<tr><td style="padding:12px 0 0;border-top:1px solid {RULE};'
+            f'<tr><td class="et-card et-rule" style="padding:12px 0 0;'
+            f'border-top:1px solid {RULE};'
             f'background-color:{CARD_BG};color:{MUTED};">'
             f'{note}'
             f'<p style="margin:0;font-family:{FONT};font-size:11px;'
@@ -1343,8 +1353,17 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
 def render_html(parts, *, subject: str, preheader: str, kicker: str,
                 unsub_url: str, manage_url: str,
                 edition_note: str = "", notice: str = "",
-                resume_url: str = "") -> str:
-    """The whole message. Inline styles only, tables only, no style block."""
+                resume_url: str = "", images: list | None = None,
+                dark_mode: bool = False) -> str:
+    """The whole message. Tables, inline styles for every light-mode rule.
+
+    `images`: pass a list to turn up to three chart blocks into inline PNG
+    charts (owner decision 2026-10-15); the list is filled with the image
+    parts the transport must attach. None keeps the table bars only.
+    `dark_mode`: add the one optional prefers-color-scheme block from
+    email_theme. Deleting it (a forward, Gmail) changes nothing in light mode.
+    """
+    import digest_design
     rows = []
     for index, part in enumerate(parts):
         section_html = plain_dashes(part[1])
@@ -1352,11 +1371,17 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         # The approved design (TRACKER-EMAIL-QUALITY, 2026-10-05): each
         # tracker's section wears its own colour and gains small table-bar
         # charts. See digest_design for why a chart is never an image.
-        import digest_design
-        accent = digest_design.accent_for(str(part[0]) if part else "")
+        section = str(part[0]) if part else ""
+        accent = digest_design.accent_for(section)
+        if images is not None:
+            section_html = digest_design.add_image_charts(section_html, section,
+                                                          images)
         section_html = digest_design.add_charts(section_html, accent)
-        rows.append(_cell(restyle(section_html, accent), padding=padding,
-                          top_rule=bool(index)))
+        cell = _cell(restyle(section_html, accent), padding=padding,
+                     top_rule=bool(index))
+        if images:
+            cell = digest_design.place_image_charts(cell, images)
+        rows.append(cell)
     rows.append(_cell(_footer(unsub_url, manage_url, edition_note, resume_url),
                       padding="18px 28px 26px", top_rule=True))
 
@@ -1392,24 +1417,25 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         "<head>"
         '<meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<meta name="color-scheme" content="light dark">'
-        '<meta name="supported-color-schemes" content="light dark">'
-        f"<title>{escape(plain_dashes(subject))}</title>"
-        "</head>"
-        f'<body style="margin:0;padding:0;background-color:{PAGE_BG};'
-        f'color:{INK};font-family:{FONT};">'
+        + email_theme.head_meta()
+        + f"<title>{escape(plain_dashes(subject))}</title>"
+        + (email_theme.dark_style_block() if dark_mode else "")
+        + "</head>"
+        f'<body class="et-page" style="margin:0;padding:0;'
+        f'background-color:{PAGE_BG};color:{INK};font-family:{FONT};">'
         + hidden
-        + f'<table role="presentation" width="100%" cellpadding="0" '
-          f'cellspacing="0" border="0" style="width:100%;border-collapse:'
-          f'collapse;background-color:{PAGE_BG};">'
-          f'<tr><td align="center" style="padding:24px 12px;'
+        + f'<table class="et-page" role="presentation" width="100%" '
+          f'cellpadding="0" cellspacing="0" border="0" style="width:100%;'
+          f'border-collapse:collapse;background-color:{PAGE_BG};">'
+          f'<tr><td class="et-page" align="center" style="padding:24px 12px;'
           f'background-color:{PAGE_BG};">'
-          f'<table role="presentation" width="{WIDTH_PX}" cellpadding="0" '
-          f'cellspacing="0" border="0" align="center" style="width:100%;'
-          f'max-width:{WIDTH_PX}px;border-collapse:collapse;'
+          f'<table class="et-card" role="presentation" width="{WIDTH_PX}" '
+          f'cellpadding="0" cellspacing="0" border="0" align="center" '
+          f'style="width:100%;max-width:{WIDTH_PX}px;border-collapse:separate;'
           f'background-color:{CARD_BG};border:1px solid {RULE};'
-          f'border-radius:10px;">'
-        + _cell(_masthead(plain_dashes(kicker), plain_dashes(notice)),
+          f'border-radius:{email_theme.RADIUS_PX}px;overflow:hidden;">'
+        + _cell(_masthead(plain_dashes(kicker), plain_dashes(notice),
+                          product_name(parts)),
                 padding="24px 28px 18px")
         + "".join(rows)
         + "</table></td></tr></table></body></html>")
