@@ -1,3 +1,10 @@
+## 2026-10-15 - Mailbox janitor files GitHub PR and issue mail as noise (no plugin change)
+
+**Class:** guard-went-vacuous
+**Guard:** `railway/tests/test_mailbox_janitor.py::test_github_pr_and_issue_notifications_are_filed_never_escalated` (the real subjects from run 38709218029, one carrying "unrefunded") and `::test_escalation_words_still_escalate_mail_that_is_not_from_github`.
+
+Run 38709218029 went red on the sandbox leg with "NEW mail a human should read", and every escalated subject was a GitHub PR conversation mail ("Re: [dk-forge/asktherecruiter-sandbox] ... (PR #1318)"). They matched no class, fell to `other`, and `other` always escalates; one title also tripped the word list on "unrefunded". A janitor that is red on PR chatter says nothing when real mail arrives. Mail from `notifications@github.com` now classifies as `github: notification` (after the dependabot and run-failed classes, so their counts survive) and is exempt from the word list, since a PR title is free text about the sandbox, not mail about our systems. The escalation vocabulary itself is unchanged, and a mutation that removes the exemption fails the new test.
+
 ## 2026-10-15 - Search CTR: company page titles, hub title + intro, latest monthly reports linked (2.20.265)
 
 **Class:** novel (weekly search report 2026-10-15)

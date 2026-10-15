@@ -41,6 +41,8 @@ from datetime import datetime, timedelta, timezone
 
 ABSENT, OK, REJECTED, UNKNOWN = "ABSENT", "OK", "REJECTED", "UNKNOWN"
 
+_GITHUB_NOTIFICATION = "github: notification"
+
 #: Classes of routine notification. Order matters: first match wins.
 _CLASSES: tuple[tuple[str, re.Pattern[str]], ...] = (
     # Our OWN operational mail lands in this mailbox too (ci-alert, RECOVERED,
@@ -60,6 +62,15 @@ _CLASSES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("github: dependabot",
      re.compile(r"dependabot|\bbump\b .* \bfrom\b .* \bto\b", re.I)),
     ("github: run failed", re.compile(r"run failed|workflow run", re.I)),
+    # PR and issue conversation mail ("Re: [owner/repo] title (PR #1318)").
+    # On 2026-10-15 twelve of these turned the sandbox leg red as "NEW mail a
+    # human should read": they fell to "other", and one PR title containing
+    # "unrefunded" tripped the word list besides. A PR thread is already on
+    # GitHub as structured data; its email copy is noise to file. Matched on
+    # the notifications sender only, so a human writing about a repo is not
+    # swallowed, and listed AFTER the two github classes above so their
+    # labels still count separately.
+    (_GITHUB_NOTIFICATION, re.compile(r"notifications@github\.com", re.I)),
     ("railway: build failed", re.compile(r"build failed", re.I)),
     ("railway: deploy crashed", re.compile(r"deploy(ment)? crashed", re.I)),
     ("cpanel/system", re.compile(r"cpanel|lfd|exim|quota", re.I)),
@@ -269,7 +280,11 @@ def sweep(host: str, user: str, password: str, retain_days: int,
                     sender = _decode_header(str(msg.get("From") or ""))
                     label = _classify(subject, sender)
                     classes[label] += 1
-                    if label in _ESCALATE_CLASSES or _ESCALATE.search(subject):
+                    # A GitHub notification never escalates on its words: a PR
+                    # title is free text ("restore unrefunded packs") and the
+                    # word list is for mail about OUR systems.
+                    if label in _ESCALATE_CLASSES or (
+                            label != _GITHUB_NOTIFICATION and _ESCALATE.search(subject)):
                         # Collapse duplicates: 16 copies of one subject is one
                         # finding, and printing it 16 times buries the others.
                         key = re.sub(r"\s+", " ", subject[:110]).strip()

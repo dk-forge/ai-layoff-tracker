@@ -178,6 +178,34 @@ def test_our_own_ops_mail_is_routine_never_escalated(monkeypatch) -> None:
     assert f["escalate"] == [], f["escalate"]
 
 
+def test_github_pr_and_issue_notifications_are_filed_never_escalated(monkeypatch) -> None:
+    """2026-10-15, run 38709218029: twelve PR conversation mails reddened the
+    sandbox leg as NEW mail a human should read. The real subjects, including
+    one whose title carries "unrefunded", which the word list matches."""
+    gh = "Dakotta <notifications@github.com>"
+    subjects = [
+        "Re: [dk-forge/asktherecruiter-sandbox] vNEXT \u2014 fix(billing): restore "
+        "unrefunded packs when a deletion is cancelled (PR #1322)",
+        "Re: [dk-forge/asktherecruiter-sandbox] vNEXT \u2014 fix(signup): funnel fixes (PR #1318)",
+        "Re: [dk-forge/asktherecruiter-sandbox] vNEXT \u2014 fix(ux): editor polish batch A (PR #1314)",
+        "[dk-forge/ai-layoff-tracker] Labour data roadmap (Issue #478)",
+    ]
+    for s in subjects:
+        assert _classify(s, gh) == "github: notification", s
+    conn = _Conn([_msg(s, gh, 2) for s in subjects])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert f["escalate"] == [], f["escalate"]
+
+
+def test_escalation_words_still_escalate_mail_that_is_not_from_github(monkeypatch) -> None:
+    """The GitHub exemption must not soften the word list for anyone else."""
+    conn = _Conn([_msg("Re: [dk-forge/x] refund requested (PR #1)", "buyer@example.com", 2)])
+    _patch(conn, monkeypatch)
+    _s, f, _d = sweep("h", "u", "pw", retain_days=14, dry_run=True)
+    assert f["escalate"], f
+
+
 def test_an_unknown_shape_still_escalates() -> None:
     """The class for our mail must not widen 'other' out of existence."""
     assert _classify("Your account has been suspended", "abuse@host.example") == "other"
