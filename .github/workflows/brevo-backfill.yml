@@ -1,0 +1,78 @@
+name: Brevo backfill
+
+# Manual only. Pages the keyed POST /layoffs/v1/brevo-backfill route
+# (includes/brevo-sync.php) from after_id=0 until next_after_id is null, which
+# mirrors every confirmed digest subscriber into the Brevo lists. Idempotent:
+# a re-run re-upserts the same contacts.
+#
+# Prints COUNTS ONLY (processed/synced/failed/other per page, then totals and
+# the brevo_mirror.configured flag from /subscriber-stats). Never an address.
+# Any non-2xx fails the run (curl --fail-with-body); the route answers 503
+# "brevo api key not configured" when the plugin has no Brevo key.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 20
+    env:
+      WP_API_KEY: ${{ secrets.WP_API_KEY }}
+      WP_SITE_URL: https://asktherecruiter.com/blog
+      UA: "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
+    steps:
+      - name: Page the backfill route
+        run: |
+          set -euo pipefail
+          [ -n "$WP_API_KEY" ] || { echo "::error::WP_API_KEY not set."; exit 1; }
+          after=0; page=0; tp=0; ts=0; tf=0; to=0
+          while :; do
+            page=$((page+1))
+            [ "$page" -le 500 ] || { echo "::error::more than 500 pages, stopping."; exit 1; }
+            curl -sS --fail-with-body -X POST \
+              "$WP_SITE_URL/wp-json/layoffs/v1/brevo-backfill?after_id=${after}&limit=100" \
+              -H "X-Layoff-API-Key: $WP_API_KEY" -H "User-Agent: $UA" \
+              -o /tmp/bb.json
+            read -r p s f o nxt < <(python3 -c '
+          import json; d = json.load(open("/tmp/bb.json"))
+          n = d.get("next_after_id")
+          print(int(d.get("processed", 0)), int(d.get("synced", 0)), int(d.get("failed", 0)),
+                int(d.get("other", 0)), "done" if n is None else int(n))')
+            echo "page $page: processed=$p synced=$s failed=$f other=$o"
+            tp=$((tp+p)); ts=$((ts+s)); tf=$((tf+f)); to=$((to+o))
+            [ "$nxt" = "done" ] && break
+            [ "$nxt" -gt "$after" ] || { echo "::error::cursor did not advance."; exit 1; }
+            after=$nxt
+            sleep 2
+          done
+          echo "TOTAL: pages=$page processed=$tp synced=$ts failed=$tf other=$to"
+          rm -f /tmp/bb.json
+
+      - name: Brevo mirror status (counts only)
+        run: |
+          set -euo pipefail
+          curl -sS --fail-with-body \
+            "$WP_SITE_URL/wp-json/layoffs/v1/subscriber-stats" \
+            -H "X-Layoff-API-Key: $WP_API_KEY" -H "User-Agent: $UA" \
+            -o /tmp/ss.json
+          python3 -c '
+          import json; d = json.load(open("/tmp/ss.json"))
+          m = d.get("brevo_mirror") or {}
+          print("brevo_mirror.configured =", m.get("configured"))
+          for k, v in sorted(m.items()):
+              if isinstance(v, (int, float)) and not isinstance(v, bool):
+                  print("brevo_mirror.%s = %s" % (k, v))
+          lists = d.get("lists")
+          if isinstance(lists, dict):
+              for k, v in sorted(lists.items()):
+                  if isinstance(v, (int, float)) and not isinstance(v, bool):
+                      print("lists.%s = %s" % (k, v))
+                  elif isinstance(v, dict):
+                      for k2, v2 in sorted(v.items()):
+                          if isinstance(v2, (int, float)) and not isinstance(v2, bool):
+                              print("lists.%s.%s = %s" % (k, k2, v2))
+          '
+          rm -f /tmp/ss.json

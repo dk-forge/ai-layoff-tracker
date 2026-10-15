@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-15, branch `ops/brevo-backfill` (PR). No plugin file, no version reserved.** Manual Brevo backfill workflow; see TECHLOG 2026-10-15 (Brevo backfill).
 - **RELEASED - Claude (agent), 2026-10-15, branch `fix/janitor-github-noise` (PR). No plugin version (railway + tests only, no deploy).** Mailbox janitor files GitHub PR/issue mail as noise; see TECHLOG 2026-10-15.
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/seo-ctr-reports` (PR). Reserves plugin version 2.20.265.** Search CTR titles, hub intro, latest monthly reports; see TECHLOG 2026-10-15 (2.20.265).
 - **RELEASED - Claude (agent), 2026-10-15, branch `feat/digest-stats` (PR). Reserves plugin version 2.20.264.** Digest subscriber stats; see TECHLOG 2026-10-15 (2.20.264).
