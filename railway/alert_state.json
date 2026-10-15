@@ -57,6 +57,11 @@
       "last": 1791791624,
       "subject": "CI RED: BLS full-history archive \u2014 release not found"
     },
+    "brevo-backfill:main:3e33d54a43f81685": {
+      "first": 1792100337,
+      "last": 1792100337,
+      "subject": "CI RED: Brevo backfill \u2014 error body (no addresses, the route returns ok/reason/counts only):"
+    },
     "brevo-backfill:main:e1af7fcfd9547100": {
       "first": 1792100052,
       "last": 1792100052,
@@ -158,6 +163,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-15T21:34:12+00:00",
+  "updated_at": "2026-10-15T21:38:58+00:00",
   "version": 1
 }
