@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-15, branch `fix/janitor-github-noise` (PR). No plugin version (railway + tests only, no deploy).** Mailbox janitor files GitHub PR/issue mail as noise; see TECHLOG 2026-10-15.
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/seo-ctr-reports` (PR). Reserves plugin version 2.20.265.** Search CTR titles, hub intro, latest monthly reports; see TECHLOG 2026-10-15 (2.20.265).
 - **RELEASED - Claude (agent), 2026-10-15, branch `feat/digest-stats` (PR). Reserves plugin version 2.20.264.** Digest subscriber stats; see TECHLOG 2026-10-15 (2.20.264).
 - **RELEASED - Claude (agent), 2026-10-15, branch `feat/email-redesign-archive` (PR). Reserves plugin version 2.20.263.** Subscriber email redesign (shared theme, inline PNG charts, dark mode) + public digest archive at /ai-layoff-tracker/digest/; see TECHLOG 2026-10-15 (2.20.263).
