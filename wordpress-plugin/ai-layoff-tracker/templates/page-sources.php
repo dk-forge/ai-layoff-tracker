@@ -222,6 +222,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td>Context (labeled)</td>
         <td><a href="https://github.com/hiring-lab/job_postings_tracker" target="_blank" rel="noopener">Indeed Hiring Lab data &#8599;</a></td>
     </tr>
+    <tr>
+        <td><b>BLS CES hours and earnings</b></td><td>United States, nationally, by NAICS supersector</td>
+        <td>Current Employment Statistics from the U.S. Bureau of Labor Statistics. We keep average weekly hours and average hourly earnings of all private employees, seasonally adjusted. These are monthly figures for the last five years. Employers often cut hours before headcount. This is context only: it is not layoffs and is never added to our counts. A change here does not show that AI caused it. Public domain (US Government work), source: BLS.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.bls.gov/ces/" target="_blank" rel="noopener">BLS CES data &#8599;</a></td>
+    </tr>
       <tr>
         <td><b>O*NET occupation data</b></td><td>United States, by occupation</td>
         <td>Occupation titles for the exposure section, from the O*NET Database by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA), used under the CC BY 4.0 licence. O*NET is a trademark of USDOL/ETA. Collected monthly.</td>

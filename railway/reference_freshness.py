@@ -62,6 +62,9 @@ SPECS = {
     "census_qwi": {"collector_days": 10, "datasets": {"quarterly": 430}},
     "ai_exposure": {"collector_days": 40, "datasets": {"oews": 760, "ep": 700}},
     "indeed_postings": {"collector_days": 10, "datasets": {"weekly": 30}},
+    # CES hours/earnings: month M publishes the first Friday of M+1 (~37 days
+    # past month end at worst), same 50-day ceiling as CPS from the same release.
+    "bls_ces_hours": {"collector_days": 10, "datasets": {"ces": 50}},
 }
 
 

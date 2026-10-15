@@ -1,3 +1,10 @@
+## 2026-10-15 - BLS CES hours and earnings by supersector into ALT (#478 item 9, 2.20.261)
+
+**Class:** novel (owner ruling 2026-10-14, #478 item 9, "hours cut before headcount")
+**Guard:** `railway/tests/test_bls_ces_hours.py` - 26 series ids (13 supersectors x weekly hours/hourly earnings), 2 keyless requests, reuses the JOLTS/CPS v1 path and parser, preliminary flag kept, annual average and "-" skipped, store gate refuses a partial or missing-series pull, freshness spec, plugin registration, keyless hash-pinned dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and register entry for `bls_ces_hours`.
+
+`railway/sources/bls_ces_hours.py` + `ces_import.py` + `.github/workflows/ces-import.yml` (Fridays 15:41 UTC, keyless BLS API v1, the same endpoint and `parse_response` as `bls_import.py`; no BLS key is configured and none is used) store CES average weekly hours and average hourly earnings of all employees, seasonally adjusted, national, per NAICS supersector, monthly, 5 years, at `/reference/bls_ces_hours`. Live dry run 2026-10-15 (`python3 railway/ces_import.py --dry-run`): 26 of 26 series, 1,482 points, latest 2026-09, 2 requests. Labelled macro context: not layoffs, never added to counts, no AI-cause claim. Ships LIVE. `reference_freshness.py` reads `bls_ces_hours` STALE until the first `ces-import.yml` run after deploy; dispatch it once after merge.
+
 ## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
 
 **Class:** wrong-scope-or-key (the 2026-08-10 override of the site snippet is scoped to `.alt-wrap`; the new surfaces render outside it)
@@ -40,7 +47,7 @@ Item 5 re-checked: every template canvas carries `role="img"` and an `aria-label
 - [ ] 6. DOL ETA 539 state UI claims read directly (today only via FRED in `claims_import.py`). Decide whether it adds anything FRED does not; if not, close as covered.
 - [ ] 7. Eurostat job vacancies (`jvs_q_nace2`) + LFS unemployment by country (keyless SDMX/JSON). Probe exists in `depth_source_probe.py --source eu`.
 - [ ] 8. SEC 8-K Item 2.05 restructuring charges with $ amounts via EDGAR full-text search (keyless, fair-access UA): a separate dataset from the existing 8-K layoff source.
-- [ ] 9. BLS CES average weekly hours + earnings by industry (FRED or BLS API, free).
+- [x] 9. BLS CES average weekly hours + earnings by industry (FRED or BLS API, free). Done 2026-10-15, 2.20.261, `bls_ces_hours`.
 - [ ] Narrative templates in the issue body, after 1b exists.
 Each source: Sources-page row, register entry and render test in the same PR (standing owner requirement).
 ## 2026-10-14 - SEO route B item 1: server-rendered monthly totals under the dashboard (#446, 2.20.253)
