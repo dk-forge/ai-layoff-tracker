@@ -49,6 +49,10 @@ foreach ($alt_w['months'] as $alt_wm) { $alt_w_max = max($alt_w_max, (int) $alt_
             <span class="alt-facet-links-val"><?php echo number_format((int) $alt_wc['jobs']); ?> jobs</span></li>
     <?php endforeach; ?>
     </ul>
+    <?php // City follows: built switched off (includes/follows.php); '' while off.
+          if (function_exists('alt_follow_city_form_html') && isset($alt_f['value'])) {
+              echo alt_follow_city_form_html($alt_f['value'], $alt_w['cities']);
+          } ?>
     <?php endif; ?>
 
     <h3>Latest notices</h3>
