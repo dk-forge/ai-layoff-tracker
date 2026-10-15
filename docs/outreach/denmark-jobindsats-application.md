@@ -19,10 +19,10 @@ coverage, with attribution to Jobindsats/STAR as the source. We will not
 redistribute raw data beyond the attributed statistics shown on the tracker,
 and we are happy to follow any additional terms you specify.
 
-Requester: Dakotta (info@asktherecruiter.com)
+Requester: AskTheRecruiter (info@asktherecruiter.com)
 Organisation: AskTheRecruiter.com
 
 Thank you for maintaining this public data service.
 
 Kind regards,
-Dakotta
+AskTheRecruiter

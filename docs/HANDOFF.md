@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-15, branch `chore/scrub-owner-name` (PR). No plugin file, no version reserved.** Personal name/email scrub of docs and data files; see TECHLOG 2026-10-15 (name scrub).
 - **RELEASED - Claude (agent), 2026-10-15, branch `ops/brevo-backfill` (PR). No plugin file, no version reserved.** Manual Brevo backfill workflow; see TECHLOG 2026-10-15 (Brevo backfill).
 - **RELEASED - Claude (agent), 2026-10-15, branch `fix/janitor-github-noise` (PR). No plugin version (railway + tests only, no deploy).** Mailbox janitor files GitHub PR/issue mail as noise; see TECHLOG 2026-10-15.
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/seo-ctr-reports` (PR). Reserves plugin version 2.20.265.** Search CTR titles, hub intro, latest monthly reports; see TECHLOG 2026-10-15 (2.20.265).
@@ -379,7 +380,7 @@ holder, so the start-of-session ritual surfaces it automatically.
      needs the live API for our side; blocked on the host.
 
 - **Previous: FREE (2026-09-13), Railway overlap type repair is production-closed.**
-  Last worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
+  Last worktree: `~/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`.
   PR #336 is merged and no plugin version is reserved. A new session must claim
   the baton and branch from current `origin/main` before editing.
 
@@ -411,7 +412,7 @@ holder, so the start-of-session ritual surfaces it automatically.
   day, and flushes rewrite rules once instead of five times. DO NOT MERGE until
   the host has been up for two hours; a plugin deploy is itself the load event.
 - **HELD by Codex (2026-09-13) — fail before paid work when the host is down.**
-  Worktree: `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
+  Worktree: `~/Projects/asktherecruiter-sandbox/.worktrees/gdelt_deploy_overlap`;
   branch: `codex/host-readiness-preflight`, based on `origin/main` at
   `b06fdad9`. No plugin version is reserved because this changes the Railway
   collector and its tests/documentation, not the WordPress plugin.
@@ -872,7 +873,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **HELD by Codex (2026-09-07): complete top-three TDD program.** Dakota
   explicitly authorized the full program, including code, tests, documentation,
   pushes, merges and production verification. Worktree:
-  `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
+  `~/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`;
   current branch: `codex/top3-restore-route`; initial starting point was
   `origin/main` at `4c310d0`.
   Start-of-session live audit: readers serve 2.20.176; subscriber routes pass;
@@ -1029,7 +1030,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **SUPERSEDED CHECKPOINT — VERSION CLAIMED (2026-09-07): 2.20.176 - source-backed count integrity and
   the false Applied Aerospace 4,320-worker row.** Codex read the baton as FREE
   on `main` (`ae759cf`) and took it in the isolated worktree
-  `/Users/dakotta/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`,
+  `~/Projects/asktherecruiter-sandbox/.worktrees/layoff_top3_fix`,
   branch `codex/top3-source-integrity`. Main advanced during the work to
   `776cde1` and claimed 2.20.175, so the branch was rebased before final
   verification and this change took the next patch. Live reproduction: the
@@ -1082,7 +1083,7 @@ holder, so the start-of-session ritual surfaces it automatically.
 - **VERSION CLAIMED (2026-09-06): 2.20.174 - the subscriber list and its
   consent records had exactly one copy, on the host being migrated.** The baton
   was read as FREE by `ops_status [0]` on origin/main and this session took it,
-  in its own worktree (`/Users/dakotta/Projects/.wt-subbackup`, branch
+  in its own worktree (`~/Projects/.wt-subbackup`, branch
   `subscriber-backup`). The weekly export excludes `wp_alt_subscribers`
   correctly and permanently; its consequence was never closed. Added a separate
   keyed route that seals the whole table to a PUBLIC key BEFORE the host
@@ -3478,7 +3479,7 @@ A six-finder adversarial sweep hit the account usage limit partway through: 21 o
 the final synthesis. So this entry is a fragment, not a verdict. **Treat the
 unfinished areas as UNKNOWN, not clear.** Full journal, including every agent's
 raw return value:
-`~/.claude/projects/-Users-dakotta-Projects-atr-layoff-tracker/80b9494c-3cd9-4fe5-b975-f8d9350063d1/subagents/workflows/wf_2c7f3121-e7a/journal.jsonl`
+`~/.claude/projects/-Users-owner-Projects-atr-layoff-tracker/80b9494c-3cd9-4fe5-b975-f8d9350063d1/subagents/workflows/wf_2c7f3121-e7a/journal.jsonl`
 It can be resumed: `Workflow({scriptPath: .../final-lock-and-load-sweep-wf_2c7f3121-e7a.js, resumeFromRunId: 'wf_2c7f3121-e7a'})`. Completed agents replay from cache, so a resume costs only the 34 that failed.
 
 **Fully verified (finder + adversarial verifier) before the limit: 12 findings.**

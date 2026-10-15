@@ -128,7 +128,7 @@ class AccountMailDesign(unittest.TestCase):
         # Brand and product names only; a person's name never appears.
         html = _welcome() + _confirm()
         text = re.sub(r"<[^>]+>", " ", html)
-        for word in ("Dakotta", "Dear ", "Hi "):
+        for word in ("Dear ", "Hi "):
             self.assertNotIn(word, text)
 
     def test_welcome_snapshot(self):

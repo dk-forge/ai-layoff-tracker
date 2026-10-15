@@ -31,4 +31,4 @@ low volume. If specific reuse terms apply to these lists, please let us know
 and we will comply.
 
 Merci / Thank you,
-Dakotta — info@asktherecruiter.com
+AskTheRecruiter — info@asktherecruiter.com
