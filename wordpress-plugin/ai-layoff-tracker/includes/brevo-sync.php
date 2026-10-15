@@ -65,66 +65,44 @@ function alt_brevo_list_ids() {
  * A wp-config ALT_BREVO_API_KEY wins when set. '' means not configured.
  */
 function alt_brevo_api_key() {
-    if (defined('ALT_BREVO_API_KEY') && ALT_BREVO_API_KEY) return trim((string) ALT_BREVO_API_KEY);
-    $sib = get_option('sib_main_option', array());
-    if (is_array($sib)) {
-        foreach (array('access_key', 'api_key') as $k) {
-            if (!empty($sib[$k]) && is_string($sib[$k]) && strpos($sib[$k], 'xkeysib-') === 0) {
-                return trim($sib[$k]);
-            }
-        }
-    }
-    return '';
+    $r = alt_brevo_key_lookup();
+    return $r['key'];
 }
 
 /**
- * PURE: which lists a subscriber row belongs on, and which it must leave.
- * Returns array('create' => bool, 'link' => int[], 'unlink' => int[]).
- * 'create' is true only for a confirmed row: nothing else may bring a
- * contact into existence at Brevo.
+ * Where the Brevo v3 key comes from, in order: the ALT_BREVO_API_KEY constant,
+ * then the official Brevo (ex-Sendinblue) plugin's options: `sib_main_option`
+ * ['access_key' | 'api_key'], then `sib_api_key_v3` (a string, or an array
+ * holding 'access_key' / 'api_key'). Returns the key and the NAME of the
+ * source only; callers that report must never print the key.
  */
-function alt_brevo_plan($row, $marketing_optout = false) {
-    $ids = alt_brevo_list_ids();
-    $all = array_values(array_unique(array_filter(array_map('intval', $ids))));
-    $link = array();
-    $confirmed = is_array($row) && ($row['status'] ?? '') === 'confirmed';
-    if ($confirmed && !$marketing_optout) {
-        foreach (array('layoff', 'talent') as $t) {
-            if (empty($row['consent_' . $t])) continue;
-            $freq = (string) ($row['freq_' . $t] ?? 'weekly');
-            // Monthly has no list of its own: owner decision, weekly list.
-            $key = $t . '_' . ($freq === 'daily' ? 'daily' : 'weekly');
-            if (!empty($ids[$key])) $link[] = (int) $ids[$key];
-        }
-        if (!empty($row['consent_partners']) && !empty($ids['partners'])) {
-            $link[] = (int) $ids['partners'];
+function alt_brevo_key_lookup() {
+    if (defined('ALT_BREVO_API_KEY') && ALT_BREVO_API_KEY) {
+        return array('key' => trim((string) ALT_BREVO_API_KEY), 'source' => 'constant');
+    }
+    $ok = function ($v) {
+        return is_string($v) && strpos(trim($v), 'xkeysib-') === 0;
+    };
+    foreach (array('sib_main_option', 'sib_api_key_v3') as $opt) {
+        $v = get_option($opt, null);
+        if ($ok($v)) return array('key' => trim($v), 'source' => $opt);
+        if (is_array($v)) {
+            foreach (array('access_key', 'api_key') as $k) {
+                if (isset($v[$k]) && $ok($v[$k])) {
+                    return array('key' => trim($v[$k]), 'source' => $opt . '.' . $k);
+                }
+            }
         }
     }
-    $link = array_values(array_unique($link));
-    return array(
-        'create' => $confirmed,
-        'link'   => $link,
-        'unlink' => array_values(array_diff($all, $link)),
-    );
-}
-
-/** Private status record: counts and an HTTP code, never an address. */
-function alt_brevo_record($result, $code = 0) {
-    $s = get_option('alt_brevo_sync_status', array());
-    if (!is_array($s)) $s = array();
-    $s['last_result'] = $result;
-    $s['last_code'] = (int) $code;
-    $s['last_at'] = gmdate('c');
-    $s['counts'] = isset($s['counts']) && is_array($s['counts']) ? $s['counts'] : array();
-    $s['counts'][$result] = (int) ($s['counts'][$result] ?? 0) + 1;
-    if ($result === 'failed') $s['last_failure_at'] = $s['last_at'];
-    update_option('alt_brevo_sync_status', $s, false);
+    return array('key' => '', 'source' => '');
 }
 
 function alt_brevo_sync_status() {
     $s = get_option('alt_brevo_sync_status', array());
     if (!is_array($s)) $s = array();
-    $s['configured'] = alt_brevo_api_key() !== '';
+    $lk = alt_brevo_key_lookup();
+    $s['configured'] = $lk['key'] !== '';
+    $s['key_source'] = $lk['source'];
     return $s;
 }
 
