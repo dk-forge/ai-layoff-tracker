@@ -37,6 +37,7 @@ merge. Read "two merges claimed one plugin version" below before answering one.
 | qwi-archive | monthly 16th + manual | Each pulled QWI quarter as `data/archive/qwi/<YYYY-Qn>.csv` |
 | ai-exposure-import | monthly 3rd 15:17 UTC + manual | AI exposure by occupation and metro -> `/reference-ingest/ai_exposure` (GPTs-are-GPTs scores, O*NET titles, BLS OEWS, BLS Employment Projections; keyless). Context only, shown by `[alt_ai_exposure]` on the Sources page |
 | indeed-import | weekly Mon 15:23 UTC + manual | Indeed Hiring Lab job postings index, US by sector + national SA aggregate, weekly -> `/reference-ingest/indeed_postings` (2 public GitHub CSVs, keyless, CC BY 4.0). Context only |
+| bfs-import | weekly Thu 15:41 UTC + manual | Census Business Formation Statistics, SA business applications (all + high-propensity), US + states, monthly -> `/reference-ingest/census_bfs` (1 public Census CSV, keyless, public domain; `python bfs_import.py --dry-run` diagnoses without writing). Context only |
 | ai-exposure-archive | monthly 4th + manual | Joined exposure tables as CSVs per OEWS release in `data/archive/ai_exposure/` |
 | bls-archive | monthly 12th + manual | Full-history BLS JOLTS + CPS flat files as a Release asset `bls-archive-YYYY-MM` |
 | version-collision | push to main + every PR | Fails the SECOND merge that claims a plugin version. See "two merges claimed one plugin version" |
