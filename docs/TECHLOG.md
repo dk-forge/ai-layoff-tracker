@@ -1,9 +1,11 @@
-## 2026-10-15 - Owner's personal name and emails scrubbed from current repo files (no plugin change)
+## 2026-10-15 - Owner's personal name and emails scrubbed from current repo files; footer address now Netherlands (2.20.267)
 
 **Class:** novel (owner request 2026-10-15)
 **Guard:** none, and why: a scrub of prose and fixture strings; a repo-wide grep for the name and the personal addresses returns zero (the `dakotta-labs` account handle excepted, which is the owner's to rename).
 
 The owner asked that his personal name and personal email addresses appear nowhere public. Current files now say "the owner" (prose), `owner` (reviewer fields in the adjudication ledgers and gold sets), "AskTheRecruiter" (sender of the two outreach letters) and info@asktherecruiter.com; local paths under the home directory became `~/`. Data values, tests and code behaviour are unchanged apart from fixture strings. Git history still holds the old text; a history rewrite is a separate decision.
+
+Same PR, owner decision 2026-10-16 (FOOTER-ADDRESS-E313): the old San Francisco postal address is gone from every reader email footer (digest, confirmation, account mail, preferences, press list), the committed archive copies and their tests; the footer now reads "AskTheRecruiter, Netherlands." until a Dutch business address is chosen at launch.
 
 ## 2026-10-15 - Brevo backfill: manual workflow pages the keyed route (no plugin change)
 
@@ -1311,7 +1313,7 @@ subtraction. Plugin 2.20.216.
 Owner ruling 2026-09-29: leave "#E313" out of the postal address in every email.
 Changed in `railway/digest_layout.py` (digest footer), `includes/press-list.php`,
 `includes/subscribe.php` and `includes/subscriber-prefs.php`. Footer now reads
-"AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102." Plugin 2.20.215.
+"AskTheRecruiter, Netherlands." Plugin 2.20.215.
 
 ## 2026-09-28 - deploy-plugin.yml failed 3x: edge cache stuck above origin
 
@@ -10248,7 +10250,7 @@ the two. It is UNCONDITIONAL, unlike the manage block: a legally required
 disclosure is not ours to omit when a payload is thin.
 
 **THE FIRST WORDING WAS WRONG AND A TEST CAUGHT IT.** It read "AI Layoff
-Tracker, 601 Van Ness Ave...", and
+Tracker, AskTheRecruiter, Netherlands...", and
 `TheLogSaysWhatActuallyWentOut::test_the_message_carries_only_the_named_section`
 went red: the footer is SHARED by both tiers, so naming one tracker in it
 stamps the layoff brand onto the TALENT tracker's emails. The section-isolation

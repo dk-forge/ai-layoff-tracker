@@ -20,7 +20,7 @@ SUB = PLUGIN / "includes" / "subscribe.php"
 PREFS = PLUGIN / "includes" / "subscriber-prefs.php"
 SNAP = Path(__file__).resolve().parent / "snapshots" / "account_mail_welcome.html"
 
-ADDRESS = "AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102."
+ADDRESS = "AskTheRecruiter, Netherlands."
 CONFIRM = "https://example.com/blog/digest/confirm/tok/"
 PREFS_URL = "https://example.com/blog/digest/preferences/p1/"
 UNSUB = "https://example.com/blog/digest/unsubscribe/u1/"
@@ -102,7 +102,7 @@ class AccountMailDesign(unittest.TestCase):
         self.assertIn(f'href="{UNSUB}"', html)
         self.assertIn(">Unsubscribe<", html)
         self.assertIn(">Manage preferences<", html)
-        self.assertEqual(html.count("601 Van Ness Ave"), 1)
+        self.assertEqual(html.count("AskTheRecruiter, Netherlands"), 1)
         # Preferences: the button, its paste-able fallback, and the footer.
         self.assertEqual(html.count(f'href="{PREFS_URL}"'), 3)
         self.assertNotRegex(html, r"(?i)\bsuite\b|\bste\.")

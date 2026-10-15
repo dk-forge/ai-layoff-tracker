@@ -6,7 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **RELEASED - Claude (agent), 2026-10-15, branch `chore/scrub-owner-name` (PR). No plugin file, no version reserved.** Personal name/email scrub of docs and data files; see TECHLOG 2026-10-15 (name scrub).
+- **RELEASED - Claude (agent), 2026-10-15, branch `chore/scrub-owner-name` (PR #537). Reserves plugin version 2.20.267** (2.20.266 is held by PR #536). Personal name/email scrub + reader-email footer address now "AskTheRecruiter, Netherlands"; see TECHLOG 2026-10-15 (name scrub).
 - **RELEASED - Claude (agent), 2026-10-15, branch `ops/brevo-backfill` (PR). No plugin file, no version reserved.** Manual Brevo backfill workflow; see TECHLOG 2026-10-15 (Brevo backfill).
 - **RELEASED - Claude (agent), 2026-10-15, branch `fix/janitor-github-noise` (PR). No plugin version (railway + tests only, no deploy).** Mailbox janitor files GitHub PR/issue mail as noise; see TECHLOG 2026-10-15.
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/seo-ctr-reports` (PR). Reserves plugin version 2.20.265.** Search CTR titles, hub intro, latest monthly reports; see TECHLOG 2026-10-15 (2.20.265).

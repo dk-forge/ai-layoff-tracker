@@ -62,7 +62,7 @@ function alt_account_mail_paragraphs($text, $button_url, $button_html = '') {
         if ($chunk === '') continue;
         if ($button_url !== '' && trim($chunk) === $button_url) { $out .= $button_html; $button_html = ''; continue; }
         // The postal address is the footer's job; never print it twice.
-        if (strpos($chunk, '601 Van Ness Ave') !== false) continue;
+        if (strpos($chunk, 'AskTheRecruiter, Netherlands') !== false) continue;
         $lines = explode("\n", $chunk);
         // "Lead-in:\n<button url>": keep the lead-in, the button follows it.
         $here = '';
@@ -128,7 +128,7 @@ function alt_account_mail_html($heading, $text, $button_url, $button_label, $foo
     }
     $small = 'margin:0 0 8px;font-family:' . $font . ';font-size:13px;line-height:1.6;color:' . $c['muted'] . ';';
     $footer = ($links ? '<p style="' . $small . '">' . implode(' &middot; ', $links) . '</p>' : '')
-            . '<p style="' . $small . '">AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102.</p>';
+            . '<p style="' . $small . '">AskTheRecruiter, Netherlands.</p>';
 
     return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
         . '<meta name="viewport" content="width=device-width,initial-scale=1">'
