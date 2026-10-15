@@ -1,0 +1,44 @@
+name: Eurostat vacancy and unemployment reference data
+
+# Eurostat dissemination API (JSON-stat, keyless, CC BY 4.0 under the Eurostat
+# reuse policy): job vacancy rate (jvs_q_nace2, quarterly) and LFS unemployment
+# rate (une_rt_m, monthly) for the EU27, each member state and EFTA, 3 years
+# -> /reference-ingest/eurostat_labour. LABELED MACRO CONTEXT, never summed
+# into layoff counts and not read by ingest or classification. Fail-soft: a
+# failed or partial pull never overwrites stored data. Freshness:
+# reference-freshness.yml. Issue #478 item 7.
+
+on:
+  schedule:
+    - cron: '41 15 * * 3'   # Wednesdays; upstream releases monthly and quarterly
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
+concurrency:
+  group: eurostat-import
+
+jobs:
+  eurostat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Fetch + store Eurostat reference data
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python eurostat_import.py
+
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: eurostat-import

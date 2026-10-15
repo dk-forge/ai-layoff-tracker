@@ -260,6 +260,7 @@ class SourcesPageTest(unittest.TestCase):
             "indeed_postings": ("<b>Indeed Hiring Lab job postings</b>", "https://github.com/hiring-lab/job_postings_tracker"),
             "bls_ces_hours": ("<b>BLS CES hours and earnings</b>", "https://www.bls.gov/ces/"),
             "census_bfs": ("<b>Census Business Formation Statistics</b>", "https://www.census.gov/econ/bfs/"),
+            "eurostat_labour": ("<b>Eurostat job vacancies and unemployment</b>", "https://ec.europa.eu/eurostat/web/main/data/database"),
         }
         self.assertEqual(set(expect), set(rf.SPECS), "a reference source has no Sources row")
         for src, (name, link) in expect.items():

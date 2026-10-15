@@ -29,6 +29,7 @@ function alt_reference_sources() {
         'indeed_postings' => 'alt_ref_indeed_postings',
         'bls_ces_hours' => 'alt_ref_bls_ces_hours',
         'census_bfs' => 'alt_ref_census_bfs',
+        'eurostat_labour' => 'alt_ref_eurostat_labour',
     );
 }
 

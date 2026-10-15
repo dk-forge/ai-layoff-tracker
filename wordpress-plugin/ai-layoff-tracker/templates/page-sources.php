@@ -233,6 +233,10 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td>Current Employment Statistics from the U.S. Bureau of Labor Statistics. We keep average weekly hours and average hourly earnings of all private employees, seasonally adjusted. These are monthly figures for the last five years. Employers often cut hours before headcount. This is context only: it is not layoffs and is never added to our counts. A change here does not show that AI caused it. Public domain (US Government work), source: BLS.</td>
         <td>Context (labeled)</td>
         <td><a href="https://www.bls.gov/ces/" target="_blank" rel="noopener">BLS CES data &#8599;</a></td>
+        <td><b>Eurostat job vacancies and unemployment</b></td><td>European Union (EU27 and each member state) plus EFTA countries</td>
+        <td>Eurostat's job vacancy rate for industry, construction and services (quarterly, dataset jvs_q_nace2), by country, for the last three years. Also the Labour Force Survey unemployment rate (seasonally adjusted, monthly, dataset une_rt_m). Vacancies measure hiring demand and unemployment is a labour-market rate. Neither is a layoff count or added to our counts, and a change does not show that AI caused it. Reused under the Eurostat reuse policy, CC BY 4.0, source: Eurostat.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://ec.europa.eu/eurostat/web/main/data/database" target="_blank" rel="noopener">Eurostat database &#8599;</a></td>
     </tr>
       <tr>
         <td><b>O*NET occupation data</b></td><td>United States, by occupation</td>
