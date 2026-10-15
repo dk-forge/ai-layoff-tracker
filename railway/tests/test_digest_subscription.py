@@ -1059,12 +1059,25 @@ class ClickCountingAndStats(unittest.TestCase):
         self.assertEqual(last["unsubscribes_48h"], 1)
         self.assertTrue(last["sent_at"])
 
+    def test_per_list_cadence_weekly_flow_and_recent_sends(self):
+        s = self.o["stats"]
+        self.assertEqual(sum(s["lists"]["layoff"].values()), s["confirmed"]["layoff"])
+        self.assertEqual(set(s["lists"]), {"layoff", "talent", "articles"})
+        self.assertEqual(len(s["weeks"]), 8)
+        this_week = s["weeks"][0]
+        self.assertEqual(this_week["confirmed"], 3, "gross opt-ins, including the one who later left")
+        self.assertEqual(this_week["unsubscribed"], 1)
+        self.assertIsNone(this_week["bounced"], "no bounce timestamp is held; UNKNOWN, not 0")
+        self.assertEqual(s["recent_sends"][0]["recipients"], 2)
+        self.assertEqual(s["recent_sends"][0]["clicks"], 61)
+
     def test_a_missing_table_reads_UNKNOWN_and_never_zero(self):
         s = self.o["stats_without_table"]
         self.assertFalse(s["available"])
         self.assertTrue(s["reason"])
         for field in ("confirmed", "pending", "unsubscribed", "signups_retained",
-                      "confirm_rate", "confirmed_last_7_days", "frequency", "last_send"):
+                      "confirm_rate", "confirmed_last_7_days", "frequency", "last_send",
+                      "lists", "weeks", "recent_sends"):
             self.assertIsNone(s[field],
                               f"{field} is 0 on an install with no table; 0 claims "
                               f"nobody subscribed when the truth is we cannot see")
@@ -1182,6 +1195,21 @@ class WeeklyEmailWiring(unittest.TestCase):
             "Subscribers 412 (+31 this week), last digest sent to 405, "
             "62 clicks, 3 unsubscribed.")
         self.assertNotIn("@", line)
+
+    def test_weekly_report_block_is_counts_only_and_absent_is_UNKNOWN(self):
+        payload = {"available": True, "pending": 4, "bounced": None, "unsubscribed": 2,
+                   "lists": {"layoff": {"daily": 3, "weekly": 9, "monthly": 1}},
+                   "weeks": [{"week_start": "2026-10-12", "signups": 5, "confirmed": 4,
+                              "unsubscribed": 1, "bounced": None}],
+                   "recent_sends": [{"sent_at": "2026-10-13 10:00:00", "freq": "daily",
+                                     "recipients": 12, "eligible": 13, "clicks": None}]}
+        text = "\n".join(self.hd.subscriber_report(payload))
+        self.assertIn("layoff: daily 3, weekly 9, monthly 1", text)
+        self.assertIn("pending double opt-in 4, bounced UNKNOWN", text)
+        self.assertIn("2026-10-12: 5 / 4 / 1", text)
+        self.assertIn("12 of 13, UNKNOWN clicks", text)
+        self.assertNotIn("@", text)
+        self.assertEqual(self.hd.subscriber_report({"available": False}), [])
 
     def test_no_key_reads_UNKNOWN_not_zero(self):
         line = self._line(env={})

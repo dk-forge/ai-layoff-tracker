@@ -8184,6 +8184,9 @@ function alt_digest_stats() {
         'confirmed_last_7_days' => null,
         'frequency'  => null,
         'last_send'  => null,
+        'lists'      => null,
+        'weeks'      => null,
+        'recent_sends' => null,
         // WAS A HARDCODED 'none' AND WAS FALSE FROM 2026-08-16 TO 2.20.107.
         // It was written in 2.19.274 to mean "this plugin embeds no open
         // pixel", which is still true and is still enforced. But the field is
@@ -8237,6 +8240,21 @@ function alt_digest_stats() {
         . "(consent_articles = 1 AND freq_articles = 'daily'))");
     $out['frequency'] = array('daily' => $daily, 'weekly' => max(0, $confirmed - $daily));
 
+    // Per list, per cadence, over CONFIRMED rows (owner request 2026-10-15).
+    // A person on two lists counts once in each list, so these do NOT sum to
+    // the confirmed total; the frequency block above is the de-duplicated view.
+    $out['lists'] = array();
+    foreach (alt_digest_lists() as $name => $cols) {
+        $row = array();
+        foreach (array('daily', 'weekly', 'monthly') as $f) {
+            $row[$f] = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $subs WHERE status = 'confirmed' AND {$cols['consent']} = 1 AND {$cols['freq']} = %s",
+                $f));
+        }
+        $out['lists'][$name] = $row;
+    }
+    $out['weeks'] = alt_digest_weekly_flow($subs);
+    $out['recent_sends'] = alt_digest_recent_sends(10);
     $out['last_send'] = alt_digest_last_send_stats();
     // The Brevo mirror's private status: counts and an HTTP code, no address.
     $out['brevo_mirror'] = function_exists('alt_brevo_sync_status') ? alt_brevo_sync_status() : null;
@@ -8246,6 +8264,64 @@ function alt_digest_stats() {
     // Adaptive cap (owner ruling 2026-09-28), top level for subscriber_watch.py.
     $out['welcome_cap_effective'] = $wm ? (int) $wm['welcome_cap_effective'] : null;
     $out['welcome_cap_reason'] = $wm ? (string) $wm['welcome_cap_reason'] : null;
+    return $out;
+}
+
+/**
+ * Opt-ins and unsubscribes per ISO week (Monday 00:00 UTC), newest first,
+ * COUNTS ONLY. Read from the timestamps the subscriber row already carries:
+ * created_at (a signup, pending until confirmed), confirmed_at (an opt-in that
+ * completed) and unsubscribed_at. Bounces carry no timestamp in this schema, so
+ * there is no weekly bounce figure: the field is null, which reads UNKNOWN, and
+ * the total lives in the top-level 'bounced' count. Rows past the erase window
+ * are hard deleted, so older weeks under-count signups that never confirmed and
+ * people who later left; 'basis' on the payload says so.
+ */
+function alt_digest_weekly_flow($subs, $weeks = 8) {
+    global $wpdb;
+    $monday = strtotime('monday this week 00:00 UTC');
+    $out = array();
+    for ($i = 0; $i < $weeks; $i++) {
+        $from = gmdate('Y-m-d H:i:s', $monday - $i * 7 * DAY_IN_SECONDS);
+        $to = gmdate('Y-m-d H:i:s', $monday - ($i - 1) * 7 * DAY_IN_SECONDS);
+        $between = function ($col) use ($wpdb, $subs, $from, $to) {
+            return (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $subs WHERE $col >= %s AND $col < %s", $from, $to));
+        };
+        $out[] = array(
+            'week_start'   => substr($from, 0, 10),
+            'signups'      => $between('created_at'),
+            'confirmed'    => $between('confirmed_at'),
+            'unsubscribed' => $between('unsubscribed_at'),
+            'bounced'      => null,
+        );
+    }
+    return $out;
+}
+
+/**
+ * The last N digest sends with their delivered counts and aggregate clicks.
+ * The send log holds no address; the click table holds one integer per link.
+ */
+function alt_digest_recent_sends($n = 10) {
+    global $wpdb;
+    if (!alt_digest_table_present(alt_digest_sends_table())) return null;
+    $rows = $wpdb->get_results($wpdb->prepare('SELECT id, freq, sent_at, recipients, eligible FROM '
+        . alt_digest_sends_table() . ' ORDER BY sent_at DESC, id DESC LIMIT %d', (int) $n), ARRAY_A);
+    $links = alt_digest_table_present(alt_digest_links_table());
+    $out = array();
+    foreach ((array) $rows as $row) {
+        $out[] = array(
+            'send_id'    => (int) $row['id'],
+            'freq'       => (string) $row['freq'],
+            'sent_at'    => (string) $row['sent_at'],
+            'recipients' => (int) $row['recipients'],
+            'eligible'   => (int) $row['eligible'],
+            'clicks'     => $links ? (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COALESCE(SUM(clicks), 0) FROM ' . alt_digest_links_table()
+                . ' WHERE send_id = %d', (int) $row['id'])) : null,
+        );
+    }
     return $out;
 }
 

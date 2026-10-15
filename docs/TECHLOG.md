@@ -1,3 +1,10 @@
+## 2026-10-15 - Digest subscriber stats: per list, per week, per send (2.20.264)
+
+**Class:** novel (owner request 2026-10-15)
+**Guard:** `railway/tests/test_digest_subscription.py` (payload carries `lists`, `weeks`, `recent_sends`; no '@' anywhere; absent table reads null on every new field; a weekly bounce is null, not 0; the email block prints UNKNOWN for absent counts).
+
+The keyed `/subscriber-stats` route gains `lists` (confirmed per list per cadence), `weeks` (eight ISO weeks of signups, confirmed opt-ins and unsubscribes, from the row timestamps) and `recent_sends` (last ten sends: delivered, eligible, aggregate clicks). Bounces carry no timestamp in this schema, so only the total is reported. `health_digest.py` prints the block and, on a week with no breakage email, mails it to the owner once through opsmail (Resend, ops prefix); a breakage week carries it inside the alert. Counts only. Not built: open tracking (no pixel, by design), a new click redirect (the aggregate `/click` counter already exists), a new Brevo sync (`includes/brevo-sync.php` already mirrors lists 15-18 and 20).
+
 ## 2026-10-15 - Subscriber email redesign + public digest archive (2.20.263)
 
 **Class:** novel (owner decision 2026-10-15)

@@ -88,6 +88,66 @@ def _benign_degraded(detail):
     return bool(codes) and all(c in _BENIGN_STATES for c in codes)
 
 
+_LAST_STATS: dict = {}
+
+
+def _n(v):
+    """A count, or UNKNOWN. Never coerce an absent field to 0."""
+    return str(v) if isinstance(v, int) and not isinstance(v, bool) else "UNKNOWN"
+
+
+def subscriber_report(data):
+    """The owner's weekly subscriber block, from the /subscriber-stats payload.
+
+    COUNTS ONLY: every value printed is an integer, a date or a fixed label
+    from the payload's own keys, so no address or name can be spelled here.
+    Absent fields print UNKNOWN. Returns [] when there is no payload, because
+    subscriber_line() has already said UNKNOWN and why.
+    """
+    if not isinstance(data, dict) or not data.get("available"):
+        return []
+    out = ["Digest subscribers (confirmed, by list and cadence):"]
+    for name, row in (data.get("lists") or {}).items():
+        row = row if isinstance(row, dict) else {}
+        out.append(f"  {name}: daily {_n(row.get('daily'))}, weekly {_n(row.get('weekly'))}, "
+                   f"monthly {_n(row.get('monthly'))}")
+    out.append(f"  pending double opt-in {_n(data.get('pending'))}, "
+               f"bounced {_n(data.get('bounced'))}, "
+               f"unsubscribed (retained) {_n(data.get('unsubscribed'))}")
+    weeks = data.get("weeks") or []
+    if weeks:
+        out.append("Per ISO week (Monday UTC): signups / confirmed / unsubscribed")
+        for w in weeks:
+            w = w if isinstance(w, dict) else {}
+            out.append(f"  {str(w.get('week_start'))[:10]}: {_n(w.get('signups'))} / "
+                       f"{_n(w.get('confirmed'))} / {_n(w.get('unsubscribed'))}")
+    sends = data.get("recent_sends") or []
+    if sends:
+        out.append("Recent sends: delivered of eligible, link clicks")
+        for x in sends:
+            x = x if isinstance(x, dict) else {}
+            out.append(f"  {str(x.get('sent_at'))[:16]} {str(x.get('freq'))[:7]}: "
+                       f"{_n(x.get('recipients'))} of {_n(x.get('eligible'))}, "
+                       f"{_n(x.get('clicks'))} clicks")
+    out.append("Older weeks under-count: unsubscribed and never confirmed rows are "
+               "erased after the retention window. Bounces carry no date, so "
+               "there is no weekly bounce figure.")
+    return out
+
+
+def _email_subscriber_report(subscribers, report):
+    """The weekly subscriber numbers, on a week with no breakage to report.
+
+    A breakage week already carries them in the alert. This runs once per
+    scheduled (Monday) run, so it is one email a week, through Resend.
+    """
+    if not opsmail.configured() or not report:
+        return
+    ok, note, _t = opsmail.send("Weekly digest subscriber stats",
+                                "\n".join([subscribers, ""] + report))
+    print(f"subscriber stats email: {note}")
+
+
 def subscriber_line():
     """One line about the digest audience, for the owner's weekly email.
 
@@ -115,6 +175,7 @@ def subscriber_line():
     if not isinstance(data, dict) or not data.get("available"):
         reason = (data or {}).get("reason") or "the endpoint reported no data"
         return f"Subscribers UNKNOWN: {reason}. This is not a zero."
+    _LAST_STATS["payload"] = data
 
     total = (data.get("confirmed") or {}).get("total")
     new = data.get("confirmed_last_7_days")
@@ -261,6 +322,7 @@ def _email_alert(stale, degraded, integrity_failed=(), zero_outage=(), subscribe
     # went wrong so the owner sees it without opening a dashboard.
     if subscribers:
         lines.append("\n" + subscribers)
+        lines.extend(subscriber_report(_LAST_STATS.get("payload")))
     body = "\n".join(lines)
     ok, note, _transient = opsmail.send(subject, body)
     print(f"health digest email: {note}")
@@ -367,6 +429,9 @@ def main():
 
     subscribers = subscriber_line()
     print(f"SUBSCRIBERS: {subscribers}")
+    report = subscriber_report(_LAST_STATS.get("payload"))
+    for _l in report:
+        print(_l)
 
     print(f"HEALTH DIGEST: {ok} ok · {len(degraded)} degraded · {len(stale)} stale"
           + (f" · {len(zero_outage)} returning NOTHING" if zero_outage else ""))
@@ -430,6 +495,8 @@ def main():
             _email_alert(stale, real_degraded, integrity_failed, zero_outage,
                          dark_lines=dark_lines, never_lines=never_lines,
                          subscribers=subscribers)
+        else:
+            _email_subscriber_report(subscribers, report)
 
     # A STALE source is the real silent failure — fail the run loudly so the red
     # workflow is the alert. Degraded-only (transient) does not fail the digest.
