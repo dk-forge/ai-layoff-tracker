@@ -68,7 +68,7 @@ class Sanitize(unittest.TestCase):
         self.assertIn("12 verified entries", self.html)
 
     def test_the_postal_address_stays(self):
-        self.assertIn("601 Van Ness Ave", self.html)
+        self.assertIn("AskTheRecruiter, Netherlands", self.html)
 
     def test_deterministic(self):
         again = da.edition_from_payload(_payload(), "daily")

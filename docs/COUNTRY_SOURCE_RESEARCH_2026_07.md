@@ -92,7 +92,7 @@ Honorable mentions (watchlist, not shortlist): Mexico IMSS open data (permitted 
 
 ## 4. Existing-pattern mapping (which collector each candidate resembles)
 
-Existing patterns in `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/`: **EDINET JP** = keyed official document-list API, discovery-only, cursor after complete list call; **OpenDART KR** = keyed paged disclosure-list API with non-English docs + evidence-only doc stage; **Companies House UK** = keyed read-only enrichment lookup, never creates events. Two keyless patterns also apply: `warn_import.py` (official-notice bulk upsert, no LLM) and `survey_reconcile.py` (aggregate reconciliation series).
+Existing patterns in `~/Projects/atr-layoff-tracker/railway/sources/`: **EDINET JP** = keyed official document-list API, discovery-only, cursor after complete list call; **OpenDART KR** = keyed paged disclosure-list API with non-English docs + evidence-only doc stage; **Companies House UK** = keyed read-only enrichment lookup, never creates events. Two keyless patterns also apply: `warn_import.py` (official-notice bulk upsert, no LLM) and `survey_reconcile.py` (aggregate reconciliation series).
 
 | Candidate | Closest pattern | Notes |
 |---|---|---|

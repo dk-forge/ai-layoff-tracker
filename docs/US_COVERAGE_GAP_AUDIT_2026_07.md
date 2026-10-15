@@ -56,14 +56,14 @@ Synthesized from: the 50-state WARN completeness audit, the metro business-press
 - CourtListener RECAP API token (free signup — same class as the Denmark Jobindsats decision in `docs/COUNTRY_SOURCE_RESEARCH_2026_07.md`); corroboration-only source, low urgency since bankruptcy layoffs co-surface via WARN + 8-K.
 - PACER (paid) — out under no-purchase rules.
 
-Key files: `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/warn.py` (ALL_STATES line 189, IL URL line 35), `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/warn_custom.py` (CUSTOM_STATES line 577; fetch_oh 150, fetch_mi 190, fetch_co 224, fetch_la 305, fetch_nc 334), `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/gdelt.py` (TRUSTED_DOMAINS line 35), `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/edgar.py` (KEYWORDS line 30, hit loop ~155).
+Key files: `~/Projects/atr-layoff-tracker/railway/sources/warn.py` (ALL_STATES line 189, IL URL line 35), `~/Projects/atr-layoff-tracker/railway/sources/warn_custom.py` (CUSTOM_STATES line 577; fetch_oh 150, fetch_mi 190, fetch_co 224, fetch_la 305, fetch_nc 334), `~/Projects/atr-layoff-tracker/railway/sources/gdelt.py` (TRUSTED_DOMAINS line 35), `~/Projects/atr-layoff-tracker/railway/sources/edgar.py` (KEYWORDS line 30, hit loop ~155).
 
 ---
 
 # Appendix A — full state-by-state WARN audit
 
 US STATE WARN COMPLETENESS AUDIT — 2026-07-18
-Tracker WARN total: 33,989 rows (aggregate cross-check: per-state sum = 33,989 exactly; every row has a state). "Latest" = max layoff_date (effective date, may be future). Raw sweep data: /private/tmp/claude-501/-Users-dakotta-Projects-atr-layoff-tracker/ba147524-a963-4ed2-b8af-b361ece2fe32/scratchpad/warn_state_counts.tsv
+Tracker WARN total: 33,989 rows (aggregate cross-check: per-state sum = 33,989 exactly; every row has a state). "Latest" = max layoff_date (effective date, may be future). Raw sweep data: /private/tmp/claude-501/-Users-owner-Projects-atr-layoff-tracker/ba147524-a963-4ed2-b8af-b361ece2fe32/scratchpad/warn_state_counts.tsv
 
 STATE-BY-STATE TABLE
 
@@ -134,7 +134,7 @@ TOP 5 CONCRETE FIXES BY RECOVERABLE VOLUME
 
 Bonus, near-zero cost: fix the IL fallback URL in STATE_WARN_URL (dceo.illinois.gov/aboutdceo/reportsrequiredbystatute/warnreports.html → dceo.illinois.gov/workforcedevelopment/warn.html — old path 404s, so IL rows without per-row links cite a dead page), and add WV as a small custom collector (public per-notice PDFs, currently zero coverage). PA (211 rows) warrants a follow-up recon: volume is implausibly low for a top-5 state. Genuinely unfixable: AR, NH, WY (statute), PR — no public WARN source exists.
 
-Key files: /Users/dakotta/Projects/atr-layoff-tracker/railway/sources/warn.py (ALL_STATES at line 189, STATE_WARN_URL IL at line 35), /Users/dakotta/Projects/atr-layoff-tracker/railway/sources/warn_custom.py (fetch_oh line 150, fetch_mi line 190, fetch_co line 224, fetch_la line 305, fetch_nc line 334).
+Key files: ~/Projects/atr-layoff-tracker/railway/sources/warn.py (ALL_STATES at line 189, STATE_WARN_URL IL at line 35), ~/Projects/atr-layoff-tracker/railway/sources/warn_custom.py (fetch_oh line 150, fetch_mi line 190, fetch_co line 224, fetch_la line 305, fetch_nc line 334).
 
 ---
 
@@ -190,7 +190,7 @@ Method: Socrata discovery API (`https://api.us.socrata.com/api/catalog/v1`) with
 
 ## 3. SEC 8-K Item 2.05 (highest-signal finding)
 
-Current state of `/Users/dakotta/Projects/atr-layoff-tracker/railway/sources/edgar.py`: EFTS full-text phrase search (12 keywords) over forms 8-K/6-K. **Item numbers are not targeted and not read.**
+Current state of `~/Projects/atr-layoff-tracker/railway/sources/edgar.py`: EFTS full-text phrase search (12 keywords) over forms 8-K/6-K. **Item numbers are not targeted and not read.**
 
 Verified facts (all against `https://efts.sec.gov/LATEST/search-index`, UA per SEC fair-access):
 1. **EFTS already returns the item tags**: every hit's `_source.items` lists 8-K item numbers, e.g. `["2.05","7.01","9.01"]`. `edgar.py` (`pull_edgar_filings_between`, ~lines 154–180) reads `ciks`/`adsh`/`display_names`/`file_date` and discards `items`.

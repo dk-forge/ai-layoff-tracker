@@ -1,9 +1,17 @@
-## 2026-10-15 - Brevo key lookup reads the official plugin's v3 option (2.20.266)
+## 2026-10-15 - Brevo key lookup reads the official plugin's v3 option (2.20.268)
 
 **Class:** novel (owner request 2026-10-15)
 **Guard:** `railway/tests/test_brevo_key_lookup.py` (stubbed options: `sib_main_option` access_key/api_key, `sib_api_key_v3` as a string and as an array, a non-v3 key reads empty; the harness output never carries a key).
 
 The first `brevo-backfill.yml` dispatch answered 503 `{"ok":false,"reason":"brevo api key not configured"}` although the owner has the Brevo plugin connected. `alt_brevo_api_key()` only looked in `sib_main_option`. It now goes through `alt_brevo_key_lookup()`: the `ALT_BREVO_API_KEY` constant first, then `sib_main_option`, then `sib_api_key_v3`, accepting only an `xkeysib-` v3 key. `brevo_mirror.key_source` in `/subscriber-stats` names the source (never the key), so a still-empty lookup says so instead of leaving it to inference.
+## 2026-10-15 - Owner's personal name and emails scrubbed from current repo files; footer address now Netherlands (2.20.267)
+
+**Class:** novel (owner request 2026-10-15)
+**Guard:** none, and why: a scrub of prose and fixture strings; a repo-wide grep for the name and the personal addresses returns zero (the `dakotta-labs` account handle excepted, which is the owner's to rename).
+
+The owner asked that his personal name and personal email addresses appear nowhere public. Current files now say "the owner" (prose), `owner` (reviewer fields in the adjudication ledgers and gold sets), "AskTheRecruiter" (sender of the two outreach letters) and info@asktherecruiter.com; local paths under the home directory became `~/`. Data values, tests and code behaviour are unchanged apart from fixture strings. Git history still holds the old text; a history rewrite is a separate decision.
+
+Same PR, owner decision 2026-10-16 (FOOTER-ADDRESS-E313): the old San Francisco postal address is gone from every reader email footer (digest, confirmation, account mail, preferences, press list), the committed archive copies and their tests; the footer now reads "AskTheRecruiter, Netherlands." until a Dutch business address is chosen at launch.
 
 ## 2026-10-15 - Brevo backfill: manual workflow pages the keyed route (no plugin change)
 
@@ -649,7 +657,7 @@ HTTP 404 for the job's log (self-hosted runner log upload/retention gap,
 not something this session can fix). No code change; noting only, per the
 standing pattern that unexplained faults on this specific runner get a dated
 line here rather than a guess at a root cause with no log to confirm it.
-If this recurs on the next scheduled run, it's worth asking Dakotta to check
+If this recurs on the next scheduled run, it's worth asking the owner to check
 the Contabo box directly (disk space, permissions) the same way the
 2026-10-01 `curl` write-failure entry above asked.
 
@@ -949,7 +957,7 @@ for 4 days straight, already mailed once per dedup, nothing new to alert on.
 No code change attempted this run, for the same reason as 2026-10-02: the
 2026-10-02 entry below already root-caused this as live WordPress/Yoast
 per-page SEO-title state, not a bug in this checkout, and said explicitly
-"Needs Dakotta, not a code fix from here." That conclusion still holds — no
+"Needs the owner, not a code fix from here." That conclusion still holds — no
 live wp-admin access from this session to confirm or clear the Yoast titles.
 Surfaced as an `ACTION:` line on sandbox #1259 rather than re-diagnosing.
 
@@ -1100,7 +1108,7 @@ into two different causes, not one:
   that page, or code that predates this checkout's history. This is not
   something `alt_sync_secondary_page_titles()` ever touched or could fix.
 
-**Needs Dakotta, not a code fix from here:** (1) confirm whether Yoast SEO is
+**Needs the owner, not a code fix from here:** (1) confirm whether Yoast SEO is
 the live site's active SEO plugin and whether these 7 pages carry manually-set
 per-page SEO titles in wp-admin — if so, either clear them (falls back to
 `post_title`) or extend the sync to also filter `wpseo_title` for these six
@@ -1311,7 +1319,7 @@ subtraction. Plugin 2.20.216.
 Owner ruling 2026-09-29: leave "#E313" out of the postal address in every email.
 Changed in `railway/digest_layout.py` (digest footer), `includes/press-list.php`,
 `includes/subscribe.php` and `includes/subscriber-prefs.php`. Footer now reads
-"AskTheRecruiter.com, 601 Van Ness Ave, San Francisco, CA 94102." Plugin 2.20.215.
+"AskTheRecruiter, Netherlands." Plugin 2.20.215.
 
 ## 2026-09-28 - deploy-plugin.yml failed 3x: edge cache stuck above origin
 
@@ -10248,7 +10256,7 @@ the two. It is UNCONDITIONAL, unlike the manage block: a legally required
 disclosure is not ours to omit when a payload is thin.
 
 **THE FIRST WORDING WAS WRONG AND A TEST CAUGHT IT.** It read "AI Layoff
-Tracker, 601 Van Ness Ave...", and
+Tracker, AskTheRecruiter, Netherlands...", and
 `TheLogSaysWhatActuallyWentOut::test_the_message_carries_only_the_named_section`
 went red: the footer is SHARED by both tiers, so naming one tracker in it
 stamps the layoff brand onto the TALENT tracker's emails. The section-isolation
@@ -11286,7 +11294,7 @@ undated-signals note).
 He received two weekly editions about an hour apart with different bodies, the
 later one carrying the provisional dateline and the archive link. Read from the
 run logs: every weekly copy on 20 August came from a `workflow_dispatch` run
-with `DIGEST_TEST_TO: dak@dakotta.com`, `send_id=0`, and "nothing recorded in
+with `DIGEST_TEST_TO: info@asktherecruiter.com`, `send_id=0`, and "nothing recorded in
 the mailer's health row, and no last-sent column stamped". They were my own
 repeated test sends while these changes landed.
 
@@ -20427,7 +20435,7 @@ silent widening.
 
 ## 2026-08-14 - the US WARN reference set is adjudicated: 99/100 primary, 32/33 census, and the two misses are the dedup hash
 
-**The owner signed off the US WARN adjudication (reviewer `Dakotta`), adopting
+**The owner signed off the US WARN adjudication (reviewer `owner`), adopting
 the session's recommendation: accept every event the machine proposed a matching
 row for, Wood Group included.** The pack was rebuilt from live data first (132
 pending events, 714 candidate rows, 1 with no candidate row), then 133 decisions
@@ -23475,10 +23483,10 @@ a person re-deciding, which is two commands and moves the figure to 53/57 =
 
 ```
 python3 railway/recall_adjudicate.py --revert sec-205-0001751788-26-000009 \
-    --reviewed-by 'Dakotta' \
+    --reviewed-by 'owner' \
     --reason 'the reject described row 149592 only; re-deciding on 149616'
 python3 railway/recall_adjudicate.py --accept sec-205-0001751788-26-000009 \
-    --reviewed-by 'Dakotta' --event-ids 149616 \
+    --reviewed-by 'owner' --event-ids 149616 \
     --reason 'event 149616 holds the filing exact 4,500, announced 2026-01-29, source_type 8K, citing accession 0001751788-26-000009. Row 149592 is a separate 138-job Tarragona cut and is NOT this event.'
 ```
 
@@ -29952,7 +29960,7 @@ session. Dispatched `reliability-clock.yml` (hosted `ubuntu-latest` runner, so
 unaffected) as an independent cross-check of overall data health while this is
 open; it does not exercise the broken self-hosted toolcache.
 
-**Needs Dakotta:** on the `atr-runner-ai-layoff-tracker` box, check/fix exec
+**Needs the owner:** on the `atr-runner-ai-layoff-tracker` box, check/fix exec
 permission on `/home/atr/runners/ai-layoff-tracker/_work/_tool/Python/3.12.14/x64/bin/python`
 (and the mirrored `/opt/actions-runners/...` path), or clear and let
 `actions/setup-python` re-provision that toolcache entry. Until fixed, the
@@ -30049,7 +30057,7 @@ directly. `data-integrity.yml`'s 2026-09-30 17:39 UTC run (same runner) is
 still failing on the original toolcache signature as of this check, so the
 runner has not had any host-side remediation applied yet either way.
 
-**Needs Dakotta:** same box as the entry above (`atr-runner-ai-layoff-tracker`).
+**Needs the owner:** same box as the entry above (`atr-runner-ai-layoff-tracker`).
 Once there to fix the Python toolcache permission, also check `/tmp` disk
 space/permissions on that runner — this may be the same underlying host
 issue or a second one.
@@ -30081,7 +30089,7 @@ log shows the cause has changed:
   `atr-runner-ai-layoff-tracker` Contabo runner now completes cleanly
   ("Requirement already satisfied" for every package) — the Python-toolcache
   `bin/python` permission fault reported in the 2026-09-30 18:1x TECHLOG entry
-  above (needs-Dakotta) is **no longer reproducing**. Something restored exec
+  above (needs-owner) is **no longer reproducing**. Something restored exec
   permission on that cached interpreter between 2026-09-30 17:39 UTC (run #82)
   and 2026-10-01 17:40 UTC (run #83) — not done by this session, no SSH
   access; noting it so the next session doesn't re-file it as still broken.
@@ -30101,7 +30109,7 @@ Per `country_coverage.py`'s own docstring, an `unassessed` entry is "somebody's
 outstanding work, not a pass" — classifying whether Jamaica and Zimbabwe have
 an established layoff-disclosure regime is a research/citation judgment call
 (`docs/RUNBOOK.md` "classify a country's disclosure regime"), not a code fix,
-and outside an hourly ops-check's scope. **Needs Dakotta** (or a work session
+and outside an hourly ops-check's scope. **Needs the owner** (or a work session
 with research budget) to classify the two countries in `REGISTER`
 (`railway/country_coverage.py`); `country-coverage.yml` then re-commits the
 register and this clears on its own next Thursday run, or can be forced with
@@ -30186,7 +30194,7 @@ reverting the Railway `startCommand` — both are owner-reserved per the
 scheduled ops-check's standing rules ("never ... change ... repo
 variables"), not a code change this session can make. Commented the
 diagnosis on ai-layoff-tracker#461 and left it open; flagged as `ACTION` in
-the hourly report (asktherecruiter-sandbox#1259) for Dakotta to flip one of
+the hourly report (asktherecruiter-sandbox#1259) for the owner to flip one of
 the two switches. `docs/RUNBOOK.md` "Which jobs run on the VPS and why" has
 the exact owner steps for the VPS path.
 
@@ -30212,7 +30220,7 @@ not be independently re-checked from this session, and there is no newer
 `Broken-link check` run yet (next scheduled run is tomorrow's ~14:3x UTC) to
 say whether it already recovered. This is a live WordPress page/host
 availability question, not a repo code defect — nothing here to fix with a
-PR. Flagged in the hourly report (asktherecruiter-sandbox#1259) for Dakotta
+PR. Flagged in the hourly report (asktherecruiter-sandbox#1259) for the owner
 to glance at the page directly.
 
 **Class:** novel (a single public page going unreachable while its siblings

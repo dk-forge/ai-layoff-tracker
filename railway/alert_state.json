@@ -37,7 +37,7 @@
       "key": "live-data-integrity-check:main:aa0eaf87db8c4614",
       "last": 1787161951,
       "reason": "Stale run from 2026-08-19. The underlying defect was the press page caching published figures on ALT_VERSION alone instead of alt_data_ver, so it served figures 1,594 low across three windows. Fixed and verified: ops_status [3] now reports 19 checks passing.",
-      "reviewed_by": "Dakotta",
+      "reviewed_by": "owner",
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,460,529 jobs / 65,034 entries"
     },
     {
@@ -47,7 +47,7 @@
       "key": "tests:docs-version-collision-record:2311c750a7e68598",
       "last": 1787163307,
       "reason": "Parked branch, and the alert scope is workflow:branch, so no green run of this scope can ever exist and the alarm cannot clear itself. The underlying work was the version-collision guard, which landed on main independently. The branch was abandoned rather than fixed.",
-      "reviewed_by": "Dakotta",
+      "reviewed_by": "owner",
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
     }
   ],

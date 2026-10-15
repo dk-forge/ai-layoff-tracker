@@ -6,7 +6,7 @@ fixed there first; where this document and that one disagree, that one is right
 and this one is a bug.
 
 Measured **2026-08-13** against the live public read API; **adjudicated
-2026-08-14** by the owner (reviewer `Dakotta`) and re-measured the same day.
+2026-08-14** by the owner (reviewer `owner`) and re-measured the same day.
 Reference set `us-warn-ca-tx-fl-tn-2025-07_2026-06`. Cost: **$0.00** — no model
 was called, the enumeration and the matching are deterministic code and
 read-only GETs.
@@ -24,7 +24,7 @@ read-only GETs.
 | **Unreachable** | 0 |
 
 **Adjudicated 2026-08-14.** The owner signed off every event where the machine
-proposed a matching row, with reviewer name `Dakotta`, through
+proposed a matching row, with reviewer name `owner`, through
 `railway/warn_adjudicate.py` — 131 accepts and 2 rejects across both strata,
 each with the row id it names and a reason built from that event's own evidence
 (what the count matched exactly or by how much it differed, and which published
@@ -339,7 +339,7 @@ The steps this section used to prescribe were followed on 2026-08-14, in order:
 
 1. The pack was rebuilt from live data (`warn_adjudication_pack.py --write`,
    132 pending events, 714 candidate rows, 1 with no candidate row).
-2. The owner decided the set with reviewer name `Dakotta`: **131 accepts and 2
+2. The owner decided the set with reviewer name `owner`: **131 accepts and 2
    rejects**, every one recorded through `warn_adjudicate.py` with the row id it
    names and a reason drawn from that event's own evidence block — what the
    count matched (the notice total, or one published component row of it, and by
