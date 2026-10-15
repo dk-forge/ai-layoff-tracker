@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-15, branch `claude/alt-478-city-follow` (PR). Reserves plugin version 2.20.262.** City follows built switched off; see TECHLOG 2026-10-15.
 - **RELEASED - Claude (agent), 2026-10-14, branch `claude/alt-dark-ink-faq-related` (PR). Reserves plugin version 2.20.257.** Dark-theme ink for the Related row, intro and FAQ (the three surfaces inserted outside `.alt-wrap`); the deploy verifier measured 1.28:1 on the dark tracker page after 2.20.255/256. See TECHLOG 2026-10-14 (2.20.257).
 - **RELEASED - Claude (agent), 2026-10-14, branch `claude/alt-446-faq` (PR). Reserves plugin version 2.20.256** (2.20.254 is held by PR #519, 2.20.255 by PR #520). Intro + FAQ + FAQPage JSON-LD on shortcode pages (#446 items 2 and 3); see TECHLOG 2026-10-14.
 - **RELEASED - Claude (agent), 2026-10-14, branch `claude/alt-446-related` (PR). Reserves plugin version 2.20.255** (2.20.254 is reserved by `claude/alt-478`, PR #519). Related link row on shortcode pages (#446 item 4); see TECHLOG 2026-10-14 (2.20.255).

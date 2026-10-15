@@ -1,3 +1,10 @@
+## 2026-10-15 - City follows built switched off (#478 roadmap, 2.20.262)
+
+**Class:** novel (owner ruling 2026-10-14: city and company alerts; build behind a flag if the email system exists)
+**Guard:** `railway/tests/test_follow_city_flag.py` - default off, no form and a refused submit while off, the city matched only through `alt_state_warn_city()`, escaped options when on.
+
+The email system the ask referred to already exists here: company and US state follows shipped in 2.20.210 (`includes/follows.php`), riding the digest's own double opt-in, stop links and delivery. Company alerts were therefore already done. City was the missing kind. It is added as kind `city` (value `ST|City`) behind the option `alt_follow_city` (default false). A "Follow a city" form sits under the state page's city list and offers only the cities that list shows. Matching narrows by state and an excerpt LIKE in SQL, then confirms each row with `alt_state_warn_city()`. Nothing is armed; see RUNBOOK_GROWTH section 6.
+
 ## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
 
 **Class:** wrong-scope-or-key (the 2026-08-10 override of the site snippet is scoped to `.alt-wrap`; the new surfaces render outside it)
