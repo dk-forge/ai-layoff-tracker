@@ -3598,6 +3598,9 @@ figure.alt-soundbite figcaption.alt-sb-actions,
     font-size: 12.5px; line-height: 1.5; color: var(--alt-ink-2);
 }
 .alt-ribbon b { color: var(--alt-ink); font-variant-numeric: tabular-nums; }
+/* Intro + latest monthly reports, under the ribbon (2.20.265). */
+.alt-intro { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--alt-ink-2); overflow-wrap: anywhere; }
+.alt-intro a { color: var(--alt-blue-dark); }
 .alt-ribbon-links a { color: var(--alt-blue-dark); text-decoration: none; }
 .alt-ribbon-links a:hover, .alt-ribbon-links a:focus-visible { text-decoration: underline; }
 

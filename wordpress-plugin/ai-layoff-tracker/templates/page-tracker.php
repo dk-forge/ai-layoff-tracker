@@ -415,6 +415,27 @@ $alt_hero_basis  = 'counted by filing date';
             <p class="alt-hero-figure-asof" id="alt-hero-asof-wrap"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><b class="alt-hero-asof-label">In this figure:</b> <span id="alt-hero-asof"><?php echo esc_html($alt_split); ?></span> <a class="alt-hero-asof-more" href="#alt-basis-explainer">Why two figures</a></p>
         </div>
     </header>
+        <?php /* INTRO + LATEST REPORTS (2.20.265). One plain sentence that says
+                 what this AI layoffs tracker is, in the words people search with,
+                 and links to the latest complete monthly reports, which nothing
+                 on the hub linked before (Search Console 2026-10-15: the
+                 September report was unknown to Google). Inline links wrap, so
+                 nothing here can bleed sideways at 375px. Placed AFTER the hero,
+                 not under the ribbon: there it pushed the digest route below the
+                 first phone screen (test_digest_route_is_findable). */ ?>
+        <p class="alt-intro">This AI layoffs tracker records verified job cuts worldwide, updated daily, and flags the ones employers attribute to AI.<?php
+            if (function_exists('alt_report_latest_months')) {
+                $alt_latest = alt_report_latest_months(3);
+                if ($alt_latest) {
+                    echo ' <span class="alt-intro-reports">Monthly reports: ';
+                    $alt_bits = array();
+                    foreach ($alt_latest as $alt_r) {
+                        $alt_bits[] = '<a href="' . esc_url($alt_r[0]) . '">' . esc_html($alt_r[1]) . '</a>';
+                    }
+                    echo implode(' · ', $alt_bits) . ' · <a href="' . esc_url(home_url('/ai-layoff-tracker/report/archive/')) . '">All reports</a></span>';
+                }
+            }
+        ?></p>
     <?php
     // THE SIGNAL BOARD, server-rendered (the "colored narratives"). Same
     // container and same data plumbing as the strip it evolves: numbers come

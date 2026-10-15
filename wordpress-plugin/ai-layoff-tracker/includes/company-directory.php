@@ -287,20 +287,24 @@ function alt_company_directory_data($slug) {
  * changes shape when there are no dates rather than printing an empty range.
  */
 function alt_company_directory_description($data) {
+    // 2.20.265: the headline figure first (a searcher scanning results wants
+    // the number), then the span and the latest date, then the source promise.
     $name = $data['company']['display_name'];
     $count = count($data['events']);
-    $bits = $count . ' recorded layoff ' . ($count === 1 ? 'entry' : 'entries') . ' for ' . $name;
+    $jobs = (int) $data['total_jobs'];
+    $bits = $name . ' layoffs: ';
+    $bits .= ($jobs > 0 ? number_format($jobs) . ' jobs cut across ' : '')
+           . $count . ' recorded ' . ($count === 1 ? 'layoff' : 'layoffs');
     if ($data['first_date'] !== '' && $data['last_date'] !== '') {
         $from = substr($data['first_date'], 0, 4);
         $to = substr($data['last_date'], 0, 4);
         $bits .= ($from === $to) ? ' in ' . $from : ', ' . $from . ' to ' . $to;
+        $ts = strtotime($data['last_date']);
+        if ($ts && $from !== $to) $bits .= ', latest ' . gmdate('F Y', $ts);
     }
     $bits .= '. ';
-    if ($data['total_jobs'] > 0) {
-        $bits .= number_format((int) $data['total_jobs']) . ' jobs across those records. ';
-    }
     if ($data['ai_events'] > 0) {
-        $bits .= $data['ai_events'] . ' of them the employer attributed to AI. ';
+        $bits .= $data['ai_events'] . ' attributed to AI by the employer. ';
     }
     return $bits . 'Every entry links to the filing, WARN notice or report behind it.';
 }
@@ -400,9 +404,37 @@ add_filter('rank_math/frontend/robots', function ($robots) { $data = alt_company
 function alt_company_directory_canonical($canonical) { $data = alt_company_directory_current(); return $data ? ($data['indexable'] ? $data['url'] : false) : $canonical; }
 add_filter('wpseo_canonical', 'alt_company_directory_canonical');
 add_filter('rank_math/frontend/canonical', 'alt_company_directory_canonical');
-function alt_company_directory_title($parts) { $data = alt_company_directory_current(); if ($data) $parts['title'] = $data['company']['display_name'] . ' layoffs: source-linked entry history'; return $parts; }
+/**
+ * PURE. The SERP title (2.20.265). Search Console, 2026-10-15: company pages
+ * rank near position 10 at 0.7 to 0.9% CTR under "X layoffs: source-linked
+ * entry history", which says nothing a searcher is looking for. The new shape
+ * leads with the query ("X layoffs"), then the year the records cover, then
+ * what the page holds. Truthful by construction: the year is the latest
+ * recorded layoff year (or the span), never today's year by default, and
+ * "WARN notices" appears only when a row on the page cites one. Tightens in
+ * steps to stay within ~60 characters.
+ */
+function alt_company_directory_title_text($data) {
+    $name = trim((string) $data['company']['display_name']);
+    $from = substr((string) $data['first_date'], 0, 4);
+    $to   = substr((string) $data['last_date'], 0, 4);
+    $years = ($to === '') ? '' : (($from !== '' && $from !== $to) ? $from . '-' . $to : $to);
+    $warn = false;
+    foreach ((array) $data['events'] as $row) {
+        foreach ((array) ($row['sources'] ?? array()) as $src) {
+            if (($src['type'] ?? '') === 'warn') { $warn = true; break 2; }
+        }
+    }
+    $head = $name . ' layoffs' . ($years !== '' ? ' ' . $years : '');
+    $tail = $warn ? 'dates, job counts and WARN notices' : 'dates, job counts and sources';
+    foreach (array($head . ': ' . $tail, $head . ': dates and job counts', $head) as $cand) {
+        if (mb_strlen($cand, 'UTF-8') <= 60) return $cand;
+    }
+    return $name . ' layoffs';
+}
+function alt_company_directory_title($parts) { $data = alt_company_directory_current(); if ($data) $parts['title'] = alt_company_directory_title_text($data); return $parts; }
 add_filter('document_title_parts', 'alt_company_directory_title', 5);
-function alt_company_directory_seo_title($title) { $data = alt_company_directory_current(); return $data ? $data['company']['display_name'] . ' layoffs: source-linked entry history' : $title; }
+function alt_company_directory_seo_title($title) { $data = alt_company_directory_current(); return $data ? alt_company_directory_title_text($data) : $title; }
 add_filter('wpseo_title', 'alt_company_directory_seo_title', 5);
 add_filter('rank_math/frontend/title', 'alt_company_directory_seo_title', 5);
 

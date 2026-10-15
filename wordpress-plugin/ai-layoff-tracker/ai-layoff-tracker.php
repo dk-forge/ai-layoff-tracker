@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.264
+ * Version:           2.20.265
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.264');
+define('ALT_VERSION', '2.20.265');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -586,8 +586,14 @@ add_action('init', 'alt_serve_indexnow_key', 0);
 /** The public surfaces whose CONTENT changes when new layoffs land. */
 function alt_indexnow_urls() {
     $t = home_url('/ai-layoff-tracker/');
-    return array($t, $t . 'report/', $t . 'press/', $t . 'sources/',
-                 $t . 'ai-quotes/', $t . 'ai-tracker-health/', $t . 'us-warn-registry/');
+    $urls = array($t, $t . 'report/', $t . 'press/', $t . 'sources/',
+                  $t . 'ai-quotes/', $t . 'ai-tracker-health/', $t . 'us-warn-registry/');
+    // The latest complete monthly reports (2.20.265): /report/2026-09/ was
+    // unknown to Google two weeks after it closed. function_exists: FTP race.
+    if (function_exists('alt_report_latest_months')) {
+        foreach (alt_report_latest_months(2) as $r) $urls[] = $r[0];
+    }
+    return $urls;
 }
 
 /**
@@ -1890,6 +1896,23 @@ function alt_tracker_meta_description($desc) {
         number_format($jobs), (int) $n['y'], number_format($ai));
 }
 add_filter('rank_math/frontend/description', 'alt_tracker_meta_description', 20);
+
+/**
+ * PURE. The hub's SERP title (2.20.265). Search Console, 2026-10-15: the hub
+ * does not rank for "ai layoffs" or "ai layoff tracker". The old Rank Math
+ * title led with the brand-like name and buried the plural query; this one
+ * carries both phrasings once each and the current year, under 60 characters.
+ */
+function alt_tracker_title_text($year) {
+    return 'AI Layoffs Tracker ' . (int) $year . ': Live Job Cuts Tied to AI';
+}
+function alt_tracker_seo_title($title) {
+    return is_page('ai-layoff-tracker') ? alt_tracker_title_text(gmdate('Y')) : $title;
+}
+add_filter('rank_math/frontend/title', 'alt_tracker_seo_title', 5);
+add_filter('wpseo_title', 'alt_tracker_seo_title', 5);
+add_filter('rank_math/opengraph/facebook/og_title', 'alt_tracker_seo_title', 5);
+add_filter('rank_math/opengraph/twitter/twitter_title', 'alt_tracker_seo_title', 5);
 // Keep the social-card copy identical to the SERP copy.
 add_filter('rank_math/opengraph/facebook/og_description', 'alt_tracker_meta_description', 20);
 add_filter('rank_math/opengraph/twitter/twitter_description', 'alt_tracker_meta_description', 20);

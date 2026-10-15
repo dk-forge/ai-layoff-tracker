@@ -272,6 +272,30 @@ add_filter('rank_math/frontend/description', 'alt_report_seo_description', 5);
 add_filter('wpseo_metadesc', 'alt_report_seo_description', 5);
 
 /**
+ * PURE (given the clock). The last $n COMPLETE months as [url, label], newest
+ * first (2.20.265). Search Console, 2026-10-15: /report/2026-09/ was "URL is
+ * unknown to Google" a fortnight after the month closed, although it sat in
+ * the reports sitemap. Nothing on the hub linked to a dated report, so the
+ * hub (the page Google crawls most) now links the latest months, and the same
+ * list goes into the daily IndexNow submission.
+ */
+function alt_report_latest_months($n = 3, $now = null) {
+    $now = ($now === null) ? time() : (int) $now;
+    $y = (int) gmdate('Y', $now);
+    $m = (int) gmdate('n', $now);
+    $out = array();
+    for ($i = 0; $i < $n; $i++) {
+        $m--;
+        if ($m < 1) { $m = 12; $y--; }
+        if ($y < 2023) break;
+        $slug = sprintf('%04d-%02d', $y, $m);
+        $out[] = array(alt_report_clean_url('month', $slug),
+                       alt_report_period_label(array('kind' => 'month', 'slug' => $slug)));
+    }
+    return $out;
+}
+
+/**
  * Every report URL worth indexing: the archive hub, each year, each COMPLETE
  * quarter and month. Weeks are excluded on purpose (see the file header).
  * 2023 is the floor because that is where the archive UI itself starts.
