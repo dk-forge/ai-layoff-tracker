@@ -1,0 +1,56 @@
+{
+ "source": "fred_labour",
+ "api": "https://api.stlouisfed.org/fred/series/observations",
+ "file": "observations.csv",
+ "series": {
+  "UNRATE": {
+   "label": "Unemployment rate",
+   "category": "unemployment",
+   "frequency": "monthly",
+   "units": "percent"
+  },
+  "LNS14027662": {
+   "label": "Unemployment rate, bachelor's degree and higher (25+)",
+   "category": "unemployment",
+   "frequency": "monthly",
+   "units": "percent"
+  },
+  "PAYEMS": {
+   "label": "All employees, total nonfarm",
+   "category": "employment",
+   "frequency": "monthly",
+   "units": "thousands of persons"
+  },
+  "USINFO": {
+   "label": "All employees, information sector",
+   "category": "employment",
+   "frequency": "monthly",
+   "units": "thousands of persons"
+  },
+  "JTSLDL": {
+   "label": "JOLTS layoffs and discharges, total nonfarm",
+   "category": "layoffs",
+   "frequency": "monthly",
+   "units": "thousands"
+  },
+  "ICSA": {
+   "label": "Initial jobless claims",
+   "category": "claims",
+   "frequency": "weekly",
+   "units": "number"
+  },
+  "CCSA": {
+   "label": "Continued jobless claims",
+   "category": "claims",
+   "frequency": "weekly",
+   "units": "number"
+  }
+ },
+ "rows": 10010,
+ "bytes": 252980,
+ "sha256": "86811e3ca5e06df641d6dee39d710a9223b5e8c47336b1962a1ea70e08e241a2",
+ "first_date": "1939-01-01",
+ "latest_date": "2026-10-03",
+ "licence": "Public domain (U.S. government data via FRED); cite FRED",
+ "attribution": "Source: Federal Reserve Bank of St. Louis, FRED (Federal Reserve Economic Data), https://fred.stlouisfed.org/, series as named. Underlying data from the U.S. Bureau of Labor Statistics and the U.S. Employment and Training Administration (public domain)."
+}
