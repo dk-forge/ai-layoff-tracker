@@ -119,7 +119,7 @@ class TheMessage(unittest.TestCase):
         self.assertIn("font-variant:small-caps", html)
         self.assertIn("48,910</p>", html, "the headline number is text")
         self.assertIn('href="https://asktherecruiter.com/blog/r/9"', html)
-        self.assertNotIn("—", html + self.msg.text)
+        self.assertNotIn("\u2014", html + self.msg.text)
 
     def test_the_clean_check_passes(self):
         dt.assert_message_is_clean(self.msg)
