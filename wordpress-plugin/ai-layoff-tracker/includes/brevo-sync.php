@@ -97,6 +97,50 @@ function alt_brevo_key_lookup() {
     return array('key' => '', 'source' => '');
 }
 
+/**
+ * PURE: which lists a subscriber row belongs on, and which it must leave.
+ * Returns array('create' => bool, 'link' => int[], 'unlink' => int[]).
+ * 'create' is true only for a confirmed row: nothing else may bring a
+ * contact into existence at Brevo.
+ */
+function alt_brevo_plan($row, $marketing_optout = false) {
+    $ids = alt_brevo_list_ids();
+    $all = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    $link = array();
+    $confirmed = is_array($row) && ($row['status'] ?? '') === 'confirmed';
+    if ($confirmed && !$marketing_optout) {
+        foreach (array('layoff', 'talent') as $t) {
+            if (empty($row['consent_' . $t])) continue;
+            $freq = (string) ($row['freq_' . $t] ?? 'weekly');
+            // Monthly has no list of its own: owner decision, weekly list.
+            $key = $t . '_' . ($freq === 'daily' ? 'daily' : 'weekly');
+            if (!empty($ids[$key])) $link[] = (int) $ids[$key];
+        }
+        if (!empty($row['consent_partners']) && !empty($ids['partners'])) {
+            $link[] = (int) $ids['partners'];
+        }
+    }
+    $link = array_values(array_unique($link));
+    return array(
+        'create' => $confirmed,
+        'link'   => $link,
+        'unlink' => array_values(array_diff($all, $link)),
+    );
+}
+
+/** Private status record: counts and an HTTP code, never an address. */
+function alt_brevo_record($result, $code = 0) {
+    $s = get_option('alt_brevo_sync_status', array());
+    if (!is_array($s)) $s = array();
+    $s['last_result'] = $result;
+    $s['last_code'] = (int) $code;
+    $s['last_at'] = gmdate('c');
+    $s['counts'] = isset($s['counts']) && is_array($s['counts']) ? $s['counts'] : array();
+    $s['counts'][$result] = (int) ($s['counts'][$result] ?? 0) + 1;
+    if ($result === 'failed') $s['last_failure_at'] = $s['last_at'];
+    update_option('alt_brevo_sync_status', $s, false);
+}
+
 function alt_brevo_sync_status() {
     $s = get_option('alt_brevo_sync_status', array());
     if (!is_array($s)) $s = array();
