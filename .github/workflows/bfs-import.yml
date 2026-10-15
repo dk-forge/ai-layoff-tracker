@@ -1,0 +1,44 @@
+name: Census Business Formation Statistics reference data
+
+# Census Business Formation Statistics (one public CSV, public domain,
+# keyless): seasonally adjusted business applications (all, and
+# high-propensity) for the US, every state, DC and the census regions, one
+# value per month for 3 years -> /reference-ingest/census_bfs.
+# LABELED MACRO CONTEXT, never summed into layoff counts and not read by ingest
+# or classification. Fail-soft: a failed or partial pull never overwrites
+# stored data. Freshness: reference-freshness.yml. Issue #478 item 5.
+
+on:
+  schedule:
+    - cron: '41 15 * * 4'   # Thursdays; upstream publishes monthly
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the deferral ledger, and only when it changed
+
+concurrency:
+  group: bfs-import
+
+jobs:
+  bfs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Fetch + store Census BFS reference data
+        working-directory: railway
+        env:
+          PYTHONUNBUFFERED: '1'
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+        run: python bfs_import.py
+
+      - name: Record the deferral ledger
+        if: ${{ always() }}
+        uses: ./.github/actions/commit-deferral-ledger
+        with:
+          job: bfs-import

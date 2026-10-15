@@ -53,6 +53,9 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #     monthly collection; +29 margin = 760. Employment Projections: base
 #     year Y (stored as Y-12) publishes ~September of Y+1 and the next in
 #     ~September of Y+2, ~640 days; +31; +29 = 700. Monthly job: 31 + 9 = 40.
+#   Census BFS (census_bfs): month M publishes about 12 days after M ends
+#     and monthly, so just before the next release the newest month is ~42
+#     days old; +7 weekly collection; +16 margin = 65.
 #   Collector: weekly job (7) + 3 days for a deferred host call or late
 #     runner = 10, so one missed weekly run alarms.
 SPECS = {
@@ -65,6 +68,7 @@ SPECS = {
     # CES hours/earnings: month M publishes the first Friday of M+1 (~37 days
     # past month end at worst), same 50-day ceiling as CPS from the same release.
     "bls_ces_hours": {"collector_days": 10, "datasets": {"ces": 50}},
+    "census_bfs": {"collector_days": 10, "datasets": {"monthly": 65}},
 }
 
 

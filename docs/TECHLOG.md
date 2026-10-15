@@ -4,6 +4,14 @@
 **Guard:** `railway/tests/test_bls_ces_hours.py` - 26 series ids (13 supersectors x weekly hours/hourly earnings), 2 keyless requests, reuses the JOLTS/CPS v1 path and parser, preliminary flag kept, annual average and "-" skipped, store gate refuses a partial or missing-series pull, freshness spec, plugin registration, keyless hash-pinned dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and register entry for `bls_ces_hours`.
 
 `railway/sources/bls_ces_hours.py` + `ces_import.py` + `.github/workflows/ces-import.yml` (Fridays 15:41 UTC, keyless BLS API v1, the same endpoint and `parse_response` as `bls_import.py`; no BLS key is configured and none is used) store CES average weekly hours and average hourly earnings of all employees, seasonally adjusted, national, per NAICS supersector, monthly, 5 years, at `/reference/bls_ces_hours`. Live dry run 2026-10-15 (`python3 railway/ces_import.py --dry-run`): 26 of 26 series, 1,482 points, latest 2026-09, 2 requests. Labelled macro context: not layoffs, never added to counts, no AI-cause claim. Ships LIVE. `reference_freshness.py` reads `bls_ces_hours` STALE until the first `ces-import.yml` run after deploy; dispatch it once after merge.
+## 2026-10-15 - Census Business Formation Statistics into ALT (#478 item 5, 2.20.259)
+
+**Class:** novel (owner ruling 2026-10-14, issue #478 item 5)
+**Guard:** `railway/tests/test_census_bfs.py` - SA and TOTAL rows only, the two series only, "NA" and blank cells skipped, window applied, store gate refuses an empty pull, a missing national series or too few geographies, payload size fits the ceiling, freshness spec, plugin registration, keyless dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row.
+
+`railway/sources/census_bfs.py` + `bfs_import.py` + `.github/workflows/bfs-import.yml` (Thursdays 15:41 UTC, keyless, public domain) read the one public Census CSV `https://www.census.gov/econ/bfs/csv/bfs_monthly.csv` and store seasonally adjusted, all-sector business applications (`BA_BA`) and high-propensity applications (`BA_HBA`) for the US, every state, DC and the census regions, one value per month for 3 years, at `/reference/census_bfs` (filter `?geo=` and `?series=`). Shipped LIVE, not dormant: dry run 2026-10-15 fetched HTTP 200 with our User-Agent and parsed 4,104 rows over 57 geographies, newest month 2026-09. Freshness ceiling 65 days (12-day release lag, monthly release, weekly collection, margin), derivation in `reference_freshness.py`. No paid calls. Context only, never summed into layoff counts.
+
+**#478 checklist:** item 5 done here (PR on `claude/alt-478-bfs`).
 
 ## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
 

@@ -217,6 +217,12 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
         <td><a href="https://github.com/openai/GPTs-are-GPTs" target="_blank" rel="noopener">GPTs-are-GPTs data &#8599;</a></td>
       </tr>
     <tr>
+        <td><b>Census Business Formation Statistics</b></td><td>United States, nationally and by state</td>
+        <td>The U.S. Census Bureau's Business Formation Statistics: seasonally adjusted business applications, one value per month for the last three years. We keep all applications and high-propensity applications, the ones likely to become employers. Applications measure intent to start a business: they are not layoffs, are never added to our counts, and a change does not show that AI caused it. Census publishes monthly. Public domain, source: U.S. Census Bureau.</td>
+        <td>Context (labeled)</td>
+        <td><a href="https://www.census.gov/econ/bfs/" target="_blank" rel="noopener">Census BFS data &#8599;</a></td>
+    </tr>
+    <tr>
         <td><b>Indeed Hiring Lab job postings</b></td><td>United States, by occupational sector and nationally</td>
         <td>Indeed Hiring Lab's job postings index (1 February 2020 = 100), total postings per sector plus the national seasonally adjusted series, kept as one value per week for the last three years. Postings measure hiring demand: they are not layoffs, are never added to our counts, and a change does not show that AI caused it. Updated weekly. CC BY 4.0, source: Indeed Hiring Lab.</td>
         <td>Context (labeled)</td>
