@@ -224,7 +224,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
     </tr>
     <tr>
         <td><b>Eurostat job vacancies and unemployment</b></td><td>European Union (EU27 and each member state) plus EFTA countries</td>
-        <td>Eurostat's job vacancy rate (industry, construction and services, quarterly, dataset jvs_q_nace2) and the Labour Force Survey unemployment rate (seasonally adjusted, monthly, dataset une_rt_m), by country, for the last three years. Vacancies measure hiring demand and unemployment is a labour-market rate: neither is a layoff count, neither is added to our counts, and a change does not show that AI caused it. Reused under the Eurostat reuse policy, CC BY 4.0, source: Eurostat.</td>
+        <td>Eurostat's job vacancy rate for industry, construction and services (quarterly, dataset jvs_q_nace2), by country, for the last three years. Also the Labour Force Survey unemployment rate (seasonally adjusted, monthly, dataset une_rt_m). Vacancies measure hiring demand and unemployment is a labour-market rate. Neither is a layoff count or added to our counts, and a change does not show that AI caused it. Reused under the Eurostat reuse policy, CC BY 4.0, source: Eurostat.</td>
         <td>Context (labeled)</td>
         <td><a href="https://ec.europa.eu/eurostat/web/main/data/database" target="_blank" rel="noopener">Eurostat database &#8599;</a></td>
     </tr>
