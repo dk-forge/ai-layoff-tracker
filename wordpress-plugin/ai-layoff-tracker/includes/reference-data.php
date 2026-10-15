@@ -27,6 +27,7 @@ function alt_reference_sources() {
         'census_qwi' => 'alt_ref_census_qwi',
         'ai_exposure' => 'alt_ref_ai_exposure',
         'indeed_postings' => 'alt_ref_indeed_postings',
+        'eurostat_labour' => 'alt_ref_eurostat_labour',
     );
 }
 

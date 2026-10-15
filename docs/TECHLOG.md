@@ -1,3 +1,10 @@
+## 2026-10-15 - Eurostat job vacancies + unemployment by country into ALT (#478 item 7, 2.20.260)
+
+**Class:** novel (owner ruling 2026-10-14, labour-data roadmap)
+**Guard:** `railway/tests/test_eurostat_labour.py` - JSON-stat decoding on a small fixture (flattened index, list-form category index, null values skipped), country filter (EU27 + member states + EFTA only), window applied, quarter -> month for `latest`, store gate refuses an empty pull, a missing EU27 aggregate or a short country list, payload fits the ceiling, freshness spec, plugin registration, keyless dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and the register entry for `eurostat_labour`.
+
+`railway/sources/eurostat_labour.py` + `eurostat_import.py` + `.github/workflows/eurostat-import.yml` (Wednesdays 15:41 UTC, keyless, CC BY 4.0 under the Eurostat reuse policy) read the Eurostat dissemination API (JSON-stat): job vacancy rate `jvs_q_nace2` (JVR, NACE B-S, all sizes, NSA) and LFS unemployment rate `une_rt_m` (SA, total, % of labour force), 3 years, at `/reference/eurostat_labour`. Modelled on the Indeed collector (86a3ddfd). Live dry run 2026-10-15: 1,723 rows, 30 countries for vacancies (newest 2025-Q4), 31 for unemployment (newest 2026-08), 43 KB. The vacancy freshness ceiling (400 days) is sized on that measured 288-day lag of the newest EU27 quarter, not on the nominal quarterly release. Labelled macro context: never added to layoff counts, no AI-cause claim. Sources row + register row + RUNBOOK row in the same PR. `reference_freshness.py` reads `eurostat_labour` STALE until the first `eurostat-import.yml` run after deploy; dispatch it once after merge. `python3 railway/eurostat_import.py --dry-run` is the keyless diagnostic.
+
 ## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
 
 **Class:** wrong-scope-or-key (the 2026-08-10 override of the site snippet is scoped to `.alt-wrap`; the new surfaces render outside it)

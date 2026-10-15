@@ -55,6 +55,12 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #     ~September of Y+2, ~640 days; +31; +29 = 700. Monthly job: 31 + 9 = 40.
 #   Collector: weekly job (7) + 3 days for a deferred host call or late
 #     runner = 10, so one missed weekly run alarms.
+#   Eurostat (eurostat_labour): une_rt_m publishes month M about 30 days
+#     after it ends and the next month ~30 days later, ~62 days; +10
+#     collector; +18 margin = 90. jvs_q_nace2 is published quarterly, but the
+#     newest EU27 quarter at the first pull (2026-10-15) was 2025-Q4, 288 days
+#     past its end, so the ceiling is sized on that measured lag: +91 for the
+#     next quarter, +21 margin = 400. Weekly job: 10.
 SPECS = {
     "bls_jolts_cps": {"collector_days": 10, "datasets": {"jolts": 85, "cps": 50}},
     "oecd_unemployment": {"collector_days": 10, "datasets": {"monthly": 95}},
@@ -62,6 +68,7 @@ SPECS = {
     "census_qwi": {"collector_days": 10, "datasets": {"quarterly": 430}},
     "ai_exposure": {"collector_days": 40, "datasets": {"oews": 760, "ep": 700}},
     "indeed_postings": {"collector_days": 10, "datasets": {"weekly": 30}},
+    "eurostat_labour": {"collector_days": 10, "datasets": {"vacancy_rate": 400, "unemployment": 90}},
 }
 
 
