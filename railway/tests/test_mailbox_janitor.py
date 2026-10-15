@@ -182,7 +182,7 @@ def test_github_pr_and_issue_notifications_are_filed_never_escalated(monkeypatch
     """2026-10-15, run 38709218029: twelve PR conversation mails reddened the
     sandbox leg as NEW mail a human should read. The real subjects, including
     one whose title carries "unrefunded", which the word list matches."""
-    gh = "Dakotta <notifications@github.com>"
+    gh = "Owner <notifications@github.com>"
     subjects = [
         "Re: [dk-forge/asktherecruiter-sandbox] vNEXT \u2014 fix(billing): restore "
         "unrefunded packs when a deletion is cancelled (PR #1322)",

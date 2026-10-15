@@ -68,7 +68,7 @@ class WelcomeEmail(unittest.TestCase):
         self.assertIn("Occasional articles and product news", w["body"])
         self.assertRegex(w["body"], r"first edition is due Monday \d+ \w{3} \d{4}")
         self.assertIn(run()["welcome_prefs_url"], w["body"])
-        self.assertIn("601 Van Ness Ave", w["body"])
+        self.assertIn("AskTheRecruiter, Netherlands", w["body"])
         self.assertNotIn("<", w["body"])   # plain text
 
     def test_it_carries_one_click_unsubscribe_headers(self):

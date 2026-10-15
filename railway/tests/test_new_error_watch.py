@@ -141,10 +141,10 @@ class ARaisingCallStillAlerts(_Base):
 
 class Redaction(_Base):
     def test_email_bearer_and_api_key_are_removed(self):
-        text = ("contact dak@dakotta.com, Authorization: Bearer sk-abcdef0123456789ABCDEF, "
+        text = ("contact jane.doe@example.com, Authorization: Bearer sk-abcdef0123456789ABCDEF, "
                 "bearer abcdefghijklmnopqrstuvwx, key=abcdefghijklmnopqrstuvwxyz012345")
         out = watch.redact(text)
-        self.assertNotIn("dak@dakotta.com", out)
+        self.assertNotIn("jane.doe@example.com", out)
         self.assertNotIn("abcdef0123456789ABCDEF", out)
         self.assertNotIn("Bearer sk-abcdef0123456789ABCDEF", out)
 

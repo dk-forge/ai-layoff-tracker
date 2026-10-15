@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.265
+ * Version:           2.20.267
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.265');
+define('ALT_VERSION', '2.20.267');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -588,7 +588,7 @@ function alt_indexnow_urls() {
     $t = home_url('/ai-layoff-tracker/');
     $urls = array($t, $t . 'report/', $t . 'press/', $t . 'sources/',
                   $t . 'ai-quotes/', $t . 'ai-tracker-health/', $t . 'us-warn-registry/');
-    // The latest complete monthly reports (2.20.265): /report/2026-09/ was
+    // The latest complete monthly reports (2.20.267): /report/2026-09/ was
     // unknown to Google two weeks after it closed. function_exists: FTP race.
     if (function_exists('alt_report_latest_months')) {
         foreach (alt_report_latest_months(2) as $r) $urls[] = $r[0];
@@ -1898,7 +1898,7 @@ function alt_tracker_meta_description($desc) {
 add_filter('rank_math/frontend/description', 'alt_tracker_meta_description', 20);
 
 /**
- * PURE. The hub's SERP title (2.20.265). Search Console, 2026-10-15: the hub
+ * PURE. The hub's SERP title (2.20.267). Search Console, 2026-10-15: the hub
  * does not rank for "ai layoffs" or "ai layoff tracker". The old Rank Math
  * title led with the brand-like name and buried the plural query; this one
  * carries both phrasings once each and the current year, under 60 characters.

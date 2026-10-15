@@ -2252,7 +2252,7 @@ denominator) and list them separately in the report.
 
 Two frozen sets over the same twelve months, 2025-07-01 to 2026-06-30, counted
 on the published notice date. Wave 1 is **CA/TX/FL/TN and is adjudicated**
-(99 of 100 editor-confirmed, owner `Dakotta`, 2026-08-14). Wave 2 is
+(99 of 100 editor-confirmed by the owner, 2026-08-14). Wave 2 is
 **IL/OH/PA and is NOT** - its editor-confirmed numerator is zero by
 construction and it has a machine upper bound and a queue.
 
