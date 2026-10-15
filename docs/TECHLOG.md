@@ -1,3 +1,10 @@
+## 2026-10-15 - Brevo backfill: manual workflow pages the keyed route (no plugin change)
+
+**Class:** novel (owner request 2026-10-15)
+**Guard:** the existing workflow suite (`test_workflow_yaml_parses.py` and siblings) covers the new file; the run itself fails on any non-2xx (`curl --fail-with-body`) and on a cursor that does not advance.
+
+The keyed `POST /layoffs/v1/brevo-backfill` route had never been run, so Brevo lists 15-18 read 0. `.github/workflows/brevo-backfill.yml` (dispatch only, contabo runner) pages it from `after_id=0` until `next_after_id` is null and prints counts only, then reads `brevo_mirror.configured` and list counts from `/subscriber-stats`. No address is ever printed.
+
 ## 2026-10-15 - Mailbox janitor files GitHub PR and issue mail as noise (no plugin change)
 
 **Class:** guard-went-vacuous
