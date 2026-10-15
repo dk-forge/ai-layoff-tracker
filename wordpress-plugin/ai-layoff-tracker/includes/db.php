@@ -6802,7 +6802,8 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
         ? alt_allowed_reason_tags()
         : array('ai_automation','possible_ai','revenue_decline','restructuring',
                 'merger_acquisition','offshoring','product_discontinuation','cost_reduction',
-                'macroeconomic','closure','bankruptcy','federal_workforce');
+                'macroeconomic','closure','bankruptcy','federal_workforce',
+                'tariffs_trade','contract_loss','funding_loss');
     list($rw, $rp) = alt_db_where($r, 'reasons');
     $reasons = array();
     /*

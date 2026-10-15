@@ -123,6 +123,11 @@ function alt_digest_reason_names() {
         'cost_reduction'          => 'Cost reduction',
         'macroeconomic'           => 'Macroeconomic',
         'closure'                 => 'Plant / site closure',
+        'bankruptcy'              => 'Bankruptcy / insolvency',
+        'federal_workforce'       => 'Government / public sector',
+        'tariffs_trade'           => 'Tariffs / trade',
+        'contract_loss'           => 'Contract loss',
+        'funding_loss'            => 'Funding loss',
     );
 }
 

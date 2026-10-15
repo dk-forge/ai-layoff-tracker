@@ -1,9 +1,42 @@
+## 2026-10-15 - Rollup: BFS, Eurostat, reason tags, city follows off ship as one deploy (2.20.262)
+
+**Class:** novel
+**Guard:** none, a packaging change: each folded PR keeps its own guard, and `.github/workflows/version-collision.yml` holds 2.20.262 past main.
+
+Four PRs (#524, #526, #527, #528) each bumped the plugin version and each would have triggered its own FTPS deploy on merge, against the never-twice-an-hour rule. They ship as ONE deploy at 2.20.262 (the next number past main's 2.20.261). The four entries below keep their original per-branch numbers for history; only 2.20.262 is ever live. Conflicts were append-only (Sources row, freshness spec, reference registry, workflow lists, docs) and kept both sides.
+
 ## 2026-10-15 - BLS CES hours and earnings by supersector into ALT (#478 item 9, 2.20.261)
 
 **Class:** novel (owner ruling 2026-10-14, #478 item 9, "hours cut before headcount")
 **Guard:** `railway/tests/test_bls_ces_hours.py` - 26 series ids (13 supersectors x weekly hours/hourly earnings), 2 keyless requests, reuses the JOLTS/CPS v1 path and parser, preliminary flag kept, annual average and "-" skipped, store gate refuses a partial or missing-series pull, freshness spec, plugin registration, keyless hash-pinned dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and register entry for `bls_ces_hours`.
 
 `railway/sources/bls_ces_hours.py` + `ces_import.py` + `.github/workflows/ces-import.yml` (Fridays 15:41 UTC, keyless BLS API v1, the same endpoint and `parse_response` as `bls_import.py`; no BLS key is configured and none is used) store CES average weekly hours and average hourly earnings of all employees, seasonally adjusted, national, per NAICS supersector, monthly, 5 years, at `/reference/bls_ces_hours`. Live dry run 2026-10-15 (`python3 railway/ces_import.py --dry-run`): 26 of 26 series, 1,482 points, latest 2026-09, 2 requests. Labelled macro context: not layoffs, never added to counts, no AI-cause claim. Ships LIVE. `reference_freshness.py` reads `bls_ces_hours` STALE until the first `ces-import.yml` run after deploy; dispatch it once after merge.
+## 2026-10-15 - Census Business Formation Statistics into ALT (#478 item 5, 2.20.259)
+
+**Class:** novel (owner ruling 2026-10-14, issue #478 item 5)
+**Guard:** `railway/tests/test_census_bfs.py` - SA and TOTAL rows only, the two series only, "NA" and blank cells skipped, window applied, store gate refuses an empty pull, a missing national series or too few geographies, payload size fits the ceiling, freshness spec, plugin registration, keyless dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row.
+
+`railway/sources/census_bfs.py` + `bfs_import.py` + `.github/workflows/bfs-import.yml` (Thursdays 15:41 UTC, keyless, public domain) read the one public Census CSV `https://www.census.gov/econ/bfs/csv/bfs_monthly.csv` and store seasonally adjusted, all-sector business applications (`BA_BA`) and high-propensity applications (`BA_HBA`) for the US, every state, DC and the census regions, one value per month for 3 years, at `/reference/census_bfs` (filter `?geo=` and `?series=`). Shipped LIVE, not dormant: dry run 2026-10-15 fetched HTTP 200 with our User-Agent and parsed 4,104 rows over 57 geographies, newest month 2026-09. Freshness ceiling 65 days (12-day release lag, monthly release, weekly collection, margin), derivation in `reference_freshness.py`. No paid calls. Context only, never summed into layoff counts.
+
+**#478 checklist:** item 5 done here (PR on `claude/alt-478-bfs`).
+## 2026-10-15 - Eurostat job vacancies + unemployment by country into ALT (#478 item 7, 2.20.260)
+
+**Class:** novel (owner ruling 2026-10-14, labour-data roadmap)
+**Guard:** `railway/tests/test_eurostat_labour.py` - JSON-stat decoding on a small fixture (flattened index, list-form category index, null values skipped), country filter (EU27 + member states + EFTA only), window applied, quarter -> month for `latest`, store gate refuses an empty pull, a missing EU27 aggregate or a short country list, payload fits the ceiling, freshness spec, plugin registration, keyless dispatchable workflow. `test_fred_qwi_reference.py` SourcesPageTest now requires the Sources-page row and the register entry for `eurostat_labour`.
+
+`railway/sources/eurostat_labour.py` + `eurostat_import.py` + `.github/workflows/eurostat-import.yml` (Wednesdays 15:41 UTC, keyless, CC BY 4.0 under the Eurostat reuse policy) read the Eurostat dissemination API (JSON-stat): job vacancy rate `jvs_q_nace2` (JVR, NACE B-S, all sizes, NSA) and LFS unemployment rate `une_rt_m` (SA, total, % of labour force), 3 years, at `/reference/eurostat_labour`. Modelled on the Indeed collector (86a3ddfd). Live dry run 2026-10-15: 1,723 rows, 30 countries for vacancies (newest 2025-Q4), 31 for unemployment (newest 2026-08), 43 KB. The vacancy freshness ceiling (400 days) is sized on that measured 288-day lag of the newest EU27 quarter, not on the nominal quarterly release. Labelled macro context: never added to layoff counts, no AI-cause claim. Sources row + register row + RUNBOOK row in the same PR. `reference_freshness.py` reads `eurostat_labour` STALE until the first `eurostat-import.yml` run after deploy; dispatch it once after merge. `python3 railway/eurostat_import.py --dry-run` is the keyless diagnostic.
+## 2026-10-15 - Reason tags widened: tariffs / trade, contract loss, funding loss (#478 roadmap, 2.20.258)
+
+**Class:** novel (owner ruling 2026-10-14: widen the layoff reason categories)
+**Guard:** `railway/tests/test_reason_vocabulary_mirrors.py` - every copy of the vocabulary (extractor set, both prompts' definition lines and response list, layoffs.js labels, the Reasons dropdown, both email label maps, methodology) must name every tag in `alt_allowed_reason_tags()`.
+
+Three tags join the closed vocabulary: `tariffs_trade` (tariffs, duties, sanctions, trade policy), `contract_loss` (a customer contract lost or not renewed, including a private contractor losing government work, which `federal_workforce` already excluded and nothing else caught) and `funding_loss` (grant, government or investor funding ended or cut). Bankruptcy and closure already existed. Rows gain the tags from new extractions and from the existing daily `reason_backfill.py`, which runs through `spend.metered_call()` like every other classification; this change adds no model call. Found on the way: the two email label maps (`digest-extras.php`, `subscribe.php`) had stayed at ten tags since 2.19.211 and never labelled `bankruptcy` or `federal_workforce`; both now carry all fifteen. The reason-tag mini prompt also defined `offshoring` on the same line as `merger_acquisition`; it now gets its own line.
+## 2026-10-15 - City follows built switched off (#478 roadmap, 2.20.262)
+
+**Class:** novel (owner ruling 2026-10-14: city and company alerts; build behind a flag if the email system exists)
+**Guard:** `railway/tests/test_follow_city_flag.py` - default off, no form and a refused submit while off, the city matched only through `alt_state_warn_city()`, escaped options when on.
+
+The email system the ask referred to already exists here: company and US state follows shipped in 2.20.210 (`includes/follows.php`), riding the digest's own double opt-in, stop links and delivery. Company alerts were therefore already done. City was the missing kind. It is added as kind `city` (value `ST|City`) behind the option `alt_follow_city` (default false). A "Follow a city" form sits under the state page's city list and offers only the cities that list shows. Matching narrows by state and an excerpt LIKE in SQL, then confirms each row with `alt_state_warn_city()`. Nothing is armed; see RUNBOOK_GROWTH section 6.
 
 ## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
 

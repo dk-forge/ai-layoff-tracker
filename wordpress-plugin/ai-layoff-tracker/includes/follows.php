@@ -21,6 +21,30 @@
  */
 if (!defined('ABSPATH')) exit;
 
+/**
+ * CITY FOLLOWS, BUILT SWITCHED OFF (owner ruling 2026-10-14, #478 roadmap).
+ * There is no city column: a city is read back from a WARN notice's excerpt by
+ * alt_state_warn_city() (includes/state-warn.php), the same reader the state
+ * pages use for their city list, so a follow can only match what that list
+ * shows. Value is "ST|City". Off until the option `alt_follow_city` (or the
+ * constant ALT_FOLLOW_CITY) is set true: while off the form never renders, the
+ * submit handler refuses the kind, and stored city follows match nothing.
+ */
+function alt_follow_city_enabled() {
+    if (defined('ALT_FOLLOW_CITY')) return (bool) ALT_FOLLOW_CITY;
+    return (bool) get_option('alt_follow_city', false);
+}
+
+/** Split "ST|City" into [ST, City], or null. Pure. */
+function alt_follow_city_parse($value) {
+    $parts = explode('|', (string) $value, 2);
+    if (count($parts) !== 2) return null;
+    $st = strtoupper(trim($parts[0]));
+    $city = trim(preg_replace('/\s+/u', ' ', $parts[1]));
+    if (!preg_match('/^[A-Z]{2}$/', $st) || $city === '' || mb_strlen($city) > 80) return null;
+    return array($st, $city);
+}
+
 function alt_follows_table() { global $wpdb; return $wpdb->prefix . 'alt_follows'; }
 
 function alt_follows_install() {
@@ -45,8 +69,9 @@ function alt_follows_install() {
 }
 add_action('init', 'alt_follows_install', 5);
 
-/** The small form. $kind 'company' (value = company_key) or 'state' (value = 2-letter code). */
+/** The small form. $kind 'company' (value = company_key), 'state' (value = 2-letter code) or 'city' (value = "ST|City", only when enabled). */
 function alt_follow_form_html($kind, $value, $label) {
+    if ($kind === 'city' && !alt_follow_city_enabled()) return '';
     $sent = isset($_GET['alt_follow']) && $_GET['alt_follow'] === 'sent';
     $out = '<section class="alt-follow" aria-labelledby="alt-follow-h"><h2 id="alt-follow-h">Follow ' . esc_html($label) . '</h2>';
     if ($sent) {
@@ -58,6 +83,37 @@ function alt_follow_form_html($kind, $value, $label) {
         . '<input type="hidden" name="alt_follow_kind" value="' . esc_attr($kind) . '">'
         . '<input type="hidden" name="alt_follow_value" value="' . esc_attr($value) . '">'
         . '<input type="text" name="alt_hp" class="alt-hp" tabindex="-1" autocomplete="off" aria-hidden="true">'
+        . '<label>Email <input type="email" name="alt_follow_email" required autocomplete="email"></label> '
+        . '<button type="submit" class="alt-btn">Follow</button></form></section>';
+}
+
+/**
+ * "Follow a city" on a US state page: one form, a choice of the cities that
+ * page already lists. '' while switched off, so nothing renders. The value is
+ * re-validated on submit by alt_follow_resolve(); the choice list is a
+ * convenience, not the gate.
+ */
+function alt_follow_city_form_html($state, array $cities) {
+    if (!alt_follow_city_enabled() || !$cities) return '';
+    $state = strtoupper((string) $state);
+    $sent = isset($_GET['alt_follow']) && $_GET['alt_follow'] === 'sent';
+    $out = '<section class="alt-follow" aria-labelledby="alt-follow-city-h"><h2 id="alt-follow-city-h">Follow a city</h2>';
+    if ($sent) {
+        return $out . '<p role="status">Check your inbox. The follow starts when you click the confirmation link.</p></section>';
+    }
+    $opts = '';
+    foreach ($cities as $c) {
+        $name = (string) ($c['city'] ?? '');
+        if ($name === '') continue;
+        $opts .= '<option value="' . esc_attr($state . '|' . $name) . '">' . esc_html($name) . '</option>';
+    }
+    if ($opts === '') return '';
+    return $out . '<p>Get new WARN notices for one city in the weekly digest. We email you a confirmation link first; unsubscribe any time.</p>'
+        . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
+        . '<input type="hidden" name="action" value="alt_follow">'
+        . '<input type="hidden" name="alt_follow_kind" value="city">'
+        . '<input type="text" name="alt_hp" class="alt-hp" tabindex="-1" autocomplete="off" aria-hidden="true">'
+        . '<label>City <select name="alt_follow_value">' . $opts . '</select></label> '
         . '<label>Email <input type="email" name="alt_follow_email" required autocomplete="email"></label> '
         . '<button type="submit" class="alt-btn">Follow</button></form></section>';
 }
@@ -77,6 +133,12 @@ function alt_follow_resolve($kind, $value) {
         $code = strtoupper($value);
         return isset($cat['state'][$code]) ? array((string) $cat['state'][$code], alt_facet_url('state', $cat['state'][$code])) : null;
     }
+    if ($kind === 'city' && alt_follow_city_enabled() && function_exists('alt_facet_catalogue')) {
+        $pc = alt_follow_city_parse($value);
+        $cat = alt_facet_catalogue();
+        if (!$pc || !isset($cat['state'][$pc[0]])) return null;
+        return array($pc[1] . ', ' . $pc[0], alt_facet_url('state', $cat['state'][$pc[0]]));
+    }
     return null;
 }
 
@@ -87,10 +149,12 @@ function alt_follow_submit() {
     $kind = sanitize_key(wp_unslash($_POST['alt_follow_kind'] ?? ''));
     $value = sanitize_text_field(wp_unslash($_POST['alt_follow_value'] ?? ''));
     $email = strtolower(sanitize_email(wp_unslash($_POST['alt_follow_email'] ?? '')));
-    if (!in_array($kind, array('company', 'state'), true) || !is_email($email)) { wp_safe_redirect($back); exit; }
+    $city_ok = ($kind === 'city' && alt_follow_city_enabled());
+    if ((!in_array($kind, array('company', 'state'), true) && !$city_ok) || !is_email($email)) { wp_safe_redirect($back); exit; }
     $target = alt_follow_resolve($kind, $value);
     if (!$target || !function_exists('alt_digest_signup')) { wp_safe_redirect($back); exit; }
     if ($kind === 'state') $value = strtoupper($value);
+    if ($kind === 'city') { $pc = alt_follow_city_parse($value); $value = $pc[0] . '|' . $pc[1]; }
 
     // Keep every list the reader already has and add the layoff list, so the
     // change the confirmation email itemises is "starting" or "keeping", never
@@ -142,6 +206,16 @@ function alt_follows_matches($subscriber_id, $from, $to) {
           WHERE f.subscriber_id = %d AND f.status = 'active' AND s.status = 'confirmed'", (int) $subscriber_id), ARRAY_A) ?: array();
     $out = array(); $seen = array();
     foreach ($follows as $fw) {
+        if ($fw['kind'] === 'city') {
+            foreach (alt_follows_city_rows($fw['value'], $from, $to) as $r) {
+                if (isset($seen[$r['id']])) continue;
+                $seen[$r['id']] = true;
+                $out[] = array('follow' => $fw['label'], 'company' => $r['company'], 'jobs' => (int) $r['job_count'],
+                               'date' => (string) $r['d'], 'place' => $r['state'] ?: $r['country'], 'url' => $fw['url']);
+                if (count($out) >= 10) break 2;
+            }
+            continue;
+        }
         $col = $fw['kind'] === 'company' ? 'company_key' : 'state';
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT id, company, job_count, COALESCE(announcement_date, layoff_date) d, state, country FROM $t
@@ -156,6 +230,32 @@ function alt_follows_matches($subscriber_id, $from, $to) {
                            'date' => (string) $r['d'], 'place' => $r['state'] ?: $r['country'], 'url' => $fw['url']);
             if (count($out) >= 10) break 2;
         }
+    }
+    return $out;
+}
+
+/**
+ * Rows in a followed city: same window and population as the other kinds,
+ * narrowed by state in SQL and confirmed by alt_state_warn_city() in PHP, so
+ * "Springfield" in an employer name never matches. Empty while switched off.
+ */
+function alt_follows_city_rows($value, $from, $to) {
+    global $wpdb;
+    $pc = alt_follow_city_parse($value);
+    if (!$pc || !alt_follow_city_enabled() || !function_exists('alt_state_warn_city')) return array();
+    $t = alt_db_table();
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, company, job_count, COALESCE(announcement_date, layoff_date) d, state, country, excerpt FROM $t
+          WHERE superset_of = 0 AND state = %s AND excerpt LIKE %s
+            AND (updated_at BETWEEN %s AND %s OR COALESCE(announcement_date, layoff_date) BETWEEN %s AND %s)
+          ORDER BY job_count DESC, id DESC LIMIT 50",
+        $pc[0], '%' . $wpdb->esc_like(' in ' . $pc[1] . '.') . '%',
+        $from . ' 00:00:00', $to . ' 23:59:59', $from, $to), ARRAY_A) ?: array();
+    $out = array();
+    foreach ($rows as $r) {
+        if (strcasecmp(alt_state_warn_city($r['excerpt']), $pc[1]) !== 0) continue;
+        $out[] = $r;
+        if (count($out) >= 10) break;
     }
     return $out;
 }

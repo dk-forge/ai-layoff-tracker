@@ -160,6 +160,16 @@ with matching rows. Check that `alt_follows_db_version` is set, that the row's
 status is `active` (the reader clicked confirm), and that the subscriber is
 `confirmed` with the layoff list at this frequency. **Test:** `test_follow_alerts.py`.
 
+**City follows (2.20.262, built switched OFF, owner ruling 2026-10-14).**
+Same table, same opt-in, kind `city`, value `ST|City`. There is no city
+column, so a city is matched through `alt_state_warn_city()`, the reader behind
+the state page's city list; an employer name containing the city never
+matches. Off until the WP option `alt_follow_city` is true (or the constant
+`ALT_FOLLOW_CITY`). While off, the "Follow a city" form on US state pages
+renders nothing, the submit handler refuses the kind, and stored city follows
+match nothing. To arm: `wp option update alt_follow_city 1`, then check one
+state page shows the form. **Test:** `test_follow_city_flag.py`.
+
 **Stop / preferences / welcome (2.20.213, owner decisions 2026-09-27).**
 `includes/subscriber-prefs.php`. Each follow in the digest carries a
 "Stop following X" link (`/ai-layoff-tracker/stop-follow/<token>/`, GET asks,

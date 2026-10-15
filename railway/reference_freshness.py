@@ -53,8 +53,17 @@ UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 #     monthly collection; +29 margin = 760. Employment Projections: base
 #     year Y (stored as Y-12) publishes ~September of Y+1 and the next in
 #     ~September of Y+2, ~640 days; +31; +29 = 700. Monthly job: 31 + 9 = 40.
+#   Census BFS (census_bfs): month M publishes about 12 days after M ends
+#     and monthly, so just before the next release the newest month is ~42
+#     days old; +7 weekly collection; +16 margin = 65.
 #   Collector: weekly job (7) + 3 days for a deferred host call or late
 #     runner = 10, so one missed weekly run alarms.
+#   Eurostat (eurostat_labour): une_rt_m publishes month M about 30 days
+#     after it ends and the next month ~30 days later, ~62 days; +10
+#     collector; +18 margin = 90. jvs_q_nace2 is published quarterly, but the
+#     newest EU27 quarter at the first pull (2026-10-15) was 2025-Q4, 288 days
+#     past its end, so the ceiling is sized on that measured lag: +91 for the
+#     next quarter, +21 margin = 400. Weekly job: 10.
 SPECS = {
     "bls_jolts_cps": {"collector_days": 10, "datasets": {"jolts": 85, "cps": 50}},
     "oecd_unemployment": {"collector_days": 10, "datasets": {"monthly": 95}},
@@ -65,6 +74,8 @@ SPECS = {
     # CES hours/earnings: month M publishes the first Friday of M+1 (~37 days
     # past month end at worst), same 50-day ceiling as CPS from the same release.
     "bls_ces_hours": {"collector_days": 10, "datasets": {"ces": 50}},
+    "census_bfs": {"collector_days": 10, "datasets": {"monthly": 65}},
+    "eurostat_labour": {"collector_days": 10, "datasets": {"vacancy_rate": 400, "unemployment": 90}},
 }
 
 
