@@ -49,6 +49,9 @@ function alt_allowed_reason_tags() {
         'closure',
         'bankruptcy',
         'federal_workforce',
+        'tariffs_trade',
+        'contract_loss',
+        'funding_loss',
     );
 }
 

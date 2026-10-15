@@ -891,6 +891,9 @@ $alt_hero_basis  = 'counted by filing date';
                     <option value="closure">Plant / site closure</option>
                     <option value="bankruptcy">Bankruptcy / insolvency</option>
                     <option value="federal_workforce">Government / public sector</option>
+                    <option value="tariffs_trade">Tariffs / trade</option>
+                    <option value="contract_loss">Contract loss</option>
+                    <option value="funding_loss">Funding loss</option>
                 </select>
             </div>
             <div class="alt-filter" data-dd="Sources" data-empty="All sources">

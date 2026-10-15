@@ -1,3 +1,10 @@
+## 2026-10-15 - Reason tags widened: tariffs / trade, contract loss, funding loss (#478 roadmap, 2.20.258)
+
+**Class:** novel (owner ruling 2026-10-14: widen the layoff reason categories)
+**Guard:** `railway/tests/test_reason_vocabulary_mirrors.py` - every copy of the vocabulary (extractor set, both prompts' definition lines and response list, layoffs.js labels, the Reasons dropdown, both email label maps, methodology) must name every tag in `alt_allowed_reason_tags()`.
+
+Three tags join the closed vocabulary: `tariffs_trade` (tariffs, duties, sanctions, trade policy), `contract_loss` (a customer contract lost or not renewed, including a private contractor losing government work, which `federal_workforce` already excluded and nothing else caught) and `funding_loss` (grant, government or investor funding ended or cut). Bankruptcy and closure already existed. Rows gain the tags from new extractions and from the existing daily `reason_backfill.py`, which runs through `spend.metered_call()` like every other classification; this change adds no model call. Found on the way: the two email label maps (`digest-extras.php`, `subscribe.php`) had stayed at ten tags since 2.19.211 and never labelled `bankruptcy` or `federal_workforce`; both now carry all fifteen. The reason-tag mini prompt also defined `offshoring` on the same line as `merger_acquisition`; it now gets its own line.
+
 ## 2026-10-14 - Dark theme: the Related row, intro and FAQ rendered as #2a2a2a on #12141a (2.20.257)
 
 **Class:** wrong-scope-or-key (the 2026-08-10 override of the site snippet is scoped to `.alt-wrap`; the new surfaces render outside it)
