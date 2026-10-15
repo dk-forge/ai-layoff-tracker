@@ -35,7 +35,7 @@ jobs:
             curl -sS --fail-with-body -X POST \
               "$WP_SITE_URL/wp-json/layoffs/v1/brevo-backfill?after_id=${after}&limit=100" \
               -H "X-Layoff-API-Key: $WP_API_KEY" -H "User-Agent: $UA" \
-              -o /tmp/bb.json
+              -o /tmp/bb.json || { echo "error body (no addresses, the route returns ok/reason/counts only):"; head -c 300 /tmp/bb.json; echo; exit 1; }
             read -r p s f o nxt < <(python3 -c '
           import json; d = json.load(open("/tmp/bb.json"))
           n = d.get("next_after_id")
