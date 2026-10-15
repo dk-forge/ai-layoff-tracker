@@ -1,3 +1,10 @@
+## 2026-10-15 - Rollup: BFS, Eurostat, reason tags, city follows off ship as one deploy (2.20.262)
+
+**Class:** novel
+**Guard:** none, a packaging change: each folded PR keeps its own guard, and `.github/workflows/version-collision.yml` holds 2.20.262 past main.
+
+Four PRs (#524, #526, #527, #528) each bumped the plugin version and each would have triggered its own FTPS deploy on merge, against the never-twice-an-hour rule. They ship as ONE deploy at 2.20.262 (the next number past main's 2.20.261). The four entries below keep their original per-branch numbers for history; only 2.20.262 is ever live. Conflicts were append-only (Sources row, freshness spec, reference registry, workflow lists, docs) and kept both sides.
+
 ## 2026-10-15 - BLS CES hours and earnings by supersector into ALT (#478 item 9, 2.20.261)
 
 **Class:** novel (owner ruling 2026-10-14, #478 item 9, "hours cut before headcount")

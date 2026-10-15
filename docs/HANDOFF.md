@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-15, branch `rollup/bfs-eurostat-reasontags-city` (PR). Reserves plugin version 2.20.262.** One-deploy rollup of #524 (BFS), #526 (Eurostat), #527 (reason tags), #528 (city follows off); the four per-branch versions 2.20.258/259/260 are never deployed. See TECHLOG 2026-10-15 (rollup).
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/alt-478-ces` (PR). Reserves plugin version 2.20.261.** BLS CES average weekly hours + hourly earnings by supersector (#478 item 9); see TECHLOG 2026-10-15.
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/alt-478-bfs` (PR). Reserves plugin version 2.20.259.** Census Business Formation Statistics collector (#478 item 5); see TECHLOG 2026-10-15. (2.20.258/260/261 are reserved by sibling agents.)
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/alt-478-eurostat` (PR). Reserves plugin version 2.20.260.** Eurostat job vacancy + unemployment rates by country (#478 item 7); see TECHLOG 2026-10-15 (2.20.260).
