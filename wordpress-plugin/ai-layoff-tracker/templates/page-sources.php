@@ -218,7 +218,7 @@ $alt_unemp = function_exists('alt_state_unemployment') ? alt_state_unemployment(
       </tr>
     <tr>
         <td><b>Census Business Formation Statistics</b></td><td>United States, nationally and by state</td>
-        <td>The U.S. Census Bureau's Business Formation Statistics: seasonally adjusted business applications (all applications and high-propensity applications, the ones likely to become employers), one value per month for the last three years. Applications measure intent to start a business: they are not layoffs, are never added to our counts, and a change does not show that AI caused it. Census publishes monthly. Public domain, source: U.S. Census Bureau.</td>
+        <td>The U.S. Census Bureau's Business Formation Statistics: seasonally adjusted business applications, one value per month for the last three years. We keep all applications and high-propensity applications, the ones likely to become employers. Applications measure intent to start a business: they are not layoffs, are never added to our counts, and a change does not show that AI caused it. Census publishes monthly. Public domain, source: U.S. Census Bureau.</td>
         <td>Context (labeled)</td>
         <td><a href="https://www.census.gov/econ/bfs/" target="_blank" rel="noopener">Census BFS data &#8599;</a></td>
     </tr>
