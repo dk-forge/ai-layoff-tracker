@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-15, branch `feat/digest-stats` (PR). Reserves plugin version 2.20.264.** Digest subscriber stats; see TECHLOG 2026-10-15 (2.20.264).
 - **RELEASED - Claude (agent), 2026-10-15, branch `feat/email-redesign-archive` (PR). Reserves plugin version 2.20.263.** Subscriber email redesign (shared theme, inline PNG charts, dark mode) + public digest archive at /ai-layoff-tracker/digest/; see TECHLOG 2026-10-15 (2.20.263).
 - **RELEASED - Claude (agent), 2026-10-15, branch `rollup/bfs-eurostat-reasontags-city` (PR). Reserves plugin version 2.20.262.** One-deploy rollup of #524 (BFS), #526 (Eurostat), #527 (reason tags), #528 (city follows off); the four per-branch versions 2.20.258/259/260 are never deployed. See TECHLOG 2026-10-15 (rollup).
 - **RELEASED - Claude (agent), 2026-10-15, branch `claude/alt-478-ces` (PR). Reserves plugin version 2.20.261.** BLS CES average weekly hours + hourly earnings by supersector (#478 item 9); see TECHLOG 2026-10-15.
