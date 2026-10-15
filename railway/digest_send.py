@@ -576,10 +576,15 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     resume = str(payload.get("resume_cta_url") or "").strip()
     if not _same_site(resume, unsub):
         resume = ""
+    # Up to three inline PNG charts and the dark-mode override (owner decision
+    # 2026-10-15). The charts travel inside the message as Content-ID parts,
+    # so opening it still fetches nothing; see email_charts.
+    images: list = []
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
         kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
-        edition_note=edition_note, resume_url=resume)
+        edition_note=edition_note, resume_url=resume, images=images,
+        dark_mode=True)
     text = digest_layout.render_text(parts, kicker=kicker, notice=notice,
                                      unsub_url=unsub,
                                      manage_url=manage, edition_note=edition_note,
@@ -592,6 +597,7 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
         text=text,
         from_addr=from_addr,
         reply_to=reply_to,
+        images=tuple(images),
         headers={
             "List-Unsubscribe": f"<{unsub}>",
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -1093,6 +1099,9 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
             and not result["test"]):
         import digest_archive
         digest_archive.archive_sent_edition(payload, freq)
+        # And the site's own archive page, /ai-layoff-tracker/digest/<date>/,
+        # through the keyed API (browser-ish UA via _call). Never raises.
+        digest_archive.post_public_record(payload, freq)
 
     # A preview stays out of the ledger. Its one placeholder recipient is not
     # a delivery, and a health row that counted it would read as a send.

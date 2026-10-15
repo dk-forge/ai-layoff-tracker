@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.262
+ * Version:           2.20.263
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.262');
+define('ALT_VERSION', '2.20.263');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -127,6 +127,12 @@ if (is_readable($alt_digest_archive)) {
 $alt_edition_schema = ALT_PLUGIN_DIR . 'includes/edition-schema.php';
 if (is_readable($alt_edition_schema)) {
     require_once $alt_edition_schema;
+}
+// The public digest archive at /ai-layoff-tracker/digest/<date>/ (owner
+// decision 2026-10-15). Guarded like the two above: a NEW file.
+$alt_digest_public_archive = ALT_PLUGIN_DIR . 'includes/digest-public-archive.php';
+if (is_readable($alt_digest_public_archive)) {
+    require_once $alt_digest_public_archive;
 }
 // The employer browse index (/company-layoffs/ and its A-Z letter pages), which
 // gives the 7,500 indexable company pages a path a reader and a crawler can

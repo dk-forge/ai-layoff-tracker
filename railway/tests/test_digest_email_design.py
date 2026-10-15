@@ -62,7 +62,14 @@ class ColourPerTracker(unittest.TestCase):
     def test_a_layoff_only_email_carries_no_talent_blue(self):
         html = message(("layoff",)).html
         self.assertIn(design.RED, html)
-        self.assertNotIn(design.BLUE, html)
+        # The shared spec (2026-10-15) makes #1d4ed8 the LINK colour of every
+        # email, so the talent blue is judged where it is an accent: headings,
+        # rules and bars.
+        for accent_use in (f"border-left:4px solid {design.BLUE}",
+                           f'bgcolor="{design.BLUE}"',
+                           f"background-color:{design.BLUE}",
+                           f"font-weight:800;letter-spacing:-0.01em;color:{design.BLUE}"):
+            self.assertNotIn(accent_use, html)
 
     def test_every_new_colour_clears_4_5_upright_and_inverted(self):
         pairs = [(design.RED, layout.CARD_BG), (design.BLUE, layout.CARD_BG),
@@ -141,8 +148,13 @@ class SmallCharts(unittest.TestCase):
         built = message(("layoff", "talent", "articles"))
         dt.assert_message_is_clean(built)
         low = built.html.lower()
-        for token in ("<img", "url(", "src=", "<script", "<link", "<style"):
+        for token in ("url(", "<script", "<link"):
             self.assertNotIn(token, low)
+        # Images only as this message's own inline parts (2026-10-15).
+        cids = {img["cid"] for img in built.images}
+        for src in re.findall(r'src="([^"]*)"', built.html):
+            self.assertTrue(src.startswith("cid:") and src[4:] in cids, src)
+        self.assertLessEqual(low.count("<style"), 1)
         self.assertIn('aria-hidden="true"', built.html)
 
     def test_chart_cells_survive_a_forward_with_their_own_style(self):

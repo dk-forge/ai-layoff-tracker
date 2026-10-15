@@ -96,6 +96,11 @@ class Message:
     from_addr: str
     reply_to: str = ""
     headers: dict = field(default_factory=dict)
+    # Inline chart PNGs (owner decision 2026-10-15): dicts with cid, filename,
+    # png (bytes) and alt. Carried INSIDE the message as Content-ID parts, so
+    # opening it fetches nothing. assert_message_is_clean admits an <img> only
+    # when its src is cid: and names one of these.
+    images: tuple = ()
 
     def redacted(self) -> str:
         """A stable, non-reversing label for logs. Never the address."""
@@ -172,8 +177,18 @@ class CredentialCheck:
 # Tags that make a mail client fetch something from a server, which is how open
 # tracking works whatever it is called. A digest is text and links, so the whole
 # family is refused rather than the one tag people remember.
-_REMOTE_TAGS = ("img", "picture", "source", "video", "audio", "iframe",
-                "object", "embed", "svg", "link", "script", "style")
+_REMOTE_TAGS = ("picture", "source", "video", "audio", "iframe",
+                "object", "embed", "svg", "link", "script")
+_IMG_TAG_RE = re.compile(r"<\s*img\b([^>]*)>", re.I)
+_IMG_SRC_RE = re.compile(r'\bsrc\s*=\s*"([^"]*)"', re.I)
+_IMG_ALT_RE = re.compile(r'\balt\s*=\s*"([^"]+)"', re.I)
+_STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>(.*?)</style\s*>", re.I | re.S)
+# The ONE style block a message may carry: email_theme's dark-mode overrides.
+# Anything else in a <style> (an @import, a url(), a light-mode rule a forward
+# would delete) is refused.
+_DARK_ONLY_RE = re.compile(
+    r":root\{color-scheme:light dark;supported-color-schemes:light dark;\}"
+    r"@media \(prefers-color-scheme: dark\)\{[^@{}]*(?:\{[^{}@]*\}[^@{}]*)*\}")
 _TAG_RE = re.compile(r"<\s*(/?)([a-zA-Z][a-zA-Z0-9]*)")
 _ATTR_RE = re.compile(r"\b(src|srcset|background|poster|data-src)\s*=", re.I)
 _CSS_URL_RE = re.compile(r"url\s*\(", re.I)
@@ -197,13 +212,44 @@ def assert_message_is_clean(message: Message) -> None:
     lowered = html.lower()
 
     # 1. Nothing that fetches from a server when the message is opened.
-    for _, tag in ((m.group(1), m.group(2).lower()) for m in _TAG_RE.finditer(html)):
-        if tag in _REMOTE_TAGS:
+    #
+    #    Since 2026-10-15 (owner decision) a chart may be an <img>, but ONLY an
+    #    inline one: src="cid:<id>" naming a PNG part this message carries,
+    #    with alt text. Any other src (http, data:, //, a pixel) is refused
+    #    exactly as before, and every other remote tag still is too.
+    cids = {}
+    for image in (message.images or ()):
+        if not isinstance(image, dict) or not image.get("cid") \
+                or not isinstance(image.get("png"), (bytes, bytearray)) \
+                or not bytes(image["png"]).startswith(b"\x89PNG") \
+                or not str(image.get("alt") or "").strip():
+            raise DigestPolicyError("an inline image part is not a labelled PNG")
+        cids[str(image["cid"])] = image
+    for found in _IMG_TAG_RE.finditer(html):
+        attrs = found.group(1)
+        src = _IMG_SRC_RE.search(attrs)
+        if not src or not src.group(1).startswith("cid:") \
+                or src.group(1)[4:] not in cids:
+            raise DigestPolicyError(
+                "the rendered digest contains an <img> that is not one of its "
+                "own inline chart parts. The privacy note promises no remote "
+                "images and no tracking pixels, and every remote image is an "
+                "open tracker whatever it is called")
+        if not _IMG_ALT_RE.search(attrs):
+            raise DigestPolicyError("an inline chart has no alt text")
+    styles = _STYLE_BLOCK_RE.findall(html)
+    if len(styles) > 1 or (styles and not _DARK_ONLY_RE.fullmatch(styles[0].strip())):
+        raise DigestPolicyError(
+            "the rendered digest carries a <style> block other than the one "
+            "dark-mode override, so part of its design would vanish on forward")
+    scrubbed = _IMG_TAG_RE.sub("", _STYLE_BLOCK_RE.sub("", html))
+    for _, tag in ((m.group(1), m.group(2).lower()) for m in _TAG_RE.finditer(scrubbed)):
+        if tag in _REMOTE_TAGS or tag == "style":
             raise DigestPolicyError(
                 f"the rendered digest contains a <{tag}> tag. The privacy note "
                 f"promises no images and no tracking pixels, and every tag that "
                 f"fetches from a server is an open tracker whatever it is called")
-    if _ATTR_RE.search(html):
+    if _ATTR_RE.search(scrubbed):
         raise DigestPolicyError(
             "the rendered digest carries a src or background attribute, which "
             "makes the reader's mail client fetch a remote file")
@@ -365,6 +411,9 @@ class DryRunTransport(Transport):
         lines.append(message.text.rstrip() + "\n")
         lines.append("-" * 68 + "\nHTML PART\n" + "-" * 68 + "\n")
         lines.append(message.html.rstrip() + "\n")
+        for image in (message.images or ()):
+            lines.append(f"INLINE IMAGE cid:{image['cid']} "
+                         f"{len(bytes(image['png']))} bytes, alt: {image['alt']}\n")
         lines.append("=" * 68 + "\n")
         write("".join(lines))
         return "dryrun"
@@ -414,6 +463,13 @@ class ResendTransport(Transport):
         }
         if message.reply_to:
             payload["reply_to"] = message.reply_to
+        if message.images:
+            import base64
+            payload["attachments"] = [
+                {"filename": image.get("filename") or f"{image['cid']}.png",
+                 "content": base64.b64encode(bytes(image["png"])).decode("ascii"),
+                 "content_id": image["cid"], "content_type": "image/png"}
+                for image in message.images]
         request = urllib.request.Request(
             RESEND_ENDPOINT,
             data=json.dumps(payload).encode("utf-8"),
@@ -514,6 +570,14 @@ class SmtpTransport(Transport):
             mail[key] = value
         mail.set_content(message.text)
         mail.add_alternative(message.html, subtype="html")
+        if message.images:
+            html_part = mail.get_payload()[1]
+            for image in message.images:
+                html_part.add_related(bytes(image["png"]), maintype="image",
+                                      subtype="png", cid=f"<{image['cid']}>",
+                                      filename=image.get("filename") or
+                                      f"{image['cid']}.png",
+                                      disposition="inline")
         return mail
 
     def _deliver(self, message: Message) -> str:

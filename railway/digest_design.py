@@ -115,6 +115,10 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
         ("td", "chart-cell"): (f"padding:4px 0;font-family:{font};font-size:13px;"
                                f"line-height:1.3;color:{ink};"
                                f"vertical-align:middle;"),
+        ("td", "col-label"): (f"padding:6px 2px 0;font-family:{font};"
+                              f"font-size:11px;line-height:1.35;color:{muted};"
+                              f"vertical-align:top;"
+                              f"font-variant-numeric:tabular-nums;"),
         ("td", "chart-figure"): (f"padding:4px 0 4px 10px;font-family:{font};"
                                  f"font-size:13px;line-height:1.3;font-weight:700;"
                                  f"color:{ink};white-space:nowrap;"
@@ -269,3 +273,111 @@ def add_charts(fragment: str, accent: str = RED) -> str:
                                fragment)
     fragment = _WEEKS.sub(lambda m: _chart_weeks(m, accent), fragment)
     return _SERIES.sub(lambda m: _chart_series(m, accent), fragment)
+
+
+# ---------------------------------------------------------------------------
+# Image charts (owner decision 2026-10-15)
+#
+# Up to email_charts.MAX_CHARTS blocks per message become a small PNG column
+# chart carried INLINE (Content-ID), so opening the email still fetches nothing
+# from any server. The figures stay printed as text beside the picture, and
+# the alt text repeats every one. Only when `images` is a list does this run;
+# every caller that passes nothing gets the table bars above, unchanged.
+#
+# The picture goes in as an HTML comment marker, because digest_layout.restyle
+# rewrites every tag it meets and would strip an <img>'s own style. The marker
+# is swapped for the finished tag after restyle by `place_image_charts`.
+# ---------------------------------------------------------------------------
+_MARKER = "<!--alt-chart:{n}-->"
+_MARKER_RE = re.compile(r"<!--alt-chart:(\d+)-->")
+CHART_DISPLAY_WIDTH = 544
+
+
+def _figures_table(items) -> str:
+    """The figures as ONE row of text cells, one per column of the chart.
+
+    The PNG draws its columns in equal slots, so equal-width cells sit under
+    them. Label and figure are real text: the picture adds shape, never a number.
+    """
+    from html import escape
+    width = max(1, 100 // max(1, len(items)))
+    cells = "".join(
+        f'<td data-alt="col-label" width="{width}%" align="center">'
+        f'{escape(label)}<br><b>{escape(fig)}</b></td>'
+        for label, fig in items)
+    return ('<table data-alt="series-chart" role="presentation" width="100%" '
+            f'cellpadding="0" cellspacing="0" border="0"><tr>{cells}</tr></table>')
+
+
+def _register(images: list, items, title: str, section: str) -> str:
+    import email_charts
+    values = [email_charts.figure_value(fig) or 0 for _, fig in items]
+    if not values or max(values) <= 0:
+        return ""
+    n = len(images) + 1
+    images.append({
+        "cid": f"chart-{n}",
+        "filename": f"chart-{n}.png",
+        "png": email_charts.column_chart(values, email_charts.colour_for(section)),
+        "alt": email_charts.alt_text(title, items),
+    })
+    return _MARKER.format(n=n)
+
+
+def add_image_charts(fragment: str, section: str, images: list) -> str:
+    """Turn the first weekly strips and series lines into inline PNG charts."""
+    import email_charts
+    fragment = fragment or ""
+
+    def weeks(match):
+        if len(images) >= email_charts.MAX_CHARTS:
+            return match.group(0)
+        text = _TAGS.sub("", match.group(1)).replace("&amp;", "&")
+        items = []
+        for item in (i.strip() for i in text.split("·")):
+            found = _SERIES_ITEM.match(item)
+            if not found:
+                return match.group(0)
+            items.append((found.group("label"), found.group("fig")))
+        if len(items) < 2:
+            return match.group(0)
+        marker = _register(images, items, "Column chart of the weekly figures",
+                           section)
+        return (marker + _figures_table(items)) if marker else match.group(0)
+
+    def series(match):
+        if len(images) >= email_charts.MAX_CHARTS:
+            return match.group(0)
+        items = _series_items(match.group(2))
+        if not items:
+            return match.group(0)
+        text = _TAGS.sub("", match.group(2)).replace("&amp;", "&").strip()
+        caption = text.split(": ", 1)[0] if ": " in text.split("·")[0] else ""
+        title = f"Column chart, {caption.lower()}" if caption else "Column chart"
+        marker = _register(images, items, title, section)
+        if not marker:
+            return match.group(0)
+        # The sentence becomes the chart's caption plus a row of label and
+        # figure cells: the same words, once, under the columns they name.
+        from html import escape
+        head = (f'<p data-alt="caption">{escape(caption)}</p>' if caption else "")
+        return head + marker + _figures_table(items)
+
+    fragment = _WEEKS.sub(weeks, fragment)
+    return _SERIES.sub(series, fragment)
+
+
+def image_tag(image: dict, src: str = "") -> str:
+    from html import escape
+    src = src or f"cid:{image['cid']}"
+    return (f'<img src="{escape(src)}" width="{CHART_DISPLAY_WIDTH}" '
+            f'alt="{escape(image["alt"])}" style="display:block;width:100%;'
+            f'max-width:{CHART_DISPLAY_WIDTH}px;height:auto;border:0;'
+            f'outline:none;margin:4px 0 10px;">')
+
+
+def place_image_charts(html: str, images: list) -> str:
+    by_n = {int(img["cid"].split("-")[1]): img for img in images}
+    return _MARKER_RE.sub(
+        lambda m: image_tag(by_n[int(m.group(1))]) if int(m.group(1)) in by_n else "",
+        html)

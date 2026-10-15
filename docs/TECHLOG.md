@@ -1,3 +1,12 @@
+## 2026-10-15 - Subscriber email redesign + public digest archive (2.20.263)
+
+**Class:** novel (owner decision 2026-10-15)
+**Guard:** `railway/tests/test_email_redesign.py` (spec tokens, WCAG AA both modes, PNG validity, the transport gate refuses any non-cid image, a cid with no part, a non-PNG part, a missing alt, a light-mode or url() style block) and `railway/tests/test_digest_public_archive.py` (no subscriber data, no pixel, both the Python and the PHP gate refuse every leak shape).
+
+Shared visual spec in `railway/email_theme.py` (copyable to the sibling repo; imports nothing local). Up to three chart blocks become pure-Python PNG column charts (`railway/email_charts.py`, no new dependency) carried INLINE as Content-ID parts (SMTP multipart/related, Resend `content_id`), so opening the email still fetches nothing. `assert_message_is_clean` now admits an `<img>` only when its src is `cid:` naming one of the message's own labelled PNG parts, and one `<style>` block only when it is exactly the dark-mode override; every other remote fetch is refused as before. Five layout/design tests that asserted "no img / no style / no class / no @media" were rewritten to the new policy with equal strictness (light mode still lives entirely inline; byte-identical after removing the dark block). Product line under the wordmark and dark-mode classes added to the shell.
+
+Public archive: `includes/digest-public-archive.php` serves `/ai-layoff-tracker/digest/` (hub, GET `from`/`to` filter, filtered views noindex + canonical to hub) and `/ai-layoff-tracker/digest/YYYY-MM-DD/` (NewsArticle + Dataset JSON-LD, canonical, charts at `.../chart-N.png`), its own `layoff-digest-sitemap.xml` in the Yoast/RankMath index, and an IndexNow submission on save. Records arrive at send time via keyed `POST /digest-archive` from `digest_archive.post_public_record` (never raises, so it cannot cost a send); one page per date, a weekly edition is never replaced by a daily. Preview: `python3 railway/digest_preview.py OUT_DIR --archive` (fictional sample data, sends nothing).
+
 ## 2026-10-15 - Rollup: BFS, Eurostat, reason tags, city follows off ship as one deploy (2.20.262)
 
 **Class:** novel

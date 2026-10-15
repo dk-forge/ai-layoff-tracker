@@ -58,13 +58,22 @@ def _private_sentences() -> list:
     return sorted({escape(s) for s in out}, key=len, reverse=True)
 
 
-def sanitize_html(html: str, secrets=()) -> str:
-    """The public form of one rendered message. Pure and deterministic."""
+_CID_IMG = re.compile(r'^<img src="cid:chart-[1-9]"[^>]*>$', re.I)
+
+
+def sanitize_html(html: str, secrets=(), keep_charts: bool = False) -> str:
+    """The public form of one rendered message. Pure and deterministic.
+
+    `keep_charts` keeps the message's OWN inline chart images (src="cid:
+    chart-N", nothing else); the site's archive route serves those bytes from
+    our own domain. Every other image, a relay pixel above all, still goes.
+    """
     out = html or ""
     for secret in secrets:
         if secret:
             out = out.replace(secret, "")
-    out = _IMG.sub("", out)
+    out = _IMG.sub(lambda m: m.group(0) if keep_charts and _CID_IMG.match(m.group(0))
+                   else "", out)
 
     def _anchor(match):
         href, inner = match.group(1), match.group(2)
@@ -177,4 +186,117 @@ def archive_sent_edition(payload: dict, freq: str, root: str | None = None):
         return rel
     except Exception as exc:  # noqa: BLE001
         print(f"::warning::digest archive copy not saved ({type(exc).__name__}: {exc})")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# The site's own archive: /blog/ai-layoff-tracker/digest/YYYY-MM-DD/
+# (owner decision 2026-10-15). Saved at send time through the keyed API, the
+# same door every other write uses. The record holds the cleaned body, a
+# cleaned plain-text copy and the chart PNGs; nothing that names a reader.
+# ---------------------------------------------------------------------------
+_BODY = re.compile(r"<body\b[^>]*>(.*)</body>", re.I | re.S)
+_HIDDEN = re.compile(r'<div style="display:none;[^"]*">.*?</div>', re.S)
+
+
+def sanitize_text(text: str, secrets=()) -> str:
+    """The plain-text copy with every reader-specific line removed."""
+    out = []
+    private = [s for s in _private_sentences()]
+    for line in (text or "").splitlines():
+        if any(sec and sec in line for sec in secrets):
+            continue
+        if _PRIVATE_HREF.search(line) and "http" in line:
+            continue
+        out.append(line)
+    flat = "\n".join(out)
+    for sentence in private:
+        flat = flat.replace(sentence.replace("&amp;", "&"), "")
+    flat = _UNSUB_SENTENCE.sub("", flat)
+    flat = _EMAIL.sub("", flat)
+    return re.sub(r"\n{3,}", "\n\n", flat).strip() + "\n"
+
+
+def _public_text(payload: dict, recipient: dict) -> str:
+    """The sections as plain text, under a public footer. No reader footer is
+    ever rendered, so there is nothing of a reader's to strip back out."""
+    import digest_send
+    parts = digest_send.usable_sections(payload, recipient.get("lists") or [])
+    body = [digest_layout._reflow(digest_layout.plain_dashes(
+        digest_layout.part_text(p))) for p in parts]
+    rule = "=" * digest_layout.TEXT_WIDTH
+    return "\n".join(
+        [digest_layout.product_name(parts), rule, ""]
+        + ["\n\n".join(body), "", rule,
+           "Get this digest by email, free: " + digest_layout.SIGNUP_URL, ""])
+
+
+def public_record(payload: dict, freq: str):
+    """The archive record for /digest/<date>/, or None when nothing is kept."""
+    import base64
+    kind = str(freq or "").strip().lower()
+    if kind not in ARCHIVED_KINDS:
+        return None
+    recipient = _richest_recipient(payload)
+    if recipient is None:
+        return None
+    import digest_send  # local: digest_send imports this module
+    message = digest_send.build_message(payload, recipient, "archive@invalid",
+                                        "archive@invalid")
+    if message is None:
+        return None
+    date = str(payload.get("to") or "")[:10]
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        return None
+    secrets = (str(recipient.get("email") or ""),
+               str(recipient.get("unsub_url") or ""),
+               str(recipient.get("manage_url") or ""))
+    clean = sanitize_html(message.html, secrets, keep_charts=True)
+    body = _BODY.search(clean)
+    body_html = _HIDDEN.sub("", body.group(1) if body else clean).strip()
+    return {
+        "date": date,
+        "kind": kind,
+        "period_from": str(payload.get("from") or "")[:10],
+        "subject": _EMAIL.sub("", message.subject),
+        "html": body_html,
+        "text": sanitize_text(_public_text(payload, recipient), secrets),
+        "charts": [{"n": int(img["cid"].split("-")[1]),
+                    "alt": img["alt"],
+                    "png": base64.b64encode(bytes(img["png"])).decode("ascii")}
+                   for img in message.images],
+    }
+
+
+def assert_public(record: dict) -> None:
+    """Refuse a record that could carry anything belonging to one reader."""
+    blob = (record.get("html") or "") + "\n" + (record.get("text") or "")
+    low = blob.lower()
+    if _EMAIL.search(blob):
+        raise ValueError("an e-mail address survived into the archive copy")
+    for token in ("unsub", "alt_digest_", "preferences/", "mailto:"):
+        if token in low:
+            raise ValueError(f"a private link marker ({token}) survived")
+    for img in _IMG.findall(record.get("html") or ""):
+        if not _CID_IMG.match(img):
+            raise ValueError("an image other than our own chart survived")
+    if re.search(r"[?&](?:t|token|sig|signature|key|uid|rid)=", blob):
+        raise ValueError("a signed query string survived")
+
+
+def post_public_record(payload: dict, freq: str, call=None):
+    """Called after a real send. Never raises: the archive must not cost a send."""
+    try:
+        record = public_record(payload, freq)
+        if record is None:
+            return None
+        assert_public(record)
+        if call is None:
+            import digest_send
+            call = digest_send._call
+        result = call("digest-archive", payload=record)
+        print(f"digest archive: published {record['date']} ({record['kind']})")
+        return result
+    except Exception as exc:  # noqa: BLE001
+        print(f"::warning::digest archive page not saved ({type(exc).__name__})")
         return None
