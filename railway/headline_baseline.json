@@ -2,29 +2,29 @@
   "note": "Day-over-day observations of the published headlines, read by data_integrity.MovementInvariant. Written by data-integrity.yml after the checks run. A slice whose movement check FAILED is deliberately left at its previous value \u2014 do not hand-edit this file to clear a failing guard. `recorded_in` is the recorder run that wrote the entry: headline_containment subtracts two slices only when both carry the SAME stamp, so a pair whose halves were written either side of an editorial correction reports UNKNOWN instead of asserting the correction as a finding.",
   "slices": {
     "ai_all_time": {
-      "captured_at": "2026-10-14T17:40:48Z",
+      "captured_at": "2026-10-15T17:39:03Z",
       "entries": 103,
       "excluded_entries": 0,
       "excluded_jobs": 0,
       "jobs": 244041,
-      "recorded_in": "2026-10-14T17:41:24Z"
+      "recorded_in": "2026-10-15T17:39:38Z"
     },
     "us_all_time": {
-      "captured_at": "2026-10-14T17:40:57Z",
-      "entries": 47000,
+      "captured_at": "2026-10-15T17:39:15Z",
+      "entries": 47003,
       "excluded_entries": 459,
       "excluded_jobs": 124213,
-      "jobs": 7374714,
-      "recorded_in": "2026-10-14T17:41:24Z"
+      "jobs": 7375151,
+      "recorded_in": "2026-10-15T17:39:38Z"
     },
     "worldwide_all_time": {
-      "captured_at": "2026-10-14T17:40:57Z",
-      "entries": 68837,
+      "captured_at": "2026-10-15T17:39:05Z",
+      "entries": 68841,
       "excluded_entries": 470,
       "excluded_jobs": 137781,
-      "jobs": 20891768,
-      "recorded_in": "2026-10-14T17:41:24Z"
+      "jobs": 20892305,
+      "recorded_in": "2026-10-15T17:39:38Z"
     }
   },
-  "written_at": "2026-10-14T17:41:24Z"
+  "written_at": "2026-10-15T17:39:38Z"
 }
