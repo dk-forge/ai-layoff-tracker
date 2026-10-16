@@ -96,6 +96,7 @@ TEMPLATE_SURFACES = (
     ("company", PLUGIN / "templates/page-company-directory.php"),
     ("facet", PLUGIN / "templates/page-facet.php"),
     ("entry", PLUGIN / "templates/single-layoff.php"),
+    ("quotes", PLUGIN / "templates/page-ai-quotes.php"),
 )
 
 TAP_MIN = 44.0

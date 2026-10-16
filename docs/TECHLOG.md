@@ -1,3 +1,12 @@
+## 2026-10-16 - Digest signup placed on the AI quotes page, the page half our readers land on (2.20.269)
+
+**Class:** novel (sign-up funnel audit, owner question 2026-10-16)
+**Guard:** `railway/tests/test_signup_reaches_landing_pages.py` now lists `templates/page-ai-quotes.php` under `TEMPLATE_SURFACES` (exactly one guarded `alt_digest_placement('quotes')` call) and `test_every_placed_context_has_its_own_lead_sentence` requires the `quotes` lead entry.
+
+GA4 for 2026-10-06..12 (weekly SEO report artifact, run 38741104820 in the sandbox repo): 4,014 sessions, of which 1,948 landed on `/blog/ai-layoff-tracker/ai-quotes` and 558 on the tracker itself. The quote wall rendered no signup at all, and the tracker's own signup sits at roughly 90 percent of a 400 KB page. The health digest of 2026-10-12 read "Subscribers 3". The placement file's "deliberately not added" list named the methodology, sources, health, press, report, dashboard and quarterly pages as sub-pages reached from the tracker; the quote wall is not reached from the tracker, it is where search and AI assistants send people first. The context lead is empty, as for `editions`, because the page's own footer paragraph says what the tracker is directly above the form; an empty lead also leaves `signup_fold_stamp.json` untouched.
+
+Not changed here, recorded in the audit (Desktop/AskTheRecruiter/Sign-up funnel audit.md): the Brevo backfill (`brevo-backfill.yml`) has never succeeded, both 2026-10-15 runs answered 503 before PR #536 merged and it has not been dispatched since, so lists 15-18 read 0 regardless of our table; the sandbox repo's `nudge-email` Railway cron service does not exist in Production although `NUDGE_EMAILS_ENABLED` is set on the backend, and `inactivity-cron.yml`'s default base URL is the Sandbox environment's frontend.
+
 ## 2026-10-15 - Brevo key lookup reads the official plugin's v3 option (2.20.268)
 
 **Class:** novel (owner request 2026-10-15)

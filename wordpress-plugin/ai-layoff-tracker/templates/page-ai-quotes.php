@@ -149,4 +149,7 @@ $src_label = function ($t) {
   <?php endif; ?>
 
   <p class="alt-qw-foot alt-muted"><b>How these are chosen:</b> a cut appears here only when the employer named AI or automation as a cause in words we can quote, confirmed by two independent passes, with the source on file. Investment in AI, a future projection, or AI used to pick who goes does not qualify. This is the strict, quotable standard; the tracker also has a broader AI-linked measure, labelled separately. <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/methodology/')); ?>">Full methodology &rarr;</a></p>
+
+  <?php // Our own digest signup, once. See includes/subscribe-placements.php.
+        if (function_exists('alt_digest_placement')) echo alt_digest_placement('quotes'); ?>
 </main>

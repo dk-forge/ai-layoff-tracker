@@ -24,6 +24,12 @@
  *   facet    /country-layoffs/, /state-layoffs/, /industry-layoffs/.
  *   entry    the layoffs CPT permalink, one row with its sources.
  *
+ *   quotes   /ai-layoff-tracker/ai-quotes/, the employer-quote wall. Added
+ *            2026-10-16: GA4 for 2026-10-06..12 put 1,948 of 4,014 landing
+ *            sessions on this one page (the tracker itself took 558) and it
+ *            carried no signup at all, which is the first reason the digest
+ *            lists stood at three subscribers.
+ *
  * DELIBERATELY NOT ADDED: the methodology, sources, health, press, report,
  * dashboard and quarterly pages. Those are tracker sub-pages reached from the
  * tracker, which already carries the signup and a hero button pointing at it,
@@ -56,7 +62,7 @@ if (!defined('ABSPATH')) exit;
  * them. Read by the tests, so the list cannot drift from what ships.
  */
 function alt_digest_placement_contexts() {
-    return array('post', 'company', 'facet', 'entry', 'editions');
+    return array('post', 'company', 'facet', 'entry', 'editions', 'quotes');
 }
 
 /**
