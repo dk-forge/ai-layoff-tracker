@@ -397,6 +397,9 @@ function alt_digest_context_lead($context) {
         // pays for on the OTHER surfaces too (railway/signup_fold.py
         // hashes the longest one). So this list's entry is silence.
         'editions' => '',
+        // The quote wall's own footer says what the tracker is, in the
+        // paragraph directly above this form. Silence, for the same reason.
+        'quotes'   => '',
     );
     return isset($leads[$context]) ? $leads[$context] : '';
 }
