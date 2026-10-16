@@ -141,6 +141,19 @@
       "oldest": "20261013T084500Z",
       "newest": "20261014T203000Z"
     },
+    "broad|f060b27756|20261014T083517Z|20261015T203517Z": {
+      "family": "broad",
+      "window_start": "20261014T083517Z",
+      "window_end": "20261015T203517Z",
+      "status": "complete",
+      "returned": 8239,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20261015T220606Z",
+      "updated": "20261015T220606Z",
+      "oldest": "20261014T084500Z",
+      "newest": "20261015T203000Z"
+    },
     "euphemism|0af9e5d519|20261006T083945Z|20261007T203945Z": {
       "family": "euphemism",
       "window_start": "20261006T083945Z",
