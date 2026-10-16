@@ -1,0 +1,104 @@
+{
+ "source": "census_qwi",
+ "api": "https://api.census.gov/data/timeseries/qwi/",
+ "fields": [
+  "breakdown",
+  "state",
+  "quarter",
+  "industry",
+  "sex",
+  "agegrp",
+  "education",
+  "race",
+  "ethnicity",
+  "HirA",
+  "Sep",
+  "EmpEnd"
+ ],
+ "codes": {
+  "sex": {
+   "0": "All",
+   "1": "Male",
+   "2": "Female"
+  },
+  "agegrp": {
+   "A00": "All ages",
+   "A01": "14-18",
+   "A02": "19-21",
+   "A03": "22-24",
+   "A04": "25-34",
+   "A05": "35-44",
+   "A06": "45-54",
+   "A07": "55-64",
+   "A08": "65-99"
+  },
+  "education": {
+   "E0": "All",
+   "E1": "Less than high school",
+   "E2": "High school",
+   "E3": "Some college or associate degree",
+   "E4": "Bachelor's degree or advanced degree",
+   "E5": "Not available (under 25)"
+  },
+  "race": {
+   "A0": "All",
+   "A1": "White alone",
+   "A2": "Black alone",
+   "A3": "American Indian or Alaska Native alone",
+   "A4": "Asian alone",
+   "A5": "Native Hawaiian or Other Pacific Islander alone",
+   "A7": "Two or more races"
+  },
+  "ethnicity": {
+   "A0": "All",
+   "A1": "Not Hispanic or Latino",
+   "A2": "Hispanic or Latino"
+  },
+  "industry": "2-digit NAICS sector (00 = all industries)",
+  "state": "2-digit state FIPS"
+ },
+ "licence": "Public domain (U.S. Census Bureau)",
+ "attribution": "Source: U.S. Census Bureau, Quarterly Workforce Indicators (LEHD), Census Data API. This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.",
+ "quarters": {
+  "2024-Q1": {
+   "rows": 2319,
+   "bytes": 128976,
+   "sha256": "f9239729969fbec5169cb9e836bbc8e15ec6fad798526049697041f487e7ef31"
+  },
+  "2024-Q2": {
+   "rows": 2315,
+   "bytes": 129133,
+   "sha256": "4f52c6c30e6cf4628424bdc0696937fd8b2dbf385f3520bad4edd6087e1ccca7"
+  },
+  "2024-Q3": {
+   "rows": 2314,
+   "bytes": 129081,
+   "sha256": "d7dd82b96c55509c6b22d2a53601385502453803d9622fbec82b86e5aa7bc750"
+  },
+  "2024-Q4": {
+   "rows": 2316,
+   "bytes": 129070,
+   "sha256": "edc0a7b5d7a7f10ffdff0643c02687ee16b606986334a1d3e21a034e4e273447"
+  },
+  "2025-Q1": {
+   "rows": 2316,
+   "bytes": 128741,
+   "sha256": "72802c4432de98a71087b9189c630dfee890a75bc2c64647fdb6ece0aeb126bf"
+  },
+  "2025-Q2": {
+   "rows": 2313,
+   "bytes": 129034,
+   "sha256": "aa53ba096e8439446c9ae9f027937af2cb75c69c3c714c7f5c84ecb7f79ca91b"
+  },
+  "2025-Q3": {
+   "rows": 2312,
+   "bytes": 128985,
+   "sha256": "67776e9a81ca0f7a49829759178aeb78acb067d200c9dcd21c12946141bea54a"
+  },
+  "2025-Q4": {
+   "rows": 2308,
+   "bytes": 104620,
+   "sha256": "b219ea16ac53a8dcf2111d81dbb71d263ce25e67be1050b011dba2597b69b425"
+  }
+ }
+}
