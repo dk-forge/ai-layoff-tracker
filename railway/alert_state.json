@@ -72,11 +72,6 @@
       "last": 1790014405,
       "subject": "CI noise, week 2026-w39: 3 noisy run(s) in ai-layoff-tracker"
     },
-    "company-directory-autopilot:main:df94a480d2f1dbbb": {
-      "first": 1792074821,
-      "last": 1792074821,
-      "subject": "CI RED: Company directory autopilot \u2014 Autopilot call 10 returned HTTP 500"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -163,6 +158,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-16T10:25:14+00:00",
+  "updated_at": "2026-10-16T14:34:37+00:00",
   "version": 1
 }
