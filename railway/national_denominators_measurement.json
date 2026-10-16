@@ -10,7 +10,7 @@
     "pl_group_layoffs",
     "is_hopuppsagnir"
   ],
-  "measured_at": "2026-10-09T16:34:05Z",
+  "measured_at": "2026-10-16T16:31:04Z",
   "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
   "slices": {
     "ee_collective_redundancy_notices": {
@@ -21,16 +21,16 @@
         "'Teade 1' vs 'Teade 2' is undefined in the file's own legend; Teade 2 runs at 84-89% of Teade 1 every year, so they are two stages of one duty and are never summed. The wider one is used, which cannot flatter us"
       ],
       "confirmed_interval": [
-        0.2192786832299177,
-        0.24973743122248113
+        0.2238460516338072,
+        0.2548343820820927
       ],
       "country": "Estonia",
       "counts": "persons named in redundancy notices (notice type 'Teade 1')",
-      "coverage_lower": 0.2341644204851752,
-      "coverage_upper": 0.2341644204851752,
-      "denominator": 2968,
+      "coverage_lower": 0.2389958734525447,
+      "coverage_upper": 0.2389958734525447,
+      "denominator": 2908,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "of the 2,968 workers notified to Eesti Töötukassa in 2025-08..2026-07, we hold between 695 (23.4%) and 695 (23.4%) jobs",
+      "detail": "of the 2,908 workers notified to Eesti Töötukassa in 2025-09..2026-08, we hold between 695 (23.9%) and 695 (23.9%) jobs",
       "held_detail": {
         "entries_any": 4,
         "entries_strict": 4
@@ -41,18 +41,18 @@
       "label": "Estonia koondamisteated — recipients of collective redundancy notices filed with Töötukassa",
       "licence": "CC BY-NC 3.0 — non-commercial. Used here to MEASURE, never republished to a reader-facing surface",
       "period": {
-        "from": "2025-08-01",
+        "from": "2025-09-01",
         "kind": "months_12",
-        "label": "2025-08..2026-07",
-        "to": "2026-07-31"
+        "label": "2025-09..2026-08",
+        "to": "2026-08-31"
       },
-      "period_age_days": 70,
+      "period_age_days": 46,
       "publisher_updated": "2026-10-05T12:20:22.477Z",
       "robots": "avaandmed.eesti.ee and andmed.eesti.ee both serve no robots.txt (404). tootukassa.ee allows the statistics path with Crawl-delay: 10, and is not fetched by this collector",
       "secondary": {
         "note": "summed over 12 months, so an employer filing in two months counts twice",
         "unit": "employers",
-        "value": 116
+        "value": 117
       },
       "source_url": "https://andmed.eesti.ee/api/v2/datasets/4c2af1b0-711a-4b7f-9751-be90f8963a5e/distribution/38d297d0-4f7b-4d26-b31a-f93261952221/file",
       "state": "measured",
@@ -69,38 +69,38 @@
         "official statistics in development, and revisable"
       ],
       "confirmed_interval": [
-        0.16743147324312438,
-        0.17010818683139975
+        0.16887761789065783,
+        0.1715730615565774
       ],
       "country": "United Kingdom",
       "counts": "potential redundancies on HR1 forms, by month of RECEIPT",
-      "coverage_lower": 0.168765600747174,
-      "coverage_upper": 0.27008611778626435,
-      "denominator": 300867,
+      "coverage_lower": 0.17022109896731216,
+      "coverage_upper": 0.27226471622006126,
+      "denominator": 298735,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "of the 300,867 workers notified to Insolvency Service, published by ONS in 2025-08..2026-07, we hold between 50,776 (16.9%) and 81,260 (27.0%) jobs",
+      "detail": "of the 298,735 workers notified to Insolvency Service, published by ONS in 2025-09..2026-08, we hold between 50,851 (17.0%) and 81,335 (27.2%) jobs",
       "held_detail": {
-        "entries_any": 24,
-        "entries_strict": 22
+        "entries_any": 25,
+        "entries_strict": 23
       },
-      "held_jobs_any": 81260,
-      "held_jobs_strict": 50776,
+      "held_jobs_any": 81335,
+      "held_jobs_strict": 50851,
       "key": "gb_hr1_potential_redundancies",
       "label": "Great Britain HR1 potential redundancies (TULRCA 1992 s.193)",
       "licence": "Open Government Licence v3.0",
       "period": {
-        "from": "2025-08-01",
+        "from": "2025-09-01",
         "kind": "months_12",
-        "label": "2025-08..2026-07",
-        "to": "2026-07-31"
+        "label": "2025-09..2026-08",
+        "to": "2026-08-31"
       },
-      "period_age_days": 70,
+      "period_age_days": 46,
       "publisher_updated": "2026-09-14T23:00:00.000Z",
       "robots": "ons.gov.uk serves no robots.txt (404) — no directive to obey",
       "secondary": {
         "note": "summed over 12 months, so an employer filing in two months counts twice",
         "unit": "employers",
-        "value": 4038
+        "value": 4034
       },
       "series_breaks": [
         {
@@ -144,7 +144,7 @@
       "counts": "proposed redundancies, by financial year (April-March)",
       "denominator": 3080,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "the newest settled period ends 557 days ago (ceiling 550 for a annual series) — the publisher has probably stopped or moved the file. The denominator is STALE, so no coverage figure is reported",
+      "detail": "the newest settled period ends 564 days ago (ceiling 550 for a annual series) — the publisher has probably stopped or moved the file. The denominator is STALE, so no coverage figure is reported",
       "key": "ni_proposed_redundancies",
       "label": "Northern Ireland proposed redundancies (Employment Rights (NI) Order 1996)",
       "licence": "accredited official statistics, Open Government Licence",
@@ -154,7 +154,7 @@
         "label": "2024/25",
         "to": "2025-03-31"
       },
-      "period_age_days": 557,
+      "period_age_days": 564,
       "publisher_updated": "2026-09",
       "robots": "www.nisra.gov.uk's robots.txt disallows '/*.xlsx', '/*.ods' and '/*.zip' for every agent (re-read 2026-09-04), so the redundancy workbook and the ODS bundle are refused to us and are NOT fetched; the refusal is recorded in country_coverage.REFUSAL_LEDGER, whose ruling names the HTML report as the alternative. The two www.nisra.gov.uk HTML pages read to find the latest report are 'Allow' under the same file. datavis.nisra.gov.uk serves no readable robots.txt: /robots.txt answers HTTP 200 with the host's HTML 'Unavailable' placeholder, which robots_gate reads as UNKNOWN",
       "secondary": {
@@ -226,7 +226,7 @@
         "label": "2025",
         "to": "2025-12-31"
       },
-      "period_age_days": 282,
+      "period_age_days": 289,
       "publisher_updated": "20260611T154255",
       "robots": "apiservice.mol.gov.tw returns an F5 'Request Rejected' page for /robots.txt itself, so no directive could be read. The data endpoints answer 200 to our own identifying agent string under an explicit open-data licence, and no block aimed at agents was found. Recorded as PERMITTED WITH THE ROBOTS FILE UNREADABLE — if that ever becomes a 403 to this agent it is a refusal and stays one. statfy.mol.gov.tw was unreachable and its robots.txt has never been read: treat as NOT permitted",
       "secondary": {
