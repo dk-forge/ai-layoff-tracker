@@ -80,55 +80,76 @@ def fetch(host: str, user: str, password: str, limit: int = 0) -> tuple[str, lis
     secrets = [password]
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="dmarc-"))
     saved: list[str] = []
+    detail_suffix = ""
+    unclean_logout = False
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(host, 993, ssl_context=ctx, timeout=30) as m:
-            try:
-                m.login(user, password)
-            except imaplib.IMAP4.error as exc:
-                # A refused login is a DIFFERENT state from an unreachable
-                # server: one needs a rotated secret, the other needs nothing.
-                return REJECTED, [], _scrub(exc, secrets)
-            m.select("INBOX")
-            typ, data = m.search(None, "UNSEEN")
-            if typ != "OK":
-                return UNKNOWN, [], "mailbox search failed"
-            ids = (data[0] or b"").split()[-limit:]
-            harvested: list[bytes] = []
-            for num in ids:
-                typ, raw = m.fetch(num, "(BODY.PEEK[])")
-                if typ != "OK" or not raw or not raw[0]:
-                    continue
-                msg = email.message_from_bytes(raw[0][1])
-                for part in msg.walk():
-                    name = part.get_filename() or ""
-                    if not _ATTACHMENT.search(name):
-                        continue
-                    payload = part.get_payload(decode=True)
-                    if not payload:
-                        continue
-                    dest = tmp / pathlib.Path(name).name
-                    dest.write_bytes(payload)
-                    saved.append(str(dest))
-                    if num not in harvested:
-                        harvested.append(num)
-            # A mailbox nobody empties fills up, and a full mailbox rejects
-            # mail, which would silently end this check. Clearing happens ONLY
-            # for messages whose attachment we actually wrote to disk: a
-            # message we could not read stays unread and untouched, so a parse
-            # failure is retried and stays visible rather than being destroyed
-            # by the thing that failed to understand it.
-            if harvested:
-                cleared = _clear(m, harvested)
-                detail_suffix = f", {cleared} cleared from the mailbox"
-            else:
-                detail_suffix = ""
-        return (OK if saved else EMPTY), saved, (
-            f"{len(saved)} report(s) fetched" + detail_suffix if saved
-            else "no unread report attachments found"
-        )
+        # NOT `with`. IMAP4_SSL.__exit__ calls LOGOUT, and a server that has
+        # just been made to fetch and delete through a connection can drop it
+        # right there (the same "socket error: EOF occurred in violation of
+        # protocol" that made every mailbox-janitor run on record red before
+        # 2026-09-09, see mailbox_janitor.sweep). An exception escaping that
+        # teardown must not erase a report this run already harvested and
+        # cleared -- that is strictly worse than a lost verdict, because the
+        # message is also gone from the mailbox. Teardown is best effort and
+        # is REPORTED, never promoted to the verdict.
+        m = imaplib.IMAP4_SSL(host, 993, ssl_context=ctx, timeout=30)
     except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
         return UNKNOWN, [], _scrub(exc, secrets)
+    try:
+        try:
+            m.login(user, password)
+        except imaplib.IMAP4.error as exc:
+            # A refused login is a DIFFERENT state from an unreachable
+            # server: one needs a rotated secret, the other needs nothing.
+            return REJECTED, [], _scrub(exc, secrets)
+        m.select("INBOX")
+        typ, data = m.search(None, "UNSEEN")
+        if typ != "OK":
+            return UNKNOWN, [], "mailbox search failed"
+        ids = (data[0] or b"").split()[-limit:]
+        harvested: list[bytes] = []
+        for num in ids:
+            typ, raw = m.fetch(num, "(BODY.PEEK[])")
+            if typ != "OK" or not raw or not raw[0]:
+                continue
+            msg = email.message_from_bytes(raw[0][1])
+            for part in msg.walk():
+                name = part.get_filename() or ""
+                if not _ATTACHMENT.search(name):
+                    continue
+                payload = part.get_payload(decode=True)
+                if not payload:
+                    continue
+                dest = tmp / pathlib.Path(name).name
+                dest.write_bytes(payload)
+                saved.append(str(dest))
+                if num not in harvested:
+                    harvested.append(num)
+        # A mailbox nobody empties fills up, and a full mailbox rejects
+        # mail, which would silently end this check. Clearing happens ONLY
+        # for messages whose attachment we actually wrote to disk: a
+        # message we could not read stays unread and untouched, so a parse
+        # failure is retried and stays visible rather than being destroyed
+        # by the thing that failed to understand it.
+        if harvested:
+            cleared = _clear(m, harvested)
+            detail_suffix = f", {cleared} cleared from the mailbox"
+    except (imaplib.IMAP4.error, OSError, ssl.SSLError) as exc:
+        return UNKNOWN, [], _scrub(exc, secrets)
+    finally:
+        # LOGOUT only, and best effort: a dying teardown must not invalidate
+        # the read and clear that already happened above.
+        try:
+            m.logout()
+        except Exception:
+            unclean_logout = True
+    if unclean_logout:
+        detail_suffix += " (the server dropped the session at logout; the fetch above had already finished)"
+    return (OK if saved else EMPTY), saved, (
+        f"{len(saved)} report(s) fetched" + detail_suffix if saved
+        else "no unread report attachments found" + detail_suffix
+    )
 
 
 def _clear(conn, nums: list[bytes]) -> int:
