@@ -1001,6 +1001,22 @@ PER_EMPLOYER_SWEPT = {
 BACKLOG_DECLARED = "2026-08-18"
 
 ACKNOWLEDGED_BACKLOG = {
+    # Both arrived in the corpus unnoticed and reddened country-coverage.yml on
+    # 2026-10-15 (run 38776547269: "2 countries that nobody has either
+    # classified OR acknowledged"). Acknowledged 2026-10-17 as dated outstanding
+    # work; the register entry is the work, and ops_status [3d] prints these
+    # every session until it is done. Leads, NOT findings: Jamaica's Employment
+    # (Termination and Redundancy Payments) Act 1974 reads as severance law with
+    # no notification duty to the State; Zimbabwe's Labour Act [Chapter 28:01]
+    # s.12C/12D sends a retrenchment notice to the works council / employment
+    # council and the Retrenchment Board. Neither primary text has been read,
+    # so neither country is classified here.
+    "Jamaica": ("2026-10-17",
+                "in the corpus since 2026-10-15; the ETRP Act 1974 and its "
+                "regulations have not been read, so no class is asserted"),
+    "Zimbabwe": ("2026-10-17",
+                 "in the corpus since 2026-10-15; Labour Act s.12C/12D has not been "
+                 "read verbatim, so no class is asserted"),
 }
 
 # The date is the FIRST element so `min()` over the backlog gives the oldest

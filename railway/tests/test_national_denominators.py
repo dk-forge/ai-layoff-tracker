@@ -285,6 +285,15 @@ class EverySeriesDeclaresWhatItCounts(unittest.TestCase):
             self.assertIn(spec["cadence"], nd.MAX_SERIES_LAG_DAYS, key)
             self.assertTrue(spec["caveats"], f"{key} declares no caveats")
 
+    def test_a_declared_lag_ceiling_carries_its_reason(self):
+        # A series may widen the cadence ceiling only with the reason beside it,
+        # and only upward: a ceiling below the cadence's would hide a real stop.
+        for key, spec in nd.SERIES.items():
+            if "max_lag_days" in spec:
+                self.assertTrue(spec.get("max_lag_why"), f"{key} widens the ceiling silently")
+                self.assertGreater(spec["max_lag_days"],
+                                   nd.MAX_SERIES_LAG_DAYS[spec["cadence"]], key)
+
     def test_every_not_buildable_entry_says_why(self):
         for key, spec in nd.NOT_BUILDABLE.items():
             self.assertTrue(spec.get("why"), key)
@@ -459,6 +468,35 @@ class TheNorthernIrelandReportIsDiscoveredNotDerived(unittest.TestCase):
                                    get=self._get(report=self.PLACEHOLDER))
         self.assertEqual(slice_["state"], UNKNOWN)
         self.assertIn("NiNotPublished", slice_["detail"])
+
+
+class ASeriesMayDeclareItsOwnLagCeiling(unittest.TestCase):
+    """NISRA's settled financial year runs a year behind its rolling row, so the
+    cadence ceiling (550 days) called a current report stale on 2026-10-16."""
+
+    KEY = "ni_proposed_redundancies"
+
+    def _series(self, to):
+        return {"period": {"kind": "financial_year_apr_mar", "label": "2024/25",
+                           "from": "2024-04-01", "to": to},
+                "value": 3080, "unit": nd.WORKERS,
+                "publisher_updated": "2026-09", "source_url": "https://example.test/"}
+
+    def _measure(self, to, today):
+        spec = dict(nd.SERIES[self.KEY],
+                    collector=lambda today=None, get=None: self._series(to))
+        with unittest.mock.patch.dict(nd.SERIES, {self.KEY: spec}):
+            return nd.measure_series(self.KEY, today=today)
+
+    def test_564_days_is_within_the_declared_ceiling(self):
+        slice_ = self._measure("2025-03-31", date(2026, 10, 16))
+        self.assertEqual(slice_["period_age_days"], 564)
+        self.assertNotEqual(slice_["state"], UNKNOWN, slice_.get("detail"))
+
+    def test_beyond_the_declared_ceiling_is_still_stale(self):
+        slice_ = self._measure("2024-03-31", date(2026, 10, 16))
+        self.assertEqual(slice_["state"], UNKNOWN)
+        self.assertIn("STALE", slice_["detail"])
 
 
 if __name__ == "__main__":

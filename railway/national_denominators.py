@@ -867,6 +867,21 @@ SERIES = {
         # about coverage and everything about the mismatch. The denominator is
         # still fetched, recorded and freshness-checked every run, so the day a
         # region field exists this becomes a measurement by deleting one line.
+        # THE SETTLED ROW RUNS A YEAR BEHIND THE TABLE. NISRA's last row is
+        # always the rolling twelve months to the report month, labelled like a
+        # financial year (parse_ni marks it rolling). FY 2024/25 (to 2025-03-31)
+        # therefore stayed the newest SETTLED period through the September 2026
+        # report, 564 days later, and the 550-day annual ceiling called the
+        # publisher stopped (national-denominators run 38932521671, 2026-10-16)
+        # while the report was current and read live. The settled row advances
+        # only when the rolling label turns, so the newest settled period is
+        # legitimately up to ~760 days old. 800 is that pattern plus a month of
+        # publication lag; beyond it NISRA really has stopped.
+        "max_lag_days": 800,
+        "max_lag_why": (
+            "the newest settled financial year is replaced only when the rolling "
+            "row's label turns, roughly a year after the year ends, so a current "
+            "report carries a settled period up to ~760 days old"),
         "numerator_available": False,
         "no_numerator_why": (
             "the denominator covers Northern Ireland alone and the tracker's country "
@@ -1052,7 +1067,11 @@ def measure_series(key, today=None, get=None, agg_get=None):
     # the cadence's real ceiling.
     lag = ((today or date.today()) - date(*(int(x) for x
                                             in series["period"]["to"].split("-")))).days
-    ceiling = MAX_SERIES_LAG_DAYS.get(spec["cadence"], 550)
+    # A series may declare its own ceiling, with the reason beside it
+    # (`max_lag_why`, pinned by the test suite). NISRA's settled financial year
+    # runs a year behind its rolling row, so its newest settled period is
+    # legitimately older than the annual cadence ceiling; see the NI spec.
+    ceiling = spec.get("max_lag_days") or MAX_SERIES_LAG_DAYS.get(spec["cadence"], 550)
     slice_["period_age_days"] = lag
     if lag > ceiling:
         slice_.update(state=UNKNOWN, detail=(
