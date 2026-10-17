@@ -102,6 +102,11 @@
       "last": 1790617243,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: recorded 20,854,993 jobs / 68,498 entries"
     },
+    "main-green-check:main:dbefdbe0763bb095": {
+      "first": 1792226711,
+      "last": 1792226711,
+      "subject": "CI RED: Main green check \u2014 error: main is NOT verifiably green: deploy-plugin.yml FAIL (newest completed run is failure on 62fa8709)"
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -133,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-17T08:26:34+00:00",
+  "updated_at": "2026-10-17T08:45:12+00:00",
   "version": 1
 }
