@@ -1,3 +1,9 @@
+## 2026-10-17 - Labour data roadmap (#478) moved from GitHub into COVERAGE_ROADMAP.md (no plugin change)
+
+**Class:** `novel` (owner rule 2026-10-17: GitHub holds live work only; plans and checklists live in repo docs)
+**Guard:** none, and why: a document move. The issue body, the standing requirement and a per-item status table now sit in `docs/COVERAGE_ROADMAP.md` section 4; the issue is closed with a link to that section.
+
+Status checked against the code on main rather than the issue's comments, which disagreed with each other: the 2026-10-12 comment recorded OEWS, O*NET exposure and Employment Projections as shipped in 2.20.229, the 2026-10-15 comment listed them as still to build. `railway/ai_exposure_import.py`, `includes/ai-exposure.php` and `data/archive/ai_exposure/` exist on main, so the table says shipped. Three items are genuinely open: postings on the early-warning timeline (`includes/early-warning.php` reads no postings), a direct DOL ETA 539 read (claims come through FRED), and 8-K Item 2.05 restructuring charges as a series.
 ## 2026-10-17 - Two UNKNOWN verdicts read as faults: NISRA's settled year, and two countries nobody declared (no plugin change)
 
 **Class:** source-watermark (the NI slice; `absent-read-as-ok` closed properly for Jamaica and Zimbabwe (the register noticed, which is the mechanism working))

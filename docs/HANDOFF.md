@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-17, branch `docs/478-labour-roadmap` (PR). No plugin file, no version reserved.** GitHub issue #478 (labour data roadmap) moved into `docs/COVERAGE_ROADMAP.md` section 4 with its status; see TECHLOG 2026-10-17 (roadmap).
 - **RELEASED - Claude (agent), 2026-10-17, branch `fix/unknown-denominator-and-register` (PR). No plugin file, no version reserved.** NI denominator declares its own lag ceiling; Jamaica and Zimbabwe acknowledged in the country register backlog; see TECHLOG 2026-10-17.
 - **RELEASED - Claude (agent), 2026-10-16, branch `feat/signup-on-ai-quotes` (PR). Reserves plugin version 2.20.269.** Digest signup placed on the AI quotes page; see TECHLOG 2026-10-16 (2.20.269).
 - **RELEASED - Claude (agent), 2026-10-15, branch `fix/brevo-key-from-sib` (PR). Reserves plugin version 2.20.268 (2.20.266 was skipped: #537 shipped 2.20.267 first).** Brevo key lookup reads the official plugin's `sib_api_key_v3`; see TECHLOG 2026-10-15 (2.20.268).
