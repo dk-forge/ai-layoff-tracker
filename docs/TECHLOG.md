@@ -1,3 +1,14 @@
+## 2026-10-17 - Two UNKNOWN verdicts read as faults: NISRA's settled year, and two countries nobody declared (no plugin change)
+
+**Class:** `source-watermark` (the NI slice); `absent-read-as-ok` closed properly for Jamaica and Zimbabwe (the register noticed, which is the mechanism working)
+**Guard:** `railway/tests/test_national_denominators.py::ASeriesMayDeclareItsOwnLagCeiling` (564 days on the NI slice is within its declared ceiling; 929 days is still STALE) and `EverySeriesDeclaresWhatItCounts::test_a_declared_lag_ceiling_carries_its_reason` (a per-series ceiling must carry `max_lag_why` and may only widen the cadence ceiling, never narrow it).
+
+`national-denominators.yml` run 38932521671 (2026-10-16) exited 3: `ni_proposed_redundancies` "newest settled period ends 564 days ago (ceiling 550 for a annual series) — the publisher has probably stopped". Read live on 2026-10-17: NISRA's September 2026 Labour Market Report is current and the collector reads it. The table's last row, labelled `2025/26`, is the rolling twelve months to August 2026 (the report's own prose: "Over the last twelve months, to the end of August 2026 ... 2,950 proposed redundancies"), which `parse_ni` correctly marks rolling and never measures against. The newest SETTLED financial year is therefore 2024/25 (to 2025-03-31), and it stays the newest settled row until the rolling label turns, roughly a year after the year ends. A current report carries a settled period up to ~760 days old by construction, so a 550-day ceiling calls NISRA stopped for about seven months of every year. The NI spec now declares `max_lag_days: 800` with `max_lag_why` beside it, and `measure_series` reads a declared ceiling before the cadence default. Not a widening to clear a red run: the cadence ceiling still binds every other series, and NI beyond 800 days still reads STALE.
+
+`country-coverage.yml` run 38776547269 (2026-10-15) exited 3: "2 countries in the corpus that nobody has either classified OR acknowledged: Jamaica, Zimbabwe". That is the register doing its one job. Both are now in `ACKNOWLEDGED_BACKLOG`, dated 2026-10-17, with the leads recorded as leads (Jamaica's Employment (Termination and Redundancy Payments) Act 1974; Zimbabwe's Labour Act s.12C/12D and the Retrenchment Board) and no class asserted, because neither primary text has been read. `ops_status [3d]` prints the backlog and its oldest date every session until the two register entries are written.
+
+Both workflows were re-dispatched after merge to prove the verdicts cleared; the GitHub issues in the sandbox repo (#2311, #2234) carry the run links.
+
 ## 2026-10-16 - Digest signup placed on the AI quotes page, the page half our readers land on (2.20.269)
 
 **Class:** novel (sign-up funnel audit, owner question 2026-10-16)
