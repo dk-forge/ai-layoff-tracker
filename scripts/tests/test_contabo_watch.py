@@ -15,18 +15,28 @@ class Decide(unittest.TestCase):
         a, s = cw.decide({}, False, 1000)
         self.assertEqual((a, s["fails"]), ("wait", 1))
 
-    def test_second_consecutive_failure_restarts(self):
+    def test_second_consecutive_failure_still_waits(self):
         _, s = cw.decide({}, False, 1000)
         a, s = cw.decide(s, False, 1600)
+        self.assertEqual((a, s["fails"]), ("wait", 2))
+        self.assertEqual(s.get("restarts", []), [])
+
+    def test_third_consecutive_failure_restarts(self):
+        _, s = cw.decide({}, False, 1000)
+        _, s = cw.decide(s, False, 1600)
+        a, s = cw.decide(s, False, 2200)
         self.assertEqual(a, "restart")
-        self.assertEqual(s["restarts"], [1600])
+        self.assertEqual(s["restarts"], [2200])
         self.assertEqual(s["fails"], 0)
 
     def test_healthy_resets_count(self):
         _, s = cw.decide({}, False, 1000)
-        a, s = cw.decide(s, True, 1600)
+        _, s = cw.decide(s, False, 1600)
+        a, s = cw.decide(s, True, 2200)
         self.assertEqual((a, s["fails"]), ("ok", 0))
-        a, _ = cw.decide(s, False, 2200)
+        a, s = cw.decide(s, False, 2800)
+        self.assertEqual(a, "wait")
+        a, _ = cw.decide(s, False, 3400)
         self.assertEqual(a, "wait")
 
     def test_cooldown_after_restart(self):
@@ -34,15 +44,15 @@ class Decide(unittest.TestCase):
         self.assertEqual(a, "cooldown")
 
     def test_cap_two_per_six_hours_then_one_mail(self):
-        s = {"fails": 1, "restarts": [0, H]}
+        s = {"fails": 2, "restarts": [0, H]}
         a, s = cw.decide(s, False, 2 * H)
         self.assertEqual(a, "capped")
-        s["fails"] = 1
+        s["fails"] = 2
         a, s = cw.decide(s, False, 2 * H + 600)
         self.assertEqual(a, "capped-quiet")
 
     def test_old_restarts_age_out(self):
-        a, s = cw.decide({"fails": 1, "restarts": [0, H]}, False, 8 * H)
+        a, s = cw.decide({"fails": 2, "restarts": [0, H]}, False, 8 * H)
         self.assertEqual(a, "restart")
         self.assertEqual(s["restarts"], [8 * H])
 
@@ -62,9 +72,12 @@ class WatchWithMockedHttp(unittest.TestCase):
                       notify=lambda b, d: mailed.append(b))
         return st, calls, mailed
 
-    def test_down_twice_posts_restart_only_for_down_box(self):
-        st, calls, _ = self.run_watch({}, {"box1": "stopped", "box2": "running"}, True, 0)
-        st, calls, _ = self.run_watch(st, {"box1": "stopped", "box2": "running"}, True, 600)
+    def test_down_three_times_posts_restart_only_for_down_box(self):
+        down = {"box1": "stopped", "box2": "running"}
+        st, calls, _ = self.run_watch({}, down, True, 0)
+        st, calls, _ = self.run_watch(st, down, True, 600)
+        self.assertFalse([u for m, u in calls if m == "POST"])
+        st, calls, _ = self.run_watch(st, down, True, 1200)
         posts = [u for m, u in calls if m == "POST"]
         self.assertEqual(posts, [f"{cw.API}/203574635/actions/restart"])
 
@@ -73,11 +86,28 @@ class WatchWithMockedHttp(unittest.TestCase):
         self.assertEqual(st["box1"]["fails"], 1)
 
     def test_capped_mails_once(self):
-        state = {"box1": {"fails": 1, "restarts": [0, H]},
+        state = {"box1": {"fails": 2, "restarts": [0, H]},
                  "box2": {}}
         _, calls, mailed = self.run_watch(state, {"box1": "stopped", "box2": "running"}, True, 2 * H)
         self.assertEqual(mailed, ["box1"])
         self.assertFalse([u for m, u in calls if m == "POST"])
+
+    def test_restart_http_error_does_not_crash_the_run(self):
+        """A 429 (or any HTTPError) from the restart POST must not abort
+        watch() before state is saved and the other box is processed."""
+        import urllib.error
+
+        def http(method, url, data=None, headers=None):
+            if method == "POST":
+                raise urllib.error.HTTPError(url, 429, "Too Many Requests", {}, None)
+            box = "box1" if cw.BOXES["box1"]["id"] in url else "box2"
+            return 200, {"data": [{"status": "stopped"}]}
+
+        state = {"box1": {"fails": 2}, "box2": {}}
+        st = cw.watch(state, "T", 1000, http=http, probe=lambda ip: True,
+                      notify=lambda b, d: None)
+        self.assertEqual(st["box1"]["restarts"], [1000])
+        self.assertEqual(st["box2"]["fails"], 1)
 
 
 if __name__ == "__main__":

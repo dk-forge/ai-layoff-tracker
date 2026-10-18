@@ -10,7 +10,7 @@ boxes are down. Docs: docs/TECHLOG.md 2026-10-18.
 
 Watch rules (owner spec, sandbox docs/AUTOMATION_MAP.md Layer 1):
   - healthy = API status "running" AND TCP 22 answers within 5 s
-  - restart after 2 consecutive unhealthy checks
+  - restart after 3 consecutive unhealthy checks (30 min)
   - at most 2 restarts per box per 6 h; after a restart, wait 15 min
     (cooldown) before judging the box again so it can boot
   - when the cap is hit: ONE email per cap window (Resend via
@@ -33,7 +33,7 @@ BOXES = {
     "box1": {"id": "203574635", "ip": "173.249.57.163"},
     "box2": {"id": "203655919", "ip": "95.111.255.7"},
 }
-UNHEALTHY_BEFORE_RESTART = 2
+UNHEALTHY_BEFORE_RESTART = 3  # 2 false-alarmed on a busy-but-healthy box2 (2026-10-18 17:47-17:56 UTC)
 MAX_RESTARTS = 2
 WINDOW_S = 6 * 3600
 COOLDOWN_S = 15 * 60
@@ -145,7 +145,10 @@ def watch(state, token, now, dry=False, http=_http, probe=tcp22, notify=notify_c
         action, state[box] = decide(state.get(box, {}), healthy, now)
         print(f"{box}: status={st} tcp22={'up' if up else 'down'} -> {action}")
         if action == "restart" and not dry:
-            print(f"{box}: restart HTTP {restart(token, box, http)}")
+            try:
+                print(f"{box}: restart HTTP {restart(token, box, http)}")
+            except Exception as e:
+                print(f"{box}: restart failed: {type(e).__name__}")
         elif action == "capped" and not dry:
             notify(box, f"status={st} tcp22={'up' if up else 'down'}")
     return state

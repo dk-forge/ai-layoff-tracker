@@ -4,6 +4,19 @@
 **Guard:** `railway/tests/test_follow_talent.py` (talent kinds need the talent plugin; a talent follow opts into the TALENT list, never layoff; cap of 10; matches split by family; both senders and the relay attach `talent_follow_section` for talent readers only; per-family stop links; the composer links each source document and composes no figure; the privacy note discloses follows) plus the existing `test_follow_alerts.py` / `test_follow_city_flag.py`, unchanged and green.
 
 `includes/follows.php` gains kinds `talent_city` and `talent_company` on the SAME table, double opt-in, stop links and purge. They are accepted only when the talent plugin answers `tit_follow_resolve()` in-process (both plugins run in one install; talent-intelligence-tracker 1.108.0, PR #274, adds it), and their rows come from `tit_follow_rows()`: the publisher's headline linked to the document, newest first, at most 10. Following one sets `consent_talent` (frequency weekly unless the reader already chose one; daily is set on the preferences page), never `consent_layoff`. `alt_follows_section_for(..., 'talent')` composes "Hiring signals you follow"; `digest-api.php` hands it as `talent_follow_section`, `railway/digest_send.py` appends it for talent-list readers, and the wp_mail fallback does the same. A follow alone is still never a reason to send. The privacy note under the signup form now names follows (company and state follows were already stored and not named there). Nothing about any follower reaches the talent repo or its database.
+## 2026-10-18 - Owner ruling: the federal RIF collector stays live (no plugin change)
+
+**Class:** novel (owner ruling 2026-10-18, board item "Federal layoffs collector is already running monthly: keep it or switch it off?")
+**Guard:** none, a ruling; `railway/tests/test_federal_rif.py` already pins what the collector counts.
+
+`federal-rif-import.yml` (monthly, 6th 14:00 UTC, OPM EHRI category `SH` executed RIFs only; deferred resignations, early-outs and expired appointments excluded) stays armed. The board's older line "built switched off" is superseded: it was armed before this ruling and the owner chose to keep it. Do not switch it off without asking.
+
+## 2026-10-18 - Indeed job postings on the early-warning timeline (2.20.271)
+
+**Class:** novel (board item "Early-warning view: job postings, layoff notices, jobless claims on one timeline"; COVERAGE_ROADMAP section 4 item 1, the one open piece)
+**Guard:** `railway/tests/test_early_warning.py`: postings drawn per industry but NEVER moving the status or its reasons (a 50% postings collapse leaves a calm industry Stable); "All industries" uses the seasonally adjusted national aggregate; no postings doc means no postings line; the panel credits Indeed Hiring Lab (CC BY 4.0) and carries a "postings through" as-of only when a postings line is drawn.
+
+`includes/early-warning.php` now reads the stored `indeed_postings` reference doc (already live since 2.20.254) and adds one `kind: postings` line per industry: each mapped Indeed occupational sector's weekly index averaged per month, then the sectors present averaged with equal weight. The map from Indeed's OCCUPATIONAL sectors to our industries is approximate and the caption says so, as it already did for JOLTS and QWI. Postings are context like our own WARN counts: not official, a measure of hiring demand rather than job loss, never fed to the label. The JS draws them dotted in palette slot 1. No collector, no new source, no paid call; the Sources row already exists. Not live-verified from this session (deploy on merge).
 
 ## 2026-10-18 - Tracker zeros: the board and date presets counted the browser's day, not the site's (2.20.270)
 
@@ -30282,3 +30295,11 @@ timing out)
 reporting workflow (`Broken-link check`); a repo test cannot assert that a
 remote WordPress page answers, only a live probe can, and this job already
 is that probe.
+
+## 2026-10-18 — contabo-watch restarts only after 3 failed checks
+On 17:47 and 17:56 UTC the watchdog read healthy box2 as status=unknown/tcp22=down
+twice and tried to restart it (the POST 429'd); an 18:12 check showed box2
+running with SSH up. `UNHEALTHY_BEFORE_RESTART` 2 -> 3 (restart after ~30 min
+of failures, not ~20). **Guard:** `scripts/tests/test_contabo_watch.py`
+(second failure waits, third restarts).
+**Class:** absent-read-as-ok (a missed probe on a busy box read as "down"; the fix waits for more evidence)

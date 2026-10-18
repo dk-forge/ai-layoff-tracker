@@ -7,7 +7,9 @@
  *   - FRED weekly initial jobless claims (national, averaged per month),
  *   - BLS JOLTS layoffs and discharges for the matching supersector,
  *   - Census QWI separations for the matching NAICS sectors, summed over the
- *     states that published (quarterly, placed on the quarter's last month).
+ *     states that published (quarterly, placed on the quarter's last month),
+ *   - Indeed Hiring Lab job postings for the matching occupational sectors
+ *     (weekly index, averaged per month, sectors weighted equally).
  *
  * THE STATUS LABEL (cooling / stable / heating up) IS COMPUTED ONLY FROM THE
  * OFFICIAL SERIES, never from the tracker's own counts, by this rule
@@ -24,6 +26,10 @@
  *      "Cooling" when at least two are falling and more fall than rise;
  *      otherwise "Stable".
  *
+ * Postings are drawn as CONTEXT, like the tracker's own WARN counts: they are
+ * not official statistics, they measure hiring demand rather than job loss,
+ * and they NEVER feed the status (pinned by test_early_warning.py).
+ *
  * These are all-cause measures. Nothing here says why anyone lost a job and
  * nothing here attributes any change to AI.
  */
@@ -34,20 +40,30 @@ if (!defined('ALT_EW_THRESHOLD')) define('ALT_EW_THRESHOLD', 0.05);
 
 /**
  * Industry key => [label, tracker industries, JOLTS supersector label, QWI
- * NAICS sectors]. The pairing is approximate: tracker industries are a
- * newsroom vocabulary, JOLTS and QWI use NAICS. The caption says so.
+ * NAICS sectors, Indeed occupational sectors]. The pairing is approximate:
+ * tracker industries are a newsroom vocabulary, JOLTS and QWI use NAICS, and
+ * Indeed groups postings by OCCUPATION, not industry. The caption says so.
+ * null Indeed sectors = the national seasonally adjusted aggregate.
  */
 function alt_ew_industries() {
     return array(
-        'all' => array('All industries', null, 'Total nonfarm', null),
-        'information' => array('Information and technology', array('Technology', 'Telecom', 'Media & Entertainment'), 'Information', array('51')),
-        'manufacturing' => array('Manufacturing', array('Manufacturing', 'Automotive', 'Aerospace & Defense'), 'Manufacturing', array('31-33')),
-        'finance' => array('Finance and insurance', array('Finance & Insurance'), 'Financial activities', array('52', '53')),
-        'trade' => array('Retail, trade and transport', array('Retail & E-commerce', 'Logistics & Transport', 'Consumer Goods'), 'Trade, transportation, and utilities', array('42', '44-45', '48-49', '22')),
-        'professional' => array('Professional and business services', array('Professional Services'), 'Professional and business services', array('54', '55', '56')),
-        'health_education' => array('Health care and education', array('Healthcare & Pharma', 'Education'), 'Private education and health services', array('61', '62')),
-        'leisure' => array('Leisure and hospitality', array('Food & Hospitality', 'Airlines & Travel'), 'Leisure and hospitality', array('71', '72')),
-        'construction' => array('Construction and real estate', array('Real Estate & Construction'), 'Construction', array('23')),
+        'all' => array('All industries', null, 'Total nonfarm', null, null),
+        'information' => array('Information and technology', array('Technology', 'Telecom', 'Media & Entertainment'), 'Information', array('51'),
+            array('Software Development', 'IT Operations & Helpdesk', 'Information Design & Documentation', 'Media & Communications')),
+        'manufacturing' => array('Manufacturing', array('Manufacturing', 'Automotive', 'Aerospace & Defense'), 'Manufacturing', array('31-33'),
+            array('Production & Manufacturing', 'Mechanical Engineering', 'Industrial Engineering', 'Electrical Engineering')),
+        'finance' => array('Finance and insurance', array('Finance & Insurance'), 'Financial activities', array('52', '53'),
+            array('Banking & Finance', 'Insurance', 'Accounting')),
+        'trade' => array('Retail, trade and transport', array('Retail & E-commerce', 'Logistics & Transport', 'Consumer Goods'), 'Trade, transportation, and utilities', array('42', '44-45', '48-49', '22'),
+            array('Retail', 'Driving', 'Loading & Stocking', 'Logistic Support')),
+        'professional' => array('Professional and business services', array('Professional Services'), 'Professional and business services', array('54', '55', '56'),
+            array('Marketing', 'Legal', 'Human Resources', 'Project Management', 'Management', 'Administrative Assistance')),
+        'health_education' => array('Health care and education', array('Healthcare & Pharma', 'Education'), 'Private education and health services', array('61', '62'),
+            array('Nursing', 'Medical Technician', 'Physicians & Surgeons', 'Pharmacy', 'Therapy', 'Education & Instruction', 'Childcare')),
+        'leisure' => array('Leisure and hospitality', array('Food & Hospitality', 'Airlines & Travel'), 'Leisure and hospitality', array('71', '72'),
+            array('Food Preparation & Service', 'Hospitality & Tourism', 'Arts & Entertainment')),
+        'construction' => array('Construction and real estate', array('Real Estate & Construction'), 'Construction', array('23'),
+            array('Construction', 'Civil Engineering', 'Real Estate')),
     );
 }
 
@@ -166,6 +182,35 @@ function alt_ew_qwi_quarterly($qwi, $sectors) {
     return $out;
 }
 
+/** The national seasonally adjusted series name in the Indeed doc (sources/indeed_postings.py ALL_SECTORS). */
+if (!defined('ALT_EW_INDEED_ALL')) define('ALT_EW_INDEED_ALL', 'All postings (seasonally adjusted)');
+
+/**
+ * Indeed postings index per month, ym => value: each sector's weekly index
+ * averaged per month, then the sectors present averaged with equal weight.
+ * null $sectors = the national seasonally adjusted aggregate.
+ */
+function alt_ew_postings_monthly($indeed, $sectors) {
+    $want = $sectors === null ? array(ALT_EW_INDEED_ALL) : $sectors;
+    $sum = $n = array();
+    foreach ((array) ($indeed['datasets']['weekly'] ?? array()) as $row) {
+        if (!is_array($row) || !isset($row[0], $row[1], $row[2]) || !is_numeric($row[2])) continue;
+        if (!in_array((string) $row[0], $want, true)) continue;
+        $ym = substr((string) $row[1], 0, 7);
+        $k = (string) $row[0];
+        $sum[$ym][$k] = ($sum[$ym][$k] ?? 0) + (float) $row[2];
+        $n[$ym][$k] = ($n[$ym][$k] ?? 0) + 1;
+    }
+    $out = array();
+    foreach ($sum as $ym => $by) {
+        $means = array();
+        foreach ($by as $k => $s) $means[] = $s / $n[$ym][$k];
+        $out[$ym] = round(array_sum($means) / count($means), 1);
+    }
+    ksort($out);
+    return $out;
+}
+
 /** "2026-Q2" => "2026-06" (the quarter's last month). */
 function alt_ew_quarter_month($q) {
     return preg_match('/^(\d{4})-Q([1-4])$/', (string) $q, $m) ? sprintf('%s-%02d', $m[1], (int) $m[2] * 3) : '';
@@ -210,7 +255,7 @@ function alt_ew_index($vals) {
  *   industries: key => [label, status, status_label, reasons[], series[]]
  *   series: [name, kind (official|tracker), raw[], index[]]
  */
-function alt_ew_bundle($bls, $fred, $qwi, $warn, $now = null) {
+function alt_ew_bundle($bls, $fred, $qwi, $warn, $now = null, $indeed = null) {
     $now = $now ?: time();
     $last = gmdate('Y-m', strtotime(gmdate('Y-m-01', $now) . ' -1 month'));
     $months = array();
@@ -221,6 +266,7 @@ function alt_ew_bundle($bls, $fred, $qwi, $warn, $now = null) {
     $out = array();
     foreach (alt_ew_industries() as $key => $def) {
         list($label, $tracker, $jolts_label, $sectors) = $def;
+        $indeed_sectors = array_key_exists(4, $def) ? $def[4] : null;
         $jolts = $bls ? alt_ew_jolts_monthly($bls, $jolts_label) : array();
         $qwi_q = $qwi ? alt_ew_qwi_quarterly($qwi, $sectors) : array();
         if (!$jolts && !$qwi_q && !$claims) continue;
@@ -266,6 +312,15 @@ function alt_ew_bundle($bls, $fred, $qwi, $warn, $now = null) {
         }
         if ($any) {
             $series[] = array('name' => 'WARN notices in this tracker', 'kind' => 'tracker', 'raw' => $raw, 'index' => alt_ew_index($raw));
+        }
+        // Indeed postings: context, shown on the timeline, NEVER fed to the status.
+        if ($indeed) {
+            $pm = alt_ew_postings_monthly($indeed, $indeed_sectors);
+            $raw = array();
+            foreach ($months as $ym) $raw[] = $pm[$ym] ?? null;
+            if (array_filter($raw, 'is_numeric')) {
+                $series[] = array('name' => 'Indeed job postings index (hiring demand)', 'kind' => 'postings', 'raw' => $raw, 'index' => alt_ew_index($raw));
+            }
         }
         $status = alt_ew_status($changes);
         $out[$key] = array(

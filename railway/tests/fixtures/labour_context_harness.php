@@ -50,7 +50,8 @@ try {
     require ALT_PLUGIN_DIR . 'includes/early-warning.php';
     if ($argv[3] === 'ew') {
         $html = alt_ew_bundle(alt_labour_context_doc('bls_jolts_cps'), alt_labour_context_doc('fred_labour'),
-            alt_labour_context_doc('census_qwi'), alt_ew_warn_counts(), isset($argv[4]) ? strtotime($argv[4]) : null);
+            alt_labour_context_doc('census_qwi'), alt_ew_warn_counts(), isset($argv[4]) ? strtotime($argv[4]) : null,
+            alt_labour_context_doc('indeed_postings'));
     } else {
         $html = $argv[3] === 'stat' ? alt_labour_context_stat($argv[4], $argv[5]) : alt_shortcode_labour_context();
     }

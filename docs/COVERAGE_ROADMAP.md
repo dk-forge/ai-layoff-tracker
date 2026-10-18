@@ -135,7 +135,7 @@ doc, in the same PR, plus a render test that the row is present.
 |---|---|---|---|
 | 1 | Indeed Hiring Lab postings | shipped 2.20.254, live 2026-10-14 | `railway/indeed_import.py`, `/reference/indeed_postings`, `indeed-import.yml` |
 | 1 | Early-warning view (claims + QWI, labels from official numbers) | shipped 2.20.227 | `includes/early-warning.php` |
-| 1 | **Postings on the early-warning timeline** | OPEN: needs a sector to industry map | `includes/early-warning.php` reads no postings yet |
+| 1 | Postings on the early-warning timeline | shipped 2.20.271 (approximate Indeed sector map, context only, never in the label) | `includes/early-warning.php` |
 | 2 | BLS OEWS | shipped 2.20.229 | `railway/ai_exposure_import.py`, `includes/ai-exposure.php` |
 | 3 | O*NET + published AI-exposure scores joined to OEWS | shipped 2.20.229 | same |
 | 4 | BLS Employment Projections | shipped 2.20.229 | same |
@@ -145,8 +145,7 @@ doc, in the same PR, plus a render test that the row is present.
 | 8 | SEC 8-K Item 2.05 restructuring $ amounts as a dataset | OPEN: 8-K filings are a layoff source, the $ series is not built | TECHLOG 2026-08-01 holds the recall analysis |
 | 9 | BLS CES hours + earnings | shipped 2.20.262 (rollup of 2.20.261) | `railway/ces_import.py` |
 
-Open work, in order: postings on the early-warning timeline (item 1, sector to
-industry map); ETA 539 read directly (item 6); 8-K Item 2.05 restructuring
+Open work, in order: ETA 539 read directly (item 6); 8-K Item 2.05 restructuring
 charges as a series (item 8). Each is a collector, a plugin endpoint, a
 Sources-page row, a register entry and a render test, per the standing
 requirement.
