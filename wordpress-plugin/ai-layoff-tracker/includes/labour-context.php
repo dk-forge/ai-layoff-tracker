@@ -140,7 +140,8 @@ function alt_shortcode_labour_context() {
     $qwi_opts = ($qwi && function_exists('alt_lc_qwi_options')) ? alt_lc_qwi_options($qwi) : null;
     $ew = null;
     if (function_exists('alt_ew_bundle') && ($bls || $fred || $qwi)) {
-        $ew = alt_ew_bundle($bls, $fred, $qwi, alt_ew_warn_counts());
+        $indeed = alt_labour_context_doc('indeed_postings');
+        $ew = alt_ew_bundle($bls, $fred, $qwi, alt_ew_warn_counts(), null, $indeed);
     }
     if (!$industries && !$dims && !$countries && !$fred_opts && !$qwi_opts && !$ew) {
         return '<!-- alt_labour_context: no reference data stored -->';
@@ -152,6 +153,7 @@ function alt_shortcode_labour_context() {
         'alt_lc_qwi' => $qwi,
         'alt_lc_qwi_opts' => $qwi_opts,
         'alt_lc_ew' => $ew,
+        'alt_lc_indeed' => isset($indeed) ? $indeed : null,
         'alt_lc_bls' => $bls,
         'alt_lc_oecd' => $oecd,
         'alt_lc_industries' => $industries,

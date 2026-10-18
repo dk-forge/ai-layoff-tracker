@@ -1,3 +1,17 @@
+## 2026-10-18 - Owner ruling: the federal RIF collector stays live (no plugin change)
+
+**Class:** novel (owner ruling 2026-10-18, board item "Federal layoffs collector is already running monthly: keep it or switch it off?")
+**Guard:** none, a ruling; `railway/tests/test_federal_rif.py` already pins what the collector counts.
+
+`federal-rif-import.yml` (monthly, 6th 14:00 UTC, OPM EHRI category `SH` executed RIFs only; deferred resignations, early-outs and expired appointments excluded) stays armed. The board's older line "built switched off" is superseded: it was armed before this ruling and the owner chose to keep it. Do not switch it off without asking.
+
+## 2026-10-18 - Indeed job postings on the early-warning timeline (2.20.271)
+
+**Class:** novel (board item "Early-warning view: job postings, layoff notices, jobless claims on one timeline"; COVERAGE_ROADMAP section 4 item 1, the one open piece)
+**Guard:** `railway/tests/test_early_warning.py`: postings drawn per industry but NEVER moving the status or its reasons (a 50% postings collapse leaves a calm industry Stable); "All industries" uses the seasonally adjusted national aggregate; no postings doc means no postings line; the panel credits Indeed Hiring Lab (CC BY 4.0) and carries a "postings through" as-of only when a postings line is drawn.
+
+`includes/early-warning.php` now reads the stored `indeed_postings` reference doc (already live since 2.20.254) and adds one `kind: postings` line per industry: each mapped Indeed occupational sector's weekly index averaged per month, then the sectors present averaged with equal weight. The map from Indeed's OCCUPATIONAL sectors to our industries is approximate and the caption says so, as it already did for JOLTS and QWI. Postings are context like our own WARN counts: not official, a measure of hiring demand rather than job loss, never fed to the label. The JS draws them dotted in palette slot 1. No collector, no new source, no paid call; the Sources row already exists. Not live-verified from this session (deploy on merge).
+
 ## 2026-10-18 - Tracker zeros: the board and date presets counted the browser's day, not the site's (2.20.270)
 
 **Class:** wrong-scope-or-key (the browser clock used where the site clock is the scope; owner report 2026-10-17, seen on a phone: Today / This week tiles at 0 and rows missing while /query had rows; sandbox queue item `tracker-zeros-watch`)
