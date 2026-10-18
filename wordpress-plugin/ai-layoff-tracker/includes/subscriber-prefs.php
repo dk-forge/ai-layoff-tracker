@@ -130,7 +130,7 @@ function alt_prefs_follows_of($subscriber_id) {
     global $wpdb;
     if (!function_exists('alt_follows_table')) return array();
     return $wpdb->get_results($wpdb->prepare(
-        'SELECT id, label, status FROM ' . alt_follows_table()
+        'SELECT id, kind, label, status FROM ' . alt_follows_table()
         . " WHERE subscriber_id = %d AND status IN ('active','pending') ORDER BY label, id",
         (int) $subscriber_id), ARRAY_A) ?: array();
 }
@@ -151,12 +151,15 @@ function alt_prefs_delete_follow($subscriber_id, $follow_id) {
 }
 
 /** Stop links for the digest's "What you follow" section: list of [label, url]. */
-function alt_follow_stop_links($subscriber_id) {
+function alt_follow_stop_links($subscriber_id, $family = null) {
     $row = alt_prefs_row_by_id($subscriber_id);
     if (!$row || ($row['status'] ?? '') !== 'confirmed') return array();
     $out = array();
     foreach (alt_prefs_follows_of($subscriber_id) as $f) {
         if ($f['status'] !== 'active') continue;
+        // Per family, so each section offers stops only for what it lists.
+        if ($family !== null && function_exists('alt_follow_is_talent')
+            && alt_follow_is_talent($f['kind'] ?? '') !== ($family === 'talent')) continue;
         $out[] = array((string) $f['label'], alt_follow_stop_url($row, $f['id']));
     }
     return $out;

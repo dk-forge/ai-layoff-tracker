@@ -538,6 +538,13 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
             and (follow.get("html") or "").strip() and (follow.get("text") or "").strip()):
         parts.append(("follows", follow["html"].strip(), follow["text"].strip(),
                       "", ("", True)))
+    # TALENT FOLLOWS (a city or employer on the talent tracker, owner ruling
+    # 2026-10-18): same rules, for talent-list readers only.
+    tfollow = recipient.get("talent_follow_section")
+    if (isinstance(tfollow, dict) and "talent" in (recipient.get("lists") or [])
+            and (tfollow.get("html") or "").strip() and (tfollow.get("text") or "").strip()):
+        parts.append(("talent_follows", tfollow["html"].strip(), tfollow["text"].strip(),
+                      "", ("", True)))
 
     # A way to change WHAT you get, beside the way to stop everything. One
     # click unsubscribe is a blunt instrument: a reader who wants one of three
