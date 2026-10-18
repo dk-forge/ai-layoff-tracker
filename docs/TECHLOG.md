@@ -30271,3 +30271,4 @@ twice and tried to restart it (the POST 429'd); an 18:12 check showed box2
 running with SSH up. `UNHEALTHY_BEFORE_RESTART` 2 -> 3 (restart after ~30 min
 of failures, not ~20). **Guard:** `scripts/tests/test_contabo_watch.py`
 (second failure waits, third restarts).
+**Class:** absent-read-as-ok (a missed probe on a busy box read as "down"; the fix waits for more evidence)
