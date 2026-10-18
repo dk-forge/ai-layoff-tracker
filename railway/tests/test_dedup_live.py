@@ -346,6 +346,11 @@ class InvariantCoverage(unittest.TestCase):
         "erm_provenance": ("test_erm_provenance_check", "WiredIntoTheOneRegistry"),
         "rolling_recall_fresh": ("test_rolling_recall", "WiredIntoTheOneRegistry"),
         "country_coverage_fresh": ("test_country_coverage", "WiredIntoTheOneRegistry"),
+        # The page-vs-/query and freshness checks (2026-10-18) are proved
+        # offline on injected pages, renders and /source-runs payloads.
+        "board_tiles_match_query": ("test_board_consistency", "TilesMatchQuery"),
+        "board_tiles_render": ("test_board_consistency", "RenderedAt390AndDesktop"),
+        "ingest_fresh_per_class": ("test_board_consistency", "IngestFreshness"),
         # Delegated rather than claimed by a live _assert BECAUSE IT IS
         # CURRENTLY FAILING LIVE, on purpose: three countries are published
         # under two labels each (see TECHLOG 2026-08-29). A live claim here

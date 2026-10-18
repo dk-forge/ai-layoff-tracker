@@ -5360,7 +5360,11 @@
         var el = document.getElementById('alt-narrative');
         if (!el) return;
         var tab = REGION_TABS[ACTIVE_TAB] || REGION_TABS.world;
-        var now = new Date();
+        // The SITE's day, not the browser's (owner report 2026-10-17: Today
+        // read 0 on a phone in the Netherlands, because after 18:00 New York
+        // the browser asked for tomorrow). Also what lets the inlined board
+        // match and be used instead of six fresh fetches.
+        var now = siteNow();
         var y = now.getFullYear();
         var base = tab.countries.length ? { country: tab.countries.join(',') } : {};
         var W = boardWindows(now);
@@ -5775,14 +5779,14 @@
         },
         month: {
             apply: function () {
-                var now = new Date();
+                var now = siteNow();
                 writeControl('alt-f-years', [String(now.getFullYear())]);
                 writeControl('alt-f-months', [String(now.getMonth() + 1)]);
                 writeControl('alt-f-quarters', []);
             },
             clear: function () { writeControl('alt-f-months', []); },
             active: function () {
-                var now = new Date();
+                var now = siteNow();
                 var ys = readControl('alt-f-years') || [], ms = readControl('alt-f-months') || [];
                 return ms.length === 1 && ms[0] === String(now.getMonth() + 1)
                     && ys.length === 1 && ys[0] === String(now.getFullYear());
@@ -5832,23 +5836,44 @@
       clicked. A hand-typed range in the popover that happens to equal a preset
       therefore lights that preset, which is correct: the page IS showing it.
 
-      isoDay() is the browser's local day, matching every other date the front
-      end computes (the board's periods, the trend buckets). The server counts
-      in site time; the two differ by at most a day at the boundary, and the
-      Date Range popover has always had the same property.
+      Every preset is anchored on siteNow(), the SITE's calendar day, not the
+      browser's. This comment used to say the two "differ by at most a day at
+      the boundary". For a reader in Amsterdam that boundary is six hours of
+      every day, and in those hours "Today" filtered the table to tomorrow in
+      New York: an empty day (owner report 2026-10-17, rows missing on a phone).
+      tests/test_board_site_clock.py.
     */
     function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
-    function daysAgo(n) { return new Date(Date.now() - n * 86400000); }
+    // THE SITE'S CALENDAR DAY, as a local Date at noon (noon so a DST jump or
+    // a whole-day subtraction can never land on the neighbouring date). The
+    // server counts every window in alt_site_timezone() (America/New_York);
+    // the zone arrives as altData.siteTz, with the same fallback here. Only
+    // the Y/M/D of the result mean anything. Falls back to the browser clock
+    // only where Intl cannot resolve the zone at all.
+    function siteNow(clock) {
+        var now = clock || new Date();
+        var zone = (window.altData && window.altData.siteTz) || 'America/New_York';
+        try {
+            var parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: zone, year: 'numeric', month: 'numeric', day: 'numeric'
+            }).formatToParts(now);
+            var v = {};
+            parts.forEach(function (p) { v[p.type] = parseInt(p.value, 10); });
+            if (v.year && v.month && v.day) return new Date(v.year, v.month - 1, v.day, 12, 0, 0);
+        } catch (e) { /* unknown zone: browser day below */ }
+        return now;
+    }
+    function daysAgo(n) { return new Date(siteNow().getTime() - n * 86400000); }
     var DATE_PRESETS = {
-        today: function () { var t = isoDay(new Date()); return [t, t]; },
-        d7:    function () { return [isoDay(daysAgo(6)), isoDay(new Date())]; },
-        d30:   function () { return [isoDay(daysAgo(29)), isoDay(new Date())]; },
+        today: function () { var t = isoDay(siteNow()); return [t, t]; },
+        d7:    function () { return [isoDay(daysAgo(6)), isoDay(siteNow())]; },
+        d30:   function () { return [isoDay(daysAgo(29)), isoDay(siteNow())]; },
         // "Last quarter" as the trailing 90 days, not the previous calendar
         // quarter. The Quarters dropdown already offers calendar quarters, and
         // two controls whose labels both say "quarter" and mean different
         // windows is how a reader stops trusting either.
-        d90:   function () { return [isoDay(daysAgo(89)), isoDay(new Date())]; },
-        ytd:   function () { return [new Date().getFullYear() + '-01-01', isoDay(new Date())]; },
+        d90:   function () { return [isoDay(daysAgo(89)), isoDay(siteNow())]; },
+        ytd:   function () { return [siteNow().getFullYear() + '-01-01', isoDay(siteNow())]; },
         all:   function () { return null; }
     };
 

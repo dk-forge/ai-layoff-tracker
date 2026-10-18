@@ -819,6 +819,7 @@ def _js_var_object(name):
 
 
 PRESET_PREAMBLE = """
+var window = {};
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 var CONTROLS = {};
 function readControl(id) { return CONTROLS[id] === undefined ? '' : CONTROLS[id]; }
@@ -840,7 +841,7 @@ class QuickDateRangesAreBackAndApplyWhatTheyName(unittest.TestCase):
         """Run, not read. Each preset writes the same from/to controls the date
         popover writes, so there is one date range on this page and not two."""
         got = jsrun.run(
-            ["applyDatePreset", "isoDay", "daysAgo"],
+            ["applyDatePreset", "isoDay", "daysAgo", "siteNow"],
             PRESET_PREAMBLE,
             "(function () {"
             " var out = {};"
@@ -852,7 +853,10 @@ class QuickDateRangesAreBackAndApplyWhatTheyName(unittest.TestCase):
             " return out; })()",
             optional=("DATE_PRESETS",))
         import datetime
-        today = datetime.date.today()
+        from zoneinfo import ZoneInfo
+        # The SITE's day (America/New_York), which the presets now count in
+        # (TECHLOG 2026-10-18, test_board_site_clock.py), not the runner's.
+        today = datetime.datetime.now(ZoneInfo("America/New_York")).date()
         iso = lambda d: d.isoformat()
         self.assertEqual(got["today"], [iso(today), iso(today)])
         self.assertEqual(got["d7"], [iso(today - datetime.timedelta(days=6)), iso(today)])
@@ -866,7 +870,7 @@ class QuickDateRangesAreBackAndApplyWhatTheyName(unittest.TestCase):
         preset left beside years=2024 returns an empty intersection and the
         page goes blank for a reason nothing on screen explains."""
         got = jsrun.run(
-            ["applyDatePreset", "isoDay", "daysAgo"],
+            ["applyDatePreset", "isoDay", "daysAgo", "siteNow"],
             PRESET_PREAMBLE,
             "(function () {"
             " CONTROLS = {'alt-f-years': ['2024'], 'alt-f-quarters': ['1'], 'alt-f-months': ['3']};"
@@ -880,10 +884,10 @@ class QuickDateRangesAreBackAndApplyWhatTheyName(unittest.TestCase):
         """So a range typed by hand that happens to equal a preset lights that
         preset, which is correct: the page IS showing it."""
         got = jsrun.run(
-            ["datePresetActive", "isoDay", "daysAgo"],
+            ["datePresetActive", "isoDay", "daysAgo", "siteNow"],
             PRESET_PREAMBLE,
             "(function () {"
-            " var d = new Date(); var iso = isoDay(d);"
+            " var d = siteNow(); var iso = isoDay(d);"
             " CONTROLS = {'alt-f-from': iso, 'alt-f-to': iso};"
             " var a = datePresetActive('today');"
             " CONTROLS['alt-f-years'] = ['2026'];"
