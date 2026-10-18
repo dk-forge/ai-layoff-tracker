@@ -62,11 +62,6 @@
       "last": 1790014405,
       "subject": "CI noise, week 2026-w39: 3 noisy run(s) in ai-layoff-tracker"
     },
-    "contabo-ops:main:558d908a5857995b": {
-      "first": 1792346232,
-      "last": 1792346232,
-      "subject": "CI RED: Contabo ops \u2014 urllib.error.HTTPError: HTTP Error 429: Too Many Requests"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-18T17:57:13+00:00",
+  "updated_at": "2026-10-18T18:12:37+00:00",
   "version": 1
 }
