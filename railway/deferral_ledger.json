@@ -2,6 +2,16 @@
   "entries": [
     {
       "consecutive": 1,
+      "first_deferred_at": "2026-10-18T14:34:46+00:00",
+      "job": "dedupe-llm",
+      "last_deferred_at": "2026-10-18T14:34:46+00:00",
+      "last_key": "39136404848:1",
+      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query?sources=news,8K,press_release,erm&per_page=200&page=38&sort=id&dir=asc never got an answer from the host",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/39136404848",
+      "state": "pending"
+    },
+    {
+      "consecutive": 1,
       "first_deferred_at": "2026-08-13T23:59:11+00:00",
       "job": "archive-backfill",
       "last_deferred_at": "2026-08-13T23:59:11+00:00",
@@ -188,6 +198,6 @@
       "state": "resolved"
     }
   ],
-  "updated_at": "2026-10-16T14:38:31+00:00",
+  "updated_at": "2026-10-18T14:34:46+00:00",
   "version": 1
 }
