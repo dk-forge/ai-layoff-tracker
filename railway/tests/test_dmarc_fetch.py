@@ -35,6 +35,9 @@ class _Conn:
     def __enter__(self): return self
     def __exit__(self, *a): return False
 
+    def logout(self):
+        pass
+
     def login(self, u, p):
         if self.refuse_login:
             import imaplib
@@ -149,6 +152,31 @@ def test_a_refused_login_is_rejected_not_unknown(monkeypatch) -> None:
     assert state == REJECTED
     assert saved == []
     assert conn.deleted == []
+
+
+def test_a_session_that_dies_at_logout_does_not_erase_the_fetch(monkeypatch) -> None:
+    """MEASURED on the live run that reddened dmarc-report-check.yml on
+    2026-10-17: ``DMARC MAILBOX: UNKNOWN -- socket error: EOF occurred in
+    violation of protocol``. `with imaplib.IMAP4_SSL(...) as m:` calls LOGOUT
+    in `__exit__`, and a server that was just made to fetch and clear through
+    the connection can drop it right there -- the identical failure
+    mailbox_janitor.sweep was fixed for on 2026-09-09. Here it is worse than a
+    lost verdict: the message is also gone from the mailbox, since `_clear`
+    already ran before the dead teardown's exception escaped."""
+    class _DiesAtLogout(_Conn):
+        def logout(self):
+            import ssl
+            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
+
+    conn = _conn_with(["report.zip"])
+    dying = _DiesAtLogout(conn.messages)
+    dying.messages_map = conn.messages_map
+    _patched(dying, monkeypatch)
+    state, saved, detail = fetch("h", "u", "pw")
+    assert state == OK, f"a dead logout must not become the verdict, got {state}"
+    assert len(saved) == 1
+    assert dying.deleted == [b"1"], "the harvested report was still cleared"
+    assert "logout" in detail
 
 
 def test_the_password_never_survives_into_an_error_string() -> None:
