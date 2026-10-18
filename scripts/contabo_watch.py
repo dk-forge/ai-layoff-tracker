@@ -145,7 +145,10 @@ def watch(state, token, now, dry=False, http=_http, probe=tcp22, notify=notify_c
         action, state[box] = decide(state.get(box, {}), healthy, now)
         print(f"{box}: status={st} tcp22={'up' if up else 'down'} -> {action}")
         if action == "restart" and not dry:
-            print(f"{box}: restart HTTP {restart(token, box, http)}")
+            try:
+                print(f"{box}: restart HTTP {restart(token, box, http)}")
+            except Exception as e:
+                print(f"{box}: restart failed: {type(e).__name__}")
         elif action == "capped" and not dry:
             notify(box, f"status={st} tcp22={'up' if up else 'down'}")
     return state
