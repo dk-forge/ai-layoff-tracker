@@ -79,6 +79,23 @@ class WatchWithMockedHttp(unittest.TestCase):
         self.assertEqual(mailed, ["box1"])
         self.assertFalse([u for m, u in calls if m == "POST"])
 
+    def test_restart_http_error_does_not_crash_the_run(self):
+        """A 429 (or any HTTPError) from the restart POST must not abort
+        watch() before state is saved and the other box is processed."""
+        import urllib.error
+
+        def http(method, url, data=None, headers=None):
+            if method == "POST":
+                raise urllib.error.HTTPError(url, 429, "Too Many Requests", {}, None)
+            box = "box1" if cw.BOXES["box1"]["id"] in url else "box2"
+            return 200, {"data": [{"status": "stopped"}]}
+
+        state = {"box1": {"fails": 1}, "box2": {}}
+        st = cw.watch(state, "T", 1000, http=http, probe=lambda ip: True,
+                      notify=lambda b, d: None)
+        self.assertEqual(st["box1"]["restarts"], [1000])
+        self.assertEqual(st["box2"]["fails"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
