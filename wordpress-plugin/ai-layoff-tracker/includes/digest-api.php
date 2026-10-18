@@ -241,6 +241,12 @@ function alt_api_digest_recipients($request) {
             $follow = alt_follows_section_for((int) $row['id'], $from_date, $to_date);
             if ($follow) $recipient['follow_section'] = $follow;
         }
+        // Talent follows (city / employer on the talent tracker): talent-list
+        // readers only, appended by the relay after their sections.
+        if (in_array('talent', $lists, true) && function_exists('alt_follows_section_for')) {
+            $tfollow = alt_follows_section_for((int) $row['id'], $from_date, $to_date, 'talent');
+            if ($tfollow) $recipient['talent_follow_section'] = $tfollow;
+        }
         $recipients[] = $recipient;
     }
 

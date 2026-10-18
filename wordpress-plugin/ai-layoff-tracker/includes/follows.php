@@ -45,6 +45,23 @@ function alt_follow_city_parse($value) {
     return array($st, $city);
 }
 
+/*
+ * TALENT FOLLOWS (owner ruling 2026-10-18, board item "City and company
+ * alerts"): this list may hold follows of a city or an employer on the
+ * sibling talent tracker; weekly by default, daily optional. Same table, same
+ * double opt-in, same stop links, same purge. The talent plugin answers
+ * tit_follow_resolve() / tit_follow_rows() in-process (one WordPress install);
+ * without it the kinds are refused and stored ones match nothing. Following
+ * one opts the reader into the TALENT list, and the rows ride the talent
+ * section only. Pinned by railway/tests/test_follow_talent.py.
+ */
+if (!defined('ALT_FOLLOW_TALENT_MAX')) define('ALT_FOLLOW_TALENT_MAX', 10);
+
+/** Our kind => the talent plugin's kind. */
+function alt_follow_talent_kinds() { return array('talent_city' => 'city', 'talent_company' => 'company'); }
+
+function alt_follow_is_talent($kind) { return isset(alt_follow_talent_kinds()[(string) $kind]); }
+
 function alt_follows_table() { global $wpdb; return $wpdb->prefix . 'alt_follows'; }
 
 function alt_follows_install() {
@@ -77,7 +94,10 @@ function alt_follow_form_html($kind, $value, $label) {
     if ($sent) {
         return $out . '<p role="status">Check your inbox. The follow starts when you click the confirmation link.</p></section>';
     }
-    return $out . '<p>Get new entries for ' . esc_html($label) . ' in the weekly digest. We email you a confirmation link first; unsubscribe any time.</p>'
+    $what = alt_follow_is_talent($kind)
+        ? 'Get new hiring signals for ' . esc_html($label) . ' in the talent digest, weekly unless you choose daily on your preferences page.'
+        : 'Get new entries for ' . esc_html($label) . ' in the weekly digest.';
+    return $out . '<p>' . $what . ' We email you a confirmation link first; unsubscribe any time.</p>'
         . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
         . '<input type="hidden" name="action" value="alt_follow">'
         . '<input type="hidden" name="alt_follow_kind" value="' . esc_attr($kind) . '">'
@@ -121,6 +141,11 @@ function alt_follow_city_form_html($state, array $cities) {
 /** Resolve a follow target to [label, url] or null. Never trusts the POST label. */
 function alt_follow_resolve($kind, $value) {
     global $wpdb;
+    if (alt_follow_is_talent($kind)) {
+        if (!function_exists('tit_follow_resolve')) return null;
+        $r = tit_follow_resolve(alt_follow_talent_kinds()[$kind], $value);
+        return (is_array($r) && count($r) === 2) ? array((string) $r[0], (string) $r[1]) : null;
+    }
     if ($kind === 'company') {
         if (!function_exists('alt_company_directory_table')) return null;
         $row = $wpdb->get_row($wpdb->prepare(
@@ -150,7 +175,8 @@ function alt_follow_submit() {
     $value = sanitize_text_field(wp_unslash($_POST['alt_follow_value'] ?? ''));
     $email = strtolower(sanitize_email(wp_unslash($_POST['alt_follow_email'] ?? '')));
     $city_ok = ($kind === 'city' && alt_follow_city_enabled());
-    if ((!in_array($kind, array('company', 'state'), true) && !$city_ok) || !is_email($email)) { wp_safe_redirect($back); exit; }
+    $talent_ok = alt_follow_is_talent($kind) && function_exists('tit_follow_resolve');
+    if ((!in_array($kind, array('company', 'state'), true) && !$city_ok && !$talent_ok) || !is_email($email)) { wp_safe_redirect($back); exit; }
     $target = alt_follow_resolve($kind, $value);
     if (!$target || !function_exists('alt_digest_signup')) { wp_safe_redirect($back); exit; }
     if ($kind === 'state') $value = strtoupper($value);
@@ -165,10 +191,19 @@ function alt_follow_submit() {
         $prefs[$cols['consent']] = ($row && $row['status'] === 'confirmed') ? (int) $row[$cols['consent']] : 0;
         $prefs[$cols['freq']] = ($row && $row['status'] === 'confirmed') ? alt_digest_accepted_freq($row[$cols['freq']]) : 'weekly';
     }
-    $prefs['consent_layoff'] = 1;
+    // A talent follow opts into the TALENT list (weekly unless the reader
+    // already chose a frequency there); every other follow into the layoff list.
+    if (alt_follow_is_talent($kind)) $prefs['consent_talent'] = 1;
+    else $prefs['consent_layoff'] = 1;
     alt_digest_signup($email, $prefs);   // the digest's own double opt-in
 
     $sub = alt_digest_get_by_email($email);
+    if ($sub && alt_follow_is_talent($kind)) {
+        $held = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . alt_follows_table() . " WHERE subscriber_id = %d AND kind IN ('talent_city','talent_company')",
+            (int) $sub['id']));
+        if ($held >= ALT_FOLLOW_TALENT_MAX) $sub = null;   // cap reached: store nothing new
+    }
     if ($sub) {
         $wpdb->query($wpdb->prepare(
             'INSERT IGNORE INTO ' . alt_follows_table() . ' (subscriber_id, kind, value, label, url, status, created_at)
@@ -198,7 +233,7 @@ add_action('alt_digest_confirmed', 'alt_follows_activate');
  * WARN notice is usually filed for a date weeks ahead. Ten per send, biggest
  * first, superset members excluded like every other count.
  */
-function alt_follows_matches($subscriber_id, $from, $to) {
+function alt_follows_matches($subscriber_id, $from, $to, $family = 'layoff') {
     global $wpdb;
     $f = alt_follows_table(); $s = alt_subscribers_table(); $t = alt_db_table();
     $follows = $wpdb->get_results($wpdb->prepare(
@@ -206,6 +241,22 @@ function alt_follows_matches($subscriber_id, $from, $to) {
           WHERE f.subscriber_id = %d AND f.status = 'active' AND s.status = 'confirmed'", (int) $subscriber_id), ARRAY_A) ?: array();
     $out = array(); $seen = array();
     foreach ($follows as $fw) {
+        // Each family rides its own list's section: talent kinds never reach
+        // the layoff section, layoff kinds never the talent one.
+        if (alt_follow_is_talent($fw['kind']) !== ($family === 'talent')) continue;
+        if (alt_follow_is_talent($fw['kind'])) {
+            if (!function_exists('tit_follow_rows')) continue;
+            foreach ((array) tit_follow_rows(alt_follow_talent_kinds()[$fw['kind']], $fw['value'], $from, $to) as $r) {
+                $k = 't:' . ($r['source_url'] ?? '');
+                if (isset($seen[$k]) || empty($r['source_url'])) continue;
+                $seen[$k] = true;
+                $out[] = array('follow' => $fw['label'], 'follow_url' => $fw['url'], 'company' => (string) ($r['company'] ?? ''),
+                               'headline' => (string) ($r['headline'] ?? ''), 'source_url' => (string) $r['source_url'],
+                               'date' => (string) ($r['date'] ?? ''));
+                if (count($out) >= 10) break 2;
+            }
+            continue;
+        }
         if ($fw['kind'] === 'city') {
             foreach (alt_follows_city_rows($fw['value'], $from, $to) as $r) {
                 if (isset($seen[$r['id']])) continue;
@@ -295,11 +346,42 @@ function alt_follow_section(array $rows, array $stops = array()) {
     return array('html' => $html, 'text' => rtrim($text));
 }
 
-/** What the senders call. Guarded so a missing table is "no section", never a fatal. */
-function alt_follows_section_for($subscriber_id, $from, $to) {
+/**
+ * Talent follows section. Pure. Each line is the publisher's own headline,
+ * linked to the document; no figure of ours is composed, so no headcount can be
+ * phrased as something count_meaning does not say it is.
+ */
+function alt_follow_talent_section(array $rows, array $stops = array()) {
+    if (!$rows) return null;
+    $html = '<h2>Hiring signals you follow</h2><ul>';
+    $text = "Hiring signals you follow\n";
+    foreach ($rows as $r) {
+        $ts = !empty($r['date']) ? strtotime((string) $r['date'] . ' 00:00:00 UTC') : false;
+        $when = $ts ? gmdate('j M Y', $ts) : (string) ($r['date'] ?? '');
+        $lead = trim((string) $r['company']) !== '' ? $r['company'] . ': ' : '';
+        $html .= '<li>' . esc_html($lead) . '<a href="' . esc_url($r['source_url']) . '">' . esc_html($r['headline']) . '</a>'
+               . ($when !== '' ? ', ' . esc_html($when) : '')
+               . ' (<a href="' . esc_url($r['follow_url']) . '">' . esc_html($r['follow']) . '</a>)</li>';
+        $text .= '- ' . $lead . $r['headline'] . ($when !== '' ? ', ' . $when : '') . ' (' . $r['follow'] . '): ' . $r['source_url'] . "\n";
+    }
+    $html .= '</ul>';
+    if ($stops) {
+        $links = array();
+        foreach ($stops as $st) {
+            $links[] = '<a href="' . esc_url($st[1]) . '">Stop following ' . esc_html($st[0]) . '</a>';
+            $text .= 'Stop following ' . $st[0] . ': ' . $st[1] . "\n";
+        }
+        $html .= '<p style="font-size:13px;">' . implode(' &middot; ', $links) . '</p>';
+    }
+    return array('html' => $html, 'text' => rtrim($text));
+}
+
+/** What the senders call. Guarded so a missing table is "no section", never a fatal. $family 'layoff' | 'talent'. */
+function alt_follows_section_for($subscriber_id, $from, $to, $family = 'layoff') {
     if (get_option('alt_follows_db_version') === false) return null;
-    $stops = function_exists('alt_follow_stop_links') ? alt_follow_stop_links($subscriber_id) : array();
-    return alt_follow_section(alt_follows_matches($subscriber_id, $from, $to), $stops);
+    $stops = function_exists('alt_follow_stop_links') ? alt_follow_stop_links($subscriber_id, $family) : array();
+    $rows = alt_follows_matches($subscriber_id, $from, $to, $family);
+    return $family === 'talent' ? alt_follow_talent_section($rows, $stops) : alt_follow_section($rows, $stops);
 }
 
 /**
