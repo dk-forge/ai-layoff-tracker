@@ -104,6 +104,20 @@ def warn_rows(n=5):
     return [{"ym": ym, "industry": "Technology", "n": n} for ym in MONTHS]
 
 
+def indeed_doc(software=None, aggregate=None):
+    """Weekly Indeed rows [sector, week_ending, index]; two weeks per month."""
+    software = software or [100.0] * 21
+    aggregate = aggregate or [110.0] * 21
+    rows = []
+    for ym, sw, ag in zip(MONTHS, software, aggregate):
+        for d in ("08", "22"):
+            rows.append(["Software Development", f"{ym}-{d}", sw])
+            rows.append(["All postings (seasonally adjusted)", f"{ym}-{d}", ag])
+    return {"source": "indeed_postings", "updated": "2026-10-14T12:00:00+00:00",
+            "latest": {"weekly": "2026-09-22"}, "rows": len(rows), "attribution": "i",
+            "fields": ["sector", "week_ending", "index"], "datasets": {"weekly": rows}}
+
+
 def opts(**kw):
     o = {"alt_ref_fred_labour": fred_doc(), "alt_ref_bls_jolts_cps": bls_doc(),
          "alt_ref_census_qwi": qwi_doc(), "__warn": warn_rows()}
@@ -180,6 +194,31 @@ class StatusRuleTests(Php):
         self.assertEqual(len(tracker), 1)
         self.assertEqual(tracker[0]["raw"][-1], 500)
 
+    def test_postings_are_drawn_but_never_move_the_status(self):
+        calm = opts(alt_ref_fred_labour=fred_doc([200000] * 21), alt_ref_bls_jolts_cps=bls_doc(info=[30] * 21),
+                    alt_ref_census_qwi=qwi_doc(sep_latest=1000), alt_ref_indeed_postings=indeed_doc())
+        surge = dict(calm, alt_ref_indeed_postings=indeed_doc(software=rising(100.0, factor=0.5)))
+        a = self.bundle(calm)["industries"]["information"]
+        b = self.bundle(surge)["industries"]["information"]
+        self.assertEqual(a["status"], "stable")
+        self.assertEqual(b["status"], "stable")
+        self.assertEqual(a["reasons"], b["reasons"])
+        posts = [s for s in b["series"] if s["kind"] == "postings"]
+        self.assertEqual(len(posts), 1, b["series"])
+        self.assertEqual(posts[0]["raw"][-1], 50.0)  # monthly mean of the weekly index
+        self.assertIn("Indeed", posts[0]["name"])
+
+    def test_all_industries_use_the_seasonally_adjusted_aggregate(self):
+        b = self.bundle(opts(alt_ref_indeed_postings=indeed_doc()))
+        posts = [s for s in b["industries"]["all"]["series"] if s["kind"] == "postings"]
+        self.assertEqual(posts[0]["raw"][-1], 110.0)
+        self.assertEqual(len(posts[0]["raw"]), 36)
+
+    def test_no_postings_doc_means_no_postings_line(self):
+        b = self.bundle(opts())
+        for ind in b["industries"].values():
+            self.assertFalse([s for s in ind["series"] if s["kind"] == "postings"])
+
     def test_timeline_is_aligned_and_indexed(self):
         b = self.bundle(opts())
         self.assertEqual(len(b["months"]), 36)
@@ -231,6 +270,14 @@ class RenderTests(Php):
                           .replace("&#039;", "'").replace("&amp;", "&"))
         self.assertIn("information", data["industries"])
 
+    def test_postings_credit_and_asof_when_stored(self):
+        html = self.run_php(opts(alt_ref_indeed_postings=indeed_doc()), "section")
+        ew = html.split('id="early-warning"')[1]
+        self.assertIn("Indeed Hiring Lab", ew)
+        self.assertIn("CC BY 4.0", ew)
+        self.assertIn("postings through September 2026", ew)
+        self.assertIn("job postings never count", ew)
+
     def test_missing_sources_hide_their_panels_without_error(self):
         html = self.run_php(opts(alt_ref_fred_labour=None), "section")
         self.assertNotIn('data-lc="fred"', html)
@@ -254,7 +301,8 @@ class SurfaceTests(unittest.TestCase):
         required = {
             "jolts": ["BLS JOLTS &amp; CPS"], "cps": ["BLS JOLTS &amp; CPS"],
             "oecd": ["OECD unemployment"], "fred": ["FRED labour series"], "qwi": ["Census QWI"],
-            "ew": ["State WARN notices", "FRED labour series", "BLS JOLTS &amp; CPS", "Census QWI"],
+            "ew": ["State WARN notices", "FRED labour series", "BLS JOLTS &amp; CPS", "Census QWI",
+                   "Indeed Hiring Lab job postings"],
         }
         partials = (PLUGIN / "templates/partials/labour-context.php").read_text() + TEXTS[
             "templates/partials/labour-trends.php"] + TEXTS["templates/partials/early-warning.php"]

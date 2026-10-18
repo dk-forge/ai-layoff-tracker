@@ -6,7 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
-- **HELD - Claude (agent), 2026-10-18, branch `claude/chat-session-oui1wv-board` (PR). Reserves plugin version 2.20.271.** Indeed postings on the early-warning timeline; see TECHLOG 2026-10-18 (2.20.271).
+- **RELEASED - Claude (agent), 2026-10-18, branch `claude/chat-session-oui1wv-board` (PR). Reserves plugin version 2.20.271.** Indeed postings on the early-warning timeline; see TECHLOG 2026-10-18 (2.20.271).
 - **RELEASED - Claude (agent), 2026-10-18, branch `claude/chat-session-oui1wv-zeros` (PR). Reserves plugin version 2.20.270.** Board/date presets count the site's day; page-vs-/query and ingest freshness watch; see TECHLOG 2026-10-18 (2.20.270).
 - **RELEASED - Claude (agent), 2026-10-17, branch `docs/478-labour-roadmap` (PR). No plugin file, no version reserved.** GitHub issue #478 (labour data roadmap) moved into `docs/COVERAGE_ROADMAP.md` section 4 with its status; see TECHLOG 2026-10-17 (roadmap).
 - **RELEASED - Claude (agent), 2026-10-17, branch `fix/unknown-denominator-and-register` (PR). No plugin file, no version reserved.** NI denominator declares its own lag ceiling; Jamaica and Zimbabwe acknowledged in the country register backlog; see TECHLOG 2026-10-17.

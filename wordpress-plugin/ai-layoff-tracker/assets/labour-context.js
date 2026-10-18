@@ -271,9 +271,10 @@
         if (why) why.textContent = (ind.reasons || []).join('; ');
         var ink = tok('chart-ink-2', '#52514e'), grid = tok('chart-grid', '#e1e0d9'), oi = 0;
         var sets = ind.series.map(function (s) {
-            var tracker = s.kind === 'tracker', c = tracker ? tok('chart-ink', '#0b0b0b') : tc([0, 2, 3][oi++ % 3]);
+            var tracker = s.kind === 'tracker', posts = s.kind === 'postings',
+                c = tracker ? tok('chart-ink', '#0b0b0b') : posts ? tc(1) : tc([0, 2, 3][oi++ % 3]);
             return { label: s.name, data: s.index, raw: s.raw, borderColor: c, backgroundColor: c,
-                     borderWidth: tracker ? 3 : 2, borderDash: tracker ? [] : (s.name.indexOf('QWI') === 0 ? [5, 4] : []),
+                     borderWidth: tracker ? 3 : 2, borderDash: tracker ? [] : posts ? [2, 3] : (s.name.indexOf('QWI') === 0 ? [5, 4] : []),
                      pointRadius: s.name.indexOf('QWI') === 0 ? 3 : 0, pointHitRadius: 6, spanGaps: true, tension: 0.2 };
         });
         chart('alt-lc-ew', {
