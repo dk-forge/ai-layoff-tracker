@@ -92,11 +92,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "sandbox-main-green-check:main:604d3a86309a507c": {
-      "first": 1792232485,
-      "last": 1792232485,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml FAIL (newest completed run is failure on b22ae017)"
-    },
     "self-heal:main:546478a37ca6511e": {
       "first": 1792306604,
       "last": 1792306604,
@@ -128,6 +123,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-18T08:53:34+00:00",
+  "updated_at": "2026-10-18T10:22:07+00:00",
   "version": 1
 }
