@@ -103,7 +103,7 @@ class WatchWithMockedHttp(unittest.TestCase):
             box = "box1" if cw.BOXES["box1"]["id"] in url else "box2"
             return 200, {"data": [{"status": "stopped"}]}
 
-        state = {"box1": {"fails": 1}, "box2": {}}
+        state = {"box1": {"fails": 2}, "box2": {}}
         st = cw.watch(state, "T", 1000, http=http, probe=lambda ip: True,
                       notify=lambda b, d: None)
         self.assertEqual(st["box1"]["restarts"], [1000])
