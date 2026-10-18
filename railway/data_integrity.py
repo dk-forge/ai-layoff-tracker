@@ -3024,6 +3024,15 @@ from declared_supersets_check import (DeclaredSupersetsInvariant,  # noqa: E402
 
 INVARIANTS = INVARIANTS + (DeclaredSupersetsInvariant(),)
 
+# The PAGE against the API (owner report 2026-10-17: Today read 0 on a phone
+# over live rows). Every check above reads the API; these read what a reader is
+# shown, server-rendered as desktop and phone, and rendered in headless Chrome
+# at 390px and 1280px, plus per-class ingest freshness. board_consistency.py.
+from board_consistency import (BoardTilesMatchQuery, BoardTilesRender,  # noqa: E402
+                               IngestFreshness)
+
+INVARIANTS = INVARIANTS + (BoardTilesMatchQuery(), BoardTilesRender(), IngestFreshness())
+
 
 class Result:
     def __init__(self, inv, state, observed=None, detail="", error=None, pending=False):

@@ -366,6 +366,7 @@ class EveryJobThatMailsCarriesTheKeyThatLetsItMail(unittest.TestCase):
         # the one mail this map exists to guarantee never left.
         "warn_import.py": "warn-import.yml",
         "vps_watch.py": "vps-watch.yml",
+        "board_consistency.py": "tracker-zeros-watch.yml",
     }
 
     def test_the_sender_override_travels_with_the_key(self):

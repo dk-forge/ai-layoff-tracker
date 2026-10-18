@@ -1,0 +1,61 @@
+# Tracker zeros watch: do the page's numbers match /query, and is ingest fresh?
+#
+# Owner report 2026-10-17: the at-a-glance board showed 0 for Today / This week
+# on a phone while /query held rows (root cause and fix: TECHLOG 2026-10-18,
+# plugin 2.20.270). railway/board_consistency.py reads the page as a desktop
+# and a phone browser, renders it in headless Chrome at 390px and 1280px, and
+# compares every tile and the table with /query; it also checks that news, WARN
+# and SEC each ingested new rows in the last day.
+#
+# GitHub-hosted on purpose: Chrome is on the ubuntu image, and a watch over the
+# site must not depend on the boxes. Alerts go through ops_notify (Resend), and
+# this job NEVER opens a GitHub issue (owner rule: GitHub at 0).
+name: Tracker zeros watch
+
+on:
+  schedule:
+    - cron: '23 10 * * *'   # daily, 06:23 ET, after the 22:00 UTC ingest settles
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracker-zeros-watch
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+      # Passed wherever RESEND_API_KEY is, so one From line cannot become two.
+      OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the minimum for the alert path
+        run: pip install --require-hashes -r railway/requirements-min.lock
+      - name: Page tiles and table vs /query (desktop, phone, 390px, 1280px)
+        id: page
+        working-directory: railway
+        run: |
+          set +e
+          python3 board_consistency.py
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Ingest freshness per source class
+        id: fresh
+        working-directory: railway
+        run: |
+          set +e
+          python3 board_consistency.py --freshness
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Fail the run on a FAIL or UNKNOWN
+        if: steps.page.outputs.code != '0' || steps.fresh.outputs.code != '0'
+        run: |
+          echo "page=${{ steps.page.outputs.code }} freshness=${{ steps.fresh.outputs.code }} (1 = FAIL, alert sent; 3 = UNKNOWN)"
+          exit 1
