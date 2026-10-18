@@ -92,11 +92,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "self-heal:main:546478a37ca6511e": {
-      "first": 1792306604,
-      "last": 1792306604,
-      "subject": "CI RED: Self-heal \u2014 Action failed with error: Claude execution failed: result is_error:true"
-    },
     "tests:live.data:240a9bbebb4867de": {
       "first": 1789264751,
       "last": 1789264751,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-18T10:22:07+00:00",
+  "updated_at": "2026-10-18T16:34:37+00:00",
   "version": 1
 }
