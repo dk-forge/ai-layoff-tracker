@@ -30275,3 +30275,11 @@ timing out)
 reporting workflow (`Broken-link check`); a repo test cannot assert that a
 remote WordPress page answers, only a live probe can, and this job already
 is that probe.
+
+## 2026-10-18 — contabo-watch restarts only after 3 failed checks
+On 17:47 and 17:56 UTC the watchdog read healthy box2 as status=unknown/tcp22=down
+twice and tried to restart it (the POST 429'd); an 18:12 check showed box2
+running with SSH up. `UNHEALTHY_BEFORE_RESTART` 2 -> 3 (restart after ~30 min
+of failures, not ~20). **Guard:** `scripts/tests/test_contabo_watch.py`
+(second failure waits, third restarts).
+**Class:** absent-read-as-ok (a missed probe on a busy box read as "down"; the fix waits for more evidence)
