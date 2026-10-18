@@ -1,3 +1,10 @@
+## 2026-10-18 - Contabo restart + watchdog that works when the boxes are down (no plugin change)
+
+**Class:** novel (owner request; spec in the sandbox repo docs/AUTOMATION_MAP.md Layer 1 "Queued: Contabo watchdog")
+**Guard:** `scripts/tests/test_contabo_watch.py` (2 consecutive failures before restart, TCP 22 dead counts as down, 15 min cooldown after a restart, cap of 2 restarts per box per 6 h, one email per cap window; HTTP mocked). Run with `python3 -m unittest discover -s scripts/tests`.
+
+`.github/workflows/contabo-ops.yml` runs on ubuntu-latest, never on the boxes. Dispatch with box (box1 = 203574635 / 173.249.57.163, box2 = 203655919 / 95.111.255.7) and action status|restart. Every 10 min the watchdog checks both boxes (Contabo API status `running` AND TCP 22) and restarts through the API. State is `state.json` on the orphan branch `contabo-watch-state`, force-pushed each run under a single concurrency group. After the cap it emails once through `railway/opsmail.py` (existing `RESEND_API_KEY`); if mail fails it prints `::error::`. No GitHub issues. Auth uses the existing CONTABO_* secrets via the OAuth2 password grant; the token is masked.
+
 ## 2026-10-17 - Labour data roadmap (#478) moved from GitHub into COVERAGE_ROADMAP.md (no plugin change)
 
 **Class:** novel (owner rule 2026-10-17: GitHub holds live work only; plans and checklists live in repo docs)

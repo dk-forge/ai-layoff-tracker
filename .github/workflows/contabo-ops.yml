@@ -1,0 +1,86 @@
+name: Contabo ops
+
+# Status / restart / watchdog for the two Contabo CI boxes, run on a
+# GitHub-hosted runner so it works when the boxes are down (public repo:
+# free minutes). Logic + tests: scripts/contabo_watch.py. See
+# docs/TECHLOG.md 2026-10-18.
+#
+# Manual: dispatch with box + action (status|restart).
+# Schedule (every 10 min): watch both boxes; restart a box after 2
+# consecutive unhealthy checks (API status != running, or TCP 22 dead),
+# max 2 restarts per box per 6 h, then ONE email (Resend, RESEND_API_KEY)
+# or a ::error:: line. Never opens a GitHub issue.
+#
+# State: a JSON file on the orphan branch `contabo-watch-state`. Chosen over
+# actions/cache (immutable per key, evictable) and over run history (cannot
+# tell which runs restarted what). A git branch is durable, readable, and the
+# concurrency group below makes the read-modify-write single-writer.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      box:
+        type: choice
+        options: [box1, box2]
+        default: box1
+      action:
+        type: choice
+        options: [status, restart]
+        default: status
+
+permissions:
+  contents: write   # push the watchdog state branch
+
+concurrency:
+  group: contabo-ops
+  cancel-in-progress: false
+
+jobs:
+  manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: ${{ inputs.action }} ${{ inputs.box }}
+        env:
+          CONTABO_CLIENT_ID: ${{ secrets.CONTABO_CLIENT_ID }}
+          CONTABO_CLIENT_SECRET: ${{ secrets.CONTABO_CLIENT_SECRET }}
+          CONTABO_API_USER: ${{ secrets.CONTABO_API_USER }}
+          CONTABO_API_PASSWORD: ${{ secrets.CONTABO_API_PASSWORD }}
+        run: python3 scripts/contabo_watch.py "${{ inputs.action }}" --box "${{ inputs.box }}"
+
+  watchdog:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch state
+        run: |
+          mkdir -p "$RUNNER_TEMP/state"
+          if git fetch -q origin contabo-watch-state; then
+            git show FETCH_HEAD:state.json > "$RUNNER_TEMP/state/state.json" || true
+          fi
+      - name: Watch
+        env:
+          CONTABO_CLIENT_ID: ${{ secrets.CONTABO_CLIENT_ID }}
+          CONTABO_CLIENT_SECRET: ${{ secrets.CONTABO_CLIENT_SECRET }}
+          CONTABO_API_USER: ${{ secrets.CONTABO_API_USER }}
+          CONTABO_API_PASSWORD: ${{ secrets.CONTABO_API_PASSWORD }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+        run: python3 scripts/contabo_watch.py watch --state "$RUNNER_TEMP/state/state.json"
+      - name: Save state
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/state/state.json"; [ -s "$f" ] || exit 0
+          cd "$RUNNER_TEMP/state"
+          git init -q && git checkout -q -b contabo-watch-state
+          git config user.name ai-layoff-tracker-bot
+          git config user.email bot@users.noreply.github.com
+          git add state.json && git commit -qm "contabo watchdog state [skip ci]"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" contabo-watch-state
