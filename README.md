@@ -1,5 +1,7 @@
 # AI Layoff Tracker
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23482636.svg)](https://doi.org/10.5281/zenodo.23482636)
+
 A continuously updated, source-linked tracker of verified layoffs worldwide —
 flagging the ones companies explicitly attribute to AI. Every entry links to a
 primary source: a SEC 8-K filing, a US state WARN notice, or a named news
@@ -130,6 +132,17 @@ WARN, GDELT) are free; only news extraction touches a paid LLM
 US WARN notices are collected with [warn-scraper](https://github.com/biglocalnews/warn-scraper),
 open-source software by Big Local News at Stanford University, used under the
 Apache License 2.0. It is installed as a dependency; none of its code is copied here.
+
+## How to cite
+
+Cite the dataset by its concept DOI, which always resolves to the latest
+archived version on Zenodo:
+
+> AskTheRecruiter. *AI Layoff Tracker*. Zenodo. https://doi.org/10.5281/zenodo.23482636
+
+[`CITATION.cff`](CITATION.cff) carries the same metadata in machine-readable
+form (GitHub's "Cite this repository" button reads it). To cite one exact
+snapshot, use that version's own DOI from the Zenodo record.
 
 ## License
 
