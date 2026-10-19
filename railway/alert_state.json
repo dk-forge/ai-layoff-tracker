@@ -92,11 +92,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "tests:live.data:240a9bbebb4867de": {
-      "first": 1789264751,
-      "last": 1789264751,
-      "subject": "CI RED: Tests \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 504 \u2014 server regression, not a blip"
-    },
     "tests:live.data:2e215caae5bac21b": {
       "first": 1789315684,
       "last": 1789315684,
@@ -118,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-19T17:40:24+00:00",
+  "updated_at": "2026-10-19T20:35:22+00:00",
   "version": 1
 }
