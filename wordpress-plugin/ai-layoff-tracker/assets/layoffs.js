@@ -1109,10 +1109,188 @@
         if (window.altData && window.altData.embedParams) return; // embed iframe: not a shareable view
         try {
             var q = qs(currentParams());
+            if (q === URL_BASELINE) q = '';
+            // The By location table's view rides along; its default adds nothing.
+            var lq = qs(locQueryParams());
+            if (lq) q = q ? q + '&' + lq : lq;
             history.replaceState(null, '',
-                window.location.pathname + ((q && q !== URL_BASELINE) ? '?' + q : '') + window.location.hash);
+                window.location.pathname + (q ? '?' + q : '') + window.location.hash);
         } catch (e) { /* a URL we cannot write is not worth failing the render for */ }
     }
+
+    /* ------------------------------------------------------------------ */
+    /* BY LOCATION TABLE (2.20.273, owner-approved 2026-10-19)             */
+    /* ------------------------------------------------------------------ */
+    // Rows come from /by-location (verified cuts, events counted once,
+    // country = job location). Config is read off the card's data- attributes
+    // because Autoptimize can sweep an inline global into a late bundle.
+    // View, period, sort and "show all" are kept in LOC and mirrored into the
+    // query string by syncUrlFromFilters(); the defaults add nothing, so a
+    // default view keeps the bare, cached URL. Tapping a row applies that place
+    // through the SAME controls the dropdowns write (ensureOption +
+    // toggleMultiFilter + refreshAll), so chips, exports and the URL follow.
+    var LOC_DEFAULTS = { view: 'country', period: 'ytd', sort: 'jobs', dir: 'desc', all: false };
+    var LOC = { view: 'country', period: 'ytd', sort: 'jobs', dir: 'desc', all: false };
+    var LOC_ROWS = [];
+    var LOC_SEQ = 0;
+    var LOC_VIEWS = { country: 'alt-f-country', state: 'alt-f-state' };
+    var LOC_PERIODS = { week: 1, month: 1, quarter: 1, ytd: 1, all: 1 };
+    var LOC_SORTS = { place: 1, jobs: 1, ai_jobs: 1, events: 1, ai_events: 1 };
+    function locQueryParams() {
+        var p = {};
+        if (!document.getElementById('alt-loc-card')) return p;
+        if (LOC.view !== LOC_DEFAULTS.view) p.loc = LOC.view;
+        if (LOC.period !== LOC_DEFAULTS.period) p.loc_period = LOC.period;
+        if (LOC.sort !== LOC_DEFAULTS.sort) p.loc_sort = LOC.sort;
+        if (LOC.dir !== LOC_DEFAULTS.dir) p.loc_dir = LOC.dir;
+        if (LOC.all !== LOC_DEFAULTS.all) p.loc_all = '1';
+        return p;
+    }
+    function restoreLocFromUrl() {
+        var query = new URLSearchParams(window.location.search);
+        var v = query.get('loc');
+        if (v && LOC_VIEWS[v]) LOC.view = v;
+        v = query.get('loc_period');
+        if (v && LOC_PERIODS[v]) LOC.period = v;
+        v = query.get('loc_sort');
+        if (v && LOC_SORTS[v]) LOC.sort = v;
+        v = query.get('loc_dir');
+        if (v === 'asc' || v === 'desc') LOC.dir = v;
+        if (query.get('loc_all') === '1') LOC.all = true;
+        syncLocControls();
+    }
+    function syncLocControls() {
+        var card = document.getElementById('alt-loc-card');
+        if (!card) return;
+        Array.prototype.forEach.call(card.querySelectorAll('[data-loc-view]'), function (b) {
+            var on = b.getAttribute('data-loc-view') === LOC.view;
+            b.classList.toggle('alt-map-scope-on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        var sel = document.getElementById('alt-loc-period');
+        if (sel) sel.value = LOC.period;
+        Array.prototype.forEach.call(card.querySelectorAll('[data-loc-sort]'), function (b) {
+            var th = b.parentNode;
+            var on = b.getAttribute('data-loc-sort') === LOC.sort;
+            th.setAttribute('aria-sort', on ? (LOC.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+        });
+    }
+    function sortedLocRows() {
+        var k = LOC.sort, sign = LOC.dir === 'asc' ? 1 : -1;
+        return LOC_ROWS.slice().sort(function (a, b) {
+            if (k === 'place') return sign * String(a.place).localeCompare(String(b.place));
+            var d = (a[k] || 0) - (b[k] || 0);
+            return d ? sign * d : String(a.place).localeCompare(String(b.place));
+        });
+    }
+    function renderLocations() {
+        var body = document.getElementById('alt-loc-body');
+        var card = document.getElementById('alt-loc-card');
+        if (!body || !card) return;
+        var top = parseInt(card.getAttribute('data-loc-top'), 10) || 25;
+        var rows = sortedLocRows();
+        var shown = LOC.all ? rows : rows.slice(0, top);
+        var active = selectedList(LOC_VIEWS[LOC.view]);
+        body.innerHTML = shown.map(function (r) {
+            var on = active.indexOf(r.place) !== -1;
+            return '<tr class="alt-loc-row' + (on ? ' alt-loc-row-on' : '') + '" tabindex="0" role="button"'
+                + ' aria-pressed="' + (on ? 'true' : 'false') + '"'
+                + ' data-place="' + escapeHtml(r.place) + '"'
+                + ' aria-label="Filter the page to ' + escapeHtml(r.place) + '">'
+                + '<td>' + escapeHtml(r.place) + '</td>'
+                + '<td class="alt-loc-num">' + fmt(r.jobs) + '</td>'
+                + '<td class="alt-loc-num">' + fmt(r.ai_jobs) + '</td>'
+                + '<td class="alt-loc-num">' + fmt(r.events) + '</td>'
+                + '<td class="alt-loc-num">' + fmt(r.ai_events) + '</td></tr>';
+        }).join('');
+        var more = document.getElementById('alt-loc-more');
+        if (more) {
+            more.hidden = rows.length <= top;
+            more.textContent = LOC.all ? 'Show top ' + top : 'Show all ' + fmt(rows.length) + ' places';
+        }
+        var st = document.getElementById('alt-loc-status');
+        if (st) st.textContent = rows.length ? '' : 'No verified cuts with a named place in this period.';
+    }
+    function loadLocations() {
+        var card = document.getElementById('alt-loc-card');
+        if (!card) return;
+        var route = card.getAttribute('data-loc-route') || 'by-location';
+        var p = currentParams();
+        p.view = LOC.view;
+        p.period = LOC.period;
+        var seq = ++LOC_SEQ;
+        var st = document.getElementById('alt-loc-status');
+        if (st) st.textContent = 'Loading places';
+        apiGet(route, p).then(function (res) {
+            if (seq !== LOC_SEQ) return;
+            LOC_ROWS = (res && res.rows) || [];
+            renderLocations();
+        }).catch(function () {
+            if (seq !== LOC_SEQ) return;
+            LOC_ROWS = [];
+            renderLocations();
+            if (st) st.textContent = 'Could not load the table.';
+        });
+    }
+    function pickLocRow(place) {
+        var id = LOC_VIEWS[LOC.view];
+        if (!place || !id) return;
+        ensureOption(id, place, place);
+        toggleMultiFilter(id, place);
+        refreshAll();
+    }
+    function initLocations() {
+        var card = document.getElementById('alt-loc-card');
+        if (!card) return;
+        syncLocControls();
+        card.addEventListener('click', function (e) {
+            var t = e.target;
+            var vb = t.closest('[data-loc-view]');
+            if (vb) {
+                LOC.view = vb.getAttribute('data-loc-view');
+                syncLocControls(); syncUrlFromFilters(); loadLocations();
+                return;
+            }
+            var sb = t.closest('[data-loc-sort]');
+            if (sb) {
+                var k = sb.getAttribute('data-loc-sort');
+                if (LOC.sort === k) LOC.dir = LOC.dir === 'desc' ? 'asc' : 'desc';
+                else { LOC.sort = k; LOC.dir = k === 'place' ? 'asc' : 'desc'; }
+                syncLocControls(); syncUrlFromFilters(); renderLocations();
+                return;
+            }
+            if (t.closest('#alt-loc-more')) {
+                LOC.all = !LOC.all;
+                syncUrlFromFilters(); renderLocations();
+                return;
+            }
+            var cb = t.closest('#alt-loc-copy');
+            if (cb) {
+                syncUrlFromFilters();
+                var url = window.location.href;
+                var done = function () { cb.textContent = 'Link copied'; setTimeout(function () { cb.textContent = 'Copy link'; }, 1500); };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(done, function () { fallbackCopy(url); done(); });
+                } else { fallbackCopy(url); done(); }
+                return;
+            }
+            var row = t.closest('tr[data-place]');
+            if (row) pickLocRow(row.getAttribute('data-place'));
+        });
+        card.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            var row = e.target.closest && e.target.closest('tr[data-place]');
+            if (!row) return;
+            e.preventDefault();
+            pickLocRow(row.getAttribute('data-place'));
+        });
+        var sel = document.getElementById('alt-loc-period');
+        if (sel) sel.addEventListener('change', function () {
+            if (LOC_PERIODS[sel.value]) LOC.period = sel.value;
+            syncUrlFromFilters(); loadLocations();
+        });
+    }
+    /* END BY LOCATION TABLE */
 
     var DASH_PRESENT = false;
     var LAST_AGG = null;
@@ -1143,6 +1321,7 @@
         PAGE = 1;
         loadRows();
         fetchAndRenderAggregate();
+        loadLocations();
         updateActiveFilterBar();
         updateQuickViewStates();
         updateDropdownSummaries();
@@ -6425,6 +6604,8 @@
             // starts scoped to this year; "All time" is one click away.
             restoreFilters();
             restoreFiltersFromUrl();
+            restoreLocFromUrl();
+            initLocations();
             var noPeriod = !(readControl('alt-f-years') || []).length
                 && !(readControl('alt-f-quarters') || []).length
                 && !(readControl('alt-f-months') || []).length

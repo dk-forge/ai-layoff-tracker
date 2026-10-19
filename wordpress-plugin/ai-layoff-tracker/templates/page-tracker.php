@@ -1192,6 +1192,50 @@ $alt_hero_basis  = 'counted by filing date';
                      beside a verified-only headline, about 70% over, unexplained. */ ?>
             <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-countries-basis" hidden></p>
         </div>
+        <?php /* BY LOCATION TABLE (2.20.273, owner-approved 2026-10-19). Config rides on
+                 data- attributes, never on a localized global: Autoptimize sweeps inline
+                 objects into a bundle that loads late (CLAUDE.md gotcha #10). The view,
+                 period, sort and "show all" live in the query string (loc, loc_period,
+                 loc_sort, loc_dir, loc_all); the default view adds nothing, so the
+                 bare URL stays the one cached page. Rows come from /by-location. */ ?>
+        <div class="alt-mini alt-chart-card alt-loc-card" id="alt-loc-card" data-loc-route="by-location" data-loc-top="25">
+            <div class="alt-chart-head">
+                <div class="alt-chart-h" id="alt-loc-title">By location <span class="alt-chart-sub">verified cuts, a rollup and its parts counted once &middot; a country means where the jobs are, not where the employer is based &middot; tap a row to filter the page</span></div>
+                <span class="alt-chart-btns">
+                    <button type="button" class="alt-loc-copy" id="alt-loc-copy" aria-label="Copy a link to this view">Copy link</button>
+                </span>
+            </div>
+            <div class="alt-loc-controls">
+                <span class="alt-map-toggle alt-loc-switch" role="group" aria-label="Group places by">
+                    <button type="button" class="alt-map-scope alt-map-scope-on" data-loc-view="country" aria-pressed="true">Country</button>
+                    <button type="button" class="alt-map-scope" data-loc-view="state" aria-pressed="false">US state</button>
+                </span>
+                <label class="alt-loc-period-l" for="alt-loc-period">Period
+                    <select id="alt-loc-period" class="alt-loc-period">
+                        <option value="week">This week</option>
+                        <option value="month">This month</option>
+                        <option value="quarter">This quarter</option>
+                        <option value="ytd" selected>Year to date</option>
+                        <option value="all">All time</option>
+                    </select>
+                </label>
+            </div>
+            <div class="alt-loc-scroll" tabindex="0" role="region" aria-labelledby="alt-loc-title">
+                <table class="alt-loc-table" id="alt-loc-table">
+                    <thead><tr>
+                        <th scope="col" aria-sort="none"><button type="button" data-loc-sort="place">Place</button></th>
+                        <th scope="col" class="alt-loc-num" aria-sort="descending"><button type="button" data-loc-sort="jobs">Jobs cut</button></th>
+                        <th scope="col" class="alt-loc-num" aria-sort="none"><button type="button" data-loc-sort="ai_jobs">AI jobs</button></th>
+                        <th scope="col" class="alt-loc-num" aria-sort="none"><button type="button" data-loc-sort="events">Entries</button></th>
+                        <th scope="col" class="alt-loc-num" aria-sort="none"><button type="button" data-loc-sort="ai_events">AI entries</button></th>
+                    </tr></thead>
+                    <tbody id="alt-loc-body"></tbody>
+                </table>
+            </div>
+            <p class="alt-chart-note alt-muted" id="alt-loc-status" role="status" aria-live="polite"></p>
+            <button type="button" class="alt-loc-more" id="alt-loc-more" hidden>Show all places</button>
+            <p class="alt-chart-note alt-muted">The period here replaces the page's date filter; every other filter applies. AI columns count cuts the employer itself attributed to AI.</p>
+        </div><!-- /alt-loc-card -->
         <div class="alt-mini alt-chart-card" id="alt-claims-states-card" hidden>
             <div class="alt-chart-head">
                 <div class="alt-chart-h">Jobless claims by US state <span class="alt-chart-sub">official government data (DOL), <span id="alt-claims-states-month">latest month</span> · context only, not our counts</span></div>

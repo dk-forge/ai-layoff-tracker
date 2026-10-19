@@ -1,3 +1,10 @@
+## 2026-10-19 - "By location" table and shareable view state on the tracker (2.20.273)
+
+**Class:** novel (owner approval 2026-10-19, built the same way on the Talent Intelligence Tracker so both read alike)
+**Guard:** `railway/tests/test_by_location_table.py` (public read-only cached route, WHERE from `alt_db_where`, basis fixed at verified + superset-folded + job-location, closed column list with no city, `view`/`period` in the cache-key whitelist, calendar-aligned period bounds executed in PHP, card markup under "Where the cuts are", config on data- attributes, state in the query string and restored, row tap through `ensureOption`/`toggleMultiFilter`/`refreshAll`, scroll container with pinned place column, token-only colours).
+
+New `includes/by-location.php` (guarded `is_readable` include) serves `/by-location?view=country|state&period=week|month|quarter|ytd|all` plus every page filter: rows of entries, jobs cut, AI-attributed entries, AI-attributed jobs (reader copy says "entries", per test_reader_copy_says_entries). Basis: VERIFIED cuts only (`announced = 0`), `superset_of = 0`, country = strict job location, the headline basis (not `country_basis=any`, which would count one global cut under two countries). The table drops its own dimension (slicer contract) and the page's date filter (the period replaces it). No city view: `wp_alt_layoffs` has no city column. On the page it is a full-width card after "Layoffs by country": Country | US state switch, period select, sortable headers (`aria-sort`), top 25 + show all, "Copy link". `loc`, `loc_period`, `loc_sort`, `loc_dir`, `loc_all` ride in the query string beside the existing filter params and are written only when they differ from the default, so the bare URL stays the cached page. At 375px place + jobs cut + AI jobs are visible and the rest scrolls inside `.alt-loc-scroll`. Not verified in a browser in this session (no Chrome in the cloud runner); verify the card at 375px in light and dark after deploy.
+
 ## 2026-10-19 - The learning loop's rotating slice could repeat the anchor slice
 
 **Class:** ran-but-brought-nothing
