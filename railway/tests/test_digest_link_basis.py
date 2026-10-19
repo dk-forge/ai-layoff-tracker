@@ -208,7 +208,9 @@ class EveryFilteredLinkNamesItsDateBasis(unittest.TestCase):
                     if "No country recorded" in l]
         self.assertTrue(residual, "the residual went missing")
         html = self.section["html"]
-        geo = html.split("Where the jobs were")[1].split("Which industries")[0]
+        # Bounded at the paragraph: the "Top countries" line follows it now
+        # that the harness loads digest-sections.php (2026-10-19).
+        geo = html.split("Where the jobs were")[1].split("</p>")[0]
         items = [i for i in geo.split("\u00b7") if "No country recorded" in i]
         self.assertTrue(items, "the residual went missing from the HTML part")
         self.assertNotIn("<a ", items[0],

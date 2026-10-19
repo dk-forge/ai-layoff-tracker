@@ -99,6 +99,23 @@ MONTHS = ("January", "February", "March", "April", "May", "June", "July",
 PREHEADER_MAX = 140
 
 # ---------------------------------------------------------------------------
+# THE TYPE SCALE, AND THE ONLY PLACE A FONT SIZE IS CHOSEN (owner, 2026-10-19:
+# "still various text sizes and styles"). Before this, the two editions used
+# twelve sizes between them (11 to 40px), several of them one pixel apart, so
+# the eye read noise rather than hierarchy. Five steps now, and every style in
+# this file, digest_design.py and the masthead reads one of them.
+# test_digest_type_scale.py renders both editions and fails on any other size,
+# so a stray 15px cannot creep back in. The two exempt values are not type:
+# 0 on a table-bar cell and 1px in the hidden preheader.
+# ---------------------------------------------------------------------------
+TYPE_TITLE = 22    # the edition / tracker title
+TYPE_HEADING = 18  # every section heading, same size and weight everywhere
+TYPE_STAT = 30     # the big number; 30 because two must fit side by side at 375px
+TYPE_BODY = 16     # body text and every list row
+TYPE_SMALL = 13    # notes, captions, source/date metadata, footer
+TYPE_SCALE = (TYPE_TITLE, TYPE_HEADING, TYPE_STAT, TYPE_BODY, TYPE_SMALL)
+
+# ---------------------------------------------------------------------------
 # Typography for the parts the site composed
 #
 # The site emits its own small inline margins. These replace them, so the two
@@ -106,17 +123,21 @@ PREHEADER_MAX = 140
 # the presentation is touched: no text, no figure and no href is rewritten.
 # ---------------------------------------------------------------------------
 TAG_STYLES = {
-    "h2": (f"margin:0 0 12px;font-family:{FONT};font-size:19px;line-height:1.25;"
+    "h2": (f"margin:0 0 12px;font-family:{FONT};font-size:{TYPE_TITLE}px;line-height:1.25;"
            f"font-weight:700;letter-spacing:-0.01em;color:{INK};"),
-    "h3": (f"margin:22px 0 2px;font-family:{FONT};font-size:16px;line-height:1.3;"
+    "h3": (f"margin:22px 0 2px;font-family:{FONT};font-size:{TYPE_HEADING}px;line-height:1.3;"
            f"font-weight:700;letter-spacing:0.01em;color:{INK};"),
-    "p": (f"margin:0 0 14px;font-family:{FONT};font-size:16px;line-height:1.6;"
+    "p": (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_BODY}px;line-height:1.6;"
           f"color:{INK};"),
-    "ul": "margin:0 0 16px;padding:0 0 0 20px;",
-    "ol": "margin:0 0 16px;padding:0 0 0 20px;",
-    "li": (f"margin:0 0 9px;font-family:{FONT};font-size:16px;line-height:1.55;"
-           f"color:{INK};"),
-    "a": f"color:{LINK};text-decoration:underline;font-weight:600;",
+    # A LIST ROW LOOKS LIKE A TABLE ROW (owner, 2026-10-19). The talent
+    # edition's item lists were bullets while the layoff edition's were ruled
+    # table rows, so the two editions read as two designs. Same padding, same
+    # rule, same size as the `label` cell below; no bullet.
+    "ul": "margin:0 0 14px;padding:0;list-style:none;",
+    "ol": "margin:0 0 14px;padding:0;list-style:none;",
+    "li": (f"margin:0;padding:7px 0;font-family:{FONT};font-size:{TYPE_BODY}px;"
+           f"line-height:1.4;color:{INK};border-bottom:1px solid {RULE};"),
+    "a": f"color:{LINK};text-decoration:underline;",
     "strong": f"font-weight:700;color:{INK};",
     "em": f"font-style:italic;color:{INK};",
     # The ranked lists. A bullet list cannot align a column of figures, and an
@@ -126,7 +147,7 @@ TAG_STYLES = {
     "table": ("width:100%;border-collapse:collapse;margin:0 0 14px;"
               "mso-table-lspace:0;mso-table-rspace:0;"),
     "tr": "",
-    "td": (f"padding:7px 0;font-family:{FONT};font-size:16px;line-height:1.4;"
+    "td": (f"padding:7px 0;font-family:{FONT};font-size:{TYPE_BODY}px;line-height:1.4;"
            f"color:{INK};border-bottom:1px solid {RULE};vertical-align:top;"),
 }
 
@@ -158,23 +179,23 @@ VARIANT_STYLES = {
     # it matters" line is Axios's, and it is set in ink rather than grey with a
     # rule above it so a skimmer's eye stops on it.
     # ------------------------------------------------------------------
-    ("p", "dateline"): (f"margin:0 0 14px;font-family:{FONT};font-size:14px;"
+    ("p", "dateline"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                         f"line-height:1.5;letter-spacing:0.04em;"
                         f"text-transform:uppercase;color:{MUTED};"),
-    ("p", "lead"): (f"margin:0 0 10px;font-family:{FONT};font-size:18px;"
+    ("p", "lead"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_HEADING}px;"
                     f"line-height:1.45;color:{INK};"),
     # A section's own opening line, below the lead's weight. It frames a block
     # rather than opening the edition.
-    ("p", "standfirst"): (f"margin:0 0 10px;font-family:{FONT};font-size:16px;"
+    ("p", "standfirst"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                           f"line-height:1.5;color:{INK};"),
     ("p", "why"): (f"margin:0 0 20px;padding:10px 0 0;font-family:{FONT};"
-                   f"font-size:16px;line-height:1.55;color:{INK};"
+                   f"font-size:{TYPE_BODY}px;line-height:1.55;color:{INK};"
                    f"border-top:1px solid {RULE};"),
     # A single derived observation that earns its own line rather than a clause
     # at the end of another sentence. "Technology is ninth, at 1%" was set as
     # grey small print inside the composition note; the owner picked it out of
     # the delivered email as the most striking thing in it.
-    ("p", "finding"): (f"margin:0 0 14px;font-family:{FONT};font-size:16px;"
+    ("p", "finding"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                        f"line-height:1.5;font-weight:700;color:{INK};"),
     # ------------------------------------------------------------------
     # TWO HEADLINE FIGURES SIDE BY SIDE. The owner asked for the United States
@@ -191,7 +212,7 @@ VARIANT_STYLES = {
                           f"vertical-align:top;width:50%;"),
     ("td", "pair-right"): (f"padding:6px 0 10px 12px;font-family:{FONT};"
                            f"vertical-align:top;width:50%;"),
-    ("p", "stat-pair"): (f"margin:0 0 4px;font-family:{FONT};font-size:28px;"
+    ("p", "stat-pair"): (f"margin:0 0 4px;font-family:{FONT};font-size:{TYPE_STAT}px;"
                          f"line-height:1.1;font-weight:700;"
                          f"letter-spacing:-0.02em;color:{INK};"
                          f"font-variant-numeric:tabular-nums;"),
@@ -209,11 +230,11 @@ VARIANT_STYLES = {
     # a headline: half the complete weeks of 2026 recorded zero, so a series
     # that is mostly zero cannot carry the top of an edition. Big enough to be
     # unmissable, small enough not to claim the week.
-    ("p", "signature"): (f"margin:0 0 8px;font-family:{FONT};font-size:20px;"
+    ("p", "signature"): (f"margin:0 0 8px;font-family:{FONT};font-size:{TYPE_HEADING}px;"
                          f"line-height:1.3;font-weight:700;"
                          f"letter-spacing:-0.01em;color:{INK};"
                          f"font-variant-numeric:tabular-nums;"),
-    ("p", "unit"): (f"margin:0 0 6px;font-family:{FONT};font-size:14px;"
+    ("p", "unit"): (f"margin:0 0 6px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                     f"line-height:1.4;color:{MUTED};"),
     # ------------------------------------------------------------------
     # A WHOLE RANKED DIMENSION ON ONE LINE, added 2026-08-19 when the layoff
@@ -231,37 +252,37 @@ VARIANT_STYLES = {
     # comfortable to tap: 1.6 line-height gives the anchors vertical room on a
     # 375px screen where a six-item series wraps to three lines.
     # ------------------------------------------------------------------
-    ("p", "series"): (f"margin:0 0 14px;font-family:{FONT};font-size:16px;"
+    ("p", "series"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                       f"line-height:1.6;color:{INK};"),
     # Owner feedback 2026-10-12: one short comparison line per hero number,
     # coloured by direction (up = red, down = green) with a glyph and words.
-    ("p", "change-up"): (f"margin:0;font-family:{FONT};font-size:14px;"
+    ("p", "change-up"): (f"margin:0;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                          f"line-height:1.4;font-weight:700;color:#b42a18;"),
-    ("p", "change-down"): (f"margin:0;font-family:{FONT};font-size:14px;"
+    ("p", "change-down"): (f"margin:0;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                            f"line-height:1.4;font-weight:700;color:#067647;"),
-    ("p", "more"): (f"margin:4px 0 0;font-family:{FONT};font-size:14px;"
+    ("p", "more"): (f"margin:4px 0 0;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                     f"line-height:1.4;color:{MUTED};"),
-    ("p", "weeks"): (f"margin:0 0 14px;font-family:{FONT};font-size:16px;"
+    ("p", "weeks"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                      f"line-height:1.6;color:{INK};"),
-    ("p", "footnote"): (f"margin:0 0 10px;font-family:{FONT};font-size:14px;"
+    ("p", "footnote"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                         f"line-height:1.55;color:{MUTED};"),
-    ("p", "change"): (f"margin:0;font-family:{FONT};font-size:14px;"
+    ("p", "change"): (f"margin:0;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                       f"line-height:1.4;font-weight:700;color:{MUTED};"),
     # The eyebrow over a headline figure. Uppercase and letterspaced is how a
     # newspaper marks a label without a rule, a weight change or an image.
-    ("p", "kicker"): (f"margin:0 0 4px;font-family:{FONT};font-size:12px;"
+    ("p", "kicker"): (f"margin:0 0 4px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                       f"line-height:1.3;font-weight:700;letter-spacing:0.09em;"
                       f"text-transform:uppercase;color:{MUTED};"),
     # The number itself. Nothing else in the message is this size.
-    ("p", "stat"): (f"margin:0 0 5px;font-family:{FONT};font-size:34px;"
+    ("p", "stat"): (f"margin:0 0 5px;font-family:{FONT};font-size:{TYPE_STAT}px;"
                     f"line-height:1.1;font-weight:700;letter-spacing:-0.02em;"
                     f"color:{INK};font-variant-numeric:tabular-nums;"),
     # What that number covers. Never optional, because a figure whose scope
     # sits somewhere else stops being true the moment somebody quotes it.
-    ("p", "scope"): (f"margin:0 0 16px;font-family:{FONT};font-size:14px;"
+    ("p", "scope"): (f"margin:0 0 16px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                      f"line-height:1.5;color:{MUTED};"),
     # A caption directly under a block heading, same job at list scale.
-    ("p", "caption"): (f"margin:0 0 10px;font-family:{FONT};font-size:14px;"
+    ("p", "caption"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                        f"line-height:1.5;color:{MUTED};"),
     # WHERE THE ROWS BEHIND A FIGURE CAME FROM. Deliberately the same size and
     # the same grey as `scope`, because it is the same kind of fact: it
@@ -271,7 +292,7 @@ VARIANT_STYLES = {
     # instead of borrowing `scope`: a future session can restyle the sourcing
     # without touching what a figure covers, and the composer still chooses
     # neither.
-    ("p", "source"): (f"margin:0 0 16px;font-family:{FONT};font-size:14px;"
+    ("p", "source"): (f"margin:0 0 16px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                       f"line-height:1.5;color:{MUTED};"),
     # The small print a block earns: a reconciliation, a definition, a basis.
     #
@@ -287,7 +308,7 @@ VARIANT_STYLES = {
     # has the wider client support and only breaks a token that has no other
     # way to fit, which leaves every ordinary sentence in this variant
     # wrapping exactly as it did.
-    ("p", "note"): (f"margin:0 0 14px;font-family:{FONT};font-size:14px;"
+    ("p", "note"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                     f"line-height:1.55;color:{MUTED};"
                     f"overflow-wrap:break-word;word-break:break-word;"),
     # ------------------------------------------------------------------
@@ -314,28 +335,28 @@ VARIANT_STYLES = {
                      f"border-top:1px solid {RULE};vertical-align:top;"),
     ("td", "item-first"): (f"padding:2px 0 0;font-family:{FONT};"
                            f"vertical-align:top;"),
-    ("p", "item-title"): (f"margin:0 0 5px;font-family:{FONT};font-size:17px;"
+    ("p", "item-title"): (f"margin:0 0 5px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                           f"line-height:1.35;font-weight:700;"
                           f"letter-spacing:-0.01em;color:{INK};"),
-    ("p", "item-blurb"): (f"margin:0 0 5px;font-family:{FONT};font-size:16px;"
+    ("p", "item-blurb"): (f"margin:0 0 5px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                           f"line-height:1.5;color:{INK};"),
-    ("p", "item-meta"): (f"margin:0 0 14px;font-family:{FONT};font-size:14px;"
+    ("p", "item-meta"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                          f"line-height:1.5;color:{MUTED};"),
     # The row label and the row figure. Same cell style, different weight and
     # a narrower measure, so a long company name wraps and the number does not.
-    ("td", "label"): (f"padding:7px 10px 7px 0;font-family:{FONT};font-size:16px;"
+    ("td", "label"): (f"padding:7px 10px 7px 0;font-family:{FONT};font-size:{TYPE_BODY}px;"
                       f"line-height:1.4;color:{INK};border-bottom:1px solid "
                       f"{RULE};vertical-align:top;"),
-    ("td", "figure"): (f"padding:7px 0;font-family:{FONT};font-size:16px;"
+    ("td", "figure"): (f"padding:7px 0;font-family:{FONT};font-size:{TYPE_BODY}px;"
                        f"line-height:1.4;font-weight:700;color:{INK};"
                        f"border-bottom:1px solid {RULE};vertical-align:top;"
                        f"white-space:nowrap;font-variant-numeric:tabular-nums;"),
     # The last row of a table drops its rule, so the block does not end on a
     # line that looks like the start of another one.
     ("td", "label-last"): (f"padding:7px 10px 7px 0;font-family:{FONT};"
-                           f"font-size:16px;line-height:1.4;color:{INK};"
+                           f"font-size:{TYPE_BODY}px;line-height:1.4;color:{INK};"
                            f"vertical-align:top;"),
-    ("td", "figure-last"): (f"padding:7px 0;font-family:{FONT};font-size:16px;"
+    ("td", "figure-last"): (f"padding:7px 0;font-family:{FONT};font-size:{TYPE_BODY}px;"
                             f"line-height:1.4;font-weight:700;color:{INK};"
                             f"vertical-align:top;white-space:nowrap;"
                             f"font-variant-numeric:tabular-nums;"),
@@ -1027,7 +1048,7 @@ def _masthead(kicker: str, notice: str = "", product: str = "") -> str:
         # file it with the furniture it exists to be an exception to. It sits
         # under the kicker because that is the line it explains.
         out += (f'<p class="et-muted" style="margin:8px 0 0;font-family:{FONT};'
-                f'font-size:12px;line-height:1.5;color:{MUTED};">'
+                f'font-size:{TYPE_SMALL}px;line-height:1.5;color:{MUTED};">'
                 f'{escape(notice)}</p>')
     return out
 
@@ -1316,9 +1337,9 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
     we could not measure them is owed the correction, and every word of
     TRACKING_SENTENCES still ships.
     """
-    small = (f'margin:0 0 8px;font-family:{FONT};font-size:12px;'
+    small = (f'margin:0 0 8px;font-family:{FONT};font-size:{TYPE_SMALL}px;'
              f'line-height:1.6;color:{MUTED};')
-    fine = (f'margin:0 0 6px;font-family:{FONT};font-size:11px;'
+    fine = (f'margin:0 0 6px;font-family:{FONT};font-size:{TYPE_SMALL}px;'
             f'line-height:1.6;color:{MUTED};')
     link = f'color:{LINK};text-decoration:underline;'
     urls = {"unsub": unsub_url, "manage": manage_url,
@@ -1344,7 +1365,7 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
             f'border-top:1px solid {RULE};'
             f'background-color:{CARD_BG};color:{MUTED};">'
             f'{note}'
-            f'<p style="margin:0;font-family:{FONT};font-size:11px;'
+            f'<p style="margin:0;font-family:{FONT};font-size:{TYPE_SMALL}px;'
             f'line-height:1.6;color:{MUTED};">'
             + escape(" ".join(TRACKING_SENTENCES)) +
             '</p></td></tr></table>')

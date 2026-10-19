@@ -117,7 +117,7 @@ def head_meta() -> str:
 def brand_header(product: str, kicker: str = "") -> str:
     """The wordmark line, then the product name, then an optional kicker."""
     out = (f'<p class="{CLASSES["muted"]}" style="margin:0;font-family:{FONT};'
-           f'font-size:12px;line-height:1.4;font-weight:600;'
+           f'font-size:13px;line-height:1.4;font-weight:600;'
            f'font-variant:small-caps;letter-spacing:0.08em;color:{MUTED};">'
            f'{escape(WORDMARK)}</p>'
            f'<p class="{CLASSES["ink"]}" style="margin:2px 0 0;font-family:{FONT};'
@@ -125,7 +125,7 @@ def brand_header(product: str, kicker: str = "") -> str:
            f'letter-spacing:-0.01em;color:{INK};">{escape(product)}</p>')
     if kicker:
         out += (f'<p class="{CLASSES["muted"]}" style="margin:6px 0 0;'
-                f'font-family:{FONT};font-size:12px;line-height:1.4;'
+                f'font-family:{FONT};font-size:13px;line-height:1.4;'
                 f'letter-spacing:0.06em;text-transform:uppercase;'
                 f'color:{MUTED};">{escape(kicker)}</p>')
     return out

@@ -107,10 +107,14 @@ class HeadingsAndLeadNumber(unittest.TestCase):
 
     def test_lead_number_is_bigger_than_before_and_in_the_accent(self):
         out = layout.restyle('<p data-alt="stat">48,910</p>', accent=design.RED)
-        self.assertIn("font-size:40px", out)
+        # 2026-10-19: one type scale. The lone stat and the paired stats are
+        # the same TYPE_STAT (30px, the approved pair size), still the largest
+        # type in the message.
+        self.assertIn(f"font-size:{layout.TYPE_STAT}px", out)
+        self.assertEqual(layout.TYPE_STAT, max(layout.TYPE_SCALE))
         self.assertIn(f"color:{design.RED}", out)
         pair = layout.restyle('<p data-alt="stat-pair">1</p>', accent=design.RED)
-        self.assertIn("font-size:30px", pair)
+        self.assertIn(f"font-size:{layout.TYPE_STAT}px", pair)
 
     def test_green_highlight_on_a_finding(self):
         out = layout.restyle('<p data-alt="finding">x</p>', accent=design.RED)
