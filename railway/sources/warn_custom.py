@@ -18,6 +18,7 @@ import html as _html
 import io
 import json
 import re
+import time
 
 import requests
 
@@ -73,19 +74,120 @@ def _strip_tags(markup):
     return _html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", markup or "")).strip())
 
 
-def fetch_tx():
-    """Official TWC Socrata dataset (full history 2019+, updated ~weekly)."""
-    url = ("https://data.texas.gov/resource/8w53-c4f6.json"
-           "?$limit=5000&$order=notice_date%20DESC")
-    rows = requests.get(url, headers=UA, timeout=TIMEOUT).json()
+# TEXAS HAS TWO OFFICIAL COPIES, AND ONE OF THEM STOPPED (2026-10-19).
+# The Socrata dataset below was this collector's only input. TWC stopped
+# refreshing it on 2026-07-07 (rowsUpdatedAt; newest notice 2026-06-23) while
+# the agency kept publishing the same columns as a per-year workbook on its
+# WARN page (warn-act-listings-<year>-twc.xlsx, 109 notices in 2026 through
+# 2026-10-07 on the day this was found). Socrata kept answering 200 with ~2,300
+# rows, so every count floor stayed green and Texas went dark in
+# source_freshness only. Both are read now and unioned by dedup_hash: the
+# workbook columns are the dataset's own, so an overlapping notice yields the
+# identical hash and cannot double-publish. Each half is fail-isolated.
+_TX_PAGE = "https://www.twc.texas.gov/data-reports/warn-notice"
+_TX_ORIGIN = "https://www.twc.texas.gov"
+_TX_XLSX_RX = re.compile(
+    r'href="(/sites/default/files/oei/docs/warn-act-listings-(\d{4})[^"]*\.xlsx)"', re.I)
+# TWC's edge answers some browser strings with an EMPTY 202 (a challenge, not a
+# refusal). This one is what the open scraper sends and it was served every
+# time it was tried; the retry covers the challenge that still comes now and then.
+_TX_UA = {"User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                         "AppleWebKit/537.36 (KHTML, like Gecko) "
+                         "Chrome/999.0.0.0 Safari/537.36")}
+_TX_YEARS_BACK = 1          # current + previous year; Socrata holds the history
+
+
+def _tx_get(url, *, want_zip=False, attempts=3):
+    """GET a TWC url, retrying the empty-202 challenge. None when never served."""
+    for i in range(attempts):
+        try:
+            r = requests.get(url, headers=_TX_UA, timeout=60)
+            body = r.content or b""
+            if r.status_code == 200 and body and (not want_zip or body[:2] == b"PK"):
+                return r
+        except Exception as exc:
+            print(f"    TX {url.rsplit('/', 1)[-1]}: {exc}")
+        if i + 1 < attempts:
+            time.sleep(5 * (i + 1))
+    return None
+
+
+def _tx_xlsx_links(page_html, this_year):
+    """[(year, absolute url)] for the workbooks worth reading, newest first."""
+    out = {}
+    for href, year in _TX_XLSX_RX.findall(page_html or ""):
+        y = int(year)
+        if y >= this_year - _TX_YEARS_BACK:
+            out.setdefault(y, _TX_ORIGIN + href)
+    return sorted(out.items(), reverse=True)
+
+
+def _tx_workbook_rows(content):
+    """Rows of one TWC workbook as dicts keyed like the Socrata dataset."""
+    from openpyxl import load_workbook
+    ws = load_workbook(io.BytesIO(content), read_only=True, data_only=True).worksheets[0]
+    it = ws.iter_rows(values_only=True)
+    header = [str(h or "").strip().lower() for h in next(it, ())]
+    out = []
+    for row in it:
+        rec = {h: v for h, v in zip(header, row) if h}
+        if not rec.get("job_site_name"):
+            continue
+        for k in ("notice_date", "layoff_date"):
+            v = rec.get(k)
+            rec[k] = v.date().isoformat() if hasattr(v, "date") else str(v or "")
+        out.append(rec)
+    return out
+
+
+def _tx_rows_to_entries(rows, detail_url):
     out = []
     for r in rows:
         jobs = _count(str(r.get("total_layoff_number") or ""))
         date = _to_iso_date((r.get("layoff_date") or r.get("notice_date") or "")[:10])
         e = _entry("TX", r.get("job_site_name"), jobs, date, r.get("city_name") or "",
-                   detail_url="https://data.texas.gov/d/8w53-c4f6")
+                   detail_url=detail_url)
         if e:
             out.append(e)
+    return out
+
+
+def fetch_tx():
+    """Official TWC data: Socrata dataset (history) UNION the per-year workbooks."""
+    import datetime as _dt
+    out, seen = [], set()
+
+    def _add(entries):
+        for e in entries:
+            if e["dedup_hash"] not in seen:
+                seen.add(e["dedup_hash"])
+                out.append(e)
+
+    try:
+        url = ("https://data.texas.gov/resource/8w53-c4f6.json"
+               "?$limit=5000&$order=notice_date%20DESC")
+        rows = requests.get(url, headers=UA, timeout=TIMEOUT).json()
+        _add(_tx_rows_to_entries(rows, "https://data.texas.gov/d/8w53-c4f6"))
+    except Exception as exc:
+        print(f"    TX socrata: {exc}")
+    socrata_n = len(out)
+    page = _tx_get(_TX_PAGE)
+    links = _tx_xlsx_links(page.text if page else "", _dt.date.today().year)
+    if not links:
+        print("    TX: no workbook links on the TWC WARN page (blocked or moved)")
+    for year, link in links:
+        resp = _tx_get(link, want_zip=True)
+        if resp is None:
+            print(f"    TX {year} workbook: not served")
+            continue
+        try:
+            _add(_tx_rows_to_entries(_tx_workbook_rows(resp.content), _TX_PAGE))
+        except Exception as exc:
+            print(f"    TX {year} workbook: parse failed ({exc})")
+    print(f"WARN TX: {socrata_n} from the dataset, {len(out) - socrata_n} more "
+          f"from {len(links)} TWC workbook(s)")
+    if not out:
+        raise RuntimeError("TX: neither the dataset nor any workbook was read")
     return out
 
 

@@ -115,7 +115,17 @@ def _parsed(runs):
         if at.tzinfo is None:
             at = at.replace(tzinfo=timezone.utc)
         out.append((at, str(r.get("source") or ""), str(r.get("status") or "")))
-    out.sort(key=lambda t: t[0])
+    # TIES ARE BROKEN `running`-FIRST, and that is the whole 2026-10-19 fix.
+    # `attempted_at` has one-second precision and /source-runs serves newest
+    # first (ORDER BY id DESC). A fast job posts its `running` and its `ok` in
+    # the same second, so the pair arrived as [ok, running], a plain stable sort
+    # kept that order, the `running` was then followed by nothing (or by the
+    # next day's `running`) and was reported ORPHANED. That was every
+    # context_enrichment / role_enrichment run whose two notes shared a second
+    # (2026-10-07, 10-12, 10-16, 10-17, 10-19), while every one of those runs
+    # had finished green and posted its `ok`. Within one second the start of a
+    # run precedes its own end; two runs of one source cannot share a second.
+    out.sort(key=lambda t: (t[0], 0 if t[2] == RUNNING else 1))
     return out
 
 

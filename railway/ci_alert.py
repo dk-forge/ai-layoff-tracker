@@ -494,6 +494,23 @@ def live_data_was_evaluated(repo, run_id):
     return verdict
 
 
+#: Live-data scopes a workflow now answers for, because it INHERITED the checks
+#: that raised them. On 2026-09-13 the live modules left `Tests` for `Live
+#: surface check` (railway/tests/live_host.py), so no Tests run can evaluate
+#: them again, and every `tests:live.data` incident open on that day became
+#: unclearable: the 2026-09-13 Tyson Amarillo 504 and the "Unarchived sources"
+#: cadence alarm were still open on 2026-10-19, read as red CI on main, and were
+#: owed a STILL FAILING mail every fortnight for a check nothing runs. A green
+#: run of the successor that POSITIVELY evaluated the invariants clears the
+#: predecessor's live-data scope too; an UNKNOWN run clears neither.
+LIVE_DATA_INHERITS = {"Live surface check": ("Tests",)}
+
+
+def inherited_live_data_scopes(workflow):
+    """The predecessor live-data scopes a green evaluated run of `workflow` clears."""
+    return [live_data_scope(w) for w in LIVE_DATA_INHERITS.get(workflow, ())]
+
+
 def live_data_scope(workflow):
     """The branch-free scope live-data incidents are raised and cleared under.
 
@@ -989,7 +1006,8 @@ def main(argv=None):
         # open for this scope" and sends no mail. Leaving the second one out is
         # how a closed incident would keep its alarm open and earn a STILL
         # FAILING reminder a fortnight later.
-        scopes = [scope, live_data_scope(args.workflow)]
+        scopes = ([scope, live_data_scope(args.workflow)]
+                  + inherited_live_data_scopes(args.workflow))
         # ...unless this run did not actually look. A live check that SKIPPED is
         # UNKNOWN, and clearing an incident on an UNKNOWN is how the owner was
         # mailed RECOVERED at 00:03 on 2026-08-14 for a number every check in

@@ -276,6 +276,47 @@ class OneLiveIncidentIsOneAlarm(unittest.TestCase):
                            "--dry-run"])
         self.assertIn(scope, printed.getvalue())
 
+    def test_the_successor_of_the_live_checks_clears_the_tests_live_data_scope(self):
+        """2026-10-19: two `tests:live.data` alarms from 2026-09-13 were still
+        open five weeks later, because the live modules moved to `Live surface
+        check` that day and no Tests run can evaluate them again. The successor's
+        evaluated green run must cover the predecessor's scope."""
+        key = _key(REAL_US_93210, workflow="Tests")
+        printed = io.StringIO()
+        with redirect_stdout(printed):
+            ci_alert.main(["--run-id", "1", "--workflow", "Live surface check",
+                           "--conclusion", "success", "--branch", "main",
+                           "--dry-run"])
+        out = printed.getvalue()
+        self.assertTrue(any(key.startswith(s + ":")
+                            for s in ci_alert.inherited_live_data_scopes(
+                                "Live surface check")))
+        self.assertIn(ci_alert.live_data_scope("Tests"), out)
+        self.assertIn(ci_alert.live_data_scope("Live surface check"), out)
+
+    def test_an_unevaluated_successor_run_clears_no_inherited_scope(self):
+        """An UNKNOWN run (every live check skipped) must not clear the
+        predecessor's incident either, or the 2026-08-14 false RECOVERED
+        returns through the inheritance."""
+        saved, saved_env = ci_alert.live_data_was_evaluated, os.environ.pop(
+            "RESEND_API_KEY", None)
+        ci_alert.live_data_was_evaluated = lambda *a, **k: False
+        try:
+            printed = io.StringIO()
+            with redirect_stdout(printed):
+                ci_alert.main(["--run-id", "1", "--workflow", "Live surface check",
+                               "--conclusion", "success", "--branch", "main"])
+        finally:
+            ci_alert.live_data_was_evaluated = saved
+            if saved_env is not None:
+                os.environ["RESEND_API_KEY"] = saved_env
+        resolved = [l for l in printed.getvalue().splitlines() if "resolve scopes" in l]
+        self.assertTrue(resolved)
+        self.assertNotIn(ci_alert.live_data_scope("Tests"), resolved[0])
+
+    def test_tests_inherits_nothing(self):
+        self.assertEqual(ci_alert.inherited_live_data_scopes("Tests"), [])
+
     def test_the_vocabulary_comes_from_data_integrity_not_a_copy(self):
         """A hand-copied label list goes stale in silence, and a stale one here
         means a renamed invariant quietly returns to mailing once per branch."""
