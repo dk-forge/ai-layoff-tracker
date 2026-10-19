@@ -1192,7 +1192,7 @@ $alt_hero_basis  = 'counted by filing date';
                      beside a verified-only headline, about 70% over, unexplained. */ ?>
             <p class="alt-chart-note alt-chart-note-basis" id="alt-bars-countries-basis" hidden></p>
         </div>
-        <?php /* BY LOCATION TABLE (2.20.273, owner-approved 2026-10-19). Config rides on
+        <?php /* BY LOCATION TABLE (2.20.274, owner-approved 2026-10-19). Config rides on
                  data- attributes, never on a localized global: Autoptimize sweeps inline
                  objects into a bundle that loads late (CLAUDE.md gotcha #10). The view,
                  period, sort and "show all" live in the query string (loc, loc_period,

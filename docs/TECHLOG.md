@@ -1,9 +1,30 @@
-## 2026-10-19 - "By location" table and shareable view state on the tracker (2.20.273)
+## 2026-10-19 - "By location" table and shareable view state on the tracker (2.20.274)
 
 **Class:** novel (owner approval 2026-10-19, built the same way on the Talent Intelligence Tracker so both read alike)
 **Guard:** `railway/tests/test_by_location_table.py` (public read-only cached route, WHERE from `alt_db_where`, basis fixed at verified + superset-folded + job-location, closed column list with no city, `view`/`period` in the cache-key whitelist, calendar-aligned period bounds executed in PHP, card markup under "Where the cuts are", config on data- attributes, state in the query string and restored, row tap through `ensureOption`/`toggleMultiFilter`/`refreshAll`, scroll container with pinned place column, token-only colours).
 
 New `includes/by-location.php` (guarded `is_readable` include) serves `/by-location?view=country|state&period=week|month|quarter|ytd|all` plus every page filter: rows of entries, jobs cut, AI-attributed entries, AI-attributed jobs (reader copy says "entries", per test_reader_copy_says_entries). Basis: VERIFIED cuts only (`announced = 0`), `superset_of = 0`, country = strict job location, the headline basis (not `country_basis=any`, which would count one global cut under two countries). The table drops its own dimension (slicer contract) and the page's date filter (the period replaces it). No city view: `wp_alt_layoffs` has no city column. On the page it is a full-width card after "Layoffs by country": Country | US state switch, period select, sortable headers (`aria-sort`), top 25 + show all, "Copy link". `loc`, `loc_period`, `loc_sort`, `loc_dir`, `loc_all` ride in the query string beside the existing filter params and are written only when they differ from the default, so the bare URL stays the cached page. At 375px place + jobs cut + AI jobs are visible and the rest scrolls inside `.alt-loc-scroll`. Not verified in a browser in this session (no Chrome in the cloud runner); verify the card at 375px in light and dark after deploy.
+## 2026-10-19 - Housekeeping: three red workflows (2.20.273, pushed, not deployed)
+
+**Class:** novel (three unrelated reds: an unpinned backup column, an uncached heavy public route, a gh GraphQL lookup)
+
+**Guard:** `railway/tests/test_backup_schema_parity.py`, `railway/tests/test_archive_coverage_route_cached.py`, `railway/tests/test_bls_archive_release_rest.py` (each red on the old code).
+
+1. `backup-export` (run 39105677784) REFUSED `company_directory` because
+   2.20.210 added `admitted_by` (`'autopilot'` or `''`, a provenance marker,
+   not personal data) and nobody pinned it in `railway/backup_tables.py`. Pinned;
+   the new test reads the plugin's own CREATE TABLE and fails on any unpinned
+   column, so the next added column reds a unit test instead of the export.
+2. `live-surface-check` (run 39191197293): `/archive-coverage` 500'd once at
+   02:42Z (green before and after; 200 on every retry). The public route ran
+   `alt_archive_coverage_counts()` raw: three scans joined on
+   `MD5(TRIM(source_url))`, which no index serves, behind a cache-busting query
+   every caller sends. It now shares the page summary's 15-minute
+   `alt_figure_cache_key` transient (still invalidated by `alt_data_ver`).
+3. `bls-archive` (run 38220160618): "release not found" for
+   `bls-archive-2026-10`, which exists, is published and holds 62 assets.
+   `gh release view/upload` resolve through GraphQL; the step now resolves by
+   tag over REST, creates over REST on a 404 and replaces same-name assets.
 
 ## 2026-10-19 - The learning loop's rotating slice could repeat the anchor slice
 
