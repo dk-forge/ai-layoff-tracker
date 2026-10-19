@@ -1,6 +1,6 @@
 ## 2026-10-19 - Housekeeping: three red workflows (2.20.273, pushed, not deployed)
 
-**Class:** schema drift (backup pin), uncached heavy public route, tooling lookup fault (gh GraphQL)
+**Class:** novel (three unrelated reds: an unpinned backup column, an uncached heavy public route, a gh GraphQL lookup)
 
 **Guard:** `railway/tests/test_backup_schema_parity.py`, `railway/tests/test_archive_coverage_route_cached.py`, `railway/tests/test_bls_archive_release_rest.py` (each red on the old code).
 
