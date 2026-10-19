@@ -1,3 +1,19 @@
+## 2026-10-19 - The learning loop's rotating slice could repeat the anchor slice
+
+**Class:** ran-but-brought-nothing
+
+**Guard:** `railway/tests/test_tracker_learning_leak.py::CorpusQueryTests::test_the_rotating_slice_never_repeats_the_anchor` (walks 400 days; red on the old code).
+
+`Tests` went red on main at 2026-10-19 00:57 UTC (run 39183103718) in
+`test_only_the_anchor_slice_is_measured_but_both_teach`: the two learning-corpus
+queries were identical. `learn_query()` started the rotating slice at
+`today.toordinal() % len(terms)`, which is 0 (the anchor's own start) on one day
+in every `len(terms)`. On those days the "explore" call re-read the anchor and
+discovered nothing; the test caught it only because today was such a day. The
+rotating slice now starts at `1 + ordinal % (len - 1)`, so it never coincides
+with the anchor, and `test_the_rotating_slice_never_repeats_the_anchor` walks
+400 days to pin it (red on the old code, green now). No plugin change.
+
 ## 2026-10-18 - Talent follows: a city or an employer on the talent tracker, in the talent digest (2.20.272)
 
 **Class:** novel (owner ruling 2026-10-18: the subscriber list may hold talent follow preferences, weekly default, daily optional; board item "City and company alerts", step 2 of talent-intelligence-tracker TECHLOG 2026-10-12)

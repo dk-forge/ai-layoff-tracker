@@ -31,7 +31,7 @@ import types
 import unittest
 from contextlib import redirect_stdout
 import time as time_module
-from datetime import date, datetime
+from datetime import date, timedelta, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -132,6 +132,14 @@ class CorpusQueryTests(unittest.TestCase):
         joined = " ".join(seen)
         for term in self.TERMS:
             self.assertIn(term, joined)
+
+    def test_the_rotating_slice_never_repeats_the_anchor(self):
+        # 2026-10-19: ordinal % len == 0 made the rotating query equal to the
+        # anchor, so the explore call read nothing new and Tests went red.
+        anchor = td.learn_query(self.TERMS, None)
+        for i in range(400):
+            day = date(2026, 1, 1) + timedelta(days=i)
+            self.assertNotEqual(td.learn_query(self.TERMS, day), anchor, day)
 
     def test_no_terms_is_empty_rather_than_a_malformed_query(self):
         self.assertEqual(td.learn_query((), date(2026, 8, 18)), "")
