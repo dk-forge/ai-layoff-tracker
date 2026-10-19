@@ -4,6 +4,48 @@
 **Guard:** `railway/tests/test_by_location_table.py` (public read-only cached route, WHERE from `alt_db_where`, basis fixed at verified + superset-folded + job-location, closed column list with no city, `view`/`period` in the cache-key whitelist, calendar-aligned period bounds executed in PHP, card markup under "Where the cuts are", config on data- attributes, state in the query string and restored, row tap through `ensureOption`/`toggleMultiFilter`/`refreshAll`, scroll container with pinned place column, token-only colours).
 
 New `includes/by-location.php` (guarded `is_readable` include) serves `/by-location?view=country|state&period=week|month|quarter|ytd|all` plus every page filter: rows of entries, jobs cut, AI-attributed entries, AI-attributed jobs (reader copy says "entries", per test_reader_copy_says_entries). Basis: VERIFIED cuts only (`announced = 0`), `superset_of = 0`, country = strict job location, the headline basis (not `country_basis=any`, which would count one global cut under two countries). The table drops its own dimension (slicer contract) and the page's date filter (the period replaces it). No city view: `wp_alt_layoffs` has no city column. On the page it is a full-width card after "Layoffs by country": Country | US state switch, period select, sortable headers (`aria-sort`), top 25 + show all, "Copy link". `loc`, `loc_period`, `loc_sort`, `loc_dir`, `loc_all` ride in the query string beside the existing filter params and are written only when they differ from the default, so the bare URL stays the cached page. At 375px place + jobs cut + AI jobs are visible and the rest scrolls inside `.alt-loc-scroll`. Not verified in a browser in this session (no Chrome in the cloud runner); verify the card at 375px in light and dark after deploy.
+## 2026-10-19 - Data faults: Texas frozen dataset, same-second "orphans", unclearable live-data alarms (no plugin change)
+
+**Class:** ran-but-brought-nothing (Texas); the other two are `wrong-scope-or-key`, recorded in their own paragraphs below
+
+**Guard:** `railway/tests/test_tx_warn_workbook.py`, `railway/tests/test_run_completion.py::SameSecondPairsAreComplete`, `railway/tests/test_ci_alert.py::...test_the_successor_of_the_live_checks_clears_the_tests_live_data_scope` (each red on the old code).
+
+1. **Texas (BROKEN, fixed).** `fetch_tx` read only Socrata `8w53-c4f6`, which
+   TWC stopped refreshing on 2026-07-07 (newest notice 2026-06-23). It still
+   answered ~2,300 rows, so every floor stayed green; source_freshness alone
+   called Texas dark (18 days). TWC kept publishing the same columns as
+   `warn-act-listings-<year>-twc.xlsx` on its WARN page (109 notices in 2026
+   through 2026-10-07; held rows topped out at effective 2026-09-30). The
+   fetcher now unions the current and previous year's workbooks by dedup_hash
+   (identical columns, identical hash on overlap: +44 rows on 2026-10-19). The
+   page answers some UAs with an EMPTY 202 challenge; that is retried, never
+   parsed. Each half is fail-isolated.
+2. **Tennessee, Mississippi, Kansas: QUIET, not broken.** Read from the
+   official pages 2026-10-19: TN's newest notice is 9/2/2026 (Kilgore Flares,
+   held); MS has posted through PY2025 Q4 (Apr-Jun 2026) only and our newest
+   effective date equals the PDF's (2026-06-30); kansasworks' newest notice is
+   2026-05-01 (held). No threshold and no source_state.json change. Noted, not
+   fixed: TN writes effective dates as `10-31-2026`, which `_to_iso_date` does
+   not parse, so TN rows key on the notice date; fixing it changes dedup_hash
+   and is a /bulk-purge + reimport job, not an outage fix.
+3. **context_enrichment / role_enrichment "orphans" (`wrong-scope-or-key`).**
+   Every flagged run finished green and posted `ok`. `/source-runs` has
+   one-second timestamps and serves id DESC, so a run whose `running` and `ok`
+   shared a second arrived as [ok, running]; the stable time sort kept it and
+   the start read as never answered (exactly the 10-07/12/16/17/19 runs). Ties
+   now break `running` first. GRACE untouched.
+4. **"Red CI on main" for Tests/Deploy was stale ledger state
+   (`wrong-scope-or-key`).** The Tyson Amarillo and "Unarchived sources"
+   alarms are `tests:live.data` incidents raised 2026-09-13; that day the live
+   modules moved to `Live surface check`, so no Tests run can evaluate (and
+   clear) them again. `ci_alert.LIVE_DATA_INHERITS` lets an EVALUATED green
+   successor run clear the predecessor scope too; an UNKNOWN run clears
+   neither. The Deploy AssertionError/JSONDecodeError alarms are scoped to the
+   deleted branch `codex-top3-restore-route` (2026-09-08) and are listed by
+   ops_status [4b2] as unclearable; they need a reviewed close, which this
+   change deliberately does not automate. Main's actual Tests red today
+   (rotating learning slice) was fixed earlier in #550.
+
 ## 2026-10-19 - Housekeeping: three red workflows (2.20.273, pushed, not deployed)
 
 **Class:** novel (three unrelated reds: an unpinned backup column, an uncached heavy public route, a gh GraphQL lookup)

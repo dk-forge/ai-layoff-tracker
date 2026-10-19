@@ -220,5 +220,29 @@ class CollectionIsNotSilentlyTruncated(unittest.TestCase):
         self.assertEqual(len(rc.orphans(rows, now=NOW)), 1)
 
 
+class SameSecondPairsAreComplete(unittest.TestCase):
+    """2026-10-19: /source-runs serves newest first with one-second timestamps,
+    so a fast job's `running` and `ok` arrived as [ok, running] and every such
+    run read as ORPHANED although it had finished and posted its `ok`."""
+
+    def _api_order(self, at):
+        # Exactly the live shape: ORDER BY id DESC, both notes in one second.
+        stamp = at.isoformat()
+        return [{"source": "context_enrichment", "status": "ok", "attempted_at": stamp},
+                {"source": "context_enrichment", "status": "running", "attempted_at": stamp}]
+
+    def test_a_same_second_pair_is_not_an_orphan(self):
+        runs = self._api_order(NOW - timedelta(days=2)) + self._api_order(NOW - timedelta(days=1))
+        self.assertEqual(rc.orphans(runs, now=NOW), [])
+
+    def test_a_real_orphan_beside_a_same_second_pair_is_still_found(self):
+        died = NOW - timedelta(days=3)
+        runs = (self._api_order(NOW - timedelta(days=1))
+                + [{"source": "context_enrichment", "status": "running",
+                    "attempted_at": died.isoformat()}])
+        found = rc.orphans(runs, now=NOW)
+        self.assertEqual([f["started_at"] for f in found], [died])
+
+
 if __name__ == "__main__":
     unittest.main()
