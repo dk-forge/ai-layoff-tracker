@@ -66,36 +66,39 @@ def accent_for(section: str) -> str:
 
 def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
     """Per-section overrides for digest_layout's tag and variant styles."""
+    # Sizes come from digest_layout's one type scale, never a literal here.
+    from digest_layout import (TYPE_BODY, TYPE_HEADING, TYPE_SMALL,  # noqa
+                               TYPE_STAT, TYPE_TITLE)
     return {
         ("h2", ""): (f"margin:0 0 14px;padding:2px 0 2px 12px;font-family:{font};"
-                     f"font-size:22px;line-height:1.25;font-weight:800;"
+                     f"font-size:{TYPE_TITLE}px;line-height:1.25;font-weight:800;"
                      f"letter-spacing:-0.01em;color:{accent};"
                      f"border-left:4px solid {accent};"),
-        ("h3", ""): (f"margin:24px 0 6px;font-family:{font};font-size:15px;"
+        ("h3", ""): (f"margin:24px 0 6px;font-family:{font};font-size:{TYPE_HEADING}px;"
                      f"line-height:1.3;font-weight:700;letter-spacing:0.01em;"
                      f"color:{accent};"),
-        ("p", "stat"): (f"margin:0 0 5px;font-family:{font};font-size:40px;"
+        ("p", "stat"): (f"margin:0 0 5px;font-family:{font};font-size:{TYPE_STAT}px;"
                         f"line-height:1.05;font-weight:800;letter-spacing:-0.02em;"
                         f"color:{accent};font-variant-numeric:tabular-nums;"),
-        ("p", "stat-pair"): (f"margin:0 0 4px;font-family:{font};font-size:30px;"
+        ("p", "stat-pair"): (f"margin:0 0 4px;font-family:{font};font-size:{TYPE_STAT}px;"
                              f"line-height:1.1;font-weight:800;"
                              f"letter-spacing:-0.02em;color:{accent};"
                              f"font-variant-numeric:tabular-nums;"),
-        ("p", "kicker"): (f"margin:0 0 4px;font-family:{font};font-size:11px;"
+        ("p", "kicker"): (f"margin:0 0 4px;font-family:{font};font-size:{TYPE_SMALL}px;"
                           f"line-height:1.3;font-weight:700;letter-spacing:0.09em;"
                           f"text-transform:uppercase;color:{accent};"),
         ("p", "finding"): (f"margin:0 0 14px;padding:10px 12px;font-family:{font};"
-                           f"font-size:16px;line-height:1.5;font-weight:700;"
+                           f"font-size:{TYPE_BODY}px;line-height:1.5;font-weight:700;"
                            f"color:{ink};background-color:{GREEN_BG};"
                            f"border-left:3px solid {GREEN};"),
         ("p", "why"): (f"margin:0 0 20px;padding:10px 0 0;font-family:{font};"
-                       f"font-size:16px;line-height:1.55;color:{ink};"
+                       f"font-size:{TYPE_BODY}px;line-height:1.55;color:{ink};"
                        f"border-top:2px solid {GREEN};"),
         # Owner default ruling 2026-10-12: layoffs UP is bad news (red), DOWN
         # is green. Glyph and words carry the direction too, never colour only.
-        ("p", "change-up"): (f"margin:0;font-family:{font};font-size:14px;"
+        ("p", "change-up"): (f"margin:0;font-family:{font};font-size:{TYPE_SMALL}px;"
                              f"line-height:1.4;font-weight:700;color:{RED};"),
-        ("p", "change-down"): (f"margin:0;font-family:{font};font-size:14px;"
+        ("p", "change-down"): (f"margin:0;font-family:{font};font-size:{TYPE_SMALL}px;"
                                f"line-height:1.4;font-weight:700;color:{GREEN};"),
         ("table", "chart"): ("width:100%;border-collapse:collapse;margin:6px 0 0;"
                              "mso-table-lspace:0;mso-table-rspace:0;"),
@@ -109,18 +112,18 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
                           f"line-height:0;font-family:{font};color:{muted};"
                           f"background-color:{TRACK};"),
         ("td", "chart-label"): (f"padding:4px 10px 4px 0;font-family:{font};"
-                                f"font-size:14px;line-height:1.3;color:{ink};"
+                                f"font-size:{TYPE_SMALL}px;line-height:1.3;color:{ink};"
                                 f"white-space:nowrap;vertical-align:middle;"
                                 f"width:30%;"),
-        ("td", "chart-cell"): (f"padding:4px 0;font-family:{font};font-size:13px;"
+        ("td", "chart-cell"): (f"padding:4px 0;font-family:{font};font-size:{TYPE_SMALL}px;"
                                f"line-height:1.3;color:{ink};"
                                f"vertical-align:middle;"),
         ("td", "col-label"): (f"padding:6px 2px 0;font-family:{font};"
-                              f"font-size:11px;line-height:1.35;color:{muted};"
+                              f"font-size:{TYPE_SMALL}px;line-height:1.35;color:{muted};"
                               f"vertical-align:top;"
                               f"font-variant-numeric:tabular-nums;"),
         ("td", "chart-figure"): (f"padding:4px 0 4px 10px;font-family:{font};"
-                                 f"font-size:13px;line-height:1.3;font-weight:700;"
+                                 f"font-size:{TYPE_SMALL}px;line-height:1.3;font-weight:700;"
                                  f"color:{ink};white-space:nowrap;"
                                  f"vertical-align:middle;width:1%;"
                                  f"font-variant-numeric:tabular-nums;"),

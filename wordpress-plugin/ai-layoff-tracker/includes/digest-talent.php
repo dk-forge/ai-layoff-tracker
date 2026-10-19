@@ -850,6 +850,18 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
         }
     }
 
+    /*
+      WHERE (owner, 2026-10-19: "still not by geography ... State and
+      country?"). Same window and same basis as the headline: the composer
+      sends no filter but the window, so these count the same signals. See
+      alt_digest_talent_where for the guards.
+    */
+    if (function_exists('alt_digest_talent_where')) {
+        list($w_html, $w_text) = alt_digest_talent_where($from, $to, $send_id, $range, $total);
+        $html .= $w_html;
+        $text .= $w_text;
+    }
+
     // One year-to-date line, for the reason spelled out in
     // alt_digest_compose_layoff: this data revises upward, so any
     // period-over-period delta manufactures a fall out of a reporting lag.
@@ -1100,3 +1112,107 @@ function alt_digest_talent_language_bits($row) {
     }
     return array($tag, $gist);
 }
+
+/**
+ * THE "WHERE" BLOCK OF THE TALENT EDITION: signals by country (top 8, then
+ * "and N more countries"), and for the United States, signals by state (top 8).
+ *
+ * COUNTS SIGNALS, NEVER MONEY. Every figure is a row count from the talent
+ * plugin's own /aggregate (`by_country`, `by_state`), over the SAME window and
+ * the same (absent) filters as the headline, so a line here and the headline
+ * describe one set of rows. Country is the tracker's own coalesce of job
+ * location and employer HQ (tit_country_expr), the same basis its page and its
+ * By location table use; nothing is re-derived here.
+ *
+ * "N MORE" IS MEASURED, NOT INFERRED. `by_country` is capped at 40 values, so
+ * the remainder is the endpoint's own distinct-country count minus the printed
+ * eight, never the length of a capped list.
+ *
+ * GUARDS, SAME SHAPE AS "OTHER TALENT ACTIVITY": a failed call prints no line
+ * (UNKNOWN, not zero), and a US-filtered total equal to the worldwide headline
+ * while other countries are present is the signature of a filter the endpoint
+ * ignored, so the state line is dropped rather than published as US-only.
+ * Signals with no country recorded are not placed and are not guessed.
+ *
+ * Returns array(html, text), both '' when nothing can be said.
+ */
+function alt_digest_talent_where($from, $to, $send_id, $range, $total) {
+    $ask = function ($extra) use ($from, $to) {
+        $req = new WP_REST_Request('GET', '/talent/v1/aggregate');
+        $req->set_param('since', $from);
+        $req->set_param('until', $to);
+        foreach ($extra as $k => $v) $req->set_param($k, $v);
+        $res = rest_do_request($req);
+        if (!$res || $res->is_error()) return null;
+        return (array) $res->get_data();
+    };
+    $pairs = function ($list) {
+        $out = array();
+        foreach ((is_array($list) ? $list : array()) as $row) {
+            $row = (array) $row;
+            $k = strtoupper(trim((string) ($row['k'] ?? '')));
+            $n = (int) ($row['n'] ?? 0);
+            if ($k === '' || $n <= 0) continue;
+            $out[$k] = $n;
+        }
+        arsort($out);
+        return $out;
+    };
+    $more = function ($rest, $one, $many) {
+        if (function_exists('alt_digest_more_tail')) return alt_digest_more_tail($rest, $one, $many);
+        return '.';
+    };
+    $html = ''; $text = '';
+    $world = $ask(array());
+    if ($world === null) return array('', '');
+    $countries = $pairs($world['by_country'] ?? null);
+    if (count($countries) < 1) return array('', '');
+    $shown = array_slice($countries, 0, 8, true);
+    $rows = array();
+    foreach ($shown as $code => $n) {
+        $name = function_exists('tit_country_name') ? (string) tit_country_name($code) : '';
+        $rows[] = array(
+            'label'  => $name !== '' ? $name : $code,
+            'figure' => alt_digest_number($n),
+            'url'    => alt_digest_track_link($send_id, alt_digest_talent_url(
+                            $from, $to, array('country' => $code))),
+        );
+    }
+    $distinct = array_key_exists('countries', $world) ? (int) $world['countries'] : count($countries);
+    $tail = $more(max($distinct, count($countries)) - count($rows), 'country', 'countries');
+    list($c_html, $c_text) = alt_digest_inline_series($rows);
+    $caption = $range . ', signals by country (job location, else employer head office)';
+    $html .= '<h3>Where</h3>'
+           . '<p data-alt="series">' . esc_html($caption . ': ') . $c_html
+           . esc_html($tail) . '</p>';
+    $text .= "\nWhere\n" . $caption . ': ' . $c_text . $tail . "\n";
+
+    if (isset($countries['US'])) {
+        $us = $ask(array('country' => 'US'));
+        $ignored = $us !== null && count($countries) > 1
+                   && (int) ($us['total'] ?? -1) === (int) $total;
+        if ($us !== null && !$ignored) {
+            $states = $pairs($us['by_state'] ?? null);
+            if (count($states) > 1) {
+                $map = function_exists('alt_us_state_names') ? alt_us_state_names() : array();
+                $srows = array();
+                foreach (array_slice($states, 0, 8, true) as $code => $n) {
+                    $srows[] = array(
+                        'label'  => isset($map[$code]) ? $map[$code] : $code,
+                        'figure' => alt_digest_number($n),
+                        'url'    => alt_digest_track_link($send_id, alt_digest_talent_url(
+                                        $from, $to, array('country' => 'US', 'state' => $code))),
+                    );
+                }
+                $stail = $more(count($states) - count($srows), 'state', 'states');
+                list($s_html, $s_text) = alt_digest_inline_series($srows);
+                $scap = $range . ', US signals by state';
+                $html .= '<p data-alt="series">' . esc_html($scap . ': ') . $s_html
+                       . esc_html($stail) . '</p>';
+                $text .= $scap . ': ' . $s_text . $stail . "\n";
+            }
+        }
+    }
+    return array($html, $text);
+}
+

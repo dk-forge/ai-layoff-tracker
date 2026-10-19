@@ -280,3 +280,16 @@ function alt_digest_audience_order($rows, $key_fn) {
     });
     return array_map(function ($e) { return $e[3]; }, $keyed);
 }
+
+/**
+ * The end of a ranked geography line: ".", or ", and 3 more countries." when
+ * the list was cut. $rest is how many ranked values were NOT printed; zero or
+ * less is a complete list and says nothing more.
+ */
+if (!function_exists('alt_digest_more_tail')) {
+function alt_digest_more_tail($rest, $one, $many) {
+    $rest = (int) $rest;
+    if ($rest <= 0) return '.';
+    return ', and ' . number_format($rest) . ' more ' . ($rest === 1 ? $one : $many) . '.';
+}
+}

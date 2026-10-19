@@ -189,6 +189,14 @@ $FIXTURE = json_decode(file_get_contents($argv[2]), true);
   present path. Nothing is invented here: the block renders exactly the numbers
   the fixture carries, the same contract as every other stub in this harness.
 */
+// The sibling plugin's ISO-code -> name map, stubbed only when a fixture
+// supplies it; absent, the Where block prints the code (production's fallback).
+if (array_key_exists('country_names', $FIXTURE)) {
+    function tit_country_name($code) {
+        global $FIXTURE;
+        return (string) ($FIXTURE['country_names'][$code] ?? '');
+    }
+}
 if (array_key_exists('indeed', $FIXTURE)) {
     function tit_indeed_index_data() {
         global $FIXTURE;
@@ -258,6 +266,17 @@ function rest_do_request($req) {
             if ($value === null || $value === '') continue;
             $key = 'talent_cat_' . $filter . '_' . $value;
             if (!isset($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
+            return new WP_REST_Response_Stub($FIXTURE[$key]);
+        }
+        /*
+          THE "WHERE" BLOCK (2026-10-19) asks the FULL /aggregate (no
+          `include`) for by_country, then again with country=US for by_state.
+          A fixture answers from talent_geo / talent_geo_us, or an ERROR, so
+          older fixtures keep exercising the omitted branch.
+        */
+        if (strpos($req->route, '/aggregate') !== false && $req->get_param('include') === null) {
+            $key = ($req->get_param('country') === 'US') ? 'talent_geo_us' : 'talent_geo';
+            if (empty($FIXTURE[$key])) return new WP_REST_Response_Stub(null, true);
             return new WP_REST_Response_Stub($FIXTURE[$key]);
         }
         $key = ($req->get_param('since') === $FIXTURE['from']) ? 'talent' : 'talent_ytd';
@@ -356,6 +375,9 @@ require $argv[1];
 // The plugin loads digest-extras.php beside subscribe.php; so does the harness.
 $alt_extras = dirname($argv[1]) . '/digest-extras.php';
 if (is_file($alt_extras)) require_once $alt_extras;
+// And digest-sections.php, which the plugin also loads (alt_digest_top_n).
+$alt_sections = dirname($argv[1]) . '/digest-sections.php';
+if (is_file($alt_sections)) require_once $alt_sections;
 
 /*
   PROBE MODE. The window, validation, period and last-sent-column helpers are

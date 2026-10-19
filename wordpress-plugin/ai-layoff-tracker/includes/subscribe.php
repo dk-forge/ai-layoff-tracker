@@ -6659,7 +6659,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       reconciliation note; the caption says it is the top five.
     */
     if (function_exists('alt_digest_top_n')) {
-        $top_countries = alt_digest_top_n($countries_all, 5);
+        // EIGHT, then "and N more" (owner, 2026-10-19: "still not by
+        // geography"). The remainder is counted from the same verified block,
+        // so the line never claims a country it did not rank.
+        $top_countries = alt_digest_top_n($countries_all, 8);
         if (count($top_countries) > 1) {
             $rows = array();
             foreach ($top_countries as $name => $value) {
@@ -6673,10 +6676,12 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             list($tc_html, $tc_text) = alt_digest_inline_series($rows);
             $tc_caption = $range . ', verified job cuts, the top ' . count($rows)
                         . ' countries where the jobs were';
+            $tc_tail = !function_exists('alt_digest_more_tail') ? '.' : alt_digest_more_tail(count(alt_digest_top_n($countries_all, PHP_INT_MAX))
+                                            - count($rows), 'country', 'countries');
             $html .= '<h3>Top countries</h3>'
                    . '<p data-alt="series">' . esc_html($tc_caption . ': ') . $tc_html
-                   . esc_html('.') . '</p>';
-            $text .= "\nTop countries\n" . $tc_caption . ': ' . $tc_text . ".\n";
+                   . esc_html($tc_tail) . '</p>';
+            $text .= "\nTop countries\n" . $tc_caption . ': ' . $tc_text . $tc_tail . "\n";
         }
     }
 
@@ -6791,7 +6796,8 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       `state` control accepts.
     */
     list($states_all, , ) = $verified_split($data['top_states'] ?? null);
-    $states = array_slice($states_all, 0, 5, true);
+    // TEN, then "and N more" (owner, 2026-10-19).
+    $states = array_slice($states_all, 0, 10, true);
     if (count($states) > 1) {
         $state_map = function_exists('alt_us_state_names') ? alt_us_state_names() : array();
         $caption = $range . ', verified US job cuts, by the state where the '
@@ -6807,10 +6813,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             );
         }
         list($s_html, $s_text) = alt_digest_inline_series($rows);
+        $s_tail = !function_exists('alt_digest_more_tail') ? '.' : alt_digest_more_tail(count($states_all) - count($rows), 'state', 'states');
         $html .= '<h3>By US state</h3>'
                . '<p data-alt="series">' . esc_html($caption . ': ') . $s_html
-               . esc_html('.') . '</p>';
-        $text .= "\nBy US state\n" . $caption . ': ' . $s_text . ".\n";
+               . esc_html($s_tail) . '</p>';
+        $text .= "\nBy US state\n" . $caption . ': ' . $s_text . $s_tail . "\n";
     }
 
     /*

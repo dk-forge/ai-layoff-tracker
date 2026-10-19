@@ -1,3 +1,14 @@
+## 2026-10-19 - Geography in both email editions, and one type scale (2.20.275)
+
+**Class:** novel (owner: "still not by geography ... State and country?" and "formatting isn't good on the newsletters, still various text sizes and styles")
+**Guard:** `railway/tests/test_digest_geography.py` (talent "Where" block renders country top 8 + "and N more countries" measured from the endpoint's distinct count, US state top 8, failed call prints nothing, an ignored country=US filter drops the state line; layoff countries top 8 and US states top 10 with "and N more"), `railway/tests/test_digest_type_scale.py` (both editions composed from fixtures, every font-size in a style attribute must be in `digest_layout.TYPE_SCALE`; mutation-proven: a 12px masthead line turns it red).
+
+Both editions are composed here, in `includes/digest-talent.php` and `includes/subscribe.php`; the Talent Intelligence Tracker repo was not touched. The talent "Where" block reads the talent plugin's own `/aggregate` (`by_country`, `countries`, and `by_state` under country=US) over the edition's window with no other filter, so it counts the same signals as the headline. Signals, never money. Canadian provinces were not added: the layoff table's `state` column holds two-letter US WARN codes and no collector writes a province.
+
+Typography: five sizes (title 22, heading 18, stat 30, body 16, small 13), defined once in `railway/digest_layout.py` and read by `digest_design.py`; the masthead small print in `email_theme.py` moved 12 to 13 (the sibling's copy of that file still says 12). Before, the two editions used twelve sizes from 11 to 40px. List rows (`ul/li`) now render as ruled rows like the layoff table rows, links are no longer bold by default, and the lone stat dropped from 40 to 30 to share one size with the paired stats.
+
+Reported, not fixed: the talent edition's "Funding rounds" count and named items use `funding=1` (`tit_funding_where()`, "is this update about funding"), so a divestiture and a pledge are listed under that heading. `money_basis=company_raise` is the filter that means a raise.
+
 ## 2026-10-19 - "By location" table and shareable view state on the tracker (2.20.274)
 
 **Class:** novel (owner approval 2026-10-19, built the same way on the Talent Intelligence Tracker so both read alike)
