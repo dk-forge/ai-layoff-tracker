@@ -4214,6 +4214,29 @@ function alt_archive_note_text($status, $next_date) {
 }
 
 /**
+ * alt_archive_coverage_counts() behind the 15-minute published-figure cache.
+ *
+ * The PUBLIC /archive-coverage route used to call the raw function on every
+ * request. It runs three full scans joined on MD5(TRIM(source_url)), which no
+ * index can serve, and every caller sends a cache-busting query string, so the
+ * edge never absorbed one. On 2026-10-19 02:42Z one such request 500'd on the
+ * shared host (live-surface-check run 39191197293). The page summary already
+ * cached the same counts; the route now shares that cache. The key carries
+ * alt_data_ver (alt_figure_cache_key), so a recorded archive still moves the
+ * reading at once, and 15 minutes is noise against a multi-day re-check bound.
+ * Key-protected internal callers keep the raw function.
+ */
+function alt_archive_coverage_counts_cached() {
+    $ck = alt_figure_cache_key('archive_cov_line');
+    $c = get_transient($ck);
+    if (!is_array($c)) {
+        $c = alt_archive_coverage_counts();
+        set_transient($ck, $c, 15 * MINUTE_IN_SECONDS);
+    }
+    return $c;
+}
+
+/**
  * One-line, live archive-coverage summary for the methodology and health
  * pages. Every count is computed from the archive index at render time (held
  * in a 15-minute transient); nothing here is typed.
@@ -4222,13 +4245,8 @@ function alt_archive_coverage_line_html() {
     // Same rule as every other published figure (alt_figure_cache_key): a
     // recorded archive bumps alt_data_ver, so the published percentage moves
     // with the index instead of trailing it by up to a quarter of an hour.
-    $ck = alt_figure_cache_key('archive_cov_line');
-    $c = get_transient($ck);
-    if (!is_array($c)) {
-        if (!function_exists('alt_archive_coverage_counts')) return '';
-        $c = alt_archive_coverage_counts();
-        set_transient($ck, $c, 15 * MINUTE_IN_SECONDS);
-    }
+    if (!function_exists('alt_archive_coverage_counts')) return '';
+    $c = alt_archive_coverage_counts_cached();
     if ((int) $c['distinct_source_urls'] <= 0) return '';
     $f = function ($n) { return number_format((int) $n); };
     return '<p class="alt-muted alt-archive-coverage"><b>Source-link preservation, measured live:</b> '
@@ -4325,7 +4343,7 @@ function alt_api_archive_coverage() {
             'recheck_days' => (int) ALT_ARCHIVE_RECHECK_DAYS,
         ));
     }
-    return rest_ensure_response(alt_archive_coverage_counts());
+    return rest_ensure_response(alt_archive_coverage_counts_cached());
 }
 
 function alt_api_tips_get(WP_REST_Request $r) {

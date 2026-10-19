@@ -1,3 +1,25 @@
+## 2026-10-19 - Housekeeping: three red workflows (2.20.273, pushed, not deployed)
+
+**Class:** novel (three unrelated reds: an unpinned backup column, an uncached heavy public route, a gh GraphQL lookup)
+
+**Guard:** `railway/tests/test_backup_schema_parity.py`, `railway/tests/test_archive_coverage_route_cached.py`, `railway/tests/test_bls_archive_release_rest.py` (each red on the old code).
+
+1. `backup-export` (run 39105677784) REFUSED `company_directory` because
+   2.20.210 added `admitted_by` (`'autopilot'` or `''`, a provenance marker,
+   not personal data) and nobody pinned it in `railway/backup_tables.py`. Pinned;
+   the new test reads the plugin's own CREATE TABLE and fails on any unpinned
+   column, so the next added column reds a unit test instead of the export.
+2. `live-surface-check` (run 39191197293): `/archive-coverage` 500'd once at
+   02:42Z (green before and after; 200 on every retry). The public route ran
+   `alt_archive_coverage_counts()` raw: three scans joined on
+   `MD5(TRIM(source_url))`, which no index serves, behind a cache-busting query
+   every caller sends. It now shares the page summary's 15-minute
+   `alt_figure_cache_key` transient (still invalidated by `alt_data_ver`).
+3. `bls-archive` (run 38220160618): "release not found" for
+   `bls-archive-2026-10`, which exists, is published and holds 62 assets.
+   `gh release view/upload` resolve through GraphQL; the step now resolves by
+   tag over REST, creates over REST on a 404 and replaces same-name assets.
+
 ## 2026-10-19 - The learning loop's rotating slice could repeat the anchor slice
 
 **Class:** ran-but-brought-nothing
