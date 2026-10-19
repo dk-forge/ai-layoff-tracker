@@ -1054,7 +1054,13 @@ def learn_query(terms, today):
         return ""
     # `today=None` is the ANCHOR: always the head of the vocabulary, so the
     # recall denominator is built the same way every run.
-    start = 0 if today is None else today.toordinal() % len(terms)
+    # The rotating slice never starts at 0: that IS the anchor, and on the one
+    # day in len(terms) where ordinal % len == 0 the 'explore' call repeated
+    # the anchor query, so nothing new was read (2026-10-19).
+    if today is None or len(terms) == 1:
+        start = 0
+    else:
+        start = 1 + today.toordinal() % (len(terms) - 1)
     picked, size = [], 2
     for i in range(len(terms)):
         term = terms[(start + i) % len(terms)]
