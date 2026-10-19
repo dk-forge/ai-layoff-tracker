@@ -138,6 +138,9 @@ TABLES: Dict[str, dict] = {
         "columns": [
             "id", "company_key", "slug", "display_name", "aliases",
             "review_status", "reviewed_at", "created_at", "updated_at",
+            # Who admitted the row: 'autopilot' or '' (human). A
+            # provenance marker, not personal data (db.php, 2.20.210).
+            "admitted_by",
         ],
     },
     "warn_transparency": {
