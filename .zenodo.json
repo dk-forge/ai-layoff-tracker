@@ -1,0 +1,30 @@
+{
+  "title": "AI Layoff Tracker",
+  "description": "A continuously updated, source-linked dataset of verified layoffs worldwide, flagging the ones companies explicitly attribute to AI. Every entry links to a primary source.",
+  "upload_type": "dataset",
+  "creators": [
+    {
+      "name": "AskTheRecruiter"
+    }
+  ],
+  "license": "CC-BY-4.0",
+  "keywords": [
+    "layoffs",
+    "labor market",
+    "artificial intelligence",
+    "WARN notices",
+    "SEC filings"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://asktherecruiter.com/blog/ai-layoff-tracker/",
+      "relation": "isDocumentedBy",
+      "resource_type": "other"
+    },
+    {
+      "identifier": "https://github.com/dk-forge/ai-layoff-tracker",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this dataset, please cite it using the metadata from this file."
+type: dataset
+title: "AI Layoff Tracker"
+abstract: "A continuously updated, source-linked dataset of verified layoffs worldwide, flagging the ones companies explicitly attribute to AI. Every entry links to a primary source."
+authors:
+  - name: "AskTheRecruiter"
+doi: 10.5281/zenodo.23482636
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23482636
+    description: "Concept DOI (Zenodo). Always resolves to the latest archived version."
+url: "https://asktherecruiter.com/blog/ai-layoff-tracker/"
+repository-code: "https://github.com/dk-forge/ai-layoff-tracker"
+license:
+  - MIT
+  - CC-BY-4.0
+keywords:
+  - layoffs
+  - labor market
+  - artificial intelligence
+  - WARN notices
+  - SEC filings

@@ -1,3 +1,10 @@
+## 2026-10-19 - "Cite this dataset" DOI on Zenodo (2.20.276)
+
+**Class:** novel (owner approval; the Zenodo archive is live)
+**Guard:** none new; the existing tap-target sweep (`railway/tests/test_tap_targets.py`) covers the new link, which is an inline anchor and is given the section-4 in-a-sentence hit area (`.alt-cite-box code a`).
+
+The concept DOI 10.5281/zenodo.23482636 always resolves to the latest archived version (this version: 10.5281/zenodo.23482637). README gains a DOI badge and a "How to cite" section; `CITATION.cff` (cff 1.2.0, author is the organisation "AskTheRecruiter", no personal name; licences MIT for code and CC-BY-4.0 for data, both as README already states) and `.zenodo.json` so future releases carry the proper title. On the tracker page the existing "Cite this tracker" box gains `DOI: https://doi.org/10.5281/zenodo.23482636` inside its `<code>`, so the Copy button carries it; no new element and no layout change. Not deployed; not verified in a browser (no Chrome in the cloud runner).
+
 ## 2026-10-19 - Geography in both email editions, and one type scale (2.20.275)
 
 **Class:** novel (owner: "still not by geography ... State and country?" and "formatting isn't good on the newsletters, still various text sizes and styles")

@@ -4400,6 +4400,7 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     .alt-hero-asof-more,
     .alt-log-anchor,
     .alt-card-detail a,
+    .alt-cite-box code a,
     .alt-detail a {
         padding: 10px 3px;
         margin: 0 -3px;

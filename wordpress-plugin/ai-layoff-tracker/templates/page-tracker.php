@@ -1699,7 +1699,9 @@ $alt_hero_basis  = 'counted by filing date';
               // traceability. The URL was missing outright. layoffs.js still
               // overwrites the date with the reader's own, which is more accurate
               // for a human and no longer load-bearing for anyone else. ?>
-        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"><?php echo esc_html(wp_date('M j, Y')); ?></span>. <?php echo esc_html(home_url('/ai-layoff-tracker/')); ?> Data from SEC EDGAR 8-K filings, US state WARN notices, and credible news outlets. Licensed CC BY 4.0.</code>
+        <code id="alt-cite-text">AI Layoff Tracker, AskTheRecruiter.com. Accessed <span id="alt-cite-date"><?php echo esc_html(wp_date('M j, Y')); ?></span>. <?php echo esc_html(home_url('/ai-layoff-tracker/')); ?> Data from SEC EDGAR 8-K filings, US state WARN notices, and credible news outlets. Licensed CC BY 4.0. DOI: <a href="https://doi.org/10.5281/zenodo.23482636">https://doi.org/10.5281/zenodo.23482636</a></code>
+        <?php // The CONCEPT DOI (Zenodo), which always resolves to the latest archived
+              // version. Inside the <code> so the Copy button carries it. ?>
         <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>
     </div>
 
