@@ -82,11 +82,6 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "live-surface-check:live.data:9583b943711b84ac": {
-      "first": 1792377812,
-      "last": 1792377812,
-      "subject": "CI RED: Live surface check \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: live API returned HTTP 500 \u2014 server regression, not a blip"
-    },
     "mailbox-janitor:main:819dd5ba32cdd289": {
       "first": 1792313614,
       "last": 1792313614,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-19T02:43:32+00:00",
+  "updated_at": "2026-10-19T08:47:28+00:00",
   "version": 1
 }
