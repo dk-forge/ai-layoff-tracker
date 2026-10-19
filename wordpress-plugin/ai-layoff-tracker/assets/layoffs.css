@@ -4673,13 +4673,13 @@ section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid va
 .alt-wrap .alt-loc-period-l { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--alt-ink-2); }
 .alt-wrap .alt-loc-period { min-height: var(--alt-ctl-h); padding: 0 8px; border: 1px solid var(--alt-control-border); border-radius: var(--alt-ctl-r); background: var(--alt-surface); color: var(--alt-ink); font-size: 13px; }
 .alt-wrap .alt-loc-copy,
-.alt-wrap .alt-loc-more { min-height: 32px; padding: 0 12px; border: 1px solid var(--alt-control-border); border-radius: var(--alt-ctl-r); background: var(--alt-surface); color: var(--alt-ink); font-size: 13px; cursor: pointer; }
+.alt-wrap .alt-loc-more { min-height: var(--alt-ctl-h); padding: 0 12px; border: 1px solid var(--alt-control-border); border-radius: var(--alt-ctl-r); background: var(--alt-surface); color: var(--alt-ink); font-size: 13px; cursor: pointer; }
 .alt-wrap .alt-loc-more { margin-top: 8px; }
 .alt-wrap .alt-loc-copy:focus-visible,
 .alt-wrap .alt-loc-more:focus-visible,
 .alt-wrap .alt-loc-table button:focus-visible,
 .alt-wrap .alt-loc-row:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
-.alt-wrap .alt-loc-scroll {
+.alt-wrap .alt-loc-scroll { min-height: var(--alt-ctl-chip-min);
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
