@@ -12,6 +12,16 @@
     },
     {
       "date": "2026-10-18",
+      "kind": "weekly",
+      "path": "2026/10/2026-10-18-weekly.html",
+      "sections": [
+        "layoff"
+      ],
+      "slug": "2026-10-18-weekly",
+      "subject": "4,620 verified job cuts \u00b7 Mars WrigleyConfectionary US leads \u00b7 Oct 12-18"
+    },
+    {
+      "date": "2026-10-18",
       "kind": "daily",
       "path": "2026/10/2026-10-18-daily.html",
       "sections": [
