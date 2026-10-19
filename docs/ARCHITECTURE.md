@@ -22,7 +22,7 @@
   │      └── mirrored into the table on save (alt_db_sync_post)                          │
   │                                                                                      │
   │  REST layoffs/v1:                                                                    │
-  │   PUBLIC  /query /aggregate /facets /reconciliation /source-health(GET) /source-runs /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
+  │   PUBLIC  /query /aggregate /by-location /facets /reconciliation /source-health(GET) /source-runs /integrity-status /quality-status /review-queue /announcement-lifecycle-candidates /reports/quarterly /benchmarks/* ← 5-min micro-cache (transients, alt_data_ver) │
   │   PUBLIC  /all /stats /company/{name} (legacy, CPT-backed) · /claims (jobless-claims backdrop, macro context) │
   │   KEYED   /add /check-duplicate /dedupe /migrate /bulk /bulk-purge /cleanup /source-health(POST) /alert(emails owner on breakage) │
   │           /reclassify /enrich-context /enrich-roles /source-health /event-migrate /reconcile-supersets(dedup) /claims-ingest /trash │
@@ -45,6 +45,7 @@
 wordpress-plugin/ai-layoff-tracker/
   ai-layoff-tracker.php      plugin bootstrap: version, enqueues, SEO JSON-LD, deploy hooks
   includes/db.php            fast table, /query /aggregate /facets /bulk /bulk-purge /cleanup /migrate, micro-cache
+  includes/by-location.php   /by-location: places x (events, jobs, AI events, AI jobs), verified + job-location basis
   includes/api.php           /add /dedupe /stats /all + normalizers (country/industry/state) + dedup guards
   includes/cpt.php           CPT + allowed source/verification tiers (gold|warn|silver|bronze)
   includes/contact.php       /contact page auto-creation + form handler (mails info@) + spam defenses

@@ -4662,3 +4662,51 @@ section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid va
 .alt-state-warn-table .alt-num { text-align: right; font-variant-numeric: tabular-nums; }
 .alt-state-warn-faq dt { font-weight: 600; margin-top: 12px; }
 .alt-state-warn-faq dd { margin: 4px 0 0; }
+
+/* BY LOCATION TABLE (2.20.273). Spans the chart grid. On a phone the place and
+   the two key numbers (jobs cut, AI jobs) fit at 375px; the rest scrolls inside
+   .alt-loc-scroll with the place column pinned, so nothing bleeds the page.
+   Colours are tokens only, scoped under .alt-wrap so the site's
+   `.entry-content` overrides cannot win. */
+.alt-wrap .alt-loc-card { grid-column: 1 / -1; min-width: 0; }
+.alt-wrap .alt-loc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 10px; }
+.alt-wrap .alt-loc-period-l { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--alt-ink-2); }
+.alt-wrap .alt-loc-period { min-height: var(--alt-ctl-h); padding: 0 8px; border: 1px solid var(--alt-control-border); border-radius: var(--alt-ctl-r); background: var(--alt-surface); color: var(--alt-ink); font-size: 13px; }
+.alt-wrap .alt-loc-copy,
+.alt-wrap .alt-loc-more { min-height: var(--alt-ctl-h); padding: 0 12px; border: 1px solid var(--alt-control-border); border-radius: var(--alt-ctl-r); background: var(--alt-surface); color: var(--alt-ink); font-size: 13px; cursor: pointer; }
+.alt-wrap .alt-loc-more { margin-top: 8px; }
+.alt-wrap .alt-loc-copy:focus-visible,
+.alt-wrap .alt-loc-more:focus-visible,
+.alt-wrap .alt-loc-table button:focus-visible,
+.alt-wrap .alt-loc-row:focus-visible { outline: 2px solid var(--alt-blue); outline-offset: 2px; }
+.alt-wrap .alt-loc-scroll { min-height: var(--alt-ctl-chip-min);
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--alt-border);
+    border-radius: 8px;
+}
+.alt-wrap .alt-loc-table { width: 100%; min-width: 540px; border-collapse: collapse; margin: 0; font-size: 14px; color: var(--alt-ink); background: var(--alt-surface); }
+.alt-wrap .alt-loc-table th,
+.alt-wrap .alt-loc-table td { padding: 8px 10px; border: 0; border-bottom: 1px solid var(--alt-border); text-align: left; white-space: nowrap; color: var(--alt-ink); }
+.alt-wrap .alt-loc-table th { font-weight: 600; background: var(--alt-surface-2); }
+.alt-wrap .alt-loc-table .alt-loc-num { text-align: right; font-variant-numeric: tabular-nums; }
+.alt-wrap .alt-loc-table th button { all: unset; cursor: pointer; color: var(--alt-ink); font: inherit; font-weight: 600; }
+.alt-wrap .alt-loc-table th[aria-sort="ascending"] button::after { content: " \2191"; }
+.alt-wrap .alt-loc-table th[aria-sort="descending"] button::after { content: " \2193"; }
+.alt-wrap .alt-loc-table th:first-child,
+.alt-wrap .alt-loc-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--alt-surface); max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.alt-wrap .alt-loc-table th:first-child { background: var(--alt-surface-2); }
+.alt-wrap .alt-loc-row { cursor: pointer; }
+.alt-wrap .alt-loc-row:hover td,
+.alt-wrap .alt-loc-row-on td { background: var(--alt-blue-tint); }
+@media (max-width: 560px) {
+    .alt-wrap .alt-loc-table { font-size: 13px; }
+    .alt-wrap .alt-loc-table th,
+    .alt-wrap .alt-loc-table td { padding: 7px 8px; }
+    .alt-wrap .alt-loc-table th:first-child,
+    .alt-wrap .alt-loc-table td:first-child { max-width: 130px; }
+}
+/* END BY LOCATION TABLE */

@@ -6309,6 +6309,7 @@ function alt_cached_route_param_names() {
         'after_id', 'limit',                                // /facets
         'include',                                          // /aggregate
         'window_months',                                    // /conversion
+        'view', 'period',                                   // /by-location
     ));
 }
 
