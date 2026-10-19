@@ -1,6 +1,8 @@
 ## 2026-10-19 - The learning loop's rotating slice could repeat the anchor slice
 
-**Class:** date-dependent
+**Class:** ran-but-brought-nothing
+
+**Guard:** `railway/tests/test_tracker_learning_leak.py::CorpusQueryTests::test_the_rotating_slice_never_repeats_the_anchor` (walks 400 days; red on the old code).
 
 `Tests` went red on main at 2026-10-19 00:57 UTC (run 39183103718) in
 `test_only_the_anchor_slice_is_measured_but_both_teach`: the two learning-corpus
