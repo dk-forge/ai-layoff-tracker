@@ -33,14 +33,28 @@ jobs:
       - name: Publish as a release asset
         env:
           GH_TOKEN: ${{ github.token }}
+        # REST ONLY. `gh release view/upload` resolve the release through
+        # GraphQL, and on 2026-10-12 (run 38220160618) that lookup answered
+        # "release not found" for bls-archive-2026-10, which existed, was
+        # published and held 62 assets. Resolve by tag over REST, create over
+        # REST on a 404, and replace same-name assets ourselves (= --clobber).
         run: |
           set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
           tag="bls-archive-$(date -u +%Y-%m)"
-          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" bls-archive/* --clobber -R "$GITHUB_REPOSITORY"
-          else
-            gh release create "$tag" bls-archive/* -R "$GITHUB_REPOSITORY" \
-              --title "BLS JOLTS + CPS archive $(date -u +%Y-%m)" --latest=false \
-              --notes "Full-history BLS flat files (gzip), see MANIFEST.json. Source: U.S. Bureau of Labor Statistics. Public domain."
+          if ! id=$(gh api "repos/$repo/releases/tags/$tag" -q .id 2>/dev/null); then
+            id=$(gh api -X POST "repos/$repo/releases" -f tag_name="$tag" \
+              -f target_commitish="$GITHUB_SHA" \
+              -f name="BLS JOLTS + CPS archive $(date -u +%Y-%m)" -f make_latest=false \
+              -f body="Full-history BLS flat files (gzip), see MANIFEST.json. Source: U.S. Bureau of Labor Statistics. Public domain." \
+              -q .id)
           fi
-          echo "::notice title=bls-archive::release $tag"
+          existing=$(gh api --paginate "repos/$repo/releases/$id/assets" -q '.[] | "\(.id) \(.name)"')
+          for f in bls-archive/*; do
+            n=$(basename "$f")
+            old=$(printf '%s\n' "$existing" | awk -v n="$n" '$2 == n {print $1}')
+            [ -n "$old" ] && gh api -X DELETE "repos/$repo/releases/assets/$old"
+            gh api -X POST "https://uploads.github.com/repos/$repo/releases/$id/assets?name=$n" \
+              -H "Content-Type: application/octet-stream" --input "$f" >/dev/null
+          done
+          echo "::notice title=bls-archive::release $tag (id $id)"
