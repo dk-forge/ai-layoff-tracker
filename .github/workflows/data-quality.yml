@@ -14,6 +14,10 @@ on:
                            # daily number settles a full hour before people check at noon
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   report:
     runs-on: [self-hosted, linux, contabo]

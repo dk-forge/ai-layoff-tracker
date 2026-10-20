@@ -1,3 +1,22 @@
+## 2026-10-20 - CodeQL alerts: real patterns fixed, false positives listed (CodeQL)
+
+**Class:** novel (owner request: clear the 87 open code-scanning alerts)
+**Guard:** CodeQL itself (re-run locally with the 2.x bundle: the actions suite reports zero findings on this branch).
+
+Four PRs, one per rule family, no plugin file and no behaviour change:
+`actions/missing-workflow-permissions` (57: top-level `permissions: contents: read`
+on every workflow without a block; none of them writes through GITHUB_TOKEN) and
+`actions/excessive-secrets-exposure` (2: mailbox-janitor named its secrets via
+`secrets[matrix.x]`, which loads every repository secret into the job; now named
+secrets selected by `matrix.label`), `py/bad-tag-filter` (4),
+`py/incomplete-url-substring-sanitization` (5), `py/insecure-protocol` (1).
+Left open, NOT dismissed, as false positives: 15 `py/clear-text-logging-sensitive-data`
+and 1 `py/clear-text-storage-sensitive-data` (CodeQL reads the word "employer" as
+private data; the values are public company names, and the host_call /
+orphaned_secrets prints are secret NAMES, never values) and 2
+`py/weak-sensitive-data-hashing` (spend.key_fingerprint is a 12-char label, not
+password storage; warn_custom's md5 is the dedup hash, which must not change).
+
 ## 2026-10-20 - Daily security alert snapshot (security alerts)
 
 **Class:** novel (owner request 2026-10-20: every session sees open security alert counts without asking)

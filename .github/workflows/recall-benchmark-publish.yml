@@ -19,6 +19,10 @@ concurrency:
   group: recall-benchmark-publish
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: [self-hosted, linux, contabo]

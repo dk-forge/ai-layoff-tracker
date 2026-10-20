@@ -8,6 +8,10 @@ on:
     - cron: '0 8 * * 1'   # Mondays 08:00 UTC
   workflow_dispatch: {}
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   archive:
     runs-on: ubuntu-latest

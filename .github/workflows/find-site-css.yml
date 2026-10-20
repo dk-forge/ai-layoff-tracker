@@ -30,6 +30,10 @@ concurrency:
   group: find-site-css
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   search:
     runs-on: [self-hosted, linux, contabo]

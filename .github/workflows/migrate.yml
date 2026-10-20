@@ -6,6 +6,10 @@ name: Migrate to fast-query table
 on:
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   migrate:
     runs-on: [self-hosted, linux, contabo]

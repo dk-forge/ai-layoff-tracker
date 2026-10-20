@@ -77,6 +77,10 @@ concurrency:
   group: historical-news-sweep
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   sweep:
     runs-on: [self-hosted, linux, contabo]

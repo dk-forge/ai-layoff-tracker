@@ -26,6 +26,10 @@ on:
         required: false
         default: ''
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   propagate:
     runs-on: [self-hosted, linux, contabo]

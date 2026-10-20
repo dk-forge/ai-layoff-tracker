@@ -25,6 +25,10 @@ on:
         required: false
         default: ''
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   probe:
     runs-on: ubuntu-latest

@@ -40,6 +40,10 @@ on:
         type: boolean
         default: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   ab:
     runs-on: ubuntu-latest

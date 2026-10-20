@@ -11,6 +11,10 @@ on:
                        # cover quality continuously, so the expensive full
                        # sweep runs only when you ask for it
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   audit:
     runs-on: [self-hosted, linux, contabo]

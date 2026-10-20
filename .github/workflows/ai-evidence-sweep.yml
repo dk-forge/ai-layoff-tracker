@@ -18,6 +18,10 @@ on:
         description: "Set 1 to arm upgrades for this run (else dry run)"
         required: false
         default: ''
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   sweep:
     runs-on: [self-hosted, linux, contabo]
