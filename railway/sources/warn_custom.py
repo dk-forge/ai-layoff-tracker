@@ -65,6 +65,10 @@ def _entry(st, company, jobs, date, city="", kind="", detail_url=""):
         "ai_explicit": False,
         "ai_language": None,
         "source_url": detail_url or STATE_WARN_URL.get(st, ""),
+        # lgtm[py/weak-sensitive-data-hashing] alert #81: a dedup KEY over a public WARN
+        # notice (employer, date, count), not password storage. Every stored row is keyed
+        # on this MD5; changing the algorithm re-keys them all and needs /bulk-purge plus a
+        # full re-import (CLAUDE.md), so it stays MD5 by design.
         "dedup_hash": hashlib.md5(hash_input.encode("utf-8")).hexdigest(),
         "is_layoff_event": True,
     }

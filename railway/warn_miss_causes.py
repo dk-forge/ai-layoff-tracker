@@ -238,6 +238,7 @@ def classify(manifest_path=V.MANIFEST_PATH, measurement_path=V.MEASUREMENT_PATH)
                 "official_source_url": ev["official_source_url"],
                 **verdict,
             })
+            # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #77): public employer names/counts or a variable NAME, never a credential value.
             print(f"  {ev['state']} {ev['notice_date']} "
                   f"{ev['employer_published'][:34]:34s} -> {verdict['cause']}")
     tally = {b: sum(1 for c in causes if c["cause"] == b) for b in BUCKETS}
@@ -270,6 +271,7 @@ def main(argv=None):
         data = json.loads(CAUSES_PATH.read_text(encoding="utf-8"))
         print(json.dumps(data["cause_counts"], indent=2))
         for c in data["causes"]:
+            # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #78): public employer names/counts or a variable NAME, never a credential value.
             print(f"{c['state']} {c['notice_date']} {c['employer_published'][:34]:34s} "
                   f"{c['cause']}")
         return 0

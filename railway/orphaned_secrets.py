@@ -110,6 +110,7 @@ def report() -> int:
     names, err = _repo_secret_names()
     print("\n[11] ORPHANED SECRETS  (a credential no code reads)")
     if err:
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #68): public employer names/counts or a variable NAME, never a credential value.
         print(f"      UNKNOWN: {err}")
         print("      A check that could not run is not a pass. Needs an")
         print("      authenticated `gh` with admin scope on this repository.")
@@ -122,6 +123,7 @@ def report() -> int:
         print(f"      every one of the {len(names)} secret(s) is referenced by code")
         return 0
     for n in sorted(orphans):
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #69): public employer names/counts or a variable NAME, never a credential value.
         print(f"      ORPHAN   {n}")
     print(f"\n      {len(orphans)} secret(s) exist that nothing in this repository reads.")
     print("      Each is a live grant for an integration that does not exist, and a")

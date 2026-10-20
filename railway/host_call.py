@@ -355,6 +355,7 @@ def main(argv=None) -> int:
             # A missing key is a real, settled problem — never a deferral. It
             # would fail identically tomorrow, and pretending otherwise is how
             # a broken secret sits undiscovered for a week.
+            # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #67): public employer names/counts or a variable NAME, never a credential value.
             print(f"::error::{args.api_key_env} is empty; refusing to call {args.url}")
             return 2
         headers["X-Layoff-API-Key"] = key

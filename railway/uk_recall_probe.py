@@ -260,6 +260,7 @@ def main(argv=None):
         tally[verdict["stage"]] = tally.get(verdict["stage"], 0) + 1
         out.append({"id": event["reference_row_id"], "employer": event["employer"],
                     "announcement_date": event["announcement_date"], **verdict})
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #75): public employer names/counts or a variable NAME, never a credential value.
         print(f"  {verdict['stage']:18s} {event['announcement_date']} "
               f"{event['employer'][:38]:38s} {verdict.get('why', '')[:60]}", flush=True)
         time.sleep(0.3 if skip_gdelt else 2.0)   # GDELT throttles; be a good citizen

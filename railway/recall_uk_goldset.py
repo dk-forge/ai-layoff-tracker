@@ -219,14 +219,18 @@ def main(argv=None):
         return 3
     state, detail = judge(measurement)
     print("UK REFERENCE-SET RECALL")
+    # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #71): public employer names/counts or a variable NAME, never a credential value.
     print(f"  {state.upper():7s} {detail}")
     for miss in measurement["lost_since_adjudication"]:
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #72): public employer names/counts or a variable NAME, never a credential value.
         print(f"    LOST {miss['announcement_date']} {miss['employer'][:40]:40s} "
               f"{miss['stated_job_count']}  (an editor confirmed this one was held)")
     for miss in measurement["missed_events"]:
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #73): public employer names/counts or a variable NAME, never a credential value.
         print(f"    MISS {miss['announcement_date']} {miss['employer'][:40]:40s} "
               f"{miss['stated_job_count']}")
     for c in measurement["candidates_needing_adjudication"]:
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #74): public employer names/counts or a variable NAME, never a credential value.
         print(f"    ADJUDICATE {c['announcement_date']} {c['employer'][:36]:36s} new tracker "
               f"events {c['new_tracker_event_ids']} — NOT counted until an editor decides")
     if "--write" in argv:

@@ -299,6 +299,7 @@ def main(argv):
         print(f"wrote {len(result['candidates'])} candidates to {argv[1]} "
               f"(excluded: {result['excluded']})")
     else:
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #79): public employer names/counts or a variable NAME, never a credential value.
         print(payload)
     return 0
 

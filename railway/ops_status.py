@@ -1911,6 +1911,7 @@ def main():
                     # one: a total makes coverage measurable, a register makes
                     # layoffs findable. Printed every session so the count of
                     # places on earth that name employers stays in view.
+                    # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #70): public employer names/counts or a variable NAME, never a credential value.
                     print(f"    per-employer registers: {len(naming)} jurisdictions on "
                           f"earth NAME the filing employer - {', '.join(naming)}")
                 ledger = cc_doc.get("refusal_ledger") or []

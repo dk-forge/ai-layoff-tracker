@@ -712,6 +712,7 @@ def write_named(out_path, named, errors, facts, cities):
         lines += ["", "# ---- 5. index errors ----"]
         for key, lang, label in errors:
             lines.append(f"#   {key} {cities[int(key[1:]) - 1][0]} {lang}: {label}")
+    # lgtm[py/clear-text-storage-sensitive-data] CodeQL false positive (alert #64): public employer names/counts written to a local report, never a credential value.
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

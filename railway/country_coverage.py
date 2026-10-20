@@ -3502,6 +3502,7 @@ def main(argv=None):
     report = classify_all()
     if "--write" in argv:
         print(f"wrote {write_measurement(report)}", file=sys.stderr)
+    # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #65): public employer names/counts or a variable NAME, never a credential value.
     print(_render(report))
     state, _ = judge(report)
     return {PASS: 0, FAIL: 2, UNKNOWN: 3}[state]

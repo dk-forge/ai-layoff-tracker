@@ -2091,6 +2091,10 @@ def key_fingerprint(api_key: str) -> str:
     """A short, one-way, non-reversible label for a key. Safe to commit, safe to
     print, and it is what lets the Actions key and the Railway key each carry
     their own month-start in one committed file."""
+    # lgtm[py/weak-sensitive-data-hashing] alert #80: a short public LABEL for a key,
+    # not password storage. The key is a 256-bit random token, so a fast hash leaks
+    # nothing, and committed month-start records are keyed on this exact value.
+    # A KDF or HMAC would orphan them; there is no shared secret to key an HMAC with.
     return hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:12]
 
 
