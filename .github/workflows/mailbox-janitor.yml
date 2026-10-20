@@ -70,11 +70,7 @@ jobs:
       matrix:
         include:
           - label: sandbox
-            user_secret: IMAP_USER_2_JANITOR_SANDBOX
-            pass_secret: IMAP_PASSWORD_2_JANITOR_SANDBOX
           - label: production
-            user_secret: IMAP_USER_JANITOR_PRODUCTION
-            pass_secret: IMAP_PASSWORD_JANITOR_PRODUCTION
     steps:
       - uses: actions/checkout@v5
 
@@ -82,8 +78,11 @@ jobs:
         id: sweep
         env:
           JANITOR_IMAP_HOST: ${{ secrets.IMAP_HOST }}
-          JANITOR_IMAP_USER: ${{ secrets[matrix.user_secret] }}
-          JANITOR_IMAP_PASSWORD: ${{ secrets[matrix.pass_secret] }}
+          # Named secrets, never secrets[<expr>]: a dynamic index makes the
+          # runner load EVERY repository secret into the job (CodeQL
+          # actions/excessive-secrets-exposure). An unknown label gets ''.
+          JANITOR_IMAP_USER: ${{ matrix.label == 'production' && secrets.IMAP_USER_JANITOR_PRODUCTION || (matrix.label == 'sandbox' && secrets.IMAP_USER_2_JANITOR_SANDBOX || '') }}
+          JANITOR_IMAP_PASSWORD: ${{ matrix.label == 'production' && secrets.IMAP_PASSWORD_JANITOR_PRODUCTION || (matrix.label == 'sandbox' && secrets.IMAP_PASSWORD_2_JANITOR_SANDBOX || '') }}
           JANITOR_RETAIN_DAYS: ${{ inputs.retain_days || '14' }}
           # 100, not 400. Measured 2026-09-08 on the first LIVE run: reading
           # and then DELETING 400 of a 2,106-message mailbox dropped the

@@ -16,6 +16,10 @@ on:
         description: 'Review basis (who reviewed, what evidence was checked)'
         required: true
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   admit:
     runs-on: [self-hosted, linux, contabo]

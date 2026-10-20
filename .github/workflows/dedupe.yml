@@ -6,6 +6,10 @@ name: Dedupe entries
 on:
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   dedupe:
     runs-on: [self-hosted, linux, contabo]

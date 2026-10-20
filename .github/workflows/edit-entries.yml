@@ -16,6 +16,10 @@ on:
         description: 'Why (stored in the suppression list + this run log)'
         required: true
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   edit:
     runs-on: [self-hosted, linux, contabo]

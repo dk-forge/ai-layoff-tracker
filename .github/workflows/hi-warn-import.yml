@@ -12,6 +12,10 @@ on:
     - cron: '30 16 * * *'   # daily ~12:30pm ET, after the main WARN import
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   hi-warn:
     runs-on: [self-hosted, linux, contabo]

@@ -33,6 +33,10 @@ on:
         default: false
         type: boolean
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   correct:
     runs-on: [self-hosted, linux, contabo]

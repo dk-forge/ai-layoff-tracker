@@ -15,6 +15,10 @@ on:
         description: 'Reason, stored on the suppression list'
         required: true
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   trash:
     runs-on: [self-hosted, linux, contabo]

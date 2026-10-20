@@ -30,6 +30,10 @@ concurrency:
   group: deploy-plugin
   cancel-in-progress: false   # let an in-flight deploy finish before the next
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: [self-hosted, linux, contabo]

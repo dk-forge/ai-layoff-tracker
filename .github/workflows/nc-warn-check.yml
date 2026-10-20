@@ -8,6 +8,10 @@ name: NC WARN parser check
 on:
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   nc-check:
     runs-on: ubuntu-latest

@@ -42,6 +42,10 @@ concurrency:
   group: ingest-cron
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   ingest:
     if: github.event_name == 'workflow_dispatch' || vars.ALT_INGEST_ON_VPS == 'true'

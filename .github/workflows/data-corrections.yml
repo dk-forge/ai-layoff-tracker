@@ -21,6 +21,10 @@ concurrency:
   group: data-corrections
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   apply:
     runs-on: [self-hosted, linux, contabo]

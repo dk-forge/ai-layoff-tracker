@@ -23,6 +23,10 @@ concurrency:
   group: quarterly-state-of-layoffs
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   snapshot:
     runs-on: [self-hosted, linux, contabo]

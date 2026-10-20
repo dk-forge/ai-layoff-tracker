@@ -20,6 +20,10 @@ on:
         required: false
         default: '60'
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   crosscheck:
     runs-on: [self-hosted, linux, contabo]

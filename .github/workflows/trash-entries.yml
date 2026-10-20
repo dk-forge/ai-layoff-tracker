@@ -24,6 +24,10 @@ on:
         description: 'Why (goes in the run log for the audit trail)'
         required: true
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   trash:
     runs-on: [self-hosted, linux, contabo]

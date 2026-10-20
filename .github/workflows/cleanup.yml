@@ -6,6 +6,10 @@ name: Normalize data (country + industry)
 on:
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   cleanup:
     runs-on: [self-hosted, linux, contabo]

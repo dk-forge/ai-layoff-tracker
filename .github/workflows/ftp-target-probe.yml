@@ -16,6 +16,10 @@ name: FTPS target probe
 on:
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   probe:
     runs-on: [self-hosted, linux, contabo]

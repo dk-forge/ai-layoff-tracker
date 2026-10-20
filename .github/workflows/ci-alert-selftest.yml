@@ -32,6 +32,10 @@ on:
         description: 'a number to embed in the assertion (vary it to test dedupe)'
         default: '101'
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   selftest:
     runs-on: ubuntu-latest

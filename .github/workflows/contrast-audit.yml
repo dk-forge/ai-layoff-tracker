@@ -46,6 +46,10 @@ concurrency:
   group: contrast-audit
   cancel-in-progress: false
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   audit:
     runs-on: [self-hosted, linux, contabo]

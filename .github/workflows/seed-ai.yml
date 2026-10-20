@@ -7,6 +7,10 @@ name: Seed curated AI layoffs
 on:
   workflow_dispatch:
 
+# Least privilege: nothing here writes through GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   seed:
     runs-on: [self-hosted, linux, contabo]
