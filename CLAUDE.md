@@ -23,6 +23,11 @@ part is **UNKNOWN, not clear** — never treat a run that could not check as a p
 Section `[4]` needs the `gh` CLI; without it (or without auth) it prints UNKNOWN
 and exits 3 rather than implying green.
 
+**Security alerts:** read `railway/security_alerts.json` (refreshed daily by
+`security-alerts.yml` via `ALERTS_READ_TOKEN`; `ops_status.py [12]` prints it, and
+absent or over 2 days old is UNKNOWN, never zero); fix them like any red CI;
+GitHub's paid Code Security is declined until paying clients (owner, 2026-10-20).
+
 **Red CI now emails the owner** and does not wait to be noticed:
 `.github/workflows/ci-alert.yml` listens for EVERY workflow completing and runs
 `railway/ci_alert.py`, which extracts the real failing assertion and POSTs it to

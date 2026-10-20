@@ -2392,6 +2392,34 @@ def main():
             print(f"    UNKNOWN — could not read /archive-coverage ({exc}).")
             print("    THIS IS NOT A PASS. It is also not an action item on its own.")
 
+    # [12] OPEN GITHUB SECURITY ALERTS (owner, 2026-10-20).
+    #
+    #    Read OFFLINE from railway/security_alerts.json, which
+    #    security-alerts.yml refreshes daily with ALERTS_READ_TOKEN. Absent,
+    #    unreadable or over 2 days old is UNKNOWN, never zero. Known open alerts
+    #    are an action item: fix them like any red CI.
+    print("\n[12] SECURITY ALERTS  (railway/security_alerts.json; daily)")
+    try:
+        import security_alerts as _sec
+        _sec_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                                  "security_alerts.json")
+        _snap = None
+        if _os.path.exists(_sec_path):
+            with open(_sec_path, encoding="utf-8") as _fh:
+                _snap = json.load(_fh)
+        _verdict, _lines = _sec.summarize(_snap)
+        print(f"    {_verdict}")
+        for _line in _lines:
+            print(f"    {_line}")
+        if _verdict == "ALERTS":
+            issues.append("open GitHub security alerts (see [12])")
+        elif _verdict == "UNKNOWN":
+            unverified.append("the open security alert count")
+    except Exception as exc:  # noqa: BLE001 - never let this block the ritual
+        print(f"    UNKNOWN — could not read the security alert snapshot ({exc}).")
+        print("    THIS IS NOT A PASS.")
+        unverified.append("the open security alert count")
+
     print("\n" + "-" * 64)
     if issues:
         if egress_blocked:

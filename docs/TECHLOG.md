@@ -1,3 +1,20 @@
+## 2026-10-20 - Daily security alert snapshot (security alerts)
+
+**Class:** novel (owner request 2026-10-20: every session sees open security alert counts without asking)
+**Guard:** `railway/tests/test_security_alerts.py` (pagination, severity counts, missing token and 403/404 are UNKNOWN never zero, same-day unchanged snapshot is no commit, absent/stale is UNKNOWN).
+
+Owner turned on the dependency graph, Dependabot alerts and security updates in
+all four repos and added `ALERTS_READ_TOKEN` (fine-grained PAT: Dependabot
+alerts read + Metadata). `.github/workflows/security-alerts.yml` (daily 06:17
+UTC + dispatch, ubuntu-latest, free) runs `railway/security_alerts.py` (stdlib)
+and commits `railway/security_alerts.json` only when it changes: counts by
+severity plus id, package, severity and fixed-in version per alert, for
+Dependabot and code scanning (GITHUB_TOKEN + `security-events: read`). A
+missing secret, a 403/404 or any API error is UNKNOWN in the file, never zero,
+and the run stays green. `ops_status.py [12]` reads it offline: open alerts are
+an action item, absent or older than 48h is UNKNOWN (exit 3). No mail channel
+was added. GitHub's paid Code Security is declined until paying clients.
+
 ## 2026-10-19 - "Cite this dataset" DOI on Zenodo (2.20.276)
 
 **Class:** novel (owner approval; the Zenodo archive is live)
