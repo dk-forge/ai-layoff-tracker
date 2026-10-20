@@ -1,5 +1,14 @@
 # AI Layoff Tracker — orientation for Claude Code
 
+> **OWNER PRIORITY ORDER — every session, cloud or desktop, every dk-forge repo (owner ruling 2026-10-20).** Work strictly in this order and never start a lower priority while a higher one has open work. The goal is zero on every line, as fast as possible.
+> 1. **Errors in production:** website or API errors (Sentry org `dakotta-labs`, `https://de.sentry.io`), a degraded `/healthz/deep`, red CI on `main`, alarm issues, a broken watchdog or self-heal job. Fix ASAP: root cause, test-first, release, verify live.
+> 2. **User feedback:** each item that makes sense is fixed and rolled out immediately (`docs/FEEDBACK_QUEUE.md` in asktherecruiter-sandbox); once verified live, write the tester an UNSENT "you asked, we fixed" Gmail draft (check Sent first; the owner sends). Ask the owner about any item that does not make sense.
+> 3. **GitHub at zero** across asktherecruiter-sandbox, ai-layoff-tracker, talent-intelligence-tracker and fasthire: PRs green and merged, issues closed, security alerts fixed.
+> 4. **Tech debt.**
+> 5. **Roadmap.**
+>
+> A scheduled sweep runs this order every 2 hours (trigger `trig_01Y234FtTuzPHasMf25cudjU`, :37 past even UTC hours). Ping the owner only when production is down, a tester draft is ready, or a decision only the owner can make is needed.
+
 Live tracker of verified layoffs (SEC 8-K filings, US state WARN notices, worldwide
 news via GDELT), flagging the ones companies explicitly attribute to AI.
 
