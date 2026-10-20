@@ -864,3 +864,31 @@ class TheGuardIsActuallyWired(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LiteSpeedServerCacheIsBounded(unittest.TestCase):
+    """The host moved to LiteSpeed (2026-09-08). Its server-side page cache
+    ignores Cache-Control and keeps the LSCache plugin's own public TTL,
+    604800s (a WEEK), purged only on a deploy. Found 2026-10-20: the bare
+    tracker URL answered `x-litespeed-cache: hit` with the at-a-glance board
+    21 where the origin rendered 23, and board_tiles_match_query went FAIL.
+    The page header must also bound THAT cache, through LSCache's own API
+    (a raw header would be overwritten by the plugin at shutdown)."""
+
+    def _func(self):
+        body = strip_php_comments(SHORTCODES)
+        func = re.search(r"function\s+alt_public_page_cache_headers\s*\(\s*\)\s*\{(.*?)\n\}", body, re.S)
+        self.assertTrue(func, "alt_public_page_cache_headers() not found")
+        return func.group(1)
+
+    def test_litespeed_ttl_is_set_through_its_api(self):
+        m = re.search(r"do_action\(\s*['\"]litespeed_control_set_ttl['\"]\s*,\s*(\d+)\s*\)", self._func())
+        self.assertTrue(m, "alt_public_page_cache_headers() must call "
+                           "do_action('litespeed_control_set_ttl', N)")
+        self.assertLessEqual(int(m.group(1)), MAX_PAGE_S_MAXAGE)
+
+    def test_litespeed_header_fallback_is_bounded(self):
+        m = re.search(r"header\(\s*['\"]X-LiteSpeed-Cache-Control:\s*([^'\"]+)['\"]", self._func())
+        self.assertTrue(m, "no X-LiteSpeed-Cache-Control fallback for a host without the LSCache plugin")
+        cc = directives(m.group(1))
+        self.assertLessEqual(cc.get("max-age", 10**9), MAX_PAGE_S_MAXAGE)

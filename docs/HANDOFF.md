@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-20, branch `claude/integrity-backup-2026-10-20` (PR). Reserves plugin version 2.20.277.** LiteSpeed page cache bounded to 60s (board_tiles_match_query FAIL); see TECHLOG 2026-10-20 (2.20.277).
 - **RELEASED - Claude (agent), 2026-10-20, branches `fix/codeql-*` (4 PRs). No plugin file, no version reserved.** CodeQL alert fixes by rule family; see TECHLOG 2026-10-20 (CodeQL).
 - **RELEASED - Claude (agent), 2026-10-20, branch `ci/security-alert-snapshot` (PR). No plugin file, no version reserved.** Daily security alert snapshot (`security-alerts.yml`, `ops_status.py [12]`); see TECHLOG 2026-10-20 (security alerts).
 - **RELEASED - Claude (agent), 2026-10-18, branch `claude/chat-session-oui1wv-board` (PR). Reserves plugin version 2.20.271.** Indeed postings on the early-warning timeline; see TECHLOG 2026-10-18 (2.20.271).
