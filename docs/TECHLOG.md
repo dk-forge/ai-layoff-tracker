@@ -1,6 +1,6 @@
 ## 2026-10-20 - LiteSpeed served the tracker page for up to a week (2.20.277)
 
-**Class:** incident (data integrity: `board_tiles_match_query` FAIL)
+**Class:** cache-served-stale (data integrity: `board_tiles_match_query` FAIL)
 **Guard:** `tests/test_deploy_reaches_readers.py::LiteSpeedServerCacheIsBounded`
 
 The bare tracker URL answered `x-litespeed-cache: hit` with the at-a-glance
