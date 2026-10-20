@@ -738,7 +738,7 @@ def ni_series(today=None, get=None):
     to choose the report: the month comes from what NISRA has published."""
     landing = _ni_text(NI_REDUNDANCIES_PAGE, get=get)
     listed_url, (year, month) = ni_latest_publication(landing)
-    if "datavis.nisra.gov.uk" in listed_url:
+    if urllib.parse.urlsplit(listed_url).hostname == "datavis.nisra.gov.uk":
         url = listed_url
     else:
         url = ni_report_link(_ni_text(listed_url, get=get))

@@ -286,7 +286,7 @@ class LouisianaUnreachableTests(unittest.TestCase):
         def get(url, **kw):
             # NB the Wayback URL embeds the laworks one, so match on the
             # prefix — a substring test here silently tests nothing.
-            if url.startswith("https://www.laworks.net"):
+            if url.startswith("https://www.laworks.net/"):
                 return _Resp(404, b"<html>not found</html>")
             raise OSError("Connection to web.archive.org timed out")
 

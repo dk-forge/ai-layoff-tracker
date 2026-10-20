@@ -120,7 +120,8 @@ class TaggedPerSurface(unittest.TestCase):
     def test_a_junk_option_falls_back_to_the_default(self):
         for junk in ("javascript:alert(1)", "not a url", "http://"):
             url = _run_php("echo alt_resume_cta_url('report');", option=junk)
-            self.assertTrue(url.startswith("https://asktherecruiter.com"), (junk, url))
+            parts = urllib.parse.urlsplit(url)
+            self.assertEqual((parts.scheme, parts.hostname), ("https", "asktherecruiter.com"), (junk, url))
 
     def test_the_line_is_not_layoff_only(self):
         """Owner 2026-09-24: job seekers, career changers, new grads and people

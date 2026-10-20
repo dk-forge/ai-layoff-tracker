@@ -13,6 +13,7 @@ sys.modules.
 import io
 import sys
 import unittest
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
@@ -69,7 +70,7 @@ class FetchTxReadsTheWorkbook(unittest.TestCase):
         book = _workbook()
 
         def get(url, **kw):
-            if "data.texas.gov" in url:
+            if urllib.parse.urlsplit(url).hostname == "data.texas.gov":
                 return _Resp(payload=SOCRATA)
             if self.challenges < challenge_first:
                 self.challenges += 1
@@ -98,7 +99,7 @@ class FetchTxReadsTheWorkbook(unittest.TestCase):
 
     def test_a_blocked_page_still_returns_the_dataset(self):
         def get(url, **kw):
-            if "data.texas.gov" in url:
+            if urllib.parse.urlsplit(url).hostname == "data.texas.gov":
                 return _Resp(payload=SOCRATA)
             return _Resp(status=202)
         wc.requests.get = get
