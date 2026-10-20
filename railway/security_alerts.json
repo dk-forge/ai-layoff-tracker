@@ -1,9 +1,9 @@
 {
-  "checked_at": "2026-10-20T22:04:47Z",
+  "checked_at": "2026-10-20T22:37:01Z",
   "code_scanning": {
     "alerts": [
       {
-        "end_line": 715,
+        "end_line": 716,
         "fixed_in": null,
         "id": 64,
         "message": "This expression stores sensitive data (private) as clear text.\nThis expression stores sensitive data (private) as clear text.",
@@ -11,11 +11,11 @@
         "path": "railway/city_recall_sweep.py",
         "rule": "py/clear-text-storage-sensitive-data",
         "severity": "high",
-        "start_line": 715,
+        "start_line": 716,
         "tool": "CodeQL"
       },
       {
-        "end_line": 3505,
+        "end_line": 3506,
         "fixed_in": null,
         "id": 65,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -23,11 +23,11 @@
         "path": "railway/country_coverage.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 3505,
+        "start_line": 3506,
         "tool": "CodeQL"
       },
       {
-        "end_line": 450,
+        "end_line": 451,
         "fixed_in": null,
         "id": 66,
         "message": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
@@ -35,11 +35,11 @@
         "path": "railway/employer_domicile_backfill.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 449,
+        "start_line": 450,
         "tool": "CodeQL"
       },
       {
-        "end_line": 358,
+        "end_line": 359,
         "fixed_in": null,
         "id": 67,
         "message": "This expression logs sensitive data (password) as clear text.",
@@ -47,11 +47,11 @@
         "path": "railway/host_call.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 358,
+        "start_line": 359,
         "tool": "CodeQL"
       },
       {
-        "end_line": 113,
+        "end_line": 114,
         "fixed_in": null,
         "id": 68,
         "message": "This expression logs sensitive data (secret) as clear text.",
@@ -59,11 +59,11 @@
         "path": "railway/orphaned_secrets.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 113,
+        "start_line": 114,
         "tool": "CodeQL"
       },
       {
-        "end_line": 125,
+        "end_line": 127,
         "fixed_in": null,
         "id": 69,
         "message": "This expression logs sensitive data (secret) as clear text.",
@@ -71,11 +71,11 @@
         "path": "railway/orphaned_secrets.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 125,
+        "start_line": 127,
         "tool": "CodeQL"
       },
       {
-        "end_line": 1915,
+        "end_line": 1916,
         "fixed_in": null,
         "id": 70,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -83,23 +83,11 @@
         "path": "railway/ops_status.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 1914,
+        "start_line": 1915,
         "tool": "CodeQL"
       },
       {
-        "end_line": 222,
-        "fixed_in": null,
-        "id": 71,
-        "message": "This expression logs sensitive data (private) as clear text.",
-        "package": null,
-        "path": "railway/recall_uk_goldset.py",
-        "rule": "py/clear-text-logging-sensitive-data",
-        "severity": "high",
-        "start_line": 222,
-        "tool": "CodeQL"
-      },
-      {
-        "end_line": 225,
+        "end_line": 227,
         "fixed_in": null,
         "id": 72,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -107,26 +95,14 @@
         "path": "railway/recall_uk_goldset.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 224,
-        "tool": "CodeQL"
-      },
-      {
-        "end_line": 228,
-        "fixed_in": null,
-        "id": 73,
-        "message": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
-        "package": null,
-        "path": "railway/recall_uk_goldset.py",
-        "rule": "py/clear-text-logging-sensitive-data",
-        "severity": "high",
-        "start_line": 227,
+        "start_line": 226,
         "tool": "CodeQL"
       },
       {
         "end_line": 231,
         "fixed_in": null,
-        "id": 74,
-        "message": "This expression logs sensitive data (private) as clear text.",
+        "id": 73,
+        "message": "This expression logs sensitive data (private) as clear text.\nThis expression logs sensitive data (private) as clear text.",
         "package": null,
         "path": "railway/recall_uk_goldset.py",
         "rule": "py/clear-text-logging-sensitive-data",
@@ -135,7 +111,19 @@
         "tool": "CodeQL"
       },
       {
-        "end_line": 264,
+        "end_line": 235,
+        "fixed_in": null,
+        "id": 74,
+        "message": "This expression logs sensitive data (private) as clear text.",
+        "package": null,
+        "path": "railway/recall_uk_goldset.py",
+        "rule": "py/clear-text-logging-sensitive-data",
+        "severity": "high",
+        "start_line": 234,
+        "tool": "CodeQL"
+      },
+      {
+        "end_line": 265,
         "fixed_in": null,
         "id": 75,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -143,11 +131,11 @@
         "path": "railway/uk_recall_probe.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 263,
+        "start_line": 264,
         "tool": "CodeQL"
       },
       {
-        "end_line": 174,
+        "end_line": 175,
         "fixed_in": null,
         "id": 76,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -155,11 +143,11 @@
         "path": "railway/warn_adjudicate.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 172,
+        "start_line": 173,
         "tool": "CodeQL"
       },
       {
-        "end_line": 242,
+        "end_line": 243,
         "fixed_in": null,
         "id": 77,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -167,11 +155,11 @@
         "path": "railway/warn_miss_causes.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 241,
+        "start_line": 242,
         "tool": "CodeQL"
       },
       {
-        "end_line": 274,
+        "end_line": 276,
         "fixed_in": null,
         "id": 78,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -179,11 +167,11 @@
         "path": "railway/warn_miss_causes.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 273,
+        "start_line": 275,
         "tool": "CodeQL"
       },
       {
-        "end_line": 302,
+        "end_line": 303,
         "fixed_in": null,
         "id": 79,
         "message": "This expression logs sensitive data (private) as clear text.",
@@ -191,11 +179,11 @@
         "path": "railway/warn_transparency_evidence.py",
         "rule": "py/clear-text-logging-sensitive-data",
         "severity": "high",
-        "start_line": 302,
+        "start_line": 303,
         "tool": "CodeQL"
       },
       {
-        "end_line": 2094,
+        "end_line": 2098,
         "fixed_in": null,
         "id": 80,
         "message": "Sensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computationally expensive hash function.\nSensitive data (password) is used in a hashing algorithm (SHA256) that is insecure for password hashing, since it is not a computational",
@@ -203,11 +191,11 @@
         "path": "railway/spend.py",
         "rule": "py/weak-sensitive-data-hashing",
         "severity": "high",
-        "start_line": 2094,
+        "start_line": 2098,
         "tool": "CodeQL"
       },
       {
-        "end_line": 68,
+        "end_line": 72,
         "fixed_in": null,
         "id": 81,
         "message": "Sensitive data (private) is used in a hashing algorithm (MD5) that is insecure.",
@@ -215,7 +203,19 @@
         "path": "railway/sources/warn_custom.py",
         "rule": "py/weak-sensitive-data-hashing",
         "severity": "high",
-        "start_line": 68,
+        "start_line": 72,
+        "tool": "CodeQL"
+      },
+      {
+        "end_line": 223,
+        "fixed_in": null,
+        "id": 88,
+        "message": "This expression logs sensitive data (private) as clear text.",
+        "package": null,
+        "path": "railway/recall_uk_goldset.py",
+        "rule": "py/clear-text-logging-sensitive-data",
+        "severity": "high",
+        "start_line": 223,
         "tool": "CodeQL"
       }
     ],
