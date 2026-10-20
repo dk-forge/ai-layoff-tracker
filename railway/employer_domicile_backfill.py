@@ -446,6 +446,7 @@ def _run():
     print(f"EDGAR filer-record matches: {len(edgar_items)} · left blank: {len(edgar_unresolved)}")
 
     for item in items + edgar_items:
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #66): public employer names/counts or a variable NAME, never a credential value.
         print(f"  would set id={item['id']}: {item['employer_country']}" if dry_run
               else f"  setting id={item['id']}: {item['employer_country']}")
     if dry_run:

@@ -169,6 +169,7 @@ def _print_queue(pack, ledger):
         live = AL.live_entries(ledger, rid)
         mark = f"{live[-1]['decision'].upper():8s}" if live else "pending "
         lead = e.get("lead_row_id")
+        # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #76): public employer names/counts or a variable NAME, never a credential value.
         print(f"  {i:3d}. {mark} {e['state']} {e['notice_says_date']} "
               f"{str(e['notice_says_employer'])[:34]:34s} "
               f"{e['notice_says_job_count']:>6,}  lead row {lead}")
