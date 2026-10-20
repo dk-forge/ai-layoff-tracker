@@ -1,5 +1,8 @@
 ## 2026-10-20 - Daily security alert snapshot (security alerts)
 
+**Class:** novel (owner request 2026-10-20: every session sees open security alert counts without asking)
+**Guard:** `railway/tests/test_security_alerts.py` (pagination, severity counts, missing token and 403/404 are UNKNOWN never zero, same-day unchanged snapshot is no commit, absent/stale is UNKNOWN).
+
 Owner turned on the dependency graph, Dependabot alerts and security updates in
 all four repos and added `ALERTS_READ_TOKEN` (fine-grained PAT: Dependabot
 alerts read + Metadata). `.github/workflows/security-alerts.yml` (daily 06:17
