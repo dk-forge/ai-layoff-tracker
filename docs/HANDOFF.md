@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-10-20, branch `ci/security-alert-snapshot` (PR). No plugin file, no version reserved.** Daily security alert snapshot (`security-alerts.yml`, `ops_status.py [12]`); see TECHLOG 2026-10-20 (security alerts).
 - **RELEASED - Claude (agent), 2026-10-18, branch `claude/chat-session-oui1wv-board` (PR). Reserves plugin version 2.20.271.** Indeed postings on the early-warning timeline; see TECHLOG 2026-10-18 (2.20.271).
 - **RELEASED - Claude (agent), 2026-10-18, branch `claude/chat-session-oui1wv-zeros` (PR). Reserves plugin version 2.20.270.** Board/date presets count the site's day; page-vs-/query and ingest freshness watch; see TECHLOG 2026-10-18 (2.20.270).
 - **RELEASED - Claude (agent), 2026-10-17, branch `docs/478-labour-roadmap` (PR). No plugin file, no version reserved.** GitHub issue #478 (labour data roadmap) moved into `docs/COVERAGE_ROADMAP.md` section 4 with its status; see TECHLOG 2026-10-17 (roadmap).
