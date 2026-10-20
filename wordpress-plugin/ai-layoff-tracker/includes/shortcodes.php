@@ -377,6 +377,17 @@ function alt_public_page_cache_headers() {
     if (is_user_logged_in() || !alt_page_is_plugin_surface()) return;
     if (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request()) return;
     header('Cache-Control: public, max-age=60, s-maxage=60, stale-if-error=600');
+    // LiteSpeed (host since 2026-09-08) keeps its OWN server page cache and
+    // ignores Cache-Control: the LSCache plugin's public TTL is 604800s and is
+    // purged only on a deploy, so the bare URL served a board up to a week old
+    // (2026-10-20: tile 21 against 23 live, board_tiles_match_query FAIL).
+    // Bound it through the plugin's API, which writes the header at shutdown
+    // and would overwrite a raw one; the raw header covers a host without it.
+    if (has_action('litespeed_control_set_ttl')) {
+        do_action('litespeed_control_set_ttl', 60);
+    } else {
+        header('X-LiteSpeed-Cache-Control: public,max-age=60');
+    }
 }
 add_action('template_redirect', 'alt_public_page_cache_headers', PHP_INT_MAX);
 

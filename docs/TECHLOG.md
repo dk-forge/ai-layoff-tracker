@@ -1,3 +1,26 @@
+## 2026-10-20 - LiteSpeed served the tracker page for up to a week (2.20.277)
+
+**Class:** incident (data integrity: `board_tiles_match_query` FAIL)
+**Guard:** `tests/test_deploy_reaches_readers.py::LiteSpeedServerCacheIsBounded`
+
+The bare tracker URL answered `x-litespeed-cache: hit` with the at-a-glance
+board at 21 for 2026-10-14..20 while the origin (`?cb=`) rendered 23 and
+/aggregate said 23; every other column trailed too (Sep 390 vs 394, YTD 3,839
+vs 3,846). The tile, the query and the check were all correct: the PAGE was
+old. Since the ChemiCloud move (2026-09-08) LiteSpeed keeps its own server page
+cache, which ignores our `Cache-Control: s-maxage=60` and uses the LSCache
+plugin's public TTL (`x-litespeed-cache-control: public,max-age=604800`),
+purged only by `alt_flush_caches_on_deploy`. So between deploys readers saw a
+board up to a week stale. `alt_public_page_cache_headers()` now sets the TTL to
+60s through `do_action('litespeed_control_set_ttl', 60)` (the plugin writes its
+header at shutdown and would overwrite a raw one), with a raw
+`X-LiteSpeed-Cache-Control: public,max-age=60` where the plugin is absent. No
+tolerance was touched.
+
+Backup: `backup_export` was refused with `UnpinnedColumn`
+(`company_directory.admitted_by`, added 2.20.210); the pin landed in #551 on
+2026-10-19 but no run happened since. Re-dispatched 2026-10-20.
+
 ## 2026-10-20 - CodeQL alerts: real patterns fixed, false positives listed (CodeQL)
 
 **Class:** novel (owner request: clear the 87 open code-scanning alerts)
