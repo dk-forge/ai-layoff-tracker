@@ -47,11 +47,11 @@ _ALLOWED_SRC_ONLY = re.compile(
 )
 #: Structured data in a script tag. Nothing executes it.
 _ALLOWED_LD_JSON = re.compile(
-    r"<script\b[^>]*\btype=[\"\']?application/ld\+json[\"\']?[^>]*>.*?</script>",
+    r"<script\b[^>]*\btype=[\"\']?application/ld\+json[\"\']?[^>]*>.*?</script\b[^>]*>",
     re.I | re.S,
 )
 #: A script tag carrying statements. This is the shape that vanishes.
-_SCRIPT_WITH_BODY = re.compile(r"<script\b(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.I | re.S)
+_SCRIPT_WITH_BODY = re.compile(r"<script\b(?![^>]*\bsrc=)[^>]*>(.*?)</script\b[^>]*>", re.I | re.S)
 
 
 def _php_sources():
