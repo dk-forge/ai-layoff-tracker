@@ -110,6 +110,8 @@ def _cert_not_after(host: str, timeout: int = 15) -> float:
     Raises on any transport or handshake failure (the caller reads that
     as UNKNOWN)."""
     ctx = ssl.create_default_context()
+    # Explicit floor (CodeQL py/insecure-protocol); already the default.
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     with socket.create_connection((host, 443), timeout=timeout) as raw:
         with ctx.wrap_socket(raw, server_hostname=host) as tls:
             cert = tls.getpeercert()
