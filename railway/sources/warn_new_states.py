@@ -532,7 +532,7 @@ def fetch_hi():
             resp = requests.get(url, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200:
                 continue
-            html_text = re.sub(r"<script.*?</script>", "", resp.text, flags=re.S | re.I)
+            html_text = re.sub(r"<script.*?</script\b[^>]*>", "", resp.text, flags=re.S | re.I)
         except Exception as exc:
             print(f"    HI {year}: listing failed ({exc})")
             continue
@@ -763,7 +763,7 @@ def _ks_detail_fields(html_text):
     Number of Employees Affected. Parsed as flattened text lines so markup
     changes that keep the labels do not break it.
     """
-    txt = re.sub(r"<script.*?</script>", " ", html_text or "", flags=re.S)
+    txt = re.sub(r"<script.*?</script\b[^>]*>", " ", html_text or "", flags=re.S | re.I)
     txt = re.sub(r"<[^>]+>", "\n", txt)
     lines = [_html_mod.unescape(l).strip() for l in txt.split("\n")]
     lines = [l for l in lines if l]

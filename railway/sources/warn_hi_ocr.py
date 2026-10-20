@@ -240,7 +240,7 @@ def _hi_notices(years):
             resp = requests.get(url, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200:
                 continue
-            html_text = re.sub(r"<script.*?</script>", "", resp.text, flags=re.S | re.I)
+            html_text = re.sub(r"<script.*?</script\b[^>]*>", "", resp.text, flags=re.S | re.I)
         except Exception as exc:
             print(f"    HI {year}: listing failed ({exc})")
             continue
