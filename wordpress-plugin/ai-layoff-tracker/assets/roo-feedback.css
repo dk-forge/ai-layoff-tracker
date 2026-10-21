@@ -1,0 +1,24 @@
+/* Roo, the floating feedback widget on every /blog page (2026-10-21).
+   Scoped under #alt-roo-feedback and .alt-roo-dialog so it cannot restyle a
+   theme element. Light by default, dark when the reader's system is dark. */
+#alt-roo-feedback .alt-roo-btn{position:fixed;right:16px;bottom:16px;z-index:9990;display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:4px 14px 4px 8px;border:1px solid #d9d6cf;border-radius:999px;background:#fff;color:#1f2a22;font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.15);cursor:pointer}
+#alt-roo-feedback .alt-roo-btn:hover{background:#f3f2ee}
+#alt-roo-feedback .alt-roo-btn:focus-visible,.alt-roo-dialog button:focus-visible,.alt-roo-dialog input:focus-visible,.alt-roo-dialog textarea:focus-visible,.alt-roo-star:focus-within{outline:3px solid #4F7257;outline-offset:2px}
+.alt-roo-dialog{position:fixed;right:16px;bottom:72px;z-index:9991;box-sizing:border-box;width:340px;max-width:calc(100vw - 32px);max-height:calc(100vh - 96px);overflow:auto;padding:16px;border:1px solid #d9d6cf;border-radius:12px;background:#fff;color:#1f2a22;font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.alt-roo-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.alt-roo-title{margin:0;font-size:17px;font-weight:700;color:#1f2a22}
+.alt-roo-close{min-height:44px;min-width:44px;border:0;background:transparent;color:#1f2a22;font-size:24px;cursor:pointer}
+.alt-roo-stars{display:flex;gap:4px;margin:8px 0;padding:0;border:0}
+.alt-roo-legend{margin-bottom:4px;font-weight:600}
+.alt-roo-star{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;font-size:26px;color:#704A1A;cursor:pointer}
+.alt-roo-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.alt-roo-label{display:block;margin-top:8px;font-weight:600}
+.alt-roo-input{box-sizing:border-box;width:100%;min-height:44px;margin-top:4px;padding:8px;border:1px solid #8a877f;border-radius:8px;background:#fff;color:#1f2a22;font:inherit}
+.alt-roo-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.alt-roo-turnstile{margin-top:8px}
+.alt-roo-status{min-height:1.4em;margin:8px 0}
+.alt-roo-send{min-height:44px;padding:0 18px;border:0;border-radius:8px;background:#3F5E46;color:#fff;font:600 15px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+.alt-roo-send:disabled{opacity:.6;cursor:default}
+@media (max-width:480px){#alt-roo-feedback .alt-roo-btn .alt-roo-btn-text{display:none}#alt-roo-feedback .alt-roo-btn{padding:4px 8px}.alt-roo-dialog{right:16px;left:16px;width:auto}}
+@media (prefers-color-scheme:dark){#alt-roo-feedback .alt-roo-btn,.alt-roo-dialog,.alt-roo-input{background:#252525;color:#ececec;border-color:#4a4a4a}.alt-roo-title,.alt-roo-close{color:#ececec}.alt-roo-star{color:#E8C9A0}#alt-roo-feedback .alt-roo-btn:hover{background:#2e2e2e}}
+@media (prefers-reduced-motion:reduce){#alt-roo-feedback .alt-roo-btn,.alt-roo-dialog{transition:none;animation:none}}
