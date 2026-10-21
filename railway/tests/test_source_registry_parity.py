@@ -211,6 +211,20 @@ class StalenessCeilingsMatchTheRealCadence(unittest.TestCase):
         self.assertEqual(_worst_gap_days("0 13 1 * *"), 31)
 
 
+class TheTwoCeilingMapsAgree(unittest.TestCase):
+    """2026-10-21: ops_status [2] called digest_monthly STALE at 19 days. Its
+    MAX_AGE had no entry, so the 10-day default applied, while health_digest
+    and ops_status's own monthly-slot check both say 35 (longest month + 4).
+    The digest ids report through a constant, so the literal-reporter sweep
+    never saw them. Every ceiling health_digest sets, ops_status must mirror."""
+
+    def test_every_health_digest_ceiling_is_mirrored(self):
+        digest, _default = _health_digest_max_age()
+        ops = _ops_status_max_age()
+        drift = {k: (v, ops.get(k)) for k, v in digest.items() if ops.get(k) != v}
+        self.assertEqual(drift, {}, "health_digest ceiling -> ops_status ceiling")
+
+
 class SourceRegistryParityTest(unittest.TestCase):
     def test_meta_keys_are_unique(self):
         keys = _meta_keys()

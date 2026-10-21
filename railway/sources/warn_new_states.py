@@ -945,6 +945,10 @@ def fetch_al():
 NEW_CUSTOM_STATES = {"MS": fetch_ms, "WV": fetch_wv, "NM": fetch_nm, "WA": fetch_wa,
                      "KS": fetch_ks, "AL": fetch_al}
 
+# DC (2026-10-20): the open scraper's DC module broke on a relative link.
+from .warn_dc import fetch_dc  # noqa: E402
+NEW_CUSTOM_STATES["DC"] = fetch_dc
+
 
 if __name__ == "__main__":
     # Smoke test: hit one real page/PDF per state and report counts so a manual

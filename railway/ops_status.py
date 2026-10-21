@@ -95,6 +95,11 @@ MAX_AGE = {"edgar": 2, "news_catchup": 9, "google_news": 2, "regional_feeds": 2,
            "eurofound_erm": 3, "supplemental_news": 3, "company_watchlist": 4, "dedupe_llm": 4,
            "press_releases": 3, "warn_quebec": 3, "federal_rif": 35, "warn_hi_ocr": 3,
            "warn_mazowieckie": 3, "data_integrity": 2, "digest_mailer": 3,
+           # The weekly and monthly digest slots: health_digest.py's own
+           # ceilings, mirrored (both derivations live there). Missing until
+           # 2026-10-21, so the 10-day default called a healthy monthly row
+           # STALE from day 11 while [4c]'s monthly check said 35.
+           "digest_weekly": 9, "digest_monthly": 35,
            # source_audit is the third instance of the same defect, and it had
            # been reading STALE for ~2 weeks in 3, every month, since it shipped.
            # source-verification-audit.yml is `0 13 1 * *` — the 1st of each

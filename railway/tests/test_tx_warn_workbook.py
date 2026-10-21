@@ -107,5 +107,40 @@ class FetchTxReadsTheWorkbook(unittest.TestCase):
         self.assertEqual([e["company_name"] for e in out], ["Acme Widgets"])
 
 
+class RelayedTexasIsTopedUpWhereThePostRuns(FetchTxReadsTheWorkbook):
+    """2026-10-20: the relay's scrape job (a GitHub runner) was refused the TWC
+    page ("no workbook links ... blocked or moved"), so the relayed TX set was
+    the frozen dataset alone and Texas stayed dark. The posting job re-reads the
+    workbooks from its own address and unions them by dedup_hash."""
+
+    def _relayed(self):
+        def frozen(url, **kw):
+            return _Resp(payload=SOCRATA)
+        wc.requests.get = frozen
+        return wc._tx_rows_to_entries(SOCRATA, "https://data.texas.gov/d/8w53-c4f6")
+
+    def test_the_workbook_notice_is_added_once(self):
+        relayed = self._relayed() + [{"state": "FL", "dedup_hash": "fl1", "company_name": "F"}]
+        self._serve()
+        out = wc.tx_workbook_supplement(relayed)
+        names = [e["company_name"] for e in out]
+        self.assertIn("Example Care LP", names)
+        self.assertEqual(names.count("Acme Widgets"), 1)
+        self.assertIn("F", names)
+
+    def test_a_blocked_page_leaves_the_relayed_set_unchanged(self):
+        relayed = self._relayed()
+        wc.requests.get = lambda url, **kw: _Resp(status=202)
+        self.assertEqual(wc.tx_workbook_supplement(relayed), relayed)
+
+    def test_an_exception_never_sinks_the_import(self):
+        relayed = self._relayed()
+
+        def boom(url, **kw):
+            raise OSError("down")
+        wc.requests.get = boom
+        self.assertEqual(wc.tx_workbook_supplement(relayed), relayed)
+
+
 if __name__ == "__main__":
     unittest.main()
