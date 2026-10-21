@@ -1,3 +1,20 @@
+## 2026-10-21 - Roo, the floating feedback widget, on every /blog page (2.20.279)
+
+**Class:** novel (owner ruling 2026-10-21, recorded in asktherecruiter-sandbox `docs/DECISIONS.md` "Roo feedback on every surface")
+**Guard:** `railway/tests/test_roo_feedback_widget.py`
+
+`includes/roo-feedback.php` (guarded `is_readable` include) enqueues
+`assets/roo-feedback.{js,css}` on `wp_enqueue_scripts` and prints one
+`#alt-roo-feedback` root with its config on `data-alt-roo` (never an inline
+object: Autoptimize). The widget posts to the AskTheRecruiter app's own
+`/api/feedback/site` (same origin, no CORS) with `product=blog` and the page
+path, behind the app's honeypot and Turnstile (the app's PUBLIC site key; no
+secret here). Visibility mirrors the sandbox helper: 100% of visitors until
+2027-02-01, then a sticky 50% from a random `atr_roo_vid` id in localStorage
+that is never sent. The test runs the shipped JS in node on both sides of the
+date and pins the same golden buckets as the sandbox and fasthire. WordPress
+stores nothing.
+
 ## 2026-10-20 - LiteSpeed served the tracker page for up to a week (2.20.277)
 
 **Class:** cache-served-stale (data integrity: `board_tiles_match_query` FAIL)

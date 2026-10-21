@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.277
+ * Version:           2.20.279
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.277');
+define('ALT_VERSION', '2.20.279');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -300,6 +300,15 @@ if (is_readable($alt_blog_legacy_css)) {
 $alt_blog_claps = ALT_PLUGIN_DIR . 'includes/blog-claps.php';
 if (is_readable($alt_blog_claps)) {
     require_once $alt_blog_claps;
+}
+// Roo, the floating feedback widget, on every /blog page (owner ruling
+// 2026-10-21). GUARDED with is_readable like every NEW include: the deploy can
+// land this main file first (2.19.20), and its absence must degrade to "no Roo
+// on the blog", never to a white screen. It wires itself to wp_enqueue_scripts
+// and wp_footer; nothing outside it calls in.
+$alt_roo_feedback = ALT_PLUGIN_DIR . 'includes/roo-feedback.php';
+if (is_readable($alt_roo_feedback)) {
+    require_once $alt_roo_feedback;
 }
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
 // GUARDED: FTP deploys upload files one at a time, so this main plugin file can
