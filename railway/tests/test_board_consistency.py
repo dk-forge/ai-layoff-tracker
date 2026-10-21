@@ -92,6 +92,52 @@ class ParsingThePage(unittest.TestCase):
         self.assertEqual(bc.page_tiles("<html></html>"), [])
 
 
+def real_page(tiles, dated_zero=True):
+    """The page as the plugin actually renders it: a zero cell is a <span
+    class="alt-sb-zero">, not a link. 2026-10-21 02:14 New York: Today was a
+    genuine 0, the zero span carried no window, the parser skipped it, and the
+    week tile was read as the Today column (a FAIL over a correct page)."""
+    cells = ""
+    for (f, t), n in tiles:
+        if n:
+            cells += (f'<a class="alt-sb-cell alt-nfilter" role="cell" href="?x" '
+                      f'data-from="{f}" data-to="{t}" data-date-basis="notice"><b>{n:,}</b></a>')
+        else:
+            data = f' data-from="{f}" data-to="{t}" data-date-basis="notice"' if dated_zero else ""
+            cells += f'<span class="alt-sb-cell alt-sb-zero" role="cell"{data}>0</span>'
+    return ('<html><div class="alt-sb-row alt-sb-r-events" role="row">'
+            '<span class="alt-sb-label" role="rowheader">Verified layoffs</span>' + cells + "</div></html>")
+
+
+class ZeroCells(Clocked):
+    """A zero tile is a span, and it must still be read as its own window."""
+
+    def run_inv(self, fetch):
+        return bc.BoardTilesMatchQuery().run(ctx(fetch))
+
+    def test_a_genuine_zero_today_passes(self):
+        live = {**GOOD, WINDOWS[0]: 0}
+        r = self.run_inv(Live(real_page(list(live.items())), live))
+        self.assertEqual(r.state, di.PASS, r.detail)
+
+    def test_the_zero_span_is_parsed_in_its_column(self):
+        live = {**GOOD, WINDOWS[0]: 0}
+        self.assertEqual(bc.page_tiles(real_page(list(live.items())))[0],
+                         ("2026-10-18", "2026-10-18", 0))
+
+    def test_a_zero_span_over_live_rows_fails(self):
+        shown = {**GOOD, WINDOWS[0]: 0}
+        r = self.run_inv(Live(real_page(list(shown.items())), GOOD))
+        self.assertEqual(r.state, di.FAIL)
+        self.assertIn("shows 0", r.detail)
+
+    def test_an_undated_zero_cell_is_unknown_never_a_shifted_column(self):
+        live = {**GOOD, WINDOWS[0]: 0}
+        r = self.run_inv(Live(real_page(list(live.items()), dated_zero=False), live))
+        self.assertEqual(r.state, di.UNKNOWN, r.detail)
+        self.assertNotIn("Today column counts", r.detail)
+
+
 class TilesMatchQuery(Clocked):
 
     def run_inv(self, fetch, render=None):

@@ -517,7 +517,7 @@ $alt_hero_basis  = 'counted by filing date';
                 $heat = ($v > 0 && $max > 0) ? ' style="background:rgba(var(--alt-heat-rgb),' . number_format(0.08 + 0.26 * $v / $max, 3, '.', '') . ')"' : '';
                 $h .= $v > 0
                     ? '<a class="alt-sb-cell alt-nfilter' . $eq . '" role="cell" href="' . $alt_sb_meta[$ck]['href'] . '"' . $alt_sb_meta[$ck]['data'] . $eqt . $heat . '><b>' . esc_html(number_format($v)) . '</b></a>'
-                    : '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell"' . $eqt . '>0</span>';
+                    : '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell"' . $alt_sb_meta[$ck]['data'] . $eqt . '>0</span>';
             }
             return $h . '</div>';
         };
