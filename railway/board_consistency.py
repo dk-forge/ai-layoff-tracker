@@ -81,16 +81,36 @@ def lag_tolerance(expected):
 # --------------------------------------------------------------------------
 
 _ROW = re.compile(r'<div class="alt-sb-row alt-sb-r-events"[^>]*>(.*?)</div>', re.S)
-_CELL = re.compile(r'<a class="alt-sb-cell[^"]*"[^>]*?data-from="(\d{4}-\d\d-\d\d)"'
-                   r'[^>]*?data-to="(\d{4}-\d\d-\d\d)"[^>]*>\s*<b>([\d,]+)</b>', re.S)
+# EVERY cell, link or span, in column order. A zero tile is rendered as
+# <span class="alt-sb-cell alt-sb-zero">0</span>, not a link; until 2026-10-21
+# this matched links only, so a genuine 0 in Today was skipped and the week
+# tile was read as the Today column (FAIL on a correct page at 02:14 New York).
+_ANYCELL = re.compile(r'<(a|span)\b(?=[^>]*class="alt-sb-cell)([^>]*)>(.*?)</\1>', re.S)
+_FROM = re.compile(r'data-from="(\d{4}-\d\d-\d\d)"')
+_TO = re.compile(r'data-to="(\d{4}-\d\d-\d\d)"')
+
+
+class UndatedCell(ValueError):
+    """A board cell that does not name its window, so it cannot be checked."""
 
 
 def page_tiles(html):
-    """[(from, to, entries)] off the server-rendered Verified layoffs row."""
+    """[(from, to, entries)] off the server-rendered Verified layoffs row.
+
+    Raises UndatedCell when a cell carries no data-from/data-to: skipping it
+    would shift every later column one place left, which is a wrong reading,
+    not a check."""
     m = _ROW.search(html or "")
     if not m:
         return []
-    return [(f, t, int(n.replace(",", ""))) for f, t, n in _CELL.findall(m.group(1))]
+    out = []
+    for i, (_tag, attrs, body) in enumerate(_ANYCELL.findall(m.group(1))):
+        f, t = _FROM.search(attrs), _TO.search(attrs)
+        if not (f and t):
+            raise UndatedCell(f"board cell {i + 1} names no window")
+        digits = re.sub(r"[^0-9]", "", re.sub(r"<[^>]+>", "", body))
+        out.append((f.group(1), t.group(1), int(digits or 0)))
+    return out
 
 
 def page_table(html):
@@ -220,7 +240,11 @@ class BoardTilesMatchQuery:
                 pages[name] = _fetch_page(ctx, name, ua)
             except Exception as exc:                       # noqa: BLE001
                 return _transport_or_answer(self, exc, "the tracker page")
-        tiles = {n: page_tiles(h) for n, h in pages.items()}
+        try:
+            tiles = {n: page_tiles(h) for n, h in pages.items()}
+        except UndatedCell as exc:
+            return di.Result(self, di.UNKNOWN,
+                             detail=f"{exc} in the at-a-glance board: not checked, NOT passing")
         if not all(tiles.values()):
             missing = [n for n, t in tiles.items() if not t]
             return di.Result(self, di.UNKNOWN,

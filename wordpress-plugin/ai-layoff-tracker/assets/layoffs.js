@@ -5636,7 +5636,7 @@
                         var e = eqCls(k), et = e ? eqTitle : '';
                         return v > 0
                             ? '<a class="alt-sb-cell alt-nfilter' + e + '" role="cell" href="' + meta[k].href + '"' + meta[k].data + et + heat(v, max) + '><b>' + fmt(v) + '</b></a>'
-                            : '<span class="alt-sb-cell alt-sb-zero' + e + '" role="cell"' + et + '>0</span>';
+                            : '<span class="alt-sb-cell alt-sb-zero' + e + '" role="cell"' + meta[k].data + et + '>0</span>';
                     }).join('') + '</div>';
             };
             var lmax = 0;
