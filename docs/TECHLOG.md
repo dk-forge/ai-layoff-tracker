@@ -1,3 +1,46 @@
+## 2026-10-21 - The board check read the week as Today when Today was 0 (2.20.278)
+
+**Class:** wrong-scope-or-key (data integrity: `board_tiles_match_query` FAIL on a correct page; the check read the wrong window for a column)
+**Guard:** `tests/test_board_consistency.py::ZeroCells`
+
+At 02:14 New York the check said "the Today column counts 2026-10-15..2026-10-21,
+but the site's today is 2026-10-21". The published numbers were right: /query
+for 2026-10-21 was 0, and the page showed 0. A zero tile is rendered as
+`<span class="alt-sb-cell alt-sb-zero">0</span>` with no window attributes, and
+`page_tiles` matched only `<a ... data-from data-to>` links, so it skipped the
+zero and read every later column one place left. Not a timezone defect: the
+page's windows were New York days throughout. It fires every New York morning
+until the first notice of the day lands, and on any day with a zero week.
+
+Fix, both layers: the zero span now carries the same `data-from/data-to` as a
+link (page-tracker.php and layoffs.js, so the rendered check reads it too), and
+the parser reads every cell in column order. A cell that names no window is
+UNKNOWN ("board cell N names no window"), never a shifted column, so the old
+markup cannot be misread again. No tolerance moved.
+
+## 2026-10-21 - Texas relayed scrape refused; DC open scraper broke; monthly ceiling missing
+
+**Class:** ran-but-brought-nothing (TX relayed only the frozen dataset; DC returned nothing); two-copies-drifted for the ceiling maps
+**Guard:** `tests/test_tx_warn_workbook.py::RelayedTexasIsTopedUpWhereThePostRuns`, `tests/test_warn_dc.py`, `tests/test_source_registry_parity.py::TheTwoCeilingMapsAgree`
+
+* **TX** went dark again after #553: the relay's scrape job runs on a GitHub
+  runner, and TWC's edge refused it the WARN page ("no workbook links ...
+  blocked or moved"), so the relayed set was the dataset frozen since
+  2026-07-07. The posting job now re-reads the workbooks from its own address
+  (`warn_custom.tx_workbook_supplement`, additive, fail-isolated, union by
+  dedup_hash). Whether TWC serves the Contabo address is not yet observed: if
+  the next run still logs no workbook, Texas needs a human (an egress that TWC
+  serves).
+* **DC**: the open warn-scraper module raised MissingSchema on
+  '/page/rapid-response' (DOES replaced its year-link list). `sources/warn_dc.py`
+  reads the current and previous year tables and follows no link; same hash as
+  the generic tier.
+* **digest_monthly STALE at 19d** was ops_status's `MAX_AGE` missing the
+  digest ids, so the 10-day default applied while health_digest and the [4c]
+  monthly check both say 35. Mirrored, and pinned by
+  `test_source_registry_parity.py::TheTwoCeilingMapsAgree`. This restores the
+  documented ceiling rather than choosing a new one.
+
 ## 2026-10-20 - LiteSpeed served the tracker page for up to a week (2.20.277)
 
 **Class:** cache-served-stale (data integrity: `board_tiles_match_query` FAIL)

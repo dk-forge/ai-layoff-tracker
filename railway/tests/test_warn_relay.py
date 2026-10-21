@@ -122,12 +122,14 @@ class ImportUsesTheRelay(unittest.TestCase):
              mock.patch.object(wi, "assess_state_freshness", return_value=({}, [], [])), \
              mock.patch.object(wi.source_freshness, "save_ledger", create=True), \
              mock.patch.object(wi.source_alert, "announce", create=True, return_value=None), \
+             mock.patch.object(wc, "tx_workbook_supplement",
+                               side_effect=lambda c: list(c) + [_e("TX", "T")]), \
              mock.patch.object(wi, "requests"):
             try:
                 wi.main()
             except SystemExit as exc:
                 self.assertIn(exc.code, (0, None))
-        self.assertEqual(sorted(e["company_name"] for e in posted), ["A", "B", "C"])
+        self.assertEqual(sorted(e["company_name"] for e in posted), ["A", "B", "C", "T"])
         self.assertEqual(wc.SOURCE_UNREACHABLE.get("MA"), "refused")
         wc.SOURCE_UNREACHABLE.clear()
         # KS raised in the relay: it must still read as an ERRORED new-state.

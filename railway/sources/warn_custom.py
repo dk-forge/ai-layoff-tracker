@@ -156,9 +156,51 @@ def _tx_rows_to_entries(rows, detail_url):
     return out
 
 
+_TX_LAST_LINKS = [0]
+
+
+def _tx_workbook_entries():
+    """Entries from TWC's current per-year workbooks; [] when not served."""
+    import datetime as _dt
+    page = _tx_get(_TX_PAGE)
+    links = _tx_xlsx_links(page.text if page else "", _dt.date.today().year)
+    _TX_LAST_LINKS[0] = len(links)
+    if not links:
+        print("    TX: no workbook links on the TWC WARN page (blocked or moved)")
+    out = []
+    for year, link in links:
+        resp = _tx_get(link, want_zip=True)
+        if resp is None:
+            print(f"    TX {year} workbook: not served")
+            continue
+        try:
+            out += _tx_rows_to_entries(_tx_workbook_rows(resp.content), _TX_PAGE)
+        except Exception as exc:
+            print(f"    TX {year} workbook: parse failed ({exc})")
+    return out
+
+
+def tx_workbook_supplement(entries):
+    """Union TWC workbook notices into an already-collected entry list.
+
+    The relay scrapes from a GitHub runner, which TWC's edge refused on
+    2026-10-20, so the relayed Texas set was the dataset frozen since 2026-07-07
+    and Texas stayed dark. The posting job calls this to read the workbooks
+    from its own address. Additive and fail-isolated: never removes an entry,
+    never raises."""
+    try:
+        seen = {e.get("dedup_hash") for e in entries}
+        extra = [e for e in _tx_workbook_entries() if e["dedup_hash"] not in seen]
+    except Exception as exc:                               # noqa: BLE001
+        print(f"    TX workbook top-up skipped: {exc}")
+        return entries
+    if extra:
+        print(f"WARN TX: +{len(extra)} notice(s) from the TWC workbooks read here")
+    return list(entries) + extra
+
+
 def fetch_tx():
     """Official TWC data: Socrata dataset (history) UNION the per-year workbooks."""
-    import datetime as _dt
     out, seen = [], set()
 
     def _add(entries):
@@ -175,21 +217,10 @@ def fetch_tx():
     except Exception as exc:
         print(f"    TX socrata: {exc}")
     socrata_n = len(out)
-    page = _tx_get(_TX_PAGE)
-    links = _tx_xlsx_links(page.text if page else "", _dt.date.today().year)
-    if not links:
-        print("    TX: no workbook links on the TWC WARN page (blocked or moved)")
-    for year, link in links:
-        resp = _tx_get(link, want_zip=True)
-        if resp is None:
-            print(f"    TX {year} workbook: not served")
-            continue
-        try:
-            _add(_tx_rows_to_entries(_tx_workbook_rows(resp.content), _TX_PAGE))
-        except Exception as exc:
-            print(f"    TX {year} workbook: parse failed ({exc})")
+    _add(_tx_workbook_entries())
+    links = _TX_LAST_LINKS[0]
     print(f"WARN TX: {socrata_n} from the dataset, {len(out) - socrata_n} more "
-          f"from {len(links)} TWC workbook(s)")
+          f"from {links} TWC workbook(s)")
     if not out:
         raise RuntimeError("TX: neither the dataset nor any workbook was read")
     return out

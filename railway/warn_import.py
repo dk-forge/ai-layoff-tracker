@@ -405,6 +405,13 @@ def db_frontier_dates(states, *, limit=30, today=None):
     return out
 
 
+def _scrape_all_or(st, states):
+    """True when this run's state list covers `st`."""
+    if len(states) == 1 and str(states[0]).lower() == "all":
+        return True
+    return st in {str(s).upper() for s in states}
+
+
 def assess_state_freshness(entries, attempted, *, errored=(), collapsed=(),
                            today=None, ledger_path=None,
                            extra_dates_by_state=None):
@@ -717,6 +724,10 @@ def main():
     if _relay:
         import sources.warn_custom as _wc
         customs = list(_relay["custom"])
+        # The relay's runner can be refused by TWC's edge (2026-10-20), which
+        # leaves Texas on its frozen dataset. Re-read the workbooks from here.
+        if _scrape_all_or("TX", states):
+            customs = _wc.tx_workbook_supplement(customs)
         _wc.SOURCE_UNREACHABLE.clear()
         _wc.SOURCE_UNREACHABLE.update(_relay["custom_unreachable"])
     else:
