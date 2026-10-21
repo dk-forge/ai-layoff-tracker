@@ -1,6 +1,6 @@
 ## 2026-10-21 - The board check read the week as Today when Today was 0 (2.20.278)
 
-**Class:** check-misread (data integrity: `board_tiles_match_query` FAIL on a correct page)
+**Class:** wrong-scope-or-key (data integrity: `board_tiles_match_query` FAIL on a correct page; the check read the wrong window for a column)
 **Guard:** `tests/test_board_consistency.py::ZeroCells`
 
 At 02:14 New York the check said "the Today column counts 2026-10-15..2026-10-21,
@@ -19,6 +19,9 @@ UNKNOWN ("board cell N names no window"), never a shifted column, so the old
 markup cannot be misread again. No tolerance moved.
 
 ## 2026-10-21 - Texas relayed scrape refused; DC open scraper broke; monthly ceiling missing
+
+**Class:** ran-but-brought-nothing (TX relayed only the frozen dataset; DC returned nothing); two-copies-drifted for the ceiling maps
+**Guard:** `tests/test_tx_warn_workbook.py::RelayedTexasIsTopedUpWhereThePostRuns`, `tests/test_warn_dc.py`, `tests/test_source_registry_parity.py::TheTwoCeilingMapsAgree`
 
 * **TX** went dark again after #553: the relay's scrape job runs on a GitHub
   runner, and TWC's edge refused it the WARN page ("no workbook links ...
