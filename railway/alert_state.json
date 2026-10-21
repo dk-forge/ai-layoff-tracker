@@ -87,11 +87,6 @@
       "last": 1792431624,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
-    "live-surface-check:live.data:3f605e360c793ffa": {
-      "first": 1792593459,
-      "last": 1792593459,
-      "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: United States jobs, all time: live API returned HTTP 500 \u2014 server regression, not a blip"
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -108,6 +103,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-21T14:37:39+00:00",
+  "updated_at": "2026-10-21T20:34:43+00:00",
   "version": 1
 }
