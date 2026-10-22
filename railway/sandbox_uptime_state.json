@@ -1,5 +1,5 @@
 {
-  "consecutive_fails": 5,
+  "consecutive_fails": 6,
   "open": {
     "sandbox-uptime:down": {
       "first": 1792631569,
@@ -7,6 +7,6 @@
       "subject": "sandbox uptime check failing: https://sandbox.asktherecruiter.com/healthz/deep: HTTP 503"
     }
   },
-  "updated_at": "2026-10-22T02:06:17+00:00",
+  "updated_at": "2026-10-22T02:34:07+00:00",
   "version": 1
 }
