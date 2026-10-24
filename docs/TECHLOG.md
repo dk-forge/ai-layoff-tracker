@@ -1,3 +1,14 @@
+## 2026-10-24 - Security pins: pillow 13.0.0, urllib3 2.8.0, certifi 2026.10.19 (no plugin version)
+
+**Class:** novel (routine dependency security pins, not an incident; threat-watch alarms in asktherecruiter-sandbox: 28 for pillow CVE-2026-112398 / GHSA-78g4-xqwv-q3g8, 2 for urllib3 CVE-2026-97687 / -97689, 1 for certifi GHSA-6q48-6c7w-9gw2)
+**Guard:** `railway/tests/test_dependency_pinning.py` (10 passed)
+
+`railway/requirements.lock` and `railway/requirements-min.lock` regenerated with
+`pip-compile --generate-hashes --strip-extras --upgrade-package ...`, so only the
+three named packages and their hashes moved. Pillow is not imported by our code
+(it arrives through the PDF reader), and the full lock resolved with
+`--require-hashes`. No plugin file changed, so no `ALT_VERSION` bump and no deploy.
+
 ## 2026-10-21 - Roo, the floating feedback widget, on every /blog page (2.20.279)
 
 **Class:** novel (owner ruling 2026-10-21, recorded in asktherecruiter-sandbox `docs/DECISIONS.md` "Roo feedback on every surface")
