@@ -1,6 +1,16 @@
 {
   "editions": [
     {
+      "date": "2026-10-24",
+      "kind": "daily",
+      "path": "2026/10/2026-10-24-daily.html",
+      "sections": [
+        "talent"
+      ],
+      "slug": "2026-10-24-daily",
+      "subject": "Who's hiring today \u00b7 20 funding rounds, 38 leadership moves \u00b7 Oct 24"
+    },
+    {
       "date": "2026-10-23",
       "kind": "daily",
       "path": "2026/10/2026-10-23-daily.html",
