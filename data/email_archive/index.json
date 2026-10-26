@@ -12,6 +12,16 @@
     },
     {
       "date": "2026-10-25",
+      "kind": "weekly",
+      "path": "2026/10/2026-10-25-weekly.html",
+      "sections": [
+        "layoff"
+      ],
+      "slug": "2026-10-25-weekly",
+      "subject": "2,980 verified job cuts \u00b7 Trinity Health leads \u00b7 Oct 19-25"
+    },
+    {
+      "date": "2026-10-25",
       "kind": "daily",
       "path": "2026/10/2026-10-25-daily.html",
       "sections": [
