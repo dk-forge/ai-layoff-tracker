@@ -330,7 +330,7 @@ def main(argv=None) -> int:
     ap.add_argument("--form", action="append", default=[], metavar="K=V",
                     help="urlencoded form field (the --data-urlencode equivalent)")
     ap.add_argument("--header", action="append", default=[], metavar="K: V")
-    ap.add_argument("--api-key-env", default="",
+    ap.add_argument("--api-key-env", dest="key_env_var", default="",
                     help="env var holding the value for X-Layoff-API-Key; the key "
                          "is never passed on the command line")
     ap.add_argument("--output", default="", help="write the response body here")
@@ -349,14 +349,14 @@ def main(argv=None) -> int:
             print(f"::error::--header must look like 'Name: value', got {raw!r}")
             return 2
         headers[name.strip()] = value.strip()
-    if args.api_key_env:
-        key = os.environ.get(args.api_key_env, "")
+    if args.key_env_var:
+        key = os.environ.get(args.key_env_var, "")
         if not key:
             # A missing key is a real, settled problem — never a deferral. It
             # would fail identically tomorrow, and pretending otherwise is how
             # a broken secret sits undiscovered for a week.
             # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #67): public employer names/counts or a variable NAME, never a credential value.
-            print(f"::error::{args.api_key_env} is empty; refusing to call {args.url}")
+            print(f"::error::{args.key_env_var} is empty; refusing to call {args.url}")
             return 2
         headers["X-Layoff-API-Key"] = key
 

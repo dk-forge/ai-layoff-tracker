@@ -1,0 +1,20 @@
+{
+  "_why": "Reviewed 2026-10-26; reasons per alert. Dismissed by .github/workflows/dismiss-false-positives.yml.",
+  "alerts": {
+    "64": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "65": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "66": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "70": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "72": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "73": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "74": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "75": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "76": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "77": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "78": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "79": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "88": "public employer names/counts from SEC filings, WARN notices and news, not personal data",
+    "80": "short sha256 is a public label for a random API key, not password storage",
+    "81": "MD5 is a dedup key over a public layoff notice, not a security use"
+  }
+}
