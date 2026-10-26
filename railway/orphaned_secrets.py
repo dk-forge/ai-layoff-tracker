@@ -61,7 +61,7 @@ KNOWN_UNREFERENCED: dict[str, str] = {
 }
 
 
-def _repo_secret_names() -> tuple[list[str], str]:
+def _repo_credential_names() -> tuple[list[str], str]:
     """Secret names from `gh`. Returns (names, error)."""
     try:
         out = subprocess.run(
@@ -107,7 +107,7 @@ def _referenced(name: str) -> bool:
 
 def report() -> int:
     """0 clean, 2 an orphan exists, 3 could not check."""
-    names, err = _repo_secret_names()
+    names, err = _repo_credential_names()
     print("\n[11] ORPHANED SECRETS  (a credential no code reads)")
     if err:
         # lgtm[py/clear-text-logging-sensitive-data] CodeQL false positive (alert #68): public employer names/counts or a variable NAME, never a credential value.
