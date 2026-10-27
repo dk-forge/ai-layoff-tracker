@@ -777,6 +777,24 @@
       "rules": 1,
       "unknown": 2,
       "unmatched": 4
+    },
+    {
+      "candidates": 120,
+      "causes": {
+        "not_wired": 87,
+        "unclassified": 2,
+        "vocabulary_gap": 31
+      },
+      "date": "2026-10-27",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 3.1,
+      "recall_low_pct": 0.0,
+      "rules": 10,
+      "unknown": 0,
+      "unmatched": 120
     }
   ],
   "quiet_runs": 1
