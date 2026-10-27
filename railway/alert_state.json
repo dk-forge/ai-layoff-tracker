@@ -97,6 +97,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "rendered-contrast-audit:main:04439d7caed4f0f2": {
+      "first": 1793107071,
+      "last": 1793107071,
+      "subject": "CI RED: Rendered contrast audit \u2014 RESULT: FAIL \u2014 60 contrast violation(s) are live for readers (text and/or control boundaries)."
+    },
     "vps:offline:asktherecruiter-sandbox": {
       "first": 1793097362,
       "last": 1793097362,
@@ -108,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-27T10:36:02+00:00",
+  "updated_at": "2026-10-27T13:17:51+00:00",
   "version": 1
 }
