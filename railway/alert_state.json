@@ -87,6 +87,11 @@
       "last": 1792431624,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
+    "mailbox-janitor:main:09cd0cb19bd940f2": {
+      "first": 1793091546,
+      "last": 1793091546,
+      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -98,6 +103,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-26T11:39:05+00:00",
+  "updated_at": "2026-10-27T08:59:06+00:00",
   "version": 1
 }
