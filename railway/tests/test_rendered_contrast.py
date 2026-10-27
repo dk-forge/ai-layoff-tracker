@@ -190,6 +190,117 @@ class TheGuardCanActuallyFailTests(_Measured):
                           "flag it" % needle)
 
 
+# ---------------------------------------------------------------------------
+# A SECOND, INDEPENDENT SITE-LEVEL OVERRIDE: THE THEME'S OWN FORM STYLING.
+#
+# Copied verbatim off the live document head on 2026-10-27 (run 40510277008).
+# This is a different token family (--atr-*, the active theme's own design
+# system) and a different rule (`input,textarea,select{...!important}`) from
+# SITE_OVERRIDE above, but the same class of defect: a rule in neither repo
+# beats a token the plugin owns. It hit every control in the filter bar that
+# is literally an <input> or <select> tag - search box, sort select, the two
+# date inputs, the text and number filters - and none of the bar's buttons or
+# divs, because the theme's selector is bare element names. Measured live:
+# 2.55:1 in light, 2.39:1 in dark, against a floor of 3.0.
+# ---------------------------------------------------------------------------
+THEME_FORM_OVERRIDE = """
+:root { --atr-border: #b89f70; --atr-surface: #fff; --atr-text: #20283a; --atr-r-sm: 10px; }
+:root[data-theme="dark"] { --atr-border: #5e574a; --atr-surface: #252525; --atr-text: #edece6; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --atr-border: #5e574a; --atr-surface: #252525; --atr-text: #edece6; }
+}
+input,textarea,select{background:var(--atr-surface) !important;color:var(--atr-text) !important;border:1px solid var(--atr-border) !important;border-radius:var(--atr-r-sm) !important}
+"""
+
+CONTROL_FIXTURE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>%(plugin)s</style>
+<style>%(theme)s</style>
+</head>
+<body>
+<div class="alt-wrap alt-tracker-wrap">
+  <input id="alt-search" type="text" placeholder="Search">
+  <select id="alt-sort"><option>Newest</option></select>
+  <div id="alt-filterbar-body">
+    <div class="alt-filter"><input type="text" placeholder="Company"></div>
+    <div class="alt-filter"><input type="number" placeholder="0"></div>
+  </div>
+  <div id="alt-range-pop">
+    <div class="alt-filter"><input type="date"></div>
+  </div>
+</div>
+</body></html>
+"""
+
+
+def _strip_border_important(css):
+    """Return layoffs.css with the filter bar's border `!important` gone.
+
+    Reconstructs the pre-fix defect: the shared control rule still draws its
+    edge from --alt-control-border, but without the strength needed to beat
+    the theme's own `input,textarea,select{border:...!important}` rule.
+    """
+    out = css.replace(
+        'border: 1px solid var(--alt-control-border) !important;',
+        'border: 1px solid var(--alt-control-border);')
+    assert out != css, "the filter control border !important moved; update this test"
+    return out
+
+
+class FilterControlBoundaryUnderThemeFormOverrideTests(_Measured):
+    """railway run 40510277008, 2026-10-27: 7 filter controls measured
+    2.39:1-2.55:1 against the live site. All five are an <input> or <select>
+    tag; the theme's own form-field rule (--atr-border, not an --alt-* token,
+    so ungreppable from either repo) beat every one of them, the same way the
+    SITE_OVERRIDE above beat .entry-content p/h2/h3. Fixed by matching the
+    strength it is fought at: `!important` on the one property that collides.
+    """
+
+    def _controls(self, css, theme="light"):
+        html = CONTROL_FIXTURE % {"plugin": css, "theme": THEME_FORM_OVERRIDE}
+        try:
+            with Browser(width=1280, height=900) as page:
+                page.call("Emulation.setEmulatedMedia", {
+                    "features": [{"name": "prefers-color-scheme", "value": theme}]})
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                page.eval_js("document.documentElement.setAttribute("
+                             "'data-theme', %s)" % json.dumps(theme))
+                rows = page.eval_js(contrast_audit.controls_js())
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
+        self.assertTrue(rows, "the fixture rendered no controls at all, so "
+                              "this measured nothing")
+        return rows
+
+    def test_the_shipped_stylesheet_clears_the_boundary_in_light(self):
+        rows = self._controls(CSS.read_text(), "light")
+        bad = contrast_audit.control_violations(rows)
+        self.assertEqual([], [(b["kind"], b["sel"], b["ratio"]) for b in bad],
+                          "a filter control boundary is below 3:1 in light, "
+                          "with the theme's input/select override applied")
+
+    def test_the_shipped_stylesheet_clears_the_boundary_in_dark(self):
+        rows = self._controls(CSS.read_text(), "dark")
+        bad = contrast_audit.control_violations(rows)
+        self.assertEqual([], [(b["kind"], b["sel"], b["ratio"]) for b in bad],
+                          "a filter control boundary is below 3:1 in dark, "
+                          "with the theme's input/select override applied")
+
+    def test_removing_the_important_reproduces_the_live_failure(self):
+        rows = self._controls(_strip_border_important(CSS.read_text()), "light")
+        bad = contrast_audit.control_violations(rows)
+        kinds = {b["kind"] for b in bad}
+        for needle in ("search box", "sort select", "filter text input",
+                       "filter number input", "date from/to"):
+            self.assertIn(needle, kinds,
+                          "%s vanished for the reader and the audit did not "
+                          "flag it, so this check cannot catch the defect it "
+                          "exists for" % needle)
+
+
 class ProbeArithmeticTests(unittest.TestCase):
     """The ratio maths, on values with a known answer. No browser needed.
 

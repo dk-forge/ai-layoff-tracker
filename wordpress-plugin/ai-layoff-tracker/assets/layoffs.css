@@ -967,7 +967,13 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     font-size: var(--alt-ctl-fs);
     font-weight: 600;
     line-height: 1.25;
-    border: 1px solid var(--alt-control-border);
+    /* !important: a theme-level `input,textarea,select{border:...!important}`
+       rule (not in this repo - same class of override as the
+       .entry-content p/h2/h3 case in af96403a) beats every selector here that
+       is a bare <input> or <select>, which is exactly the five form controls
+       in this bar and none of the buttons/divs sharing this rule. Matched at
+       the strength it is fought at, scoped to the one property it clobbers. */
+    border: 1px solid var(--alt-control-border) !important;
     border-radius: var(--alt-ctl-r);
     background: var(--alt-surface);
     color: var(--alt-ink);
