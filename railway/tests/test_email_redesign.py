@@ -89,9 +89,25 @@ class Charts(unittest.TestCase):
         self.assertTrue(all(px == 0 for px in rows[0]))
 
 
+def _png_message():
+    """The PNG chart path, which build_message no longer takes by default
+    (email redesign 2026-10-28) but the transports must still carry."""
+    from unittest import mock
+    import digest_send
+    with mock.patch.object(digest_send, "IMAGE_CHARTS", True):
+        return digest_preview.sample_message()
+
+
+class TheDefaultMessageDrawsTableBars(unittest.TestCase):
+    def test_no_png_and_no_figures_row_that_cannot_shrink(self):
+        msg = digest_preview.sample_message()
+        self.assertEqual(msg.images, ())
+        self.assertNotIn("<img", msg.html)
+
+
 class TheMessage(unittest.TestCase):
     def setUp(self):
-        self.msg = digest_preview.sample_message()
+        self.msg = _png_message()
 
     def test_one_to_three_inline_charts_with_every_figure_in_alt(self):
         self.assertTrue(1 <= len(self.msg.images) <= email_charts.MAX_CHARTS)
@@ -127,7 +143,7 @@ class TheMessage(unittest.TestCase):
 
 class TheGateStillRefusesEveryRemoteFetch(unittest.TestCase):
     def setUp(self):
-        self.msg = digest_preview.sample_message()
+        self.msg = _png_message()
 
     def _with(self, html=None, images=None):
         return dt.Message(to=self.msg.to, subject=self.msg.subject,
@@ -169,7 +185,7 @@ class TheGateStillRefusesEveryRemoteFetch(unittest.TestCase):
 
 class Transports(unittest.TestCase):
     def setUp(self):
-        self.msg = digest_preview.sample_message()
+        self.msg = _png_message()
 
     def test_smtp_carries_charts_as_related_inline_parts(self):
         mail = dt.SmtpTransport("smtp.example.invalid", 587, "u", "p")._build(self.msg)

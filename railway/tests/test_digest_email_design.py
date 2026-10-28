@@ -116,10 +116,15 @@ class HeadingsAndLeadNumber(unittest.TestCase):
         pair = layout.restyle('<p data-alt="stat-pair">1</p>', accent=design.RED)
         self.assertIn(f"font-size:{layout.TYPE_STAT}px", pair)
 
-    def test_green_highlight_on_a_finding(self):
-        out = layout.restyle('<p data-alt="finding">x</p>', accent=design.RED)
-        self.assertIn(f"background-color:{design.GREEN_BG}", out)
-        self.assertIn(f"border-left:3px solid {design.GREEN}", out)
+    def test_a_finding_wears_the_edition_accent_not_green(self):
+        # Redesign 2026-10-28: one accent per edition. Green rules in the red
+        # layoff email were a second accent.
+        for accent in (design.RED, design.BLUE):
+            out = layout.restyle('<p data-alt="finding">x</p><p data-alt="why">y</p>',
+                                 accent=accent)
+            self.assertIn(f"border-left:3px solid {accent}", out)
+            self.assertIn(f"border-top:2px solid {accent}", out)
+            self.assertNotIn(design.GREEN, out)
 
 
 class SmallCharts(unittest.TestCase):

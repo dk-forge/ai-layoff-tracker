@@ -3437,9 +3437,73 @@ function alt_digest_stat_pair($cells) {
     return array($html . '</tr></table>', $text);
 }
 
+/**
+ * ITEM CARDS (email redesign, owner OK 2026-10-28, "yes please").
+ *
+ * An item used to be a blue underlined headline followed by a bracketed run
+ * of grey facts, so a list read as a wall of links. Each item is now a card:
+ * a bold linked headline, then a row of small pills (place, source, date, job
+ * count). The pills carry exactly the facts the bracket carried, never a new
+ * one, and the plain-text part is unchanged.
+ *
+ * The markup is a one-cell table because Outlook's Word engine honours a
+ * table cell's border and padding and ignores both on a div. Presentation is
+ * applied by railway/digest_layout.py from the data-alt variants (card,
+ * card-title, pills, pill, pill-muted), so no style lives here.
+ */
+function alt_digest_pill($label, $url = '', $muted = false) {
+    $label = trim((string) $label);
+    if ($label === '') return '';
+    $variant = $muted ? 'pill-muted' : 'pill';
+    if ($url !== '' && !$muted) {
+        return '<a href="' . esc_url($url) . '" data-alt="' . $variant . '">'
+             . esc_html($label) . '</a>';
+    }
+    return '<span data-alt="' . $variant . '">' . esc_html($label) . '</span>';
+}
+
+/**
+ * The place pill. A row with no place says so in a muted pill rather than
+ * leaving a gap, for the reason alt_digest_place states: a silent row lets a
+ * reader assume the place was obvious.
+ */
+function alt_digest_place_pill($place, $url = '') {
+    $place = trim((string) $place);
+    if ($place === '') return alt_digest_pill('Location not recorded', '', true);
+    return alt_digest_pill("\u{1F4CD} " . $place, $url);
+}
+
+function alt_digest_card($title_html, $pills, $extra_html = '') {
+    $pills = array_values(array_filter((array) $pills, 'strlen'));
+    return '<table data-alt="card" role="presentation" width="100%" cellpadding="0" '
+         . 'cellspacing="0" border="0"><tr><td data-alt="card">'
+         . '<p data-alt="card-title">' . $title_html . '</p>'
+         . ($pills ? '<p data-alt="pills">' . implode(' ', $pills) . '</p>' : '')
+         . $extra_html . '</td></tr></table>';
+}
+
+/**
+ * Where a talent row's place pill links: the talent tracker filtered to that
+ * country (and US state) on the same window, the same destination the
+ * "Where" block links each country to. Only an ISO alpha-2 code can be a
+ * filter value; a row stored with a spelled-out name gets an unlinked pill.
+ */
+function alt_digest_talent_place_url($row, $from, $to, $send_id) {
+    $row = (array) $row;
+    $code = strtoupper(trim((string) ($row['country'] ?? '')));
+    if (!preg_match('/^[A-Z]{2}$/', $code)) return '';
+    $filters = array('country' => $code);
+    $state = strtoupper(preg_replace('/[^A-Za-z]/', '', (string) ($row['state'] ?? '')));
+    if ($code === 'US' && preg_match('/^[A-Z]{2}$/', $state)) $filters['state'] = $state;
+    return alt_digest_track_link($send_id, alt_digest_talent_url($from, $to, $filters));
+}
+
 function alt_digest_rank_table($rows) {
     $rows = array_values($rows);
     if (!$rows) return array('', '');
+    $cards = true;
+    foreach ($rows as $row) { if (!isset($row['pills'])) { $cards = false; break; } }
+    if ($cards) return alt_digest_rank_cards($rows);
     $html = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">';
     $text = '';
     $last = count($rows) - 1;
@@ -3495,6 +3559,35 @@ function alt_digest_rank_table($rows) {
         if ($source_url !== '') $text .= '    Source: ' . $source_url . "\n";
     }
     return array($html . '</table>', $text);
+}
+
+/**
+ * The ranked rows as item cards: company (linked) and its figure in the
+ * title, the row's own facts as pills, the source as its own pill. The text
+ * part is byte for byte what alt_digest_rank_table writes for the same rows.
+ */
+function alt_digest_rank_cards($rows) {
+    $html = '';
+    $text = '';
+    foreach ($rows as $row) {
+        $label = esc_html((string) $row['label']);
+        if (!empty($row['url'])) {
+            $label = '<a href="' . esc_url($row['url']) . '">' . $label . '</a>';
+        }
+        $title = $label . ' <span data-alt="card-figure">' . esc_html((string) $row['figure']) . '</span>';
+        $pills = (array) $row['pills'];
+        $source_url = trim((string) ($row['source_url'] ?? ''));
+        if ($source_url !== '') {
+            $pills[] = '<a href="' . esc_url($source_url) . '" data-alt="source-link">Source</a>';
+        }
+        $html .= alt_digest_card($title, $pills);
+        $suffix = trim((string) ($row['suffix'] ?? ''));
+        $text .= '  ' . $row['label'] . ($suffix !== '' ? ' ' . $suffix : '')
+               . ': ' . $row['figure'] . "\n";
+        if (!empty($row['plain_url'])) $text .= '    ' . $row['plain_url'] . "\n";
+        if ($source_url !== '') $text .= '    Source: ' . $source_url . "\n";
+    }
+    return array($html, $text);
 }
 
 /**
@@ -6234,6 +6327,18 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             $place = alt_digest_place($l['state'] ?? '', $l['country'] ?? '',
                                       $l['location'] ?? '');
             $detail[] = ($place !== '') ? $place : 'location not recorded';
+            // The same facts as pills for the HTML card (redesign 2026-10-28).
+            // The place links to the tracker filtered to that state or
+            // country, the destination the state and country blocks use.
+            $place_filter = array();
+            $l_state = strtoupper(preg_replace('/[^A-Za-z]/', '', (string) ($l['state'] ?? '')));
+            $l_country = trim((string) ($l['country'] ?? ''));
+            if (preg_match('/^[A-Z]{2}$/', $l_state)) $place_filter = array('state' => $l_state);
+            elseif ($l_country !== '' && strcasecmp($l_country, 'Multiple countries') !== 0)
+                $place_filter = array('country' => $l_country);
+            $pills = array(alt_digest_place_pill($place, $place_filter
+                ? alt_digest_track_link($send_id, alt_digest_tracker_url($from, $to, $place_filter))
+                : ''));
             if ($when !== '') $detail[] = 'takes effect ' . $when;
             if (!empty($l['ai_explicit'])) $detail[] = 'AI attributed';
             // THE STATED REASON on the top 3 rows (redesign slice 1). Absent
@@ -6314,8 +6419,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
                 if (!empty($l['announced'])) { $detail[] = 'announced'; $announced_rows++; }
             }
             $permalink = trim((string) ($l['permalink'] ?? ''));
+            // Every qualifier after the place becomes its own pill.
+            foreach (array_slice($detail, 1) as $d) $pills[] = alt_digest_pill($d);
             $row = array(
                 'label'  => $label,
+                'pills'  => $pills,
                 // Outside the anchor, so the link text is the company name.
                 // See alt_digest_rank_table.
                 'suffix' => $detail ? '(' . implode(', ', $detail) . ')' : '',

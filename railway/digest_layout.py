@@ -62,6 +62,7 @@ RULE = email_theme.BORDER
 INK = email_theme.INK
 MUTED = email_theme.MUTED
 LINK = email_theme.ACCENT
+PILL_BG = email_theme.PILL_BG
 
 FONT = email_theme.FONT
 
@@ -108,12 +109,19 @@ PREHEADER_MAX = 140
 # so a stray 15px cannot creep back in. The two exempt values are not type:
 # 0 on a table-bar cell and 1px in the hidden preheader.
 # ---------------------------------------------------------------------------
-TYPE_TITLE = 22    # the edition / tracker title
-TYPE_HEADING = 18  # every section heading, same size and weight everywhere
-TYPE_STAT = 30     # the big number; 30 because two must fit side by side at 375px
-TYPE_BODY = 16     # body text and every list row
-TYPE_SMALL = 13    # notes, captions, source/date metadata, footer
-TYPE_SCALE = (TYPE_TITLE, TYPE_HEADING, TYPE_STAT, TYPE_BODY, TYPE_SMALL)
+# EMAIL REDESIGN 2026-10-28 (owner OK, "yes please"): THREE sizes plus the
+# big number. Five steps still read as five styles on a phone, so the title
+# and the section headings now share the HEADLINE size, every item and body
+# line is ITEM size, and notes, pills and captions are SMALL. TYPE_TITLE and
+# TYPE_HEADING are kept as names so callers do not change, at one value.
+TYPE_HEADLINE = 20  # the edition title and every section heading
+TYPE_ITEM = 16      # body text and every item title
+TYPE_SMALL = 13     # notes, captions, pills, source/date metadata, footer
+TYPE_STAT = 32      # the big number; two still fit side by side at 360px
+TYPE_TITLE = TYPE_HEADLINE
+TYPE_HEADING = TYPE_HEADLINE
+TYPE_BODY = TYPE_ITEM
+TYPE_SCALE = (TYPE_HEADLINE, TYPE_ITEM, TYPE_SMALL, TYPE_STAT)
 
 # ---------------------------------------------------------------------------
 # Typography for the parts the site composed
@@ -182,8 +190,8 @@ VARIANT_STYLES = {
     ("p", "dateline"): (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
                         f"line-height:1.5;letter-spacing:0.04em;"
                         f"text-transform:uppercase;color:{MUTED};"),
-    ("p", "lead"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_HEADING}px;"
-                    f"line-height:1.45;color:{INK};"),
+    ("p", "lead"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_ITEM}px;"
+                    f"line-height:1.5;font-weight:600;color:{INK};"),
     # A section's own opening line, below the lead's weight. It frames a block
     # rather than opening the edition.
     ("p", "standfirst"): (f"margin:0 0 10px;font-family:{FONT};font-size:{TYPE_BODY}px;"
@@ -335,6 +343,42 @@ VARIANT_STYLES = {
                      f"border-top:1px solid {RULE};vertical-align:top;"),
     ("td", "item-first"): (f"padding:2px 0 0;font-family:{FONT};"
                            f"vertical-align:top;"),
+    # ITEM CARDS (redesign 2026-10-28): one bordered cell per item, a bold
+    # linked headline, then a row of small pills (place, source, date, jobs).
+    # A table and not a div, because Outlook's Word engine draws a table
+    # cell's border and padding and ignores both on a div. The pills are
+    # inline spans: Outlook drops their rounded corners and keeps the tint.
+    ("table", "card"): ("width:100%;border-collapse:separate;margin:0 0 10px;"
+                        f"border:1px solid {RULE};border-radius:8px;"
+                        "mso-table-lspace:0;mso-table-rspace:0;"),
+    ("td", "card"): (f"padding:12px 14px;font-family:{FONT};font-size:{TYPE_ITEM}px;"
+                     f"line-height:1.4;color:{INK};background-color:{CARD_BG};"),
+    ("p", "card-title"): (f"margin:0;font-family:{FONT};font-size:{TYPE_ITEM}px;"
+                          f"line-height:1.35;font-weight:700;color:{INK};"),
+    ("p", "pills"): (f"margin:6px 0 0;font-family:{FONT};font-size:{TYPE_SMALL}px;"
+                     f"line-height:1.9;color:{MUTED};"),
+    ("span", "pill"): (f"display:inline-block;margin:0 4px 2px 0;padding:1px 8px;"
+                       f"border-radius:999px;background-color:{PILL_BG};"
+                       f"font-family:{FONT};font-size:{TYPE_SMALL}px;line-height:1.6;"
+                       f"color:{INK};"),
+    ("a", "pill"): (f"display:inline-block;margin:0 4px 2px 0;padding:1px 8px;"
+                    f"border-radius:999px;background-color:{PILL_BG};"
+                    f"font-family:{FONT};font-size:{TYPE_SMALL}px;line-height:1.6;"
+                    f"color:{LINK};text-decoration:none;"),
+    # The row's Source link, drawn as a pill wherever it appears.
+    ("a", "source-link"): (f"display:inline-block;margin:0 4px 2px 0;padding:1px 8px;"
+                           f"border-radius:999px;background-color:{PILL_BG};"
+                           f"font-family:{FONT};font-size:{TYPE_SMALL}px;line-height:1.6;"
+                           f"color:{LINK};text-decoration:none;"),
+    ("span", "pill-muted"): (f"display:inline-block;margin:0 4px 2px 0;padding:1px 8px;"
+                             f"border-radius:999px;border:1px dashed {RULE};"
+                             f"font-family:{FONT};font-size:{TYPE_SMALL}px;"
+                             f"line-height:1.6;font-style:italic;color:{MUTED};"),
+    ("span", "card-figure"): (f"font-family:{FONT};font-size:{TYPE_ITEM}px;"
+                              f"font-weight:700;color:{INK};white-space:nowrap;"
+                              f"font-variant-numeric:tabular-nums;"),
+    ("span", "gist"): (f"display:block;margin:6px 0 0;font-family:{FONT};"
+                       f"font-size:{TYPE_SMALL}px;line-height:1.5;color:{MUTED};"),
     ("p", "item-title"): (f"margin:0 0 5px;font-family:{FONT};font-size:{TYPE_BODY}px;"
                           f"line-height:1.35;font-weight:700;"
                           f"letter-spacing:-0.01em;color:{INK};"),
@@ -1371,6 +1415,57 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
             '</p></td></tr></table>')
 
 
+# ---------------------------------------------------------------------------
+# NEWS FIRST (email redesign, owner OK 2026-10-28)
+#
+# A reader opening the edition met the title twice (masthead, then the
+# section's own <h2>) and then several paragraphs of method before the first
+# item. The HTML body is now arranged: the section's opening (the big number),
+# then the item lists, then everything else in the site's order, and the
+# method blocks last under one "How we count" heading. NOTHING IS DROPPED OR
+# REWORDED: every method paragraph is still in the message, only later, and
+# the plain-text part keeps the site's order untouched.
+# ---------------------------------------------------------------------------
+ITEM_HEADINGS = ("Biggest cuts", "Top hiring today", "Biggest hiring signals",
+                 "Biggest signals and job-board increases",
+                 "Largest observed job-board increases")
+METHOD_HEADINGS = ("Source quality", "Data notes", "Notes", "About this snapshot")
+HOW_WE_COUNT = "How we count"
+_H2 = re.compile(r"<h2\b[^>]*>(.*?)</h2>", re.S)
+_H3_SPLIT = re.compile(r"(?=<h3\b)")
+_H3_TEXT = re.compile(r"^<h3\b[^>]*>(.*?)</h3>", re.S)
+
+
+def _plain(fragment: str) -> str:
+    return re.sub(r"<[^>]+>", "", fragment or "").replace("&amp;", "&").strip()
+
+
+def arrange_section(fragment: str, product: str = "") -> str:
+    """Title once, news first, method last. See the block comment above."""
+    fragment = fragment or ""
+    if product:
+        fragment = _H2.sub(lambda m: "" if _plain(m.group(1)) == product
+                           else m.group(0), fragment, count=1)
+    pieces = _H3_SPLIT.split(fragment)
+    head, blocks = pieces[0], []
+    for piece in pieces[1:]:
+        found = _H3_TEXT.match(piece)
+        title = _plain(found.group(1)) if found else ""
+        if title == "More" and blocks:
+            blocks[-1] = (blocks[-1][0], blocks[-1][1] + piece)
+            continue
+        blocks.append((title, piece))
+    items = [b for t, b in blocks if t in ITEM_HEADINGS]
+    method = [b for t, b in blocks if t in METHOD_HEADINGS]
+    rest = [b for t, b in blocks if t not in ITEM_HEADINGS and t not in METHOD_HEADINGS]
+    tail = ""
+    if method:
+        tail = f"<h3>{HOW_WE_COUNT}</h3>" + "".join(
+            _H3_TEXT.sub(lambda m: f'<p data-alt="kicker">{m.group(1)}</p>', b, count=1)
+            for b in method)
+    return head + "".join(items) + "".join(rest) + tail
+
+
 def render_html(parts, *, subject: str, preheader: str, kicker: str,
                 unsub_url: str, manage_url: str,
                 edition_note: str = "", notice: str = "",
@@ -1397,6 +1492,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         if images is not None:
             section_html = digest_design.add_image_charts(section_html, section,
                                                           images)
+        section_html = arrange_section(section_html, product_name(parts))
         section_html = digest_design.add_charts(section_html, accent)
         cell = _cell(restyle(section_html, accent), padding=padding,
                      top_rule=bool(index))

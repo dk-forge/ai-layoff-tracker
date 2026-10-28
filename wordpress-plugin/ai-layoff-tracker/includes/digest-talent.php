@@ -515,8 +515,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
             }
             $caption = $range . ', ' . $order . ' ' . $prov;
             $html .= '<h3>' . esc_html($heading) . '</h3>'
-                   . '<p data-alt="caption">' . esc_html($caption) . '</p>'
-                   . '<ul>';
+                   . '<p data-alt="caption">' . esc_html($caption) . '</p>';
             $text .= "\n" . $heading . "\n" . $caption . "\n";
             $undated = 0;
             $resume_candidates = array();
@@ -555,6 +554,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                   jobs", so it is omitted rather than printed as a measurement.
                 */
                 $facts = array();
+                $pills = array();  // the HTML card's pills: the same facts
                 list($lang_tag, $gist) = alt_digest_talent_language_bits($row);
                 if ($lang_tag !== '') $facts[] = $lang_tag;
                 $jobs = alt_digest_talent_roles_named($row);
@@ -573,6 +573,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                     $facts[] = $is_scan ? alt_digest_postings_phrase($jobs)
                                         : alt_digest_jobs_phrase($jobs);
                 }
+                $jobs_fact = ($jobs > 0) ? end($facts) : '';
                 /*
                   WHERE, WHICH THIS LIST DID NOT SAY UNTIL 2026-08-20.
 
@@ -592,12 +593,14 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 */
                 $place = alt_digest_talent_place($row);
                 $facts[] = ($place !== '') ? $place : 'location not recorded';
+                $pills[] = alt_digest_place_pill($place,
+                    alt_digest_talent_place_url($row, $from, $to, $send_id));
                 // WHO PUBLISHED IT. The row's own stored outlet, never
                 // derived from the URL and never guessed: a row that carries
                 // no source name prints no source, in the same way a row that
                 // carries no date prints no date.
                 $outlet = alt_digest_plain_dashes(trim((string) ($row['source_name'] ?? '')));
-                if ($outlet !== '') $facts[] = $outlet;
+                if ($outlet !== '') { $facts[] = $outlet; $pills[] = alt_digest_pill($outlet); }
                 /*
                   A DATE MEANS TWO DIFFERENT THINGS ON THE TWO KINDS OF ROW,
                   and printing them identically made one of them a claim we
@@ -609,6 +612,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                 */
                 if ($when !== '') {
                     $facts[] = $is_scan ? ('board read ' . $when) : $when;
+                    $pills[] = alt_digest_pill(end($facts));
                 } else { $undated++; }
                 /*
                   THE HEADLINE IS A LINK, and until 2026-08-20 it was the only
@@ -648,6 +652,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                         array('company' => $co));
                     $href = alt_digest_track_link($send_id, $plain);
                 }
+                $line_head = $line;
                 $shown = esc_html($line);
                 if ($href !== '') {
                     $shown = '<a href="' . esc_url($href) . '">' . $shown . '</a>';
@@ -659,15 +664,18 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
                     $shown .= ' ' . esc_html('(' . implode(', ', $facts) . ')');
                     $line .= ' (' . implode(', ', $facts) . ')';
                 }
-                if ($gist !== '') $shown .= '<br><span data-alt="gist">' . esc_html($gist) . '</span>';
-                $html .= '<li>' . $shown . '</li>';
+                $title = esc_html($line_head);
+                if ($href !== '') $title = '<a href="' . esc_url($href) . '">' . $title . '</a>';
+                if ($jobs_fact !== '') $pills[] = alt_digest_pill($jobs_fact);
+                if ($lang_tag !== '') $pills[] = alt_digest_pill($lang_tag);
+                $html .= alt_digest_card($title, $pills, ($gist !== '')
+                    ? '<span data-alt="gist">' . esc_html($gist) . '</span>' : '');
                 $text .= '  - ' . $line . "\n";
                 if ($gist !== '') $text .= '    ' . $gist . "\n";
                 // The plain destination, never the counted one: a text reader
                 // should not be handed a machine-shaped URL to squint at.
                 if ($plain !== '') $text .= '    ' . $plain . "\n";
             }
-            $html .= '</ul>';
             if ($more_rows) {
                 list($m_html, $m_text) = alt_digest_talent_compact_list($more_rows, $from, $to, $send_id);
                 $html .= '<h3>More</h3>' . $m_html;
@@ -1040,7 +1048,7 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
  * three named items per category (owner-approved 2026-10-12).
  */
 function alt_digest_talent_compact_list($rows, $from, $to, $send_id) {
-    $html = '<ul>';
+    $html = '';
     $text = '';
     foreach ((array) $rows as $row) {
         $row = (array) $row;
@@ -1063,13 +1071,28 @@ function alt_digest_talent_compact_list($rows, $from, $to, $send_id) {
         if ($href !== '') $shown = '<a href="' . esc_url($href) . '">' . $shown . '</a>';
         list($lang_tag, $gist) = alt_digest_talent_language_bits($row);
         $paren = implode(', ', array_filter(array($lang_tag, $place), 'strlen'));
-        if ($paren !== '') { $shown .= ' ' . esc_html('(' . $paren . ')'); $line .= ' (' . $paren . ')'; }
-        if ($gist !== '') $shown .= '<br><span data-alt="gist">' . esc_html($gist) . '</span>';
-        $html .= '<li>' . $shown . '</li>';
+        if ($paren !== '') $line .= ' (' . $paren . ')';
+        /*
+          EVERY ITEM SHOWS ITS PLACE (redesign 2026-10-28). These lists
+          (More, leadership, funding, pay) printed a place only when the row
+          had one, so a row without one was silent. The card always carries a
+          place pill, muted "Location not recorded" when the row has none. The
+          plain-text line is unchanged.
+        */
+        $pills = array(alt_digest_place_pill($place,
+            alt_digest_talent_place_url($row, $from, $to, $send_id)));
+        $outlet = alt_digest_plain_dashes(trim((string) ($row['source_name'] ?? '')));
+        if ($outlet !== '') $pills[] = alt_digest_pill($outlet);
+        $pub = substr((string) ($row['published_date'] ?? ''), 0, 10);
+        $when = function_exists('alt_digest_date_range') ? alt_digest_date_range($pub, $pub) : '';
+        if ($when !== '') $pills[] = alt_digest_pill($when);
+        if ($lang_tag !== '') $pills[] = alt_digest_pill($lang_tag);
+        $html .= alt_digest_card($shown, $pills, ($gist !== '')
+            ? '<span data-alt="gist">' . esc_html($gist) . '</span>' : '');
         $text .= '  - ' . $line . "\n";
         if ($gist !== '') $text .= '    ' . $gist . "\n";
     }
-    return array($html . '</ul>', $text);
+    return array($html, $text);
 }
 
 /**

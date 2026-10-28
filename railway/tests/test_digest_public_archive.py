@@ -122,8 +122,14 @@ class PluginGate(unittest.TestCase):
         self.assertTrue(php("alt_digest_pub_should_replace('daily','weekly')"))
 
     def test_charts_point_at_our_own_url(self):
+        # The PNG path is off by default since the 2026-10-28 redesign; the
+        # archive must still rewrite a chart correctly if it is turned back on.
+        from unittest import mock
+        import digest_send
+        with mock.patch.object(digest_send, "IMAGE_CHARTS", True):
+            record = digest_archive.public_record(digest_preview.sample_payload(), "weekly")
         body = php("alt_digest_pub_body($in,'https://asktherecruiter.com/blog/ai-layoff-tracker/digest/2026-10-12/')",
-                   self.record["html"])
+                   record["html"])
         self.assertIn('src="https://asktherecruiter.com/blog/ai-layoff-tracker/digest/2026-10-12/chart-1.png"', body)
         self.assertNotIn("cid:", body)
 

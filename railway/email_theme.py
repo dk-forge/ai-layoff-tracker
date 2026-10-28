@@ -28,6 +28,7 @@ MUTED = "#4b5563"
 BACKGROUND = "#ffffff"   # the card
 PANEL = "#f3f4f6"        # the page behind the card, and inset panels
 BORDER = "#e5e7eb"
+PILL_BG = "#eef1f5"     # the tint behind an item card's pills
 ACCENT = "#1d4ed8"       # links and buttons
 
 # Dark palette.
@@ -40,7 +41,7 @@ DARK_ACCENT = "#93c5fd"
 # Light tints a section may set inline, and what each becomes in dark mode.
 # Kept generic (any tracker's highlight green, bar track grey, panel) so the
 # sibling repo can copy this list as is.
-DARK_TINTS = (("#ecfdf3", "#0f2a1d"), ("#e4e7ec", "#26324d"),
+DARK_TINTS = ((PILL_BG, "#1f2a44"), ("#ecfdf3", "#0f2a1d"), ("#e4e7ec", "#26324d"),
               (PANEL, DARK_BG), (BACKGROUND, DARK_PANEL))
 # Near-black rules and accents that vanish on a dark card.
 DARK_RULES = (("#15181d", DARK_MUTED), (INK, DARK_MUTED), (BORDER, "#1f2a44"))
@@ -92,7 +93,7 @@ def dark_style_block() -> str:
         f"border-color:{DARK_PANEL}!important;}}"
         f".{c['panel']}{{background-color:{DARK_BG}!important;}}"
         f".{c['card']} p,.{c['card']} td,.{c['card']} li,.{c['card']} h2,"
-        f".{c['card']} h3,.{c['ink']}{{color:{DARK_INK}!important;}}"
+        f".{c['card']} h3,.{c['card']} span,.{c['ink']}{{color:{DARK_INK}!important;}}"
         f".{c['muted']}{{color:{DARK_MUTED}!important;}}"
         f".{c['card']} a,.{c['link']}{{color:{DARK_ACCENT}!important;}}"
         f".{c['rule']}{{border-color:#1f2a44!important;}}"
@@ -121,7 +122,7 @@ def brand_header(product: str, kicker: str = "") -> str:
            f'font-variant:small-caps;letter-spacing:0.08em;color:{MUTED};">'
            f'{escape(WORDMARK)}</p>'
            f'<p class="{CLASSES["ink"]}" style="margin:2px 0 0;font-family:{FONT};'
-           f'font-size:22px;line-height:1.25;font-weight:800;'
+           f'font-size:20px;line-height:1.25;font-weight:800;'
            f'letter-spacing:-0.01em;color:{INK};">{escape(product)}</p>')
     if kicker:
         out += (f'<p class="{CLASSES["muted"]}" style="margin:6px 0 0;'

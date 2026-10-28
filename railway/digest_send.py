@@ -516,6 +516,9 @@ def _kicker(payload: dict) -> str:
     return f"{tier}, {phrase}"
 
 
+IMAGE_CHARTS = False  # email redesign 2026-10-28: table bars only, see build_message
+
+
 def build_message(payload: dict, recipient: dict, from_addr: str,
                   reply_to: str) -> Message | None:
     """One rendered digest, or None when this person has nothing due.
@@ -586,11 +589,17 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # Up to three inline PNG charts and the dark-mode override (owner decision
     # 2026-10-15). The charts travel inside the message as Content-ID parts,
     # so opening it still fetches nothing; see email_charts.
+    # EMAIL REDESIGN 2026-10-28 (owner OK "yes please", 2026-10-28): every
+    # chart is a table of horizontal bars again. The PNG charts carried a
+    # one-row figures table under them that could not shrink below ~425px, so
+    # the weekly scrolled sideways on a 390px phone. `images` stays a list so
+    # the transport contract is unchanged. IMAGE_CHARTS turns the PNG path
+    # back on in one place; the transport tests still exercise it.
     images: list = []
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
         kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
-        edition_note=edition_note, resume_url=resume, images=images,
+        edition_note=edition_note, resume_url=resume, images=images if IMAGE_CHARTS else None,
         dark_mode=True)
     text = digest_layout.render_text(parts, kicker=kicker, notice=notice,
                                      unsub_url=unsub,

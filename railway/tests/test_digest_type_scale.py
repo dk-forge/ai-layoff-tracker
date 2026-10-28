@@ -44,12 +44,13 @@ def edition(key, part, freq):
 
 
 class Scale(unittest.TestCase):
-    def test_scale_is_five_ordered_steps(self):
-        self.assertEqual(len(set(layout.TYPE_SCALE)), 5)
-        self.assertGreater(layout.TYPE_STAT, layout.TYPE_TITLE)
-        self.assertGreater(layout.TYPE_TITLE, layout.TYPE_HEADING)
-        self.assertGreater(layout.TYPE_HEADING, layout.TYPE_BODY)
-        self.assertGreater(layout.TYPE_BODY, layout.TYPE_SMALL)
+    def test_scale_is_three_sizes_plus_the_stat(self):
+        # Redesign 2026-10-28: headline / item / small, plus the big number.
+        self.assertEqual(len(set(layout.TYPE_SCALE)), 4)
+        self.assertGreater(layout.TYPE_STAT, layout.TYPE_HEADLINE)
+        self.assertEqual(layout.TYPE_TITLE, layout.TYPE_HEADING)
+        self.assertGreater(layout.TYPE_HEADLINE, layout.TYPE_ITEM)
+        self.assertGreater(layout.TYPE_ITEM, layout.TYPE_SMALL)
 
     def test_fixture_messages_use_only_the_scale(self):
         html = L.message(("layoff", "talent", "articles")).html

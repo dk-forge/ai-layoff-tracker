@@ -32,6 +32,7 @@ RED = "#b42a18"      # AI Layoff Tracker (no 4-digit run: a hex is not a figure)
 BLUE = "#1d4ed8"     # Talent Intelligence Tracker
 GREEN = "#067647"    # highlights
 GREEN_BG = "#ecfdf3"
+TINT = "#e4e7ec"     # one neutral highlight tint: an edition wears ONE accent
 TRACK = "#e4e7ec"    # the unfilled part of a bar
 NEUTRAL = "#15181d"  # sections that belong to neither tracker (the blog)
 
@@ -89,11 +90,11 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
                           f"text-transform:uppercase;color:{accent};"),
         ("p", "finding"): (f"margin:0 0 14px;padding:10px 12px;font-family:{font};"
                            f"font-size:{TYPE_BODY}px;line-height:1.5;font-weight:700;"
-                           f"color:{ink};background-color:{GREEN_BG};"
-                           f"border-left:3px solid {GREEN};"),
+                           f"color:{ink};background-color:{TINT};"
+                           f"border-left:3px solid {accent};"),
         ("p", "why"): (f"margin:0 0 20px;padding:10px 0 0;font-family:{font};"
                        f"font-size:{TYPE_BODY}px;line-height:1.55;color:{ink};"
-                       f"border-top:2px solid {GREEN};"),
+                       f"border-top:2px solid {accent};"),
         # Owner default ruling 2026-10-12: layoffs UP is bad news (red), DOWN
         # is green. Glyph and words carry the direction too, never colour only.
         ("p", "change-up"): (f"margin:0;font-family:{font};font-size:{TYPE_SMALL}px;"
@@ -113,7 +114,7 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
                           f"background-color:{TRACK};"),
         ("td", "chart-label"): (f"padding:4px 10px 4px 0;font-family:{font};"
                                 f"font-size:{TYPE_SMALL}px;line-height:1.3;color:{ink};"
-                                f"white-space:nowrap;vertical-align:middle;"
+                                f"vertical-align:middle;"
                                 f"width:30%;"),
         ("td", "chart-cell"): (f"padding:4px 0;font-family:{font};font-size:{TYPE_SMALL}px;"
                                f"line-height:1.3;color:{ink};"
