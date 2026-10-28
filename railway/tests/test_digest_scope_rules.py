@@ -1504,8 +1504,12 @@ class TheHiringSignalSaysWhereAndLinksToIt(unittest.TestCase):
                            "published_date": "2026-08-15", "headcount": 10000,
                            "country": "GB", "source_name": "The Sun",
                            "source_url": "https://www.thesun.co.uk/article"}])
-        self.assertIn("</a> (10,000 jobs, United Kingdom, The Sun,",
+        # Redesign 2026-10-28: the qualifiers are pills beside the link,
+        # never inside it.
+        self.assertIn('<a href="https://www.thesun.co.uk/article">Evri to hire 10,000</a></p>',
                       out["html"])
+        for pill in ("10,000 jobs", "\U0001F4CD United Kingdom", "The Sun"):
+            self.assertRegex(out["html"], r'data-alt="pill">' + re.escape(pill) + "<")
 
     def test_a_row_with_no_usable_source_falls_back_to_our_own_page(self):
         """The same fallback the biggest-cuts table uses when a row has no

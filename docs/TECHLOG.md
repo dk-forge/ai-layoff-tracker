@@ -1,3 +1,23 @@
+## 2026-10-28 - Subscriber email redesign: cards, place pills, news first, one accent (2.20.281)
+
+**Class:** novel (owner-approved redesign, typed "yes please" on 2026-10-28; nothing sent)
+**Guard:** `railway/tests/test_digest_email_cards.py`, plus updated `test_digest_type_scale.py`, `test_digest_email_design.py`, `test_email_redesign.py`, `test_digest_scope_rules.py`, `test_digest_public_archive.py`
+
+Review of the archived 2026-10-25 weekly and 2026-10-26 daily found nine faults.
+The weekly rendered 445px wide on a 390px phone: the one-row figures table under
+each PNG chart could not shrink. `digest_send.IMAGE_CHARTS = False` now draws
+every chart, the 8-week strip included, as table-cell horizontal bars (the PNG
+path stays in the code and its transport tests still run with the flag on).
+Type scale is three sizes plus the stat (20/16/13, stat 32). The section `<h2>`
+that repeated the masthead title is dropped in HTML; `digest_layout.arrange_section`
+puts the item lists right after the big number and moves Source quality, Data
+notes, Notes and About this snapshot to a closing "How we count" block (moved,
+never reworded). Items in Biggest cuts and every talent list are one-cell table
+cards with pills (place, source, date, jobs); every item, including the
+leadership/funding/pay lists, shows a place pill, linked to the tracker filtered
+to that country/state, or a muted "Location not recorded". Finding and why rules
+wear the edition accent instead of green. The plain-text part is unchanged.
+
 ## 2026-10-24 - Security pins: pillow 13.0.0, urllib3 2.8.0, certifi 2026.10.19 (no plugin version)
 
 **Class:** novel (routine dependency security pins, not an incident; threat-watch alarms in asktherecruiter-sandbox: 28 for pillow CVE-2026-112398 / GHSA-78g4-xqwv-q3g8, 2 for urllib3 CVE-2026-97687 / -97689, 1 for certifi GHSA-6q48-6c7w-9gw2)
