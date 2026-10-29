@@ -973,6 +973,24 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     color: var(--alt-ink);
     cursor: pointer;
 }
+/* The site's `global-styles-inline-css` (WordPress Site Editor Styles, held in
+   the database, not this repo) carries a bare
+   `input, textarea, select { border: 1px solid var(--atr-border) !important }`
+   rule. `!important` beats specificity before specificity is even compared, so
+   the shared control rule above never had a chance on the five form elements
+   in this bar: measured live, the boundary this rule paints fell to 2.55:1 in
+   light (#b89f70) and 2.39:1 in dark (#5e574a), both below the 3:1 WCAG 1.4.11
+   floor, on #alt-search, #alt-sort and every .alt-filter text/number/date
+   input. Same shape as the 2026-08-11 ink fix: win on the site rule's own
+   terms, scoped to exactly the controls that are a bare <input>/<select>. */
+#alt-search,
+#alt-sort,
+.alt-filter input[type="text"],
+.alt-filter input[type="number"],
+.alt-filter input[type="date"],
+.alt-filter select:not([multiple]) {
+    border-color: var(--alt-control-border) !important;
+}
 /* Buttons and selects centre their content in the box; a text input paints its
    own value and only needs the box to be the right size. Splitting the display
    rule is what lets a single height token cover both without a fixed height,
