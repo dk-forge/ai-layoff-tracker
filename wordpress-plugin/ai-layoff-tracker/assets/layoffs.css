@@ -990,6 +990,27 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
     justify-content: center;
 }
 .alt-filter > .alt-dd { justify-content: space-between; text-align: left; }
+/* THE THEME PAINTS EVERY FORM FIELD. The site theme ships
+   `input, textarea, select { border: 1px solid var(--atr-border) !important;
+   background: var(--atr-surface) !important }`, and --atr-border is a panel
+   hairline (#b89f70 light, 2.55:1 on white; #5e574a dark, 2.39:1), so the
+   !important beat the rule above on every <input> and <select> in this bar and
+   the deploy contrast check failed 7 controls in both themes. The fields take
+   their edge and fill back here, with the same tokens the buttons use. Pinned
+   by railway/tests/test_filter_controls_theme.py. */
+#alt-search,
+#alt-sort,
+.alt-filter input[type="text"],
+.alt-filter input[type="number"],
+.alt-filter input[type="date"],
+.alt-filter select:not([multiple]),
+#alt-range-pop input[type="date"] {
+    border: 1px solid var(--alt-control-border) !important;
+    border-radius: var(--alt-ctl-r) !important;
+    background: var(--alt-surface) !important;
+    color: var(--alt-ink) !important;
+    min-height: var(--alt-ctl-h);
+}
 #alt-search,
 .alt-filter input[type="text"],
 .alt-filter input[type="number"],
