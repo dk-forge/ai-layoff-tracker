@@ -3,7 +3,7 @@
     "sec_item_205_us",
     "state_warn_official_totals"
   ],
-  "measured_at": "2026-10-22T16:37:52Z",
+  "measured_at": "2026-10-29T16:29:12Z",
   "note": "Rolling recall against denominators the tracker does not construct. Written by rolling-recall.yml. Committed on purpose: the data being measured changes without a commit. NEVER hand-edit a figure here \u2014 re-run the module. Recall is a BAND, not a point, because no editor adjudicated these matches; see the module docstring.",
   "slices": {
     "sec_item_205_us": {
@@ -15,28 +15,22 @@
         1.0
       ],
       "denominator_basis": "closed_enumeration_primary_regulator_index",
-      "detail": "recall is between 45/45 = 100.0% (count-confirmed) and 45/45 = 100.0% (name+window proposed, unadjudicated); 61 of 218 enumerated filings UNKNOWN, 112 out of scope (percentage only), 0 unreachable",
+      "detail": "recall is between 45/45 = 100.0% (count-confirmed) and 45/45 = 100.0% (name+window proposed, unadjudicated); 60 of 218 enumerated filings UNKNOWN, 113 out of scope (percentage only), 0 unreachable",
       "enumerated_filings": 218,
       "enumeration_query": "\"Item 2.05\"",
       "in_scope": 45,
       "judged": 45,
       "key": "sec_item_205_us",
       "label": "US SEC 8-K Item 2.05 (exit/disposal costs) with a stated headcount",
-      "out_of_scope": 112,
+      "out_of_scope": 113,
       "proposed": 0,
       "proposed_filings": [],
       "recall_confirmed": 1.0,
       "recall_upper": 1.0,
       "settle_days": 45,
       "state": "measured",
-      "undecidable": 61,
+      "undecidable": 60,
       "undecidable_filings": [
-        {
-          "accession": "0000950170-25-112662",
-          "filer": "STANDARD BIOTOOLS INC.",
-          "filing_date": "2025-09-03",
-          "why": "exhibit_index_unreadable"
-        },
         {
           "accession": "0001501697-25-000021",
           "filer": "X4 Pharmaceuticals, Inc",
