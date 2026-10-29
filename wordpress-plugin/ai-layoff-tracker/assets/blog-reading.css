@@ -1154,6 +1154,28 @@ body.single-post .entry-content .alt-clap {
   margin-right: auto !important;
   margin-block-start: calc(var(--alt-read-unit) * 2.4) !important;
   margin-block-end: calc(var(--alt-read-unit) * 1.6) !important;
+  /* THE WHITE BOX IN DARK MODE, 2026-10-29. blog-claps.css paints the block
+     in --alt-cl-page, which reads --alt-page and falls back to #ffffff. The
+     blog never loads layoffs.css, so --alt-page is never set and the block was
+     a hard white slab on the theme's dark page. Rebind the component's tokens
+     to this page's own --alt-read-* tokens (which the theme maps to its
+     --atr-* palette, light and dark) and give it the same panel as the
+     .alt-digest card in 8b, so the two blocks read as one family. The accent
+     reads the theme's --atr-primary-deep, not --atr-primary (4.32:1 on the
+     light panel, under AA); its fallback is the component's darker blue
+     because #1f6fd0 is 4.4:1 on the panel tint, also under AA.
+     railway/tests/test_blog_applause_theme.py holds these. */
+  --alt-cl-page: var(--alt-read-panel);
+  --alt-cl-ink: var(--alt-read-ink);
+  --alt-cl-note: var(--alt-read-ink-soft);
+  --alt-cl-accent: var(--atr-primary-deep, #1c5cab);
+  --alt-cl-accent-strong: var(--atr-text-strong, #16181d);
+  --alt-cl-on-accent: var(--atr-on-primary, #ffffff);
+  background: var(--alt-read-panel) !important;
+  border: 1px solid var(--alt-read-panel-edge) !important;
+  border-radius: 12px !important;
+  padding: 1.1rem 1.3rem !important;
+  color: var(--alt-read-ink) !important;
 }
 
 /* The button and the count inherit `font: inherit` from the component, which
