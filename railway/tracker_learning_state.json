@@ -813,6 +813,24 @@
       "rules": 9,
       "unknown": 0,
       "unmatched": 70
+    },
+    {
+      "candidates": 75,
+      "causes": {
+        "not_wired": 70,
+        "unclassified": 2,
+        "vocabulary_gap": 3
+      },
+      "date": "2026-10-29",
+      "dropped": 0,
+      "independent_recall_pct": 0.0,
+      "matched": 0,
+      "method": "m5",
+      "recall_high_pct": 4.9,
+      "recall_low_pct": 0.0,
+      "rules": 12,
+      "unknown": 0,
+      "unmatched": 75
     }
   ],
   "quiet_runs": 0
