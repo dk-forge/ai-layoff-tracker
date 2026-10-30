@@ -92,6 +92,11 @@
       "last": 1792431624,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
+    "mail-auth-watch:main:0f4a63df90fae143": {
+      "first": 1793346112,
+      "last": 1793346112,
+      "subject": "CI RED: Mail auth watch \u2014 A protected mail-auth record is MISSING or CHANGED. Our own mail is at risk once DMARC is enforced. See the job summary."
+    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1793091546,
       "last": 1793091546,
@@ -118,6 +123,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-30T05:44:12+00:00",
+  "updated_at": "2026-10-30T07:41:52+00:00",
   "version": 1
 }
