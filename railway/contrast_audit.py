@@ -185,6 +185,21 @@ _COLOR_JS = r"""
       .filter(Boolean).slice(0, 3);
     return cls.length ? s + '.' + cls.join('.') : s;
   }
+
+  // An element inside an <svg> paints its glyphs with `fill`, not `color`.
+  // `color` keeps being a real, inheritable CSS property there (it is what
+  // `fill: currentColor` resolves through), but reading it directly is
+  // reading the wrong property: a stylesheet rule that overrides `fill`
+  // explicitly repaints the text on screen while leaving the computed
+  // `color` exactly as it was, and this probe used to report that stale,
+  // never-rendered value as the foreground.
+  function paintColor(el, cs) {
+    if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
+      var f = parse(cs.fill);
+      if (f) return f;
+    }
+    return parse(cs.color);
+  }
 """
 
 # Read the computed colour of every visible text-bearing element and composite
@@ -213,7 +228,7 @@ PROBE_JS = "(function () {" + _COLOR_JS + r"""
     if (rect.width <= 2 && rect.height <= 2) continue;
     if (cs.textIndent && parseFloat(cs.textIndent) < -900) continue;
 
-    var fg = parse(cs.color);
+    var fg = paintColor(el, cs);
     if (!fg || fg.a === 0) continue;
     var bd = backdrop(el);
     var eff = over(fg, bd.color);
