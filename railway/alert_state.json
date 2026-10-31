@@ -82,11 +82,6 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "historical-global-news-sweep:main:b769609d25279a5b": {
-      "first": 1793339051,
-      "last": 1793339051,
-      "subject": "CI RED: Historical global news sweep \u2014 no error line could be extracted from the log"
-    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1792431624,
       "last": 1792431624,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-30T17:43:28+00:00",
+  "updated_at": "2026-10-31T05:54:17+00:00",
   "version": 1
 }
