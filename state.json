@@ -1,0 +1,12 @@
+{
+ "box1": {
+  "capped_mailed_at": null,
+  "fails": 0,
+  "restarts": []
+ },
+ "box2": {
+  "capped_mailed_at": null,
+  "fails": 0,
+  "restarts": []
+ }
+}
