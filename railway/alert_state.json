@@ -92,11 +92,6 @@
       "last": 1793382208,
       "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
     },
-    "mailbox-janitor:main:09cd0cb19bd940f2": {
-      "first": 1793091546,
-      "last": 1793091546,
-      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -113,6 +108,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-31T07:42:07+00:00",
+  "updated_at": "2026-10-31T08:52:47+00:00",
   "version": 1
 }
