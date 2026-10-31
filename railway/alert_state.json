@@ -92,11 +92,6 @@
       "last": 1793382208,
       "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
     },
-    "mail-auth-watch:main:0f4a63df90fae143": {
-      "first": 1793346112,
-      "last": 1793346112,
-      "subject": "CI RED: Mail auth watch \u2014 A protected mail-auth record is MISSING or CHANGED. Our own mail is at risk once DMARC is enforced. See the job summary."
-    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1793091546,
       "last": 1793091546,
@@ -118,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-31T05:54:17+00:00",
+  "updated_at": "2026-10-31T07:42:07+00:00",
   "version": 1
 }
