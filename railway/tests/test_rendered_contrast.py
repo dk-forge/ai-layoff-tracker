@@ -162,6 +162,66 @@ class DarkContrastTests(_Measured):
             self.assertIn(needle, sels, "fixture no longer renders %s" % needle)
 
 
+# An <svg> <text> paints with `fill`, not `color`. The live audit
+# (run 41060622435, 2026-10-30) reported `rgb(64,72,88)` ("text", the
+# selector an unlabelled SVG <text> gets) on `rgb(45,45,44)` for the
+# /how-long-should-a-resume-be/ article in dark: 1.50:1, well under AA. That
+# element's `color` never gets touched by the plugin's footer-ink overrides
+# in layoffs.css - only `fill` does, via `fill: currentColor` - so a probe
+# that reads `color` reports the stale pre-override value forever, whether
+# or not the glyph actually repainted. These two fixtures pin the fix: an
+# element whose fill is genuinely wrong must still fail, and one whose fill
+# was correctly overridden (color left stale, exactly the production shape)
+# must not.
+SVG_TEXT_BROKEN = """<!doctype html>
+<html><head><style>.wrap{background:#2d2d2c}</style></head>
+<body><div class="wrap"><svg width="140" height="30">
+<text x="0" y="20" style="fill:#404858">unreadable</text>
+</svg></div></body></html>
+"""
+
+SVG_TEXT_FIXED_VIA_FILL = """<!doctype html>
+<html><head><style>.wrap{background:#2d2d2c}
+#fixed{fill:#e3e7ef !important}</style></head>
+<body><div class="wrap">
+<div style="color:#404858"><svg width="140" height="30">
+<text id="fixed" x="0" y="20" style="fill:currentColor">readable</text>
+</svg></div></div></body></html>
+"""
+
+
+class SVGTextPaintsWithFillNotColorTests(_Measured):
+
+    def _probe(self, html):
+        try:
+            with Browser(width=400, height=300) as page:
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                return page.eval_js(contrast_audit.PROBE_JS)
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
+
+    def test_svg_text_with_a_genuinely_unconverted_fill_still_fails(self):
+        rows = self._probe(SVG_TEXT_BROKEN)
+        bad = contrast_audit.violations(rows)
+        self.assertTrue(bad, "an SVG <text> painted at 1.5:1 via `fill` was "
+                             "not flagged - the probe is blind to `fill`")
+
+    def test_svg_text_whose_fill_was_overridden_is_not_a_false_positive(self):
+        # Same literal `color:#404858` sitting on the element as production's
+        # footer markup carries; only `fill` was ever repainted. Reading
+        # `color` here used to report this as 1.5:1 when the pixels the
+        # reader sees are ~11:1.
+        rows = self._probe(SVG_TEXT_FIXED_VIA_FILL)
+        bad = contrast_audit.violations(rows)
+        self.assertEqual(
+            [], [(b["sel"], b["color"], b["bg"], b["ratio"]) for b in bad],
+            "a correctly-overridden `fill` was reported as a violation "
+            "because the probe read the stale `color` instead")
+
+
 class TheGuardCanActuallyFailTests(_Measured):
     """With the fix removed, the audit MUST report the original defect.
 
