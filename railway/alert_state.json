@@ -82,25 +82,15 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "historical-global-news-sweep:main:b769609d25279a5b": {
-      "first": 1793339051,
-      "last": 1793339051,
-      "subject": "CI RED: Historical global news sweep \u2014 no error line could be extracted from the log"
-    },
     "live-data-integrity-check:live.data:24f634c770a74434": {
       "first": 1792431624,
       "last": 1792431624,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
-    "mail-auth-watch:main:0f4a63df90fae143": {
-      "first": 1793346112,
-      "last": 1793346112,
-      "subject": "CI RED: Mail auth watch \u2014 A protected mail-auth record is MISSING or CHANGED. Our own mail is at risk once DMARC is enforced. See the job summary."
-    },
-    "mailbox-janitor:main:09cd0cb19bd940f2": {
-      "first": 1793091546,
-      "last": 1793091546,
-      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
+    "live-data-integrity-check:main:03136e11f2bdd32d": {
+      "first": 1793382208,
+      "last": 1793382208,
+      "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
     },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
@@ -118,6 +108,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-10-30T08:41:32+00:00",
+  "updated_at": "2026-10-31T08:52:47+00:00",
   "version": 1
 }
