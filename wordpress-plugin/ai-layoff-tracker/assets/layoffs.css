@@ -4060,9 +4060,20 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
 :root[data-theme="dark"] .wp-site-blocks > footer .wp-block-group.has-background [style*="#5e6675"] {
     color: var(--alt-muted) !important;
 }
-:root[data-theme="dark"] .wp-site-blocks > footer svg text {
-    fill: var(--alt-ink-warm-2);
-}
+/* NOT a case of "repaint it to the dark end of the pair": the three colour
+   rules above sit on the band this stylesheet darkens (--alt-surface), so
+   they need the dark ink to stay readable on it. This logo mark is a
+   self-contained 48x48 icon with its OWN fixed fill (`rect fill="#4F7257"`,
+   a literal in the markup, not a theme variable) - the text sits on that
+   tile, never on the footer band, in either theme. `railway/contrast_audit.py`
+   (rendered-contrast workflow run 41309554129, 2026-11-01) measured the
+   REAL backdrop for the first time (a probe fix taught it to see a shape
+   painted behind SVG text within the same <svg>, not just CSS
+   `background-color`) and found this rule repainting `#FAFAF8` - 5.18:1 on
+   the tile, theme-independent and already fine - to `--alt-ink-warm-2`
+   (`#b6becd` in dark), which is 2.90:1 on that same green: below AA, and
+   this file had a rule actively causing it. No override needed here; the
+   literal already carries its own answer in both themes. */
 :root[data-theme="dark"] .wp-block-navigation-item__label,
 :root[data-theme="dark"] .wp-block-navigation .wp-block-navigation-item__content {
     color: var(--alt-ink);
@@ -4078,9 +4089,6 @@ a.alt-sb-cell:hover, a.alt-sb-cell:focus-visible { outline: 2px solid var(--alt-
     :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#5E6675"],
     :root:not([data-theme="light"]) .wp-site-blocks > footer .wp-block-group.has-background [style*="#5e6675"] {
         color: var(--alt-muted) !important;
-    }
-    :root:not([data-theme="light"]) .wp-site-blocks > footer svg text {
-        fill: var(--alt-ink-warm-2);
     }
     :root:not([data-theme="light"]) .wp-block-navigation-item__label,
     :root:not([data-theme="light"]) .wp-block-navigation .wp-block-navigation-item__content {
