@@ -26,7 +26,8 @@ HARNESS = os.path.join(HERE, "fixtures", "brevo_sync_harness.php")
 PHP = which("php")
 
 LAYOFF_DAILY, LAYOFF_WEEKLY, TALENT_DAILY, TALENT_WEEKLY, PARTNERS = 15, 16, 17, 18, 20
-ALL = {LAYOFF_DAILY, LAYOFF_WEEKLY, TALENT_DAILY, TALENT_WEEKLY, PARTNERS}
+BLOG_DIGEST = 32  # owner created "Blog Digest" 2026-11-02; one list for daily and weekly
+ALL = {LAYOFF_DAILY, LAYOFF_WEEKLY, TALENT_DAILY, TALENT_WEEKLY, PARTNERS, BLOG_DIGEST}
 
 
 def _posted_lists(calls):
@@ -69,6 +70,12 @@ class BrevoMirror(unittest.TestCase):
 
     def test_monthly_maps_to_the_weekly_list(self):
         self.assertEqual(_posted_lists(self.o["b_confirm_calls"]), {TALENT_WEEKLY, PARTNERS})
+
+    def test_blog_digest_daily_and_weekly_map_to_list_32(self):
+        for f in ("daily", "weekly"):
+            calls = self.o["articles_%s_calls" % f]
+            self.assertEqual(_posted_lists(calls), {BLOG_DIGEST}, f)
+            self.assertEqual(_unlinked(calls), ALL - {BLOG_DIGEST}, f)
 
     def test_unsubscribe_unlinks_everything_and_creates_nothing(self):
         calls = self.o["unsub_calls"]
