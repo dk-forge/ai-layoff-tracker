@@ -377,6 +377,21 @@ VARIANT_STYLES = {
     ("span", "card-figure"): (f"font-family:{FONT};font-size:{TYPE_ITEM}px;"
                               f"font-weight:700;color:{INK};white-space:nowrap;"
                               f"font-variant-numeric:tabular-nums;"),
+    # BIGGEST CUTS BY REGION (owner 2026-11-02): a section title, a region
+    # heading, the country as a pill (flag + name), then the US state and
+    # the city as small labels above their cards.
+    ("p", "world-title"): (f"margin:4px 0 6px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
+                           f"line-height:1.4;font-weight:700;letter-spacing:0.06em;"
+                           f"text-transform:uppercase;color:{MUTED};"),
+    ("p", "world-region"): (f"margin:14px 0 6px;padding:0 0 4px;font-family:{FONT};"
+                            f"font-size:{TYPE_ITEM}px;line-height:1.3;font-weight:700;"
+                            f"color:{INK};border-bottom:1px solid {RULE};"),
+    ("p", "world-country"): (f"margin:8px 0 4px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
+                             f"line-height:1.6;color:{INK};"),
+    ("p", "world-state"): (f"margin:6px 0 4px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
+                           f"line-height:1.4;font-weight:700;color:{INK};"),
+    ("p", "world-city"): (f"margin:4px 0 4px;font-family:{FONT};font-size:{TYPE_SMALL}px;"
+                          f"line-height:1.4;color:{MUTED};"),
     ("span", "gist"): (f"display:block;margin:6px 0 0;font-family:{FONT};"
                        f"font-size:{TYPE_SMALL}px;line-height:1.5;color:{MUTED};"),
     ("p", "item-title"): (f"margin:0 0 5px;font-family:{FONT};font-size:{TYPE_BODY}px;"
@@ -543,6 +558,32 @@ def week_id(day: datetime.date) -> str:
     """
     iso = day.isocalendar()
     return f"{iso[0]} Week {iso[1]}"
+
+
+# ONE EMOJI LEADS THE SUBJECT (owner approval 2026-11-02, "Use these
+# emojis"). Chosen by the first section in the message, so a reader can tell
+# the trackers apart in the inbox list. Exactly one, never repeated. Added
+# after subject_line so the PHP port it is checked against stays unchanged.
+SUBJECT_EMOJI = {
+    "layoff": "\U0001F4C9",    # chart decreasing
+    "talent": "\U0001F680",    # rocket, Who's hiring
+    "articles": "\U0001F3AF",  # direct hit, AskTheRecruiter blog newsletter
+}
+
+
+def subject_emoji(parts) -> str:
+    for part in (parts or []):
+        name = part[0] if part else ""
+        if name in SUBJECT_EMOJI:
+            return SUBJECT_EMOJI[name]
+    return ""
+
+
+def with_subject_emoji(subject: str, parts) -> str:
+    emoji = subject_emoji(parts)
+    if not emoji or any(str(subject).startswith(e) for e in SUBJECT_EMOJI.values()):
+        return subject
+    return f"{emoji} {subject}"
 
 
 def part_preheader(part) -> str:

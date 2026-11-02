@@ -570,7 +570,8 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # head and every style block with it. No figure is composed there either.
     # The subject header is set here, not by render_html, so the same
     # no-em-dash boundary (digest_layout.plain_dashes) is applied here.
-    subject = digest_layout.plain_dashes(digest_layout.subject_line(payload, parts))
+    subject = digest_layout.with_subject_emoji(
+        digest_layout.plain_dashes(digest_layout.subject_line(payload, parts)), parts)
     kicker = _kicker(payload)
     # ONE LINE, AND ONLY WHEN THE SEND IS LATE. See digest_layout.staleness_note
     # for the threshold and for why an unconditional caveat would be worse than
