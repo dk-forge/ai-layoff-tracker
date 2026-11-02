@@ -43,6 +43,12 @@ function alt_digest_compose_talent($from, $to, $send_id = 0, $freq = '') {
       at all until alt_digest_monthly_enabled() is filtered on, so there is no
       UI path to a talent list set to monthly on its own.
     */
+    // THE TALENT BRIEFING (digest-talent-briefing.php) takes the tiers named
+    // in `alt_digest_talent_briefing_tiers`; `none` keeps this composer.
+    if (function_exists('alt_talent_briefing_enabled') && alt_talent_briefing_enabled($freq)) {
+        $alt_tb = alt_talent_briefing_compose($from, $to, $send_id, strtolower(trim((string) $freq)));
+        if ($alt_tb !== null) return $alt_tb;
+    }
     $is_daily = (strtolower(trim((string) $freq)) === 'daily');
     $more_rows = array();
     $cat_counts = array();

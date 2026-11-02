@@ -91,6 +91,9 @@ if (is_readable(__DIR__ . '/digest-regions.php')) {
 if (is_readable(__DIR__ . '/digest-briefing.php')) {
     require_once __DIR__ . '/digest-briefing.php';
 }
+if (is_readable(__DIR__ . '/digest-talent-briefing.php')) {
+    require_once __DIR__ . '/digest-talent-briefing.php';
+}
 
 /* ------------------------------------------------------------------ */
 /* Store                                                               */

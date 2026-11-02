@@ -1,3 +1,19 @@
+## 2026-11-02 - Talent briefing ("Who's hiring"), all tiers (2.20.288)
+
+**Class:** novel (owner request 2026-11-02; previews before merge)
+**Guard:** `railway/tests/test_digest_talent_briefing.py`
+
+`includes/digest-talent-briefing.php` gives the talent section the layoff briefing's shape (opening
+sentence, at a glance by region with US/UK/NL sub-lines, three findings, biggest hiring grouped Around
+the world, 8-week trend, top industries/countries, explore links) in daily, weekly and monthly lengths.
+The unit stays "signals". Regions and countries are counted from every row because
+`/talent/v1/aggregate` caps `by_country` (40 entries, 542 of 921 signals in Week 44). The country is
+the row's `country`, else `hq_country`, which is the aggregate's own basis: by `country` alone Week 44
+read 91 US signals against the aggregate's 161. Checks: row count equals the aggregate total, row-derived
+country counts equal every country the aggregate names, regions sum, duplicate signal ids, a complete
+week series, links on the same since/until. A FAIL holds the claim. Switch
+`alt_digest_talent_briefing_tiers` (default all three; `none` keeps `alt_digest_compose_talent`).
+
 ## 2026-11-02 - Briefing template and pre-send checks, all tiers (2.20.287)
 
 **Class:** novel (owner request 2026-11-02; not merged until the owner reviews the preview)
