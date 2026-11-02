@@ -8,6 +8,9 @@ N jobs cut, latest <Mon YYYY>", or "<Co> layoffs: <latest year> and history" whe
 `alt_seo_layoff_description()` (max 155). Used by the core, Yoast and Rank Math title/description filters,
 the H1, breadcrumbs and the Dataset JSON-LD; canonical unchanged. Tests: `railway/tests/test_seo_ctr_titles.py`.
 
+**Class:** novel (Search Console CTR review 2026-11-02)
+**Guard:** `railway/tests/test_seo_ctr_titles.py`
+
 ## 2026-11-02 - Talent briefing ("Who's hiring"), all tiers (2.20.288)
 
 **Class:** novel (owner request 2026-11-02; previews before merge)
