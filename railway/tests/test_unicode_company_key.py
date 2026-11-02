@@ -257,9 +257,17 @@ class PhpAndPythonAgree(unittest.TestCase):
         names = [chr(c) for c in range(0x0370, 0x3100) if not 0xD800 <= c <= 0xDFFF]
         got = _php("[alt_company_key_chars(strtolower($n)), preg_match('/^\\p{Cn}$/u', $n)]", names)
         unassigned_in_php = {n for n, (_, cn) in zip(names, got) if cn == 1}
+        # THE GAP RUNS BOTH WAYS (2026-11-02). The ubuntu-26.04 runner image
+        # ships a PCRE on a NEWER Unicode than CPython 3.12's unicodedata, so
+        # U+0897 and U+1C89/U+1C8A are letters to PHP and unassigned (Cn) to
+        # Python. A code point either side cannot classify is a version gap,
+        # not a disagreement; it is asked of each side, never typed here.
+        unassigned_in_py = {n for n in names if unicodedata.category(n) == "Cn"}
+        self.assertLess(len(unassigned_in_py - unassigned_in_php), 50)
         bad = [(hex(ord(n)), k, er.company_key_chars(n))
                for n, (k, _) in zip(names, got)
-               if n not in unassigned_in_php and k != er.company_key_chars(n)]
+               if n not in unassigned_in_php and n not in unassigned_in_py
+               and k != er.company_key_chars(n)]
         self.assertFalse(bad[:20], f"{len(bad)} assigned code points disagree")
         # The exclusion only ever covers what PHP cannot classify at all, and
         # only a version gap's worth of it. Python must call each one a letter,

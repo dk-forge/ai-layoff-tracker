@@ -142,5 +142,13 @@ calls_reset();
 confirm_as('d@example.com');
 $out['after_optout_calls'] = calls();
 
+// 10. Blog digest (articles): one Brevo list (32) for daily AND weekly.
+foreach (array('daily', 'weekly') as $f) {
+    signup_as("art$f@example.com", array('articles'), $f);
+    calls_reset();
+    confirm_as("art$f@example.com");
+    $out['articles_' . $f . '_calls'] = calls();
+}
+
 $out['logs_have_address'] = strpos(json_encode(get_option('alt_brevo_sync_status')), '@') !== false;
 echo json_encode($out), "\n";

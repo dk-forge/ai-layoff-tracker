@@ -86,6 +86,14 @@ if (!defined('ABSPATH')) exit;
 if (is_readable(__DIR__ . '/digest-regions.php')) {
     require_once __DIR__ . '/digest-regions.php';
 }
+// The briefing template (digest-briefing.php, owner request 2026-11-02).
+// Guarded the same way: a deploy that has not landed it keeps the old composer.
+if (is_readable(__DIR__ . '/digest-briefing.php')) {
+    require_once __DIR__ . '/digest-briefing.php';
+}
+if (is_readable(__DIR__ . '/digest-talent-briefing.php')) {
+    require_once __DIR__ . '/digest-talent-briefing.php';
+}
 
 /* ------------------------------------------------------------------ */
 /* Store                                                               */
@@ -5066,6 +5074,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       monthly edition only. Every monthly-specific branch below is guarded by
       $is_monthly; nothing else in this function reads $freq.
     */
+    // THE BRIEFING TEMPLATE takes over the tiers named in the option
+    // `alt_digest_briefing_tiers` (default: daily,weekly,monthly). See digest-briefing.php.
+    if (function_exists('alt_briefing_enabled') && alt_briefing_enabled($freq)) {
+        return alt_briefing_compose($from, $to, $send_id, strtolower(trim((string) $freq)));
+    }
     $is_monthly = (alt_digest_valid_freq($freq) === 'monthly'
                    && strtolower(trim((string) $freq)) === 'monthly');
     $req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
@@ -5981,7 +5994,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       column, and neither is a thing to print at a reader.
     */
     $source_names = array(
-        'warn' => 'state WARN filings',
+        // NOT "state WARN filings": source_type `warn` also carries Quebec's
+        // MESS and Poland's WUP registers (Week 44 2026 printed Canadian and
+        // Polish rows under a US-state label).
+        'warn' => 'government layoff notices (US WARN and equivalents)',
         '8K'   => 'SEC 8-K filings',
         'news' => 'named news reports',
     );

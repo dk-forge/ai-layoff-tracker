@@ -35,7 +35,8 @@ if (!defined('ABSPATH')) exit;
  * List ids. Owner's final ids 2026-09-24: 15 Layoff Daily, 16 Layoff Weekly,
  * 17 Talent Daily, 18 Talent Weekly, 20 Partner Offers. There are NO monthly
  * lists by owner decision: a monthly-tier subscriber goes on the WEEKLY list
- * of their tracker. Override any id with a wp-config constant or the
+ * of their tracker. 32 Blog Digest (owner created 2026-11-02) holds the
+ * articles digest; it is ONE list for daily and weekly alike. Override any id with a wp-config constant or the
  * `alt_brevo_list_ids` option (an array with the same keys); 0 means skip.
  */
 function alt_brevo_list_ids() {
@@ -45,6 +46,7 @@ function alt_brevo_list_ids() {
         'talent_daily'  => 17,
         'talent_weekly' => 18,
         'partners'      => 20,
+        'articles'      => 32,
     );
     $opt = get_option('alt_brevo_list_ids', array());
     foreach ($ids as $k => $v) {
@@ -115,6 +117,10 @@ function alt_brevo_plan($row, $marketing_optout = false) {
             // Monthly has no list of its own: owner decision, weekly list.
             $key = $t . '_' . ($freq === 'daily' ? 'daily' : 'weekly');
             if (!empty($ids[$key])) $link[] = (int) $ids[$key];
+        }
+        // Blog digest: one list whatever the frequency (owner, 2026-11-02).
+        if (!empty($row['consent_articles']) && !empty($ids['articles'])) {
+            $link[] = (int) $ids['articles'];
         }
         if (!empty($row['consent_partners']) && !empty($ids['partners'])) {
             $link[] = (int) $ids['partners'];
