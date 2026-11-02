@@ -189,7 +189,7 @@ class Wiring(unittest.TestCase):
 
     def test_leaders_query_selects_reason_tags(self):
         db = read(DB)
-        m = re.search(r"SELECT id, company, job_count, layoff_date, ai_explicit[^;]*?LIMIT 24", db, re.S)
+        m = re.search(r"SELECT id, company, job_count, layoff_date, ai_explicit[^;]*?LIMIT \" \. \$leaders_limit", db, re.S)
         self.assertIsNotNone(m)
         self.assertIn("reason_tags", m.group(0))
 

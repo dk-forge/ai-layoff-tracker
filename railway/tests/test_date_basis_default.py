@@ -920,7 +920,10 @@ class CardsEitherFillOrExplainThemselves(unittest.TestCase):
         the fetch stopped at 10 while the bar list draws up to BARLIST_LIMIT,
         so it sat short beside full-height neighbours with rows still
         available. Fetch what the card can draw; do not pad the card."""
-        m = re.search(r"FROM \$table WHERE \$w2 ORDER BY job_count DESC, id DESC LIMIT (\d+)", DB_NC)
+        # The LIMIT is $leaders_limit since 2026-11-02 (the digest asks for
+        # every cut); the card's request gets the default, read here.
+        self.assertRegex(DB_NC, r"FROM \$table WHERE \$w2 ORDER BY job_count DESC, id DESC LIMIT \" \. \$leaders_limit")
+        m = re.search(r"\$leaders_limit > 0 \? min\(500, \$leaders_limit\) : (\d+);", DB_NC)
         self.assertTrue(m, "the largest-events query changed shape")
         limit = int(m.group(1))
         bl = re.search(r"var\s+BARLIST_LIMIT\s*=\s*(\d+)", JS_NC)
