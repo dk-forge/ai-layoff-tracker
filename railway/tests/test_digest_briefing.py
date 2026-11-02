@@ -89,7 +89,8 @@ def base_fixture():
                                       "largest_row_jobs": 46000 if j == 71387 else 10}}
     return {
         "from": FROM, "to": TO, "freq": "weekly", "compose": "layoff",
-        "options": {"alt_last_write": 1793597760},
+        "options": {"alt_last_write": 1793597760,
+                    "alt_digest_briefing_tiers": "daily,weekly,monthly"},
         "layoff": layoff, "layoff_rows": rows, "weeks": weeks,
         "ytd": {"totals": {"jobs": 700000, "announced_jobs": 526, "ai_verified_jobs": 69361},
                 "map_countries": [tup("United States", 600000)]},
@@ -240,6 +241,20 @@ class Wiring(unittest.TestCase):
         fx["options"]["alt_digest_briefing_tiers"] = "none"
         out = compose(fx)
         self.assertNotIn("Three things worth knowing", out["text"])
+
+    def test_production_default_is_all_three_tiers(self):
+        src = open(BRIEFING, encoding="utf-8").read()
+        m = re.search(r"function alt_briefing_default_tiers\(\) \{\s*return '([^']+)';", src)
+        self.assertEqual(m.group(1), "daily,weekly,monthly")
+        self.assertIn("get_option('alt_digest_briefing_tiers', alt_briefing_default_tiers())", src)
+
+    def test_daily_and_monthly_use_the_briefing(self):
+        for freq, frm, to in (("daily", "2026-11-01", "2026-11-01"),
+                              ("monthly", "2026-10-01", "2026-10-31")):
+            fx = base_fixture()
+            fx.update({"freq": freq, "from": frm, "to": to})
+            out = compose(fx)
+            self.assertIn(freq + " briefing", out["text"], freq)
 
     def test_subscribe_loads_the_briefing(self):
         src = open(SUBSCRIBE, encoding="utf-8").read()

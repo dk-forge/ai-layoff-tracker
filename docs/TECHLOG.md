@@ -1,4 +1,4 @@
-## 2026-11-02 - Weekly briefing template and pre-send checks (2.20.286)
+## 2026-11-02 - Briefing template and pre-send checks, all tiers (2.20.287)
 
 **Class:** novel (owner request 2026-11-02; not merged until the owner reviews the preview)
 **Guard:** `railway/tests/test_digest_briefing.py`
@@ -19,8 +19,9 @@ exceed the total, same-event duplicates, a complete 8-week series, every tracker
 the window and `date_basis=effective`, and a week above 3x the 8-week median gets a note.
 A FAIL holds that claim (omitted from the edition, logged as `[alt-briefing] held ...`); WARN
 look-alikes with their own event id are not held, because WARN is exempt from fuzzy dedup.
-Switch: option `alt_digest_briefing_tiers` (default `weekly`; `daily,weekly,monthly` turns on
-the 1-minute and 5-minute shapes, `none` restores the old composer). The legacy `warn` label
+Switch: option `alt_digest_briefing_tiers`, default `daily,weekly,monthly` (owner typed "approve
+all three" on 2026-11-02); `none` restores the old composer. The compose test harness pins `none`
+unless a fixture names the option, so pre-briefing fixtures keep testing the fallback. The legacy `warn` label
 in `alt_digest_compose_layoff` now reads "government layoff notices (US WARN and equivalents)".
 
 ## 2026-10-29 - ops: daily security alerts mirror issue

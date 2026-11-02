@@ -38,13 +38,18 @@ function alt_briefing_outlier_factor() {
 
 /**
  * Which tiers send the briefing. Option `alt_digest_briefing_tiers`, a comma
- * list; the default is the weekly tier only, because the owner reviews the
- * daily and monthly previews before those switch over.
+ * list; the default is all three tiers (owner approval 2026-11-02, "approve
+ * all three"). `none` restores the old composer for every tier.
  */
 function alt_briefing_enabled($freq) {
     $freq = strtolower(trim((string) $freq));
-    $tiers = function_exists('get_option') ? (string) get_option('alt_digest_briefing_tiers', 'weekly') : 'weekly';
+    $tiers = function_exists('get_option') ? (string) get_option('alt_digest_briefing_tiers', alt_briefing_default_tiers()) : alt_briefing_default_tiers();
     return in_array($freq, array_map('trim', explode(',', strtolower($tiers))), true);
+}
+
+/** The production default for alt_digest_briefing_tiers. */
+function alt_briefing_default_tiers() {
+    return 'daily,weekly,monthly';
 }
 
 /** The Monday on or before a date. */

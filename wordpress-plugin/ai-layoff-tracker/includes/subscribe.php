@@ -5072,7 +5072,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       $is_monthly; nothing else in this function reads $freq.
     */
     // THE BRIEFING TEMPLATE takes over the tiers named in the option
-    // `alt_digest_briefing_tiers` (default: weekly). See digest-briefing.php.
+    // `alt_digest_briefing_tiers` (default: daily,weekly,monthly). See digest-briefing.php.
     if (function_exists('alt_briefing_enabled') && alt_briefing_enabled($freq)) {
         return alt_briefing_compose($from, $to, $send_id, strtolower(trim((string) $freq)));
     }
