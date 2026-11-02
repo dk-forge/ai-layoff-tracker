@@ -1,3 +1,28 @@
+## 2026-11-02 - Weekly briefing template and pre-send checks (2.20.286)
+
+**Class:** novel (owner request 2026-11-02; not merged until the owner reviews the preview)
+**Guard:** `railway/tests/test_digest_briefing.py`
+
+Audit of the Week 44 edition (Oct 26 - Nov 1, 2026). Confirmed: the provenance line said
+"5,888 from state WARN filings" while 460 of those jobs were Quebec MESS (Canada, 407, ids
+133945, 182404-182410, 179017-179020) and Poland WUP (53, id 179222) rows: `source_type`
+`warn` covers every government notice register, and the label keyed on that column alone.
+Countries were right; the label was wrong. Also confirmed: the YTD "74,612 with no country"
+was computed against `top_countries`, which is capped at 60 rows; `map_countries` places
+143 more, so the true figure was 74,469.
+
+`includes/digest-briefing.php` is the new weekly template (fetch, model, checks, render).
+Every figure and sentence is a rule over the data; nothing calls a model. The checks run
+before send: regions (unknowns included) sum to worldwide, sub-lines sum to their region,
+query rows reconcile with /aggregate, no US WARN label on a non-US row, industries do not
+exceed the total, same-event duplicates, a complete 8-week series, every tracker link names
+the window and `date_basis=effective`, and a week above 3x the 8-week median gets a note.
+A FAIL holds that claim (omitted from the edition, logged as `[alt-briefing] held ...`); WARN
+look-alikes with their own event id are not held, because WARN is exempt from fuzzy dedup.
+Switch: option `alt_digest_briefing_tiers` (default `weekly`; `daily,weekly,monthly` turns on
+the 1-minute and 5-minute shapes, `none` restores the old composer). The legacy `warn` label
+in `alt_digest_compose_layoff` now reads "government layoff notices (US WARN and equivalents)".
+
 ## 2026-10-29 - ops: daily security alerts mirror issue
 
 **Class:** novel (owner request: Claude sessions' token gets 403 on the alert APIs but can read issues)
