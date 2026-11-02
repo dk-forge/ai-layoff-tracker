@@ -81,6 +81,20 @@
 
 if (!defined('ABSPATH')) exit;
 
+// Biggest-cuts regional grouping (digest-regions.php). New include, guarded
+// for the FTPS upload race: without it the list stays flat.
+if (is_readable(__DIR__ . '/digest-regions.php')) {
+    require_once __DIR__ . '/digest-regions.php';
+}
+// The briefing template (digest-briefing.php, owner request 2026-11-02).
+// Guarded the same way: a deploy that has not landed it keeps the old composer.
+if (is_readable(__DIR__ . '/digest-briefing.php')) {
+    require_once __DIR__ . '/digest-briefing.php';
+}
+if (is_readable(__DIR__ . '/digest-talent-briefing.php')) {
+    require_once __DIR__ . '/digest-talent-briefing.php';
+}
+
 /* ------------------------------------------------------------------ */
 /* Store                                                               */
 /* ------------------------------------------------------------------ */
@@ -5042,6 +5056,10 @@ function alt_digest_indeed_block() {
  * Returns array('html' => ..., 'text' => ...) or null when there is nothing
  * to say (or the endpoint failed; a broken digest is worse than none).
  */
+// Biggest cuts: rows printed in one email, and rows fetched to count them.
+if (!defined('ALT_DIGEST_CUTS_MAX')) define('ALT_DIGEST_CUTS_MAX', 40);
+if (!defined('ALT_DIGEST_LEADERS_FETCH')) define('ALT_DIGEST_LEADERS_FETCH', 500);
+
 function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
     if (!function_exists('rest_do_request')) return null;
     /*
@@ -5056,6 +5074,11 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       monthly edition only. Every monthly-specific branch below is guarded by
       $is_monthly; nothing else in this function reads $freq.
     */
+    // THE BRIEFING TEMPLATE takes over the tiers named in the option
+    // `alt_digest_briefing_tiers` (default: daily,weekly,monthly). See digest-briefing.php.
+    if (function_exists('alt_briefing_enabled') && alt_briefing_enabled($freq)) {
+        return alt_briefing_compose($from, $to, $send_id, strtolower(trim((string) $freq)));
+    }
     $is_monthly = (alt_digest_valid_freq($freq) === 'monthly'
                    && strtolower(trim((string) $freq)) === 'monthly');
     $req = new WP_REST_Request('GET', '/layoffs/v1/aggregate');
@@ -5106,6 +5129,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       `top_states` is a US-only subset for the same reason.
     */
     $req->set_param('include', 'leaders,top_countries,top_industries,source_types,top_states,reasons,top_roles');
+    // Every cut, not the aggregate's default 24 (owner 2026-11-02). One more
+    // than the digest prints would do for "is there more", but the link needs
+    // the true count, so ask for the ceiling.
+    $req->set_param('leaders_limit', ALT_DIGEST_LEADERS_FETCH);
     $res = rest_do_request($req);
     if (!$res || $res->is_error()) return null;
     $data = $res->get_data();
@@ -5967,7 +5994,10 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       column, and neither is a thing to print at a reader.
     */
     $source_names = array(
-        'warn' => 'state WARN filings',
+        // NOT "state WARN filings": source_type `warn` also carries Quebec's
+        // MESS and Poland's WUP registers (Week 44 2026 printed Canadian and
+        // Polish rows under a US-state label).
+        'warn' => 'government layoff notices (US WARN and equivalents)',
         '8K'   => 'SEC 8-K filings',
         'news' => 'named news reports',
     );
@@ -6284,7 +6314,19 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
       report the row came from, so a reporter can check us before quoting us
       and a blogger has something to link. Adding it costs one field.
     */
-    $leaders = array_slice(is_array($data['leaders'] ?? null) ? $data['leaders'] : array(), 0, 5);
+    /*
+      EVERY CUT IN THE PERIOD (owner "remove the cap", 2026-11-02). This list
+      was the five largest rows. It is now every row the window holds, still
+      ranked by job count, grouped by region below. Past ALT_DIGEST_CUTS_MAX
+      the email shows the largest that many and one "See all N" link to the
+      tracker page for the same window, so the message stays a sane size.
+    */
+    $leaders_all = is_array($data['leaders'] ?? null) ? array_values($data['leaders']) : array();
+    usort($leaders_all, function ($a, $b) {
+        return (int) ($b['job_count'] ?? 0) <=> (int) ($a['job_count'] ?? 0);
+    });
+    $leaders_total = count($leaders_all);
+    $leaders = array_slice($leaders_all, 0, ALT_DIGEST_CUTS_MAX);
     if ($leaders) {
         $rows = array();
         $linked = 0;
@@ -6429,6 +6471,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
                 'suffix' => $detail ? '(' . implode(', ', $detail) . ')' : '',
                 'figure' => alt_digest_jobs_phrase((int) ($l['job_count'] ?? 0)),
             );
+            // Where, for the regional grouping (digest-regions.php). Guarded:
+            // a deploy that lands this file first keeps the flat list.
+            if (function_exists('alt_digest_row_city')) {
+                $row['geo'] = array(
+                    'country' => (string) ($l['country'] ?? ''),
+                    'state'   => $l_state,
+                    'city'    => alt_digest_row_city($l['state'] ?? '', $l['country'] ?? '',
+                                                     $l['location'] ?? ''),
+                );
+            }
             /*
               THE SUPPORTING SOURCE LINK, WHERE THE ROW CARRIES A USABLE URL.
 
@@ -6505,9 +6557,22 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             $html .= '<h3>Biggest cuts</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>';
             $text .= "\nBiggest cuts\n" . $caption . "\n";
-            list($t_html, $t_text) = alt_digest_rank_table($rows);
+            // GROUPED BY REGION, COUNTRY, STATE, CITY (owner 2026-11-02),
+            // when the include is present and every row is a card with geo.
+            $grouped = function_exists('alt_digest_world_cards');
+            foreach ($rows as $r) { if (!isset($r['geo'], $r['pills'])) $grouped = false; }
+            list($t_html, $t_text) = $grouped
+                ? alt_digest_world_cards($rows, 'alt_digest_rank_cards')
+                : alt_digest_rank_table($rows);
             $html .= $t_html;
             $text .= $t_text;
+            if ($leaders_total > count($rows)) {
+                $all_url = alt_digest_track_link($send_id, alt_digest_tracker_url($from, $to));
+                $all_label = 'See all ' . number_format($leaders_total) . ' on the tracker';
+                $html .= '<p data-alt="see-all"><a href="' . esc_url($all_url) . '">'
+                       . esc_html($all_label) . '</a></p>';
+                $text .= '  ' . $all_label . ': ' . $all_url . "\n";
+            }
             /*
               THE SAME RULE AGAIN: SAY ONLY WHAT IS TRUE OF THIS LIST.
 

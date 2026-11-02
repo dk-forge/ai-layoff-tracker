@@ -53,6 +53,12 @@ function rest_url($p = '') { return 'https://asktherecruiter.com/blog/wp-json/' 
 function get_option($k, $d = false) {
     global $FIXTURE;
     $opts = (array) ($FIXTURE['options'] ?? array());
+    // THE BRIEFING SWITCH defaults to all tiers in production (2026-11-02).
+    // A fixture that does not name it pins the FALLBACK composer, which is
+    // what every fixture written before the briefing was written against;
+    // test_digest_briefing.py names the tiers and reads the real default.
+    if (in_array($k, array('alt_digest_briefing_tiers', 'alt_digest_talent_briefing_tiers'), true)
+        && !array_key_exists($k, $opts)) return 'none';
     return array_key_exists($k, $opts) ? $opts[$k] : $d;
 }
 function update_option($k, $v, $a = null) { return true; }
@@ -304,6 +310,21 @@ function rest_do_request($req) {
       response is the old in-place subtraction, so earlier fixtures keep
       exercising the path they were written for.
     */
+    /*
+      THE BRIEFING (digest-briefing.php) reads /query for the window's rows and
+      seven earlier weeks. A fixture answers from `layoff_rows` and
+      `weeks[<from>]`; one without them answers the /query call with an ERROR,
+      which the briefing treats as rows UNKNOWN, so older fixtures are untouched.
+    */
+    if (strpos($req->route, '/layoffs/v1/query') === 0) {
+        if (!isset($FIXTURE['layoff_rows'])) return new WP_REST_Response_Stub(null, true);
+        $rows = (array) $FIXTURE['layoff_rows'];
+        return new WP_REST_Response_Stub(array('total' => count($rows), 'data' => $rows));
+    }
+    if (isset($FIXTURE['weeks']) && isset($FIXTURE['weeks'][(string) $req->get_param('from')])
+        && $req->get_param('from') !== $FIXTURE['from']) {
+        return new WP_REST_Response_Stub($FIXTURE['weeks'][(string) $req->get_param('from')]);
+    }
     if ((int) $req->get_param('exclude_id') > 0) {
         if (empty($FIXTURE['layoff_excluded'])) return new WP_REST_Response_Stub(null, true);
         return new WP_REST_Response_Stub($FIXTURE['layoff_excluded']);

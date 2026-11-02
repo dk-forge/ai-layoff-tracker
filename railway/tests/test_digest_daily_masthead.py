@@ -172,12 +172,18 @@ class AnUnlabelledOddWindowIsNotAWeekEither(unittest.TestCase):
 @unittest.skipIf(PHP is None, "php is not on PATH.")
 class TheWeeklyEditionIsUntouched(unittest.TestCase):
     """The weekly window (Monday to Sunday, alt_digest_weekly_window's shape)
-    keeps its ISO-week masthead and its 'In Week N of YYYY' lead exactly."""
+    keeps its ISO-week masthead and its 'In Week N of YYYY' lead exactly.
+
+    Since 2026-11-02 the weekly tier sends the briefing template
+    (digest-briefing.php, tested in test_digest_briefing.py). The legacy weekly
+    composer is still the fallback when `alt_digest_briefing_tiers` is cleared,
+    so this class pins THAT path with the option cleared."""
 
     def setUp(self):
         # 2026-08-17 is a Monday; the 23rd the following Sunday: ISO week 34.
         self.section = compose(fixture(**{
             "from": "2026-08-17", "to": "2026-08-23", "freq": "weekly",
+            "options": {"alt_digest_briefing_tiers": "none"},
         }))
 
     def test_the_dateline_still_names_the_week(self):

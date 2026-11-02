@@ -6,6 +6,8 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-11-02, branch `claude/talent-briefing` (PR, stacked on #581). Reserves plugin version 2.20.288.** Talent briefing; see TECHLOG 2026-11-02 (2.20.288).
+- **RELEASED - Claude (agent), 2026-11-02, branch `claude/weekly-briefing` (PR). Reserves plugin version 2.20.287.** Briefing template and pre-send checks; see TECHLOG 2026-11-02 (2.20.287).
 - **RELEASED - Claude (agent), 2026-10-28, branch `claude/email-redesign` (draft PR). Reserves plugin version 2.20.281 (2.20.280 is held by PR #569).** Subscriber email redesign; see TECHLOG 2026-10-28 (2.20.281).
 - **RELEASED - Claude (agent), 2026-10-20, branch `claude/integrity-backup-2026-10-20` (PR). Reserves plugin version 2.20.277.** LiteSpeed page cache bounded to 60s (board_tiles_match_query FAIL); see TECHLOG 2026-10-20 (2.20.277).
 - **RELEASED - Claude (agent), 2026-10-20, branches `fix/codeql-*` (4 PRs). No plugin file, no version reserved.** CodeQL alert fixes by rule family; see TECHLOG 2026-10-20 (CodeQL).
