@@ -749,8 +749,29 @@ class GitHubClient:
     def squash_merge(self, number: int) -> None:
         # PLAIN SQUASH, judged by this file and nothing else. Auto-merge
         # landed PR #954 untested and is not reachable from here.
-        _run(["gh", "pr", "merge", str(number), "-R", self.repo, "--squash",
-              "--delete-branch"])
+        #
+        # Retried ONCE on GitHub's own transient race: "Base branch was
+        # modified. Review and try the merge again." fires when main moves
+        # between the mergeability read and this call, and this repo's main
+        # moves on its own cadence (e.g. the uptime-check ledger commits)
+        # independently of any pull request. That is not a conflict with the
+        # pull request being merged -- a second `gh pr merge` call re-reads
+        # the now-current main and squashes cleanly. Anything else still
+        # raises on the first attempt, unretried.
+        cmd = ["gh", "pr", "merge", str(number), "-R", self.repo, "--squash",
+               "--delete-branch"]
+        proc = _run(cmd, check=False)
+        if proc.returncode == 0:
+            return
+        detail = (proc.stderr or proc.stdout).strip()
+        if "base branch was modified" in detail.lower():
+            proc = _run(cmd, check=False)
+            if proc.returncode == 0:
+                return
+            detail = (proc.stderr or proc.stdout).strip()
+        raise MergeTrainError(
+            f"command failed ({proc.returncode}): {' '.join(cmd[:4])}...\n"
+            f"{detail[:2000]}")
 
     def comment(self, number: int, body: str) -> None:
         _run(["gh", "pr", "comment", str(number), "-R", self.repo, "--body", body])

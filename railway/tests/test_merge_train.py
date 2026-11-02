@@ -649,6 +649,70 @@ class TheLabelItRelieson(_Quiet):
         self.assertIn("--force", calls[0])
         self.assertIn("--add-label", calls[1])
 
+
+class TheSquashMergeRetry(_Quiet):
+    """gh run view 41460425348 --log-failed: `gh pr merge 581` failed with
+    `GraphQL: Base branch was modified. Review and try the merge again.`
+    (mergePullRequest) one second after an unrelated commit landed on main.
+    That is GitHub's own transient race, not a conflict with this pull
+    request, so the real fix is one retry -- anything else must still raise."""
+
+    def _fake_run(self, outcomes):
+        calls = []
+
+        def fake_run(cmd, **kw):
+            calls.append(list(cmd))
+            returncode, stdout, stderr = outcomes[len(calls) - 1]
+            class P:
+                pass
+            p = P()
+            p.returncode, p.stdout, p.stderr = returncode, stdout, stderr
+            return p
+
+        return calls, fake_run
+
+    def test_a_base_branch_modified_race_is_retried_once(self):
+        calls, fake_run = self._fake_run([
+            (1, "", "GraphQL: Base branch was modified. Review and try the "
+                    "merge again. (mergePullRequest)"),
+            (0, "", ""),
+        ])
+        real = mt._run
+        mt._run = fake_run
+        try:
+            mt.GitHubClient("dk-forge/test", Path(".")).squash_merge(581)
+        finally:
+            mt._run = real
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0], calls[1])
+
+    def test_a_second_base_branch_modified_still_raises(self):
+        calls, fake_run = self._fake_run([
+            (1, "", "GraphQL: Base branch was modified."),
+            (1, "", "GraphQL: Base branch was modified."),
+        ])
+        real = mt._run
+        mt._run = fake_run
+        try:
+            with self.assertRaises(mt.MergeTrainError):
+                mt.GitHubClient("dk-forge/test", Path(".")).squash_merge(581)
+        finally:
+            mt._run = real
+        self.assertEqual(len(calls), 2)
+
+    def test_an_unrelated_merge_failure_is_never_retried(self):
+        calls, fake_run = self._fake_run([
+            (1, "", "GraphQL: Pull Request is not mergeable"),
+        ])
+        real = mt._run
+        mt._run = fake_run
+        try:
+            with self.assertRaises(mt.MergeTrainError):
+                mt.GitHubClient("dk-forge/test", Path(".")).squash_merge(581)
+        finally:
+            mt._run = real
+        self.assertEqual(len(calls), 1)
+
 # ---------------------------------------------------------------- sync main
 
 HEAD_SHA = "b" * 40
