@@ -18,6 +18,7 @@ if (!$alt_dir) return;
 alt_render_page_header();
 $alt_company = $alt_dir['company'];
 $alt_name = $alt_company['display_name'];
+$alt_label = alt_company_directory_name($alt_dir);
 $alt_count = count($alt_dir['events']);
 $alt_verif = array(
     'gold'   => 'SEC filing',
@@ -27,9 +28,9 @@ $alt_verif = array(
 );
 ?>
 <main class="alt-wrap alt-company-directory">
-    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(alt_breadcrumbs_company_trail($alt_name . ' layoffs', $alt_dir['url'])); ?>
+    <?php if (function_exists('alt_breadcrumbs_render')) alt_breadcrumbs_render(alt_breadcrumbs_company_trail($alt_label . ' layoffs', $alt_dir['url'])); ?>
     <p class="alt-eyebrow">Source-linked company record</p>
-    <h1><?php echo esc_html($alt_name); ?> layoffs</h1>
+    <h1><?php echo esc_html($alt_label); ?> layoffs</h1>
     <?php if (function_exists('alt_page_freshness_html')) echo alt_page_freshness_html($alt_dir['events']); ?>
     <?php // GLEIF LEI, only when every name on the page agrees on one (includes/company-lei.php).
     if (function_exists('alt_company_lei_for_events')) echo alt_company_lei_html(alt_company_lei_for_events($alt_dir['events'])); // escaped inside ?>

@@ -1,3 +1,16 @@
+## 2026-11-02 - Company and industry SERP titles: current year, proper case, no legal suffix (2.20.292)
+
+Search Console (3 months): company pages rank 8 to 18 at 0.6 to 1.2% CTR, /industry-layoffs/technology at 0%.
+Titles showed stale ranges ("SALLIE MAE layoffs 2008-2020"), ALL-CAPS names and "LLC"/"Corp." suffixes.
+New PURE generator `includes/seo-titles.php`: `alt_seo_display_name()` (proper case only when the name has
+no lowercase, acronym list kept, legal suffix dropped), `alt_seo_layoff_title()` ("<Co> layoffs <this year>:
+N jobs cut, latest <Mon YYYY>", or "<Co> layoffs: <latest year> and history" when older; max 60 chars) and
+`alt_seo_layoff_description()` (max 155). Used by the core, Yoast and Rank Math title/description filters,
+the H1, breadcrumbs and the Dataset JSON-LD; canonical unchanged. Tests: `railway/tests/test_seo_ctr_titles.py`.
+
+**Class:** novel (Search Console CTR review 2026-11-02)
+**Guard:** `railway/tests/test_seo_ctr_titles.py`
+
 ## 2026-11-02 - Talent briefing ("Who's hiring"), all tiers (2.20.288)
 
 **Class:** novel (owner request 2026-11-02; previews before merge)

@@ -281,32 +281,31 @@ function alt_company_directory_data($slug) {
     return $data;
 }
 
+/** True when any row on the page cites a state WARN notice. */
+function alt_company_directory_has_warn($data) {
+    foreach ((array) $data['events'] as $row) {
+        foreach ((array) ($row['sources'] ?? array()) as $src) {
+            if (($src['type'] ?? '') === 'warn') return true;
+        }
+    }
+    return false;
+}
+
+/** The name as shown: proper-cased, legal suffix dropped (includes/seo-titles.php). */
+function alt_company_directory_name($data) {
+    $raw = (string) $data['company']['display_name'];
+    $name = function_exists('alt_seo_display_name') ? alt_seo_display_name($raw) : $raw;
+    return $name !== '' ? $name : $raw;
+}
+
 /**
- * The page's own meta description, built only from what the page shows. No
- * template padding: a company with three events says three, and the sentence
- * changes shape when there are no dates rather than printing an empty range.
+ * Meta description (2.20.292): built only from what the page shows, at most
+ * 155 characters, via alt_seo_layoff_description().
  */
-function alt_company_directory_description($data) {
-    // 2.20.265: the headline figure first (a searcher scanning results wants
-    // the number), then the span and the latest date, then the source promise.
-    $name = $data['company']['display_name'];
-    $count = count($data['events']);
-    $jobs = (int) $data['total_jobs'];
-    $bits = $name . ' layoffs: ';
-    $bits .= ($jobs > 0 ? number_format($jobs) . ' jobs cut across ' : '')
-           . $count . ' recorded ' . ($count === 1 ? 'layoff' : 'layoffs');
-    if ($data['first_date'] !== '' && $data['last_date'] !== '') {
-        $from = substr($data['first_date'], 0, 4);
-        $to = substr($data['last_date'], 0, 4);
-        $bits .= ($from === $to) ? ' in ' . $from : ', ' . $from . ' to ' . $to;
-        $ts = strtotime($data['last_date']);
-        if ($ts && $from !== $to) $bits .= ', latest ' . gmdate('F Y', $ts);
-    }
-    $bits .= '. ';
-    if ($data['ai_events'] > 0) {
-        $bits .= $data['ai_events'] . ' attributed to AI by the employer. ';
-    }
-    return $bits . 'Every entry links to the filing, WARN notice or report behind it.';
+function alt_company_directory_description($data, $now_ts = null) {
+    return alt_seo_layoff_description(alt_company_directory_name($data), count($data['events']),
+        (int) $data['total_jobs'], (string) $data['last_date'], alt_company_directory_has_warn($data),
+        (int) $data['ai_events'], $now_ts === null ? time() : (int) $now_ts);
 }
 
 function alt_company_directory_current() {
@@ -405,32 +404,13 @@ function alt_company_directory_canonical($canonical) { $data = alt_company_direc
 add_filter('wpseo_canonical', 'alt_company_directory_canonical');
 add_filter('rank_math/frontend/canonical', 'alt_company_directory_canonical');
 /**
- * PURE. The SERP title (2.20.265). Search Console, 2026-10-15: company pages
- * rank near position 10 at 0.7 to 0.9% CTR under "X layoffs: source-linked
- * entry history", which says nothing a searcher is looking for. The new shape
- * leads with the query ("X layoffs"), then the year the records cover, then
- * what the page holds. Truthful by construction: the year is the latest
- * recorded layoff year (or the span), never today's year by default, and
- * "WARN notices" appears only when a row on the page cites one. Tightens in
- * steps to stay within ~60 characters.
+ * PURE. The SERP title (2.20.292, see includes/seo-titles.php): "<Company>
+ * layoffs <this year>: N jobs cut, latest <Mon YYYY>" when the latest record
+ * is this year, "<Company> layoffs: <year> and history" when it is older.
  */
-function alt_company_directory_title_text($data) {
-    $name = trim((string) $data['company']['display_name']);
-    $from = substr((string) $data['first_date'], 0, 4);
-    $to   = substr((string) $data['last_date'], 0, 4);
-    $years = ($to === '') ? '' : (($from !== '' && $from !== $to) ? $from . '-' . $to : $to);
-    $warn = false;
-    foreach ((array) $data['events'] as $row) {
-        foreach ((array) ($row['sources'] ?? array()) as $src) {
-            if (($src['type'] ?? '') === 'warn') { $warn = true; break 2; }
-        }
-    }
-    $head = $name . ' layoffs' . ($years !== '' ? ' ' . $years : '');
-    $tail = $warn ? 'dates, job counts and WARN notices' : 'dates, job counts and sources';
-    foreach (array($head . ': ' . $tail, $head . ': dates and job counts', $head) as $cand) {
-        if (mb_strlen($cand, 'UTF-8') <= 60) return $cand;
-    }
-    return $name . ' layoffs';
+function alt_company_directory_title_text($data, $now_ts = null) {
+    return alt_seo_layoff_title(alt_company_directory_name($data), (string) $data['last_date'],
+        (int) $data['total_jobs'], alt_company_directory_has_warn($data), $now_ts === null ? time() : (int) $now_ts);
 }
 function alt_company_directory_title($parts) { $data = alt_company_directory_current(); if ($data) $parts['title'] = alt_company_directory_title_text($data); return $parts; }
 add_filter('document_title_parts', 'alt_company_directory_title', 5);
@@ -488,7 +468,7 @@ add_action('wp_head', 'alt_company_directory_head_fallback', 1);
 function alt_company_directory_dataset_schema() {
     $data = alt_company_directory_current();
     if (!$data || !$data['indexable']) return;
-    $name = $data['company']['display_name'];
+    $name = alt_company_directory_name($data);
     $node = array(
         '@context'      => 'https://schema.org',
         '@type'         => 'Dataset',
@@ -527,7 +507,7 @@ function alt_company_directory_breadcrumbs() {
     if (!$data) return;
     if (!function_exists('alt_breadcrumbs_company_trail')) return;
     // Same trail the page prints visibly (includes/breadcrumbs.php).
-    echo alt_breadcrumbs_jsonld(alt_breadcrumbs_company_trail($data['company']['display_name'] . ' layoffs', $data['url']));
+    echo alt_breadcrumbs_jsonld(alt_breadcrumbs_company_trail(alt_company_directory_name($data) . ' layoffs', $data['url']));
 }
 add_action('wp_head', 'alt_company_directory_breadcrumbs', 21);
 
