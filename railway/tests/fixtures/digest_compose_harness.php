@@ -57,7 +57,8 @@ function get_option($k, $d = false) {
     // A fixture that does not name it pins the FALLBACK composer, which is
     // what every fixture written before the briefing was written against;
     // test_digest_briefing.py names the tiers and reads the real default.
-    if ($k === 'alt_digest_briefing_tiers' && !array_key_exists($k, $opts)) return 'none';
+    if (in_array($k, array('alt_digest_briefing_tiers', 'alt_digest_talent_briefing_tiers'), true)
+        && !array_key_exists($k, $opts)) return 'none';
     return array_key_exists($k, $opts) ? $opts[$k] : $d;
 }
 function update_option($k, $v, $a = null) { return true; }
