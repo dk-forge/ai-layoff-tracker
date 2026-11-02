@@ -267,6 +267,24 @@ class DarkThemeProseTests(unittest.TestCase):
             m = re.search(r"--%s:\s*([^;]+);" % name, light)
             self.assertEqual(m.group(1).strip().lower(), literal)
 
+    def test_the_footer_logo_marks_own_fill_is_left_alone_in_dark(self):
+        # The footer logo ("atr") is a self-contained 48x48 icon: a literal
+        # `rect fill="#4F7257"` tile with a literal `text fill="#FAFAF8"` on
+        # top of it, in the markup, not a theme variable. Unlike the three
+        # literals above, that text never sits on the darkened --alt-surface
+        # band - it sits on its own fixed-colour tile in BOTH themes - so it
+        # needs no dark remap, and it must not get the same treatment: a
+        # `.wp-site-blocks > footer svg text { fill: var(--alt-ink-warm-2) }`
+        # rule repainted it to #b6becd in dark, which is 2.90:1 on #4F7257
+        # (below AA) where the original #FAFAF8 is 5.18:1 (contrast_audit.py
+        # run 41309554129, 2026-11-01, once its backdrop walk learned to see
+        # a shape painted behind SVG text in the same <svg>). If this literal
+        # ever reappears, it has regressed to exactly that defect.
+        self.assertNotIn("footer svg text", self.css,
+                          "the footer logo's own fill got a dark override "
+                          "again; it sits on a fixed-colour tile in both "
+                          "themes and does not need one")
+
 
 class PressTablesScrollTests(unittest.TestCase):
     """Five of seven press tables were unreachable on a phone.

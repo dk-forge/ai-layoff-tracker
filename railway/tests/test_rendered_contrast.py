@@ -222,6 +222,70 @@ class SVGTextPaintsWithFillNotColorTests(_Measured):
             "because the probe read the stale `color` instead")
 
 
+# An SVG <text> can sit on a <rect>/<circle>/<path> painted earlier in the
+# SAME <svg>, which is not a CSS background at all - `backdrop()` walks DOM
+# ancestors only, so it cannot see it and falls through to whatever is behind
+# the whole <svg>. The live site's "atr" logo mark is exactly this: a 48x48
+# `<rect fill="#4F7257">` with a `<text fill="#FAFAF8">` on top of it, a
+# self-contained icon that is never painted on the page background at all.
+# The run that broke (41309554129, 2026-11-01) reported `rgb(250,250,248)` on
+# `rgb(250,250,248)` (1.00:1) and on `rgb(244,241,234)` (1.08:1) - the PAGE's
+# background, not the icon's own green tile, which is really ~5.18:1.
+SVG_TEXT_ON_ITS_OWN_SHAPE = """<!doctype html>
+<html><head></head>
+<body style="background:#fafaf8">
+<svg width="48" height="48">
+<rect width="48" height="48" fill="#4F7257"></rect>
+<text x="24" y="32" text-anchor="middle" fill="#FAFAF8">atr</text>
+</svg>
+</body></html>
+"""
+
+SVG_TEXT_WITH_NO_COVERING_SHAPE = """<!doctype html>
+<html><head></head>
+<body style="background:#fafaf8">
+<svg width="48" height="48">
+<text x="0" y="32" fill="#FAFAF8">atr</text>
+</svg>
+</body></html>
+"""
+
+
+class SVGTextOnAPaintedShapeTests(_Measured):
+
+    def _probe(self, html):
+        try:
+            with Browser(width=400, height=300) as page:
+                page.call("Page.navigate", {"url": "about:blank"})
+                page.eval_js(
+                    "(function(){document.open();document.write(%s);"
+                    "document.close();return true;})()" % json.dumps(html))
+                return page.eval_js(contrast_audit.PROBE_JS)
+        except CDPUnavailable as exc:
+            raise unittest.SkipTest("could not launch Chrome: %s" % exc)
+
+    def test_text_painted_on_its_own_opaque_shape_is_not_a_false_positive(self):
+        rows = self._probe(SVG_TEXT_ON_ITS_OWN_SHAPE)
+        bad = contrast_audit.violations(rows)
+        self.assertEqual(
+            [], [(b["sel"], b["color"], b["bg"], b["ratio"]) for b in bad],
+            "a logo mark painted on its own tile (~5.18:1) was reported "
+            "against the page background behind the whole icon instead")
+        self.assertEqual("rgb(79,114,87)", rows[0]["bg"],
+                          "expected the measured backdrop to be the rect's "
+                          "own fill, not the page background")
+
+    def test_text_with_no_covering_shape_still_fails(self):
+        # Same foreground colour as the fixture above, but nothing paints
+        # behind it within the <svg> - this is a real 1:1 defect and must
+        # still be caught; the fix must not blind the probe to SVG text in
+        # general, only teach it about a shape that genuinely covers it.
+        rows = self._probe(SVG_TEXT_WITH_NO_COVERING_SHAPE)
+        bad = contrast_audit.violations(rows)
+        self.assertTrue(bad, "SVG text with no backdrop shape at all and a "
+                             "foreground matching the page was not flagged")
+
+
 class TheGuardCanActuallyFailTests(_Measured):
     """With the fix removed, the audit MUST report the original defect.
 

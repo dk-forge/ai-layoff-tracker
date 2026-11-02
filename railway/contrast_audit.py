@@ -178,6 +178,49 @@ _COLOR_JS = r"""
     return { color: out, painted: painted };
   }
 
+  // An SVG <text> can sit on a shape painted earlier in the SAME <svg> - a
+  // <rect>, <circle>, <path> - which is not a CSS background at all, so
+  // `backdrop()` walking DOM ancestors cannot see it and falls through to
+  // whatever is behind the <svg> element itself. The site's "atr" logo mark
+  // is exactly this: a 48x48 `<rect fill="#4F7257">` with a
+  // `<text fill="#FAFAF8">` sitting on top of it - a self-contained icon
+  // that is never painted on the page background at all. Without this, the
+  // probe measured white-on-white (the page behind the whole icon, 1.00:1)
+  // and flagged a logo that is actually ~5.2:1 on the tile it really sits on.
+  function svgLocalBackdrop(el) {
+    var svg = el.closest ? el.closest('svg') : null;
+    if (!svg) return null;
+    var rect = el.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return null;
+    var shapes = svg.querySelectorAll('rect,circle,ellipse,path,polygon,line,polyline');
+    var layers = [], unmeasurable = false;
+    for (var i = 0; i < shapes.length; i++) {
+      var s = shapes[i];
+      if (s === el) continue;
+      // Only a shape painted BEFORE this text (earlier in document order,
+      // same rule SVG uses for paint order among siblings) is behind it; a
+      // later sibling paints on top and is not a backdrop.
+      if (!(el.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_PRECEDING)) continue;
+      var srect = s.getBoundingClientRect();
+      if (srect.width < 1 || srect.height < 1) continue;
+      // Only count it if it actually covers the text, not merely shares the
+      // <svg> - a decorative dot elsewhere in the icon is not a backdrop.
+      if (srect.left > rect.left + 0.5 || srect.right < rect.right - 0.5 ||
+          srect.top > rect.top + 0.5 || srect.bottom < rect.bottom - 0.5) continue;
+      var fc = parse(getComputedStyle(s).fill);
+      if (!fc) {
+        var raw = getComputedStyle(s).fill;
+        if (raw && raw !== 'none') unmeasurable = true;  // gradient/pattern
+        continue;
+      }
+      layers.push(fc);
+    }
+    if (!layers.length) return unmeasurable ? { color: null, painted: true } : null;
+    var out = backdrop(el).color;
+    for (var j = 0; j < layers.length; j++) out = over(layers[j], out);
+    return { color: out, painted: unmeasurable };
+  }
+
   function selectorOf(el) {
     var s = el.tagName.toLowerCase();
     if (el.id) return s + '#' + el.id;
@@ -231,6 +274,12 @@ PROBE_JS = "(function () {" + _COLOR_JS + r"""
     var fg = paintColor(el, cs);
     if (!fg || fg.a === 0) continue;
     var bd = backdrop(el);
+    var svgBd = svgLocalBackdrop(el);
+    if (svgBd) {
+      bd = svgBd.color
+        ? { color: svgBd.color, painted: bd.painted || svgBd.painted }
+        : { color: bd.color, painted: true };
+    }
     var eff = over(fg, bd.color);
 
     var size = parseFloat(cs.fontSize) || 16;
