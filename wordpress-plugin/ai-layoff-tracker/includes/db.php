@@ -6307,7 +6307,7 @@ function alt_cached_route_param_names() {
         'date_basis', 'country_basis', 'except',            // reinterpret filters
         'page', 'per_page', 'sort', 'dir',                  // /query
         'after_id', 'limit',                                // /facets
-        'include',                                          // /aggregate
+        'include', 'leaders_limit',                         // /aggregate
         'window_months',                                    // /conversion
         'view', 'period',                                   // /by-location
     ));
@@ -6964,11 +6964,14 @@ function alt_api_aggregate_compute(WP_REST_Request $r) {
       callers read leaders[0] only, so nothing else changes.
     */
     list($w2, $p2) = alt_db_where($r);
+    // Default 24 (the board card); the digest asks for every cut (2026-11-02).
+    $leaders_limit = (int) $r->get_param('leaders_limit');
+    $leaders_limit = $leaders_limit > 0 ? min(500, $leaders_limit) : 24;
     $top_events = !$want('leaders') ? array() : $wpdb->get_results(alt_db_prep(
         "SELECT id, company, job_count, layoff_date, ai_explicit, state, country, post_id, announced, source_url,
                 verification_level, review_status, reason_tags,
                 (SELECT COUNT(*) FROM " . alt_source_reports_table() . " r WHERE r.event_id = $table.event_id AND $table.event_id > 0) AS report_count
-         FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT 24", $p2));
+         FROM $table WHERE $w2 ORDER BY job_count DESC, id DESC LIMIT " . $leaders_limit, $p2));
     $leaders = array();
     foreach ($top_events ?: array() as $row) {
         $leaders[] = array(
