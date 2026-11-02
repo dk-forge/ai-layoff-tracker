@@ -696,6 +696,48 @@ function alt_llms_txt_content() {
 }
 
 /**
+ * ONE llms.txt for asktherecruiter.com (owner request 2026-11-02): the app
+ * builds it (product, guides, free tools and the tracker sections above,
+ * verbatim) and serves it at /.well-known/llms.txt. /blog/llms.txt publishes
+ * that same text so both URLs match. That path is used because Cloudflare
+ * still 301s the apex /llms.txt to /blog/llms.txt, which would loop.
+ * Redirects are not followed; anything that is not a 200 plain-text llms.txt
+ * carrying the tracker summary falls back to alt_llms_txt_content().
+ */
+define('ALT_LLMS_SOURCE_URL', 'https://asktherecruiter.com/.well-known/llms.txt');
+
+/** Pure check: is $body a usable site llms.txt? */
+function alt_llms_remote_ok($code, $body) {
+    if ((int) $code !== 200 || !is_string($body)) return false;
+    if (strlen($body) < 200 || strlen($body) > 200000) return false;
+    if (strpos($body, "# ") !== 0) return false;
+    return strpos($body, 'AI Layoff Tracker by AskTheRecruiter.com') !== false;
+}
+
+/** The text /blog/llms.txt publishes: the app's file, else our own. */
+function alt_llms_txt_published() {
+    $r = wp_remote_get(ALT_LLMS_SOURCE_URL, array('timeout' => 10, 'redirection' => 0));
+    if (!is_wp_error($r) && alt_llms_remote_ok(wp_remote_retrieve_response_code($r), wp_remote_retrieve_body($r))) {
+        return wp_remote_retrieve_body($r);
+    }
+    return alt_llms_txt_content();
+}
+
+/** Hourly: rewrite llms.txt on disk when the app's text changed. */
+function alt_llms_sync() {
+    $content = alt_llms_txt_published();
+    $path = trailingslashit(ABSPATH) . 'llms.txt';
+    if (@file_get_contents($path) === $content) return;
+    $wrote = @file_put_contents($path, $content);
+    update_option('alt_llms_sync', ($wrote === false ? 'failed ' : 'ok ') . gmdate('c'), false);
+}
+add_action('alt_llms_sync_cron', 'alt_llms_sync');
+function alt_llms_schedule() {
+    if (!wp_next_scheduled('alt_llms_sync_cron')) wp_schedule_event(time() + 120, 'hourly', 'alt_llms_sync_cron');
+}
+add_action('init', 'alt_llms_schedule', 20);
+
+/**
  * Serve /blog/llms.txt if the request ever reaches PHP. On this host it does
  * NOT: Apache serves .txt directly and 404s when the file is missing, so the
  * real delivery mechanism is alt_write_static_files() below. Kept as a
@@ -706,7 +748,7 @@ function alt_serve_llms_txt() {
     if (!preg_match('#/llms\.txt/?($|\?)#', $uri)) return;
     header('Content-Type: text/plain; charset=utf-8');
     header('X-Robots-Tag: noindex');
-    echo alt_llms_txt_content();
+    echo alt_llms_txt_published();
     exit;
 }
 add_action('init', 'alt_serve_llms_txt', 0);
@@ -731,7 +773,7 @@ function alt_write_static_files() {
 
     $root    = trailingslashit(ABSPATH);
     $targets = array(
-        'llms.txt'      => alt_llms_txt_content(),
+        'llms.txt'      => alt_llms_txt_published(),
         $key . '.txt'   => $key,
     );
     $failed = array();
