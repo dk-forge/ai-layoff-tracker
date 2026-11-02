@@ -97,11 +97,6 @@
       "last": 1793382208,
       "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
     },
-    "merge-train:main:185a6c07edc6e5f0": {
-      "first": 1793629152,
-      "last": 1793629152,
-      "subject": "CI RED: Merge train \u2014 merge train could not complete: command failed (1): gh pr merge 581..."
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -118,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-02T14:19:13+00:00",
+  "updated_at": "2026-11-02T14:41:47+00:00",
   "version": 1
 }
