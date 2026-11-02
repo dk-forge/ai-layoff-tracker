@@ -461,7 +461,8 @@ class TheSubjectSaysWhatChanged(unittest.TestCase):
 
     def test_a_period_it_cannot_read_falls_back_to_the_sites_subject(self):
         built = message(to="not-a-date")
-        self.assertEqual(built.subject, "[AskTheRecruiter] Weekly tracker digest")
+        # The section's emoji still leads (owner 2026-11-02); the words fall back.
+        self.assertEqual(built.subject, "\U0001F4C9 [AskTheRecruiter] Weekly tracker digest")
 
 
 class ThePlainTextAlternative(unittest.TestCase):

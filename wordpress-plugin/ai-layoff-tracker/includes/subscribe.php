@@ -81,6 +81,12 @@
 
 if (!defined('ABSPATH')) exit;
 
+// Biggest-cuts regional grouping (digest-regions.php). New include, guarded
+// for the FTPS upload race: without it the list stays flat.
+if (is_readable(__DIR__ . '/digest-regions.php')) {
+    require_once __DIR__ . '/digest-regions.php';
+}
+
 /* ------------------------------------------------------------------ */
 /* Store                                                               */
 /* ------------------------------------------------------------------ */
@@ -6429,6 +6435,16 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
                 'suffix' => $detail ? '(' . implode(', ', $detail) . ')' : '',
                 'figure' => alt_digest_jobs_phrase((int) ($l['job_count'] ?? 0)),
             );
+            // Where, for the regional grouping (digest-regions.php). Guarded:
+            // a deploy that lands this file first keeps the flat list.
+            if (function_exists('alt_digest_row_city')) {
+                $row['geo'] = array(
+                    'country' => (string) ($l['country'] ?? ''),
+                    'state'   => $l_state,
+                    'city'    => alt_digest_row_city($l['state'] ?? '', $l['country'] ?? '',
+                                                     $l['location'] ?? ''),
+                );
+            }
             /*
               THE SUPPORTING SOURCE LINK, WHERE THE ROW CARRIES A USABLE URL.
 
@@ -6505,7 +6521,13 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
             $html .= '<h3>Biggest cuts</h3>'
                    . '<p data-alt="caption">' . esc_html($caption) . '</p>';
             $text .= "\nBiggest cuts\n" . $caption . "\n";
-            list($t_html, $t_text) = alt_digest_rank_table($rows);
+            // GROUPED BY REGION, COUNTRY, STATE, CITY (owner 2026-11-02),
+            // when the include is present and every row is a card with geo.
+            $grouped = function_exists('alt_digest_world_cards');
+            foreach ($rows as $r) { if (!isset($r['geo'], $r['pills'])) $grouped = false; }
+            list($t_html, $t_text) = $grouped
+                ? alt_digest_world_cards($rows, 'alt_digest_rank_cards')
+                : alt_digest_rank_table($rows);
             $html .= $t_html;
             $text .= $t_text;
             /*
