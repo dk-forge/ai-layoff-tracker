@@ -578,7 +578,8 @@ function alt_facet_title($data) {
     }
     // Industry pages (2.20.292): the same query-led shape as company pages.
     if ($data['dim'] === 'industry' && function_exists('alt_seo_layoff_title')) {
-        return alt_seo_layoff_title($data['display'], (string) $data['max_date'], (int) $data['jobs'], false, time());
+        return alt_seo_layoff_title($data['display'], (string) $data['max_date'], (int) $data['jobs'], false, time(),
+            alt_seo_year_jobs($data['timeline'] ?? array(), (int) gmdate('Y')), (string) $data['min_date']);
     }
     return alt_facet_heading($data) . ': source-linked record of every entry we hold';
 }
@@ -592,7 +593,8 @@ function alt_facet_description($data) {
         $n = (int) $data['companies'];
         return alt_seo_layoff_description($data['display'], (int) $data['entries'], (int) $data['jobs'],
             (string) $data['max_date'], true, (int) $data['ai_entries'], time(),
-            $n > 0 ? ' at ' . number_format($n) . ($n === 1 ? ' employer' : ' employers') : '');
+            $n > 0 ? ' at ' . number_format($n) . ($n === 1 ? ' employer' : ' employers') : '',
+            alt_seo_year_jobs($data['timeline'] ?? array(), (int) gmdate('Y')), (string) $data['min_date']);
     }
     $bits = number_format((int) $data['entries']) . ' recorded layoff '
           . ($data['entries'] === 1 ? 'entry' : 'entries') . ' '

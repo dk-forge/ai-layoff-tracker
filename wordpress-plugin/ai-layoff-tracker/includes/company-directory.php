@@ -305,7 +305,8 @@ function alt_company_directory_name($data) {
 function alt_company_directory_description($data, $now_ts = null) {
     return alt_seo_layoff_description(alt_company_directory_name($data), count($data['events']),
         (int) $data['total_jobs'], (string) $data['last_date'], alt_company_directory_has_warn($data),
-        (int) $data['ai_events'], $now_ts === null ? time() : (int) $now_ts);
+        (int) $data['ai_events'], $ts = ($now_ts === null ? time() : (int) $now_ts), '',
+        alt_seo_year_jobs($data['timeline'] ?? array(), (int) gmdate('Y', $ts)), (string) $data['first_date']);
 }
 
 function alt_company_directory_current() {
@@ -410,7 +411,8 @@ add_filter('rank_math/frontend/canonical', 'alt_company_directory_canonical');
  */
 function alt_company_directory_title_text($data, $now_ts = null) {
     return alt_seo_layoff_title(alt_company_directory_name($data), (string) $data['last_date'],
-        (int) $data['total_jobs'], alt_company_directory_has_warn($data), $now_ts === null ? time() : (int) $now_ts);
+        (int) $data['total_jobs'], alt_company_directory_has_warn($data), $ts = ($now_ts === null ? time() : (int) $now_ts),
+        alt_seo_year_jobs($data['timeline'] ?? array(), (int) gmdate('Y', $ts)), (string) $data['first_date']);
 }
 function alt_company_directory_title($parts) { $data = alt_company_directory_current(); if ($data) $parts['title'] = alt_company_directory_title_text($data); return $parts; }
 add_filter('document_title_parts', 'alt_company_directory_title', 5);
