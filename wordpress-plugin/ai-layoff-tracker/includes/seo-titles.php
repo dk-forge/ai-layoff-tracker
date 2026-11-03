@@ -60,32 +60,49 @@ function alt_seo_latest_month($last_date, $now_ts) {
 }
 
 /**
- * The year phrase. The current year when the latest record is this year (or a
- * notice dated ahead of today), else "<latest year> and history". '' when the
- * page has no dated record at all.
+ * PURE. Jobs in one calendar year from an alt_timeline_by_year() list.
  */
-function alt_seo_layoff_head($name, $last_date, $now_ts) {
+function alt_seo_year_jobs($timeline, $year) {
+    $n = 0;
+    foreach ((array) $timeline as $row) {
+        if ((int) ($row['year'] ?? 0) === (int) $year) $n += max(0, (int) ($row['jobs'] ?? 0));
+    }
+    return $n;
+}
+
+/**
+ * The year phrase and the job figure that may sit next to it (2.20.293).
+ * Rule: a year in the title or description is only ever followed by THAT
+ * year's count. So the current year appears only when this year's jobs (YTD)
+ * are above zero, paired with the YTD figure; otherwise the all-time total is
+ * worded as "since <first year>". Returns [head, jobs phrase, is_ytd].
+ */
+function alt_seo_layoff_parts($name, $last_date, $jobs, $now_ts, $ytd_jobs, $first_date) {
     $now_year = (int) gmdate('Y', (int) $now_ts);
     $latest = (int) substr((string) $last_date, 0, 4);
-    if ($latest <= 0) return array($name . ' layoffs', false);
-    if ($latest >= $now_year) return array($name . ' layoffs ' . $now_year, true);
-    return array($name . ' layoffs: ' . $latest . ' and history', false);
+    $first = (int) substr((string) $first_date, 0, 4);
+    $ytd = (int) $ytd_jobs; $jobs = (int) $jobs;
+    if ($latest >= $now_year && $ytd > 0) {
+        return array($name . ' layoffs ' . $now_year, number_format($ytd) . ' jobs cut so far', true);
+    }
+    $all = $jobs > 0 ? number_format($jobs) . ' jobs cut' . ($first > 0 ? ' since ' . $first : '') : '';
+    if ($latest > 0 && $latest < $now_year) return array($name . ' layoffs: ' . $latest . ' and history', $all, false);
+    return array($name . ' layoffs', $all, false);
 }
 
 /**
  * The title, at most 60 characters. Tightens in steps; every step still
  * leads with "<name> layoffs".
  */
-function alt_seo_layoff_title($name, $last_date, $jobs, $has_warn, $now_ts) {
-    list($head, $current) = alt_seo_layoff_head($name, $last_date, $now_ts);
-    $jobs = (int) $jobs;
-    $cut = $jobs > 0 ? number_format($jobs) . ' jobs cut' : '';
+function alt_seo_layoff_title($name, $last_date, $jobs, $has_warn, $now_ts, $ytd_jobs = 0, $first_date = '') {
+    list($head, $cut, $current) = alt_seo_layoff_parts($name, $last_date, $jobs, $now_ts, $ytd_jobs, $first_date);
     $month = alt_seo_latest_month($last_date, $now_ts);
     $docs = $has_warn ? 'WARN notices and timeline' : 'dates and timeline';
-    $sep = ($current || strpos($head, ':') === false) ? ': ' : ', ';
+    $sep = strpos($head, ':') === false ? ': ' : ', ';
     $cands = array();
     if ($cut !== '' && $month !== '' && $current) $cands[] = $head . $sep . $cut . ', latest ' . $month;
     if ($cut !== '') $cands[] = $head . $sep . $cut;
+    if ($cut !== '' && !$current) $cands[] = $name . ' layoffs: ' . $cut;
     $cands[] = $head . $sep . $docs;
     $cands[] = $head;
     foreach ($cands as $c) {
@@ -98,17 +115,26 @@ function alt_seo_layoff_title($name, $last_date, $jobs, $has_warn, $now_ts) {
 /**
  * The meta description, at most 155 characters, built only from what the
  * page shows: a figure that is missing is left out, never printed as zero.
+ * All-time figures always carry "since <first year>" or no year at all.
  */
-function alt_seo_layoff_description($name, $count, $jobs, $last_date, $has_warn, $ai_events, $now_ts, $scope = '') {
+function alt_seo_layoff_description($name, $count, $jobs, $last_date, $has_warn, $ai_events, $now_ts, $scope = '', $ytd_jobs = 0, $first_date = '') {
     $count = (int) $count; $jobs = (int) $jobs;
-    list($head) = alt_seo_layoff_head($name, $last_date, $now_ts);
+    list($head, $cut, $current) = alt_seo_layoff_parts($name, $last_date, $jobs, $now_ts, $ytd_jobs, $first_date);
     $month = alt_seo_latest_month($last_date, $now_ts);
-    $facts = array();
-    if ($jobs > 0) $facts[] = number_format($jobs) . ' jobs cut';
-    if ($count > 0) $facts[] = ($facts ? 'across ' : '') . number_format($count) . ' recorded ' . ($count === 1 ? 'layoff' : 'layoffs') . $scope;
-    $lead = $head . ($facts ? (strpos($head, ':') === false ? ': ' : '. ') . ucfirst(implode(' ', $facts)) : '');
-    if ($month !== '') $lead .= ', latest ' . $month;
-    $lead .= '.';
+    $first = (int) substr((string) $first_date, 0, 4);
+    $since = $first > 0 ? ' since ' . $first : '';
+    $layoffs = $count > 0 ? number_format($count) . ' recorded ' . ($count === 1 ? 'layoff' : 'layoffs') . $scope : '';
+    $sep = strpos($head, ':') === false ? ': ' : '. ';
+    if ($current) {
+        $lead = $head . ': ' . $cut . ($month !== '' ? ', latest ' . $month : '') . '.';
+        if ($layoffs !== '') {
+            $lead .= ' ' . ($jobs > 0 ? number_format($jobs) . ' jobs across ' : '') . $layoffs . $since . ' in total.';
+        }
+    } else {
+        $facts = trim($cut . ($cut !== '' && $layoffs !== '' ? ' across ' : '') . $layoffs
+               . ($cut === '' && $layoffs !== '' ? $since : ''));
+        $lead = $head . ($facts !== '' ? $sep . ucfirst($facts) : '') . ($month !== '' ? ', latest ' . $month : '') . '.';
+    }
     $ai = (int) $ai_events > 0 ? ' ' . number_format((int) $ai_events) . ' attributed to AI by the employer.' : '';
     $tails = array(
         ' See dates, ' . ($has_warn ? 'WARN notices' : 'job counts') . ' and a year-by-year timeline, each linked to its source.',

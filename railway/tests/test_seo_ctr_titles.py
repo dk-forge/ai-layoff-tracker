@@ -29,10 +29,12 @@ def _php(code):
     return json.loads(p.stdout)
 
 
-def _company(name, first, last, warn, jobs=263):
+def _company(name, first, last, warn, jobs=263, timeline=None):
     src = [{"type": "warn" if warn else "news", "url": "u"}]
+    if timeline is None:  # default: every job in the latest year
+        timeline = [{"year": int(last[:4]), "jobs": jobs}] if last else []
     return {"company": {"display_name": name}, "first_date": first, "last_date": last,
-            "events": [{"sources": src}], "total_jobs": jobs, "ai_events": 0}
+            "events": [{"sources": src}], "total_jobs": jobs, "ai_events": 0, "timeline": timeline}
 
 
 SEO = (PLUGIN / "includes" / "seo-titles.php").read_text().replace("<?php", "", 1)
@@ -55,19 +57,34 @@ class Titles(unittest.TestCase):
 
     def test_current_year_leads_with_query_count_and_month(self):
         t, d = self.company_title(_company("Safelite", "2026-03-01", "2026-09-01", True))
-        self.assertEqual(t, "Safelite layoffs 2026: 263 jobs cut, latest Sep 2026")
-        self.assertTrue(d.startswith("Safelite layoffs 2026: 263 jobs cut across 1 recorded layoff, latest Sep 2026."), d)
-        self.assertIn("WARN notices", d)
+        self.assertEqual(t, "Safelite layoffs 2026: 263 jobs cut so far, latest Sep 2026")
+        self.assertTrue(d.startswith("Safelite layoffs 2026: 263 jobs cut so far, latest Sep 2026. 263 jobs across 1 recorded layoff since 2026 in total."), d)
+        self.assertLessEqual(len(d), 155)
 
     def test_older_latest_year_says_history_never_this_year(self):
         t, d = self.company_title(_company("SALLIE MAE", "2008-01-01", "2020-09-01", True))
-        self.assertEqual(t, "Sallie Mae layoffs: 2020 and history, 263 jobs cut")
+        self.assertEqual(t, "Sallie Mae layoffs: 263 jobs cut since 2008")
         self.assertNotIn("2026", t + d)
         self.assertNotIn("2008-2020", t)
 
     def test_future_dated_notice_counts_as_this_year_without_a_future_month(self):
-        t, _ = self.company_title(_company("Acme", "2025-01-01", "2027-02-01", False))
-        self.assertEqual(t, "Acme layoffs 2026: 263 jobs cut")
+        t, _ = self.company_title(_company("Acme", "2025-01-01", "2027-02-01", False,
+                                           timeline=[{"year": 2026, "jobs": 40}, {"year": 2025, "jobs": 223}]))
+        self.assertEqual(t, "Acme layoffs 2026: 40 jobs cut so far")
+
+    def test_a_year_is_only_ever_next_to_that_years_count(self):
+        # 2,000 all-time, 10 of them in 2026 (Innodata shape): the 2026 figure is 10.
+        tl = [{"year": 2019, "jobs": 1990}, {"year": 2026, "jobs": 10}]
+        t, d = self.company_title(_company("Innodata Services, LLC", "2019-03-01", "2026-02-10", True, jobs=2000, timeline=tl))
+        self.assertTrue(t.startswith("Innodata Services layoffs 2026: 10 jobs cut so far"), t)
+        self.assertLessEqual(len(t), 60)
+        self.assertNotIn("2026: 2,000", t + d)
+        self.assertIn("2,000 jobs across 1 recorded layoff since 2019 in total", d)
+        # Notices dated ahead but nothing in 2026 itself: no year, all-time wording.
+        tl = [{"year": 2024, "jobs": 263}]
+        t, d = self.company_title(_company("Acme", "2024-01-01", "2027-02-01", False, timeline=tl))
+        self.assertEqual(t, "Acme layoffs: 263 jobs cut since 2024")
+        self.assertNotIn("2026", t + d)
 
     def test_missing_data_fallbacks(self):
         t, d = self.company_title(_company("Acme", "", "", False, jobs=0))
@@ -99,11 +116,17 @@ class Titles(unittest.TestCase):
         self.assertEqual(dict(zip(cases, got)), cases)
 
     def test_industry_title_and_description(self):
-        t = _seo("alt_seo_layoff_title('Technology', '2027-01-15', 2065487, false, %d)" % NOW)
-        self.assertEqual(t, "Technology layoffs 2026: 2,065,487 jobs cut")
-        d = _seo("alt_seo_layoff_description('Technology', 4388, 2065487, '2026-10-30', true, 54, %d, ' at 2,207 employers')" % NOW)
+        # The live bug (2.20.292): all-time 2,065,487 was labelled 2026.
+        t = _seo("alt_seo_layoff_title('Technology', '2027-01-15', 2065487, false, %d, 41200, '2002-01-01')" % NOW)
+        self.assertEqual(t, "Technology layoffs 2026: 41,200 jobs cut so far")
+        d = _seo("alt_seo_layoff_description('Technology', 4388, 2065487, '2026-10-30', true, 54, %d, ' at 2,207 employers', 41200, '2002-01-01')" % NOW)
         self.assertLessEqual(len(d), 155, d)
-        self.assertTrue(d.startswith("Technology layoffs 2026: 2,065,487 jobs cut across 4,388 recorded layoffs at 2,207 employers"), d)
+        self.assertTrue(d.startswith("Technology layoffs 2026: 41,200 jobs cut so far, latest Oct 2026. 2,065,487 jobs across 4,388"), d)
+        self.assertNotIn("2026: 2,065,487", d)
+        t = _seo("alt_seo_layoff_title('Technology', '2027-01-15', 2065487, false, %d, 0, '2002-01-01')" % NOW)
+        self.assertEqual(t, "Technology layoffs: 2,065,487 jobs cut since 2002")
+        y = _seo("alt_seo_year_jobs([['year'=>2025,'jobs'=>5],['year'=>2026,'jobs'=>7]], 2026)")
+        self.assertEqual(y, 7)
 
     def test_hub_title(self):
         t = _php(_fn(MAIN, "alt_tracker_title_text") + "echo json_encode(alt_tracker_title_text(2026));")

@@ -1,3 +1,13 @@
+## 2026-11-03 - SERP titles paired a year with an all-time total (2.20.293)
+
+2.20.292 shipped "Technology layoffs 2026: 2,065,487 jobs cut across 4,388 recorded layoffs": all-time totals
+labelled 2026. Rule now: a year in a company or industry title/description is only followed by that year's
+count (YTD from the page's own `timeline`, via `alt_seo_year_jobs()`); the year appears only when YTD > 0.
+Otherwise the all-time figure is worded "N jobs cut since <first year>".
+
+**Class:** novel (own regression from 2.20.292, caught by review the same day)
+**Guard:** `railway/tests/test_seo_ctr_titles.py` (test_a_year_is_only_ever_next_to_that_years_count, industry test)
+
 ## 2026-11-02 - Company and industry SERP titles: current year, proper case, no legal suffix (2.20.292)
 
 Search Console (3 months): company pages rank 8 to 18 at 0.6 to 1.2% CTR, /industry-layoffs/technology at 0%.
