@@ -1235,8 +1235,7 @@ def tracking_sentences(relay_tracking_on: bool = None) -> tuple:
     if relay_tracking_on:
         return (
             "Our mail provider records whether you open this email and which "
-            "links you follow.",
-            "We read it to see which sections are worth keeping.",
+            "links you follow, to show which sections are worth keeping.",
             "Unsubscribing stops the email and the measuring together.",
         )
     return (
@@ -1299,50 +1298,27 @@ WEEK_CONVENTION = ("Weeks are ISO-8601: Monday to Sunday, numbered from the "
 # destinations.
 # ---------------------------------------------------------------------------
 FOOTER_BLOCKS = (
-    ("", ("You get this because you confirmed a digest subscription at "
+    # SHORTENED 2026-11-03 (owner: "shorten the footer"). Every required
+    # promise keeps its meaning: why you get this, one-click unsubscribe, the
+    # preferences link and its confirm-by-email rule, the postal country, and
+    # (below, TRACKING_SENTENCES) the tracking disclosure. The "forward this"
+    # sentence is dropped and the resume promo is one short line.
+    ("", ("You get this because you confirmed a subscription at "
           "asktherecruiter.com.",), ""),
-    ("unsub", ("Unsubscribe with one click, which stops everything at once.",),
+    ("unsub", ("Unsubscribe with one click (stops everything).",),
      "Unsubscribe with one click"),
-    # SAYS WHAT ACTUALLY HAPPENS, WHICH IS NOT WHAT IT USED TO SAY.
-    #
-    # The link goes to the signup form's own anchor, because a change is made
-    # by re-submitting that form and applying it through the same double opt
-    # in that created the subscription (alt_digest_manage_url() in
-    # includes/subscribe.php holds the reasoning, and the pending_prefs branch
-    # of alt_digest_signup() is the part that makes it safe).
-    #
-    # The mechanism was never the defect. The promise was: the owner followed
-    # his own footer on 2026-08-19 and reported "I can't really manage",
-    # because a reader told they are going to a preference centre and handed a
-    # Subscribe button has been told a false thing about a working feature. So
-    # the sentences name the form, name the three steps, and warn that
-    # confirmation is required before anything changes. A reader who reads
-    # them is never surprised by the page.
-    #
-    # 2026-09-27 (owner decision): the link is now the reader's OWN signed
-    # preferences page (plugin includes/subscriber-prefs.php), carried per
-    # recipient. It applies less mail at once and emails a confirmation for
-    # anything that adds mail, which is what the second sentence says.
-    ("manage", ("To change lists, frequency or follows, open your preferences "
-                "page.",
-                "Anything that adds mail applies when you confirm by email."),
-     "open your preferences page"),
-    # The resume call to action (owner decision 2026-09-24). Always present,
-    # like the address; its URL is the plugin's alt_resume_cta_url('digest')
-    # from the payload, or resume_cta_url()'s default when a build sends none.
-    ("resume", ("Changing jobs, returning to work or starting out? Tailor "
-                "your résumé to the role with the AskTheRecruiter résumé tool.",),
+    # The reader's OWN signed preferences page (plugin
+    # includes/subscriber-prefs.php), carried per recipient. Less mail applies
+    # at once; anything that adds mail is confirmed by email.
+    ("manage", ("Change lists, frequency or follows on your preferences page; "
+                "adding mail needs an email confirmation.",),
+     "your preferences page"),
+    # The resume call to action (owner decision 2026-09-24), one short line.
+    ("resume", ("Job hunting? Tailor your résumé with AskTheRecruiter.",),
      "Tailor your résumé"),
-    # Forward this (redesign slice 1, 2026-10-06): the signup form, so a
-    # colleague handed one edition can get the next. Mirrors
-    # alt_digest_footer_blocks in the plugin.
-    ("forward", ("Forward this email to a colleague who follows the job "
-                 "market; they can sign up free.",),
-     "sign up free"),
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because
-    # unlike the manage block it is not ours to omit -- `footer_blocks()`
-    # filters on the "manage" key only, so this survives a thin payload.
+    # unlike the manage block it is not ours to omit.
     ("", ("AskTheRecruiter, Netherlands.",), ""),
 )
 
@@ -1469,7 +1445,11 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
 # ---------------------------------------------------------------------------
 ITEM_HEADINGS = ("Biggest cuts", "Top hiring today", "Biggest hiring signals",
                  "Biggest signals and job-board increases",
-                 "Largest observed job-board increases")
+                 "Largest observed job-board increases",
+                 # The talent daily's two rankings (owner, 2026-11-03): an
+                 # announced plan and an open-listing count are different
+                 # measurements and each is ranked only against its own type.
+                 "Announced hiring plans", "Open listings")
 METHOD_HEADINGS = ("Source quality", "Data notes", "Notes", "About this snapshot")
 HOW_WE_COUNT = "How we count"
 _H2 = re.compile(r"<h2\b[^>]*>(.*?)</h2>", re.S)

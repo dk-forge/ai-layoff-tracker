@@ -1226,7 +1226,7 @@ class TheTwoFootersAreOneDefinition(unittest.TestCase):
         self.assertEqual(_visible(run.stdout), relay)
 
         # And the link is on the same words, pointing at the same place.
-        self.assertIn(f'<a href="{self.MANAGE}">open your preferences page</a>',
+        self.assertIn(f'<a href="{self.MANAGE}">your preferences page</a>',
                       run.stdout)
         self.assertIn(f'<a href="{self.UNSUB}">Unsubscribe with one click</a>',
                       run.stdout)

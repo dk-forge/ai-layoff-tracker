@@ -7964,59 +7964,46 @@ function alt_digest_manage_url() {
  * once is what stops the two renderings naming different destinations.
  */
 function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
+    // SHORTENED 2026-11-03 (owner). Same promises, fewer words; the
+    // "forward this" sentence is dropped and the resume promo is one line.
+    // FOOTER_BLOCKS in railway/digest_layout.py mirrors this exactly.
     $blocks = array(
         array(
             'url' => '',
             'anchor' => '',
             'sentences' => array(
-                'You get this because you confirmed a digest subscription at asktherecruiter.com.',
+                'You get this because you confirmed a subscription at asktherecruiter.com.',
             ),
         ),
         array(
             'url' => $unsub_url,
             'anchor' => 'Unsubscribe with one click',
             'sentences' => array(
-                'Unsubscribe with one click, which stops everything at once.',
+                'Unsubscribe with one click (stops everything).',
             ),
         ),
     );
     // OMITTED RATHER THAN RENDERED WITHOUT A LINK. A promise with nowhere to
-    // go is worse than silence, and the relay drops it the same way when a
-    // payload carries no manage URL.
+    // go is worse than silence, and the relay drops it the same way.
     if ($manage_url) {
         $blocks[] = array(
             'url' => $manage_url,
-            'anchor' => 'open your preferences page',
+            'anchor' => 'your preferences page',
             'sentences' => array(
-                'To change lists, frequency or follows, open your preferences page.',
-                'Anything that adds mail applies when you confirm by email.',
+                'Change lists, frequency or follows on your preferences page; adding mail needs an email confirmation.',
             ),
         );
     }
-    // The resume call to action (owner decision 2026-09-24). UNCONDITIONAL
-    // like the address, so the sentence is identical on all three renderers;
-    // only the link depends on the helper being loaded (FTP-deploy race).
+    // The resume call to action (owner decision 2026-09-24), one short line.
     $blocks[] = array(
         'url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
         'anchor' => 'Tailor your résumé',
         'sentences' => array(
-            'Changing jobs, returning to work or starting out? Tailor your résumé to the role with the AskTheRecruiter résumé tool.',
+            'Job hunting? Tailor your résumé with AskTheRecruiter.',
         ),
     );
-    // FORWARD THIS (redesign slice 1, 2026-10-06). The signup form, so a
-    // colleague who was forwarded one edition can get the next. No tracking.
-    $blocks[] = array(
-        'url' => function_exists('home_url') ? home_url('/ai-layoff-tracker/') . '#alt-digest' : '',
-        'anchor' => 'sign up free',
-        'sentences' => array(
-            'Forward this email to a colleague who follows the job market; they can sign up free.',
-        ),
-    );
-    // CAN-SPAM 15 U.S.C. 7704(a)(5): a commercial message must carry the
-    // sender's valid PHYSICAL postal address. It is a block like any other
-    // so it cannot be added to one renderer and forgotten in the other two,
-    // and it is UNCONDITIONAL -- unlike the manage block it is not ours to
-    // omit when a payload is thin.
+    // CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
+    // address. UNCONDITIONAL: not ours to omit when a payload is thin.
     $blocks[] = array(
         'url' => '',
         'anchor' => '',

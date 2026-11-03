@@ -565,7 +565,7 @@ class TheManageLinkPromisesWhatTheReaderWillActuallyGet(unittest.TestCase):
         """Since 2026-09-27 (owner decision) the link IS a preferences page,
         the reader's own, so the footer may and must say so, and link it."""
         for part in self._parts():
-            self.assertIn("open your preferences page", part)
+            self.assertIn("your preferences page", " ".join(part.split()))
             self.assertIn(MANAGE, part)
 
     def test_it_warns_that_nothing_changes_until_they_confirm(self):
@@ -573,7 +573,9 @@ class TheManageLinkPromisesWhatTheReaderWillActuallyGet(unittest.TestCase):
         pending_prefs and applies them only on the confirm click. A reader who
         submits and is not told that believes the change already landed."""
         for part in self._parts():
-            self.assertIn("confirm by email", part)
+            # Shortened 2026-11-03, same promise.
+            self.assertIn("adding mail needs an email confirmation",
+                          " ".join(part.split()))
 
     def test_the_landing_page_acknowledges_the_reader_who_followed_it(self):
         """THE OTHER HALF, AND THE REASON THIS TEST REACHES INTO THE PLUGIN.

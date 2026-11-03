@@ -280,7 +280,175 @@ function alt_talent_opening($m) {
     return $tone . ': ' . $n . $hiring . $lead . '.';
 }
 
+/**
+ * THE TWO KINDS OF HIRING NUMBER, NEVER RANKED TOGETHER (owner, 2026-11-03).
+ *
+ * The Nov 3 daily ranked "Cohere 1,500 roles" (a plan an employer announced,
+ * read from press) beside "ZipRecruiter 8 roles" (open listings counted on a
+ * Greenhouse or Ashby board). They measure different things, so a reader
+ * comparing them compares nothing. Each hiring row is labelled by type and
+ * ranked only against rows of its own type. alt_digest_talent_is_scan is the
+ * one test for "a job-board reading", shared with the rest of the digest.
+ */
+function alt_talent_hiring_type($r) {
+    return alt_digest_talent_is_scan($r) ? 'listings' : 'plan';
+}
+
+/** Hiring rows split by type, each ranked by stated roles (largest first). */
+function alt_talent_hiring_by_type($hire) {
+    $out = array('plan' => array(), 'listings' => array());
+    foreach ((array) $hire as $r) $out[alt_talent_hiring_type($r)][] = $r;
+    foreach ($out as $k => $rows) {
+        usort($rows, function ($a, $c) {
+            return alt_talent_headcount($c) - alt_talent_headcount($a)
+                ?: strcmp((string) ($c['materiality'] ?? ''), (string) ($a['materiality'] ?? ''));
+        });
+        $out[$k] = $rows;
+    }
+    return $out;
+}
+
+/** "plans 1,500 roles" / "lists 8 open roles" / "plans to hire", for one row. */
+function alt_talent_hiring_phrase($r) {
+    $hc = alt_talent_headcount($r);
+    if (alt_talent_hiring_type($r) === 'listings') {
+        return $hc > 0 ? 'lists ' . alt_digest_count($hc, 'open role') : 'lists open roles';
+    }
+    return $hc > 0 ? 'plans ' . alt_digest_count($hc, 'role') : 'plans to hire';
+}
+
+/** The daily subject: the top hiring development, never a raw signal count. */
+function alt_talent_daily_subject($m, $types) {
+    $n = count($m['hire']);
+    $top = $types['plan'][0] ?? ($types['listings'][0] ?? null);
+    if ($top === null) return '';
+    $where = trim((string) ($top['city'] ?? ''));
+    if ($where === '') $where = alt_talent_country_name($top['country'] ?? '');
+    $s = "Who's hiring: " . alt_digest_clean_employer($top['company']) . ' ' . alt_talent_hiring_phrase($top)
+       . ($where !== '' ? ' in ' . $where : '');
+    if ($n > 1) $s .= ' + ' . alt_digest_number($n - 1) . ' more';
+    return $s;
+}
+
+/** One compact line per employer: flag, employer, number + type, place, source. */
+function alt_talent_daily_line($r, $send_id) {
+    $country = alt_talent_country_name($r['country'] ?? '');
+    $flag = function_exists('alt_digest_country_flag') ? alt_digest_country_flag($country) : '';
+    $hc = alt_talent_headcount($r);
+    $type = alt_talent_hiring_type($r) === 'listings' ? 'open listings' : 'announced plan';
+    $fig = ($hc > 0 ? alt_digest_count($hc, 'role') : 'roles not stated') . ', ' . $type;
+    $place = implode(', ', array_filter(array(trim((string) ($r['city'] ?? '')), $country)));
+    $src = trim((string) ($r['source_url'] ?? ''));
+    if ($src !== '' && function_exists('alt_digest_external_link_ok') && !alt_digest_external_link_ok($src)) $src = '';
+    $src_name = trim((string) ($r['source_name'] ?? '')) ?: 'source';
+    $name = alt_digest_clean_employer($r['company']);
+    $lead = ($flag !== '' ? $flag . ' ' : '') . $name;
+    $tail = ($place !== '' ? " \xc2\xb7 " . $place : '');
+    $html = '<p data-alt="item-line"><strong>' . esc_html($lead) . '</strong>: ' . esc_html($fig . $tail)
+          . " \xc2\xb7 " . ($src !== '' ? '<a href="' . esc_url($src) . '">' . esc_html($src_name) . '</a>' : esc_html($src_name))
+          . '</p>';
+    $text = '  ' . $lead . ': ' . $fig . $tail . " \xc2\xb7 " . $src_name . ($src !== '' ? ' ' . $src : '') . "\n";
+    return array($html, $text);
+}
+
+/**
+ * THE DAILY, HUMAN FIRST (owner, 2026-11-03): a scan-in-ten-seconds summary.
+ * Hiring signals lead; the all-signal total is one line of context; at most
+ * five employers, one line each, announced plans and open listings in their
+ * own ranked lists; the regional table is one line and a link, with the
+ * detail under "How we count". Every figure stays on the tracker page.
+ */
+function alt_talent_render_daily($m, $send_id = 0) {
+    $from = $m['from']; $to = $m['to'];
+    $url = alt_digest_talent_url($from, $to);
+    $hire_url = alt_digest_talent_url($from, $to, array('direction' => 'hiring'));
+    $types = alt_talent_hiring_by_type($m['hire']);
+    $n_hire = count($m['hire']) ?: (int) $m['hiring'];
+    $label = 'Latest hiring signals (' . $m['short'] . ')';
+    $html = "<h2>Who's hiring</h2><p data-alt=\"dateline\">" . esc_html($label) . '</p>';
+    $text = "Who's hiring\n" . $label . "\n";
+    $top = $types['plan'][0] ?? ($types['listings'][0] ?? null);
+    if ($top !== null) {
+        $where = trim((string) ($top['city'] ?? ''));
+        if ($where === '') $where = alt_talent_country_name($top['country'] ?? '');
+        $lead = alt_digest_count($n_hire, 'hiring signal') . ', led by ' . alt_digest_clean_employer($top['company'])
+              . ' (' . alt_talent_hiring_phrase($top) . ($where !== '' ? ' in ' . $where : '') . ').';
+    } else {
+        $lead = alt_digest_count($n_hire, 'hiring signal') . ' in this window.';
+    }
+    $html .= '<p data-alt="lead">' . esc_html($lead) . '</p>';
+    $text .= $lead . "\n";
+
+    // Up to five lines: announced plans first (up to three), open listings
+    // fill the rest, then any unused room goes back to announced plans.
+    $cap = 5;
+    $np = min(3, count($types['plan']));
+    $nl = min($cap - $np, count($types['listings']));
+    $np = min($cap - $nl, count($types['plan']));
+    $blocks = array(
+        array('Announced hiring plans', 'From press reports, ranked by roles the employer said it will add.',
+              array_slice($types['plan'], 0, $np)),
+        array('Open listings', "Live counts from employers' job boards, ranked by open roles; a different measure from press plans, so never ranked with them.",
+              array_slice($types['listings'], 0, $nl)),
+    );
+    $shown = 0;
+    foreach ($blocks as $b) {
+        if (!$b[2]) continue;
+        alt_briefing_section($b[0], '', $html, $text);
+        $html .= '<p data-alt="note">' . esc_html($b[1]) . '</p>';
+        $text .= $b[1] . "\n";
+        foreach ($b[2] as $r) {
+            list($h, $t) = alt_talent_daily_line($r, $send_id);
+            $html .= $h; $text .= $t; $shown++;
+        }
+    }
+    if ($shown > 0) {
+        $see = 'See all ' . alt_digest_count($n_hire, 'hiring signal');
+        $html .= '<p data-alt="more"><a href="' . esc_url(alt_digest_track_link($send_id, $hire_url)) . '">'
+               . esc_html($see) . ' &rarr;</a></p>';
+        $text .= '  ' . $see . ': ' . $hire_url . "\n";
+    }
+    $ctx = 'In context: ' . alt_digest_count($m['total'], 'talent and employer-activity signal') . ' in all, about '
+         . alt_digest_count($m['companies'], 'employer') . '.';
+    $html .= '<p data-alt="note">' . esc_html($ctx) . '</p>';
+    $text .= "\n" . $ctx . "\n";
+    if ($m['regions']) {
+        $first = $m['regions'][0];
+        foreach ($m['regions'] as $r) {
+            if ($r['region'] !== 'Not recorded' && $r['region'] !== 'Multiple or other countries') { $first = $r; break; }
+        }
+        $where = 'By region, ' . $first['region'] . ' led with ' . alt_digest_count($first['jobs'], 'signal') . '.';
+        $html .= '<p data-alt="note">' . esc_html($where) . ' <a href="' . esc_url(alt_digest_track_link($send_id, $url))
+               . '">See where &rarr;</a></p>';
+        $text .= $where . ' See where: ' . $url . "\n";
+    }
+
+    $notes = array();
+    if ($m['regions']) {
+        $parts = array();
+        foreach ($m['regions'] as $r) $parts[] = $r['region'] . ' ' . alt_digest_number($r['jobs']);
+        $notes[] = 'Signals by region: ' . implode(" \xc2\xb7 ", $parts) . '.';
+    }
+    if ($m['unplaced'] > 0 && $m['regions']) {
+        $notes[] = alt_digest_count($m['unplaced'], 'signal') . ($m['unplaced'] === 1 ? ' carries' : ' carry') . ' no country.';
+    }
+    if ($m['provisional']) $notes[] = 'Provisional: signals keep arriving for a few days after a period ends.';
+    $read = alt_digest_date_range(gmdate('Y-m-d', $m['now']), gmdate('Y-m-d', $m['now'])) . ' at ' . gmdate('H:i', $m['now']) . ' UTC';
+    $notes[] = 'Snapshot composed ' . $read . '. A signal is a published report about an employer; most are not independently verified.';
+    alt_briefing_section('Notes', '', $html, $text);
+    foreach ($notes as $n) { $html .= '<p data-alt="footnote">' . esc_html($n) . '</p>'; $text .= '  ' . $n . "\n"; }
+    $method = home_url('/talent-intelligence-tracker/');
+    $html .= '<p data-alt="footnote"><a href="' . esc_url($method) . '">About the talent tracker</a></p>';
+    $text .= '  About the talent tracker: ' . $method . "\n";
+
+    $subject = alt_talent_daily_subject($m, $types);
+    $preheader = alt_digest_fit_preheader($lead, array());
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
+                 'metric' => $subject !== '' ? $subject : alt_digest_count($m['total'], $m['noun']));
+}
+
 function alt_talent_render($m, $send_id = 0) {
+    if ($m['kind'] === 'daily') return alt_talent_render_daily($m, $send_id);
     $from = $m['from']; $to = $m['to']; $kind = $m['kind'];
     $url = alt_digest_talent_url($from, $to);
     $word = array('daily' => 'today', 'weekly' => 'this week', 'monthly' => 'this month')[$kind] ?? 'this period';
