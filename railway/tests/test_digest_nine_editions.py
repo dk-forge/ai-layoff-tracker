@@ -155,26 +155,18 @@ def articles_fixture(n_posts):
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
 class TheArticlesCaptionCountsPastTheFetchCeiling(unittest.TestCase):
 
-    def test_forty_three_posts_are_not_called_twelve(self):
-        out = compose(articles_fixture(43))
-        for part in (out["html"], out["text"]):
-            self.assertIn("The 3 newest of 43 posts we published", part)
-            self.assertNotIn("of 12 posts", part)
+    def test_no_post_count_caption_any_more(self):
+        """Owner 2026-11-03: "The 3 newest of N posts we published..." reads
+        as machine output, so no count caption is printed at all."""
+        for n in (4, 12, 43):
+            out = compose(articles_fixture(n))
+            self.assertNotIn("posts we published", out["html"] + out["text"])
 
     def test_still_only_three_are_printed(self):
         text = compose(articles_fixture(43))["text"]
         self.assertIn("Post number 1", text)
         self.assertIn("Post number 3", text)
         self.assertNotIn("Post number 4", text)
-
-    def test_below_the_ceiling_the_count_is_unchanged(self):
-        out = compose(articles_fixture(4))
-        self.assertIn("The 3 newest of 4 posts we published", out["text"])
-
-    def test_exactly_the_ceiling_is_the_ceiling(self):
-        """12 posts really is 12. The fix must not add one or say 'at least'."""
-        out = compose(articles_fixture(12))
-        self.assertIn("The 3 newest of 12 posts we published", out["text"])
 
     def test_the_harness_ceiling_is_real(self):
         """The stub used to return every fixture post regardless of the

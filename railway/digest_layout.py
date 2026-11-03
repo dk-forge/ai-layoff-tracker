@@ -67,6 +67,8 @@ PILL_BG = email_theme.PILL_BG
 FONT = email_theme.FONT
 
 PRODUCT = "AI Layoff Tracker"
+# Mirror of ALT_CAREER_INSIGHTS in includes/subscribe.php.
+CAREER_INSIGHTS = "Career Insights from AskTheRecruiter"
 WIDTH_PX = 600
 TEXT_WIDTH = 72
 # THE ONE NAME, and it is the same string the sender identity uses. The owner
@@ -1121,6 +1123,9 @@ def product_name(parts=()) -> str:
     keys = {str(p[0]).strip().lower() for p in (parts or ()) if p}
     if keys and not (keys & {"layoff", "follows"}) and "talent" in keys:
         return "Talent Intelligence Tracker"
+    # The blog digest alone is not a layoff tracker (owner, 2026-11-03).
+    if keys == {"articles"}:
+        return CAREER_INSIGHTS
     return PRODUCT
 
 

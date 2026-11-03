@@ -1237,6 +1237,29 @@ function alt_digest_mirror($email) {
  * Consent flags + frequency out of a submitted form. Returns null when no
  * list is ticked: subscribing to nothing is refused, not silently stored.
  */
+/**
+ * CAREER INSIGHTS IS WEEKLY BY DEFAULT FOR NEW SUBSCRIBERS (owner, 2026-11-03).
+ *
+ * The form has one frequency radio for all lists; the blog digest no longer
+ * follows it unless the form names `alt_freq_articles`. Existing readers keep
+ * what they chose: alt_digest_keep_articles_freq() carries a confirmed row's
+ * stored freq_articles through a resubmission. No stored row is migrated.
+ */
+function alt_digest_articles_freq_from_post($post) {
+    $want = sanitize_key($post['alt_freq_articles'] ?? '');
+    return $want !== '' ? alt_digest_accepted_freq($want) : 'weekly';
+}
+
+/** A confirmed reader already on the blog list keeps their stored cadence. */
+function alt_digest_keep_articles_freq($row, array $prefs) {
+    if (is_array($row) && ($row['status'] ?? '') === 'confirmed'
+        && !empty($row['consent_articles']) && !empty($row['freq_articles'])
+        && !empty($prefs['consent_articles'])) {
+        $prefs['freq_articles'] = (string) $row['freq_articles'];
+    }
+    return $prefs;
+}
+
 function alt_digest_prefs_from_post($post) {
     // accepted_freq, not valid_freq: an unoffered monthly must not be storable
     // from a hand-crafted POST (the form only shows weekly/daily radios).
@@ -1247,7 +1270,7 @@ function alt_digest_prefs_from_post($post) {
         'consent_articles' => empty($post['alt_list_articles']) ? 0 : 1,
         'freq_layoff'      => $freq,
         'freq_talent'      => $freq,
-        'freq_articles'    => $freq,
+        'freq_articles'    => alt_digest_articles_freq_from_post($post),
     );
     if (!$prefs['consent_layoff'] && !$prefs['consent_talent'] && !$prefs['consent_articles']) {
         return null;
@@ -1344,6 +1367,7 @@ function alt_digest_signup($email, array $prefs, $partners = 0) {
     $table = alt_subscribers_table();
     $now = gmdate('Y-m-d H:i:s');
     $row = alt_digest_get_by_email($email);
+    $prefs = alt_digest_keep_articles_freq($row, $prefs);
     $confirm = alt_digest_new_token();
     // Null for every path where nothing can be lost: a new address, or a
     // pending/unsubscribed row being rebuilt from scratch. Non-null only on the
@@ -7561,6 +7585,46 @@ function alt_digest_standfirst($text) {
     return rtrim($cut, " ,;:.") . '...';
 }
 
+if (!defined('ALT_CAREER_INSIGHTS')) define('ALT_CAREER_INSIGHTS', 'Career Insights from AskTheRecruiter');
+
+/**
+ * AN EXCERPT THAT READS LIKE SEO KEYWORD SOUP (owner, 2026-11-03), e.g.
+ * "What does a resume match score job description check mean?". It is a
+ * search query, not a summary: a question, or mostly the title's own words.
+ */
+function alt_digest_excerpt_is_keyword_soup($blurb, $title) {
+    $blurb = trim((string) $blurb);
+    if ($blurb === '') return true;
+    if (substr($blurb, -1) === '?') return true;
+    $words = preg_split('/[^a-z0-9]+/', strtolower($blurb), -1, PREG_SPLIT_NO_EMPTY);
+    $tw = array_flip(preg_split('/[^a-z0-9]+/', strtolower((string) $title), -1, PREG_SPLIT_NO_EMPTY));
+    if (count($words) < 6) return true;
+    $hit = 0;
+    foreach ($words as $w) if (isset($tw[$w])) $hit++;
+    return $hit / count($words) >= 0.7;
+}
+
+/**
+ * The post's first real sentence: a statement of 40+ characters from the
+ * body, skipping headings and questions. The author's words, verbatim; ''
+ * when there is none, so nothing is invented.
+ */
+function alt_digest_first_real_sentence($content) {
+    $content = preg_replace('#<(h[1-6]|figure|figcaption|script|style)\b.*?</\1>#is', ' ', (string) $content);
+    $content = preg_replace('#</(p|li|div)>#i', "\n", $content);
+    $plain = html_entity_decode(strip_tags($content), ENT_QUOTES, 'UTF-8');
+    foreach (preg_split('/\n+/', $plain) as $para) {
+        $para = trim(preg_replace('/\s+/', ' ', $para));
+        if ($para === '') continue;
+        foreach (preg_split('/(?<=[.!?])\s+(?=[A-Z0-9"\'])/u', $para) as $sent) {
+            $sent = trim($sent);
+            if (strlen($sent) < 40 || substr($sent, -1) === '?' || !preg_match('/[.!]$/', $sent)) continue;
+            return alt_digest_standfirst($sent);
+        }
+    }
+    return '';
+}
+
 function alt_digest_compose_articles($from, $to, $send_id = 0) {
     if (!function_exists('get_posts')) return null;
     /*
@@ -7673,10 +7737,14 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
             $minutes = max(1, (int) round($words / 220));
             $meta[] = alt_digest_count($minutes, 'min read', 'min read');
         }
+        $blurb = alt_digest_standfirst($blurb);
+        if (alt_digest_excerpt_is_keyword_soup($blurb, $title)) {
+            $blurb = alt_digest_first_real_sentence(isset($post->post_content) ? $post->post_content : '');
+        }
         $items[] = array(
             'title' => $title,
             'link'  => $link,
-            'blurb' => alt_digest_standfirst($blurb),
+            'blurb' => $blurb,
             'meta'  => implode(', ', $meta),
         );
     }
@@ -7703,180 +7771,46 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
     if ($published !== null && ($published - $skipped) > $found) {
         $found = $published - $skipped;
     }
+    /*
+      CAREER INSIGHTS, HUMAN FIRST (owner, 2026-11-03). One featured read with
+      a one or two sentence summary and "Read", then two secondary reads. No
+      machine caption ("The 3 newest of 5 posts..."), no house standfirst.
+      Newest first is still the order; nothing is ranked by an invented score.
+    */
     $items = array_slice($items, 0, 3);
-    $range = alt_digest_date_range($from, $to);
-    // The prepositional form, because every clause here ends in the window.
-    // See alt_digest_span_phrase for the sentence the owner sent back.
-    $span = alt_digest_span_phrase($from, $to);
-    $shown = count($items);
-    $caption = $found > $shown
-        ? ($shown === 1
-            ? 'The newest of ' . $found . ' posts we published ' . $span . '.'
-            : 'The ' . $shown . ' newest of ' . $found . ' posts we published '
-              . $span . '.')
-        : ($found === 1
-            ? 'One post published ' . $span . '.'
-            // "All 2 posts we published" spends its first word on a claim
-            // nobody doubted. The count is the fact.
-            : $found . ' posts published ' . $span . ', newest first.');
-
-    /*
-      THE FRAMING THE OWNER ASKED FOR, WHICH IS ONE SENTENCE.
-
-      HIS COMPLAINT, VERBATIM IN SUBSTANCE: "Two blog posts appear with no
-      framing. They are just there." He is right. The section had a heading and
-      a count, and neither says what these are or why they follow three blocks
-      of layoff statistics. A reader who has just read a week of figures meets
-      two titles and has to work out the relationship themselves.
-
-      IT IS FIXED PROSE AND THAT IS ALLOWED HERE, because it makes no claim
-      about the items. It says what the section IS, which cannot stop being
-      true when the posts change; the count, the window and the ordering are
-      still measured and still live in the caption below it. Compare the "why
-      it matters" line in the layoff section, which is a statement about the
-      metric for exactly the same reason.
-    */
-    $standfirst = 'What we wrote around the numbers: analysis and explainers '
-                . 'from the tracker team.';
-    // `standfirst`, not `lead`. The lead variant is the 18px opening of the
-    // layoff edition, and at that size this line outweighed the article titles
-    // under it, which is the wrong hierarchy for a block whose job is to get a
-    // reader into one of those titles.
-    $html = '<h2>From the blog</h2>'
-          . '<p data-alt="standfirst">' . esc_html($standfirst) . '</p>';
-    $text = "From the blog\n" . $standfirst . "\n";
-    if ($range !== '') {
-        $html .= '<p data-alt="caption">' . esc_html($caption) . '</p>';
-        $text .= $caption . "\n";
+    $html = '<h2>' . esc_html(ALT_CAREER_INSIGHTS) . '</h2>';
+    $text = ALT_CAREER_INSIGHTS . "\n";
+    $featured = $items[0];
+    $click = alt_digest_track_link($send_id, $featured['link']);
+    $html .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+           . '<tr><td data-alt="item-first"><p data-alt="item-title"><a href="' . esc_url($click) . '">'
+           . esc_html($featured['title']) . '</a></p>';
+    $text .= "\n" . $featured['title'] . "\n";
+    if ($featured['blurb'] !== '') {
+        $html .= '<p data-alt="item-blurb">' . esc_html($featured['blurb']) . '</p>';
+        $text .= $featured['blurb'] . "\n";
     }
-    /*
-      An articles-only subscriber exists and gets a message whose FIRST and
-      only section is this one, so this section has to be able to write the
-      inbox snippet too. The caption already states the count and the window,
-      which is the whole job, so it is reused rather than reworded. It is
-      still passed through the fitter: a caption is written for a body and
-      this is the one place a ceiling applies.
-    */
-    /*
-      THE PREVIEW ADDS, IT NEVER REPEATS. This reused the caption, so a subject
-      reading "2 new posts \xc2\xb7 Aug 10-16" sat beside a preview reading "2 posts
-      published between August 10 and 16, 2026", which is the same sentence
-      twice. The owner saw it in his own inbox.
-
-      A COUNT OF POSTS IS NOT A REASON TO OPEN ONE. The newest post's own title
-      is, and it is the single thing the subject's figure cannot carry. It is
-      the author's words, not ours, and a second title is added only when it
-      fits, because a snippet is never truncated mid-title.
-
-      AND THE SUBJECT NOW CARRIES THAT TITLE, so this gives it up. The subject
-      led with "2 new posts", which is a count of things the reader has not
-      seen and no reason to open any of them, and the preview carried the
-      headline that was. Leading the subject with the headline is the right way
-      round, and it makes the old preview an exact repeat of the subject in the
-      one case where both are shown: the articles-only subscriber, who is the
-      only reader whose subject this metric ever reaches.
-
-      SO THE PREVIEW MOVES ONE DOWN THE LIST. It offers the SECOND title, and
-      the count of whatever is below that, which is again the thing the subject
-      cannot carry. On a single-post edition there is no second title and the
-      post's own standfirst goes in the slot: the author's summary of the piece
-      the subject just named, which adds rather than repeats.
-    */
-    $preheader = '';
-    if ($items) {
-        $titles = array();
-        foreach ($items as $item) $titles[] = $item['title'];
-        array_shift($titles);
-        if ($titles) {
-            $rest = (count($titles) > 1)
-                ? array('and ' . alt_digest_count(count($titles) - 1, 'more post'))
-                : array();
-            $preheader = alt_digest_fit_preheader('Also: ' . $titles[0], $rest);
-        } else {
-            $blurb = trim((string) ($items[0]['blurb'] ?? ''));
-            $preheader = ($blurb === '') ? ''
-                       : alt_digest_fit_preheader($blurb, array());
+    $html .= '<p data-alt="item-meta"><a href="' . esc_url($click) . '">Read &rarr;</a>'
+           . ($featured['meta'] !== '' ? ' ' . esc_html($featured['meta']) : '') . '</p></td></tr></table>';
+    $text .= 'Read: ' . $featured['link'] . "\n";
+    $more = array_slice($items, 1);
+    if ($more) {
+        $html .= '<h3>Also worth reading</h3><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">';
+        $text .= "\nAlso worth reading\n";
+        foreach ($more as $i => $item) {
+            $c = alt_digest_track_link($send_id, $item['link']);
+            $html .= '<tr><td data-alt="' . ($i === 0 ? 'item-first' : 'item') . '"><p data-alt="item-title"><a href="'
+                   . esc_url($c) . '">' . esc_html($item['title']) . '</a></p></td></tr>';
+            $text .= '  - ' . $item['title'] . "\n    " . $item['link'] . "\n";
         }
+        $html .= '</table>';
     }
-    /*
-      THE BREAKUP THE OWNER ASKED FOR, AND WHY IT IS A TABLE.
-
-      This was a `<ul>`: three titles, each with a `<br>` and a severed
-      sentence hanging under it, at one size, in one colour, with a bullet in
-      front. Nothing in it said where one item ended and the next began except
-      the bullet, and a bullet is the weakest separator in an email because it
-      is the one thing a client is most likely to restyle.
-
-      Each item is now its own cell with a hairline `border-top`, and the
-      separation is therefore a rule the reader can see rather than a glyph
-      they have to infer. That choice is measured, not aesthetic: `<table>` is
-      at 100% client support and `<hr>` at 72.97% (caniemail), and empty
-      spacer rows do not reliably keep their height (Email on Acid), so every
-      gap here is cell padding and every break is a cell border. The first
-      item carries no rule, because a rule directly under the caption would
-      read as the end of the caption rather than the start of a list.
-
-      NO STYLE IS WRITTEN HERE, as everywhere else in this file. The cell says
-      what it IS with data-alt and railway/digest_layout.py decides what that
-      looks like, so the design lives in one file and this one decides only
-      what a line means.
-    */
-    $html .= '<table role="presentation" width="100%" cellpadding="0" '
-           . 'cellspacing="0" border="0">';
-    foreach ($items as $i => $item) {
-        // Counted the same way the other two sections count theirs: a
-        // destination that fails the host guard is left unwrapped, never
-        // dropped, so counting can never break or relocate a link.
-        $click = alt_digest_track_link($send_id, $item['link']);
-        $html .= '<tr><td data-alt="' . ($i === 0 ? 'item-first' : 'item') . '">'
-               . '<p data-alt="item-title"><a href="' . esc_url($click) . '">'
-               . esc_html($item['title']) . '</a></p>';
-        $text .= '  - ' . $item['title'] . "\n";
-        if ($item['blurb'] !== '') {
-            $html .= '<p data-alt="item-blurb">' . esc_html($item['blurb']) . '</p>';
-            $text .= '    ' . $item['blurb'] . "\n";
-        }
-        if ($item['meta'] !== '') {
-            $html .= '<p data-alt="item-meta">' . esc_html($item['meta']) . '</p>';
-            $text .= '    ' . $item['meta'] . "\n";
-        }
-        $html .= '</td></tr>';
-        // The plain URL in the text part: a text reader should not be handed a
-        // machine shaped URL to squint at.
-        $text .= '    ' . $item['link'] . "\n";
-    }
-    $html .= '</table>';
-    /*
-      A MINOR METRIC. The post count is the least important of the three
-      numbers and the combined subject is already at its ceiling, so it reaches
-      a subject only when it is the ONLY thing the message carries, which is
-      the articles-only subscriber, who exists.
-    */
-    /*
-      THE HEADLINE IS THIS STREAM'S METRIC.
-
-      "2 new posts \xc2\xb7 Aug 10-16" is too generic to earn an open: it names a
-      quantity of things the reader cannot see and no reason to want any of
-      them. The post's own title is the metric here, in the same way a job
-      count is the layoff section's, and it is the author's words rather than
-      ours. No brand prefix and no "From the blog:" label: the sender column
-      already carries the brand, and a category label in front of a headline
-      spends the characters Gmail truncates on saying nothing.
-
-      ONE TITLE, NEVER A CONCATENATION. Two headlines joined by a dot is a
-      subject a reader parses instead of reads, and the second one is always
-      cut. The lead is the newest post, which is the sort this composer prints
-      and states; there is no engagement signal in this repo to rank on, and
-      inventing one to pick a "best" title would be the fixed-prose-around-
-      variable-data fault in a new place. The rest of the edition is named in
-      the preview line directly above.
-
-      STILL 'minor'. A post title must never displace a tracker figure for a
-      subscriber who takes both, which is what that flag governs, and nothing
-      about leading with the headline changes that ordering.
-    */
+    // The preview line adds what the subject cannot: the featured summary.
+    $preheader = $featured['blurb'] !== '' ? alt_digest_fit_preheader($featured['blurb'], array()) : '';
+    // The subject is the featured post's own title (the author's words, the
+    // reason to open), never a count of posts.
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
-                 'metric' => alt_digest_subject_title($items ? $items[0]['title'] : ''),
+                 'metric' => alt_digest_subject_title($featured['title']),
                  'minor' => true);
 }
 
