@@ -845,24 +845,18 @@ class TheArticlesList(unittest.TestCase):
         Nothing is invented in either branch: one is the editor's sentence,
         the other a verbatim trim of the author's.
         """
+        # Since 2026-11-03 only the FEATURED read carries a summary; the two
+        # secondary reads are titles. The fallback itself is still exercised
+        # by test_digest_career_insights.py.
         for part in (self.o["articles_html"], self.o["articles_text"]):
-            self.assertIn("An 8-K is the filing a company makes when something "
-                          "material happens.", part)
+            self.assertNotIn("An 8-K is the filing a company makes when something "
+                             "material happens.", part)
 
     def test_only_the_first_sentence_is_taken(self):
         """340 characters under every item is the wall the nine-second budget
         cannot pay for, and a sentence is a unit the author chose."""
         self.assertNotIn("share of the entries in this tracker",
                          self.o["articles_text"])
-
-    def test_a_standfirst_with_no_sentence_end_is_cut_at_a_word_and_marked(self):
-        text = self.o["articles_text"]
-        line = [l for l in text.splitlines()
-                if l.strip().startswith("A very long opening")][0]
-        self.assertTrue(line.rstrip().endswith("..."),
-                        "a cut standfirst does not show that the author "
-                        "carried on")
-        self.assertLess(len(line.strip()), 200)
 
     # --- three, and say so when there were more ------------------------
 
@@ -871,14 +865,12 @@ class TheArticlesList(unittest.TestCase):
         below two others. Three with a reason to click beats five without one.
         But "the three newest" is only honest if the reader is told there were
         more, so the query ceiling is above the print limit."""
+        # The count caption was withdrawn on 2026-11-03 (owner): three reads,
+        # no "N newest of M posts" line.
         for part in (self.o["articles_html"], self.o["articles_text"]):
-            self.assertIn("The 3 newest of 4 posts we published between", part)
+            self.assertNotIn("posts we published", part)
         self.assertNotIn("A fifth post", self.o["articles_text"],
                          "the cut to three did not actually drop anything")
-
-    def test_the_section_states_its_window_like_every_other_block(self):
-        self.assertRegex(self.o["articles_text"],
-                         r"posts we published (on|between) .*\b20\d{2}\.")
 
     def test_the_composer_picks_no_size_and_no_colour_here_either(self):
         """digest_layout.py owns the design. This section used to write its
