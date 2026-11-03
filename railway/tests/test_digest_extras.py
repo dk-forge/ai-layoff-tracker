@@ -194,19 +194,18 @@ class Wiring(unittest.TestCase):
         self.assertIn("reason_tags", m.group(0))
 
 
-class ForwardLine(unittest.TestCase):
-    def test_footer_invites_a_forward_on_both_parts(self):
-        sentences = layout.footer_sentences(True)
-        fwd = [s for s in sentences if "Forward" in s]
-        self.assertEqual(len(fwd), 1)
-        html = layout._footer("https://x.example/u", "https://x.example/m")
-        self.assertIn(layout.SIGNUP_URL, html)
+class ForwardLineWasDropped(unittest.TestCase):
+    """The owner shortened the footer on 2026-11-03: the "forward this"
+    promo sentence is gone from all three renderers."""
+
+    def test_footer_has_no_forward_line_on_either_part(self):
+        self.assertFalse([s for s in layout.footer_sentences(True) if "Forward" in s])
         text = layout.render_text([], kicker="", unsub_url="https://x.example/u",
                                   manage_url="https://x.example/m")
-        self.assertIn(layout.SIGNUP_URL, text)
+        self.assertNotIn("Forward this email", text)
 
     def test_php_fallback_says_the_same(self):
-        self.assertIn("Forward this email", read(SUBSCRIBE))
+        self.assertNotIn("Forward this email", read(SUBSCRIBE))
 
 
 if __name__ == "__main__":
