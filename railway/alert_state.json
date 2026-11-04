@@ -107,6 +107,11 @@
       "last": 1793791166,
       "subject": "CI RED: VPS heartbeat \u2014 no error line could be extracted from the log"
     },
+    "vps:heartbeat-stale": {
+      "first": 1793791729,
+      "last": 1793791729,
+      "subject": "VPS heartbeat is stale: atr-runner may be down"
+    },
     "vps:offline:asktherecruiter-sandbox": {
       "first": 1793791727,
       "last": 1793791727,
@@ -118,6 +123,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-04T11:28:48+00:00",
+  "updated_at": "2026-11-04T11:28:50+00:00",
   "version": 1
 }
