@@ -117,17 +117,12 @@
       "last": 1793806133,
       "subject": "VPS runner offline: ai-layoff-tracker"
     },
-    "vps:offline:asktherecruiter-sandbox": {
-      "first": 1793820551,
-      "last": 1793820551,
-      "subject": "VPS runner offline: asktherecruiter-sandbox"
-    },
     "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:e209e89eb82e6f01": {
       "first": 1791240775,
       "last": 1791240775,
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-04T19:29:11+00:00",
+  "updated_at": "2026-11-04T20:29:12+00:00",
   "version": 1
 }
