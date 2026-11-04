@@ -102,11 +102,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "vps-heartbeat:main:c1b881676850675a": {
-      "first": 1793791166,
-      "last": 1793791166,
-      "subject": "CI RED: VPS heartbeat \u2014 no error line could be extracted from the log"
-    },
     "vps:heartbeat-stale": {
       "first": 1793791729,
       "last": 1793791729,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-04T11:28:50+00:00",
+  "updated_at": "2026-11-04T11:47:51+00:00",
   "version": 1
 }
