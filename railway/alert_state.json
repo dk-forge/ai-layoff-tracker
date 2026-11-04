@@ -107,12 +107,17 @@
       "last": 1793791166,
       "subject": "CI RED: VPS heartbeat \u2014 no error line could be extracted from the log"
     },
+    "vps:offline:asktherecruiter-sandbox": {
+      "first": 1793791727,
+      "last": 1793791727,
+      "subject": "VPS runner offline: asktherecruiter-sandbox"
+    },
     "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:e209e89eb82e6f01": {
       "first": 1791240775,
       "last": 1791240775,
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-04T11:19:52+00:00",
+  "updated_at": "2026-11-04T11:28:48+00:00",
   "version": 1
 }
