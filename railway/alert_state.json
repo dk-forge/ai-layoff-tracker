@@ -107,6 +107,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "vps:offline:ai-layoff-tracker": {
+      "first": 1793806133,
+      "last": 1793806133,
+      "subject": "VPS runner offline: ai-layoff-tracker"
+    },
     "vps:offline:asktherecruiter-sandbox": {
       "first": 1793802532,
       "last": 1793802532,
@@ -118,6 +123,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-04T14:43:18+00:00",
+  "updated_at": "2026-11-04T15:28:54+00:00",
   "version": 1
 }
