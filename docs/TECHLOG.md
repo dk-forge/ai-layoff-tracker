@@ -30684,7 +30684,7 @@ of failures, not ~20). **Guard:** `scripts/tests/test_contabo_watch.py`
 (second failure waits, third restarts).
 **Class:** absent-read-as-ok (a missed probe on a busy box read as "down"; the fix waits for more evidence)
 
-## 2026-11-05 — news and SEC ingest gap 2026-09-29 to 2026-11-05, backfilled
+## 2026-11-05 - news and SEC ingest gap 2026-09-29 to 2026-11-05, backfilled
 Gap start is **2026-09-29**: the last ingest with paid reads ON was run
 36490465653 (2026-09-28 22:07Z); 29 Sep to 4 Oct no ingest ran on either host
 (entry 2026-10-05), and from the first VPS run on 2026-10-05 15:07Z
