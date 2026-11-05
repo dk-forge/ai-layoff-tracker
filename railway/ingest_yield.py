@@ -142,8 +142,9 @@ def evaluate(entries, key_state, api_key):
     if off:
         body = (_fix_line(tail) + "\n\n"
                 "Paid reads are OFF for the daily ingest, so no news or extraction "
-                "event can be posted until the limit is raised. Free sources (WARN, "
-                "SEC rows) keep running.\n\n" + _key_numbers(key_state) +
+                "event can be posted until the limit is raised. Model-free sources (WARN, "
+                "ERM, state scrapers) keep running; SEC 8-K rows need a paid "
+                "read and wait too.\n\n" + _key_numbers(key_state) +
                 "\n"
                 "Raised once per incident by railway/ingest_yield.py "
                 "(ingest-silence.yml). A RECOVERED mail follows when it clears.")
