@@ -1,4 +1,4 @@
-## 2026-11-05 - Texas WARN dark 36 days; Jeune Afrique feed retired (vNEXT)
+## 2026-11-05 - Texas WARN dark 36 days; Jeune Afrique feed retired (2.20.298)
 
 warn:TX: the TWC WARN page, the workbook URL and the column layout are all
 unchanged (2026 workbook served 115 notices through 2026-11-03 on 2026-11-05).

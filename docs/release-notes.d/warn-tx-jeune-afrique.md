@@ -1,5 +1,5 @@
 ---
-version: vNEXT
+version: 2.20.298
 type: fix
 area: sources
 date: 2026-11-05
