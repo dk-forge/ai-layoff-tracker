@@ -330,8 +330,58 @@ function alt_talent_daily_subject($m, $types) {
     return $s;
 }
 
+function alt_talent_employer_key($r) {
+    $k = strtolower(trim((string) ($r['company_key'] ?? '')));
+    return $k !== '' ? $k : strtolower(trim((string) ($r['company'] ?? '')));
+}
+
+/**
+ * Employer -> verified job board URL, read only from the window's own
+ * job-board rows (collector ats_boards: the board the collector itself read
+ * open roles from). Nothing is guessed: an employer with no such row gets no
+ * board link (owner feedback 2026-11-05).
+ */
+function alt_talent_job_boards($rows) {
+    $out = array();
+    foreach ((array) $rows as $r) {
+        $r = (array) $r;
+        if (strtolower(trim((string) ($r['collector'] ?? ''))) !== 'ats_boards') continue;
+        $u = trim((string) ($r['source_url'] ?? ''));
+        if ($u === '' || !preg_match('#^https://#i', $u)) continue;
+        if (function_exists('alt_digest_external_link_ok') && !alt_digest_external_link_ok($u)) continue;
+        $k = alt_talent_employer_key($r);
+        if ($k !== '' && !isset($out[$k])) $out[$k] = $u;
+    }
+    return $out;
+}
+
+/**
+ * "Europe led with 32 signals, followed by North America with 30." The
+ * largest placed region by the SAME counts Notes prints; "Not recorded" and
+ * the catch-all never lead. A tie names every tied region. The old line took
+ * the first region of the fixed display order (owner feedback 2026-11-05).
+ */
+function alt_talent_region_lead($regions) {
+    $placed = array();
+    foreach ((array) $regions as $r) {
+        if ($r['region'] === 'Not recorded' || $r['region'] === 'Multiple or other countries') continue;
+        if ((int) $r['jobs'] > 0) $placed[] = $r;
+    }
+    if (!$placed) return '';
+    usort($placed, function ($a, $c) { return (int) $c['jobs'] - (int) $a['jobs']; });
+    $top = (int) $placed[0]['jobs'];
+    $lead = array(); $rest = array();
+    foreach ($placed as $r) { if ((int) $r['jobs'] === $top) $lead[] = $r['region']; else $rest[] = $r; }
+    $names = count($lead) > 1
+        ? implode(', ', array_slice($lead, 0, -1)) . ' and ' . end($lead)
+        : $lead[0];
+    $s = 'By region, ' . $names . ' led with ' . alt_digest_count($top, 'signal') . (count($lead) > 1 ? ' each' : '');
+    if ($rest) $s .= ', followed by ' . $rest[0]['region'] . ' with ' . alt_digest_number((int) $rest[0]['jobs']);
+    return $s . '.';
+}
+
 /** One compact line per employer: flag, employer, number + type, place, source. */
-function alt_talent_daily_line($r, $send_id) {
+function alt_talent_daily_line($r, $send_id, $boards = array()) {
     $country = alt_talent_country_name($r['country'] ?? '');
     $flag = function_exists('alt_digest_country_flag') ? alt_digest_country_flag($country) : '';
     $hc = alt_talent_headcount($r);
@@ -344,10 +394,16 @@ function alt_talent_daily_line($r, $send_id) {
     $name = alt_digest_clean_employer($r['company']);
     $lead = ($flag !== '' ? $flag . ' ' : '') . $name;
     $tail = ($place !== '' ? " \xc2\xb7 " . $place : '');
+    // The employer's verified job board, only when the window holds one for
+    // this employer and it is not already the row's own source link.
+    $board = (string) ($boards[alt_talent_employer_key($r)] ?? '');
+    if ($board === $src) $board = '';
     $html = '<p data-alt="item-line"><strong>' . esc_html($lead) . '</strong>: ' . esc_html($fig . $tail)
           . " \xc2\xb7 " . ($src !== '' ? '<a href="' . esc_url($src) . '">' . esc_html($src_name) . '</a>' : esc_html($src_name))
+          . ($board !== '' ? " \xc2\xb7 " . '<a href="' . esc_url($board) . '">Open roles</a>' : '')
           . '</p>';
-    $text = '  ' . $lead . ': ' . $fig . $tail . " \xc2\xb7 " . $src_name . ($src !== '' ? ' ' . $src : '') . "\n";
+    $text = '  ' . $lead . ': ' . $fig . $tail . " \xc2\xb7 " . $src_name . ($src !== '' ? ' ' . $src : '')
+          . ($board !== '' ? " \xc2\xb7 Open roles " . $board : '') . "\n";
     return array($html, $text);
 }
 
@@ -363,6 +419,7 @@ function alt_talent_render_daily($m, $send_id = 0) {
     $url = alt_digest_talent_url($from, $to);
     $hire_url = alt_digest_talent_url($from, $to, array('direction' => 'hiring'));
     $types = alt_talent_hiring_by_type($m['hire']);
+    $boards = alt_talent_job_boards($m['rows']);
     $n_hire = count($m['hire']) ?: (int) $m['hiring'];
     $label = 'Latest hiring signals (' . $m['short'] . ')';
     $html = "<h2>Who's hiring</h2><p data-alt=\"dateline\">" . esc_html($label) . '</p>';
@@ -398,7 +455,7 @@ function alt_talent_render_daily($m, $send_id = 0) {
         $html .= '<p data-alt="note">' . esc_html($b[1]) . '</p>';
         $text .= $b[1] . "\n";
         foreach ($b[2] as $r) {
-            list($h, $t) = alt_talent_daily_line($r, $send_id);
+            list($h, $t) = alt_talent_daily_line($r, $send_id, $boards);
             $html .= $h; $text .= $t; $shown++;
         }
     }
@@ -408,16 +465,15 @@ function alt_talent_render_daily($m, $send_id = 0) {
                . esc_html($see) . ' &rarr;</a></p>';
         $text .= '  ' . $see . ': ' . $hire_url . "\n";
     }
-    $ctx = 'In context: ' . alt_digest_count($m['total'], 'talent and employer-activity signal') . ' in all, about '
-         . alt_digest_count($m['companies'], 'employer') . '.';
+    // Same window as the hiring list: /talent/v1/aggregate over since..until,
+    // inclusive, on COALESCE(published_date, DATE(captured_at)). `companies`
+    // is COUNT(DISTINCT company_key), an exact count, so no "about".
+    $ctx = 'In context: ' . alt_digest_count($m['total'], 'talent and employer-activity signal') . ' in all for '
+         . $m['short'] . ', from ' . alt_digest_count($m['companies'], 'distinct employer') . '.';
     $html .= '<p data-alt="note">' . esc_html($ctx) . '</p>';
     $text .= "\n" . $ctx . "\n";
-    if ($m['regions']) {
-        $first = $m['regions'][0];
-        foreach ($m['regions'] as $r) {
-            if ($r['region'] !== 'Not recorded' && $r['region'] !== 'Multiple or other countries') { $first = $r; break; }
-        }
-        $where = 'By region, ' . $first['region'] . ' led with ' . alt_digest_count($first['jobs'], 'signal') . '.';
+    $where = alt_talent_region_lead($m['regions']);
+    if ($where !== '') {
         $html .= '<p data-alt="note">' . esc_html($where) . ' <a href="' . esc_url(alt_digest_track_link($send_id, $url))
                . '">See where &rarr;</a></p>';
         $text .= $where . ' See where: ' . $url . "\n";
