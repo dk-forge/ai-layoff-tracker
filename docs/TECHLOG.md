@@ -30683,3 +30683,28 @@ running with SSH up. `UNHEALTHY_BEFORE_RESTART` 2 -> 3 (restart after ~30 min
 of failures, not ~20). **Guard:** `scripts/tests/test_contabo_watch.py`
 (second failure waits, third restarts).
 **Class:** absent-read-as-ok (a missed probe on a busy box read as "down"; the fix waits for more evidence)
+
+## 2026-11-05 - news and SEC ingest gap 2026-09-29 to 2026-11-05, backfilled
+Gap start is **2026-09-29**: the last ingest with paid reads ON was run
+36490465653 (2026-09-28 22:07Z); 29 Sep to 4 Oct no ingest ran on either host
+(entry 2026-10-05), and from the first VPS run on 2026-10-05 15:07Z
+(37330268990) every spend block read `DEGRADED: paid reads are OFF`, the
+spend.py misread fixed in #597. Catch-up run 42086266655: `Paid reads: ON`,
+41 posted, $0.148. Backfill, one run at a time inside the per-run ceilings:
+news-catchup days=30 (42094979737, 9 posted, $0.023), backfill.yml EDGAR
+2026-09-29..11-05 (42095780835, 8 posted, $0.067, stopped at
+BACKFILL_MAX_CALLS=400 inside November) and 2026-11-01..05 (42098508505,
+1 posted, $0.020), historical-news-sweep 2026-09-29..10-05 twice (0
+candidates both times: GDELT deadline and ChunkedEncodingError). Total $0.258.
+**SEC root cause:** no collector, user-agent, rate-limit or EFTS schema fault
+(the collector returned 134 October filings, HubSpot and FICO included). 8-K
+rows need a paid read, so from 10-05 every filing deferred
+(`edgar: items 51, calls 0`) and the one-day daily window never re-read it.
+Most Item 2.05 8-Ks state only a percentage (HubSpot 7%, FICO 15%), which the
+extractor refuses by design. Also fixed: the window anchored on a forward
+reference to Item 2.05 instead of its heading. Benchmark strict recall
+7/25 -> 13/25. Still uncovered: news for 29 Sep to 5 Oct (past NewsAPI's
+30-day history; GDELT failing). Owner item, forbidden path: spend.py's
+DEGRADED banner says SEC/EDGAR "keep running", but 8-K rows need a model.
+**Guard:** `railway/tests/test_edgar_item_205_anchor.py`; #596 pages on 0 posted.
+**Class:** absent-read-as-ok
