@@ -143,6 +143,17 @@ class OncePerIncident(unittest.TestCase):
         self.assertNotIn(y.KEY_ZERO_POSTS, sent)
 
 
+class ItMakesNoModelCall(unittest.TestCase):
+    """ingest-silence.yml holds the OpenRouter key and is EXEMPT from the
+    degrade step (test_spend_guard), so this module must never spend it."""
+
+    def test_it_makes_no_model_call(self):
+        with open(os.path.join(RAILWAY, "ingest_yield.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        for needle in ("/chat/completions", "chat.completions", "metered_call", "import openai"):
+            self.assertNotIn(needle, src)
+
+
 class TheWatchdogIsWired(unittest.TestCase):
     def test_ingest_silence_runs_it_with_the_mail_key_and_the_ledger_commit(self):
         path = os.path.join(RAILWAY, "..", ".github", "workflows", "ingest-silence.yml")

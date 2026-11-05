@@ -385,7 +385,11 @@ class EveryPaidWorkflowIsGuarded(unittest.TestCase):
     # pinned by a test that the module makes no model call, so an exemption
     # cannot quietly become a hole: openrouter_activity has
     # test_openrouter_activity.ItIsNotASecondBalanceWriter.test_it_makes_no_model_call.
-    EXEMPT = {"openrouter-balance-check.yml", "openrouter-activity.yml"}
+    # ingest-silence.yml (2026-11-05) reads only the key's /auth/key state to
+    # name the key in the "paid reads OFF" alarm: pinned by
+    # test_ingest_yield.ItMakesNoModelCall.
+    EXEMPT = {"openrouter-balance-check.yml", "openrouter-activity.yml",
+              "ingest-silence.yml"}
 
     def test_every_workflow_holding_the_key_runs_the_degrade_step(self):
         wf = ROOT / ".github/workflows"
