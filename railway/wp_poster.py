@@ -41,7 +41,9 @@ def post_to_wordpress(entry):
     layoff_date = entry.get("layoff_date") or "date unknown"
 
     payload = {
-        "title": f"{company}, {job_count:,} jobs, {layoff_date}",
+        "title": (f"{company}, ~{job_count:,} jobs (estimate), {layoff_date}"
+                  if entry.get("job_count_is_estimate")
+                  else f"{company}, {job_count:,} jobs, {layoff_date}"),
         "status": "publish",
         "meta": {
             "company_name": company,
@@ -70,6 +72,10 @@ def post_to_wordpress(entry):
             "announced": entry.get("announced", False),
             "ai_language": entry.get("ai_language"),
             "dedup_hash": entry.get("dedup_hash"),
+            # Owner ruling 2026-11-05: a pct x 10-K headcount is an ESTIMATE,
+            # labelled with its formula and source (headcount_estimate.py).
+            "job_count_is_estimate": bool(entry.get("job_count_is_estimate")),
+            "headcount_estimate": entry.get("headcount_estimate"),
         },
     }
 

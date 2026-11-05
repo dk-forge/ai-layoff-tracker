@@ -1,0 +1,161 @@
+"""Percent-only 8-Ks become a LABELLED estimate (owner ruling 2026-11-05).
+
+Most Item 2.05 8-Ks state only a share of the workforce (FICO ~15%, HubSpot
+~7%), and the extractor refuses a percentage as a count by design. The owner
+ruled "yes estimates": show pct x the employee count the company reported in
+its latest 10-K, labelled "estimate" with the formula and the source, and keep
+the filing's own reported figure (the percentage) beside it.
+"""
+import sys
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+
+sys.modules.setdefault("openai", SimpleNamespace())
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _requests_stub import install as _install_requests  # noqa: E402
+_install_requests()
+
+import headcount_estimate as he  # noqa: E402
+import extractor  # noqa: E402
+
+FICO_TEXT = ("Item 2.05 Costs Associated with Exit or Disposal Activities. On "
+             "October 20, 2026, the Board approved a restructuring plan that "
+             "will reduce the Company's global workforce by approximately 15%.")
+URL = "https://www.sec.gov/Archives/edgar/data/814547/000081454726000050/x8k.htm"
+
+
+def lookup(cik):
+    assert cik == "814547"
+    return {"employees": 3586, "fiscal_year_end": "2025-09-30",
+            "form": "10-K", "accession": "0000814547-25-000040",
+            "source_url": "https://www.sec.gov/Archives/edgar/data/814547/x10k.htm",
+            "basis": "dei:EntityNumberOfEmployees"}
+
+
+class Percent(unittest.TestCase):
+    def test_reads_workforce_percent_shapes(self):
+        cases = {
+            FICO_TEXT: 15.0,
+            "a reduction of approximately 7% of the Company's workforce": 7.0,
+            "eliminating about 12 percent of its employees": 12.0,
+            "will affect roughly 4.5% of our global headcount": 4.5,
+        }
+        for text, pct in cases.items():
+            self.assertEqual(he.workforce_percent(text)[0], pct, text)
+
+    def test_ignores_percentages_that_are_not_workforce(self):
+        for text in ("revenue fell 15% year over year",
+                     "a charge of approximately 15% of annual operating expense",
+                     "the stock rose 7%"):
+            self.assertIsNone(he.workforce_percent(text), text)
+
+    def test_cik_from_archive_url(self):
+        self.assertEqual(he.cik_from_url(URL), "814547")
+        self.assertIsNone(he.cik_from_url("https://example.com/x"))
+
+
+class Estimate(unittest.TestCase):
+    def test_estimate_is_pct_times_employees_with_label_formula_source(self):
+        est = he.estimate_for_filing({"source_type": "8K", "source_url": URL},
+                                     FICO_TEXT, lookup=lookup)
+        self.assertEqual(est["job_count"], 538)          # round(0.15 * 3586)
+        self.assertEqual(est["label"], "estimate")
+        self.assertEqual(est["reported_percent"], 15.0)
+        self.assertEqual(est["employees"], 3586)
+        self.assertIn("15% x 3,586", est["formula"])
+        self.assertIn("10-K", est["source"])
+        self.assertIn("approximately 15%", est["reported_text"])
+
+    def test_no_estimate_without_employee_count_or_for_news(self):
+        self.assertIsNone(he.estimate_for_filing(
+            {"source_type": "8K", "source_url": URL}, FICO_TEXT, lookup=lambda c: None))
+        self.assertIsNone(he.estimate_for_filing(
+            {"source_type": "news", "source_url": URL}, FICO_TEXT, lookup=lookup))
+
+    def test_risk_factor_section_is_never_estimated(self):
+        self.assertIsNone(he.estimate_for_filing(
+            {"source_type": "8K", "source_url": URL,
+             "sec_section": extractor.RISK_FACTORS_SECTION}, FICO_TEXT, lookup=lookup))
+
+    def test_employees_from_companyfacts_picks_latest_10k(self):
+        facts = {"facts": {"dei": {"EntityNumberOfEmployees": {"units": {"pure": [
+            {"val": 3400, "form": "10-K", "fy": 2024, "end": "2024-09-30",
+             "filed": "2024-11-08", "accn": "a1"},
+            {"val": 3586, "form": "10-K", "fy": 2025, "end": "2025-09-30",
+             "filed": "2025-11-07", "accn": "a2"},
+            {"val": 9999, "form": "10-Q", "fy": 2026, "end": "2026-03-31",
+             "filed": "2026-04-30", "accn": "a3"}]}}}}}
+        got = he.employees_from_companyfacts(facts)
+        self.assertEqual(got["employees"], 3586)
+        self.assertEqual(got["accession"], "a2")
+
+    def test_employees_from_10k_text(self):
+        text = ("Human Capital. As of September 30, 2025, we had approximately "
+                "3,586 full-time employees, of whom 1,200 were outside the U.S.")
+        self.assertEqual(he.employees_from_10k_text(text), 3586)
+        self.assertIsNone(he.employees_from_10k_text("no headcount here"))
+
+
+class FinalizeExtraction(unittest.TestCase):
+    def _final(self, monkey_lookup):
+        orig = he.default_lookup
+        he.default_lookup = monkey_lookup
+        try:
+            return extractor.finalize_extraction(
+                {"is_layoff_event": True, "job_count": None,
+                 "company_name": "Fair Isaac Corp", "layoff_date": "2026-10-20",
+                 "excerpt": None, "confidence": 80},
+                {"source_type": "8K", "source_url": URL, "source_name": "SEC 8-K",
+                 "verification_level": "gold", "filing_date": "2026-10-21"},
+                FICO_TEXT)
+        finally:
+            he.default_lookup = orig
+
+    def test_percent_only_8k_posts_a_labelled_estimate(self):
+        row = self._final(lookup)
+        self.assertIsNotNone(row)
+        self.assertEqual(row["job_count"], 538)
+        self.assertTrue(row["job_count_is_estimate"])
+        self.assertEqual(row["headcount_estimate"]["label"], "estimate")
+        self.assertTrue(row["excerpt"].startswith("Estimate: "))
+        self.assertIn("approximately 15%", row["excerpt"])
+        self.assertLessEqual(row["confidence"], 60)
+
+    def test_percent_only_8k_without_10k_count_is_still_refused(self):
+        self.assertIsNone(self._final(lambda cik: None))
+
+
+
+class Poster(unittest.TestCase):
+    def test_estimate_title_and_meta_are_labelled(self):
+        import os
+        from unittest.mock import patch
+        import wp_poster
+        sent = {}
+
+        def post(url, json=None, headers=None, timeout=None):
+            sent.update(json)
+
+            class R:
+                status_code = 201
+                text = "{}"
+
+                def json(self):
+                    return {}
+            return R()
+        with patch.dict(os.environ, {"WP_SITE_URL": "https://x", "WP_API_KEY": "k"}), \
+                patch.object(wp_poster.requests, "post", post):
+            wp_poster.post_to_wordpress({"company_name": "FICO", "job_count": 538,
+                                         "layoff_date": "2026-10-20",
+                                         "job_count_is_estimate": True,
+                                         "headcount_estimate": {"label": "estimate"}})
+        self.assertIn("(estimate)", sent["title"])
+        self.assertTrue(sent["meta"]["job_count_is_estimate"])
+        self.assertEqual(sent["meta"]["headcount_estimate"]["label"], "estimate")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -84,6 +84,22 @@ DISCOVERY_QUERIES = (
     '"bankruptcy" OR "shuts down" OR "winding down" (layoffs OR "job cuts" OR employees)',
 )
 
+# PRESS-WIRE AND WORKFORCE-REDUCTION SWEEPS (2026-11-05). Seven of the twelve
+# benchmark misses (Trade Desk, Campbell's, AmEx, Weil, Hasbro, EA, Flock)
+# were announced through a press wire or worded as "a reduction of its
+# workforce", which the broad sweeps above rank below general coverage. These
+# run on the US edition only (the wires are US-English), behind the same free
+# title prefilter and inside the same global MAX_ITEMS cap, so they change
+# WHICH items reach the paid gate, not the ceiling on how many. Free: Google
+# News RSS needs no key. Business Wire and PR Newswire publish no keyless
+# layoff-only feed, so `site:` restriction through Google News is the feasible
+# free route to them.
+WIRE_QUERIES = (
+    '(site:businesswire.com OR site:prnewswire.com OR site:globenewswire.com) '
+    '(layoffs OR "job cuts" OR "workforce reduction" OR "reduction in force")',
+    '"workforce reduction" OR "reduce its workforce" OR "reduction of its workforce" '
+    'OR "percent of its workforce" OR "job cuts" OR layoffs employees',
+)
 
 # ---------------------------------------------------------------------------
 # NATIONAL EDITIONS. Google News runs per-country editions: the SAME query
@@ -328,9 +344,12 @@ def pull_google_news(queries=None, company_names=None, deadline_check=None):
     # before the last query ever ran — the bankruptcy/shutdown sweep (the feed
     # for the new bankruptcy tag) executed zero times on every run.
     jobs = [(qs[i], locales[0]) for i in range(n_company)]
-    for loc in locales:
+    for loc_i, loc in enumerate(locales):
         for q in queries_for_edition(loc, qs[n_company:]):
             jobs.append((q, loc))
+        if loc_i == 0 and queries is None:
+            # Wire sweeps: US edition only, right after its discovery queries.
+            jobs.extend((q, loc) for q in WIRE_QUERIES)
 
     results, seen = [], set()
     seen_titles = set()   # same story surfaces in several editions under

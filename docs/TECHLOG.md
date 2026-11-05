@@ -1,3 +1,21 @@
+## 2026-11-05 - Owner rulings: estimates from percent-only 8-Ks; wire sweeps for benchmark misses
+**Owner rulings 2026-11-05.** (1) "Yes estimates": a filing that states only a
+share of the workforce shows an estimated headcount, pct x the employee count
+the company reported in its latest 10-K, clearly labelled "estimate" with the
+formula and the source; the original reported figure (the percentage
+sentence) stays beside it. (2) When news reports a larger total for the same
+company and month than the WARN state rows, the larger reported total is the
+headline and the WARN rows stay as detail; no row is deleted.
+**Built:** `railway/headcount_estimate.py` (SEC companyfacts, else 10-K text;
+cached per CIK; no model call) wired into `extractor.finalize_extraction`;
+`WIRE_QUERIES` in `sources/google_news.py` (free, US edition, prefiltered,
+inside `MAX_ITEMS`). Ruling (2) is already what superset pass (1) in
+`alt_reconcile_supersets` does (news >= windowed WARN sum within 45 days marks
+the WARN rows `superset_of` the news row; rows kept), so no code changed for it.
+**Guard:** `railway/tests/test_headcount_estimate.py`,
+`railway/tests/test_google_news_wire_queries.py`.
+**Class:** absent-read-as-ok
+
 ## 2026-11-05 - Ingest posted 0 events for 9 nights and nobody was paged (ingest_yield watchdog)
 From at least 2026-10-28 every nightly railway-cron run pulled 800 to 1409
 candidates and posted 0 ("Run complete: N pulled, 0 posted ... N non-events

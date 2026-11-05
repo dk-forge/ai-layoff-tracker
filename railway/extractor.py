@@ -1599,15 +1599,27 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     if not extracted.get("is_layoff_event"):
         return None
 
-    # Skip if no usable job count
+    # Skip if no usable job count. ONE exception (owner ruling 2026-11-05,
+    # "yes estimates"): a percent-only 8-K becomes a LABELLED estimate, pct x
+    # the employee count from the filer's latest 10-K (headcount_estimate.py).
+    # The verbatim-count checks below are about a count the source states, so
+    # an estimate skips them; it carries its own formula and source instead.
     job_count = _coerce_job_count(extracted.get("job_count"))
+    estimate = None
     if not job_count:
-        return None
-    if _percent_only_mention(job_count, raw_text):
+        import headcount_estimate
+        estimate = headcount_estimate.estimate_for_filing(raw_entry, raw_text)
+        if not estimate:
+            return None
+        job_count = estimate["job_count"]
+        extracted["job_count_max"] = job_count
+    if estimate is not None:
+        pass
+    elif _percent_only_mention(job_count, raw_text):
         print(f"Extraction rejected: job_count {job_count} appears only as a percentage "
               f"— source: {raw_entry.get('source_url')}")
         return None
-    if raw_text and not _count_in_text(job_count, raw_text):
+    elif raw_text and not _count_in_text(job_count, raw_text):
         print(f"Extraction rejected: job_count {job_count} not found verbatim in source "
               f"(model likely derived it) — source: {raw_entry.get('source_url')}")
         return None
@@ -1639,7 +1651,7 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     # the selected figure in explicit headcount context. This is restricted to
     # English-language 8-Ks; applying it to multilingual news would trade the
     # integrity fix for a large, silent global-recall loss.
-    if raw_entry.get("source_type") == "8K":
+    if raw_entry.get("source_type") == "8K" and estimate is None:
         # THE FILER'S OWN HEADCOUNT, OR NOTHING (filing_shapes; TECHLOG
         # 2026-09-16). A Risk Factors block is the registrant describing the
         # world, and a workforce number inside one belongs to whoever it is
@@ -1680,7 +1692,8 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     # NEW cut ("cut 300 more jobs on Tuesday, bringing the total to 30,000")
     # the incremental figure wins and the ceiling is cleared with it, or the
     # model's 30,000 job_count_max would survive as the "announced" reading.
-    verdict, figure = retrospective_verdict(job_count, raw_text)
+    verdict, figure = (("", None) if estimate is not None
+                       else retrospective_verdict(job_count, raw_text))
     if verdict == "retrospective":
         print(f"Extraction rejected: job_count {job_count} is a cumulative or "
               f"retrospective figure with no new cut dated in the text "
@@ -1832,6 +1845,16 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     # A stated US state implies the country, even when the source doesn't say so.
     if extracted["state"] and not (isinstance(extracted.get("country"), str) and extracted["country"].strip()):
         extracted["country"] = "United States"
+
+    if estimate is not None:
+        import headcount_estimate
+        extracted["job_count_is_estimate"] = True
+        extracted["headcount_estimate"] = estimate
+        extracted["excerpt"] = headcount_estimate.label_excerpt(
+            estimate, extracted.get("excerpt"))
+        # An estimate is never a high-confidence claim and always waits review.
+        extracted["confidence"] = min(extracted["confidence"], 60)
+        extracted["review_status"] = "provisional"
 
     # Add source metadata
     extracted["source_url"] = raw_entry.get("source_url")

@@ -58,7 +58,13 @@ HEADCOUNT_PATTERN = re.compile(
     r"(?:\s+[\w,.%'’-]+){0,5}?\s+"
     r"(?:jobs?|employees|workers|staff|staffers|roles|positions|"
     r"workforce|headcount|people)\b"
-    r"|\bjob\s+loss(?:es)?\b|\bworkforce\s+cuts?\b",
+    r"|\bjob\s+loss(?:es)?\b|\bworkforce\s+cuts?\b"
+    # Press-wire phrasing (2026-11-05 benchmark misses): an 8-K style release
+    # says "reduction in force" or "workforce reduction of approximately 15%"
+    # and never uses a verb + workforce-noun shape.
+    r"|\breductions?\s+in\s+(?:its\s+)?(?:work)?force\b"
+    r"|\bworkforce\s+reductions?\b"
+    r"|\breduc(?:e|es|ed|ing|tion)\s+(?:of\s+)?(?:its\s+|the\s+)?(?:global\s+)?workforce\b",
     re.I)
 
 # Scripts a language is written in, for the non-Latin editions. A title in the
