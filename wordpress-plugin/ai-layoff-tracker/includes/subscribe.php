@@ -7586,6 +7586,9 @@ function alt_digest_standfirst($text) {
 }
 
 if (!defined('ALT_CAREER_INSIGHTS')) define('ALT_CAREER_INSIGHTS', 'Career Insights from AskTheRecruiter');
+// The section's own label (owner, 2026-11-04): secondary to the news, opt in only.
+if (!defined('ALT_CAREER_RESOURCES')) define('ALT_CAREER_RESOURCES', 'Career resources');
+if (!defined('ALT_CAREER_RESOURCES_NOTE')) define('ALT_CAREER_RESOURCES_NOTE', 'Optional reads from AskTheRecruiter, sent because you opted into career resources.');
 
 /**
  * AN EXCERPT THAT READS LIKE SEO KEYWORD SOUP (owner, 2026-11-03), e.g.
@@ -7738,7 +7741,7 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
             $meta[] = alt_digest_count($minutes, 'min read', 'min read');
         }
         $blurb = alt_digest_standfirst($blurb);
-        if (alt_digest_excerpt_is_keyword_soup($blurb, $title)) {
+        if (alt_digest_excerpt_is_keyword_soup($blurb, $title) || strpos($blurb, '?') !== false) {
             $blurb = alt_digest_first_real_sentence(isset($post->post_content) ? $post->post_content : '');
         }
         $items[] = array(
@@ -7778,9 +7781,18 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       Newest first is still the order; nothing is ranked by an invented score.
     */
     $items = array_slice($items, 0, 3);
-    $html = '<h2>' . esc_html(ALT_CAREER_INSIGHTS) . '</h2>';
-    $text = ALT_CAREER_INSIGHTS . "\n";
+    /*
+      CAREER RESOURCES, A LABELLED SECONDARY SECTION (owner, 2026-11-04).
+      Layoff news leads; these reads come after it, only for readers who
+      ticked the existing `articles` list, and the label says so. Each item
+      carries a one-line "Why it matters" and a call to action that names
+      what the reader will open.
+    */
+    $html = '<h2>' . esc_html(ALT_CAREER_RESOURCES) . '</h2>'
+          . '<p data-alt="kicker">' . esc_html(ALT_CAREER_RESOURCES_NOTE) . '</p>';
+    $text = ALT_CAREER_RESOURCES . "\n" . ALT_CAREER_RESOURCES_NOTE . "\n";
     $featured = $items[0];
+    $fk = alt_digest_article_kind($featured['title']);
     $click = alt_digest_track_link($send_id, $featured['link']);
     $html .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
            . '<tr><td data-alt="item-first"><p data-alt="item-title"><a href="' . esc_url($click) . '">'
@@ -7790,28 +7802,69 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
         $html .= '<p data-alt="item-blurb">' . esc_html($featured['blurb']) . '</p>';
         $text .= $featured['blurb'] . "\n";
     }
-    $html .= '<p data-alt="item-meta"><a href="' . esc_url($click) . '">Read &rarr;</a>'
+    $html .= '<p data-alt="why">' . esc_html($fk['why']) . '</p>';
+    $text .= $fk['why'] . "\n";
+    $html .= '<p data-alt="item-meta"><a href="' . esc_url($click) . '">' . esc_html($fk['cta']) . ' &rarr;</a>'
            . ($featured['meta'] !== '' ? ' ' . esc_html($featured['meta']) : '') . '</p></td></tr></table>';
-    $text .= 'Read: ' . $featured['link'] . "\n";
+    $text .= $fk['cta'] . ': ' . $featured['link'] . "\n";
     $more = array_slice($items, 1);
     if ($more) {
         $html .= '<h3>Also worth reading</h3><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">';
         $text .= "\nAlso worth reading\n";
         foreach ($more as $i => $item) {
+            $k = alt_digest_article_kind($item['title']);
             $c = alt_digest_track_link($send_id, $item['link']);
             $html .= '<tr><td data-alt="' . ($i === 0 ? 'item-first' : 'item') . '"><p data-alt="item-title"><a href="'
-                   . esc_url($c) . '">' . esc_html($item['title']) . '</a></p></td></tr>';
-            $text .= '  - ' . $item['title'] . "\n    " . $item['link'] . "\n";
+                   . esc_url($c) . '">' . esc_html($item['title']) . '</a></p>'
+                   . '<p data-alt="why">' . esc_html($k['why']) . '</p>'
+                   . '<p data-alt="item-meta"><a href="' . esc_url($c) . '">' . esc_html($k['cta']) . ' &rarr;</a></p></td></tr>';
+            $text .= '  - ' . $item['title'] . "\n    " . $k['why'] . "\n    " . $k['cta'] . ': ' . $item['link'] . "\n";
         }
         $html .= '</table>';
     }
     // The preview line adds what the subject cannot: the featured summary.
     $preheader = $featured['blurb'] !== '' ? alt_digest_fit_preheader($featured['blurb'], array()) : '';
-    // The subject is the featured post's own title (the author's words, the
-    // reason to open), never a count of posts.
+    /*
+      THE SUBJECT LEADS WITH THE READER BENEFIT (owner, 2026-11-04). It used
+      to be the featured title, and a title like "Jobscan vs Teal vs Rezi"
+      put competitors' names in the inbox. The count is the reads printed.
+    */
+    $n = count($items);
+    $metric = ($n === 1) ? 'One way to strengthen your applications'
+                         : $n . ' ways to strengthen your applications';
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
-                 'metric' => alt_digest_subject_title($featured['title']),
+                 'metric' => $metric,
                  'minor' => true);
+}
+
+/**
+ * What a read is, from its title alone: a comparison, a guide, or an article.
+ * Sets the call to action and the "Why it matters" line. House copy about the
+ * kind of read, never a claim about the post's contents.
+ */
+function alt_digest_article_kind($title) {
+    $t = strtolower((string) $title);
+    if (preg_match('/\bvs\.?\b|\bversus\b|compar|\bwhich\b.*\b(worth|best)\b|\bbest\b.*\btools?\b/', $t)) {
+        return array('cta' => 'Read the comparison',
+                     'why' => 'Why it matters: picking the right tool saves you hours on applications that go nowhere.');
+    }
+    if (preg_match('/\bhow\b|\bguide\b|\bways?\b|\btips?\b|\bsteps?\b|\bchecklist\b/', $t)) {
+        return array('cta' => 'Read the guide',
+                     'why' => 'Why it matters: a practical step you can use on your next application.');
+    }
+    return array('cta' => 'Read the article',
+                 'why' => 'Why it matters: context that helps you judge your next move in a changing job market.');
+}
+
+/**
+ * Readers on the layoff list never get an edition that is ONLY career reads
+ * (owner, 2026-11-04). $lists are the sections this reader would receive, in
+ * order. True means: send nothing today. The relay holds the same rule
+ * (railway/digest_send.build_message).
+ */
+function alt_digest_articles_only_for_layoff_reader($row, $freq, $lists) {
+    if ((int) ($row['consent_layoff'] ?? 0) !== 1 || ($row['freq_layoff'] ?? '') !== $freq) return false;
+    return $lists === array('articles');
 }
 
 /* ------------------------------------------------------------------ */
@@ -7898,7 +7951,7 @@ function alt_digest_manage_url() {
  * once is what stops the two renderings naming different destinations.
  */
 function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
-    // SHORTENED 2026-11-03 (owner). Same promises, fewer words; the
+    // CONDENSED AGAIN 2026-11-04 (owner). SHORTENED 2026-11-03 (owner). Same promises, fewer words; the
     // "forward this" sentence is dropped and the resume promo is one line.
     // FOOTER_BLOCKS in railway/digest_layout.py mirrors this exactly.
     $blocks = array(
@@ -7906,14 +7959,14 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
             'url' => '',
             'anchor' => '',
             'sentences' => array(
-                'You get this because you confirmed a subscription at asktherecruiter.com.',
+                'You get this because you subscribed at asktherecruiter.com.',
             ),
         ),
         array(
             'url' => $unsub_url,
             'anchor' => 'Unsubscribe with one click',
             'sentences' => array(
-                'Unsubscribe with one click (stops everything).',
+                'Unsubscribe with one click.',
             ),
         ),
     );
@@ -7924,7 +7977,7 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
             'url' => $manage_url,
             'anchor' => 'your preferences page',
             'sentences' => array(
-                'Change lists, frequency or follows on your preferences page; adding mail needs an email confirmation.',
+                'Change lists on your preferences page; adding mail needs an email confirmation.',
             ),
         );
     }
@@ -8073,6 +8126,14 @@ function alt_digest_send($freq) {
             }
         }
         if (!$parts_html) continue;   // nothing to say to this person today
+        // Career reads ride along with the news, never in place of it, for a
+        // layoff-list reader (owner, 2026-11-04).
+        $alt_lists = array();
+        foreach (array('layoff', 'talent', 'articles') as $list) {
+            $cols = alt_digest_lists()[$list];
+            if ((int) $row[$cols['consent']] === 1 && $row[$cols['freq']] === $freq && $sections[$list]) $alt_lists[] = $list;
+        }
+        if (alt_digest_articles_only_for_layoff_reader($row, $freq, $alt_lists)) continue;
         // Company/state follows (includes/follows.php), after the consented
         // sections and only for layoff-list readers. Same as the relay.
         if ((int) $row['consent_layoff'] === 1 && $row['freq_layoff'] === $freq

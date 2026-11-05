@@ -2,7 +2,7 @@
 
 One featured read (title, a one or two sentence summary, "Read"), then two
 secondary reads; no machine caption like "The 3 newest of 5 posts we
-published"; the subject is the featured title; an excerpt that reads like
+published"; the subject leads with the reader benefit (owner, 2026-11-04); an excerpt that reads like
 SEO keyword soup falls back to the post's first real sentence; new
 subscribers get the blog weekly by default and existing readers keep theirs.
 Driven through the PHP harness; without php these SKIP (UNKNOWN).
@@ -52,7 +52,9 @@ class CareerInsights(unittest.TestCase):
         cls.text, cls.html = cls.out["text"], cls.out["html"]
 
     def test_brand(self):
-        self.assertTrue(self.text.startswith("Career Insights from AskTheRecruiter\n"))
+        # The section is labelled "Career resources" since the owner's
+        # 2026-11-04 feedback; the masthead of an articles-only edition keeps the brand.
+        self.assertTrue(self.text.startswith("Career resources\n"))
         self.assertNotIn("AI Layoff Tracker", self.text + self.html)
         self.assertEqual(digest_layout.product_name([("articles",)]),
                          "Career Insights from AskTheRecruiter")
@@ -66,19 +68,20 @@ class CareerInsights(unittest.TestCase):
     def test_one_featured_then_two_secondary(self):
         feat = self.text.split("Also worth reading")[0]
         self.assertIn(TITLE, feat)
-        self.assertIn("Read: https://asktherecruiter.com/blog/resume-tools/", feat)
+        self.assertIn("Read the comparison: https://asktherecruiter.com/blog/resume-tools/", feat)
         more = self.text.split("Also worth reading")[1]
         self.assertEqual(len(re.findall(r"^  - ", more, re.M)), 2)
         self.assertNotIn("A fourth post", self.text)
-        self.assertIn("Read &rarr;", self.html)
+        self.assertIn("Read the comparison &rarr;", self.html)
 
     def test_keyword_soup_falls_back_to_first_real_sentence(self):
         self.assertNotIn("match score job description", self.text)
         self.assertIn("We ran the same résumé through four tools and only two "
                       "caught the missing skills.", self.text)
 
-    def test_subject_is_the_featured_title(self):
-        self.assertEqual(self.out["metric"], TITLE)
+    def test_subject_leads_with_the_benefit_not_the_title(self):
+        # Superseded 2026-11-04 (owner): the title named competitors.
+        self.assertEqual(self.out["metric"], "3 ways to strengthen your applications")
 
     def test_house_style(self):
         body = self.text + self.html

@@ -470,7 +470,9 @@ def usable_sections(payload: dict, wanted) -> list:
                         (section.get("preheader") or "").strip(),
                         ((section.get("metric") or "").strip(),
                          bool(section.get("minor")))))
-    return out
+    # LAYOFF NEWS LEADS (owner, 2026-11-04): career reads are the secondary
+    # section and always come last, whatever order the lists arrive in.
+    return [p for p in out if p[0] != "articles"] + [p for p in out if p[0] == "articles"]
 
 
 def _same_site(url: str, reference: str) -> bool:
@@ -531,6 +533,10 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
         return None
     parts = usable_sections(payload, recipient.get("lists") or [])
     if not parts:
+        return None
+    # Career reads never make up a layoff-list reader's whole edition (owner,
+    # 2026-11-04). The plugin's twin: alt_digest_articles_only_for_layoff_reader.
+    if "layoff" in (recipient.get("lists") or []) and [p[0] for p in parts] == ["articles"]:
         return None
     # COMPANY / STATE FOLLOWS (plugin includes/follows.php). Composed by the
     # site per recipient, because it carries figures; appended AFTER the

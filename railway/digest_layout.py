@@ -1308,14 +1308,15 @@ FOOTER_BLOCKS = (
     # preferences link and its confirm-by-email rule, the postal country, and
     # (below, TRACKING_SENTENCES) the tracking disclosure. The "forward this"
     # sentence is dropped and the resume promo is one short line.
-    ("", ("You get this because you confirmed a subscription at "
-          "asktherecruiter.com.",), ""),
-    ("unsub", ("Unsubscribe with one click (stops everything).",),
+    # CONDENSED AGAIN 2026-11-04 (owner): fewer words, one paragraph; the
+    # unsubscribe link, the preferences link and the tracking disclosure stay.
+    ("", ("You get this because you subscribed at asktherecruiter.com.",), ""),
+    ("unsub", ("Unsubscribe with one click.",),
      "Unsubscribe with one click"),
     # The reader's OWN signed preferences page (plugin
     # includes/subscriber-prefs.php), carried per recipient. Less mail applies
     # at once; anything that adds mail is confirmed by email.
-    ("manage", ("Change lists, frequency or follows on your preferences page; "
+    ("manage", ("Change lists on your preferences page; "
                 "adding mail needs an email confirmation.",),
      "your preferences page"),
     # The resume call to action (owner decision 2026-09-24), one short line.
@@ -1417,9 +1418,8 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
         rendered.append(" ".join(
             _link_anchor(s, anchor if i == 0 else "", urls.get(key, ""), link)
             for i, s in enumerate(sentences)))
-    # The first block stands alone, the rest share one paragraph: the ways out
-    # belong together, and the reason the message arrived is not one of them.
-    paragraphs = [rendered[:1], rendered[1:]]
+    # One paragraph (condensed footer, owner 2026-11-04).
+    paragraphs = [rendered]
     body = "".join(f'<p style="{small}">{" ".join(group)}</p>'
                    for group in paragraphs if group)
     note = f'<p style="{fine}">{escape(edition_note)}</p>' if edition_note else ""
