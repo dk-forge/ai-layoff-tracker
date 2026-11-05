@@ -136,7 +136,9 @@ class EveryEditionIsAskedInItsOwnLanguage(unittest.TestCase):
             self.assertEqual(_english_words(q), [], q)
         for u in us:
             q = urllib.parse.parse_qs(urllib.parse.urlparse(u).query)["q"][0]
-            self.assertIn(q, google_news.DISCOVERY_QUERIES)
+            # The US edition also runs the English press-wire sweeps
+            # (WIRE_QUERIES, 2026-11-05); both sets are English vocabulary.
+            self.assertIn(q, google_news.DISCOVERY_QUERIES + google_news.WIRE_QUERIES)
 
 
 class TheVocabularyIsOneTable(unittest.TestCase):
