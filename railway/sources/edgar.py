@@ -178,6 +178,11 @@ def _headcount_index(text):
     return found.start() if found else None
 
 
+#: The Item 2.05 heading itself, not a reference to it: "Item 2.05" followed by
+#: the start of its statutory title "Costs Associated with Exit".
+ITEM_205_HEADING = re.compile(r"\bItem\s+2\.05\b[.:\s\u2014\u2013-]*Costs\s+Associated", re.I)
+
+
 def _primary_window(text):
     """(window, section) for a stripped primary document.
 
@@ -190,6 +195,14 @@ def _primary_window(text):
     the section; the extractor decides what to do with it, so the two never
     disagree about where the text came from.
     """
+    # The Item 2.05 HEADING wins over the first keyword. "item 2.05" is also
+    # how an Item 2.02 or 7.01 paragraph REFERS to the disclosure ("described
+    # in Item 2.05 below"), and anchoring there put HubSpot's 2026-10-06 window
+    # ~1,200 characters early. A longer preamble pushes the real headcount out
+    # of the window entirely (tests/test_edgar_item_205_anchor.py).
+    heading = ITEM_205_HEADING.search(text)
+    if heading:
+        return _window_at(text, heading.start()), filing_section(text, heading.start())
     lowered = text.lower()
     for keyword in KEYWORDS:
         idx = lowered.find(keyword)
