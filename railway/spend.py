@@ -2433,7 +2433,16 @@ def main() -> int:
 
     used = float(d.get("usage") or 0)
     limit = d.get("limit")
-    remaining = (float(limit) - used) if limit is not None else None
+    # OpenRouter's own limit_remaining is authoritative when present: a key
+    # whose limit resets (limit_reset monthly/weekly/daily) has lifetime usage
+    # far above its limit while having the full limit left. limit - usage is
+    # only a fallback for responses without limit_remaining (Nov 2026 incident:
+    # 8+ nights of ingest deferred on a key OpenRouter reported as $15 left).
+    lr = d.get("limit_remaining")
+    if lr is not None:
+        remaining = float(lr)
+    else:
+        remaining = (float(limit) - used) if limit is not None else None
     fp = key_fingerprint(key)
     spent_this_month, month, persisted = month_delta(used, fp)
 
@@ -2462,7 +2471,8 @@ def main() -> int:
         problems.append(f"under $1 left on this key (${remaining:.2f})")
 
     over = persisted and spent_this_month >= MONTHLY_ALLOWANCE_USD * STOP_AT_FRACTION
-    # OpenRouter's key limit is a lifetime ceiling, not a monthly allowance.
+    # OpenRouter's key limit is a provider ceiling (lifetime, or per period when
+    # limit_reset is set), separate from our monthly allowance.
     # It is therefore a separate availability gate: a key can be comfortably
     # inside this month's policy while the provider will still reject every
     # paid request with 402 because lifetime usage has exhausted the key.  In

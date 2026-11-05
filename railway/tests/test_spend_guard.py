@@ -212,6 +212,39 @@ class TheGateDegrades(unittest.TestCase):
         self.assertNotIn("Paid reads: ON", output.getvalue())
 
 
+    def _run_main(self, state):
+        output = io.StringIO()
+        with (redirect_stdout(output),
+              mock.patch.object(sys, "argv", ["spend.py", "--degrade"]),
+              mock.patch.object(spend, "fetch_key_state", return_value=state),
+              mock.patch.object(spend, "month_delta",
+                                return_value=(0.0, "2026-11", True)),
+              mock.patch.object(spend, "apply_job_ceiling"),
+              mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"})):
+            os.environ.pop(spend.PAID_READS_ENV, None)
+            self.assertEqual(spend.main(), 0)
+            enabled = spend.paid_reads_enabled()
+        return enabled, output.getvalue()
+
+    def test_monthly_reset_key_with_limit_remaining_keeps_paid_reads_on(self):
+        """November 2026 incident: the key's limit resets monthly. OpenRouter
+        reported limit_remaining=15.0 while lifetime usage (93.60) exceeded the
+        15.00 limit, and limit - usage wrongly read as exhausted for 8+ nights.
+        OpenRouter's own limit_remaining is the truth when it is present."""
+        enabled, out = self._run_main({
+            "usage": 93.5972, "limit": 15.0, "limit_remaining": 15.0,
+            "limit_reset": "monthly"})
+        self.assertTrue(enabled)
+        self.assertNotIn("OpenRouter provider key exhausted", out)
+
+    def test_limit_remaining_zero_still_degrades(self):
+        enabled, out = self._run_main({
+            "usage": 93.5972, "limit": 15.0, "limit_remaining": 0.0,
+            "limit_reset": "monthly"})
+        self.assertFalse(enabled)
+        self.assertIn("OpenRouter provider key exhausted", out)
+
+
 class EveryPaidCallIsGated(unittest.TestCase):
     """No paid function may reach the network while paid reads are off."""
 
