@@ -109,6 +109,16 @@ class TheAlertText(unittest.TestCase):
         self.assertIn("4 nightly runs", a["body"])
         self.assertIn("raise the limit", a["body"])
 
+    def test_the_free_sources_named_are_the_model_free_ones(self):
+        """SEC/EDGAR 8-K rows need a paid model read (fixed in spend.py by
+        PR #600), so they stop with paid reads. The model-free sources are
+        WARN, ERM and the state scrapers."""
+        body = y.evaluate(INCIDENT, EXHAUSTED, SECRET)["paid_reads"]["body"]
+        flat = " ".join(body.split())
+        self.assertNotIn("SEC rows) keep running", flat)
+        self.assertIn("(WARN, ERM, state scrapers) keep running", flat)
+        self.assertIn("SEC 8-K rows need a paid read", flat)
+
     def test_text_is_plain_ascii_with_no_dash_glyphs(self):
         v = y.evaluate(INCIDENT, EXHAUSTED, SECRET)
         for a in (v["paid_reads"], v["zero_posts"]):
