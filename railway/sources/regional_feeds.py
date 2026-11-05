@@ -20,15 +20,17 @@ The verdicts, so nobody re-litigates them from memory:
                            ("suppression de 300 postes"), but an event whose
                            headcount lives only behind the wall is lost, and
                            that is stated on the tin rather than papered over.
-    Jeune Afrique          200, 30 items, title + ~200-char standfirst free.
-                           robots.txt disallows "/*/feed" (per-section feeds)
-                           and "/*?"; the site-level /feed/ matches neither.
     Caribbean News Global  200 but SLOW (~40s first byte; the first probe at a
                            25s timeout read as dead). Ships FULL article text
                            in content:encoded. Gets a 90s timeout, not a retry
                            loop.
 
   NOT WIRED, with the measured reason:
+    Jeune Afrique          RETIRED 2026-11-05. Wired 2026-08-14, then HTTP 403
+                           from its Cloudflare edge on every daily ingest from
+                           the VPS since at least 2026-10-06, while the same
+                           /feed/ URL and UA answer 200 elsewhere: an address
+                           block, not a moved feed. Not worked around.
     PACNEWS/PINA           /feed/ answers 200 but the single item says "Sorry,
                            You Don't Have Feed Access" - feed access is gated.
     Loop News              TLS is broken on every probed host: www cert EXPIRED,
@@ -48,7 +50,7 @@ claim for the sources page and the run report, never a stored value.
 
 THE RELEVANCE FILTER is a free cost gate, not a truth claim: only items whose
 free text carries collective-reduction vocabulary (English or French - the two
-languages these five feeds publish in) are allowed to cost an extraction.
+languages these four feeds publish in) are allowed to cost an extraction.
 Lessons inherited from local_news: collective vocabulary only ("licenciements",
 never singular court-story "licenciement"), and noisy homographs ("sack") only
 paired with a workforce word.
@@ -144,13 +146,6 @@ FEEDS = (
          ("Senegal", "Ivory Coast", "Cameroon", "Morocco", "Tunisia",
           "Gabon", "Benin", "Togo", "Mali", "Burkina Faso", "Guinea",
           "Mauritania", "Niger", "Madagascar", "Chad", "Djibouti")),
-    Feed("jeune_afrique",
-         "https://www.jeuneafrique.com/feed/",
-         "Jeune Afrique",
-         "a pan-African news magazine reporting in French",
-         ("Algeria", "Morocco", "Tunisia", "Senegal", "Ivory Coast",
-          "Cameroon", "Mali", "Burkina Faso", "Guinea", "Gabon", "Togo",
-          "Benin", "Niger", "Chad", "Madagascar")),
     Feed("caribbean_news_global",
          "https://caribbeannewsglobal.com/feed/",
          "Caribbean News Global",
@@ -168,7 +163,7 @@ def by_key(key):
 
 
 #: The committed arming decision, priced from the live feeds on 2026-08-14.
-#: The five feeds carry ~55 items/day combined; even if EVERY item passed the
+#: The four feeds carry ~45 items/day combined; even if EVERY item passed the
 #: relevance filter and none were URL-deduped, that is 55 x 30 x $0.000315 =
 #: $0.52/month, and MAX_PER_FEED independently caps the worst case at
 #: $0.95/month. The realistic figure (filter pass rate measured at 0/97 items
