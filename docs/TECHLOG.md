@@ -24,6 +24,26 @@ that reads exhausted forever and the real fix is in spend.py, not the
 OpenRouter dashboard. The alert body says so.
 **Class:** ran-but-brought-nothing
 **Guard:** `railway/tests/test_ingest_yield.py`
+## 2026-11-05 - Texas WARN dark 36 days; Jeune Afrique feed retired (2.20.298)
+
+warn:TX: the TWC WARN page, the workbook URL and the column layout are all
+unchanged (2026 workbook served 115 notices through 2026-11-03 on 2026-11-05).
+Both the relay runner and the self-hosted posting runner logged "TX: no
+workbook links on the TWC WARN page (blocked or moved)" every day: TWC's edge
+challenges the HTML page from those addresses, and the page was the only way
+the collector found the workbook. `_tx_xlsx_links` now always adds the
+current and previous year at the stable `warn-act-listings-<year>-twc.xlsx`
+URL, so a challenged page no longer blocks the workbook read.
+
+regional_feeds jeune_afrique: HTTP 403 from its Cloudflare edge on every daily
+VPS ingest since at least 2026-10-06; the same /feed/ URL and UA answer 200
+from elsewhere, so the feed did not move. An address block is not worked
+around: the feed is retired, the catalogue row is now "refused" with the
+measured reason, and the sources page and country coverage were regenerated.
+
+**Class:** novel
+**Guard:** `railway/tests/test_tx_warn_workbook.py` (ChallengedPageStillReadsTheWorkbook, real
+workbook fixture), `railway/tests/test_regional_feeds.py` (JeuneAfriqueIsRetired)
 
 ## 2026-11-03 - SERP titles paired a year with an all-time total (2.20.293)
 

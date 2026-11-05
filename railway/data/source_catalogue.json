@@ -3,9 +3,9 @@
  "measured": "2026-08-14",
  "counts": {
   "total": 382,
-  "wired": 19,
+  "wired": 18,
   "researched": 336,
-  "refused": 27
+  "refused": 28
  },
  "sources": [
   {
@@ -386,11 +386,11 @@
    "country": "Algeria, Morocco, Tunisia, Senegal, Ivory Coast, Cameroon and more",
    "publisher": "Jeune Afrique",
    "language": "fr",
-   "status": "wired",
-   "collector": "regional_feeds",
+   "status": "refused",
+   "collector": "",
    "feed_url": "https://www.jeuneafrique.com/feed/",
-   "probed": "2026-08-14",
-   "evidence": "Verified live before wiring; see the module docstring for the per-feed measurement.",
+   "probed": "2026-11-05",
+   "reason": "Wired 2026-08-14, retired 2026-11-05: its Cloudflare edge answered HTTP 403 to the ingest server on every daily run since at least 2026-10-06, while the same feed URL answered 200 elsewhere. An address block, not a moved feed; we do not work around it.",
    "note": ""
   },
   {
@@ -1358,7 +1358,7 @@
    "collector": "",
    "feed_url": "https://news.abidjan.net/rss/economie.xml",
    "probed": "2026-08-14",
-   "reason": "HTTP 200 with a 4.1MB body that is NOT well-formed XML (invalid token at line 2512), on both probes. We do not hand-repair a third party's document. Ivory Coast still rides Financial Afrik and Jeune Afrique.",
+   "reason": "HTTP 200 with a 4.1MB body that is NOT well-formed XML (invalid token at line 2512), on both probes. We do not hand-repair a third party's document. Ivory Coast still rides Financial Afrik.",
    "note": ""
   },
   {
@@ -2007,7 +2007,7 @@
    "collector": "",
    "feed_url": "https://medias24.com/feed/",
    "probed": "2026-08-14",
-   "reason": "HTTP 403 on the feed and on robots.txt, twice; L'Economiste answers 403 the same way. Morocco is already swept in French and Arabic by the local-language markets and by Jeune Afrique.",
+   "reason": "HTTP 403 on the feed and on robots.txt, twice; L'Economiste answers 403 the same way. Morocco is already swept in French and Arabic by the local-language markets.",
    "note": ""
   },
   {

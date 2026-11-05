@@ -98,6 +98,7 @@ _TX_XLSX_RX = re.compile(
 _TX_UA = {"User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                          "AppleWebKit/537.36 (KHTML, like Gecko) "
                          "Chrome/999.0.0.0 Safari/537.36")}
+_TX_XLSX_FALLBACK = _TX_ORIGIN + "/sites/default/files/oei/docs/warn-act-listings-{year}-twc.xlsx"
 _TX_YEARS_BACK = 1          # current + previous year; Socrata holds the history
 
 
@@ -123,6 +124,12 @@ def _tx_xlsx_links(page_html, this_year):
         y = int(year)
         if y >= this_year - _TX_YEARS_BACK:
             out.setdefault(y, _TX_ORIGIN + href)
+    # The page is only a link index, and TWC's edge challenges it from
+    # datacenter addresses (warn:TX dark 36 days to 2026-11-05). The workbook
+    # name has been the same pattern every year since 2021, so a year the page
+    # did not list is tried at that URL directly.
+    for y in range(this_year - _TX_YEARS_BACK, this_year + 1):
+        out.setdefault(y, _TX_XLSX_FALLBACK.format(year=y))
     return sorted(out.items(), reverse=True)
 
 
@@ -163,10 +170,12 @@ def _tx_workbook_entries():
     """Entries from TWC's current per-year workbooks; [] when not served."""
     import datetime as _dt
     page = _tx_get(_TX_PAGE)
+    if page is None:
+        print("    TX: WARN page not served (edge challenge); trying the workbook URLs directly")
     links = _tx_xlsx_links(page.text if page else "", _dt.date.today().year)
     _TX_LAST_LINKS[0] = len(links)
     if not links:
-        print("    TX: no workbook links on the TWC WARN page (blocked or moved)")
+        print("    TX: no workbook links (unexpected: the fallback URLs are always tried)")
     out = []
     for year, link in links:
         resp = _tx_get(link, want_zip=True)
