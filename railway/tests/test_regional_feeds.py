@@ -73,10 +73,6 @@ FIXTURES = {
         "Senegal : la Sonatel annonce la suppression de 300 postes",
         "https://www.financialafrik.com/2026/08/14/sonatel-suppression-postes/",
         "Ce contenu est reserve aux membres."),
-    "jeune_afrique": (
-        "Cameroun : plan social chez Camtel, 400 emplois supprimes",
-        "https://www.jeuneafrique.com/1832999/economie/camtel-plan-social/",
-        "L'operateur public engage des licenciements touchant 400 salaries."),
     "caribbean_news_global": (
         "Saint Lucia resort retrenches 120 workers",
         "https://caribbeannewsglobal.com/saint-lucia-resort-retrenches-workers/",
@@ -298,10 +294,20 @@ class AggregatorGuardTests(unittest.TestCase):
         self.assertIsNone(rf.build_raw(feed, item))
 
 
+class JeuneAfriqueIsRetired(unittest.TestCase):
+    """2026-11-05: the ingest box got HTTP 403 from Jeune Afrique's Cloudflare
+    edge on every daily run since at least 2026-10-06, while the same URL and
+    UA answered 200 from elsewhere: an address block, not a moved feed. It is
+    retired rather than left as a daily degraded alarm."""
+
+    def test_not_wired(self):
+        self.assertNotIn("jeune_afrique", {f.key for f in rf.FEEDS})
+
+
 class RawDictContractTests(unittest.TestCase):
     def test_each_fixture_survives_discovery_with_its_headcount(self):
         expected = {"rnz_pacific": "150", "pacific_island_times": "80",
-                    "financial_afrik": "300", "jeune_afrique": "400",
+                    "financial_afrik": "300",
                     "caribbean_news_global": "120"}
         for key, fx in FIXTURES.items():
             with self.subTest(feed=key):

@@ -75,8 +75,7 @@
       "health_ids": [
         "gdelt",
         "google_news",
-        "local_news",
-        "regional_feeds"
+        "local_news"
       ],
       "languages": [
         "French",
@@ -85,9 +84,7 @@
       "sources": {
         "gdelt_outlets": 3,
         "local_publishers": 14,
-        "feeds": [
-          "Jeune Afrique"
-        ]
+        "feeds": []
       },
       "register": null,
       "recall": [],
@@ -461,8 +458,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -691,8 +687,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -761,8 +756,7 @@
         "gdelt_outlets": 2,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -875,8 +869,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -1609,8 +1602,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -1831,8 +1823,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -2212,8 +2203,7 @@
         "gdelt_outlets": 0,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -2652,8 +2642,7 @@
         "gdelt_outlets": 2,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -2741,8 +2730,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -2979,8 +2967,7 @@
         "gdelt_outlets": 3,
         "local_publishers": 14,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": {
@@ -3211,8 +3198,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -3870,8 +3856,7 @@
         "gdelt_outlets": 3,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -4458,8 +4443,7 @@
         "gdelt_outlets": 1,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,
@@ -4524,8 +4508,7 @@
         "gdelt_outlets": 2,
         "local_publishers": 0,
         "feeds": [
-          "Financial Afrik",
-          "Jeune Afrique"
+          "Financial Afrik"
         ]
       },
       "register": null,

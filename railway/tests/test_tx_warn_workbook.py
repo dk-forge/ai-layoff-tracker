@@ -142,5 +142,51 @@ class RelayedTexasIsTopedUpWhereThePostRuns(FetchTxReadsTheWorkbook):
         self.assertEqual(wc.tx_workbook_supplement(relayed), relayed)
 
 
+FIXTURE = (Path(__file__).resolve().parent / "fixtures"
+           / "tx_warn_listings_2026_twc_2026-11-05.xlsx")
+
+
+class ChallengedPageStillReadsTheWorkbook(unittest.TestCase):
+    """2026-11-05: warn:TX dark 36 days. Both the relay runner and the posting
+    runner logged "TX: no workbook links on the TWC WARN page (blocked or
+    moved)" every day: TWC's edge challenges the HTML page from datacenter
+    addresses, while the workbook itself sits at a stable, predictable URL
+    (warn-act-listings-<year>-twc.xlsx, same pattern 2021-2026). The page is
+    only a link index, so a challenged page must fall back to that URL. The
+    fixture is the real 2026 workbook as TWC served it on 2026-11-05."""
+
+    def setUp(self):
+        self._get, self._sleep = wc.requests.get, wc.time.sleep
+        wc.time.sleep = lambda *_: None
+        self.fetched = []
+        book = FIXTURE.read_bytes()
+
+        def get(url, **kw):
+            self.fetched.append(url)
+            if url.endswith(f"warn-act-listings-{YEAR}-twc.xlsx"):
+                return _Resp(content=book)
+            return _Resp(status=202)               # page and anything else challenged
+        wc.requests.get = get
+
+    def tearDown(self):
+        wc.requests.get, wc.time.sleep = self._get, self._sleep
+
+    def test_the_real_workbook_parses(self):
+        rows = wc._tx_workbook_rows(FIXTURE.read_bytes())
+        self.assertEqual(len(rows), 115)
+        self.assertEqual(max(r["notice_date"] for r in rows), "2026-11-03")
+        entries = wc._tx_rows_to_entries(rows, wc._TX_PAGE)
+        self.assertEqual(len(entries), 115)
+
+    def test_a_challenged_page_falls_back_to_the_known_workbook_url(self):
+        names = {e["company_name"] for e in wc.tx_workbook_supplement([])}
+        self.assertIn("MV Transportation, Inc (Corpus Christi)", names)
+        self.assertTrue(any(u.startswith(wc._TX_ORIGIN + "/sites/default/files/oei/docs/")
+                            for u in self.fetched))
+
+    def test_fallback_covers_only_the_current_and_previous_year(self):
+        self.assertEqual([y for y, _ in wc._tx_xlsx_links("", YEAR)], [YEAR, YEAR - 1])
+
+
 if __name__ == "__main__":
     unittest.main()
