@@ -1,5 +1,5 @@
 ---
-version: vNEXT
+version: 2.20.297
 type: fix
 area: digest
 date: 2026-11-05
