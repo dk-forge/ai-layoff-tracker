@@ -1,3 +1,31 @@
+## 2026-11-05 - Ingest posted 0 events for 9 nights and nobody was paged (ingest_yield watchdog)
+From at least 2026-10-28 every nightly railway-cron run pulled 800 to 1409
+candidates and posted 0 ("Run complete: N pulled, 0 posted ... N non-events
+skipped"). `spend.py --degrade` printed "key limit reached" and "DEGRADED: paid
+reads are OFF (OpenRouter provider key exhausted)", so extraction was deferred
+on every candidate. The run is green by design, `ingest-silence.yml` was green
+because the collectors kept writing fresh `/source-runs` notes (it asks "did
+anything run?", not "did the run bring anything?"), `ci-alert.yml` only mails a
+red run, and `openrouter-balance-check.yml` read OpenRouter's `limit_remaining`
+($15.00 on 2026-11-05) while spend.py gates on limit minus LIFETIME usage
+($15 - $93.60 = -$78.60). Two readers of one key disagreed, and the one that
+mails said fine.
+
+Fix: `railway/ingest_yield.py`, a new `yield` job in `ingest-silence.yml`. It
+reads the committed `spend_jobs.json` and the key state and mails through
+`ops_notify` with one dedupe_key per cause (`ingest-yield:paid-reads-off`,
+`ingest-yield:zero-posts`): paid reads OFF, or 2+ consecutive nights posting 0
+with more than 100 candidates pulled. One mail per incident, one RECOVERED.
+The text names the fix and the key's public tail only.
+
+Root cause (found the same day): spend.py's `provider_exhausted` compared
+the key limit to lifetime usage, but this key's limit resets, so OpenRouter's
+`limit_remaining` (15.0) was right and spend.py was wrong. Fixed in #597.
+Alarm (a) therefore reads `limit_remaining` ONLY, so it cannot repeat that
+false reading (test: usage 93.60, limit 15, limit_remaining 15 is no alarm).
+**Class:** ran-but-brought-nothing
+**Guard:** `railway/tests/test_ingest_yield.py`
+
 ## 2026-11-05 - Texas WARN dark 36 days; Jeune Afrique feed retired (2.20.298)
 
 warn:TX: the TWC WARN page, the workbook URL and the column layout are all

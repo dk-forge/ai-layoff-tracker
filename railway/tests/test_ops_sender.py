@@ -367,6 +367,8 @@ class EveryJobThatMailsCarriesTheKeyThatLetsItMail(unittest.TestCase):
         "warn_import.py": "warn-import.yml",
         "vps_watch.py": "vps-watch.yml",
         "board_consistency.py": "tracker-zeros-watch.yml",
+        # 2026-11-05: 0 events posted for 9 nights, nobody paged.
+        "ingest_yield.py": "ingest-silence.yml",
     }
 
     def test_the_sender_override_travels_with_the_key(self):

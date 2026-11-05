@@ -9,6 +9,12 @@
 #
 # Deliberately on GitHub-hosted runners: a watchdog for "the hosts are off"
 # must not depend on those hosts.
+#
+# 2026-11-05: a second job, `yield`, asks "did the ingest BRING anything?".
+# From 2026-10-28 every nightly run pulled 800+ candidates and posted 0
+# (paid reads OFF, key limit reached) while `check` stayed green, because the
+# collectors kept writing fresh notes. railway/ingest_yield.py mails the owner
+# ONCE per incident through ops_notify (dedupe_key), and once on recovery.
 name: Ingest silence alarm
 
 on:
@@ -18,7 +24,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: ingest-silence
@@ -27,6 +32,9 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -60,3 +68,29 @@ jobs:
         run: |
           echo "::error::$(cat silence.txt)"
           exit 1
+
+  yield:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write   # commit the alarm claim to railway/alert_state.json
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Identify the committer
+        run: |
+          git config user.name  'ai-layoff-tracker-bot'
+          git config user.email 'bot@users.noreply.github.com'
+      - name: Paid reads on, and the ingest posting events
+        working-directory: railway
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_MAIL_TO: ${{ vars.OPS_MAIL_TO }}
+          OPS_MAIL_FROM: ${{ vars.OPS_MAIL_FROM }}
+          ALERT_STATE_COMMIT: '1'
+        run: python3 ingest_yield.py
