@@ -16,7 +16,7 @@ This module asks the two questions none of them ask, from the run's own
 committed record (`railway/spend_jobs.json`, harvested daily) and the key's
 live state:
 
-  (a) are paid reads OFF because the key is exhausted or at its limit?
+  (a) is the key at its limit by OpenRouter's own `limit_remaining`?
   (b) has railway-cron posted 0 events on 2+ consecutive nightly runs that
       each pulled more than MIN_ITEMS candidates?
 
@@ -51,7 +51,6 @@ MIN_STREAK = 2
 KEY_PAID_READS = "ingest-yield:paid-reads-off"
 KEY_ZERO_POSTS = "ingest-yield:zero-posts"
 KEYS_URL = "https://openrouter.ai/settings/keys"
-PAID_OFF_MARK = "paid reads were switched off"
 
 
 def _num(v):
@@ -83,25 +82,23 @@ def zero_post_streak(entries, job=JOB, min_items=MIN_ITEMS):
     return streak
 
 
-def paid_reads_off(key_state, entries):
-    """True / False, or None when nothing could be read.
+def paid_reads_off(key_state, entries=None):
+    """True / False, or None when the key state could not be read.
 
-    True when the key is at its limit by either reading (lifetime usage vs
-    limit, which is what spend.py gates on, or OpenRouter's limit_remaining),
-    or when the newest railway-cron run says paid reads were switched off."""
-    runs = job_runs(entries)
-    if runs and PAID_OFF_MARK in str(runs[-1].get("truncated") or ""):
-        return True
+    Reads OpenRouter's own `limit_remaining` ONLY. Lifetime usage minus the
+    limit is wrong for a key whose limit resets (2026-11-05: usage 93.60,
+    limit 15, limit_remaining 15 is a healthy key; that misreading in
+    spend.py was the incident's root cause, fixed in #597). A run's own
+    "paid reads switched off" note is not used either: it was produced by
+    that same misreading. `entries` is accepted and ignored."""
     if not key_state:
-        return None if not runs else False
-    limit = _num(key_state.get("limit"))
-    if limit is None:
-        return False
+        return None
+    if _num(key_state.get("limit")) is None:
+        return False  # no cap on the key, so no limit to hit
     left = _num(key_state.get("limit_remaining"))
-    if left is not None and left <= 0:
-        return True
-    usage = _num(key_state.get("usage"))
-    return usage is not None and limit - usage <= 0
+    if left is None:
+        return None  # unknown, never a pass and never an alarm
+    return left <= 0
 
 
 def key_tail(key_state, api_key):
@@ -147,9 +144,7 @@ def evaluate(entries, key_state, api_key):
                 "Paid reads are OFF for the daily ingest, so no news or extraction "
                 "event can be posted until the limit is raised. Free sources (WARN, "
                 "SEC rows) keep running.\n\n" + _key_numbers(key_state) +
-                "\nIf the keys page shows the limit is NOT used up, the spend guard "
-                "is reading lifetime usage against a monthly limit: tell a session "
-                "to check provider_exhausted in railway/spend.py.\n\n"
+                "\n"
                 "Raised once per incident by railway/ingest_yield.py "
                 "(ingest-silence.yml). A RECOVERED mail follows when it clears.")
         out["paid_reads"] = {"subject": "Paid reads OFF: OpenRouter key limit reached",

@@ -32,8 +32,11 @@ def run(day, items, stored, truncated=None, job="railway-cron"):
 # The incident ledger, as harvested into railway/spend_jobs.json.
 INCIDENT = [run("2026-10-27", 1300, 4)] + [
     run(f"2026-10-{d}", 1366, 0, OFF) for d in (28, 29, 30, 31)]
-EXHAUSTED = {"usage": 93.5972, "limit": 15.0, "label": "sk-or-v1-0a1...b2c"}
-HEALTHY = {"usage": 3.0, "limit": 15.0, "label": "sk-or-v1-0a1...b2c"}
+EXHAUSTED = {"usage": 93.60, "limit": 15.0, "limit_remaining": 0.0, "label": "sk-or-v1-0a1...b2c"}
+# The real key on 2026-11-05: its limit resets, so lifetime usage past the
+# limit is NOT exhaustion. OpenRouter said limit_remaining 15.
+REAL_KEY = {"usage": 93.60, "limit": 15.0, "limit_remaining": 15.0, "label": "sk-or-v1-0a1...b2c"}
+HEALTHY = REAL_KEY
 SECRET = "sk-or-v1-THIS-IS-THE-WHOLE-SECRET-KEY-b2c"
 
 
@@ -64,21 +67,24 @@ class ZeroPostStreak(unittest.TestCase):
 
 
 class PaidReadsOff(unittest.TestCase):
-    def test_lifetime_usage_past_the_limit_is_off(self):
-        self.assertTrue(y.paid_reads_off(EXHAUSTED, []))
+    def test_the_real_key_values_are_not_an_alarm(self):
+        # usage 93.60, limit 15, limit_remaining 15: a resetting limit, healthy.
+        self.assertFalse(y.paid_reads_off(REAL_KEY))
+        self.assertIsNone(y.evaluate(INCIDENT, REAL_KEY, SECRET)["paid_reads"])
 
     def test_limit_remaining_zero_is_off(self):
-        self.assertTrue(y.paid_reads_off({"limit": 15, "limit_remaining": 0}, []))
+        self.assertTrue(y.paid_reads_off({"limit": 15, "limit_remaining": 0}))
 
-    def test_the_last_run_saying_paid_reads_off_is_off_even_when_the_key_reads_fine(self):
-        # The incident itself: the balance check saw $15 limit_remaining while
-        # every ingest run degraded. The run's own record is the ground truth.
-        self.assertTrue(y.paid_reads_off({"limit": 15, "limit_remaining": 15}, INCIDENT))
+    def test_lifetime_usage_alone_never_alarms(self):
+        self.assertIsNone(y.paid_reads_off({"limit": 15, "usage": 93.60}))
 
-    def test_a_healthy_key_and_a_full_run_is_on(self):
-        self.assertFalse(y.paid_reads_off(HEALTHY, [run("2026-11-01", 900, 3)]))
+    def test_a_run_note_saying_paid_reads_off_does_not_alarm_on_its_own(self):
+        self.assertFalse(y.paid_reads_off(REAL_KEY, INCIDENT))
 
-    def test_unknown_key_state_and_no_runs_is_not_an_alarm(self):
+    def test_no_cap_is_on(self):
+        self.assertFalse(y.paid_reads_off({"limit": None, "usage": 5}))
+
+    def test_unknown_key_state_is_not_an_alarm(self):
         self.assertIsNone(y.paid_reads_off(None, []))
 
 
