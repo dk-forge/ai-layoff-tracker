@@ -2278,9 +2278,10 @@ def degrade(over: bool, reason: str = "spend ceiling reached") -> None:
 
     os.environ[PAID_READS_ENV] = "off"
     print(f"\n  DEGRADED: paid reads are OFF ({reason}).")
-    print("  WARN, SEC/EDGAR structured fields, ERM, every state scraper, the")
-    print("  seen-URL pre-check and all server-side dedup keep running: none of")
-    print("  them call a model. Candidates that would have cost money defer")
+    print("  WARN, ERM, every state scraper, the seen-URL pre-check and all")
+    print("  server-side dedup keep running: none of them call a model.")
+    print("  SEC/EDGAR 8-K filings and news are paused: each row needs a paid")
+    print("  model read. Candidates that would have cost money defer")
     print("  UNMARKED, so a later run reads them after paid access returns. This")
     print("  costs current depth, never permanent coverage.")
 
