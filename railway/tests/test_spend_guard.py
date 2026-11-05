@@ -182,6 +182,25 @@ class TheGateDegrades(unittest.TestCase):
         self.assertEqual(os.environ.get(spend.PAID_READS_ENV), "off")
         self.assertFalse(spend.paid_reads_enabled())
 
+    def test_degraded_banner_says_edgar_8k_pauses_and_names_only_free_collectors(self):
+        """SEC 8-K filings go through the paid extractor (cron.run feeds
+        pull_edgar_filings into extract_layoff_data), so a DEGRADED run pauses
+        them. The October 2026 banner listed SEC/EDGAR as still running, which
+        understated the outage. Only model-free collectors may be named as
+        still running."""
+        output = io.StringIO()
+        with redirect_stdout(output):
+            spend.degrade(True)
+        text = " ".join(output.getvalue().split())
+        running = text.split("keep running", 1)[0]
+        self.assertIn("WARN", running)
+        self.assertNotIn("SEC", running)
+        self.assertNotIn("EDGAR", running)
+        paused = text.split("keep running", 1)[1]
+        self.assertIn("SEC/EDGAR 8-K", paused)
+        self.assertIn("paused", paused)
+        self.assertIn("model", paused)
+
     def test_degrade_when_not_over_leaves_paid_reads_on(self):
         spend.degrade(False)
         self.assertTrue(spend.paid_reads_enabled())
