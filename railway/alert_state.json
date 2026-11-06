@@ -97,11 +97,6 @@
       "last": 1793382208,
       "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
     },
-    "live-surface-check:live.data:9583b943711b84ac": {
-      "first": 1793953799,
-      "last": 1793953799,
-      "subject": "CI RED: Live surface check \u2014 AssertionError: Unarchived sources are re-checked on the promised cadence: live API returned HTTP 500 \u2014 server regression, not a blip"
-    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1793695990,
       "last": 1793695990,
@@ -118,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-06T09:22:51+00:00",
+  "updated_at": "2026-11-06T14:28:30+00:00",
   "version": 1
 }
