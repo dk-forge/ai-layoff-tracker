@@ -104,6 +104,34 @@ class RetrospectiveCountIsNotAnEvent(unittest.TestCase):
         text = "Ford ha anunciado 2.000 despidos, el mayor recorte desde 2020."
         self.assertEqual(retrospective_verdict(2000, text), ("event", None))
 
+    # Weekly benchmark 2026-11-08 (docs/benchmarks/2026-11-08.md): two live rows
+    # in the top of the window were retrospectives the guard did not recognise.
+    def test_a_past_year_reference_is_not_a_new_event(self):
+        # Row 183047: a 2026 San Diego profile recalled "in 2011 Nokia announced
+        # some 4,000 layoffs" and the row was stored as 4,000 on 2026-11-05.
+        text = ("However, in 2011 Nokia announced some 4,000 layoffs, including "
+                "hundreds in San Diego. Both Pahissa and Fuentes lost their jobs.")
+        self.assertEqual(retrospective_verdict(4000, text), ("retrospective", None))
+
+    def test_a_new_cut_that_mentions_a_past_year_keeps_its_row(self):
+        text = ("The company said today it will cut 3,000 jobs, after it cut 10,000 "
+                "in 2023.")
+        self.assertEqual(retrospective_verdict(3000, text), ("event", None))
+
+    def test_a_future_year_is_not_a_past_year(self):
+        text = "Widget Inc will cut 2,000 jobs in 2027, the company said in a memo."
+        self.assertEqual(retrospective_verdict(2000, text), ("event", None))
+
+    def test_a_rises_to_total_is_cumulative(self):
+        # Row 183019: "Personalabbau bei Bosch steigt auf mehr als 30.000 Stellen".
+        de = "Personalabbau bei Bosch steigt auf mehr als 30.000 Stellen."
+        self.assertEqual(retrospective_verdict(30000, de), ("retrospective", None))
+        en = "Bosch's job-cut programme rises to more than 30,000 positions."
+        self.assertEqual(retrospective_verdict(30000, en), ("retrospective", None))
+        # But "will rise to" a new cut with its own date is left alone.
+        ok = "Bosch said today it will cut 1,500 more jobs, which brings the total to 30,000."
+        self.assertEqual(retrospective_verdict(30000, ok), ("incremental", 1500))
+
     def test_the_phrase_constant_is_what_the_guard_reads(self):
         # Mutation: with the "since <year>" span removed the Amazon row would
         # pass as an event, so the constant is load-bearing, not decorative.

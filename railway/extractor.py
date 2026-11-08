@@ -713,6 +713,11 @@ CUMULATIVE_ANCHORS = (
     r"(?:about|around|roughly|nearly|more than|over|some|approximately)?\s*$",
     r"\b(?:un\s+total\s+de|en\s+total)\s+(?:unos|unas|cerca de|más de|alrededor de)?\s*$",
     r"\b(?:insgesamt|in\s+summe)\s+(?:rund|etwa|über|mehr als)?\s*$",
+    # "rises/climbs to" and "steigt auf" are a running total reaching a figure
+    # (Bosch row 183019, 2026-11-05: "steigt auf mehr als 30.000 Stellen").
+    r"\b(?:rises?|rising|climbs?|climbing|grows?|growing|swells?|steigt|wächst)\s+(?:now\s+|jetzt\s+)?"
+    r"(?:to|auf)\s+(?:about|around|roughly|nearly|more than|over|some|approximately|"
+    r"mehr als|über|rund|etwa)?\s*$",
 )
 
 RETROSPECTIVE_SPANS = (
@@ -731,6 +736,11 @@ RETROSPECTIVE_SPANS = (
     r"\ba\s+series\s+of\b",
     r"\b(?:several|multiple|successive|repeated|numerous)\s+rounds?\s+of\b|\brounds\s+of\s+(?:layoffs|cuts|job\s+cuts|redundancies)\b",
     r"\bthe\s+latest\s+in\b",
+    # A figure tied to a year that is over (Nokia row 183047, 2026-11-05: "in
+    # 2011 Nokia announced some 4,000 layoffs"). Only years up to 2024, so the
+    # current and next years stay events; a dated new cut still wins through
+    # NEW_CUT_DATE_SIGNALS.
+    r"\b(?:in|back\s+in|during)\s+(?:19\d{2}|20(?:0\d|1\d|2[0-4]))\b",
     r"\bbring(?:s|ing)?\s+(?:the\s+)?total\s+to\b|\bbrought\s+(?:the\s+)?total\s+to\b",
     # Spanish
     rf"\bdesde\s+(?:finales\s+de|principios\s+de|mediados\s+de|el\s+inicio\s+de)?\s*(?:(?:{_MONTH})\s+de\s+)?{_YEAR}\b",

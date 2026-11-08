@@ -1,3 +1,15 @@
+## 2026-11-08 - Weekly accuracy benchmark: layoff 14/25; retrospective guard learns past years and "rises to" totals
+
+**What.** First scheduled weekly benchmark (`docs/benchmarks/2026-11-08.md`). Strict recall 14/25 (last week 13/25, different list). 11 misses: 9 no row (Dutch government, Amex, Fiserv, Ecco, GSK, NatWest, Weil Gotshal, Innodata, Swedbank), 2 wrong count (Flutter, KLM). NAB counted a hit but 15 days late. Time-to-listing is not measurable: the API has no first-seen timestamp. No ranking is claimed; no competitor was run.
+
+| Date | Layoff strict recall | Prior | Top miss cause |
+|---|---|---|---|
+| 2026-11-08 | 14/25 | 13/25 | no row on large named announcements |
+
+**Precision.** Nokia 4,000 (id 183047, a 2011 reference), Bosch 30,000 (183019, running total) and Wells Fargo 10,000 (183096, cumulative) were live rows. **Fix:** `RETROSPECTIVE_SPANS` gains "in <year up to 2024>" and `CUMULATIVE_ANCHORS` gains "rises/climbs to" and "steigt auf". A dated new cut in the same sentence still wins. **Not done:** rows 183047, 183019, 183096, 182986 are uncorrected; they need a reviewed correction.
+**Guard:** `railway/tests/test_extractor_retrospective.py` (+4)
+**Class:** novel (a past-year or running-total figure read as a new cut)
+
 ## 2026-11-05 - Owner rulings: estimates from percent-only 8-Ks; wire sweeps for benchmark misses
 **Owner rulings 2026-11-05.** (1) "Yes estimates": a filing that states only a
 share of the workforce shows an estimated headcount, pct x the employee count
