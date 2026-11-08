@@ -112,17 +112,12 @@
       "last": 1794132981,
       "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml FAIL (newest completed run is failure on 5ae0ed64)"
     },
-    "self-heal:main:502427794a59ed01": {
-      "first": 1794133028,
-      "last": 1794133028,
-      "subject": "CI RED: Self-heal \u2014 Error: Unexpected HTTP response: 504"
-    },
     "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:e209e89eb82e6f01": {
       "first": 1791240775,
       "last": 1791240775,
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-08T10:17:08+00:00",
+  "updated_at": "2026-11-08T17:36:52+00:00",
   "version": 1
 }
