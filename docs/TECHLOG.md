@@ -8,7 +8,7 @@
 
 **Precision.** Nokia 4,000 (id 183047, a 2011 reference), Bosch 30,000 (183019, running total) and Wells Fargo 10,000 (183096, cumulative) were live rows. **Fix:** `RETROSPECTIVE_SPANS` gains "in <year up to 2024>" and `CUMULATIVE_ANCHORS` gains "rises/climbs to" and "steigt auf". A dated new cut in the same sentence still wins. **Not done:** rows 183047, 183019, 183096, 182986 are uncorrected; they need a reviewed correction.
 **Guard:** `railway/tests/test_extractor_retrospective.py` (+4)
-**Class:** retrospective-read-as-event
+**Class:** novel (a past-year or running-total figure read as a new cut)
 
 ## 2026-11-05 - Owner rulings: estimates from percent-only 8-Ks; wire sweeps for benchmark misses
 **Owner rulings 2026-11-05.** (1) "Yes estimates": a filing that states only a
