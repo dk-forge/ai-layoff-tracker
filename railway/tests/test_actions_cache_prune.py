@@ -31,6 +31,14 @@ class ThePruneStaysSafe(unittest.TestCase):
         self.assertIn("if days < 1:", self.text)
         self.assertIn("if seen < cutoff:", self.text)
 
+    def test_size_cap_when_age_prune_frees_nothing(self):
+        # 2026-11-08: three runs deleted 0 caches (all used within 2 days) while
+        # the cache stayed at 9.96 of 10 GB. Over the cap, the least recently
+        # used caches go until the total is under it.
+        self.assertIn("MAX_TOTAL_GB: ${{ inputs.max_total_gb || '7' }}", self.text)
+        self.assertIn("key=lambda c: c[\"last_accessed_at\"]", self.text)
+        self.assertIn("while total > cap and rest:", self.text)
+
 
 if __name__ == "__main__":
     unittest.main()

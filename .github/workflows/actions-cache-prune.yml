@@ -2,7 +2,8 @@ name: Prune Actions caches
 
 # The repo's 10 GB Actions cache filled up (limits-watch, 2026-11-05). GitHub
 # then evicts caches on its own, but builds slow down and the limits watch
-# stays red. Weekly: delete every cache not used in the last 7 days. Caches
+# stays red. Daily: delete caches unused for 2 days, then the least recently
+# used until the total is under 7 GB. Caches
 # are rebuildable, so the worst case is one slower CI run.
 
 on:
@@ -13,6 +14,9 @@ on:
       max_age_days:
         description: Delete caches unused for more than this many days
         default: '2'
+      max_total_gb:
+        description: Then delete least recently used caches until the total is under this many GB
+        default: '7'
 
 permissions:
   actions: write
@@ -31,6 +35,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           MAX_AGE_DAYS: ${{ inputs.max_age_days || '2' }}
+          MAX_TOTAL_GB: ${{ inputs.max_total_gb || '7' }}
         run: |
           python3 - <<'PY'
           import datetime as dt, json, os, urllib.request
@@ -47,7 +52,7 @@ jobs:
               with urllib.request.urlopen(req, timeout=30) as r:
                   body = r.read()
               return json.loads(body) if body else None
-          old, page = [], 1
+          old, rest, page = [], [], 1
           while True:
               d = call("GET", f"actions/caches?per_page=100&page={page}")
               batch = d.get("actions_caches", [])
@@ -55,6 +60,8 @@ jobs:
                   seen = dt.datetime.fromisoformat(c["last_accessed_at"].replace("Z", "+00:00"))
                   if seen < cutoff:
                       old.append(c)
+                  else:
+                      rest.append(c)
               if len(batch) < 100:
                   break
               page += 1
@@ -63,4 +70,17 @@ jobs:
               call("DELETE", f"actions/caches/{c['id']}")
               freed += c.get("size_in_bytes", 0)
           print(f"Deleted {len(old)} caches unused for {days}+ days, freed {freed/1e9:.2f} GB")
+          # Age alone freed nothing on 2026-11-06..08 (every cache used within
+          # 2 days, total 9.96 of 10 GB). Cap the total: least recently used go first.
+          cap = float(os.environ["MAX_TOTAL_GB"]) * 1e9
+          total = sum(c.get("size_in_bytes", 0) for c in rest)
+          rest.sort(key=lambda c: c["last_accessed_at"])
+          n, lru_freed = 0, 0
+          while total > cap and rest:
+              c = rest.pop(0)
+              call("DELETE", f"actions/caches/{c['id']}")
+              total -= c.get("size_in_bytes", 0)
+              lru_freed += c.get("size_in_bytes", 0)
+              n += 1
+          print(f"Deleted {n} least recently used caches, freed {lru_freed/1e9:.2f} GB, total now {total/1e9:.2f} GB")
           PY
