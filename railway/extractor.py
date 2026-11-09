@@ -1647,8 +1647,16 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
                  r"eliminat(?:e|es|ed|ing)|terminat(?:e|es|ed|ing)|"
                  r"workforce\s+reductions?|reductions?\s+in\s+force|"
                  r"site\s+closure|plant\s+closure)\b")
+    # A buyout OFFER is not a cut: row 183020 stored Microsoft's 60,000
+    # buyout-eligible employees as 60,000 job cuts (railway/buyout_guard.py).
+    from buyout_guard import count_is_only_an_offer
+    if estimate is None and count_is_only_an_offer(job_count, raw_text):
+        print(f"Extraction rejected: job_count {job_count} is a voluntary buyout "
+              f"offer or eligibility figure, not job cuts - source: "
+              f"{raw_entry.get('source_url')}")
+        return None
     count_pattern = _number_pattern(job_count)
-    count_sentences = [s for s in re.split(r"(?<=[.!?])\s+|[\r\n]+", raw_text)
+    count_sentences =[s for s in re.split(r"(?<=[.!?])\s+|[\r\n]+", raw_text)
                        if re.search(count_pattern, s)]
     if count_sentences and all(re.search(creation, s, re.I) for s in count_sentences) \
             and not any(re.search(reduction, s, re.I) for s in count_sentences):
