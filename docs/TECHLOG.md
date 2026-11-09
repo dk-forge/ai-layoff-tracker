@@ -1,3 +1,9 @@
+## 2026-11-09 - KLM joins the curated employer-domicile registry
+
+**What.** The routine inbox (asktherecruiter-sandbox#3695) asked whether the KLM country edit needed the domicile side too. It did: row 65098 (KLM, 2020-03-14) is filed under 'Multiple countries' with a blank `employer_country`, so no Netherlands filter could reach it, and the other KLM rows carried no domicile either. **Fix:** `klm` and `klm royal dutch airlines` map to the Netherlands (Amstelveen, klm.com) in `railway/seed_data/employer_domicile.json`; `employer-domicile-backfill.yml` fills the blank field through `/enrich-context`. The Air France-KLM holding is Franco-Dutch and stays absent, pinned by the same test.
+**Guard:** `railway/tests/test_employer_domicile_registry.py` (+1)
+**Class:** recurrence (a curated registry gap)
+
 ## 2026-11-09 - The two-referee adjudication can run from a cloud session, with extra reports
 
 **What.** `adjudicate_row.py` only ran through `railway run` on a laptop, so a cloud session could not put KLM 182986 (5,000 stored; reports say 5,000 affected, about 1,000 cut) to the referees. **Fix:** `adjudicate-row.yml` (dispatch, dry run unless apply, writes only on agreement) and `--extra-urls`, which hands further reports of the same event to both referees, each labelled with its URL; unreadable pages are left out.

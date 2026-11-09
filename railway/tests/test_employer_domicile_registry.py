@@ -40,6 +40,19 @@ class RegistryShape(unittest.TestCase):
             self.assertIsNone(registry_lookup(exact, prefixes, company), company)
 
 
+    def test_klm_is_dutch_and_the_franco_dutch_group_stays_absent(self):
+        # KLM Royal Dutch Airlines is a Dutch company headquartered in
+        # Amstelveen. Row 65098 (KLM, 'Multiple countries', 2020-03-14) had
+        # no domicile and so no Netherlands filter could reach it. The
+        # holding Air France-KLM is a Franco-Dutch group and stays absent.
+        _, exact, prefixes = load_registry()
+        for company in ("KLM", "KLM Royal Dutch Airlines"):
+            entry = registry_lookup(exact, prefixes, company)
+            self.assertIsNotNone(entry, company)
+            self.assertEqual(entry["employer_country"], "Netherlands", company)
+        self.assertIsNone(registry_lookup(exact, prefixes, "Air France-KLM"))
+
+
 class Matcher(unittest.TestCase):
     def setUp(self):
         self.registry, self.exact, self.prefixes = load_registry()
