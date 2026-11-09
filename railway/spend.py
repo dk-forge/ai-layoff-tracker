@@ -942,6 +942,93 @@ def _usage_of(response):
     return getattr(response, "usage", None)
 
 
+# --------------------------------------------------------------------------
+# Upstream throttling: back off, honour Retry-After, stop hammering
+# --------------------------------------------------------------------------
+#
+# AI-LAYOFF-TRACKER-5 (2026-11-05/06): one cron run took 1,022 upstream 429s
+# from OpenRouter's shared Google pool. The retry fired at once, `Retry-After`
+# was ignored and the next item followed straight after. Now a 429 sets a
+# process-wide "not before" time (Retry-After when given, else exponential
+# backoff with jitter), every paid call waits for it, and after
+# RATE_LIMIT_TRIP_AFTER consecutive 429s the breaker refuses calls WITHOUT a
+# request for RATE_LIMIT_COOLDOWN_SECONDS. Errors are still raised, never hidden.
+
+RATE_LIMIT_BASE_SECONDS = float(os.environ.get("ALT_RATE_LIMIT_BASE_SECONDS", "2"))
+RATE_LIMIT_MAX_WAIT_SECONDS = float(os.environ.get("ALT_RATE_LIMIT_MAX_WAIT_SECONDS", "60"))
+RATE_LIMIT_TRIP_AFTER = int(os.environ.get("ALT_RATE_LIMIT_TRIP_AFTER", "6"))
+RATE_LIMIT_COOLDOWN_SECONDS = float(os.environ.get("ALT_RATE_LIMIT_COOLDOWN_SECONDS", "300"))
+TRANSIENT_ERROR_NAMES = frozenset({"APITimeoutError", "APIConnectionError",
+                                   "InternalServerError", "Timeout"})
+
+_sleep = time.sleep
+_now = time.monotonic
+_rate_limit_streak = 0
+_not_before = 0.0
+_breaker_open_until = 0.0
+
+
+class UpstreamRateLimited(RuntimeError):
+    """The model host kept answering 429; calls are paused for a cooldown."""
+
+
+def reset_rate_limit_state() -> None:
+    global _rate_limit_streak, _not_before, _breaker_open_until
+    _rate_limit_streak, _not_before, _breaker_open_until = 0, 0.0, 0.0
+
+
+def _status_of(exc) -> int | None:
+    code = getattr(exc, "status_code", None)
+    return code if isinstance(code, int) else None
+
+
+def _is_rate_limited(exc) -> bool:
+    return _status_of(exc) == 429 or type(exc).__name__ == "RateLimitError"
+
+
+def _is_transient(exc) -> bool:
+    code = _status_of(exc)
+    return (type(exc).__name__ in TRANSIENT_ERROR_NAMES
+            or (code is not None and (code == 408 or code >= 500)))
+
+
+def _retry_after(exc) -> float | None:
+    headers = getattr(getattr(exc, "response", None), "headers", None) or {}
+    try:
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+        secs = float(str(raw).strip()) if raw is not None else None
+    except (AttributeError, ValueError):
+        return None
+    if secs is None or secs < 0:
+        return None
+    return min(secs, RATE_LIMIT_MAX_WAIT_SECONDS)
+
+
+def _backoff(streak: int) -> float:
+    import random
+    wait = RATE_LIMIT_BASE_SECONDS * (2 ** max(0, streak - 1))
+    return min(wait * (1 + random.random() * 0.25), RATE_LIMIT_MAX_WAIT_SECONDS)
+
+
+def _note_rate_limited(exc) -> None:
+    global _rate_limit_streak, _not_before, _breaker_open_until
+    _rate_limit_streak += 1
+    wait = _retry_after(exc)
+    _not_before = _now() + (wait if wait is not None else _backoff(_rate_limit_streak))
+    if _rate_limit_streak >= RATE_LIMIT_TRIP_AFTER:
+        _breaker_open_until = _now() + RATE_LIMIT_COOLDOWN_SECONDS
+
+
+def _wait_for_upstream(what: str | None) -> None:
+    if _now() < _breaker_open_until:
+        raise UpstreamRateLimited(
+            f"{_rate_limit_streak} consecutive upstream 429s; "
+            f"{what or 'this call'} was not made (cooldown)")
+    remaining = _not_before - _now()
+    if remaining > 0:
+        _sleep(remaining)
+
+
 def metered_call(model: str, make_call, *, what: str | None = None,
                  usage_of=None, attempts: int = 1, retry_sleep: float = 0.0):
     """Make ONE paid model call under the per-run brake, and meter it.
@@ -981,11 +1068,20 @@ def metered_call(model: str, make_call, *, what: str | None = None,
                 f"paid reads are OFF (per-run ceiling "
                 f"${effective_run_ceiling_usd():.3f} or the monthly cap); "
                 f"{what or 'this call'} was not made and nothing is decided by it")
+        _wait_for_upstream(what)
         try:
             response = make_call()
         except PaidReadsOff:
             raise
         except Exception as exc:
+            if _is_rate_limited(exc):
+                _note_rate_limited(exc)
+                if attempt + 1 >= attempts:
+                    raise
+                continue  # _wait_for_upstream sleeps the backoff
+            if _is_transient(exc) and attempt + 1 < attempts:
+                _sleep(_backoff(attempt + 1))
+                continue
             # A budget stop raised from INSIDE the callable is still a budget
             # stop, not a transport failure. extractor._get_client() re-checks
             # the brake and raises its own PaidReadsDisabled; retrying that
@@ -1000,6 +1096,8 @@ def metered_call(model: str, make_call, *, what: str | None = None,
             if retry_sleep:
                 time.sleep(retry_sleep * (attempt + 1))
             continue
+        global _rate_limit_streak
+        _rate_limit_streak = 0
         record_usage(model, (usage_of or _usage_of)(response))
         return response
 
