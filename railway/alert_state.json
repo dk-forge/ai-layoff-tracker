@@ -97,6 +97,11 @@
       "last": 1793382208,
       "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
     },
+    "live-data-integrity-check:main:a3cde0067ab8e2ac": {
+      "first": 1794245804,
+      "last": 1794245804,
+      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
+    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1793695990,
       "last": 1793695990,
@@ -128,6 +133,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-09T13:58:32+00:00",
+  "updated_at": "2026-11-09T17:36:45+00:00",
   "version": 1
 }
