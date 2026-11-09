@@ -1,3 +1,9 @@
+## 2026-11-09 - A published edition gets its correction note through a dispatch, not by hand
+
+**What.** `/edition-correction` (includes/digest-archive.php) attaches a dated note to a published edition and had no caller, so the 2026-W45 weekly kept its 134,595 headline after 104,000 of it was removed (rows 183020, 183047, 183019, 183096; KLM 182986 moved to the Netherlands). Editions stay immutable by design; the note is the disclosure. **Fix:** `railway/edition_correction.py` plus `edition-correction.yml` (dry run by default, refuses em-dashes and over-long notes, fails loudly, reads the note back off the public page).
+**Guard:** `railway/tests/test_edition_correction.py` (+4)
+**Class:** novel (a published edition with no correction caller)
+
 ## 2026-11-09 - A voluntary buyout offer is not a job cut (Microsoft 60,000, row 183020)
 
 **What.** Row 183020 stored "Microsoft offered buyouts to around 60,000 employees." (Business Insider) as 60,000 verified, AI-attributed cuts: 45% of the 2026-W45 weekly and almost all of its 61,700 AI figure. The 60,000 is how many employees are eligible for a voluntary programme (Fortune: "This offer gives eligible employees who may be considering a future outside the company a new choice"); no acceptance figure exists. **Fix:** `railway/buyout_guard.py`, called from `finalize_extraction`, refuses a count that appears only beside offer or eligibility words and never beside acceptance or cut words. Row 183020 itself is removed through `apply-correction.yml` (trash), with rows 183047, 183019, 183096, 182248 and the KLM country edit 182986, each disclosed in the corrections log.
