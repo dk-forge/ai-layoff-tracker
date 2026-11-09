@@ -1,0 +1,59 @@
+name: Adjudicate one row (two referees)
+
+# RUNBOOK "A published row looks wrong: two-model adjudication". Until
+# 2026-11-09 this only ran through `railway run` on a laptop; a cloud session
+# had no way to put a row to the referees. Dry run unless apply=true, and even
+# then it writes ONLY when both referees agree (through apply_correction.py).
+# A disagreement exits 3 and turns this run red, which is the owner's signal.
+
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: "Table row id (the id /query returns)"
+        required: true
+      company:
+        description: "Company filter used to fetch the row"
+        required: true
+      extra_urls:
+        description: "Comma-separated further reports of the same event for the referees"
+        required: false
+        default: ""
+      apply:
+        description: "Write on agreement. Leave false for a dry run."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  adjudicate:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: Adjudicate
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ALT_RUN_CEILING_USD: "0.10"
+          IN_ID: ${{ inputs.id }}
+          IN_COMPANY: ${{ inputs.company }}
+          IN_EXTRA: ${{ inputs.extra_urls }}
+          IN_APPLY: ${{ inputs.apply }}
+        run: |
+          ARGS=()
+          if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
+          python adjudicate_row.py --id "$IN_ID" --company "$IN_COMPANY" --extra-urls "$IN_EXTRA" "${ARGS[@]}"
