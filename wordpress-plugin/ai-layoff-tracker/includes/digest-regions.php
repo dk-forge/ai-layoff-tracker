@@ -102,6 +102,25 @@ function alt_digest_country_flag($country) {
     return $flag;
 }
 
+/**
+ * The flag for a stored ISO 3166-1 alpha-2 code, or '' when it is not one.
+ * Derived from the code itself, so every assigned code renders, not only the
+ * ones whose country NAME is a key of the region table. User-assigned codes
+ * (AA, QM-QZ, XA-XZ except XK, ZZ) are never a country and get no flag.
+ */
+function alt_digest_iso2_flag($code) {
+    $code = strtoupper(trim((string) $code));
+    if (!preg_match('/^[A-Z]{2}$/', $code)) return '';
+    if ($code === 'AA' || $code === 'ZZ') return '';
+    if ($code[0] === 'Q' && $code[1] >= 'M') return '';
+    if ($code[0] === 'X' && $code !== 'XK') return '';
+    $flag = '';
+    foreach (str_split($code) as $ch) {
+        $flag .= mb_chr(0x1F1E6 + ord($ch) - ord('A'), 'UTF-8');
+    }
+    return $flag;
+}
+
 function alt_digest_us_state_name($code) {
     $code = strtoupper(trim((string) $code));
     if (function_exists('alt_us_state_names')) {

@@ -383,7 +383,8 @@ function alt_talent_region_lead($regions) {
 /** One compact line per employer: flag, employer, number + type, place, source. */
 function alt_talent_daily_line($r, $send_id, $boards = array()) {
     $country = alt_talent_country_name($r['country'] ?? '');
-    $flag = function_exists('alt_digest_country_flag') ? alt_digest_country_flag($country) : '';
+    $flag = function_exists('alt_digest_iso2_flag') ? alt_digest_iso2_flag($r['country'] ?? '') : '';
+    if ($flag === '' && function_exists('alt_digest_country_flag')) $flag = alt_digest_country_flag($country);
     $hc = alt_talent_headcount($r);
     $type = alt_talent_hiring_type($r) === 'listings' ? 'open listings' : 'announced plan';
     $fig = ($hc > 0 ? alt_digest_count($hc, 'role') : 'roles not stated') . ', ' . $type;
