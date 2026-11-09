@@ -1,0 +1,47 @@
+name: Attach a correction to a published edition
+
+on:
+  workflow_dispatch:
+    inputs:
+      freq:
+        description: "weekly or daily"
+        required: true
+        type: choice
+        options: [weekly, daily]
+      slug:
+        description: "Edition slug, e.g. 2026-W45 or 2026-11-08"
+        required: true
+      note:
+        description: "The dated correction note, as public copy (no em-dashes, max 1000 chars)"
+        required: true
+      apply:
+        description: "Actually write. Leave false for a dry run."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  correct:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements-min.lock
+      - name: Attach correction
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          IN_FREQ: ${{ inputs.freq }}
+          IN_SLUG: ${{ inputs.slug }}
+          IN_NOTE: ${{ inputs.note }}
+          IN_APPLY: ${{ inputs.apply }}
+        run: |
+          ARGS=()
+          if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
+          python3 railway/edition_correction.py --freq "$IN_FREQ" --slug "$IN_SLUG" --note "$IN_NOTE" "${ARGS[@]}"
