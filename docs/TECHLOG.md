@@ -1,3 +1,16 @@
+## 2026-11-09 - Weekly learning (2026-11-02 to 2026-11-09)
+
+**What.** Docs only, no plugin file, no version reserved. The baton in docs/HANDOFF.md was FREE.
+
+- **Upstream 429s on the extraction model.** `google/gemini-2.5-flash-lite` was rate limited upstream 1,022 times in two days (https://dakotta-labs.sentry.io/issues/AI-LAYOFF-TRACKER-5), plus timeouts (https://dakotta-labs.sentry.io/issues/AI-LAYOFF-TRACKER-2, https://dakotta-labs.sentry.io/issues/AI-LAYOFF-TRACKER-4) and one connection error (https://dakotta-labs.sentry.io/issues/AI-LAYOFF-TRACKER-6). 0 users affected. A 429 is usually free, a timeout is not (see the `max_retries=0` rule). Proposal: back off through `metered_call(attempts, retry_sleep)` and a second model on 429, never an SDK retry.
+- **Live data-integrity red.** "One event, one row" counted 2 events twice under different employer names (rows 183025, 183026, 3,000 jobs of excess): https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42505669307. A data question: the owner or the referee adjudicates, no guard is widened.
+- **Deploy WordPress plugin** failed 10 times in the week; the sampled 2 Nov run could not resolve the WordPress origin: https://github.com/dk-forge/ai-layoff-tracker/actions/runs/41535519816. Match the commit SHA before saying a deploy landed.
+- Benchmark 14/25 (2026-11-08) is already recorded above.
+
+**Class:** novel (provider rate limits are a cost and freshness issue, not a correctness one).
+
+**Guard:** none - a docs-only weekly review; each item is a proposal or a data question for the referee, and no code changed this week to pin.
+
 ## 2026-11-08 - Weekly accuracy benchmark: layoff 14/25; retrospective guard learns past years and "rises to" totals
 
 **What.** First scheduled weekly benchmark (`docs/benchmarks/2026-11-08.md`). Strict recall 14/25 (last week 13/25, different list). 11 misses: 9 no row (Dutch government, Amex, Fiserv, Ecco, GSK, NatWest, Weil Gotshal, Innodata, Swedbank), 2 wrong count (Flutter, KLM). NAB counted a hit but 15 days late. Time-to-listing is not measurable: the API has no first-seen timestamp. No ranking is claimed; no competitor was run.
