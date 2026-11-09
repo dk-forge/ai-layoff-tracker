@@ -3,6 +3,11 @@
 **What.** `adjudicate_row.py` only ran through `railway run` on a laptop, so a cloud session could not put KLM 182986 (5,000 stored; reports say 5,000 affected, about 1,000 cut) to the referees. **Fix:** `adjudicate-row.yml` (dispatch, dry run unless apply, writes only on agreement) and `--extra-urls`, which hands further reports of the same event to both referees, each labelled with its URL; unreadable pages are left out.
 **Guard:** `railway/tests/test_adjudicate_row.py` (+3)
 **Class:** novel (a referee path with no cloud door)
+## 2026-11-09 - A published edition gets its correction note through a dispatch, not by hand
+
+**What.** `/edition-correction` (includes/digest-archive.php) attaches a dated note to a published edition and had no caller, so the 2026-W45 weekly kept its 134,595 headline after 104,000 of it was removed (rows 183020, 183047, 183019, 183096; KLM 182986 moved to the Netherlands). Editions stay immutable by design; the note is the disclosure. **Fix:** `railway/edition_correction.py` plus `edition-correction.yml` (dry run by default, refuses em-dashes and over-long notes, fails loudly, reads the note back off the public page).
+**Guard:** `railway/tests/test_edition_correction.py` (+4)
+**Class:** novel (a published edition with no correction caller)
 
 ## 2026-11-09 - A voluntary buyout offer is not a job cut (Microsoft 60,000, row 183020)
 
