@@ -9,6 +9,8 @@
 
 **Class:** novel (provider rate limits are a cost and freshness issue, not a correctness one).
 
+**Guard:** none - a docs-only weekly review; each item is a proposal or a data question for the referee, and no code changed this week to pin.
+
 ## 2026-11-08 - Weekly accuracy benchmark: layoff 14/25; retrospective guard learns past years and "rises to" totals
 
 **What.** First scheduled weekly benchmark (`docs/benchmarks/2026-11-08.md`). Strict recall 14/25 (last week 13/25, different list). 11 misses: 9 no row (Dutch government, Amex, Fiserv, Ecco, GSK, NatWest, Weil Gotshal, Innodata, Swedbank), 2 wrong count (Flutter, KLM). NAB counted a hit but 15 days late. Time-to-listing is not measurable: the API has no first-seen timestamp. No ranking is claimed; no competitor was run.
