@@ -1,0 +1,66 @@
+{
+ "date": "2026-11-09",
+ "edition": "2026-W45 weekly",
+ "corrections": [
+  {
+   "row_id": 183020,
+   "status": "applied",
+   "action": "trash",
+   "company_name": "Microsoft",
+   "job_count": 60000,
+   "evidence": "Fortune (additional source): 'Microsoft is offering buyouts to roughly 60,000 employees' and 'This offer gives eligible employees who may be considering a future outside the company a new choice.' A voluntary offer, no acceptance figure, no Microsoft statement naming AI.",
+   "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42623797705",
+   "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42624732019"
+  },
+  {
+   "row_id": 183047,
+   "status": "applied",
+   "action": "trash",
+   "company_name": "Nokia",
+   "job_count": 4000,
+   "evidence": "Stored excerpt: 'However, in 2011 Nokia announced some 4,000 layoffs, including hundreds in San Diego.' A 2011 background mention in a profile.",
+   "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42623813364",
+   "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42624744528"
+  },
+  {
+   "row_id": 183019,
+   "status": "applied",
+   "action": "trash",
+   "company_name": "Bosch",
+   "job_count": 30000,
+   "evidence": "Stored excerpt: 'Personalabbau bei Bosch steigt auf mehr als 30.000 Stellen' (running total). The new Abstatt cut of 750 is row 183002; earlier programmes are rows 107363, 61742, 61741 and others.",
+   "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42623830489",
+   "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42624757160"
+  },
+  {
+   "row_id": 183096,
+   "status": "applied",
+   "action": "trash",
+   "company_name": "Wells Fargo",
+   "job_count": 10000,
+   "evidence": "Stored excerpt (headline): 'Wells Fargo announces more layoffs as workforce shrinks by over 10,000'. A headcount decline, not one layoff; the article body could not be fetched (HTTP 403).",
+   "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42623846610",
+   "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42624769209"
+  },
+  {
+   "row_id": 182248,
+   "status": "applied",
+   "action": "trash",
+   "company_name": "Dax-Konzerne",
+   "job_count": 46000,
+   "evidence": "Stored excerpt: 'Die Zahl der Beschaeftigten bei den Dax-Unternehmen sank demnach weltweit um rund 46.000 beziehungsweise 1,2 Prozent'. Net headcount change across all DAX companies, not one employer.",
+   "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42623862586",
+   "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42624781895"
+  },
+  {
+   "row_id": 182986,
+   "status": "applied",
+   "action": "edit",
+   "company_name": "KLM",
+   "job_count": 5000,
+   "evidence": "Dutch airline; NL Times: 'KLM is cutting 5,000 jobs, about 15 percent of its total workforce'. Country set to Netherlands. Count NOT changed: Hindustan Times headlines 1,000 job cuts and Skift says 5,000 positions affected through eliminations, outsourcing and transfers; left for referee review.",
+   "dry_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42623877272",
+   "apply_run": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/42624795305"
+  }
+ ]
+}
