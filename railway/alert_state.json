@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "adjudicate-one-row-two-referees:main:44971f010347f33c": {
+      "first": 1794232712,
+      "last": 1794232712,
+      "subject": "CI RED: Adjudicate one row (two referees) \u2014 DISAGREE: the referees did not agree. Nothing applied. A human decides. Spec: /opt/actions-runners/ai-layoff-tracker/_work/ai-layoff-tra"
+    },
     "bls-full-history-archive:main:702b8397656939ae": {
       "first": 1791791624,
       "last": 1791791624,
@@ -123,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-09T12:02:35+00:00",
+  "updated_at": "2026-11-09T13:58:32+00:00",
   "version": 1
 }
