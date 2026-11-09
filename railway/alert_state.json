@@ -127,11 +127,6 @@
       "last": 1794210286,
       "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
     },
-    "self-heal:main:76e9fe4f2ffb240c": {
-      "first": 1794248471,
-      "last": 1794248471,
-      "subject": "CI RED: Self-heal \u2014 no error line could be extracted from the log"
-    },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
       "last": 1794225755,
@@ -143,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-09T20:28:17+00:00",
+  "updated_at": "2026-11-09T20:28:42+00:00",
   "version": 1
 }
