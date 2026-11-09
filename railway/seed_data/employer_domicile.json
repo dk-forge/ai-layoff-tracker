@@ -150,6 +150,7 @@
     {"match": ["technip"], "employer_country": "France", "hq": "Paris, France", "ref": "https://www.technipenergies.com"},
     {"match": ["vallourec"], "employer_country": "France", "hq": "Meudon, France", "ref": "https://www.vallourec.com"},
     {"match": ["mahle"], "employer_country": "Germany", "hq": "Stuttgart, Germany", "ref": "https://www.mahle.com"},
+    {"match": ["klm", "klm royal dutch airlines"], "employer_country": "Netherlands", "hq": "Amstelveen, Netherlands (KLM Royal Dutch Airlines; the Air France-KLM holding is Franco-Dutch and deliberately absent)", "ref": "https://www.klm.com"},
     {"match": ["weinig", "weinig group"], "employer_country": "Germany", "hq": "Tauberbischofsheim, Germany", "ref": "https://www.weinig.com"},
     {"match": ["nordea", "nordea bank"], "employer_country": "Finland", "hq": "Helsinki, Finland (domicile moved from Sweden in October 2018; pre-2018 rows are excluded by the backfill's era guard)", "ref": "https://www.nordea.com", "not_before": "2018-10-01"},
     {"match": ["department of government efficiency", "department of government efficiency service", "department of government efficiency services"], "employer_country": "United States", "hq": "Washington, D.C., United States (US federal government initiative)", "ref": "https://doge.gov", "prefix": true}
