@@ -266,7 +266,10 @@ add_action('init', function () {
         update_option('alt_digest_pub_rewrite_ver', ALT_VERSION, false);
         if (function_exists('alt_request_rewrite_flush')) alt_request_rewrite_flush();
     }
-}, 2);
+// Priority 1, like every other self-served sitemap: Rank Math adds a catch-all
+// *-sitemap.xml rule on init:1 and 'top' rules match in the order added, so on
+// priority 2 /layoff-digest-sitemap.xml was shadowed and served 404 (2026-11-09).
+}, 1);
 
 add_filter('query_vars', function ($vars) {
     $vars[] = 'alt_digest_pub';
