@@ -2,7 +2,7 @@
 
 **What.** The routine inbox (asktherecruiter-sandbox#3695) asked whether the KLM country edit needed the domicile side too. It did: row 65098 (KLM, 2020-03-14) is filed under 'Multiple countries' with a blank `employer_country`, so no Netherlands filter could reach it, and the other KLM rows carried no domicile either. **Fix:** `klm` and `klm royal dutch airlines` map to the Netherlands (Amstelveen, klm.com) in `railway/seed_data/employer_domicile.json`; `employer-domicile-backfill.yml` fills the blank field through `/enrich-context`. The Air France-KLM holding is Franco-Dutch and stays absent, pinned by the same test.
 **Guard:** `railway/tests/test_employer_domicile_registry.py` (+1)
-**Class:** recurrence (a curated registry gap)
+**Class:** novel (a curated registry gap)
 
 ## 2026-11-09 - The two-referee adjudication can run from a cloud session, with extra reports
 
