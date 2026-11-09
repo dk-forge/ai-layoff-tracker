@@ -85,14 +85,16 @@ class DailyHumanFirst(unittest.TestCase):
         self.assertNotIn("signal", self.out["metric"])
 
     def test_hiring_leads_and_total_is_one_context_line(self):
-        lead = self.text.splitlines()[2]
-        self.assertTrue(lead.startswith("7 hiring signals, led by Cohere"), lead)
-        self.assertEqual(self.text.count("9 talent and employer-activity signals"), 1)
-        self.assertLess(self.text.index("Announced hiring plans"),
-                        self.text.index("In context: 9 talent"))
+        # Superseded 2026-11-06: the glance box now sits above the lead line,
+        # and the context line is "Separately, ..." (test_digest_talent_daily_glance).
+        self.assertIn("\n7 hiring signals, led by Cohere", self.text)
+        self.assertEqual(self.text.count("Separately, 2 employer-activity signals"), 1)
+        self.assertLess(self.text.index("Announced hiring plans\n"),
+                        self.text.index("Separately, 2 employer-activity"))
 
     def test_window_label_names_its_dates(self):
-        self.assertIn("Latest hiring signals (Nov 2-3)", self.text)
+        # The window is stated once, in the glance heading (owner, 2026-11-06).
+        self.assertIn("At a glance (Nov 2-3)", self.text)
         self.assertNotIn("today", self.text.lower())
         self.assertNotIn("daily briefing", self.text)
 
@@ -110,10 +112,12 @@ class DailyHumanFirst(unittest.TestCase):
         self.assertLess(plans.index("Tower"), plans.index("Applegreen"))
         self.assertLess(listings.index("ZipRecruiter"), listings.index("HawkEye 360"))
 
-    def test_one_compact_line_per_employer_capped_at_five(self):
+    def test_one_compact_line_per_employer(self):
+        # The cap rose from five to ten on 2026-11-06; the ten-line cap is
+        # pinned in test_digest_talent_daily_glance. All seven fit here.
         lines = re.findall(r"^  \S.*: .*(?:announced plan|open listings) · .*$",
                            self.text, re.M)
-        self.assertEqual(len(lines), 5, lines)
+        self.assertEqual(len(lines), 7, lines)
         self.assertIn("  🇨🇦 Cohere: 1,500 roles, announced plan · Toronto, Canada · "
                       "MobileSyrup https://example.com/4", self.text)
         self.assertNotIn("📍", self.text + self.html)

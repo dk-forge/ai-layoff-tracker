@@ -135,6 +135,7 @@ class ContextPeriod(unittest.TestCase):
 
     def test_context_states_window_and_distinct_employers(self):
         text = compose(fixture(NOV5))["text"]
-        self.assertIn("In context: 137 talent and employer-activity signals in all "
-                      "for Nov 4-5, from 137 distinct employers.", text)
+        # Reworded 2026-11-06; the window now sits in the glance heading.
+        self.assertIn("Separately, 137 employer-activity signals from 137 employers.", text)
+        self.assertIn("At a glance (Nov 4-5)", text)
         self.assertNotIn("about 137", text)
