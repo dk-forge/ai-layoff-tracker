@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.301
+ * Version:           2.20.302
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.301');
+define('ALT_VERSION', '2.20.302');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -32,7 +32,7 @@ if (!function_exists('alt_build_stamp_comment')) {
 // Load includes
 require_once ALT_PLUGIN_DIR . 'includes/cpt.php';
 require_once ALT_PLUGIN_DIR . 'includes/db.php';
-// Posts-index canonical fix (2.20.301). Guarded: FTPS uploads one file at a time.
+// Posts-index canonical fix (2.20.301, front page 2.20.302). Guarded: FTPS uploads one file at a time.
 if (file_exists(ALT_PLUGIN_DIR . 'includes/blog-canonical.php')) { require_once ALT_PLUGIN_DIR . 'includes/blog-canonical.php'; }
 // A newly named include is intentional. The 2.20.179 deploy transferred
 // includes/db.php and exposed the new version, but the host kept executing old
