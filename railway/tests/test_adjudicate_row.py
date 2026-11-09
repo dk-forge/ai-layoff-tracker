@@ -88,3 +88,29 @@ class ApplyPathTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExtraEvidenceTests(unittest.TestCase):
+    """--extra-urls: a session that found more reports hands them to the referees."""
+
+    def test_extra_sources_are_labelled_and_appended(self):
+        pages = {"https://a/arch": "cited text", "https://x/1": "one", "https://x/2": ""}
+        with mock.patch.object(adj, "fetch_evidence", side_effect=lambda u, *a, **k: pages.get(u, "")):
+            text, read = adj.gather_evidence({"archived_url": "https://a/arch"},
+                                             ["https://x/1", "https://x/2"])
+        self.assertIn("cited text", text)
+        self.assertIn("ADDITIONAL SOURCE https://x/1", text)
+        self.assertIn("one", text)
+        self.assertNotIn("https://x/2", text, "an unreadable page is not presented as evidence")
+        self.assertEqual(read, ["https://a/arch", "https://x/1"])
+
+    def test_no_extra_keeps_the_old_behaviour(self):
+        with mock.patch.object(adj, "fetch_evidence", side_effect=lambda u, *a, **k: "t" if u == "https://s" else ""):
+            text, read = adj.gather_evidence({"archived_url": "", "source_url": "https://s"}, [])
+        self.assertEqual(text, "t")
+        self.assertEqual(read, ["https://s"])
+
+    def test_the_cap_still_holds(self):
+        with mock.patch.object(adj, "fetch_evidence", return_value="z" * adj.EVIDENCE_CAP):
+            text, _ = adj.gather_evidence({"archived_url": "https://a"}, ["https://b", "https://c"])
+        self.assertLessEqual(len(text), adj.EVIDENCE_CAP * 2)

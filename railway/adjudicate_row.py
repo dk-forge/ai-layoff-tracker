@@ -83,7 +83,7 @@ recommend "keep" with confidence 0.
 THE ROW (as published):
 {row}
 
-THE CITED SOURCE (archived copy, text only, may be truncated):
+THE CITED SOURCE (archived copy first, then any ADDITIONAL SOURCE reports of the same event, each labelled with its URL; text only, may be truncated):
 <<<
 {evidence}
 >>>
@@ -114,6 +114,28 @@ def fetch_evidence(url: str, timeout: int = 15) -> str:
     text = re.sub(r"(?s)<[^>]+>", " ", raw)
     text = _html.unescape(re.sub(r"\s+", " ", text)).strip()
     return text[:EVIDENCE_CAP]
+
+
+def gather_evidence(row: dict, extra_urls: list[str]) -> tuple[str, list[str]]:
+    """The cited page (archived copy first), then any reports a session found.
+
+    Each extra page is labelled with its URL so a referee can cite which
+    report decided it; an unreadable one is left out, never shown as empty
+    evidence. Returns (text, urls actually read). Bounded to twice the cap.
+    """
+    read: list[str] = []
+    text = ""
+    for url in (row.get("archived_url") or "", row.get("source_url") or ""):
+        text = fetch_evidence(url)
+        if text:
+            read.append(url)
+            break
+    for url in extra_urls:
+        page = fetch_evidence(url)
+        if page:
+            read.append(url)
+            text += f"\n\n--- ADDITIONAL SOURCE {url} ---\n{page}"
+    return text[:EVIDENCE_CAP * 2], read
 
 
 def row_view(row: dict) -> dict:
@@ -193,6 +215,8 @@ def main() -> int:
     ap.add_argument("--id", type=int, required=True)
     ap.add_argument("--company", required=True, help="company filter used to fetch the row")
     ap.add_argument("--apply", action="store_true", help="write on agreement (otherwise dry run)")
+    ap.add_argument("--extra-urls", default="",
+                    help="comma-separated further reports of the same event for the referees")
     a = ap.parse_args()
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     if not site:
@@ -206,12 +230,13 @@ def main() -> int:
     view = row_view(row)
     print(f"ROW {a.id}: {view.get('company_name')} {view.get('job_count')} jobs "
           f"{view.get('layoff_date')} {view.get('verification_level')}/{view.get('review_status')}")
-    evidence = fetch_evidence(row.get("archived_url") or "") or fetch_evidence(row.get("source_url") or "")
+    extra = [u.strip() for u in a.extra_urls.split(",") if u.strip()]
+    evidence, read = gather_evidence(row, extra)
     if not evidence:
         path = write_spec(a.id, "unknown", {}, {"why": "no evidence page could be read"})
         print(f"UNKNOWN: no evidence could be read. Nothing applied. Spec: {path}")
         return 3
-    print(f"  evidence: {len(evidence)} characters read")
+    print(f"  evidence: {len(evidence)} characters read from {len(read)} page(s)")
     prompt = PROMPT.format(rules=RULES, row=json.dumps(view, indent=1, ensure_ascii=False),
                            evidence=evidence)
     verdicts: dict[str, dict | None] = {}
@@ -225,7 +250,8 @@ def main() -> int:
         print(f"  {model}: " + (json.dumps(v, ensure_ascii=False)[:400] if v else "no usable verdict"))
     status, action, fields = decide(verdicts)
     cost = round(spend.run_cost_usd(), 4)
-    extra = {"cost_usd": cost, "archived_url": row.get("archived_url"), "action": action,
+    extra = {"cost_usd": cost, "archived_url": row.get("archived_url"), "evidence_read": read,
+             "action": action,
              "edit_fields": fields}
     if status != "agree":
         path = write_spec(a.id, status, verdicts, extra)

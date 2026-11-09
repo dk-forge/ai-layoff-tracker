@@ -1,3 +1,9 @@
+## 2026-11-09 - The two-referee adjudication can run from a cloud session, with extra reports
+
+**What.** `adjudicate_row.py` only ran through `railway run` on a laptop, so a cloud session could not put KLM 182986 (5,000 stored; reports say 5,000 affected, about 1,000 cut) to the referees. **Fix:** `adjudicate-row.yml` (dispatch, dry run unless apply, writes only on agreement) and `--extra-urls`, which hands further reports of the same event to both referees, each labelled with its URL; unreadable pages are left out.
+**Guard:** `railway/tests/test_adjudicate_row.py` (+3)
+**Class:** novel (a referee path with no cloud door)
+
 ## 2026-11-09 - A voluntary buyout offer is not a job cut (Microsoft 60,000, row 183020)
 
 **What.** Row 183020 stored "Microsoft offered buyouts to around 60,000 employees." (Business Insider) as 60,000 verified, AI-attributed cuts: 45% of the 2026-W45 weekly and almost all of its 61,700 AI figure. The 60,000 is how many employees are eligible for a voluntary programme (Fortune: "This offer gives eligible employees who may be considering a future outside the company a new choice"); no acceptance figure exists. **Fix:** `railway/buyout_guard.py`, called from `finalize_extraction`, refuses a count that appears only beside offer or eligibility words and never beside acceptance or cut words. Row 183020 itself is removed through `apply-correction.yml` (trash), with rows 183047, 183019, 183096, 182248 and the KLM country edit 182986, each disclosed in the corrections log.
