@@ -912,6 +912,11 @@ function alt_entry_to_array($post_id) {
 
     $ticker      = (string) get_post_meta($post_id, 'ticker', true);
     $ai_language = (string) get_post_meta($post_id, 'ai_language', true);
+    // When this tracker first listed the row (#3695), as ISO 8601 UTC. Null
+    // when WordPress holds no GMT date (a draft never published).
+    $gmt     = (string) get_post_field('post_date_gmt', $post_id);
+    $created = ($gmt !== '' && $gmt !== '0000-00-00 00:00:00')
+        ? gmdate('Y-m-d\TH:i:s\Z', strtotime($gmt . ' UTC')) : null;
 
     return array(
         'id'                 => (int) $post_id,
@@ -936,6 +941,7 @@ function alt_entry_to_array($post_id) {
         'reason_tags'        => array_values(array_map('strval', $tags)),
         'excerpt'            => (string) get_post_meta($post_id, 'excerpt', true),
         'permalink'          => get_permalink($post_id),
+        'created_at'         => $created,
     );
 }
 
