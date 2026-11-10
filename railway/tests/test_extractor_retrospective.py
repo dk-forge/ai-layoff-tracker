@@ -152,5 +152,35 @@ class RetrospectiveCountIsNotAnEvent(unittest.TestCase):
         self.assertIn("CUMULATIVE TRAP", extractor.SYSTEM_PROMPT)
 
 
+class NetHeadcountDeclineIsNotAnEvent(unittest.TestCase):
+    """2026-11-09 headline incident (ai_all_time, us_all_time).
+
+    Two of the rows removed that day were not layoffs at all: Wells Fargo's
+    workforce "shrinking by more than 10,000" over time, and the combined net
+    headcount change of all DAX companies (~46,000). A net decline or a
+    multi-employer sum is not one employer's cut, so it must never be stored
+    as a dated event.
+    """
+
+    def test_wells_fargo_workforce_shrink_is_not_a_10000_layoff(self):
+        text = ("Wells Fargo's workforce has shrunk by more than 10,000 employees, "
+                "the bank said, as it leans on automation.")
+        self.assertEqual(retrospective_verdict(10000, text), ("retrospective", None))
+        text = "Wells Fargo headcount fell by 10,000 over the year."
+        self.assertEqual(retrospective_verdict(10000, text), ("retrospective", None))
+
+    def test_dax_combined_net_change_is_not_one_event(self):
+        text = ("Germany's DAX companies cut a combined net 46,000 jobs, according "
+                "to an EY analysis.")
+        self.assertEqual(retrospective_verdict(46000, text), ("retrospective", None))
+        de = "Die DAX-Konzerne haben unterm Strich netto 46.000 Stellen abgebaut."
+        self.assertEqual(retrospective_verdict(46000, de), ("retrospective", None))
+
+    def test_a_plain_cut_that_mentions_headcount_keeps_its_row(self):
+        text = "Acme will cut 1,000 jobs, about 5% of its headcount, the company said."
+        self.assertEqual(retrospective_verdict(1000, text), ("event", None))
+
+
+
 if __name__ == "__main__":
     unittest.main()

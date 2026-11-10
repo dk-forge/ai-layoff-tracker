@@ -718,6 +718,16 @@ CUMULATIVE_ANCHORS = (
     r"\b(?:rises?|rising|climbs?|climbing|grows?|growing|swells?|steigt|wächst)\s+(?:now\s+|jetzt\s+)?"
     r"(?:to|auf)\s+(?:about|around|roughly|nearly|more than|over|some|approximately|"
     r"mehr als|über|rund|etwa)?\s*$",
+    # A NET workforce decline is not one cut (2026-11-09 headline incident:
+    # Wells Fargo's "workforce shrinking by more than 10,000", and the
+    # combined net headcount change of all DAX companies, about 46,000).
+    r"\b(?:workforce|headcount|staff(?:ing)?|payrolls?|employee\s+base|belegschaft)\b"
+    r"[^.;]{0,30}?\b(?:(?:has|have|had)\s+)?(?:shr[iau]nk(?:ing)?|fell|fall(?:s|ing)?|"
+    r"declin(?:e|es|ed|ing)|dropp(?:ed|ing)|drops?|contract(?:ed|ing|s)?|schrumpft?e?)\s+"
+    r"(?:by|um)\s+(?:about|around|roughly|nearly|more than|over|some|approximately|"
+    r"mehr als|über|rund|etwa)?\s*$",
+    r"\b(?:a\s+)?(?:combined\s+)?(?:net|netto|unterm\s+strich(?:\s+netto)?)\s+"
+    r"(?:of\s+)?(?:about|around|roughly|nearly|more than|over|some|approximately|rund|etwa)?\s*$",
 )
 
 RETROSPECTIVE_SPANS = (

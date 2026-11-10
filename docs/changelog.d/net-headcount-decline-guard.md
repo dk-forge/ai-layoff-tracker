@@ -1,0 +1,1 @@
+- fix(extractor): `CUMULATIVE_ANCHORS` treats a net workforce decline ("workforce has shrunk by", "headcount fell by", "Belegschaft schrumpft um") and a combined/net multi-employer figure ("a combined net", "netto", "unterm Strich") as retrospective, so `retrospective_verdict` holds the row back (2026-11-09 headline incident, rows 183096 and 182248).
