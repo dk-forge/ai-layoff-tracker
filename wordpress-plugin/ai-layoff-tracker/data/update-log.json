@@ -1,0 +1,125 @@
+{
+ "source": "docs/release-notes.d",
+ "entries": [
+  {
+   "slug": "public-corrections-update-log",
+   "date": "2026-11-10",
+   "version": "2.20.306",
+   "type": "New",
+   "area": "transparency",
+   "text": "The corrections log and an update log now have their own pages, at /ai-layoff-tracker/corrections/ and /ai-layoff-tracker/update-log/, so a correction or a change can be cited by URL. Every row from the /query API now carries created_at, the time the tracker first listed it, for rows read from the main table as well as entry pages. Rows listed before this release show it when their entry page records it and null otherwise."
+  },
+  {
+   "slug": "reach-share-ga4-rss",
+   "date": "2026-11-10",
+   "version": "2.20.305",
+   "type": "New",
+   "area": "growth",
+   "text": "The tracker's layoffs RSS feed is now advertised to feed readers in every page head and linked under \"Cite this tracker\". Company and state pages gain a share row (native share where the browser supports it, plus copy link, LinkedIn and X, with no third-party scripts). Five GA4 funnel events (digest signup, follow, embed copy, cite copy, resume prompt click) now fire through the existing Google tag with no personal data. Chart.js loads deferred, and a daily page-weight budget check watches the tracker and company pages."
+  },
+  {
+   "slug": "digest-sitemap-route",
+   "date": "2026-11-09",
+   "version": "2.20.303",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The daily digest archive sitemap now loads for search engines. It was listed in the site's sitemap index but returned \"not found\", so Google could not discover the archived digest pages through it."
+  },
+  {
+   "slug": "front-page-canonical",
+   "date": "2026-11-09",
+   "version": "2.20.302",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The blog home page and its paginated pages now really carry their own canonical URL. The 2.20.301 fix did not fire because the blog home is a static front page."
+  },
+  {
+   "slug": "blog-index-canonical",
+   "date": "2026-11-09",
+   "version": "2.20.301",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The blog index and its paginated pages (/blog/, /blog/page/2/ and so on) now declare themselves as their canonical URL, with any tracking query string removed. They previously pointed at /blog/blog/, a page that does not exist, which Search Console reported as \"Duplicate without user-selected canonical\"."
+  },
+  {
+   "slug": "talent-flag-every-iso",
+   "date": "2026-11-09",
+   "version": "2.20.300",
+   "type": "Fix",
+   "area": "digest",
+   "text": "Every country in the Talent Intelligence Tracker daily email now shows its flag, including ones like Bosnia and Herzegovina and Indonesia."
+  },
+  {
+   "slug": "talent-daily-glance",
+   "date": "2026-11-09",
+   "version": "2.20.299",
+   "type": "New",
+   "area": "digest",
+   "text": "The Talent Intelligence Tracker daily email now opens with an at a glance box: how many hiring signals and employer-activity signals came in, the biggest announced hiring plan and the leading region. It explains the three kinds of signal in one line each, says up front that these are reported signals, and lists up to 10 hiring signals instead of 5."
+  },
+  {
+   "slug": "edgar-205-heading-anchor",
+   "date": "2026-11-05",
+   "version": "2.20.299",
+   "type": "Fix",
+   "area": "ingest",
+   "text": "Company filings that announce job cuts are now read from the right paragraph, so a long opening section can no longer hide the number of jobs cut."
+  },
+  {
+   "slug": "warn-tx-jeune-afrique",
+   "date": "2026-11-05",
+   "version": "2.20.298",
+   "type": "Fix",
+   "area": "sources",
+   "text": "Texas WARN notices are being collected again: notices filed since early October now reach the tracker. The Jeune Afrique feed was disconnected because the publisher now refuses our server; Francophone Africa is still covered through Financial Afrik and the local-language news sweeps."
+  },
+  {
+   "slug": "spend-limit-remaining",
+   "date": "2026-11-05",
+   "version": "2.20.298",
+   "type": "Fix",
+   "area": "ingest",
+   "text": "News stories are being added to the tracker again. Since late October the news import had been skipping every story because a budget check misread the AI key as used up; the key had money left all along."
+  },
+  {
+   "slug": "ingest-yield-watchdog",
+   "date": "2026-11-05",
+   "version": "2.20.298",
+   "type": "Fix",
+   "area": "ops",
+   "text": "Behind the scenes: the owner is now emailed when the nightly update stops adding new layoff events from the news, for example when the AI service key runs out. From late October no new news events were added for several nights without anyone being told; that gap is now watched."
+  },
+  {
+   "slug": "talent-daily-region-links-period",
+   "date": "2026-11-05",
+   "version": "2.20.297",
+   "type": "Fix",
+   "area": "digest",
+   "text": "The Talent Intelligence Tracker daily email now names the region with the most signals (it could name a smaller one), links each employer to its open roles on its job board when we have verified that board, and says which dates its overall count covers and that the employer count is exact."
+  },
+  {
+   "slug": "daily-edition-feedback-1104",
+   "date": "2026-11-05",
+   "version": "2.20.296",
+   "type": "Fix",
+   "area": "digest",
+   "text": "Layoff news now leads every edition. Blog reads sit in a labelled \"Career resources\" section, only for readers who ticked the articles box, and never make up a whole edition for a layoff-list reader. The career subject line leads with the reader benefit (\"3 ways to strengthen your applications\") and no longer carries article titles that name other products. Each read has a \"Why it matters\" line and a clear call to action (\"Read the guide\", \"Read the comparison\"), excerpts that are questions are replaced by the post's first real sentence, and the footer is shorter while keeping the unsubscribe link, the preferences link and the tracking disclosure."
+  },
+  {
+   "slug": "career-insights-digest",
+   "date": "2026-11-03",
+   "version": "2.20.295",
+   "type": "Fix",
+   "area": "digest",
+   "text": "The blog digest is now \"Career Insights from AskTheRecruiter\": one featured read with a short summary, then two more reads. The subject is the featured article's title. New subscribers get it weekly by default; existing subscribers keep their chosen frequency."
+  },
+  {
+   "slug": "talent-daily-human-first",
+   "date": "2026-11-03",
+   "version": "2.20.294",
+   "type": "Fix",
+   "area": "digest",
+   "text": "The Talent Intelligence Tracker daily email now leads with who is hiring. The subject names the top hiring development, announced hiring plans and open job-board listings are labelled and ranked separately, each employer gets one line, and the full data stays on the tracker. The email footer is shorter."
+  }
+ ]
+}
