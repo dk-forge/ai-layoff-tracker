@@ -243,23 +243,37 @@ def duplicate_agreed(verdicts: dict) -> bool:
     return len(answered) >= 2 and all(v.get("same_event_as_other_row") is True for v in answered)
 
 
-def apply_duplicate(row: dict, keeper: dict, reason: str, apply: bool) -> int:
-    """Move THE ROW's report onto the keeper, then trash THE ROW. Never trash
-    when the move failed: a removed row must leave its receipt behind."""
-    fields = {"to_id": int(keeper["id"]), "urls": [str(row.get("source_url") or "")]}
-    argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "move-sources",
-            "--reason", reason, "--fields", json.dumps(fields)]
-    if apply:
-        argv.append("--apply")
-    saved = sys.argv
-    try:
-        sys.argv = argv
-        rc = int(apply_correction.main() or 0)
-    finally:
-        sys.argv = saved
-    if rc != 0:
-        print(f"move-sources failed rc={rc}; row {row['id']} NOT trashed")
-        return rc
+def apply_duplicate(site: str, row: dict, keeper: dict, reason: str, apply: bool) -> int:
+    """Move THE ROW's OTHER source reports onto the keeper, then trash THE
+    ROW. The row's own primary citation (source_url) is never requested: the
+    server refuses to move it by design (db.php alt_api_move_source_reports -
+    it is the row's own citation, not evidence of a different event), so
+    asking for it always comes back `refused` and the row never trashes. If
+    the row carries no OTHER reports there is nothing to move; trash directly.
+    An unreadable report list is UNKNOWN, never read as "nothing to move":
+    never trash when the move failed or could not be attempted - a removed
+    row must leave its receipt behind."""
+    primary = str(row.get("source_url") or "")
+    sources = apply_correction._event_sources(site, row["id"])
+    if sources is None:
+        print(f"could not read row {row['id']}'s source reports; NOT trashed")
+        return 1
+    urls = sorted({str(s.get("source_url") or "") for s in sources} - {primary, ""})
+    if urls:
+        fields = {"to_id": int(keeper["id"]), "urls": urls}
+        argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "move-sources",
+                "--reason", reason, "--fields", json.dumps(fields)]
+        if apply:
+            argv.append("--apply")
+        saved = sys.argv
+        try:
+            sys.argv = argv
+            rc = int(apply_correction.main() or 0)
+        finally:
+            sys.argv = saved
+        if rc != 0:
+            print(f"move-sources failed rc={rc}; row {row['id']} NOT trashed")
+            return rc
     return apply_via_machinery(row, "trash", None, reason, apply)
 
 
@@ -333,7 +347,7 @@ def main() -> int:
     reasons = "; ".join((v.get("reasoning") or "")[:140] for v in verdicts.values() if v)
     reason = f"two-model adjudication ({' + '.join(REFEREES)} agree: {action}): {reasons}"
     if other and action == "trash":
-        rc = apply_duplicate(row, other, reason, a.apply)
+        rc = apply_duplicate(site, row, other, reason, a.apply)
     else:
         rc = apply_via_machinery(row, action, fields, reason, a.apply)
     write_spec(a.id, "applied" if (a.apply and rc == 0) else "agree-dry-run", verdicts,
