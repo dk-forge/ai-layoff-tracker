@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "logs-sitemap-redirect",
+   "date": "2026-11-10",
+   "version": "2.20.307",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The sitemap that lists the corrections log and the update log now loads directly for search engines. It was being redirected to an address with a trailing slash."
+  },
+  {
    "slug": "public-corrections-update-log",
    "date": "2026-11-10",
    "version": "2.20.306",
