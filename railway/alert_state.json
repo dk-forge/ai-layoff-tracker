@@ -117,6 +117,11 @@
       "last": 1794210286,
       "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
     },
+    "vps-watch:main:d3a2f13ea3d7af1b": {
+      "first": 1794306583,
+      "last": 1794306583,
+      "subject": "CI RED: VPS watch \u2014 UNKNOWN: 4 reading(s) could not be taken. Not a pass, not a fault."
+    },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
       "last": 1794225755,
@@ -128,6 +133,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-10T08:52:46+00:00",
+  "updated_at": "2026-11-10T10:29:44+00:00",
   "version": 1
 }
