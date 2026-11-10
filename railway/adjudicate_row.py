@@ -72,7 +72,9 @@ RULES = """The tracker's published rules, which you must apply:
    the action is "edit" with exactly the corrected fields.
 """
 
-PROMPT = """You are one of two independent referees adjudicating a published row in a
+PROMPT = """Today is {today}. A date on or before today is not in the future.
+
+You are one of two independent referees adjudicating a published row in a
 public layoff tracker. The other referee is a model from a different vendor;
 you will not see its answer. Be strict and literal. Decide only from the row
 and the source text below. If the source text is empty or unrelated, say so and
@@ -97,6 +99,31 @@ Answer with ONE JSON object and nothing else:
   "confidence": 0-100,
   "reasoning": "at most 600 characters, cite the sentence in the source that decides it"}}
 """
+
+
+DUPLICATE_RULE = """6. THE OTHER ROW below is a different published row. If THE ROW reports the
+   SAME layoff event as THE OTHER ROW (the same employer's same announced cut,
+   whatever name each row uses for the employer), THE ROW is a duplicate and the
+   honest action is "trash": its report is moved onto THE OTHER ROW, which is
+   kept. If they are genuinely different events, judge THE ROW by rules 1-5.
+"""
+
+DUPLICATE_FIELD = '''  "same_event_as_other_row": true|false,
+'''
+
+
+def build_prompt(view: dict, evidence: str, today: str, other: dict | None = None) -> str:
+    """The referee prompt. With `other`, it also asks the duplicate question."""
+    rules = RULES
+    row = json.dumps(view, indent=1, ensure_ascii=False)
+    if other:
+        rules += DUPLICATE_RULE
+        row += ("\n\nTHE OTHER ROW (kept if THE ROW duplicates it):\n"
+                + json.dumps(other, indent=1, ensure_ascii=False))
+    prompt = PROMPT.format(rules=rules, row=row, evidence=evidence, today=today)
+    if other:
+        prompt = prompt.replace('  "recommended_action"', DUPLICATE_FIELD + '  "recommended_action"', 1)
+    return prompt
 
 
 def fetch_evidence(url: str, timeout: int = 15) -> str:
@@ -210,6 +237,32 @@ def apply_via_machinery(row: dict, action: str, fields: dict | None,
         sys.argv = saved
 
 
+def duplicate_agreed(verdicts: dict) -> bool:
+    """Both referees answered and both said THE ROW is the other row's event."""
+    answered = [v for v in verdicts.values() if v]
+    return len(answered) >= 2 and all(v.get("same_event_as_other_row") is True for v in answered)
+
+
+def apply_duplicate(row: dict, keeper: dict, reason: str, apply: bool) -> int:
+    """Move THE ROW's report onto the keeper, then trash THE ROW. Never trash
+    when the move failed: a removed row must leave its receipt behind."""
+    fields = {"to_id": int(keeper["id"]), "urls": [str(row.get("source_url") or "")]}
+    argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "move-sources",
+            "--reason", reason, "--fields", json.dumps(fields)]
+    if apply:
+        argv.append("--apply")
+    saved = sys.argv
+    try:
+        sys.argv = argv
+        rc = int(apply_correction.main() or 0)
+    finally:
+        sys.argv = saved
+    if rc != 0:
+        print(f"move-sources failed rc={rc}; row {row['id']} NOT trashed")
+        return rc
+    return apply_via_machinery(row, "trash", None, reason, apply)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--id", type=int, required=True)
@@ -217,6 +270,10 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="write on agreement (otherwise dry run)")
     ap.add_argument("--extra-urls", default="",
                     help="comma-separated further reports of the same event for the referees")
+    ap.add_argument("--duplicate-of", type=int, default=0,
+                    help="row id THE ROW may duplicate; asks the duplicate question (keeper is this row)")
+    ap.add_argument("--duplicate-company", default="",
+                    help="company filter for the --duplicate-of row (default: --company)")
     a = ap.parse_args()
     site = os.environ.get("WP_SITE_URL", "").rstrip("/")
     if not site:
@@ -228,6 +285,16 @@ def main() -> int:
         print(f"row {a.id} not found under company {a.company!r}")
         return 1
     view = row_view(row)
+    other = None
+    if a.duplicate_of:
+        others = apply_correction._rows_for(site, a.duplicate_company or a.company)
+        other_row = others.get(a.duplicate_of)
+        if not other_row or a.duplicate_of == a.id:
+            print(f"--duplicate-of row {a.duplicate_of} not found (or is THE ROW)")
+            return 1
+        other = row_view(other_row)
+        print(f"OTHER ROW {a.duplicate_of}: {other.get('company_name')} {other.get('job_count')} jobs "
+              f"{other.get('layoff_date')}")
     print(f"ROW {a.id}: {view.get('company_name')} {view.get('job_count')} jobs "
           f"{view.get('layoff_date')} {view.get('verification_level')}/{view.get('review_status')}")
     extra = [u.strip() for u in a.extra_urls.split(",") if u.strip()]
@@ -237,8 +304,7 @@ def main() -> int:
         print(f"UNKNOWN: no evidence could be read. Nothing applied. Spec: {path}")
         return 3
     print(f"  evidence: {len(evidence)} characters read from {len(read)} page(s)")
-    prompt = PROMPT.format(rules=RULES, row=json.dumps(view, indent=1, ensure_ascii=False),
-                           evidence=evidence)
+    prompt = build_prompt(view, evidence, _dt.date.today().isoformat(), other)
     verdicts: dict[str, dict | None] = {}
     for model in REFEREES:
         try:
@@ -253,6 +319,8 @@ def main() -> int:
     extra = {"cost_usd": cost, "archived_url": row.get("archived_url"), "evidence_read": read,
              "action": action,
              "edit_fields": fields}
+    if status == "agree" and other and action == "trash" and not duplicate_agreed(verdicts):
+        status = "disagree"  # trash for some other reason is not a duplicate verdict
     if status != "agree":
         path = write_spec(a.id, status, verdicts, extra)
         print(f"{status.upper()}: the referees did not agree. Nothing applied. "
@@ -264,7 +332,10 @@ def main() -> int:
         return 0
     reasons = "; ".join((v.get("reasoning") or "")[:140] for v in verdicts.values() if v)
     reason = f"two-model adjudication ({' + '.join(REFEREES)} agree: {action}): {reasons}"
-    rc = apply_via_machinery(row, action, fields, reason, a.apply)
+    if other and action == "trash":
+        rc = apply_duplicate(row, other, reason, a.apply)
+    else:
+        rc = apply_via_machinery(row, action, fields, reason, a.apply)
     write_spec(a.id, "applied" if (a.apply and rc == 0) else "agree-dry-run", verdicts,
                {**extra, "reason": reason, "apply_rc": rc})
     print(f"AGREE: {action}. {'APPLIED' if a.apply else 'dry run'} rc={rc} (spend ${cost})")
