@@ -563,6 +563,7 @@ def _run():
     merges = [{"keeper_id": keeper, "duplicate_ids": sorted(ids)} for keeper, ids in deduped.items()]
     print(f"\n{sum(len(m['duplicate_ids']) for m in merges)} duplicate(s) to merge, {skipped} cluster(s) skipped")
     merged = fails = 0
+    records = []
     for i in range(0, len(merges), 100):
         batch = merges[i:i + 100]
         try:
@@ -573,9 +574,13 @@ def _run():
             res = json.load(urllib.request.urlopen(req, timeout=90))
             merged += len(res.get("merged_rows", []))
             print(res)
+            records.extend(res.get("merged_records") or [])
         except Exception as e:  # a failed batch is retried tomorrow, not fatal today
             fails += 1
             print(f"  merge batch failed (will retry next run): {e}")
+    if os.environ.get("BEFORE_STATE_PATH"):  # uploaded by dedupe-llm.yml as evidence
+        with open(os.environ["BEFORE_STATE_PATH"], "w") as fh:
+            json.dump({"action": "merge", "merged_records": records}, fh, indent=2)
     print(f"\nDone: {merged} merged, {fails} batch(es) deferred, {skipped} cluster(s) skipped")
     spend.record_job_run(items=len(clusters), changed=merged)
 

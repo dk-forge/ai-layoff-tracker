@@ -10,6 +10,18 @@
 **Guard:** none (investigation only)
 **Class:** novel (investigation only; no defect)
 
+## 2026-11-10 - The two referees can be asked the duplicate question, and are told what day it is
+
+**What.** The live check `cross_alias_duplicate_rows` names three events counted twice (Volvo 183025 / Volvo Cars 183026, PepsiCo 183153 / 183157, Woodside 182980 / 183011). `adjudicate-row.yml` could only ask whether a row is valid, never whether it duplicates another row, and `dedupe_llm.py` never reaches these pairs (`bucket_key` keeps "volvo" and "volvo cars" apart on purpose). Re-run with live sources (runs 42882097733, 42882103025), one referee still said "trash" because it read 2026-10-23 as a future date: the prompt never said what day it is. **Fix:** the prompt opens with today's date; `--duplicate-of N` (and the workflow input `duplicate_of`) adds THE OTHER ROW and rule 6, and applies only when both referees say trash AND `same_event_as_other_row: true`, by moving the row's report onto N (move-sources) and then trashing it; a failed move never trashes.
+**Guard:** `railway/tests/test_adjudicate_row.py` (+6)
+**Class:** novel (a referee asked the wrong question, without the date)
+
+## 2026-11-10 - A signed correction and a dedup merge leave their before-state as an artifact
+
+**What.** `us_all_time` (open since 2026-11-09T17:36Z) could not be reconciled row by row: the 12 `apply-correction.yml` runs and dedupe-llm run 42635444956 of 2026-11-09 uploaded no artifact, and the `before id=...` log line printed company, jobs, date and URL but never the row's country. The logs give the trashed rows' jobs (183020 Microsoft 60,000; 183047 Nokia 4,000; 183019 Bosch 30,000; 183096 Wells Fargo 10,000; 182248 Dax-Konzerne 46,000) and the KLM 182986 edit (5,000 jobs, set to Netherlands), but no prior country for any of them; the dedup log does carry countries (183000 Schaeffler 3,460 Multiple countries; 183140 JPMorgan 632 United States). The 8 undated duplicates (22,100) named in the entry below are in none of these runs. **Fix:** the before line prints `country=`, `apply_correction.py` and `dedupe_llm.py` write the before-state to `BEFORE_STATE_PATH` as JSON, and both workflows upload it (`if: always()`, 90 days). `us_all_time` stays open.
+**Guard:** `railway/tests/test_correction_before_state.py` (+4)
+**Class:** novel (a signed correction that left no country evidence)
+
 ## 2026-11-10 - Headline incident ai_all_time closed by the owner; us_all_time left open
 
 **What.** The owner told a Claude session in chat on 2026-11-10 to close the two headline incidents opened 2026-11-09T17:36Z. `ai_all_time` was closed with `data_integrity.py --close-incident` (reviewer "Dakotta (owner, chat instruction 2026-11-10)", rows 183020, 183047, 183019, 183096, 182248, replacement 260,551 jobs / 111 entries, which live `/aggregate?ai=1` served at about 17:05Z). The whole drop of 322,801 -> 260,551 is the disclosed 2026-11-09 corrections (entry above). `us_all_time` is **still open**: the public corrections log names no countries for the removed rows and the trashed rows cannot be read from the public API, so the -139,443 move of the non-US complement cannot be matched row by row against the disclosed removals. It needs the per-row countries from the signed before-state.
