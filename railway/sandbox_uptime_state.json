@@ -1,12 +1,6 @@
 {
-  "consecutive_fails": 2,
-  "open": {
-    "sandbox-uptime:down": {
-      "first": 1794321957,
-      "last": 1794321957,
-      "subject": "sandbox uptime check failing: https://sandbox.asktherecruiter.com/healthz: HTTP 429; https://sandbox.asktherecruiter.com/healthz/deep: HTTP 429"
-    }
-  },
-  "updated_at": "2026-11-10T14:45:57+00:00",
+  "consecutive_fails": 0,
+  "open": {},
+  "updated_at": "2026-11-10T15:01:05+00:00",
   "version": 1
 }
