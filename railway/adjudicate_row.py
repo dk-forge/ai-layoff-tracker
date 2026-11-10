@@ -15,10 +15,11 @@ owner accepts for a numeric change, and it is cheap: two short calls, a few
 cents, metered like every other paid read in this repository.
 
 WHAT IT NEVER DOES. It never edits live data by hand: the write goes through
-apply_correction.py and the same /trash and /edit routes every correction has
-used, so the dedup hash is suppressed and the public corrections log gets its
-line. It never prints a key, and it never retries inside the metered callable
-(CLAUDE.md iron rule; retries are metered_call(attempts=2)).
+apply_correction.py and the same /trash, /edit and /merge-events routes every
+correction has used, so the dedup hash is suppressed and the public
+corrections log gets its line. It never prints a key, and it never retries
+inside the metered callable (CLAUDE.md iron rule; retries are
+metered_call(attempts=2)).
 
 USAGE
     WP_SITE_URL=... WP_API_KEY=... OPENROUTER_API_KEY=... \\
@@ -244,23 +245,27 @@ def duplicate_agreed(verdicts: dict) -> bool:
 
 
 def apply_duplicate(row: dict, keeper: dict, reason: str, apply: bool) -> int:
-    """Move THE ROW's report onto the keeper, then trash THE ROW. Never trash
-    when the move failed: a removed row must leave its receipt behind."""
-    fields = {"to_id": int(keeper["id"]), "urls": [str(row.get("source_url") or "")]}
-    argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "move-sources",
+    """Fold THE ROW's evidence into the keeper's event and remove THE ROW —
+    one /merge-events call (`apply_correction.py --action merge`), not
+    move-sources+trash. THE ROW's only evidence is almost always its own
+    canonical citation, and the server refuses to move a row's own citation
+    by design (test_move_source_reports.py: a primary citation is never
+    moved) — that refusal exists for the ordinary /edit misuse it guards
+    against, not for a row about to be deleted. /merge-events is the route
+    that already handles exactly this case for the daily cross-source dedup
+    (dedupe_llm.py): it folds the duplicate's citation in, THEN removes the
+    row, as one atomic call, so a removed row never loses its receipt."""
+    fields = {"keeper_id": int(keeper["id"]), "duplicate_ids": [int(row["id"])]}
+    argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "merge",
             "--reason", reason, "--fields", json.dumps(fields)]
     if apply:
         argv.append("--apply")
     saved = sys.argv
     try:
         sys.argv = argv
-        rc = int(apply_correction.main() or 0)
+        return int(apply_correction.main() or 0)
     finally:
         sys.argv = saved
-    if rc != 0:
-        print(f"move-sources failed rc={rc}; row {row['id']} NOT trashed")
-        return rc
-    return apply_via_machinery(row, "trash", None, reason, apply)
 
 
 def main() -> int:

@@ -139,7 +139,12 @@ class DuplicateOfTests(unittest.TestCase):
         prompt = adj.build_prompt({"id": 1}, "text", today="2026-11-10")
         self.assertNotIn("THE OTHER ROW", prompt)
 
-    def test_duplicate_trash_moves_the_source_to_the_keeper_first(self):
+    def test_duplicate_trash_merges_into_the_keeper(self):
+        """2026-11-10 (run 42884011327): THE ROW's only evidence is almost
+        always its own canonical citation, and the server refuses to MOVE a
+        row's own citation by design - so move-sources+trash can never
+        succeed for the common case. merge folds it in and removes the row
+        in one call instead (same route dedupe_llm.py already drives)."""
         calls = []
 
         def fake_main():
@@ -151,23 +156,20 @@ class DuplicateOfTests(unittest.TestCase):
                                       "source_url": "https://bi/x"},
                                      {"id": 183026}, "two-model: dup", apply=False)
         self.assertEqual(rc, 0)
-        self.assertEqual(calls[0][calls[0].index("--action") + 1], "move-sources")
+        self.assertEqual(len(calls), 1, "one atomic merge call, not move-then-trash")
+        self.assertEqual(calls[0][calls[0].index("--action") + 1], "merge")
+        self.assertEqual(calls[0][calls[0].index("--ids") + 1], "183025")
         fields = json.loads(calls[0][calls[0].index("--fields") + 1])
-        self.assertEqual(fields, {"to_id": 183026, "urls": ["https://bi/x"]})
-        self.assertEqual(calls[1][calls[1].index("--action") + 1], "trash")
-        self.assertEqual(calls[1][calls[1].index("--ids") + 1], "183025")
+        self.assertEqual(fields, {"keeper_id": 183026, "duplicate_ids": [183025]})
+        self.assertNotIn("--apply", calls[0], "apply=False must stay a dry run")
 
-    def test_failed_move_never_trashes(self):
-        calls = []
-
+    def test_failed_merge_returns_its_code(self):
         def fake_main():
-            calls.append(list(sys.argv))
             return 1
 
         with mock.patch.object(adj.apply_correction, "main", fake_main):
             rc = adj.apply_duplicate({"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
         self.assertEqual(rc, 1)
-        self.assertEqual(len(calls), 1)
 
 
 class DuplicateAgreementTests(unittest.TestCase):
