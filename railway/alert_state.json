@@ -67,6 +67,11 @@
       "last": 1794337702,
       "subject": "CI RED: Adjudicate one row (two referees) \u2014 anthropic/claude-sonnet-4.5: {\"event_is_new_on_layoff_date\": false, \"count_supported_by_source\": true, \"employer_attributed_to_ai\": fals"
     },
+    "adjudicate-one-row-two-referees:main:8302140b3c9551fa": {
+      "first": 1794338435,
+      "last": 1794338435,
+      "subject": "CI RED: Adjudicate one row (two referees) \u2014 links not moved: ['https://www.theage.com.au/national/western-australia/we-ll-bat-for-gas-saffioti-defends-sector-in-wake-of-woodside-jo"
+    },
     "bls-full-history-archive:main:702b8397656939ae": {
       "first": 1791791624,
       "last": 1791791624,
@@ -153,6 +158,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-10T19:20:02+00:00",
+  "updated_at": "2026-11-10T19:20:35+00:00",
   "version": 1
 }
