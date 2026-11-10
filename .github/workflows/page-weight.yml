@@ -1,0 +1,36 @@
+name: Page weight budget
+
+# Reach audit 2026-11-10: the flagship page is 428 KB of HTML and 34 scripts,
+# and nothing watched it. railway/page_weight.py fails when a reader-facing
+# page grows past the ceiling. Stdlib only, read-only, no secrets, ~10 seconds
+# on one runner, once a day. Exit 2 = over budget, 3 = could not measure.
+#
+# An automated axe/pa11y run was considered in the same audit and NOT added:
+# contrast-audit.yml already drives real Chrome against the live pages for the
+# rendered-contrast class, and an un-baselined axe run would turn existing
+# findings into a daily red that ci-alert.yml mails to the owner. Baseline it
+# once in a session with Chrome, then add it with an allow-list.
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check page weight
+        run: python3 railway/page_weight.py

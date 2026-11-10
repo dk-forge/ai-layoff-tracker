@@ -416,6 +416,9 @@ $alt_bd_titles = array(
     </aside>
     <?php endif; ?>
 
+    <?php // Share this page (includes/reach.php). function_exists: FTP race guard.
+          if (function_exists('alt_share_buttons_html')) echo alt_share_buttons_html(alt_facet_heading($alt_f)); ?>
+
     <?php // Follow this state (includes/follows.php): new entries in the digest,
           // through the digest's own double opt-in. US state pages only.
           if ($alt_f['dim'] === 'state' && function_exists('alt_follow_form_html')) {

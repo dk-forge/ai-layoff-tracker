@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.304
+ * Version:           2.20.305
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.304');
+define('ALT_VERSION', '2.20.305');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -312,6 +312,12 @@ if (is_readable($alt_blog_claps)) {
 $alt_roo_feedback = ALT_PLUGIN_DIR . 'includes/roo-feedback.php';
 if (is_readable($alt_roo_feedback)) {
     require_once $alt_roo_feedback;
+}
+// Reach (audit 2026-11-10): RSS feed discovery, GA4 funnel events, share
+// buttons. GUARDED like every new include; absent, the pages lose only these.
+$alt_reach = ALT_PLUGIN_DIR . 'includes/reach.php';
+if (is_readable($alt_reach)) {
+    require_once $alt_reach;
 }
 // Generated map of official state WARN list pages (source: railway/sources/warn.py).
 // GUARDED: FTP deploys upload files one at a time, so this main plugin file can
@@ -1703,7 +1709,11 @@ function alt_enqueue_assets() {
         'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
         array(),
         '4.4.0',
-        true
+        // DEFERRED explicitly (reach audit 2026-11-10), not left to
+        // Autoptimize: the charts all draw after layoffs.js, which is itself
+        // deferred and depends on this handle, so WordPress keeps the order and
+        // the parser is never blocked by 200KB the first screen does not draw.
+        array('in_footer' => true, 'strategy' => 'defer')
     );
 
     // d3 v7 + topojson-client: the "map of job cuts" is a hand-built d3
