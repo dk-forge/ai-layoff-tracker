@@ -2,7 +2,7 @@
 
 **What.** Live surface check run 42834158437 (14:26Z) failed `headline_movement` and `headline_concentration`. The movement FAIL is the sticky incident opened 2026-11-09T17:36Z on `ai_all_time` (322,801 -> 260,551 jobs, 112 -> 111 entries) and `us_all_time`, the complement moving -102,953 / -139,443 against a worldwide -165,953. It is fully a disclosed correction, not a collector fault and not a real event: on 2026-11-09 `apply-correction.yml` trashed Microsoft 60,000 (183020, a buyout eligibility figure), Nokia 4,000 (183047, a 2011 reference), Bosch 30,000 (183019, running total), Wells Fargo 10,000 (183096, workforce shrinkage over time) and the DAX companies' combined net 46,000 (182248), plus 8 undated duplicates (22,100) and 2 dedup merges (4,092); the corrections log carries 176,692 jobs for the window. The concentration FAIL and the "corrections log could not be consulted" note were a transient HTTP 500 from `/aggregate` and `/corrections`; both served 200 when re-read at about 15:10Z. Microsoft, Nokia and Bosch already had guards (#610, #606); Wells Fargo and DAX did not. **Fix:** two `CUMULATIVE_ANCHORS` for a net workforce decline and a combined/net figure, so `retrospective_verdict` refuses them.
 **Guard:** `railway/tests/test_extractor_retrospective.py` (+3)
-**Class:** recurrence (aggregate counted as a single event)
+**Class:** novel (a net headcount decline or a multi-company sum read as one cut)
 
 ## 2026-11-09 - KLM joins the curated employer-domicile registry
 
