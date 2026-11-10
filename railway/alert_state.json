@@ -57,6 +57,11 @@
       "last": 1794232712,
       "subject": "CI RED: Adjudicate one row (two referees) \u2014 DISAGREE: the referees did not agree. Nothing applied. A human decides. Spec: /opt/actions-runners/ai-layoff-tracker/_work/ai-layoff-tra"
     },
+    "adjudicate-one-row-two-referees:main:683095c72bf5a9cb": {
+      "first": 1794337702,
+      "last": 1794337702,
+      "subject": "CI RED: Adjudicate one row (two referees) \u2014 anthropic/claude-sonnet-4.5: {\"event_is_new_on_layoff_date\": false, \"count_supported_by_source\": true, \"employer_attributed_to_ai\": fals"
+    },
     "bls-full-history-archive:main:702b8397656939ae": {
       "first": 1791791624,
       "last": 1791791624,
@@ -143,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-10T17:31:57+00:00",
+  "updated_at": "2026-11-10T19:08:22+00:00",
   "version": 1
 }
