@@ -19,6 +19,14 @@ on:
         description: "Comma-separated further reports of the same event for the referees"
         required: false
         default: ""
+      duplicate_of:
+        description: "Row id this row may duplicate (asks the duplicate question; that row is kept)"
+        required: false
+        default: ""
+      duplicate_company:
+        description: "Company filter for the duplicate_of row (default: company)"
+        required: false
+        default: ""
       apply:
         description: "Write on agreement. Leave false for a dry run."
         required: true
@@ -53,7 +61,10 @@ jobs:
           IN_COMPANY: ${{ inputs.company }}
           IN_EXTRA: ${{ inputs.extra_urls }}
           IN_APPLY: ${{ inputs.apply }}
+          IN_DUP: ${{ inputs.duplicate_of }}
+          IN_DUP_CO: ${{ inputs.duplicate_company }}
         run: |
           ARGS=()
           if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
+          if [ -n "$IN_DUP" ]; then ARGS+=(--duplicate-of "$IN_DUP" --duplicate-company "$IN_DUP_CO"); fi
           python adjudicate_row.py --id "$IN_ID" --company "$IN_COMPANY" --extra-urls "$IN_EXTRA" "${ARGS[@]}"

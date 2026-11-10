@@ -114,3 +114,66 @@ class ExtraEvidenceTests(unittest.TestCase):
         with mock.patch.object(adj, "fetch_evidence", return_value="z" * adj.EVIDENCE_CAP):
             text, _ = adj.gather_evidence({"archived_url": "https://a"}, ["https://b", "https://c"])
         self.assertLessEqual(len(text), adj.EVIDENCE_CAP * 2)
+
+
+class PromptDateTests(unittest.TestCase):
+    """2026-11-10: a referee called a 2026-10-23 row "in the future" because the
+    prompt never said what day it is (runs 42882097733, 42882103025)."""
+
+    def test_prompt_states_today(self):
+        prompt = adj.build_prompt({"id": 1}, "text", today="2026-11-10")
+        self.assertIn("Today is 2026-11-10", prompt)
+
+
+class DuplicateOfTests(unittest.TestCase):
+    """--duplicate-of: the question is whether THE ROW re-reports another row's event."""
+
+    def test_prompt_shows_the_other_row_and_asks_the_duplicate_question(self):
+        prompt = adj.build_prompt({"id": 183025}, "text", today="2026-11-10",
+                                  other={"id": 183026, "company_name": "Volvo Cars"})
+        self.assertIn("THE OTHER ROW", prompt)
+        self.assertIn("183026", prompt)
+        self.assertIn("same_event_as_other_row", prompt)
+
+    def test_no_other_row_keeps_the_old_question(self):
+        prompt = adj.build_prompt({"id": 1}, "text", today="2026-11-10")
+        self.assertNotIn("THE OTHER ROW", prompt)
+
+    def test_duplicate_trash_moves_the_source_to_the_keeper_first(self):
+        calls = []
+
+        def fake_main():
+            calls.append(list(sys.argv))
+            return 0
+
+        with mock.patch.object(adj.apply_correction, "main", fake_main):
+            rc = adj.apply_duplicate({"id": 183025, "company_name": "Volvo",
+                                      "source_url": "https://bi/x"},
+                                     {"id": 183026}, "two-model: dup", apply=False)
+        self.assertEqual(rc, 0)
+        self.assertEqual(calls[0][calls[0].index("--action") + 1], "move-sources")
+        fields = json.loads(calls[0][calls[0].index("--fields") + 1])
+        self.assertEqual(fields, {"to_id": 183026, "urls": ["https://bi/x"]})
+        self.assertEqual(calls[1][calls[1].index("--action") + 1], "trash")
+        self.assertEqual(calls[1][calls[1].index("--ids") + 1], "183025")
+
+    def test_failed_move_never_trashes(self):
+        calls = []
+
+        def fake_main():
+            calls.append(list(sys.argv))
+            return 1
+
+        with mock.patch.object(adj.apply_correction, "main", fake_main):
+            rc = adj.apply_duplicate({"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
+        self.assertEqual(rc, 1)
+        self.assertEqual(len(calls), 1)
+
+
+class DuplicateAgreementTests(unittest.TestCase):
+    def test_both_must_say_same_event(self):
+        yes = dict(_v("trash"), same_event_as_other_row=True)
+        no = dict(_v("trash"), same_event_as_other_row=False)
+        self.assertTrue(adj.duplicate_agreed({A: yes, B: yes}))
+        self.assertFalse(adj.duplicate_agreed({A: yes, B: no}))
+        self.assertFalse(adj.duplicate_agreed({A: yes, B: None}))
