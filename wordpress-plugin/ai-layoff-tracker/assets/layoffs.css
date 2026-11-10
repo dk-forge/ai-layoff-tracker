@@ -4740,3 +4740,10 @@ section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid va
     .alt-wrap .alt-loc-table td:first-child { max-width: 130px; }
 }
 /* END BY LOCATION TABLE */
+
+/* Share row and feed link (includes/reach.php). 44px targets, wraps at 375px. */
+.alt-share { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; }
+.alt-share .alt-btn { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.alt-share .alt-btn[hidden] { display: none; }
+.alt-share-status { font-size: 13px; overflow-wrap: anywhere; }
+.alt-feed-link { margin: 8px 0 16px; font-size: 14px; }

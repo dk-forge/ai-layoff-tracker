@@ -1704,6 +1704,8 @@ $alt_hero_basis  = 'counted by filing date';
               // version. Inside the <code> so the Copy button carries it. ?>
         <button type="button" class="alt-btn alt-btn-sm" id="alt-cite-copy">Copy</button>
     </div>
+    <?php // The layoffs RSS feed, visible (includes/reach.php; also in <head>). ?>
+    <?php if (function_exists('alt_reach_feed_visible_link')) echo alt_reach_feed_visible_link(); ?>
 
     <?php
     // The facet mesh had no on-site entry point. 103 indexable country, state

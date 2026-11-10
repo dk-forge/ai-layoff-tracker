@@ -283,6 +283,9 @@ $alt_verif = array(
         <?php endif; ?></p>
     </aside>
 
+    <?php // Share this company page (includes/reach.php). function_exists: FTP race guard.
+          if (function_exists('alt_share_buttons_html')) echo alt_share_buttons_html($alt_name . ' layoffs, source-linked'); ?>
+
     <?php // Follow this company (includes/follows.php), through the digest's
           // own double opt-in.
           if (function_exists('alt_follow_form_html')) {
