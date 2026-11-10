@@ -52,9 +52,20 @@ jobs:
           WP_API_KEY: ${{ secrets.WP_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           DEDUPE_MAX_CLUSTERS: ${{ github.event.inputs.max_clusters || '60' }}
+          BEFORE_STATE_PATH: ${{ runner.temp }}/before-state.json
         run: |
           cd railway
           python dedupe_llm.py
+      # Evidence for a later headline incident: every merged row with its
+      # country and job count (us_all_time, 2026-11-10).
+      - name: Upload before-state
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: before-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/before-state.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Record the deferral ledger
         if: ${{ always() }}
         uses: ./.github/actions/commit-deferral-ledger

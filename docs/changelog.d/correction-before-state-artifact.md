@@ -1,0 +1,1 @@
+- ci(corrections): `apply-correction.yml` and `dedupe-llm.yml` upload a `before-state-<run_id>` artifact (rows with country and job count before the change); the apply log line now prints the country (us_all_time, 2026-11-10).
