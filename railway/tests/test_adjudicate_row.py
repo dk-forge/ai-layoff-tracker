@@ -139,23 +139,50 @@ class DuplicateOfTests(unittest.TestCase):
         prompt = adj.build_prompt({"id": 1}, "text", today="2026-11-10")
         self.assertNotIn("THE OTHER ROW", prompt)
 
-    def test_duplicate_trash_moves_the_source_to_the_keeper_first(self):
+    def test_duplicate_trash_moves_the_OTHER_sources_to_the_keeper_first(self):
+        """run 42884016311 (row 183011): the row's own citation is ALWAYS
+        `refused` by the server (it's the row's citation, not a report of a
+        different event - db.php alt_api_move_source_reports). Only the
+        row's OTHER reports, if any, are requested to move."""
         calls = []
 
         def fake_main():
             calls.append(list(sys.argv))
             return 0
 
-        with mock.patch.object(adj.apply_correction, "main", fake_main):
-            rc = adj.apply_duplicate({"id": 183025, "company_name": "Volvo",
+        sources = [{"source_url": "https://bi/x"}, {"source_url": "https://mirror/x"}]
+        with mock.patch.object(adj.apply_correction, "main", fake_main), \
+             mock.patch.object(adj.apply_correction, "_event_sources", return_value=sources):
+            rc = adj.apply_duplicate("https://site", {"id": 183025, "company_name": "Volvo",
                                       "source_url": "https://bi/x"},
                                      {"id": 183026}, "two-model: dup", apply=False)
         self.assertEqual(rc, 0)
         self.assertEqual(calls[0][calls[0].index("--action") + 1], "move-sources")
         fields = json.loads(calls[0][calls[0].index("--fields") + 1])
-        self.assertEqual(fields, {"to_id": 183026, "urls": ["https://bi/x"]})
+        self.assertEqual(fields, {"to_id": 183026, "urls": ["https://mirror/x"]})
         self.assertEqual(calls[1][calls[1].index("--action") + 1], "trash")
         self.assertEqual(calls[1][calls[1].index("--ids") + 1], "183025")
+
+    def test_duplicate_trash_skips_move_when_only_the_primary_citation_exists(self):
+        """The common case (run 42884016311): the row's only report IS its
+        own source_url. Asking the server to move it would always come back
+        `refused`, so no move is attempted at all - trash goes straight
+        through, same as the old single-row trash path."""
+        calls = []
+
+        def fake_main():
+            calls.append(list(sys.argv))
+            return 0
+
+        sources = [{"source_url": "https://bi/x"}]
+        with mock.patch.object(adj.apply_correction, "main", fake_main), \
+             mock.patch.object(adj.apply_correction, "_event_sources", return_value=sources):
+            rc = adj.apply_duplicate("https://site", {"id": 183025, "company_name": "Volvo",
+                                      "source_url": "https://bi/x"},
+                                     {"id": 183026}, "two-model: dup", apply=False)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(calls), 1, "no move-sources call should be made")
+        self.assertEqual(calls[0][calls[0].index("--action") + 1], "trash")
 
     def test_failed_move_never_trashes(self):
         calls = []
@@ -164,10 +191,19 @@ class DuplicateOfTests(unittest.TestCase):
             calls.append(list(sys.argv))
             return 1
 
-        with mock.patch.object(adj.apply_correction, "main", fake_main):
-            rc = adj.apply_duplicate({"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
+        sources = [{"source_url": "u"}, {"source_url": "u2"}]
+        with mock.patch.object(adj.apply_correction, "main", fake_main), \
+             mock.patch.object(adj.apply_correction, "_event_sources", return_value=sources):
+            rc = adj.apply_duplicate("https://site", {"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
         self.assertEqual(rc, 1)
         self.assertEqual(len(calls), 1)
+
+    def test_unreadable_source_list_never_trashes(self):
+        with mock.patch.object(adj.apply_correction, "main") as fake_main, \
+             mock.patch.object(adj.apply_correction, "_event_sources", return_value=None):
+            rc = adj.apply_duplicate("https://site", {"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
+        self.assertEqual(rc, 1)
+        fake_main.assert_not_called()
 
 
 class DuplicateAgreementTests(unittest.TestCase):
