@@ -374,6 +374,23 @@ def run_add(site, key, fields, reason, apply):
     return 0
 
 
+
+def write_before_state(path, action, ids, before):
+    """Write the rows as they stood before a correction, as JSON evidence.
+
+    The workflow uploads this file as an artifact so a later headline
+    incident can be reconciled row by row (us_all_time, 2026-11-10)."""
+    if not path:
+        return
+    rows = []
+    for i in ids:
+        row = before.get(i) or {}
+        rows.append({"id": i, "visible": bool(row), "company_name": row.get("company_name"),
+                     "job_count": row.get("job_count"), "layoff_date": row.get("layoff_date"),
+                     "country": row.get("country"), "source_url": row.get("source_url")})
+    with open(path, "w") as fh:
+        json.dump({"action": action, "rows": rows}, fh, indent=2)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ids", required=True, help="comma-separated table row ids (0 for add)")
@@ -419,11 +436,12 @@ def main():
         row = before.get(i)
         if row:
             print(f"  before  id={i}  {row.get('company_name')}  {row.get('job_count')} jobs  "
-                  f"{row.get('layoff_date')}  {str(row.get('source_url'))[:70]}")
+                  f"{row.get('layoff_date')}  country={row.get('country')}  {str(row.get('source_url'))[:70]}")
         else:
             print(f"  before  id={i}  (not visible under --verify-company; it may still exist)")
     if a.action == "edit":
         print(f"  would set: {fields}")
+    write_before_state(os.environ.get("BEFORE_STATE_PATH", ""), a.action, ids, before)
 
     if not a.apply:
         print("DRY RUN — nothing written. Re-run with --apply to commit.")

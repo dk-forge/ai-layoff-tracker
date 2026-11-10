@@ -76,6 +76,7 @@ jobs:
           IN_FIELDS: ${{ inputs.fields }}
           IN_COMPANY: ${{ inputs.verify_company }}
           IN_APPLY: ${{ inputs.apply }}
+          BEFORE_STATE_PATH: ${{ runner.temp }}/before-state.json
         run: |
           ARGS=()
           if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
@@ -86,3 +87,13 @@ jobs:
             --fields "$IN_FIELDS" \
             --verify-company "$IN_COMPANY" \
             "${ARGS[@]}"
+      # Evidence for a later headline incident: the rows as they stood before
+      # this correction, country included (us_all_time, 2026-11-10).
+      - name: Upload before-state
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: before-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/before-state.json
+          if-no-files-found: warn
+          retention-days: 90
