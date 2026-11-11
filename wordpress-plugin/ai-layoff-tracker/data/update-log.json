@@ -26,6 +26,14 @@
    "text": "Each entry now shows when the tracker first listed it (\"First listed 3 Nov 2026\"), next to the date the source published. Entries listed before we started recording this show only the source date; we do not guess."
   },
   {
+   "slug": "logs-sitemap-redirect",
+   "date": "2026-11-10",
+   "version": "2.20.311",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The sitemap that lists the corrections log and the update log now loads directly for search engines. It was being redirected to an address with a trailing slash."
+  },
+  {
    "slug": "public-corrections-update-log",
    "date": "2026-11-10",
    "version": "2.20.306",

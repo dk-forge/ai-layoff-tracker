@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "adjudicate-one-row-two-referees:main:1a61120ce8cb8d56": {
+      "first": 1794397794,
+      "last": 1794397794,
+      "subject": "CI RED: Adjudicate one row (two referees) \u2014 --duplicate-of row 183207 not found (or is THE ROW)"
+    },
     "bls-full-history-archive:main:702b8397656939ae": {
       "first": 1791791624,
       "last": 1791791624,
@@ -133,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-11T11:43:19+00:00",
+  "updated_at": "2026-11-11T11:49:54+00:00",
   "version": 1
 }
