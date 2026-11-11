@@ -373,8 +373,8 @@ class EveryRemovingCallSitePassesATotal(unittest.TestCase):
         The detail has named net_jobs_removed since the endpoint shipped, and a
         sentence is not a field a guard can subtract."""
         call = self._call("alt_log_correction('merged',")
-        self.assertTrue(call.rstrip().endswith("$out['net_jobs_removed'])"),
-                        "the merged call must pass the job total last: %s" % call)
+        self.assertTrue(call.rstrip().endswith("$out['net_jobs_removed'], $us_merged)"),
+                        "the merged call must pass the job total, then its US share: %s" % call)
 
     def test_an_enrichment_pass_discloses_nothing(self):
         """Enrichment moves no jobs. Passing 0 there would be a measurement we

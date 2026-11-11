@@ -2,6 +2,22 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "talent-daily-press-quality",
+   "date": "2026-11-11",
+   "version": "2.20.313",
+   "type": "Fix",
+   "area": "email",
+   "text": "The talent daily email reads more clearly. Every employer line now shows a country flag, or one neutral marker when no country is recorded. No region is called leading when signals with no recorded country outnumber it. Announced plans with no stated role count are grouped into one line. Every email now takes its postal address from one shared setting."
+  },
+  {
+   "slug": "corrections-us-share",
+   "date": "2026-11-11",
+   "version": "2.20.312",
+   "type": "Fix",
+   "area": "data-integrity",
+   "text": "Each removal in the public corrections log now also records how many of its jobs counted toward the United States total. The site's own consistency check can then tell a deliberate removal of non-US rows apart from rows being re-counted into the US figure."
+  },
+  {
    "slug": "layoffs-insert-schema-drift",
    "date": "2026-11-11",
    "version": "2.20.310",
@@ -16,6 +32,14 @@
    "type": "New",
    "area": "cards",
    "text": "Each entry now shows when the tracker first listed it (\"First listed 3 Nov 2026\"), next to the date the source published. Entries listed before we started recording this show only the source date; we do not guess."
+  },
+  {
+   "slug": "logs-sitemap-redirect",
+   "date": "2026-11-10",
+   "version": "2.20.311",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The sitemap that lists the corrections log and the update log now loads directly for search engines. It was being redirected to an address with a trailing slash."
   },
   {
    "slug": "public-corrections-update-log",

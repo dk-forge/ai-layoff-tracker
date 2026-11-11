@@ -1280,6 +1280,12 @@ CONTAINMENTS = (
     ("ai_all_time", "worldwide_all_time"),
 )
 
+# The per-entry corrections-log field that says how many of a removal's jobs
+# sat INSIDE a subset slice. With it a disclosed removal can be placed on one
+# side of the subset/complement boundary and subtracted; without it (the AI
+# slice, every entry older than 2026-11-11) it only narrows a FAIL.
+CONTAINMENT_SIDE_FIELDS = {"us_all_time": "us_jobs"}
+
 #: Jobs the complement may move against its own row direction before this is a
 #: finding. It is worldwide's own `move_floor`, reused rather than reinvented,
 #: because the complement IS worldwide minus one slice. Deliberately FLAT, not
@@ -1711,6 +1717,26 @@ class ContainmentInvariant:
         # difference of two gross flows and bounds neither of them, so
         # "nothing that arrived or left could carry this" never followed.
         # State the observation, list the mechanisms, let the human pick.
+        # DISCLOSED REMOVALS, PLACED BY SIDE. Added 2026-11-11 for the
+        # us_all_time incident of 2026-11-09: the complement fell 139,443 and
+        # 136,000 of it was three non-US rows trashed by signed corrections,
+        # which nobody could place because the log never said which side of
+        # the boundary a removed row sat on. A log entry that records its
+        # in-slice share (`us_jobs`) is subtracted from the side it left;
+        # one entry without it and nothing is subtracted (the FAIL stands).
+        disclosed = ctx.disclosed(priors[sup.name].get("captured_at"))
+        side_field = CONTAINMENT_SIDE_FIELDS.get(sub.name)
+        split = disclosed.split_by_side(side_field) if side_field else None
+        if split is not None:
+            _inside, outside = split
+            placed = residual + outside
+            if abs(placed) <= CONTAINMENT_FLOOR_JOBS:
+                return _out(PASS,
+                            f"{shown}. Superset exclusions account for {dedup_moved:+,}; "
+                            f"disclosed removals took {outside:,} jobs out of the "
+                            f"complement and {_inside:,} out of {sub.label}, leaving "
+                            f"{placed:+,} under the {CONTAINMENT_FLOOR_JOBS:,} floor. "
+                            f"Rows leaving through signed corrections is not a re-scoring")
         moved_in = "into" if residual < 0 else "out of"
         return _out(FAIL,
                     f"{shown}. Superset exclusions account for {dedup_moved:+,} of that, "
@@ -1745,7 +1771,7 @@ class ContainmentInvariant:
                     # completed is headline_movement's, through
                     # account_for_disclosures. An unreadable log reads UNKNOWN
                     # rather than "nothing was removed".
-                    ctx.disclosed(priors[sup.name].get("captured_at")).summary())
+                    disclosed.summary())
 
 
 class DenominatorProvenanceInvariant:

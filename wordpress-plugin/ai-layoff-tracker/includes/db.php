@@ -558,7 +558,20 @@ function alt_suppressed_hashes() {
  * on-page "Data notes & corrections log" renders from it — disclosure is
  * structural, not a manual habit.
  */
-function alt_log_correction($action, $ids, $reason, $detail = '', $jobs = null) {
+/**
+ * True when a row sits inside the published "United States jobs, all time"
+ * headline (railway/data_integrity.py us_all_time: country=United States,
+ * country_basis=any, i.e. job location OR employer domicile). A removal log
+ * entry carries how many of its jobs sat inside that slice (`us_jobs`), so the
+ * containment guard can say which side of the US/non-US boundary a disclosed
+ * removal came from (us_all_time incident 2026-11-09: 136,000 of a -139,443
+ * complement move were three non-US trashes nobody could place).
+ */
+function alt_row_in_us_headline($country, $employer_country) {
+    return (string) $country === 'United States' || (string) $employer_country === 'United States';
+}
+
+function alt_log_correction($action, $ids, $reason, $detail = '', $jobs = null, $us_jobs = null) {
     $log = get_option('alt_corrections_log');
     if (!is_array($log)) $log = array();
     $date   = gmdate('Y-m-d');
@@ -574,6 +587,10 @@ function alt_log_correction($action, $ids, $reason, $detail = '', $jobs = null) 
     // nothing: a 0 there would be a measurement we never took.
     $measured = ($jobs !== null && is_numeric($jobs));
     $jobs     = $measured ? max(0, (int) $jobs) : null;
+    // The US-headline share of $jobs, under the same rule: absent is UNKNOWN,
+    // and it is only meaningful beside a measured total.
+    $us_measured = $measured && $us_jobs !== null && is_numeric($us_jobs);
+    $us_jobs     = $us_measured ? max(0, min($jobs, (int) $us_jobs)) : null;
     // Collapse repeat automated passes: the batched enrichment jobs (industry
     // classification, reason-tag backfill) log one row per 200-item batch and
     // run many times a day, which buried the meaningful corrections (merges,
@@ -594,6 +611,11 @@ function alt_log_correction($action, $ids, $reason, $detail = '', $jobs = null) 
             } else {
                 unset($e['jobs']);
             }
+            if ($us_measured && array_key_exists('us_jobs', $e) && array_key_exists('jobs', $e)) {
+                $e['us_jobs'] = (int) $e['us_jobs'] + $us_jobs;
+            } else {
+                unset($e['us_jobs']);
+            }
             update_option('alt_corrections_log', $log, false);
             return;
         }
@@ -601,6 +623,7 @@ function alt_log_correction($action, $ids, $reason, $detail = '', $jobs = null) 
     unset($e);
     $entry = array('date' => $date, 'action' => $action, 'count' => $n, 'reason' => $reason, 'detail' => $detail);
     if ($measured) $entry['jobs'] = $jobs;
+    if ($us_measured) $entry['us_jobs'] = $us_jobs;
     $log[] = $entry;
     if (count($log) > 200) $log = array_slice($log, -200);
     update_option('alt_corrections_log', $log, false);
@@ -716,7 +739,7 @@ function alt_dedup_undated_cleanup() {
     global $wpdb;
     $t = alt_db_table();
     $dups = $wpdb->get_results(
-        "SELECT a.id, a.post_id, a.job_count FROM $t a
+        "SELECT a.id, a.post_id, a.job_count, a.country, a.employer_country FROM $t a
          WHERE a.layoff_date IS NULL
            AND a.source_type IN ('news','8K','press_release')
            AND a.edited = 0 AND a.company_key <> '' AND a.job_count > 0
@@ -732,6 +755,7 @@ function alt_dedup_undated_cleanup() {
     // reading it afterwards, which is why the job total is carried on the
     // cursor rather than looked up at log time.
     $jobs_removed = 0;
+    $us_removed = 0;
     foreach ($dups as $d) {
         if (!empty($d->post_id)) {
             wp_trash_post((int) $d->post_id);          // cascades to the table row
@@ -740,11 +764,12 @@ function alt_dedup_undated_cleanup() {
         }
         $removed[] = (int) $d->id;
         $jobs_removed += max(0, (int) $d->job_count);
+        if (alt_row_in_us_headline($d->country, $d->employer_country)) $us_removed += max(0, (int) $d->job_count);
     }
     if ($removed && function_exists('alt_log_correction')) {
         alt_log_correction('removed', $removed,
             'Undated duplicate cleanup: news/SEC rows with no date that duplicate a dated event of the same company and headcount (they had bypassed the date-gated dedup guard).',
-            '', $jobs_removed);
+            '', $jobs_removed, $us_removed);
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
 }
@@ -3055,6 +3080,9 @@ function alt_api_corrections(WP_REST_Request $r) {
         // never will.
         if (array_key_exists('jobs', $entry) && is_numeric($entry['jobs'])) {
             $row['jobs'] = max(0, (int) $entry['jobs']);
+            if (array_key_exists('us_jobs', $entry) && is_numeric($entry['us_jobs'])) {
+                $row['us_jobs'] = max(0, (int) $entry['us_jobs']);
+            }
         }
         $out[] = $row;
     }
@@ -5052,6 +5080,7 @@ function alt_api_trash(WP_REST_Request $r) {
     // clear a real defect. Absent means UNKNOWN, never zero.
     $jobs_removed = 0;
     $jobs_measured = true;
+    $us_removed = 0;
 
     // `ids` are TABLE row ids — the `id` field the public /query API returns.
     // Rows mirrored from a CPT post get the post trashed (hooks remove the
@@ -5061,12 +5090,13 @@ function alt_api_trash(WP_REST_Request $r) {
     foreach ((array) $r->get_param('ids') as $tid) {
         $tid = (int) $tid;
         $row = $tid ? $wpdb->get_row($wpdb->prepare(
-            "SELECT id, post_id, event_id, dedup_hash, job_count FROM $table WHERE id = %d", $tid)) : null;
+            "SELECT id, post_id, event_id, dedup_hash, job_count, country, employer_country FROM $table WHERE id = %d", $tid)) : null;
         if (!$row) {
             $out['not_found'][] = $tid;
             continue;
         }
         $jobs_removed += max(0, (int) $row->job_count);
+        if (alt_row_in_us_headline($row->country, $row->employer_country)) $us_removed += max(0, (int) $row->job_count);
         alt_trash_suppress($row->dedup_hash, $tid, $reason, $out);
         if ($row->post_id) {
             wp_trash_post((int) $row->post_id);
@@ -5091,9 +5121,10 @@ function alt_api_trash(WP_REST_Request $r) {
             // not the hash until 2.20.201, which made every removal through it
             // silently temporary.
             $tr = $wpdb->get_row($wpdb->prepare(
-                "SELECT job_count, dedup_hash FROM $table WHERE post_id = %d", $pid));
+                "SELECT job_count, dedup_hash, country, employer_country FROM $table WHERE post_id = %d", $pid));
             $jc = $tr ? $tr->job_count : null;
             if ($jc === null) { $jobs_measured = false; } else { $jobs_removed += max(0, (int) $jc); }
+            if ($jc !== null && alt_row_in_us_headline($tr->country, $tr->employer_country)) $us_removed += max(0, (int) $jc);
             alt_trash_suppress($tr ? $tr->dedup_hash : '', $pid, $reason, $out);
             wp_trash_post($pid);
             $out['trashed_posts'][] = $pid;
@@ -5107,12 +5138,13 @@ function alt_api_trash(WP_REST_Request $r) {
         // the hash is gone, and a removal that suppresses nothing is undone by
         // the next import.
         $tr = $rid ? $wpdb->get_row($wpdb->prepare(
-            "SELECT job_count, dedup_hash FROM $table WHERE id = %d AND post_id IS NULL", $rid)) : null;
+            "SELECT job_count, dedup_hash, country, employer_country FROM $table WHERE id = %d AND post_id IS NULL", $rid)) : null;
         $jc = $tr ? $tr->job_count : null;
         $deleted = $rid ? $wpdb->delete($table, array('id' => $rid, 'post_id' => null)) : 0;
         if ($deleted) {
             $out['deleted_rows'][] = $rid;
             if ($jc === null) { $jobs_measured = false; } else { $jobs_removed += max(0, (int) $jc); }
+            if ($jc !== null && alt_row_in_us_headline($tr->country, $tr->employer_country)) $us_removed += max(0, (int) $jc);
             alt_trash_suppress($tr ? $tr->dedup_hash : '', $rid, $reason, $out);
         } elseif ($rid) { $out['not_found'][] = $rid; }
     }
@@ -5120,7 +5152,7 @@ function alt_api_trash(WP_REST_Request $r) {
     if (!empty($out['trashed_posts']) || !empty($out['deleted_rows'])) {
         $out['jobs_removed'] = $jobs_measured ? $jobs_removed : null;
         alt_log_correction('removed', array_merge($out['trashed_posts'], $out['deleted_rows']),
-            $reason, '', $out['jobs_removed']);
+            $reason, '', $out['jobs_removed'], $jobs_measured ? $us_removed : null);
     }
     if (function_exists('alt_flush_caches')) alt_flush_caches();
     return rest_ensure_response($out);
@@ -5135,6 +5167,7 @@ function alt_api_merge_events(WP_REST_Request $r) {
     $reason = trim((string) $r->get_param('reason'));
     $out = array('merged_rows' => array(), 'merged_records' => array(),
         'net_jobs_removed' => 0, 'not_found' => array(), 'rejected' => array());
+    $us_merged = 0;
     foreach ((array) $r->get_param('merges') as $merge) {
         $keeper_id = (int) ($merge['keeper_id'] ?? 0);
         $keeper = $keeper_id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $keeper_id), ARRAY_A) : null;
@@ -5166,6 +5199,9 @@ function alt_api_merge_events(WP_REST_Request $r) {
             $out['merged_rows'][] = $duplicate_id;
             $out['merged_records'][] = array('keeper' => $keeper_record, 'duplicate' => $duplicate_record);
             $out['net_jobs_removed'] += (int) ($duplicate['job_count'] ?? 0);
+            if (alt_row_in_us_headline($duplicate['country'] ?? '', $duplicate['employer_country'] ?? '')) {
+                $us_merged += (int) ($duplicate['job_count'] ?? 0);
+            }
             // The keeper absorbed the duplicate's evidence, so it is the row
             // that changed. Without this stamp /changed-rows is blind to a
             // merge (TECHLOG 2026-08-30, 2026-09-16).
@@ -5178,7 +5214,7 @@ function alt_api_merge_events(WP_REST_Request $r) {
         alt_log_correction('merged', $out['merged_rows'], $reason ?: 'Confirmed duplicate sources merged into canonical event',
             sprintf('%d jobs removed across %d exact row pair(s); full before-state returned by the signed endpoint',
                 $out['net_jobs_removed'], count($out['merged_records'])),
-            $out['net_jobs_removed']);
+            $out['net_jobs_removed'], $us_merged);
         if (function_exists('alt_flush_caches')) alt_flush_caches();
     }
     return rest_ensure_response($out);

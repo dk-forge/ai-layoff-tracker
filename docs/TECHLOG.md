@@ -1,3 +1,24 @@
+## 2026-11-11 - Benchmark re-score after the gap replay: strict recall 20/25
+
+**What.** The 25 events of `docs/benchmarks/2026-11-08.md` re-scored against live `/query` (`company=` lookups, same strict rule: count within 10%, source link on the row) after the 2026-09-29..2026-11-05 gap was replayed. Start of session 18/25; after 20/25. New hits: Fiserv 3,000 (183343) and GSK 1,200 (183286), both from news-catchup. Still missing: Dutch government, Ecco, NatWest, Weil Gotshal, Innodata. Runs: news-catchup 43023196709 (2026-09-29..10-19, 28 posted, $0.114) and the 2026-11-01..11-05 window (31 posted, $0.086); edgar-history-sweep 43023162579 (09-29..09-30, 0 posted), 43024063022 (10-01..10-31, 0 posted, 285 calls), 43023185616 (11-01..11-05, 1 posted). Every run reported complete under its named ceiling; no ceiling was raised. **Open data questions for the referees:** KLM Royal Dutch Airlines 183359 stores 5,000 again (the reorganised figure, beside KLM 183171 at 1,000); Schaeffler 183358 and Flutter 183293 look like same-event duplicates of 183150 and 183213. FICO's 2026-10-06 8-K is still absent after the October EDGAR sweep. Row 183208 "eBay and Netflix" could not be refereed: run 43024097269 crashed on a truncated referee reply (`JSONDecodeError`), the case draft #634 handles.
+
+| Date | Layoff strict recall | Prior | Top miss cause |
+|---|---|---|---|
+| 2026-11-11 | 20/25 | 18/25 (same list, measured 2026-11-11 before the replay) | no row on non-US announcements (Dutch government, Ecco, NatWest) |
+
+**Guard:** none (a measurement)
+**Class:** novel (a measurement; no defect)
+
+## 2026-11-11 - Dated Google News missed verb headlines; the first query starved the rest
+
+**What.** Root cause for five 2026-11-08 benchmark misses (measured 2026-11-11 against the live RSS): Fiserv ("Fiserv cuts 3,000 employees and contractor jobs", Reuters, 11-02), NatWest ("NatWest slashes 1,000 jobs", Telegraph, 10-29), Flutter ("to axe up to 1,400 jobs", Reuters, 10-19; the 8-K count), GSK ("to eliminate 1,200 jobs in Belgium", 10-13) and the Dutch government ("cut around 20% of government jobs", 25,000, 10-25) are all in Google News for their day, but neither noun-form dated base ("layoffs", "job cuts") returned them, and the first base alone filled the 40-row day cap on most days, so the second base often never ran. AmEx, GSK (BioSpace) and Innodata were already reached; they missed only because the catch-up ran out of budget before their days (entry below). Ecco and Weil Gotshal were not reached by any dated query tried (trade press; a firm dissolution). **Fix:** a third base `DATED_VERB_QUERY`, and the day cap applies per query. No spend cap changed; the per-run ceiling bounds the extra candidates.
+**Guard:** `railway/tests/test_google_news_dated_window.py` (+2, 1 restated)
+**Class:** novel (a query vocabulary of nouns for headlines written with verbs)
+## 2026-11-11 - A month-sized EDGAR range stopped at 30 filings per keyword
+
+**What.** `_search_keyword()` read at most 3 EFTS pages (30 hits) per keyword and form, then printed "only the first 30 were fetched" and dropped the rest. The daily pull reads one day and never reached it; the `edgar-history-sweep.yml` range mode reads a month, where one keyword matches far more. **Fix:** `MAX_PAGES_PER_KEYWORD` is 50, a safety ceiling; paging still stops at EFTS's own total, so a quiet day costs one request. Pages are SEC requests under the existing 0.11 s delay, never model calls; `BACKFILL_MAX_CALLS` still bounds extraction.
+**Guard:** `railway/tests/test_edgar_keyword_paging.py` (+2)
+**Class:** novel (a page ceiling sized for a day, used for a month)
 ## 2026-11-11 - News catch-up paid for the same URL up to three times and never read late October
 
 **What.** Run 42993859950 (window 2026-09-29..2026-11-05, 1,508 candidates) hit its $0.150 per-run ceiling after 831 calls and 24 stored rows. The log shows one Google News URL extracted three times in a row (adjacent days' after:/before: windows overlap by a day, so one item comes back on two days) and 139 server-side duplicate skips; `news_catchup.py` never called the seen-URL pre-check that cron.py, gdelt_backfill and company_watchlist use. Candidates are read oldest day first, so every re-dispatch re-paid for the first days of the window and the late-October announcements (AmEx 10-23, Weil 10-28, NatWest 10-30, Ecco 11-02, Fiserv 11-03) were never reached. **Fix:** `unique_candidates()` keeps the first entry per source_url, then `seen_urls.filter_already_seen` drops URLs the site holds, both before the extractor. No cap changed.
@@ -9,6 +30,12 @@
 **What.** Recall gap for 8-K Item 2.05 filings in 2026-09-29..2026-11-05: FICO (0001193125-26-415732, 2026-10-06, "approximately 15% of positions") and Workday (0001327811-26-000048, 2026-09-29, "approximately 2.5% of Workday's current workforce") are absent from the table. Both are reached by the daily EDGAR pull (edgar_recall_probe.reached, checked 2026-11-11). Both are percent-only and were filed before labelled estimates shipped on 2026-11-05 (#602). FICO's sentence parses today; Workday's did not, because `workforce_percent` accepted only its/our/the company's as the owner. **Fix:** the filer's own name (first word of `company_name`) is also accepted as the possessive owner; another name is not. The window is then re-read with `edgar-history-sweep.yml` range mode (start 2026-09-29, end 2026-11-05).
 **Guard:** `railway/tests/test_headcount_estimate.py` (+3)
 **Class:** novel (a pattern that named every owner but the company)
+
+## 2026-11-11 - 2.20.309 us_all_time closed; a removal now says which side of the US headline it left
+
+**What.** Root cause of the us_all_time incident (opened 2026-11-09T17:36Z): signed corrections removed large NON-US rows (Microsoft 183020 60,000 blank, Dax-Konzerne 182248 46,000 Multiple countries, Bosch 183019 30,000 Germany = 136,000 of the complement's -139,443), and `ContainmentInvariant` could not place them because the corrections log recorded a removal's jobs but never which side of the US/non-US boundary they sat on. It could only narrow the FAIL, so a human had to rebuild countries from a backup. **Fix:** `alt_log_correction` stores `us_jobs` (the share inside country=United States, country_basis=any) from /trash, the undated cleanup and /merge-events; /corrections serves it; `DisclosedRemovals.split_by_side` sums it and the containment check subtracts the non-US share from the complement, PASSing under the 25,000 floor. Any entry without the share leaves the FAIL standing. The open incident predates the field, so it was closed by hand under the owner's 2026-11-10 chat instruction: the 16,592 unplaced jobs leave a residual between -3,443 and +13,149, under the floor either way. Replacement baseline 7,479,823 / 47,412, read live 2026-11-11T08:12Z.
+**Guard:** `railway/tests/test_disclosed_removals_by_side.py` (+11, 8 red before the fix)
+**Class:** novel (a disclosure that said how much but not from where)
 
 ## 2026-11-11 - Recall: the news catch-up reads each past day, not only today's top items
 
@@ -28,6 +55,12 @@
 **What.** Run 42884011327 (`adjudicate_row.py --duplicate-of`, Volvo row 183025 vs. Volvo Cars row 183026): both referees agreed "trash," `apply_duplicate()` tried to move row 183025's one source report onto 183026 before trashing it, and the server refused: `"refused": ["https://www.businessinsider.com/volvo-layoffs-job-cuts-china-pricing-pressure-2026-10#article"]`. That refusal is not a bug in the server — `alt_api_move_source_reports` has refused a row's own `source_url` by design since the 2026-09-02/03 Uber fix (`test_move_source_reports.py::test_primary_citation_is_never_moved`), because that case means "reattribute this citation to a different event," which should be an `/edit`, not a move. But a duplicate row's ONLY evidence is almost always its own canonical citation (that's exactly why the regular dedup hash never caught it as the same row), so `move-sources` was guaranteed to refuse it on the very first real run. `dedupe_llm.py`'s daily cross-source merge already solved this with `/merge-events`, which folds a duplicate's own citation and reports into the keeper's event and then deletes the duplicate row, as one call — no "is this a move or an edit" ambiguity, because the row is being removed outright. **Fix:** added `apply_correction.py --action merge` (drives `/merge-events`, same dry-run/apply/fail-loud discipline as every other action) and switched `apply_duplicate()` to make one `merge` call instead of `move-sources` then `trash`.
 **Guard:** `railway/tests/test_adjudicate_row.py` (rewrote the 2 duplicate-apply tests), `railway/tests/test_move_source_reports.py` (+4, `MergeDriver`)
 **Class:** novel (a new path reused an existing guard for a case the guard was never meant to cover)
+
+## 2026-11-10 - 2.20.311 /layoff-logs-sitemap.xml answered 301, not 200 (reserved as 2.20.307; main reached 2.20.310 first)
+
+**What.** Verified live after 2.20.306 deployed: both new pages answered 200, but `/layoff-logs-sitemap.xml` answered 301 to `/layoff-logs-sitemap.xml/`. `public-logs.php` served on `template_redirect` at the default priority 10, where WordPress's `redirect_canonical` (also 10, registered first) saw a path with no trailing slash and redirected it. `report-seo.php` serves its sitemap at priority 0 for exactly this reason. The handler is now the named `alt_public_logs_serve()` at priority 0. Also measured live: 63 of 100 `/query` rows carry `created_at` (every row with a backing post); the 37 without one are older bulk WARN rows and read null, as designed.
+**Guard:** `railway/tests/test_public_logs_pages.py::test_it_serves_before_the_canonical_redirect` (+1, red before)
+**Class:** novel (a self-served sitemap hooked after the canonical redirect)
 
 ## 2026-11-10 - 2.20.306 Public corrections and update-log pages; `created_at` on /query rows
 

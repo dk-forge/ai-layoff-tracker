@@ -363,7 +363,12 @@ def fetch_document_window(doc_url):
 
 
 PAGE_SIZE = 10  # EFTS fixed page size
-MAX_PAGES_PER_KEYWORD = 3
+# A safety ceiling, not a sample size. Paging stops at EFTS's own total, so a
+# daily window still reads one page. The history sweep reads a month at a
+# time, where one keyword can match well over 30 filings; the old ceiling of 3
+# pages dropped the rest (2026-11-11). Pages cost SEC requests, never model
+# calls: BACKFILL_MAX_CALLS still bounds extraction.
+MAX_PAGES_PER_KEYWORD = 50
 FORMS = ("8-K", "6-K")
 
 

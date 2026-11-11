@@ -52,6 +52,14 @@ class Routes(unittest.TestCase):
         self.assertIn("includes/public-logs.php", src)
         self.assertRegex(src, r"is_readable\(ALT_PLUGIN_DIR \. 'includes/public-logs\.php'\)")
 
+    def test_it_serves_before_the_canonical_redirect(self):
+        """/layoff-logs-sitemap.xml answered 301 to a trailing-slash URL on
+        2026-11-10: WordPress's redirect_canonical runs on template_redirect at
+        priority 10 and saw a path with no slash. The reports sitemap answers
+        200 because it serves at priority 0 (report-seo.php). So does this."""
+        src = _src(INC)
+        self.assertRegex(src, r"add_action\('template_redirect', 'alt_public_logs_serve', 0\)")
+
     def test_anchors_match_the_tracker_page(self):
         """A /corrections/ link and a tracker-page link to one entry must agree."""
         rule = "'log-' . $alt_ld . '-' . $alt_log_seq[$alt_ld]"
