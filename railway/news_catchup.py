@@ -43,6 +43,7 @@ import os
 
 from sources.newsapi import pull_news_articles
 from sources import google_news
+from seen_urls import filter_already_seen
 from extractor import extract_layoff_data
 import spend
 from source_health import report_source_health
@@ -69,7 +70,9 @@ def run():
         report_source_health(HEALTH_ID, "degraded", 0, f"{days}-day catch-up failed: {exc}")
         raise
     print(f"NewsAPI returned {len(entries)} articles")
-    entries = entries + dated_google_news(days)
+    entries = unique_candidates(entries + dated_google_news(days))
+    # Same pre-check as cron.py: a URL the site already holds costs nothing.
+    entries = filter_already_seen(entries)
 
     posted = dupes = skipped = failed = ai = 0
     for raw in entries:
@@ -104,6 +107,24 @@ def run():
         f"{skipped} non-events, {failed} processing failures",
     ):
         raise RuntimeError("Could not publish news catch-up health result")
+
+
+def unique_candidates(entries):
+    """Keep the first entry for each source_url (an entry with no URL is
+    always kept). Two dated queries per day return the same item, and run
+    42993859950 paid for one URL three times in a row until the $0.150
+    ceiling stopped it before the late-October days were read."""
+    seen, kept = set(), []
+    for e in entries:
+        url = e.get("source_url")
+        if url and url in seen:
+            continue
+        if url:
+            seen.add(url)
+        kept.append(e)
+    if len(kept) != len(entries):
+        print(f"catch-up: {len(entries) - len(kept)} repeated URL(s) dropped before the extractor")
+    return kept
 
 
 def dated_google_news(days):
