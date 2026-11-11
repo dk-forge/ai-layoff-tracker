@@ -11,6 +11,8 @@ import hashlib
 import re
 import shutil
 import subprocess
+import sys
+sys.path.insert(0, __import__("os").path.dirname(__file__))  # noqa: E402
 import unittest
 from pathlib import Path
 
@@ -24,6 +26,7 @@ ADDRESS = "AskTheRecruiter, Netherlands."
 CONFIRM = "https://example.com/blog/digest/confirm/tok/"
 PREFS_URL = "https://example.com/blog/digest/preferences/p1/"
 UNSUB = "https://example.com/blog/digest/unsubscribe/u1/"
+import postal_php  # noqa: E402
 
 
 def _fn(name, path):
@@ -34,7 +37,7 @@ def _fn(name, path):
 
 def _php(body):
     src = MAIL.read_text(encoding="utf-8").replace("<?php", "", 1)
-    code = ("define('ALT_ACCOUNT_MAIL_TEST', 1); define('ALT_DIGEST_RETENTION_DAYS', 30);\n" + src + "\n"
+    code = ("define('ALT_ACCOUNT_MAIL_TEST', 1); define('ALT_DIGEST_RETENTION_DAYS', 30);\n" + postal_php.SRC + "\n" + src + "\n"
             + "\n".join(_fn(n, SUB) for n in ("alt_digest_list_names", "alt_digest_change_lines",
                                                "alt_digest_signup_lines", "alt_digest_confirm_body"))
             + "\n" + body)

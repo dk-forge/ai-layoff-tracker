@@ -361,7 +361,7 @@ function alt_talent_job_boards($rows) {
  * the catch-all never lead. A tie names every tied region. The old line took
  * the first region of the fixed display order (owner feedback 2026-11-05).
  */
-function alt_talent_region_lead($regions) {
+function alt_talent_region_lead($regions, $unplaced = 0) {
     $placed = array();
     foreach ((array) $regions as $r) {
         if ($r['region'] === 'Not recorded' || $r['region'] === 'Multiple or other countries') continue;
@@ -370,6 +370,9 @@ function alt_talent_region_lead($regions) {
     if (!$placed) return '';
     usort($placed, function ($a, $c) { return (int) $c['jobs'] - (int) $a['jobs']; });
     $top = (int) $placed[0]['jobs'];
+    // No region "leads" when signals with no country outnumber it (owner
+    // review 2026-11-11): the unrecorded share is stated in the glance.
+    if ((int) $unplaced >= $top) return '';
     $lead = array(); $rest = array();
     foreach ($placed as $r) { if ((int) $r['jobs'] === $top) $lead[] = $r['region']; else $rest[] = $r; }
     $names = count($lead) > 1
@@ -385,6 +388,9 @@ function alt_talent_daily_line($r, $send_id, $boards = array()) {
     $country = alt_talent_country_name($r['country'] ?? '');
     $flag = function_exists('alt_digest_iso2_flag') ? alt_digest_iso2_flag($r['country'] ?? '') : '';
     if ($flag === '' && function_exists('alt_digest_country_flag')) $flag = alt_digest_country_flag($country);
+    // ONE neutral marker for every line with no recorded country (owner
+    // review 2026-11-11), so a missing flag never reads as a rendering gap.
+    if ($flag === '') { $flag = "\xf0\x9f\x8c\x90"; if ($country === '') $country = 'country not recorded'; }
     $hc = alt_talent_headcount($r);
     $type = alt_talent_hiring_type($r) === 'listings' ? 'open listings' : 'announced plan';
     $fig = ($hc > 0 ? alt_digest_count($hc, 'role') : 'roles not stated') . ', ' . $type;
@@ -414,8 +420,10 @@ function alt_talent_daily_line($r, $send_id, $boards = array()) {
  * The window is stated here once; there is no separate dateline.
  */
 function alt_talent_daily_glance($m, $types, $n_hire, $n_other) {
+    // The employer-activity count is said ONCE, here (owner review 2026-11-11).
     $facts = array('Hiring signals: ' . alt_digest_number($n_hire),
-                   'Employer-activity signals: ' . alt_digest_number($n_other));
+                   'Employer-activity signals: ' . alt_digest_number($n_other) . ' from '
+                   . alt_digest_count(alt_talent_other_employers($m), 'employer'));
     foreach ($types['plan'] as $r) {
         $hc = alt_talent_headcount($r);
         if ($hc <= 0) continue;
@@ -430,7 +438,15 @@ function alt_talent_daily_glance($m, $types, $n_hire, $n_other) {
         if ($r['region'] === 'Not recorded' || $r['region'] === 'Multiple or other countries') continue;
         if ((int) $r['jobs'] > 0 && ($best === null || (int) $r['jobs'] > (int) $best['jobs'])) $best = $r;
     }
-    if ($best !== null) $facts[] = 'Leading region: ' . $best['region'] . ', ' . alt_digest_count((int) $best['jobs'], 'signal');
+    $unplaced = (int) ($m['unplaced'] ?? 0);
+    if ($best !== null && (int) $best['jobs'] > $unplaced) {
+        $facts[] = 'Leading region: ' . $best['region'] . ', ' . alt_digest_count((int) $best['jobs'], 'signal');
+    }
+    $all = (int) $m['total'];
+    if ($unplaced > 0 && $all > 0) {
+        $facts[] = 'Country not recorded: ' . alt_digest_number($unplaced) . ' of ' . alt_digest_count($all, 'signal')
+                 . ' (' . (int) round(100 * $unplaced / $all) . '%)';
+    }
     $defs = array('Announced hiring plans: roles an employer or report says it will add.',
                   'Open listings: roles live on career sites now.',
                   'Employer-activity signals: wider reports, not confirmed hiring.');
@@ -493,6 +509,12 @@ function alt_talent_render_daily($m, $send_id = 0) {
     // Up to ten lines (owner, 2026-11-06): announced plans first (up to
     // six), open listings fill the rest, then unused room goes back to plans.
     $cap = 10;
+    // Stated plans lead; plans with no role count fold into one line (owner
+    // review 2026-11-11), so the section opens with real numbers.
+    $unstated = array();
+    $stated = array();
+    foreach ($types['plan'] as $r) { if (alt_talent_headcount($r) > 0) $stated[] = $r; else $unstated[] = $r; }
+    $types['plan'] = $stated;
     $np = min(6, count($types['plan']));
     $nl = min($cap - $np, count($types['listings']));
     $np = min($cap - $nl, count($types['plan']));
@@ -504,13 +526,22 @@ function alt_talent_render_daily($m, $send_id = 0) {
     );
     $shown = 0;
     foreach ($blocks as $b) {
-        if (!$b[2]) continue;
+        if (!$b[2] && !($b[0] === 'Announced hiring plans' && $unstated)) continue;
         alt_briefing_section($b[0], '', $html, $text);
         $html .= '<p data-alt="note">' . esc_html($b[1]) . '</p>';
         $text .= $b[1] . "\n";
         foreach ($b[2] as $r) {
             list($h, $t) = alt_talent_daily_line($r, $send_id, $boards);
             $html .= $h; $text .= $t; $shown++;
+        }
+        if ($b[0] === 'Announced hiring plans' && $unstated) {
+            $names = array();
+            foreach (array_slice($unstated, 0, 8) as $r) $names[] = alt_digest_clean_employer($r['company']);
+            $more = count($unstated) - count($names);
+            $fold = 'Also announced, roles not stated: ' . implode(', ', $names) . ($more > 0 ? ' and ' . alt_digest_number($more) . ' more' : '') . '.';
+            $html .= '<p data-alt="note">' . esc_html($fold) . '</p>';
+            $text .= '  ' . $fold . "\n";
+            $shown += count($names);
         }
     }
     if ($shown > 0) {
@@ -524,11 +555,7 @@ function alt_talent_render_daily($m, $send_id = 0) {
     // Same window as the hiring list: /talent/v1/aggregate over since..until,
     // inclusive, on COALESCE(published_date, DATE(captured_at)). `companies`
     // is COUNT(DISTINCT company_key), an exact count, so no "about".
-    $ctx = 'Separately, ' . alt_digest_count($n_other, 'employer-activity signal') . ' from '
-         . alt_digest_count(alt_talent_other_employers($m), 'employer') . '.';
-    $html .= '<p data-alt="note">' . esc_html($ctx) . '</p>';
-    $text .= "\n" . $ctx . "\n";
-    $where = alt_talent_region_lead($m['regions']);
+    $where = alt_talent_region_lead($m['regions'], (int) $m['unplaced']);
     if ($where !== '') {
         $html .= '<p data-alt="note">' . esc_html($where) . ' <a href="' . esc_url(alt_digest_track_link($send_id, $url))
                . '">See where &rarr;</a></p>';

@@ -1131,7 +1131,12 @@ class TheTwoFootersAreOneDefinition(unittest.TestCase):
         reworded on either side.
         """
         php = _php_sentences(self.sub, "alt_digest_footer_blocks")
-        py = layout.footer_sentences(True)
+        # The postal address is ONE config value both sides read (owner
+        # review 2026-11-11), so it is compared as a call, not a literal.
+        from postal_address import postal_address
+        self.assertIn("alt_mail_postal_address()", _php_function(self.sub, "alt_digest_footer_blocks"))
+        py = tuple(s for s in layout.footer_sentences(True) if s != postal_address())
+        self.assertIn(postal_address(), layout.footer_sentences(True))
         self.assertEqual(php, py,
                          "the wp_mail fallback and the relay would tell a "
                          "reader different things about the same email")
@@ -1199,6 +1204,7 @@ class TheTwoFootersAreOneDefinition(unittest.TestCase):
             "<?php\n"
             "function esc_html($s){ return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }\n"
             "function esc_url($s){ return $s; }\n"
+            "require_once " + repr(os.path.join(PLUGIN, "includes", "postal-address.php")) + ";\n"
             "$src = file_get_contents($argv[1]);\n"
             "foreach (array('alt_digest_footer_blocks', 'alt_digest_footer_html') as $n) {\n"
             "  preg_match('/\\nfunction ' . $n . '\\s*\\(.*?\\n\\}/s', $src, $m);\n"

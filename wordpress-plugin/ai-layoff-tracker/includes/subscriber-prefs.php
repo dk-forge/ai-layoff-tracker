@@ -1,4 +1,5 @@
 <?php
+if (!function_exists('alt_mail_postal_address') && file_exists(__DIR__ . '/postal-address.php')) require_once __DIR__ . '/postal-address.php';
 /**
  * Owner decisions 2026-09-27 (TECHLOG "Email audit"): the welcome email, the
  * per-follow stop link, the preferences page, and the fallback digest's
@@ -454,7 +455,7 @@ function alt_welcome_body($row, $prefs_url) {
          . ($next !== '' ? "Your first edition is due " . $next . " (New York time).\n\n" : '')
          . "Change lists, frequency or follows here:\n" . $prefs_url . "\n\n"
          . "Every edition has a one-click unsubscribe at the foot.\n\n"
-         . "AskTheRecruiter, Netherlands.\n";
+         . alt_mail_postal_address() . "\n";
 }
 
 /**

@@ -87,8 +87,11 @@ class RegionLead(unittest.TestCase):
 
     def test_not_recorded_never_leads(self):
         text = compose(fixture({"US": 3, "ES": 2, "": 40}))["text"]
-        self.assertIn("By region, North America led with 3 signals, followed by "
-                      "Europe with 2.", text)
+        # Owner review 2026-11-11: 40 unrecorded outnumber every region, so
+        # no region is called leading and the share is stated instead.
+        self.assertNotIn(" led with ", text)
+        self.assertNotIn("Leading region", text)
+        self.assertIn("Country not recorded: 40 of 45 signals (89%)", text)
         self.assertNotIn("Not recorded led", text)
 
     def test_tie_names_both(self):
@@ -136,6 +139,6 @@ class ContextPeriod(unittest.TestCase):
     def test_context_states_window_and_distinct_employers(self):
         text = compose(fixture(NOV5))["text"]
         # Reworded 2026-11-06; the window now sits in the glance heading.
-        self.assertIn("Separately, 137 employer-activity signals from 137 employers.", text)
+        self.assertIn("Employer-activity signals: 137 from 137 employers", text)
         self.assertIn("At a glance (Nov 4-5)", text)
         self.assertNotIn("about 137", text)
