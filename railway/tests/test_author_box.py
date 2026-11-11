@@ -1,9 +1,10 @@
-"""Named author / about box with Person schema, invisible until the owner fills it.
+"""The author box names the research team, never a person.
 
-Owner scope 2026-09-24. The bio is the owner's words, not ours, so the one
-constant ships EMPTY and marked TODO_OWNER_BIO. Empty means no box and no
-Person node at all: a placeholder on a live page, or a Person with no name in
-structured data, is worse than nothing.
+Owner ruling 2026-11-11: the tracker author box must read "Ask The Recruiter
+research team", and no personal name appears anywhere on asktherecruiter.com,
+trackers included. This supersedes the 2026-09-24 scope (a named Person box the
+owner would fill). So: one fixed team profile, an Organization node in its
+JSON-LD, and no Person node or personal-name field anywhere in the module.
 """
 import json
 import re
@@ -16,54 +17,55 @@ PLUGIN = Path(__file__).resolve().parents[2] / "wordpress-plugin" / "ai-layoff-t
 MOD = PLUGIN / "includes" / "author-box.php"
 TEMPLATES = ["page-report.php", "page-company-directory.php", "page-facet.php",
              "page-methodology.php", "page-press.php"]
+TEAM = "Ask The Recruiter research team"
 
 
-def _render(profile):
+def _render():
     src = MOD.read_text(encoding="utf-8")
     m = re.search(r"\nfunction alt_author_box_html\s*\(.*?\n\}", src, re.S)
     assert m
     code = ("function esc_html($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }\n"
             "function esc_url($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }\n"
-            "function esc_attr($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }\n"
             "function wp_json_encode($v, $f = 0){ return json_encode($v, $f); }\n"
-            + m.group(0) + "\necho alt_author_box_html(json_decode($argv[1], true));")
-    p = subprocess.run(["php", "-r", code, "--", json.dumps(profile)], capture_output=True, text=True, timeout=60)
+            + m.group(0) + "\necho alt_author_box_html();")
+    p = subprocess.run(["php", "-r", code], capture_output=True, text=True, timeout=60)
     assert p.returncode == 0, p.stderr
     return p.stdout
 
 
-class TheConstant(unittest.TestCase):
-    def test_one_constant_marked_todo_and_empty(self):
+class TheModule(unittest.TestCase):
+    def test_no_person_and_no_owner_name_slot(self):
         src = MOD.read_text(encoding="utf-8")
-        self.assertEqual(src.count("define('ALT_AUTHOR_PROFILE'"), 1)
-        self.assertIn("TODO_OWNER_BIO", src)
-        block = src[src.index("define('ALT_AUTHOR_PROFILE'"):]
-        block = block[:block.index(");")]
-        self.assertIn("'bio'      => ''", block)
-        self.assertIn("'name'     => ''", block)
+        self.assertNotIn("Person", src)
+        self.assertNotIn("TODO_OWNER_BIO", src)
+        self.assertNotIn("ALT_AUTHOR_PROFILE", src)
+        self.assertIn(TEAM, src)
 
-    def test_on_every_surface_the_owner_named(self):
+    def test_on_every_surface(self):
         for name in TEMPLATES:
             self.assertIn("alt_author_box(", (PLUGIN / "templates" / name).read_text(encoding="utf-8"), name)
+
+    def test_no_em_dash_in_reader_text(self):
+        self.assertNotIn("—", _box_strings(MOD.read_text(encoding="utf-8")))
+
+
+def _box_strings(src):
+    return "".join(re.findall(r"'([^']*)'", src[src.index("function alt_author_box_html"):]))
 
 
 @unittest.skipUnless(shutil.which("php"), "UNKNOWN, NOT RUN: php not installed")
 class Rendering(unittest.TestCase):
-    def test_empty_renders_nothing(self):
-        self.assertEqual(_render({"name": "", "bio": ""}).strip(), "")
-        self.assertEqual(_render({"name": "Pat Example", "bio": ""}).strip(), "")
-
-    def test_filled_renders_box_and_person(self):
-        out = _render({"name": "Pat Example", "job_title": "Editor", "bio": "Writes <b>about</b> hiring.",
-                       "url": "https://asktherecruiter.com/about/", "same_as": ["https://example.org/pat"]})
+    def test_box_reads_the_team(self):
+        out = _render()
         self.assertIn('class="alt-author-box"', out)
-        self.assertIn("Writes &lt;b&gt;about&lt;/b&gt; hiring.", out)
-        ld = re.search(r'<script type="application/ld\+json">(.*?)</script>', out, re.S)
+        self.assertIn(f"<b>{TEAM}</b>", out)
+
+    def test_schema_is_an_organization(self):
+        ld = re.search(r'<script type="application/ld\+json">(.*?)</script>', _render(), re.S)
         data = json.loads(ld.group(1))
-        self.assertEqual(data["@type"], "Person")
-        self.assertEqual(data["name"], "Pat Example")
-        self.assertEqual(data["sameAs"], ["https://example.org/pat"])
-        self.assertNotIn("</script><", ld.group(1))
+        self.assertEqual(data["@type"], "Organization")
+        self.assertEqual(data["name"], TEAM)
+        self.assertEqual(data["parentOrganization"]["name"], "AskTheRecruiter.com")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "author-box-research-team",
+   "date": "2026-11-11",
+   "version": "2.20.310",
+   "type": "Change",
+   "area": "site",
+   "text": "Report, company, state, methodology and press pages now credit the Ask The Recruiter research team in their author box."
+  },
+  {
    "slug": "card-first-listed",
    "date": "2026-11-11",
    "version": "2.20.308",

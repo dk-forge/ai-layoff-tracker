@@ -182,10 +182,11 @@ by confirmation email); a first confirmation sends one welcome, capped at
 
 ## 7. Author box
 
-**What it does.** "About the author" plus a Person JSON-LD node on report,
-company, US state, methodology and press pages. **It is invisible until the
-owner fills `ALT_AUTHOR_PROFILE` in `includes/author-box.php`** (look for
-`TODO_OWNER_BIO`). Both name and bio are required. **Test:** `test_author_box.py`.
+**What it does.** "About the authors" naming the **Ask The Recruiter research
+team**, plus an Organization JSON-LD node, on report, company, US state,
+methodology and press pages. Owner ruling 2026-11-11: no personal name anywhere
+on asktherecruiter.com, trackers included; never add a Person node or a named
+byline. **Test:** `test_author_box.py`.
 
 ## 8. Corrections log and update log pages (2.20.306)
 

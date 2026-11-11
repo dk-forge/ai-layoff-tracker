@@ -1,3 +1,9 @@
+## 2026-11-11 - 2.20.310 Author box names the research team
+
+**What.** Owner ruling 2026-11-11: the tracker author box reads "Ask The Recruiter research team" and no personal name appears anywhere on asktherecruiter.com. The box was an empty named-Person slot (hidden until filled). **Fix:** a fixed team box with Organization JSON-LD; the Person node and ALT_AUTHOR_PROFILE are gone. Article/Report JSON-LD already used the Organization as author.
+**Guard:** `railway/tests/test_author_box.py` (rewritten, 5)
+**Class:** novel (owner ruling)
+
 ## 2026-11-11 - Duplicate-row apply: one merge, with the unreadable-reports guard
 
 **What.** PR #627 (one `/merge-events` call) and main (move the non-primary reports, then trash, refusing when the report list is unreadable) rewrote `apply_duplicate()` differently on the same day. A second, independent AI review picked the merge design: it keeps the row's primary citation as a receipt on the keeper, is one atomic call, and leaves the before-state the signed endpoint returns, while move+trash discards the primary citation with the row. **Fix:** `apply_duplicate(site, row, keeper, ...)` reads the row's reports first and returns 1 without any call when they cannot be read (main's guard), then makes one `apply_correction.py --action merge` call; a failed merge returns its code. The two entries below describe the superseded intermediate designs.
