@@ -6,7 +6,7 @@ source. Published corrections governance says a numeric change ALWAYS needs a
 human sign-off, so this is deliberately a manual, dispatch-only tool: it never
 runs on a schedule and it refuses to do anything without a written reason.
 
-Six actions, matching the things a review can conclude:
+Seven actions, matching the things a review can conclude:
 
     trash        - the row's number is not supported by its source at all (the
                    count belongs to a different event, or the source states no
@@ -20,6 +20,21 @@ Six actions, matching the things a review can conclude:
                    moves the named links to the row whose event they describe
                    and appends to the public corrections log. --ids names the
                    ONE row the links leave; --fields {"to_id": N, "urls": [...]}.
+                   The server refuses to move a row's OWN source_url this way
+                   (that is an /edit, not a move) - a row that duplicates
+                   another event needs `merge`, below, not this.
+    merge        - the rows are REAL duplicates: two differently-sourced rows
+                   reporting the SAME event (the kind the ordinary dedup hash
+                   never catches across two spellings of one company, e.g.
+                   "Volvo" vs "Volvo Cars"). /merge-events folds the duplicate
+                   row's own citation and every other report on its event into
+                   the keeper's event, then deletes the duplicate row and
+                   suppresses its hash - one call, so a row that is about to
+                   be removed never loses its receipt. --fields
+                   {"keeper_id": N, "duplicate_ids": [...]}. This is the same
+                   route the daily cross-source dedup (dedupe_llm.py) already
+                   drives for automatic merges; this CLI reaches it for a
+                   one-off, signed-off correction.
     add          - a real event the ingest lost and cannot re-read (its URLs are
                    already held as source reports, so the seen-URL pre-check
                    skips them forever). The row goes through /add, the same door
@@ -195,6 +210,44 @@ def run_move_sources(site, key, ids, fields, reason, apply):
     time.sleep(3)
     _print_sources(f"after   row {from_id}", _event_sources(site, from_id))
     _print_sources(f"after   row {to_id}", _event_sources(site, to_id))
+    return 0
+
+
+def run_merge(site, key, fields, reason, apply):
+    keeper_id = int(fields.get("keeper_id") or 0)
+    duplicate_ids = sorted({int(i) for i in (fields.get("duplicate_ids") or []) if int(i)})
+    if not keeper_id or not duplicate_ids:
+        return _fail('merge needs --fields {"keeper_id": N, "duplicate_ids": [...]}')
+    if keeper_id in duplicate_ids:
+        return _fail("the keeper cannot also be one of its own duplicates")
+    if not key:
+        return _fail("WP_API_KEY required even for a dry run: the server is what judges a merge")
+
+    print(f"{'APPLY' if apply else 'DRY RUN'}: merge {duplicate_ids} -> keeper {keeper_id} — {reason}")
+    _print_sources(f"before  row {keeper_id}", _event_sources(site, keeper_id))
+    for dup_id in duplicate_ids:
+        _print_sources(f"before  row {dup_id}", _event_sources(site, dup_id))
+    print(f"  would fold {len(duplicate_ids)} duplicate row(s)' evidence into row {keeper_id}, "
+          "then remove them (their own facts are discarded; the keeper's are untouched)")
+
+    if not apply:
+        print("DRY RUN — nothing written. Re-run with --apply to commit.")
+        return 0
+    r = requests.post(f"{site}/wp-json/layoffs/v1/merge-events",
+                      json={"merges": [{"keeper_id": keeper_id, "duplicate_ids": duplicate_ids}],
+                            "reason": reason},
+                      headers={"X-Layoff-API-Key": key, **UA}, timeout=TIMEOUT)
+    if r.status_code != 200:
+        return _fail(f"merge failed: HTTP {r.status_code} {r.text[:400]}")
+    out = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    print("response:", json.dumps(out, indent=2)[:1200])
+    missed = list(out.get("not_found") or []) + list(out.get("rejected") or [])
+    merged = sorted(int(i) for i in (out.get("merged_rows") or []))
+    if missed or merged != duplicate_ids:
+        return _fail(f"not every duplicate was merged: missed={missed or 'none'} merged={merged}")
+
+    time.sleep(3)
+    _print_sources(f"after   row {keeper_id}", _event_sources(site, keeper_id))
     return 0
 
 
@@ -394,9 +447,9 @@ def write_before_state(path, action, ids, before):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ids", required=True, help="comma-separated table row ids (0 for add)")
-    ap.add_argument("--action", required=True, choices=("trash", "edit", "move-sources", "add", "restore-merged", "superset"))
+    ap.add_argument("--action", required=True, choices=("trash", "edit", "move-sources", "merge", "add", "restore-merged", "superset"))
     ap.add_argument("--reason", required=True, help="why (recorded on the suppression list / corrections log)")
-    ap.add_argument("--fields", default="", help='edit: JSON of fields; move-sources: {"to_id", "urls"}; add: the entry JSON')
+    ap.add_argument("--fields", default="", help='edit: JSON of fields; move-sources: {"to_id", "urls"}; merge: {"keeper_id", "duplicate_ids"}; add: the entry JSON')
     ap.add_argument("--verify-company", default="", help="company filter used to show before/after")
     ap.add_argument("--apply", action="store_true", help="actually write (otherwise dry run)")
     a = ap.parse_args()
@@ -412,7 +465,7 @@ def main():
 
     ids = [int(x) for x in a.ids.replace(" ", "").split(",") if x]
     fields = {}
-    if a.action in ("edit", "move-sources", "add", "restore-merged", "superset"):
+    if a.action in ("edit", "move-sources", "merge", "add", "restore-merged", "superset"):
         try:
             fields = json.loads(a.fields or "{}")
         except ValueError as exc:
@@ -423,6 +476,8 @@ def main():
             return 1
     if a.action == "move-sources":
         return run_move_sources(site, key, ids, fields, a.reason, a.apply)
+    if a.action == "merge":
+        return run_merge(site, key, fields, a.reason, a.apply)
     if a.action == "add":
         return run_add(site, key, fields, a.reason, a.apply)
     if a.action == "superset":

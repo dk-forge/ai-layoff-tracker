@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "card-first-listed",
+   "date": "2026-11-11",
+   "version": "2.20.308",
+   "type": "New",
+   "area": "cards",
+   "text": "Each entry now shows when the tracker first listed it (\"First listed 3 Nov 2026\"), next to the date the source published. Entries listed before we started recording this show only the source date; we do not guess."
+  },
+  {
    "slug": "public-corrections-update-log",
    "date": "2026-11-10",
    "version": "2.20.306",

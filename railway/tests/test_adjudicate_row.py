@@ -139,11 +139,11 @@ class DuplicateOfTests(unittest.TestCase):
         prompt = adj.build_prompt({"id": 1}, "text", today="2026-11-10")
         self.assertNotIn("THE OTHER ROW", prompt)
 
-    def test_duplicate_trash_moves_the_OTHER_sources_to_the_keeper_first(self):
-        """run 42884016311 (row 183011): the row's own citation is ALWAYS
-        `refused` by the server (it's the row's citation, not a report of a
-        different event - db.php alt_api_move_source_reports). Only the
-        row's OTHER reports, if any, are requested to move."""
+    def test_duplicate_trash_merges_into_the_keeper(self):
+        """2026-11-10 (runs 42884011327, 42884016311): the server refuses to
+        MOVE a row's own citation by design, so move-sources+trash can never
+        succeed for the common case. merge folds every report (the primary
+        citation included) into the keeper and removes the row in one call."""
         calls = []
 
         def fake_main():
@@ -157,38 +157,31 @@ class DuplicateOfTests(unittest.TestCase):
                                       "source_url": "https://bi/x"},
                                      {"id": 183026}, "two-model: dup", apply=False)
         self.assertEqual(rc, 0)
-        self.assertEqual(calls[0][calls[0].index("--action") + 1], "move-sources")
+        self.assertEqual(len(calls), 1, "one atomic merge call, not move-then-trash")
+        self.assertEqual(calls[0][calls[0].index("--action") + 1], "merge")
+        self.assertEqual(calls[0][calls[0].index("--ids") + 1], "183025")
         fields = json.loads(calls[0][calls[0].index("--fields") + 1])
-        self.assertEqual(fields, {"to_id": 183026, "urls": ["https://mirror/x"]})
-        self.assertEqual(calls[1][calls[1].index("--action") + 1], "trash")
-        self.assertEqual(calls[1][calls[1].index("--ids") + 1], "183025")
+        self.assertEqual(fields, {"keeper_id": 183026, "duplicate_ids": [183025]})
+        self.assertNotIn("--apply", calls[0], "apply=False must stay a dry run")
 
-    def test_duplicate_trash_skips_move_when_only_the_primary_citation_exists(self):
-        """The common case (run 42884016311): the row's only report IS its
-        own source_url. Asking the server to move it would always come back
-        `refused`, so no move is attempted at all - trash goes straight
-        through, same as the old single-row trash path."""
+    def test_apply_true_passes_apply_to_the_merge(self):
         calls = []
 
         def fake_main():
             calls.append(list(sys.argv))
             return 0
 
-        sources = [{"source_url": "https://bi/x"}]
         with mock.patch.object(adj.apply_correction, "main", fake_main), \
-             mock.patch.object(adj.apply_correction, "_event_sources", return_value=sources):
-            rc = adj.apply_duplicate("https://site", {"id": 183025, "company_name": "Volvo",
-                                      "source_url": "https://bi/x"},
-                                     {"id": 183026}, "two-model: dup", apply=False)
+             mock.patch.object(adj.apply_correction, "_event_sources",
+                               return_value=[{"source_url": "https://bi/x"}]):
+            rc = adj.apply_duplicate("https://site", {"id": 183025, "source_url": "https://bi/x"},
+                                     {"id": 183026}, "r", apply=True)
         self.assertEqual(rc, 0)
-        self.assertEqual(len(calls), 1, "no move-sources call should be made")
-        self.assertEqual(calls[0][calls[0].index("--action") + 1], "trash")
+        self.assertEqual(len(calls), 1)
+        self.assertIn("--apply", calls[0])
 
-    def test_failed_move_never_trashes(self):
-        calls = []
-
+    def test_failed_merge_returns_its_code(self):
         def fake_main():
-            calls.append(list(sys.argv))
             return 1
 
         sources = [{"source_url": "u"}, {"source_url": "u2"}]
@@ -196,9 +189,8 @@ class DuplicateOfTests(unittest.TestCase):
              mock.patch.object(adj.apply_correction, "_event_sources", return_value=sources):
             rc = adj.apply_duplicate("https://site", {"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
         self.assertEqual(rc, 1)
-        self.assertEqual(len(calls), 1)
 
-    def test_unreadable_source_list_never_trashes(self):
+    def test_unreadable_source_list_never_merges(self):
         with mock.patch.object(adj.apply_correction, "main") as fake_main, \
              mock.patch.object(adj.apply_correction, "_event_sources", return_value=None):
             rc = adj.apply_duplicate("https://site", {"id": 2, "source_url": "u"}, {"id": 3}, "r", apply=True)
