@@ -244,17 +244,23 @@ def duplicate_agreed(verdicts: dict) -> bool:
     return len(answered) >= 2 and all(v.get("same_event_as_other_row") is True for v in answered)
 
 
-def apply_duplicate(row: dict, keeper: dict, reason: str, apply: bool) -> int:
-    """Fold THE ROW's evidence into the keeper's event and remove THE ROW —
+def apply_duplicate(site: str, row: dict, keeper: dict, reason: str, apply: bool) -> int:
+    """Fold THE ROW's evidence into the keeper's event and remove THE ROW:
     one /merge-events call (`apply_correction.py --action merge`), not
     move-sources+trash. THE ROW's only evidence is almost always its own
-    canonical citation, and the server refuses to move a row's own citation
-    by design (test_move_source_reports.py: a primary citation is never
-    moved) — that refusal exists for the ordinary /edit misuse it guards
-    against, not for a row about to be deleted. /merge-events is the route
-    that already handles exactly this case for the daily cross-source dedup
-    (dedupe_llm.py): it folds the duplicate's citation in, THEN removes the
-    row, as one atomic call, so a removed row never loses its receipt."""
+    primary citation, and the server refuses to MOVE a row's own citation by
+    design (db.php alt_api_move_source_reports); /merge-events folds that
+    citation and every other report into the keeper's event, then removes
+    the row, as one atomic call (the route dedupe_llm.py already drives), so
+    a removed row never loses its receipt.
+
+    An unreadable report list is UNKNOWN and nothing is merged: the row's
+    receipts must be readable before a call that deletes it (kept from the
+    2026-11-10 move+trash design, run 42884016311)."""
+    sources = apply_correction._event_sources(site, row["id"])
+    if sources is None:
+        print(f"could not read row {row['id']}'s source reports; NOT merged")
+        return 1
     fields = {"keeper_id": int(keeper["id"]), "duplicate_ids": [int(row["id"])]}
     argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "merge",
             "--reason", reason, "--fields", json.dumps(fields)]
@@ -263,9 +269,12 @@ def apply_duplicate(row: dict, keeper: dict, reason: str, apply: bool) -> int:
     saved = sys.argv
     try:
         sys.argv = argv
-        return int(apply_correction.main() or 0)
+        rc = int(apply_correction.main() or 0)
     finally:
         sys.argv = saved
+    if rc != 0:
+        print(f"merge failed rc={rc}; row {row['id']} NOT removed")
+    return rc
 
 
 def main() -> int:
@@ -338,7 +347,7 @@ def main() -> int:
     reasons = "; ".join((v.get("reasoning") or "")[:140] for v in verdicts.values() if v)
     reason = f"two-model adjudication ({' + '.join(REFEREES)} agree: {action}): {reasons}"
     if other and action == "trash":
-        rc = apply_duplicate(row, other, reason, a.apply)
+        rc = apply_duplicate(site, row, other, reason, a.apply)
     else:
         rc = apply_via_machinery(row, action, fields, reason, a.apply)
     write_spec(a.id, "applied" if (a.apply and rc == 0) else "agree-dry-run", verdicts,

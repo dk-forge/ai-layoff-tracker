@@ -92,7 +92,7 @@ TABLES: Dict[str, dict] = {
             "ai_explicit", "ai_causation", "confidence", "review_status",
             "announced", "edited", "ai_language", "reason_tags", "roles",
             "role_categories", "roles_evidence", "excerpt", "event_id",
-            "superset_of", "updated_at",
+            "superset_of", "updated_at", "created_at",
         ],
     },
     "events": {

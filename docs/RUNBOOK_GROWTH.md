@@ -187,6 +187,13 @@ company, US state, methodology and press pages. **It is invisible until the
 owner fills `ALT_AUTHOR_PROFILE` in `includes/author-box.php`** (look for
 `TODO_OWNER_BIO`). Both name and bio are required. **Test:** `test_author_box.py`.
 
+## 8. Corrections log and update log pages (2.20.306)
+
+- **Where:** `includes/public-logs.php`. `/ai-layoff-tracker/corrections/` renders `alt_corrections_log` (the same option the tracker page and `/wp-json/layoffs/v1/corrections` read). `/ai-layoff-tracker/update-log/` renders `data/update-log.json`. Both are in `/layoff-logs-sitemap.xml`.
+- **How it updates:** corrections are live as they are logged. The update log is built from `docs/release-notes.d/*.md`: after adding or releasing a note, run `python3 railway/build_update_log.py` and commit the JSON. A note shows only once its `version:` is released (not `vNEXT`, not newer than the plugin's `Version:`).
+- **How to tell it broke:** either URL 404s (rewrite not flushed: it flushes once per version), or `railway/tests/test_public_logs_pages.py` fails with "update-log.json is stale".
+- **Fix:** stale JSON, regenerate. A 404 after a deploy, request any page once more (the per-version flush runs on `init`), then check `alt_public_logs_rewrite_ver`.
+
 ## Press targets for the monthly report (drafted 2026-09-29)
 
 The press list stays the owner's call (includes/press-list.php): no scraped or

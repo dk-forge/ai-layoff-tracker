@@ -96,6 +96,14 @@ function alt_db_install() {
          * /changed-rows endpoint reads this column and nothing else, so it can
          * never answer a question about a window that predates it. */
         updated_at DATETIME NULL DEFAULT NULL,
+        /* When this tracker FIRST listed the row, in UTC (2.20.306). Stamped
+         * once, on INSERT, by alt_db_upsert() and never on its UPDATE branch,
+         * so a daily re-import cannot make an old row look newly listed. NULL
+         * for rows that predate the column; alt_db_created_at_iso() then reads
+         * the backing post's GMT date when there is one and stays null when
+         * there is not, because a guessed first-listed time is a claim nobody
+         * observed. railway/tests/test_query_rows_carry_created_at.py. */
+        created_at DATETIME NULL DEFAULT NULL,
         PRIMARY KEY (id),
         UNIQUE KEY dedup_hash (dedup_hash),
         KEY layoff_date (layoff_date),
@@ -988,6 +996,8 @@ function alt_db_upsert(array $row, $allow_suppressed = false) {
         $wpdb->update($table, $data, array('id' => (int) $existing->id));
         return (int) $existing->id;
     }
+    // First listing: stamped here and only here (never on the UPDATE above).
+    $data['created_at'] = $data['updated_at'];
     $wpdb->insert($table, $data);
     return (int) $wpdb->insert_id;
 }
@@ -1545,6 +1555,23 @@ function alt_db_prep($sql, $params) {
     return $params ? $wpdb->prepare($sql, $params) : $sql;
 }
 
+/**
+ * When the tracker first listed a row, ISO 8601 UTC, or null when unknown.
+ * The table's own created_at first; for rows older than that column, the
+ * backing post's GMT publish date (the same moment alt_entry_to_array()
+ * reports); otherwise null. Never the last-write time: that is not when a row
+ * was first listed.
+ */
+function alt_db_created_at_iso($row) {
+    $c = isset($row->created_at) ? (string) $row->created_at : '';
+    if ($c === '' || $c === '0000-00-00 00:00:00') {
+        $c = !empty($row->post_id) ? (string) get_post_field('post_date_gmt', (int) $row->post_id) : '';
+    }
+    if ($c === '' || $c === '0000-00-00 00:00:00') return null;
+    $t = strtotime($c . ' UTC');
+    return $t ? gmdate('Y-m-d\TH:i:s\Z', $t) : null;
+}
+
 function alt_db_row_to_array($row) {
     return array(
         'id'                 => (int) $row->id,
@@ -1591,6 +1618,8 @@ function alt_db_row_to_array($row) {
         'roles_evidence'     => ($row->roles_evidence ?? '') !== '' ? $row->roles_evidence : null,
         'excerpt'            => $row->excerpt,
         'permalink'          => $row->post_id ? get_permalink((int) $row->post_id) : '',
+        // When this tracker first listed the row (UTC); null when unknown.
+        'created_at'         => alt_db_created_at_iso($row),
     );
 }
 
