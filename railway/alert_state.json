@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "adjudicate-one-row-two-referees:main:17ddf48096dd02d1": {
-      "first": 1794338402,
-      "last": 1794338402,
-      "subject": "CI RED: Adjudicate one row (two referees) \u2014 links not moved: ['https://www.businessinsider.com/volvo-layoffs-job-cuts-china-pricing-pressure-2026-10#article']"
-    },
     "adjudicate-one-row-two-referees:main:8302140b3c9551fa": {
       "first": 1794338435,
       "last": 1794338435,
@@ -143,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-11T11:42:13+00:00",
+  "updated_at": "2026-11-11T11:42:15+00:00",
   "version": 1
 }
