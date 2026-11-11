@@ -30842,3 +30842,22 @@ reference to Item 2.05 instead of its heading. Benchmark strict recall
 DEGRADED banner says SEC/EDGAR "keep running", but 8-K rows need a model.
 **Guard:** `railway/tests/test_edgar_item_205_anchor.py`; #596 pages on 0 posted.
 **Class:** absent-read-as-ok
+
+## 2026-11-11 - new rows stopped reaching wp_alt_layoffs after 2.20.306
+2.20.306 (d1ab5d3) added `created_at` and stamped it on every INSERT in
+alt_db_upsert(). Posts kept publishing (post 12446, American Express 3,500,
+2026-10-23) but no row newer than id 183187 / 2026-11-09T22:26Z reached /query.
+The deploy-race guard alt_ensure_schema_once() verified ONE sentinel column,
+`updated_at`, and a test pinned that literal, so a deploy whose dbDelta did not
+add `created_at` was marked verified and never retried. Every INSERT then
+failed with Unknown column and `$wpdb->insert()` returning false was never
+checked; UPDATEs (no created_at) kept working, so nothing looked down.
+Fix 2.20.310: the guard compares every column parsed from the one CREATE TABLE
+with INFORMATION_SCHEMA; alt_db_install() ADDs any column dbDelta left out; a
+failed INSERT is logged, stored in `alt_last_insert_error`, repaired and
+retried once; keyed /migrate reports missing columns before/after and the last
+insert error. /add now refuses "Unknown" and other non-employers before a post
+is created (the table already dropped them; the post was still published).
+**Guard:** `railway/tests/test_layoffs_schema_drift.py` (INSERT columns must be
+declared, missing column detected, failed INSERT recorded, repaired, retried).
+**Class:** silent-stop
