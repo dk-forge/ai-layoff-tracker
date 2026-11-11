@@ -5,6 +5,18 @@
 **Guard:** `railway/tests/test_google_news_dated_window.py` (+7)
 **Class:** absent-read-as-ok (a gap nothing could read back)
 
+## 2026-11-11 - Duplicate-row apply: one merge, with the unreadable-reports guard
+
+**What.** PR #627 (one `/merge-events` call) and main (move the non-primary reports, then trash, refusing when the report list is unreadable) rewrote `apply_duplicate()` differently on the same day. A second, independent AI review picked the merge design: it keeps the row's primary citation as a receipt on the keeper, is one atomic call, and leaves the before-state the signed endpoint returns, while move+trash discards the primary citation with the row. **Fix:** `apply_duplicate(site, row, keeper, ...)` reads the row's reports first and returns 1 without any call when they cannot be read (main's guard), then makes one `apply_correction.py --action merge` call; a failed merge returns its code. The two entries below describe the superseded intermediate designs.
+**Guard:** `railway/tests/test_adjudicate_row.py` (merge, apply flag, failed merge, unreadable list)
+**Class:** two-copies-drifted (two sessions fixed one path two ways)
+
+## 2026-11-10 - The duplicate-row path moved its evidence with the wrong route
+
+**What.** Run 42884011327 (`adjudicate_row.py --duplicate-of`, Volvo row 183025 vs. Volvo Cars row 183026): both referees agreed "trash," `apply_duplicate()` tried to move row 183025's one source report onto 183026 before trashing it, and the server refused: `"refused": ["https://www.businessinsider.com/volvo-layoffs-job-cuts-china-pricing-pressure-2026-10#article"]`. That refusal is not a bug in the server — `alt_api_move_source_reports` has refused a row's own `source_url` by design since the 2026-09-02/03 Uber fix (`test_move_source_reports.py::test_primary_citation_is_never_moved`), because that case means "reattribute this citation to a different event," which should be an `/edit`, not a move. But a duplicate row's ONLY evidence is almost always its own canonical citation (that's exactly why the regular dedup hash never caught it as the same row), so `move-sources` was guaranteed to refuse it on the very first real run. `dedupe_llm.py`'s daily cross-source merge already solved this with `/merge-events`, which folds a duplicate's own citation and reports into the keeper's event and then deletes the duplicate row, as one call — no "is this a move or an edit" ambiguity, because the row is being removed outright. **Fix:** added `apply_correction.py --action merge` (drives `/merge-events`, same dry-run/apply/fail-loud discipline as every other action) and switched `apply_duplicate()` to make one `merge` call instead of `move-sources` then `trash`.
+**Guard:** `railway/tests/test_adjudicate_row.py` (rewrote the 2 duplicate-apply tests), `railway/tests/test_move_source_reports.py` (+4, `MergeDriver`)
+**Class:** novel (a new path reused an existing guard for a case the guard was never meant to cover)
+
 ## 2026-11-10 - 2.20.306 Public corrections and update-log pages; `created_at` on /query rows
 
 **What.** `/ai-layoff-tracker/corrections/` and `/ai-layoff-tracker/update-log/` returned 404, and the live `/query` rows carried no first-listed date. The 2.20.304 note said "every row in the public API now carries created_at", but that change reached only `alt_entry_to_array()` (the entry-page path); `/query` is shaped by `alt_db_row_to_array()` from `wp_alt_layoffs`, and about a third of rows (bulk WARN/ERM) have no backing post. Now: (1) `wp_alt_layoffs.created_at DATETIME NULL` (dbDelta), stamped once on INSERT in `alt_db_upsert()` and never on its UPDATE branch, so a daily re-import cannot make an old row look newly listed; `alt_db_created_at_iso()` reads it, falls back to the post's `post_date_gmt`, else null (a guessed first-listed time is a claim nobody observed). (2) `includes/public-logs.php`: the two pages, standalone in the digest-archive shell, plus `/layoff-logs-sitemap.xml` in the sitemap index. Corrections renders `alt_corrections_log` with the tracker page's exact anchor rule, so one entry has one fragment on both pages. The update log is DERIVED from `docs/release-notes.d` by `railway/build_update_log.py` into `data/update-log.json`; only notes whose version is released (a real version no newer than the plugin's own) are listed, and a note with an em-dash is refused. The tracker's corrections section links both. `created_at` is pinned in `railway/backup_tables.py` so the weekly backup carries it; a restore through `/bulk` re-inserts rows and so stamps the restore time, which RECOVERY should treat as a known loss of first-listed precision.
@@ -29369,8 +29381,8 @@ gate was two.
 ## THE RESULT CARD CONTRACT (canonical spec, shared with the sibling tracker)
 
 **Machine-readable copy:** `docs/card-contract.json`
-**sha256:** `5ce62ea8d11073b132af83696e222f0a2c4184fba646c5f0adcb9c06f7493af2`
-**Contract version:** 1.0.0, adopted 2026-07-31.
+**sha256:** `b37ccf2bcd7e460b5e25a4dc8fc9b290ed347ae59484faedd6b50d871db2f461`
+**Contract version:** 1.1.0 (1.0.0 adopted 2026-07-31; 1.1.0 on 2026-11-11 added the optional `card-listed` foot slot).
 
 That file is **byte-identical** in `dk-forge/ai-layoff-tracker` and
 `dk-forge/talent-intelligence-tracker`. This section and the section of the same
@@ -29424,6 +29436,7 @@ classes); the contract class must be present.
       <p class="{p}-card-rt">              our plain-English read, visually separated
       <div class="{p}-card-foot">
         <time class="{p}-card-when">       or "Date not stated" in {p}-card-nowhere
+        <time class="{p}-card-listed">     optional; "First listed <date>", ABSENT when the first-listed time is null
         <span class="{p}-card-src">        publisher, outbound; archived copy SECOND, never instead
       </div>
     </div>

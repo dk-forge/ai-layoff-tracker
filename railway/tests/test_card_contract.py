@@ -57,7 +57,7 @@ LAYOFFS_CSS = os.path.join(
 # The contract as this repo last agreed to it. If this fails, the file changed:
 # either you meant it (update this, update TECHLOG, and copy the file to the
 # sibling) or you did not (revert).
-CONTRACT_SHA256 = "5ce62ea8d11073b132af83696e222f0a2c4184fba646c5f0adcb9c06f7493af2"
+CONTRACT_SHA256 = "b37ccf2bcd7e460b5e25a4dc8fc9b290ed347ae59484faedd6b50d871db2f461"
 
 PREFIX = "alt"
 
@@ -114,6 +114,7 @@ TEMPLATE_TOKEN = {
     "card-rt": r'class="alt-card-rt"',
     "card-foot": r'class="alt-card-foot"',
     "card-when": r'class="alt-card-when"',
+    "card-listed": r"\blisted\b",
     "card-src": r'class="alt-card-src"',
 }
 
