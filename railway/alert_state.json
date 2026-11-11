@@ -112,11 +112,6 @@
       "last": 1794320892,
       "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide jobs, all time: live API returned HTTP 500 \u2014 server regression, not a blip"
     },
-    "live-surface-check:live.data:dff9ed7c20db45c1": {
-      "first": 1794256096,
-      "last": 1794256096,
-      "subject": "CI RED: Live surface check \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-11-09T17:36:16Z): Worldw"
-    },
     "live-surface-check:live.data:feb152844d9e6171": {
       "first": 1794331917,
       "last": 1794331917,
@@ -143,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-11T15:29:11+00:00",
+  "updated_at": "2026-11-11T21:05:04+00:00",
   "version": 1
 }
