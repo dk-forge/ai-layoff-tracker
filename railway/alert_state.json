@@ -92,11 +92,6 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
-    "deploy-wordpress-plugin:main:04c6efdddc7c8fbc": {
-      "first": 1794323345,
-      "last": 1794323345,
-      "subject": "CI RED: Deploy WordPress plugin \u2014 Readers are STILL not being served 2.20.305/63e9c5d6e635b4aa after 600s. The origin may be correct while a shared cache serves a superseded build,"
-    },
     "depth-source-snapshot-test-only:main:c34a64053cf61a19": {
       "first": 1791216897,
       "last": 1791216897,
@@ -158,6 +153,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-10T20:28:47+00:00",
+  "updated_at": "2026-11-11T10:28:21+00:00",
   "version": 1
 }
