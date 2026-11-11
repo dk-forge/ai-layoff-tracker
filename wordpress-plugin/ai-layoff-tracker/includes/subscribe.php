@@ -1,4 +1,5 @@
 <?php
+if (!function_exists('alt_mail_postal_address') && file_exists(__DIR__ . '/postal-address.php')) require_once __DIR__ . '/postal-address.php';
 /**
  * Email digest subscriptions, for BOTH trackers.
  *
@@ -7995,7 +7996,7 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
         'url' => '',
         'anchor' => '',
         'sentences' => array(
-            'AskTheRecruiter, Netherlands.',
+            alt_mail_postal_address(),
         ),
     );
     return $blocks;

@@ -1,4 +1,5 @@
 <?php
+if (!function_exists('alt_mail_postal_address') && file_exists(__DIR__ . '/postal-address.php')) require_once __DIR__ . '/postal-address.php';
 /**
  * The account emails (signup confirmation, change confirmation, welcome) in
  * the subscriber design the owner approved on 2026-09-29.
@@ -62,7 +63,7 @@ function alt_account_mail_paragraphs($text, $button_url, $button_html = '') {
         if ($chunk === '') continue;
         if ($button_url !== '' && trim($chunk) === $button_url) { $out .= $button_html; $button_html = ''; continue; }
         // The postal address is the footer's job; never print it twice.
-        if (strpos($chunk, 'AskTheRecruiter, Netherlands') !== false) continue;
+        if (strpos($chunk, alt_mail_postal_address()) !== false) continue;
         $lines = explode("\n", $chunk);
         // "Lead-in:\n<button url>": keep the lead-in, the button follows it.
         $here = '';
@@ -128,7 +129,7 @@ function alt_account_mail_html($heading, $text, $button_url, $button_label, $foo
     }
     $small = 'margin:0 0 8px;font-family:' . $font . ';font-size:13px;line-height:1.6;color:' . $c['muted'] . ';';
     $footer = ($links ? '<p style="' . $small . '">' . implode(' &middot; ', $links) . '</p>' : '')
-            . '<p style="' . $small . '">AskTheRecruiter, Netherlands.</p>';
+            . '<p style="' . $small . '">' . htmlspecialchars(alt_mail_postal_address(), ENT_QUOTES, 'UTF-8') . '</p>';
 
     return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
         . '<meta name="viewport" content="width=device-width,initial-scale=1">'

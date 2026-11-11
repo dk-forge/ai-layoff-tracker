@@ -1,4 +1,5 @@
 <?php
+if (!function_exists('alt_mail_postal_address') && file_exists(__DIR__ . '/postal-address.php')) require_once __DIR__ . '/postal-address.php';
 /**
  * Press list: an ADMIN-ONLY table of journalist contacts, and a monthly pitch
  * that is sent ONLY when an admin clicks Send.
@@ -91,7 +92,7 @@ function alt_press_email_body($contact, $pitch, $optout_url) {
         // CAN-SPAM 7704(a)(5): the digest footer carries the postal address
         // and this pitch did not (email audit 2026-09-27). Same string as the
         // digest's address block.
-        . "AskTheRecruiter, Netherlands.\n";
+        . alt_mail_postal_address() . "\n";
 }
 
 function alt_press_optout_url($contact) {

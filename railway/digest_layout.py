@@ -43,6 +43,8 @@ import re
 import textwrap
 from html import escape
 
+from postal_address import postal_address
+
 # ---------------------------------------------------------------------------
 # The palette
 #
@@ -1325,7 +1327,7 @@ FOOTER_BLOCKS = (
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because
     # unlike the manage block it is not ours to omit.
-    ("", ("AskTheRecruiter, Netherlands.",), ""),
+    ("", (postal_address(),), ""),
 )
 
 

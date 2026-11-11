@@ -10,12 +10,15 @@ postal address the digest footer does.
 import re
 import shutil
 import subprocess
+import sys
+sys.path.insert(0, __import__("os").path.dirname(__file__))  # noqa: E402
 import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parents[2] / "wordpress-plugin" / "ai-layoff-tracker"
 SUB = PLUGIN / "includes" / "subscribe.php"
 PRESS = PLUGIN / "includes" / "press-list.php"
+import postal_php  # noqa: E402
 
 
 def _fn(name, path=SUB):
@@ -26,7 +29,7 @@ def _fn(name, path=SUB):
 
 
 def _php(body):
-    code = ("define('ALT_DIGEST_RETENTION_DAYS', 30);\n"
+    code = ("define('ALT_DIGEST_RETENTION_DAYS', 30);\n" + postal_php.SRC + "\n"
             + "\n".join(_fn(n) for n in ("alt_digest_list_names", "alt_digest_change_lines",
                                          "alt_digest_signup_lines", "alt_digest_confirm_body"))
             + "\n" + body)
@@ -62,9 +65,10 @@ class SignupConfirmation(unittest.TestCase):
 class PressPitchFooter(unittest.TestCase):
     def test_pitch_carries_the_postal_address(self):
         body = _fn("alt_press_email_body", PRESS)
-        self.assertIn("AskTheRecruiter, Netherlands", body)
+        # One config value for every footer (owner review 2026-11-11).
+        self.assertIn("alt_mail_postal_address()", body)
         digest = SUB.read_text(encoding="utf-8")
-        self.assertIn("AskTheRecruiter, Netherlands.", digest)
+        self.assertIn("alt_mail_postal_address()", digest)
         # Owner 2026-09-29: the suite number is left out of every email.
         self.assertNotIn("#E313", body)
         self.assertNotIn("#E313", digest)

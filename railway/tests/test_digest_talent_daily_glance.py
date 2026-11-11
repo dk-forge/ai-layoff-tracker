@@ -64,7 +64,7 @@ class Glance(unittest.TestCase):
         head = self.text.split("Announced hiring plans", 1)[0]
         self.assertIn("At a glance (Nov 2-3)", head)
         self.assertIn("Hiring signals: 7", head)
-        self.assertIn("Employer-activity signals: 2", head)
+        self.assertIn("Employer-activity signals: 2 from 2 employers", head)
         self.assertIn("Biggest announced plan: Cohere, 1,500 roles in Toronto", head)
         self.assertIn("Leading region: North America, 4 signals", head)
 
@@ -81,8 +81,9 @@ class Glance(unittest.TestCase):
         self.assertIn("These are reported signals: most are not independently verified.", head)
         self.assertNotIn("not independently verified", self.text.split("\nNotes\n", 1)[1])
 
-    def test_context_line_is_the_separately_sentence(self):
-        self.assertIn("Separately, 2 employer-activity signals from 2 employers.", self.text)
+    def test_employer_activity_said_once_in_the_glance(self):
+        self.assertIn("Employer-activity signals: 2 from 2 employers", self.text)
+        self.assertNotIn("Separately,", self.text)
         self.assertNotIn("In context:", self.text)
 
     def test_window_is_stated_once(self):
@@ -109,7 +110,8 @@ class TenFeatured(unittest.TestCase):
         text = compose(big_fixture())["text"]
         lines = re.findall(LINE, text, re.M)
         self.assertEqual(len(lines), 10, lines)
-        self.assertIn("10 featured, see all 21 hiring signals", text)
+        # 10 lines plus the folded unstated plan (owner review 2026-11-11).
+        self.assertIn("11 featured, see all 21 hiring signals", text)
         self.assertEqual(text.count("see all"), 1)
 
 

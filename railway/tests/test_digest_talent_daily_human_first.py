@@ -88,9 +88,9 @@ class DailyHumanFirst(unittest.TestCase):
         # Superseded 2026-11-06: the glance box now sits above the lead line,
         # and the context line is "Separately, ..." (test_digest_talent_daily_glance).
         self.assertIn("\n7 hiring signals, led by Cohere", self.text)
-        self.assertEqual(self.text.count("Separately, 2 employer-activity signals"), 1)
-        self.assertLess(self.text.index("Announced hiring plans\n"),
-                        self.text.index("Separately, 2 employer-activity"))
+        # Superseded 2026-11-11: the employer-activity count is said once, in the glance.
+        self.assertEqual(self.text.count("Employer-activity signals: 2 from 2 employers"), 1)
+        self.assertNotIn("Separately,", self.text)
 
     def test_window_label_names_its_dates(self):
         # The window is stated once, in the glance heading (owner, 2026-11-06).
@@ -117,7 +117,9 @@ class DailyHumanFirst(unittest.TestCase):
         # pinned in test_digest_talent_daily_glance. All seven fit here.
         lines = re.findall(r"^  \S.*: .*(?:announced plan|open listings) · .*$",
                            self.text, re.M)
-        self.assertEqual(len(lines), 7, lines)
+        # Mondial Relay states no roles: folded into one line (owner review 2026-11-11).
+        self.assertEqual(len(lines), 6, lines)
+        self.assertIn("  Also announced, roles not stated: Mondial Relay.", self.text)
         self.assertIn("  🇨🇦 Cohere: 1,500 roles, announced plan · Toronto, Canada · "
                       "MobileSyrup https://example.com/4", self.text)
         self.assertNotIn("📍", self.text + self.html)

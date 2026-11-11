@@ -1,0 +1,7 @@
+{
+  "_why": "The ONE postal address every email footer prints (CAN-SPAM 15 U.S.C. 7704(a)(5) needs a valid physical postal address). PHP reads it through alt_mail_postal_address(), Python through railway/postal_address.py. Change it here only. While 'street' is empty the footer keeps sending the interim line and railway/tests/test_postal_address.py requires the owner item named in 'pending_owner_item'.",
+  "name": "AskTheRecruiter",
+  "street": "",
+  "locality": "Netherlands",
+  "pending_owner_item": "Provide the postal address for email footers"
+}

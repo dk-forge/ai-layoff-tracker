@@ -17,6 +17,8 @@ import json
 import re
 import shutil
 import subprocess
+import sys
+sys.path.insert(0, __import__("os").path.dirname(__file__))  # noqa: E402
 import unittest
 from pathlib import Path
 
@@ -24,6 +26,7 @@ PLUGIN = Path(__file__).resolve().parents[2] / "wordpress-plugin" / "ai-layoff-t
 MOD = PLUGIN / "includes" / "press-list.php"
 
 PURE = ("alt_press_parse_csv", "alt_press_email_body")
+import postal_php  # noqa: E402
 
 
 def _src():
@@ -43,7 +46,7 @@ def _php(body, *args):
         "function sanitize_email($s){ return trim((string)$s); }\n"
         "function is_email($s){ return (bool) filter_var($s, FILTER_VALIDATE_EMAIL); }\n"
         "function sanitize_textarea_field($s){ return trim((string)$s); }\n")
-    code = stubs + "\n".join(_fn(n) for n in PURE) + "\n" + body
+    code = stubs + postal_php.SRC + "\n" + "\n".join(_fn(n) for n in PURE) + "\n" + body
     p = subprocess.run(["php", "-r", code, "--", *args], capture_output=True, text=True, timeout=60)
     assert p.returncode == 0, p.stderr + p.stdout
     return p.stdout
