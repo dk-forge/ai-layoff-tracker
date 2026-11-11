@@ -8,12 +8,10 @@
       "recorded_in": "close:ai_all_time:2026-11-10T17:08:47Z"
     },
     "us_all_time": {
-      "captured_at": "2026-11-08T17:35:21Z",
-      "entries": 47327,
-      "excluded_entries": 472,
-      "excluded_jobs": 124607,
-      "jobs": 7445186,
-      "recorded_in": "2026-11-08T17:36:13Z"
+      "captured_at": "2026-11-11T08:12:18Z",
+      "entries": 47412,
+      "jobs": 7479823,
+      "recorded_in": "close:us_all_time:2026-11-11T08:12:18Z"
     },
     "worldwide_all_time": {
       "captured_at": "2026-11-08T17:35:21Z",
@@ -24,5 +22,5 @@
       "recorded_in": "2026-11-08T17:36:13Z"
     }
   },
-  "written_at": "2026-11-10T17:35:36Z"
+  "written_at": "2026-11-11T08:12:18Z"
 }
