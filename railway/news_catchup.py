@@ -42,6 +42,7 @@ Env:
 import os
 
 from sources.newsapi import pull_news_articles
+from sources import google_news
 from extractor import extract_layoff_data
 import spend
 from source_health import report_source_health
@@ -68,6 +69,7 @@ def run():
         report_source_health(HEALTH_ID, "degraded", 0, f"{days}-day catch-up failed: {exc}")
         raise
     print(f"NewsAPI returned {len(entries)} articles")
+    entries = entries + dated_google_news(days)
 
     posted = dupes = skipped = failed = ai = 0
     for raw in entries:
@@ -102,6 +104,30 @@ def run():
         f"{skipped} non-events, {failed} processing failures",
     ):
         raise RuntimeError("Could not publish news catch-up health result")
+
+
+def dated_google_news(days):
+    """Per-day Google News RSS for the lookback (sources/google_news.py,
+    "DATED WINDOWS"). NewsAPI alone posted 9 events for the 37-day 2026-09-29
+    to 2026-11-05 gap; the dated windows reach each past day's headlines.
+    NEWS_WINDOW_START/NEWS_WINDOW_END (YYYY-MM-DD) override the range for a
+    one-off gap backfill. A day that fails is skipped, never fatal: NewsAPI's
+    rows still post and the next weekly run re-reads the same days."""
+    from datetime import date, timedelta
+    end_s = os.environ.get("NEWS_WINDOW_END", "").strip()
+    start_s = os.environ.get("NEWS_WINDOW_START", "").strip()
+    end = date.fromisoformat(end_s) if end_s else date.today()
+    start = date.fromisoformat(start_s) if start_s else end - timedelta(days=max(0, days - 1))
+    rows = []
+    for day in google_news.days_between(start, end):
+        try:
+            got = google_news.pull_google_news_day(day)
+        except Exception as exc:
+            print(f"Google News {day}: skipped ({type(exc).__name__})")
+            continue
+        rows.extend(got)
+    print(f"Google News dated windows {start}..{end}: {len(rows)} candidates")
+    return rows
 
 
 if __name__ == "__main__":
