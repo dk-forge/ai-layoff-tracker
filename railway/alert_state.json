@@ -107,11 +107,6 @@
       "last": 1794245804,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
     },
-    "live-surface-check:live.data:feb152844d9e6171": {
-      "first": 1794331917,
-      "last": 1794331917,
-      "subject": "CI RED: Live surface check \u2014 AssertionError: No headline moves without rows to explain it: United States jobs, all time: OPEN INCIDENT, opened 1d ago (2026-11-09T17:36:16Z): Worldw"
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -133,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-11T21:05:06+00:00",
+  "updated_at": "2026-11-11T21:05:08+00:00",
   "version": 1
 }
