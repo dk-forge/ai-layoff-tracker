@@ -196,7 +196,12 @@ function alt_public_logs_sitemap_index_entry($xml) {
 add_filter('wpseo_sitemap_index', 'alt_public_logs_sitemap_index_entry');
 add_filter('rank_math/sitemap/index', 'alt_public_logs_sitemap_index_entry');
 
-add_action('template_redirect', function () {
+/**
+ * Serves all three routes. Priority 0, BEFORE redirect_canonical (priority
+ * 10): at the default priority WordPress 301'd /layoff-logs-sitemap.xml to a
+ * trailing-slash URL (2026-11-10), as the reports sitemap avoids the same way.
+ */
+function alt_public_logs_serve() {
     $which = get_query_var('alt_public_log');
     if ($which === 'sitemap') {
         status_header(200);
@@ -215,4 +220,5 @@ add_action('template_redirect', function () {
         ? alt_public_log_render_corrections(get_option('alt_corrections_log'))
         : alt_public_log_render_update_log(alt_update_log_entries());
     exit;
-});
+}
+add_action('template_redirect', 'alt_public_logs_serve', 0);
