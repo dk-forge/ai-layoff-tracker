@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "digest-preheader-full-stop",
+   "date": "2026-11-11",
+   "version": "2.20.315",
+   "type": "Fix",
+   "area": "email",
+   "text": "The inbox preview line of the digest emails now ends in one full stop. The talent daily had shown two."
+  },
+  {
    "slug": "digest-region-label",
    "date": "2026-11-11",
    "version": "2.20.314",
