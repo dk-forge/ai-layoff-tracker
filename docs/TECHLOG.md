@@ -29374,8 +29374,8 @@ gate was two.
 ## THE RESULT CARD CONTRACT (canonical spec, shared with the sibling tracker)
 
 **Machine-readable copy:** `docs/card-contract.json`
-**sha256:** `5ce62ea8d11073b132af83696e222f0a2c4184fba646c5f0adcb9c06f7493af2`
-**Contract version:** 1.0.0, adopted 2026-07-31.
+**sha256:** `b37ccf2bcd7e460b5e25a4dc8fc9b290ed347ae59484faedd6b50d871db2f461`
+**Contract version:** 1.1.0 (1.0.0 adopted 2026-07-31; 1.1.0 on 2026-11-11 added the optional `card-listed` foot slot).
 
 That file is **byte-identical** in `dk-forge/ai-layoff-tracker` and
 `dk-forge/talent-intelligence-tracker`. This section and the section of the same
@@ -29429,6 +29429,7 @@ classes); the contract class must be present.
       <p class="{p}-card-rt">              our plain-English read, visually separated
       <div class="{p}-card-foot">
         <time class="{p}-card-when">       or "Date not stated" in {p}-card-nowhere
+        <time class="{p}-card-listed">     optional; "First listed <date>", ABSENT when the first-listed time is null
         <span class="{p}-card-src">        publisher, outbound; archived copy SECOND, never instead
       </div>
     </div>
