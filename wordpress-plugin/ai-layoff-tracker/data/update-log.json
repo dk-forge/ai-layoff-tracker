@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "corrections-us-share",
+   "date": "2026-11-11",
+   "version": "2.20.312",
+   "type": "Fix",
+   "area": "data-integrity",
+   "text": "Each removal in the public corrections log now also records how many of its jobs counted toward the United States total. The site's own consistency check can then tell a deliberate removal of non-US rows apart from rows being re-counted into the US figure."
+  },
+  {
    "slug": "layoffs-insert-schema-drift",
    "date": "2026-11-11",
    "version": "2.20.310",

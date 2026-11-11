@@ -89,6 +89,27 @@ class DisclosedRemovals:
         """The removing entries in this window that record no jobs figure."""
         return [e for e in self.entries if entry_jobs(e) is None]
 
+    def split_by_side(self, side_field: str):
+        """(inside, outside) jobs of every removal against one published slice,
+        or None when ANY removal in the window lacks that side's figure.
+
+        `side_field` names the per-entry share that sat inside the slice
+        (`us_jobs`: jobs in the us_all_time headline, written by db.php
+        alt_log_correction since 2026-11-11). Older entries never carry it,
+        and one entry without it makes the split unknowable: None, never a
+        guess that the unplaced jobs sat on either side."""
+        if not self.jobs_accounted or not self.entries:
+            return None
+        inside = outside = 0
+        for e in self.entries:
+            total = entry_jobs(e)
+            share = entry_jobs({"jobs": e.get(side_field)}) if side_field in e else None
+            if total is None or share is None or share > total:
+                return None
+            inside += share
+            outside += total - share
+        return inside, outside
+
     @property
     def jobs_accounted(self) -> bool:
         """True only if the window was read AND every removal in it is measured."""
