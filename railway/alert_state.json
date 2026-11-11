@@ -52,11 +52,6 @@
     }
   ],
   "open": {
-    "adjudicate-one-row-two-referees:main:0abfa9d7cbe2f771": {
-      "first": 1794397551,
-      "last": 1794397551,
-      "subject": "CI RED: Adjudicate one row (two referees) \u2014 json.decoder.JSONDecodeError: Unterminated string starting at: line 8 column 16 (char 209)"
-    },
     "bls-full-history-archive:main:702b8397656939ae": {
       "first": 1791791624,
       "last": 1791791624,
@@ -138,6 +133,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-11T11:45:51+00:00",
+  "updated_at": "2026-11-11T11:47:01+00:00",
   "version": 1
 }
