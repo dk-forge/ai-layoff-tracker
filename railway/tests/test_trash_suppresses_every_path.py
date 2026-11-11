@@ -33,7 +33,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 DB = os.path.join(ROOT, "wordpress-plugin", "ai-layoff-tracker", "includes", "db.php")
 PHP = shutil.which("php")
 
-LIFT = ("alt_trash_suppress", "alt_api_trash")
+LIFT = ("alt_row_in_us_headline", "alt_trash_suppress", "alt_api_trash")
 
 
 def _lift(name):

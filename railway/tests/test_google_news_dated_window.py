@@ -89,7 +89,40 @@ class PullDay(unittest.TestCase):
     def test_cap_holds(self):
         titles = [f"Company {i} to cut {100 + i} jobs" for i in range(40)]
         rows, _ = self._pull(_rss(*titles), cap=5)
-        self.assertEqual(len(rows), 5)
+        # The cap is per query (see VerbHeadlines): each query adds at most 5.
+        n = len(google_news.dated_queries(date(2026, 10, 23)))
+        self.assertEqual(len(rows), 5 * n)
+
+
+class VerbHeadlines(unittest.TestCase):
+    """2026-11-08 benchmark misses that Google News holds but the two broad
+    dated queries never returned (measured 2026-11-11): "Fiserv cuts 3,000
+    employees and contractor jobs" (Reuters), "NatWest slashes 1,000 jobs"
+    (Telegraph), "Flutter to axe up to 1,400 jobs" (Reuters), "Netherlands
+    aims to cut around 20% of government jobs" and "GSK to eliminate 1,200
+    jobs". A verb-form query reached all five on their day."""
+
+    def test_a_dated_query_reads_verb_form_job_headlines(self):
+        qs = google_news.dated_queries(date(2026, 10, 30))
+        verb = [q for q in qs if "slashes" in q and "axe" in q and "eliminate" in q]
+        self.assertEqual(len(verb), 1)
+        self.assertIn("jobs", verb[0])
+
+    def test_each_query_gets_its_own_cap_so_the_first_cannot_starve_the_rest(self):
+        per_query = {}
+
+        def get(url, **kw):
+            n = len(per_query)
+            per_query[url] = n
+            return R(_rss(*[f"Firm{n}x{i} to cut {100 + i} jobs" for i in range(10)])
+                     .replace("/a/", f"/q{n}/"))
+        with patch.object(google_news.http_retry, "get_with_retry",
+                          side_effect=lambda url, **kw: get(url)), \
+                patch.object(google_news.time, "sleep"):
+            rows = google_news.pull_google_news_day(date(2026, 10, 30), max_items=4)
+        n = len(google_news.dated_queries(date(2026, 10, 30)))
+        self.assertEqual(len(per_query), n)
+        self.assertEqual(len(rows), 4 * n)
 
 
 class CatchupWiring(unittest.TestCase):

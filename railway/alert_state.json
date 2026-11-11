@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "adjudicate-one-row-two-referees:main:0abfa9d7cbe2f771": {
+      "first": 1794402626,
+      "last": 1794402626,
+      "subject": "CI RED: Adjudicate one row (two referees) \u2014 json.decoder.JSONDecodeError: Unterminated string starting at: line 8 column 16 (char 209)"
+    },
     "adjudicate-one-row-two-referees:main:1a61120ce8cb8d56": {
       "first": 1794397794,
       "last": 1794397794,
@@ -127,6 +132,11 @@
       "last": 1794210286,
       "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
     },
+    "vps-watch:main:d3a2f13ea3d7af1b": {
+      "first": 1794407347,
+      "last": 1794407347,
+      "subject": "CI RED: VPS watch \u2014 UNKNOWN: 1 reading(s) could not be taken. Not a pass, not a fault."
+    },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
       "last": 1794225755,
@@ -138,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-11T11:49:54+00:00",
+  "updated_at": "2026-11-11T14:29:08+00:00",
   "version": 1
 }
