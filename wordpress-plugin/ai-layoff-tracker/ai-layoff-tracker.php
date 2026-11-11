@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.308
+ * Version:           2.20.310
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.308');
+define('ALT_VERSION', '2.20.310');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -976,16 +976,19 @@ add_action('init', 'alt_rewrite_flush_if_requested', 100);
 // because the version-gated flush can fire mid-FTP-upload and run against
 // the previous includes/db.php (deploy race, 2026-07-19: role_categories
 // never got created and every roles query silently returned nothing).
-define('ALT_SCHEMA_SENTINEL_COLUMN', 'updated_at');
+// Kept for reference only. One sentinel was not enough: 2.20.306 added
+// created_at, this stayed on updated_at, and every INSERT failed for a day.
+// The guard now compares EVERY declared column with the live table.
+define('ALT_SCHEMA_SENTINEL_COLUMN', 'created_at');
 
 function alt_db_schema_verified() {
     global $wpdb;
-    if (!function_exists('alt_db_table')) return false;
-    $col = $wpdb->get_var($wpdb->prepare(
+    if (!function_exists('alt_db_table') || !function_exists('alt_db_missing_columns')) return false;
+    $any = $wpdb->get_var($wpdb->prepare(
         "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
-        alt_db_table(), ALT_SCHEMA_SENTINEL_COLUMN));
-    return !empty($col);
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1", alt_db_table()));
+    if (empty($any)) return false;
+    return alt_db_missing_columns() === array();
 }
 
 function alt_ensure_schema_once() {

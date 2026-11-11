@@ -1346,6 +1346,12 @@ function alt_api_add($request) {
     if ($company === '') {
         return new WP_Error('alt_bad_request', 'company_name is required.', array('status' => 400));
     }
+    // "Unknown", "N/A" and friends are not an employer. The table already drops
+    // them in alt_db_upsert(), but /add used to publish the post anyway, so a
+    // junk row like "Unknown" 16,000 reached the site. Refuse it here.
+    if (function_exists('alt_is_anonymous_employer') && alt_is_anonymous_employer($company)) {
+        return new WP_Error('alt_bad_request', 'company_name must name a real employer.', array('status' => 422));
+    }
 
     $job_count = absint($meta_in['job_count'] ?? 0);
     if ($job_count < 1) {

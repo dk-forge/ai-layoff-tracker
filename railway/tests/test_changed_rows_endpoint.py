@@ -84,9 +84,9 @@ def function_body(text, name):
 
 def create_table_sql(text):
     """The CREATE TABLE for wp_alt_layoffs inside alt_db_install()."""
-    body = function_body(text, "alt_db_install")
-    start = body.index('$sql = "CREATE TABLE')
-    return body[start:body.index('dbDelta($sql);', start)]
+    body = function_body(text, "alt_db_layoffs_create_sql")
+    start = body.index('return "CREATE TABLE')
+    return body[start:]
 
 
 class TheColumnExistsAndIsIndexed(unittest.TestCase):
@@ -129,7 +129,7 @@ class TheColumnExistsAndIsIndexed(unittest.TestCase):
         the schema verified while updated_at was never created, which is exactly
         how role_categories was lost in 2026-07.
         """
-        self.assertIn("define('ALT_SCHEMA_SENTINEL_COLUMN', 'updated_at');", MAIN)
+        self.assertIn("alt_db_missing_columns(", MAIN)
 
 
 class EveryWriterStamps(unittest.TestCase):
