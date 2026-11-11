@@ -3,6 +3,11 @@
 **What.** `_search_keyword()` read at most 3 EFTS pages (30 hits) per keyword and form, then printed "only the first 30 were fetched" and dropped the rest. The daily pull reads one day and never reached it; the `edgar-history-sweep.yml` range mode reads a month, where one keyword matches far more. **Fix:** `MAX_PAGES_PER_KEYWORD` is 50, a safety ceiling; paging still stops at EFTS's own total, so a quiet day costs one request. Pages are SEC requests under the existing 0.11 s delay, never model calls; `BACKFILL_MAX_CALLS` still bounds extraction.
 **Guard:** `railway/tests/test_edgar_keyword_paging.py` (+2)
 **Class:** novel (a page ceiling sized for a day, used for a month)
+## 2026-11-11 - News catch-up paid for the same URL up to three times and never read late October
+
+**What.** Run 42993859950 (window 2026-09-29..2026-11-05, 1,508 candidates) hit its $0.150 per-run ceiling after 831 calls and 24 stored rows. The log shows one Google News URL extracted three times in a row (adjacent days' after:/before: windows overlap by a day, so one item comes back on two days) and 139 server-side duplicate skips; `news_catchup.py` never called the seen-URL pre-check that cron.py, gdelt_backfill and company_watchlist use. Candidates are read oldest day first, so every re-dispatch re-paid for the first days of the window and the late-October announcements (AmEx 10-23, Weil 10-28, NatWest 10-30, Ecco 11-02, Fiserv 11-03) were never reached. **Fix:** `unique_candidates()` keeps the first entry per source_url, then `seen_urls.filter_already_seen` drops URLs the site holds, both before the extractor. No cap changed.
+**Guard:** `railway/tests/test_news_catchup_dedupe.py` (+4)
+**Class:** novel (a backfill that skipped the shared pre-check every other ingest uses)
 
 ## 2026-11-11 - Workday's percent-only 8-K got no estimate: the owner word could not be the filer's name
 
