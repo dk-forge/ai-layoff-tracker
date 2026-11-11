@@ -15,10 +15,11 @@ owner accepts for a numeric change, and it is cheap: two short calls, a few
 cents, metered like every other paid read in this repository.
 
 WHAT IT NEVER DOES. It never edits live data by hand: the write goes through
-apply_correction.py and the same /trash and /edit routes every correction has
-used, so the dedup hash is suppressed and the public corrections log gets its
-line. It never prints a key, and it never retries inside the metered callable
-(CLAUDE.md iron rule; retries are metered_call(attempts=2)).
+apply_correction.py and the same /trash, /edit and /merge-events routes every
+correction has used, so the dedup hash is suppressed and the public
+corrections log gets its line. It never prints a key, and it never retries
+inside the metered callable (CLAUDE.md iron rule; retries are
+metered_call(attempts=2)).
 
 USAGE
     WP_SITE_URL=... WP_API_KEY=... OPENROUTER_API_KEY=... \\
@@ -244,37 +245,36 @@ def duplicate_agreed(verdicts: dict) -> bool:
 
 
 def apply_duplicate(site: str, row: dict, keeper: dict, reason: str, apply: bool) -> int:
-    """Move THE ROW's OTHER source reports onto the keeper, then trash THE
-    ROW. The row's own primary citation (source_url) is never requested: the
-    server refuses to move it by design (db.php alt_api_move_source_reports -
-    it is the row's own citation, not evidence of a different event), so
-    asking for it always comes back `refused` and the row never trashes. If
-    the row carries no OTHER reports there is nothing to move; trash directly.
-    An unreadable report list is UNKNOWN, never read as "nothing to move":
-    never trash when the move failed or could not be attempted - a removed
-    row must leave its receipt behind."""
-    primary = str(row.get("source_url") or "")
+    """Fold THE ROW's evidence into the keeper's event and remove THE ROW:
+    one /merge-events call (`apply_correction.py --action merge`), not
+    move-sources+trash. THE ROW's only evidence is almost always its own
+    primary citation, and the server refuses to MOVE a row's own citation by
+    design (db.php alt_api_move_source_reports); /merge-events folds that
+    citation and every other report into the keeper's event, then removes
+    the row, as one atomic call (the route dedupe_llm.py already drives), so
+    a removed row never loses its receipt.
+
+    An unreadable report list is UNKNOWN and nothing is merged: the row's
+    receipts must be readable before a call that deletes it (kept from the
+    2026-11-10 move+trash design, run 42884016311)."""
     sources = apply_correction._event_sources(site, row["id"])
     if sources is None:
-        print(f"could not read row {row['id']}'s source reports; NOT trashed")
+        print(f"could not read row {row['id']}'s source reports; NOT merged")
         return 1
-    urls = sorted({str(s.get("source_url") or "") for s in sources} - {primary, ""})
-    if urls:
-        fields = {"to_id": int(keeper["id"]), "urls": urls}
-        argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "move-sources",
-                "--reason", reason, "--fields", json.dumps(fields)]
-        if apply:
-            argv.append("--apply")
-        saved = sys.argv
-        try:
-            sys.argv = argv
-            rc = int(apply_correction.main() or 0)
-        finally:
-            sys.argv = saved
-        if rc != 0:
-            print(f"move-sources failed rc={rc}; row {row['id']} NOT trashed")
-            return rc
-    return apply_via_machinery(row, "trash", None, reason, apply)
+    fields = {"keeper_id": int(keeper["id"]), "duplicate_ids": [int(row["id"])]}
+    argv = ["apply_correction.py", "--ids", str(row["id"]), "--action", "merge",
+            "--reason", reason, "--fields", json.dumps(fields)]
+    if apply:
+        argv.append("--apply")
+    saved = sys.argv
+    try:
+        sys.argv = argv
+        rc = int(apply_correction.main() or 0)
+    finally:
+        sys.argv = saved
+    if rc != 0:
+        print(f"merge failed rc={rc}; row {row['id']} NOT removed")
+    return rc
 
 
 def main() -> int:
