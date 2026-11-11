@@ -18,6 +18,25 @@ import os
 
 _initialised = False
 
+#: Provider hiccups the callers already retry (spend.metered_call) and degrade
+#: on. The Sentry OpenAI integration reports each failed SDK call as UNHANDLED
+#: before our except clause runs (AI-LAYOFF-TRACKER-2/-4/-5/-6); the callers log
+#: a handled warning on final failure instead.
+_HANDLED_PROVIDER_ERRORS = frozenset(
+    {"APITimeoutError", "APIConnectionError", "RateLimitError"})
+
+
+def before_send(event, hint):
+    """Drop transient OpenAI-SDK errors auto-captured with mechanism openai."""
+    try:
+        for v in (event.get("exception") or {}).get("values") or []:
+            if (v.get("type") in _HANDLED_PROVIDER_ERRORS
+                    and (v.get("mechanism") or {}).get("type") == "openai"):
+                return None
+    except Exception:  # noqa: BLE001 - a filter must never break reporting
+        pass
+    return event
+
 
 def init_sentry(component: str | None = None) -> bool:
     """Initialise Sentry once per process if SENTRY_DSN is set. Returns True
@@ -37,6 +56,7 @@ def init_sentry(component: str | None = None) -> bool:
             environment="production",
             send_default_pii=False,
             traces_sample_rate=0.0,
+            before_send=before_send,
         )
         if component:
             sentry_sdk.set_tag("component", component)
