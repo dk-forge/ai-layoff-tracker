@@ -23,7 +23,7 @@
 **Guard:** `railway/tests/test_adjudicate_row.py` (rewrote the 2 duplicate-apply tests), `railway/tests/test_move_source_reports.py` (+4, `MergeDriver`)
 **Class:** novel (a new path reused an existing guard for a case the guard was never meant to cover)
 
-## 2026-11-10 - 2.20.307 /layoff-logs-sitemap.xml answered 301, not 200
+## 2026-11-10 - 2.20.311 /layoff-logs-sitemap.xml answered 301, not 200 (reserved as 2.20.307; main reached 2.20.310 first)
 
 **What.** Verified live after 2.20.306 deployed: both new pages answered 200, but `/layoff-logs-sitemap.xml` answered 301 to `/layoff-logs-sitemap.xml/`. `public-logs.php` served on `template_redirect` at the default priority 10, where WordPress's `redirect_canonical` (also 10, registered first) saw a path with no trailing slash and redirected it. `report-seo.php` serves its sitemap at priority 0 for exactly this reason. The handler is now the named `alt_public_logs_serve()` at priority 0. Also measured live: 63 of 100 `/query` rows carry `created_at` (every row with a backing post); the 37 without one are older bulk WARN rows and read null, as designed.
 **Guard:** `railway/tests/test_public_logs_pages.py::test_it_serves_before_the_canonical_redirect` (+1, red before)
