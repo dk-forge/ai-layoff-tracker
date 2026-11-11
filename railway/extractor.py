@@ -20,6 +20,7 @@ to OpenRouter (different wire format/endpoint).
 import datetime
 import hashlib
 import json
+import logging
 import os
 import re
 
@@ -276,10 +277,16 @@ USAGE_ACCOUNTING = {"usage": {"include": True}}
 #     OPENROUTER_GATE_MODEL; set it to MODEL's value to gate on the extractor
 #     model (still ~1/10 the cost, from prompt size alone).
 # ---------------------------------------------------------------------------
+_log = logging.getLogger(__name__)
 GATE_MODEL = os.environ.get("OPENROUTER_GATE_MODEL", "google/gemini-2.5-flash-lite")
 GATE_CHARS = int(os.environ.get("ALT_GATE_CHARS", "1000"))
 
 GATE_YES, GATE_NO, GATE_ERROR = "YES", "NO", "ERROR"
+# A one-word classifier call: it either answers in a few seconds or the
+# provider is stalled. Retry (metered, brake re-read each time) on timeout,
+# connection error and 429, then fail open as GATE_ERROR (AI-LAYOFF-TRACKER-2).
+GATE_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_GATE_TIMEOUT_SECONDS", "20"))
+GATE_CALL_ATTEMPTS = 3
 
 GATE_SYSTEM = (
     "You decide whether a text could be reporting an actual workforce "
@@ -315,14 +322,18 @@ def gate_verdict(raw_entry):
         response = spend.metered_call(GATE_MODEL, lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
             model=GATE_MODEL, max_tokens=4, temperature=0,
+            timeout=GATE_TIMEOUT_SECONDS,
             messages=[{"role": "system", "content": GATE_SYSTEM},
                       {"role": "user",
                        "content": f"Published by: {outlet}\n\n{text[:GATE_CHARS]}"}],
-        ), attempts=MODEL_CALL_ATTEMPTS, what="the pre-extraction gate")
+        ), attempts=GATE_CALL_ATTEMPTS, what="the pre-extraction gate")
         content = ""
         if response.choices and response.choices[0].message:
             content = response.choices[0].message.content or ""
     except Exception as exc:
+        _log.warning("pre-extraction gate failed after %d attempts (%s: %s); "
+                     "failing open to extraction", GATE_CALL_ATTEMPTS,
+                     type(exc).__name__, exc)
         print(f"gate error (fails open to extraction): {exc}")
         return GATE_ERROR
     if not content.strip():
