@@ -188,7 +188,13 @@ def ask_referee(model: str, prompt: str) -> dict | None:
         what=f"row adjudication by {model}", attempts=2, retry_sleep=1.0,
     )
     content = response.choices[0].message.content if response.choices else ""
-    parsed = extractor._parse_json_response(content or "")
+    try:
+        parsed = extractor._parse_json_response(content or "")
+    except json.JSONDecodeError:
+        # A referee's response can be truncated (e.g. cut off at max_tokens)
+        # into unparseable JSON; that is a referee that failed to answer,
+        # not a crash of the whole adjudication.
+        return None
     if not isinstance(parsed, dict) or "recommended_action" not in parsed:
         return None
     return parsed

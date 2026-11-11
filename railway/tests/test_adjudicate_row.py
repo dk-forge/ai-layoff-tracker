@@ -50,6 +50,18 @@ class DecideTests(unittest.TestCase):
         self.assertEqual(adj.decide({A: None, B: None})[0], "unknown")
 
 
+class RefereeTests(unittest.TestCase):
+    def test_truncated_json_is_no_usable_verdict_not_a_crash(self):
+        # A referee's response can be cut off mid-string (max_tokens) and
+        # come back as unparseable JSON. That must read as "this referee
+        # did not answer" (None), not raise and kill the whole adjudication.
+        choice = mock.Mock()
+        choice.message.content = '{"recommended_action": "edit", "edit_fields": {"foo'
+        response = mock.Mock(choices=[choice])
+        with mock.patch("adjudicate_row.spend.metered_call", return_value=response):
+            self.assertIsNone(adj.ask_referee(A, "prompt"))
+
+
 class EvidenceTests(unittest.TestCase):
     def test_unreadable_page_is_empty_never_raises(self):
         with mock.patch("urllib.request.urlopen", side_effect=OSError("down")):
