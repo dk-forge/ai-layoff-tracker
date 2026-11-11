@@ -134,7 +134,7 @@ class Briefing(unittest.TestCase):
         self.assertNotIn("state WARN filings", self.text)
 
     def test_region_rows_sum_to_worldwide_with_unknowns(self):
-        block = self.text.split("By region:")[1].split("Provisional")[0]
+        block = self.text.split("Verified job cuts by region:")[1].split("Provisional")[0]
         rows = re.findall(r"^\s{4}(\S.*): ([\d,]+)$", block, re.M)
         self.assertEqual([r[0].split(" (")[0] for r in rows],
                          ["North America", "Europe", "Not recorded"])

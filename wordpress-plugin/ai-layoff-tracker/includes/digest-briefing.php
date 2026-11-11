@@ -699,8 +699,11 @@ function alt_briefing_render($m, $send_id = 0) {
     $html .= '<p data-alt="signature">' . alt_briefing_h($ai_line) . '</p>';
     $text .= '  ' . $ai_line . "\n";
     if ($m['regions']) {
-        $html .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">';
-        $text .= "  By region:\n";
+        // The bars are ALL verified cuts (they sum to the worldwide figure),
+        // not the AI-attributed line printed just above them.
+        $html .= '<p data-alt="note">Verified job cuts by region</p>'
+               . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">';
+        $text .= "  Verified job cuts by region:\n";
         $last = count($m['regions']) - 1;
         foreach ($m['regions'] as $i => $r) {
             $edge = ($i === $last) ? '-last' : '';
