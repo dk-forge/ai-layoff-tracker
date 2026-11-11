@@ -34,7 +34,8 @@ class NewsCatchupHealthTests(unittest.TestCase):
         reports = []
         with patch.dict(os.environ, {"NEWS_DAYS_BACK": "7"}, clear=False), \
              patch.object(news_catchup, "report_source_health", side_effect=lambda *args: (reports.append(args) or True)), \
-             patch.object(news_catchup, "pull_news_articles", return_value=[]):
+             patch.object(news_catchup, "pull_news_articles", return_value=[]), \
+             patch.object(news_catchup, "dated_google_news", return_value=[]):
             news_catchup.run()
 
         self.assertEqual(reports[0], ("news_catchup", "running", 0, "7-day catch-up in progress"))

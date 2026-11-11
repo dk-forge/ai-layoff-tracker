@@ -461,6 +461,81 @@ def pull_google_news(queries=None, company_names=None, deadline_check=None):
     return results
 
 
+# DATED WINDOWS (2026-11-11). The shared cause of the 2026-11-05 benchmark's
+# no-row misses (AmEx, EA, Comcast, Weil, FICO, Flock, Hasbro, Workday, Trade
+# Desk) was the 2026-09-29 to 2026-11-05 ingest gap: every one was announced
+# inside it, and nothing could read it back. NewsAPI's catch-up is relevance-
+# capped (9 posted for 30 days) and an undated Google News query returns
+# today's top items, never a past day. Google News RSS honours after:/before:,
+# so one query per day reaches that day's headlines. Free (no key), RSS only
+# (the same endpoint the live sweep uses; no article page is fetched), US
+# edition, behind the free title prefilter, capped per day.
+DATED_QUERY_BASES = (DISCOVERY_QUERIES[0], WIRE_QUERIES[1])
+WINDOW_DAY_MAX = max(5, _env_int("GOOGLE_NEWS_DAY_MAX", 40))
+
+
+def dated_queries(day):
+    """The day's queries: each base bounded to exactly that calendar day."""
+    from datetime import timedelta
+    lo, hi = (day - timedelta(days=1)).isoformat(), (day + timedelta(days=1)).isoformat()
+    return [f"{q} after:{lo} before:{hi}" for q in DATED_QUERY_BASES]
+
+
+def days_between(start, end):
+    """Every calendar day from start to end, inclusive, oldest first."""
+    from datetime import timedelta
+    out, d = [], start
+    while d <= end:
+        out.append(d)
+        d += timedelta(days=1)
+    return out
+
+
+def pull_google_news_day(day, max_items=None):
+    """Raw news rows for one past day, same shape as pull_google_news()."""
+    cap = max_items or WINDOW_DAY_MAX
+    loc = GOOGLE_NEWS_LOCALES[0]
+    rows, seen_links, seen_titles = [], set(), set()
+    for q in dated_queries(day):
+        if len(rows) >= cap:
+            break
+        r = http_retry.get_with_retry(
+            _rss_url(q, loc[1], loc[2], loc[3]), headers=UA, attempts=3,
+            timeout=30, backoff=GAP if GAP > 0 else 5,
+            get=lambda *a, **k: requests.get(*a, **k))
+        time.sleep(GAP)
+        if r is None or r.status_code != 200:
+            continue
+        for it in _parse_items(r.text):
+            link = (it.get("link") or "").strip()
+            title = _clean(it.get("title"))
+            tkey = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()[:120]
+            if not link or link in seen_links or not tkey or tkey in seen_titles:
+                continue
+            seen_links.add(link)
+            seen_titles.add(tkey)
+            if not google_news_prefilter.title_verdict(title, loc[1])[0]:
+                continue
+            source = (it.get("source") or "").strip()
+            raw_text = title
+            if source and source.lower() not in raw_text.lower():
+                raw_text = f"{raw_text} (via {source})"
+            cite_url, _state = resolve_article_url(link)
+            rows.append({
+                "source_type": "news",
+                "source_name": source or "Google News",
+                "verification_level": "bronze",
+                "raw_text": raw_text,
+                "source_url": cite_url,
+                "company_name": None,
+                "ticker": None,
+                "filing_date": _iso_date(it.get("published")),
+            })
+            if len(rows) >= cap:
+                break
+    return rows
+
+
 if __name__ == "__main__":
     # Manual smoke test: python -m sources.google_news
     rows = pull_google_news()
