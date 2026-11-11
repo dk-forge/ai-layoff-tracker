@@ -470,7 +470,17 @@ def pull_google_news(queries=None, company_names=None, deadline_check=None):
 # so one query per day reaches that day's headlines. Free (no key), RSS only
 # (the same endpoint the live sweep uses; no article page is fetched), US
 # edition, behind the free title prefilter, capped per day.
-DATED_QUERY_BASES = (DISCOVERY_QUERIES[0], WIRE_QUERIES[1])
+#
+# VERB HEADLINES (2026-11-11). The two bases above match nouns ("job cuts",
+# "layoffs"); headlines that put a verb before a number ("Fiserv cuts 3,000
+# ... jobs", "NatWest slashes 1,000 jobs", "Flutter to axe up to 1,400 jobs",
+# "GSK to eliminate 1,200 jobs") were never returned for their day. Measured
+# 2026-11-11, this third base reached all of those plus the Dutch government's
+# 25,000. Each query keeps its own WINDOW_DAY_MAX share: the first base fills
+# 40 rows on most days, which used to stop the later bases from running at
+# all. Spend stays bounded by the job's unchanged per-run ceiling.
+DATED_VERB_QUERY = "jobs (cut OR cuts OR cutting OR axe OR slash OR slashes OR eliminate)"
+DATED_QUERY_BASES = (DISCOVERY_QUERIES[0], WIRE_QUERIES[1], DATED_VERB_QUERY)
 WINDOW_DAY_MAX = max(5, _env_int("GOOGLE_NEWS_DAY_MAX", 40))
 
 
@@ -497,8 +507,7 @@ def pull_google_news_day(day, max_items=None):
     loc = GOOGLE_NEWS_LOCALES[0]
     rows, seen_links, seen_titles = [], set(), set()
     for q in dated_queries(day):
-        if len(rows) >= cap:
-            break
+        taken = 0
         r = http_retry.get_with_retry(
             _rss_url(q, loc[1], loc[2], loc[3]), headers=UA, attempts=3,
             timeout=30, backoff=GAP if GAP > 0 else 5,
@@ -531,7 +540,8 @@ def pull_google_news_day(day, max_items=None):
                 "ticker": None,
                 "filing_date": _iso_date(it.get("published")),
             })
-            if len(rows) >= cap:
+            taken += 1
+            if taken >= cap:
                 break
     return rows
 
