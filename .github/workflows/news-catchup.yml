@@ -21,6 +21,14 @@ on:
         description: 'Days to look back (NewsAPI free tier caps at ~30)'
         required: false
         default: '28'
+      window_start:
+        description: 'Optional dated Google News window start YYYY-MM-DD (gap backfill)'
+        required: false
+        default: ''
+      window_end:
+        description: 'Optional dated Google News window end YYYY-MM-DD'
+        required: false
+        default: ''
 
 # Least privilege: nothing here writes through GITHUB_TOKEN.
 permissions:
@@ -81,4 +89,6 @@ jobs:
           WP_SITE_URL: https://asktherecruiter.com/blog
           # On a scheduled run there is no dispatch input, so fall back to 14.
           NEWS_DAYS_BACK: ${{ github.event.inputs.days || '14' }}
+          NEWS_WINDOW_START: ${{ github.event.inputs.window_start || '' }}
+          NEWS_WINDOW_END: ${{ github.event.inputs.window_end || '' }}
         run: python news_catchup.py

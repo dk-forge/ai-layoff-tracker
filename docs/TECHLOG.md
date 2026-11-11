@@ -4,6 +4,13 @@
 **Guard:** `railway/tests/test_headcount_estimate.py` (+3)
 **Class:** novel (a pattern that named every owner but the company)
 
+## 2026-11-11 - Recall: the news catch-up reads each past day, not only today's top items
+
+**What.** Top shared cause of the 2026-11-05 benchmark misses (13/25; Wells Fargo, Disney, Trade Desk, Campbell's, Workday, AmEx, Comcast, Weil, Hasbro, FICO, EA, Flock, Verizon): every no-row miss was announced inside the 2026-09-29 to 2026-11-05 ingest gap (paid reads off), and nothing could read that window back. `news-catchup` read only NewsAPI (relevance-capped; 9 posted for 30 days), and an undated Google News query returns today's most-relevant items. Google News RSS honours `after:`/`before:`; measured 2026-11-11, the 2026-10-23 window returns "American Express to Cut 3,500 Jobs - WSJ" and "Electronic Arts lays off 400". **Fix:** `google_news.pull_google_news_day()` (two queries per day, US edition, title prefilter, `GOOGLE_NEWS_DAY_MAX` 40) called by `news_catchup.dated_google_news()` for every day of the lookback; `news-catchup.yml` gains `window_start`/`window_end` to replay the gap. RSS only, the endpoint the live sweep already uses; no article page is fetched. **Not fixed here:** percent-only or "thousands" headlines (AmEx 5%, Trade Desk 15%, Disney, Comcast) still need a stated count; the estimate ruling covers 8-Ks only and a news extension is a methodology call for the referees. Wells Fargo and Verizon are cumulative totals, correctly refused.
+**Next:** dispatch `news-catchup.yml` with window 2026-09-29..2026-11-05 once merged.
+**Guard:** `railway/tests/test_google_news_dated_window.py` (+7)
+**Class:** absent-read-as-ok (a gap nothing could read back)
+
 ## 2026-11-11 - Duplicate-row apply: one merge, with the unreadable-reports guard
 
 **What.** PR #627 (one `/merge-events` call) and main (move the non-primary reports, then trash, refusing when the report list is unreadable) rewrote `apply_duplicate()` differently on the same day. A second, independent AI review picked the merge design: it keeps the row's primary citation as a receipt on the keeper, is one atomic call, and leaves the before-state the signed endpoint returns, while move+trash discards the primary citation with the row. **Fix:** `apply_duplicate(site, row, keeper, ...)` reads the row's reports first and returns 1 without any call when they cannot be read (main's guard), then makes one `apply_correction.py --action merge` call; a failed merge returns its code. The two entries below describe the superseded intermediate designs.
