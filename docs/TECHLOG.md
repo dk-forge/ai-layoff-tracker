@@ -1,3 +1,14 @@
+## 2026-11-11 - Benchmark re-score after the gap replay: strict recall 20/25
+
+**What.** The 25 events of `docs/benchmarks/2026-11-08.md` re-scored against live `/query` (`company=` lookups, same strict rule: count within 10%, source link on the row) after the 2026-09-29..2026-11-05 gap was replayed. Start of session 18/25; after 20/25. New hits: Fiserv 3,000 (183343) and GSK 1,200 (183286), both from news-catchup. Still missing: Dutch government, Ecco, NatWest, Weil Gotshal, Innodata. Runs: news-catchup 43023196709 (2026-09-29..10-19, 28 posted, $0.114) and the 2026-11-01..11-05 window (31 posted, $0.086); edgar-history-sweep 43023162579 (09-29..09-30, 0 posted), 43024063022 (10-01..10-31, 0 posted, 285 calls), 43023185616 (11-01..11-05, 1 posted). Every run reported complete under its named ceiling; no ceiling was raised. **Open data questions for the referees:** KLM Royal Dutch Airlines 183359 stores 5,000 again (the reorganised figure, beside KLM 183171 at 1,000); Schaeffler 183358 and Flutter 183293 look like same-event duplicates of 183150 and 183213. FICO's 2026-10-06 8-K is still absent after the October EDGAR sweep. Row 183208 "eBay and Netflix" could not be refereed: run 43024097269 crashed on a truncated referee reply (`JSONDecodeError`), the case draft #634 handles.
+
+| Date | Layoff strict recall | Prior | Top miss cause |
+|---|---|---|---|
+| 2026-11-11 | 20/25 | 18/25 (same list, measured 2026-11-11 before the replay) | no row on non-US announcements (Dutch government, Ecco, NatWest) |
+
+**Guard:** none (a measurement)
+**Class:** novel (a measurement; no defect)
+
 ## 2026-11-11 - Dated Google News missed verb headlines; the first query starved the rest
 
 **What.** Root cause for five 2026-11-08 benchmark misses (measured 2026-11-11 against the live RSS): Fiserv ("Fiserv cuts 3,000 employees and contractor jobs", Reuters, 11-02), NatWest ("NatWest slashes 1,000 jobs", Telegraph, 10-29), Flutter ("to axe up to 1,400 jobs", Reuters, 10-19; the 8-K count), GSK ("to eliminate 1,200 jobs in Belgium", 10-13) and the Dutch government ("cut around 20% of government jobs", 25,000, 10-25) are all in Google News for their day, but neither noun-form dated base ("layoffs", "job cuts") returned them, and the first base alone filled the 40-row day cap on most days, so the second base often never ran. AmEx, GSK (BioSpace) and Innodata were already reached; they missed only because the catch-up ran out of budget before their days (entry below). Ecco and Weil Gotshal were not reached by any dated query tried (trade press; a firm dissolution). **Fix:** a third base `DATED_VERB_QUERY`, and the day cap applies per query. No spend cap changed; the per-run ceiling bounds the extra candidates.
