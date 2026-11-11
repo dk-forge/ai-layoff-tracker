@@ -4215,6 +4215,20 @@
     // The date the record carries, in the sibling's format (30 Jul 2026).
     // Split by hand rather than through Date(), which reads a bare YYYY-MM-DD
     // as UTC midnight and can show the previous day.
+    // When THIS TRACKER first listed the row (card contract 1.1.0,
+    // card-listed): the API's created_at, an ISO UTC timestamp, shown by its
+    // UTC date. Beside the source's own date, never instead of it. Rows listed
+    // before the column existed carry null, and then this returns '' so the
+    // card says nothing: never a guess, never the source date standing in.
+    // railway/tests/test_card_first_listed.py.
+    function cardListed(row) {
+        var c = String((row && row.created_at) || '');
+        if (!/^\d{4}-\d{2}-\d{2}/.test(c)) return '';
+        var d = c.slice(0, 10);
+        return '<time class="alt-card-listed" datetime="' + escapeHtml(d) + '">First listed '
+            + escapeHtml(cardWhen(d)) + '</time>';
+    }
+
     function cardWhen(d) {
         var p = String(d || '').slice(0, 10).split('-');
         if (p.length !== 3) return '';
@@ -4347,6 +4361,7 @@
             : '<span class="alt-card-h alt-card-h-plain">' + escapeHtml(cardHeadline(row)) + '</span>';
 
         var meaning = cardMeaning(row);
+        var listed = cardListed(row);
         var industry = row.industry
             ? '<span class="alt-card-industry">' + escapeHtml(row.industry) + '</span>'
             : '';
@@ -4370,6 +4385,7 @@
             +   '<div class="alt-card-foot">'
             +     (when ? '<time class="alt-card-when" datetime="' + escapeHtml(d) + '">' + escapeHtml(when) + '</time>'
                         : '<span class="alt-card-when alt-card-nowhere">Date not stated</span>')
+            +     listed
             +     flags
             +     '<span class="alt-card-src">' + cardSourceLinks(row) + '</span>'
             +     '<button type="button" class="alt-card-more" aria-expanded="false">Details</button>'
