@@ -111,7 +111,7 @@ def run():
 
 def unique_candidates(entries):
     """Keep the first entry for each source_url (an entry with no URL is
-    always kept). Two dated queries per day return the same item, and run
+    always kept). Adjacent days overlap (after:/before: spans two days), and run
     42993859950 paid for one URL three times in a row until the $0.150
     ceiling stopped it before the late-October days were read."""
     seen, kept = set(), []

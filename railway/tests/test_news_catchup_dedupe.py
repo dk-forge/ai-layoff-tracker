@@ -3,7 +3,7 @@ never for a URL the site already holds.
 
 Run 42993859950 (2026-11-11, window 2026-09-29..2026-11-05) spent its whole
 $0.150 ceiling on 831 calls and stored 24 rows: the same Google News URL was
-extracted three times in a row (two dated queries per day return the same
+extracted three times in a row (adjacent days' after:/before: windows overlap by a day and return the same
 item), and the job never called the shared seen-URL pre-check that cron.py,
 gdelt_backfill and company_watchlist all use. So every re-dispatch re-paid for
 the first days of the window and the cap ran out before the late-October days
