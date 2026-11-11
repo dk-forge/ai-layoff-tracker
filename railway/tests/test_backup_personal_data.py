@@ -177,7 +177,7 @@ class TheColumnAllowlistMatchesTheRealSchema(unittest.TestCase):
 
     def test_layoffs_columns_are_all_pinned(self):
         php = DB_PHP.read_text(encoding="utf-8")
-        block = php.split('$sql = "CREATE TABLE $table (')[1].split(") $charset")[0]
+        block = php.split('return "CREATE TABLE $table (')[1].split(") $charset")[0]
         schema = set(self._schema_columns(block))
         pinned = set(backup_tables.TABLES["layoffs"]["columns"])
         self.assertTrue(schema, "could not read the layoffs schema out of db.php")

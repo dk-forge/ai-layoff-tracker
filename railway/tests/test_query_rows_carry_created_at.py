@@ -46,7 +46,7 @@ def _fn(name: str) -> str:
 
 class SchemaAndShape(unittest.TestCase):
     def test_the_table_has_a_nullable_created_at(self):
-        create = _fn("alt_db_install").split("CREATE TABLE $table", 1)[1].split(") $charset", 1)[0]
+        create = _fn("alt_db_layoffs_create_sql").split("CREATE TABLE $table", 1)[1].split(") $charset", 1)[0]
         self.assertRegex(create, r"\bcreated_at DATETIME NULL DEFAULT NULL\b")
 
     def test_row_to_array_emits_created_at(self):
