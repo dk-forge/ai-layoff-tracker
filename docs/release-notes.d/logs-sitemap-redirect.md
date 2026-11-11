@@ -1,5 +1,5 @@
 ---
-version: 2.20.307
+version: 2.20.311
 type: fix
 area: seo
 date: 2026-11-10

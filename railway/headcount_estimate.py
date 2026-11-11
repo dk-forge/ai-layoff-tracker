@@ -42,10 +42,36 @@ SUBMISSIONS = "https://data.sec.gov/submissions/CIK{cik:0>10}.json"
 ARCHIVE = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc}/{doc}"
 
 
-def workforce_percent(text):
-    """(percent, matched sentence text) for a workforce share, else None."""
+def _filer_word(company):
+    """The first word of the filer's own name, lowercased ("Workday, Inc." ->
+    "workday"), or None. Only THIS word may own the workforce in a
+    possessive: "2.5% of Workday's current workforce" is the filer's own
+    share, "10% of Acme's workforce" is not."""
+    m = re.match(r"\s*([A-Za-z0-9&]+)", str(company or ""))
+    return m.group(1).lower() if m and len(m.group(1)) >= 3 else None
+
+
+def _rxs(company):
+    rxs = [_PCT_OF, _BY_PCT]
+    word = _filer_word(company)
+    if word:
+        own = r"(?:" + re.escape(word) + r"(?:\s+[A-Za-z0-9&.,]+){0,3}?['\u2019]s\s+)"
+        rxs.append(re.compile(PCT + r"\s+of\s+" + own + WORKFORCE, re.I))
+        rxs.append(re.compile(
+            r"\b(?:reduc\w*|cut\w*|eliminat\w*|decreas\w*|affect\w*)\s+" + own
+            + WORKFORCE + r"\s+by\s+(?:approximately\s+|about\s+|roughly\s+|"
+            r"around\s+|nearly\s+|up\s+to\s+)?" + PCT, re.I))
+    return rxs
+
+
+def workforce_percent(text, company=None):
+    """(percent, matched sentence text) for a workforce share, else None.
+
+    `company` (the filer's name) additionally admits the filer's own
+    possessive ("of Workday's current workforce"); without it only
+    its/our/the company's/the are read as the owner."""
     text = str(text or "")
-    for rx in (_PCT_OF, _BY_PCT):
+    for rx in _rxs(company):
         m = rx.search(text)
         if m:
             pct = float(m.group(1))
@@ -156,7 +182,7 @@ def estimate_for_filing(raw_entry, raw_text, lookup=None):
     from filing_shapes import RISK_FACTORS_SECTION
     if raw_entry.get("sec_section") == RISK_FACTORS_SECTION:
         return None
-    found = workforce_percent(raw_text)
+    found = workforce_percent(raw_text, company=raw_entry.get("company_name"))
     if not found:
         return None
     pct, sentence = found

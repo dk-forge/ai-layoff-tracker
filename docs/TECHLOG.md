@@ -1,3 +1,28 @@
+## 2026-11-11 - Workday's percent-only 8-K got no estimate: the owner word could not be the filer's name
+
+**What.** Recall gap for 8-K Item 2.05 filings in 2026-09-29..2026-11-05: FICO (0001193125-26-415732, 2026-10-06, "approximately 15% of positions") and Workday (0001327811-26-000048, 2026-09-29, "approximately 2.5% of Workday's current workforce") are absent from the table. Both are reached by the daily EDGAR pull (edgar_recall_probe.reached, checked 2026-11-11). Both are percent-only and were filed before labelled estimates shipped on 2026-11-05 (#602). FICO's sentence parses today; Workday's did not, because `workforce_percent` accepted only its/our/the company's as the owner. **Fix:** the filer's own name (first word of `company_name`) is also accepted as the possessive owner; another name is not. The window is then re-read with `edgar-history-sweep.yml` range mode (start 2026-09-29, end 2026-11-05).
+**Guard:** `railway/tests/test_headcount_estimate.py` (+3)
+**Class:** novel (a pattern that named every owner but the company)
+
+## 2026-11-11 - Recall: the news catch-up reads each past day, not only today's top items
+
+**What.** Top shared cause of the 2026-11-05 benchmark misses (13/25; Wells Fargo, Disney, Trade Desk, Campbell's, Workday, AmEx, Comcast, Weil, Hasbro, FICO, EA, Flock, Verizon): every no-row miss was announced inside the 2026-09-29 to 2026-11-05 ingest gap (paid reads off), and nothing could read that window back. `news-catchup` read only NewsAPI (relevance-capped; 9 posted for 30 days), and an undated Google News query returns today's most-relevant items. Google News RSS honours `after:`/`before:`; measured 2026-11-11, the 2026-10-23 window returns "American Express to Cut 3,500 Jobs - WSJ" and "Electronic Arts lays off 400". **Fix:** `google_news.pull_google_news_day()` (two queries per day, US edition, title prefilter, `GOOGLE_NEWS_DAY_MAX` 40) called by `news_catchup.dated_google_news()` for every day of the lookback; `news-catchup.yml` gains `window_start`/`window_end` to replay the gap. RSS only, the endpoint the live sweep already uses; no article page is fetched. **Not fixed here:** percent-only or "thousands" headlines (AmEx 5%, Trade Desk 15%, Disney, Comcast) still need a stated count; the estimate ruling covers 8-Ks only and a news extension is a methodology call for the referees. Wells Fargo and Verizon are cumulative totals, correctly refused.
+**Next:** dispatch `news-catchup.yml` with window 2026-09-29..2026-11-05 once merged.
+**Guard:** `railway/tests/test_google_news_dated_window.py` (+7)
+**Class:** absent-read-as-ok (a gap nothing could read back)
+
+## 2026-11-11 - Duplicate-row apply: one merge, with the unreadable-reports guard
+
+**What.** PR #627 (one `/merge-events` call) and main (move the non-primary reports, then trash, refusing when the report list is unreadable) rewrote `apply_duplicate()` differently on the same day. A second, independent AI review picked the merge design: it keeps the row's primary citation as a receipt on the keeper, is one atomic call, and leaves the before-state the signed endpoint returns, while move+trash discards the primary citation with the row. **Fix:** `apply_duplicate(site, row, keeper, ...)` reads the row's reports first and returns 1 without any call when they cannot be read (main's guard), then makes one `apply_correction.py --action merge` call; a failed merge returns its code. The two entries below describe the superseded intermediate designs.
+**Guard:** `railway/tests/test_adjudicate_row.py` (merge, apply flag, failed merge, unreadable list)
+**Class:** two-copies-drifted (two sessions fixed one path two ways)
+
+## 2026-11-10 - The duplicate-row path moved its evidence with the wrong route
+
+**What.** Run 42884011327 (`adjudicate_row.py --duplicate-of`, Volvo row 183025 vs. Volvo Cars row 183026): both referees agreed "trash," `apply_duplicate()` tried to move row 183025's one source report onto 183026 before trashing it, and the server refused: `"refused": ["https://www.businessinsider.com/volvo-layoffs-job-cuts-china-pricing-pressure-2026-10#article"]`. That refusal is not a bug in the server — `alt_api_move_source_reports` has refused a row's own `source_url` by design since the 2026-09-02/03 Uber fix (`test_move_source_reports.py::test_primary_citation_is_never_moved`), because that case means "reattribute this citation to a different event," which should be an `/edit`, not a move. But a duplicate row's ONLY evidence is almost always its own canonical citation (that's exactly why the regular dedup hash never caught it as the same row), so `move-sources` was guaranteed to refuse it on the very first real run. `dedupe_llm.py`'s daily cross-source merge already solved this with `/merge-events`, which folds a duplicate's own citation and reports into the keeper's event and then deletes the duplicate row, as one call — no "is this a move or an edit" ambiguity, because the row is being removed outright. **Fix:** added `apply_correction.py --action merge` (drives `/merge-events`, same dry-run/apply/fail-loud discipline as every other action) and switched `apply_duplicate()` to make one `merge` call instead of `move-sources` then `trash`.
+**Guard:** `railway/tests/test_adjudicate_row.py` (rewrote the 2 duplicate-apply tests), `railway/tests/test_move_source_reports.py` (+4, `MergeDriver`)
+**Class:** novel (a new path reused an existing guard for a case the guard was never meant to cover)
+
 ## 2026-11-10 - 2.20.307 /layoff-logs-sitemap.xml answered 301, not 200
 
 **What.** Verified live after 2.20.306 deployed: both new pages answered 200, but `/layoff-logs-sitemap.xml` answered 301 to `/layoff-logs-sitemap.xml/`. `public-logs.php` served on `template_redirect` at the default priority 10, where WordPress's `redirect_canonical` (also 10, registered first) saw a path with no trailing slash and redirected it. `report-seo.php` serves its sitemap at priority 0 for exactly this reason. The handler is now the named `alt_public_logs_serve()` at priority 0. Also measured live: 63 of 100 `/query` rows carry `created_at` (every row with a backing post); the 37 without one are older bulk WARN rows and read null, as designed.
@@ -29368,8 +29393,8 @@ gate was two.
 ## THE RESULT CARD CONTRACT (canonical spec, shared with the sibling tracker)
 
 **Machine-readable copy:** `docs/card-contract.json`
-**sha256:** `5ce62ea8d11073b132af83696e222f0a2c4184fba646c5f0adcb9c06f7493af2`
-**Contract version:** 1.0.0, adopted 2026-07-31.
+**sha256:** `b37ccf2bcd7e460b5e25a4dc8fc9b290ed347ae59484faedd6b50d871db2f461`
+**Contract version:** 1.1.0 (1.0.0 adopted 2026-07-31; 1.1.0 on 2026-11-11 added the optional `card-listed` foot slot).
 
 That file is **byte-identical** in `dk-forge/ai-layoff-tracker` and
 `dk-forge/talent-intelligence-tracker`. This section and the section of the same
@@ -29423,6 +29448,7 @@ classes); the contract class must be present.
       <p class="{p}-card-rt">              our plain-English read, visually separated
       <div class="{p}-card-foot">
         <time class="{p}-card-when">       or "Date not stated" in {p}-card-nowhere
+        <time class="{p}-card-listed">     optional; "First listed <date>", ABSENT when the first-listed time is null
         <span class="{p}-card-src">        publisher, outbound; archived copy SECOND, never instead
       </div>
     </div>
@@ -30822,3 +30848,22 @@ reference to Item 2.05 instead of its heading. Benchmark strict recall
 DEGRADED banner says SEC/EDGAR "keep running", but 8-K rows need a model.
 **Guard:** `railway/tests/test_edgar_item_205_anchor.py`; #596 pages on 0 posted.
 **Class:** absent-read-as-ok
+
+## 2026-11-11 - new rows stopped reaching wp_alt_layoffs after 2.20.306
+2.20.306 (d1ab5d3) added `created_at` and stamped it on every INSERT in
+alt_db_upsert(). Posts kept publishing (post 12446, American Express 3,500,
+2026-10-23) but no row newer than id 183187 / 2026-11-09T22:26Z reached /query.
+The deploy-race guard alt_ensure_schema_once() verified ONE sentinel column,
+`updated_at`, and a test pinned that literal, so a deploy whose dbDelta did not
+add `created_at` was marked verified and never retried. Every INSERT then
+failed with Unknown column and `$wpdb->insert()` returning false was never
+checked; UPDATEs (no created_at) kept working, so nothing looked down.
+Fix 2.20.310: the guard compares every column parsed from the one CREATE TABLE
+with INFORMATION_SCHEMA; alt_db_install() ADDs any column dbDelta left out; a
+failed INSERT is logged, stored in `alt_last_insert_error`, repaired and
+retried once; keyed /migrate reports missing columns before/after and the last
+insert error. /add now refuses "Unknown" and other non-employers before a post
+is created (the table already dropped them; the post was still published).
+**Guard:** `railway/tests/test_layoffs_schema_drift.py` (INSERT columns must be
+declared, missing column detected, failed INSERT recorded, repaired, retried).
+**Class:** silent-stop
