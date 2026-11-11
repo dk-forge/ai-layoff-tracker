@@ -4044,6 +4044,9 @@ function alt_digest_fit_preheader($required, $optional, $max = 130) {
     // joining that produced a stray ", ." at the end of the snippet.
     $optional = array_values(array_filter(
         array_map('trim', is_array($optional) ? $optional : array()), 'strlen'));
+    // ONE FULL STOP. A caller's lead can already end in one (the talent daily
+    // of 2026-11-11 shipped "...in Bordeaux).."), and this function adds its own.
+    $required = rtrim((string) $required, " .");
     for ($keep = count($optional); $keep >= 0; $keep--) {
         $line = $required;
         for ($i = 0; $i < $keep; $i++) $line .= ', ' . $optional[$i];
