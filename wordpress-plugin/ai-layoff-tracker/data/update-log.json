@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "digest-region-label",
+   "date": "2026-11-11",
+   "version": "2.20.314",
+   "type": "Fix",
+   "area": "email",
+   "text": "The weekly layoff digest now labels its region bars \"Verified job cuts by region\". The bars count every verified cut, not only cuts attributed to AI."
+  },
+  {
    "slug": "talent-daily-press-quality",
    "date": "2026-11-11",
    "version": "2.20.313",
