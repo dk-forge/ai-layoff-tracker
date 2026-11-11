@@ -4,10 +4,18 @@
   {
    "slug": "corrections-us-share",
    "date": "2026-11-11",
-   "version": "2.20.308",
+   "version": "2.20.309",
    "type": "Fix",
    "area": "data-integrity",
    "text": "Each removal in the public corrections log now also records how many of its jobs counted toward the United States total. The site's own consistency check can then tell a deliberate removal of non-US rows apart from rows being re-counted into the US figure."
+  },
+  {
+   "slug": "card-first-listed",
+   "date": "2026-11-11",
+   "version": "2.20.308",
+   "type": "New",
+   "area": "cards",
+   "text": "Each entry now shows when the tracker first listed it (\"First listed 3 Nov 2026\"), next to the date the source published. Entries listed before we started recording this show only the source date; we do not guess."
   },
   {
    "slug": "public-corrections-update-log",

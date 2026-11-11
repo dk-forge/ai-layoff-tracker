@@ -365,7 +365,7 @@
         "jobs": 7418676
       },
       "opened_at": "2026-11-09T17:36:16Z",
-      "reason": "The complement fell because signed corrections removed non-US rows, not because rows re-scored into the US: of the -139,443 complement move, 136,000 is three non-US trashes (Microsoft 183020 60,000 country blank, Dax-Konzerne 182248 46,000 Multiple countries, Bosch 183019 30,000 Germany; countries from backup-2026-11-08, TECHLOG 2026-11-10). The 16,592 jobs still unplaced (2 late undated-cleanup rows, 12,000; 3 merged rows, 4,592) leave a residual between -3,443 (all US) and +13,149 (all non-US), under the 25,000 containment floor either way. Removals now log their US share (us_jobs, 2.20.308) so the next such move is placed by the check itself.",
+      "reason": "The complement fell because signed corrections removed non-US rows, not because rows re-scored into the US: of the -139,443 complement move, 136,000 is three non-US trashes (Microsoft 183020 60,000 country blank, Dax-Konzerne 182248 46,000 Multiple countries, Bosch 183019 30,000 Germany; countries from backup-2026-11-08, TECHLOG 2026-11-10). The 16,592 jobs still unplaced (2 late undated-cleanup rows, 12,000; 3 merged rows, 4,592) leave a residual between -3,443 (all US) and +13,149 (all non-US), under the 25,000 containment floor either way. Removals now log their US share (us_jobs, 2.20.309) so the next such move is placed by the check itself.",
       "replacement_baseline": {
         "captured_at": "2026-11-11T08:12:18Z",
         "entries": 47412,

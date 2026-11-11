@@ -1903,6 +1903,7 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
     margin: 9px 0 0; font-size: 12.5px; line-height: 1.35; color: var(--alt-muted);
 }
 .alt-card-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alt-card-listed { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--alt-muted, #5f6368); }
 .alt-card-foot .alt-upcoming { margin-left: 0; }
 .alt-card-src { min-width: 0; overflow-wrap: anywhere; }
 .alt-card-src a { color: var(--alt-blue); text-decoration: none; font-weight: 600; }

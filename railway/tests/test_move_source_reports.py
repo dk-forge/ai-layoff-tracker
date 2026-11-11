@@ -305,6 +305,63 @@ class MoveSourcesDriver(unittest.TestCase):
         self.assertNotEqual(rc, 0)
 
 
+class MergeDriver(unittest.TestCase):
+    """merge (/merge-events): the route for two rows reporting the SAME event
+    (run 42884011327, 2026-11-10). A duplicate row's only evidence is almost
+    always its own canonical citation, which move-sources refuses to move by
+    design - so a duplicate-row removal needs this route, not move+trash."""
+
+    def _run(self, apply, posts=None):
+        posts = [] if posts is None else posts
+
+        def fake_post(url, json=None, headers=None, timeout=None):
+            posts.append((url, json))
+            return _Resp(200, {"merged_rows": [FROM_ROW], "merged_records": [],
+                               "net_jobs_removed": 500, "not_found": [], "rejected": []})
+        out = io.StringIO()
+        with mock.patch.object(ac.requests, "get", _fake_get), \
+             mock.patch.object(ac.requests, "post", fake_post), \
+             mock.patch.object(ac.time, "sleep", lambda *_: None), \
+             redirect_stdout(out):
+            rc = ac.run_merge("https://x", "key", {"keeper_id": TO_ROW, "duplicate_ids": [FROM_ROW]}, "why", apply)
+        return rc, out.getvalue(), posts
+
+    def test_dry_run_folds_nothing_and_posts_nothing(self):
+        rc, text, posts = self._run(apply=False)
+        self.assertEqual(rc, 0)
+        self.assertEqual(posts, [], "a dry run must not POST")
+        self.assertIn("DRY RUN", text)
+        self.assertIn("would fold", text)
+
+    def test_apply_posts_once_with_reason(self):
+        rc, text, posts = self._run(apply=True)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(posts), 1)
+        url, body = posts[0]
+        self.assertTrue(url.endswith("/merge-events"))
+        self.assertEqual(body["reason"], "why")
+        self.assertEqual(body["merges"], [{"keeper_id": TO_ROW, "duplicate_ids": [FROM_ROW]}])
+        self.assertIn("after   row", text)
+
+    def test_keeper_cannot_be_its_own_duplicate(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = ac.run_merge("https://x", "key", {"keeper_id": TO_ROW, "duplicate_ids": [TO_ROW]}, "why", False)
+        self.assertNotEqual(rc, 0)
+
+    def test_server_shortfall_is_a_red_run(self):
+        def short_post(url, json=None, headers=None, timeout=None):
+            return _Resp(200, {"merged_rows": [], "not_found": [FROM_ROW], "rejected": []})
+        out = io.StringIO()
+        with mock.patch.object(ac.requests, "get", _fake_get), \
+             mock.patch.object(ac.requests, "post", short_post), \
+             mock.patch.object(ac.time, "sleep", lambda *_: None), \
+             redirect_stdout(out):
+            rc = ac.run_merge("https://x", "key", {"keeper_id": TO_ROW, "duplicate_ids": [FROM_ROW]}, "why", True)
+        self.assertNotEqual(rc, 0)
+        self.assertIn("::error::", out.getvalue())
+
+
 class AddDriver(unittest.TestCase):
     ENTRY = {"company_name": "Uber", "job_count": 3300, "layoff_date": "2026-09-02",
              "source_url": "https://www.livemint.com/x", "source_name": "livemint.com",

@@ -1,8 +1,20 @@
-## 2026-11-11 - 2.20.308 us_all_time closed; a removal now says which side of the US headline it left
+## 2026-11-11 - 2.20.309 us_all_time closed; a removal now says which side of the US headline it left
 
 **What.** Root cause of the us_all_time incident (opened 2026-11-09T17:36Z): signed corrections removed large NON-US rows (Microsoft 183020 60,000 blank, Dax-Konzerne 182248 46,000 Multiple countries, Bosch 183019 30,000 Germany = 136,000 of the complement's -139,443), and `ContainmentInvariant` could not place them because the corrections log recorded a removal's jobs but never which side of the US/non-US boundary they sat on. It could only narrow the FAIL, so a human had to rebuild countries from a backup. **Fix:** `alt_log_correction` stores `us_jobs` (the share inside country=United States, country_basis=any) from /trash, the undated cleanup and /merge-events; /corrections serves it; `DisclosedRemovals.split_by_side` sums it and the containment check subtracts the non-US share from the complement, PASSing under the 25,000 floor. Any entry without the share leaves the FAIL standing. The open incident predates the field, so it was closed by hand under the owner's 2026-11-10 chat instruction: the 16,592 unplaced jobs leave a residual between -3,443 and +13,149, under the floor either way. Replacement baseline 7,479,823 / 47,412, read live 2026-11-11T08:12Z.
 **Guard:** `railway/tests/test_disclosed_removals_by_side.py` (+11, 8 red before the fix)
 **Class:** novel (a disclosure that said how much but not from where)
+
+## 2026-11-11 - Duplicate-row apply: one merge, with the unreadable-reports guard
+
+**What.** PR #627 (one `/merge-events` call) and main (move the non-primary reports, then trash, refusing when the report list is unreadable) rewrote `apply_duplicate()` differently on the same day. A second, independent AI review picked the merge design: it keeps the row's primary citation as a receipt on the keeper, is one atomic call, and leaves the before-state the signed endpoint returns, while move+trash discards the primary citation with the row. **Fix:** `apply_duplicate(site, row, keeper, ...)` reads the row's reports first and returns 1 without any call when they cannot be read (main's guard), then makes one `apply_correction.py --action merge` call; a failed merge returns its code. The two entries below describe the superseded intermediate designs.
+**Guard:** `railway/tests/test_adjudicate_row.py` (merge, apply flag, failed merge, unreadable list)
+**Class:** two-copies-drifted (two sessions fixed one path two ways)
+
+## 2026-11-10 - The duplicate-row path moved its evidence with the wrong route
+
+**What.** Run 42884011327 (`adjudicate_row.py --duplicate-of`, Volvo row 183025 vs. Volvo Cars row 183026): both referees agreed "trash," `apply_duplicate()` tried to move row 183025's one source report onto 183026 before trashing it, and the server refused: `"refused": ["https://www.businessinsider.com/volvo-layoffs-job-cuts-china-pricing-pressure-2026-10#article"]`. That refusal is not a bug in the server — `alt_api_move_source_reports` has refused a row's own `source_url` by design since the 2026-09-02/03 Uber fix (`test_move_source_reports.py::test_primary_citation_is_never_moved`), because that case means "reattribute this citation to a different event," which should be an `/edit`, not a move. But a duplicate row's ONLY evidence is almost always its own canonical citation (that's exactly why the regular dedup hash never caught it as the same row), so `move-sources` was guaranteed to refuse it on the very first real run. `dedupe_llm.py`'s daily cross-source merge already solved this with `/merge-events`, which folds a duplicate's own citation and reports into the keeper's event and then deletes the duplicate row, as one call — no "is this a move or an edit" ambiguity, because the row is being removed outright. **Fix:** added `apply_correction.py --action merge` (drives `/merge-events`, same dry-run/apply/fail-loud discipline as every other action) and switched `apply_duplicate()` to make one `merge` call instead of `move-sources` then `trash`.
+**Guard:** `railway/tests/test_adjudicate_row.py` (rewrote the 2 duplicate-apply tests), `railway/tests/test_move_source_reports.py` (+4, `MergeDriver`)
+**Class:** novel (a new path reused an existing guard for a case the guard was never meant to cover)
 
 ## 2026-11-10 - 2.20.306 Public corrections and update-log pages; `created_at` on /query rows
 
@@ -29368,8 +29380,8 @@ gate was two.
 ## THE RESULT CARD CONTRACT (canonical spec, shared with the sibling tracker)
 
 **Machine-readable copy:** `docs/card-contract.json`
-**sha256:** `5ce62ea8d11073b132af83696e222f0a2c4184fba646c5f0adcb9c06f7493af2`
-**Contract version:** 1.0.0, adopted 2026-07-31.
+**sha256:** `b37ccf2bcd7e460b5e25a4dc8fc9b290ed347ae59484faedd6b50d871db2f461`
+**Contract version:** 1.1.0 (1.0.0 adopted 2026-07-31; 1.1.0 on 2026-11-11 added the optional `card-listed` foot slot).
 
 That file is **byte-identical** in `dk-forge/ai-layoff-tracker` and
 `dk-forge/talent-intelligence-tracker`. This section and the section of the same
@@ -29423,6 +29435,7 @@ classes); the contract class must be present.
       <p class="{p}-card-rt">              our plain-English read, visually separated
       <div class="{p}-card-foot">
         <time class="{p}-card-when">       or "Date not stated" in {p}-card-nowhere
+        <time class="{p}-card-listed">     optional; "First listed <date>", ABSENT when the first-listed time is null
         <span class="{p}-card-src">        publisher, outbound; archived copy SECOND, never instead
       </div>
     </div>
