@@ -1,5 +1,5 @@
 ---
-version: 2.20.309
+version: 2.20.312
 type: fix
 area: data-integrity
 date: 2026-11-11

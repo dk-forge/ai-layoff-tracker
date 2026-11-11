@@ -52,6 +52,29 @@ class Percent(unittest.TestCase):
                      "the stock rose 7%"):
             self.assertIsNone(he.workforce_percent(text), text)
 
+    def test_reads_the_filers_own_possessive(self):
+        """Workday 8-K 0001327811-26-000048 (2026-09-29): "a reduction of
+        approximately 2.5% of Workday's current workforce" was refused because
+        the owner word was only its/our/the company's."""
+        text = ("These actions include a reduction of approximately 2.5% of "
+                "Workday\u2019s current workforce, primarily within Product.")
+        self.assertEqual(he.workforce_percent(text, company="Workday, Inc.")[0], 2.5)
+        self.assertEqual(he.workforce_percent(text.replace("\u2019", "'"),
+                                              company="WORKDAY INC")[0], 2.5)
+
+    def test_another_companys_possessive_is_not_the_filers_workforce(self):
+        text = "a reduction of approximately 10% of Acme's workforce"
+        self.assertIsNone(he.workforce_percent(text, company="Workday, Inc."))
+        self.assertIsNone(he.workforce_percent(text))
+        self.assertIsNone(he.workforce_percent(
+            "about 20% of the industry's workforce", company="Workday, Inc."))
+
+    def test_fico_positions_sentence(self):
+        """FICO 8-K 0001193125-26-415732 (2026-10-06)."""
+        text = ("This plan involves the elimination of approximately 15% of "
+                "positions across the Company.")
+        self.assertEqual(he.workforce_percent(text, company="FAIR ISAAC CORP")[0], 15.0)
+
     def test_cik_from_archive_url(self):
         self.assertEqual(he.cik_from_url(URL), "814547")
         self.assertIsNone(he.cik_from_url("https://example.com/x"))

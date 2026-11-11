@@ -1,3 +1,9 @@
+## 2026-11-11 - Workday's percent-only 8-K got no estimate: the owner word could not be the filer's name
+
+**What.** Recall gap for 8-K Item 2.05 filings in 2026-09-29..2026-11-05: FICO (0001193125-26-415732, 2026-10-06, "approximately 15% of positions") and Workday (0001327811-26-000048, 2026-09-29, "approximately 2.5% of Workday's current workforce") are absent from the table. Both are reached by the daily EDGAR pull (edgar_recall_probe.reached, checked 2026-11-11). Both are percent-only and were filed before labelled estimates shipped on 2026-11-05 (#602). FICO's sentence parses today; Workday's did not, because `workforce_percent` accepted only its/our/the company's as the owner. **Fix:** the filer's own name (first word of `company_name`) is also accepted as the possessive owner; another name is not. The window is then re-read with `edgar-history-sweep.yml` range mode (start 2026-09-29, end 2026-11-05).
+**Guard:** `railway/tests/test_headcount_estimate.py` (+3)
+**Class:** novel (a pattern that named every owner but the company)
+
 ## 2026-11-11 - 2.20.309 us_all_time closed; a removal now says which side of the US headline it left
 
 **What.** Root cause of the us_all_time incident (opened 2026-11-09T17:36Z): signed corrections removed large NON-US rows (Microsoft 183020 60,000 blank, Dax-Konzerne 182248 46,000 Multiple countries, Bosch 183019 30,000 Germany = 136,000 of the complement's -139,443), and `ContainmentInvariant` could not place them because the corrections log recorded a removal's jobs but never which side of the US/non-US boundary they sat on. It could only narrow the FAIL, so a human had to rebuild countries from a backup. **Fix:** `alt_log_correction` stores `us_jobs` (the share inside country=United States, country_basis=any) from /trash, the undated cleanup and /merge-events; /corrections serves it; `DisclosedRemovals.split_by_side` sums it and the containment check subtracts the non-US share from the complement, PASSing under the 25,000 floor. Any entry without the share leaves the FAIL standing. The open incident predates the field, so it was closed by hand under the owner's 2026-11-10 chat instruction: the 16,592 unplaced jobs leave a residual between -3,443 and +13,149, under the floor either way. Replacement baseline 7,479,823 / 47,412, read live 2026-11-11T08:12Z.
@@ -30842,3 +30848,22 @@ reference to Item 2.05 instead of its heading. Benchmark strict recall
 DEGRADED banner says SEC/EDGAR "keep running", but 8-K rows need a model.
 **Guard:** `railway/tests/test_edgar_item_205_anchor.py`; #596 pages on 0 posted.
 **Class:** absent-read-as-ok
+
+## 2026-11-11 - new rows stopped reaching wp_alt_layoffs after 2.20.306
+2.20.306 (d1ab5d3) added `created_at` and stamped it on every INSERT in
+alt_db_upsert(). Posts kept publishing (post 12446, American Express 3,500,
+2026-10-23) but no row newer than id 183187 / 2026-11-09T22:26Z reached /query.
+The deploy-race guard alt_ensure_schema_once() verified ONE sentinel column,
+`updated_at`, and a test pinned that literal, so a deploy whose dbDelta did not
+add `created_at` was marked verified and never retried. Every INSERT then
+failed with Unknown column and `$wpdb->insert()` returning false was never
+checked; UPDATEs (no created_at) kept working, so nothing looked down.
+Fix 2.20.310: the guard compares every column parsed from the one CREATE TABLE
+with INFORMATION_SCHEMA; alt_db_install() ADDs any column dbDelta left out; a
+failed INSERT is logged, stored in `alt_last_insert_error`, repaired and
+retried once; keyed /migrate reports missing columns before/after and the last
+insert error. /add now refuses "Unknown" and other non-employers before a post
+is created (the table already dropped them; the post was still published).
+**Guard:** `railway/tests/test_layoffs_schema_drift.py` (INSERT columns must be
+declared, missing column detected, failed INSERT recorded, repaired, retried).
+**Class:** silent-stop

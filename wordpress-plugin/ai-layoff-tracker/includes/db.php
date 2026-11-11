@@ -46,9 +46,22 @@ function alt_db_touch_utc() {
 function alt_db_install() {
     global $wpdb;
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta(alt_db_layoffs_create_sql());
+    // dbDelta can leave a column out without saying so (a deploy that ran it
+    // against the previous db.php, or an ALTER the host dropped). Add what is
+    // still missing by name so the INSERT path never names a column the live
+    // table lacks (2.20.306 created_at incident, TECHLOG 2026-11-11).
+    alt_db_repair_missing_columns();
+    alt_db_install_side_tables();
+}
+
+/** The wp_alt_layoffs CREATE TABLE statement. ONE copy, read by the installer,
+ *  the column verifier and the repair. */
+function alt_db_layoffs_create_sql() {
+    global $wpdb;
     $table = alt_db_table();
     $charset = $wpdb->get_charset_collate();
-    $sql = "CREATE TABLE $table (
+    return "CREATE TABLE $table (
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         post_id BIGINT UNSIGNED NULL,
         dedup_hash CHAR(32) NOT NULL DEFAULT '',
@@ -127,7 +140,64 @@ function alt_db_install() {
          * this one index serves both the range and the tiebreak. */
         KEY updated_at (updated_at)
     ) $charset;";
-    dbDelta($sql);
+}
+
+/** Column name => definition, parsed from alt_db_layoffs_create_sql(). */
+function alt_db_layoffs_column_defs() {
+    $sql = alt_db_layoffs_create_sql();
+    $body = substr($sql, strpos($sql, '(') + 1);
+    $body = preg_replace('#/\*.*?\*/#s', '', $body);
+    $defs = array();
+    foreach (preg_split('/\r?\n/', $body) as $line) {
+        $line = rtrim(trim($line), ',');
+        if (!preg_match('/^([a-z_][a-z0-9_]*)\s+([A-Z].*)$/', $line, $m)) continue;
+        $defs[$m[1]] = $m[2];
+    }
+    return $defs;
+}
+
+/** Every column the shipped schema declares for wp_alt_layoffs. */
+function alt_db_layoffs_columns() {
+    return array_keys(alt_db_layoffs_column_defs());
+}
+
+/** Declared columns the LIVE table does not have (empty = schema matches). */
+function alt_db_missing_columns() {
+    global $wpdb;
+    $live = $wpdb->get_col($wpdb->prepare(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s", alt_db_table()));
+    if (!is_array($live) || !$live) return array();   // table absent or unreadable: dbDelta's job
+    $live = array_map('strtolower', $live);
+    return array_values(array_diff(alt_db_layoffs_columns(), $live));
+}
+
+/** Idempotent: ADD COLUMN for each declared column the live table lacks. */
+function alt_db_repair_missing_columns() {
+    global $wpdb;
+    $defs = alt_db_layoffs_column_defs();
+    $added = array();
+    foreach (alt_db_missing_columns() as $col) {
+        if (!isset($defs[$col])) continue;
+        $wpdb->query("ALTER TABLE " . alt_db_table() . " ADD COLUMN `$col` " . $defs[$col]);
+        $added[] = $col;
+    }
+    return $added;
+}
+
+/** A write to wp_alt_layoffs failed: log it and keep the last one readable
+ *  through the keyed /migrate response, so it can never fail silently again. */
+function alt_db_record_write_error($op, $error, array $cols) {
+    $rec = array('at' => gmdate('c'), 'op' => $op, 'error' => (string) $error,
+                 'columns' => array_values($cols));
+    update_option('alt_last_insert_error', $rec, false);
+    if (function_exists('error_log')) error_log('[ai-layoff-tracker] wp_alt_layoffs ' . $op . ' failed: ' . $error);
+}
+
+/** The other tracker tables. */
+function alt_db_install_side_tables() {
+    global $wpdb;
+    $charset = $wpdb->get_charset_collate();
 
     // One canonical event may have many independently preserved reports. The
     // tracker counts the canonical row once; this evidence store keeps every
@@ -1023,7 +1093,21 @@ function alt_db_upsert(array $row, $allow_suppressed = false) {
     }
     // First listing: stamped here and only here (never on the UPDATE above).
     $data['created_at'] = $data['updated_at'];
-    $wpdb->insert($table, $data);
+    $ok = $wpdb->insert($table, $data);
+    if ($ok === false) {
+        // Never silent: record, repair the schema, retry once (2.20.310).
+        alt_db_record_write_error('insert', $wpdb->last_error, array_keys($data));
+        if (stripos((string) $wpdb->last_error, 'unknown column') !== false) {
+            alt_db_repair_missing_columns();
+            $ok = $wpdb->insert($table, $data);
+            if ($ok === false) {
+                alt_db_record_write_error('insert-retry', $wpdb->last_error, array_keys($data));
+                return 0;
+            }
+        } else {
+            return 0;
+        }
+    }
     return (int) $wpdb->insert_id;
 }
 
@@ -5520,11 +5604,22 @@ function alt_api_facets(WP_REST_Request $r) {
 add_action('rest_api_init', 'alt_register_query_routes');
 
 function alt_api_migrate(WP_REST_Request $r) {
-    alt_db_install();
-    $synced = alt_db_migrate();
     global $wpdb;
+    // Read-only schema diagnostic first, so a drift is visible before repair.
+    $missing_columns_before = alt_db_missing_columns();
+    alt_db_install();
+    $missing_columns_after = alt_db_missing_columns();
+    $before = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
+    $synced = alt_db_migrate();
     $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . alt_db_table());
-    return rest_ensure_response(array('synced' => $synced, 'table_rows' => $count));
+    $last_insert_error = get_option('alt_last_insert_error', null);
+    return rest_ensure_response(array(
+        'synced' => $synced, 'table_rows_before' => $before, 'table_rows' => $count,
+        'rows_added' => $count - $before,
+        'missing_columns_before' => $missing_columns_before,
+        'missing_columns_after' => $missing_columns_after,
+        'last_insert_error' => $last_insert_error ? array('at' => $last_insert_error['at'] ?? '', 'op' => $last_insert_error['op'] ?? '', 'error' => $last_insert_error['error'] ?? '') : null,
+    ));
 }
 
 function alt_api_event_migrate(WP_REST_Request $r) {
