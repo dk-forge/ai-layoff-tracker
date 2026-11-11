@@ -1,3 +1,9 @@
+## 2026-11-11 - A month-sized EDGAR range stopped at 30 filings per keyword
+
+**What.** `_search_keyword()` read at most 3 EFTS pages (30 hits) per keyword and form, then printed "only the first 30 were fetched" and dropped the rest. The daily pull reads one day and never reached it; the `edgar-history-sweep.yml` range mode reads a month, where one keyword matches far more. **Fix:** `MAX_PAGES_PER_KEYWORD` is 50, a safety ceiling; paging still stops at EFTS's own total, so a quiet day costs one request. Pages are SEC requests under the existing 0.11 s delay, never model calls; `BACKFILL_MAX_CALLS` still bounds extraction.
+**Guard:** `railway/tests/test_edgar_keyword_paging.py` (+2)
+**Class:** novel (a page ceiling sized for a day, used for a month)
+
 ## 2026-11-11 - Workday's percent-only 8-K got no estimate: the owner word could not be the filer's name
 
 **What.** Recall gap for 8-K Item 2.05 filings in 2026-09-29..2026-11-05: FICO (0001193125-26-415732, 2026-10-06, "approximately 15% of positions") and Workday (0001327811-26-000048, 2026-09-29, "approximately 2.5% of Workday's current workforce") are absent from the table. Both are reached by the daily EDGAR pull (edgar_recall_probe.reached, checked 2026-11-11). Both are percent-only and were filed before labelled estimates shipped on 2026-11-05 (#602). FICO's sentence parses today; Workday's did not, because `workforce_percent` accepted only its/our/the company's as the owner. **Fix:** the filer's own name (first word of `company_name`) is also accepted as the possessive owner; another name is not. The window is then re-read with `edgar-history-sweep.yml` range mode (start 2026-09-29, end 2026-11-05).
