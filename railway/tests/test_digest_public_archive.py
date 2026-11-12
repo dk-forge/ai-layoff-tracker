@@ -149,3 +149,32 @@ class PluginGate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CorrectionReachesThePublicCopy(unittest.TestCase):
+    """Audit 2026-11-12: /digest/2026-11-08/ kept "134,595 verified job cuts"
+    with no note, while the same W45 edition under /editions/weekly/2026-W45/
+    carried its 2026-11-09 correction to 30,595. A reader who follows the
+    email's own archive links must see the correction too."""
+
+    def test_weekly_copy_maps_to_its_iso_week_edition(self):
+        self.assertEqual(php("alt_digest_pub_edition_ref($in)",
+                             {"edition_date": "2026-11-08", "kind": "weekly",
+                              "html": "<p>AI Layoff Tracker</p>"}),
+                         ["weekly", "2026-W45"])
+
+    def test_daily_copy_maps_only_when_it_carries_the_layoff_section(self):
+        self.assertEqual(php("alt_digest_pub_edition_ref($in)",
+                             {"edition_date": "2026-11-12", "kind": "daily",
+                              "html": "<p>AI Layoff Tracker</p><p>Talent</p>"}),
+                         ["daily", "2026-11-12"])
+        self.assertIsNone(php("alt_digest_pub_edition_ref($in)",
+                              {"edition_date": "2026-11-12", "kind": "daily",
+                               "html": "<p>Talent Intelligence Tracker</p>"}))
+
+    def test_notes_render_above_the_copy_and_are_escaped(self):
+        out = php("alt_digest_pub_corrections_html($in)",
+                  [{"at": "2026-11-09", "note": "W45 revised to 30,595 <b>x</b>."}])
+        self.assertIn("Correction to this edition", out)
+        self.assertIn("2026-11-09: W45 revised to 30,595 &lt;b&gt;x&lt;/b&gt;.", out)
+        self.assertEqual(php("alt_digest_pub_corrections_html($in)", []), "")

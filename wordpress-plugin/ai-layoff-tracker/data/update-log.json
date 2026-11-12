@@ -2,6 +2,22 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "digest-archive-corrections",
+   "date": "2026-11-12",
+   "version": "2.20.317",
+   "type": "Fix",
+   "area": "email",
+   "text": "The public copy of a sent digest email now shows any correction made to that edition, the same note the edition's archive page carries. The 2026 Week 45 copy now says its totals were revised."
+  },
+  {
+   "slug": "digest-single-report-lead",
+   "date": "2026-11-12",
+   "version": "2.20.316",
+   "type": "Fix",
+   "area": "email",
+   "text": "The layoff digest no longer opens with, or names in its subject line, a figure that rests on one news report. The largest corroborated entry leads instead; single-report entries are still counted and listed, marked \"Single report, not yet corroborated\". Each edition now says in one line what its counts measure."
+  },
+  {
    "slug": "digest-preheader-full-stop",
    "date": "2026-11-11",
    "version": "2.20.315",
