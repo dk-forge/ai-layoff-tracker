@@ -930,7 +930,9 @@ function alt_briefing_employers($m) {
 
 /** D. Biggest cuts of THIS period, grouped Around the world. */
 function alt_briefing_biggest($m, $send_id) {
-    $cap = ($m['kind'] === 'daily') ? 40 : (($m['kind'] === 'monthly') ? 10 : 6);
+    // The daily shows its ten largest and links the rest (audit 2026-11-12:
+    // a 40-row cap listed 33-job notices with no "See all").
+    $cap = ($m['kind'] === 'daily') ? 10 : (($m['kind'] === 'monthly') ? 10 : 6);
     $rows = array_slice((array) $m['rows'], 0, $cap);
     if (!$rows) return array('', '');
     $items = array();

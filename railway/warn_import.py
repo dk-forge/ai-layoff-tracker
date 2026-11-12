@@ -76,6 +76,13 @@ _ADDR_RX = re.compile(
 _CITYSTZIP_RX = re.compile(r"[\s,(]+[A-Za-z .'-]+,\s*[A-Z]{2},?\s*\d{5}(?:-\d{4})?\b")
 # Repeated "Update:" markers some states prepend on every revision.
 _UPDATE_RX = re.compile(r"^(?:\s*update\s*:\s*)+", re.I)
+# Ohio's amended notices arrive as "Update Marc Glassman, Inc." with no colon
+# (rows 179293/179254 listed one 55-job layoff twice, 2026-11-11). A bare
+# leading "Update" is stripped only when a corporate suffix follows, so a
+# company actually named "Update Software AG" keeps its name.
+_BARE_UPDATE_RX = re.compile(
+    r"^\s*update\s+(?=\S.*\b(?:inc|llc|l\.l\.c|ltd|corp|corporation|co|company|lp|l\.p|plc)\b\.?)",
+    re.I)
 
 
 def _strip_site_address(name):
@@ -104,6 +111,7 @@ def _clean_company(name):
     name = _TAG_RX.sub(" ", str(name or ""))
     name = _html.unescape(name)          # "Bingham &amp; Taylor" -> "Bingham & Taylor"
     name = _UPDATE_RX.sub("", name)
+    name = _BARE_UPDATE_RX.sub("", name)
     # Drop a trailing footnote marker and anything after it ("* Notice outlines
     # multiple scenarios ..."), which is commentary about the notice, not a name.
     name = re.split(r"\s*\*", name)[0]

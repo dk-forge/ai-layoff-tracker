@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "digest-daily-top-ten",
+   "date": "2026-11-12",
+   "version": "2.20.318",
+   "type": "Fix",
+   "area": "email",
+   "text": "The daily layoff digest now lists its ten largest cuts and links the rest, instead of up to forty rows. An amended Ohio WARN notice (\"Update ...\") is no longer listed as a second layoff."
+  },
+  {
    "slug": "digest-archive-corrections",
    "date": "2026-11-12",
    "version": "2.20.317",
