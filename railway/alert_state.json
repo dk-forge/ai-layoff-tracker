@@ -57,11 +57,6 @@
       "last": 1794402626,
       "subject": "CI RED: Adjudicate one row (two referees) \u2014 json.decoder.JSONDecodeError: Unterminated string starting at: line 8 column 16 (char 209)"
     },
-    "adjudicate-one-row-two-referees:main:1a61120ce8cb8d56": {
-      "first": 1794397794,
-      "last": 1794397794,
-      "subject": "CI RED: Adjudicate one row (two referees) \u2014 --duplicate-of row 183207 not found (or is THE ROW)"
-    },
     "adjudicate-one-row-two-referees:main:44971f010347f33c": {
       "first": 1794487792,
       "last": 1794487792,
@@ -128,6 +123,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-12T12:49:52+00:00",
+  "updated_at": "2026-11-12T12:50:48+00:00",
   "version": 1
 }
