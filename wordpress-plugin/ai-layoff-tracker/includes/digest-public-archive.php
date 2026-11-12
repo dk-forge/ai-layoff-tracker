@@ -125,6 +125,40 @@ function alt_digest_pub_filter_range($rows, $from, $to) {
 }
 
 /** PURE. Should an incoming record replace the stored one for that date? */
+/**
+ * PURE. The published layoff edition this public copy is, as [freq, slug],
+ * or null. A weekly copy is its ISO week; a daily copy is its date, but only
+ * when it carries the layoff section (a talent-only daily is not a layoff
+ * edition and must not wear a layoff correction). Audit 2026-11-12: the W45
+ * correction reached /editions/weekly/2026-W45/ and never this copy.
+ */
+function alt_digest_pub_edition_ref($row) {
+    $date = alt_digest_pub_valid_date($row['edition_date'] ?? '');
+    if ($date === '') return null;
+    $kind = (string) ($row['kind'] ?? '');
+    if ($kind === 'weekly') {
+        return array('weekly', gmdate('o-\\WW', strtotime($date . ' 12:00:00 UTC')));
+    }
+    if ($kind === 'daily' && strpos((string) ($row['html'] ?? ''), 'AI Layoff Tracker<') !== false) {
+        return array('daily', $date);
+    }
+    return null;
+}
+
+/** PURE. The correction notes block, or '' when there are none. */
+function alt_digest_pub_corrections_html($notes) {
+    $out = '';
+    foreach ((array) $notes as $c) {
+        if (!is_array($c) || trim((string) ($c['note'] ?? '')) === '') continue;
+        $out .= '<p>' . htmlspecialchars((string) ($c['at'] ?? ''), ENT_QUOTES, 'UTF-8') . ': '
+              . htmlspecialchars((string) $c['note'], ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+    if ($out === '') return '';
+    $n = count(array_filter((array) $notes, 'is_array'));
+    return '<div class="corr"><p><strong>Correction' . ($n === 1 ? '' : 's') . ' to this edition</strong></p>'
+         . $out . '<p>The email below is unchanged. It is what we sent, and it stays that way.</p></div>';
+}
+
 function alt_digest_pub_should_replace($stored_kind, $incoming_kind) {
     if ($stored_kind === '' || $stored_kind === null) return true;
     if ($stored_kind === 'weekly' && $incoming_kind === 'daily') return false;
@@ -284,6 +318,7 @@ function alt_digest_pub_css() {
         . 'body{margin:0;background:#f3f4f6;color:#111827;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.55}'
         . '.w{max-width:600px;margin:0 auto;padding:20px 16px 40px}'
         . '.bar{font-size:14px;margin:0 0 14px}.bar a{color:#1d4ed8}'
+        . '.corr{background:#fff6e5;color:#111827;border-left:3px solid #d99b1c;padding:12px 14px;font-size:14px;margin:0 0 14px}.corr p{margin:.3em 0}'
         . '.card{background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:20px}'
         . 'h1{font-size:24px;line-height:1.25;margin:2px 0 6px}'
         . '.wm{font-variant:small-caps;letter-spacing:.08em;font-size:12px;font-weight:600;color:#4b5563;margin:0}'
@@ -361,6 +396,11 @@ function alt_digest_pub_render_page($row) {
     echo '<p class="wm">AskTheRecruiter</p><h1>' . esc_html($row['subject']) . '</h1>'
         . '<p class="muted">' . esc_html(ucfirst($row['kind'])) . ' edition, sent '
         . esc_html($date) . '. This is the public copy of the email.</p>';
+    $ref = alt_digest_pub_edition_ref($row);
+    if ($ref && function_exists('alt_edition_get')) {
+        $ed = alt_edition_get($ref[0], $ref[1]);
+        if ($ed) echo alt_digest_pub_corrections_html($ed['corrections'] ?? array());
+    }
     // Stored HTML passed both gates at save time; rendered as saved.
     echo '<div class="ed">' . alt_digest_pub_body($row['html'], $url) . '</div>';
     $all = alt_digest_pub_all();
