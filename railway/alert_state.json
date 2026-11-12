@@ -97,6 +97,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
+      "first": 1794503717,
+      "last": 1794503717,
+      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
+    },
     "pr-607:refs-pull-607-head:816099a38a588959": {
       "first": 1794210286,
       "last": 1794210286,
@@ -113,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-12T12:50:51+00:00",
+  "updated_at": "2026-11-12T17:15:18+00:00",
   "version": 1
 }
