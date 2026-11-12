@@ -1,7 +1,7 @@
 ## 2026-11-12 - 2.20.317 A correction now reaches the public copy of the email
 
 **What.** The 2026-W45 correction ("revised to 30,595 job cuts worldwide", 2026-11-09) was attached through `/edition-correction` and shows on `/editions/weekly/2026-W45/`, but `/digest/2026-11-08/`, the public copy the email's own archive links point to, still read 134,595 with no note. The two archives store separately and only the editions page read `corrections`. **Fix:** `alt_digest_pub_edition_ref()` maps a public copy to its edition (weekly: ISO week; daily: its date, only when the copy carries the layoff section, so a talent-only daily never wears a layoff correction) and `alt_digest_pub_render_page()` prints the notes above the unchanged email. **Guard:** `railway/tests/test_digest_public_archive.py` (CorrectionReachesThePublicCopy).
-**Class:** stale-copy
+**Class:** two-copies-drifted
 
 ## 2026-11-11 - Benchmark re-score after the gap replay: strict recall 20/25
 
