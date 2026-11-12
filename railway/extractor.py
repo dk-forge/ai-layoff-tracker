@@ -1676,6 +1676,14 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
               f"offer or eligibility figure, not job cuts - source: "
               f"{raw_entry.get('source_url')}")
         return None
+    # A disciplinary dismissal is not a layoff: row 183367 led a daily
+    # edition with 1,562 police officers dismissed in an internal cleansing
+    # drive (railway/disciplinary_guard.py).
+    from disciplinary_guard import count_is_disciplinary
+    if estimate is None and count_is_disciplinary(job_count, raw_text):
+        print(f"Extraction rejected: job_count {job_count} counts people dismissed "
+              f"for misconduct, not job cuts - source: {raw_entry.get('source_url')}")
+        return None
     count_pattern = _number_pattern(job_count)
     count_sentences =[s for s in re.split(r"(?<=[.!?])\s+|[\r\n]+", raw_text)
                        if re.search(count_pattern, s)]

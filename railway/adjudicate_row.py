@@ -71,6 +71,14 @@ RULES = """The tracker's published rules, which you must apply:
    holds the original event elsewhere or will re-ingest it from a primary report).
 5. If the row is real but one field is wrong (date, count, country, ai_explicit),
    the action is "edit" with exactly the corrected fields.
+6. Some stated numbers are not job cuts, and a row whose job_count is only one
+   of them is unsupported ("trash" unless the source also states a real cut,
+   then "edit" to that figure): a voluntary buyout or early-retirement OFFER,
+   or the number of employees eligible for one; a pledge, target or goal; a
+   combined, net or sector-wide total across several companies or a whole
+   industry; a net headcount decline over time; people dismissed for
+   misconduct or other disciplinary reasons; and a figure that belongs to a
+   different employer than the row names.
 """
 
 PROMPT = """Today is {today}. A date on or before today is not in the future.
@@ -102,11 +110,11 @@ Answer with ONE JSON object and nothing else:
 """
 
 
-DUPLICATE_RULE = """6. THE OTHER ROW below is a different published row. If THE ROW reports the
+DUPLICATE_RULE = """7. THE OTHER ROW below is a different published row. If THE ROW reports the
    SAME layoff event as THE OTHER ROW (the same employer's same announced cut,
    whatever name each row uses for the employer), THE ROW is a duplicate and the
    honest action is "trash": its report is moved onto THE OTHER ROW, which is
-   kept. If they are genuinely different events, judge THE ROW by rules 1-5.
+   kept. If they are genuinely different events, judge THE ROW by rules 1-6.
 """
 
 DUPLICATE_FIELD = '''  "same_event_as_other_row": true|false,

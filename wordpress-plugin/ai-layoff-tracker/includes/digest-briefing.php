@@ -218,6 +218,30 @@ function alt_briefing_source_class($row) {
     return $map[$type] ?? 'other published sources';
 }
 
+/**
+ * Can this row LEAD an edition (opening, subject, concentration finding)?
+ * A filing (WARN, SEC 8-K, ERM), a silver or gold row, or a news row that a
+ * second report backs. One bronze news report cannot: the 2026-W45 weekly was
+ * led by a single report of a buyout OFFER (Microsoft 60,000) and trashed
+ * the next day (audit 2026-11-12). The row still counts and is still listed,
+ * labelled as a single report; only the lead moves.
+ */
+function alt_briefing_corroborated($row) {
+    $type = strtolower(trim((string) ($row['source_type'] ?? '')));
+    if ($type !== 'news' && $type !== '') return true;
+    $level = strtolower(trim((string) ($row['verification_level'] ?? '')));
+    if ($level === 'silver' || $level === 'gold') return true;
+    return !empty($row['additional_sources']);
+}
+
+/** The largest corroborated row, or null. Rows are already sorted largest first. */
+function alt_briefing_lead_row($m) {
+    foreach ((array) $m['rows'] as $r) {
+        if (alt_briefing_corroborated($r)) return $r;
+    }
+    return null;
+}
+
 /** One row's evidence label, as printed beside it. */
 function alt_briefing_evidence_label($row) {
     $name = trim((string) ($row['source_name'] ?? ''));
@@ -372,6 +396,10 @@ function alt_briefing_model($b, $now = null) {
     }
 
     $m['checks'] = alt_briefing_checks($m, $p);
+    $m['single'] = 0;
+    foreach ((array) $m['rows'] as $r) {
+        if (!alt_briefing_corroborated($r)) $m['single'] += (int) $r['job_count'];
+    }
     $m['findings'] = alt_briefing_findings($m);
     $m['means'] = alt_briefing_means($m);
     foreach ($m['held'] as $h) {
@@ -504,8 +532,15 @@ function alt_briefing_findings($m) {
     if ($ver <= 0) return $f;
     $rows = (array) $m['rows'];
     // 1. Concentration.
-    if ($rows) {
-        $top = $rows[0];
+    $lead = alt_briefing_lead_row($m);
+    if ($rows && !alt_briefing_corroborated($rows[0])
+        && 100 * (int) $rows[0]['job_count'] / $ver >= 25) {
+        $f[] = 'The largest single figure, ' . alt_digest_clean_employer($rows[0]['company_name'])
+             . ' at ' . alt_digest_number($rows[0]['job_count']) . ' jobs ('
+             . alt_briefing_pct($rows[0]['job_count'], $ver)
+             . ' of the total), rests on a single news report and is not yet corroborated.';
+    } elseif ($lead) {
+        $top = $lead;
         $share = 100 * (int) $top['job_count'] / $ver;
         $name = alt_digest_clean_employer($top['company_name']);
         if ($share >= 25) {
@@ -586,8 +621,9 @@ function alt_briefing_metric($m) {
     $metric = alt_digest_number($m['ver']) . ' verified job cuts';
     $rows = (array) $m['rows'];
     if ($m['ai'] > 0) return $metric . " \xc2\xb7 " . alt_digest_number($m['ai']) . ' AI-attributed';
-    if ($rows) {
-        $story = array('company' => $rows[0]['company_name'], 'jobs' => (int) $rows[0]['job_count']);
+    $lead = alt_briefing_lead_row($m);
+    if ($lead) {
+        $story = array('company' => $lead['company_name'], 'jobs' => (int) $lead['job_count']);
         if (function_exists('alt_digest_story_metric')) return alt_digest_story_metric($metric, $story);
     }
     return $metric;
@@ -625,9 +661,10 @@ function alt_briefing_opening($m) {
     $n = alt_digest_number($ver);
     $employers = count(array_unique(array_map(function ($r) { return strtolower((string) $r['company_name']); }, $rows)));
     $lead = '';
-    if ($rows) {
-        $where = alt_briefing_where($rows[0]);
-        $lead = 'led by ' . alt_digest_clean_employer($rows[0]['company_name']) . ($where !== '' ? ' in ' . $where : '');
+    $lr = alt_briefing_lead_row($m);
+    if ($lr) {
+        $where = alt_briefing_where($lr);
+        $lead = 'led by ' . alt_digest_clean_employer($lr['company_name']) . ($where !== '' ? ' in ' . $where : '');
     }
     if ($m['kind'] === 'daily') {
         if ($ver <= 0) return 'On ' . $m['range'] . ', no verified job cuts took effect in our records.';
@@ -698,6 +735,17 @@ function alt_briefing_render($m, $send_id = 0) {
              . ($m['ytd'] ? " \xc2\xb7 " . alt_digest_number($m['ytd']['ai']) . ' in ' . $m['ytd']['year'] . ' so far' : '');
     $html .= '<p data-alt="signature">' . alt_briefing_h($ai_line) . '</p>';
     $text .= '  ' . $ai_line . "\n";
+    // WHAT EACH COUNT MEASURES, in one plain line (audit 2026-11-12).
+    $define = 'What these count: verified job cuts are jobs with a stated number in a government '
+            . 'notice, an SEC filing or a named news report, counted on the date the cuts take effect; '
+            . 'announced plans without a filing are left out. AI-attributed means the employer itself '
+            . 'named AI as a reason.';
+    if (!empty($m['single']) && $m['ver'] > 0) {
+        $define .= ' Of the ' . alt_digest_number($m['ver']) . ', ' . alt_digest_number($m['single'])
+                 . ' rest on a single news report not yet corroborated.';
+    }
+    $html .= '<p data-alt="note">' . alt_briefing_h($define) . '</p>';
+    $text .= '  ' . $define . "\n";
     if ($m['regions']) {
         // The bars are ALL verified cuts (they sum to the worldwide figure),
         // not the AI-attributed line printed just above them.
@@ -892,11 +940,13 @@ function alt_briefing_biggest($m, $send_id) {
         $name = (string) $r['company_name'];
         $pills = array(alt_digest_place_pill(alt_briefing_place($r, $m)), alt_digest_pill(alt_briefing_evidence_label($r), '', true));
         if (alt_briefing_is_facility_name($name)) $pills[] = alt_digest_pill('Facility named in the filing', '', true);
+        if (!alt_briefing_corroborated($r)) $pills[] = alt_digest_pill('Single report, not yet corroborated', '', true);
         $src = trim((string) ($r['source_url'] ?? ''));
         if ($src !== '' && function_exists('alt_digest_external_link_ok') && !alt_digest_external_link_ok($src)) $src = '';
         $where = alt_briefing_place($r, $m);
         $items[] = array(
-            'suffix' => '(' . ($where !== '' ? $where . '; ' : '') . alt_briefing_evidence_label($r) . ')',
+            'suffix' => '(' . ($where !== '' ? $where . '; ' : '') . alt_briefing_evidence_label($r)
+                      . (alt_briefing_corroborated($r) ? '' : '; single report') . ')',
             'label' => $name, 'figure' => alt_digest_jobs_phrase((int) $r['job_count']),
             'url' => alt_digest_track_link($send_id, alt_digest_tracker_url($m['from'], $m['to'], array('company' => $name))),
             'plain_url' => '', 'pills' => $pills, 'source_url' => $src,
