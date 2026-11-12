@@ -2,6 +2,10 @@
 
 **What.** The 2026-11-11 daily listed "Update Marc Glassman, Inc." 55 (row 179293) beside "Marc Glassman, Inc." 55 (179254), the same Ohio notice (both cite `Update_Marc_Glassman_Inc..pdf`); `_UPDATE_RX` stripped only "Update:" with a colon. The same edition listed nine rows down to a 33-job notice, under a 40-row daily cap with no "See all". **Fix:** `_BARE_UPDATE_RX` strips a bare leading "Update" when a corporate suffix follows (a company named "Update Software AG" keeps its name); the daily list cap is 10 and the existing "See N more" link carries the rest. Row 179293 is already live and goes to the referees as a duplicate of 179254. **Guard:** `railway/tests/test_email_low_value_and_warn_update.py`.
 **Class:** novel
+## 2026-11-12 - Referees that both rule a row "not a layoff" agree, whatever verb they use
+
+**What.** Adjudication run 43221393926 (row 183237, Microsoft 60,000): both referees found the figure a buyout offer and not layoffs; Sonnet 4.5 answered `edit {job_count: 0}`, GPT-4o `trash`. `decide()` compares actions literally, so it read a disagreement and applied nothing. Run 43221405052 merged the Ohio duplicate 179293 into 179254 (both agreed). Run 43221399220 (183367, Philippine National Police 1,562) is a genuine split, GPT-4o kept a disciplinary purge against rule 6, and is left for a human. **Fix:** `_zero_edit_is_trash()` reads an edit that sets job_count to zero as "trash" before comparing; an edit to a real count still disagrees with trash, and a zero edit never agrees with keep. **Guard:** `railway/tests/test_email_lead_guards.py` (EditToZeroIsATrash).
+**Class:** wrong-scope-or-key
 
 ## 2026-11-12 - 2.20.317 A correction now reaches the public copy of the email
 

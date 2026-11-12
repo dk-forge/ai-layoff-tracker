@@ -208,9 +208,21 @@ def ask_referee(model: str, prompt: str) -> dict | None:
     return parsed
 
 
+def _zero_edit_is_trash(verdict: dict) -> dict:
+    """An "edit" that sets job_count to zero says the row is not a layoff: the
+    same decision as "trash". Row 183237 (2026-11-12): both referees ruled
+    Microsoft's 60,000 a buyout offer; one wrote trash, the other an edit to 0,
+    and the exact-match rule read that as a disagreement."""
+    fields = verdict.get("edit_fields") or {}
+    if (verdict.get("recommended_action") == "edit" and isinstance(fields, dict)
+            and "job_count" in fields and not fields.get("job_count")):
+        return {**verdict, "recommended_action": "trash", "edit_fields": None}
+    return verdict
+
+
 def decide(verdicts: dict[str, dict | None]) -> tuple[str, str, dict | None]:
     """(status, action, edit_fields). status is 'agree', 'disagree' or 'unknown'."""
-    answered = {m: v for m, v in verdicts.items() if v}
+    answered = {m: _zero_edit_is_trash(v) for m, v in verdicts.items() if v}
     if len(answered) < 2:
         return "unknown", "keep", None
     actions = {v.get("recommended_action") for v in answered.values()}
