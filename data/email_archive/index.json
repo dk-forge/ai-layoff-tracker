@@ -1,6 +1,16 @@
 {
   "editions": [
     {
+      "date": "2026-11-12",
+      "kind": "daily",
+      "path": "2026/11/2026-11-12-daily.html",
+      "sections": [
+        "talent"
+      ],
+      "slug": "2026-11-12-daily",
+      "subject": "\ud83d\ude80 Who's hiring: Salute plans 12,000 roles in United States + 8 more \u00b7 Nov 12"
+    },
+    {
       "date": "2026-11-11",
       "kind": "daily",
       "path": "2026/11/2026-11-11-daily.html",
