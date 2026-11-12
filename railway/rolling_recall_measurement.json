@@ -3,58 +3,34 @@
     "sec_item_205_us",
     "state_warn_official_totals"
   ],
-  "measured_at": "2026-11-05T16:26:57Z",
+  "measured_at": "2026-11-12T16:42:34Z",
   "note": "Rolling recall against denominators the tracker does not construct. Written by rolling-recall.yml. Committed on purpose: the data being measured changes without a commit. NEVER hand-edit a figure here \u2014 re-run the module. Recall is a BAND, not a point, because no editor adjudicated these matches; see the module docstring.",
   "slices": {
     "sec_item_205_us": {
       "absent": 0,
       "absent_filings": [],
-      "confirmed": 45,
+      "confirmed": 44,
       "confirmed_interval": [
-        0.9213457380593594,
-        1.0
+        0.9197016822179859,
+        0.9999999999999999
       ],
       "denominator_basis": "closed_enumeration_primary_regulator_index",
-      "detail": "recall is between 45/45 = 100.0% (count-confirmed) and 45/45 = 100.0% (name+window proposed, unadjudicated); 60 of 218 enumerated filings UNKNOWN, 113 out of scope (percentage only), 0 unreachable",
-      "enumerated_filings": 218,
+      "detail": "recall is between 44/44 = 100.0% (count-confirmed) and 44/44 = 100.0% (name+window proposed, unadjudicated); 64 of 223 enumerated filings UNKNOWN, 115 out of scope (percentage only), 0 unreachable",
+      "enumerated_filings": 223,
       "enumeration_query": "\"Item 2.05\"",
-      "in_scope": 45,
-      "judged": 45,
+      "in_scope": 44,
+      "judged": 44,
       "key": "sec_item_205_us",
       "label": "US SEC 8-K Item 2.05 (exit/disposal costs) with a stated headcount",
-      "out_of_scope": 113,
+      "out_of_scope": 115,
       "proposed": 0,
       "proposed_filings": [],
       "recall_confirmed": 1.0,
       "recall_upper": 1.0,
       "settle_days": 45,
       "state": "measured",
-      "undecidable": 60,
+      "undecidable": 64,
       "undecidable_filings": [
-        {
-          "accession": "0001501697-25-000021",
-          "filer": "X4 Pharmaceuticals, Inc",
-          "filing_date": "2025-09-17",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001104659-25-092162",
-          "filer": "MAXCYTE, INC.",
-          "filing_date": "2025-09-22",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-221704",
-          "filer": "IO Biotech, Inc.",
-          "filing_date": "2025-09-29",
-          "why": "headcount_may_be_exhibit_only"
-        },
-        {
-          "accession": "0001193125-25-223434",
-          "filer": "SUTRO BIOPHARMA, INC.",
-          "filing_date": "2025-09-29",
-          "why": "headcount_may_be_exhibit_only"
-        },
         {
           "accession": "0001104659-25-097097",
           "filer": "APPLIED DNA SCIENCES INC",
@@ -390,18 +366,66 @@
           "filer": "TELA Bio, Inc.",
           "filing_date": "2026-08-31",
           "why": "ambiguous_multiple_counts:201,160"
+        },
+        {
+          "accession": "0001193125-26-379343",
+          "filer": "TScan Therapeutics, Inc.",
+          "filing_date": "2026-09-02",
+          "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0002039852-26-000121",
+          "filer": "Bancorp, Inc.",
+          "filing_date": "2026-09-04",
+          "why": "ambiguous_multiple_counts:64,16"
+        },
+        {
+          "accession": "0001493152-26-042189",
+          "filer": "CVD EQUIPMENT CORP",
+          "filing_date": "2026-09-10",
+          "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0001193125-26-387279",
+          "filer": "Commerce.com, Inc.",
+          "filing_date": "2026-09-10",
+          "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0001193125-26-390577",
+          "filer": "Sionna Therapeutics, Inc.",
+          "filing_date": "2026-09-14",
+          "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0001104659-26-109821",
+          "filer": "Adagio Medical Holdings, Inc.",
+          "filing_date": "2026-09-23",
+          "why": "ambiguous_multiple_counts:43,25"
+        },
+        {
+          "accession": "0001871638-26-000057",
+          "filer": "Blaize Holdings, Inc.",
+          "filing_date": "2026-09-30",
+          "why": "headcount_may_be_exhibit_only"
+        },
+        {
+          "accession": "0001193125-26-408874",
+          "filer": "Leslie's, Inc.",
+          "filing_date": "2026-09-30",
+          "why": "headcount_may_be_exhibit_only"
         }
       ],
       "unreachable": 0,
       "unreachable_filings": [],
       "upper_interval": [
-        0.9213457380593594,
-        1.0
+        0.9197016822179859,
+        0.9999999999999999
       ],
       "window": {
         "date_field": "EDGAR file_date",
-        "from": "2025-09-01",
-        "to": "2026-08-31"
+        "from": "2025-10-01",
+        "to": "2026-09-30"
       }
     },
     "state_warn_official_totals": {
