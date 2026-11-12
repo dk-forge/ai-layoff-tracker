@@ -1,18 +1,5 @@
 {
   "slots": {
-    "broad|f060b27756|20261027T083622Z|20261028T203622Z": {
-      "family": "broad",
-      "window_start": "20261027T083622Z",
-      "window_end": "20261028T203622Z",
-      "status": "complete",
-      "returned": 7635,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20261028T220705Z",
-      "updated": "20261028T220705Z",
-      "oldest": "20261027T084500Z",
-      "newest": "20261028T203000Z"
-    },
     "broad|f060b27756|20261028T083621Z|20261029T203621Z": {
       "family": "broad",
       "window_start": "20261028T083621Z",
@@ -192,6 +179,19 @@
       "updated": "20261110T220758Z",
       "oldest": "20261109T084500Z",
       "newest": "20261110T203000Z"
+    },
+    "broad|f060b27756|20261110T083636Z|20261111T203636Z": {
+      "family": "broad",
+      "window_start": "20261110T083636Z",
+      "window_end": "20261111T203636Z",
+      "status": "complete",
+      "returned": 8176,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20261111T220717Z",
+      "updated": "20261111T220717Z",
+      "oldest": "20261110T084500Z",
+      "newest": "20261111T203000Z"
     },
     "euphemism|36fc3169e0|20261104T051721Z|20261105T171721Z": {
       "family": "euphemism",
