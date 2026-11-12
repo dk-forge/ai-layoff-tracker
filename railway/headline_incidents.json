@@ -376,6 +376,49 @@
     }
   ],
   "note": "Open headline incidents, read by data_integrity.MovementInvariant. A slice listed under `open` reports FAIL regardless of what today's numbers say \u2014 that is the point: the movement formula's own inputs (elapsed span, arriving rows, baseline age) all widen over time, so an incident left to the calendar closes itself. Do not hand-edit this file. Close an incident with `python3 data_integrity.py --close-incident <slice> --reviewed-by ... --reason ... --rows ... --replacement-jobs ... --replacement-entries ...`, which is the only path that also writes the replacement baseline.",
-  "open": {},
-  "written_at": "2026-11-11T08:12:18Z"
+  "open": {
+    "ai_all_time": {
+      "baseline_at_open": {
+        "captured_at": "2026-11-11T17:36:02Z",
+        "entries": 114,
+        "excluded_entries": 0,
+        "excluded_jobs": 0,
+        "jobs": 261096,
+        "recorded_in": "2026-11-11T17:37:01Z"
+      },
+      "detail": "Worldwide jobs, all time minus AI-attributed jobs, all time moved -53,553 jobs on +36 entries (Worldwide jobs, all time -53,553 jobs on +36 entries; AI-attributed jobs, all time +0 jobs on +0 entries). Superset exclusions account for -72 of that, leaving -53,481 jobs unexplained by dedup and moving into AI-attributed jobs, all time against the direction the complement's own rows moved. TWO mechanisms produce this and these readings cannot tell them apart: rows that were ALREADY PUBLISHED re-scored across the boundary, or the rows that LEFT carried more jobs than the rows that arrived \u2014 +36 is a NET figure and bounds neither gross flow, so a handful of large departures hides inside it. Both are invisible to the movement guard, which judges each slice alone and never sees a move that cancels between two. Check, in this order: the corrections log and anything trashed in this window, the dedupe-llm merge runs (a merge restamps no updated_at, so /changed-rows will not show it), then any country/AI relabel job. reconcile-supersets is already accounted for above. the corrections log discloses 13 row(s) removed or merged in this window, carrying 81,244 disclosed job(s), which is a CANDIDATE explanation and not a verdict: 2026-11-12: 2 merged \u2014 Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by the configured adjud...; 2026-11-12: 1 removed \u2014 two-model adjudication (anthropic/claude-sonnet-4.5 + openai/gpt-4o agree: trash): The source describes a v...; 2026-11-12: 2 removed \u2014 Undated duplicate cleanup: news/SEC rows with no date that duplicate a dated event of the same company and ...; 2026-11-12: 1 merged \u2014 two-model adjudication (anthropic/claude-sonnet-4.5 + openai/gpt-4o agree: trash): Both rows cite the ident... (+5 more)",
+      "label": "AI-attributed jobs, all time",
+      "observed_at_open": {
+        "captured_at": "2026-11-12T17:35:36Z",
+        "entries": 114,
+        "excluded_entries": 0,
+        "excluded_jobs": 0,
+        "jobs": 261096
+      },
+      "opened_at": "2026-11-12T17:36:34Z",
+      "slice": "ai_all_time"
+    },
+    "us_all_time": {
+      "baseline_at_open": {
+        "captured_at": "2026-11-11T17:36:14Z",
+        "entries": 47476,
+        "excluded_entries": 481,
+        "excluded_jobs": 123472,
+        "jobs": 7501406,
+        "recorded_in": "2026-11-11T17:37:01Z"
+      },
+      "detail": "Worldwide jobs, all time minus United States jobs, all time moved -55,767 jobs on +16 entries (Worldwide jobs, all time -53,553 jobs on +36 entries; United States jobs, all time +2,214 jobs on +20 entries). Superset exclusions account for +0 of that, leaving -55,767 jobs unexplained by dedup and moving into United States jobs, all time against the direction the complement's own rows moved. TWO mechanisms produce this and these readings cannot tell them apart: rows that were ALREADY PUBLISHED re-scored across the boundary, or the rows that LEFT carried more jobs than the rows that arrived \u2014 +16 is a NET figure and bounds neither gross flow, so a handful of large departures hides inside it. Both are invisible to the movement guard, which judges each slice alone and never sees a move that cancels between two. Check, in this order: the corrections log and anything trashed in this window, the dedupe-llm merge runs (a merge restamps no updated_at, so /changed-rows will not show it), then any country/AI relabel job. reconcile-supersets is already accounted for above. the corrections log discloses 13 row(s) removed or merged in this window, carrying 81,244 disclosed job(s), which is a CANDIDATE explanation and not a verdict: 2026-11-12: 2 merged \u2014 Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by the configured adjud...; 2026-11-12: 1 removed \u2014 two-model adjudication (anthropic/claude-sonnet-4.5 + openai/gpt-4o agree: trash): The source describes a v...; 2026-11-12: 2 removed \u2014 Undated duplicate cleanup: news/SEC rows with no date that duplicate a dated event of the same company and ...; 2026-11-12: 1 merged \u2014 two-model adjudication (anthropic/claude-sonnet-4.5 + openai/gpt-4o agree: trash): Both rows cite the ident... (+5 more)",
+      "label": "United States jobs, all time",
+      "observed_at_open": {
+        "captured_at": "2026-11-12T17:35:47Z",
+        "entries": 47496,
+        "excluded_entries": 482,
+        "excluded_jobs": 123544,
+        "jobs": 7503620
+      },
+      "opened_at": "2026-11-12T17:36:34Z",
+      "slice": "us_all_time"
+    }
+  },
+  "written_at": "2026-11-12T17:36:34Z"
 }
