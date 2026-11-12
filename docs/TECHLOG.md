@@ -1,7 +1,7 @@
 ## 2026-11-12 - 2.20.316 One news report no longer leads the layoff digest
 
 **What.** The 2026-W45 weekly (sent 2026-11-09) opened "led by Microsoft", said "Microsoft alone is 45% of the week" and put "61,700 AI-attributed" in the subject, all on one Business Insider report of a buyout OFFER; its list also carried Bosch 30,000, Wells Fargo 10,000 and Nokia 4,000, each one bronze news report, all trashed on 2026-11-09 (edition correction: 134,595 -> 30,595). The 2026-11-12 daily opened "led by Philippine National Police" on one report. In the briefing "verified" means "not an announced plan", so a single bronze report was eligible for the lead, the subject and the concentration finding. **Fix:** `alt_briefing_corroborated()` (a filing, a silver/gold row, or a news row with an additional source); the opening, the subject's "X leads" and the concentration finding use the largest corroborated row; an outsized single report gets its own finding ("rests on a single news report and is not yet corroborated") instead of driving the edition; single reports keep counting and are marked in the list (HTML pill and plain text). The glance now says what each count measures and how much of the total rests on single reports. **Guard:** `railway/tests/test_digest_briefing_lead.py`.
-**Class:** misparsed-count
+**Class:** wrong-scope-or-key
 
 ## 2026-11-11 - Benchmark re-score after the gap replay: strict recall 20/25
 
