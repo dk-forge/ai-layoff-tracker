@@ -1,7 +1,7 @@
 ## 2026-11-12 - Two counts that led sent editions were not layoffs: a buyout headline and a police purge
 
 **What.** Email audit of the last seven editions. The 2026-11-12 daily led with Philippine National Police 1,562 (row 183367): "1,562 officers who were dismissed from their positions, during an internal cleansing drive", a disciplinary purge, not an employer cutting jobs. Microsoft 60,000 came back as row 183237 (created 2026-11-11T11:39Z by the gap replay) two days after row 183020 was trashed for the same buyout-eligibility figure: Business Insider's headline "the 60,000 employees mulling a buyout" and "offering buyout packages to some 60,000 employees" matched neither `offer(ed) buyouts` nor `eligible`. **Fix:** `buyout_guard` reads weighing/mulling/offering a buyout and "buyout packages to" as an offer, and "layoffs" or "cut N jobs" as a real cut; new `disciplinary_guard.count_is_disciplinary` refuses a count that appears only beside misconduct/disciplinary language with no economic reason; the referee prompt gains rule 6 (buyout offers and eligibility pools, pledges, combined or sector-wide totals, net headcount declines, disciplinary dismissals, another employer's figure), so live rows are judged by the same rule. The two live rows go to `adjudicate-row.yml`. **Guard:** `railway/tests/test_email_lead_guards.py`.
-**Class:** misparsed-count
+**Class:** novel
 
 ## 2026-11-11 - Benchmark re-score after the gap replay: strict recall 20/25
 
