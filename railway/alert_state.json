@@ -52,16 +52,6 @@
     }
   ],
   "open": {
-    "adjudicate-one-row-two-referees:main:0abfa9d7cbe2f771": {
-      "first": 1794402626,
-      "last": 1794402626,
-      "subject": "CI RED: Adjudicate one row (two referees) \u2014 json.decoder.JSONDecodeError: Unterminated string starting at: line 8 column 16 (char 209)"
-    },
-    "adjudicate-one-row-two-referees:main:1a61120ce8cb8d56": {
-      "first": 1794397794,
-      "last": 1794397794,
-      "subject": "CI RED: Adjudicate one row (two referees) \u2014 --duplicate-of row 183207 not found (or is THE ROW)"
-    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -123,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-12T07:18:53+00:00",
+  "updated_at": "2026-11-12T12:50:51+00:00",
   "version": 1
 }
