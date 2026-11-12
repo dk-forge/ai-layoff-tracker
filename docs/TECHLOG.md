@@ -1,3 +1,8 @@
+## 2026-11-12 - Referees that both rule a row "not a layoff" agree, whatever verb they use
+
+**What.** Adjudication run 43221393926 (row 183237, Microsoft 60,000): both referees found the figure a buyout offer and not layoffs; Sonnet 4.5 answered `edit {job_count: 0}`, GPT-4o `trash`. `decide()` compares actions literally, so it read a disagreement and applied nothing. Run 43221405052 merged the Ohio duplicate 179293 into 179254 (both agreed). Run 43221399220 (183367, Philippine National Police 1,562) is a genuine split, GPT-4o kept a disciplinary purge against rule 6, and is left for a human. **Fix:** `_zero_edit_is_trash()` reads an edit that sets job_count to zero as "trash" before comparing; an edit to a real count still disagrees with trash, and a zero edit never agrees with keep. **Guard:** `railway/tests/test_email_lead_guards.py` (EditToZeroIsATrash).
+**Class:** wrong-scope-or-key
+
 ## 2026-11-12 - 2.20.317 A correction now reaches the public copy of the email
 
 **What.** The 2026-W45 correction ("revised to 30,595 job cuts worldwide", 2026-11-09) was attached through `/edition-correction` and shows on `/editions/weekly/2026-W45/`, but `/digest/2026-11-08/`, the public copy the email's own archive links point to, still read 134,595 with no note. The two archives store separately and only the editions page read `corrections`. **Fix:** `alt_digest_pub_edition_ref()` maps a public copy to its edition (weekly: ISO week; daily: its date, only when the copy carries the layoff section, so a talent-only daily never wears a layoff correction) and `alt_digest_pub_render_page()` prints the notes above the unchanged email. **Guard:** `railway/tests/test_digest_public_archive.py` (CorrectionReachesThePublicCopy).

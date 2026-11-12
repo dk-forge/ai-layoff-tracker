@@ -95,3 +95,27 @@ class RefereeIsToldTheRule(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EditToZeroIsATrash(unittest.TestCase):
+    """Run 43221393926 (2026-11-12, row 183237): both referees found the
+    60,000 a buyout offer and not layoffs, one said "trash" and the other
+    "edit job_count to 0". A row with zero jobs is not a layoff row, so both
+    are the same decision and the referees agreed."""
+
+    A, B = "anthropic/x", "openai/y"
+
+    def test_edit_to_zero_jobs_agrees_with_trash(self):
+        v = {self.A: {"recommended_action": "edit", "edit_fields": {"job_count": 0, "job_count_max": 0}},
+             self.B: {"recommended_action": "trash", "edit_fields": None}}
+        self.assertEqual(adjudicate_row.decide(v), ("agree", "trash", None))
+
+    def test_edit_to_a_real_count_still_disagrees_with_trash(self):
+        v = {self.A: {"recommended_action": "edit", "edit_fields": {"job_count": 500}},
+             self.B: {"recommended_action": "trash", "edit_fields": None}}
+        self.assertEqual(adjudicate_row.decide(v), ("disagree", "keep", None))
+
+    def test_edit_to_zero_never_agrees_with_keep(self):
+        v = {self.A: {"recommended_action": "edit", "edit_fields": {"job_count": 0}},
+             self.B: {"recommended_action": "keep", "edit_fields": None}}
+        self.assertEqual(adjudicate_row.decide(v), ("disagree", "keep", None))
