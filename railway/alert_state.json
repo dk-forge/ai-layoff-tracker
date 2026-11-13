@@ -127,6 +127,11 @@
       "last": 1794565021,
       "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on e9974f1d)"
     },
+    "send-email-digest:main:a6ae3156cd489daa": {
+      "first": 1794581986,
+      "last": 1794581986,
+      "subject": "CI RED: Send email digest \u2014 DIGEST_TEST_TO is set and 1 real recipient(s) are due for the weekly tier right now. A test send would take this pass and they would wait for the next o"
+    },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
       "last": 1794225755,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T14:53:27+00:00",
+  "updated_at": "2026-11-13T14:59:46+00:00",
   "version": 1
 }
