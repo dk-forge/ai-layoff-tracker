@@ -7551,7 +7551,9 @@ function alt_tracker_bootstrap_payload() {
  * rejects the server-inlined board and the first paint becomes six fetches.
  */
 function alt_signal_board_periods($now = null) {
-    if ($now === null) $now = (int) current_time('timestamp');
+    // The SITE's day (New York), never the WordPress zone: after 20:00 New York
+    // the WP clock read tomorrow and Today counted an empty day (2026-11-13).
+    if ($now === null) $now = function_exists('alt_site_now_ts') ? (int) alt_site_now_ts() : (int) current_time('timestamp');
     $now  = (int) $now;
     $iso  = function ($ts) { return date('Y-m-d', $ts); };
     $y    = (int) date('Y', $now);
