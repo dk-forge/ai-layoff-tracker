@@ -129,7 +129,14 @@ class InNode(unittest.TestCase):
 
     def test_event_names_are_the_fixed_five(self):
         self.assertEqual(self._run("R.EVENTS"),
-                         ["digest_signup", "follow", "embed_copy", "cite_copy", "resume_prompt_click"])
+                         ["digest_signup", "follow", "embed_copy", "cite_copy", "resume_prompt_click",
+                          "rss_click", "outbound_source_click"])
+
+    def test_feed_and_outbound_helpers(self):
+        self.assertEqual(self._run("[R.isFeedHref('https://asktherecruiter.com/blog/feed/layoffs'),R.isFeedHref('/feed/layoffs/'),R.isFeedHref('https://x.com/a')]"),
+                         [True, True, False])
+        self.assertEqual(self._run("[R.outboundHost('https://www.sec.gov/a?b=1','asktherecruiter.com'),R.outboundHost('https://asktherecruiter.com/x','asktherecruiter.com'),R.outboundHost('/rel','a.com')]"),
+                         ["www.sec.gov", None, None])
 
     def test_send_without_gtag_is_a_no_op_and_unknown_events_are_dropped(self):
         self.assertEqual(self._run("[R.send('follow',{}),R.send('pageview_hack',{})]"), [False, False])
