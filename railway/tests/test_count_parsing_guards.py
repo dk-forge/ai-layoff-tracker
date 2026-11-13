@@ -286,6 +286,57 @@ class WordpressSecHeadcountContextGuardTests(unittest.TestCase):
         self.assertLess(gate, insert)
         self.assertIn("alt_count_evidence_missing", body)
 
+@unittest.skipUnless(PHP, "php binary not available")
+class WordpressLabelledEstimateEvidenceTests(unittest.TestCase):
+    """A percent-only 8-K (FICO 2026-10-06, "approximately 15% of positions")
+    posts a LABELLED estimate (owner ruling 2026-11-05). The count 562 is
+    pct x 10-K headcount, so it appears in the excerpt only as the formula, never
+    beside a worker noun, and the 8-K gate answered 422 alt_count_evidence_missing
+    for every such filing (live run 2026-11-13). The gate must accept it only
+    when the payload carries the full labelled estimate AND the excerpt holds
+    the filing's own sentence."""
+
+    SENTENCE = "reduce its workforce by approximately 15% of positions"
+    EXCERPT = ("Estimate: 15% x 3,747 employees = 562 (rounded). Employees from 10-K "
+               "for fiscal year ended 2026-09-30, accession 0000814547-26-000042. "
+               "Filing states: \"" + SENTENCE + "\"")
+
+    def _call(self, count, excerpt, meta):
+        code = (_php_function("alt_estimate_evidence_ok")
+                + "\necho json_encode(alt_estimate_evidence_ok(%d, %s, json_decode(%s, true)));"
+                % (count, json.dumps(excerpt), json.dumps(json.dumps(meta))))
+        proc = subprocess.run([PHP, "-r", code], capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def _meta(self, **over):
+        meta = {"job_count_is_estimate": True,
+                "headcount_estimate": {"label": "estimate", "job_count": 562,
+                                       "reported_percent": 15.0,
+                                       "reported_text": self.SENTENCE}}
+        meta.update(over)
+        return meta
+
+    def test_accepts_a_complete_labelled_estimate(self):
+        self.assertTrue(self._call(562, self.EXCERPT, self._meta()))
+
+    def test_refuses_without_the_estimate_flag(self):
+        self.assertFalse(self._call(562, self.EXCERPT, self._meta(job_count_is_estimate=False)))
+
+    def test_refuses_when_the_count_is_not_the_estimate(self):
+        self.assertFalse(self._call(900, self.EXCERPT, self._meta()))
+
+    def test_refuses_when_the_filings_own_sentence_is_missing(self):
+        self.assertFalse(self._call(562, "Estimate: 15% x 3,747 employees = 562 (rounded).", self._meta()))
+
+    def test_refuses_an_unlabelled_excerpt(self):
+        self.assertFalse(self._call(562, self.SENTENCE, self._meta()))
+
+    def test_gate_is_wired_into_the_8k_check(self):
+        body = _php_function("alt_api_add")
+        self.assertIn("alt_estimate_evidence_ok", body)
+
+
 class WhitespaceShapeGuardTests(unittest.TestCase):
     """Whitespace was the blind spot in both number guards (found 2026-07-30).
 

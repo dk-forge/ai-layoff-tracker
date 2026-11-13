@@ -1276,6 +1276,27 @@ function alt_api_alert($request) {
  * types include multilingual reporting and must not be forced through an
  * English-only vocabulary.
  */
+/**
+ * A percent-only 8-K posts a LABELLED estimate (owner ruling 2026-11-05): the
+ * count is pct x the filer's 10-K headcount, so it appears in the excerpt only
+ * as the formula and `alt_count_has_headcount_context` can never see it beside
+ * a worker noun. Accept it only when the payload is the complete estimate for
+ * THIS count and the excerpt carries both the label and the filing's own
+ * sentence, so a bare count still has to pass the ordinary gate.
+ */
+function alt_estimate_evidence_ok($job_count, $excerpt, $meta) {
+    if (!is_array($meta) || empty($meta['job_count_is_estimate'])) return false;
+    $est = $meta['headcount_estimate'] ?? null;
+    if (!is_array($est) || ($est['label'] ?? '') !== 'estimate') return false;
+    if ((int) ($est['job_count'] ?? 0) !== (int) $job_count || (int) $job_count < 1) return false;
+    if (!is_numeric($est['reported_percent'] ?? null) || (float) $est['reported_percent'] <= 0) return false;
+    $norm = function ($t) { return trim(preg_replace('/\s+/u', ' ', (string) $t)); };
+    $sentence = $norm($est['reported_text'] ?? '');
+    $text = $norm($excerpt);
+    if ($sentence === '' || strpos($text, 'Estimate:') !== 0) return false;
+    return strpos($text, $sentence) !== false;
+}
+
 function alt_count_has_headcount_context($job_count, $text) {
     $job_count = max(0, (int) $job_count);
     $text = preg_replace('/\s+/u', ' ', (string) $text);
@@ -1464,7 +1485,8 @@ function alt_api_add($request) {
     }
     if ($source_type === '8K') {
         $count_evidence = sanitize_textarea_field($meta_in['excerpt'] ?? '');
-        if (!alt_count_has_headcount_context($job_count, $count_evidence)) {
+        if (!alt_count_has_headcount_context($job_count, $count_evidence)
+            && !alt_estimate_evidence_ok($job_count, $count_evidence, $meta_in)) {
             return new WP_Error(
                 'alt_count_evidence_missing',
                 '8-K excerpt must contain job_count in explicit worker/job context.',
