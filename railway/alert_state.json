@@ -49,6 +49,16 @@
       "reason": "Parked branch, and the alert scope is workflow:branch, so no green run of this scope can ever exist and the alarm cannot clear itself. The underlying work was the version-collision guard, which landed on main independently. The branch was abandoned rather than fixed.",
       "reviewed_by": "owner",
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
+    },
+    {
+      "closed_at": "2026-11-13T15:01:19+00:00",
+      "first": 1794210286,
+      "fixed_in": "not a repo defect; CodeQL green on PR #655 run 43446273485",
+      "key": "pr-607:refs-pull-607-head:816099a38a588959",
+      "last": 1794210286,
+      "reason": "The cause was external: GitHub returned HTTP 504 while serving the CodeQL CLI bundle to PR #607's CodeQL job on 2026-11-09. PR #607 is gone from origin (ORPHANED), so no run of that scope can ever clear it. CodeQL itself is healthy: all three Analyze legs and the CodeQL check passed on PR #655 (run 43446273485) on 2026-11-13.",
+      "reviewed_by": "Claude session 2026-11-13 (owner: decide within CLAUDE.md)",
+      "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
     }
   ],
   "open": {
@@ -77,21 +87,6 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "live-data-integrity-check:live.data:24f634c770a74434": {
-      "first": 1792431624,
-      "last": 1793727435,
-      "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
-    },
-    "live-data-integrity-check:main:03136e11f2bdd32d": {
-      "first": 1793382208,
-      "last": 1793382208,
-      "subject": "CI RED: Live data-integrity check \u2014 no error line could be extracted from the log"
-    },
-    "live-data-integrity-check:main:a3cde0067ab8e2ac": {
-      "first": 1794245804,
-      "last": 1794245804,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
-    },
     "live-surface-check:live.data:8b2aad5ae1ea05cc": {
       "first": 1794580080,
       "last": 1794580080,
@@ -112,30 +107,10 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "per-country-coverage-register:main:e3f5ab3efc5443e5": {
-      "first": 1794503717,
-      "last": 1794503717,
-      "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
-    },
-    "pr-607:refs-pull-607-head:816099a38a588959": {
-      "first": 1794210286,
-      "last": 1794210286,
-      "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
-    },
     "sandbox-main-green-check:main:848b64e654796072": {
       "first": 1794565021,
       "last": 1794565021,
       "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on e9974f1d)"
-    },
-    "send-email-digest:main:2d4c1c34721bc480": {
-      "first": 1794578562,
-      "last": 1794578562,
-      "subject": "CI RED: Send email digest \u2014 DIGEST_TEST_TO is set and 1 real recipient(s) are due for the daily tier right now. A test send would take this pass and they would wait for the next on"
-    },
-    "send-email-digest:main:a6ae3156cd489daa": {
-      "first": 1794578652,
-      "last": 1794578652,
-      "subject": "CI RED: Send email digest \u2014 DIGEST_TEST_TO is set and 1 real recipient(s) are due for the weekly tier right now. A test send would take this pass and they would wait for the next o"
     },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
@@ -148,6 +123,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T14:28:01+00:00",
+  "updated_at": "2026-11-13T15:26:38+00:00",
   "version": 1
 }

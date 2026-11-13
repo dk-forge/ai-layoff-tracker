@@ -225,8 +225,10 @@ ALL_STATES = [
     # empty CSV) and hi.py crashes on Cloudflare email-protection links. NM is
     # served by warn_new_states.fetch_nm, HI by the hi_ocr job. MS is likewise
     # custom (fetch_ms) and deliberately NOT listed here.
-    "NJ", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
+    "NJ", "NY", "OH", "OK", "OR", "PA", "SC", "SD", "TN", "TX", "UT",
     "VA", "VT", "WI",
+    # RI moved to warn_custom.fetch_ri (2026-11-13): warn-scraper's ri.py raised
+    # UnboundLocalError on every run once the page lost its "WARN Report" link.
     # WA and KY moved to custom scrapers (warn_new_states.fetch_wa /
     # warn_custom.fetch_ky). Excluded here so they aren't double-run; the generic
     # tier only had KY's frozen historical CSV anyway.

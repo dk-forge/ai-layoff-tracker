@@ -1,3 +1,29 @@
+## 2026-11-13 - Trace of the four remaining 5-Nov misses: Trade Desk, Campbell's, Weil, Hasbro
+
+**What.** Measured 2026-11-13 against live `/query`, Google News RSS and the run logs.
+| Event | Announced | Cause | State |
+|---|---|---|---|
+| Hasbro 587 (Pawtucket, RI WARN) | 2026-10-13 | RI WARN collector crashed (open `ri.py`, `UnboundLocalError`), RI wrote nothing since 2026-08-28 | **Fixed**: PR #657 (2.20.323), live row 183434, 587, effective 2026-12-24 |
+| The Trade Desk 15% | 2026-09-03/04 | Outside every replay window (gap replay starts 09-29) and the 09-07 write was lost in the host move (TECHLOG 2026-09-12); headlines are percent-only | Replayed 09-03..09-10 (run 43446967969, 106 candidates, 3 posted, $0.0096): still no row, candidates dropped as non-events for want of a count |
+| Campbell's 13% of salaried staff | 2026-09-03/04 | Same window, same reason ("hundreds of jobs", "13% of salaried workforce") | Same replay: no row. The only live Campbell's rows are June (111) and March (200) |
+| Weil Gotshal dissolution | 2026-10-28 | Reached by the dated query; a firm wind-down with no stated headcount in any headline | Not a defect: no count to store. Whether a dissolution is a layoff event is a methodology call |
+Common cause for Trade Desk and Campbell's: a percent-only or "hundreds" headline has no stored count, and the estimate ruling (2026-11-05) covers 8-Ks only. Extending it to news is the owner's call; both companies' 10-K headcounts are available through `headcount_estimate`. No article page is fetched (RSS only), so a count in an article body is out of reach by design. RI after the fix: 85 notices read, above the collapse threshold (0.3 x floor 123).
+**Guard:** `railway/tests/test_warn_ri_custom.py` (PR #657); the rest is a measurement
+**Class:** novel (a measurement plus one fix)
+
+## 2026-11-13 - 2.20.323 Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
+
+**What.** Trace of the Hasbro miss: the RI DLT posted a 587-job Pawtucket notice on 2026-10-13 (WJAR, Providence Journal, Patch) and the tracker holds no 2026 Hasbro row; the newest RI row is 2026-08-28. Cause, from the warn-import log of 2026-11-13: `warn-scraper RI exited 1`, `UnboundLocalError: cannot access local variable 'headers'` in the open module's `ri.py`. It only follows a link whose text contains "WARN Report"; the page no longer has one, so `headers` is never bound and the state writes nothing. Freshness read it as UNKNOWN ("no observations", cadence 74 days), never dark, because RI's quiet spells are long. **Fix:** `warn_custom.fetch_ri` finds the workbook by link target (`.xlsx`/`.xls`), finds the header row by its "company" cell, maps columns with the generic tier's own matchers, and on failure names the links it saw (and says "unreachable" for a non-200, not "drift"). RI leaves `ALL_STATES`; its floor (123) moves to `legacy_custom`. **Not verified live:** dlt.ri.gov answers 403 to this sandbox, so the first real read is the next `warn-import` run; if the page publishes no workbook link at all the error will now list every link it saw.
+The public `data/us-jurisdictions.json` is generated from the collectors, so it was regenerated (hence the plugin version).
+**Guard:** `railway/tests/test_warn_ri_custom.py` (10 tests, red before); `test_us_registry` forced the regeneration
+**Class:** absent-read-as-ok (a crashed module read as a quiet state)
+
+## 2026-11-13 - Both 2026-11-12 headline incidents closed (us_all_time, ai_all_time)
+
+**What.** The 17:36Z recorder run on 2026-11-12 opened sticky incidents on `us_all_time` (worldwide minus US -55,767 on +16 entries) and `ai_all_time` (worldwide minus AI -53,553 on +36 entries), as the 2026-11-12 entry below predicted. Both were closed on the owner's instruction by `data_integrity.py --close-incident` in #654 (rows 183237, 183359, 183026, 183203, 183011, 183261, 183157, 183293, 179293, 183369). **Finding:** the window's disclosed removals on 2026-11-12 carry 74,855 jobs, 2,855 of them US (`us_jobs`) and none AI-attributed; the dominant one is 183237 Microsoft 60,000 (`us_jobs` 0, a buyout offer, trashed by both referees, run 43223859426). AI pair: `ai_all_time` read +0 jobs on +0 entries at open, so nothing crossed into AI and the complement move is rows leaving the non-AI side. US pair: 72,000 non-US jobs removed against a -55,767 net complement move leaves about +16,200 of non-US arrivals, so nothing re-scored into the US. A second session reached the same replacement baselines independently, read live about 14:26Z: `ai_all_time` 262,508 / 116, `us_all_time` 7,500,631 / 47,507. The containment pairs read UNKNOWN (named) until the next 17:30Z recorder run advances the group together; by design, not a pass. Qualcomm 183404 (the earlier "Trackers to 100%" session's follow-up): MERGED. `adjudicate-row.yml` run 43384113937 (07:13Z, both referees agreed, $0.0545) merged 183404 (DIGITIMES, 1,000, India) into 183243; run 43383718543 (07:10Z, $0.0239) merged 183369 (The Hindu, 1,000) into the same keeper. Live: one Qualcomm India row, 183243, 1,000 jobs, 10 sources. The corrections log records both merges but not their row IDs, which is why a repo search found nothing.
+**Guard:** none new - closed through the existing `close_incident()` path, which requires reviewer, finding, rows and an explicit baseline.
+**Class:** novel (an operational close of an incident a disclosed correction opened; no guard shipped)
+
 ## 2026-11-13 - 2.20.322 Every link to our own site in a digest email carries UTM tags
 
 An audit of the sent editions (daily 2026-11-13, weekly 2026-11-08) found one

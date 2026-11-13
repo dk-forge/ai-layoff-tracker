@@ -1017,6 +1017,15 @@ ACKNOWLEDGED_BACKLOG = {
     "Zimbabwe": ("2026-10-17",
                  "in the corpus since 2026-10-15; Labour Act s.12C/12D has not been "
                  "read verbatim, so no class is asserted"),
+    # Arrived in the corpus unnoticed; surfaced by data_integrity 2026-11-13
+    # (country_coverage_fresh UNKNOWN). Acknowledged as dated outstanding work.
+    # No regime is asserted: the Labour Code of the Russian Federation and the
+    # employment-service notification rules have not been read verbatim here,
+    # and no aggregate source has been assessed. Classifying it (register entry)
+    # is the work, and ops_status [3d] prints this every session until it is done.
+    "Russia": ("2026-11-13",
+               "in the corpus, surfaced 2026-11-13; the Labour Code collective-"
+               "redundancy notice rules have not been read, so no class is asserted"),
 }
 
 # The date is the FIRST element so `min()` over the backlog gives the oldest
