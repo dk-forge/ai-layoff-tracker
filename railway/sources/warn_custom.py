@@ -103,18 +103,85 @@ _TX_YEARS_BACK = 1          # current + previous year; Socrata holds the history
 
 
 def _tx_get(url, *, want_zip=False, attempts=3):
-    """GET a TWC url, retrying the empty-202 challenge. None when never served."""
+    """GET a TWC url, retrying the empty-202 challenge. None when never served.
+
+    Every refused attempt says WHAT came back. Until 2026-11-13 the log read
+    only "not served", which cannot tell a 403 block from the empty-202
+    challenge from a non-workbook body, and Texas sat dark for 44 days on that
+    one line."""
+    seen = []
     for i in range(attempts):
         try:
             r = requests.get(url, headers=_TX_UA, timeout=60)
             body = r.content or b""
             if r.status_code == 200 and body and (not want_zip or body[:2] == b"PK"):
                 return r
+            seen.append(f"HTTP {r.status_code}/{len(body)}B")
         except Exception as exc:
+            seen.append(type(exc).__name__)
             print(f"    TX {url.rsplit('/', 1)[-1]}: {exc}")
         if i + 1 < attempts:
             time.sleep(5 * (i + 1))
+    print(f"    TX {url.rsplit('/', 1)[-1]}: refused ({', '.join(seen)})")
     return None
+
+
+# WHEN TWC REFUSES OUR RUNNERS, READ ITS OWN WORKBOOK FROM THE PUBLIC ARCHIVE.
+#
+# 2026-11-13: TWC's edge refused BOTH runners, GitHub's (the scrape relay,
+# since 2026-10-20) and the self-hosted one that posts (the 2.20.298 top-up),
+# for the page and both workbooks, every day. The same URLs answered 200 from
+# elsewhere, holding notices through 2026-11-03. Texas sat dark 44 days with a
+# working parser, because the only input it was never given was the file.
+#
+# The fallback reads the newest EXISTING Wayback Machine capture of the very
+# same workbook. archive_sources.py captures it weekly beside every other
+# state's WARN document (it was the one source document missing from that
+# list). It is the agency's own file, byte for byte, so the parser, the columns
+# and the dedup hash are unchanged and an overlap cannot double-publish, and
+# rows still cite TWC's page. A capture older than TX_ARCHIVE_MAX_AGE_DAYS is
+# REFUSED, not used: an old copy would advance nothing and the freshness check
+# would rightly stay dark, so it must not be able to look like a fix.
+_WAYBACK = "https://web.archive.org"
+_ARCHIVE_UA = {"User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}
+TX_ARCHIVE_MAX_AGE_DAYS = 14
+
+
+def tx_workbook_urls(this_year=None):
+    """The TWC workbook URLs worth archiving: current and previous year."""
+    import datetime as _dt
+    y = this_year or _dt.date.today().year
+    return [_TX_XLSX_FALLBACK.format(year=yr) for yr in range(y, y - _TX_YEARS_BACK - 1, -1)]
+
+
+def _tx_wayback_get(url, today=None):
+    """(response, capture_date) for the newest usable capture, or (None, why)."""
+    import datetime as _dt
+    today = today or _dt.datetime.now(_dt.timezone.utc).date()
+    try:
+        cdx = requests.get(_WAYBACK + "/cdx/search/cdx",
+                           params={"url": url, "output": "json", "fl": "timestamp",
+                                   "filter": "statuscode:200", "limit": "-1"},
+                           headers=_ARCHIVE_UA, timeout=60)
+        rows = cdx.json() if cdx.status_code == 200 and (cdx.content or b"").strip() else []
+    except Exception as exc:                                   # noqa: BLE001
+        return None, f"archive index unreachable ({type(exc).__name__})"
+    stamps = [str(r[0]) for r in (rows or [])[1:] if r and str(r[0])[:8].isdigit()]
+    if not stamps:
+        return None, "no archived capture"
+    ts = max(stamps)
+    captured = _dt.date(int(ts[:4]), int(ts[4:6]), int(ts[6:8]))
+    age = (today - captured).days
+    if age > TX_ARCHIVE_MAX_AGE_DAYS:
+        return None, (f"newest capture {captured.isoformat()} is {age}d old "
+                      f"(limit {TX_ARCHIVE_MAX_AGE_DAYS}d), not used")
+    try:
+        r = requests.get(f"{_WAYBACK}/web/{ts}id_/{url}", headers=_ARCHIVE_UA, timeout=90)
+    except Exception as exc:                                   # noqa: BLE001
+        return None, f"capture {ts} unreachable ({type(exc).__name__})"
+    if r.status_code == 200 and (r.content or b"")[:2] == b"PK":
+        return r, captured.isoformat()
+    return None, f"capture {ts} is not a workbook (HTTP {r.status_code})"
 
 
 def _tx_xlsx_links(page_html, this_year):
@@ -180,8 +247,12 @@ def _tx_workbook_entries():
     for year, link in links:
         resp = _tx_get(link, want_zip=True)
         if resp is None:
-            print(f"    TX {year} workbook: not served")
-            continue
+            resp, why = _tx_wayback_get(link)
+            if resp is None:
+                print(f"    TX {year} workbook: not served by TWC; archive: {why}")
+                continue
+            print(f"    TX {year} workbook: not served by TWC; read the archived "
+                  f"copy captured {why}")
         try:
             out += _tx_rows_to_entries(_tx_workbook_rows(resp.content), _TX_PAGE)
         except Exception as exc:

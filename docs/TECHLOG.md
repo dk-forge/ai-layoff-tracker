@@ -1,3 +1,36 @@
+## 2026-11-13 - Texas WARN: TWC refuses both runners, so read its own workbook from the archive
+
+warn:TX was 44 days dark (frontier 2026-09-30) after the 2.20.298 direct-URL
+fallback shipped. The posting runner's log every day: "TX: WARN page not
+served", "TX 2026 workbook: not served", "TX 2025 workbook: not served". TWC's
+edge refuses BOTH runners (GitHub's scrape relay since 2026-10-20, and the
+self-hosted runner that posts) for the page and the workbooks. The same URLs
+answered 200 from a cloud session on 2026-11-13: 115 notices, newest notice
+2026-11-03. The parser was fine; it was never handed the file.
+
+- `sources/warn_custom._tx_wayback_get`: when TWC refuses a workbook, read the
+  newest EXISTING Wayback capture of that same URL (`/web/<ts>id_/`, the raw
+  bytes). It is TWC's own file, so parser, columns and dedup hash are unchanged
+  and rows still cite TWC's page. A capture older than
+  `TX_ARCHIVE_MAX_AGE_DAYS` (14) is refused, never used: an old copy advances
+  nothing and must not look like a fix. TWC is always tried first.
+- `archive_sources.py` now captures the two TWC workbooks weekly (they were the
+  one source document missing from its list; 54 -> 56 URLs). Verified the
+  import works under `requirements-min.lock`, which that job installs.
+- `_tx_get` now logs what each refusal returned (`HTTP 403/13B`, `HTTP 202/0B`,
+  exception name), so the next block is diagnosable from the log.
+- Not done: no new fetch path to TWC from another address, and the importer
+  never asks the archive to fetch on its behalf. It reads captures the weekly
+  citation job already takes.
+- Lag: Texas rows can now trail TWC by up to a week (the Monday 08:00 capture).
+  TWC's layoff dates run months ahead of the notice date, so this does not
+  reopen the freshness incident, but a notice filed Tuesday lands the next
+  Monday. Fully closing that needs TWC to serve the runners; that is the
+  owner's call (allowlist request to TWC, or a different egress).
+
+**Guard:** `railway/tests/test_tx_warn_workbook.py` (RefusedRunnersReadTheArchivedWorkbook, +7, red before)
+**Class:** ran-but-brought-nothing (the relay re-read the frozen Socrata dataset and cleared every count floor)
+
 ## 2026-11-13 - 2.20.325 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
 
 **Class:** novel (owner review 2026-11-12, "fix all emails to 100%": a single-source figure led the subject and a job-board delta wore the words "open listings")

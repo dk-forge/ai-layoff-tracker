@@ -188,5 +188,103 @@ class ChallengedPageStillReadsTheWorkbook(unittest.TestCase):
         self.assertEqual([y for y, _ in wc._tx_xlsx_links("", YEAR)], [YEAR, YEAR - 1])
 
 
+class RefusedRunnersReadTheArchivedWorkbook(unittest.TestCase):
+    """2026-11-13: warn:TX dark 44 days AFTER the 2.20.298 direct-URL fallback
+    shipped. The posting runner's log, every day: "TX: WARN page not served",
+    "TX 2026 workbook: not served", "TX 2025 workbook: not served". TWC's edge
+    refused BOTH runners for the page AND the workbooks, while the same URLs
+    answered 200 elsewhere with notices through 2026-11-03. The fixture above is
+    that file. So when TWC refuses, the importer reads the newest Wayback
+    capture of the same workbook, and only a recent one."""
+
+    TODAY = datetime(2026, 11, 13).date()
+
+    def setUp(self):
+        self._get, self._sleep = wc.requests.get, wc.time.sleep
+        wc.time.sleep = lambda *_: None
+        self.book = FIXTURE.read_bytes()
+        self.fetched = []
+        self.capture_ts = "20261109081500"
+        self.index_up = True
+
+    def tearDown(self):
+        wc.requests.get, wc.time.sleep = self._get, self._sleep
+
+    def _serve(self):
+        def get(url, **kw):
+            self.fetched.append(url)
+            host = urllib.parse.urlsplit(url).hostname
+            if host == "www.twc.texas.gov":
+                return _Resp(status=403, content=b"Access Denied")   # every runner, every URL
+            if host == "web.archive.org" and url.endswith("/cdx/search/cdx"):
+                if not self.index_up:
+                    raise OSError("reset")
+                want = kw["params"]["url"]
+                rows = [["timestamp"]]
+                if want.endswith(f"warn-act-listings-{YEAR}-twc.xlsx"):
+                    rows.append([self.capture_ts])
+                return _Resp(content=b"[]", payload=rows)
+            if host == "web.archive.org" and f"/web/{self.capture_ts}id_/" in url:
+                return _Resp(content=self.book)
+            return _Resp(status=404)
+        wc.requests.get = get
+
+    def _entries(self):
+        real = wc._tx_wayback_get
+        wc._tx_wayback_get = lambda url, today=None: real(url, today=self.TODAY)
+        try:
+            return wc.tx_workbook_supplement([])
+        finally:
+            wc._tx_wayback_get = real
+
+    def test_a_refused_runner_reads_the_recent_capture(self):
+        self._serve()
+        out = self._entries()
+        self.assertEqual(len(out), 115)
+        self.assertIn("MV Transportation, Inc (Corpus Christi)", {e["company_name"] for e in out})
+
+    def test_archived_rows_cite_twc_and_hash_like_the_direct_read(self):
+        self._serve()
+        out = self._entries()
+        direct = wc._tx_rows_to_entries(wc._tx_workbook_rows(self.book), wc._TX_PAGE)
+        self.assertEqual({e["dedup_hash"] for e in out}, {e["dedup_hash"] for e in direct})
+        self.assertEqual({e["source_url"] for e in out}, {wc._TX_PAGE})
+
+    def test_a_stale_capture_is_refused_not_used(self):
+        self.capture_ts = "20261001000000"          # 43 days before TODAY
+        self._serve()
+        self.assertEqual(self._entries(), [])
+        r, why = wc._tx_wayback_get(wc._TX_XLSX_FALLBACK.format(year=YEAR), today=self.TODAY)
+        self.assertIsNone(r)
+        self.assertIn("not used", why)
+
+    def test_an_unreachable_archive_never_sinks_the_import(self):
+        self.index_up = False
+        self._serve()
+        self.assertEqual(self._entries(), [])
+
+    def test_twc_is_always_tried_first(self):
+        self._serve()
+        self._entries()
+        first_archive = next(i for i, u in enumerate(self.fetched) if "archive.org" in u)
+        self.assertTrue(any("twc.texas.gov" in u for u in self.fetched[:first_archive]))
+
+    def test_a_refusal_says_what_came_back(self):
+        self._serve()
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self._entries()
+        self.assertIn("HTTP 403", buf.getvalue())
+
+    def test_the_archive_job_captures_the_workbooks(self):
+        import archive_sources
+        urls = archive_sources.source_urls()
+        for u in wc.tx_workbook_urls():
+            self.assertIn(u, urls)
+        self.assertEqual(wc.tx_workbook_urls(2026), [
+            wc._TX_XLSX_FALLBACK.format(year=2026), wc._TX_XLSX_FALLBACK.format(year=2025)])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,15 @@ try:
     from ca_backfill import KNOWN_EDD_ANNUAL_PDFS
 except Exception:
     KNOWN_EDD_ANNUAL_PDFS = []
+# The TWC workbooks, the documents behind every current Texas row. They were
+# the one source document missing from this list, and since 2026-11-13 the
+# importer reads this capture when TWC's edge refuses our runners
+# (sources/warn_custom._tx_wayback_get), so this list now feeds Texas itself.
+try:
+    from sources.warn_custom import tx_workbook_urls
+except Exception:
+    def tx_workbook_urls():
+        return []
 
 UA = "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
 SAVE = "https://web.archive.org/save/"
@@ -108,7 +117,8 @@ def week_offset(total, now=None):
 def source_urls():
     urls = []
     seen = set()
-    for u in list(STATE_WARN_URL.values()) + list(KNOWN_EDD_ANNUAL_PDFS) + [CA_XLSX]:
+    for u in (list(STATE_WARN_URL.values()) + list(KNOWN_EDD_ANNUAL_PDFS) + [CA_XLSX]
+              + list(tx_workbook_urls())):
         u = (u or "").strip()
         if u and u not in seen:
             seen.add(u)
