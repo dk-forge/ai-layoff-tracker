@@ -1,3 +1,17 @@
+## 2026-11-13 - 2.20.324 Layoff digest: the preheader, the average and the monthly finding say what they count
+
+**Class:** two-copies-drifted (the preheader counted a different set of employers from the opening sentence beside it)
+**Guard:** `railway/tests/test_digest_layoff_wording_2026_11_13.py` (5 tests; 4 fail on 2.20.322)
+
+Email audit for the owner's "fix all emails to 100%" (2026-11-12):
+
+- The preheader said "across 7 companies" while the opening said 6 employers. It read `totals.companies`, which holds announced plans too. It now counts the verified employers the opening counts (`alt_briefing_verified_employers`).
+- The trend line said "the 8-week average" while averaging 7 weeks, because the provisional current week is left out. It now says "the average of the previous 7 weeks" whenever fewer than 8 settled weeks went in.
+- The monthly edition printed "45% of the week" in its findings. The findings now use the edition's own period (`alt_briefing_period_noun`).
+- The welcome email's plain-text part had no unsubscribe link, only "every edition has a one-click unsubscribe at the foot". It now carries the same link as the HTML footer.
+
+Left for the owner, from the same audit: the postal line is "AskTheRecruiter, Netherlands." with no street (`postal-address.json`), and the in-WordPress fallback digest carries no tracking disclosure. Both are legal copy.
+
 ## 2026-11-13 - Both 2026-11-12 headline incidents closed (us_all_time, ai_all_time)
 
 **What.** The 17:36Z recorder run on 2026-11-12 opened sticky incidents on `us_all_time` (worldwide minus US -55,767 on +16 entries) and `ai_all_time` (worldwide minus AI -53,553 on +36 entries), as the 2026-11-12 entry below predicted. Both were closed on the owner's instruction by `data_integrity.py --close-incident` in #654 (rows 183237, 183359, 183026, 183203, 183011, 183261, 183157, 183293, 179293, 183369). **Finding:** the window's disclosed removals on 2026-11-12 carry 74,855 jobs, 2,855 of them US (`us_jobs`) and none AI-attributed; the dominant one is 183237 Microsoft 60,000 (`us_jobs` 0, a buyout offer, trashed by both referees, run 43223859426). AI pair: `ai_all_time` read +0 jobs on +0 entries at open, so nothing crossed into AI and the complement move is rows leaving the non-AI side. US pair: 72,000 non-US jobs removed against a -55,767 net complement move leaves about +16,200 of non-US arrivals, so nothing re-scored into the US. A second session reached the same replacement baselines independently, read live about 14:26Z: `ai_all_time` 262,508 / 116, `us_all_time` 7,500,631 / 47,507. The containment pairs read UNKNOWN (named) until the next 17:30Z recorder run advances the group together; by design, not a pass. Qualcomm 183404 (the earlier "Trackers to 100%" session's follow-up): MERGED. `adjudicate-row.yml` run 43384113937 (07:13Z, both referees agreed, $0.0545) merged 183404 (DIGITIMES, 1,000, India) into 183243; run 43383718543 (07:10Z, $0.0239) merged 183369 (The Hindu, 1,000) into the same keeper. Live: one Qualcomm India row, 183243, 1,000 jobs, 10 sources. The corrections log records both merges but not their row IDs, which is why a repo search found nothing.
