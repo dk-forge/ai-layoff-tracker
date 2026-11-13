@@ -127,8 +127,7 @@ def page_table(html):
 
 
 def _fetch_page(ctx, name, ua):
-    di = _di()
-    if ctx._fetch is di._default_fetch:
+    if getattr(ctx, "is_live", False):
         # The bare URL, as a reader requests it: a query string would skip the
         # page cache and test a page nobody is served.
         req = urllib.request.Request(PAGE_URL, headers={"User-Agent": ua})
@@ -322,7 +321,7 @@ class BoardTilesRender:
 
     def run(self, ctx):
         di = _di()
-        if self.render is default_render and ctx._fetch is not di._default_fetch:
+        if self.render is default_render and not getattr(ctx, "is_live", False):
             try:
                 ctx.fetch(PAGE_URL + "#ua=render", ctx.timeout)
             except Exception as exc:                       # noqa: BLE001

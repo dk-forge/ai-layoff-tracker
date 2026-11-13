@@ -3205,6 +3205,12 @@ class Ctx:
         self.timeout = timeout
         self.cachebust = cachebust
         self.today = today or datetime.now(timezone.utc).date()
+        # Whether this ctx reads the real site. Decided HERE, against this
+        # module's own _default_fetch, because `python3 data_integrity.py` makes
+        # this copy `__main__` and board_consistency's lazy import loads a second
+        # copy: an identity test from over there is False in exactly the way CI
+        # runs it (board_tiles_render read UNKNOWN on every scheduled run).
+        self.is_live = fetch is _default_fetch
         self.errors = {}          # slice name -> transport exception, for Result.transport
         self.observations = {}    # slice name -> (state, {jobs, entries, captured_at}, suppressed)
         self.details = {}         # slice name -> its sentence, so an incident records WHY
