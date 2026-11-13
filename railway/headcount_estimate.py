@@ -35,7 +35,7 @@ _EMPLOYEES_SENTENCE = re.compile(
     r"\b(?:we|the\s+company)\s+(?:had|employed|have|employ)\s+(?:a\s+total\s+of\s+)?"
     r"(?:approximately\s+|about\s+|roughly\s+|around\s+|over\s+|more\s+than\s+)?"
     r"(\d{1,3}(?:,\d{3})+|\d{3,7})\s+(?:full[- ]time\s+|total\s+|global\s+)?"
-    r"(?:employees|people|team\s+members|associates)", re.I)
+    r"(?:employees|persons|people|team\s+members|associates)", re.I)
 
 COMPANYFACTS = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:0>10}.json"
 SUBMISSIONS = "https://data.sec.gov/submissions/CIK{cik:0>10}.json"
@@ -130,9 +130,23 @@ def _fetch_json(url):
     return r.json() if getattr(r, "status_code", 0) == 200 else None
 
 
+#: A 10-K runs 2 MB+ of HTML; the human-capital sentence sits deep inside it.
+_TEN_K_MAX_BYTES = 3_000_000
+
+
 def _fetch_text(url):
+    """The WHOLE stripped document, not the 8-K keyword window.
+
+    `edgar._fetch_filing_text` returns ~3,000 characters centred on the first
+    layoff keyword, which is right for an 8-K and useless here: a filer with no
+    dei:EntityNumberOfEmployees tag (FICO) states its headcount in a sentence
+    hundreds of thousands of characters in, so the fallback never saw it and
+    every percent-only 8-K from such a filer was refused.
+    """
     from sources import edgar
-    return edgar._fetch_filing_text(url)
+    resp = edgar._get(url)
+    resp.raise_for_status()
+    return edgar._strip_html(resp.text[:_TEN_K_MAX_BYTES])
 
 
 def sec_lookup(cik, fetch_json=None, fetch_text=None):

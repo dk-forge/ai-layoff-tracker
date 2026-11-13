@@ -1,3 +1,9 @@
+## 2026-11-13 - Recall: a percent-only 8-K from a filer with no XBRL headcount tag was never estimated
+
+**What.** FICO's 2026-10-06 8-K (0001193125-26-415732, "approximately 15% of positions") was still absent after the October EDGAR sweep (297 non-events, 0 posted) although its sentence parses. Root cause, reproduced 2026-11-13 against live SEC: `headcount_estimate.sec_lookup()` needs the filer's employee count; companyfacts has no `dei:EntityNumberOfEmployees` for FICO, so it fell back to the 10-K text, but through `edgar._fetch_filing_text`, which returns a ~3,000-character window around the first layoff keyword (an 8-K reader). The 10-K sentence ("we employed 3,747 persons across 31 countries") is hundreds of thousands of characters in, and "persons" was not in the noun list either. Every percent-only 8-K from an untagged filer was refused. **Fix:** `_fetch_text` reads the whole stripped document (3 MB cap); `persons` added. Live check: FICO now resolves to 3,747 employees, so 15% = 562 as a labelled estimate. **Next:** re-run `edgar-history-sweep.yml` range mode for 2026-10-06 so the row is created through the normal pipeline. Note the lookup takes the latest 10-K, not the latest one filed before the 8-K; FICO's differs by 2%, recorded not fixed.
+**Guard:** `railway/tests/test_headcount_estimate.py` (+3, red before)
+**Class:** wrong-scope-or-key (an 8-K window reader reused for a 10-K)
+
 ## 2026-11-13 - 2.20.320 GA4 gains rss_click and outbound_source_click
 
 **What.** The owner's GA4 list names `rss_click`, `watchlist_star`, `outbound_source_click`; this repo only sent five events. `reach.js` now sends `rss_click` (our /feed/layoffs link) and `outbound_source_click` (external link inside the table or a source cell; the host only, never the URL), through the same consent-gated `AltReach.send`. `watchlist_star` has no feature in this tracker, so it is not sent.
