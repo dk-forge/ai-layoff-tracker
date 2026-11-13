@@ -1,4 +1,4 @@
-## 2026-11-13 - 2.20.324 Layoff digest: the preheader, the average and the monthly finding say what they count
+## 2026-11-13 - 2.20.325 Layoff digest: the preheader, the average and the monthly finding say what they count
 
 **Class:** two-copies-drifted (the preheader counted a different set of employers from the opening sentence beside it)
 **Guard:** `railway/tests/test_digest_layoff_wording_2026_11_13.py` (5 tests; 4 fail on 2.20.322)
@@ -11,6 +11,13 @@ Email audit for the owner's "fix all emails to 100%" (2026-11-12):
 - The welcome email's plain-text part had no unsubscribe link, only "every edition has a one-click unsubscribe at the foot". It now carries the same link as the HTML footer.
 
 Left for the owner, from the same audit: the postal line is "AskTheRecruiter, Netherlands." with no street (`postal-address.json`), and the in-WordPress fallback digest carries no tracking disclosure. Both are legal copy.
+## 2026-11-13 - 2.20.323 Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
+
+**What.** Trace of the Hasbro miss: the RI DLT posted a 587-job Pawtucket notice on 2026-10-13 (WJAR, Providence Journal, Patch) and the tracker holds no 2026 Hasbro row; the newest RI row is 2026-08-28. Cause, from the warn-import log of 2026-11-13: `warn-scraper RI exited 1`, `UnboundLocalError: cannot access local variable 'headers'` in the open module's `ri.py`. It only follows a link whose text contains "WARN Report"; the page no longer has one, so `headers` is never bound and the state writes nothing. Freshness read it as UNKNOWN ("no observations", cadence 74 days), never dark, because RI's quiet spells are long. **Fix:** `warn_custom.fetch_ri` finds the workbook by link target (`.xlsx`/`.xls`), finds the header row by its "company" cell, maps columns with the generic tier's own matchers, and on failure names the links it saw (and says "unreachable" for a non-200, not "drift"). RI leaves `ALL_STATES`; its floor (123) moves to `legacy_custom`. **Not verified live:** dlt.ri.gov answers 403 to this sandbox, so the first real read is the next `warn-import` run; if the page publishes no workbook link at all the error will now list every link it saw.
+The public `data/us-jurisdictions.json` is generated from the collectors, so it was regenerated (hence the plugin version).
+**Guard:** `railway/tests/test_warn_ri_custom.py` (10 tests, red before); `test_us_registry` forced the regeneration
+**Class:** absent-read-as-ok (a crashed module read as a quiet state)
+
 
 ## 2026-11-13 - Both 2026-11-12 headline incidents closed (us_all_time, ai_all_time)
 
