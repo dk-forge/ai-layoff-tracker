@@ -1,3 +1,9 @@
+## 2026-11-13 - Refusal lines now name the company and the SEC lookup says which way it failed
+
+**What.** Run 43473718894 (2026-09-03..09-10, on #669) printed the first reasons: most percent-only items say "no share of the total workforce is stated", three say "no single SEC registrant matches the company name", one "the company name is not in the text"; Trade Desk is still unstored. The lines carried only a Google redirect URL, so which company each belongs to was unreadable. **Change:** the line also carries `company=` and the headline (public news title, 110 chars); `cik_for_company` records whether it found nothing because the SEC index was unreadable, no registrant has the name, or several do.
+**Guard:** `railway/tests/test_news_estimate.py` (+1, names asserted)
+**Class:** silent-stop (a refusal line that could not be tied to a company)
+
 ## 2026-11-13 - Percent-only refusals now say why (Trade Desk still unstored after the User-Agent fix)
 
 **What.** After #668 the 2026-09-03..09-10 replay (run 43470940775, 104 candidates, 35 calls, $0.0074) still stored nothing for The Trade Desk, and no log line said why: a model "not a layoff event" verdict and an estimate that could not form were both silent `return None`s counted as "non-events". Verified offline against the live RSS and SEC: all seven real Trade Desk headlines pass the title prefilter and six state "15%" of workforce/staff/headcount (`workforce_percent`); "The Trade Desk" resolves to CIK 1671933 with 3,843 employees (15% = 576). So the stop is in the model step or a path the offline run cannot reach. **Change:** `estimate_for_filing` records why it refused (`LAST_REFUSAL`), and the extractor prints one line for a percent-only item it refuses ("a share of the workforce but no estimate - <reason>") and for a model "not a layoff event" verdict when a share is stated; an ordinary non-event stays silent.

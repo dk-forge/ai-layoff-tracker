@@ -196,6 +196,8 @@ def sec_lookup(cik, fetch_json=None, fetch_text=None):
 
 #: Why the LAST estimate_for_filing call returned None, for one log line.
 LAST_REFUSAL = [None]
+#: Why the LAST cik_for_company call found nothing (None when it found one).
+LAST_INDEX_STATE = [None]
 
 
 def _refuse(why):
@@ -224,9 +226,12 @@ def _norm_name(name):
 def cik_for_company(name, fetch_json=None):
     """The CIK of the ONE SEC registrant whose normalised name equals `name`'s,
     else None. Share classes of one registrant count as one; two registrants
-    with the same normalised name are ambiguous and give None, never a guess."""
+    with the same normalised name are ambiguous and give None, never a guess.
+    LAST_INDEX_STATE says which of the three ways it found nothing."""
+    LAST_INDEX_STATE[0] = None
     key = _norm_name(name)
     if not key:
+        LAST_INDEX_STATE[0] = "no company name"
         return None
     index = _INDEX.get("map") if fetch_json is None else None
     if index is None:
@@ -236,13 +241,19 @@ def cik_for_company(name, fetch_json=None):
             for rec in (raw.values() if isinstance(raw, dict) else raw):
                 index.setdefault(_norm_name(rec.get("title")), set()).add(str(int(rec["cik_str"])))
         except Exception:
+            LAST_INDEX_STATE[0] = "SEC company index unreadable"
             return None
         if not index:
+            LAST_INDEX_STATE[0] = "SEC company index unreadable"
             return None                      # an unreadable index is never cached
         if fetch_json is None:
             _INDEX["map"] = index
     ciks = index.get(key, set())
-    return next(iter(ciks)) if len(ciks) == 1 else None
+    if len(ciks) == 1:
+        return next(iter(ciks))
+    LAST_INDEX_STATE[0] = ("no SEC registrant has that name" if not ciks
+                           else "several SEC registrants share that name")
+    return None
 
 
 def default_cik_finder(name):
@@ -277,7 +288,8 @@ def estimate_for_filing(raw_entry, raw_text, lookup=None, company=None, cik_find
     else:
         cik = cik_from_url(raw_entry.get("source_url"))
     if not cik:
-        return _refuse("no single SEC registrant matches the company name")
+        return _refuse("no single SEC registrant matches the company name"
+                       + (f" ({LAST_INDEX_STATE[0]})" if is_news and LAST_INDEX_STATE[0] else ""))
     facts = (lookup or default_lookup)(cik)
     if not facts or not facts.get("employees"):
         return _refuse("no 10-K employee count could be read for it")
