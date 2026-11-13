@@ -9,6 +9,9 @@ Owner reviewed the Nov 1-12 monthly test send and asked "are we 100%?". Six find
 5. **"this week's verified cuts" in a monthly.** "What it means" and the repeat-filer finding use the edition's period.
 6. **Ueno Bank 7,000 (id 183244) and MUV 3,000 (id 183111).** Put to `adjudicate-row.yml` (dry run; MUV also asked as a possible duplicate of Ueno). Both referees AGREE keep on both: the Ueno figure is the Paraguayan labour minister's count of jobs lost across companies linked to the bank in Paraguay, Argentina, Mexico, Nicaragua and Panama ("Multiple countries" is correct); MUV is a separate event (platform shutdown, 3,000 drivers). Open judgement for the owner, not a referee question: MUV's 3,000 are platform drivers, likely contractors rather than employees.
 
+**Class:** two-copies-drifted (the opening and Top employers ranked by two rules; the region table and Top countries defined "Multiple countries" two ways)
+**Guard:** railway/tests/test_digest_monthly_review_2026_11_13.py
+
 Tests: `test_digest_monthly_review_2026_11_13.py` (12; 10 fail on the pre-fix code). Two older tests updated to the new rule: the stat-style assertion (font-family now inherited) and the single-report lead wording.
 
 ## 2026-11-13 - The percent query's per-query cap cut Trade Desk (ranked 48th and 51st of 56)
