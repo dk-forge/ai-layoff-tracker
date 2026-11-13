@@ -91,11 +91,16 @@ RAW_TEXT_LIMIT = 3000
 MAX_DOC_BYTES = 500_000  # bound tag-stripping work on huge filings
 
 
+DEFAULT_USER_AGENT = "AiLayoffTracker contact@asktherecruiter.com"
+
+
 def _headers():
-    user_agent = os.environ.get("EDGAR_USER_AGENT")
-    if not user_agent:
-        print("EDGAR warning: EDGAR_USER_AGENT is not set — SEC rejects anonymous requests")
-        user_agent = "AiLayoffTracker unknown@example.com"
+    # SEC rejects an anonymous or placeholder agent ("unknown@example.com"), and
+    # only 8 of the 37 workflows that run the extractor set the variable, so an
+    # unset one reads the project's own contact (the value those 8 set). The
+    # headcount-estimate lookups in news jobs (headcount_estimate.sec_lookup)
+    # silently returned nothing without it (2026-11-13, Trade Desk).
+    user_agent = (os.environ.get("EDGAR_USER_AGENT") or "").strip() or DEFAULT_USER_AGENT
     return {"User-Agent": user_agent, "Accept": "application/json"}
 
 
