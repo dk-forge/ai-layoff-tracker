@@ -1,7 +1,8 @@
-## 2026-11-13 - Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
+## 2026-11-13 - 2.20.323 Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
 
 **What.** Trace of the Hasbro miss: the RI DLT posted a 587-job Pawtucket notice on 2026-10-13 (WJAR, Providence Journal, Patch) and the tracker holds no 2026 Hasbro row; the newest RI row is 2026-08-28. Cause, from the warn-import log of 2026-11-13: `warn-scraper RI exited 1`, `UnboundLocalError: cannot access local variable 'headers'` in the open module's `ri.py`. It only follows a link whose text contains "WARN Report"; the page no longer has one, so `headers` is never bound and the state writes nothing. Freshness read it as UNKNOWN ("no observations", cadence 74 days), never dark, because RI's quiet spells are long. **Fix:** `warn_custom.fetch_ri` finds the workbook by link target (`.xlsx`/`.xls`), finds the header row by its "company" cell, maps columns with the generic tier's own matchers, and on failure names the links it saw (and says "unreachable" for a non-200, not "drift"). RI leaves `ALL_STATES`; its floor (123) moves to `legacy_custom`. **Not verified live:** dlt.ri.gov answers 403 to this sandbox, so the first real read is the next `warn-import` run; if the page publishes no workbook link at all the error will now list every link it saw.
-**Guard:** `railway/tests/test_warn_ri_custom.py` (10 tests, red before)
+The public `data/us-jurisdictions.json` is generated from the collectors, so it was regenerated (hence the plugin version).
+**Guard:** `railway/tests/test_warn_ri_custom.py` (10 tests, red before); `test_us_registry` forced the regeneration
 **Class:** absent-read-as-ok (a crashed module read as a quiet state)
 
 ## 2026-11-13 - 2.20.322 Every link to our own site in a digest email carries UTM tags
