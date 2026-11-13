@@ -1482,6 +1482,87 @@ def fetch_ky():
     return out
 
 
+_RI_ORIGIN = "https://dlt.ri.gov"
+_RI_PAGE = _RI_ORIGIN + "/employers/worker-adjustment-and-retraining-notification-warn"
+
+
+def _ri_workbook_links(page_html, origin=_RI_ORIGIN):
+    """Absolute URLs of every .xlsx/.xls the page links, in page order.
+
+    warn-scraper's ri.py only follows a link whose TEXT contains "WARN Report";
+    when the page changed, `headers` was never bound and the state wrote
+    nothing for weeks (Hasbro's 587-job notice of 2026-10-13 never arrived).
+    The href is what is stable, not the label."""
+    out = []
+    for href in re.findall(r'href=["\']([^"\']+?\.xlsx?)(?:[?#][^"\']*)?["\']', page_html or "", re.I):
+        url = href if href.lower().startswith("http") else origin + (href if href.startswith("/") else "/" + href)
+        if url not in out:
+            out.append(url)
+    return out
+
+
+def _ri_cell(v):
+    if v is None:
+        return ""
+    if hasattr(v, "strftime"):
+        return v.strftime("%Y-%m-%d")
+    return str(v).strip()
+
+
+def _ri_entries_from_workbook(content, detail_url):
+    """Entries from one RI workbook: the header row is the first row with a
+    'company' cell (RI puts a title row above it); columns map through the same
+    matchers the generic tier uses, so the two never disagree about a column."""
+    from openpyxl import load_workbook
+    from .warn import _match, _count_col, _date_from
+    wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    out = []
+    for ws in wb.worksheets:
+        header = None
+        for row in ws.iter_rows(values_only=True):
+            cells = [_ri_cell(c) for c in row]
+            if header is None:
+                if any("company" in c.lower() for c in cells):
+                    header = [c.lower() for c in cells]
+                continue
+            rl = {h: v for h, v in zip(header, cells) if h}
+            company = _match(rl, ["company", "employer", "business"])
+            jobs = _count(_count_col(rl))
+            date = _date_from(rl, ["effective", "layoff"], ["notice"], ["date"])
+            e = _entry("RI", company, jobs, date, _match(rl, ["city", "location"]),
+                       _match(rl, ["closure", "type"]), detail_url)
+            if e:
+                out.append(e)
+    return out
+
+
+def fetch_ri(get=None):
+    """Rhode Island DLT WARN workbook, read by link target rather than link text."""
+    get = get or (lambda u: requests.get(u, headers=UA, timeout=TIMEOUT))
+    page = get(_RI_PAGE)
+    if getattr(page, "status_code", 200) != 200:
+        raise RuntimeError(f"RI: WARN page not served (HTTP {page.status_code}); "
+                           "unreachable, not drift")
+    links = _ri_workbook_links(page.text)
+    if not links:
+        seen = re.findall(r'href=["\']([^"\']+)["\']', page.text or "", re.I)
+        raise RuntimeError("RI: no workbook link on the WARN page; links seen: "
+                           + ", ".join(seen[:40]))
+    out, errors = [], []
+    for url in links:
+        try:
+            resp = get(url)
+            if getattr(resp, "status_code", 200) != 200 or not resp.content:
+                errors.append(f"{url}: HTTP {getattr(resp, 'status_code', '?')}")
+                continue
+            out += _ri_entries_from_workbook(resp.content, _RI_PAGE)
+        except Exception as exc:                          # noqa: BLE001
+            errors.append(f"{url}: {exc}")
+    if not out:
+        raise RuntimeError("RI: no notice read from " + "; ".join(errors or links))
+    return out
+
+
 #: States whose fetcher could not REACH one of its source documents this run,
 #: as {STATE: why}. Populated during a sweep and cleared at the start of the
 #: next one. This is the channel that keeps "we could not read it" from being
@@ -1495,7 +1576,7 @@ CUSTOM_STATES = {
     "TX": fetch_tx, "FL": fetch_fl, "GA": fetch_ga, "OH": fetch_oh,
     "MI": fetch_mi, "CO": fetch_co, "ID": fetch_id, "LA": fetch_la,
     "NC": fetch_nc, "NV": fetch_nv, "MN": fetch_mn, "MA": fetch_ma,
-    "NY": fetch_ny_history, "KY": fetch_ky,
+    "NY": fetch_ny_history, "KY": fetch_ky, "RI": fetch_ri,
 }
 
 
