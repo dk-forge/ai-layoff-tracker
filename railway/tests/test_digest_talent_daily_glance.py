@@ -24,14 +24,15 @@ sys.path.insert(0, os.path.dirname(__file__))
 from test_digest_talent_briefing import PHP, compose  # noqa: E402
 from test_digest_talent_daily_human_first import fixture, sig  # noqa: E402
 
-LINE = r"^  \S.*: .*(?:announced plan|open listings) · .*$"
+LINE = r"^  \S.*: .*(?:announced plan|since our last scan.*) · .*$"
 
 
 def big_fixture(n_plans=8, n_listings=6):
     fx = fixture()
     rows = fx["talent_q"]["rows"]
     for i in range(n_plans):
-        rows.append(sig(100 + i, f"Plan{i}", "DE", 10 + i, source="Handelsblatt"))
+        # Above the 25-role feature bar (owner review 2026-11-12).
+        rows.append(sig(100 + i, f"Plan{i}", "DE", 100 + i, source="Handelsblatt"))
     for i in range(n_listings):
         rows.append(sig(200 + i, f"List{i}", "US", 2 + i, board="Lever job board"))
     hiring = sum(1 for r in rows if r["signal_direction"] == "hiring")
@@ -63,18 +64,19 @@ class Glance(unittest.TestCase):
         self.assertIn('data-alt="glance"', self.html)
         head = self.text.split("Announced hiring plans", 1)[0]
         self.assertIn("At a glance (Nov 2-3)", head)
-        self.assertIn("Hiring signals: 7", head)
-        self.assertIn("Employer-activity signals: 2 from 2 employers", head)
-        self.assertIn("Biggest announced plan: Cohere, 1,500 roles in Toronto", head)
+        # Reworded 2026-11-12: each number says what it is, and they add up.
+        self.assertIn("All signals: 9 = 7 about hiring + 2 other employer news", head)
+        self.assertIn("Hiring: 7 (4 announced plans, 3 job-board changes)", head)
+        self.assertIn("Other employer news: 2 (funding, leadership, sites and pay, from 2 employers; not hiring counts)", head)
+        self.assertIn("Biggest announced plan: Cohere, 1,500 roles in Toronto (one report: MobileSyrup)", head)
         self.assertIn("Leading region: North America, 4 signals", head)
 
     def test_three_types_defined_under_the_box(self):
         head = self.text.split("Announced hiring plans\n", 1)[0]
         for line in ("Announced hiring plans: roles an employer or report says it will add.",
-                     "Open listings: roles live on career sites now.",
-                     "Employer-activity signals: wider reports, not confirmed hiring."):
+                     "Job-board changes: net new open roles on an employer's own careers board since our last scan."):
             self.assertIn(line, head)
-        self.assertLess(head.index("Leading region"), head.index("Open listings: roles live"))
+        self.assertLess(head.index("Leading region"), head.index("Job-board changes: net new"))
 
     def test_reported_signals_note_is_by_the_box_not_the_bottom(self):
         head = self.text.split("Announced hiring plans\n", 1)[0]
@@ -82,7 +84,7 @@ class Glance(unittest.TestCase):
         self.assertNotIn("not independently verified", self.text.split("\nNotes\n", 1)[1])
 
     def test_employer_activity_said_once_in_the_glance(self):
-        self.assertIn("Employer-activity signals: 2 from 2 employers", self.text)
+        self.assertEqual(len(re.findall(r"(?i)other employer news: \d", self.text)), 1, self.text)
         self.assertNotIn("Separately,", self.text)
         self.assertNotIn("In context:", self.text)
 
@@ -91,13 +93,14 @@ class Glance(unittest.TestCase):
         self.assertNotIn("Latest hiring signals", self.text)
         self.assertEqual(self.text.count("(Nov 2-3)"), 1)
 
-    def test_subject_format_unchanged(self):
-        self.assertEqual(self.out["metric"],
-                         "Who's hiring: Cohere plans 1,500 roles in Toronto + 6 more")
+    def test_subject_carries_no_single_source_figure(self):
+        # 2026-11-12: Cohere's 1,500 is one report (MobileSyrup), so the
+        # subject names employers and no figure (test_digest_talent_daily_2026_11_12).
+        self.assertEqual(self.out["metric"], "Who's hiring: Cohere, Tower, Applegreen + 4 more")
 
     def test_all_shown_says_see_all(self):
-        self.assertIn("See all 7 hiring signals", self.text)
-        self.assertNotIn("featured", self.text)
+        # Mondial Relay states no roles, so it is counted and not featured.
+        self.assertIn("6 featured, see all 7 hiring signals", self.text)
 
     def test_house_style(self):
         self.assertNotRegex(self.text + self.html, "[–—]")
@@ -110,8 +113,8 @@ class TenFeatured(unittest.TestCase):
         text = compose(big_fixture())["text"]
         lines = re.findall(LINE, text, re.M)
         self.assertEqual(len(lines), 10, lines)
-        # 10 lines plus the folded unstated plan (owner review 2026-11-11).
-        self.assertIn("11 featured, see all 21 hiring signals", text)
+        # Unstated plans are no longer folded in (owner review 2026-11-12).
+        self.assertIn("10 featured, see all 21 hiring signals", text)
         self.assertEqual(text.count("see all"), 1)
 
 
