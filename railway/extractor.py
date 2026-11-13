@@ -1628,6 +1628,15 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
 
     # Skip if the model determined this isn't a layoff event
     if not extracted.get("is_layoff_event"):
+        # Silent for the ordinary non-event; NOT silent when the text states a
+        # share of the workforce, the one shape that now has an estimate path
+        # (the Trade Desk replays dropped it with no line saying why).
+        import headcount_estimate
+        if headcount_estimate.workforce_percent(
+                raw_text if raw_text is not None else raw_entry.get("raw_text"),
+                company=extracted.get("company_name")):
+            print("Extraction refused: the model ruled it not a layoff event although a "
+                  f"share of the workforce is stated - source: {raw_entry.get('source_url')}")
         return None
 
     # Skip if no usable job count. ONE exception (owner ruling 2026-11-05,
@@ -1649,6 +1658,8 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
             job_count = estimate["job_count"]
             extracted["job_count_max"] = job_count
         elif not job_count:
+            print("Extraction refused: a share of the workforce but no estimate - "
+                  f"{headcount_estimate.LAST_REFUSAL[0]} - source: {raw_entry.get('source_url')}")
             return None
     if estimate is not None:
         pass
