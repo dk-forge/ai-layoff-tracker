@@ -49,6 +49,16 @@
       "reason": "Parked branch, and the alert scope is workflow:branch, so no green run of this scope can ever exist and the alarm cannot clear itself. The underlying work was the version-collision guard, which landed on main independently. The branch was abandoned rather than fixed.",
       "reviewed_by": "owner",
       "subject": "CI SELF-TIMEOUT: Tests \u2014 the job cancelled ITSELF on timeout-minutes: it exceeded the maximum execution time of 15m0s"
+    },
+    {
+      "closed_at": "2026-11-13T15:01:19+00:00",
+      "first": 1794210286,
+      "fixed_in": "not a repo defect; CodeQL green on PR #655 run 43446273485",
+      "key": "pr-607:refs-pull-607-head:816099a38a588959",
+      "last": 1794210286,
+      "reason": "The cause was external: GitHub returned HTTP 504 while serving the CodeQL CLI bundle to PR #607's CodeQL job on 2026-11-09. PR #607 is gone from origin (ORPHANED), so no run of that scope can ever clear it. CodeQL itself is healthy: all three Analyze legs and the CodeQL check passed on PR #655 (run 43446273485) on 2026-11-13.",
+      "reviewed_by": "Claude session 2026-11-13 (owner: decide within CLAUDE.md)",
+      "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
     }
   ],
   "open": {
@@ -117,11 +127,6 @@
       "last": 1794503717,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
-    "pr-607:refs-pull-607-head:816099a38a588959": {
-      "first": 1794210286,
-      "last": 1794210286,
-      "subject": "CI RED: PR #607 \u2014 Unable to download and extract CodeQL CLI: Unexpected HTTP response: 504"
-    },
     "sandbox-main-green-check:main:848b64e654796072": {
       "first": 1794565021,
       "last": 1794565021,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T15:01:15+00:00",
+  "updated_at": "2026-11-13T15:01:19+00:00",
   "version": 1
 }
