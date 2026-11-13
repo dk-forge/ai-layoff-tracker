@@ -1,8 +1,21 @@
-## 2026-11-13 - 2.20.326 The digest's region bars place an unlocated row by its employer's HQ
+## 2026-11-13 - 2.20.327 The digest's region bars place an unlocated row by its employer's HQ
 
 **What.** Owner ruling 2026-11-13 ("place rows by employer HQ in the email, labelled"), answering the open item from the 2026-11-12 email audit: the 2026-W45 weekly printed "Not recorded 69,026" of 134,595 (51%), news rows that name the employer but not where the jobs are. **Change:** `alt_briefing_model()` sums verified rows with a blank `country` and a single-country `employer_country`; `alt_briefing_regions()` adds them to that country's region as a separate "by employer HQ" sub-line (the bars still sum to the worldwide figure and the sub-lines to their region, so pre-send check 1 is unchanged), and the glance says how many jobs were placed that way. The United States stat, the country list and every headline outside the email stay strict job location, as the CLAUDE.md country-filter rule requires; a "Multiple countries" HQ is not a place. **Guard:** `railway/tests/test_digest_briefing_hq.py`.
 **Class:** novel (an owner ruling on presentation; no defect)
 
+## 2026-11-13 - 2.20.326 Layoff digest: the preheader, the average and the monthly finding say what they count
+
+**Class:** two-copies-drifted (the preheader counted a different set of employers from the opening sentence beside it)
+**Guard:** `railway/tests/test_digest_layoff_wording_2026_11_13.py` (5 tests; 4 fail on 2.20.322)
+
+Email audit for the owner's "fix all emails to 100%" (2026-11-12):
+
+- The preheader said "across 7 companies" while the opening said 6 employers. It read `totals.companies`, which holds announced plans too. It now counts the verified employers the opening counts (`alt_briefing_verified_employers`).
+- The trend line said "the 8-week average" while averaging 7 weeks, because the provisional current week is left out. It now says "the average of the previous 7 weeks" whenever fewer than 8 settled weeks went in.
+- The monthly edition printed "45% of the week" in its findings. The findings now use the edition's own period (`alt_briefing_period_noun`).
+- The welcome email's plain-text part had no unsubscribe link, only "every edition has a one-click unsubscribe at the foot". It now carries the same link as the HTML footer.
+
+Left for the owner, from the same audit: the postal line is "AskTheRecruiter, Netherlands." with no street (`postal-address.json`), and the in-WordPress fallback digest carries no tracking disclosure. Both are legal copy.
 ## 2026-11-13 - 2.20.325 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
 
 **Class:** novel (owner review 2026-11-12, "fix all emails to 100%": a single-source figure led the subject and a job-board delta wore the words "open listings")
@@ -39,12 +52,14 @@ Common cause for Trade Desk and Campbell's: a percent-only or "hundreds" headlin
 **Class:** novel (a measurement plus one fix)
 
 
+
 ## 2026-11-13 - 2.20.323 Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
 
 **What.** Trace of the Hasbro miss: the RI DLT posted a 587-job Pawtucket notice on 2026-10-13 (WJAR, Providence Journal, Patch) and the tracker holds no 2026 Hasbro row; the newest RI row is 2026-08-28. Cause, from the warn-import log of 2026-11-13: `warn-scraper RI exited 1`, `UnboundLocalError: cannot access local variable 'headers'` in the open module's `ri.py`. It only follows a link whose text contains "WARN Report"; the page no longer has one, so `headers` is never bound and the state writes nothing. Freshness read it as UNKNOWN ("no observations", cadence 74 days), never dark, because RI's quiet spells are long. **Fix:** `warn_custom.fetch_ri` finds the workbook by link target (`.xlsx`/`.xls`), finds the header row by its "company" cell, maps columns with the generic tier's own matchers, and on failure names the links it saw (and says "unreachable" for a non-200, not "drift"). RI leaves `ALL_STATES`; its floor (123) moves to `legacy_custom`. **Not verified live:** dlt.ri.gov answers 403 to this sandbox, so the first real read is the next `warn-import` run; if the page publishes no workbook link at all the error will now list every link it saw.
 The public `data/us-jurisdictions.json` is generated from the collectors, so it was regenerated (hence the plugin version).
 **Guard:** `railway/tests/test_warn_ri_custom.py` (10 tests, red before); `test_us_registry` forced the regeneration
 **Class:** absent-read-as-ok (a crashed module read as a quiet state)
+
 
 ## 2026-11-13 - Both 2026-11-12 headline incidents closed (us_all_time, ai_all_time)
 

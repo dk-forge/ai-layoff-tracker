@@ -447,7 +447,7 @@ function alt_welcome_next_send($freq, $now = null) {
     return '';
 }
 
-function alt_welcome_body($row, $prefs_url) {
+function alt_welcome_body($row, $prefs_url, $unsub_url = '') {
     $names = alt_digest_list_names();
     $lines = '';
     $freqs = array();
@@ -465,7 +465,10 @@ function alt_welcome_body($row, $prefs_url) {
          . "You get:\n" . $lines . "\n"
          . ($next !== '' ? "Your first edition is due " . $next . " (New York time).\n\n" : '')
          . "Change lists, frequency or follows here:\n" . $prefs_url . "\n\n"
-         . "Every edition has a one-click unsubscribe at the foot.\n\n"
+         . "Every edition has a one-click unsubscribe at the foot.\n"
+         // The plain part carries the link too, as the HTML footer does
+         // (audit 2026-11-13: a text-only reader had no way out of this one).
+         . ($unsub_url !== '' ? "Unsubscribe now: " . $unsub_url . "\n" : '') . "\n"
          . alt_mail_postal_address() . "\n";
 }
 
@@ -484,7 +487,9 @@ function alt_digest_send_welcome($row) {
     }
     $headers = array_merge(alt_digest_from_header(), alt_digest_list_unsub_headers($row['unsub_token']));
     $prefs_url = alt_prefs_url($row);
-    $text = alt_welcome_body($row, $prefs_url);
+    $text = alt_welcome_body($row, $prefs_url,
+                             (!empty($row['unsub_token']) && function_exists('alt_digest_unsub_url'))
+                                 ? alt_digest_unsub_url($row['unsub_token']) : '');
     // THE NEW DESIGN (2.20.246): HTML in the subscriber design + this text as
     // the plain part, with preferences and unsubscribe links in the footer.
     if (function_exists('alt_account_mail_welcome_html') && function_exists('alt_digest_deliver')

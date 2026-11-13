@@ -1,5 +1,5 @@
 ---
-version: 2.20.326
+version: 2.20.327
 type: change
 area: email
 date: 2026-11-13

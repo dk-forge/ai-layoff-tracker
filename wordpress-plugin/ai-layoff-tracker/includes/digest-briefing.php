@@ -395,6 +395,9 @@ function alt_briefing_model($b, $now = null) {
         if ($w['jobs'] !== null) $settled[] = $w['jobs'];
     }
     $m['avg'] = $settled ? array_sum($settled) / count($settled) : null;
+    // How many weeks the average really covers: 7 while the current week is
+    // still provisional, and the trend line must say so (audit 2026-11-13).
+    $m['avg_weeks'] = count($settled);
     // The TONE word compares against the settled median, which one spike
     // (Sep 21-27 2026: 71,387) cannot drag; the printed average is the mean.
     $m['settled_median'] = alt_briefing_median($settled);
@@ -550,6 +553,19 @@ function alt_briefing_check_links($html, $m) {
 /* Template sentences                                                  */
 /* ------------------------------------------------------------------ */
 
+/** "the day" / "the week" / "the month": the edition's own period (audit 2026-11-13:
+ * the monthly printed "45% of the week"). */
+function alt_briefing_period_noun($m) {
+    $k = (string) ($m['kind'] ?? 'weekly');
+    return $k === 'daily' ? 'the day' : ($k === 'monthly' ? 'the month' : 'the week');
+}
+
+/** Distinct employers among the verified rows: the count the opening sentence uses. */
+function alt_briefing_verified_employers($m) {
+    return count(array_unique(array_map(function ($r) { return strtolower((string) $r['company_name']); },
+                                        (array) $m['rows'])));
+}
+
 /** Up to three findings, each from a rule with its evidence in the model. */
 function alt_briefing_findings($m) {
     $f = array();
@@ -570,7 +586,7 @@ function alt_briefing_findings($m) {
         $name = alt_digest_clean_employer($top['company_name']);
         if ($share >= 25) {
             $f[] = $name . ' alone is ' . alt_briefing_pct($top['job_count'], $ver)
-                 . ' of the week (' . alt_digest_number($top['job_count'])
+                 . ' of ' . alt_briefing_period_noun($m) . ' (' . alt_digest_number($top['job_count'])
                  . ' jobs), so one decision drives the total.';
         } else {
             $f[] = 'No single employer dominates: the largest, ' . $name . ' at '
@@ -595,7 +611,7 @@ function alt_briefing_findings($m) {
         $ind = array_key_first($m['industries']);
         $v = $m['industries'][$ind];
         $f[] = $ind . ' had the most verified cuts, ' . alt_digest_number($v) . ' ('
-             . alt_briefing_pct($v, $ver) . ' of the week).';
+             . alt_briefing_pct($v, $ver) . ' of ' . alt_briefing_period_noun($m) . ').';
     }
     // 4. Repeat filers.
     $by = array();
@@ -932,7 +948,10 @@ function alt_briefing_render($m, $send_id = 0) {
     $preheader = alt_digest_fit_preheader(
         alt_digest_count($m['ai'], 'cut') . ' attributed to AI',
         array(alt_digest_number($m['us']) . ' in the United States',
-              'across ' . alt_digest_count($m['companies'], 'company', 'companies'),
+              // The verified employers the opening counts, not totals.companies,
+              // which also holds announced plans (audit 2026-11-13: preheader
+              // "across 7 companies" beside a lead of "6 employers").
+              'across ' . alt_digest_count(alt_briefing_verified_employers($m), 'employer'),
               $m['provisional'] ? 'provisional' : ''));
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
                  'metric' => alt_briefing_metric($m));
@@ -1017,7 +1036,9 @@ function alt_briefing_trend($m) {
     $s = ($m['kind'] === 'monthly' ? 'The latest week' : 'This week') . ': ' . alt_digest_number($cur['jobs']);
     if ($m['avg'] !== null) {
         $rel = ($cur['jobs'] < $m['avg']) ? 'below' : 'above';
-        $s .= ', ' . $rel . ' the 8-week average of ' . alt_digest_number((int) round($m['avg']));
+        $nw = (int) ($m['avg_weeks'] ?? 8);
+        $span = ($nw === 8) ? 'the 8-week average' : 'the average of the previous ' . $nw . ' weeks';
+        $s .= ', ' . $rel . ' ' . $span . ' of ' . alt_digest_number((int) round($m['avg']));
     }
     $s .= '.';
     if ($m['outliers'] && $m['settled_median'] !== null) {
