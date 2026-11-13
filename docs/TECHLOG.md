@@ -1,3 +1,19 @@
+## 2026-11-13 - 2.20.323 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
+
+**Class:** owner review (2026-11-12, "fix all emails to 100%")
+**Guard:** `railway/tests/test_digest_talent_daily_2026_11_12.py` (10 tests on rows shaped like the 12 Nov window; 6 fail on 2.20.322). Before/after renders: `docs/email-renders/2026-11-13-talent-daily/`.
+
+The 12 Nov edition, "Who's hiring: Salute plans 12,000 roles in United States + 8 more":
+
+- **The subject led with one report.** Salute's 12,000 is a three-year veteran hiring goal from one Fox Business video page; Salute's own release said 10,000. A plan's number now leads the subject only when the row is tier `verified` (a filed document) or corroborated (the same employer from two or more publishers in the window, job boards excluded). Otherwise the subject names the first three employers and no figure ("Who's hiring: Salute, Airwallex, Mediaset + 6 more"), and the glance and lead line say "one report: Fox Business".
+- **"Cloudflare: 12 roles, open listings" was a net change.** A job-board row's headcount is the change since the tracker's last scan of that board (461 to 473). The line now reads "+12 open roles since our last scan, 473 listed", the board total read from the row's own headline. The section is "Job-board changes".
+- **The glance did not add up on its face.** "Hiring signals: 9" beside "Employer-activity signals: 104 from 104 employers" is now "All signals: 113 = 9 about hiring + 104 other employer news", then the hiring split by type and what the other news is. "Other employer news" is defined once.
+- **Low-value rows were featured.** Announced plans under 25 roles, or with no roles stated, are counted and reached by "See all", no longer listed or folded into "Also announced, roles not stated" (which the 2026-11-11 review had added; this review superseded it).
+- **The linked page kept counting.** The page for Nov 11-12 showed 17 hiring signals on 11-13 against the email's 9, because rows keep arriving after an 11:13 UTC send. The email now says "Counts as of HH:MM UTC; the page adds signals that arrive later." beside the link.
+- A tied leading region is named the same way in the glance and the region line.
+
+The talent tracker's own half (job-board placement, Cloudflare 3 of 473 postings placed) is talent-intelligence-tracker #328.
+
 ## 2026-11-13 - 2.20.322 Every link to our own site in a digest email carries UTM tags
 
 An audit of the sent editions (daily 2026-11-13, weekly 2026-11-08) found one

@@ -1,0 +1,39 @@
+Subject: Who's hiring: Salute plans 12,000 roles in United States + 8 more
+
+Who's hiring
+At a glance (Nov 11-12)
+  Hiring signals: 9
+  Employer-activity signals: 3 from 3 employers
+  Biggest announced plan: Salute, 12,000 roles in United States
+  Leading region: North America, 3 signals
+  Country not recorded: 2 of 12 signals (17%)
+These are reported signals: most are not independently verified.
+Announced hiring plans: roles an employer or report says it will add.
+Open listings: roles live on career sites now.
+Employer-activity signals: wider reports, not confirmed hiring.
+
+9 hiring signals, led by Salute (plans 12,000 roles in United States).
+
+Announced hiring plans
+From press reports, ranked by roles the employer said it will add.
+  🇺🇸 Salute: 12,000 roles, announced plan · United States · Fox Business https://www.foxbusiness.com/1
+  🇸🇬 Airwallex: 1,000 roles, announced plan · Singapore, Singapore · TNGlobal https://technode.global/2
+  🇮🇹 Mediaset: 430 roles, announced plan · Italy · la Repubblica https://www.repubblica.it/3
+  🇸🇿 Eswatini Air: 80 roles, announced plan · Eswatini · Eswatini Observer https://www.eswatiniobserver.com/4
+  🇨🇷 Universidad para la Paz: 7 roles, announced plan · Costa Rica · El Financiero CR https://www.elfinancierocr.com/5
+  Also announced, roles not stated: Real Value Supermarket.
+
+Open listings
+Live counts from employers' job boards, ranked by open roles; a different measure from press plans, so never ranked with them.
+  🌐 Cloudflare: 12 roles, open listings · country not recorded · Greenhouse job board https://job-boards.greenhouse.io/7
+  🇺🇸 Ramp: 11 roles, open listings · New York, United States · Ashby job board https://jobs.ashbyhq.com/8
+  🇺🇸 Neurophos: 7 roles, open listings · Austin, United States · Ashby job board https://jobs.ashbyhq.com/9
+  See all 9 hiring signals: https://asktherecruiter.com/blog/talent-intelligence-tracker/?since=2026-11-11&until=2026-11-12&direction=hiring
+By region, North America and Europe led with 3 signals each, followed by Asia-Pacific with 1. See where: https://asktherecruiter.com/blog/talent-intelligence-tracker/?since=2026-11-11&until=2026-11-12
+
+Notes
+  Signals by region: North America 3 · Europe 3 · Asia-Pacific 1 · Latin America 1 · Africa 1 · Multiple or other countries 1 · Not recorded 2.
+  2 signals carry no country.
+  Provisional: signals keep arriving for a few days after a period ends.
+  Snapshot composed November 13, 2026 at 14:44 UTC.
+  About the talent tracker: https://asktherecruiter.com/blog/talent-intelligence-tracker/
