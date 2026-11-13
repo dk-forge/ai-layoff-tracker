@@ -188,5 +188,66 @@ class ChallengedPageStillReadsTheWorkbook(unittest.TestCase):
         self.assertEqual([y for y, _ in wc._tx_xlsx_links("", YEAR)], [YEAR, YEAR - 1])
 
 
+class ChallengedTexasReadsTheArchiveCopy(unittest.TestCase):
+    """2026-11-13: warn:TX dark 44 days. TWC's AWS WAF challenges every scripted
+    request, the workbook URLs included, so the 2026-11-05 fallback URL is
+    challenged too. The newest EXISTING Internet Archive capture of the same
+    workbook URL is read instead. It must never ask the Archive for a NEW
+    capture (that is TWC fetched on our behalf, the block routed around), and a
+    missing capture must leave the import exactly as it was."""
+
+    def setUp(self):
+        self._get, self._sleep = wc.requests.get, wc.time.sleep
+        wc.time.sleep = lambda *_: None
+        self.fetched = []
+        self.book = FIXTURE.read_bytes()
+        self.capture = True
+
+    def tearDown(self):
+        wc.requests.get, wc.time.sleep = self._get, self._sleep
+
+    def _serve(self):
+        def get(url, params=None, **kw):
+            self.fetched.append(url)
+            host = urllib.parse.urlsplit(url).hostname
+            if host == "archive.org":
+                target = (params or {}).get("url", "")
+                if self.capture and target.endswith(f"warn-act-listings-{YEAR}-twc.xlsx"):
+                    return _Resp(content=b"{}", payload={"archived_snapshots": {"closest": {
+                        "available": True, "status": "200",
+                        "timestamp": f"{YEAR}1107123341",
+                        "url": "http://web.archive.org/web/x/" + target}}})
+                return _Resp(content=b"{}", payload={"archived_snapshots": {}})
+            if host == "web.archive.org":
+                return _Resp(content=self.book)
+            return _Resp(status=202)               # TWC challenges everything
+        wc.requests.get = get
+
+    def test_a_fully_challenged_twc_is_read_from_the_archive_capture(self):
+        self._serve()
+        names = {e["company_name"] for e in wc.tx_workbook_supplement([])}
+        self.assertIn("MV Transportation, Inc (Corpus Christi)", names)
+        raw = [u for u in self.fetched if urllib.parse.urlsplit(u).hostname == "web.archive.org"]
+        self.assertTrue(raw and all(f"/web/{YEAR}1107123341id_/" in u for u in raw))
+
+    def test_the_archive_is_never_asked_for_a_new_capture(self):
+        self._serve()
+        wc.tx_workbook_supplement([])
+        self.assertFalse([u for u in self.fetched if "/save" in u])
+
+    def test_no_capture_leaves_the_relayed_set_unchanged(self):
+        self.capture = False
+        self._serve()
+        before = [{"dedup_hash": "x", "company_name": "Relayed"}]
+        self.assertEqual(wc.tx_workbook_supplement(before), before)
+
+    def test_archive_entries_cite_the_official_twc_page(self):
+        self._serve()
+        out = wc.tx_workbook_supplement([])
+        self.assertTrue(out)
+        # The public row cites Texas's own page, never an archive.org URL.
+        self.assertEqual({e["source_url"] for e in out}, {wc._TX_PAGE})
+
+
 if __name__ == "__main__":
     unittest.main()

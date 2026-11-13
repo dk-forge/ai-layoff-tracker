@@ -165,6 +165,49 @@ def _tx_rows_to_entries(rows, detail_url):
 
 _TX_LAST_LINKS = [0]
 
+# THE ARCHIVE COPY (2026-11-13). From about 2026-09-30 TWC put an AWS WAF bot
+# challenge in front of www.twc.texas.gov (an empty HTTP 202 with
+# `x-amzn-waf-action: challenge`), and it now answers every scripted request,
+# the workbook URLs included, from the posting runner, the relay runner and a
+# cloud session alike. warn:TX went 44 days dark. Solving that challenge with a
+# scripted browser would be getting around a block aimed at automation, which
+# this project does not do. The Internet Archive independently captures the
+# same workbook URL (2026-11-07 was the newest capture on the day this was
+# written), and reading a capture it already holds is reading a public copy of
+# Texas's own file, not passing TWC's challenge. So when TWC does not serve a
+# workbook, the newest EXISTING capture is read instead. This never asks the
+# Archive to make a new capture (no Save Page Now): that would be TWC fetched on
+# our behalf, i.e. the block routed around through a proxy. The data is
+# therefore only as fresh as the Archive's own capture cadence, and the
+# collector logs the capture date so a stale archive reads as stale.
+_WAYBACK_AVAILABLE = "https://archive.org/wayback/available"
+_WAYBACK_RAW = "https://web.archive.org/web/{ts}id_/{url}"
+
+
+def _tx_archive_copy(url):
+    """(content, capture timestamp) of the newest EXISTING Archive capture of a
+    TWC workbook URL, or (None, None). Read-only: never requests a new capture."""
+    try:
+        r = requests.get(_WAYBACK_AVAILABLE, params={"url": url}, headers=UA, timeout=60)
+        snap = ((r.json() or {}).get("archived_snapshots") or {}).get("closest") or {}
+        ts = str(snap.get("timestamp") or "")
+        if not snap.get("available") or str(snap.get("status")) != "200" or not ts.isdigit():
+            return None, None
+        raw = _WAYBACK_RAW.format(ts=ts, url=url)
+        for i in range(3):
+            try:
+                resp = requests.get(raw, headers=UA, timeout=120)
+                body = resp.content or b""
+                if resp.status_code == 200 and body[:2] == b"PK":
+                    return body, ts
+            except Exception as exc:                       # noqa: BLE001
+                print(f"    TX archive copy: {exc}")
+            if i < 2:
+                time.sleep(5 * (i + 1))
+    except Exception as exc:                               # noqa: BLE001
+        print(f"    TX archive lookup: {exc}")
+    return None, None
+
 
 def _tx_workbook_entries():
     """Entries from TWC's current per-year workbooks; [] when not served."""
@@ -179,11 +222,16 @@ def _tx_workbook_entries():
     out = []
     for year, link in links:
         resp = _tx_get(link, want_zip=True)
-        if resp is None:
-            print(f"    TX {year} workbook: not served")
-            continue
+        content = resp.content if resp is not None else None
+        if content is None:
+            content, ts = _tx_archive_copy(link)
+            if content is None:
+                print(f"    TX {year} workbook: not served, and no Archive capture read")
+                continue
+            print(f"    TX {year} workbook: not served by TWC; read the Archive "
+                  f"capture of {ts[:4]}-{ts[4:6]}-{ts[6:8]}")
         try:
-            out += _tx_rows_to_entries(_tx_workbook_rows(resp.content), _TX_PAGE)
+            out += _tx_rows_to_entries(_tx_workbook_rows(content), _TX_PAGE)
         except Exception as exc:
             print(f"    TX {year} workbook: parse failed ({exc})")
     return out
