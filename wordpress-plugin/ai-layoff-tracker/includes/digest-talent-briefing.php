@@ -442,7 +442,7 @@ function alt_talent_job_boards($rows) {
 function alt_talent_region_lead($regions, $unplaced = 0) {
     $placed = array();
     foreach ((array) $regions as $r) {
-        if ($r['region'] === 'Not recorded' || $r['region'] === 'Multiple or other countries') continue;
+        if ($r['region'] === 'Not recorded' || in_array($r['region'], array('Multiple countries', 'Other countries'), true)) continue;
         if ((int) $r['jobs'] > 0) $placed[] = $r;
     }
     if (!$placed) return '';
@@ -530,7 +530,7 @@ function alt_talent_daily_glance($m, $types, $n_hire, $n_other) {
     }
     $best = null;
     foreach ((array) $m['regions'] as $r) {
-        if ($r['region'] === 'Not recorded' || $r['region'] === 'Multiple or other countries') continue;
+        if ($r['region'] === 'Not recorded' || in_array($r['region'], array('Multiple countries', 'Other countries'), true)) continue;
         if ((int) $r['jobs'] > 0 && ($best === null || (int) $r['jobs'] > (int) $best['jobs'])) $best = $r;
     }
     $unplaced = (int) ($m['unplaced'] ?? 0);
@@ -539,7 +539,7 @@ function alt_talent_daily_glance($m, $types, $n_hire, $n_other) {
         // below, so the glance and the region line never disagree.
         $tied = array();
         foreach ((array) $m['regions'] as $r) {
-            if ($r['region'] === 'Not recorded' || $r['region'] === 'Multiple or other countries') continue;
+            if ($r['region'] === 'Not recorded' || in_array($r['region'], array('Multiple countries', 'Other countries'), true)) continue;
             if ((int) $r['jobs'] === (int) $best['jobs']) $tied[] = $r['region'];
         }
         $names = count($tied) > 1 ? implode(', ', array_slice($tied, 0, -1)) . ' and ' . end($tied) : $best['region'];
@@ -692,8 +692,56 @@ function alt_talent_render_daily($m, $send_id = 0) {
                  'metric' => $subject !== '' ? $subject : alt_digest_count($m['total'], $m['noun']));
 }
 
+/**
+ * THE MONTHLY "WHO'S HIRING" IS A TEASER (owner review 2026-11-13).
+ *
+ * The full monthly briefing carried ten hiring cards, a region table, an
+ * 8-week chart and 21 tracked links: about 35 KB of the 184 KB message Gmail
+ * clipped, hiding the footer and the unsubscribe link. The month's hiring
+ * picture is on the talent tracker; the email names the five largest stated
+ * plans in one plain list and links the rest. No figure here is new: each is
+ * a row or a count the full briefing printed.
+ */
+function alt_talent_render_monthly_teaser($m, $send_id = 0) {
+    $from = $m['from']; $to = $m['to'];
+    $hire_url = alt_digest_talent_url($from, $to, array('direction' => 'hiring'));
+    $opening = alt_talent_opening($m);
+    $html = "<h2>Who's hiring</h2><p data-alt=\"dateline\">" . esc_html($m['range'] . " \xc2\xb7 monthly briefing") . '</p>'
+          . '<p data-alt="lead">' . esc_html($opening) . '</p>';
+    $text = "Who's hiring\n" . $m['range'] . " \xc2\xb7 monthly briefing\n" . $opening . "\n";
+    $rows = array_slice($m['hire'], 0, 5);
+    if ($rows) {
+        alt_briefing_section('Biggest hiring this month (' . $m['short'] . ')',
+            'Largest stated headcount first. Signals are published reports, not verified hires.', $html, $text);
+        $html .= '<ul>';
+        foreach ($rows as $r) {
+            $hc = alt_talent_headcount($r);
+            $place = implode(', ', array_filter(array((string) ($r['city'] ?? ''), alt_talent_country_name($r['country'] ?? ''))));
+            $line = alt_digest_clean_employer((string) $r['company']) . ': '
+                  . ($hc > 0 ? alt_digest_number($hc) . ' roles' : 'roles not stated')
+                  . ' (' . ($place !== '' ? $place . '; ' : '') . ((string) ($r['source_name'] ?? '') ?: 'report') . ')';
+            $html .= '<li>' . esc_html($line) . '</li>';
+            $text .= '  - ' . $line . "\n";
+        }
+        $html .= '</ul>';
+    }
+    $see = 'See all ' . alt_digest_count(max(count($m['hire']), (int) $m['hiring']), 'hiring signal') . ' for ' . $m['range'];
+    $html .= '<p data-alt="more"><a href="' . esc_url(alt_digest_track_link($send_id, $hire_url)) . '">'
+           . esc_html($see) . ' &rarr;</a></p>';
+    $text .= '  ' . $see . ': ' . $hire_url . "\n";
+    $read = alt_digest_date_range(gmdate('Y-m-d', $m['now']), gmdate('Y-m-d', $m['now'])) . ' at ' . gmdate('H:i', $m['now']) . ' UTC';
+    $note = 'Snapshot composed ' . $read . '. The tracker keeps counting, so it can show more signals for the same days.';
+    $html .= '<p data-alt="footnote">' . esc_html($note) . '</p>';
+    $text .= '  ' . $note . "\n";
+    $preheader = alt_digest_fit_preheader(alt_digest_count($m['hiring'], 'hiring signal'),
+        array('across ' . alt_digest_count($m['companies'], 'employer'), $m['provisional'] ? 'provisional' : ''));
+    return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
+                 'metric' => alt_digest_count($m['total'], $m['noun']));
+}
+
 function alt_talent_render($m, $send_id = 0) {
     if ($m['kind'] === 'daily') return alt_talent_render_daily($m, $send_id);
+    if ($m['kind'] === 'monthly') return alt_talent_render_monthly_teaser($m, $send_id);
     $from = $m['from']; $to = $m['to']; $kind = $m['kind'];
     $url = alt_digest_talent_url($from, $to);
     $word = array('daily' => 'today', 'weekly' => 'this week', 'monthly' => 'this month')[$kind] ?? 'this period';

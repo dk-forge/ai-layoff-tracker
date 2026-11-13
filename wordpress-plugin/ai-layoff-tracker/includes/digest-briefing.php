@@ -152,7 +152,7 @@ function alt_briefing_tuples($list) {
 /** Owner order (2026-11-02). Region rows print in this order and no other. */
 function alt_briefing_region_order() {
     return array('North America', 'Europe', 'Asia-Pacific', 'Middle East',
-                 'Latin America', 'Africa', 'Multiple or other countries', 'Not recorded');
+                 'Latin America', 'Africa', 'Multiple countries', 'Other countries', 'Not recorded');
 }
 
 /**
@@ -169,7 +169,12 @@ function alt_briefing_regions($countries, $ver_jobs, $hq = array()) {
     foreach ($countries as $country => $jobs) {
         $placed += $jobs;
         $region = function_exists('alt_digest_world_region') ? alt_digest_world_region($country) : 'Other';
-        if ($region === 'Other') $region = 'Multiple or other countries';
+        // ONE DEFINITION OF "Multiple countries" (owner review 2026-11-13): the
+        // region row carried "Multiple or other countries 13,148" beside Top
+        // countries' "Multiple countries 11,748"; the 1,400 was Russia, which
+        // the region table did not know. A row the table cannot place is now
+        // its own "Other countries" row, so the shared label shares a figure.
+        if ($region === 'Other') $region = ($country === 'Multiple countries') ? 'Multiple countries' : 'Other countries';
         $by[$region] = ($by[$region] ?? 0) + $jobs;
         $sub[$region][$country] = $jobs;
     }
@@ -256,6 +261,47 @@ function alt_briefing_lead_row($m) {
         if (alt_briefing_corroborated($r)) return $r;
     }
     return null;
+}
+
+/**
+ * Verified jobs per employer, largest first: THE ranking "Top employers"
+ * prints and the opening's "led by" must agree with (owner review
+ * 2026-11-13: the opening said "led by KLM" while Top employers ranked BT
+ * first). Keyed by the cleaned name, as both print it.
+ */
+function alt_briefing_employer_totals($m) {
+    $by = array();
+    foreach ((array) $m['rows'] as $r) {
+        $k = alt_digest_clean_employer($r['company_name']);
+        $by[$k] = ($by[$k] ?? 0) + (int) $r['job_count'];
+    }
+    arsort($by);
+    return $by;
+}
+
+/** Does any of this employer's rows in the period stand corroborated? */
+function alt_briefing_employer_corroborated($m, $name) {
+    foreach ((array) $m['rows'] as $r) {
+        if (alt_digest_clean_employer($r['company_name']) === $name && alt_briefing_corroborated($r)) return true;
+    }
+    return false;
+}
+
+/**
+ * The opening's lead clause. "led by X" only when X is also first in the
+ * employer ranking; when a single report outranks the largest corroborated
+ * employer, the clause says which rule picked X instead of implying X is
+ * the biggest.
+ */
+function alt_briefing_lead_clause($m) {
+    $lr = alt_briefing_lead_row($m);
+    if (!$lr) return '';
+    $name = alt_digest_clean_employer($lr['company_name']);
+    $where = alt_briefing_where($lr);
+    $at = $name . ($where !== '' ? ' in ' . $where : '');
+    $top = array_key_first(alt_briefing_employer_totals($m));
+    if ($top === null || $top === $name) return 'led by ' . $at;
+    return 'the largest corroborated: ' . $at . ' (' . alt_digest_number($lr['job_count']) . ' jobs)';
 }
 
 /** One row's evidence label, as printed beside it. */
@@ -625,7 +671,7 @@ function alt_briefing_findings($m) {
     $first = array_key_first($by);
     if ($first !== null && $by[$first][0] >= 3) {
         $f[] = alt_digest_clean_employer($first) . ' filed ' . $by[$first][0]
-             . ' separate notices this week, ' . alt_digest_number($by[$first][1]) . ' jobs in all.';
+             . ' separate notices in ' . alt_briefing_period_noun($m) . ', ' . alt_digest_number($by[$first][1]) . ' jobs in all.';
     }
     // 5. AI.
     if ($m['ai'] > 0) {
@@ -641,7 +687,9 @@ function alt_briefing_means($m) {
     $inds = array_slice($m['industries'], 0, 2, true);
     $share = alt_briefing_pct(array_sum($inds), $m['ver']);
     $names = implode(' and ', array_keys($inds));
-    $s = 'For recruiters and job seekers: ' . $share . ' of this week\'s verified cuts were in '
+    // The edition's own period, not "this week" (owner review 2026-11-13: a
+    // monthly said "28% of this week's verified cuts").
+    $s = 'For recruiters and job seekers: ' . $share . ' of the verified cuts in ' . alt_briefing_period_noun($m) . ' were in '
        . $names . ', so that is where the most newly affected candidates are';
     $states = array();
     foreach ((array) $m['rows'] as $r) {
@@ -701,12 +749,7 @@ function alt_briefing_opening($m) {
     $ver = $m['ver'];
     $n = alt_digest_number($ver);
     $employers = count(array_unique(array_map(function ($r) { return strtolower((string) $r['company_name']); }, $rows)));
-    $lead = '';
-    $lr = alt_briefing_lead_row($m);
-    if ($lr) {
-        $where = alt_briefing_where($lr);
-        $lead = 'led by ' . alt_digest_clean_employer($lr['company_name']) . ($where !== '' ? ' in ' . $where : '');
-    }
+    $lead = alt_briefing_lead_clause($m);
     if ($m['kind'] === 'daily') {
         if ($ver <= 0) return 'On ' . $m['range'] . ', no verified job cuts took effect in our records.';
         return 'On ' . $m['range'] . ', ' . alt_digest_count($employers, 'employer') . ' had verified job cuts take effect, '
@@ -763,6 +806,12 @@ function alt_briefing_render($m, $send_id = 0) {
     $glance = 'Of ' . alt_digest_number($m['ver']) . ' verified job cuts worldwide, '
             . alt_digest_number($m['us']) . ' were in the United States and '
             . alt_digest_number($m['ai']) . ' were explicitly attributed to AI by the employer.';
+    // THE SINGLE-REPORT SHARE IN THE HEADLINE, not only a footnote (owner
+    // review 2026-11-13: 42,200 of 80,227, 53%, sat under the stat cards).
+    if (!empty($m['single']) && $m['ver'] > 0) {
+        $glance .= ' ' . alt_digest_number($m['single']) . ' rest on a single news report not yet corroborated ('
+                 . alt_briefing_pct($m['single'], $m['ver']) . ').';
+    }
     alt_briefing_section(($kind === 'weekly' ? 'This week' : ucfirst($period_word)) . ' at a glance', $glance, $html, $text);
     list($ph, $pt) = alt_digest_stat_pair(array(
         array('label' => 'Worldwide', 'figure' => alt_digest_number($m['ver']), 'unit' => 'verified job cuts',
@@ -781,10 +830,6 @@ function alt_briefing_render($m, $send_id = 0) {
             . 'notice, an SEC filing or a named news report, counted on the date the cuts take effect; '
             . 'announced plans without a filing are left out. AI-attributed means the employer itself '
             . 'named AI as a reason.';
-    if (!empty($m['single']) && $m['ver'] > 0) {
-        $define .= ' Of the ' . alt_digest_number($m['ver']) . ', ' . alt_digest_number($m['single'])
-                 . ' rest on a single news report not yet corroborated.';
-    }
     $html .= '<p data-alt="note">' . alt_briefing_h($define) . '</p>';
     $text .= '  ' . $define . "\n";
     if ($m['regions']) {
@@ -941,9 +986,10 @@ function alt_briefing_render($m, $send_id = 0) {
         $html .= '<p data-alt="footnote">' . alt_briefing_h($n) . '</p>';
         $text .= '  ' . $n . "\n";
     }
-    $html .= '<p data-alt="footnote"><a href="' . esc_url($method) . '">How we count and data notes</a> &middot; '
-           . '<a href="' . esc_url($corr) . '">Submit a correction</a></p>';
-    $text .= '  How we count and data notes: ' . $method . "\n  Submit a correction: " . $corr . "\n";
+    // Methodology is already linked under "Explore the data"; a second link
+    // to it cost ~0.8 KB of a clipped message once the relay rewrote it.
+    $html .= '<p data-alt="footnote"><a href="' . esc_url($corr) . '">Submit a correction</a></p>';
+    $text .= "  Submit a correction: " . $corr . "\n";
 
     $preheader = alt_digest_fit_preheader(
         alt_digest_count($m['ai'], 'cut') . ' attributed to AI',
@@ -959,20 +1005,20 @@ function alt_briefing_render($m, $send_id = 0) {
 
 /** Monthly: the top employers of the period, rows summed by employer. */
 function alt_briefing_employers($m) {
-    $by = array();
-    foreach ((array) $m['rows'] as $r) {
-        $k = alt_digest_clean_employer($r['company_name']);
-        $by[$k] = ($by[$k] ?? 0) + (int) $r['job_count'];
-    }
-    arsort($by);
-    $by = array_slice($by, 0, 10, true);
+    $by = array_slice(alt_briefing_employer_totals($m), 0, 10, true);
     if (!$by) return array('', '');
     $html = ''; $text = '';
-    alt_briefing_section('Top employers this month', array_key_first($by) . ' had the most verified cuts this month.', $html, $text);
+    $first = array_key_first($by);
+    $lead = $first . ' had the most verified cuts this month'
+          . (alt_briefing_employer_corroborated($m, $first) ? '.' : ', on a single report not yet corroborated.');
+    alt_briefing_section('Top employers this month', $lead, $html, $text);
     $items = array();
     foreach ($by as $k => $v) $items[] = $k . ' ' . alt_digest_number($v);
     $line = implode(" \xc2\xb7 ", $items);
-    $html .= '<p data-alt="series">' . alt_briefing_h($line) . '</p>';
+    // A plain line, not a `series`: a series grows a ten-row bar chart that
+    // repeats every name and figure, ~9 KB of a monthly Gmail clipped at
+    // ~102 KB (owner review 2026-11-13). The ranking is the line.
+    $html .= '<p>' . alt_briefing_h($line) . '</p>';
     $text .= '  ' . $line . "\n";
     return array($html, $text);
 }
@@ -981,7 +1027,10 @@ function alt_briefing_employers($m) {
 function alt_briefing_biggest($m, $send_id) {
     // The daily shows its ten largest and links the rest (audit 2026-11-12:
     // a 40-row cap listed 33-job notices with no "See all").
-    $cap = ($m['kind'] === 'daily') ? 10 : (($m['kind'] === 'monthly') ? 10 : 6);
+    // Monthly 8, not 10 (owner review 2026-11-13): each card is ~2.5 KB once
+    // the relay rewrites its two links, and the monthly was clipped by Gmail.
+    // Top employers still names ten, and "See more" links the rest.
+    $cap = ($m['kind'] === 'daily') ? 10 : (($m['kind'] === 'monthly') ? 8 : 6);
     $rows = array_slice((array) $m['rows'], 0, $cap);
     if (!$rows) return array('', '');
     $items = array();
@@ -1007,7 +1056,9 @@ function alt_briefing_biggest($m, $send_id) {
     $word = array('daily' => 'today', 'weekly' => 'this week', 'monthly' => 'this month')[$m['kind']] ?? '';
     $title = 'Biggest cuts ' . $word . ' (' . $m['short'] . ')';
     $html = ''; $text = '';
-    alt_briefing_section($title, 'Verified only, largest first, each with the filing or report behind it.', $html, $text);
+    // Not "Verified only" (owner review 2026-11-13): the list carries rows
+    // that rest on one news report, each labelled, so the subtitle says so.
+    alt_briefing_section($title, 'Largest first, each with the filing or report behind it. A single news report not yet corroborated is labelled as one.', $html, $text);
     list($wh, $wt) = function_exists('alt_digest_world_cards')
         ? alt_digest_world_cards($items, 'alt_digest_rank_cards')
         : alt_digest_rank_cards($items);

@@ -106,19 +106,20 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
         ("table", "series-chart"): ("width:100%;border-collapse:collapse;"
                                     "margin:0 0 16px;mso-table-lspace:0;"
                                     "mso-table-rspace:0;"),
+        # TEXTLESS CELLS CARRY NO TYPE (2026-11-13, monthly edition clipped
+        # by Gmail at 183,793 bytes). A bar or track cell holds one
+        # zero-size &nbsp;, so a font and a colour on it style nothing, and
+        # at ~40 bar rows an edition they were ~8 KB of the clip budget.
         ("td", "bar"): (f"padding:0;height:{BAR_HEIGHT_PX}px;font-size:0;"
-                        f"line-height:0;font-family:{font};color:{accent};"
-                        f"background-color:{accent};border-radius:2px;"),
+                        f"line-height:0;background-color:{accent};border-radius:2px;"),
         ("td", "track"): (f"padding:0;height:{BAR_HEIGHT_PX}px;font-size:0;"
-                          f"line-height:0;font-family:{font};color:{muted};"
-                          f"background-color:{TRACK};"),
+                          f"line-height:0;background-color:{TRACK};"),
         ("td", "chart-label"): (f"padding:4px 10px 4px 0;font-family:{font};"
                                 f"font-size:{TYPE_SMALL}px;line-height:1.3;color:{ink};"
                                 f"vertical-align:middle;"
                                 f"width:30%;"),
-        ("td", "chart-cell"): (f"padding:4px 0;font-family:{font};font-size:{TYPE_SMALL}px;"
-                               f"line-height:1.3;color:{ink};"
-                               f"vertical-align:middle;"),
+        # Holds only the bar table, so no type either (same reason as above).
+        ("td", "chart-cell"): "padding:4px 0;vertical-align:middle;",
         ("td", "col-label"): (f"padding:6px 2px 0;font-family:{font};"
                               f"font-size:{TYPE_SMALL}px;line-height:1.35;color:{muted};"
                               f"vertical-align:top;"
