@@ -1,6 +1,6 @@
 ## 2026-11-13 - 2.20.323 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
 
-**Class:** owner review (2026-11-12, "fix all emails to 100%")
+**Class:** novel (owner review 2026-11-12, "fix all emails to 100%": a single-source figure led the subject and a job-board delta wore the words "open listings")
 **Guard:** `railway/tests/test_digest_talent_daily_2026_11_12.py` (10 tests on rows shaped like the 12 Nov window; 6 fail on 2.20.322). Before/after renders: `docs/email-renders/2026-11-13-talent-daily/`.
 
 The 12 Nov edition, "Who's hiring: Salute plans 12,000 roles in United States + 8 more":
