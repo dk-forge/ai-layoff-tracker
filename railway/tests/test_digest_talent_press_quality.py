@@ -81,14 +81,16 @@ class PressQuality(unittest.TestCase):
         self.assertNotIn(" led with ", self.text)
         self.assertRegex(self.text, r"Country not recorded: \d+ of \d+ signals \(\d+%\)")
 
-    def test_unstated_plans_fold_into_one_line(self):
-        self.assertNotIn("roles not stated, announced plan", self.text)
-        self.assertRegex(self.text, r"Also announced, roles not stated: .*Unstated0")
+    def test_unstated_plans_are_counted_not_featured(self):
+        # Superseded 2026-11-12: the fold is gone; unstated plans are reached
+        # by "See all" (test_digest_talent_daily_2026_11_12).
+        self.assertNotIn("roles not stated", self.text)
+        self.assertNotIn("Unstated0", self.text)
 
     def test_employer_activity_said_once(self):
-        counted = re.findall(r"(?i)\d[\d,]* employer-activity signal|employer-activity signals: \d", self.text)
+        counted = re.findall(r"(?i)other employer news: \d", self.text)
         self.assertEqual(len(counted), 1, self.text)
-        self.assertIn("Employer-activity signals: 10 from 10 employers", self.text)
+        self.assertIn("Other employer news: 10 (funding, leadership, sites and pay, from 10 employers", self.text)
         self.assertNotIn("Separately,", self.text)
 
     def test_house_style(self):

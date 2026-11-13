@@ -117,7 +117,7 @@ class JobBoardLinks(unittest.TestCase):
         self.assertIn('href="' + BOARD + '"', self.html)
 
     def test_listing_row_links_to_its_board_once(self):
-        (line,) = [l for l in self.lines("Braze") if "open listings" in l]
+        (line,) = [l for l in self.lines("Braze") if "since our last scan" in l]
         self.assertEqual(line.count(BOARD), 1, line)
 
     def test_no_board_no_link_never_invented(self):
@@ -130,7 +130,7 @@ class JobBoardLinks(unittest.TestCase):
     def test_each_row_stays_one_line(self):
         self.assertEqual(self.html.count('data-alt="item-line"'),
                          len([l for l in self.text.splitlines()
-                              if "announced plan ·" in l or "open listings ·" in l]))
+                              if "announced plan ·" in l or "since our last scan ·" in l]))
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
@@ -139,6 +139,7 @@ class ContextPeriod(unittest.TestCase):
     def test_context_states_window_and_distinct_employers(self):
         text = compose(fixture(NOV5))["text"]
         # Reworded 2026-11-06; the window now sits in the glance heading.
-        self.assertIn("Employer-activity signals: 137 from 137 employers", text)
+        # Reworded 2026-11-12.
+        self.assertIn("Other employer news: 137 (funding, leadership, sites and pay, from 137 employers", text)
         self.assertIn("At a glance (Nov 4-5)", text)
         self.assertNotIn("about 137", text)

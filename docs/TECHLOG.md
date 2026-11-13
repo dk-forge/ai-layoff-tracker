@@ -4,6 +4,28 @@
 **Guard:** `railway/tests/test_tx_warn_workbook.py::ChallengedTexasReadsTheArchiveCopy` (+4: archive capture read, never asks for a new capture, no capture changes nothing, rows cite TWC)
 **Class:** ran-but-brought-nothing (the source answered every run with a challenge, not data)
 
+## 2026-11-13 - 2.20.325 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
+
+**Class:** novel (owner review 2026-11-12, "fix all emails to 100%": a single-source figure led the subject and a job-board delta wore the words "open listings")
+**Guard:** `railway/tests/test_digest_talent_daily_2026_11_12.py` (10 tests on rows shaped like the 12 Nov window; 6 fail on 2.20.322). Before/after renders: `docs/email-renders/2026-11-13-talent-daily/`.
+
+The 12 Nov edition, "Who's hiring: Salute plans 12,000 roles in United States + 8 more":
+
+- **The subject led with one report.** Salute's 12,000 is a three-year veteran hiring goal from one Fox Business video page; Salute's own release said 10,000. A plan's number now leads the subject only when the row is tier `verified` (a filed document) or corroborated (the same employer from two or more publishers in the window, job boards excluded). Otherwise the subject names the first three employers and no figure ("Who's hiring: Salute, Airwallex, Mediaset + 6 more"), and the glance and lead line say "one report: Fox Business".
+- **"Cloudflare: 12 roles, open listings" was a net change.** A job-board row's headcount is the change since the tracker's last scan of that board (461 to 473). The line now reads "+12 open roles since our last scan, 473 listed", the board total read from the row's own headline. The section is "Job-board changes".
+- **The glance did not add up on its face.** "Hiring signals: 9" beside "Employer-activity signals: 104 from 104 employers" is now "All signals: 113 = 9 about hiring + 104 other employer news", then the hiring split by type and what the other news is. "Other employer news" is defined once.
+- **Low-value rows were featured.** Announced plans under 25 roles, or with no roles stated, are counted and reached by "See all", no longer listed or folded into "Also announced, roles not stated" (which the 2026-11-11 review had added; this review superseded it).
+- **The linked page kept counting.** The page for Nov 11-12 showed 17 hiring signals on 11-13 against the email's 9, because rows keep arriving after an 11:13 UTC send. The email now says "Counts as of HH:MM UTC; the page adds signals that arrive later." beside the link.
+- A tied leading region is named the same way in the glance and the region line.
+
+The talent tracker's own half (job-board placement, Cloudflare 3 of 473 postings placed) is talent-intelligence-tracker #328.
+## 2026-11-13 - Estimates extended to news, labelled (owner ruling 2026-11-13)
+
+**What.** Owner ruling in chat, 2026-11-13: "yes extend estimates to news, labelled". A news item that states a share of the TOTAL workforce and no count (Trade Desk "cuts 15% of its global workforce", 2026-09-04) now takes the 8-K estimate: pct x the company's latest 10-K employee count, labelled "Estimate:", with the formula, the 10-K and the report's own sentence ("Report states"), provisional, bronze, confidence at most 60. Extra conditions a headline needs: the company must resolve to exactly ONE SEC registrant (`cik_for_company`: normalised name against `company_tickers.json`, share classes count once, ambiguity or absence is no estimate); the company's name must appear in the text; the 10-K headcount must be readable. A share of a QUALIFIED workforce (Campbell's "salaried workforce ... 13%") is never applied to total headcount, so Campbell's stays refused by design. A model that returns the percent as the count (Intuit's shape) now takes the estimate instead of a rejection; a stated count is never replaced. Live check: The Trade Desk resolves to 3,843 employees (15% = 576); Disney ("Walt Disney Co") and Weil resolve to nothing, so no row. **Not done:** reader-facing methodology copy for news estimates (the 8-K wording is unchanged), and a separate field or badge (the label is in the excerpt).
+**Guard:** `railway/tests/test_news_estimate.py` (15, red before)
+**Class:** novel (a ruling for one source type applied to the other)
+
+
 ## 2026-11-13 - Trace of the four remaining 5-Nov misses: Trade Desk, Campbell's, Weil, Hasbro
 
 **What.** Measured 2026-11-13 against live `/query`, Google News RSS and the run logs.
@@ -17,6 +39,7 @@ Common cause for Trade Desk and Campbell's: a percent-only or "hundreds" headlin
 **Guard:** `railway/tests/test_warn_ri_custom.py` (PR #657); the rest is a measurement
 **Class:** novel (a measurement plus one fix)
 
+
 ## 2026-11-13 - 2.20.323 Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
 
 **What.** Trace of the Hasbro miss: the RI DLT posted a 587-job Pawtucket notice on 2026-10-13 (WJAR, Providence Journal, Patch) and the tracker holds no 2026 Hasbro row; the newest RI row is 2026-08-28. Cause, from the warn-import log of 2026-11-13: `warn-scraper RI exited 1`, `UnboundLocalError: cannot access local variable 'headers'` in the open module's `ri.py`. It only follows a link whose text contains "WARN Report"; the page no longer has one, so `headers` is never bound and the state writes nothing. Freshness read it as UNKNOWN ("no observations", cadence 74 days), never dark, because RI's quiet spells are long. **Fix:** `warn_custom.fetch_ri` finds the workbook by link target (`.xlsx`/`.xls`), finds the header row by its "company" cell, maps columns with the generic tier's own matchers, and on failure names the links it saw (and says "unreachable" for a non-200, not "drift"). RI leaves `ALL_STATES`; its floor (123) moves to `legacy_custom`. **Not verified live:** dlt.ri.gov answers 403 to this sandbox, so the first real read is the next `warn-import` run; if the page publishes no workbook link at all the error will now list every link it saw.
@@ -29,6 +52,7 @@ The public `data/us-jurisdictions.json` is generated from the collectors, so it 
 **What.** The 17:36Z recorder run on 2026-11-12 opened sticky incidents on `us_all_time` (worldwide minus US -55,767 on +16 entries) and `ai_all_time` (worldwide minus AI -53,553 on +36 entries), as the 2026-11-12 entry below predicted. Both were closed on the owner's instruction by `data_integrity.py --close-incident` in #654 (rows 183237, 183359, 183026, 183203, 183011, 183261, 183157, 183293, 179293, 183369). **Finding:** the window's disclosed removals on 2026-11-12 carry 74,855 jobs, 2,855 of them US (`us_jobs`) and none AI-attributed; the dominant one is 183237 Microsoft 60,000 (`us_jobs` 0, a buyout offer, trashed by both referees, run 43223859426). AI pair: `ai_all_time` read +0 jobs on +0 entries at open, so nothing crossed into AI and the complement move is rows leaving the non-AI side. US pair: 72,000 non-US jobs removed against a -55,767 net complement move leaves about +16,200 of non-US arrivals, so nothing re-scored into the US. A second session reached the same replacement baselines independently, read live about 14:26Z: `ai_all_time` 262,508 / 116, `us_all_time` 7,500,631 / 47,507. The containment pairs read UNKNOWN (named) until the next 17:30Z recorder run advances the group together; by design, not a pass. Qualcomm 183404 (the earlier "Trackers to 100%" session's follow-up): MERGED. `adjudicate-row.yml` run 43384113937 (07:13Z, both referees agreed, $0.0545) merged 183404 (DIGITIMES, 1,000, India) into 183243; run 43383718543 (07:10Z, $0.0239) merged 183369 (The Hindu, 1,000) into the same keeper. Live: one Qualcomm India row, 183243, 1,000 jobs, 10 sources. The corrections log records both merges but not their row IDs, which is why a repo search found nothing.
 **Guard:** none new - closed through the existing `close_incident()` path, which requires reviewer, finding, rows and an explicit baseline.
 **Class:** novel (an operational close of an incident a disclosed correction opened; no guard shipped)
+
 
 ## 2026-11-13 - 2.20.322 Every link to our own site in a digest email carries UTM tags
 
