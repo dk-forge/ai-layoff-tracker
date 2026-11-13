@@ -4,6 +4,33 @@
 **Guard:** none new - closed through the existing `close_incident()` path, which requires reviewer, finding, rows and an explicit baseline.
 **Class:** novel (an operational close of an incident a disclosed correction opened; no guard shipped)
 
+## 2026-11-13 - 2.20.322 Every link to our own site in a digest email carries UTM tags
+
+An audit of the sent editions (daily 2026-11-13, weekly 2026-11-08) found one
+tagged link per email, the footer's. Methodology, the edition page, the
+filtered tracker, contact and the sister tracker went out untagged (5 links in
+the weekly, 1 in the daily), and tracked `/click` links landed on the tracker
+with no tags, so email visits read as direct traffic.
+
+- Relay: `railway/digest_utm.py`, applied in `digest_send.build_message` to the
+  finished HTML and text. `utm_source=ai-layoff-tracker&utm_medium=email&
+  utm_campaign=digest-<tier>`, appended before any `#fragment`.
+- Plugin: `alt_digest_utm_url()` tags a tracked link's destination at
+  redemption in `alt_api_digest_click`, with the send row's tier. The stored
+  URL and its hash do not change, so emails already in inboxes gain the tags.
+- Never tagged: another site's link, a URL already carrying a `utm_` key, any
+  path containing unsub/confirm/preferences, `/wp-json/`, `admin-post.php`, and
+  any URL with a token-style query key (`t`, `token`, `sig`, `key`, ...). The
+  first cut matched `/preferences` and tagged a `/digest-preferences/?t=` link
+  in the archive fixture; the archive test caught it.
+- Plain text: a "Label: URL" line that the tags push past 78 columns is split
+  so the URL sits on its own line, keeping the existing width rule.
+- Tests: `railway/tests/test_digest_utm.py` (relay + PHP via php CLI); the click
+  harness now checks the redirect carries the send's own tier.
+
+**Guard:** `railway/tests/test_digest_utm.py` (+11, 5 red before)
+**Class:** novel (the tagging was never built; untagged links raise no error anywhere, so only an audit of a sent edition could see it)
+
 ## 2026-11-13 - 2.20.321 The 8-K count gate refused every labelled estimate
 
 **What.** After #651 the FICO 8-K (2026-10-06) reached the extractor with a 562 estimate, and the live sweep (run 43384544196, range 2026-10-06) failed it: `422 alt_count_evidence_missing`. `alt_api_add` requires an 8-K's count beside a worker noun in the excerpt; an estimate appears there only as the formula, and the server never read `job_count_is_estimate` or `headcount_estimate`, so no percent-only 8-K could ever have been stored (the owner's 2026-11-05 "yes estimates" ruling was Python-only). **Fix:** `alt_estimate_evidence_ok()` accepts it only when the payload is the complete estimate for this very count (flag, label, matching `job_count`, positive percent) and the excerpt starts with "Estimate:" and holds the filing's own sentence; a bare count still takes the ordinary gate. **Not done:** the estimate is not stored in its own field or shown with a badge; the label lives in the excerpt only. That is a display decision for the owner.
