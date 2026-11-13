@@ -125,6 +125,27 @@ class VerbHeadlines(unittest.TestCase):
         self.assertEqual(len(rows), 4 * n)
 
 
+class PercentHeadlines(unittest.TestCase):
+    """The Trade Desk (15% of staff, 2026-09-04, seven outlets) was never a
+    candidate: none of the three dated queries returned it (09-04 yields ~21
+    items), so no extractor or estimate rule ever saw it (measured 2026-11-13
+    against the live feed). A query for a stated SHARE of the workforce returns
+    it (56 items for that day, CFO Dive and ADWEEK among them)."""
+
+    def test_a_dated_query_reads_percent_of_workforce_headlines(self):
+        qs = google_news.dated_queries(date(2026, 9, 4))
+        pct = [q for q in qs if '"% of its workforce"' in q and '"% of staff"' in q]
+        self.assertEqual(len(pct), 1)
+        self.assertIn("after:2026-09-03", pct[0])
+        self.assertIn("before:2026-09-05", pct[0])
+        for verb in ("cuts", "layoffs", '"lays off"'):
+            self.assertIn(verb, pct[0])
+
+    def test_the_percent_query_gets_its_own_cap(self):
+        n = len(google_news.dated_queries(date(2026, 9, 4)))
+        self.assertGreaterEqual(n, 4)
+
+
 class CatchupWiring(unittest.TestCase):
     def test_news_catchup_reads_the_dated_windows(self):
         src = (Path(__file__).resolve().parents[1] / "news_catchup.py").read_text()
