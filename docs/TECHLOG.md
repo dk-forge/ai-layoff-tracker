@@ -1,3 +1,8 @@
+## 2026-11-13 - 2.20.327 The digest's region bars place an unlocated row by its employer's HQ
+
+**What.** Owner ruling 2026-11-13 ("place rows by employer HQ in the email, labelled"), answering the open item from the 2026-11-12 email audit: the 2026-W45 weekly printed "Not recorded 69,026" of 134,595 (51%), news rows that name the employer but not where the jobs are. **Change:** `alt_briefing_model()` sums verified rows with a blank `country` and a single-country `employer_country`; `alt_briefing_regions()` adds them to that country's region as a separate "by employer HQ" sub-line (the bars still sum to the worldwide figure and the sub-lines to their region, so pre-send check 1 is unchanged), and the glance says how many jobs were placed that way. The United States stat, the country list and every headline outside the email stay strict job location, as the CLAUDE.md country-filter rule requires; a "Multiple countries" HQ is not a place. **Guard:** `railway/tests/test_digest_briefing_hq.py`.
+**Class:** novel (an owner ruling on presentation; no defect)
+
 ## 2026-11-13 - 2.20.326 Layoff digest: the preheader, the average and the monthly finding say what they count
 
 **Class:** two-copies-drifted (the preheader counted a different set of employers from the opening sentence beside it)
