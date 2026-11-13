@@ -355,3 +355,45 @@ class IngestFreshness(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScriptRunHasTwoModuleCopies(unittest.TestCase):
+    """`python3 data_integrity.py` makes the running copy `__main__`, and
+    board_consistency's lazy `import data_integrity` loads a SECOND copy. An
+    identity test against `di._default_fetch` is therefore False in the one way
+    CI runs it, and board_tiles_render reported "injected transport, page not
+    rendered" on every scheduled run (Live data-integrity check red daily from
+    2026-11-07 while the page rendered correctly under an import).
+
+    The ctx has to know for itself whether it is live, using ITS OWN module's
+    `_default_fetch`, which is the same object in either copy.
+    """
+
+    def _second_copy(self):
+        import importlib.util
+        path = os.path.join(os.path.dirname(__file__), "..", "data_integrity.py")
+        spec = importlib.util.spec_from_file_location("data_integrity_as_main", path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["data_integrity_as_main"] = mod
+        try:
+            spec.loader.exec_module(mod)
+        finally:
+            sys.modules.pop("data_integrity_as_main", None)
+        return mod
+
+    def test_a_live_ctx_from_the_other_copy_is_live(self):
+        other = self._second_copy()
+        self.assertIsNot(other._default_fetch, di._default_fetch)   # the premise
+        ctx = other.Ctx(other._default_fetch, 20, "cb")
+        self.assertTrue(getattr(ctx, "is_live", False),
+                        "a ctx built on its own module's _default_fetch is the live one")
+
+    def test_an_injected_transport_is_never_live(self):
+        ctx = di.Ctx(lambda url, timeout: b"{}", 20, "cb")
+        self.assertFalse(getattr(ctx, "is_live", True))
+
+    def test_board_consistency_does_not_compare_against_the_other_copy(self):
+        src = open(os.path.join(os.path.dirname(__file__), "..", "board_consistency.py")).read()
+        self.assertNotIn("_di()._default_fetch", src)
+        self.assertNotIn("di._default_fetch", src,
+                         "compare through ctx.is_live, not module identity")
