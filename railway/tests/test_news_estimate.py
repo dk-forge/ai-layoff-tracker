@@ -162,3 +162,49 @@ class Finalize(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RefusalsAreNotSilent(unittest.TestCase):
+    """The 2026-11-13 replays dropped Trade Desk as a "non-event" with no line
+    saying why, so the cause (a SEC User-Agent) took three runs to find. A
+    percent-only item that cannot be estimated must say which step failed."""
+
+    def _run(self, **over):
+        import io
+        from contextlib import redirect_stdout
+        orig = (he.default_lookup, he.default_cik_finder)
+        he.default_lookup = over.get("lk", lookup)
+        he.default_cik_finder = over.get("finder", lambda n: he.cik_for_company(n, fetch_json=tickers_json))
+        buf = io.StringIO()
+        try:
+            with redirect_stdout(buf):
+                row = extractor.finalize_extraction(
+                    {"is_layoff_event": over.get("event", True), "job_count": None,
+                     "company_name": over.get("company", "The Trade Desk"),
+                     "layoff_date": "2026-09-04", "excerpt": TITLE, "confidence": 80},
+                    {"source_type": "news", "source_url": URL, "source_name": "Google News",
+                     "verification_level": "bronze"}, over.get("text", TITLE))
+        finally:
+            he.default_lookup, he.default_cik_finder = orig
+        return row, buf.getvalue()
+
+    def test_no_sec_match_says_so(self):
+        row, out = self._run(finder=lambda n: None)
+        self.assertIsNone(row)
+        self.assertIn("no estimate", out)
+        self.assertIn("no single SEC registrant", out)
+
+    def test_no_headcount_says_so(self):
+        row, out = self._run(lk=lambda cik: None)
+        self.assertIsNone(row)
+        self.assertIn("no 10-K employee count", out)
+
+    def test_a_model_that_calls_it_not_a_layoff_is_reported_when_a_share_is_stated(self):
+        row, out = self._run(event=False)
+        self.assertIsNone(row)
+        self.assertIn("model ruled it not a layoff event", out)
+
+    def test_ordinary_non_events_stay_quiet(self):
+        row, out = self._run(event=False, text="Quarterly results beat forecasts")
+        self.assertIsNone(row)
+        self.assertEqual(out, "")

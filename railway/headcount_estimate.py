@@ -194,6 +194,15 @@ def sec_lookup(cik, fetch_json=None, fetch_text=None):
     return out
 
 
+#: Why the LAST estimate_for_filing call returned None, for one log line.
+LAST_REFUSAL = [None]
+
+
+def _refuse(why):
+    LAST_REFUSAL[0] = why
+    return None
+
+
 _NAME_SUFFIX = {"inc", "incorporated", "corp", "corporation", "co", "company", "ltd",
                 "limited", "plc", "llc", "lp", "holdings", "holding", "group", "sa",
                 "nv", "ag", "de", "new"}
@@ -246,35 +255,36 @@ def default_lookup(cik):
 
 def estimate_for_filing(raw_entry, raw_text, lookup=None, company=None, cik_finder=None):
     """The labelled estimate for a percent-only 8-K or news item, or None."""
+    LAST_REFUSAL[0] = None
     stype = str(raw_entry.get("source_type") or "")
     is_news = stype == "news"
     if stype.upper() != "8K" and not is_news:
-        return None
+        return _refuse("source type is not an 8-K or news")
     from filing_shapes import RISK_FACTORS_SECTION
     if raw_entry.get("sec_section") == RISK_FACTORS_SECTION:
-        return None
+        return _refuse("the share sits in a risk-factors section")
     name = company or raw_entry.get("company_name")
     if is_news:
         word = _filer_word(name)
         if not word or word not in str(raw_text or "").lower():
-            return None
+            return _refuse("the company name is not in the text")
     found = workforce_percent(raw_text, company=name)
     if not found:
-        return None
+        return _refuse("no share of the total workforce is stated")
     pct, sentence = found
     if is_news:
         cik = (cik_finder or default_cik_finder)(name)
     else:
         cik = cik_from_url(raw_entry.get("source_url"))
     if not cik:
-        return None
+        return _refuse("no single SEC registrant matches the company name")
     facts = (lookup or default_lookup)(cik)
     if not facts or not facts.get("employees"):
-        return None
+        return _refuse("no 10-K employee count could be read for it")
     employees = int(facts["employees"])
     n = int(round(pct * employees / 100.0))
     if n <= 0:
-        return None
+        return _refuse("the estimate rounds to zero")
     pct_s = f"{pct:g}%"
     fy = facts.get("fiscal_year_end") or "latest"
     source = (f"{facts.get('form') or '10-K'} for fiscal year ended {fy}, "
