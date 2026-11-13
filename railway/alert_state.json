@@ -97,6 +97,11 @@
       "last": 1794515300,
       "subject": "CI RED: Live surface check \u2014 AssertionError: No headline moves without rows to explain it: AI-attributed jobs, all time: OPEN INCIDENT, opened 0d ago (2026-11-12T17:36:34Z): Worldw"
     },
+    "mailbox-janitor:main:09cd0cb19bd940f2": {
+      "first": 1794559989,
+      "last": 1794559989,
+      "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -123,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T07:10:34+00:00",
+  "updated_at": "2026-11-13T08:53:10+00:00",
   "version": 1
 }
