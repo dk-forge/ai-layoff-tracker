@@ -248,6 +248,8 @@ function alt_prefs_form($row, $notice = '') {
                . ($freq === $v ? ' checked' : '') . '> <span>' . esc_html($label) . '</span></label>';
     }
     $html .= '</fieldset>';
+    // Open roles country and topic (includes/digest-open-roles.php).
+    if (function_exists('alt_open_roles_prefs_fieldset')) $html .= alt_open_roles_prefs_fieldset($row);
     $follows = alt_prefs_follows_of($row['id']);
     if ($follows) {
         $html .= '<fieldset><legend>Companies and states you follow</legend>';
@@ -284,6 +286,15 @@ function alt_prefs_handle($token) {
         if (!in_array((int) $f['id'], $keep, true)) {
             alt_prefs_delete_follow($row['id'], $f['id']);
             $said[] = 'Stopped following ' . $f['label'] . '.';
+        }
+    }
+    // Open roles country and topic: narrowing only, so it applies at once.
+    if (function_exists('alt_open_roles_prefs_from_post')) {
+        $or = alt_open_roles_prefs_from_post($_POST);
+        if ($or !== null && ((string) ($row['talent_country'] ?? '') !== (string) $or['talent_country']
+                             || (string) ($row['talent_family'] ?? '') !== (string) $or['talent_family'])) {
+            $wpdb->update(alt_subscribers_table(), $or, array('id' => $row['id']));
+            $said[] = 'Saved your open roles country and topic.';
         }
     }
     $split = alt_prefs_split($row, $wanted);

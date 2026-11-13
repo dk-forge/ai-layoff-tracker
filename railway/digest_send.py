@@ -555,6 +555,13 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
             and (tfollow.get("html") or "").strip() and (tfollow.get("text") or "").strip()):
         parts.append(("talent_follows", tfollow["html"].strip(), tfollow["text"].strip(),
                       "", ("", True)))
+    # OPEN ROLES NOW (owner ruling 2026-11-13): composed by the talent plugin
+    # per recipient in their country and topic; same rules as talent follows.
+    oroles = recipient.get("open_roles_section")
+    if (isinstance(oroles, dict) and "talent" in (recipient.get("lists") or [])
+            and (oroles.get("html") or "").strip() and (oroles.get("text") or "").strip()):
+        parts.append(("open_roles", oroles["html"].strip(), oroles["text"].strip(),
+                      "", ("", True)))
 
     # A way to change WHAT you get, beside the way to stop everything. One
     # click unsubscribe is a blunt instrument: a reader who wants one of three

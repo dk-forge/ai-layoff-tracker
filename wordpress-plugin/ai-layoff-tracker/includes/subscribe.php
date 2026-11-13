@@ -1090,7 +1090,8 @@ function alt_digest_subscribe_form($context = '') {
             <summary>Privacy note: what we store and how to erase it</summary>
             <p><strong>What we store:</strong> your email address, the choices above, and timestamps
                 (signed up, confirmed, last sent). If you follow something, we also store what you follow:
-                a company, a state, or a city or employer on the talent tracker. Nothing else about you.</p>
+                a company, a state, or a city or employer on the talent tracker. If you pick a country or topic
+                for open roles, we store that choice too. Nothing else about you.</p>
             <?php /* THE DURABLE HOME OF THE PROMISE, and the reason it is written here rather
                      than only in an email footer. A footer is true for one message and then it
                      is gone; a reader who wants to check what we do six months from now has
@@ -8192,6 +8193,12 @@ function alt_digest_send($freq) {
             && function_exists('alt_follows_section_for')) {
             $alt_tfs = alt_follows_section_for((int) $row['id'], $from_date, $to_date, 'talent');
             if ($alt_tfs) { $parts_html[] = $alt_tfs['html']; $parts_text[] = $alt_tfs['text']; }
+        }
+        // Open roles now, for talent-list readers only. Same as the relay.
+        if ((int) $row['consent_talent'] === 1 && $row['freq_talent'] === $freq
+            && function_exists('alt_open_roles_section_for')) {
+            $alt_ors = alt_open_roles_section_for($row, $freq, $send_id);
+            if ($alt_ors) { $parts_html[] = $alt_ors['html']; $parts_text[] = $alt_ors['text']; }
         }
         $subject = alt_digest_subject_line($freq, $from_date, $to_date, $headings,
                                            $fallback_subject, $subject_parts);
