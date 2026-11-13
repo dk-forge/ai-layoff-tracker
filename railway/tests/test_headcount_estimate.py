@@ -121,6 +121,52 @@ class Estimate(unittest.TestCase):
         self.assertEqual(he.employees_from_10k_text(text), 3586)
         self.assertIsNone(he.employees_from_10k_text("no headcount here"))
 
+    def test_employees_from_10k_text_reads_persons(self):
+        """FICO's 10-K (fiscal 2026): "we employed 3,747 persons across 31
+        countries". `persons` was not in the noun list, so the sentence that
+        carries the count never matched."""
+        text = ("HUMAN CAPITAL RESOURCES Our People As of September 30, 2026, "
+                "we employed 3,747 persons across 31 countries.")
+        self.assertEqual(he.employees_from_10k_text(text), 3747)
+
+    def test_10k_text_fallback_reads_past_the_8k_window(self):
+        """sec_lookup fell back to the 8-K window fetcher, which returns ~3,000
+        characters around the first layoff keyword, so a filer with no
+        dei:EntityNumberOfEmployees tag (FICO) could never be read. The text
+        fetcher must hand back the whole stripped document: the sentence sits
+        hundreds of thousands of characters in."""
+        body = ("x " * 150_000) + "As of September 30, 2026, we employed 3,747 persons."
+        calls = []
+
+        def fetch_json(url):
+            calls.append(url)
+            if "submissions" in url:
+                return {"filings": {"recent": {
+                    "form": ["10-K"], "accessionNumber": ["0000814547-26-000042"],
+                    "primaryDocument": ["fico.htm"], "reportDate": ["2026-09-30"]}}}
+            return None  # companyfacts: no dei tag
+
+        he._CACHE.clear()
+        got = he.sec_lookup("0000814547", fetch_json=fetch_json,
+                            fetch_text=lambda url: body)
+        he._CACHE.clear()
+        self.assertEqual(got["employees"], 3747)
+
+    def test_default_text_fetcher_is_not_the_8k_window(self):
+        from sources import edgar
+        seen = {}
+        orig_get, orig_win = edgar._get, edgar._fetch_filing_text
+        edgar._get = lambda url: SimpleNamespace(
+            status_code=200, raise_for_status=lambda: None,
+            text="<p>" + ("y " * 5000) + "we employed 3,747 persons</p>")
+        edgar._fetch_filing_text = lambda url: seen.setdefault("window", "short")
+        try:
+            text = he._fetch_text("https://www.sec.gov/Archives/edgar/data/1/2/x.htm")
+        finally:
+            edgar._get, edgar._fetch_filing_text = orig_get, orig_win
+        self.assertNotIn("window", seen)
+        self.assertIn("3,747 persons", text)
+
 
 class FinalizeExtraction(unittest.TestCase):
     def _final(self, monkey_lookup):
