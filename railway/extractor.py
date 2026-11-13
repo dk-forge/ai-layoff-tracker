@@ -1637,16 +1637,22 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     # an estimate skips them; it carries its own formula and source instead.
     job_count = _coerce_job_count(extracted.get("job_count"))
     estimate = None
-    if not job_count:
+    # A percent read as a count (Intuit: "17% of its staff" -> 17) is as
+    # count-less as a null, so it takes the same labelled estimate when one
+    # exists (8-K: owner ruling 2026-11-05; news: owner ruling 2026-11-13).
+    pct_as_count = bool(job_count) and _percent_only_mention(job_count, raw_text)
+    if not job_count or pct_as_count:
         import headcount_estimate
-        estimate = headcount_estimate.estimate_for_filing(raw_entry, raw_text)
-        if not estimate:
+        estimate = headcount_estimate.estimate_for_filing(
+            raw_entry, raw_text, company=extracted.get("company_name"))
+        if estimate:
+            job_count = estimate["job_count"]
+            extracted["job_count_max"] = job_count
+        elif not job_count:
             return None
-        job_count = estimate["job_count"]
-        extracted["job_count_max"] = job_count
     if estimate is not None:
         pass
-    elif _percent_only_mention(job_count, raw_text):
+    elif pct_as_count:
         print(f"Extraction rejected: job_count {job_count} appears only as a percentage "
               f"— source: {raw_entry.get('source_url')}")
         return None

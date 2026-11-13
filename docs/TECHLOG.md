@@ -1,3 +1,9 @@
+## 2026-11-13 - Estimates extended to news, labelled (owner ruling 2026-11-13)
+
+**What.** Owner ruling in chat, 2026-11-13: "yes extend estimates to news, labelled". A news item that states a share of the TOTAL workforce and no count (Trade Desk "cuts 15% of its global workforce", 2026-09-04) now takes the 8-K estimate: pct x the company's latest 10-K employee count, labelled "Estimate:", with the formula, the 10-K and the report's own sentence ("Report states"), provisional, bronze, confidence at most 60. Extra conditions a headline needs: the company must resolve to exactly ONE SEC registrant (`cik_for_company`: normalised name against `company_tickers.json`, share classes count once, ambiguity or absence is no estimate); the company's name must appear in the text; the 10-K headcount must be readable. A share of a QUALIFIED workforce (Campbell's "salaried workforce ... 13%") is never applied to total headcount, so Campbell's stays refused by design. A model that returns the percent as the count (Intuit's shape) now takes the estimate instead of a rejection; a stated count is never replaced. Live check: The Trade Desk resolves to 3,843 employees (15% = 576); Disney ("Walt Disney Co") and Weil resolve to nothing, so no row. **Not done:** reader-facing methodology copy for news estimates (the 8-K wording is unchanged), and a separate field or badge (the label is in the excerpt).
+**Guard:** `railway/tests/test_news_estimate.py` (15, red before)
+**Class:** novel (a ruling for one source type applied to the other)
+
 ## 2026-11-13 - Trace of the four remaining 5-Nov misses: Trade Desk, Campbell's, Weil, Hasbro
 
 **What.** Measured 2026-11-13 against live `/query`, Google News RSS and the run logs.
