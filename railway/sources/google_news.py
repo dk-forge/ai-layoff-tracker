@@ -480,7 +480,16 @@ def pull_google_news(queries=None, company_names=None, deadline_check=None):
 # 40 rows on most days, which used to stop the later bases from running at
 # all. Spend stays bounded by the job's unchanged per-run ceiling.
 DATED_VERB_QUERY = "jobs (cut OR cuts OR cutting OR axe OR slash OR slashes OR eliminate)"
-DATED_QUERY_BASES = (DISCOVERY_QUERIES[0], WIRE_QUERIES[1], DATED_VERB_QUERY)
+# A fourth base for headlines that state a SHARE of the workforce and no count
+# ("The Trade Desk cuts 15% of workforce"): none of the three above returned the
+# Trade Desk's seven 2026-09-04 headlines (~21 items a day), while this one
+# returns them (measured 2026-11-13). Percent-only items now take a labelled
+# estimate (owner ruling 2026-11-13), so reaching them is the other half.
+DATED_PERCENT_QUERY = ('("% of its workforce" OR "% of workforce" OR "% of staff" OR '
+                       '"% of its staff" OR "% of employees" OR "% of its global workforce") '
+                       '(cuts OR layoffs OR "lays off" OR sheds OR reduce)')
+DATED_QUERY_BASES = (DISCOVERY_QUERIES[0], WIRE_QUERIES[1], DATED_VERB_QUERY,
+                     DATED_PERCENT_QUERY)
 WINDOW_DAY_MAX = max(5, _env_int("GOOGLE_NEWS_DAY_MAX", 40))
 
 
