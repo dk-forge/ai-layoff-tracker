@@ -161,9 +161,10 @@ function alt_briefing_region_order() {
  * America; UK and Netherlands under Europe when above zero, the rest as
  * "other Europe"). `Not recorded` is the verified total minus everything placed.
  */
-function alt_briefing_regions($countries, $ver_jobs) {
+function alt_briefing_regions($countries, $ver_jobs, $hq = array()) {
     $by = array();
     $sub = array();
+    $hq_by = array();
     $placed = 0;
     foreach ($countries as $country => $jobs) {
         $placed += $jobs;
@@ -171,6 +172,17 @@ function alt_briefing_regions($countries, $ver_jobs) {
         if ($region === 'Other') $region = 'Multiple or other countries';
         $by[$region] = ($by[$region] ?? 0) + $jobs;
         $sub[$region][$country] = $jobs;
+    }
+    // PLACED BY EMPLOYER HQ (owner 2026-11-13): a verified row with no job
+    // location but a known single-country employer_country goes to that
+    // region as its own "by employer HQ" sub-line, so the bars still sum to
+    // the worldwide figure and the HQ part is never passed off as location.
+    foreach ((array) $hq as $country => $jobs) {
+        $region = function_exists('alt_digest_world_region') ? alt_digest_world_region($country) : 'Other';
+        if ($region === 'Other' || $jobs <= 0) continue;
+        $by[$region] = ($by[$region] ?? 0) + $jobs;
+        $hq_by[$region] = ($hq_by[$region] ?? 0) + $jobs;
+        $placed += $jobs;
     }
     $unplaced = $ver_jobs - $placed;
     if ($unplaced > 0) $by['Not recorded'] = $unplaced;
@@ -181,7 +193,8 @@ function alt_briefing_regions($countries, $ver_jobs) {
         $named = array();
         if ($region === 'North America') $named = array('United States' => 'US');
         if ($region === 'Europe') $named = array('United Kingdom' => 'UK', 'Netherlands' => 'Netherlands');
-        $rest = $by[$region];
+        $by_hq = (int) ($hq_by[$region] ?? 0);
+        $rest = $by[$region] - $by_hq;
         foreach ($named as $country => $short) {
             $v = (int) ($sub[$region][$country] ?? 0);
             if ($v <= 0) continue;
@@ -190,7 +203,10 @@ function alt_briefing_regions($countries, $ver_jobs) {
         }
         if ($lines && $rest > 0) {
             $lines[] = array($region === 'Europe' ? 'other Europe' : 'rest of North America', $rest);
+        } elseif (!$lines && $by_hq > 0 && $rest > 0) {
+            $lines[] = array('job location', $rest);
         }
+        if ($by_hq > 0) $lines[] = array('by employer HQ', $by_hq);
         $out[] = array('region' => $region, 'jobs' => $by[$region], 'sub' => $lines);
     }
     return array($out, max(0, $unplaced));
@@ -310,7 +326,16 @@ function alt_briefing_model($b, $now = null) {
     $m['ver_entries'] = max(0, $m['entries'] - $m['announced_entries']);
     $m['settle'] = max(0, (int) floor(($now - strtotime($to . ' 23:59:59 UTC')) / DAY_IN_SECONDS) + 1);
     $m['provisional'] = $m['settle'] < alt_briefing_settle_days();
-    list($m['regions'], $m['unplaced']) = alt_briefing_regions($countries, $ver);
+    // Unlocated verified rows with a single-country employer HQ (owner 2026-11-13).
+    $hq = array();
+    foreach ((is_array($b['rows']) ? $b['rows'] : array()) as $r) {
+        if (!empty($r['announced']) || trim((string) ($r['country'] ?? '')) !== '') continue;
+        $c = trim((string) ($r['employer_country'] ?? ''));
+        if ($c === '' || stripos($c, 'multiple') !== false) continue;
+        $hq[$c] = ($hq[$c] ?? 0) + (int) $r['job_count'];
+    }
+    list($m['regions'], $m['unplaced']) = alt_briefing_regions($countries, $ver, $hq);
+    $m['hq_placed'] = max(0, $ver - array_sum($countries) - $m['unplaced']);
     $m['no_industry'] = max(0, $ver - array_sum($industries));
 
     // Rows: verified only, for biggest cuts, source classes and duplicate checks.
@@ -764,6 +789,11 @@ function alt_briefing_render($m, $send_id = 0) {
             $text .= '    ' . $label . ': ' . alt_digest_number($r['jobs']) . "\n";
         }
         $html .= '</table>';
+    }
+    if (!empty($m['hq_placed']) && $m['regions']) {
+        $hqn = alt_digest_number($m['hq_placed']) . ' jobs with no job location are placed by the employer\'s headquarters.';
+        $html .= '<p data-alt="note">' . alt_briefing_h($hqn) . '</p>';
+        $text .= '  ' . $hqn . "\n";
     }
     if ($m['provisional']) {
         $badge = 'Provisional: ' . alt_digest_count($m['settle'], 'day') . ' to settle. Late notices usually raise these figures.';
