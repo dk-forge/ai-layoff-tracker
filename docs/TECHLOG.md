@@ -22,6 +22,9 @@ with no tags, so email visits read as direct traffic.
 - Tests: `railway/tests/test_digest_utm.py` (relay + PHP via php CLI); the click
   harness now checks the redirect carries the send's own tier.
 
+**Guard:** `railway/tests/test_digest_utm.py` (+11, 5 red before)
+**Class:** novel (the tagging was never built; untagged links raise no error anywhere, so only an audit of a sent edition could see it)
+
 ## 2026-11-13 - 2.20.321 The 8-K count gate refused every labelled estimate
 
 **What.** After #651 the FICO 8-K (2026-10-06) reached the extractor with a 562 estimate, and the live sweep (run 43384544196, range 2026-10-06) failed it: `422 alt_count_evidence_missing`. `alt_api_add` requires an 8-K's count beside a worker noun in the excerpt; an estimate appears there only as the formula, and the server never read `job_count_is_estimate` or `headcount_estimate`, so no percent-only 8-K could ever have been stored (the owner's 2026-11-05 "yes estimates" ruling was Python-only). **Fix:** `alt_estimate_evidence_ok()` accepts it only when the payload is the complete estimate for this very count (flag, label, matching `job_count`, positive percent) and the excerpt starts with "Estimate:" and holds the filing's own sentence; a bare count still takes the ordinary gate. **Not done:** the estimate is not stored in its own field or shown with a badge; the label lives in the excerpt only. That is a display decision for the owner.
