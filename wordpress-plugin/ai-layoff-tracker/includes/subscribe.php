@@ -2122,6 +2122,43 @@ function alt_digest_link_hash($url) {
     return md5((string) $url);
 }
 
+/**
+ * UTM TAGS ON A TRACKED LINK'S LANDING (owner goal 2026-11-13: every email
+ * link carries UTM tags). The relay tags direct links in the body
+ * (railway/digest_utm.py); a tracked link's destination lives in our own row,
+ * so it is tagged here, at redemption, with the same three values. Tagging at
+ * the far end means the stored URL and its hash never change, and every email
+ * already in an inbox gains the tags too.
+ *
+ * Only our own hosts (the same allowlist the click guard uses), never an
+ * unsubscribe, preferences, confirm or API path, and never a URL that already
+ * names a utm_ parameter. Anything else comes back exactly as it went in.
+ */
+function alt_digest_utm_url($url, $freq, $hosts) {
+    if (!is_string($url) || $url === '') return $url;
+    $parts = parse_url($url);
+    if (!is_array($parts) || empty($parts['host'])) return $url;
+    if (!in_array(strtolower($parts['host']), (array) $hosts, true)) return $url;
+    $path = strtolower((string) ($parts['path'] ?? ''));
+    foreach (array('/wp-json/', 'unsub', 'confirm', 'preferences', 'admin-post.php') as $skip) {
+        if (strpos($path, $skip) !== false) return $url;
+    }
+    // A token-style key marks a private link whatever its path says; the
+    // relay (railway/digest_utm.TOKEN_KEYS) reads the same list.
+    if (preg_match('/(^|&)(utm_|(t|token|sig|signature|key|email|e|uid|rid)=)/i',
+                   (string) ($parts['query'] ?? ''))) return $url;
+    $freq = strtolower((string) $freq);
+    $campaign = in_array($freq, array('daily', 'weekly', 'monthly'), true) ? 'digest-' . $freq : 'digest';
+    $utm = 'utm_source=ai-layoff-tracker&utm_medium=email&utm_campaign=' . $campaign;
+    $hash = '';
+    $pos = strpos($url, '#');
+    if ($pos !== false) {
+        $hash = substr($url, $pos);
+        $url = substr($url, 0, $pos);
+    }
+    return $url . (strpos($url, '?') === false ? '?' : '&') . $utm . $hash;
+}
+
 function alt_digest_click_url($send_id, $url) {
     return add_query_arg(
         array('s' => (int) $send_id, 'l' => alt_digest_link_hash($url)),
@@ -2189,6 +2226,11 @@ function alt_api_digest_click($request) {
                 'UPDATE ' . alt_digest_links_table() . ' SET clicks = clicks + 1 WHERE id = %d',
                 (int) $row['id']));
         }
+    }
+    if ($row && $url !== $home) {
+        $freq = (string) $wpdb->get_var($wpdb->prepare(
+            'SELECT freq FROM ' . alt_digest_sends_table() . ' WHERE id = %d', $send_id));
+        $url = alt_digest_utm_url($url, $freq, alt_digest_link_hosts());
     }
     wp_safe_redirect($url, 302);
     exit;
