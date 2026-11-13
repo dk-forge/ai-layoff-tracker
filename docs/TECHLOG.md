@@ -1,3 +1,9 @@
+## 2026-11-13 - 2.20.320 GA4 gains rss_click and outbound_source_click
+
+**What.** The owner's GA4 list names `rss_click`, `watchlist_star`, `outbound_source_click`; this repo only sent five events. `reach.js` now sends `rss_click` (our /feed/layoffs link) and `outbound_source_click` (external link inside the table or a source cell; the host only, never the URL), through the same consent-gated `AltReach.send`. `watchlist_star` has no feature in this tracker, so it is not sent.
+**Guard:** `tests/test_reach.py` (event list, feed and host helpers).
+**Class:** novel
+
 ## 2026-11-13 - 2.20.319 The server-rendered board's Today is the site's day, not the WordPress zone
 
 **What.** At 00:03 UTC on 2026-11-13 the live integrity check "At-a-glance tiles and the table match /query" failed on desktop and phone: the Today column counted 2026-11-13 while the site's day (America/New_York) was still 2026-11-12. `alt_signal_board_periods()` defaulted to `current_time('timestamp')`, the WordPress zone, so from 20:00 New York the inlined board's Today was an empty tomorrow. It now defaults to `alt_site_now_ts()`.

@@ -14,8 +14,9 @@
   Tests: railway/tests/test_reach.py runs this file in node.
 */
 var AltReach = (function () {
-    var EVENTS = ['digest_signup', 'follow', 'embed_copy', 'cite_copy', 'resume_prompt_click'];
-    var KEYS = ['surface', 'kind', 'chart', 'page_type', 'campaign', 'method'];
+    var EVENTS = ['digest_signup', 'follow', 'embed_copy', 'cite_copy', 'resume_prompt_click',
+        'rss_click', 'outbound_source_click'];
+    var KEYS = ['surface', 'kind', 'chart', 'page_type', 'campaign', 'method', 'host'];
 
     function clean(params) {
         var out = {};
@@ -48,7 +49,18 @@ var AltReach = (function () {
         return m ? m[1] : null;
     }
 
-    return { EVENTS: EVENTS, clean: clean, send: send, shareLinks: shareLinks, resumeCampaign: resumeCampaign };
+    // Our own RSS feed link, and an outbound link to a row's cited source. Only the
+    // host is sent, never the URL (no path, query or address ever leaves).
+    function isFeedHref(href) { return /^https?:\/\/[^\/]+\/blog\/feed\/layoffs\/?(?:[?#]|$)|^\/(?:blog\/)?feed\/layoffs\/?(?:[?#]|$)/.test(href || ''); }
+    function outboundHost(href, ownHost) {
+        var m = /^https?:\/\/([^\/:?#]+)/i.exec(href || '');
+        if (!m) return null;
+        var h = m[1].toLowerCase();
+        return (ownHost && (h === ownHost || h === 'www.' + ownHost || 'www.' + h === ownHost)) ? null : h;
+    }
+
+    return { EVENTS: EVENTS, clean: clean, send: send, shareLinks: shareLinks, resumeCampaign: resumeCampaign,
+             isFeedHref: isFeedHref, outboundHost: outboundHost };
 })();
 
 (function () {
@@ -84,6 +96,12 @@ var AltReach = (function () {
         if (a) {
             var c = AltReach.resumeCampaign(a.href);
             if (c) AltReach.send('resume_prompt_click', { campaign: c, page_type: pageType });
+            if (AltReach.isFeedHref(a.href)) {
+                AltReach.send('rss_click', { page_type: pageType });
+            } else if (closest(a, '.alt-src-val, #alt-table, .alt-table, table')) {
+                var oh = AltReach.outboundHost(a.href, location.hostname);
+                if (oh) AltReach.send('outbound_source_click', { host: oh, page_type: pageType });
+            }
         }
     }, true);
 
