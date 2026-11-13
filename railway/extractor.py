@@ -1659,7 +1659,8 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
             extracted["job_count_max"] = job_count
         elif not job_count:
             print("Extraction refused: a share of the workforce but no estimate - "
-                  f"{headcount_estimate.LAST_REFUSAL[0]} - source: {raw_entry.get('source_url')}")
+                  f"{headcount_estimate.LAST_REFUSAL[0]} - company={extracted.get('company_name')} "
+                  f"headline={(raw_text or '')[:110]!r} - source: {raw_entry.get('source_url')}")
             return None
     if estimate is not None:
         pass

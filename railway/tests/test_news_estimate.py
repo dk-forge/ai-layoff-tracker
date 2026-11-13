@@ -193,6 +193,8 @@ class RefusalsAreNotSilent(unittest.TestCase):
         self.assertIsNone(row)
         self.assertIn("no estimate", out)
         self.assertIn("no single SEC registrant", out)
+        self.assertIn("company=The Trade Desk", out)
+        self.assertIn("headline='The Trade Desk cuts 15%", out)
 
     def test_no_headcount_says_so(self):
         row, out = self._run(lk=lambda cik: None)
@@ -208,3 +210,15 @@ class RefusalsAreNotSilent(unittest.TestCase):
         row, out = self._run(event=False, text="Quarterly results beat forecasts")
         self.assertIsNone(row)
         self.assertEqual(out, "")
+
+
+class IndexFailureIsDistinguished(unittest.TestCase):
+    def test_unreadable_absent_and_ambiguous_are_three_reasons(self):
+        he.cik_for_company("Trade Desk", fetch_json=lambda u: None)
+        self.assertEqual(he.LAST_INDEX_STATE[0], "SEC company index unreadable")
+        he.cik_for_company("Nonexistent Widgets", fetch_json=tickers_json)
+        self.assertEqual(he.LAST_INDEX_STATE[0], "no SEC registrant has that name")
+        he.cik_for_company("Acme", fetch_json=tickers_json)
+        self.assertEqual(he.LAST_INDEX_STATE[0], "several SEC registrants share that name")
+        he.cik_for_company("Trade Desk", fetch_json=tickers_json)
+        self.assertIsNone(he.LAST_INDEX_STATE[0])
