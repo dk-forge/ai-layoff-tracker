@@ -80,8 +80,8 @@ class DailyHumanFirst(unittest.TestCase):
         cls.html = cls.out["html"]
 
     def test_subject_leads_with_top_hiring_development(self):
-        self.assertEqual(self.out["metric"],
-                         "Who's hiring: Cohere plans 1,500 roles in Toronto + 6 more")
+        # 2026-11-12: a single-source figure never leads the subject.
+        self.assertEqual(self.out["metric"], "Who's hiring: Cohere, Tower, Applegreen + 4 more")
         self.assertNotIn("signal", self.out["metric"])
 
     def test_hiring_leads_and_total_is_one_context_line(self):
@@ -89,7 +89,8 @@ class DailyHumanFirst(unittest.TestCase):
         # and the context line is "Separately, ..." (test_digest_talent_daily_glance).
         self.assertIn("\n7 hiring signals, led by Cohere", self.text)
         # Superseded 2026-11-11: the employer-activity count is said once, in the glance.
-        self.assertEqual(self.text.count("Employer-activity signals: 2 from 2 employers"), 1)
+        # Reworded 2026-11-12 ("Other employer news"), still said once.
+        self.assertEqual(self.text.count("Other employer news: 2 ("), 1)
         self.assertNotIn("Separately,", self.text)
 
     def test_window_label_names_its_dates(self):
@@ -100,12 +101,12 @@ class DailyHumanFirst(unittest.TestCase):
 
     def test_announced_plans_and_open_listings_are_never_mixed(self):
         plans = section(self.text, "Announced hiring plans")
-        listings = section(self.text, "Open listings")
+        listings = section(self.text, "Job-board changes")
         for name in ("ZipRecruiter", "HawkEye 360", "NerdWallet"):
             self.assertNotIn(name, plans)
         for name in ("Cohere", "Tower", "Applegreen", "Mondial Relay"):
             self.assertNotIn(name, listings)
-        self.assertNotIn("open listings", plans)
+        self.assertNotIn("since our last scan", plans)
         self.assertNotIn("announced plan", listings)
         # Each list is ranked within its own type, largest first.
         self.assertLess(plans.index("Cohere"), plans.index("Tower"))
@@ -115,17 +116,19 @@ class DailyHumanFirst(unittest.TestCase):
     def test_one_compact_line_per_employer(self):
         # The cap rose from five to ten on 2026-11-06; the ten-line cap is
         # pinned in test_digest_talent_daily_glance. All seven fit here.
-        lines = re.findall(r"^  \S.*: .*(?:announced plan|open listings) · .*$",
+        lines = re.findall(r"^  \S.*: .*(?:announced plan|since our last scan) · .*$",
                            self.text, re.M)
-        # Mondial Relay states no roles: folded into one line (owner review 2026-11-11).
+        # Mondial Relay states no roles: counted under "See all", not featured
+        # (owner review 2026-11-12).
         self.assertEqual(len(lines), 6, lines)
-        self.assertIn("  Also announced, roles not stated: Mondial Relay.", self.text)
+        self.assertNotIn("Mondial Relay", self.text.split("\nNotes\n", 1)[0].split("Announced hiring plans\n", 1)[1])
         self.assertIn("  🇨🇦 Cohere: 1,500 roles, announced plan · Toronto, Canada · "
                       "MobileSyrup https://example.com/4", self.text)
         self.assertNotIn("📍", self.text + self.html)
         self.assertNotIn("Around the world", self.text)
-        self.assertIn("See all 7 hiring signals", self.text)
-        self.assertEqual(self.text.count("See all"), 1)
+        # Mondial Relay (no roles stated) is counted, not featured (2026-11-12).
+        self.assertIn("6 featured, see all 7 hiring signals", self.text)
+        self.assertEqual(self.text.lower().count("see all"), 1)
 
     def test_regions_are_one_line_and_detail_moves_to_notes(self):
         self.assertNotIn("By region:", self.text)
