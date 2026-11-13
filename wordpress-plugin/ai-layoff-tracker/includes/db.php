@@ -330,6 +330,8 @@ function alt_db_install_side_tables() {
         freq_layoff VARCHAR(10) NOT NULL DEFAULT 'weekly',
         freq_talent VARCHAR(10) NOT NULL DEFAULT 'weekly',
         freq_articles VARCHAR(10) NOT NULL DEFAULT 'weekly',
+        talent_country CHAR(2) NULL,
+        talent_family VARCHAR(40) NULL,
         status VARCHAR(12) NOT NULL DEFAULT 'pending',
         confirm_token CHAR(64) NULL,
         unsub_token CHAR(64) NOT NULL,

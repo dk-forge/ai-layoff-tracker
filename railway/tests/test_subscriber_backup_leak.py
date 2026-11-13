@@ -82,6 +82,7 @@ def _poisoned_rows():
             "unsubscribed_at": None, "last_sent_at": None,
             "last_sent_daily": None, "last_sent_weekly": None, "last_sent_monthly": None,
             "consent_partners": 0, "partners_consent_at": None,
+            "talent_country": None, "talent_family": None,
         })
     return rows
 

@@ -17,6 +17,15 @@ reported employee count, means no estimate and the filing stays refused.
 All reads are SEC's free, keyless endpoints (data.sec.gov), cached per process
 and per CIK, so a run that sees ten filings from one filer reads its facts
 once. No model call.
+
+Owner ruling 2026-11-13 ("yes extend estimates to news, labelled"): a NEWS
+item that states a share of the total workforce and no count takes the same
+estimate, with two extra conditions because a headline names a company and not
+a filing: the company must resolve to exactly ONE SEC registrant (the name is
+normalised and matched against SEC's company_tickers.json; ambiguous or absent
+is no estimate), and the report's own sentence is kept verbatim as "Report
+states". A share of a QUALIFIED workforce (salaried, corporate, one division)
+is never applied to total headcount.
 """
 import re
 
@@ -185,22 +194,78 @@ def sec_lookup(cik, fetch_json=None, fetch_text=None):
     return out
 
 
+_NAME_SUFFIX = {"inc", "incorporated", "corp", "corporation", "co", "company", "ltd",
+                "limited", "plc", "llc", "lp", "holdings", "holding", "group", "sa",
+                "nv", "ag", "de", "new"}
+TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
+_INDEX = {}
+
+
+def _norm_name(name):
+    """"The Trade Desk, Inc." -> "trade desk"; "CAMPBELL'S CO" -> "campbells"."""
+    t = re.sub(r"[\u2019']", "", str(name or "").lower().replace("&", " and "))
+    toks = re.sub(r"[^a-z0-9]+", " ", t).split()
+    if toks and toks[0] == "the":
+        toks = toks[1:]
+    while toks and toks[-1] in _NAME_SUFFIX:
+        toks.pop()
+    return " ".join(toks)
+
+
+def cik_for_company(name, fetch_json=None):
+    """The CIK of the ONE SEC registrant whose normalised name equals `name`'s,
+    else None. Share classes of one registrant count as one; two registrants
+    with the same normalised name are ambiguous and give None, never a guess."""
+    key = _norm_name(name)
+    if not key:
+        return None
+    index = _INDEX.get("map") if fetch_json is None else None
+    if index is None:
+        try:
+            raw = (fetch_json or _fetch_json)(TICKERS_URL) or {}
+            index = {}
+            for rec in (raw.values() if isinstance(raw, dict) else raw):
+                index.setdefault(_norm_name(rec.get("title")), set()).add(str(int(rec["cik_str"])))
+        except Exception:
+            return None
+        if not index:
+            return None                      # an unreadable index is never cached
+        if fetch_json is None:
+            _INDEX["map"] = index
+    ciks = index.get(key, set())
+    return next(iter(ciks)) if len(ciks) == 1 else None
+
+
+def default_cik_finder(name):
+    return cik_for_company(name)
+
+
 def default_lookup(cik):
     return sec_lookup(cik)
 
 
-def estimate_for_filing(raw_entry, raw_text, lookup=None):
-    """The labelled estimate for a percent-only 8-K, or None."""
-    if str(raw_entry.get("source_type") or "").upper() != "8K":
+def estimate_for_filing(raw_entry, raw_text, lookup=None, company=None, cik_finder=None):
+    """The labelled estimate for a percent-only 8-K or news item, or None."""
+    stype = str(raw_entry.get("source_type") or "")
+    is_news = stype == "news"
+    if stype.upper() != "8K" and not is_news:
         return None
     from filing_shapes import RISK_FACTORS_SECTION
     if raw_entry.get("sec_section") == RISK_FACTORS_SECTION:
         return None
-    found = workforce_percent(raw_text, company=raw_entry.get("company_name"))
+    name = company or raw_entry.get("company_name")
+    if is_news:
+        word = _filer_word(name)
+        if not word or word not in str(raw_text or "").lower():
+            return None
+    found = workforce_percent(raw_text, company=name)
     if not found:
         return None
     pct, sentence = found
-    cik = cik_from_url(raw_entry.get("source_url"))
+    if is_news:
+        cik = (cik_finder or default_cik_finder)(name)
+    else:
+        cik = cik_from_url(raw_entry.get("source_url"))
     if not cik:
         return None
     facts = (lookup or default_lookup)(cik)
@@ -216,6 +281,7 @@ def estimate_for_filing(raw_entry, raw_text, lookup=None):
               f"{facts.get('basis')}, accession {facts.get('accession')}")
     return {
         "label": "estimate",
+        "origin": "news" if is_news else "filing",
         "job_count": n,
         "reported_percent": pct,
         "reported_text": sentence,
@@ -229,5 +295,5 @@ def estimate_for_filing(raw_entry, raw_text, lookup=None):
 def label_excerpt(estimate, excerpt=None):
     """The excerpt a reader sees: the label and formula, then the filing's words."""
     head = (f"Estimate: {estimate['formula']}. Employees from {estimate['source']}. "
-            f"Filing states: \"{estimate['reported_text']}\"")
+            f"{'Report' if estimate.get('origin') == 'news' else 'Filing'} states: \"{estimate['reported_text']}\"")
     return head if not excerpt or excerpt == estimate["reported_text"] else f"{head} {excerpt}"
