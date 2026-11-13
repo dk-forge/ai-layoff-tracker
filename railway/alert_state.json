@@ -77,6 +77,11 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "deploy-wordpress-plugin:main:827aa08f6654f1ee": {
+      "first": 1794590432,
+      "last": 1794590432,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 no error line could be extracted from the log"
+    },
     "depth-source-snapshot-test-only:main:c34a64053cf61a19": {
       "first": 1791216897,
       "last": 1791216897,
@@ -123,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T15:26:38+00:00",
+  "updated_at": "2026-11-13T17:20:33+00:00",
   "version": 1
 }
