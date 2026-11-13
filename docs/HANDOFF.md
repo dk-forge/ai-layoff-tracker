@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **HELD - Claude (agent), 2026-11-13, branch `fix/monthly-edition-review-1113` (PR). Reserves plugin version 2.20.328.** Monthly edition review fixes (size under Gmail clip, lead rule, single-report share, region label, period wording).
 - **RELEASED - Claude (agent), 2026-11-13, branch `fix/digest-utm-tags` (PR). Ships as plugin version 2.20.322.** UTM tags on every own-site digest link; see TECHLOG 2026-11-13 (2.20.322).
 - **RELEASED - Claude (agent), 2026-11-12, newsletter audit: PRs #643-#647 (plugin 2.20.316, 2.20.317, 2.20.318).** Email lead-row guards, briefing lead gate, archive correction notes, daily top ten, referee edit-to-zero; see TECHLOG 2026-11-12.
 - **RELEASED - Claude (agent), 2026-11-10, branch `fix/logs-sitemap-canonical-redirect` (PR #628). Ships as plugin version 2.20.311 (2.20.307 was reserved first; 2.20.308-310 shipped on main meanwhile).** /layoff-logs-sitemap.xml served before the canonical redirect; see TECHLOG 2026-11-10 (2.20.311).
