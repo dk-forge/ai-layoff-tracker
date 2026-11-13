@@ -491,6 +491,7 @@ DATED_PERCENT_QUERY = ('("% of its workforce" OR "% of workforce" OR "% of staff
 DATED_QUERY_BASES = (DISCOVERY_QUERIES[0], WIRE_QUERIES[1], DATED_VERB_QUERY,
                      DATED_PERCENT_QUERY)
 WINDOW_DAY_MAX = max(5, _env_int("GOOGLE_NEWS_DAY_MAX", 40))
+PERCENT_DAY_MAX = max(WINDOW_DAY_MAX, _env_int("GOOGLE_NEWS_PERCENT_DAY_MAX", 100))
 
 
 def dated_queries(day):
@@ -512,10 +513,14 @@ def days_between(start, end):
 
 def pull_google_news_day(day, max_items=None):
     """Raw news rows for one past day, same shape as pull_google_news()."""
-    cap = max_items or WINDOW_DAY_MAX
     loc = GOOGLE_NEWS_LOCALES[0]
     rows, seen_links, seen_titles = [], set(), set()
     for q in dated_queries(day):
+        # The percent query holds exactly the headlines the estimate rule can
+        # use, in a page where the Trade Desk's two ranked 48th and 51st; the
+        # ordinary cap of 40 cut both (replay 43476933510). One query a day,
+        # and Google News never returns more than ~100 items, so it is bounded.
+        cap = max_items or (PERCENT_DAY_MAX if DATED_PERCENT_QUERY in q else WINDOW_DAY_MAX)
         taken = 0
         r = http_retry.get_with_retry(
             _rss_url(q, loc[1], loc[2], loc[3]), headers=UA, attempts=3,

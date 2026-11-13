@@ -146,6 +146,47 @@ class PercentHeadlines(unittest.TestCase):
         self.assertGreaterEqual(n, 4)
 
 
+class PercentQueryCap(unittest.TestCase):
+    """The percent query returns 56 items for 2026-09-04 and the Trade Desk's
+    two headlines rank 48th and 51st (45th and 48th after the title prefilter),
+    past the per-query cap of 40, so the fourth query still did not deliver the
+    event (replay 43476933510, 2026-11-13). Its items are exactly the ones the
+    estimate rule can use, and it is one query a day, so it gets a cap that
+    cannot cut a Google News page."""
+
+    def _pull(self, titles_by_query, max_items=None):
+        calls = []
+
+        def get(url, **kw):
+            calls.append(url)
+            k = len(calls) - 1
+            return R(_rss(*titles_by_query[k]).replace("/a/", f"/q{k}/"))
+        with patch.object(google_news.http_retry, "get_with_retry",
+                          side_effect=lambda url, **kw: get(url)), \
+                patch.object(google_news.time, "sleep"):
+            return google_news.pull_google_news_day(date(2026, 9, 4), max_items=max_items)
+
+    def test_a_headline_ranked_past_the_ordinary_cap_is_kept(self):
+        n = len(google_news.dated_queries(date(2026, 9, 4)))
+        filler = [[f"Firm{k}x{i} to cut {100 + i} jobs" for i in range(60)] for k in range(n - 1)]
+        pct = [f"Filler{i} cuts 10% of workforce" for i in range(54)] + [
+            "The Trade Desk cuts 15% of workforce - CFO Dive",
+            "The Trade Desk Sheds 15% of Staff on Heels of Lackluster Q2 Showing - ADWEEK"]
+        rows = self._pull(filler + [pct])
+        texts = [r["raw_text"] for r in rows]
+        self.assertTrue(any("CFO Dive" in t for t in texts))
+        self.assertTrue(any("ADWEEK" in t for t in texts))
+        # the other queries keep the ordinary cap
+        self.assertEqual(len([t for t in texts if t.startswith("Firm")]),
+                         google_news.WINDOW_DAY_MAX * (n - 1))
+
+    def test_an_explicit_cap_still_governs_every_query(self):
+        n = len(google_news.dated_queries(date(2026, 9, 4)))
+        rows = self._pull([[f"Firm{k}x{i} to cut {100 + i} jobs" for i in range(30)]
+                           for k in range(n)], max_items=5)
+        self.assertEqual(len(rows), 5 * n)
+
+
 class CatchupWiring(unittest.TestCase):
     def test_news_catchup_reads_the_dated_windows(self):
         src = (Path(__file__).resolve().parents[1] / "news_catchup.py").read_text()
