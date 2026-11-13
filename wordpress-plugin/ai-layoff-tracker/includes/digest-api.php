@@ -247,6 +247,12 @@ function alt_api_digest_recipients($request) {
             $tfollow = alt_follows_section_for((int) $row['id'], $from_date, $to_date, 'talent');
             if ($tfollow) $recipient['talent_follow_section'] = $tfollow;
         }
+        // Open roles now (includes/digest-open-roles.php): talent-list readers
+        // only, daily and weekly only, in that reader's country and topic.
+        if (in_array('talent', $lists, true) && function_exists('alt_open_roles_section_for')) {
+            $oroles = alt_open_roles_section_for($row, $freq, $send_id);
+            if ($oroles) $recipient['open_roles_section'] = $oroles;
+        }
         $recipients[] = $recipient;
     }
 

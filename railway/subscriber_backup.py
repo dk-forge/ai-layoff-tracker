@@ -93,6 +93,8 @@ COLUMNS = [
     # Partner-offers consent + proof stamp (2026-09-24), mirrored in
     # includes/subscriber-backup.php alt_sbk_columns().
     "consent_partners", "partners_consent_at",
+    # Open roles country and topic (2026-11-13), mirrored likewise. NULL = All.
+    "talent_country", "talent_family",
 ]
 
 
@@ -512,6 +514,7 @@ def _synthetic_rows(n=SELFTEST_ROWS):
             "last_sent_at": None, "last_sent_daily": None,
             "last_sent_weekly": None, "last_sent_monthly": None,
             "consent_partners": 0, "partners_consent_at": None,
+            "talent_country": None, "talent_family": None,
         })
     return out
 

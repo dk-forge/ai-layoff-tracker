@@ -95,6 +95,9 @@ function alt_sbk_columns() {
         // Partner-offers consent and its proof stamp (2026-09-24): consent
         // evidence belongs in the backup like every other consent column.
         'consent_partners', 'partners_consent_at',
+        // Open roles country and topic (2026-11-13): reader choices, exported
+        // like every other column. NULL means "All".
+        'talent_country', 'talent_family',
     );
 }
 
