@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import unittest
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -31,7 +32,8 @@ class RelayTagging(unittest.TestCase):
     def test_built_message_has_no_untagged_link_to_a_page_of_ours(self):
         m = digest_preview.sample_message()
         for body in (_links(m.html), re.findall(r"https?://\S+", m.text)):
-            own = [u for u in body if "asktherecruiter.com" in u
+            own = [u for u in body
+                   if (urllib.parse.urlsplit(u).hostname or "") in HOSTS
                    and not any(p in u for p in digest_utm.NEVER_TAG)]
             self.assertTrue(own)
             for u in own:
