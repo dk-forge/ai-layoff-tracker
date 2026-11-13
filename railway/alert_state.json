@@ -92,11 +92,6 @@
       "last": 1793727435,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
-    "live-data-integrity-check:main:a3cde0067ab8e2ac": {
-      "first": 1794245804,
-      "last": 1794245804,
-      "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
-    },
     "live-surface-check:live.data:8b2aad5ae1ea05cc": {
       "first": 1794580080,
       "last": 1794580080,
@@ -133,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T15:26:34+00:00",
+  "updated_at": "2026-11-13T15:26:36+00:00",
   "version": 1
 }
