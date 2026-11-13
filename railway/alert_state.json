@@ -52,6 +52,11 @@
     }
   ],
   "open": {
+    "adjudicate-one-row-two-referees:main:6c6d83f0690762f7": {
+      "first": 1794553699,
+      "last": 1794553699,
+      "subject": "CI RED: Adjudicate one row (two referees) \u2014 UNKNOWN: no evidence could be read. Nothing applied. Spec: /opt/actions-runners/ai-layoff-tracker/_work/ai-layoff-tracker/ai-layoff-trac"
+    },
     "ci-noise:2026-w39": {
       "first": 1790014405,
       "last": 1790014405,
@@ -123,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T00:29:51+00:00",
+  "updated_at": "2026-11-13T07:08:19+00:00",
   "version": 1
 }
