@@ -266,8 +266,9 @@ class RefusedRunnersReadTheArchivedWorkbook(unittest.TestCase):
     def test_twc_is_always_tried_first(self):
         self._serve()
         self._entries()
-        first_archive = next(i for i, u in enumerate(self.fetched) if "archive.org" in u)
-        self.assertTrue(any("twc.texas.gov" in u for u in self.fetched[:first_archive]))
+        hosts = [urllib.parse.urlsplit(u).hostname for u in self.fetched]
+        first_archive = hosts.index("web.archive.org")
+        self.assertIn("www.twc.texas.gov", hosts[:first_archive])
 
     def test_a_refusal_says_what_came_back(self):
         self._serve()
