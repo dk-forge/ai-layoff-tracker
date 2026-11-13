@@ -87,6 +87,7 @@ import urllib.request
 
 import digest_layout
 import digest_slot
+import digest_utm
 import http_retry
 from digest_transport import (ABSENT, OK, REJECTED, UNKNOWN,  # noqa: F401
                               CredentialCheck, DigestPolicyError, Message,
@@ -612,6 +613,14 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
                                      unsub_url=unsub,
                                      manage_url=manage, edition_note=edition_note,
                                      resume_url=resume)
+    # UTM tags on every link to our own site (owner goal 2026-11-13). Applied
+    # to the finished bodies so a link added anywhere upstream is covered; the
+    # reader's unsubscribe and preferences links are never touched. See
+    # digest_utm for what is tagged and why.
+    hosts = digest_utm.own_hosts(unsub)
+    tier = str(payload.get("freq") or "")
+    html = digest_utm.tag_html(html, tier, hosts)
+    text = digest_utm.tag_text(text, tier, hosts)
 
     return Message(
         to=str(recipient.get("email") or ""),

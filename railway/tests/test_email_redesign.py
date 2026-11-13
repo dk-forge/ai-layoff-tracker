@@ -134,7 +134,9 @@ class TheMessage(unittest.TestCase):
         self.assertIn(">AskTheRecruiter</p>", html)
         self.assertIn("font-variant:small-caps", html)
         self.assertIn("48,910</p>", html, "the headline number is text")
-        self.assertIn('href="https://asktherecruiter.com/blog/r/9"', html)
+        # Own-site links carry the digest's UTM tags (test_digest_utm.py).
+        self.assertIn('href="https://asktherecruiter.com/blog/r/9?utm_source=ai-layoff-tracker'
+                      '&amp;utm_medium=email&amp;utm_campaign=digest-weekly"', html)
         self.assertNotIn("\u2014", html + self.msg.text)
 
     def test_the_clean_check_passes(self):

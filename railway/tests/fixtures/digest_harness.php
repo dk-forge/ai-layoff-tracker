@@ -562,6 +562,9 @@ $click = function ($s, $l, $ip = '198.51.100.7') {
 $sid = (int) $links[0]['send_id'];
 $hash = $links[0]['link_hash'];
 $out['click_redirect'] = $click($sid, $hash);
+// The campaign the redirect must name: this send's own tier.
+$out['click_campaign'] = 'digest-' . (string) $wpdb->get_var(
+    'SELECT freq FROM wp_alt_digest_sends WHERE id = ' . $sid);
 $out['clicks_after_one'] = (int) $wpdb->get_var(
     'SELECT clicks FROM wp_alt_digest_links WHERE id = ' . (int) $links[0]['id']);
 

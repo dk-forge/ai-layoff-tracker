@@ -976,7 +976,12 @@ class ClickCountingAndStats(unittest.TestCase):
         self.assertTrue(self.o["link_starts_at_zero"])
 
     def test_a_click_counts_once_and_lands_on_the_stored_destination(self):
-        self.assertEqual(self.o["click_redirect"], self.o["link_url"])
+        # The stored destination, with the digest's UTM tags appended at
+        # redemption (alt_digest_utm_url; test_digest_utm.py).
+        self.assertEqual(self.o["click_redirect"],
+                         self.o["link_url"] + "&utm_source=ai-layoff-tracker&utm_medium=email"
+                         "&utm_campaign=" + self.o["click_campaign"])
+        self.assertIn(self.o["click_campaign"], ("digest-daily", "digest-weekly", "digest-monthly"))
         self.assertEqual(self.o["clicks_after_one"], 1)
 
     def test_the_counter_is_rate_limited_without_breaking_the_link(self):
