@@ -1,3 +1,16 @@
+## 2026-11-13 - Trace of the four remaining 5-Nov misses: Trade Desk, Campbell's, Weil, Hasbro
+
+**What.** Measured 2026-11-13 against live `/query`, Google News RSS and the run logs.
+| Event | Announced | Cause | State |
+|---|---|---|---|
+| Hasbro 587 (Pawtucket, RI WARN) | 2026-10-13 | RI WARN collector crashed (open `ri.py`, `UnboundLocalError`), RI wrote nothing since 2026-08-28 | **Fixed**: PR #657 (2.20.323), live row 183434, 587, effective 2026-12-24 |
+| The Trade Desk 15% | 2026-09-03/04 | Outside every replay window (gap replay starts 09-29) and the 09-07 write was lost in the host move (TECHLOG 2026-09-12); headlines are percent-only | Replayed 09-03..09-10 (run 43446967969, 106 candidates, 3 posted, $0.0096): still no row, candidates dropped as non-events for want of a count |
+| Campbell's 13% of salaried staff | 2026-09-03/04 | Same window, same reason ("hundreds of jobs", "13% of salaried workforce") | Same replay: no row. The only live Campbell's rows are June (111) and March (200) |
+| Weil Gotshal dissolution | 2026-10-28 | Reached by the dated query; a firm wind-down with no stated headcount in any headline | Not a defect: no count to store. Whether a dissolution is a layoff event is a methodology call |
+Common cause for Trade Desk and Campbell's: a percent-only or "hundreds" headline has no stored count, and the estimate ruling (2026-11-05) covers 8-Ks only. Extending it to news is the owner's call; both companies' 10-K headcounts are available through `headcount_estimate`. No article page is fetched (RSS only), so a count in an article body is out of reach by design. RI after the fix: 85 notices read, above the collapse threshold (0.3 x floor 123).
+**Guard:** `railway/tests/test_warn_ri_custom.py` (PR #657); the rest is a measurement
+**Class:** novel (a measurement plus one fix)
+
 ## 2026-11-13 - 2.20.323 Recall: Rhode Island WARN read nothing for weeks (Hasbro 587 missed)
 
 **What.** Trace of the Hasbro miss: the RI DLT posted a 587-job Pawtucket notice on 2026-10-13 (WJAR, Providence Journal, Patch) and the tracker holds no 2026 Hasbro row; the newest RI row is 2026-08-28. Cause, from the warn-import log of 2026-11-13: `warn-scraper RI exited 1`, `UnboundLocalError: cannot access local variable 'headers'` in the open module's `ri.py`. It only follows a link whose text contains "WARN Report"; the page no longer has one, so `headers` is never bound and the state writes nothing. Freshness read it as UNKNOWN ("no observations", cadence 74 days), never dark, because RI's quiet spells are long. **Fix:** `warn_custom.fetch_ri` finds the workbook by link target (`.xlsx`/`.xls`), finds the header row by its "company" cell, maps columns with the generic tier's own matchers, and on failure names the links it saw (and says "unreachable" for a non-200, not "drift"). RI leaves `ALL_STATES`; its floor (123) moves to `legacy_custom`. **Not verified live:** dlt.ri.gov answers 403 to this sandbox, so the first real read is the next `warn-import` run; if the page publishes no workbook link at all the error will now list every link it saw.
