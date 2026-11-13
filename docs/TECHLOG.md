@@ -1,4 +1,4 @@
-## 2026-11-13 - 2.20.324 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
+## 2026-11-13 - 2.20.325 Talent daily: no single-source number in the subject, board changes are not board sizes, a glance that adds up
 
 **Class:** novel (owner review 2026-11-12, "fix all emails to 100%": a single-source figure led the subject and a job-board delta wore the words "open listings")
 **Guard:** `railway/tests/test_digest_talent_daily_2026_11_12.py` (10 tests on rows shaped like the 12 Nov window; 6 fail on 2.20.322). Before/after renders: `docs/email-renders/2026-11-13-talent-daily/`.
@@ -13,6 +13,13 @@ The 12 Nov edition, "Who's hiring: Salute plans 12,000 roles in United States + 
 - A tied leading region is named the same way in the glance and the region line.
 
 The talent tracker's own half (job-board placement, Cloudflare 3 of 473 postings placed) is talent-intelligence-tracker #328.
+## 2026-11-13 - Estimates extended to news, labelled (owner ruling 2026-11-13)
+
+**What.** Owner ruling in chat, 2026-11-13: "yes extend estimates to news, labelled". A news item that states a share of the TOTAL workforce and no count (Trade Desk "cuts 15% of its global workforce", 2026-09-04) now takes the 8-K estimate: pct x the company's latest 10-K employee count, labelled "Estimate:", with the formula, the 10-K and the report's own sentence ("Report states"), provisional, bronze, confidence at most 60. Extra conditions a headline needs: the company must resolve to exactly ONE SEC registrant (`cik_for_company`: normalised name against `company_tickers.json`, share classes count once, ambiguity or absence is no estimate); the company's name must appear in the text; the 10-K headcount must be readable. A share of a QUALIFIED workforce (Campbell's "salaried workforce ... 13%") is never applied to total headcount, so Campbell's stays refused by design. A model that returns the percent as the count (Intuit's shape) now takes the estimate instead of a rejection; a stated count is never replaced. Live check: The Trade Desk resolves to 3,843 employees (15% = 576); Disney ("Walt Disney Co") and Weil resolve to nothing, so no row. **Not done:** reader-facing methodology copy for news estimates (the 8-K wording is unchanged), and a separate field or badge (the label is in the excerpt).
+**Guard:** `railway/tests/test_news_estimate.py` (15, red before)
+**Class:** novel (a ruling for one source type applied to the other)
+
+
 ## 2026-11-13 - Trace of the four remaining 5-Nov misses: Trade Desk, Campbell's, Weil, Hasbro
 
 **What.** Measured 2026-11-13 against live `/query`, Google News RSS and the run logs.

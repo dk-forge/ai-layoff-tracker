@@ -226,6 +226,8 @@ class FakeWpdb {
             freq_layoff TEXT NOT NULL DEFAULT "weekly",
             freq_talent TEXT NOT NULL DEFAULT "weekly",
             freq_articles TEXT NOT NULL DEFAULT "weekly",
+            talent_country TEXT NULL,
+            talent_family TEXT NULL,
             status TEXT NOT NULL DEFAULT "pending",
             confirm_token TEXT NULL,
             unsub_token TEXT NOT NULL,
