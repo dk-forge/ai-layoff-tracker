@@ -107,11 +107,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "sandbox-main-green-check:main:848b64e654796072": {
-      "first": 1794565021,
-      "last": 1794565021,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on e9974f1d)"
-    },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
       "last": 1794225755,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-14T05:48:08+00:00",
+  "updated_at": "2026-11-14T10:16:04+00:00",
   "version": 1
 }
