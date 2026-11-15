@@ -4,6 +4,12 @@
 **Guard:** `railway/tests/test_search_apostrophe_fold.py` (+5, executes the shipped clause in SQLite, red before); `railway/tests/test_dutch_vocabulary_gap.py` (+4, red before).
 **Class:** absent-read-as-ok (a query that never matches produces no error)
 
+## 2026-11-15 - 2.20.329 The card's date names its basis; why 38 of 100 rows have no "First listed"
+
+**What.** Audit 2026-11-15: 38 of the newest 100 `/query` rows (157 of 200 on page 3) carry `created_at = null`, and 50 of 100 have no `announcement_date`, so the card printed a bare `layoff_date` a reader takes for a published date. **Root cause of the nulls, measured live:** there is one INSERT path into `wp_alt_layoffs` (`alt_db_upsert`) and it stamps `created_at`. Every row with id >= 183212 (first stamp 2026-11-11T11:39:44Z, the moment the column landed after the 2.20.306 incident) carries it; every null in the newest 300 is an older bulk WARN/ERM row with no backing post, which the 2.20.306 fallback cannot cover. Ingest is not dropping it. **Fix:** `cardWhenHtml()` labels the date: `Effective` (WARN effective date, plus `filed <date>` when the notice carries `announcement_date`), `Announced` (announced tier, ERM), `Layoff date` (news, filings). Methodology `#m-cards` states each basis and that first-listed is recorded from 11 Nov 2026. **NOT done, needs the owner:** rendering a first-listed floor ("before 11 Nov 2026") on pre-column rows. `docs/card-contract.json` 1.1.0 says card-listed is omitted when unknown and never a not-stated string, and it is byte-identical with talent-intelligence-tracker (card-contract.yml). Changing it needs a matched sibling PR; this session had no access to the sibling. No value was backfilled into `created_at`: nothing observed those times, and a floor written into the column would read as an observation.
+**Guard:** `railway/tests/test_card_date_basis.py` (+7, red before); `test_card_contract.py` / `test_card_first_listed.py` template token follows the rename to `cardWhenHtml(`.
+**Class:** absent-read-as-ok (an unlabelled date read as a publication date)
+
 ## 2026-11-13 - Monthly edition clipped by Gmail; lead, label and region contradictions (2.20.328)
 
 Owner reviewed the Nov 1-12 monthly test send and asked "are we 100%?". Six findings, all fixed or answered here.
@@ -31110,3 +31116,14 @@ is created (the table already dropped them; the post was still published).
 **Guard:** `railway/tests/test_layoffs_schema_drift.py` (INSERT columns must be
 declared, missing column detected, failed INSERT recorded, repaired, retried).
 **Class:** silent-stop
+
+## 2026-11-15 - weekly benchmark: strict recall 19/25 (last week 14/25)
+Full list and scoring: `docs/benchmarks/2026-11-15.md`. Misses: 2 no row (Dutch
+government again, NatWest), 4 wrong count (Ecco, Vodafone, Children's Place, eBay).
+Amex and Fiserv, misses last week, are now listed but 8 to 19 days after the event.
+`/query` now exposes `created_at`, so time-to-listing is measurable (median 6 days);
+the 11-05 and 11-11 clusters match the 2.20.306 insert outage. No code fix this run:
+the top cause is discovery for named large employers, which needs a no-row trace
+before any vocabulary change. No ranking claimed, no competitor run.
+**Guard:** none - a measurement, not a fix; the traced misses ship with their own tests in #679 (`test_search_apostrophe_fold.py`, `test_dutch_vocabulary_gap.py`)
+**Class:** absent-read-as-ok

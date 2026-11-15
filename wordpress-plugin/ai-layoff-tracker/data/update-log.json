@@ -10,6 +10,14 @@
    "text": "Searching for an employer now finds it however its apostrophe was typed: \"Children's Place\" also finds entries filed as \"Children’s Place\". The news search also reads two more Dutch phrasings of job cuts."
   },
   {
+   "slug": "card-date-basis",
+   "date": "2026-11-15",
+   "version": "2.20.329",
+   "type": "Fix",
+   "area": "tracker",
+   "text": "Each entry now says which date it shows: Effective for a WARN notice (with the date it was filed, when the notice carries one), Announced for an announcement, and Layoff date for a filing or news report. None of these is a publication date. The methodology page explains each, and when first-listed dates began."
+  },
+  {
    "slug": "digest-monthly-fits-inbox",
    "date": "2026-11-13",
    "version": "2.20.328",
