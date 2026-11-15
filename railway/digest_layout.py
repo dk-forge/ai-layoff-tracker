@@ -449,6 +449,63 @@ def plain_dashes(text) -> str:
     return re.sub(r"\s*\u2014\s*", " - ", str(text or ""))
 
 
+_ANY_TAG = re.compile(r"<(/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>")
+_STYLE_DQ = re.compile(r'style="([^"]*)"')
+_VOID_TAGS = frozenset(("br", "img", "meta", "hr", "input", "link", "col", "wbr"))
+# Cells keep their own font: classic Outlook does not reliably carry a font
+# from an outer cell into a nested table, which is the one place the stack
+# has to be restated.
+_FONT_ANCHORS = frozenset(("td", "body", "th"))
+
+
+def drop_inherited_fonts(html: str) -> str:
+    """Remove a `font-family` an element inherits anyway. Pure presentation.
+
+    Gmail clips a message past ~102 KB and hides everything after the cut,
+    the footer and the unsubscribe link included. The 2026-11-13 monthly test
+    send arrived at 183,793 bytes and was clipped; ~37 KB of it was the same
+    58-character font stack restated on every paragraph, span and link inside
+    a cell that already declared it.
+
+    A declaration is dropped only when it is IDENTICAL to the nearest
+    enclosing element's own font-family, so what renders is unchanged in
+    every client that inherits fonts, which is all of them for text inside a
+    cell. Cells (and body) always keep theirs: see _FONT_ANCHORS. No text, no
+    figure and no href is touched.
+    """
+    out = []
+    pos = 0
+    stack = []          # (tag, own font-family declaration or None)
+    for match in _ANY_TAG.finditer(html or ""):
+        out.append(html[pos:match.start()])
+        pos = match.end()
+        closing, tag, attrs = match.group(1), match.group(2).lower(), match.group(3)
+        if closing:
+            while stack:
+                if stack.pop()[0] == tag:
+                    break
+            out.append(match.group(0))
+            continue
+        inherited = next((f for _, f in reversed(stack) if f), None)
+        own = None
+        found = _STYLE_DQ.search(attrs)
+        if found:
+            decls = [d.strip() for d in found.group(1).split(";") if d.strip()]
+            fam = [d for d in decls if d.lower().startswith("font-family:")]
+            own = fam[0] if fam else None
+            if own and own == inherited and tag not in _FONT_ANCHORS:
+                decls = [d for d in decls if d != own]
+                style = ";".join(decls) + (";" if decls else "")
+                attrs = (attrs[:found.start()] + (f'style="{style}"' if style else "")
+                         + attrs[found.end():])
+                attrs = attrs.rstrip() if not style else attrs
+        out.append(f"<{match.group(2)}{attrs}>")
+        if tag not in _VOID_TAGS and not attrs.rstrip().endswith("/"):
+            stack.append((tag, own))
+    out.append((html or "")[pos:])
+    return "".join(out)
+
+
 def restyle(fragment: str, accent: str = "") -> str:
     """Put every rule this fragment relies on onto the element itself.
 
@@ -1556,7 +1613,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
               f'color:{PAGE_BG};mso-hide:all;">'
               f'{escape(plain_dashes(preheader))}{padding}</div>')
 
-    return (
+    return drop_inherited_fonts(
         "<!doctype html>"
         '<html lang="en">'
         "<head>"
