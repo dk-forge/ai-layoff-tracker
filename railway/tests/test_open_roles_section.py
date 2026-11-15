@@ -41,7 +41,7 @@ class Source(unittest.TestCase):
     def test_both_senders_attach_it_for_talent_readers(self):
         api = API.read_text(encoding="utf-8")
         self.assertIn("$recipient['open_roles_section']", api)
-        self.assertRegex(api, r"in_array\('talent', \$lists, true\) && function_exists\('alt_open_roles_section_for'\)")
+        self.assertRegex(api, r"alt_open_roles_wanted\(\$lists, \$freq\)\s*&& function_exists\('alt_open_roles_section_for'\)")
         sender = _fn("alt_digest_send", SUB)
         self.assertIn("alt_open_roles_section_for($row, $freq, $send_id)", sender)
         self.assertIn("(int) $row['consent_talent'] === 1", sender)
@@ -134,8 +134,12 @@ class Relay(unittest.TestCase):
         self.assertIn("ORROW", msg.html)
         self.assertLess(msg.text.index("Talent"), msg.text.index("ORROW"))
 
-    def test_layoff_only_readers_do_not(self):
+    def test_layoff_only_readers_get_it_on_the_daily_only(self):
+        # Owner request 2026-11-15: the layoff DAILY carries the block.
         msg = digest_send.build_message(self.payload(), self.recipient(["layoff"]), "a@example.com", "b@example.com")
+        self.assertIn("ORROW", msg.text)
+        weekly = dict(self.payload(), freq="weekly")
+        msg = digest_send.build_message(weekly, self.recipient(["layoff"]), "a@example.com", "b@example.com")
         self.assertNotIn("ORROW", msg.text)
 
 
