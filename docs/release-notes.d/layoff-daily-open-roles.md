@@ -1,5 +1,5 @@
 ---
-version: 2.20.330
+version: 2.20.331
 type: feature
 area: email
 date: 2026-11-15

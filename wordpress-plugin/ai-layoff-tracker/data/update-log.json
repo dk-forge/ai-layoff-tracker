@@ -4,10 +4,18 @@
   {
    "slug": "layoff-daily-open-roles",
    "date": "2026-11-15",
-   "version": "2.20.330",
+   "version": "2.20.331",
    "type": "New",
    "area": "email",
    "text": "The daily AI layoff email now carries the same \"open roles now\" block as the talent email: current openings and the newest postings, each linking straight to the employer's own page. The monthly email no longer links to an archive page that is not published yet: it links the previous complete month, or no archive link at all."
+  },
+  {
+   "slug": "search-apostrophe-fold",
+   "date": "2026-11-15",
+   "version": "2.20.330",
+   "type": "Fix",
+   "area": "tracker",
+   "text": "Searching for an employer now finds it however its apostrophe was typed: \"Children's Place\" also finds entries filed as \"Children’s Place\". The news search also reads two more Dutch phrasings of job cuts."
   },
   {
    "slug": "card-date-basis",
