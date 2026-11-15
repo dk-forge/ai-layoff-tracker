@@ -16,6 +16,10 @@
  * button goes through alt_digest_track_link. A tracking redirect on a role
  * would route the reader through our site, which the ruling forbids.
  *
+ * OWNER REQUEST 2026-11-15: the same block also goes in the AI layoff DAILY
+ * (layoff-list readers, daily only; never the weekly or monthly). A reader on
+ * both lists gets it once, as a talent reader. See alt_open_roles_wanted().
+ *
  * Talent-list readers only, daily and weekly only, appended after their
  * consented sections by both senders (subscribe.php and the relay), exactly
  * like talent_follow_section. Never a reason to send on its own.
@@ -32,6 +36,17 @@ function alt_open_roles_country($row) {
 function alt_open_roles_family($row) {
     $f = strtolower(trim((string) ($row['talent_family'] ?? '')));
     return preg_match('/^[a-z_]{2,40}$/', $f) ? $f : '';
+}
+
+/**
+ * Does this reader get the block in this tier? Talent readers: daily and
+ * weekly. Layoff-only readers: daily only. $lists is the reader's list names.
+ */
+function alt_open_roles_wanted($lists, $freq) {
+    $freq = strtolower(trim((string) $freq));
+    $lists = (array) $lists;
+    if (in_array('talent', $lists, true)) return $freq === 'daily' || $freq === 'weekly';
+    return in_array('layoff', $lists, true) && $freq === 'daily';
 }
 
 /**

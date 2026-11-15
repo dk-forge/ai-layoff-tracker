@@ -85,6 +85,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import digest_gate
 import digest_layout
 import digest_slot
 import digest_utm
@@ -558,7 +559,12 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # OPEN ROLES NOW (owner ruling 2026-11-13): composed by the talent plugin
     # per recipient in their country and topic; same rules as talent follows.
     oroles = recipient.get("open_roles_section")
-    if (isinstance(oroles, dict) and "talent" in (recipient.get("lists") or [])
+    # Owner request 2026-11-15: layoff readers get it on the DAILY only.
+    lists_ = recipient.get("lists") or []
+    wants_roles = ("talent" in lists_
+                   or ("layoff" in lists_
+                       and str(payload.get("freq") or "").strip().lower() == "daily"))
+    if (isinstance(oroles, dict) and wants_roles
             and (oroles.get("html") or "").strip() and (oroles.get("text") or "").strip()):
         parts.append(("open_roles", oroles["html"].strip(), oroles["text"].strip(),
                       "", ("", True)))
@@ -1005,6 +1011,39 @@ def _test_payload(payload: dict, freq: str, env=None):
     return test, None
 
 
+def _quality_gate(payload: dict, from_addr: str, reply_to: str):
+    """Render one message per distinct list mix and judge it BEFORE any send.
+
+    Returns None when clean, else the gate report. Runs for dry runs and test
+    sends too, so a render is judged wherever it is made. The link check is
+    opt in (DIGEST_GATE_LINKS=1) because it touches the network.
+    """
+    sample, seen = [], set()
+    for recipient in payload.get("recipients") or []:
+        key = tuple(sorted(recipient.get("lists") or []))
+        if key in seen:
+            continue
+        message = build_message(payload, recipient, from_addr, reply_to)
+        if message is not None:
+            seen.add(key)
+            sample.append(message)
+    if not sample:
+        return None
+    report = digest_gate.run_gate(sample, check_network=_flag("DIGEST_GATE_LINKS"))
+    sizes = ", ".join(f"{b // 1024}KB" for b in report["checked"]["html_bytes"])
+    print(f"digest gate: {report['checked']['messages']} message(s) [{sizes}], "
+          f"{report['checked']['links']} link(s) checked, "
+          f"{len(report['failures'])} failure(s), {len(report['warnings'])} warning(s)")
+    for w in report["warnings"]:
+        print(f"::warning::digest gate: {w}")
+    for f in report["failures"]:
+        print(f"::error::digest gate: {f}")
+    if report["ok"]:
+        return None
+    print("digest gate: NOTHING SENT. Fix the render, then re-run.")
+    return report
+
+
 def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
               limit: int | None) -> dict:
     """One tier's whole pass: ask, render, send, record what went out.
@@ -1104,6 +1143,13 @@ def _run_tier(freq: str, transport, from_addr: str, reply_to: str,
         print("no section could be composed from the live endpoints, so there "
               "is nothing true to say. Sending nothing rather than an empty "
               "digest or an invented figure.")
+
+    gate = _quality_gate(payload, from_addr, reply_to)
+    if gate is not None:
+        result["code"] = 2
+        result["halt"] = True
+        result["not_sent"] = f"{freq}: NOT SENT, quality gate failed"
+        return result
 
     sent_ids, failures = send_all(payload, transport, from_addr, reply_to, limit)
     result["sent"] = len(sent_ids)
