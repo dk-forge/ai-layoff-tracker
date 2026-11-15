@@ -1404,7 +1404,20 @@ function alt_freetext_clause(array $columns, $term, array &$params) {
     // one string so the filter still applies and nothing throws.
     if (is_array($term)) $term = implode(' ', array_filter($term, 'is_scalar'));
     $term = mb_substr((string) $term, 0, ALT_FREETEXT_MAX_CHARS);
+    // ONE APOSTROPHE, HOWEVER IT WAS TYPED (2026-11-15). "Children's Place"
+    // missed the Alabama WARN row stored as "Children’s Place Distribution"
+    // (U+2019), and the curly spelling missed the other six. When the term
+    // carries any apostrophe, both sides fold U+2019 and U+2018 to U+0027.
+    // A term with none is never affected by that fold, so its SQL (and cost)
+    // is exactly what it was. railway/tests/test_search_apostrophe_fold.py.
+    $fold = (bool) preg_match("/['\x{2018}\x{2019}]/u", $term);
+    if ($fold) $term = str_replace(array("\u{2018}", "\u{2019}"), "'", $term);
     $like = '%' . $wpdb->esc_like($term) . '%';
+    if ($fold) {
+        $columns = array_map(function ($c) {
+            return "REPLACE(REPLACE($c, '\u{2019}', ''''), '\u{2018}', '''')";
+        }, $columns);
+    }
     $ors = array();
     foreach ($columns as $c) { $ors[] = "$c LIKE %s"; $params[] = $like; }
     $sql = '(' . implode(' OR ', $ors) . ')';
