@@ -45,7 +45,8 @@ class CardFirstListed(unittest.TestCase):
         body = js[start:js.index("\n    function renderCards()", start)]
         self.assertIn("var listed = cardListed(row);", body)
         foot = body[body.index("alt-card-foot"):]
-        self.assertLess(foot.index("alt-card-when"), foot.index("listed"))
+        # card-when is built by cardWhenHtml() since 2026-11-15.
+        self.assertLess(foot.index("cardWhenHtml(row)"), foot.index("listed"))
         self.assertLess(foot.index("listed"), foot.index("alt-card-src"))
 
 
