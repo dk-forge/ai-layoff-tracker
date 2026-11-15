@@ -31097,4 +31097,5 @@ Amex and Fiserv, misses last week, are now listed but 8 to 19 days after the eve
 the 11-05 and 11-11 clusters match the 2.20.306 insert outage. No code fix this run:
 the top cause is discovery for named large employers, which needs a no-row trace
 before any vocabulary change. No ranking claimed, no competitor run.
-**Class:** discovery-gap
+**Guard:** none - a measurement, not a fix; the traced misses ship with their own tests in #679 (`test_search_apostrophe_fold.py`, `test_dutch_vocabulary_gap.py`)
+**Class:** absent-read-as-ok
