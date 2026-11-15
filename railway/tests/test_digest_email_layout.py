@@ -738,7 +738,12 @@ class TheVariantMechanism(unittest.TestCase):
         stat = digest_design.accent_styles(
             digest_design.RED, layout.FONT, layout.INK,
             layout.MUTED)[("p", "stat")]
-        self.assertIn(stat, html, "the stat line did not get the stat style")
+        # 2026-11-13: a font-family the enclosing cell already declares is
+        # dropped (digest_layout.drop_inherited_fonts, Gmail clip budget), so
+        # the style that reaches the message is the stat style less that one.
+        stat_sent = ";".join(d for d in stat.split(";")
+                             if d and not d.startswith("font-family:")) + ";"
+        self.assertIn(stat_sent, html, "the stat line did not get the stat style")
         self.assertIn(f"font-size:{layout.TYPE_STAT}px", stat)  # 2026-10-19 type scale
         self.assertGreater(layout.TYPE_STAT, layout.TYPE_BODY)
         self.assertIn("font-size:16px", layout.TAG_STYLES["p"])  # owner 2026-10-12: body >= 16px
