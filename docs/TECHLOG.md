@@ -31088,3 +31088,13 @@ is created (the table already dropped them; the post was still published).
 **Guard:** `railway/tests/test_layoffs_schema_drift.py` (INSERT columns must be
 declared, missing column detected, failed INSERT recorded, repaired, retried).
 **Class:** silent-stop
+
+## 2026-11-15 - weekly benchmark: strict recall 19/25 (last week 14/25)
+Full list and scoring: `docs/benchmarks/2026-11-15.md`. Misses: 2 no row (Dutch
+government again, NatWest), 4 wrong count (Ecco, Vodafone, Children's Place, eBay).
+Amex and Fiserv, misses last week, are now listed but 8 to 19 days after the event.
+`/query` now exposes `created_at`, so time-to-listing is measurable (median 6 days);
+the 11-05 and 11-11 clusters match the 2.20.306 insert outage. No code fix this run:
+the top cause is discovery for named large employers, which needs a no-row trace
+before any vocabulary change. No ranking claimed, no competitor run.
+**Class:** discovery-gap
