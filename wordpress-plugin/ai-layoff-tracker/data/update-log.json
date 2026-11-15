@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "card-date-basis",
+   "date": "2026-11-15",
+   "version": "2.20.329",
+   "type": "Fix",
+   "area": "tracker",
+   "text": "Each entry now says which date it shows: Effective for a WARN notice (with the date it was filed, when the notice carries one), Announced for an announcement, and Layoff date for a filing or news report. None of these is a publication date. The methodology page explains each, and when first-listed dates began."
+  },
+  {
    "slug": "digest-monthly-fits-inbox",
    "date": "2026-11-13",
    "version": "2.20.328",

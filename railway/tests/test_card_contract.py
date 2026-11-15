@@ -113,7 +113,8 @@ TEMPLATE_TOKEN = {
     "card-h": r"\bhead\b",
     "card-rt": r'class="alt-card-rt"',
     "card-foot": r'class="alt-card-foot"',
-    "card-when": r'class="alt-card-when"',
+    # Built by cardWhenHtml() since 2026-11-15 (the date names its basis).
+    "card-when": r"\bcardWhenHtml\(",
     "card-listed": r"\blisted\b",
     "card-src": r'class="alt-card-src"',
 }
