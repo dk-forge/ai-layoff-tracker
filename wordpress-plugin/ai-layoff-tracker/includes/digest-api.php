@@ -249,7 +249,8 @@ function alt_api_digest_recipients($request) {
         }
         // Open roles now (includes/digest-open-roles.php): talent-list readers
         // only, daily and weekly only, in that reader's country and topic.
-        if (in_array('talent', $lists, true) && function_exists('alt_open_roles_section_for')) {
+        if (function_exists('alt_open_roles_wanted') && alt_open_roles_wanted($lists, $freq)
+            && function_exists('alt_open_roles_section_for')) {
             $oroles = alt_open_roles_section_for($row, $freq, $send_id);
             if ($oroles) $recipient['open_roles_section'] = $oroles;
         }

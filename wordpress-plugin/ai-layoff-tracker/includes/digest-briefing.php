@@ -938,12 +938,37 @@ function alt_briefing_render($m, $send_id = 0) {
         $slug = alt_edition_slug($kind, $from, $to);
         if ($slug !== '') $edition = alt_edition_url($kind, $slug);
     }
+    // MONTHLY: THIS EDITION IS NOT IN THE ARCHIVE YET. An edition goes public
+    // only after the send is recorded (alt_edition_publish), and the monthly
+    // window is the month so far, so the link to "this edition" 404ed for
+    // every reader of the email (audit 2026-11-15). Link it only once it is
+    // published; otherwise link the newest PUBLISHED monthly from a complete
+    // month, labelled as the previous one, or no archive link at all. The
+    // cite line below then falls back to the tracker page, never a 404.
+    $edition_label = 'This edition in the archive (cite this)';
+    $edition_is_current = true;
+    if ($kind === 'monthly' && $edition !== '') {
+        $edition = '';
+        $month_start = substr((string) $from, 0, 7) . '-01';
+        if (function_exists('alt_edition_get') && $slug !== '' && alt_edition_get('monthly', $slug)) {
+            $edition = alt_edition_url('monthly', $slug);
+        } elseif (function_exists('alt_edition_all')) {
+            foreach (alt_edition_all() as $row) {
+                if (($row['freq'] ?? '') === 'monthly' && (string) $row['window_to'] < $month_start) {
+                    $edition = alt_edition_url('monthly', $row['slug']);
+                    $edition_label = 'Previous monthly edition in the archive';
+                    $edition_is_current = false;   // never cited as THIS edition
+                    break;
+                }
+            }
+        }
+    }
     $links = array(
         array('Open the tracker for ' . $m['range'], alt_digest_track_link($send_id, $tracker), $tracker),
         array('How we count (methodology)', $method, $method),
         array('Download the data (CSV, JSON)', $tracker . '#alt-export-csv', $tracker . '#alt-export-csv'),
     );
-    if ($edition !== '') $links[] = array('This edition in the archive (cite this)', $edition, $edition);
+    if ($edition !== '') $links[] = array($edition_label, $edition, $edition);
     alt_briefing_section('Explore the data', 'Every figure above opens on the same dates and the same counting basis.', $html, $text);
     foreach ($links as $l) {
         $html .= '<p><a href="' . esc_url($l[1]) . '">' . alt_briefing_h($l[0]) . '</a></p>';
@@ -979,7 +1004,7 @@ function alt_briefing_render($m, $send_id = 0) {
              . '; composed ' . $read . '. Filings keep arriving, so recent figures usually rise and a correction can lower one.';
     $notes[] = 'Cite: AI Layoff Tracker, AskTheRecruiter.com. Figures for ' . $m['range']
              . ($cut !== '' ? ', as of ' . $cut : '') . ', accessed ' . $read . '. '
-             . ($edition !== '' ? $edition : home_url('/ai-layoff-tracker/'));
+             . ($edition !== '' && $edition_is_current ? $edition : home_url('/ai-layoff-tracker/'));
     $corr = home_url('/contact/');
     alt_briefing_section('Notes', '', $html, $text);
     foreach ($notes as $n) {

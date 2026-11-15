@@ -195,6 +195,8 @@ jobs:
           # archive writes nothing (tests, laptop runs). A dry run, preview or
           # test_to send never writes here either.
           DIGEST_ARCHIVE_DIR: ${{ github.workspace }}/data/email_archive
+          # Pre-send gate: also GET-check every non-reader link (digest_gate.py).
+          DIGEST_GATE_LINKS: '1'
         # THREE STATES, AND ONLY ONE OF THEM IS RED.
         #
         #   0  the pass ran. Sent, or nobody was due, or dormant.

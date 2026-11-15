@@ -8195,7 +8195,10 @@ function alt_digest_send($freq) {
             if ($alt_tfs) { $parts_html[] = $alt_tfs['html']; $parts_text[] = $alt_tfs['text']; }
         }
         // Open roles now, for talent-list readers only. Same as the relay.
-        if ((int) $row['consent_talent'] === 1 && $row['freq_talent'] === $freq
+        $alt_or_lists = array();
+        if ((int) $row['consent_talent'] === 1 && $row['freq_talent'] === $freq) $alt_or_lists[] = 'talent';
+        if ((int) $row['consent_layoff'] === 1 && $row['freq_layoff'] === $freq) $alt_or_lists[] = 'layoff';
+        if (function_exists('alt_open_roles_wanted') && alt_open_roles_wanted($alt_or_lists, $freq)
             && function_exists('alt_open_roles_section_for')) {
             $alt_ors = alt_open_roles_section_for($row, $freq, $send_id);
             if ($alt_ors) { $parts_html[] = $alt_ors['html']; $parts_text[] = $alt_ors['text']; }
