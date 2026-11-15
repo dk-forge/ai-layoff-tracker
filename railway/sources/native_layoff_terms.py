@@ -78,7 +78,12 @@ PHRASES_BY_LANG: dict[str, tuple[str, ...]] = {
     "es": ("despido colectivo", "despidos colectivos", "recorte de plantilla",
            "recorte de personal", "despidos masivos", "expediente de regulación de empleo"),
     "it": ("licenziamento collettivo", "licenziamenti collettivi", "esuberi", "licenziamenti"),
-    "nl": ("massaontslag", "collectief ontslag", "banen geschrapt", "reorganisatie banen"),
+    # "banen schrappen" / "banen verdwijnen" added 2026-11-15, MEASURED: the
+    # 25,000-job Dutch central-government cut (2026-10-26) ran in the
+    # infinitive in every national outlet, and the four phrases above it
+    # returned zero items about it. tests/test_dutch_vocabulary_gap.py.
+    "nl": ("massaontslag", "collectief ontslag", "banen geschrapt",
+           "banen schrappen", "banen verdwijnen", "reorganisatie banen"),
     "pl": ("zwolnienia grupowe", "redukcja etatów", "zwolnienia pracowników"),
     "sv": ("varsel om uppsägning", "varslar om uppsägning", "personalneddragningar"),
     "pt": ("demissão em massa", "despedimento coletivo", "despedimento colectivo",
