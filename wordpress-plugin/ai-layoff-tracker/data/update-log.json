@@ -10,6 +10,14 @@
    "text": "Each entry now says which date it shows: Effective for a WARN notice (with the date it was filed, when the notice carries one), Announced for an announcement, and Layoff date for a filing or news report. None of these is a publication date. The methodology page explains each, and when first-listed dates began."
   },
   {
+   "slug": "digest-monthly-fits-inbox",
+   "date": "2026-11-13",
+   "version": "2.20.328",
+   "type": "Fix",
+   "area": "email",
+   "text": "The monthly layoff digest now fits under Gmail's clipping limit, so the footer and unsubscribe link are always shown. The monthly \"Who's hiring\" section is now a short list of the five largest hiring plans with a link to the rest. The opening line no longer names a different employer from \"Top employers\"; the share of cuts resting on a single news report is stated at the top; \"Multiple countries\" shows one figure everywhere; and Russia is now placed in Europe."
+  },
+  {
    "slug": "digest-place-by-employer-hq",
    "date": "2026-11-13",
    "version": "2.20.327",

@@ -49,7 +49,12 @@ function alt_digest_world_country_table() {
             'North Macedonia' => 'MK', 'Norway' => 'NO', 'Poland' => 'PL',
             'Portugal' => 'PT', 'Romania' => 'RO', 'Serbia' => 'RS', 'Slovakia' => 'SK',
             'Slovenia' => 'SI', 'Spain' => 'ES', 'Sweden' => 'SE', 'Switzerland' => 'CH',
-            'Ukraine' => 'UA'),
+            'Ukraine' => 'UA',
+            // Added 2026-11-13: Russia (1,400 jobs in the Nov 1-12 monthly) fell
+            // through to "Other" and made the region row disagree with Top
+            // countries' "Multiple countries" by exactly that amount.
+            'Russia' => 'RU', 'Russian Federation' => 'RU', 'Belarus' => 'BY',
+            'Armenia' => 'AM', 'Azerbaijan' => 'AZ'),
         'Middle East' => array('Bahrain' => 'BH', 'Iran' => 'IR', 'Iraq' => 'IQ',
             'Israel' => 'IL', 'Jordan' => 'JO', 'Kuwait' => 'KW', 'Lebanon' => 'LB',
             'Oman' => 'OM', 'Qatar' => 'QA', 'Saudi Arabia' => 'SA',
@@ -62,7 +67,8 @@ function alt_digest_world_country_table() {
             'Malaysia' => 'MY', 'Mongolia' => 'MN', 'Myanmar' => 'MM', 'Nepal' => 'NP',
             'New Zealand' => 'NZ', 'Pakistan' => 'PK', 'Philippines' => 'PH',
             'Singapore' => 'SG', 'Sri Lanka' => 'LK', 'Taiwan' => 'TW',
-            'Thailand' => 'TH', 'Vietnam' => 'VN'),
+            'Thailand' => 'TH', 'Vietnam' => 'VN', 'Kazakhstan' => 'KZ',
+            'Uzbekistan' => 'UZ'),
         'Latin America' => array('Mexico' => 'MX', 'Argentina' => 'AR', 'Bolivia' => 'BO',
             'Brazil' => 'BR', 'Chile' => 'CL', 'Colombia' => 'CO', 'Costa Rica' => 'CR',
             'Dominican Republic' => 'DO', 'Ecuador' => 'EC', 'El Salvador' => 'SV',

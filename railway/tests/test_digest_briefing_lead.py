@@ -45,7 +45,10 @@ class SingleReportDoesNotLead(unittest.TestCase):
     def test_opening_is_led_by_the_largest_corroborated_row(self):
         lead = self.text.splitlines()[2]
         self.assertNotIn("led by Microsoft", lead)
-        self.assertIn("led by Crothall Healthcare", lead)
+        # 2026-11-13: Microsoft (one report) still ranks first among
+        # employers, so the lead says which rule picked Crothall rather than
+        # "led by", which would contradict Top employers.
+        self.assertIn("the largest corroborated: Crothall Healthcare in Virginia (545 jobs)", lead)
 
     def test_subject_does_not_name_the_single_report(self):
         self.assertNotIn("Microsoft", self.out.get("metric", "") or "")
