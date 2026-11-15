@@ -92,20 +92,30 @@
       "last": 1794591452,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
+    "live-surface-check:live.data:a776cc402ee88703": {
+      "first": 1794752878,
+      "last": 1794752878,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (IncompleteRead(94233 bytes read)) \u2014 this "
+    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1794559989,
       "last": 1794559989,
       "subject": "CI RED: Mailbox janitor \u2014 The sandbox mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
+    },
+    "main-green-check:main:b20d48d5c896e994": {
+      "first": 1794732046,
+      "last": 1794732046,
+      "subject": "CI RED: Main green check \u2014 error: main is NOT verifiably green: tests.yml FAIL (newest completed run is failure on 1c478fea)"
     },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "sandbox-main-green-check:main:848b64e654796072": {
-      "first": 1794565021,
-      "last": 1794565021,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on e9974f1d)"
+    "vps:offline:asktherecruiter-sandbox": {
+      "first": 1794756533,
+      "last": 1794756533,
+      "subject": "VPS runner offline: asktherecruiter-sandbox"
     },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
@@ -118,6 +128,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-13T20:28:00+00:00",
+  "updated_at": "2026-11-15T15:28:54+00:00",
   "version": 1
 }

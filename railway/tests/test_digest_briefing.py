@@ -89,6 +89,12 @@ def base_fixture():
                                       "largest_row_jobs": 46000 if j == 71387 else 10}}
     return {
         "from": FROM, "to": TO, "freq": "weekly", "compose": "layoff",
+        # The compose clock is PINNED: whether a week is "still being counted"
+        # depends on how old it is at compose time, and a free clock turned
+        # this suite red on 2026-11-15 when the fixture week aged past 14 days
+        # (issue #675). Twelve days after TO: the fixture week is provisional,
+        # the seven before it are settled.
+        "compose_now": "2026-11-13T12:00:00Z",
         "options": {"alt_last_write": 1793597760,
                     "alt_digest_briefing_tiers": "daily,weekly,monthly"},
         "layoff": layoff, "layoff_rows": rows, "weeks": weeks,
@@ -120,6 +126,15 @@ class Briefing(unittest.TestCase):
         cls.out = compose(base_fixture())
         cls.text = cls.out["text"]
         cls.html = cls.out["html"]
+
+    def test_the_compose_clock_is_pinned_and_honoured(self):
+        """Issue #675: the suite went red by the calendar alone. The pin must
+        exist AND reach the composer, or the next red is one fixture away."""
+        self.assertIn("compose_now", base_fixture())
+        self.assertIn("(still being counted)", self.text)
+        fx = base_fixture()
+        fx["compose_now"] = "2026-11-20T12:00:00Z"  # 19 days on: settled
+        self.assertNotIn("(still being counted)", compose(fx)["text"])
 
     def test_all_checks_pass_on_a_consistent_week(self):
         self.assertEqual(self.out["held"], [])

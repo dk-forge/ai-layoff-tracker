@@ -466,6 +466,21 @@ if ($which === 'talent') {
                                      (string) ($FIXTURE['freq'] ?? ''));
 } elseif ($which === 'articles') {
     $out = alt_digest_compose_articles($FIXTURE['from'], $FIXTURE['to'], 0);
+} elseif (isset($FIXTURE['compose_now']) && function_exists('alt_briefing_enabled')
+          && alt_briefing_enabled((string) ($FIXTURE['freq'] ?? ''))) {
+    /*
+      A PINNED COMPOSE CLOCK. The briefing decides which weeks are still being
+      counted (settle < alt_briefing_settle_days()) from the compose time, and
+      the production dispatcher passes none, so it reads time(). A fixture
+      that left the clock free went red the day its week turned 14 days old
+      (2026-11-15, issue #675) with no code change. `compose_now` is an ISO
+      timestamp; the branch mirrors alt_digest_compose_layoff's own dispatch
+      exactly (same enabled check, same lower-cased tier) and only adds the
+      clock. A fixture without it still composes through the real door below.
+    */
+    $out = alt_briefing_compose($FIXTURE['from'], $FIXTURE['to'], 0,
+                                strtolower(trim((string) ($FIXTURE['freq'] ?? ''))),
+                                strtotime((string) $FIXTURE['compose_now']));
 } else {
     // The fourth argument is the tier. It is empty for the daily/weekly cases
     // (byte-identical to before) and 'monthly' for the month-to-date edition,

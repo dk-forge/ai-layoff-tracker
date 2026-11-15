@@ -46,11 +46,11 @@
    "units": "number"
   }
  },
- "rows": 10010,
- "bytes": 252980,
- "sha256": "86811e3ca5e06df641d6dee39d710a9223b5e8c47336b1962a1ea70e08e241a2",
+ "rows": 10025,
+ "bytes": 253361,
+ "sha256": "6bcbabfba9a0bcfbb595bb433be99f3bcd78e429924e5e2962b689f51854dc6e",
  "first_date": "1939-01-01",
- "latest_date": "2026-10-03",
+ "latest_date": "2026-11-07",
  "licence": "Public domain (U.S. government data via FRED); cite FRED",
  "attribution": "Source: Federal Reserve Bank of St. Louis, FRED (Federal Reserve Economic Data), https://fred.stlouisfed.org/, series as named. Underlying data from the U.S. Bureau of Labor Statistics and the U.S. Employment and Training Administration (public domain)."
 }
