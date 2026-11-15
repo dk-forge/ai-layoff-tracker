@@ -10,6 +10,14 @@
    "text": "The daily AI layoff email now carries the same \"open roles now\" block as the talent email: current openings and the newest postings, each linking straight to the employer's own page. The monthly email no longer links to an archive page that is not published yet: it links the previous complete month, or no archive link at all."
   },
   {
+   "slug": "card-date-basis",
+   "date": "2026-11-15",
+   "version": "2.20.329",
+   "type": "Fix",
+   "area": "tracker",
+   "text": "Each entry now says which date it shows: Effective for a WARN notice (with the date it was filed, when the notice carries one), Announced for an announcement, and Layoff date for a filing or news report. None of these is a publication date. The methodology page explains each, and when first-listed dates began."
+  },
+  {
    "slug": "digest-monthly-fits-inbox",
    "date": "2026-11-13",
    "version": "2.20.328",

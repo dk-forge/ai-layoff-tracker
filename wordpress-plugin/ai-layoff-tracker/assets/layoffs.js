@@ -4229,6 +4229,29 @@
             + escapeHtml(cardWhen(d)) + '</time>';
     }
 
+    // The source's date, NAMED (audit 2026-11-15). A bare "15 Nov 2026" reads
+    // as a published date, and layoff_date is never that: on a WARN row it is
+    // the legal effective date (the notice is filed weeks earlier, and when the
+    // row carries that filed date it is shown beside it), on an announced row
+    // (ERM, plans) it is the announcement, and on news and filings it is when
+    // the cuts were reported to take place. railway/tests/test_card_date_basis.py.
+    function cardWhenHtml(row) {
+        var d = (row && row.layoff_date) || '';
+        var when = cardWhen(d);
+        if (!when) return '<span class="alt-card-when alt-card-nowhere">Date not stated</span>';
+        var basis = row.source_type === 'warn' ? 'Effective'
+            : (row.announced ? 'Announced' : 'Layoff date');
+        var html = '<time class="alt-card-when" datetime="' + escapeHtml(d.slice(0, 10)) + '">'
+            + basis + ' ' + escapeHtml(when) + '</time>';
+        var filed = row.source_type === 'warn' ? String(row.announcement_date || '') : '';
+        var fw = cardWhen(filed);
+        if (fw && filed.slice(0, 10) !== d.slice(0, 10)) {
+            html += '<time class="alt-card-filed" datetime="' + escapeHtml(filed.slice(0, 10)) + '">filed '
+                + escapeHtml(fw) + '</time>';
+        }
+        return html;
+    }
+
     function cardWhen(d) {
         var p = String(d || '').slice(0, 10).split('-');
         if (p.length !== 3) return '';
@@ -4321,7 +4344,6 @@
 
     function cardHtml(row, i) {
         var d = row.layoff_date || '';
-        var when = cardWhen(d);
         var flags = '';
         if (d && d > todayLocal()) flags += '<span class="alt-upcoming" title="Filed in advance. The effective date has not arrived yet.">upcoming</span>';
         if (row.announced) flags += '<span class="alt-upcoming" title="Announcement of planned cuts, not yet executed or filed">announced</span>';
@@ -4383,8 +4405,7 @@
             +   head
             +   (meaning ? '<p class="alt-card-rt">' + escapeHtml(meaning) + '</p>' : '')
             +   '<div class="alt-card-foot">'
-            +     (when ? '<time class="alt-card-when" datetime="' + escapeHtml(d) + '">' + escapeHtml(when) + '</time>'
-                        : '<span class="alt-card-when alt-card-nowhere">Date not stated</span>')
+            +     cardWhenHtml(row)
             +     listed
             +     flags
             +     '<span class="alt-card-src">' + cardSourceLinks(row) + '</span>'
