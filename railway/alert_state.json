@@ -97,6 +97,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
+      "first": 1794830557,
+      "last": 1794830557,
+      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 DATA INTEGRITY cross_alias_duplicate_rows: 5 event(s) counted more than once under different employer names, 7,050 jobs of excess"
+    },
     "weekly-health-digest-autonomy-tripwire:main:339c6abf23989db5": {
       "first": 1794225755,
       "last": 1794225755,
@@ -108,6 +113,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-16T08:55:23+00:00",
+  "updated_at": "2026-11-16T12:02:37+00:00",
   "version": 1
 }
