@@ -92,11 +92,6 @@
       "last": 1794591452,
       "subject": "CI RED: Live data-integrity check \u2014 PASS    8-K rows are the filer's own current cuts: no 8-K row is announced more than 365 days before its own effective date; 1 row(s) announced "
     },
-    "live-surface-check:live.data:a776cc402ee88703": {
-      "first": 1794752878,
-      "last": 1794752878,
-      "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (IncompleteRead(94233 bytes read)) \u2014 this "
-    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1794559989,
       "last": 1794559989,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-15T18:28:48+00:00",
+  "updated_at": "2026-11-16T02:31:56+00:00",
   "version": 1
 }
