@@ -1,6 +1,16 @@
 {
   "editions": [
     {
+      "date": "2026-11-16",
+      "kind": "daily",
+      "path": "2026/11/2026-11-16-daily.html",
+      "sections": [
+        "talent"
+      ],
+      "slug": "2026-11-16-daily",
+      "subject": "\ud83d\ude80 Who's hiring: Zozzoli, SuperValu \u00b7 Nov 16"
+    },
+    {
       "date": "2026-11-15",
       "kind": "daily",
       "path": "2026/11/2026-11-15-daily.html",
