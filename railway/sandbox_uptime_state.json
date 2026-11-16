@@ -1,5 +1,5 @@
 {
-  "consecutive_fails": 7,
+  "consecutive_fails": 8,
   "open": {
     "sandbox-uptime:down": {
       "first": 1794808915,
@@ -7,6 +7,6 @@
       "subject": "sandbox uptime check failing: https://sandbox.asktherecruiter.com/healthz: could not reach it (The read operation timed out); https://sandbox.asktherecruiter.com/healthz/deep: coul"
     }
   },
-  "updated_at": "2026-11-16T08:05:28+00:00",
+  "updated_at": "2026-11-16T08:35:56+00:00",
   "version": 1
 }
