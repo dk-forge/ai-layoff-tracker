@@ -67,11 +67,6 @@
       "last": 1790014405,
       "subject": "CI noise, week 2026-w39: 3 noisy run(s) in ai-layoff-tracker"
     },
-    "contabo-ops:main:9eea2edf039cde4d": {
-      "first": 1794867910,
-      "last": 1794867910,
-      "subject": "CI RED: Contabo ops \u2014 TimeoutError: The read operation timed out"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -123,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-16T22:25:11+00:00",
+  "updated_at": "2026-11-16T22:35:47+00:00",
   "version": 1
 }
