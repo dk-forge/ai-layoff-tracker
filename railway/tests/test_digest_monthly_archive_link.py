@@ -25,13 +25,20 @@ class MonthlyArchiveLink(unittest.TestCase):
 
 class Source(unittest.TestCase):
     def test_rule_is_in_the_composer(self):
+        """Generalized 2026-11-16 (issue: the same 404 hit a weekly send,
+        test_digest_briefing.py's test_unpublished_weekly_has_no_edition_link)
+        to guard every kind, not only monthly - so the rule is now keyed by
+        the composer's own $kind rather than a hard-coded 'monthly'."""
         src = open(BRIEFING, encoding="utf-8").read()
-        self.assertIn("alt_edition_get('monthly', $slug)", src)
-        self.assertIn("Previous monthly edition in the archive", src)
+        self.assertIn("alt_edition_get($kind, $slug)", src)
+        self.assertIn("Previous ' . $kind . ' edition in the archive", src)
         # A previous edition is never cited as THIS one.
         self.assertRegex(src, r"\$edition !== '' && \$edition_is_current")
-        # The previous edition must come from a COMPLETE month.
-        self.assertRegex(src, r"\(string\) \$row\['window_to'\] < \$month_start")
+        # The previous edition must come from a COMPLETE prior window
+        # (a full month for monthly; the period start for daily/weekly).
+        self.assertRegex(src, r"\(string\) \$row\['window_to'\] < \$period_start")
+        # No longer gated to monthly alone - the guard runs for every kind.
+        self.assertNotRegex(src, r"\$kind === 'monthly' && \$edition")
 
 
 if __name__ == "__main__":

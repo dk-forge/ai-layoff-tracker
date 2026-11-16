@@ -191,11 +191,24 @@ class Briefing(unittest.TestCase):
     def test_required_blocks_survive(self):
         for needle in ("Three things worth knowing", "AI attribution watch",
                        "does not mean AI had no effect", "Snapshot: database last changed",
-                       "Cite: AI Layoff Tracker", "/editions/weekly/2026-W44/",
+                       "Cite: AI Layoff Tracker",
                        "/ai-layoff-tracker/methodology/", "Submit a correction",
                        "Biggest cuts this week (Oct 26 - Nov 1)", "Around the world"):
             self.assertIn(needle, self.text + self.html, needle)
         self.assertNotIn("By US state", self.text)
+
+    def test_unpublished_weekly_has_no_edition_link(self):
+        """The W44 edition is not public at compose time (alt_edition_publish
+        runs only after the send), so a link to it would 404 - the same
+        defect test_digest_monthly_archive_link.py fixed for monthly, caught
+        here for weekly by the pre-send link gate on the W46 send
+        (2026-11-16). Cite falls back to the tracker page instead."""
+        self.assertNotRegex(self.html, r"/editions/weekly/")
+        self.assertNotRegex(self.text, r"editions/weekly/")
+        self.assertNotIn("This edition in the archive", self.text)
+        self.assertIn("Cite: AI Layoff Tracker", self.text)
+        self.assertIn("accessed", self.text.split("Cite: AI Layoff Tracker")[1].split("\n")[0])
+        self.assertIn("/ai-layoff-tracker/", self.text.split("Cite: AI Layoff Tracker")[1].split("\n")[0])
 
     def test_subject_metric_never_carries_ai_on_a_zero_week(self):
         self.assertNotIn("AI", self.out["metric"])

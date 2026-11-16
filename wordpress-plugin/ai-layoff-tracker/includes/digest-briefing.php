@@ -938,25 +938,29 @@ function alt_briefing_render($m, $send_id = 0) {
         $slug = alt_edition_slug($kind, $from, $to);
         if ($slug !== '') $edition = alt_edition_url($kind, $slug);
     }
-    // MONTHLY: THIS EDITION IS NOT IN THE ARCHIVE YET. An edition goes public
-    // only after the send is recorded (alt_edition_publish), and the monthly
-    // window is the month so far, so the link to "this edition" 404ed for
-    // every reader of the email (audit 2026-11-15). Link it only once it is
-    // published; otherwise link the newest PUBLISHED monthly from a complete
-    // month, labelled as the previous one, or no archive link at all. The
+    // THIS EDITION IS NOT IN THE ARCHIVE YET, for every kind. An edition
+    // goes public only after the send is recorded (alt_edition_publish), so
+    // a link to "this edition" at compose time always points at a page that
+    // does not exist. The monthly fix (audit 2026-11-15, its window is the
+    // month so far) only guarded $kind === 'monthly'; the identical defect
+    // in daily and weekly went unnoticed until the pre-send link gate first
+    // checked the network against a real weekly send and 404ed (2026-11-16,
+    // the W46 weekly). Link it only once it is published; otherwise link the
+    // newest PUBLISHED edition of the SAME kind from a complete prior
+    // window, labelled as the previous one, or no archive link at all. The
     // cite line below then falls back to the tracker page, never a 404.
     $edition_label = 'This edition in the archive (cite this)';
     $edition_is_current = true;
-    if ($kind === 'monthly' && $edition !== '') {
+    if ($edition !== '') {
         $edition = '';
-        $month_start = substr((string) $from, 0, 7) . '-01';
-        if (function_exists('alt_edition_get') && $slug !== '' && alt_edition_get('monthly', $slug)) {
-            $edition = alt_edition_url('monthly', $slug);
+        $period_start = ($kind === 'monthly') ? substr((string) $from, 0, 7) . '-01' : (string) $from;
+        if (function_exists('alt_edition_get') && $slug !== '' && alt_edition_get($kind, $slug)) {
+            $edition = alt_edition_url($kind, $slug);
         } elseif (function_exists('alt_edition_all')) {
             foreach (alt_edition_all() as $row) {
-                if (($row['freq'] ?? '') === 'monthly' && (string) $row['window_to'] < $month_start) {
-                    $edition = alt_edition_url('monthly', $row['slug']);
-                    $edition_label = 'Previous monthly edition in the archive';
+                if (($row['freq'] ?? '') === $kind && (string) $row['window_to'] < $period_start) {
+                    $edition = alt_edition_url($kind, $row['slug']);
+                    $edition_label = 'Previous ' . $kind . ' edition in the archive';
                     $edition_is_current = false;   // never cited as THIS edition
                     break;
                 }
