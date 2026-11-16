@@ -97,6 +97,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "send-email-digest:main:bbc63dd1f17d4ff1": {
+      "first": 1794833660,
+      "last": 1794833660,
+      "subject": "CI RED: Send email digest \u2014 digest gate: https://asktherecruiter.com/blog/ai-layoff-tracker/editions/weekly/2026-W46/?utm_source=ai-layoff-tracker&utm_medium=email&utm_campaign=dig"
+    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -113,6 +118,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-16T12:02:37+00:00",
+  "updated_at": "2026-11-16T12:54:20+00:00",
   "version": 1
 }
