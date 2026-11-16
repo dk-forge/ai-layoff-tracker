@@ -66,39 +66,44 @@
    "sha256": "f9239729969fbec5169cb9e836bbc8e15ec6fad798526049697041f487e7ef31"
   },
   "2024-Q2": {
-   "rows": 2315,
-   "bytes": 129133,
-   "sha256": "4f52c6c30e6cf4628424bdc0696937fd8b2dbf385f3520bad4edd6087e1ccca7"
+   "rows": 2314,
+   "bytes": 129084,
+   "sha256": "6713a9f7e69afa232820b20669718cb30f2cf384081544157e4456788e5ca719"
   },
   "2024-Q3": {
-   "rows": 2314,
-   "bytes": 129081,
-   "sha256": "d7dd82b96c55509c6b22d2a53601385502453803d9622fbec82b86e5aa7bc750"
+   "rows": 2316,
+   "bytes": 129170,
+   "sha256": "318856782f2be0b9e17ed0026045868566c2fa2db704ecc42dac191ca424705b"
   },
   "2024-Q4": {
-   "rows": 2316,
-   "bytes": 129070,
-   "sha256": "edc0a7b5d7a7f10ffdff0643c02687ee16b606986334a1d3e21a034e4e273447"
+   "rows": 2318,
+   "bytes": 129161,
+   "sha256": "4d2df25d67a280b9989780bf455256453d5c78562fa1181e28d2ed5ff9c886ac"
   },
   "2025-Q1": {
-   "rows": 2316,
-   "bytes": 128741,
-   "sha256": "72802c4432de98a71087b9189c630dfee890a75bc2c64647fdb6ece0aeb126bf"
+   "rows": 2317,
+   "bytes": 128784,
+   "sha256": "36833cbb2e5b79598e2353c70f61293bfe26b9253e8bb2ba59e875c25058ffc0"
   },
   "2025-Q2": {
-   "rows": 2313,
-   "bytes": 129034,
-   "sha256": "aa53ba096e8439446c9ae9f027937af2cb75c69c3c714c7f5c84ecb7f79ca91b"
+   "rows": 2316,
+   "bytes": 129162,
+   "sha256": "8cae3b454a22b803ee41402a9c649804a28feca8085ac7a210acad7b0a01d13b"
   },
   "2025-Q3": {
    "rows": 2312,
-   "bytes": 128985,
-   "sha256": "67776e9a81ca0f7a49829759178aeb78acb067d200c9dcd21c12946141bea54a"
+   "bytes": 128987,
+   "sha256": "edd6bb46e034bbaf4818d495a982a8de8fd2258224f7c368b590c863f6620a9b"
   },
   "2025-Q4": {
-   "rows": 2308,
-   "bytes": 104620,
-   "sha256": "b219ea16ac53a8dcf2111d81dbb71d263ce25e67be1050b011dba2597b69b425"
+   "rows": 2309,
+   "bytes": 123311,
+   "sha256": "1200b8a5ed2fdc1b44dedaff9affc05d3c3ac35d5fc2923073a2809d95466f41"
+  },
+  "2026-Q1": {
+   "rows": 1789,
+   "bytes": 81004,
+   "sha256": "726e678ee7fd50626e0ab70757409aa6743f7d93be632bac8b0c039e0ef149b5"
   }
  }
 }
