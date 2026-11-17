@@ -169,6 +169,13 @@ class Placement(unittest.TestCase):
         js = (PLUGIN / "assets" / "atr-bar.js").read_text(encoding="utf-8")
         self.assertIn("DOMContentLoaded", js)
 
+    def test_bar_lifts_the_feedback_button_clear_of_its_close(self):
+        # Live 2026-11-17: the fixed feedback button (roo-feedback.css,
+        # bottom:16px, z 9990) sat on top of the bar's close button.
+        src = INC.read_text(encoding="utf-8").replace(" ", "")
+        self.assertIn("body.alt-atr-bar-on#alt-roo-feedback.alt-roo-btn{bottom:", src)
+        self.assertIn("body.alt-atr-bar-on.alt-roo-dialog{bottom:", src)
+
     def test_main_file_loads_it_guarded(self):
         src = MAIN.read_text(encoding="utf-8")
         self.assertIn("includes/atr-signup-cta.php", src)
