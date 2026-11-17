@@ -62,7 +62,9 @@ function alt_atr_cta_sticky_bar() {
 .alt-atr-bar button{min-width:44px;min-height:44px;border:0;border-radius:6px;background:transparent;color:#fff;font-size:1.5rem;line-height:1;cursor:pointer}
 body.alt-atr-bar-on{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 .alt-atr-bar[hidden]{display:none}
-@media (min-width:601px){.alt-atr-bar{display:none}body.alt-atr-bar-on{padding-bottom:0}}
+body.alt-atr-bar-on #alt-roo-feedback .alt-roo-btn{bottom:calc(76px + env(safe-area-inset-bottom))}
+body.alt-atr-bar-on .alt-roo-dialog{bottom:calc(132px + env(safe-area-inset-bottom))}
+@media (min-width:601px){.alt-atr-bar{display:none}body.alt-atr-bar-on{padding-bottom:0}body.alt-atr-bar-on #alt-roo-feedback .alt-roo-btn{bottom:16px}body.alt-atr-bar-on .alt-roo-dialog{bottom:72px}}
 @media (prefers-reduced-motion:reduce){.alt-atr-bar{transition:none}}
 @media print{.alt-atr-bar{display:none}}
 </style>
