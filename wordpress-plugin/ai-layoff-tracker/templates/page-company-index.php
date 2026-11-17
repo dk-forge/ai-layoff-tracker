@@ -53,6 +53,9 @@ function alt_company_index_strip($current, array $counts) {
         <a href="<?php echo esc_url(home_url('/ai-layoff-tracker/')); ?>">full tracker</a>.
     </p>
 
+    <?php // ATR sign-up line (includes/atr-signup-cta.php). function_exists: FTP race guard.
+          if (function_exists('alt_atr_cta_line_html')) echo alt_atr_cta_line_html('directory'); ?>
+
     <?php alt_company_index_strip('', $alt_counts); ?>
 
     <ul class="alt-company-index-buckets">

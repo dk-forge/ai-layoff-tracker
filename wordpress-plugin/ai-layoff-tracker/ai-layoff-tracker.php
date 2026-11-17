@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.331
+ * Version:           2.20.332
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.331');
+define('ALT_VERSION', '2.20.332');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -220,6 +220,12 @@ foreach (array('monthly-report.php', 'press-list.php', 'author-box.php', 'follow
 $alt_subscribe_placements = ALT_PLUGIN_DIR . 'includes/subscribe-placements.php';
 if (is_readable($alt_subscribe_placements)) {
     require_once $alt_subscribe_placements;
+}
+// The ATR sign-up line on the employer pages and the phone bar (owner
+// 2026-11-17). GUARDED with is_readable: a NEW file can land after this one.
+$alt_atr_cta = ALT_PLUGIN_DIR . 'includes/atr-signup-cta.php';
+if (is_readable($alt_atr_cta)) {
+    require_once $alt_atr_cta;
 }
 // The keyed, allowlisted whole-table read behind the weekly off-host backup.
 // GUARDED with is_readable for the reason spelled out above: this file is NEW,
