@@ -1,5 +1,6 @@
 /* Phone sign-up bar on the employer pages (includes/atr-signup-cta.php). */
 (function(){
+function init(){
   var k='alt_atr_bar_closed',bar=document.getElementById('alt-atr-bar');
   if(!bar)return;
   var closed=false;
@@ -10,4 +11,6 @@
     bar.hidden=true;document.body.classList.remove('alt-atr-bar-on');
     try{window.localStorage.setItem(k,'1');}catch(e){}
   });
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
 })();
