@@ -45,6 +45,9 @@ $alt_verif = array(
         verified, not a complete employment history for this employer.
     </p>
 
+    <?php // ATR sign-up line (includes/atr-signup-cta.php). function_exists: FTP race guard.
+          if (function_exists('alt_atr_cta_line_html')) echo alt_atr_cta_line_html('company_entry', $alt_label); ?>
+
     <?php if (!$alt_dir['indexable']) : ?>
         <p class="alt-directory-notice">This record is published for direct research and citation, and is
         kept out of search results: with
