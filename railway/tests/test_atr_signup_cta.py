@@ -158,6 +158,17 @@ class Placement(unittest.TestCase):
             self.assertIn("function_exists('alt_atr_cta_line_html')",
                           path.read_text(encoding="utf-8"), path.name)
 
+    def test_bar_markup_prints_before_footer_scripts(self):
+        # WordPress prints enqueued footer scripts at wp_footer priority 20.
+        # 2.20.332 hooked the bar at 20 too, after them, so atr-bar.js ran
+        # before the bar existed and the bar never showed (live 2026-11-17).
+        src = INC.read_text(encoding="utf-8")
+        m = re.search(r"add_action\('wp_footer', 'alt_atr_cta_sticky_bar', (\d+)\)", src)
+        self.assertTrue(m)
+        self.assertLess(int(m.group(1)), 20)
+        js = (PLUGIN / "assets" / "atr-bar.js").read_text(encoding="utf-8")
+        self.assertIn("DOMContentLoaded", js)
+
     def test_main_file_loads_it_guarded(self):
         src = MAIN.read_text(encoding="utf-8")
         self.assertIn("includes/atr-signup-cta.php", src)

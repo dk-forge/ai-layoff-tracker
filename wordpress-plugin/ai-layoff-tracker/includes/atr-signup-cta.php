@@ -72,7 +72,8 @@ body.alt-atr-bar-on{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 </div>
     <?php
 }
-add_action('wp_footer', 'alt_atr_cta_sticky_bar', 20);
+// Priority 5: before WordPress prints footer scripts at 20, so the bar exists when atr-bar.js runs.
+add_action('wp_footer', 'alt_atr_cta_sticky_bar', 5);
 
 /** The bar's show/close logic is a file, not an inline body (test_shortcode_scripts_are_enqueued.py). */
 function alt_atr_cta_enqueue() {
