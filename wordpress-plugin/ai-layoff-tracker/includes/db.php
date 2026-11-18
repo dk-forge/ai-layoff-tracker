@@ -6503,7 +6503,11 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
     if ($payload === false) {
         $busy = alt_cold_compute_guard($key, function () use ($key, $compute) {
             // Re-read under the lock: the request we waited behind may have
-            // just stored this exact key, which is the point of waiting.
+            // just stored this exact key, which is the point of waiting. Drop
+            // this request's in-memory copy of the option (and the cached
+            // "no such option" marker) first, or the reread answers from the
+            // miss we saw before waiting (Codex P2 on #693).
+            alt_forget_transient_cache($key);
             $hit = get_transient($key);
             if ($hit !== false) return $hit;
             $fresh = call_user_func($compute);
@@ -6556,11 +6560,28 @@ function alt_named_unlock($full) {
     if (is_string($full)) $wpdb->query($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $full));
 }
 
+function alt_forget_transient_cache($key) {
+    if (wp_using_ext_object_cache()) {
+        wp_cache_delete($key, 'transient');
+        return;
+    }
+    foreach (array('_transient_' . $key, '_transient_timeout_' . $key) as $opt) {
+        wp_cache_delete($opt, 'options');
+    }
+    $notopts = wp_cache_get('notoptions', 'options');
+    if (is_array($notopts)) {
+        unset($notopts['_transient_' . $key], $notopts['_transient_timeout_' . $key]);
+        wp_cache_set('notoptions', $notopts, 'options');
+    }
+    wp_cache_delete('alloptions', 'options');
+}
+
 function alt_cold_compute_guard($key, $run) {
     $key_lock = alt_named_lock('k|' . $key, 10);
     if ($key_lock === null) return call_user_func($run);
     // Waited 10 s and the other request is still computing: fall through and
     // let the slot cap decide, rather than wait without bound.
+    alt_forget_transient_cache($key);
     if (get_transient($key) !== false) {
         alt_named_unlock($key_lock);
         return call_user_func($run);
@@ -7564,7 +7585,14 @@ function alt_tracker_bootstrap_payload() {
         $req->set_query_params($params);
         $resp = call_user_func($handler, $req);
         if (is_wp_error($resp)) return null;
-        return ($resp instanceof WP_REST_Response) ? $resp->get_data() : $resp;
+        // A non-200 piece (the cold-compute guard's 503 alt_busy, a WP_Error)
+        // is not data: return null so the page fetches that piece itself
+        // rather than painting an error body as figures (Codex P1 on #693).
+        if (is_wp_error($resp)) return null;
+        if ($resp instanceof WP_REST_Response) {
+            return ((int) $resp->get_status() === 200) ? $resp->get_data() : null;
+        }
+        return $resp;
     };
 
     $facets    = $call('alt_api_facets', 'facets', array());

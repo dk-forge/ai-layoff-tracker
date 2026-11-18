@@ -47,6 +47,22 @@ class ServerGuard(unittest.TestCase):
         self.assertIn("if ($got === null) return null;", body(DB, "alt_named_lock"))
 
 
+class CodexFindings(unittest.TestCase):
+    def test_bootstrap_rejects_non_200_pieces(self):
+        b = body(DB, "alt_tracker_bootstrap_payload")
+        self.assertIn("get_status() === 200", b)
+        self.assertIn("is_wp_error($resp)", b)
+
+    def test_waiters_drop_request_local_option_cache_before_rereading(self):
+        f = body(DB, "alt_forget_transient_cache")
+        self.assertIn("'notoptions'", f)
+        self.assertIn("wp_cache_delete($key, 'transient')", f)
+        self.assertIn("alt_forget_transient_cache($key);\n            $hit = get_transient($key);",
+                      body(DB, "alt_api_cached"))
+        g = body(DB, "alt_cold_compute_guard")
+        self.assertLess(g.index("alt_forget_transient_cache"), g.index("get_transient"))
+
+
 class ClientGuard(unittest.TestCase):
     def test_refresh_all_coalesces(self):
         b = body(JS, "refreshAll")
