@@ -536,7 +536,7 @@ function alt_digest_form_url() {
  * When the first one lands, stated from the schedule rather than invented.
  *
  * .github/workflows/digest-send.yml sends the daily tier at 6:00 AM Eastern
- * seven days a week and the weekly look-back at 7:30 AM Eastern on Mondays, so
+ * seven days a week and the weekly look-back at 6:00 AM Eastern on Mondays (owner, 2026-11-18), so
  * these two sentences are true today. The slots are stated in Eastern rather
  * than UTC because that is what the reader experiences and what the owner
  * asked for; the workflow carries two candidate UTC cron lines per slot (10:00
@@ -7675,8 +7675,15 @@ function alt_digest_first_real_sentence($content) {
     return '';
 }
 
-function alt_digest_compose_articles($from, $to, $send_id = 0) {
+function alt_digest_compose_articles($from, $to, $send_id = 0, $freq = '') {
     if (!function_exists('get_posts')) return null;
+    /*
+      THE WEEKLY EDITION CARRIES EVERY POST OF ITS WEEK (owner, 2026-11-18).
+      The weekly blog digest includes every article published in the week it
+      covers, so it has no fetch ceiling and no print limit. The daily edition
+      keeps one featured read plus two (owner, 2026-11-03).
+    */
+    $every = (strtolower(trim((string) $freq)) === 'weekly');
     /*
       FETCH MORE THAN WE PRINT, so the caption can say how many there were.
       Three items with a standfirst each is a readable block; five is a wall,
@@ -7687,7 +7694,7 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
     $posts = get_posts(array(
         'post_type'           => 'post',
         'post_status'         => 'publish',
-        'numberposts'         => 12,
+        'numberposts'         => $every ? -1 : 12,
         'orderby'             => 'date',
         'order'               => 'DESC',
         'has_password'        => false,
@@ -7827,7 +7834,7 @@ function alt_digest_compose_articles($from, $to, $send_id = 0) {
       machine caption ("The 3 newest of 5 posts..."), no house standfirst.
       Newest first is still the order; nothing is ranked by an invented score.
     */
-    $items = array_slice($items, 0, 3);
+    if (!$every) $items = array_slice($items, 0, 3);
     /*
       CAREER RESOURCES, A LABELLED SECONDARY SECTION (owner, 2026-11-04).
       Layoff news leads; these reads come after it, only for readers who
@@ -8128,12 +8135,12 @@ function alt_digest_send($freq) {
     // and the Indeed "jobs in" backdrop, and the talent composer so it can
     // carry that same backdrop on the daily/weekly cadences and DEFER to the
     // layoff section on the monthly edition (one home per edition, no double
-    // render). The articles composer takes three parameters and ignores the
-    // fourth (PHP permits the extra argument).
+    // render). The articles composer reads it to print every post of the week
+    // on the weekly edition (owner, 2026-11-18).
     $sections = array(
         'layoff' => alt_digest_compose_layoff($from_date, $to_date, $send_id, $freq),
         'talent' => alt_digest_compose_talent($from_date, $to_date, $send_id, $freq),
-        'articles' => alt_digest_compose_articles($from_date, $to_date, $send_id),
+        'articles' => alt_digest_compose_articles($from_date, $to_date, $send_id, $freq),
     );
 
     // The public archive's copy, taken at COMPOSE time and not from any

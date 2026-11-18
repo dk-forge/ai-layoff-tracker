@@ -33,7 +33,7 @@ name: Send email digest
 # THREE SLOTS, SIX CRON LINES, AND EXACTLY ONE SEND PER SLOT PER DAY.
 #
 #   daily    6:07 AM Eastern, seven days a week
-#   weekly   7:37 AM Eastern, Mondays
+#   weekly   6:00 AM Eastern, Mondays (owner ruling 2026-11-18; was 7:37)
 #   monthly  9:07 AM Eastern, the 1st of the month (armed 2026-09-06)
 #
 # The owner asked for 6:00 and 7:30 (2026-08-19); the seven minutes are the
@@ -102,9 +102,11 @@ on:
     # 6:07 AM Eastern - the daily digest. One of these two is a no-op each day.
     - cron: '7 10 * * *'    # 06:07 EDT (Mar-Nov)
     - cron: '7 11 * * *'    # 06:07 EST (Nov-Mar)
-    # 7:37 AM Eastern Monday - the weekly look-back. Same pairing.
-    - cron: '37 11 * * 1'   # 07:37 EDT (Mar-Nov)
-    - cron: '37 12 * * 1'   # 07:37 EST (Nov-Mar)
+    # 6:00 AM Eastern Monday - the weekly look-back and blog digest (owner
+    # ruling 2026-11-18). Same pairing; digest_slot.py is the guard that lets
+    # only the tick that is 06:00 in New York today send.
+    - cron: '0 10 * * 1'    # 06:00 EDT (Mar-Nov)
+    - cron: '0 11 * * 1'    # 06:00 EST (Nov-Mar)
     # 9:07 AM Eastern on the 1st - the monthly edition, month to date. Same
     # pairing; the 1st in UTC at these hours is still the 1st in New York.
     - cron: '7 13 1 * *'    # 09:07 EDT (Mar-Nov)

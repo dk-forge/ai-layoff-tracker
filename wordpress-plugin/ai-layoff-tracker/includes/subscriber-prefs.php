@@ -433,7 +433,7 @@ function alt_welcome_next_send($freq, $now = null) {
     $t = new DateTime('@' . (int) ($now === null ? time() : $now));
     $t->setTimezone($tz);
     $freq = alt_digest_valid_freq($freq);
-    $slot = array('daily' => array(6, 7), 'weekly' => array(7, 37), 'monthly' => array(9, 7))[$freq];
+    $slot = array('daily' => array(6, 7), 'weekly' => array(6, 0), 'monthly' => array(9, 7))[$freq];
     $c = clone $t;
     $c->setTime($slot[0], $slot[1]);
     for ($i = 0; $i < 40; $i++) {
