@@ -6501,8 +6501,17 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
 
     $payload = get_transient($key);
     if ($payload === false) {
-        $payload = call_user_func($compute);
-        set_transient($key, $payload, 30 * MINUTE_IN_SECONDS);
+        $busy = alt_cold_compute_guard($key, function () use ($key, $compute) {
+            // Re-read under the lock: the request we waited behind may have
+            // just stored this exact key, which is the point of waiting.
+            $hit = get_transient($key);
+            if ($hit !== false) return $hit;
+            $fresh = call_user_func($compute);
+            set_transient($key, $fresh, 30 * MINUTE_IN_SECONDS);
+            return $fresh;
+        });
+        if ($busy instanceof WP_REST_Response) return $busy;
+        $payload = $busy;
     }
     $resp = rest_ensure_response($payload);
     // The expensive compute (esp. /aggregate: ~30 SQL statements over 100K+ rows)
@@ -6514,6 +6523,69 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
     // write has superseded (bounded by writes, not by TTL).
     $resp->header('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
     return $resp;
+}
+
+/**
+ * COLD COMPUTES ARE SINGLE-FLIGHT AND CAPPED (todo#1881 item 4, review B1).
+ *
+ * Clicking filter chips at about three a second gave repeated 500s: each click
+ * is a new param set, so a new cold /aggregate (8-19 s) per click, and the
+ * PHP workers and MySQL saturate. Two guards, both MySQL named locks so they
+ * hold across PHP workers:
+ *  - one lock per cache key, so N visitors asking for the same cold key run it
+ *    once and the rest wait (up to 10 s) and read the stored answer;
+ *  - ALT_COLD_SLOTS slots for cold computes in total. With none free the
+ *    request gets a clean 503 + Retry-After, which the page retries once,
+ *    instead of queueing into a worker timeout that surfaces as a 500.
+ * If the server cannot take named locks (GET_LOCK returns NULL) the guard
+ * steps aside and the compute runs exactly as it did before.
+ */
+if (!defined('ALT_COLD_SLOTS')) define('ALT_COLD_SLOTS', 3);
+
+function alt_named_lock($name, $wait) {
+    global $wpdb;
+    // Lock names are server-wide, so scope them to this database.
+    $full = substr('altl_' . md5(DB_NAME . '|' . $name), 0, 60);
+    $got = $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, %d)', $full, (int) $wait));
+    if ($got === null) return null;          // locks unavailable: no guard
+    return ((int) $got === 1) ? $full : false;
+}
+
+function alt_named_unlock($full) {
+    global $wpdb;
+    if (is_string($full)) $wpdb->query($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $full));
+}
+
+function alt_cold_compute_guard($key, $run) {
+    $key_lock = alt_named_lock('k|' . $key, 10);
+    if ($key_lock === null) return call_user_func($run);
+    // Waited 10 s and the other request is still computing: fall through and
+    // let the slot cap decide, rather than wait without bound.
+    if (get_transient($key) !== false) {
+        alt_named_unlock($key_lock);
+        return call_user_func($run);
+    }
+    $slot = false;
+    for ($i = 0; $i < ALT_COLD_SLOTS && $slot === false; $i++) {
+        $slot = alt_named_lock('slot|' . $i, 0);
+        if ($slot === null) { $slot = true; break; }
+    }
+    if ($slot === false) {
+        alt_named_unlock($key_lock);
+        $busy = new WP_REST_Response(array(
+            'code'    => 'alt_busy',
+            'message' => 'The tracker is busy computing other views. Retry in a moment.',
+        ), 503);
+        $busy->header('Retry-After', '2');
+        $busy->header('Cache-Control', 'no-store');
+        return $busy;
+    }
+    try {
+        return call_user_func($run);
+    } finally {
+        alt_named_unlock($slot);
+        alt_named_unlock($key_lock);
+    }
 }
 
 function alt_api_query(WP_REST_Request $r) {

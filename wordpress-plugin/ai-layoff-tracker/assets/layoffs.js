@@ -453,6 +453,10 @@
             el.style.minHeight = reserved + 'px';
             st = BUSY[id] = { el: el, overlay: busyOverlay(el), timer: null, ctrl: null };
         }
+        // A new request for a region supersedes the one in flight: cancel it,
+        // so fast filter clicks do not pile up requests nobody will read.
+        if (st.ctrl) { try { st.ctrl.abort(); } catch (e) { /* settled */ } st.ctrl = null; }
+        if (st.timer) { clearTimeout(st.timer); st.timer = null; }
         st.token = ++BUSY_TOKEN;
         el.setAttribute('aria-busy', 'true');
         st.overlay.classList.remove('alt-load-failed');
@@ -573,7 +577,19 @@
         if (q) url += (url.indexOf('?') > -1 ? '&' : '?') + q;
         var opts = { credentials: 'same-origin' };
         if (signal) opts.signal = signal;
-        return fetch(url, opts).then(function (r) {
+        var once = function () { return fetch(url, opts); };
+        return once().then(function (r) {
+            // 503 + Retry-After is the server's cold-compute cap saying "not
+            // now" (alt_cold_compute_guard). One polite retry, then give up.
+            if (r.status === 503) {
+                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000;
+                return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
+                    if (signal && signal.aborted) throw new Error('aborted');
+                    return once();
+                });
+            }
+            return r;
+        }).then(function (r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         });
@@ -1313,7 +1329,28 @@
         }).catch(function () { /* reconciliation is enrichment; never block the table */ });
     }
 
+    // COALESCED (todo#1881 item 4). Every chip, select and preset calls
+    // refreshAll(), and each call fires three or four REST requests; at three
+    // clicks a second that saturated the host into 500s. The first call after
+    // a quiet spell runs at once (so first paint and a single click are not
+    // delayed); calls inside REFRESH_GAP_MS collapse into one trailing run
+    // with the final filters.
+    var REFRESH_GAP_MS = 350, REFRESH_TIMER = null, REFRESH_LAST = 0;
     function refreshAll() {
+        var now = Date.now();
+        if (!REFRESH_TIMER && now - REFRESH_LAST >= REFRESH_GAP_MS) {
+            REFRESH_LAST = now;
+            refreshAllNow();
+            return;
+        }
+        if (REFRESH_TIMER) clearTimeout(REFRESH_TIMER);
+        REFRESH_TIMER = setTimeout(function () {
+            REFRESH_TIMER = null;
+            REFRESH_LAST = Date.now();
+            refreshAllNow();
+        }, REFRESH_GAP_MS);
+    }
+    function refreshAllNow() {
         saveFilters();
         syncUrlFromFilters();
         // Any filter change is a new result set, so it starts at page one.
