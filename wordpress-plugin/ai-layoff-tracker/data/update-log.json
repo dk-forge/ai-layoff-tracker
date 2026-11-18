@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "company-faq-schema",
+   "date": "2026-11-18",
+   "version": "2.20.337",
+   "type": "New",
+   "area": "seo",
+   "text": "- Company pages: two-question FAQ (\"Did X have layoffs in YYYY?\", \"How many layoffs has X had?\") with matching FAQPage JSON-LD. Every figure, date and source link comes from the rows the page lists; indexable pages only."
+  },
+  {
    "slug": "weekly23-fallback-and-home-cta",
    "date": "2026-11-18",
    "version": "2.20.336",
