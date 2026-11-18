@@ -785,9 +785,11 @@ function alt_serve_llms_txt() {
     if (!preg_match('#/llms\.txt/?($|\?)#', $uri)) return;
     header('Content-Type: text/plain; charset=utf-8');
     header('X-Robots-Tag: noindex');
-    echo alt_llms_is_tracker_request($uri)
-        ? alt_tracker_llms_txt_content(get_transient(alt_figure_cache_key('press_statements')))
-        : alt_llms_txt_published();
+    if (alt_llms_is_tracker_request($uri)) {
+        echo alt_tracker_llms_txt_content(get_transient(alt_figure_cache_key('press_statements')));
+        exit;
+    }
+    echo alt_llms_txt_published();
     exit;
 }
 

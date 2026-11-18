@@ -64,5 +64,27 @@ class TrackerLlms(unittest.TestCase):
             self.assertEqual(self._php("var_export(alt_llms_is_tracker_request(%s));" % json.dumps(uri)), want, uri)
 
 
+class TrackerLlmsIsServedNotWritten(unittest.TestCase):
+    """The tracker file is answered by PHP, never written to disk (Codex P2 on #695).
+
+    Measured 2026-11-18: /blog/ai-layoff-tracker/llms.txt reaches PHP on
+    production (200, X-Robots-Tag: noindex and charset=utf-8, which only
+    alt_serve_llms_txt sends; the static root file carries neither). Writing a
+    file there would create a real ai-layoff-tracker/ directory in the WordPress
+    root, the hub page's own slug, and the `!-d` rewrite condition would then
+    stop WordPress from routing the tracker page at all.
+    """
+
+    def test_static_writer_targets_only_root_files(self):
+        body = _fn("alt_write_static_files")
+        self.assertNotIn("ai-layoff-tracker/", body)
+        self.assertNotIn("alt_tracker_llms_txt_content", body)
+        self.assertNotIn("ai-layoff-tracker/", _fn("alt_llms_sync"))
+
+    def test_handler_answers_the_tracker_path_first(self):
+        body = _fn("alt_serve_llms_txt")
+        self.assertLess(body.index("alt_llms_is_tracker_request($uri)"), body.index("echo alt_llms_txt_published();"))
+
+
 if __name__ == "__main__":
     unittest.main()
