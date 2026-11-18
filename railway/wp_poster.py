@@ -76,6 +76,10 @@ def post_to_wordpress(entry):
             # labelled with its formula and source (headcount_estimate.py).
             "job_count_is_estimate": bool(entry.get("job_count_is_estimate")),
             "headcount_estimate": entry.get("headcount_estimate"),
+            # Set by a guard that cannot decide (negation_guard): WordPress
+            # stores the row as a HELD post, outside every public surface,
+            # until review-held.yml releases or trashes it.
+            "held_reason": entry.get("held_reason"),
         },
     }
 
@@ -93,6 +97,13 @@ def post_to_wordpress(entry):
         )
 
         if resp.status_code == 201:
+            try:
+                held = bool(resp.json().get("held"))
+            except Exception:  # noqa: BLE001 - an unreadable body is still a 201
+                held = False
+            if held:
+                print(f"~ HELD for review (not published): {company} - {entry.get('held_reason')}")
+                return "held"
             print(f"+ Posted: {company}")
             return "posted"
         if resp.status_code == 409:

@@ -1,0 +1,52 @@
+name: Review held rows (two referees)
+
+# Rows a guard could not decide (railway/negation_guard.py) are stored as
+# HELD posts that no public surface shows. This puts each to the two referees
+# (railway/review_held.py) and releases or trashes it only on agreement.
+# Exit 3 (a row left held) turns the run red, which is the owner's signal.
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Release/trash on agreement. Leave false for a dry run."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-held
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: [self-hosted, linux, contabo]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Spend guard (degrade, never halt)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python railway/spend.py --degrade
+      - run: pip install --require-hashes -r $GITHUB_WORKSPACE/railway/requirements.lock
+      - name: Review
+        working-directory: railway
+        env:
+          WP_SITE_URL: https://asktherecruiter.com/blog
+          WP_API_KEY: ${{ secrets.WP_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ALT_RUN_CEILING_USD: "0.50"
+          # A scheduled run applies; a manual run applies only when ticked.
+          IN_APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+        run: |
+          ARGS=()
+          if [ "$IN_APPLY" = "true" ]; then ARGS+=(--apply); fi
+          python review_held.py "${ARGS[@]}"

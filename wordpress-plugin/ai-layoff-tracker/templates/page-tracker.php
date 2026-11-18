@@ -593,7 +593,17 @@ $alt_hero_basis  = 'counted by filing date';
             // The class is how renderBasisCopy() finds this line again: a
             // reader who switches the basis after load gets this one sentence
             // rewritten in place, with no board refetch. See there.
-            . '<li class="alt-sb-foot-basis">Every row counts verified entries by filing date, the same basis as the headline figure above.</li>'
+            . '<li class="alt-sb-foot-basis">Every row counts verified entries by filing date, the same basis as the headline figure above.'
+            // SAME BASIS, DIFFERENT WINDOW (2026-11-18): the headline's verified
+            // total minus this board's own YTD cell, both by FILING date (never
+            // the aggregate's to_date_*, which is cut on the effective date).
+            // The server render is always the default world view. layoffs.js
+            // laterSentence() prints the identical words.
+            . (($alt_sv !== null && isset($alt_board['ytd']['totals']['jobs'])
+                && ($alt_gap = $alt_sv['total'] - (int) $alt_board['ytd']['totals']['jobs']) > 0)
+                ? ' The headline counts the whole calendar year, which adds ' . esc_html(number_format($alt_gap)) . ' jobs filed with a date after today; every column here stops at today.'
+                : '')
+            . '</li>'
             . '<li>Explicitly AI-attributed counts cuts where the employer named AI, in words we hold. The broad lens contains every one of those cuts and adds looser links, so the smaller figure sits inside the larger one and the two are never added together.</li>'
             . '<li>Columns overlap, so they do not add up: this week sits inside this month, and a completed month can sit inside a completed quarter. One entry can lead more than one column.</li>'
             // "and counted the same way" is not decoration: the tap now carries

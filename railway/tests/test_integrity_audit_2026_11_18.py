@@ -64,3 +64,50 @@ class SignupPathOnHighTrafficPages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+import shutil as _shutil  # noqa: E402
+import sys as _sys  # noqa: E402
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+import jsrun  # noqa: E402
+
+
+class HeadlineAndYtdReconcileOnTheFilingBasis(unittest.TestCase):
+    """959,944 (whole calendar year) over a 941,076 YTD column, both by filing
+    date. The gap is headline verified minus the board's own YTD cell, never
+    the aggregate's to_date_* (cut on the EFFECTIVE date; Codex, PR #691)."""
+
+    SENTENCE = "jobs filed with a date after today; every column here stops at today."
+
+    def test_server_uses_the_board_ytd_cell_not_to_date(self):
+        tpl = _read("templates/page-tracker.php")
+        self.assertIn("$alt_sv['total'] - (int) $alt_board['ytd']['totals']['jobs']", tpl)
+        self.assertIn(self.SENTENCE, tpl)
+        foot = tpl[tpl.index("alt-sb-foot-basis"):tpl.index("</ul>", tpl.index("alt-sb-foot-basis"))]
+        self.assertNotIn("$alt_sv['later']", foot)
+        self.assertNotIn("$alt_sv['to-date']", foot)
+
+    def test_js_uses_the_board_ytd_cell_not_to_date(self):
+        js = _read("assets/layoffs.js")
+        body = jsrun.extract("laterNote")
+        self.assertIn("BOARD_YTD.jobs", body)
+        self.assertNotIn("to_date", body)
+        self.assertIn(self.SENTENCE, jsrun.extract("laterSentence"))
+        self.assertIn("BOARD_YTD = { jobs: D.ytd.t.jobs", js)
+
+    @unittest.skipUnless(_shutil.which("node"), "UNKNOWN, NOT RUN: node not installed")
+    def test_the_note_computes_the_gap_only_on_the_default_view(self):
+        pre = ("var fmt=function(n){return Number(n).toLocaleString('en-US');};"
+               "var DATE_BASIS='notice';"
+               "var LAST_AGG={totals:{jobs:900000,announced_jobs:56}};"
+               "var BOARD_YTD={jobs:881076,world:true,year:2026};"
+               "var P={years:'2026',date_basis:'notice'};"
+               "function currentParams(){return P;}\n")
+        out = jsrun.run(["laterNote", "laterSentence"], pre, "laterNote()")
+        self.assertIn("18,868 jobs filed with a date after today", out)
+        filtered = jsrun.run(["laterNote", "laterSentence"],
+                             pre + "P={years:'2026',date_basis:'notice',country:'Germany'};", "laterNote()")
+        self.assertEqual(filtered, "")
+        effective = jsrun.run(["laterNote", "laterSentence"],
+                              pre + "DATE_BASIS='effective';", "laterNote()")
+        self.assertEqual(effective, "")
