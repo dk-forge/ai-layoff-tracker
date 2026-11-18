@@ -71,6 +71,10 @@ class RealCutsStillCount(unittest.TestCase):
         self.assertFalse(count_is_negated(
             500, "Acme cut 500 jobs. No layoffs are planned next year."))
 
+    def test_denying_the_cause_keeps_the_cut(self):
+        self.assertFalse(count_is_negated(500, "Acme cut 500 jobs, not related to AI."))
+        self.assertFalse(count_is_negated(500, "Acme cut 500 jobs, denying AI was the reason."))
+
     def test_absent_count(self):
         self.assertFalse(count_is_negated(None, SYRACUSE_183489))
         self.assertFalse(count_is_negated(999, SYRACUSE_183489))

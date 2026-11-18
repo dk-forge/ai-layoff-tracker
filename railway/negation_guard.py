@@ -32,6 +32,26 @@ _CONFIRM = (r"\bconfirm(?:s|ed|ing)?\b|\bwill\s+(?:lay\s+off|cut|eliminate)\b"
             r"|\b(?:laid|lays|laying)\s+off\b|\bis\s+cutting\b|\bannounced\b")
 
 
+_CUT = r"(?:lay-?\s?offs?|job\s+cuts?|cuts?|redundanc\w+|job\s+losses|dismissals?)"
+
+
+def _denies_the_cut(clause, job_count):
+    """The denial must TARGET the cut or the count, never only its cause.
+
+    "not related to 60,000 job cuts" and "denies layoffs" deny the cut;
+    "cut 500 jobs, not related to AI" denies a cause and the cut stands
+    (Codex P2 on PR #691). A cue counts only when the count or a cut noun
+    follows it within a few words, or it already names the cut itself.
+    """
+    target = r"(?:" + _number_alt(job_count) + r"|\b" + _CUT + r"\b)"
+    for m in re.finditer(_NEGATION, clause, re.I):
+        if re.search(r"\b" + _CUT + r"\b", m.group(0), re.I):
+            return True
+        if re.match(r"[^.;]{0,30}?" + target, clause[m.end():], re.I):
+            return True
+    return False
+
+
 def count_is_negated(job_count, raw_text):
     """True when job_count appears only in clauses that deny or disown the cut."""
     if not job_count or not raw_text:
@@ -44,6 +64,6 @@ def count_is_negated(job_count, raw_text):
         for m in re.finditer(_number_alt(job_count), sentence):
             seen = True
             clause = _clause_around(sentence, m.start(), m.end())
-            if not re.search(_NEGATION, clause, re.I) or re.search(_CONFIRM, clause, re.I):
+            if not _denies_the_cut(clause, job_count) or re.search(_CONFIRM, clause, re.I):
                 return False
     return seen
