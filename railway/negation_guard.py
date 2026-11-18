@@ -12,7 +12,7 @@ clause holding it negates, denies or disowns the cut, and none confirms one.
 """
 import re
 
-from buyout_guard import _clause_around, _number_alt
+from buyout_guard import _number_alt
 
 _NEGATION = (
     # "not related to / not linked to / not due to / has nothing to do with N cuts"
@@ -20,7 +20,7 @@ _NEGATION = (
     r"attributable|caused|because)\b"
     r"|\bnothing\s+to\s+do\s+with\b|\bunrelated\s+to\b"
     # "denies / denied / refutes / rejects reports of N layoffs"
-    r"|\b(?:den(?:y|ies|ied|ying)|refut\w+|deny\w*|debunk\w*)\b"
+    r"|\b(?:den(?:y|ies|ied|ying)|denials?|refut\w+|debunk\w*)\b"
     r"|\b(?:rejects?|rejected|dismiss(?:es|ed)?)\s+(?:the\s+)?(?:reports?|claims?|rumou?rs?|speculation)\b"
     r"|\brul(?:es|ed|ing)\s+out\b"
     # "no layoffs (are) planned", "no plans to cut", "not planning layoffs"
@@ -28,42 +28,41 @@ _NEGATION = (
     r"|\b(?:layoffs?|job\s+cuts?|redundanc\w+)\s+(?:are\s+|is\s+)?not\s+(?:planned|expected|happening)\b"
     r"|\bnot\s+(?:planning|considering)\s+(?:any\s+)?(?:layoffs?|job\s+cuts?)\b"
     r"|\b(?:false|fake|untrue|baseless)\s+(?:reports?|claims?|rumou?rs?)\b")
-_CONFIRM = (r"\bconfirm(?:s|ed|ing)?\b|\bwill\s+(?:lay\s+off|cut|eliminate)\b"
-            r"|\b(?:laid|lays|laying)\s+off\b|\bis\s+cutting\b|\bannounced\b")
+# A confirmation counts only when it GOVERNS a cut: "confirmed 800 job cuts",
+# "announced it will cut 500 jobs". "confirmed no layoffs" governs a denial.
+_CONFIRM = (r"\b(?:confirm(?:s|ed|ing)?|announc(?:e|es|ed|ing))\s+(?:that\s+)?"
+            r"(?:(?:it|the\s+company)\s+(?:will|would|is\s+going\s+to)\s+)?"
+            r"(?:(?:cut|cutting|eliminat\w*|lay(?:ing)?\s+off|shed\w*)\b"
+            r"|(?:about\s+|some\s+|around\s+)?[\d][\d,.]*\s+(?:job\s+cuts?|lay-?\s?offs?|jobs|roles|positions|redundanc\w+))")
+
+HOLD = "hold"
+PASS = "pass"
 
 
-_CUT = r"(?:lay-?\s?offs?|job\s+cuts?|cuts?|redundanc\w+|job\s+losses|dismissals?)"
+def negation_verdict(job_count, raw_text):
+    """HOLD when a negation cue shares a sentence with the count.
 
-
-def _denies_the_cut(clause, job_count):
-    """The denial must TARGET the cut or the count, never only its cause.
-
-    "not related to 60,000 job cuts" and "denies layoffs" deny the cut;
-    "cut 500 jobs, not related to AI" denies a cause and the cut stands
-    (Codex P2 on PR #691). A cue counts only when the count or a cut noun
-    follows it within a few words, or it already names the cut itself.
+    Not a drop and not a publish (2026-11-18 design, PR #691): a regex cannot
+    tell "not related to 60,000 job cuts" from "cut 500 jobs, not related to
+    AI" reliably, so both go to review instead of either side being decided
+    here. A missed denial and a false denial are both held, never lost and
+    never published. The whole sentence is the context, count included; a
+    neighbouring sentence never lends its negation ("Acme cut 500 jobs. No
+    layoffs are planned next year." passes). A confirmation that governs a cut
+    verb or noun in the same sentence passes ("After weeks of denials, Acme
+    confirmed 800 job cuts").
     """
-    target = r"(?:" + _number_alt(job_count) + r"|\b" + _CUT + r"\b)"
-    for m in re.finditer(_NEGATION, clause, re.I):
-        if re.search(r"\b" + _CUT + r"\b", m.group(0), re.I):
-            return True
-        if re.match(r"[^.;]{0,30}?" + target, clause[m.end():], re.I):
-            return True
-    return False
+    if not job_count or not raw_text:
+        return PASS
+    text = re.sub(r"\s+", " ", str(raw_text))
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if not re.search(_number_alt(job_count), sentence):
+            continue
+        if re.search(_NEGATION, sentence, re.I) and not re.search(_CONFIRM, sentence, re.I):
+            return HOLD
+    return PASS
 
 
 def count_is_negated(job_count, raw_text):
-    """True when job_count appears only in clauses that deny or disown the cut."""
-    if not job_count or not raw_text:
-        return False
-    text = re.sub(r"\s+", " ", str(raw_text))
-    seen = False
-    # The context is the SENTENCE holding the count, never its neighbour:
-    # "Acme cut 500 jobs. No layoffs are planned next year." is a real cut.
-    for sentence in re.split(r"(?<=[.!?])\s+", text):
-        for m in re.finditer(_number_alt(job_count), sentence):
-            seen = True
-            clause = _clause_around(sentence, m.start(), m.end())
-            if not _denies_the_cut(clause, job_count) or re.search(_CONFIRM, clause, re.I):
-                return False
-    return seen
+    """Back-compat name: True when the count must be held for review."""
+    return negation_verdict(job_count, raw_text) == HOLD

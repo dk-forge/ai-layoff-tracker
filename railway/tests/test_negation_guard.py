@@ -1,4 +1,9 @@
-"""Row 183489 (2026-11-18): a negated headline published as a 60,000 cut."""
+"""Row 183489 (2026-11-18): a negated headline published as a 60,000 cut.
+
+Design (PR #691 review): a negation cue in the count's own sentence HOLDS the
+row for review. It is neither dropped as false nor published as true, so a
+regex miss in either direction is held, never lost and never published.
+"""
 import sys
 import unittest
 from pathlib import Path
@@ -10,8 +15,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _requests_stub import install as _install_requests  # noqa: E402
 _install_requests()
 
+import extractor  # noqa: E402
 from extractor import finalize_extraction  # noqa: E402
-from negation_guard import count_is_negated  # noqa: E402
+from negation_guard import negation_verdict, HOLD, PASS  # noqa: E402
 import adjudicate_row  # noqa: E402
 
 SYRACUSE_183489 = ("Outlook down: Microsoft says outage cause is not related to "
@@ -31,53 +37,47 @@ def _parsed(count, company):
             "ai_causation": "unknown", "ai_language": None, "reason_tags": []}
 
 
-class NegatedCounts(unittest.TestCase):
-    def test_row_183489_not_related_to_job_cuts_is_refused(self):
-        self.assertTrue(count_is_negated(60000, SYRACUSE_183489))
+class Held(unittest.TestCase):
+    CASES = [
+        (60000, SYRACUSE_183489),
+        (500, "Acme denies reports of 500 layoffs at its Ohio plant."),
+        (500, "Acme denies cutting 500 jobs."),
+        (1200, "No layoffs are planned for the 1,200 workers at the site, the mayor said."),
+        (3000, "The bank ruled out 3,000 job cuts reported last week."),
+        (500, "Acme confirmed no layoffs for its 500 staff."),
+        # Cause denials: held for a referee, not dropped and not published.
+        (500, "Acme cut 500 jobs, not related to AI."),
+        (500, "Acme cut 500 jobs, denying AI was the reason."),
+    ]
 
-    def test_extractor_drops_row_183489(self):
+    def test_each_is_held(self):
+        for n, text in self.CASES:
+            with self.subTest(text=text):
+                self.assertEqual(negation_verdict(n, text), HOLD)
+
+    def test_extractor_holds_row_183489_and_records_it(self):
+        extractor.NEGATION_HELD.clear()
         self.assertIsNone(finalize_extraction(
             _parsed(60000, "Microsoft"), _entry(SYRACUSE_183489)))
-
-    def test_denies_layoffs(self):
-        self.assertTrue(count_is_negated(
-            500, "Acme denies reports of 500 layoffs at its Ohio plant."))
-
-    def test_no_layoffs_planned(self):
-        self.assertTrue(count_is_negated(
-            1200,
-            "No layoffs are planned for the 1,200 workers at the site, the mayor said."))
-
-    def test_rules_out_job_cuts(self):
-        self.assertTrue(count_is_negated(
-            3000, "The bank ruled out 3,000 job cuts reported last week."))
+        self.assertEqual(extractor.NEGATION_HELD[-1]["job_count"], 60000)
 
 
-class RealCutsStillCount(unittest.TestCase):
-    def test_plain_cut(self):
-        self.assertFalse(count_is_negated(
-            1200, "Acme will lay off 1,200 workers when the plant closes."))
+class Passes(unittest.TestCase):
+    CASES = [
+        (1200, "Acme will lay off 1,200 workers when the plant closes."),
+        (500, "Acme cut 500 jobs. No layoffs are planned next year."),
+        (800, "After weeks of denials, Acme confirmed 800 job cuts on Monday."),
+        (400, "The outage was not related to the update. Separately, Acme is cutting 400 jobs in Texas."),
+    ]
 
-    def test_denial_then_confirmation(self):
-        self.assertFalse(count_is_negated(
-            800, "After weeks of denials, Acme confirmed 800 job cuts on Monday."))
-
-    def test_unrelated_negation_elsewhere(self):
-        self.assertFalse(count_is_negated(
-            400, "The outage was not related to the update. Separately, Acme "
-                 "is cutting 400 jobs in Texas."))
-
-    def test_negation_in_the_next_sentence_does_not_reach_the_count(self):
-        self.assertFalse(count_is_negated(
-            500, "Acme cut 500 jobs. No layoffs are planned next year."))
-
-    def test_denying_the_cause_keeps_the_cut(self):
-        self.assertFalse(count_is_negated(500, "Acme cut 500 jobs, not related to AI."))
-        self.assertFalse(count_is_negated(500, "Acme cut 500 jobs, denying AI was the reason."))
+    def test_each_passes(self):
+        for n, text in self.CASES:
+            with self.subTest(text=text):
+                self.assertEqual(negation_verdict(n, text), PASS)
 
     def test_absent_count(self):
-        self.assertFalse(count_is_negated(None, SYRACUSE_183489))
-        self.assertFalse(count_is_negated(999, SYRACUSE_183489))
+        self.assertEqual(negation_verdict(None, SYRACUSE_183489), PASS)
+        self.assertEqual(negation_verdict(999, SYRACUSE_183489), PASS)
 
 
 class RefereeIsToldTheRule(unittest.TestCase):

@@ -4,7 +4,7 @@ type: fix
 area: data-integrity
 date: 2026-11-18
 ---
-- Negation guard (railway/negation_guard.py): a count that appears only in a denial or disowning clause ("not related to 60,000 job cuts", "denies 500 layoffs", "no layoffs planned") is refused at extraction; the referees' rule 6 says the same for live rows. Row 183489 (Microsoft 60,000, 2026-11-13, a Syracuse.com outage headline) was trashed by two-referee adjudication (run 44414877612).
+- Negation guard (railway/negation_guard.py): a count that shares a sentence with a denial or negation cue ("not related to 60,000 job cuts", "denies 500 layoffs", "no layoffs planned") is HELD for review at extraction (not published, not dropped as false); the referees' rule 6 says the same for live rows. Row 183489 (Microsoft 60,000, 2026-11-13, a Syracuse.com outage headline) was trashed by two-referee adjudication (run 44414877612).
 - Board footnote states the computed gap between the headline (whole calendar year) and the YTD column (stops at today) instead of only "same basis".
 - Monthly/quarterly report hero and press summary name their basis (effective date), which is why October reads 81,061 there and 88,265 on the filing-basis board.
 - Largest-entry cells without a record page link to a real period+company filter URL, never href="#".
