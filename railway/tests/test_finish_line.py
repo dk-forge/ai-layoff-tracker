@@ -160,13 +160,6 @@ def test_the_workflow_crawls_every_route_family_and_the_record_pages():
     assert "--fresh-url https://asktherecruiter.com/blog/wp-json/layoffs/v1/status --fresh-key last_updated" in wf
 
 
-class FinishLine(unittest.TestCase):
-    pass
-
-
-for _n, _f in list(globals().items()):
-    if _n.startswith("test_") and callable(_f):
-        setattr(FinishLine, _n, staticmethod(_f))
 
 
 def test_a_same_site_permalink_is_not_a_citation():
@@ -211,3 +204,14 @@ def test_429_is_retried_but_a_lasting_429_is_still_reported(monkeypatch=None):
     finally:
         fl._fetch_once, fl.time.sleep = orig_once, orig_sleep
         fl._PAUSE_BUDGET = 1800
+
+
+# At the END, so every test above is bound: tests defined after this loop
+# used to be collected by pytest only and never ran under the unittest runner.
+class FinishLine(unittest.TestCase):
+    pass
+
+
+for _n, _f in list(globals().items()):
+    if _n.startswith("test_") and callable(_f):
+        setattr(FinishLine, _n, staticmethod(_f))
