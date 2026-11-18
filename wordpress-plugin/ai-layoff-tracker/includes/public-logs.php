@@ -68,7 +68,9 @@ function alt_public_log_css() {
           . 'ul.list{list-style:none;padding:0;margin:0}ul.list li{padding:10px 0;border-top:1px solid #e5e7eb}';
     return $css . '.w{max-width:760px}ul.list li{overflow-wrap:anywhere}'
         . '.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 6px;border-radius:4px;'
-        . 'border:1px solid currentColor;margin-right:6px}.alt-log-anchor{text-decoration:none;margin-left:4px}';
+        . 'border:1px solid currentColor;margin-right:6px}.alt-log-anchor{text-decoration:none;margin-left:4px}'
+        . '.alt-atr-cta{margin:1rem 0;padding:.7rem .9rem;border:1px solid rgba(127,127,127,.4);border-radius:8px}'
+        . '.alt-atr-cta a{font-weight:600;text-decoration:underline}';
 }
 
 function alt_public_log_shell($title, $desc, $canonical, $body_html) {
@@ -91,7 +93,11 @@ function alt_public_log_shell($title, $desc, $canonical, $body_html) {
         . '<link rel="canonical" href="' . esc_url($canonical) . '">'
         . '<script type="application/ld+json">' . wp_json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . '</script>'
         . '<style>' . alt_public_log_css() . '</style></head><body><div class="w">'
-        . $nav . '<div class="card">' . $body_html . '</div>'
+        . $nav
+        // The corrections and update logs are standalone pages with no theme
+        // header, so they carry the sign-up line themselves (finish line 2026-11-18).
+        . (function_exists('alt_atr_cta_line_html') ? alt_atr_cta_line_html('public_log') : '')
+        . '<div class="card">' . $body_html . '</div>'
         . '<p class="muted">Spotted something off? Send it through the <a href="'
         . esc_url(home_url('/contact/')) . '">contact page</a> and corrections get priority.</p>'
         . '</div>'

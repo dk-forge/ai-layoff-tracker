@@ -42,7 +42,19 @@ function alt_atr_cta_is_tracker_page() {
     // The flagship [alt_tracker] page too (set by alt_shortcode_tracker).
     return !empty($GLOBALS['alt_tracker_rendered'])
         || (function_exists('alt_company_index_is_request') && alt_company_index_is_request())
-        || (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request());
+        || (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request())
+        || alt_atr_cta_is_tracker_route(isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '');
+}
+
+/**
+ * Every routed tracker page (methodology, sources, press, editions, reports,
+ * country/state/industry pages...), not only the dashboard and employer pages.
+ * Finish line 2026-11-18 (run 44386250165): those pages had no visible sign-up
+ * route under 600px, where the header button is hidden.
+ */
+function alt_atr_cta_is_tracker_route($uri) {
+    $path = (string) parse_url((string) $uri, PHP_URL_PATH);
+    return (bool) preg_match('#/(ai-layoff-tracker|company-layoffs|country-layoffs|state-layoffs|industry-layoffs|layoff)(/|$)#', $path);
 }
 
 /**

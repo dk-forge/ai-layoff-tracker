@@ -141,6 +141,33 @@ class ThePhoneBar(unittest.TestCase):
         self.assertIn("min-height:44px", html.replace(" ", ""))
 
 
+@unittest.skipUnless(shutil.which("php"), "UNKNOWN, NOT RUN: php not installed")
+class EveryRoutedPage(unittest.TestCase):
+    """Finish line 2026-11-18 (run 44386250165): methodology, sources, press,
+    editions and the rest showed no sign-up route at 390px."""
+
+    def test_routed_tracker_pages_count_as_tracker_pages(self):
+        for uri in ("/blog/ai-layoff-tracker/methodology/", "/blog/ai-layoff-tracker/press/?x=1",
+                    "/blog/country-layoffs/turkiye/", "/blog/state-layoffs/ohio/",
+                    "/blog/industry-layoffs/retail/", "/blog/layoff/acme-2026/"):
+            out = _run_php("echo alt_atr_cta_is_tracker_route(%r) ? 'Y' : 'N';" % uri)
+            self.assertEqual(out.strip(), "Y", uri)
+
+    def test_other_blog_pages_are_not(self):
+        for uri in ("/blog/", "/blog/how-to-write-a-cv/", "/blog/talent-intelligence-tracker/",
+                    "/blog/layoffs-explained/"):
+            out = _run_php("echo alt_atr_cta_is_tracker_route(%r) ? 'Y' : 'N';" % uri)
+            self.assertEqual(out.strip(), "N", uri)
+
+    def test_bar_renders_on_a_routed_page(self):
+        html = _run_php("$_SERVER['REQUEST_URI'] = '/blog/ai-layoff-tracker/sources/'; alt_atr_cta_sticky_bar();")
+        self.assertIn("utm_campaign=sticky_bar", html.replace("&amp;", "&"))
+
+    def test_standalone_logs_carry_the_line(self):
+        src = (PLUGIN / "includes" / "public-logs.php").read_text(encoding="utf-8")
+        self.assertIn("alt_atr_cta_line_html('public_log')", src)
+
+
 class Placement(unittest.TestCase):
 
     def test_index_hub_carries_it_after_the_lede(self):
