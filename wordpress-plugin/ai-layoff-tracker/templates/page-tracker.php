@@ -415,6 +415,8 @@ $alt_hero_basis  = 'counted by filing date';
             <p class="alt-hero-figure-asof" id="alt-hero-asof-wrap"<?php echo $alt_split === '' ? ' hidden' : ''; ?>><b class="alt-hero-asof-label">In this figure:</b> <span id="alt-hero-asof"><?php echo esc_html($alt_split); ?></span> <a class="alt-hero-asof-more" href="#alt-basis-explainer">Why two figures</a></p>
         </div>
     </header>
+    <?php // Tracked sign-up path (CLAUDE.md conversion rule, owner 2026-11-17).
+    if (function_exists('alt_atr_cta_line_html')) echo alt_atr_cta_line_html('tracker_home'); ?>
         <?php /* INTRO + LATEST REPORTS (2.20.265). One plain sentence that says
                  what this AI layoffs tracker is, in the words people search with,
                  and links to the latest complete monthly reports, which nothing

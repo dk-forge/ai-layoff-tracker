@@ -75,6 +75,12 @@ MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
 #
 # The correctness-critical calls (full extraction, AI-causation) always use
 # MODEL, never this.
+# WEEKLY-23: the second model full extraction falls back to when MODEL is
+# throttled upstream (429s / open breaker), so a shared-pool throttle defers
+# nothing instead of dropping the candidate. gemini-2.5-flash is the one
+# alternative measured on this extraction gold set (30/30, docs/TECHLOG.md).
+# Empty string turns the fallback off. Pinned by test_extraction_model_choice.
+FALLBACK_MODEL = os.environ.get("OPENROUTER_FALLBACK_MODEL", "google/gemini-2.5-flash")
 CLASSIFY_MODEL = os.environ.get("OPENROUTER_CLASSIFY_MODEL", "google/gemini-2.5-flash-lite")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OPENROUTER_TIMEOUT_SECONDS", "45"))
@@ -1573,16 +1579,22 @@ DATE: {raw_entry.get('filing_date') or 'Unknown'}
 TEXT:
 {raw_text}"""
 
-    try:
-        response = spend.metered_call(MODEL, lambda: _get_client().chat.completions.create(
+    def _ask(model):
+        return lambda: _get_client().chat.completions.create(
             extra_body=USAGE_ACCOUNTING,
-            model=MODEL,
+            model=model,
             max_tokens=1000,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
-        ), attempts=MODEL_CALL_ATTEMPTS, what="layoff extraction")
+        )
+
+    fallback = ((FALLBACK_MODEL, _ask(FALLBACK_MODEL))
+                if FALLBACK_MODEL and FALLBACK_MODEL != MODEL else None)
+    try:
+        response = spend.metered_call(MODEL, _ask(MODEL), attempts=MODEL_CALL_ATTEMPTS,
+                                      what="layoff extraction", fallback=fallback)
     except spend.PaidReadsOff:
         # The ceiling tripped between the check at the top of this function and
         # the call (another paid call in between spent the last of it). Same

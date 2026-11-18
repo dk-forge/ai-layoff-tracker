@@ -45,6 +45,8 @@ function alt_template($file, $vars = array()) {
 
 function alt_shortcode_tracker() {
     $GLOBALS['alt_tracker_rendered'] = true;
+    // Footer-queued, so enqueueing during content still prints the bar's script.
+    if (function_exists('alt_atr_cta_enqueue')) alt_atr_cta_enqueue();
     return alt_template('page-tracker.php');
 }
 add_shortcode('alt_tracker', 'alt_shortcode_tracker');

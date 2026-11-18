@@ -52,7 +52,8 @@ MEASURED_EXTRACTION_MODEL = "google/gemini-2.5-flash-lite"
 # extraction.
 UNMEASURED_SURFACE_MODEL = "google/gemini-2.5-flash-lite"
 
-_MODEL_ENV = ("OPENROUTER_MODEL", "OPENROUTER_CLASSIFY_MODEL", "OPENROUTER_GATE_MODEL")
+_MODEL_ENV = ("OPENROUTER_MODEL", "OPENROUTER_CLASSIFY_MODEL", "OPENROUTER_GATE_MODEL",
+              "OPENROUTER_FALLBACK_MODEL")
 
 
 def _extractor_with(**env):
@@ -84,6 +85,13 @@ class ModelChoiceTests(unittest.TestCase):
     def test_the_classifier_still_has_its_own_override(self):
         mod = _extractor_with(OPENROUTER_CLASSIFY_MODEL="some/classifier")
         self.assertEqual(mod.CLASSIFY_MODEL, "some/classifier")
+
+    def test_the_429_fallback_is_a_measured_second_model_with_an_off_switch(self):
+        # WEEKLY-23: never DeepSeek (owner EU ruling), never the primary itself.
+        mod = _extractor_with()
+        self.assertEqual(mod.FALLBACK_MODEL, "google/gemini-2.5-flash")
+        self.assertNotEqual(mod.FALLBACK_MODEL, mod.MODEL)
+        self.assertEqual(_extractor_with(OPENROUTER_FALLBACK_MODEL="").FALLBACK_MODEL, "")
 
     def test_the_pre_extraction_gate_is_independent_of_both(self):
         mod = _extractor_with(OPENROUTER_MODEL="some/other-model")

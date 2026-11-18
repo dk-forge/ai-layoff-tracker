@@ -1030,7 +1030,35 @@ def _wait_for_upstream(what: str | None) -> None:
 
 
 def metered_call(model: str, make_call, *, what: str | None = None,
-                 usage_of=None, attempts: int = 1, retry_sleep: float = 0.0):
+                 usage_of=None, attempts: int = 1, retry_sleep: float = 0.0,
+                 fallback=None):
+    """See _metered_call. `fallback` is an optional (model, make_call) pair:
+    when the primary ends in upstream throttling (its last attempt was a 429,
+    or its breaker is open) ONE call is made to the second model, under the
+    brake and metered under its own name (WEEKLY-23, AI-LAYOFF-TRACKER-5). The
+    primary's throttle state is not waited on, since the second model is a
+    different upstream pool. Any other error is never routed to the fallback.
+    """
+    try:
+        return _metered_call(model, make_call, what=what, usage_of=usage_of,
+                             attempts=attempts, retry_sleep=retry_sleep)
+    except Exception as exc:
+        if fallback is None or not (isinstance(exc, UpstreamRateLimited)
+                                    or _is_rate_limited(exc)):
+            raise
+        fb_model, fb_call = fallback
+        if not paid_reads_enabled():
+            raise PaidReadsOff(
+                f"paid reads are OFF; the fallback for {what or 'this call'} "
+                f"was not made") from exc
+        print(f"::notice::{model} rate-limited; {what or 'call'} falls back to {fb_model}")
+        response = fb_call()
+        record_usage(fb_model, (usage_of or _usage_of)(response))
+        return response
+
+
+def _metered_call(model: str, make_call, *, what: str | None = None,
+                  usage_of=None, attempts: int = 1, retry_sleep: float = 0.0):
     """Make ONE paid model call under the per-run brake, and meter it.
 
     `make_call` is a zero-argument callable that performs exactly one request
