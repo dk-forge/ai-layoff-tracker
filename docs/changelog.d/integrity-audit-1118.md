@@ -1,5 +1,5 @@
 ---
-version: vNEXT
+version: 2.20.340
 type: fix
 area: data-integrity
 date: 2026-11-18

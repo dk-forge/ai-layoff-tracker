@@ -6,6 +6,7 @@ Gated coordination so **cloud and local sessions never collide** on this repo
 holder, so the start-of-session ritual surfaces it automatically.
 
 ## Baton
+- **RELEASED - Claude (agent), 2026-11-18, branch `claude/integrity-negation` (PR #691). Ships as plugin version 2.20.340.** Negation guard after Microsoft 60,000 retraction (row 183489), number reconciliation, CTA on ai-quotes and reports; see docs/changelog.d/integrity-audit-1118.md.
 - **RELEASED - Claude (agent), 2026-11-13, branch `fix/monthly-edition-review-1113` (PR). Ships as plugin version 2.20.328.** Monthly edition under Gmail's clip, lead rule, single-report share, one "Multiple countries" figure; see TECHLOG 2026-11-13 (2.20.328).
 - **RELEASED - Claude (agent), 2026-11-13, branch `fix/digest-utm-tags` (PR). Ships as plugin version 2.20.322.** UTM tags on every own-site digest link; see TECHLOG 2026-11-13 (2.20.322).
 - **RELEASED - Claude (agent), 2026-11-12, newsletter audit: PRs #643-#647 (plugin 2.20.316, 2.20.317, 2.20.318).** Email lead-row guards, briefing lead gate, archive correction notes, daily top ten, referee edit-to-zero; see TECHLOG 2026-11-12.
