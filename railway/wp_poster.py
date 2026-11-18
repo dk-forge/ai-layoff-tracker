@@ -24,6 +24,22 @@ def _server_message(resp):
     return str(msg)[:200] if msg else ""
 
 
+_HELD_READY = {}
+
+
+def _held_queue_ready(wp_url, api_key):
+    """True once the keyed /held route answers 200 (cached per site per process)."""
+    if wp_url not in _HELD_READY:
+        try:
+            r = requests.get(f"{wp_url}/wp-json/layoffs/v1/held", timeout=30, headers={
+                "X-Layoff-API-Key": api_key,
+                "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+            _HELD_READY[wp_url] = r.status_code == 200
+        except Exception:  # noqa: BLE001 - unknown is not ready
+            return False
+    return _HELD_READY[wp_url]
+
+
 def post_to_wordpress(entry):
     """POST a layoff entry to the WordPress custom post type.
 
@@ -83,6 +99,15 @@ def post_to_wordpress(entry):
         },
     }
 
+    # FAIL CLOSED ON A HOLD. A plugin older than the held-rows store ignores
+    # held_reason and would PUBLISH the row (the Railway worker and the
+    # WordPress plugin deploy separately). So a held row is sent only after the
+    # site has proved it has the queue; otherwise it is not posted at all and,
+    # never stored, is re-read on the next run.
+    if entry.get("held_reason") and not _held_queue_ready(wp_url, api_key):
+        print(f"~ NOT POSTED: {company} must be held, and the site has no held queue yet")
+        return "failed"
+
     try:
         resp = requests.post(
             f"{wp_url}/wp-json/layoffs/v1/add",
@@ -104,6 +129,9 @@ def post_to_wordpress(entry):
             if held:
                 print(f"~ HELD for review (not published): {company} - {entry.get('held_reason')}")
                 return "held"
+            if entry.get("held_reason"):
+                print(f"::error::{company}: sent as HELD but the site stored it as published")
+                return "failed"
             print(f"+ Posted: {company}")
             return "posted"
         if resp.status_code == 409:

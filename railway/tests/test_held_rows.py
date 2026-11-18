@@ -73,23 +73,33 @@ class HeldRowIsNotSeenOrPublic(unittest.TestCase):
 
 
 class PosterSendsAndReportsTheHold(unittest.TestCase):
-    def _post(self, body):
+    def setUp(self):
+        wp_poster._HELD_READY.clear()
+
+    def _post(self, body, queue_status=200):
         resp = SimpleNamespace(status_code=201, json=lambda: body, text="")
+        probe = SimpleNamespace(status_code=queue_status)
         with mock.patch.dict("os.environ", {"WP_SITE_URL": "https://example.test", "WP_API_KEY": "k"}), \
+             mock.patch.object(wp_poster.requests, "get", return_value=probe, create=True), \
              mock.patch.object(wp_poster.requests, "post", return_value=resp) as post:
             status = wp_poster.post_to_wordpress({
                 "company_name": "Microsoft", "job_count": 60000, "layoff_date": "2026-11-13",
                 "dedup_hash": "0" * 32, "held_reason": "negation: test"})
-        return status, post.call_args.kwargs["json"]
+        return status, (post.call_args.kwargs["json"] if post.called else None)
 
     def test_held_reason_is_sent_and_a_held_201_is_not_posted(self):
         status, payload = self._post({"id": 1, "created": True, "held": True})
         self.assertEqual(payload["meta"]["held_reason"], "negation: test")
         self.assertEqual(status, "held")
 
-    def test_plain_201_is_posted(self):
+    def test_a_held_row_the_site_published_is_a_failure(self):
         status, _ = self._post({"id": 1, "created": True})
-        self.assertEqual(status, "posted")
+        self.assertEqual(status, "failed")
+
+    def test_no_held_queue_on_the_site_means_not_posted(self):
+        status, payload = self._post({"id": 1, "created": True, "held": True}, queue_status=404)
+        self.assertEqual(status, "failed")
+        self.assertIsNone(payload, "a held row must not be sent to a site that would publish it")
 
 
 class RefereeOutcome(unittest.TestCase):
