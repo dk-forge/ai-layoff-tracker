@@ -38,9 +38,12 @@ def count_is_negated(job_count, raw_text):
         return False
     text = re.sub(r"\s+", " ", str(raw_text))
     seen = False
-    for m in re.finditer(_number_alt(job_count), text):
-        seen = True
-        clause = _clause_around(text, m.start(), m.end())
-        if not re.search(_NEGATION, clause, re.I) or re.search(_CONFIRM, clause, re.I):
-            return False
+    # The context is the SENTENCE holding the count, never its neighbour:
+    # "Acme cut 500 jobs. No layoffs are planned next year." is a real cut.
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        for m in re.finditer(_number_alt(job_count), sentence):
+            seen = True
+            clause = _clause_around(sentence, m.start(), m.end())
+            if not re.search(_NEGATION, clause, re.I) or re.search(_CONFIRM, clause, re.I):
+                return False
     return seen

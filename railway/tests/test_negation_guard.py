@@ -67,6 +67,10 @@ class RealCutsStillCount(unittest.TestCase):
             400, "The outage was not related to the update. Separately, Acme "
                  "is cutting 400 jobs in Texas."))
 
+    def test_negation_in_the_next_sentence_does_not_reach_the_count(self):
+        self.assertFalse(count_is_negated(
+            500, "Acme cut 500 jobs. No layoffs are planned next year."))
+
     def test_absent_count(self):
         self.assertFalse(count_is_negated(None, SYRACUSE_183489))
         self.assertFalse(count_is_negated(999, SYRACUSE_183489))
