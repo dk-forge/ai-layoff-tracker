@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.340
+ * Version:           2.20.341
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.340');
+define('ALT_VERSION', '2.20.341');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -785,8 +785,48 @@ function alt_serve_llms_txt() {
     if (!preg_match('#/llms\.txt/?($|\?)#', $uri)) return;
     header('Content-Type: text/plain; charset=utf-8');
     header('X-Robots-Tag: noindex');
-    echo alt_llms_txt_published();
+    echo alt_llms_is_tracker_request($uri)
+        ? alt_tracker_llms_txt_content(get_transient(alt_figure_cache_key('press_statements')))
+        : alt_llms_txt_published();
     exit;
+}
+
+/** PURE. Is this request the tracker's own llms.txt (not the site-wide one)? */
+function alt_llms_is_tracker_request($uri) {
+    $path = (string) parse_url((string) $uri, PHP_URL_PATH);
+    return (bool) preg_match('#/ai-layoff-tracker/llms\.txt/?$#', $path);
+}
+
+/**
+ * /blog/ai-layoff-tracker/llms.txt (dk-forge/todo#1853, AI search): the
+ * tracker map plus quotable sentences, each with its "as of" date and the page
+ * that shows the same figure. The figures are the press page's own cached
+ * bundle ($alt_pstats, 'press_statements'), which is what the cite line, the
+ * FAQ and every press statement quote, so this file cannot become a third
+ * total. A cold cache prints no figures rather than computing different ones.
+ * Guard: tests/test_llms_tracker.py.
+ */
+function alt_tracker_llms_txt_content($ps) {
+    $out = alt_llms_txt_content();
+    $sp = (is_array($ps) && isset($ps['split']) && is_array($ps['split'])) ? $ps['split'] : null;
+    if (!$sp || empty($sp['as_of']) || (int) ($sp['to_date'] ?? 0) <= 0) return $out;
+    $press = home_url('/ai-layoff-tracker/press/');
+    $asof = (string) $sp['as_of'];
+    $year = (int) ($sp['year'] ?? 0);
+    $fig  = "\n## Quotable figures (as of $asof)\n";
+    $fig .= "- As of $asof, the AI Layoff Tracker by AskTheRecruiter.com documents "
+          . number_format((int) $sp['to_date']) . " verified job cuts that took effect in $year so far. "
+          . "Source: {$press}#alt-press-period\n";
+    $t = (isset($ps['tiers']) && is_array($ps['tiers'])) ? $ps['tiers'] : null;
+    if ($t && (int) ($t['year'] ?? 0) === $year) {
+        $ai = (int) ($t['t1'] ?? 0) + (int) ($t['t2'] ?? 0);
+        if ($ai > 0) {
+            $fig .= "- As of $asof, " . number_format($ai) . " verified job cuts with effective dates in $year "
+                  . "were attributed to AI or automation by the employer itself (Tiers 1 and 2, quote on file). "
+                  . "Source: {$press}#alt-evidence-ladder\n";
+        }
+    }
+    return $out . $fig;
 }
 add_action('init', 'alt_serve_llms_txt', 0);
 
