@@ -6503,17 +6503,15 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
     if ($payload === false) {
         $busy = alt_cold_compute_guard($key, function () use ($key, $compute) {
             // Re-read under the lock: the request we waited behind may have
-            // just stored this exact key, which is the point of waiting. Drop
-            // this request's in-memory copy of the option (and the cached
-            // "no such option" marker) first, or the reread answers from the
-            // miss we saw before waiting (Codex P2 on #693).
-            alt_forget_transient_cache($key);
+            // just stored this exact key, which is the point of waiting. The
+            // guard has already dropped this request's stale copy
+            // (alt_forget_transient_cache), so this read is authoritative.
             $hit = get_transient($key);
             if ($hit !== false) return $hit;
             $fresh = call_user_func($compute);
             set_transient($key, $fresh, 30 * MINUTE_IN_SECONDS);
             return $fresh;
-        });
+        }, alt_is_outer_rest_call($r));
         if ($busy instanceof WP_REST_Response) return $busy;
         $payload = $busy;
     }
@@ -6561,11 +6559,16 @@ function alt_named_unlock($full) {
 }
 
 function alt_forget_transient_cache($key) {
-    // With a persistent object cache the transient lives in that shared
-    // cache: deleting it would invalidate everyone's copy (Codex P2 on #693),
-    // and get_transient() already reads it from there. Only the DB-backed
-    // path keeps a request-local copy of the option (and its "missing" mark).
-    if (wp_using_ext_object_cache()) return;
+    // Never delete the transient itself: with a persistent object cache that
+    // is the SHARED copy (Codex P2). force=true re-fetches it from the
+    // persistent store into this request's runtime copy instead.
+    if (wp_using_ext_object_cache()) {
+        wp_cache_get($key, 'transient', true);
+        return;
+    }
+    // DB-backed: drop this request's cached option rows and "missing" marks.
+    // Transients stored with an expiry are not autoloaded, so alloptions is
+    // left alone (reloading it is a full autoload SELECT per miss).
     foreach (array('_transient_' . $key, '_transient_timeout_' . $key) as $opt) {
         wp_cache_delete($opt, 'options');
     }
@@ -6574,14 +6577,39 @@ function alt_forget_transient_cache($key) {
         unset($notopts['_transient_' . $key], $notopts['_transient_timeout_' . $key]);
         wp_cache_set('notoptions', $notopts, 'options');
     }
-    wp_cache_delete('alloptions', 'options');
 }
 
-function alt_cold_compute_guard($key, $run) {
-    $key_lock = alt_named_lock('k|' . $key, 10);
+/**
+ * Only the visitor's own HTTP call to a public read route is capped. Internal
+ * callers (the digest cron, facet pages, sitemaps, the page bootstrap, and a
+ * REST route that composes from another) run the handler directly and never
+ * see a 503; capping them turned "busy" into wrong or missing figures.
+ */
+function alt_is_outer_rest_call(WP_REST_Request $r) {
+    if (!defined('REST_REQUEST') || !REST_REQUEST) return false;
+    $served = isset($GLOBALS['wp']->query_vars['rest_route']) ? (string) $GLOBALS['wp']->query_vars['rest_route'] : '';
+    return untrailingslashit($served) === untrailingslashit($r->get_route());
+}
+
+function alt_busy_response() {
+    $busy = new WP_REST_Response(array(
+        'code'    => 'alt_busy',
+        'message' => 'The tracker is busy computing other views. Retry in a moment.',
+    ), 503);
+    $busy->header('Retry-After', '2');
+    $busy->header('Cache-Control', 'no-store');
+    return $busy;
+}
+
+function alt_cold_compute_guard($key, $run, $outer = true) {
+    if (!$outer) return call_user_func($run);
+    // Wait as long as a slow cold /aggregate takes (8-19 s measured), so the
+    // waiters really do read the one computed answer.
+    $key_lock = alt_named_lock('k|' . $key, 20);
     if ($key_lock === null) return call_user_func($run);
-    // Waited 10 s and the other request is still computing: fall through and
-    // let the slot cap decide, rather than wait without bound.
+    // Still computing after 20 s: say busy (the page retries once) rather
+    // than run the same compute a second time (Codex P2 on TIT#362).
+    if ($key_lock === false) return alt_busy_response();
     alt_forget_transient_cache($key);
     if (get_transient($key) !== false) {
         alt_named_unlock($key_lock);
@@ -6594,13 +6622,7 @@ function alt_cold_compute_guard($key, $run) {
     }
     if ($slot === false) {
         alt_named_unlock($key_lock);
-        $busy = new WP_REST_Response(array(
-            'code'    => 'alt_busy',
-            'message' => 'The tracker is busy computing other views. Retry in a moment.',
-        ), 503);
-        $busy->header('Retry-After', '2');
-        $busy->header('Cache-Control', 'no-store');
-        return $busy;
+        return alt_busy_response();
     }
     try {
         return call_user_func($run);
@@ -7589,7 +7611,6 @@ function alt_tracker_bootstrap_payload() {
         // A non-200 piece (the cold-compute guard's 503 alt_busy, a WP_Error)
         // is not data: return null so the page fetches that piece itself
         // rather than painting an error body as figures (Codex P1 on #693).
-        if (is_wp_error($resp)) return null;
         if ($resp instanceof WP_REST_Response) {
             return ((int) $resp->get_status() === 200) ? $resp->get_data() : null;
         }

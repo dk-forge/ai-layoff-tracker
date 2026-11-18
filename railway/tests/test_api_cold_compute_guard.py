@@ -34,9 +34,11 @@ class ServerGuard(unittest.TestCase):
 
     def test_full_slots_answer_503_with_retry_after(self):
         g = body(DB, "alt_cold_compute_guard")
-        self.assertIn("503", g)
-        self.assertIn("Retry-After", g)
-        self.assertIn("no-store", g)
+        self.assertIn("if ($slot === false)", g)
+        b = body(DB, "alt_busy_response")
+        self.assertIn("503", b)
+        self.assertIn("Retry-After", b)
+        self.assertIn("no-store", b)
 
     def test_locks_release_in_finally(self):
         g = body(DB, "alt_cold_compute_guard")
@@ -57,14 +59,46 @@ class CodexFindings(unittest.TestCase):
         f = body(DB, "alt_forget_transient_cache")
         self.assertIn("'notoptions'", f)
         self.assertNotIn("wp_cache_delete($key, 'transient')", f)  # never the shared copy
-        self.assertIn("if (wp_using_ext_object_cache()) return;", f)
-        self.assertIn("alt_forget_transient_cache($key);\n            $hit = get_transient($key);",
-                      body(DB, "alt_api_cached"))
         g = body(DB, "alt_cold_compute_guard")
         self.assertLess(g.index("alt_forget_transient_cache"), g.index("get_transient"))
 
 
+class SecondReview(unittest.TestCase):
+    """Fallback review (Codex out of credits), high effort, on #693."""
+
+    def test_only_the_visitors_own_rest_call_is_capped(self):
+        self.assertIn("alt_is_outer_rest_call($r)", body(DB, "alt_api_cached"))
+        g = body(DB, "alt_cold_compute_guard")
+        self.assertLess(g.index("if (!$outer) return call_user_func($run);"), g.index("alt_named_lock("))
+        o = body(DB, "alt_is_outer_rest_call")
+        self.assertIn("REST_REQUEST", o)
+        self.assertIn("rest_route", o)
+
+    def test_a_key_lock_timeout_is_busy_not_a_second_compute(self):
+        g = body(DB, "alt_cold_compute_guard")
+        self.assertIn("if ($key_lock === false) return alt_busy_response();", g)
+        self.assertIn("alt_named_lock('k|' . $key, 20)", g)
+
+    def test_forget_never_reloads_alloptions_and_forces_ext_reread(self):
+        f = body(DB, "alt_forget_transient_cache")
+        self.assertNotIn("alloptions", f.split("*/")[-1] if "*/" in f else f.replace("alloptions is", ""))
+        self.assertIn("wp_cache_get($key, 'transient', true)", f)
+
+    def test_bootstrap_checks_wp_error_once(self):
+        self.assertEqual(body(DB, "alt_tracker_bootstrap_payload").count("is_wp_error($resp)"), 1)
+
+
 class ClientGuard(unittest.TestCase):
+    def test_page_state_follows_every_click_and_only_fetches_coalesce(self):
+        b = body(JS, "refreshAll")
+        self.assertLess(b.index("updateActiveFilterBar()"), b.index("REFRESH_TIMER"))
+        n = body(JS, "refreshAllNow")
+        self.assertNotIn("updateActiveFilterBar", n)
+        self.assertIn("loadLocations()", n)
+
+    def test_location_table_aborts_the_request_it_replaces(self):
+        self.assertIn("LOC_CTRL.abort()", body(JS, "loadLocations"))
+
     def test_refresh_all_coalesces(self):
         b = body(JS, "refreshAll")
         self.assertIn("REFRESH_GAP_MS", b)

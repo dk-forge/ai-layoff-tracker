@@ -1149,6 +1149,7 @@
     var LOC = { view: 'country', period: 'ytd', sort: 'jobs', dir: 'desc', all: false };
     var LOC_ROWS = [];
     var LOC_SEQ = 0;
+    var LOC_CTRL = null;
     var LOC_VIEWS = { country: 'alt-f-country', state: 'alt-f-state' };
     var LOC_PERIODS = { week: 1, month: 1, quarter: 1, ytd: 1, all: 1 };
     var LOC_SORTS = { place: 1, jobs: 1, ai_jobs: 1, events: 1, ai_events: 1 };
@@ -1237,7 +1238,10 @@
         var seq = ++LOC_SEQ;
         var st = document.getElementById('alt-loc-status');
         if (st) st.textContent = 'Loading places';
-        apiGet(route, p).then(function (res) {
+        // Cancel the table request this one replaces (todo#1881 item 4).
+        if (LOC_CTRL) { try { LOC_CTRL.abort(); } catch (e) { /* settled */ } }
+        try { LOC_CTRL = new AbortController(); } catch (e) { LOC_CTRL = null; }
+        apiGet(route, p, LOC_CTRL ? LOC_CTRL.signal : null).then(function (res) {
             if (seq !== LOC_SEQ) return;
             LOC_ROWS = (res && res.rows) || [];
             renderLocations();
@@ -1331,12 +1335,21 @@
 
     // COALESCED (todo#1881 item 4). Every chip, select and preset calls
     // refreshAll(), and each call fires three or four REST requests; at three
-    // clicks a second that saturated the host into 500s. The first call after
-    // a quiet spell runs at once (so first paint and a single click are not
-    // delayed); calls inside REFRESH_GAP_MS collapse into one trailing run
-    // with the final filters.
+    // clicks a second that saturated the host into 500s. The page's own state
+    // (saved filters, address bar, chip bar, labels, export links) updates on
+    // every call, so a chip removed mid-burst disappears at once and cannot be
+    // clicked back on. Only the network half is coalesced: the first call
+    // after a quiet spell fetches at once, later calls inside REFRESH_GAP_MS
+    // collapse into one trailing fetch with the final filters.
     var REFRESH_GAP_MS = 350, REFRESH_TIMER = null, REFRESH_LAST = 0;
     function refreshAll() {
+        saveFilters();
+        syncUrlFromFilters();
+        updateActiveFilterBar();
+        updateQuickViewStates();
+        updateDropdownSummaries();
+        updateRangeLabel();
+        updateExportLinks();
         var now = Date.now();
         if (!REFRESH_TIMER && now - REFRESH_LAST >= REFRESH_GAP_MS) {
             REFRESH_LAST = now;
@@ -1351,19 +1364,12 @@
         }, REFRESH_GAP_MS);
     }
     function refreshAllNow() {
-        saveFilters();
-        syncUrlFromFilters();
         // Any filter change is a new result set, so it starts at page one.
         // Paging itself calls loadRows() directly and keeps its page.
         PAGE = 1;
         loadRows();
         fetchAndRenderAggregate();
         loadLocations();
-        updateActiveFilterBar();
-        updateQuickViewStates();
-        updateDropdownSummaries();
-        updateRangeLabel();
-        updateExportLinks();
     }
 
     // The CSV/JSON buttons download exactly what's on screen: the current
