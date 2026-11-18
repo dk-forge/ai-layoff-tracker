@@ -56,7 +56,8 @@ class CodexFindings(unittest.TestCase):
     def test_waiters_drop_request_local_option_cache_before_rereading(self):
         f = body(DB, "alt_forget_transient_cache")
         self.assertIn("'notoptions'", f)
-        self.assertIn("wp_cache_delete($key, 'transient')", f)
+        self.assertNotIn("wp_cache_delete($key, 'transient')", f)  # never the shared copy
+        self.assertIn("if (wp_using_ext_object_cache()) return;", f)
         self.assertIn("alt_forget_transient_cache($key);\n            $hit = get_transient($key);",
                       body(DB, "alt_api_cached"))
         g = body(DB, "alt_cold_compute_guard")
