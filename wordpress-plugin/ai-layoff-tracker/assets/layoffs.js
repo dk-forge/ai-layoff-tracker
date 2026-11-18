@@ -581,7 +581,8 @@
         return once().then(function (r) {
             // 503 + Retry-After is the server's cold-compute cap saying "not
             // now" (alt_cold_compute_guard). One polite retry, then give up.
-            if (r.status === 503) {
+            // Only the cap's 503 carries Retry-After; any other 503 is final.
+            if (r.status === 503 && r.headers.get('Retry-After')) {
                 var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000;
                 return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
                     if (signal && signal.aborted) throw new Error('aborted');
@@ -1356,6 +1357,14 @@
             refreshAllNow();
             return;
         }
+        // Retire what the burst's first click has in flight, so a late
+        // answer cannot paint old filters under the new chips: the sequence
+        // checks drop it, and busyBegin aborts it and shows loading until the
+        // trailing run lands.
+        AGG_SEQ++; QUERY_SEQ++; LOC_SEQ++;
+        if (LOC_CTRL) { try { LOC_CTRL.abort(); } catch (e) { /* settled */ } LOC_CTRL = null; }
+        busyBegin('alt-stats-bar', 'Loading the totals');
+        busyBegin('alt-cards', 'Loading the records');
         if (REFRESH_TIMER) clearTimeout(REFRESH_TIMER);
         REFRESH_TIMER = setTimeout(function () {
             REFRESH_TIMER = null;

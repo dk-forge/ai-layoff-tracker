@@ -60,7 +60,9 @@ class CodexFindings(unittest.TestCase):
         self.assertIn("'notoptions'", f)
         self.assertNotIn("wp_cache_delete($key, 'transient')", f)  # never the shared copy
         g = body(DB, "alt_cold_compute_guard")
-        self.assertLess(g.index("alt_forget_transient_cache"), g.index("get_transient"))
+        f = g.index("alt_forget_transient_cache")
+        self.assertLess(g.index("alt_named_lock("), f)
+        self.assertGreater(g.index("get_transient", f), f)
 
 
 class SecondReview(unittest.TestCase):
@@ -69,7 +71,7 @@ class SecondReview(unittest.TestCase):
     def test_only_the_visitors_own_rest_call_is_capped(self):
         self.assertIn("alt_is_outer_rest_call($r)", body(DB, "alt_api_cached"))
         g = body(DB, "alt_cold_compute_guard")
-        self.assertLess(g.index("if (!$outer) return call_user_func($run);"), g.index("alt_named_lock("))
+        self.assertLess(g.index("if (!$outer || get_transient"), g.index("alt_named_lock("))
         o = body(DB, "alt_is_outer_rest_call")
         self.assertIn("REST_REQUEST", o)
         self.assertIn("rest_route", o)
@@ -77,7 +79,7 @@ class SecondReview(unittest.TestCase):
     def test_a_key_lock_timeout_is_busy_not_a_second_compute(self):
         g = body(DB, "alt_cold_compute_guard")
         self.assertIn("if ($key_lock === false) return alt_busy_response();", g)
-        self.assertIn("alt_named_lock('k|' . $key, 20)", g)
+        self.assertIn("alt_named_lock('k|' . $key, 12)", g)  # under the page's 20 s deadline
 
     def test_forget_never_reloads_alloptions_and_forces_ext_reread(self):
         f = body(DB, "alt_forget_transient_cache")
@@ -86,6 +88,24 @@ class SecondReview(unittest.TestCase):
 
     def test_bootstrap_checks_wp_error_once(self):
         self.assertEqual(body(DB, "alt_tracker_bootstrap_payload").count("is_wp_error($resp)"), 1)
+
+
+class SecondReviewRound2(unittest.TestCase):
+    def test_a_hit_takes_no_lock(self):
+        g = body(DB, "alt_cold_compute_guard")
+        self.assertLess(g.index("get_transient($key) !== false) return call_user_func($run);"),
+                        g.index("alt_named_lock("))
+
+    def test_one_filter_change_fits_in_the_cap(self):
+        self.assertIn("define('ALT_COLD_SLOTS', 6)", DB)
+
+    def test_only_the_caps_503_is_retried(self):
+        self.assertIn("r.status === 503 && r.headers.get('Retry-After')", body(JS, "apiGet"))
+
+    def test_a_burst_retires_requests_already_in_flight(self):
+        b = body(JS, "refreshAll")
+        for s in ("AGG_SEQ++", "QUERY_SEQ++", "LOC_SEQ++", "busyBegin('alt-cards'"):
+            self.assertIn(s, b)
 
 
 class ClientGuard(unittest.TestCase):

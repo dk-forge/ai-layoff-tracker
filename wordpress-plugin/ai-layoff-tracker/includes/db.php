@@ -6542,7 +6542,7 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
  * If the server cannot take named locks (GET_LOCK returns NULL) the guard
  * steps aside and the compute runs exactly as it did before.
  */
-if (!defined('ALT_COLD_SLOTS')) define('ALT_COLD_SLOTS', 3);
+if (!defined('ALT_COLD_SLOTS')) define('ALT_COLD_SLOTS', 6);
 
 function alt_named_lock($name, $wait) {
     global $wpdb;
@@ -6596,18 +6596,22 @@ function alt_busy_response() {
         'code'    => 'alt_busy',
         'message' => 'The tracker is busy computing other views. Retry in a moment.',
     ), 503);
-    $busy->header('Retry-After', '2');
+    $busy->header('Retry-After', '3');
     $busy->header('Cache-Control', 'no-store');
     return $busy;
 }
 
 function alt_cold_compute_guard($key, $run, $outer = true) {
-    if (!$outer) return call_user_func($run);
-    // Wait as long as a slow cold /aggregate takes (8-19 s measured), so the
-    // waiters really do read the one computed answer.
-    $key_lock = alt_named_lock('k|' . $key, 20);
+    // A hit goes straight through: no lock, no extra reads.
+    if (!$outer || get_transient($key) !== false) return call_user_func($run);
+    // Wait up to 12 s, under the page's 20 s load deadline, so a waiter that
+    // times out can still answer busy and the page's one retry can land.
+    // On MySQL < 5.7 / MariaDB < 10.0.2 a session holds one named lock, so
+    // taking a slot drops this key lock: the cap still holds, single-flight
+    // degrades to best effort.
+    $key_lock = alt_named_lock('k|' . $key, 12);
     if ($key_lock === null) return call_user_func($run);
-    // Still computing after 20 s: say busy (the page retries once) rather
+    // Still computing after 12 s: say busy (the page retries once) rather
     // than run the same compute a second time (Codex P2 on TIT#362).
     if ($key_lock === false) return alt_busy_response();
     alt_forget_transient_cache($key);
