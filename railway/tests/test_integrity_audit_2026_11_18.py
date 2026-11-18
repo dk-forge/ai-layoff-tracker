@@ -25,20 +25,6 @@ class LargestEntryLinksSomewhere(unittest.TestCase):
                       _read("assets/layoffs.js"))
 
 
-class HeadlineAndYtdReconcile(unittest.TestCase):
-    """959,944 (whole calendar year) over a 941,076 YTD column, 'same basis'."""
-
-    SENTENCE = "jobs filed with a date after today; every column here stops at today."
-
-    def test_server_and_js_print_the_computed_gap(self):
-        tpl = _read("templates/page-tracker.php")
-        self.assertIn("$alt_sv['later']", tpl)
-        self.assertIn(self.SENTENCE, tpl)
-        js = _read("assets/layoffs.js")
-        self.assertIn("function laterNote()", js)
-        self.assertIn(self.SENTENCE, js)
-
-
 class ReportNamesItsBasis(unittest.TestCase):
     """October: 81,061 on the report (effective) vs 88,265 on home (filing)."""
 

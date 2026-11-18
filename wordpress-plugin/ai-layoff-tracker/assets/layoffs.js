@@ -940,17 +940,7 @@
     function boardBasisNote() {
         return DATE_BASIS === 'effective'
             ? 'Every row counts verified entries by filing date, the day the cut was announced or filed. The headline figure above is set to count by effective date, so the two answer different questions and are not meant to match.'
-            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.' + laterNote();
-    }
-    // Same basis, different window: the headline counts its whole window and
-    // every board column stops at today. Byte-identical to page-tracker.php.
-    function laterNote() {
-        var t = (LAST_AGG && LAST_AGG.totals) || null;
-        if (!t) return '';
-        var later = ((t.jobs || 0) - (t.announced_jobs || 0)) - ((t.to_date_jobs || 0) - (t.to_date_announced_jobs || 0));
-        return later > 0
-            ? ' The headline counts its whole window, which includes ' + fmt(later) + ' jobs filed with a date after today; every column here stops at today.'
-            : '';
+            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.';
     }
 
     // One writer for the basis state: the closure variable, the segmented
