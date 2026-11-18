@@ -46,6 +46,11 @@ jobs:
           set -o pipefail
           if python3 finish_line.py --name "AI Layoff Tracker" \
               --base https://asktherecruiter.com/blog/ai-layoff-tracker/ \
+              --also https://asktherecruiter.com/blog/company-layoffs/ \
+              --scope https://asktherecruiter.com/blog/country-layoffs/ \
+              --scope https://asktherecruiter.com/blog/state-layoffs/ \
+              --scope https://asktherecruiter.com/blog/industry-layoffs/ \
+              --fresh-url https://asktherecruiter.com/blog/wp-json/layoffs/v1/status --fresh-key last_updated \
               --json finish_line_status.json --summary "$GITHUB_STEP_SUMMARY" > finish_line.md; then
             echo "status=PASS" >> "$GITHUB_OUTPUT"
           else
