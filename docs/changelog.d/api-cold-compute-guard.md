@@ -1,5 +1,5 @@
 ---
-version: 2.20.341
+version: 2.20.344
 type: fix
 area: api
 date: 2026-11-18

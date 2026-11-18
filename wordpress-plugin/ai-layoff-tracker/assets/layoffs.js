@@ -957,7 +957,31 @@
     function boardBasisNote() {
         return DATE_BASIS === 'effective'
             ? 'Every row counts verified entries by filing date, the day the cut was announced or filed. The headline figure above is set to count by effective date, so the two answer different questions and are not meant to match.'
-            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.';
+            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.' + laterNote();
+    }
+    /*
+      SAME BASIS, DIFFERENT WINDOW (2026-11-18). The headline counts the whole
+      calendar year and the YTD column stops at today, both by FILING date, so
+      the headline read 959,944 over a 941,076 column with nothing saying why.
+      The gap is the headline's verified total minus the board's own YTD cell:
+      two numbers counted on the same basis, never the aggregate's to_date_*
+      (that is cut on the EFFECTIVE date, Codex on PR #691). Only on the view
+      where both count the same scope: the world tab, the current year, no
+      other filter. page-tracker.php prints the identical sentence.
+    */
+    var BOARD_YTD = null;   // { jobs, world, year } from the last board paint
+    function laterNote() {
+        var t = (LAST_AGG && LAST_AGG.totals) || null;
+        if (!t || !BOARD_YTD || !BOARD_YTD.world || DATE_BASIS !== 'notice') return '';
+        var p = currentParams();
+        var keys = Object.keys(p).sort().join(',');
+        if (keys !== 'date_basis,years' || String(p.years) !== String(BOARD_YTD.year)) return '';
+        var gap = ((t.jobs || 0) - (t.announced_jobs || 0)) - (BOARD_YTD.jobs || 0);
+        return gap > 0 ? laterSentence(gap) : '';
+    }
+    function laterSentence(gap) {
+        return ' The headline counts the whole calendar year, which adds ' + fmt(gap)
+            + ' jobs filed with a date after today; every column here stops at today.';
     }
 
     // One writer for the basis state: the closure variable, the segmented
@@ -5689,6 +5713,7 @@
             KEYS.forEach(function (k, i) {
                 D[k] = { t: (r[i] || {}).totals || {}, l: ((r[i] || {}).leaders || [])[0] || null };
             });
+            BOARD_YTD = { jobs: D.ytd.t.jobs || 0, world: !tab.countries.length, year: y };
             var today = MONTHS[now.getMonth()] + ' ' + now.getDate();
             var b = function (v) { return '<b>' + v + '</b>'; };
             var cols = boardColumnLabels(W);

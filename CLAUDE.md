@@ -9,6 +9,14 @@
 >
 > A scheduled sweep runs this order every 2 hours (GitHub steward `trig_01RLA5dqX6eshuEB4LrDZUW3`, :37 past even UTC hours). Ping the owner only when production is down, a tester draft is ready, or a decision only the owner can make is needed.
 
+> **WORKING RULES (DK 2026-11-18, dk-forge/todo#1940).**
+> 1. At most 4 background jobs at a time; everything else waits in dk-forge/todo in priority order.
+> 2. Every job works in its own `git worktree` under /dev/shm, never the main checkout.
+> 3. "Done" means verified on the live site or in DK's Project view, with proof (screenshot, run ID or field values) posted on the issue first.
+> 4. A fresh session each day, starting from dk-forge/todo STATUS.md and the list, not chat memory; the last session writes a handoff comment on the item.
+> 5. Message DK only when he is needed, when something important finishes, or when something breaks; everything else goes in the 08:42 morning summary.
+> 6. Every PR says "Closes dk-forge/todo#N" (or "Refs" when it only partly finishes the item); a daily no-AI sweep comments on items whose PRs all merged, and lists PRs with no todo reference in STATUS.md.
+
 Live tracker of verified layoffs (SEC 8-K filings, US state WARN notices, worldwide
 news via GDELT), flagging the ones companies explicitly attribute to AI.
 
@@ -237,6 +245,7 @@ the end check.
 **Hard bars:** (a) any source/metric change updates Sources + Health labels + the benchmark in the **same** session; (b) formatting is non-negotiable — aligned tables, no horizontal bleed (especially mobile), consistent copy, **no em-dashes in UI copy**; (c) **verify live** (`curl` the `ver=` + the page/endpoint) before claiming any surface is updated — never assume a deploy landed.
 
 ## Iron rules learned the hard way (details in TECHLOG)
+- **Codex security review (dk-forge/todo#1852, owner 2026-11-18):** `.github/workflows/codex-security-review.yml` comments `@codex security review` once per head SHA when a PR touches risky paths (forms, contact/newsletter, auth/login/session, payments, cookies/consent, personal data, mu-plugins, webhooks, .env). A Codex security finding blocks the merge until it is fixed.
 - Every network request to the WP host MUST send a browser-ish `User-Agent` (ModSecurity blocks `python-requests`; use `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`).
 - `WP_SITE_URL` is `https://asktherecruiter.com/blog` — never the bare domain (root is a separate Railway app).
 - FTP deploys bypass WP hooks: version bumps trigger cache-flush/table-migration on first request (`alt_flush_caches_on_deploy`), and anything that must exist (like the contact page) needs a **retry-until-verified** hook, not a one-shot on version bump (deploys race mid-upload).
