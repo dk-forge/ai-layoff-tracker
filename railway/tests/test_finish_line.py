@@ -145,6 +145,21 @@ def test_the_card_is_the_row_not_a_badge_strip_inside_it():
     assert ':not([class*="card-"])' in js  # .tit-card-badges is not a card
 
 
+def test_numbers_are_judged_on_the_block_text_not_one_text_node():
+    import re
+    js = fl.numbers_js()
+    assert "blockText.match(NUM)" in js and "t.textContent.match(NUM)" not in js
+    assert re.findall(fl.NUM_PATTERN, "42 jobs added") == ["42"]
+
+
+def test_the_workflow_crawls_every_route_family_and_the_record_pages():
+    wf = (pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/finish-line.yml").read_text()
+    assert "--also https://asktherecruiter.com/blog/company-layoffs/" in wf
+    for fam in ("country-layoffs", "state-layoffs", "industry-layoffs", "layoff"):
+        assert f"--scope https://asktherecruiter.com/blog/{fam}/" in wf, fam
+    assert "--fresh-url https://asktherecruiter.com/blog/wp-json/layoffs/v1/status --fresh-key last_updated" in wf
+
+
 class FinishLine(unittest.TestCase):
     pass
 
