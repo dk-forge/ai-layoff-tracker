@@ -6542,7 +6542,7 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
  * If the server cannot take named locks (GET_LOCK returns NULL) the guard
  * steps aside and the compute runs exactly as it did before.
  */
-if (!defined('ALT_COLD_SLOTS')) define('ALT_COLD_SLOTS', 6);
+if (!defined('ALT_COLD_SLOTS')) define('ALT_COLD_SLOTS', 10);
 
 function alt_named_lock($name, $wait) {
     global $wpdb;
@@ -6603,7 +6603,20 @@ function alt_busy_response() {
 
 function alt_cold_compute_guard($key, $run, $outer = true) {
     // A hit goes straight through: no lock, no extra reads.
-    if (!$outer || get_transient($key) !== false) return call_user_func($run);
+    if (get_transient($key) !== false) return call_user_func($run);
+    // Internal callers (digest, facet pages, page bootstrap) keep
+    // single-flight, so N page renders after a data write compute a cold key
+    // once, but they never get the slot cap or a busy answer: they wait, then
+    // compute if they must.
+    if (!$outer) {
+        $lock = alt_named_lock('k|' . $key, 12);
+        if (is_string($lock)) alt_forget_transient_cache($key);
+        try {
+            return call_user_func($run);
+        } finally {
+            alt_named_unlock($lock);
+        }
+    }
     // Wait up to 12 s, under the page's 20 s load deadline, so a waiter that
     // times out can still answer busy and the page's one retry can land.
     // On MySQL < 5.7 / MariaDB < 10.0.2 a session holds one named lock, so

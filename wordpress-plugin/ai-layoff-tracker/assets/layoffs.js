@@ -577,20 +577,20 @@
         if (q) url += (url.indexOf('?') > -1 ? '&' : '?') + q;
         var opts = { credentials: 'same-origin' };
         if (signal) opts.signal = signal;
-        var once = function () { return fetch(url, opts); };
-        return once().then(function (r) {
-            // 503 + Retry-After is the server's cold-compute cap saying "not
-            // now" (alt_cold_compute_guard). One polite retry, then give up.
-            // Only the cap's 503 carries Retry-After; any other 503 is final.
-            if (r.status === 503 && r.headers.get('Retry-After')) {
-                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000;
+        // 503 + Retry-After is the server's cold-compute cap saying "not now"
+        // (alt_cold_compute_guard). Up to three polite retries, inside the
+        // page's 20 s load deadline; any other status is final.
+        var attempt = function (left) {
+            return fetch(url, opts).then(function (r) {
+                if (r.status !== 503 || !r.headers.get('Retry-After') || left <= 0) return r;
+                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 3) * 1000;
                 return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
                     if (signal && signal.aborted) throw new Error('aborted');
-                    return once();
+                    return attempt(left - 1);
                 });
-            }
-            return r;
-        }).then(function (r) {
+            });
+        };
+        return attempt(3).then(function (r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         });
@@ -1342,7 +1342,7 @@
     // clicked back on. Only the network half is coalesced: the first call
     // after a quiet spell fetches at once, later calls inside REFRESH_GAP_MS
     // collapse into one trailing fetch with the final filters.
-    var REFRESH_GAP_MS = 350, REFRESH_TIMER = null, REFRESH_LAST = 0;
+    var REFRESH_GAP_MS = 350, REFRESH_MAX_WAIT_MS = 1000, REFRESH_TIMER = null, REFRESH_LAST = 0;
     function refreshAll() {
         saveFilters();
         syncUrlFromFilters();
@@ -1352,7 +1352,10 @@
         updateRangeLabel();
         updateExportLinks();
         var now = Date.now();
-        if (!REFRESH_TIMER && now - REFRESH_LAST >= REFRESH_GAP_MS) {
+        // Quiet spell, or a steady stream that has not fetched for a second
+        // (a pure debounce would never fetch while clicks keep coming).
+        if (now - REFRESH_LAST >= (REFRESH_TIMER ? REFRESH_MAX_WAIT_MS : REFRESH_GAP_MS)) {
+            if (REFRESH_TIMER) { clearTimeout(REFRESH_TIMER); REFRESH_TIMER = null; }
             REFRESH_LAST = now;
             refreshAllNow();
             return;
@@ -1362,6 +1365,9 @@
         // checks drop it, and busyBegin aborts it and shows loading until the
         // trailing run lands.
         AGG_SEQ++; QUERY_SEQ++; LOC_SEQ++;
+        // The trailing run must fetch: an inlined first-load payload would
+        // paint without clearing the loading state begun below.
+        BOOT = null;
         if (LOC_CTRL) { try { LOC_CTRL.abort(); } catch (e) { /* settled */ } LOC_CTRL = null; }
         busyBegin('alt-stats-bar', 'Loading the totals');
         busyBegin('alt-cards', 'Loading the records');
