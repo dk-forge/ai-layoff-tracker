@@ -173,3 +173,9 @@ def test_a_same_site_permalink_is_not_a_citation():
     js = fl.numbers_js()
     assert "new URL(a.href, location.href).host !== location.host" in js
     assert "source|citation|cite" in js
+
+
+def test_publisher_links_with_utm_still_count_and_only_our_cta_is_skipped():
+    js = fl.numbers_js()
+    assert "/utm_/.test(h)" not in js
+    assert "OWN_CTA" in js and "asktherecruiter" in js
