@@ -1,5 +1,5 @@
 ---
-version: 2.20.341
+version: 2.20.342
 type: feat
 area: seo
 date: 2026-11-18
