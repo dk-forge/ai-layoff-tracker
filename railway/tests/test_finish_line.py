@@ -167,3 +167,9 @@ class FinishLine(unittest.TestCase):
 for _n, _f in list(globals().items()):
     if _n.startswith("test_") and callable(_f):
         setattr(FinishLine, _n, staticmethod(_f))
+
+
+def test_a_same_site_permalink_is_not_a_citation():
+    js = fl.numbers_js()
+    assert "new URL(a.href, location.href).host !== location.host" in js
+    assert "source|citation|cite" in js
