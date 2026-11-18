@@ -203,5 +203,11 @@ def test_429_is_retried_but_a_lasting_429_is_still_reported(monkeypatch=None):
         assert fl.fetch("https://x.test/feed")[0] == 429
         fl._fetch_once = lambda url, timeout: (404, "")
         assert fl.fetch("https://x.test/gone")[0] == 404
+        # The back-off has a per-run budget so a pacing host cannot time the job out.
+        fl._PAUSE_BUDGET, slept = 0, []
+        fl.time.sleep = slept.append
+        fl._fetch_once = lambda url, timeout: (429, "")
+        assert fl.fetch("https://x.test/feed")[0] == 429 and slept == []
     finally:
         fl._fetch_once, fl.time.sleep = orig_once, orig_sleep
+        fl._PAUSE_BUDGET = 1800

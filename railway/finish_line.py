@@ -212,8 +212,19 @@ def fetch(url: str, timeout: int = 30) -> tuple[int, str]:
         # and ask again. A link still 429 after the retries stays reported.
         if status == 200 or (0 < status < 500 and status != 429):
             return status, body
-        time.sleep((20 if status == 429 else 3) * (attempt + 1))
+        pause = (20 if status == 429 else 3) * (attempt + 1)
+        global _PAUSE_BUDGET
+        if status == 429:
+            # A host that keeps pacing us must not run the job past its timeout
+            # (no report at all): past 30 minutes of 429 back-off, report as is.
+            if _PAUSE_BUDGET < pause:
+                return status, body
+            _PAUSE_BUDGET -= pause
+        time.sleep(pause)
     return status, body
+
+
+_PAUSE_BUDGET = 1800  # seconds of 429 back-off per run
 
 
 def iri_to_uri(url: str) -> str:
