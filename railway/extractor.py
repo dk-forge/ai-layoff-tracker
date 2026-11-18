@@ -1705,6 +1705,18 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
               f"offer or eligibility figure, not job cuts - source: "
               f"{raw_entry.get('source_url')}")
         return None
+    # A denial or negation in the count's own sentence HOLDS the row for
+    # review: it is posted to WordPress as a held (unpublished) post, never
+    # published and never dropped here. Row 183489 stored Microsoft 60,000
+    # from "outage cause is not related to 60,000 job cuts", while "cut 500
+    # jobs, not related to AI" is a real cut; a regex cannot tell them apart,
+    # so the referees do (review-held.yml, railway/review_held.py).
+    from negation_guard import negation_verdict, HOLD
+    held_reason = None
+    if estimate is None and negation_verdict(job_count, raw_text) == HOLD:
+        held_reason = "negation: the count shares a sentence with a denial or negation"
+        print(f"Extraction HELD for review: job_count {job_count} shares a sentence "
+              f"with a denial or negation - source: {raw_entry.get('source_url')}")
     # A disciplinary dismissal is not a layoff: row 183367 led a daily
     # edition with 1,562 police officers dismissed in an internal cleansing
     # drive (railway/disciplinary_guard.py).
@@ -1947,4 +1959,6 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
     )
     extracted["dedup_hash"] = hashlib.md5(hash_input.encode("utf-8")).hexdigest()
 
+    if held_reason:
+        extracted["held_reason"] = held_reason
     return extracted

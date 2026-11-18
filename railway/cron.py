@@ -620,7 +620,7 @@ def run():
             gdelt_reach.current().note_cc(_e["_reach_cc"], "already_ingested")
 
     results = []
-    posted = skipped_dupes = skipped_not_layoff = failed = 0
+    posted = skipped_dupes = skipped_not_layoff = failed = held_for_review = 0
     gate_dropped = gate_false_drops = 0
     per_source = {}
 
@@ -669,6 +669,9 @@ def run():
                 stats["stored"] += 1
             elif status == "duplicate":
                 skipped_dupes += 1
+            elif status == "held":
+                # Stored as a held post for review-held.yml; not published.
+                held_for_review += 1
             else:
                 failed += 1
             results.append({"entry": extracted["company_name"], "success": status == "posted"})
@@ -682,7 +685,7 @@ def run():
     print(
         f"Run complete: {len(entries)} pulled, {posted} posted, "
         f"{skipped_dupes} duplicates skipped, {skipped_not_layoff} non-events skipped, "
-        f"{failed} failed"
+        f"{failed} failed, {held_for_review} held for review"
         + (f", {gate_dropped} gate-dropped" if GATE_MODE == "live" else "")
         + (f", gate would drop {gate_false_drops} stored row(s) - DO NOT go live"
            if gate_false_drops else "")
