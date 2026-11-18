@@ -70,6 +70,9 @@ $src_label = function ($t) {
   <p class="alt-eyebrow">AskTheRecruiter · AI Layoff Tracker</p>
   <h1>AI layoffs, in the employer's own words</h1>
   <p class="alt-lead"><span class="alt-lead-text">Every layoff we attribute to AI carries the company's own statement, quoted verbatim, with a link to where they said it. This is the receipt behind the AI number: not inference, not press framing, the employer's words. Filter it, quote it, check it.</span></p>
+  <?php // Traffic must convert (owner 2026-11-17): the most-visited tracker
+  // page had no sign-up path in its hero. The shared block, tagged per page.
+  if (function_exists('alt_atr_cta_line_html')) echo alt_atr_cta_line_html('ai_quotes'); ?>
   <?php /* Both of these used to land on the dashboard's collapsed summary
        block. "How the AI tag works" is the exact title of a section on the
        METHODOLOGY page, so that is where a link carrying that label has to go;

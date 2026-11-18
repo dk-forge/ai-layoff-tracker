@@ -1705,6 +1705,15 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
               f"offer or eligibility figure, not job cuts - source: "
               f"{raw_entry.get('source_url')}")
         return None
+    # A denied or disowned cut is not a cut: row 183489 stored Microsoft
+    # 60,000 from "outage cause is not related to 60,000 job cuts"
+    # (railway/negation_guard.py).
+    from negation_guard import count_is_negated
+    if estimate is None and count_is_negated(job_count, raw_text):
+        print(f"Extraction rejected: job_count {job_count} appears only in a "
+              f"denial or negation, not a reported cut - source: "
+              f"{raw_entry.get('source_url')}")
+        return None
     # A disciplinary dismissal is not a layoff: row 183367 led a daily
     # edition with 1,562 police officers dismissed in an internal cleansing
     # drive (railway/disciplinary_guard.py).

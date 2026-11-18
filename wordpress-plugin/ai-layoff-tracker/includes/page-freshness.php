@@ -36,11 +36,12 @@ function alt_page_freshness_html(array $events) {
 /** Schema fields shared by the company and facet Dataset nodes. */
 function alt_page_dataset_freshness() {
     $ts = (int) get_option('alt_last_write', 0);
-    return array(
-        'dateModified' => gmdate('Y-m-d', $ts > 0 ? $ts : time()),
+    return array_filter(array(
+        // The last data write or nothing: never the render clock (2026-11-18).
+        'dateModified' => $ts > 0 ? gmdate('Y-m-d', $ts) : null,
         'distribution' => array(
             array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv',
                   'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
         ),
-    );
+    ), function ($v) { return $v !== null; });
 }

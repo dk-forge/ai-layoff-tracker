@@ -940,7 +940,17 @@
     function boardBasisNote() {
         return DATE_BASIS === 'effective'
             ? 'Every row counts verified entries by filing date, the day the cut was announced or filed. The headline figure above is set to count by effective date, so the two answer different questions and are not meant to match.'
-            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.';
+            : 'Every row counts verified entries by filing date, the same basis as the headline figure above.' + laterNote();
+    }
+    // Same basis, different window: the headline counts its whole window and
+    // every board column stops at today. Byte-identical to page-tracker.php.
+    function laterNote() {
+        var t = (LAST_AGG && LAST_AGG.totals) || null;
+        if (!t) return '';
+        var later = ((t.jobs || 0) - (t.announced_jobs || 0)) - ((t.to_date_jobs || 0) - (t.to_date_announced_jobs || 0));
+        return later > 0
+            ? ' The headline counts its whole window, which includes ' + fmt(later) + ' jobs filed with a date after today; every column here stops at today.'
+            : '';
     }
 
     // One writer for the basis state: the closure variable, the segmented
@@ -5695,7 +5705,7 @@
                         + (rep ? '<i class="alt-sb-again">same entry</i>' : '');
                     return ld.permalink
                         ? '<a class="alt-sb-cell alt-sb-ev' + e + rep + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this entry&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
-                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + rep + '" role="cell" href="#" data-company="' + escapeHtml(name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
+                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + rep + '" role="cell" href="' + meta[k].href + '&amp;company=' + escapeHtml(encodeURIComponent(name)) + '"' + meta[k].data + ' data-company="' + escapeHtml(name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
                 }).join('') + '</div>';
             // The footnote was one sentence doing four jobs, so a reader after
             // any one of them read all four. One clause per line, each with the

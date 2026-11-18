@@ -571,7 +571,7 @@ $alt_hero_basis  = 'counted by filing date';
                     . ($alt_lrep ? '<i class="alt-sb-again">same entry</i>' : '');
                 $alt_board_html .= !empty($alt_ld['permalink'])
                     ? '<a class="alt-sb-cell alt-sb-ev' . $eq . $alt_lrep . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this entry&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
-                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . $alt_lrep . '" role="cell" href="#" data-company="' . esc_attr($alt_lname) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
+                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . $alt_lrep . '" role="cell" href="' . $alt_sb_meta[$alt_ck]['href'] . '&amp;company=' . esc_attr(rawurlencode($alt_lname)) . '"' . $alt_sb_meta[$alt_ck]['data'] . ' data-company="' . esc_attr($alt_lname) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
             } else {
                 $alt_board_html .= '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell">none</span>';
             }
@@ -593,7 +593,16 @@ $alt_hero_basis  = 'counted by filing date';
             // The class is how renderBasisCopy() finds this line again: a
             // reader who switches the basis after load gets this one sentence
             // rewritten in place, with no board refetch. See there.
-            . '<li class="alt-sb-foot-basis">Every row counts verified entries by filing date, the same basis as the headline figure above.</li>'
+            . '<li class="alt-sb-foot-basis">Every row counts verified entries by filing date, the same basis as the headline figure above.'
+            // SAME BASIS, DIFFERENT WINDOW (2026-11-18). The headline counts the
+            // whole calendar year and the YTD column stops at today, so on that
+            // day the headline read 959,944 over a 941,076 column with nothing
+            // saying why. The gap is computed from the same aggregate the hero
+            // prints, never typed; layoffs.js laterNote() writes the same words.
+            . (($alt_sv !== null && $alt_sv['later'] > 0)
+                ? ' The headline counts its whole window, which includes ' . esc_html(number_format($alt_sv['later'])) . ' jobs filed with a date after today; every column here stops at today.'
+                : '')
+            . '</li>'
             . '<li>Explicitly AI-attributed counts cuts where the employer named AI, in words we hold. The broad lens contains every one of those cuts and adds looser links, so the smaller figure sits inside the larger one and the two are never added together.</li>'
             . '<li>Columns overlap, so they do not add up: this week sits inside this month, and a completed month can sit inside a completed quarter. One entry can lead more than one column.</li>'
             // "and counted the same way" is not decoration: the tap now carries

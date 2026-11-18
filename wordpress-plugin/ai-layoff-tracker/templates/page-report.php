@@ -298,6 +298,8 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
       <span class="alt-op-asof">Data as of <?php echo esc_html($alt_stamp); ?> · AskTheRecruiter.com</span>
     </header>
 
+    <?php // Sign-up path in the report hero (owner 2026-11-17), one campaign per report type.
+    if (function_exists('alt_atr_cta_line_html')) echo alt_atr_cta_line_html($alt_is_week ? 'report_week' : ($alt_is_quarter ? 'report_quarter' : ($alt_is_year ? 'report_year' : 'report_month'))); ?>
     <div class="alt-op-headline">
       <div class="alt-op-twobox">
         <div class="alt-op-box alt-op-box-overall">
@@ -307,7 +309,11 @@ $alt_stamp = (function_exists('alt_data_last_updated_label') ? alt_data_last_upd
               <span class="alt-op-delta <?php echo ($alt_delta >= 0 ? 'up' : 'down'); ?>"><?php echo ($alt_delta >= 0 ? '▲' : '▼') . ' ' . abs($alt_delta) . '%'; ?> vs <?php echo esc_html($alt_plabel); ?></span>
             <?php endif; ?>
           </div>
-          <div class="alt-op-boxnote">The main number, every figure traces to a filing or named report.</div>
+          <?php /* THE BASIS, NAMED (2026-11-18). This page counts by EFFECTIVE date
+                   (layoff_date BETWEEN, above); the tracker's board counts by FILING
+                   date, so October read 81,061 here and 88,265 there with neither
+                   saying why. Both are right; only one was labelled. */ ?>
+          <div class="alt-op-boxnote">The main number, counted by effective date (the day each cut takes effect), so it differs from the tracker's by-filing-date columns. Every figure traces to a filing or named report.</div>
           <?php /* The second tier, stated where the total is (owner decision
                    2026-08-14): the announced-inclusive total, beside the
                    verified primary above it. The sentence is

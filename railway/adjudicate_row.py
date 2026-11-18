@@ -79,6 +79,8 @@ RULES = """The tracker's published rules, which you must apply:
    industry; a net headcount decline over time; people dismissed for
    misconduct or other disciplinary reasons; and a figure that belongs to a
    different employer than the row names.
+   A figure the source mentions only to DENY or disown it is not a cut either:
+   "not related to 60,000 job cuts", "denies layoffs", "no layoffs planned".
 """
 
 PROMPT = """Today is {today}. A date on or before today is not in the future.

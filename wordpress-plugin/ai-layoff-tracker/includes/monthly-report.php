@@ -91,7 +91,7 @@ function alt_mr_pitch(array $f) {
     if ($s = $list($f['top_companies'] ?? array())) $out[] = 'Largest employers cutting: ' . $s . '.';
     if ($s = $list($f['top_countries'] ?? array())) $out[] = 'Top countries: ' . $s . '.';
     if ($s = $list($f['top_states'] ?? array())) $out[] = 'Top US states: ' . $s . '.';
-    $out[] = 'Methodology: every figure links to an SEC filing, a state WARN notice or a named report, and AI attribution requires the employer\'s own words. Counts are a documented floor, not a census.';
+    $out[] = 'Methodology: every figure links to an SEC filing, a state WARN notice or a named report, and AI attribution requires the employer\'s own words. Counts are dated by effective date (the day each cut takes effect) and are a documented floor, not a census.';
     if (!empty($f['report_url'])) $out[] = 'Full report: ' . $f['report_url'];
     if (!empty($f['csv_url'])) $out[] = 'Data (CSV): ' . $f['csv_url'];
     if (!empty($f['contact_url'])) $out[] = 'Press contact: ' . $f['contact_url'];
