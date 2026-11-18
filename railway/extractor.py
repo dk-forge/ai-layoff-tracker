@@ -1579,22 +1579,21 @@ DATE: {raw_entry.get('filing_date') or 'Unknown'}
 TEXT:
 {raw_text}"""
 
-    def _ask(model):
-        return lambda: _get_client().chat.completions.create(
-            extra_body=USAGE_ACCOUNTING,
-            model=model,
-            max_tokens=1000,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-        )
-
-    fallback = ((FALLBACK_MODEL, _ask(FALLBACK_MODEL))
-                if FALLBACK_MODEL and FALLBACK_MODEL != MODEL else None)
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    # WEEKLY-23: one request to FALLBACK_MODEL if MODEL stays throttled.
+    fallback = ((FALLBACK_MODEL, lambda: _get_client().chat.completions.create(
+        extra_body=USAGE_ACCOUNTING, model=FALLBACK_MODEL, max_tokens=1000,
+        messages=messages)) if FALLBACK_MODEL and FALLBACK_MODEL != MODEL else None)
     try:
-        response = spend.metered_call(MODEL, _ask(MODEL), attempts=MODEL_CALL_ATTEMPTS,
-                                      what="layoff extraction", fallback=fallback)
+        response = spend.metered_call(MODEL, lambda: _get_client().chat.completions.create(
+            extra_body=USAGE_ACCOUNTING,
+            model=MODEL,
+            max_tokens=1000,
+            messages=messages,
+        ), attempts=MODEL_CALL_ATTEMPTS, what="layoff extraction", fallback=fallback)
     except spend.PaidReadsOff:
         # The ceiling tripped between the check at the top of this function and
         # the call (another paid call in between spent the last of it). Same
