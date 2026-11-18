@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.342
+ * Version:           2.20.343
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.342');
+define('ALT_VERSION', '2.20.343');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -775,10 +775,13 @@ function alt_llms_schedule() {
 add_action('init', 'alt_llms_schedule', 20);
 
 /**
- * Serve /blog/llms.txt if the request ever reaches PHP. On this host it does
- * NOT: Apache serves .txt directly and 404s when the file is missing, so the
- * real delivery mechanism is alt_write_static_files() below. Kept as a
- * harmless fallback for hosts that do route .txt to WordPress.
+ * Answer .../llms.txt requests that reach PHP. On this host a .txt FILE that
+ * exists on disk is served by Apache (the site-wide /blog/llms.txt, written by
+ * alt_write_static_files() below), but a .txt path with no file DOES reach
+ * WordPress: measured 2026-11-18, /blog/ai-layoff-tracker/llms.txt answered
+ * with this handler's X-Robots-Tag. The tracker's own file depends on this
+ * handler; never write it to disk (a real ai-layoff-tracker/ directory would
+ * stop WordPress routing the hub). Guard: railway/tests/test_llms_tracker.py.
  */
 function alt_serve_llms_txt() {
     $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
@@ -786,7 +789,9 @@ function alt_serve_llms_txt() {
     header('Content-Type: text/plain; charset=utf-8');
     header('X-Robots-Tag: noindex');
     if (alt_llms_is_tracker_request($uri)) {
-        echo alt_tracker_llms_txt_content(get_transient(alt_figure_cache_key('press_statements')));
+        $ps = get_transient(alt_figure_cache_key('press_statements'));
+        if (!is_array($ps)) $ps = get_option('alt_llms_press_figures');  // last good, still dated
+        echo alt_tracker_llms_txt_content($ps);
         exit;
     }
     echo alt_llms_txt_published();
@@ -795,8 +800,8 @@ function alt_serve_llms_txt() {
 
 /** PURE. Is this request the tracker's own llms.txt (not the site-wide one)? */
 function alt_llms_is_tracker_request($uri) {
-    $path = (string) parse_url((string) $uri, PHP_URL_PATH);
-    return (bool) preg_match('#/ai-layoff-tracker/llms\.txt/?$#', $path);
+    $path = rtrim((string) parse_url((string) $uri, PHP_URL_PATH), '/');
+    return $path !== '' && $path === (string) parse_url(home_url('/ai-layoff-tracker/llms.txt'), PHP_URL_PATH);
 }
 
 /**
@@ -810,25 +815,25 @@ function alt_llms_is_tracker_request($uri) {
  */
 function alt_tracker_llms_txt_content($ps) {
     $out = alt_llms_txt_content();
+    if (function_exists('alt_atr_cta_url')) {
+        $out .= "\n## For job seekers\n- Free resume match check: " . alt_atr_cta_url('llms_txt') . "\n";
+    }
     $sp = (is_array($ps) && isset($ps['split']) && is_array($ps['split'])) ? $ps['split'] : null;
-    if (!$sp || empty($sp['as_of']) || (int) ($sp['to_date'] ?? 0) <= 0) return $out;
+    if (!$sp || empty($sp['as_of']) || (int) ($sp['to_date'] ?? 0) <= 0 || (int) ($sp['year'] ?? 0) <= 0) {
+        return $out;
+    }
     $press = home_url('/ai-layoff-tracker/press/');
     $asof = (string) $sp['as_of'];
-    $year = (int) ($sp['year'] ?? 0);
-    $fig  = "\n## Quotable figures (as of $asof)\n";
-    $fig .= "- As of $asof, the AI Layoff Tracker by AskTheRecruiter.com documents "
-          . number_format((int) $sp['to_date']) . " verified job cuts that took effect in $year so far. "
-          . "Source: {$press}#alt-press-period\n";
-    $t = (isset($ps['tiers']) && is_array($ps['tiers'])) ? $ps['tiers'] : null;
-    if ($t && (int) ($t['year'] ?? 0) === $year) {
-        $ai = (int) ($t['t1'] ?? 0) + (int) ($t['t2'] ?? 0);
-        if ($ai > 0) {
-            $fig .= "- As of $asof, " . number_format($ai) . " verified job cuts with effective dates in $year "
-                  . "were attributed to AI or automation by the employer itself (Tiers 1 and 2, quote on file). "
-                  . "Source: {$press}#alt-evidence-ladder\n";
-        }
-    }
-    return $out . $fig;
+    $year = (int) $sp['year'];
+    // One figure, its basis named. The AI tiers are a calendar-year count on a
+    // different definition from the tracker's AI box, and the home page
+    // headlines a filing-date total: both need the press page's explanation,
+    // so they are linked, not restated without it.
+    return $out . "\n## Quotable figures (as of $asof)\n"
+        . "- As of $asof, the AI Layoff Tracker by AskTheRecruiter.com documents "
+        . number_format((int) $sp['to_date']) . " verified job cuts that took effect in $year so far, "
+        . "counted by the date each cut takes effect (the tracker home page counts by filing date, "
+        . "so its headline differs). Source: $press\n";
 }
 add_action('init', 'alt_serve_llms_txt', 0);
 

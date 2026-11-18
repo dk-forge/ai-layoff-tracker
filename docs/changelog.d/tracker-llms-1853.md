@@ -1,7 +1,7 @@
 ---
-version: 2.20.342
+version: 2.20.343
 type: feat
 area: seo
 date: 2026-11-18
 ---
-- /blog/ai-layoff-tracker/llms.txt is the tracker's own file (dk-forge/todo#1853): the map plus quotable figures, each with an "as of" date and the press-page section that shows it. The figures are read from the press page's cached bundle, the same one behind the cite line, so the file is never a third total; a cold cache prints no figures. /blog/llms.txt is unchanged.
+- /blog/ai-layoff-tracker/llms.txt is the tracker's own file (dk-forge/todo#1853): the map, a tracked link to the free resume check, and the year-to-date verified total with its "as of" date, its basis (effective date) and the press page that shows it. The figure is the press page's own, kept as the last good dated value when its hourly cache is cold. /blog/llms.txt is unchanged.

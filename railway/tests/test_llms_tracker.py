@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "wordpress-plugin" / "ai-layoff-tracker" / "ai-layoff-tracker.php"
 STUBS = (
     "function home_url($p = '') { return 'https://example.org/blog' . $p; }\n"
+    "function alt_atr_cta_url($c) { return 'https://asktherecruiter.com/resume-score?utm_source=ai-layoff-tracker&utm_campaign=' . $c; }\n"
     "function rest_url($p = '') { return 'https://example.org/blog/wp-json/' . $p; }\n"
 )
 PS = {"split": {"year": 2026, "as_of": "Nov 18, 2026", "to_date": 77526, "calendar": 90000, "later": 12474},
@@ -40,27 +41,36 @@ class TrackerLlms(unittest.TestCase):
     def test_quotable_figures_have_date_number_and_source(self):
         out = self._txt(PS)
         self.assertIn("## Quotable figures (as of Nov 18, 2026)", out)
-        self.assertIn("documents 77,526 verified job cuts that took effect in 2026 so far. "
-                      "Source: https://example.org/blog/ai-layoff-tracker/press/#alt-press-period", out)
-        self.assertIn("3,345 verified job cuts with effective dates in 2026 were attributed to AI", out)
+        self.assertIn("documents 77,526 verified job cuts that took effect in 2026 so far, "
+                      "counted by the date each cut takes effect", out)
+        self.assertIn("Source: https://example.org/blog/ai-layoff-tracker/press/\n", out)
+        # no anchor that the press page only renders sometimes
+        self.assertNotIn("#alt-press-period", out)
+        # the AI tiers are a calendar-year count on another definition: linked, not restated
+        self.assertNotIn("attributed to AI", out)
+        self.assertIn("resume-score?utm_source=ai-layoff-tracker&utm_campaign=llms_txt", out)
         for line in out.splitlines():
             if line.startswith("- As of"):
                 self.assertIn("Source: https://", line)
 
     def test_cold_cache_prints_no_figures(self):
-        for ps in (False, {}, {"split": {"as_of": "", "to_date": 5}}):
+        for ps in (False, {}, {"split": {"as_of": "", "to_date": 5}},
+                   {"split": {"as_of": "Nov 18, 2026", "to_date": 5}}):  # no year: never "in 0"
             out = self._txt(ps)
             self.assertNotIn("Quotable figures", out)
             self.assertIn("# AI Layoff Tracker", out)
 
-    def test_tiers_from_another_year_are_not_quoted(self):
-        ps = json.loads(json.dumps(PS))
-        ps["tiers"]["year"] = 2025
-        self.assertNotIn("attributed to AI", self._txt(ps))
+    def test_cold_cache_falls_back_to_the_last_good_dated_split(self):
+        body = _fn("alt_serve_llms_txt")
+        self.assertIn("get_option('alt_llms_press_figures')", body)
+        press = (ROOT / "wordpress-plugin" / "ai-layoff-tracker" / "templates" / "page-press.php").read_text()
+        self.assertIn("update_option('alt_llms_press_figures', array('split' => $alt_ps['split']), false);", press)
 
     def test_only_the_tracker_path_gets_the_tracker_file(self):
         for uri, want in (("/blog/ai-layoff-tracker/llms.txt", "true"), ("/blog/llms.txt", "false"),
-                          ("/blog/talent-intelligence-tracker/llms.txt", "false"), ("/llms.txt", "false")):
+                          ("/blog/talent-intelligence-tracker/llms.txt", "false"), ("/llms.txt", "false"),
+                          ("/blog/x/ai-layoff-tracker/llms.txt", "false"),
+                          ("/blog/talent-intelligence-tracker/ai-layoff-tracker/llms.txt", "false")):
             self.assertEqual(self._php("var_export(alt_llms_is_tracker_request(%s));" % json.dumps(uri)), want, uri)
 
 

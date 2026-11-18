@@ -51,6 +51,22 @@ function alt_register_routes() {
         'permission_callback' => 'alt_api_permission',
     ));
 
+    // HELD ROWS (2026-11-18). A guard that cannot decide (the negation guard)
+    // posts the row with meta.held_reason; it is stored as a `pending` post,
+    // which alt_db_sync_post() never mirrors into the table, so no public
+    // surface, total, feed or sitemap can show it. review-held.yml lists them
+    // here and releases (publishes) or trashes each on two referees' agreement.
+    register_rest_route('layoffs/v1', '/held', array(
+        'methods'             => 'GET',
+        'callback'            => 'alt_api_held_list',
+        'permission_callback' => 'alt_api_permission',
+    ));
+    register_rest_route('layoffs/v1', '/held/(?P<id>\d+)', array(
+        'methods'             => 'POST',
+        'callback'            => 'alt_api_held_decide',
+        'permission_callback' => 'alt_api_permission',
+    ));
+
     // Operational alert: a collector reports a breakage (drift/stale) and this
     // emails the owner a specific, actionable notice. API-key gated so only the
     // pipeline can trigger it.
@@ -1389,9 +1405,23 @@ function alt_api_add($request) {
         return new WP_Error('alt_bad_request', 'dedup_hash must be an md5 hex string.', array('status' => 400));
     }
 
+    // A HELD row skips every step that would touch a published event (no
+    // source report is attached to a canonical row, nothing is merged): it is
+    // stored as a pending post and waits for the referees. Its hash already in
+    // the record (held or published) is a duplicate; a removed one stays removed.
+    $held_reason = sanitize_text_field((string) ($meta_in['held_reason'] ?? ''));
+    if ($held_reason !== '') {
+        if (alt_hash_exists($dedup_hash)) {
+            return new WP_Error('alt_duplicate', 'An entry with this dedup_hash already exists (held or published).', array('status' => 409));
+        }
+        if (function_exists('alt_is_suppressed') && alt_is_suppressed($dedup_hash)) {
+            return new WP_Error('alt_suppressed', 'This entry was editorially removed or corrected; the import must not re-create it.', array('status' => 409));
+        }
+    }
+
     // Server-side dedup re-check — the Railway pre-check fails open, so this
     // is the authoritative guard against duplicates
-    if (alt_hash_exists($dedup_hash)) {
+    if ($held_reason === '' && alt_hash_exists($dedup_hash)) {
         // The event is already counted, but this may be a distinct article or
         // filing. Retain that evidence on the canonical event before telling
         // the ingest worker it is a duplicate.
@@ -1413,7 +1443,7 @@ function alt_api_add($request) {
     // WARN notices are exempt: one company can legitimately file several within
     // 30 days (e.g. separate store closures), so they rely on the exact hash.
     $incoming_source = sanitize_text_field($meta_in['source_type'] ?? '');
-    if ($incoming_source !== 'warn' && ($match_id = alt_fuzzy_dupe_exists($company, $layoff_date, $job_count))) {
+    if ($held_reason === '' && $incoming_source !== 'warn' && ($match_id = alt_fuzzy_dupe_exists($company, $layoff_date, $job_count))) {
         global $wpdb;
         $existing_row = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . alt_db_table() . " WHERE post_id = %d", $match_id));
         if ($existing_row && function_exists('alt_event_register_report_for_layoff')) {
@@ -1460,7 +1490,7 @@ function alt_api_add($request) {
     // Genuine repeat rounds nearly always differ in count; a true identical-count
     // recurrence can still be added via /edit after human review. WARN is exempt
     // (legal filings carry authoritative dates and repeat counts legitimately).
-    if ($incoming_source !== 'warn' && $job_count > 0) {
+    if ($held_reason === '' && $incoming_source !== 'warn' && $job_count > 0) {
         global $wpdb;
         $alt_prior = $wpdb->get_var($wpdb->prepare(
             "SELECT layoff_date FROM " . alt_db_table() .
@@ -1512,7 +1542,7 @@ function alt_api_add($request) {
     $slug = sanitize_title($company . '-' . ($layoff_date !== '' ? $layoff_date : 'filing'));
     $post_id = wp_insert_post(array(
         'post_type'   => 'layoffs',
-        'post_status' => 'publish',
+        'post_status' => $held_reason !== '' ? 'pending' : 'publish',
         'post_title'  => $title,
         'post_name'   => $slug,
     ), true);
@@ -1558,6 +1588,12 @@ function alt_api_add($request) {
     );
     foreach ($meta_values as $key => $value) {
         update_post_meta($post_id, $key, $value);
+    }
+    if ($held_reason !== '') {
+        // Never mirrored, never registered as a report, never flushed into a
+        // public cache: the row does not exist publicly until it is released.
+        update_post_meta($post_id, 'held_reason', $held_reason);
+        return new WP_REST_Response(array('id' => $post_id, 'created' => true, 'held' => true), 201);
     }
 
     // Mirror into the fast-query table now that all meta is set (the save_post
@@ -1843,4 +1879,84 @@ function alt_api_dedupe($request) {
 
     alt_flush_caches();
     return rest_ensure_response(array('merged_events' => $merged, 'trashed' => $trashed));
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Held rows: the review queue (review-held.yml, railway/review_held.py) */
+/* ------------------------------------------------------------------ */
+
+/** True for a layoffs post that is waiting in the held queue. */
+function alt_is_held_post($post_id) {
+    return get_post_type($post_id) === 'layoffs'
+        && get_post_status($post_id) === 'pending'
+        && (string) get_post_meta($post_id, 'held_reason', true) !== '';
+}
+
+function alt_api_held_list($request) {
+    $q = new WP_Query(array(
+        'post_type' => 'layoffs', 'post_status' => 'pending', 'posts_per_page' => 200,
+        'orderby' => 'ID', 'order' => 'ASC', 'fields' => 'ids', 'no_found_rows' => true,
+        'meta_query' => array(array('key' => 'held_reason', 'compare' => 'EXISTS')),
+    ));
+    $out = array();
+    foreach ($q->posts as $pid) {
+        $row = array('id' => (int) $pid);
+        foreach (array('company_name', 'job_count', 'job_count_max', 'layoff_date', 'country', 'source_type',
+                       'source_name', 'source_url', 'verification_level', 'excerpt', 'ai_causation',
+                       'ai_language', 'held_reason', 'dedup_hash') as $k) {
+            $row[$k] = get_post_meta($pid, $k, true);
+        }
+        $row['job_count'] = (int) $row['job_count'];
+        $out[] = $row;
+    }
+    return rest_ensure_response(array('held' => $out, 'count' => count($out)));
+}
+
+/**
+ * Release (publish) or trash one held row. The release re-runs the duplicate
+ * checks a fresh /add would: a held row whose event was published meanwhile
+ * is trashed as a duplicate rather than published twice.
+ */
+function alt_api_held_decide($request) {
+    $pid = (int) $request['id'];
+    if (!alt_is_held_post($pid)) {
+        return new WP_Error('alt_not_held', 'Not a held row.', array('status' => 404));
+    }
+    $action = sanitize_key((string) $request->get_param('action'));
+    $reason = sanitize_text_field((string) $request->get_param('reason'));
+    if (!in_array($action, array('release', 'trash'), true) || $reason === '') {
+        return new WP_Error('alt_bad_request', 'action must be release or trash, and reason is required.', array('status' => 400));
+    }
+    update_post_meta($pid, 'held_decision', $action . ': ' . $reason);
+    if ($action === 'release') {
+        $company = (string) get_post_meta($pid, 'company_name', true);
+        $date    = (string) get_post_meta($pid, 'layoff_date', true);
+        $jobs    = (int) get_post_meta($pid, 'job_count', true);
+        $dup = function_exists('alt_fuzzy_dupe_exists') && (string) get_post_meta($pid, 'source_type', true) !== 'warn'
+            ? alt_fuzzy_dupe_exists($company, $date, $jobs) : 0;
+        if ($dup && (int) $dup !== $pid) {
+            wp_trash_post($pid);
+            return rest_ensure_response(array('id' => $pid, 'result' => 'trashed_duplicate', 'duplicate_of_post' => (int) $dup));
+        }
+        delete_post_meta($pid, 'held_reason');
+        wp_update_post(array('ID' => $pid, 'post_status' => 'publish'));
+        if (function_exists('alt_db_sync_post')) alt_db_sync_post($pid);
+        if (function_exists('alt_event_register_report_for_layoff')) {
+            global $wpdb;
+            $lid = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . alt_db_table() . " WHERE post_id = %d", $pid));
+            // The same meta the /add path hands over, read back from the post.
+            $meta = array_map(function ($v) { return maybe_unserialize(is_array($v) ? reset($v) : $v); }, (array) get_post_meta($pid));
+            if ($lid) alt_event_register_report_for_layoff($lid, $meta);
+        }
+        alt_flush_caches();
+        return rest_ensure_response(array('id' => $pid, 'result' => 'released'));
+    }
+    // Trashed for cause: suppress the hash so the next ingest run cannot
+    // re-create the same held row and put it to the referees again.
+    if (function_exists('alt_suppress_hash')) {
+        alt_suppress_hash((string) get_post_meta($pid, 'dedup_hash', true), 'held row trashed on review: ' . $reason);
+    }
+    wp_trash_post($pid);
+    return rest_ensure_response(array('id' => $pid, 'result' => 'trashed'));
 }
