@@ -1626,10 +1626,6 @@ TEXT:
     return finalize_extraction(extracted, raw_entry, raw_text)
 
 
-# Rows held by the negation guard this process (see finalize_extraction).
-NEGATION_HELD = []
-
-
 def finalize_extraction(extracted, raw_entry, raw_text=None):
     """Every post-parse rule, as a pure function of the model's dict.
 
@@ -1708,20 +1704,6 @@ def finalize_extraction(extracted, raw_entry, raw_text=None):
         print(f"Extraction rejected: job_count {job_count} is a voluntary buyout "
               f"offer or eligibility figure, not job cuts - source: "
               f"{raw_entry.get('source_url')}")
-        return None
-    # A denial or negation in the count's own sentence is HELD for review,
-    # never published and never decided here: row 183489 stored Microsoft
-    # 60,000 from "outage cause is not related to 60,000 job cuts", while
-    # "cut 500 jobs, not related to AI" is a real cut. Held rows are listed in
-    # NEGATION_HELD for the run summary and are not marked seen, so the next
-    # run re-reads them (railway/negation_guard.py).
-    from negation_guard import negation_verdict, HOLD
-    if estimate is None and negation_verdict(job_count, raw_text) == HOLD:
-        NEGATION_HELD.append({"source_url": raw_entry.get("source_url"),
-                              "company": extracted.get("company_name"),
-                              "job_count": job_count})
-        print(f"Extraction HELD for review: job_count {job_count} shares a sentence "
-              f"with a denial or negation - source: {raw_entry.get('source_url')}")
         return None
     # A disciplinary dismissal is not a layoff: row 183367 led a daily
     # edition with 1,562 police officers dismissed in an internal cleansing
