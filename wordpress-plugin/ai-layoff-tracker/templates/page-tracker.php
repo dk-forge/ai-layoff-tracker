@@ -571,7 +571,7 @@ $alt_hero_basis  = 'counted by filing date';
                     . ($alt_lrep ? '<i class="alt-sb-again">same entry</i>' : '');
                 $alt_board_html .= !empty($alt_ld['permalink'])
                     ? '<a class="alt-sb-cell alt-sb-ev' . $eq . $alt_lrep . '" role="cell" href="' . esc_url($alt_ld['permalink']) . '" title="Open this entry&#39;s record page"' . $heat . '>' . $alt_lbody . '</a>'
-                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . $alt_lrep . '" role="cell" href="#" data-company="' . esc_attr($alt_lname) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
+                    : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' . $eq . $alt_lrep . '" role="cell" href="' . $alt_sb_meta[$alt_ck]['href'] . '&amp;company=' . esc_attr(rawurlencode($alt_lname)) . '"' . $alt_sb_meta[$alt_ck]['data'] . ' data-company="' . esc_attr($alt_lname) . '" title="Filter the page to this company"' . $heat . '>' . $alt_lbody . '</a>';
             } else {
                 $alt_board_html .= '<span class="alt-sb-cell alt-sb-zero' . $eq . '" role="cell">none</span>';
             }
