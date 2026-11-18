@@ -58,7 +58,7 @@ def negation_verdict(job_count, raw_text):
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         if not re.search(_number_alt(job_count), sentence):
             continue
-        if re.search(_NEGATION, sentence, re.I) and not re.search(_CONFIRM, sentence, re.I):
+        if re.search(_NEGATION, sentence, re.I):
             return HOLD
     return PASS
 
