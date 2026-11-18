@@ -121,5 +121,54 @@ class MeteredCallRateLimit(unittest.TestCase):
         self.assertEqual(spend._rate_limit_streak, 0)
 
 
+    # WEEKLY-23: after the primary model's attempts end in 429s (or its
+    # breaker is open), ONE call goes to a second model instead of the item
+    # being dropped. The fallback is metered under its own name and never
+    # waits on the primary's throttle state.
+    def test_429_falls_back_to_second_model_once(self):
+        make, calls = self._flaky([RateLimitError(), RateLimitError()])
+        metered = []
+        spend.record_usage = lambda model, usage: metered.append(model)
+        fb_calls = []
+
+        def fallback():
+            fb_calls.append(1)
+            return SimpleNamespace(usage=None)
+        resp = spend.metered_call("m", make, attempts=2, fallback=("m2", fallback))
+        self.assertIsNotNone(resp)
+        self.assertEqual((len(calls), len(fb_calls)), (2, 1))
+        self.assertEqual(metered, ["m2"])
+
+    def test_open_breaker_falls_back_without_primary_request(self):
+        trip = spend.RATE_LIMIT_TRIP_AFTER
+        make, calls = self._flaky([RateLimitError() for _ in range(trip)])
+        for _ in range(trip):
+            with self.assertRaises(RateLimitError):
+                spend.metered_call("m", make, attempts=1)
+        fb = []
+        spend.metered_call("m", make, attempts=1,
+                           fallback=("m2", lambda: fb.append(1) or SimpleNamespace(usage=None)))
+        self.assertEqual((len(calls), len(fb)), (trip, 1))
+
+    def test_non_rate_limit_error_does_not_fall_back(self):
+        make, _ = self._flaky([ValueError("bad")])
+        fb = []
+        with self.assertRaises(ValueError):
+            spend.metered_call("m", make, attempts=1,
+                               fallback=("m2", lambda: fb.append(1)))
+        self.assertEqual(fb, [])
+
+    def test_fallback_429_raises_and_is_not_retried(self):
+        make, _ = self._flaky([RateLimitError()])
+        fb = []
+
+        def fallback():
+            fb.append(1)
+            raise RateLimitError()
+        with self.assertRaises(RateLimitError):
+            spend.metered_call("m", make, attempts=1, fallback=("m2", fallback))
+        self.assertEqual(fb, [1])
+
+
 if __name__ == "__main__":
     unittest.main()

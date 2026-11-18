@@ -33,6 +33,8 @@ PLUGIN = ROOT / "wordpress-plugin" / "ai-layoff-tracker"
 MAIN = PLUGIN / "ai-layoff-tracker.php"
 INC = PLUGIN / "includes" / "atr-signup-cta.php"
 INDEX = PLUGIN / "templates" / "page-company-index.php"
+TRACKER = PLUGIN / "templates" / "page-tracker.php"
+SHORTCODES = PLUGIN / "includes" / "shortcodes.php"
 COMPANY = PLUGIN / "templates" / "page-company-directory.php"
 
 BANNED = ("blind", "honest", "hallucinat", "—", "–", "!",
@@ -153,8 +155,22 @@ class Placement(unittest.TestCase):
         self.assertLess(src.index("alt-company-summary"),
                         src.index("alt_atr_cta_line_html('company_entry'"))
 
+    def test_main_tracker_page_carries_it_after_the_hero(self):
+        # CLAUDE.md conversion rule (owner 2026-11-17): the flagship page, the
+        # one most readers land on, had no tracked sign-up path at all.
+        src = TRACKER.read_text(encoding="utf-8")
+        self.assertIn("alt_atr_cta_line_html('tracker_home')", src)
+        self.assertLess(src.index('class="alt-hero"'),
+                        src.index("alt_atr_cta_line_html('tracker_home')"))
+
+    def test_main_tracker_page_gets_the_phone_bar(self):
+        inc = INC.read_text(encoding="utf-8")
+        self.assertIn("$GLOBALS['alt_tracker_rendered']", inc)
+        sc = SHORTCODES.read_text(encoding="utf-8")
+        self.assertIn("function_exists('alt_atr_cta_enqueue')", sc)
+
     def test_calls_are_ftp_race_guarded(self):
-        for path in (INDEX, COMPANY):
+        for path in (INDEX, COMPANY, TRACKER):
             self.assertIn("function_exists('alt_atr_cta_line_html')",
                           path.read_text(encoding="utf-8"), path.name)
 
