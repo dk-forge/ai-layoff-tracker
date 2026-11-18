@@ -3,7 +3,8 @@
 WHY THIS FILE EXISTS AT ALL.
 
 The owner asked for the daily digest at 6:00 AM Eastern every day and the
-weekly look-back at 7:30 AM Eastern on Mondays. The monthly edition (armed
+weekly look-back at 6:00 AM Eastern on Mondays (owner, 2026-11-18;
+7:30 before that). The monthly edition (armed
 2026-09-06) goes out at 9:00 AM Eastern on the 1st of the month, the wall clock
 reading of the signup's own promise "at the start of each month". GitHub cron
 is UTC and knows
@@ -19,7 +20,7 @@ THE MECHANISM.
 
 Both candidate UTC hours are scheduled, and this module decides which of them
 is the real one TODAY. 6:07 ET is 10:07 UTC under EDT and 11:07 UTC under EST;
-7:37 ET is 11:37 UTC under EDT and 12:37 UTC under EST; 9:07 ET is 13:07 UTC
+6:00 ET Monday (weekly) is 10:00 UTC under EDT and 11:00 UTC under EST; 9:07 ET is 13:07 UTC
 under EDT and 14:07 UTC under EST (the minute is off the hour on purpose; see
 SEND_TIMES). Exactly one of each pair lands on the
 intended wall clock on any given date, so exactly one tick sends and the other
@@ -98,7 +99,10 @@ ZONE = ZoneInfo(ZONE_NAME)
 # minute moved, and digest-send.yml carries the same six lines.
 SEND_TIMES = {
     (6, 7): ("daily", None, None),
-    (7, 37): ("weekly", 1, None),    # 1 = Monday, ISO
+    # Weekly moved to 6:00 AM Monday by owner ruling 2026-11-18 (blog digest
+    # Mondays 06:00 America/New_York). On the hour, as asked; the slot is
+    # still judged from the cron string, so a delayed tick still sends.
+    (6, 0): ("weekly", 1, None),     # 1 = Monday, ISO
     (9, 7): ("monthly", None, 1),    # the 1st of the month
 }
 

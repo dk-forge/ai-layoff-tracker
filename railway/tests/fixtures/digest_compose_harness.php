@@ -465,7 +465,8 @@ if ($which === 'talent') {
     $out = alt_digest_compose_talent($FIXTURE['from'], $FIXTURE['to'], 0,
                                      (string) ($FIXTURE['freq'] ?? ''));
 } elseif ($which === 'articles') {
-    $out = alt_digest_compose_articles($FIXTURE['from'], $FIXTURE['to'], 0);
+    $out = alt_digest_compose_articles($FIXTURE['from'], $FIXTURE['to'], 0,
+                                       (string) ($FIXTURE['freq'] ?? ''));
 } elseif (isset($FIXTURE['compose_now']) && function_exists('alt_briefing_enabled')
           && alt_briefing_enabled((string) ($FIXTURE['freq'] ?? ''))) {
     /*

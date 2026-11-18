@@ -1,7 +1,7 @@
 """The digest's schedule must be the same WALL CLOCK all year round.
 
 The owner asked for the daily digest at 6:00 AM Eastern and the weekly
-look-back at 7:30 AM Eastern on Mondays. GitHub cron is UTC and has no notion
+look-back at 6:00 AM Eastern on Mondays (owner, 2026-11-18). GitHub cron is UTC and has no notion
 of daylight saving, so a single fixed line is right for eight months and an
 hour early for the other four, with nothing anywhere reporting the drift.
 
@@ -33,8 +33,9 @@ import digest_slot  # noqa: E402
 # The hours and the DST pairing are unchanged.
 DAILY_EDT = "7 10 * * *"
 DAILY_EST = "7 11 * * *"
-WEEKLY_EDT = "37 11 * * 1"
-WEEKLY_EST = "37 12 * * 1"
+# Weekly: 06:00 Eastern Monday, on the hour (owner ruling 2026-11-18).
+WEEKLY_EDT = "0 10 * * 1"
+WEEKLY_EST = "0 11 * * 1"
 MONTHLY_EDT = "7 13 1 * *"
 MONTHLY_EST = "7 14 1 * *"
 ALL_CRONS = (DAILY_EDT, DAILY_EST, WEEKLY_EDT, WEEKLY_EST, MONTHLY_EDT, MONTHLY_EST)
@@ -90,9 +91,9 @@ class TheDaylightSavingBoundary(unittest.TestCase):
     def test_the_weekly_slot_crosses_the_boundary_the_same_way(self):
         # 2026-11-02 is a Monday, so both weekly ticks are live candidates.
         self.assertEqual(tier(WEEKLY_EST, "2026-11-02"), "weekly",
-                         "12:37 UTC is 07:37 EST and must send the look-back")
+                         "11:00 UTC is 06:00 EST and must send the look-back")
         self.assertIsNone(tier(WEEKLY_EDT, "2026-11-02"),
-                          "11:37 UTC is 06:37 EST - not the slot - and must skip")
+                          "10:00 UTC is 05:00 EST - not the slot - and must skip")
         # 2026-10-26 is the Monday before the change, still EDT.
         self.assertEqual(tier(WEEKLY_EDT, "2026-10-26"), "weekly")
         self.assertIsNone(tier(WEEKLY_EST, "2026-10-26"))
