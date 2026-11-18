@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.339
+ * Version:           2.20.340
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.339');
+define('ALT_VERSION', '2.20.340');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -359,7 +359,11 @@ if (!function_exists('alt_state_warn_urls')) {
 function alt_dataset_jsonld() {
     $now = gmdate('Y-m-d');
     $org = array('@type' => 'Organization', 'name' => 'AskTheRecruiter', 'url' => home_url('/'));
-    return array(
+    // dateModified is the last real data write, never the render time
+    // (2026-11-18: every page carried the build clock). No write recorded,
+    // no date claimed: alt_data_date_modified() returns null and the key drops.
+    return array_filter(array(
+        'dateModified' => alt_data_date_modified(),
         '@context' => 'https://schema.org', '@type' => 'Dataset',
         'name' => 'AI Layoff Tracker', 'alternateName' => 'AskTheRecruiter AI Layoff Tracker',
         'description' => 'A continuously updated, source-linked database of verified job cuts worldwide, flagging the layoffs companies attribute to AI or automation. Every figure links to a primary document: an SEC filing, a state WARN notice, or a named news report.',
@@ -367,7 +371,7 @@ function alt_dataset_jsonld() {
         'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
         'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
         'creator' => $org, 'publisher' => $org,
-        'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $now, 'dateModified' => $now,
+        'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $now,
         'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
         'variableMeasured' => array(
             array('@type' => 'PropertyValue', 'name' => 'Verified job cuts', 'description' => 'Layoffs with a filing, an employer statement, or a named source report behind each figure.'),
@@ -378,7 +382,18 @@ function alt_dataset_jsonld() {
             array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => rest_url('layoffs/v1/query')),
             array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv', 'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
         ),
-    );
+    ), function ($v) { return $v !== null; });
+}
+
+/**
+ * The date the DATA last changed (the last real write to the table, the same
+ * alt_last_write the on-page "Last updated" label reads), as Y-m-d. Null when
+ * no write was ever recorded: a dateModified we cannot evidence is omitted,
+ * never replaced by the render clock.
+ */
+function alt_data_date_modified() {
+    $ts = (int) get_option('alt_last_write', 0);
+    return $ts > 0 ? gmdate('Y-m-d', $ts) : null;
 }
 /**
  * ONE server-rendered citation line, for the pages a citer actually lands on.
@@ -1884,7 +1899,7 @@ function alt_seo_head() {
         'isAccessibleForFree' => true,
         'temporalCoverage'    => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/..',
         'spatialCoverage'     => 'Worldwide',
-        'dateModified'        => gmdate('Y-m-d'),
+        'dateModified'        => alt_data_date_modified(),
         'variableMeasured'    => array('company', 'job_count', 'layoff_date', 'country', 'US state', 'industry', 'AI attribution', 'source URL'),
         // Merged from the tracker template's former (duplicate) Dataset block —
         // this head emitter is now the ONE Dataset object per page.
@@ -1905,6 +1920,7 @@ function alt_seo_head() {
         ),
     );
 
+    if ($schema['dateModified'] === null) unset($schema['dateModified']);
     echo "\n<script type=\"application/ld+json\">" . wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
 
     // FAQ rich results + the same Q/A rendered server-side on the page (so

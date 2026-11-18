@@ -9,7 +9,7 @@ which the legacy mobile CSS hides under 600px. So:
 3. A small, dismissible sticky bar on phones, ONLY on those tracker pages.
 
 Pinned here, each for a reason that fails silently otherwise:
-- every link is UTM-tagged utm_source=layoff_tracker&utm_medium=cta, so a
+- every link is UTM-tagged utm_source=ai-layoff-tracker&utm_medium=referral, so a
   sign-up from these pages is countable;
 - the destination is the free match check (/resume-score), whose price is 0 at
   every dial setting (it is deterministic, no model call). "2 minutes" is NOT
@@ -89,7 +89,7 @@ class TheLine(unittest.TestCase):
         q = dict(urllib.parse.parse_qsl(parts.query))
         self.assertEqual(parts.netloc, "asktherecruiter.com")
         self.assertEqual(parts.path, "/resume-score")
-        self.assertEqual(q, {"utm_source": "layoff_tracker", "utm_medium": "cta",
+        self.assertEqual(q, {"utm_source": "ai-layoff-tracker", "utm_medium": "referral",
                              "utm_campaign": "directory"})
 
     def test_company_line_names_the_employer_as_a_condition(self):

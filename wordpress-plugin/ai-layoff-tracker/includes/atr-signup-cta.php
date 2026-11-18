@@ -21,8 +21,8 @@ if (!defined('ABSPATH')) exit;
 function alt_atr_cta_url($campaign) {
     $campaign = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $campaign));
     return add_query_arg(array(
-        'utm_source'   => 'layoff_tracker',
-        'utm_medium'   => 'cta',
+        'utm_source'   => 'ai-layoff-tracker',
+        'utm_medium'   => 'referral',
         'utm_campaign' => $campaign !== '' ? $campaign : 'directory',
     ), rtrim(alt_resume_cta_base(), '/') . '/resume-score');
 }

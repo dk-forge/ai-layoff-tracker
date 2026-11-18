@@ -5695,7 +5695,7 @@
                         + (rep ? '<i class="alt-sb-again">same entry</i>' : '');
                     return ld.permalink
                         ? '<a class="alt-sb-cell alt-sb-ev' + e + rep + '" role="cell" href="' + escapeHtml(ld.permalink) + '" title="Open this entry&#39;s record page"' + heat(v, lmax) + '>' + body + '</a>'
-                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + rep + '" role="cell" href="#" data-company="' + escapeHtml(name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
+                        : '<a class="alt-sb-cell alt-sb-ev alt-nfilter' + e + rep + '" role="cell" href="' + meta[k].href + '&amp;company=' + escapeHtml(encodeURIComponent(name)) + '"' + meta[k].data + ' data-company="' + escapeHtml(name) + '" title="Filter the page to this company"' + heat(v, lmax) + '>' + body + '</a>';
                 }).join('') + '</div>';
             // The footnote was one sentence doing four jobs, so a reader after
             // any one of them read all four. One clause per line, each with the
