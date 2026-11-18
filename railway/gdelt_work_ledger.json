@@ -1,31 +1,5 @@
 {
   "slots": {
-    "broad|f060b27756|20261031T083512Z|20261101T203512Z": {
-      "family": "broad",
-      "window_start": "20261031T083512Z",
-      "window_end": "20261101T203512Z",
-      "status": "complete",
-      "returned": 3638,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20261101T220531Z",
-      "updated": "20261101T220531Z",
-      "oldest": "20261031T084500Z",
-      "newest": "20261101T203000Z"
-    },
-    "broad|f060b27756|20261101T083622Z|20261102T203622Z": {
-      "family": "broad",
-      "window_start": "20261101T083622Z",
-      "window_end": "20261102T203622Z",
-      "status": "complete",
-      "returned": 5189,
-      "cap_hit": false,
-      "attempts": 1,
-      "first_seen": "20261102T220653Z",
-      "updated": "20261102T220653Z",
-      "oldest": "20261101T084500Z",
-      "newest": "20261102T203000Z"
-    },
     "broad|f060b27756|20261102T083834Z|20261103T203834Z": {
       "family": "broad",
       "window_start": "20261102T083834Z",
@@ -192,6 +166,32 @@
       "updated": "20261114T220748Z",
       "oldest": "20261113T084500Z",
       "newest": "20261114T203000Z"
+    },
+    "broad|f060b27756|20261114T083902Z|20261115T203902Z": {
+      "family": "broad",
+      "window_start": "20261114T083902Z",
+      "window_end": "20261115T203902Z",
+      "status": "complete",
+      "returned": 3907,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20261115T220924Z",
+      "updated": "20261115T220924Z",
+      "oldest": "20261114T084500Z",
+      "newest": "20261115T203000Z"
+    },
+    "broad|f060b27756|20261115T084035Z|20261116T204035Z": {
+      "family": "broad",
+      "window_start": "20261115T084035Z",
+      "window_end": "20261116T204035Z",
+      "status": "complete",
+      "returned": 5253,
+      "cap_hit": false,
+      "attempts": 1,
+      "first_seen": "20261116T221105Z",
+      "updated": "20261116T221105Z",
+      "oldest": "20261115T084500Z",
+      "newest": "20261116T203000Z"
     },
     "euphemism|36fc3169e0|20261104T051721Z|20261105T171721Z": {
       "family": "euphemism",
