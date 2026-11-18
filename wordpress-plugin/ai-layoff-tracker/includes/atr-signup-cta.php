@@ -39,7 +39,9 @@ function alt_atr_cta_line_html($campaign, $company = '') {
 }
 
 function alt_atr_cta_is_tracker_page() {
-    return (function_exists('alt_company_index_is_request') && alt_company_index_is_request())
+    // The flagship [alt_tracker] page too (set by alt_shortcode_tracker).
+    return !empty($GLOBALS['alt_tracker_rendered'])
+        || (function_exists('alt_company_index_is_request') && alt_company_index_is_request())
         || (function_exists('alt_company_directory_is_request') && alt_company_directory_is_request());
 }
 
