@@ -237,6 +237,7 @@ the end check.
 **Hard bars:** (a) any source/metric change updates Sources + Health labels + the benchmark in the **same** session; (b) formatting is non-negotiable — aligned tables, no horizontal bleed (especially mobile), consistent copy, **no em-dashes in UI copy**; (c) **verify live** (`curl` the `ver=` + the page/endpoint) before claiming any surface is updated — never assume a deploy landed.
 
 ## Iron rules learned the hard way (details in TECHLOG)
+- **Codex security review (dk-forge/todo#1852, owner 2026-11-18):** `.github/workflows/codex-security-review.yml` comments `@codex security review` once per head SHA when a PR touches risky paths (forms, contact/newsletter, auth/login/session, payments, cookies/consent, personal data, mu-plugins, webhooks, .env). A Codex security finding blocks the merge until it is fixed.
 - Every network request to the WP host MUST send a browser-ish `User-Agent` (ModSecurity blocks `python-requests`; use `AiLayoffTracker/1.0 (+https://asktherecruiter.com)`).
 - `WP_SITE_URL` is `https://asktherecruiter.com/blog` — never the bare domain (root is a separate Railway app).
 - FTP deploys bypass WP hooks: version bumps trigger cache-flush/table-migration on first request (`alt_flush_caches_on_deploy`), and anything that must exist (like the contact page) needs a **retry-until-verified** hook, not a one-shot on version bump (deploys race mid-upload).
