@@ -183,6 +183,9 @@ $alt_verif = array(
         all employers with layoff records</a></p>
     <?php endif; ?>
 
+    <?php // Two-question FAQ + FAQPage JSON-LD (includes/company-faq.php). function_exists: FTP race guard.
+          if (function_exists('alt_company_faq_block')) echo alt_company_faq_block($alt_dir); // escaped inside ?>
+
     <?php if (!empty($alt_dir['facet_links'])) : ?>
         <p class="alt-company-facet-links">Browse the wider record:
         <?php $alt_parts = array();

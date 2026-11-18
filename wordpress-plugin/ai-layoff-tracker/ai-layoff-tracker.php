@@ -72,6 +72,7 @@ if (is_readable(ALT_PLUGIN_DIR . 'includes/breadcrumbs.php')) {
 require_once ALT_PLUGIN_DIR . 'includes/seo-sitemap-meta.php';
 require_once ALT_PLUGIN_DIR . 'includes/seo-titles.php';
 require_once ALT_PLUGIN_DIR . 'includes/company-directory.php';
+if (file_exists(ALT_PLUGIN_DIR . 'includes/company-faq.php')) { require_once ALT_PLUGIN_DIR . 'includes/company-faq.php'; }
 // GLEIF LEI lookup; new include, so guarded for the FTPS upload race.
 if (is_readable(ALT_PLUGIN_DIR . 'includes/company-lei.php')) {
     require_once ALT_PLUGIN_DIR . 'includes/company-lei.php';
