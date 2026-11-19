@@ -5857,6 +5857,110 @@ function alt_warn_revision_key($name) {
     return alt_company_key(alt_strip_revision_marker($name));
 }
 
+/**
+ * Pass (2b) support: one employer under two company keys.
+ *
+ * dk-forge/todo#2791 (2026-11-19): pass (2) groups on company_key, so "KLM"
+ * and "Air France-KLM" (5,000 each, same day, rows 182986/188040) were two
+ * companies and the pair was never compared; the live invariant
+ * cross_alias_duplicate_rows found five such events, 11,050 excess jobs.
+ * These mirror railway/entity_resolution.py rules 2 and 3 (initialism, and
+ * token containment with a distinctive head) -- the weak-token list is pinned
+ * equal to _WEAK_TOKENS by tests/test_cross_alias_dedupe.py.
+ */
+if (!defined('ALT_CROSS_ALIAS_MAX_GAP_DAYS')) define('ALT_CROSS_ALIAS_MAX_GAP_DAYS', 2);
+
+function alt_cross_alias_weak_tokens() {
+    static $w = null;
+    if ($w === null) $w = array_fill_keys(array('air', 'airlines', 'airways', 'american', 'associates', 'auto', 'automotive', 'bank', 'brands', 'capital', 'central', 'city', 'consulting', 'county', 'digital', 'district', 'east', 'energy', 'financial', 'first', 'food', 'foods', 'general', 'health', 'healthcare', 'hospital', 'industrial', 'industries', 'insurance', 'labs', 'logistics', 'media', 'medical', 'mobility', 'motor', 'motors', 'national', 'new', 'north', 'partners', 'products', 'retail', 'school', 'service', 'services', 'south', 'state', 'steel', 'store', 'stores', 'united', 'university', 'west', 'works'), true);
+    return $w;
+}
+
+function alt_cross_alias_same_employer($key_a, $key_b, $name_a, $name_b) {
+    $key_a = trim((string) $key_a); $key_b = trim((string) $key_b);
+    if ($key_a === '' || $key_b === '' || $key_a === $key_b) return false;
+    if (strlen($key_a) <= strlen($key_b)) {
+        $short = $key_a; $long = $key_b; $long_name = $name_b;
+    } else {
+        $short = $key_b; $long = $key_a; $long_name = $name_a;
+    }
+    $st = array_values(array_filter(explode(' ', $short), 'strlen'));
+    $lt = array_values(array_filter(explode(' ', $long), 'strlen'));
+    // Initialism: "JLR" / "Jaguar Land Rover", from the key or the raw name.
+    if (count($st) === 1 && strlen($st[0]) >= 2 && ctype_alpha($st[0])) {
+        $raw = trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]/', ' ', strtolower((string) $long_name))));
+        foreach (array($lt, array_values(array_filter(explode(' ', $raw), 'strlen'))) as $toks) {
+            if (count($toks) < 2) continue;
+            $ini = '';
+            foreach ($toks as $t) $ini .= $t[0];
+            if ($ini === $st[0]) return true;
+        }
+    }
+    // Containment: every short token in the long key, not equal sets, and at
+    // least one distinctive (non-weak, >2 chars) token on the short side.
+    $ss = array_fill_keys($st, true); $ls = array_fill_keys($lt, true);
+    if (!$ss || count(array_diff_key($ss, $ls)) || count($ss) === count($ls)) return false;
+    $weak = alt_cross_alias_weak_tokens();
+    foreach ($st as $t) {
+        if (!isset($weak[$t]) && strlen($t) > 2) return true;
+    }
+    return false;
+}
+
+/**
+ * member id => primary id for news rows that are ONE event under two company
+ * keys: exact job_count (>= 100), layoff dates within ALT_CROSS_ALIAS_MAX_GAP_DAYS,
+ * and alt_cross_alias_same_employer(). WARN is never passed in (exempt from
+ * fuzzy dedup by policy). Rows in $already are left alone. Primary: AI-flagged,
+ * else earliest date, else lowest id -- the same order as pass (2). Pure.
+ */
+function alt_cross_alias_news_marks($rows, $already = array()) {
+    $by_count = array();
+    foreach ((array) $rows as $r) {
+        $st = strtolower((string) ($r['source_type'] ?? ''));
+        if ($st === 'warn' || empty($r['layoff_date'])) continue;
+        if (!empty($already[$r['id']])) continue;
+        $c = (int) ($r['job_count'] ?? 0);
+        if ($c < 100) continue;
+        $by_count[$c][] = $r;
+    }
+    $mark = array();
+    foreach ($by_count as $grp) {
+        if (count($grp) < 2) continue;
+        usort($grp, function ($a, $b) {
+            $ai = (int) $b['ai_explicit'] - (int) $a['ai_explicit'];
+            if ($ai) return $ai;
+            $d = strcmp((string) $a['layoff_date'], (string) $b['layoff_date']);
+            return $d !== 0 ? $d : ((int) $a['id'] - (int) $b['id']);
+        });
+        // CONNECTED COMPONENTS, not a greedy walk (Codex P2 on #707): a row
+        // that bridges two others ("qantas" between "qantas airways" and
+        // "qantas airlines") must pull all three into ONE event whatever the
+        // input order. Union-find over the alias-match graph, then one primary
+        // per component: the first in the sort order above.
+        $n = count($grp);
+        $parent = range(0, $n - 1);
+        $find = function ($i) use (&$parent) {
+            while ($parent[$i] !== $i) { $parent[$i] = $parent[$parent[$i]]; $i = $parent[$i]; }
+            return $i;
+        };
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                $p = $grp[$i]; $m = $grp[$j];
+                if (abs((strtotime($m['layoff_date']) - strtotime($p['layoff_date'])) / 86400) > ALT_CROSS_ALIAS_MAX_GAP_DAYS) continue;
+                if (!alt_cross_alias_same_employer($p['company_key'], $m['company_key'], $p['company'], $m['company'])) continue;
+                $ri = $find($i); $rj = $find($j);
+                if ($ri !== $rj) $parent[max($ri, $rj)] = min($ri, $rj);   // root = earliest in sort order
+            }
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $r = $find($i);
+            if ($r !== $i) $mark[(int) $grp[$i]['id']] = (int) $grp[$r]['id'];
+        }
+    }
+    return $mark;
+}
+
 function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') {
     global $wpdb;
     $table = alt_db_table();
@@ -5941,6 +6045,22 @@ function alt_reconcile_supersets($dry_run = true, $detail = false, $probe = '') 
                     if (empty($mark[$m['id']])) { $mark[$m['id']] = (int) $primary['id']; $excluded += (int) $m['job_count']; }
                 }
             }
+        }
+    }
+    // (2b) news-vs-news across company keys: one event under two employer
+    //      names ("KLM" / "Air France-KLM", 5,000 each, 2026-11-05). Pass (2)
+    //      only compares within one company_key, so it never saw these; the
+    //      live invariant cross_alias_duplicate_rows did, after publish
+    //      (dk-forge/todo#2791). Same count, dates within 2 days, and the
+    //      conservative name rules of alt_cross_alias_same_employer().
+    $news_all = array();
+    foreach ($rows as $r) {
+        if (in_array(strtolower((string) $r['source_type']), $news_types, true)) $news_all[] = $r;
+    }
+    foreach (alt_cross_alias_news_marks($news_all, $mark) as $mid => $pid) {
+        if (empty($mark[$mid])) {
+            $mark[$mid] = $pid;
+            foreach ($news_all as $r) { if ((int) $r['id'] === (int) $mid) { $excluded += (int) $r['job_count']; break; } }
         }
     }
     // (3) within-WARN duplicate: same company + same STATE + EXACT same count
