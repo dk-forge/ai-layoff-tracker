@@ -2,6 +2,22 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "hub-key-numbers",
+   "date": "2026-11-19",
+   "version": "2.20.350",
+   "type": "New",
+   "area": "seo",
+   "text": "The tracker home page now has a dated \"Key numbers\" block near the press section: the same quotable figure, with its date and basis, that the tracker publishes for AI search tools, plus how to cite it."
+  },
+  {
+   "slug": "map-selfhost",
+   "date": "2026-11-19",
+   "version": "2.20.349",
+   "type": "Fix",
+   "area": "reliability",
+   "text": "The layoffs map no longer depends on an outside content network: its drawing library and map outlines are now served from this site at fixed versions. If the map still cannot load, you see the same figures as a table instead of an empty box."
+  },
+  {
    "slug": "mobile-first-screen",
    "date": "2026-11-19",
    "version": "2.20.348",

@@ -46,6 +46,10 @@ if (isset($_GET['ai_broad']) && $_GET['ai_broad'] === '1') $alt_embed_params['ai
 
 $alt_cfg = array(
     'apiUrl'      => esc_url_raw(rest_url('layoffs/v1/')),
+    // The self-hosted map libraries and atlases (assets/vendor, todo#1881
+    // item 7): without these the embed fetched them relative and fell back.
+    'vendorUrl'   => esc_url_raw(ALT_PLUGIN_URL . 'assets/vendor/'),
+    'vendorVer'   => ALT_VERSION,
     'embed'       => true,
     'embedParams' => $alt_embed_params,
     'embedChart'  => $alt_chart,

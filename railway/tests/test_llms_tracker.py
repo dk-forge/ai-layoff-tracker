@@ -30,7 +30,9 @@ def _fn(name):
 class TrackerLlms(unittest.TestCase):
     def _php(self, expr):
         src = STUBS + "".join(_fn(n) for n in ("alt_llms_txt_content", "alt_llms_is_tracker_request",
-                                                "alt_tracker_llms_txt_content"))
+                                                "alt_tracker_llms_txt_content",
+                                                # the sentence builder it shares with the hub (todo#1881 item 10)
+                                                "alt_key_number_lines", "alt_key_numbers_html"))
         p = subprocess.run(["php", "-r", src + expr], capture_output=True, text=True, timeout=60)
         self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
         return p.stdout
@@ -98,3 +100,27 @@ class TrackerLlmsIsServedNotWritten(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which("php"), "UNKNOWN, NOT RUN: php not installed")
+class HubKeyNumbers(TrackerLlms):
+    """todo#1881 item 10: the hub block prints the llms.txt sentence, dated."""
+
+    def test_block_matches_llms_and_is_dated(self):
+        ps = {"split": {"as_of": "2026-11-18", "to_date": 812345, "year": 2026}}
+        enc = json.dumps(json.dumps(ps))
+        html = self._php("function esc_attr($s){return htmlspecialchars($s,ENT_QUOTES);} function esc_html($s){return htmlspecialchars($s,ENT_QUOTES);} function esc_url($s){return $s;}"
+                         "echo alt_key_numbers_html(json_decode(%s, true));" % enc)
+        txt = self._txt(ps)
+        self.assertIn('Key numbers (updated <time datetime="2026-11-18">November 18, 2026</time>)', html)
+        self.assertIn("812,345 verified job cuts that took effect in 2026 so far", html)
+        self.assertIn("812,345 verified job cuts that took effect in 2026 so far", txt)
+
+    def test_cold_cache_prints_nothing(self):
+        out = self._php("function esc_attr($s){return $s;} function esc_html($s){return $s;} function esc_url($s){return $s;} echo alt_key_numbers_html(false);")
+        self.assertEqual(out, "")
+
+    def test_hub_renders_it(self):
+        tpl = (Path(__file__).resolve().parents[2] / "wordpress-plugin" / "ai-layoff-tracker"
+               / "templates" / "page-tracker.php").read_text()
+        self.assertIn("echo alt_key_numbers_html(alt_key_numbers_bundle());", tpl)

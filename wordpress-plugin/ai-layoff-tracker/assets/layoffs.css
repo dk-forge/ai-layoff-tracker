@@ -1363,6 +1363,9 @@ body:has(.alt-tracker-wrap) main > .wp-block-group.alignfull { padding-top: 24px
 .alt-map-total { text-align: center; font-size: 12.5px; font-weight: 600; margin: 6px 0 0; color: var(--alt-ink-2); }
 /* d3 proportional-symbol map: SVG fills the box; tooltip + reset overlay it. */
 #alt-chart-aimap { position: relative; width: 100%; height: 100%; overflow: hidden; }
+/* The fallback table scrolls inside the fixed map box instead of being
+   clipped by it (todo 1881 item 7). */
+#alt-chart-aimap .alt-map-fallback { height: 100%; overflow: auto; }
 .alt-map-svg { width: 100%; height: 100%; display: block; user-select: none; -webkit-tap-highlight-color: transparent; }
 .alt-map-tip { position: absolute; z-index: 5; pointer-events: none; max-width: 220px;
     background: var(--alt-ink); color: var(--alt-on-accent); font-size: 12px; line-height: 1.35; padding: 7px 9px;
