@@ -73,14 +73,41 @@ function alt_atr_cta_is_tracker_route($uri) {
 }
 
 /**
+ * A blog post or the blog home (todo#2731). The 2026-11-19 audit at 390px found
+ * no visible UTM-tagged sign-up link on the blog home or on any of 20 posts:
+ * the header button is the only one and it is hidden on phones. The same bar,
+ * tagged utm_source=blog, so the weekly report credits the blog.
+ */
+function alt_atr_cta_is_blog_page() {
+    if (alt_atr_cta_is_tracker_page()) return false;
+    return (function_exists('is_singular') && is_singular('post'))
+        || (function_exists('is_home') && is_home());
+}
+
+function alt_atr_cta_blog_url() {
+    $slug = '';
+    if (function_exists('is_singular') && is_singular('post') && function_exists('get_post_field')) {
+        $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) get_post_field('post_name')));
+    }
+    $args = array('utm_source' => 'blog', 'utm_medium' => 'cta', 'utm_campaign' => 'sticky_bar');
+    if ($slug !== '') $args['utm_content'] = substr($slug, 0, 64);
+    return add_query_arg($args, rtrim(alt_resume_cta_base(), '/') . '/resume-score');
+}
+
+/**
  * Phones only (the header button is visible above 600px). The bar sits in the
  * page's own flow space: body gets padding-bottom equal to the bar, so the last
  * line of content is never covered. Closing it is remembered per browser; the
  * storage call is wrapped because private windows throw.
  */
 function alt_atr_cta_sticky_bar() {
-    if (!alt_atr_cta_is_tracker_page()) return;
-    $url = alt_atr_cta_url('sticky_bar');
+    if (alt_atr_cta_is_tracker_page()) {
+        $url = alt_atr_cta_url('sticky_bar');
+    } elseif (alt_atr_cta_is_blog_page()) {
+        $url = alt_atr_cta_blog_url();
+    } else {
+        return;
+    }
     ?>
 <style id="alt-atr-bar-css">
 .alt-atr-cta{margin:1rem 0;padding:.7rem .9rem;border:1px solid currentColor;border-color:rgba(127,127,127,.4);border-radius:8px;line-height:1.5}
@@ -108,7 +135,7 @@ add_action('wp_footer', 'alt_atr_cta_sticky_bar', 5);
 
 /** The bar's show/close logic is a file, not an inline body (test_shortcode_scripts_are_enqueued.py). */
 function alt_atr_cta_enqueue() {
-    if (!alt_atr_cta_is_tracker_page()) return;
+    if (!alt_atr_cta_is_tracker_page() && !alt_atr_cta_is_blog_page()) return;
     wp_enqueue_script('alt-atr-bar', ALT_PLUGIN_URL . 'assets/atr-bar.js', array(), ALT_VERSION, true);
 }
 add_action('wp_enqueue_scripts', 'alt_atr_cta_enqueue');
