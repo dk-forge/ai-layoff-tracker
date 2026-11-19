@@ -26,7 +26,10 @@ function alt_header_cta_retag($html) {
  * link tagged utm_source=blog&utm_medium=nav, so block type does not matter.
  */
 function alt_header_cta_filter($block_content, $block) {
-    if (!function_exists('alt_page_needs_assets') || !alt_page_needs_assets()) return $block_content;
-    return alt_header_cta_retag($block_content);
+    // Cheap test first: this runs for every block on every page.
+    if (strpos($block_content, 'utm_source=blog') === false) return $block_content;
+    static $ours = null;
+    if ($ours === null) $ours = function_exists('alt_page_needs_assets') && alt_page_needs_assets();
+    return $ours ? alt_header_cta_retag($block_content) : $block_content;
 }
 add_filter('render_block', 'alt_header_cta_filter', 20, 2);

@@ -580,27 +580,33 @@
         // 503 + Retry-After is the server's cold-compute cap saying "not now"
         // (alt_cold_compute_guard). Up to three polite retries, inside the
         // page's 20 s load deadline; a JSON error from the API is final.
-        // Also retried: a host-level 5xx served as an HTML page. Measured
-        // 2026-11-19 after 2.20.344: the remaining 500s under fast clicks are
-        // WordPress's "Error establishing a database connection" page (the
-        // host's MySQL connection limit), raised before any plugin code runs.
-        // These are idempotent reads, so a short retry is safe.
-        // Not 502/504: a gateway timeout on a slow compute is not helped by
-        // re-running it. Host errors get at most two retries, with jitter, so
-        // open pages do not retry in step against a host short of connections.
-        var retryable = function (r, left) {
-            if (r.status === 503 && r.headers.get('Retry-After')) return true;
+        // Also retried, at most twice and with jitter: WordPress's "Error
+        // establishing a database connection" page (HTML 500). Measured
+        // 2026-11-19 after 2.20.344, it is what the remaining 500s under fast
+        // clicks are: the host's MySQL connection limit. Nothing else is: a
+        // plugin fatal (timeout, memory) is also an HTML 500, and a 502/504 is
+        // a slow compute; re-running either adds load at the worst moment.
+        // Resolves to the wait in ms, or 0 for "final".
+        var DB_ERR = /Error establishing a database connection|<title>Database Error/i;
+        var retryWait = function (r, left) {
+            if (r.status === 503 && r.headers.get('Retry-After')) {
+                return Promise.resolve(Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000);
+            }
             var ct = r.headers.get('Content-Type') || '';
-            return r.status === 500 && ct.indexOf('text/html') === 0 && left > 1;
+            if (r.status !== 500 || ct.indexOf('text/html') !== 0 || left <= 1) return Promise.resolve(0);
+            return r.clone().text().then(function (t) {
+                return DB_ERR.test(t) ? 2000 + Math.floor(Math.random() * 1000) : 0;
+            }, function () { return 0; });
         };
         var attempt = function (left) {
             return fetch(url, opts).then(function (r) {
-                if (left <= 0 || !retryable(r, left)) return r;
-                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000
-                    + Math.floor(Math.random() * 1000);
-                return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
-                    if (signal && signal.aborted) throw new Error('aborted');
-                    return attempt(left - 1);
+                if (left <= 0) return r;
+                return retryWait(r, left).then(function (wait) {
+                    if (!wait) return r;
+                    return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
+                        if (signal && signal.aborted) throw new Error('aborted');
+                        return attempt(left - 1);
+                    });
                 });
             });
         };
