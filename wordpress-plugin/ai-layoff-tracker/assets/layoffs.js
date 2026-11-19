@@ -585,15 +585,19 @@
         // WordPress's "Error establishing a database connection" page (the
         // host's MySQL connection limit), raised before any plugin code runs.
         // These are idempotent reads, so a short retry is safe.
-        var retryable = function (r) {
+        // Not 502/504: a gateway timeout on a slow compute is not helped by
+        // re-running it. Host errors get at most two retries, with jitter, so
+        // open pages do not retry in step against a host short of connections.
+        var retryable = function (r, left) {
             if (r.status === 503 && r.headers.get('Retry-After')) return true;
             var ct = r.headers.get('Content-Type') || '';
-            return r.status >= 500 && r.status !== 501 && ct.indexOf('text/html') === 0;
+            return r.status === 500 && ct.indexOf('text/html') === 0 && left > 1;
         };
         var attempt = function (left) {
             return fetch(url, opts).then(function (r) {
-                if (left <= 0 || !retryable(r)) return r;
-                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000;
+                if (left <= 0 || !retryable(r, left)) return r;
+                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000
+                    + Math.floor(Math.random() * 1000);
                 return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
                     if (signal && signal.aborted) throw new Error('aborted');
                     return attempt(left - 1);

@@ -326,6 +326,11 @@ $alt_roo_feedback = ALT_PLUGIN_DIR . 'includes/roo-feedback.php';
 if (is_readable($alt_roo_feedback)) {
     require_once $alt_roo_feedback;
 }
+// The header CTA's UTM source on tracker pages (todo#1881 item 2). GUARDED.
+$alt_header_cta_utm = ALT_PLUGIN_DIR . 'includes/header-cta-utm.php';
+if (is_readable($alt_header_cta_utm)) {
+    require_once $alt_header_cta_utm;
+}
 // Reach (audit 2026-11-10): RSS feed discovery, GA4 funnel events, share
 // buttons. GUARDED like every new include; absent, the pages lose only these.
 $alt_reach = ALT_PLUGIN_DIR . 'includes/reach.php';
@@ -1588,6 +1593,7 @@ function alt_render_page_header() {
     ob_start();
     block_template_part('header');
     $alt_header_html = (string) ob_get_clean();
+    if (function_exists('alt_header_cta_retag')) $alt_header_html = alt_header_cta_retag($alt_header_html);
     ob_start();
     block_template_part('footer');
     $GLOBALS['alt_prerendered_footer'] = (string) ob_get_clean();
