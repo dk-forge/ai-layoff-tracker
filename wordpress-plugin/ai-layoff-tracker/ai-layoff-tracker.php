@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.345
+ * Version:           2.20.346
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.345');
+define('ALT_VERSION', '2.20.346');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -330,6 +330,12 @@ if (is_readable($alt_roo_feedback)) {
 $alt_header_cta_utm = ALT_PLUGIN_DIR . 'includes/header-cta-utm.php';
 if (is_readable($alt_header_cta_utm)) {
     require_once $alt_header_cta_utm;
+}
+// Links to the same company, country or sector in the hiring tracker
+// (todo#1881 item 5). GUARDED.
+$alt_cross_links = ALT_PLUGIN_DIR . 'includes/cross-links.php';
+if (is_readable($alt_cross_links)) {
+    require_once $alt_cross_links;
 }
 // Reach (audit 2026-11-10): RSS feed discovery, GA4 funnel events, share
 // buttons. GUARDED like every new include; absent, the pages lose only these.

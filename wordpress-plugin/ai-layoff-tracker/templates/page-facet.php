@@ -75,6 +75,10 @@ $alt_bd_titles = array(
             to <?php echo esc_html(substr($alt_f['max_date'], 0, 4)); ?></p>
         <?php endif; ?>
     </div>
+    <?php // The sign-up line for this place or sector (todo#1881 item 1) and the same
+          // place or sector in the hiring tracker (item 5). function_exists: FTP race guard.
+          if (function_exists('alt_atr_cta_facet_html')) echo alt_atr_cta_facet_html($alt_f['dim'], $alt_f['display']);
+          if (function_exists('alt_cross_links_html')) echo alt_cross_links_html($alt_f['dim'], alt_facet_slug($alt_f['display']), $alt_f['display']); ?>
 
     <?php // Official figure for scale, only on an EXACT industry/country match. ?>
     <?php if (($alt_f['dim'] === 'industry' || $alt_f['dim'] === 'country') && function_exists('alt_labour_context_stat')) {
