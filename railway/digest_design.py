@@ -27,6 +27,7 @@ dark-mode client produces; tests/test_digest_email_design.py checks both.
 from __future__ import annotations
 
 import re
+import email_theme  # noqa: E402  the shared divider colour
 
 RED = "#b42a18"      # AI Layoff Tracker (no 4-digit run: a hex is not a figure)
 BLUE = "#1d4ed8"     # Talent Intelligence Tracker
@@ -75,7 +76,8 @@ def accent_styles(accent: str, font: str, ink: str, muted: str) -> dict:
                      f"font-size:{TYPE_TITLE}px;line-height:1.25;font-weight:800;"
                      f"letter-spacing:-0.01em;color:{accent};"
                      f"border-left:4px solid {accent};"),
-        ("h3", ""): (f"margin:24px 0 6px;font-family:{font};font-size:{TYPE_HEADING}px;"
+        ("h3", ""): (f"margin:26px 0 8px;padding-top:16px;border-top:3px solid {email_theme.DIVIDER};"
+                     f"font-family:{font};font-size:{TYPE_HEADING}px;"
                      f"line-height:1.3;font-weight:700;letter-spacing:0.01em;"
                      f"color:{accent};"),
         ("p", "stat"): (f"margin:0 0 5px;font-family:{font};font-size:{TYPE_STAT}px;"

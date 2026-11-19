@@ -137,7 +137,8 @@ TYPE_SCALE = (TYPE_HEADLINE, TYPE_ITEM, TYPE_SMALL, TYPE_STAT)
 TAG_STYLES = {
     "h2": (f"margin:0 0 12px;font-family:{FONT};font-size:{TYPE_TITLE}px;line-height:1.25;"
            f"font-weight:700;letter-spacing:-0.01em;color:{INK};"),
-    "h3": (f"margin:26px 0 8px;font-family:{FONT};font-size:{TYPE_HEADING}px;line-height:1.3;"
+    # A thick brand rule above every content heading (owner, 2026-11-19).
+    "h3": (f"margin:26px 0 8px;padding-top:16px;border-top:3px solid {email_theme.DIVIDER};font-family:{FONT};font-size:{TYPE_HEADING}px;line-height:1.3;"
            f"font-weight:700;letter-spacing:0.01em;color:{INK};"),
     "p": (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_BODY}px;line-height:1.6;"
           f"color:{INK};"),
@@ -1198,7 +1199,8 @@ def product_name(parts=()) -> str:
 
 def _masthead(kicker: str, notice: str = "", product: str = "") -> str:
     # The shared brand header: the wordmark in small caps, then the product.
-    out = email_theme.brand_header(product or PRODUCT, kicker)
+    name = product or PRODUCT
+    out = email_theme.brand_header(name, kicker, logo=(name == CAREER_INSIGHTS))
     if notice:
         # SENTENCE CASE AND NOT THE KICKER'S UPPERCASE. This is a sentence a
         # reader reads, not a label they scan past, and uppercasing it would
@@ -1332,11 +1334,39 @@ CTA_LABEL = "Check my match score"
 CTA_BASE = "https://asktherecruiter.com/"
 
 
-def cta_url(day: str, freq: str = "daily") -> str:
+# The line above the button, per email (owner, 2026-11-19, todo#2763 item 11).
+CTA_LEADS = {
+    "layoff": "Affected by a layoff? Check how your resume fits a new role, free.",
+    "talent": "Interested in companies that are hiring? Check how your resume fits their roles, free.",
+    "articles": "Applying somewhere? Check how your resume fits the role, free.",
+}
+
+
+def cta_lead(parts) -> str:
+    key = str(parts[0][0]) if parts else ""
+    return CTA_LEADS.get(key, CTA_LEADS["articles"])
+
+
+def cta_box(parts, url: str) -> str:
+    """The tinted box before the footer: the lead line, then the button."""
+    return (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            f'border="0" style="width:100%;border-collapse:separate;">'
+            f'<tr><td data-cta-box bgcolor="{email_theme.PANEL_TINT}" '
+            f'style="padding:18px 20px 6px;background-color:{email_theme.PANEL_TINT};'
+            f'border-radius:{email_theme.RADIUS_PX}px;">'
+            f'<p style="margin:0 0 4px;font-family:{FONT};font-size:{TYPE_BODY}px;'
+            f'line-height:1.5;font-weight:600;color:{INK};">{escape(cta_lead(parts))}</p>'
+            + email_theme.button(CTA_LABEL, url) + '</td></tr></table>')
+
+
+def cta_url(day: str, freq: str = "daily", section: str = "articles") -> str:
     """The free match check, tagged so a sign-up is credited to this edition."""
     stamp = re.sub(r"[^0-9]", "", str(day or ""))[:8]
     tier = re.sub(r"[^a-z]", "", str(freq or "daily").lower()) or "daily"
     campaign = f"{tier}-{stamp}" if len(stamp) == 8 else tier
+    # Per email (item 11): the tracker emails name themselves in the campaign.
+    if section in ("layoff", "talent"):
+        campaign = f"{section}-{campaign}"
     return (f"{CTA_BASE}?utm_source=newsletter&utm_medium=email"
             f"&utm_campaign={campaign}&utm_content=cta")
 
@@ -1626,14 +1656,13 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         section_html = arrange_section(section_html, product_name(parts))
         section_html = digest_design.add_charts(section_html, accent)
         styled = restyle(section_html, accent)
-        # One button per email, after the lead section (owner, 2026-11-19).
-        if cta and index == 0:
-            styled = add_cta(styled, cta)
         cell = _cell(styled, padding=padding,
                      top_rule=bool(index))
         if images:
             cell = digest_design.place_image_charts(cell, images)
         rows.append(cell)
+    if cta:
+        rows.append(_cell(cta_box(parts, cta), padding="8px 28px 18px"))
     rows.append(_cell(_footer(unsub_url, manage_url, edition_note, resume_url),
                       padding="18px 28px 26px", top_rule=True))
 
@@ -1747,8 +1776,6 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
         if index:
             body.append(thin)
         body.append(_reflow(plain_dashes(part_text(part))))
-        if cta and index == 0:
-            body.append(f"{CTA_LABEL}:\n{cta}")
     # THE SAME SENTENCES AS THE HTML PART, FROM THE SAME PLACE. For a text
     # only client and for every screen reader fallback this IS the message, so
     # it may not be a shorter or older version of what everyone else was told.
@@ -1756,6 +1783,10 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
     # which is what a link looks like when there is no anchor to put it in.
     urls = {"unsub": unsub_url, "manage": manage_url,
             "resume": resume_cta_url(resume_url), "forward": SIGNUP_URL}
+    if cta:
+        body.append("")
+        body.append(_reflow(cta_lead(parts)))
+        body.append(f"{CTA_LABEL}:\n{cta}")
     footer = [rule]
     for index, (key, sentences, _anchor) in enumerate(
             footer_blocks(bool(manage_url))):

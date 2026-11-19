@@ -131,8 +131,8 @@ class TheMessage(unittest.TestCase):
         self.assertIn(email_theme.dark_style_block(), html)
         self.assertIn("max-width:600px", html)
         self.assertIn("border-radius:8px", html)
-        self.assertIn(">Ask The Recruiter</p>", html)
-        self.assertIn("font-variant:small-caps", html)
+        self.assertIn(">by Ask The Recruiter</p>", html)  # tracker text wordmark, todo#2763
+        self.assertIn("by Ask The Recruiter", html)  # text wordmark replaces the small-caps line
         self.assertIn("48,910</p>", html, "the headline number is text")
         # Own-site links carry the digest's UTM tags (test_digest_utm.py).
         self.assertIn('href="https://asktherecruiter.com/blog/r/9?utm_source=ai-layoff-tracker'

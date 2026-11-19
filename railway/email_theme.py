@@ -43,7 +43,10 @@ DARK_ACCENT = "#9CC0A1"
 # Light tints a section may set inline, and what each becomes in dark mode.
 # Kept generic (any tracker's highlight green, bar track grey, panel) so the
 # sibling repo can copy this list as is.
-DARK_TINTS = ((PILL_BG, "#1f2a44"), ("#ecfdf3", "#0f2a1d"), ("#e4e7ec", "#26324d"),
+# The tinted box the call to action sits in (site --surface-2); darkens to
+# the site dark --surface-2 (Codex on #706).
+PANEL_TINT = "#F4F1EA"
+DARK_TINTS = ((PANEL_TINT, "#2D2D2C"), (PILL_BG, "#1f2a44"), ("#ecfdf3", "#0f2a1d"), ("#e4e7ec", "#26324d"),
               (PANEL, DARK_BG), (BACKGROUND, DARK_PANEL))
 # Near-black rules and accents that vanish on a dark card.
 DARK_RULES = (("#15181d", DARK_MUTED), (INK, DARK_MUTED), (BORDER, "#1f2a44"))
@@ -60,6 +63,7 @@ LOGO_PX = 40
 DIVIDER_PX = 4
 DIVIDER = ACCENT  # brand green, clearly visible
 BUTTON_TEXT = "#ffffff"
+
 
 # Class names the dark block targets. Inline styles carry the light values;
 # a class only ever ADDS the dark override.
@@ -134,8 +138,26 @@ def head_meta() -> str:
             '<meta name="supported-color-schemes" content="light dark">')
 
 
-def brand_header(product: str, kicker: str = "") -> str:
-    """The wordmark line, then the product name, then an optional kicker."""
+def brand_header(product: str, kicker: str = "", logo: bool = True) -> str:
+    """The wordmark line, then the product name, then an optional kicker.
+
+    logo=False: a tracker email. Neither tracker repo has a logo file
+    (checked 2026-11-19, todo#2763), so it is a text wordmark: the product,
+    then "by Ask The Recruiter".
+    """
+    if not logo:
+        out = (f'<p class="{CLASSES["ink"]}" style="margin:0;font-family:{FONT};'
+               f'font-size:20px;line-height:1.25;font-weight:800;'
+               f'letter-spacing:-0.01em;color:{INK};">{escape(product)}</p>'
+               f'<p class="{CLASSES["muted"]}" style="margin:2px 0 0;font-family:{FONT};'
+               f'font-size:13px;line-height:1.4;font-weight:600;color:{MUTED};">'
+               f'by {escape(WORDMARK)}</p>')
+        if kicker:
+            out += (f'<p class="{CLASSES["muted"]}" style="margin:6px 0 0;'
+                    f'font-family:{FONT};font-size:13px;line-height:1.4;'
+                    f'letter-spacing:0.06em;text-transform:uppercase;'
+                    f'color:{MUTED};">{escape(kicker)}</p>')
+        return out
     logo = (f'<img data-logo src="{LOGO_URL}" width="{LOGO_PX}" height="{LOGO_PX}" '
             f'alt="{escape(WORDMARK)} logo" style="display:block;border:0;'
             f'width:{LOGO_PX}px;height:{LOGO_PX}px;border-radius:8px;margin:0 0 10px;">')

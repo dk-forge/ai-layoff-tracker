@@ -37,7 +37,7 @@ class Brand(unittest.TestCase):
                          "Career Insights from Ask The Recruiter")
 
     def test_every_edition_has_its_logo_on_our_domain_with_alt(self):
-        for sections in (("layoff",), ("talent",), ("articles",)):
+        for sections in (("articles",),):  # trackers: text wordmark (Round3)
             html = message(sections, freq="daily").html
             logo = re.search(r'<img[^>]*data-logo[^>]*>|<img[^>]*src="'
                              + re.escape(email_theme.LOGO_URL) + r'"[^>]*>', html)
@@ -201,3 +201,64 @@ class ButtonContrast(unittest.TestCase):
         btn = email_theme.button("Go", "https://asktherecruiter.com/")
         self.assertIn('class="et-btn"', btn)
         self.assertIn('class="et-btn-td"', btn)
+
+
+class Round3(unittest.TestCase):
+    """No tracker logo file exists in either tracker repo (checked 2026-11-19),
+    so the tracker emails use a text wordmark; only the newsletter shows the
+    Ask The Recruiter mark. Every content heading opens with a thick rule."""
+
+    def test_tracker_emails_use_a_text_wordmark(self):
+        for sections, product in ((("layoff",), "AI Layoff Tracker"),
+                                  (("talent",), "Talent Intelligence Tracker")):
+            html = message(sections, freq="daily").html
+            self.assertNotIn("data-logo", html)
+            self.assertIn(">by Ask The Recruiter</p>", html)
+            self.assertIn(f">{product}</p>", html)
+
+    def test_newsletter_keeps_the_mark(self):
+        self.assertIn("data-logo", message(("articles",), freq="daily").html)
+
+    def test_content_headings_carry_a_thick_divider(self):
+        html = message(("layoff",), freq="weekly").html
+        h3 = re.findall(r"<h3 style=\"([^\"]*)\"", html)
+        self.assertTrue(h3)
+        for style in h3:
+            self.assertIn(f"border-top:3px solid {email_theme.ACCENT}", style)
+
+
+class CtaBox(unittest.TestCase):
+    """DK item 11: the button sits in its own tinted box before the footer,
+    with a lead line that fits the email."""
+
+    LEADS = {
+        "layoff": "Affected by a layoff? Check how your resume fits a new role, free.",
+        "talent": "Interested in companies that are hiring? Check how your resume fits their roles, free.",
+    }
+
+    def test_box_before_footer_with_the_right_lead(self):
+        for key, lead in self.LEADS.items():
+            m = message((key,), freq="daily", **{"from": "2026-11-18", "to": "2026-11-19"})
+            box = re.search(r'<td data-cta-box[^>]*>(.*?)</td></tr>', m.html, re.S)
+            self.assertIsNotNone(box, key)
+            self.assertIn(f"background-color:{email_theme.PANEL_TINT}", m.html)
+            self.assertIn(lead, m.html)
+            self.assertIn(lead, " ".join(m.text.split()))
+            self.assertLess(m.html.index(lead), m.html.index("You get this because"))
+            self.assertIn(f"utm_campaign={key}-daily-20261119", m.html)
+
+    def test_button_is_not_inside_a_data_section(self):
+        m = message(("layoff",), freq="daily")
+        self.assertGreater(m.html.index("Check my match score"),
+                           m.html.index("Open the AI Layoff Tracker"))
+
+
+class CtaBoxDarkMode(unittest.TestCase):
+    """Codex on #706: the tint stayed light under dark ink (1.05:1)."""
+
+    def test_dark_block_darkens_the_cta_tint(self):
+        block = email_theme.dark_style_block()
+        self.assertIn(f'[style*="background-color:{email_theme.PANEL_TINT}"]', block)
+        self.assertIn(f'[bgcolor="{email_theme.PANEL_TINT}"]', block)
+        dark = dict(email_theme.DARK_TINTS)[email_theme.PANEL_TINT]
+        self.assertGreaterEqual(email_theme.contrast(email_theme.DARK_INK, dark), 4.5)

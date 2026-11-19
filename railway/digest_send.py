@@ -618,7 +618,8 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # back on in one place; the transport tests still exercise it.
     images: list = []
     cta = digest_layout.cta_url(str(payload.get("to") or ""),
-                                str(payload.get("freq") or "daily"))
+                                str(payload.get("freq") or "daily"),
+                                str(parts[0][0]) if parts else "articles")
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
         kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
