@@ -98,7 +98,8 @@ function alt_register_routes() {
     ));
 
     // Freshness of the Nevada WARN mirror (this host re-fetches DETR's master PDF
-    // daily because Bluehost's IP clears the Akamai bot-wall that blocks CI).
+    // daily because the WP host's IP cleared the Akamai bot-wall that blocks CI;
+    // host is ChemiCloud, not re-verified since the move).
     // Metadata only, safe to be public; used to confirm the mirror is current.
     register_rest_route('layoffs/v1', '/nv-mirror-status', array(
         'methods'             => 'GET',

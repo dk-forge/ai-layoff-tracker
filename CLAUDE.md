@@ -17,6 +17,8 @@
 > 5. Message DK only when he is needed, when something important finishes, or when something breaks; everything else goes in the 08:42 morning summary.
 > 6. Every PR says "Closes dk-forge/todo#N" (or "Refs" when it only partly finishes the item); a daily no-AI sweep comments on items whose PRs all merged, and lists PRs with no todo reference in STATUS.md.
 
+> **WEB HOST = CHEMICLOUD (DK 2026-11-19).** WordPress and the plugin run on ChemiCloud (since about Aug 2026); Bluehost is not used. Never say Bluehost for current hosting; older Bluehost mentions are dated incident history. `railway/tests/test_no_bluehost_outside_history.py` enforces it.
+
 Live tracker of verified layoffs (SEC 8-K filings, US state WARN notices, worldwide
 news via GDELT), flagging the ones companies explicitly attribute to AI.
 

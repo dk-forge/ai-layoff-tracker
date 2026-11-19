@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.351
+ * Version:           2.20.352
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.351');
+define('ALT_VERSION', '2.20.352');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1009,7 +1009,7 @@ function alt_flush_caches_on_deploy() {
     if (has_action('litespeed_purge_all')) {
         do_action('litespeed_purge_all');
     }
-    // Bluehost/Newfold performance module.
+    // Newfold performance module (from the previous host; a no-op when absent).
     do_action('nfd_purge_all');
     if (function_exists('wp_cache_flush')) {
         wp_cache_flush();                     // object cache, harmless otherwise

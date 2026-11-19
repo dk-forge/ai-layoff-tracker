@@ -4,7 +4,7 @@ name: Announcement lifecycle review candidates
 # changes counts, sources, event IDs or publication status.
 #
 # WHY THIS NO LONGER SHELLS OUT TO `curl --fail-with-body` (2026-08-11).
-# The candidates route lives on Bluehost, so a few minutes of 502 killed this
+# The candidates route lives on the WordPress host (ChemiCloud), so a few minutes of 502 killed this
 # run, the red run fired `ci_alert.py`, and the alerter had to reach `/alert` on
 # the same host to report it. `railway/host_call.py` gives the call its missing
 # third outcome: unreachable DEFERS (exit 0, counted in the committed ledger,
