@@ -1715,7 +1715,7 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     .alt-journalist { flex-direction: column; align-items: flex-start; }
     /* Wraps instead of scrolling: a scroller must be focusable (axe
        scrollable-region-focusable), and a focusable inline <code> becomes a
-       sub-44px tap target. A path that wraps needs neither (todo#1881). */
+       sub-44px tap target. A path that wraps needs neither (todo 1881). */
     .alt-journalist-api { width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere; }
 }
 
@@ -2329,7 +2329,7 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
    be arbitrarily long with no spaces (URLs pasted as titles). break-word keeps
    them inside the column instead of pushing the page sideways on a phone. */
 .alt-company-source-list li { overflow-wrap: break-word; word-break: break-word; }
-/* WCAG 2.2 2.5.8 (todo#1881 item 9): stacked source links were 22px tall with
+/* WCAG 2.2 2.5.8 (todo 1881 item 9): stacked source links were 22px tall with
    no gap, so axe found 106-179 undersized targets per company/facet page. */
 .alt-company-source-list li + li { margin-top: 2px; }
 .alt-company-source-list a { display: inline-block; min-height: 24px; line-height: 24px; }
@@ -4756,3 +4756,22 @@ section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid va
 .alt-share .alt-btn[hidden] { display: none; }
 .alt-share-status { font-size: 13px; overflow-wrap: anywhere; }
 .alt-feed-link { margin: 8px 0 16px; font-size: 14px; }
+
+/* MOBILE FIRST SCREEN (todo 1881 item 3, review B7). At 375px the mascot
+   pushed the headline figure and the sign-up line below the fold. The status
+   line beside it stays; only the decorative drawing goes (it is aria-hidden). */
+@media (max-width: 600px) {
+    .alt-header .alt-roo-wrap { display: none !important; }
+    /* Roo's say line repeats the Live line and "Next update" beside it; the
+       brand is in the site header. */
+    .alt-header #alt-next-pull, .alt-header .alt-brand { display: none !important; }
+}
+.alt-hero-cta-m { display: none; }
+@media (max-width: 600px) {
+    .alt-hero-cta-m { display: block; margin: 10px 0 0; }
+    .alt-hero-cta-m a {
+        display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px;
+        border-radius: 999px; font-weight: 700; text-decoration: none;
+        background: var(--alt-ink); color: var(--alt-paper);
+    }
+}

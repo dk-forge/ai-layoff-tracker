@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.347
+ * Version:           2.20.348
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.347');
+define('ALT_VERSION', '2.20.348');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -336,6 +336,11 @@ if (is_readable($alt_header_cta_utm)) {
 $alt_cross_links = ALT_PLUGIN_DIR . 'includes/cross-links.php';
 if (is_readable($alt_cross_links)) {
     require_once $alt_cross_links;
+}
+// A smaller cookie banner on phones (todo#1881 item 3). GUARDED.
+$alt_cookie_compact = ALT_PLUGIN_DIR . 'includes/cookie-banner-compact.php';
+if (is_readable($alt_cookie_compact)) {
+    require_once $alt_cookie_compact;
 }
 // Reach (audit 2026-11-10): RSS feed discovery, GA4 funnel events, share
 // buttons. GUARDED like every new include; absent, the pages lose only these.
@@ -1753,7 +1758,13 @@ function alt_theme_boot() {
             b.addEventListener('click', function () { window.altTheme.set(m); });
             group.appendChild(b);
         });
-        host.insertBefore(group, host.firstChild);
+        // On phones the site header already carries a theme toggle, and this
+        // second one sat between the title and the headline figure (todo#1881
+        // item 3, review B7). It moves to the end of the page there, so the
+        // first screen holds the figure and the sign-up line; on wider screens
+        // it stays at the top.
+        var narrow = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+        if (narrow) host.appendChild(group); else host.insertBefore(group, host.firstChild);
         sync();
     }
     d.readyState === 'loading' ? d.addEventListener('DOMContentLoaded', build) : build();
