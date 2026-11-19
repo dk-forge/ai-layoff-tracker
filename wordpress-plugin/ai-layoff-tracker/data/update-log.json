@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "keynum-datetime",
+   "date": "2026-11-19",
+   "version": "2.20.351",
+   "type": "Fix",
+   "area": "seo",
+   "text": "The date on the home page's \"Key numbers\" block is now machine-readable for search engines."
+  },
+  {
    "slug": "hub-key-numbers",
    "date": "2026-11-19",
    "version": "2.20.350",

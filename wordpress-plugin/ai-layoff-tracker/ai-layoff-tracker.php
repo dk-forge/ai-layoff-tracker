@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.350
+ * Version:           2.20.351
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.350');
+define('ALT_VERSION', '2.20.351');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -881,11 +881,13 @@ function alt_key_numbers_html($ps) {
     $lines = alt_key_number_lines($ps);
     if (!$lines) return '';
     $asof = (string) $ps['split']['as_of'];
+    // as_of is the press bundle's human date ("Nov 18, 2026"); <time datetime>
+    // needs ISO 8601, so it is parsed once and omitted when it cannot be.
     $ts = strtotime($asof);
     $label = $ts ? date('F j, Y', $ts) : $asof;
+    $time = $ts ? '<time datetime="' . esc_attr(date('Y-m-d', $ts)) . '">' . esc_html($label) . '</time>' : esc_html($label);
     $out = '<section class="alt-key-numbers" aria-labelledby="alt-key-numbers-h">'
-         . '<h2 id="alt-key-numbers-h">Key numbers (updated <time datetime="' . esc_attr($asof) . '">'
-         . esc_html($label) . '</time>)</h2><ul>';
+         . '<h2 id="alt-key-numbers-h">Key numbers (updated ' . $time . ')</h2><ul>';
     foreach ($lines as $line) $out .= '<li>' . esc_html($line) . '</li>';
     $out .= '</ul><p>Cite as: "According to the AI Layoff Tracker by AskTheRecruiter.com." '
           . '<a href="' . esc_url(home_url('/ai-layoff-tracker/press/')) . '">Press kit and soundbites</a></p></section>';
