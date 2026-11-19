@@ -5598,6 +5598,7 @@
         if (key !== 'usa' && key !== 'world') writeControl('alt-f-state', []);
         document.querySelectorAll('.alt-tab').forEach(function (b) {
             b.classList.toggle('alt-tab-on', b.getAttribute('data-tab') === key);
+            b.setAttribute('aria-pressed', b.getAttribute('data-tab') === key ? 'true' : 'false');
         });
         // The US-states chart only makes sense on World/USA views
         var statesCard = document.getElementById('alt-bars-states');
@@ -6010,6 +6011,7 @@
         });
         document.querySelectorAll('.alt-tab').forEach(function (b) {
             b.classList.toggle('alt-tab-on', b.getAttribute('data-tab') === ACTIVE_TAB);
+            b.setAttribute('aria-pressed', b.getAttribute('data-tab') === ACTIVE_TAB ? 'true' : 'false');
         });
     }
 

@@ -1713,7 +1713,10 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     .alt-search-wrap { flex: none; }
     .alt-sort { justify-content: space-between; }
     .alt-journalist { flex-direction: column; align-items: flex-start; }
-    .alt-journalist-api { width: 100%; box-sizing: border-box; overflow-x: auto; }
+    /* Wraps instead of scrolling: a scroller must be focusable (axe
+       scrollable-region-focusable), and a focusable inline <code> becomes a
+       sub-44px tap target. A path that wraps needs neither (todo#1881). */
+    .alt-journalist-api { width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere; }
 }
 
 /* ---------------- Filters ---------------- */
@@ -2326,6 +2329,10 @@ a.alt-card-h:hover { color: var(--alt-blue-dark); text-decoration: underline; }
    be arbitrarily long with no spaces (URLs pasted as titles). break-word keeps
    them inside the column instead of pushing the page sideways on a phone. */
 .alt-company-source-list li { overflow-wrap: break-word; word-break: break-word; }
+/* WCAG 2.2 2.5.8 (todo#1881 item 9): stacked source links were 22px tall with
+   no gap, so axe found 106-179 undersized targets per company/facet page. */
+.alt-company-source-list li + li { margin-top: 2px; }
+.alt-company-source-list a { display: inline-block; min-height: 24px; line-height: 24px; }
 .alt-company-event-meta { margin: 0 0 8px; }
 .alt-company-event-ai { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
 .alt-company-event-quote {

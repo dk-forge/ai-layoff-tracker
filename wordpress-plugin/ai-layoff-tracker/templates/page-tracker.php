@@ -656,17 +656,20 @@ $alt_hero_basis  = 'counted by filing date';
       hide it from.
     */
     ?>
-    <div class="alt-tabs" id="alt-tabs" role="tablist" aria-label="Region">
-        <button type="button" class="alt-tab alt-tab-world" data-tab="world">🌐 World</button>
-        <button type="button" class="alt-tab alt-tab-usa" data-tab="usa">🇺🇸 USA</button>
-        <button type="button" class="alt-tab alt-tab-canada" data-tab="canada">🇨🇦 Canada</button>
-        <button type="button" class="alt-tab alt-tab-latam" data-tab="latam">🌎 Latin America</button>
-        <button type="button" class="alt-tab alt-tab-europe" data-tab="europe">🇪🇺 Europe</button>
-        <button type="button" class="alt-tab alt-tab-uk" data-tab="uk">🇬🇧 UK</button>
-        <button type="button" class="alt-tab alt-tab-mideast" data-tab="mideast">🌅 Middle East</button>
-        <button type="button" class="alt-tab alt-tab-africa" data-tab="africa">🌍 Africa</button>
-        <button type="button" class="alt-tab alt-tab-asia" data-tab="asia">🌏 Asia</button>
-        <button type="button" class="alt-tab alt-tab-aus" data-tab="aus">🇦🇺 Australia</button>
+    <?php // A group of toggle buttons (aria-pressed), not tabs: they filter the
+          // page rather than switch panels, so role=tablist was wrong (axe
+          // aria-required-children, todo#1881 item 9). ?>
+    <div class="alt-tabs" id="alt-tabs" role="group" aria-label="Region">
+        <button type="button" class="alt-tab alt-tab-world" aria-pressed="false" data-tab="world">🌐 World</button>
+        <button type="button" class="alt-tab alt-tab-usa" aria-pressed="false" data-tab="usa">🇺🇸 USA</button>
+        <button type="button" class="alt-tab alt-tab-canada" aria-pressed="false" data-tab="canada">🇨🇦 Canada</button>
+        <button type="button" class="alt-tab alt-tab-latam" aria-pressed="false" data-tab="latam">🌎 Latin America</button>
+        <button type="button" class="alt-tab alt-tab-europe" aria-pressed="false" data-tab="europe">🇪🇺 Europe</button>
+        <button type="button" class="alt-tab alt-tab-uk" aria-pressed="false" data-tab="uk">🇬🇧 UK</button>
+        <button type="button" class="alt-tab alt-tab-mideast" aria-pressed="false" data-tab="mideast">🌅 Middle East</button>
+        <button type="button" class="alt-tab alt-tab-africa" aria-pressed="false" data-tab="africa">🌍 Africa</button>
+        <button type="button" class="alt-tab alt-tab-asia" aria-pressed="false" data-tab="asia">🌏 Asia</button>
+        <button type="button" class="alt-tab alt-tab-aus" aria-pressed="false" data-tab="aus">🇦🇺 Australia</button>
     </div>
 
     <details class="alt-narrative-wrap" id="alt-narrative-wrap" open>
@@ -1176,7 +1179,7 @@ $alt_hero_basis  = 'counted by filing date';
                     <button type="button" class="alt-chart-dl" data-dl="alt-chart-aimap" data-kind="png" aria-label="Download map as image" title="Download PNG"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?>
                 </span>
             </div>
-            <div class="alt-chart-box alt-map-box"><div id="alt-chart-aimap" aria-label="AI-attributed layoffs by geography"></div></div>
+            <div class="alt-chart-box alt-map-box"><div id="alt-chart-aimap" role="figure" aria-label="AI-attributed layoffs by geography"></div></div>
             <p class="alt-map-total alt-muted" id="alt-map-total"></p>
             <p class="alt-map-empty alt-muted" id="alt-map-note" style="display:none"></p>
         </div>
@@ -1253,7 +1256,7 @@ $alt_hero_basis  = 'counted by filing date';
                 <div class="alt-chart-h">Jobless claims by US state <span class="alt-chart-sub">official government data (DOL), <span id="alt-claims-states-month">latest month</span> · context only, not our counts</span></div>
                 <span class="alt-chart-btns"><button type="button" class="alt-chart-dl" data-dl="alt-bars-claims-states" data-kind="csv" aria-label="Download data as CSV" title="Download CSV"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button><?php echo $alt_expand; ?></span>
             </div>
-            <div class="alt-barlist" id="alt-bars-claims-states"></div>
+            <div class="alt-barlist" id="alt-bars-claims-states" role="list" aria-label="Jobless claims by US state" tabindex="0"></div>
             <?php /* Collapsed by default: as an always-open paragraph this note made the
                      card roughly twice the height of its two siblings in the same row,
                      leaving a large blank gap under them. The disclosure keeps the full
