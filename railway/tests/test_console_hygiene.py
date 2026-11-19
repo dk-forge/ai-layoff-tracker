@@ -32,6 +32,19 @@ class TemplatePartsRenderBeforeTheImportMap(unittest.TestCase):
         self.assertLess(f.index("alt_prerendered_footer"), f.index("wp_footer();"))
 
 
+JS = (PLUGIN / "assets" / "layoffs.js").read_text()
+
+
+class HostLevel5xxIsRetried(unittest.TestCase):
+    """The remaining 500s were the host's database-connection error page."""
+
+    def test_html_5xx_and_cap_503_are_retried_json_errors_are_not(self):
+        b = body(JS, "apiGet")
+        self.assertIn("ct.indexOf('text/html') === 0", b)
+        self.assertIn("r.status === 503 && r.headers.get('Retry-After')", b)
+        self.assertIn("if (left <= 0 || !retryable(r)) return r;", b)
+
+
 class NinetyDayLabel(unittest.TestCase):
     def test_d90_says_what_it_is(self):
         m = re.search(r'data-dp="d90">([^<]+)<', TPL)

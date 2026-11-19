@@ -579,11 +579,21 @@
         if (signal) opts.signal = signal;
         // 503 + Retry-After is the server's cold-compute cap saying "not now"
         // (alt_cold_compute_guard). Up to three polite retries, inside the
-        // page's 20 s load deadline; any other status is final.
+        // page's 20 s load deadline; a JSON error from the API is final.
+        // Also retried: a host-level 5xx served as an HTML page. Measured
+        // 2026-11-19 after 2.20.344: the remaining 500s under fast clicks are
+        // WordPress's "Error establishing a database connection" page (the
+        // host's MySQL connection limit), raised before any plugin code runs.
+        // These are idempotent reads, so a short retry is safe.
+        var retryable = function (r) {
+            if (r.status === 503 && r.headers.get('Retry-After')) return true;
+            var ct = r.headers.get('Content-Type') || '';
+            return r.status >= 500 && r.status !== 501 && ct.indexOf('text/html') === 0;
+        };
         var attempt = function (left) {
             return fetch(url, opts).then(function (r) {
-                if (r.status !== 503 || !r.headers.get('Retry-After') || left <= 0) return r;
-                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 3) * 1000;
+                if (left <= 0 || !retryable(r)) return r;
+                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000;
                 return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
                     if (signal && signal.aborted) throw new Error('aborted');
                     return attempt(left - 1);

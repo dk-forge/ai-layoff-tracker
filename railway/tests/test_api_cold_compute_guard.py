@@ -103,7 +103,11 @@ class SecondReviewRound2(unittest.TestCase):
         self.assertIn("define('ALT_COLD_SLOTS', 10)", DB)
 
     def test_only_the_caps_503_is_retried(self):
-        self.assertIn("r.status !== 503 || !r.headers.get('Retry-After')", body(JS, "apiGet"))
+        # The cap's 503 and host-level HTML 5xx retry; an API JSON error is final
+        # (2.20.345 widened this after measuring DB-connection 500s live).
+        b = body(JS, "apiGet")
+        self.assertIn("r.status === 503 && r.headers.get('Retry-After')", b)
+        self.assertIn("ct.indexOf('text/html') === 0", b)
 
     def test_a_burst_retires_requests_already_in_flight(self):
         b = body(JS, "refreshAll")
