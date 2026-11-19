@@ -6537,7 +6537,7 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
  *  - one lock per cache key, so N visitors asking for the same cold key run it
  *    once and the rest wait (up to 10 s) and read the stored answer;
  *  - ALT_COLD_SLOTS slots for cold computes in total. With none free the
- *    request gets a clean 503 + Retry-After, which the page retries once,
+ *    request gets a clean 503 + Retry-After, which the page retries (up to three times),
  *    instead of queueing into a worker timeout that surfaces as a 500.
  * If the server cannot take named locks (GET_LOCK returns NULL) the guard
  * steps aside and the compute runs exactly as it did before.
@@ -6617,14 +6617,15 @@ function alt_cold_compute_guard($key, $run, $outer = true) {
             alt_named_unlock($lock);
         }
     }
-    // Wait up to 12 s, under the page's 20 s load deadline, so a waiter that
-    // times out can still answer busy and the page's one retry can land.
+    // Wait at most 2 s: a waiter holds a PHP worker, and running out of
+    // workers is what produced the 500s. Past that it answers busy and the
+    // page retries (up to three times, 3 s apart, inside its 20 s deadline).
     // On MySQL < 5.7 / MariaDB < 10.0.2 a session holds one named lock, so
     // taking a slot drops this key lock: the cap still holds, single-flight
     // degrades to best effort.
-    $key_lock = alt_named_lock('k|' . $key, 12);
+    $key_lock = alt_named_lock('k|' . $key, 2);
     if ($key_lock === null) return call_user_func($run);
-    // Still computing after 12 s: say busy (the page retries once) rather
+    // Still computing after 2 s: say busy (the page retries) rather
     // than run the same compute a second time (Codex P2 on TIT#362).
     if ($key_lock === false) return alt_busy_response();
     alt_forget_transient_cache($key);

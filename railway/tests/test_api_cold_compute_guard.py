@@ -82,7 +82,7 @@ class SecondReview(unittest.TestCase):
     def test_a_key_lock_timeout_is_busy_not_a_second_compute(self):
         g = body(DB, "alt_cold_compute_guard")
         self.assertIn("if ($key_lock === false) return alt_busy_response();", g)
-        self.assertIn("alt_named_lock('k|' . $key, 12)", g)  # under the page's 20 s deadline
+        self.assertIn("$key_lock = alt_named_lock('k|' . $key, 2);", g)  # waiters hold workers: keep it short
 
     def test_forget_never_reloads_alloptions_and_forces_ext_reread(self):
         f = body(DB, "alt_forget_transient_cache")
@@ -107,8 +107,15 @@ class SecondReviewRound2(unittest.TestCase):
 
     def test_a_burst_retires_requests_already_in_flight(self):
         b = body(JS, "refreshAll")
-        for s in ("AGG_SEQ++", "QUERY_SEQ++", "LOC_SEQ++", "busyBegin('alt-cards'"):
+        for s in ("AGG_SEQ++", "QUERY_SEQ++", "LOC_SEQ++", "busyBegin('alt-cards'", "busyBegin('alt-minigrid'"):
             self.assertIn(s, b)
+
+
+class FinalReview(unittest.TestCase):
+    def test_no_max_wait_fetch_inside_a_burst(self):
+        b = body(JS, "refreshAll")
+        self.assertIn("if (!REFRESH_TIMER && now - REFRESH_LAST >= REFRESH_GAP_MS)", b)
+        self.assertNotIn("MAX_WAIT", JS)
 
 
 class ClientGuard(unittest.TestCase):

@@ -1366,7 +1366,7 @@
     // clicked back on. Only the network half is coalesced: the first call
     // after a quiet spell fetches at once, later calls inside REFRESH_GAP_MS
     // collapse into one trailing fetch with the final filters.
-    var REFRESH_GAP_MS = 350, REFRESH_MAX_WAIT_MS = 1000, REFRESH_TIMER = null, REFRESH_LAST = 0;
+    var REFRESH_GAP_MS = 350, REFRESH_TIMER = null, REFRESH_LAST = 0;
     function refreshAll() {
         saveFilters();
         syncUrlFromFilters();
@@ -1376,10 +1376,10 @@
         updateRangeLabel();
         updateExportLinks();
         var now = Date.now();
-        // Quiet spell, or a steady stream that has not fetched for a second
-        // (a pure debounce would never fetch while clicks keep coming).
-        if (now - REFRESH_LAST >= (REFRESH_TIMER ? REFRESH_MAX_WAIT_MS : REFRESH_GAP_MS)) {
-            if (REFRESH_TIMER) { clearTimeout(REFRESH_TIMER); REFRESH_TIMER = null; }
+        // Fetch at once only after a quiet spell. Inside a burst it is a pure
+        // trailing run: a fetch cancelled by the next click still costs the
+        // server its full compute, so a max-wait fetch would be dead work.
+        if (!REFRESH_TIMER && now - REFRESH_LAST >= REFRESH_GAP_MS) {
             REFRESH_LAST = now;
             refreshAllNow();
             return;
@@ -1394,6 +1394,7 @@
         BOOT = null;
         if (LOC_CTRL) { try { LOC_CTRL.abort(); } catch (e) { /* settled */ } LOC_CTRL = null; }
         busyBegin('alt-stats-bar', 'Loading the totals');
+        busyBegin('alt-minigrid', 'Loading the charts');
         busyBegin('alt-cards', 'Loading the records');
         if (REFRESH_TIMER) clearTimeout(REFRESH_TIMER);
         REFRESH_TIMER = setTimeout(function () {
