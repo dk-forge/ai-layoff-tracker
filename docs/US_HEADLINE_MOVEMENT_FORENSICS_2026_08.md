@@ -146,7 +146,7 @@ new `employer_country` and job count **cannot be produced from the public
 surfaces**, and no per-row verdict is offered for it. Producing it needs one of:
 a `SELECT id, country, employer_country, job_count FROM wp_alt_layoffs WHERE
 updated_at BETWEEN '2026-08-07 18:23:51' AND '2026-08-08 17:58:25'` against the
-Bluehost DB, or a new read-only endpoint exposing `updated_at`. Either is a
+WordPress DB (now on ChemiCloud), or a new read-only endpoint exposing `updated_at`. Either is a
 change to code or a credentialed action, both out of scope here.
 
 ---
@@ -226,7 +226,7 @@ semantics, not about whether the surface says which basis it used.
 Three separate decisions, in this order.
 
 1. **Get the row list.** Nothing else can be settled without it. Either run the
-   `updated_at` window query against the Bluehost DB directly, or add a
+   `updated_at` window query against the WordPress DB (ChemiCloud) directly, or add a
    read-only endpoint that exposes `updated_at` so this class of question is
    answerable from the public surface next time. Until then the movement guard
    is correctly red and should stay red.

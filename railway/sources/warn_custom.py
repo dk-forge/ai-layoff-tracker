@@ -1083,7 +1083,7 @@ _NV_HEADERS = {
     "Sec-Fetch-Site": "none",
     "Upgrade-Insecure-Requests": "1",
 }
-# Bluehost mirrors DETR's master PDF into uploads on a daily WP-cron (its IP is
+# The WP host (ChemiCloud) mirrors DETR's master PDF into uploads on a daily WP-cron (its IP is
 # not Akamai-blocked, unlike CI's data-center IP). Read the mirror FIRST — it is
 # reachable from CI — and fall back to DETR direct for residential runs or if the
 # mirror is ever missing. The first URL that returns a valid PDF wins.

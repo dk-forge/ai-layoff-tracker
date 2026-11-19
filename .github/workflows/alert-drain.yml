@@ -17,7 +17,7 @@ name: Alert drain
 # something held, and then the delivery attempt IS the reachability check.
 #
 # WHY THIS DOES NOT ALSO PROBE THE HOST ON A TIMER. Both trackers share one
-# Bluehost account, so there is one host and it should be watched once. The
+# ChemiCloud account, so there is one host and it should be watched once. The
 # talent tracker's `host-watch.yml` does that every 15 minutes and opens exactly
 # ONE GitHub issue on a sustained outage. A second identical watchdog here would
 # double the load on a host that has hit its ceiling twice in a day and send the

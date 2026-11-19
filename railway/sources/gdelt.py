@@ -916,8 +916,8 @@ LEDGER_REMOTE_TIMEOUT = 30
 
 # Two process-level guards, because `pull_gdelt_between` is called ONCE per run
 # by the live cron but ONCE PER WEEK-WINDOW by gdelt_backfill.py. A multi-year
-# backfill is hundreds of windows, and this host is a shared Bluehost account
-# that has returned 504 under load (TECHLOG 2026-07-31). Un-guarded, the sync
+# backfill is hundreds of windows, and this host is a shared ChemiCloud account
+# (the previous host returned 504 under load, TECHLOG 2026-07-31). Un-guarded, the sync
 # would add two requests per window to a job that already posts two health
 # notes per window.
 #

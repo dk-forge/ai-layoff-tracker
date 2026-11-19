@@ -356,7 +356,7 @@ add_action('wp', 'alt_disable_toc_on_plugin_pages');
  * the no-store /status endpoint, both answered 2.19.274. The origin was right
  * the whole time. TWO independent shared caches sit above it,
  *
- *     reader -> Cloudflare -> Railway proxy (x-cache-status) -> Bluehost -> PHP
+ *     reader -> Cloudflare -> Railway proxy (x-cache-status) -> ChemiCloud -> PHP
  *
  * each keeps its own entry with its own timer, and their windows ADD rather
  * than overlap. At s-maxage=300 + stale-while-revalidate=600 that was up to

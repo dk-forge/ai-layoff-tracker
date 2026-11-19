@@ -6,7 +6,7 @@ name: Superset dedup reconciliation
 # jobs_before / jobs_excluded / jobs_after without writing. Pass apply=1 to write.
 #
 # WHY THIS NO LONGER SHELLS OUT TO `curl --fail-with-body` (2026-08-11).
-# /reconcile-supersets is a route on Bluehost. When the host 5xx'd for six
+# /reconcile-supersets is a route on the WordPress host (ChemiCloud). When the host 5xx'd for six
 # minutes on 2026-07-31 this job died red, the red run fired `ci_alert.py`, and
 # the alerter then had to reach `/alert` — on the same host that was down. One
 # outage manufacturing red runs which manufacture alerts which also fail.
