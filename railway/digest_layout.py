@@ -70,12 +70,12 @@ FONT = email_theme.FONT
 
 PRODUCT = "AI Layoff Tracker"
 # Mirror of ALT_CAREER_INSIGHTS in includes/subscribe.php.
-CAREER_INSIGHTS = "Career Insights from AskTheRecruiter"
+CAREER_INSIGHTS = "Career Insights from Ask The Recruiter"
 WIDTH_PX = 600
 TEXT_WIDTH = 72
 # THE ONE NAME, and it is the same string the sender identity uses. The owner
-# saw the masthead read "AskTheRecruiter Trackers" in iCloud while the From
-# line read "AskTheRecruiter.com", which is two names for one brand inside a
+# saw the masthead read "Ask The Recruiter Trackers" in iCloud while the From
+# line read "Ask The Recruiter", which is two names for one brand inside a
 # single message. digest_transport.SENDER_NAME is the authority; this reads it
 # so the two cannot drift, and the import is local to keep the layout module
 # free of a hard dependency on the transport at import time.
@@ -84,7 +84,7 @@ def _brand():
         from digest_transport import SENDER_NAME
         return SENDER_NAME
     except Exception:
-        return "AskTheRecruiter.com"
+        return "Ask The Recruiter"
 
 
 BRAND = _brand()
@@ -99,7 +99,7 @@ MONTHS = ("January", "February", "March", "April", "May", "June", "July",
 # 140 AND NOT 130, measured rather than assumed. The owner's Gmail DESKTOP
 # screenshot showed roughly 140 characters of snippet, against the ~100 this
 # was written for, so both truncated rows ran past the end of our preview and
-# into the body: "... across 73 companies. AskTheRecruiter.c..." is the
+# into the body: "... across 73 companies. Ask The Recruiter.c..." is the
 # masthead, scraped because there was nothing left of ours to show.
 PREHEADER_MAX = 140
 
@@ -137,7 +137,7 @@ TYPE_SCALE = (TYPE_HEADLINE, TYPE_ITEM, TYPE_SMALL, TYPE_STAT)
 TAG_STYLES = {
     "h2": (f"margin:0 0 12px;font-family:{FONT};font-size:{TYPE_TITLE}px;line-height:1.25;"
            f"font-weight:700;letter-spacing:-0.01em;color:{INK};"),
-    "h3": (f"margin:22px 0 2px;font-family:{FONT};font-size:{TYPE_HEADING}px;line-height:1.3;"
+    "h3": (f"margin:26px 0 8px;font-family:{FONT};font-size:{TYPE_HEADING}px;line-height:1.3;"
            f"font-weight:700;letter-spacing:0.01em;color:{INK};"),
     "p": (f"margin:0 0 14px;font-family:{FONT};font-size:{TYPE_BODY}px;line-height:1.6;"
           f"color:{INK};"),
@@ -145,11 +145,16 @@ TAG_STYLES = {
     # edition's item lists were bullets while the layoff edition's were ruled
     # table rows, so the two editions read as two designs. Same padding, same
     # rule, same size as the `label` cell below; no bullet.
-    "ul": "margin:0 0 14px;padding:0;list-style:none;",
+    # BULLETS AGAIN (owner, 2026-11-19, todo#2763): the tracker editions read
+    # as a wall of paragraphs; a bulleted item list is easier to scan.
+    "ul": "margin:0 0 14px;padding:0 0 0 20px;list-style:disc outside;",
     "ol": "margin:0 0 14px;padding:0;list-style:none;",
     "li": (f"margin:0;padding:7px 0;font-family:{FONT};font-size:{TYPE_BODY}px;"
            f"line-height:1.4;color:{INK};border-bottom:1px solid {RULE};"),
     "a": f"color:{LINK};text-decoration:underline;",
+    # An article cover (todo#2763): fluid to the card, never wider than 600.
+    "img": ("display:block;width:100%;max-width:600px;height:auto;border:0;"
+            "border-radius:8px;margin:0 0 12px;"),
     "strong": f"font-weight:700;color:{INK};",
     "em": f"font-style:italic;color:{INK};",
     # The ranked lists. A bullet list cannot align a column of figures, and an
@@ -628,7 +633,7 @@ def week_id(day: datetime.date) -> str:
 SUBJECT_EMOJI = {
     "layoff": "\U0001F4C9",    # chart decreasing
     "talent": "\U0001F680",    # rocket, Who's hiring
-    "articles": "\U0001F3AF",  # direct hit, AskTheRecruiter blog newsletter
+    "articles": "\U0001F3AF",  # direct hit, Ask The Recruiter blog newsletter
 }
 
 
@@ -1124,7 +1129,7 @@ def preheader_text(parts) -> str:
     #
     # The subject leads with the brand, which costs about twenty characters the
     # From name already supplies, and Gmail on mobile truncates near 45. So on
-    # a phone the reader sees roughly "AskTheRecruiter.com · 2026 Week 33: 16,8"
+    # a phone the reader sees roughly "Ask The Recruiter · 2026 Week 33: 16,8"
     # and the SECOND metric is what falls off the end. The preheader is the one
     # slot left to recover it, so on a combined edition it leads with that
     # second metric and then continues into the leading section's own snippet.
@@ -1168,7 +1173,10 @@ def preheader_text(parts) -> str:
 # ---------------------------------------------------------------------------
 
 def _cell(inner: str, *, padding: str, top_rule: bool = False) -> str:
-    border = f"border-top:1px solid {RULE};" if top_rule else ""
+    # A THICK DIVIDER between sections (owner, 2026-11-19, todo#2763): the
+    # tracker editions read as one wall of paragraphs with a hairline.
+    border = (f"border-top:{email_theme.DIVIDER_PX}px solid {email_theme.DIVIDER};"
+              if top_rule else "")
     klass = "et-card et-rule" if top_rule else "et-card"
     return (f'<tr><td class="{klass}" style="padding:{padding};'
             f'background-color:{CARD_BG};{border}">{inner}</td></tr>')
@@ -1297,10 +1305,13 @@ def tracking_sentences(relay_tracking_on: bool = None) -> tuple:
     if relay_tracking_on is None:
         relay_tracking_on = RELAY_TRACKING_ON
     if relay_tracking_on:
+        # SHORTER AND CALMER (owner, 2026-11-19, todo#2763), never removed.
+        # "How we use this" links the privacy page; "Unsubscribe" is the
+        # one-click link. TRACKING_LINKS names both anchors.
         return (
-            "Our mail provider records whether you open this email and which "
-            "links you follow, to show which sections are worth keeping.",
-            "Unsubscribing stops the email and the measuring together.",
+            "We count opens and clicks to learn which articles help most.",
+            "How we use this.",
+            "Unsubscribe stops both.",
         )
     return (
         "Our mail provider records nothing about how you read this email, and "
@@ -1313,6 +1324,31 @@ def tracking_sentences(relay_tracking_on: bool = None) -> tuple:
 
 
 TRACKING_SENTENCES = tracking_sentences()
+# Where "How we use this" goes: the privacy page's email-measurement section.
+PRIVACY_TRACKING_URL = "https://asktherecruiter.com/privacy#email-opens-and-clicks"
+
+# The sign-up button after the lead story (owner, 2026-11-19, todo#2763).
+CTA_LABEL = "Check my match score"
+CTA_BASE = "https://asktherecruiter.com/"
+
+
+def cta_url(day: str, freq: str = "daily") -> str:
+    """The free match check, tagged so a sign-up is credited to this edition."""
+    stamp = re.sub(r"[^0-9]", "", str(day or ""))[:8]
+    tier = re.sub(r"[^a-z]", "", str(freq or "daily").lower()) or "daily"
+    campaign = f"{tier}-{stamp}" if len(stamp) == 8 else tier
+    return (f"{CTA_BASE}?utm_source=newsletter&utm_medium=email"
+            f"&utm_campaign={campaign}&utm_content=cta")
+
+
+def add_cta(section_html: str, url: str) -> str:
+    """The button goes after the lead story: the first item table's end."""
+    button = email_theme.button(CTA_LABEL, url)
+    at = section_html.find("</table>")
+    if at < 0:
+        return section_html + button
+    at += len("</table>")
+    return section_html[:at] + button + section_html[at:]
 
 
 # HOW A WEEK IS NUMBERED, SAID ONCE, IN THE EDITION THAT USES ONE.
@@ -1370,8 +1406,8 @@ FOOTER_BLOCKS = (
     # CONDENSED AGAIN 2026-11-04 (owner): fewer words, one paragraph; the
     # unsubscribe link, the preferences link and the tracking disclosure stay.
     ("", ("You get this because you subscribed at asktherecruiter.com.",), ""),
-    ("unsub", ("Unsubscribe with one click.",),
-     "Unsubscribe with one click"),
+    # ONE unsubscribe link (owner, 2026-11-19, todo#2763): it lives in the
+    # tracking line below ("Unsubscribe stops both."), which is one click.
     # The reader's OWN signed preferences page (plugin
     # includes/subscriber-prefs.php), carried per recipient. Less mail applies
     # at once; anything that adds mail is confirmed by email.
@@ -1379,8 +1415,8 @@ FOOTER_BLOCKS = (
                 "adding mail needs an email confirmation.",),
      "your preferences page"),
     # The resume call to action (owner decision 2026-09-24), one short line.
-    ("resume", ("Job hunting? Tailor your résumé with AskTheRecruiter.",),
-     "Tailor your résumé"),
+    ("resume", ("Job hunting? Tailor your resume here.",),
+     "Tailor your resume"),
     # CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
     # address. LAST because it is small print, and UNCONDITIONAL because
     # unlike the manage block it is not ours to omit.
@@ -1492,8 +1528,18 @@ def _footer(unsub_url: str, manage_url: str, edition_note: str = "",
             f'{note}'
             f'<p style="margin:0;font-family:{FONT};font-size:{TYPE_SMALL}px;'
             f'line-height:1.6;color:{MUTED};">'
-            + escape(" ".join(TRACKING_SENTENCES)) +
+            + _tracking_html(unsub_url, link) +
             '</p></td></tr></table>')
+
+
+def _tracking_html(unsub_url: str, style: str) -> str:
+    out = escape(" ".join(TRACKING_SENTENCES))
+    for anchor, url in (("How we use this", PRIVACY_TRACKING_URL),
+                        ("Unsubscribe", unsub_url)):
+        if url and escape(anchor) in out:
+            out = out.replace(escape(anchor),
+                              f'<a href="{url}" style="{style}">{escape(anchor)}</a>', 1)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -1555,7 +1601,7 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
                 unsub_url: str, manage_url: str,
                 edition_note: str = "", notice: str = "",
                 resume_url: str = "", images: list | None = None,
-                dark_mode: bool = False) -> str:
+                dark_mode: bool = False, cta: str = "") -> str:
     """The whole message. Tables, inline styles for every light-mode rule.
 
     `images`: pass a list to turn up to three chart blocks into inline PNG
@@ -1579,7 +1625,11 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
                                                           images)
         section_html = arrange_section(section_html, product_name(parts))
         section_html = digest_design.add_charts(section_html, accent)
-        cell = _cell(restyle(section_html, accent), padding=padding,
+        styled = restyle(section_html, accent)
+        # One button per email, after the lead section (owner, 2026-11-19).
+        if cta and index == 0:
+            styled = add_cta(styled, cta)
+        cell = _cell(styled, padding=padding,
                      top_rule=bool(index))
         if images:
             cell = digest_design.place_image_charts(cell, images)
@@ -1677,7 +1727,7 @@ def _reflow(block: str) -> str:
 
 def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
                 edition_note: str = "", notice: str = "",
-                resume_url: str = "") -> str:
+                resume_url: str = "", cta: str = "") -> str:
     """A real alternative, not a stripped tag byproduct.
 
     Every figure, every entry and both ways out are here, because for a text
@@ -1697,6 +1747,8 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
         if index:
             body.append(thin)
         body.append(_reflow(plain_dashes(part_text(part))))
+        if cta and index == 0:
+            body.append(f"{CTA_LABEL}:\n{cta}")
     # THE SAME SENTENCES AS THE HTML PART, FROM THE SAME PLACE. For a text
     # only client and for every screen reader fallback this IS the message, so
     # it may not be a shorter or older version of what everyone else was told.
@@ -1721,4 +1773,7 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
         footer.append(_reflow(edition_note))
         footer.append("")
     footer.append(_reflow(" ".join(TRACKING_SENTENCES)))
+    footer.append(f"How we use this: {PRIVACY_TRACKING_URL}")
+    footer.append("Unsubscribe:")
+    footer.append(unsub_url)
     return "\n".join(head + [rule, ""] + body + [""] + footer) + "\n"

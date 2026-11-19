@@ -495,10 +495,10 @@ function alt_digest_send_welcome($row) {
     if (function_exists('alt_account_mail_welcome_html') && function_exists('alt_digest_deliver')
         && !empty($row['unsub_token'])) {
         $html = alt_account_mail_welcome_html($text, $prefs_url, alt_digest_unsub_url($row['unsub_token']));
-        $ok = alt_digest_deliver($row['email'], 'AskTheRecruiter.com: you are subscribed', $html, $text,
+        $ok = alt_digest_deliver($row['email'], 'Ask The Recruiter: you are subscribed', $html, $text,
                                  $row['unsub_token']);
     } else {
-        $ok = wp_mail($row['email'], 'AskTheRecruiter.com: you are subscribed', $text, $headers);
+        $ok = wp_mail($row['email'], 'Ask The Recruiter: you are subscribed', $text, $headers);
     }
     if ($ok) {
         $b['welcome'] = (int) $b['welcome'] + 1;
@@ -519,6 +519,9 @@ function alt_digest_footer_text($unsub_url, $manage_url = '') {
         if ($block['url']) $t = rtrim($t, '.') . ":\n" . $block['url'];
         $out[] = $t;
     }
+    // The tracking note carries the one unsubscribe link (todo#2763).
+    $out[] = (defined('ALT_DIGEST_TRACKING_NOTE') ? ALT_DIGEST_TRACKING_NOTE . "\n" : '')
+           . "Unsubscribe:\n" . $unsub_url;
     return implode("\n\n", $out);
 }
 

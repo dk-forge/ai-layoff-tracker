@@ -37,6 +37,10 @@ class RelayTagging(unittest.TestCase):
                    and not any(p in u for p in digest_utm.NEVER_TAG)]
             self.assertTrue(own)
             for u in own:
+                # The match-score button carries its own tags (todo#2763).
+                if "utm_content=cta" in u:
+                    self.assertIn("utm_source=newsletter", u)
+                    continue
                 self.assertIn("utm_source=ai-layoff-tracker", u, u)
 
     def test_reader_tokens_and_the_unsubscribe_header_are_never_touched(self):

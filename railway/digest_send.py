@@ -617,12 +617,14 @@ def build_message(payload: dict, recipient: dict, from_addr: str,
     # the transport contract is unchanged. IMAGE_CHARTS turns the PNG path
     # back on in one place; the transport tests still exercise it.
     images: list = []
+    cta = digest_layout.cta_url(str(payload.get("to") or ""),
+                                str(payload.get("freq") or "daily"))
     html = digest_layout.render_html(
         parts, subject=subject, preheader=digest_layout.preheader_text(parts),
         kicker=kicker, notice=notice, unsub_url=unsub, manage_url=manage,
         edition_note=edition_note, resume_url=resume, images=images if IMAGE_CHARTS else None,
-        dark_mode=True)
-    text = digest_layout.render_text(parts, kicker=kicker, notice=notice,
+        dark_mode=True, cta=cta)
+    text = digest_layout.render_text(parts, kicker=kicker, notice=notice, cta=cta,
                                      unsub_url=unsub,
                                      manage_url=manage, edition_note=edition_note,
                                      resume_url=resume)

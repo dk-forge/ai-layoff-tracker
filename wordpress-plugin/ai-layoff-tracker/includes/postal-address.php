@@ -14,7 +14,7 @@ function alt_mail_postal_address_config() {
     return $cfg;
 }
 
-/** "AskTheRecruiter, <street>, <locality>." with empty parts left out. */
+/** "Ask The Recruiter, <street>, <locality>." with empty parts left out. */
 function alt_mail_postal_address() {
     $c = alt_mail_postal_address_config();
     $parts = array();
@@ -22,7 +22,7 @@ function alt_mail_postal_address() {
         $v = trim((string) ($c[$k] ?? ''));
         if ($v !== '') $parts[] = $v;
     }
-    if (!$parts) $parts = array('AskTheRecruiter');
+    if (!$parts) $parts = array('Ask The Recruiter');
     return implode(', ', $parts) . '.';
 }
 }

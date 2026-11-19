@@ -162,7 +162,8 @@ class SmallCharts(unittest.TestCase):
         # Images only as this message's own inline parts (2026-10-15).
         cids = {img["cid"] for img in built.images}
         for src in re.findall(r'src="([^"]*)"', built.html):
-            self.assertTrue(src.startswith("cid:") and src[4:] in cids, src)
+            self.assertTrue((src.startswith("cid:") and src[4:] in cids)
+                            or src.startswith("https://asktherecruiter.com/"), src)  # todo#2763: only our own https images (logo, covers), each with alt.
         self.assertLessEqual(low.count("<style"), 1)
         self.assertIn('aria-hidden="true"', built.html)
 

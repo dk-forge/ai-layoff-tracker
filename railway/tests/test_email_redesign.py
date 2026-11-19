@@ -47,10 +47,10 @@ class SharedSpec(unittest.TestCase):
                          "-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif")
         self.assertEqual((email_theme.INK, email_theme.MUTED, email_theme.BACKGROUND,
                           email_theme.PANEL, email_theme.BORDER, email_theme.ACCENT),
-                         ("#111827", "#4b5563", "#ffffff", "#f3f4f6", "#e5e7eb", "#1d4ed8"))
+                         ("#20283A", "#404858", "#ffffff", "#FAFAF8", "#ECE7DB", "#4F7257"))  # site tokens, todo#2763
         self.assertEqual((email_theme.DARK_BG, email_theme.DARK_PANEL, email_theme.DARK_INK,
                           email_theme.DARK_MUTED, email_theme.DARK_ACCENT),
-                         ("#0b1220", "#111a2e", "#e5e7eb", "#9ca3af", "#93c5fd"))
+                         ("#1C1C1C", "#252525", "#EDECE6", "#BCB8AA", "#9CC0A1"))
         self.assertEqual(email_theme.RADIUS_PX, 8)
 
     def test_every_text_pair_clears_wcag_aa_in_both_modes(self):
@@ -102,7 +102,7 @@ class TheDefaultMessageDrawsTableBars(unittest.TestCase):
     def test_no_png_and_no_figures_row_that_cannot_shrink(self):
         msg = digest_preview.sample_message()
         self.assertEqual(msg.images, ())
-        self.assertNotIn("<img", msg.html)
+        self.assertIsNone(re.search(r'<img(?![^>]*src="https://asktherecruiter\.com/[^"]*"[^>]*alt="[^"]+")', msg.html, re.I))  # todo#2763: only our own https images (logo, covers), each with alt.
 
 
 class TheMessage(unittest.TestCase):
@@ -131,7 +131,7 @@ class TheMessage(unittest.TestCase):
         self.assertIn(email_theme.dark_style_block(), html)
         self.assertIn("max-width:600px", html)
         self.assertIn("border-radius:8px", html)
-        self.assertIn(">AskTheRecruiter</p>", html)
+        self.assertIn(">Ask The Recruiter</p>", html)
         self.assertIn("font-variant:small-caps", html)
         self.assertIn("48,910</p>", html, "the headline number is text")
         # Own-site links carry the digest's UTM tags (test_digest_utm.py).

@@ -145,6 +145,9 @@ if (!defined('ALT_DIGEST_RETENTION_DAYS')) define('ALT_DIGEST_RETENTION_DAYS', 3
  * over-disclosing for an hour is safe and under-disclosing is the violation.
  */
 if (!defined('ALT_RELAY_TRACKING')) define('ALT_RELAY_TRACKING', true);
+// What every digest footer says about measuring (owner, 2026-11-19, todo#2763).
+if (!defined('ALT_DIGEST_TRACKING_NOTE')) define('ALT_DIGEST_TRACKING_NOTE', 'We count opens and clicks to learn which articles help most. How we use this. Unsubscribe stops both.');
+if (!defined('ALT_DIGEST_PRIVACY_TRACKING_URL')) define('ALT_DIGEST_PRIVACY_TRACKING_URL', 'https://asktherecruiter.com/privacy#email-opens-and-clicks');
 
 /**
  * The always-visible sentence under the Subscribe button.
@@ -1651,7 +1654,7 @@ function alt_digest_unsub_confirm_page($token) {
             . 'color:#ffffff;background:#0b4f9c;border:0;border-radius:8px;cursor:pointer;';
     $html = '<div style="' . esc_attr($wrap) . '">'
           . '<h1 style="font-size:22px;margin:0 0 12px;">Unsubscribe from the '
-          . 'AskTheRecruiter digest?</h1>'
+          . 'Ask The Recruiter digest?</h1>'
           . '<p style="margin:0 0 20px;">One click stops every digest on this address. '
           . 'We delete the address within ' . (int) ALT_DIGEST_RETENTION_DAYS . ' days.</p>'
           . '<form method="post" action="' . esc_url($action) . '">'
@@ -1807,7 +1810,7 @@ add_action('admin_post_nopriv_alt_digest_unsub', 'alt_digest_unsubscribe');
  * rewritten to claim that.
  */
 if (!defined('ALT_DIGEST_FROM_EMAIL')) define('ALT_DIGEST_FROM_EMAIL', 'newsletter@asktherecruiter.com');
-if (!defined('ALT_DIGEST_FROM_NAME'))  define('ALT_DIGEST_FROM_NAME', 'AskTheRecruiter.com');
+if (!defined('ALT_DIGEST_FROM_NAME'))  define('ALT_DIGEST_FROM_NAME', 'Ask The Recruiter');
 if (!defined('ALT_DIGEST_REPLY_TO'))   define('ALT_DIGEST_REPLY_TO', 'info@asktherecruiter.com');
 
 function alt_digest_from_header() {
@@ -1834,7 +1837,7 @@ function alt_digest_from_header() {
  * (railway/tests/test_digest_subscription.py).
  */
 function alt_digest_confirm_subject() {
-    return 'AskTheRecruiter.com: confirm your tracker digest subscription';
+    return 'Ask The Recruiter: confirm your tracker digest subscription';
 }
 
 /**
@@ -1851,11 +1854,11 @@ function alt_digest_confirm_subject() {
  * first and cheapest place to say so. The body says which ones.
  */
 function alt_digest_change_subject() {
-    return 'AskTheRecruiter.com: confirm your digest change';
+    return 'Ask The Recruiter: confirm your digest change';
 }
 
 function alt_digest_change_stops_subject() {
-    return 'AskTheRecruiter.com: confirm a change that stops a digest';
+    return 'Ask The Recruiter: confirm a change that stops a digest';
 }
 
 /**
@@ -3177,7 +3180,7 @@ function alt_digest_data_cut_label() {
 /**
  * THE SUBJECT LINE, AND THERE ARE TWO SENDERS THAT HAVE TO AGREE ON IT.
  *
- * WHAT WENT OUT ON 2026-08-18. "[AskTheRecruiter] Daily tracker digest". No
+ * WHAT WENT OUT ON 2026-08-18. "[Ask The Recruiter] Daily tracker digest". No
  * date anywhere in it, while the body said 17 to 18 August 2026. A digest
  * whose whole pitch is that every figure names its own window shipped the one
  * line a reader sees first with no window at all, and a mailbox holding a
@@ -3419,7 +3422,7 @@ function alt_digest_fallback_subject($freq, $to) {
         $stamp = alt_digest_month_edition_label($m[1] . '-01', $to);
     }
     if ($stamp === '') $stamp = alt_digest_date_range($to, $to);
-    return '[AskTheRecruiter] ' . $label . ' tracker digest'
+    return '[Ask The Recruiter] ' . $label . ' tracker digest'
          . ($stamp === '' ? '' : ', ' . $stamp);
 }
 
@@ -7524,7 +7527,7 @@ function alt_digest_compose_layoff($from, $to, $send_id = 0, $freq = '') {
               // characters and this line ran out at 75. What follows a preview
               // that runs out is the body, and the body starts with the
               // masthead, so the owner's desktop inbox read "... across 73
-              // companies. AskTheRecruiter.c...". The provenance is the right
+              // companies. Ask The Recruiter.c...". The provenance is the right
               // thing to spend the room on: it is the fact a reporter checks
               // first and it is nowhere in the subject.
               $top_source));
@@ -7632,10 +7635,10 @@ function alt_digest_standfirst($text) {
     return rtrim($cut, " ,;:.") . '...';
 }
 
-if (!defined('ALT_CAREER_INSIGHTS')) define('ALT_CAREER_INSIGHTS', 'Career Insights from AskTheRecruiter');
+if (!defined('ALT_CAREER_INSIGHTS')) define('ALT_CAREER_INSIGHTS', 'Career Insights from Ask The Recruiter');
 // The section's own label (owner, 2026-11-04): secondary to the news, opt in only.
 if (!defined('ALT_CAREER_RESOURCES')) define('ALT_CAREER_RESOURCES', 'Career resources');
-if (!defined('ALT_CAREER_RESOURCES_NOTE')) define('ALT_CAREER_RESOURCES_NOTE', 'Optional reads from AskTheRecruiter, sent because you opted into career resources.');
+if (!defined('ALT_CAREER_RESOURCES_NOTE')) define('ALT_CAREER_RESOURCES_NOTE', 'Optional reads from Ask The Recruiter, sent because you opted into career resources.');
 
 /**
  * AN EXCERPT THAT READS LIKE SEO KEYWORD SOUP (owner, 2026-11-03), e.g.
@@ -7798,11 +7801,14 @@ function alt_digest_compose_articles($from, $to, $send_id = 0, $freq = '') {
         if (alt_digest_excerpt_is_keyword_soup($blurb, $title) || strpos($blurb, '?') !== false) {
             $blurb = alt_digest_first_real_sentence(isset($post->post_content) ? $post->post_content : '');
         }
+        $cover = alt_digest_cover($post, $title);
         $items[] = array(
             'title' => $title,
             'link'  => $link,
             'blurb' => $blurb,
             'meta'  => implode(', ', $meta),
+            'cover' => $cover['url'],
+            'alt'   => $cover['alt'],
         );
     }
     if (!$items) return null;
@@ -7849,15 +7855,14 @@ function alt_digest_compose_articles($from, $to, $send_id = 0, $freq = '') {
     $fk = alt_digest_article_kind($featured['title']);
     $click = alt_digest_track_link($send_id, $featured['link']);
     $html .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
-           . '<tr><td data-alt="item-first"><p data-alt="item-title"><a href="' . esc_url($click) . '">'
+           . '<tr><td data-alt="item-first">' . alt_digest_cover_html($featured, $click)
+           . '<p data-alt="item-title"><a href="' . esc_url($click) . '">'
            . esc_html($featured['title']) . '</a></p>';
     $text .= "\n" . $featured['title'] . "\n";
     if ($featured['blurb'] !== '') {
         $html .= '<p data-alt="item-blurb">' . esc_html($featured['blurb']) . '</p>';
         $text .= $featured['blurb'] . "\n";
     }
-    $html .= '<p data-alt="why">' . esc_html($fk['why']) . '</p>';
-    $text .= $fk['why'] . "\n";
     $html .= '<p data-alt="item-meta"><a href="' . esc_url($click) . '">' . esc_html($fk['cta']) . ' &rarr;</a>'
            . ($featured['meta'] !== '' ? ' ' . esc_html($featured['meta']) : '') . '</p></td></tr></table>';
     $text .= $fk['cta'] . ': ' . $featured['link'] . "\n";
@@ -7868,11 +7873,13 @@ function alt_digest_compose_articles($from, $to, $send_id = 0, $freq = '') {
         foreach ($more as $i => $item) {
             $k = alt_digest_article_kind($item['title']);
             $c = alt_digest_track_link($send_id, $item['link']);
-            $html .= '<tr><td data-alt="' . ($i === 0 ? 'item-first' : 'item') . '"><p data-alt="item-title"><a href="'
-                   . esc_url($c) . '">' . esc_html($item['title']) . '</a></p>'
-                   . '<p data-alt="why">' . esc_html($k['why']) . '</p>'
+            $why = $item['blurb'] !== '' ? '<p data-alt="why">' . esc_html($item['blurb']) . '</p>' : '';
+            $html .= '<tr><td data-alt="' . ($i === 0 ? 'item-first' : 'item') . '">'
+                   . alt_digest_cover_html($item, $c) . '<p data-alt="item-title"><a href="'
+                   . esc_url($c) . '">' . esc_html($item['title']) . '</a></p>' . $why
                    . '<p data-alt="item-meta"><a href="' . esc_url($c) . '">' . esc_html($k['cta']) . ' &rarr;</a></p></td></tr>';
-            $text .= '  - ' . $item['title'] . "\n    " . $k['why'] . "\n    " . $k['cta'] . ': ' . $item['link'] . "\n";
+            $text .= '  - ' . $item['title'] . "\n" . ($item['blurb'] !== '' ? '    ' . $item['blurb'] . "\n" : '')
+                   . '    ' . $k['cta'] . ': ' . $item['link'] . "\n";
         }
         $html .= '</table>';
     }
@@ -7884,8 +7891,9 @@ function alt_digest_compose_articles($from, $to, $send_id = 0, $freq = '') {
       put competitors' names in the inbox. The count is the reads printed.
     */
     $n = count($items);
-    $metric = ($n === 1) ? 'One way to strengthen your applications'
-                         : $n . ' ways to strengthen your applications';
+    // SAYS WHAT IS INSIDE (owner, 2026-11-19, todo#2763): it promised "2 ways
+    // to strengthen your applications" over articles that were not ways.
+    $metric = ($n === 1) ? '1 new career read' : $n . ' new career reads';
     return array('html' => $html, 'text' => $text, 'preheader' => $preheader,
                  'metric' => $metric,
                  'minor' => true);
@@ -7897,17 +7905,47 @@ function alt_digest_compose_articles($from, $to, $send_id = 0, $freq = '') {
  * kind of read, never a claim about the post's contents.
  */
 function alt_digest_article_kind($title) {
-    $t = strtolower((string) $title);
-    if (preg_match('/\bvs\.?\b|\bversus\b|compar|\bwhich\b.*\b(worth|best)\b|\bbest\b.*\btools?\b/', $t)) {
-        return array('cta' => 'Read the comparison',
-                     'why' => 'Why it matters: picking the right tool saves you hours on applications that go nowhere.');
+    /*
+      THE LABEL COMES FROM THE ARTICLE (owner, 2026-11-19, todo#2763). A fixed
+      "Read the comparison" and "picking the right tool" sat under a quality
+      over quantity article. The link now names the article itself, cut at a
+      word to stay one line on a phone; the "why" is the article's own
+      standfirst, printed by the composer. Nothing here describes a post.
+    */
+    $t = trim(preg_replace('/\s+/', ' ', (string) $title));
+    $t = preg_split('/[:?!]\s/', $t)[0];
+    if (strlen($t) > 48) {
+        $cut = substr($t, 0, 48);
+        $sp = strrpos($cut, ' ');
+        $t = rtrim($sp ? substr($cut, 0, $sp) : $cut, ' ,;.-') . '...';
     }
-    if (preg_match('/\bhow\b|\bguide\b|\bways?\b|\btips?\b|\bsteps?\b|\bchecklist\b/', $t)) {
-        return array('cta' => 'Read the guide',
-                     'why' => 'Why it matters: a practical step you can use on your next application.');
+    return array('cta' => 'Read: ' . $t, 'why' => '');
+}
+
+/**
+ * The post's own cover (its featured image), https on our site, with alt
+ * text: the image's typed alt, else the post title, never empty.
+ * array('url' => '', 'alt' => '') when there is none; the item still ships.
+ */
+function alt_digest_cover($post, $title) {
+    $url = function_exists('get_the_post_thumbnail_url')
+         ? (string) get_the_post_thumbnail_url($post, 'large') : '';
+    if (!preg_match('#^https://(www\.)?asktherecruiter\.com/[^\s"\'<>]*$#i', $url)) {
+        return array('url' => '', 'alt' => '');
     }
-    return array('cta' => 'Read the article',
-                 'why' => 'Why it matters: context that helps you judge your next move in a changing job market.');
+    $alt = '';
+    if (function_exists('get_post_thumbnail_id') && function_exists('get_post_meta')) {
+        $alt = trim((string) get_post_meta(get_post_thumbnail_id($post), '_wp_attachment_image_alt', true));
+    }
+    return array('url' => $url, 'alt' => $alt !== '' ? $alt : (string) $title);
+}
+
+function alt_digest_cover_html($item, $click) {
+    if (empty($item['cover'])) return '';
+    return '<a href="' . esc_url($click) . '"><img src="' . esc_url($item['cover'])
+         . '" width="600" alt="' . esc_attr($item['alt']) . '"'
+         // Fluid inline: the wp_mail fallback has no restyle pass (Codex P2).
+         . ' style="display:block;width:100%;max-width:600px;height:auto;border:0;"></a>';
 }
 
 /**
@@ -8016,13 +8054,6 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
                 'You get this because you subscribed at asktherecruiter.com.',
             ),
         ),
-        array(
-            'url' => $unsub_url,
-            'anchor' => 'Unsubscribe with one click',
-            'sentences' => array(
-                'Unsubscribe with one click.',
-            ),
-        ),
     );
     // OMITTED RATHER THAN RENDERED WITHOUT A LINK. A promise with nowhere to
     // go is worse than silence, and the relay drops it the same way.
@@ -8038,9 +8069,9 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
     // The resume call to action (owner decision 2026-09-24), one short line.
     $blocks[] = array(
         'url' => function_exists('alt_resume_cta_url') ? alt_resume_cta_url('digest') : '',
-        'anchor' => 'Tailor your résumé',
+        'anchor' => 'Tailor your resume',
         'sentences' => array(
-            'Job hunting? Tailor your résumé with AskTheRecruiter.',
+            'Job hunting? Tailor your resume here.',
         ),
     );
     // CAN-SPAM 15 U.S.C. 7704(a)(5): the sender's valid PHYSICAL postal
@@ -8080,7 +8111,14 @@ function alt_digest_footer_html($unsub_url, $manage_url = '') {
         }
         $out[] = $text;
     }
-    return '<p style="font-size:12px;color:#555;">' . implode(' ', $out) . '</p>';
+    // The calm measurement note (owner, 2026-11-19, todo#2763). Mirror of
+    // TRACKING_SENTENCES in railway/digest_layout.py; tests compare the two.
+    if (!defined('ALT_DIGEST_TRACKING_NOTE')) return '<p style="font-size:12px;color:#555;">' . implode(' ', $out) . '</p>';
+    $note = esc_html(ALT_DIGEST_TRACKING_NOTE);
+    $note = preg_replace('/How we use this/', '<a href="' . esc_url(ALT_DIGEST_PRIVACY_TRACKING_URL) . '">How we use this</a>', $note, 1);
+    $note = preg_replace('/Unsubscribe stops/', '<a href="' . esc_url($unsub_url) . '">Unsubscribe</a> stops', $note, 1);
+    return '<p style="font-size:12px;color:#555;">' . implode(' ', $out) . '</p>'
+         . '<p style="font-size:12px;color:#555;">' . $note . '</p>';
 }
 
 /**

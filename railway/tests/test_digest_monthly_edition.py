@@ -362,7 +362,7 @@ class TheMonthlySubjectNamesTheWindow(unittest.TestCase):
     WINDOW = ("2026-08-01", "2026-08-24")
     PERIOD = "Aug 1-24"
     PHRASE = "August 2026 · August 1-24"
-    FALLBACK = ("[AskTheRecruiter] Monthly tracker digest, "
+    FALLBACK = ("[Ask The Recruiter] Monthly tracker digest, "
                 "August 2026 · August 1-24")
 
     def _payload(self):

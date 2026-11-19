@@ -6,7 +6,7 @@ the sibling repo. It imports nothing from either tracker. Change a token here
 and in the sibling together, or the two emails drift apart.
 
 WHAT LIVES HERE: the font stack, the light and dark palettes, the card radius,
-the brand header (the "AskTheRecruiter" small-caps wordmark line above the
+the brand header (the "Ask The Recruiter" small-caps wordmark line above the
 product name) and the one optional <style> block that switches a client which
 honours `prefers-color-scheme` to the dark palette.
 
@@ -22,21 +22,23 @@ from html import escape
 
 FONT = "-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
 
-# Light palette.
-INK = "#111827"
-MUTED = "#4b5563"
+# Light palette: the SITE tokens, the same values as the product emails
+# (asktherecruiter-sandbox backend/src/services/email_shell/shell.py), so
+# Brevo and Resend mail share one look (owner, 2026-11-19, todo#2763).
+INK = "#20283A"        # site --text (sandbox email_shell NAVY)
+MUTED = "#404858"      # site --text-muted
 BACKGROUND = "#ffffff"   # the card
-PANEL = "#f3f4f6"        # the page behind the card, and inset panels
-BORDER = "#e5e7eb"
+PANEL = "#FAFAF8"        # site --bg: the page behind the card, and inset panels
+BORDER = "#ECE7DB"     # site --surface-3
 PILL_BG = "#eef1f5"     # the tint behind an item card's pills
-ACCENT = "#1d4ed8"       # links and buttons
+ACCENT = "#4F7257"       # site --primary-deep: links and buttons
 
 # Dark palette.
-DARK_BG = "#0b1220"
-DARK_PANEL = "#111a2e"
-DARK_INK = "#e5e7eb"
-DARK_MUTED = "#9ca3af"
-DARK_ACCENT = "#93c5fd"
+DARK_BG = "#1C1C1C"
+DARK_PANEL = "#252525"
+DARK_INK = "#EDECE6"
+DARK_MUTED = "#BCB8AA"
+DARK_ACCENT = "#9CC0A1"
 
 # Light tints a section may set inline, and what each becomes in dark mode.
 # Kept generic (any tracker's highlight green, bar track grey, panel) so the
@@ -48,7 +50,16 @@ DARK_RULES = (("#15181d", DARK_MUTED), (INK, DARK_MUTED), (BORDER, "#1f2a44"))
 
 RADIUS_PX = 8
 WIDTH_PX = 600
-WORDMARK = "AskTheRecruiter"
+WORDMARK = "Ask The Recruiter"
+# The brand mark, a PNG served by our own site (Gmail and Outlook do not render
+# SVG). Same file for all three editions: neither tracker repo carries its own
+# logo, and the trackers are Ask The Recruiter products (todo#2763).
+LOGO_URL = "https://asktherecruiter.com/apple-touch-icon.png"
+LOGO_PX = 40
+# The thick rule between sections, so a long edition reads as blocks.
+DIVIDER_PX = 4
+DIVIDER = ACCENT  # brand green, clearly visible
+BUTTON_TEXT = "#ffffff"
 
 # Class names the dark block targets. Inline styles carry the light values;
 # a class only ever ADDS the dark override.
@@ -60,6 +71,8 @@ CLASSES = {
     "muted": "et-muted",
     "link": "et-link",
     "rule": "et-rule",
+    "button": "et-btn",
+    "button_cell": "et-btn-td",
 }
 
 LIGHT_PAIRS = ((INK, BACKGROUND), (MUTED, BACKGROUND), (ACCENT, BACKGROUND),
@@ -98,6 +111,11 @@ def dark_style_block() -> str:
         f".{c['muted']}{{color:{DARK_MUTED}!important;}}"
         f".{c['card']} a,.{c['link']}{{color:{DARK_ACCENT}!important;}}"
         f".{c['rule']}{{border-color:#1f2a44!important;}}"
+        # The button keeps its own AA pair (Codex P2, todo#2763): after the
+        # generic link rule, so the dark link colour never paints its label.
+        f".{c['card']} a.et-btn{{color:{DARK_BG}!important;"
+        f"background-color:{DARK_ACCENT}!important;}}"
+        f".et-btn-td{{background-color:{DARK_ACCENT}!important;}}"
         # Inline light tints that would otherwise stay light under dark ink.
         + "".join(f'.{c["card"]} [style*="background-color:{light}"],'
                   f'.{c["card"]} [bgcolor="{light}"]'
@@ -118,7 +136,10 @@ def head_meta() -> str:
 
 def brand_header(product: str, kicker: str = "") -> str:
     """The wordmark line, then the product name, then an optional kicker."""
-    out = (f'<p class="{CLASSES["muted"]}" style="margin:0;font-family:{FONT};'
+    logo = (f'<img data-logo src="{LOGO_URL}" width="{LOGO_PX}" height="{LOGO_PX}" '
+            f'alt="{escape(WORDMARK)} logo" style="display:block;border:0;'
+            f'width:{LOGO_PX}px;height:{LOGO_PX}px;border-radius:8px;margin:0 0 10px;">')
+    out = logo + (f'<p class="{CLASSES["muted"]}" style="margin:0;font-family:{FONT};'
            f'font-size:13px;line-height:1.4;font-weight:600;'
            f'font-variant:small-caps;letter-spacing:0.08em;color:{MUTED};">'
            f'{escape(WORDMARK)}</p>'
@@ -131,3 +152,15 @@ def brand_header(product: str, kicker: str = "") -> str:
                 f'letter-spacing:0.06em;text-transform:uppercase;'
                 f'color:{MUTED};">{escape(kicker)}</p>')
     return out
+
+
+def button(label: str, url: str) -> str:
+    """The one call-to-action button: a bulletproof table cell, inline styles."""
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
+            f'style="margin:8px 0 18px;border-collapse:separate;"><tr>'
+            f'<td class="et-btn-td" bgcolor="{ACCENT}" style="background-color:{ACCENT};'
+            f'border-radius:{RADIUS_PX}px;">'
+            f'<a class="et-btn" data-cta href="{escape(url)}" style="display:inline-block;'
+            f'padding:12px 22px;font-family:{FONT};font-size:16px;font-weight:700;'
+            f'line-height:1.2;color:{BUTTON_TEXT};text-decoration:none;'
+            f'border-radius:{RADIUS_PX}px;">{escape(label)}</a></td></tr></table>')
