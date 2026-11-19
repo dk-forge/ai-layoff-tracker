@@ -4768,7 +4768,10 @@ section.alt-ax .alt-ax-table td { padding: 8px 10px; border-bottom: 1px solid va
 }
 .alt-hero-cta-m { display: none; }
 @media (max-width: 600px) {
-    .alt-hero-cta-m { display: block; margin: 10px 0 0; }
+    /* No margin of its own: the hero spacing already separates it, and every
+       pixel here moves the digest route, which must stay on a 375x812
+       first screen (test_digest_route_is_findable). */
+    .alt-hero-cta-m { display: block; margin: 0; }
     .alt-hero-cta-m a {
         display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px;
         border-radius: 999px; font-weight: 700; text-decoration: none;
