@@ -132,7 +132,7 @@ def payload(sections=("layoff",), **over):
         "send_id": 7,
         "from": "2026-08-07",
         "to": "2026-08-14",
-        "subject": "[AskTheRecruiter] Weekly tracker digest",
+        "subject": "[Ask The Recruiter] Weekly tracker digest",
         "manage_url": MANAGE,
         "sections": {name: available[name] for name in sections},
         "recipients": [{"id": 1, "email": "reader@example.com",
@@ -462,7 +462,7 @@ class TheSubjectSaysWhatChanged(unittest.TestCase):
     def test_a_period_it_cannot_read_falls_back_to_the_sites_subject(self):
         built = message(to="not-a-date")
         # The section's emoji still leads (owner 2026-11-02); the words fall back.
-        self.assertEqual(built.subject, "\U0001F4C9 [AskTheRecruiter] Weekly tracker digest")
+        self.assertEqual(built.subject, "\U0001F4C9 [Ask The Recruiter] Weekly tracker digest")
 
 
 class ThePlainTextAlternative(unittest.TestCase):
@@ -521,8 +521,10 @@ class ThePromisesAreUnchanged(unittest.TestCase):
         self.assertNotIn("To change what you get", built.html)
 
     def test_nothing_in_the_shell_fetches_from_a_server(self):
-        html = message(("layoff", "talent", "articles")).html.lower()
-        for token in ("<img", "url(", "background=", "src="):
+        html = message(("layoff", "talent", "articles")).html
+        self.assertIsNone(re.search(r'<img(?![^>]*src="https://asktherecruiter\.com/[^"]*"[^>]*alt="[^"]+")', html, re.I))  # todo#2763: only our own https images (logo, covers), each with alt.
+        html = re.sub(r"<img\b[^>]*>", "", html).lower()
+        for token in ("url(", "background=", "src="):
             self.assertNotIn(token, html)
 
     def test_every_link_says_where_it_goes(self):
@@ -801,7 +803,7 @@ class TheTrackingSentenceIsTrue(unittest.TestCase):
     def _flat(part):
         """The plain text part is wrapped to a terminal width, so a sentence
         crosses a line break. Compare on the words, not on the line endings."""
-        return " ".join(part.split())
+        return " ".join(re.sub(r"<[^>]+>", "", part).split())
 
     def test_both_parts_say_plainly_what_is_measured(self):
         """Whatever the relay state, both parts must name what is recorded and
@@ -812,10 +814,9 @@ class TheTrackingSentenceIsTrue(unittest.TestCase):
         for part in (built.html, built.text):
             flat = self._flat(part)
             if layout.RELAY_TRACKING_ON:
-                self.assertIn("records whether you open this email", flat)
-                self.assertIn("which links you follow", flat)
-                self.assertIn("Unsubscribing stops the email and the measuring",
-                              flat)
+                # The calm line (owner, 2026-11-19, todo#2763).
+                self.assertIn("We count opens and clicks", flat)
+                self.assertIn("Unsubscribe stops both.", flat)
             else:
                 # The negative is the whole promise, so it is pinned rather
                 # than left to the absence of the positive.
@@ -840,8 +841,9 @@ class TheTrackingSentenceIsTrue(unittest.TestCase):
         """The tracking is the relay's. Do not weaken this to match the copy."""
         built = message(("layoff", "talent", "articles"))
         dt.assert_message_is_clean(built)
-        lowered = built.html.lower()
-        for token in ("<img", "url(", "src=", "background="):
+        self.assertIsNone(re.search(r'<img(?![^>]*src="https://asktherecruiter\.com/[^"]*"[^>]*alt="[^"]+")', built.html, re.I))  # todo#2763: only our own https images (logo, covers), each with alt.
+        lowered = re.sub(r"<img\b[^>]*>", "", built.html).lower()
+        for token in ("url(", "src=", "background="):
             self.assertNotIn(token, lowered)
 
 

@@ -89,7 +89,7 @@ class EmailBody(unittest.TestCase):
         self.assertTrue(body.startswith("Hello,"))
         self.assertNotIn("every figure links to its source", body)
         self.assertIn("full report", body)
-        self.assertIn("AskTheRecruiter, Netherlands.", body)
+        self.assertIn("Ask The Recruiter, Netherlands.", body)
         self.assertNotIn("#E313", body)
 
 

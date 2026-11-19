@@ -383,6 +383,8 @@ function get_posts($args = array()) {
         $o->post_date_gmt = (string) ($p['date'] ?? '');
         $o->post_content = (string) ($p['content'] ?? '');
         $o->permalink = (string) ($p['link'] ?? '');
+        $o->cover = (string) ($p['cover'] ?? '');
+        $o->cover_alt = (string) ($p['cover_alt'] ?? '');
         $out[] = $o;
     }
     return $out;
@@ -390,6 +392,9 @@ function get_posts($args = array()) {
 function get_the_title($p) { return $p->post_title; }
 function get_permalink($p) { return $p->permalink; }
 function get_the_excerpt($p) { return $p->post_excerpt; }
+function get_the_post_thumbnail_url($p, $size = '') { return $p->cover ?? ''; }
+function get_post_thumbnail_id($p) { return $p; }
+function get_post_meta($p, $k = '', $single = false) { return is_object($p) ? ($p->cover_alt ?? '') : ''; }
 function wp_strip_all_tags($s) { return strip_tags((string) $s); }
 
 require $argv[1];

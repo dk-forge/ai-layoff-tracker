@@ -23,7 +23,7 @@ def config() -> dict:
 def postal_address(cfg: dict | None = None) -> str:
     cfg = config() if cfg is None else cfg
     parts = [str(cfg.get(k) or "").strip() for k in ("name", "street", "locality")]
-    parts = [p for p in parts if p] or ["AskTheRecruiter"]
+    parts = [p for p in parts if p] or ["Ask The Recruiter"]
     return ", ".join(parts) + "."
 
 

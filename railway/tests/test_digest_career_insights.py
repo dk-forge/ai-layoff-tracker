@@ -1,4 +1,4 @@
-"""The blog digest is "Career Insights from AskTheRecruiter" (owner, 2026-11-03).
+"""The blog digest is "Career Insights from Ask The Recruiter" (owner, 2026-11-03).
 
 One featured read (title, a one or two sentence summary, "Read"), then two
 secondary reads; no machine caption like "The 3 newest of 5 posts we
@@ -57,7 +57,7 @@ class CareerInsights(unittest.TestCase):
         self.assertTrue(self.text.startswith("Career resources\n"))
         self.assertNotIn("AI Layoff Tracker", self.text + self.html)
         self.assertEqual(digest_layout.product_name([("articles",)]),
-                         "Career Insights from AskTheRecruiter")
+                         "Career Insights from Ask The Recruiter")
 
     def test_no_machine_lines(self):
         body = self.text + self.html
@@ -68,11 +68,11 @@ class CareerInsights(unittest.TestCase):
     def test_one_featured_then_two_secondary(self):
         feat = self.text.split("Also worth reading")[0]
         self.assertIn(TITLE, feat)
-        self.assertIn("Read the comparison: https://asktherecruiter.com/blog/resume-tools/", feat)
+        self.assertIn("Read: Which résumé tool is worth it: https://asktherecruiter.com/blog/resume-tools/", feat)
         more = self.text.split("Also worth reading")[1]
         self.assertEqual(len(re.findall(r"^  - ", more, re.M)), 2)
         self.assertNotIn("A fourth post", self.text)
-        self.assertIn("Read the comparison &rarr;", self.html)
+        self.assertIn("Read: Which résumé tool is worth it &rarr;", self.html)
 
     def test_keyword_soup_falls_back_to_first_real_sentence(self):
         self.assertNotIn("match score job description", self.text)
@@ -81,7 +81,7 @@ class CareerInsights(unittest.TestCase):
 
     def test_subject_leads_with_the_benefit_not_the_title(self):
         # Superseded 2026-11-04 (owner): the title named competitors.
-        self.assertEqual(self.out["metric"], "3 ways to strengthen your applications")
+        self.assertEqual(self.out["metric"], "3 new career reads")
 
     def test_house_style(self):
         body = self.text + self.html

@@ -37,7 +37,7 @@ class WeeklyCarriesEveryPost(unittest.TestCase):
         out = compose(fixture("weekly"))
         for i in range(N):
             self.assertIn(f"Recruiter read number {i}\n", out["text"])
-        self.assertEqual(out["metric"], f"{N} ways to strengthen your applications")
+        self.assertEqual(out["metric"], f"{N} new career reads")
 
     def test_daily_keeps_one_featured_and_two_more(self):
         out = compose(fixture("daily"))

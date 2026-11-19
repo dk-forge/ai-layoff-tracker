@@ -103,7 +103,7 @@ def sample_message():
     data = sample_payload()
     return digest_send.build_message(
         data, data["recipients"][0],
-        "AskTheRecruiter.com <digest@asktherecruiter.com>",
+        "Ask The Recruiter <digest@asktherecruiter.com>",
         "info@asktherecruiter.com")
 
 

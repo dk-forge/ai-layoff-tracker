@@ -164,7 +164,7 @@ class DigestFooter(unittest.TestCase):
     def test_default_footer_links_the_tagged_url(self):
         html = layout._footer(self.UNSUB, "")
         self.assertIn("utm_campaign=digest", html)
-        self.assertIn("Tailor your résumé", html)
+        self.assertIn("Tailor your resume", html)
         self.assertNotIn("Laid off?", html, "the footer goes to every reader; keep it broad")
 
     def test_text_part_carries_it_too(self):
