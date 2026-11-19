@@ -147,6 +147,8 @@ class Newsletter(unittest.TestCase):
         # No alt typed on the image: the title is the alt, never empty.
         self.assertIn('alt="How recruiters read a gap year"', html)
         self.assertIn('width="600"', html)
+        # The wp_mail fallback has no restyle pass: fluid inline (Codex P2).
+        self.assertIn('style="display:block;width:100%;max-width:600px;height:auto;border:0;"', html)
 
     def test_labels_come_from_the_article_not_a_fixed_string(self):
         body = self.out["html"] + self.out["text"]

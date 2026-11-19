@@ -7943,7 +7943,9 @@ function alt_digest_cover($post, $title) {
 function alt_digest_cover_html($item, $click) {
     if (empty($item['cover'])) return '';
     return '<a href="' . esc_url($click) . '"><img src="' . esc_url($item['cover'])
-         . '" width="600" alt="' . esc_attr($item['alt']) . '"></a>';
+         . '" width="600" alt="' . esc_attr($item['alt']) . '"'
+         // Fluid inline: the wp_mail fallback has no restyle pass (Codex P2).
+         . ' style="display:block;width:100%;max-width:600px;height:auto;border:0;"></a>';
 }
 
 /**
