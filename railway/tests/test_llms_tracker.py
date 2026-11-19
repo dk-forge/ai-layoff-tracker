@@ -116,6 +116,13 @@ class HubKeyNumbers(TrackerLlms):
         self.assertIn("812,345 verified job cuts that took effect in 2026 so far", html)
         self.assertIn("812,345 verified job cuts that took effect in 2026 so far", txt)
 
+    def test_human_as_of_gets_an_iso_datetime(self):
+        # The live bundle's as_of reads "Nov 18, 2026"; datetime must be ISO.
+        ps = {"split": {"as_of": "Nov 18, 2026", "to_date": 5, "year": 2026}}
+        html = self._php("function esc_attr($s){return $s;} function esc_html($s){return $s;} function esc_url($s){return $s;}"
+                         "echo alt_key_numbers_html(json_decode(%s, true));" % json.dumps(json.dumps(ps)))
+        self.assertIn('<time datetime="2026-11-18">November 18, 2026</time>', html)
+
     def test_cold_cache_prints_nothing(self):
         out = self._php("function esc_attr($s){return $s;} function esc_html($s){return $s;} function esc_url($s){return $s;} echo alt_key_numbers_html(false);")
         self.assertEqual(out, "")
