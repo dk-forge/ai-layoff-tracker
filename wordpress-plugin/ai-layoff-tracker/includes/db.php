@@ -6535,7 +6535,7 @@ function alt_api_cached($tag, WP_REST_Request $r, $compute) {
  * PHP workers and MySQL saturate. Two guards, both MySQL named locks so they
  * hold across PHP workers:
  *  - one lock per cache key, so N visitors asking for the same cold key run it
- *    once and the rest wait (up to 10 s) and read the stored answer;
+ *    once and the rest wait (visitors 2 s, internal callers 12 s) and read the stored answer;
  *  - ALT_COLD_SLOTS slots for cold computes in total. With none free the
  *    request gets a clean 503 + Retry-After, which the page retries (up to three times),
  *    instead of queueing into a worker timeout that surfaces as a 500.
@@ -6619,7 +6619,8 @@ function alt_cold_compute_guard($key, $run, $outer = true) {
     }
     // Wait at most 2 s: a waiter holds a PHP worker, and running out of
     // workers is what produced the 500s. Past that it answers busy and the
-    // page retries (up to three times, 3 s apart, inside its 20 s deadline).
+    // page retries every 3 s (up to three times; about two fit inside its
+    // 20 s deadline). A longer wait would answer sooner but pin workers.
     // On MySQL < 5.7 / MariaDB < 10.0.2 a session holds one named lock, so
     // taking a slot drops this key lock: the cap still holds, single-flight
     // degrades to best effort.
