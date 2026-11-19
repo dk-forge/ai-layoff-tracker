@@ -4886,9 +4886,15 @@
         TN:[-86.4,35.8],TX:[-99.3,31.5],UT:[-111.7,39.3],VT:[-72.7,44],VA:[-78.8,37.5],WA:[-120.5,47.4],
         WV:[-80.6,38.6],WI:[-89.9,44.6],WY:[-107.5,43]
     };
+    // SELF-HOSTED AND PINNED (todo#1881 item 7, review B4). These came from
+    // jsdelivr with floating majors (world-atlas@2, us-atlas@3), so a blocked
+    // or failing CDN blanked the map. assets/vendor/README.md lists versions,
+    // licences and hashes.
+    var VENDOR = (window.altData && window.altData.vendorUrl) || '';
+    var VENDOR_Q = '?ver=' + encodeURIComponent((window.altData && window.altData.vendorVer) || '');
     var TOPO_URL = {
-        world: 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json',
-        us: 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
+        world: VENDOR + 'countries-50m.json' + VENDOR_Q,   // world-atlas@2.0.2
+        us: VENDOR + 'states-10m.json' + VENDOR_Q          // us-atlas@3.0.1
     };
     var AIMAP = { scope: 'world', data: null, outline: {}, loading: {}, transform: null, transformScope: null, retries: 0, revealed: false };
     // Draw the map only once its card scrolls near the viewport, so the initial
@@ -4899,8 +4905,8 @@
     // every visitor (perf audit 2026-07-25: they were 30% of the eager JS and
     // defeated the atlas lazy-load). renderAiMap() already polls d3Ready() for
     // up to 6s, which absorbs the CDN fetch time.
-    var MAP_LIBS = ['https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js',
-                    'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js'];
+    var MAP_LIBS = [VENDOR + 'd3.min.js' + VENDOR_Q,                  // d3@7.9.0
+                    VENDOR + 'topojson-client.min.js' + VENDOR_Q];    // topojson-client@3.1.0
     function loadMapLibs() {
         if (loadMapLibs._done) return;
         loadMapLibs._done = true;
@@ -4937,7 +4943,10 @@
     function loadTopo(scope) {
         if (AIMAP.outline[scope]) return Promise.resolve(AIMAP.outline[scope]);
         if (AIMAP.loading[scope]) return AIMAP.loading[scope];
-        AIMAP.loading[scope] = fetch(TOPO_URL[scope]).then(function (r) { return r.json(); }).then(function (topo) {
+        AIMAP.loading[scope] = fetch(TOPO_URL[scope]).then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        }).then(function (topo) {
             var obj = scope === 'us' ? topo.objects.states : topo.objects.countries;
             var feats = window.topojson.feature(topo, obj).features;
             AIMAP.outline[scope] = feats;
@@ -4990,7 +4999,10 @@
         if (!box || !AIMAP.data) return;
         if (!d3Ready()) {
             if (note) { note.style.display = ''; note.textContent = 'Map library still loading…'; }
-            if ((AIMAP.retries = (AIMAP.retries || 0) + 1) <= 20) setTimeout(renderAiMap, 300);
+            if ((AIMAP.retries = (AIMAP.retries || 0) + 1) <= 20) { setTimeout(renderAiMap, 300); return; }
+            // The library never arrived: show the same figures as a table
+            // rather than a blank box (it used to say nothing at all).
+            renderAiMapFallback(box, note, 'The map could not load, so here are the same figures as a table.');
             return;
         }
         AIMAP.retries = 0;
@@ -5323,8 +5335,28 @@
             zoom.on('zoom.reset', function () { syncReset(); });
             syncReset();
         }).catch(function () {
-            if (note) { note.style.display = ''; note.textContent = 'Map data could not be loaded.'; }
+            renderAiMapFallback(box, note, 'The map could not load, so here are the same figures as a table.');
         });
+    }
+
+    // A plain table of the points the map would draw: same rows, same basis
+    // (aiMapPoints), so the fallback can never show a different number.
+    function renderAiMapFallback(box, note, msg) {
+        if (note) { note.style.display = ''; note.textContent = msg; }
+        if (!box || !AIMAP.data) return;
+        var scope = AIMAP.scope === 'us' ? 'us' : 'world';
+        var pts = [];
+        try { pts = aiMapPoints(scope, AIMAP.data) || []; } catch (e) { pts = []; }
+        pts = pts.slice().sort(function (a, b) { return (b.jobs || 0) - (a.jobs || 0); }).slice(0, 20);
+        if (!pts.length) return;
+        var rows = pts.map(function (p) {
+            return '<tr><th scope="row">' + escapeHtml(p.label) + '</th><td>' + fmt(p.jobs || 0)
+                + '</td><td>' + fmt(p.ai || 0) + '</td></tr>';
+        }).join('');
+        box.innerHTML = '<div class="alt-map-fallback"><table class="alt-table">'
+            + '<caption>Verified job cuts by ' + (scope === 'us' ? 'US state' : 'country') + ', top ' + pts.length + '</caption>'
+            + '<thead><tr><th scope="col">' + (scope === 'us' ? 'State' : 'Country') + '</th><th scope="col">Verified jobs</th><th scope="col">AI-attributed</th></tr></thead>'
+            + '<tbody>' + rows + '</tbody></table></div>';
     }
 
     function drawMapLegend(svg, w, h, hasHatch) {

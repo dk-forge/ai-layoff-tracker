@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "map-selfhost",
+   "date": "2026-11-19",
+   "version": "2.20.349",
+   "type": "Fix",
+   "area": "reliability",
+   "text": "The layoffs map no longer depends on an outside content network: its drawing library and map outlines are now served from this site at fixed versions. If the map still cannot load, you see the same figures as a table instead of an empty box."
+  },
+  {
    "slug": "mobile-first-screen",
    "date": "2026-11-19",
    "version": "2.20.348",

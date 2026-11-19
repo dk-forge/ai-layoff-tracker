@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.348
+ * Version:           2.20.349
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.348');
+define('ALT_VERSION', '2.20.349');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -1874,6 +1874,10 @@ function alt_enqueue_assets() {
     // Pass data to JS
     wp_localize_script('alt-js', 'altData', array(
         'apiUrl'    => esc_url_raw(rest_url('layoffs/v1/')),
+        // Self-hosted, pinned map libraries and atlases (assets/vendor,
+        // todo#1881 item 7); versioned so a deploy busts the cache.
+        'vendorUrl' => esc_url_raw(ALT_PLUGIN_URL . 'assets/vendor/'),
+        'vendorVer' => ALT_VERSION,
         // The zone every server-side window is counted in, so the board and
         // the date presets ask for the SITE's today (siteNow() in layoffs.js).
         'siteTz'    => function_exists('alt_site_timezone') ? alt_site_timezone()->getName() : 'America/New_York',
