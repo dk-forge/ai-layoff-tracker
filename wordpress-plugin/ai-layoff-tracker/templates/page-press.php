@@ -524,6 +524,9 @@ if (!is_array($alt_ps)) {
         'basis'         => 'effective',
     );
     set_transient(alt_figure_cache_key('press_statements'), $alt_ps, HOUR_IN_SECONDS);
+    // The tracker llms.txt quotes this bundle's dated split; keep the last good
+    // one so a crawler outside this hour still gets the figure with its date.
+    if (!empty($alt_ps['split']['to_date'])) update_option('alt_llms_press_figures', array('split' => $alt_ps['split']), false);
 }
 ?>
 <main class="alt-wrap alt-press-page">
