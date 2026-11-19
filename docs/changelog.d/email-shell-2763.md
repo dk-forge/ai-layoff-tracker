@@ -1,5 +1,5 @@
 ---
-version: vNEXT
+version: 2.20.354
 type: fix
 area: email
 date: 2026-11-19

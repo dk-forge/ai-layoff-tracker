@@ -124,8 +124,10 @@ UNSEPARATED = re.compile(r"(?<![\d,.])\d{4,}(?![\d,.])")
 # string is machine text a reader never parses as a number.
 EXEMPT = (
     re.compile(r"https?://\S+"),
-    re.compile(r"""\s(?:href|src|style|data-alt)\s*=\s*(?:"[^"]*"|'[^']*')"""),
+    re.compile(r"""\s(?:href|src|style|data-alt|bgcolor)\s*=\s*(?:"[^"]*"|'[^']*')"""),
     re.compile(r"\b(?:19|20)\d{2}\b"),
+    # A hex colour is a colour, not a quantity (site palette, todo#2763).
+    re.compile(r"#[0-9A-Fa-f]{6}\b"),
     re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),
     # A STANDARD'S NUMBER IS ITS NAME. The edition note reads "Weeks are
     # ISO-8601", and 8,601 would be a nonsense. Spelled with the word ISO

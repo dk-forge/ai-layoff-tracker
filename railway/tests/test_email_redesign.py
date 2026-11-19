@@ -47,10 +47,10 @@ class SharedSpec(unittest.TestCase):
                          "-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif")
         self.assertEqual((email_theme.INK, email_theme.MUTED, email_theme.BACKGROUND,
                           email_theme.PANEL, email_theme.BORDER, email_theme.ACCENT),
-                         ("#111827", "#4b5563", "#ffffff", "#f3f4f6", "#e5e7eb", "#1d4ed8"))
+                         ("#20283A", "#404858", "#ffffff", "#FAFAF8", "#ECE7DB", "#4F7257"))  # site tokens, todo#2763
         self.assertEqual((email_theme.DARK_BG, email_theme.DARK_PANEL, email_theme.DARK_INK,
                           email_theme.DARK_MUTED, email_theme.DARK_ACCENT),
-                         ("#0b1220", "#111a2e", "#e5e7eb", "#9ca3af", "#93c5fd"))
+                         ("#1C1C1C", "#252525", "#EDECE6", "#BCB8AA", "#9CC0A1"))
         self.assertEqual(email_theme.RADIUS_PX, 8)
 
     def test_every_text_pair_clears_wcag_aa_in_both_modes(self):

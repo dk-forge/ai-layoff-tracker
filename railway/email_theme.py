@@ -22,21 +22,23 @@ from html import escape
 
 FONT = "-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
 
-# Light palette.
-INK = "#111827"
-MUTED = "#4b5563"
+# Light palette: the SITE tokens, the same values as the product emails
+# (asktherecruiter-sandbox backend/src/services/email_shell/shell.py), so
+# Brevo and Resend mail share one look (owner, 2026-11-19, todo#2763).
+INK = "#20283A"        # site --text (sandbox email_shell NAVY)
+MUTED = "#404858"      # site --text-muted
 BACKGROUND = "#ffffff"   # the card
-PANEL = "#f3f4f6"        # the page behind the card, and inset panels
-BORDER = "#e5e7eb"
+PANEL = "#FAFAF8"        # site --bg: the page behind the card, and inset panels
+BORDER = "#ECE7DB"     # site --surface-3
 PILL_BG = "#eef1f5"     # the tint behind an item card's pills
-ACCENT = "#1d4ed8"       # links and buttons
+ACCENT = "#4F7257"       # site --primary-deep: links and buttons
 
 # Dark palette.
-DARK_BG = "#0b1220"
-DARK_PANEL = "#111a2e"
-DARK_INK = "#e5e7eb"
-DARK_MUTED = "#9ca3af"
-DARK_ACCENT = "#93c5fd"
+DARK_BG = "#1C1C1C"
+DARK_PANEL = "#252525"
+DARK_INK = "#EDECE6"
+DARK_MUTED = "#BCB8AA"
+DARK_ACCENT = "#9CC0A1"
 
 # Light tints a section may set inline, and what each becomes in dark mode.
 # Kept generic (any tracker's highlight green, bar track grey, panel) so the
