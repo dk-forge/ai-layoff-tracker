@@ -81,7 +81,9 @@ function alt_atr_cta_is_tracker_route($uri) {
 function alt_atr_cta_is_blog_page() {
     if (alt_atr_cta_is_tracker_page()) return false;
     return (function_exists('is_singular') && is_singular('post'))
-        || (function_exists('is_home') && is_home());
+        || (function_exists('is_home') && is_home())
+        // /blog/ is a static front page here (includes/blog-canonical.php).
+        || (function_exists('is_front_page') && is_front_page());
 }
 
 function alt_atr_cta_blog_url() {

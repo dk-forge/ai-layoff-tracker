@@ -12,7 +12,8 @@ from test_atr_signup_cta import _hrefs, _run_php
 
 WP = ("$GLOBALS['t_single'] = %s; $GLOBALS['t_home'] = %s;\n"
       "function is_singular($t = '') { return $GLOBALS['t_single']; }\n"
-      "function is_home() { return $GLOBALS['t_home']; }\n"
+      "function is_home() { return false; }\n"
+      "function is_front_page() { return $GLOBALS['t_home']; }\n"
       "function get_post_field($f) { return 'Salary-Negotiation_tips<x>'; }\n")
 
 
