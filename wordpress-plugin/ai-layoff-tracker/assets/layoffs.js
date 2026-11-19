@@ -5353,7 +5353,8 @@
             return '<tr><th scope="row">' + escapeHtml(p.label) + '</th><td>' + fmt(p.jobs || 0)
                 + '</td><td>' + fmt(p.ai || 0) + '</td></tr>';
         }).join('');
-        box.innerHTML = '<div class="alt-map-fallback"><table class="alt-table">'
+        // tabindex + label: it scrolls, so it must be reachable by keyboard.
+        box.innerHTML = '<div class="alt-map-fallback" tabindex="0" role="region" aria-label="Map figures as a table"><table class="alt-table">'
             + '<caption>Verified job cuts by ' + (scope === 'us' ? 'US state' : 'country') + ', top ' + pts.length + '</caption>'
             + '<thead><tr><th scope="col">' + (scope === 'us' ? 'State' : 'Country') + '</th><th scope="col">Verified jobs</th><th scope="col">AI-attributed</th></tr></thead>'
             + '<tbody>' + rows + '</tbody></table></div>';

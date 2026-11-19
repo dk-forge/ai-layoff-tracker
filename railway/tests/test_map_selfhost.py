@@ -38,6 +38,16 @@ class SelfHosted(unittest.TestCase):
         self.assertIn('scope="col"', fb)
         self.assertGreaterEqual(JS.count("renderAiMapFallback(box, note,"), 2)  # lib timeout + data failure
 
+    def test_embed_gets_the_vendor_config_too(self):
+        embed = (PLUGIN / "templates" / "page-chart-embed.php").read_text()
+        self.assertIn("'vendorUrl'   => esc_url_raw(ALT_PLUGIN_URL . 'assets/vendor/')", embed)
+        self.assertIn("'vendorVer'   => ALT_VERSION", embed)
+
+    def test_fallback_table_scrolls_inside_the_fixed_map_box(self):
+        css = (PLUGIN / "assets" / "layoffs.css").read_text()
+        self.assertIn("#alt-chart-aimap .alt-map-fallback { height: 100%; overflow: auto; }", css)
+        self.assertIn('class="alt-map-fallback" tabindex="0" role="region"', JS)
+
     def test_atlas_fetch_treats_a_bad_status_as_failure(self):
         lt = JS[JS.index("function loadTopo"):]
         self.assertIn("if (!r.ok) throw new Error('HTTP ' + r.status);", lt[:600])
