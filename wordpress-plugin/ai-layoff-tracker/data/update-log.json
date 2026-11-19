@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "a11y-axe-1881",
+   "date": "2026-11-19",
+   "version": "2.20.347",
+   "type": "Fix",
+   "area": "accessibility",
+   "text": "Accessibility fixes from an automated check: the region buttons now announce whether they are on, the jobless-claims list and two scrolling boxes are reachable by keyboard and read correctly by screen readers, the map has a proper label, and the source links on company, country and industry pages are large enough to tap (WCAG 2.2 target size)."
+  },
+  {
    "slug": "facet-cta-cross-links",
    "date": "2026-11-19",
    "version": "2.20.346",
