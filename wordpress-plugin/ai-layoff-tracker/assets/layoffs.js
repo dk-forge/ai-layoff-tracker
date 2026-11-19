@@ -453,6 +453,10 @@
             el.style.minHeight = reserved + 'px';
             st = BUSY[id] = { el: el, overlay: busyOverlay(el), timer: null, ctrl: null };
         }
+        // A new request for a region supersedes the one in flight: cancel it,
+        // so fast filter clicks do not pile up requests nobody will read.
+        if (st.ctrl) { try { st.ctrl.abort(); } catch (e) { /* settled */ } st.ctrl = null; }
+        if (st.timer) { clearTimeout(st.timer); st.timer = null; }
         st.token = ++BUSY_TOKEN;
         el.setAttribute('aria-busy', 'true');
         st.overlay.classList.remove('alt-load-failed');
@@ -573,7 +577,20 @@
         if (q) url += (url.indexOf('?') > -1 ? '&' : '?') + q;
         var opts = { credentials: 'same-origin' };
         if (signal) opts.signal = signal;
-        return fetch(url, opts).then(function (r) {
+        // 503 + Retry-After is the server's cold-compute cap saying "not now"
+        // (alt_cold_compute_guard). Up to three polite retries, inside the
+        // page's 20 s load deadline; any other status is final.
+        var attempt = function (left) {
+            return fetch(url, opts).then(function (r) {
+                if (r.status !== 503 || !r.headers.get('Retry-After') || left <= 0) return r;
+                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 3) * 1000;
+                return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
+                    if (signal && signal.aborted) throw new Error('aborted');
+                    return attempt(left - 1);
+                });
+            });
+        };
+        return attempt(3).then(function (r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         });
@@ -1157,6 +1174,7 @@
     var LOC = { view: 'country', period: 'ytd', sort: 'jobs', dir: 'desc', all: false };
     var LOC_ROWS = [];
     var LOC_SEQ = 0;
+    var LOC_CTRL = null;
     var LOC_VIEWS = { country: 'alt-f-country', state: 'alt-f-state' };
     var LOC_PERIODS = { week: 1, month: 1, quarter: 1, ytd: 1, all: 1 };
     var LOC_SORTS = { place: 1, jobs: 1, ai_jobs: 1, events: 1, ai_events: 1 };
@@ -1245,7 +1263,10 @@
         var seq = ++LOC_SEQ;
         var st = document.getElementById('alt-loc-status');
         if (st) st.textContent = 'Loading places';
-        apiGet(route, p).then(function (res) {
+        // Cancel the table request this one replaces (todo#1881 item 4).
+        if (LOC_CTRL) { try { LOC_CTRL.abort(); } catch (e) { /* settled */ } }
+        try { LOC_CTRL = new AbortController(); } catch (e) { LOC_CTRL = null; }
+        apiGet(route, p, LOC_CTRL ? LOC_CTRL.signal : null).then(function (res) {
             if (seq !== LOC_SEQ) return;
             LOC_ROWS = (res && res.rows) || [];
             renderLocations();
@@ -1337,20 +1358,58 @@
         }).catch(function () { /* reconciliation is enrichment; never block the table */ });
     }
 
+    // COALESCED (todo#1881 item 4). Every chip, select and preset calls
+    // refreshAll(), and each call fires three or four REST requests; at three
+    // clicks a second that saturated the host into 500s. The page's own state
+    // (saved filters, address bar, chip bar, labels, export links) updates on
+    // every call, so a chip removed mid-burst disappears at once and cannot be
+    // clicked back on. Only the network half is coalesced: the first call
+    // after a quiet spell fetches at once, later calls inside REFRESH_GAP_MS
+    // collapse into one trailing fetch with the final filters.
+    var REFRESH_GAP_MS = 350, REFRESH_TIMER = null, REFRESH_LAST = 0;
     function refreshAll() {
         saveFilters();
         syncUrlFromFilters();
+        updateActiveFilterBar();
+        updateQuickViewStates();
+        updateDropdownSummaries();
+        updateRangeLabel();
+        updateExportLinks();
+        var now = Date.now();
+        // Fetch at once only after a quiet spell. Inside a burst it is a pure
+        // trailing run: a fetch cancelled by the next click still costs the
+        // server its full compute, so a max-wait fetch would be dead work.
+        if (!REFRESH_TIMER && now - REFRESH_LAST >= REFRESH_GAP_MS) {
+            REFRESH_LAST = now;
+            refreshAllNow();
+            return;
+        }
+        // Retire what the burst's first click has in flight, so a late
+        // answer cannot paint old filters under the new chips: the sequence
+        // checks drop it, and busyBegin aborts it and shows loading until the
+        // trailing run lands.
+        AGG_SEQ++; QUERY_SEQ++; LOC_SEQ++;
+        // The trailing run must fetch: an inlined first-load payload would
+        // paint without clearing the loading state begun below.
+        BOOT = null;
+        if (LOC_CTRL) { try { LOC_CTRL.abort(); } catch (e) { /* settled */ } LOC_CTRL = null; }
+        busyBegin('alt-stats-bar', 'Loading the totals');
+        busyBegin('alt-minigrid', 'Loading the charts');
+        busyBegin('alt-cards', 'Loading the records');
+        if (REFRESH_TIMER) clearTimeout(REFRESH_TIMER);
+        REFRESH_TIMER = setTimeout(function () {
+            REFRESH_TIMER = null;
+            REFRESH_LAST = Date.now();
+            refreshAllNow();
+        }, REFRESH_GAP_MS);
+    }
+    function refreshAllNow() {
         // Any filter change is a new result set, so it starts at page one.
         // Paging itself calls loadRows() directly and keeps its page.
         PAGE = 1;
         loadRows();
         fetchAndRenderAggregate();
         loadLocations();
-        updateActiveFilterBar();
-        updateQuickViewStates();
-        updateDropdownSummaries();
-        updateRangeLabel();
-        updateExportLinks();
     }
 
     // The CSV/JSON buttons download exactly what's on screen: the current

@@ -190,7 +190,7 @@ class Script(unittest.TestCase):
         self.assertRegex(b, r"if \(LOC\.\w+ !== LOC_DEFAULTS\.\w+\)")
 
     def test_refresh_reloads_the_table(self):
-        body = JS.split("function refreshAll()")[1][:700]
+        body = JS.split("function refreshAllNow()")[1][:700]
         self.assertIn("loadLocations()", body)
 
     def test_copy_link_uses_the_clipboard_with_a_fallback(self):
