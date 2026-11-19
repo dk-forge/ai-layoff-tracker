@@ -34,6 +34,9 @@ function alt_digest_world_region_order() {
 function alt_digest_world_country_table() {
     static $t = null;
     if ($t !== null) return $t;
+    // 2026-11-19: Afghanistan, Bahamas, Jamaica, Malawi, Mauritius, Palestine and
+    // Samoa were in the corpus but fell through to "Other";
+    // railway/tests/test_every_corpus_country_declared.py now fails on the next one.
     $by_region = array(
         'North America' => array('United States' => 'US', 'USA' => 'US', 'US' => 'US',
             'Canada' => 'CA', 'Greenland' => 'GL', 'Bermuda' => 'BM'),
@@ -59,7 +62,7 @@ function alt_digest_world_country_table() {
             'Israel' => 'IL', 'Jordan' => 'JO', 'Kuwait' => 'KW', 'Lebanon' => 'LB',
             'Oman' => 'OM', 'Qatar' => 'QA', 'Saudi Arabia' => 'SA',
             'Türkiye' => 'TR', 'Turkey' => 'TR', 'United Arab Emirates' => 'AE',
-            'UAE' => 'AE'),
+            'UAE' => 'AE', 'Palestine' => 'PS'),
         'Asia-Pacific' => array('Australia' => 'AU', 'Bangladesh' => 'BD',
             'Cambodia' => 'KH', 'China' => 'CN', "People's Republic of China" => 'CN',
             'Hong Kong' => 'HK', 'India' => 'IN', 'Indonesia' => 'ID', 'Japan' => 'JP',
@@ -68,18 +71,18 @@ function alt_digest_world_country_table() {
             'New Zealand' => 'NZ', 'Pakistan' => 'PK', 'Philippines' => 'PH',
             'Singapore' => 'SG', 'Sri Lanka' => 'LK', 'Taiwan' => 'TW',
             'Thailand' => 'TH', 'Vietnam' => 'VN', 'Kazakhstan' => 'KZ',
-            'Uzbekistan' => 'UZ'),
+            'Uzbekistan' => 'UZ', 'Afghanistan' => 'AF', 'Samoa' => 'WS'),
         'Latin America' => array('Mexico' => 'MX', 'Argentina' => 'AR', 'Bolivia' => 'BO',
             'Brazil' => 'BR', 'Chile' => 'CL', 'Colombia' => 'CO', 'Costa Rica' => 'CR',
             'Dominican Republic' => 'DO', 'Ecuador' => 'EC', 'El Salvador' => 'SV',
             'Guatemala' => 'GT', 'Honduras' => 'HN', 'Nicaragua' => 'NI', 'Panama' => 'PA',
             'Paraguay' => 'PY', 'Peru' => 'PE', 'Puerto Rico' => 'PR', 'Uruguay' => 'UY',
-            'Venezuela' => 'VE'),
+            'Venezuela' => 'VE', 'Bahamas' => 'BS', 'Jamaica' => 'JM'),
         'Africa' => array('Algeria' => 'DZ', 'Botswana' => 'BW', 'Egypt' => 'EG',
             'Ethiopia' => 'ET', 'Ghana' => 'GH', 'Kenya' => 'KE', 'Morocco' => 'MA',
             'Nigeria' => 'NG', 'Rwanda' => 'RW', 'Senegal' => 'SN', 'South Africa' => 'ZA',
             'Tanzania' => 'TZ', 'Tunisia' => 'TN', 'Uganda' => 'UG', 'Zambia' => 'ZM',
-            'Zimbabwe' => 'ZW'),
+            'Zimbabwe' => 'ZW', 'Malawi' => 'MW', 'Mauritius' => 'MU'),
     );
     $t = array();
     foreach ($by_region as $region => $countries) {
