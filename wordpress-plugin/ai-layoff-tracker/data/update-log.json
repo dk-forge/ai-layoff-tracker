@@ -10,6 +10,14 @@
    "text": "Clicking filters quickly no longer makes the tracker's data requests fail. Rapid clicks are now combined into one request with your final filters, a request that a newer click replaces is cancelled, and the server computes each uncached view only once at a time, with a short \"busy, retry\" reply (retried automatically) instead of an error when it is overloaded."
   },
   {
+   "slug": "tracker-llms-1853",
+   "date": "2026-11-18",
+   "version": "2.20.343",
+   "type": "New",
+   "area": "seo",
+   "text": "- /blog/ai-layoff-tracker/llms.txt is the tracker's own file (dk-forge/todo#1853): the map, a tracked link to the free resume check, and the year-to-date verified total with its \"as of\" date, its basis (effective date) and the press page that shows it. The figure is the press page's own, kept as the last good dated value when its hourly cache is cold. /blog/llms.txt is unchanged."
+  },
+  {
    "slug": "held-rows-negation",
    "date": "2026-11-18",
    "version": "2.20.342",
