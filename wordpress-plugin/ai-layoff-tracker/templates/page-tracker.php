@@ -1798,7 +1798,7 @@ $alt_hero_basis  = 'counted by filing date';
             <strong>Built for journalists &amp; researchers</strong>
             <p>Free to use with attribution to <strong>asktherecruiter.com</strong>. Every figure links to the source it came from: a filing, an employer statement, or a named source report. Query the full dataset live through our API, and reach the editors at <a href="<?php echo esc_url(home_url('/contact/')); ?>">our contact page</a>, where corrections get priority.</p>
         </div>
-        <code class="alt-journalist-api" tabindex="0"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
+        <code class="alt-journalist-api"><?php echo esc_html('GET ' . wp_make_link_relative($alt_api)); ?></code>
     </div>
 
     <?php // Shared digest signup (one subscriber list for both trackers; see includes/subscribe.php).

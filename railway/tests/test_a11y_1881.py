@@ -23,8 +23,11 @@ class Axe(unittest.TestCase):
     def test_map_label_sits_on_a_role(self):
         self.assertIn('id="alt-chart-aimap" role="figure" aria-label=', TPL)
 
-    def test_api_snippet_scroller_is_focusable(self):
-        self.assertIn('<code class="alt-journalist-api" tabindex="0">', TPL)
+    def test_api_snippet_wraps_instead_of_scrolling(self):
+        # Not focusable (it is no control, and a tap-target test would rightly
+        # flag it); it wraps on phones so there is no scroll region at all.
+        self.assertIn('<code class="alt-journalist-api">', TPL)
+        self.assertIn(".alt-journalist-api { width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere; }", CSS)
 
     def test_source_links_meet_target_size(self):
         self.assertIn(".alt-company-source-list a { display: inline-block; min-height: 24px;", CSS)

@@ -1713,7 +1713,10 @@ body.admin-bar .alt-active-filters--sticky { top: 32px; }
     .alt-search-wrap { flex: none; }
     .alt-sort { justify-content: space-between; }
     .alt-journalist { flex-direction: column; align-items: flex-start; }
-    .alt-journalist-api { width: 100%; box-sizing: border-box; overflow-x: auto; }
+    /* Wraps instead of scrolling: a scroller must be focusable (axe
+       scrollable-region-focusable), and a focusable inline <code> becomes a
+       sub-44px tap target. A path that wraps needs neither (todo#1881). */
+    .alt-journalist-api { width: 100%; box-sizing: border-box; white-space: normal; overflow-wrap: anywhere; }
 }
 
 /* ---------------- Filters ---------------- */
