@@ -60,6 +60,8 @@ LOGO_PX = 40
 DIVIDER_PX = 4
 DIVIDER = ACCENT  # brand green, clearly visible
 BUTTON_TEXT = "#ffffff"
+# The tinted box the call to action sits in (site --surface-2).
+PANEL_TINT = "#F4F1EA"
 
 # Class names the dark block targets. Inline styles carry the light values;
 # a class only ever ADDS the dark override.
@@ -134,8 +136,26 @@ def head_meta() -> str:
             '<meta name="supported-color-schemes" content="light dark">')
 
 
-def brand_header(product: str, kicker: str = "") -> str:
-    """The wordmark line, then the product name, then an optional kicker."""
+def brand_header(product: str, kicker: str = "", logo: bool = True) -> str:
+    """The wordmark line, then the product name, then an optional kicker.
+
+    logo=False: a tracker email. Neither tracker repo has a logo file
+    (checked 2026-11-19, todo#2763), so it is a text wordmark: the product,
+    then "by Ask The Recruiter".
+    """
+    if not logo:
+        out = (f'<p class="{CLASSES["ink"]}" style="margin:0;font-family:{FONT};'
+               f'font-size:20px;line-height:1.25;font-weight:800;'
+               f'letter-spacing:-0.01em;color:{INK};">{escape(product)}</p>'
+               f'<p class="{CLASSES["muted"]}" style="margin:2px 0 0;font-family:{FONT};'
+               f'font-size:13px;line-height:1.4;font-weight:600;color:{MUTED};">'
+               f'by {escape(WORDMARK)}</p>')
+        if kicker:
+            out += (f'<p class="{CLASSES["muted"]}" style="margin:6px 0 0;'
+                    f'font-family:{FONT};font-size:13px;line-height:1.4;'
+                    f'letter-spacing:0.06em;text-transform:uppercase;'
+                    f'color:{MUTED};">{escape(kicker)}</p>')
+        return out
     logo = (f'<img data-logo src="{LOGO_URL}" width="{LOGO_PX}" height="{LOGO_PX}" '
             f'alt="{escape(WORDMARK)} logo" style="display:block;border:0;'
             f'width:{LOGO_PX}px;height:{LOGO_PX}px;border-radius:8px;margin:0 0 10px;">')
