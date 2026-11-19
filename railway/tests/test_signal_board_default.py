@@ -406,7 +406,7 @@ class NothingWasRemoved(unittest.TestCase):
         self.assertEqual(
             got,
             [("today", "Today"), ("d7", "Last 7 days"), ("d30", "Last 30 days"),
-             ("d90", "Last quarter"), ("ytd", "Year to date"),
+             ("d90", "Last 90 days"), ("ytd", "Year to date"),
              ("all", "All time")],
             "the quick date presets changed: %r" % (got,))
 

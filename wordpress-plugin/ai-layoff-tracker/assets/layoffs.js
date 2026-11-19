@@ -5627,7 +5627,7 @@
     // stale on the first of a month. The twin is alt_signal_board_labels() in
     // db.php, which carries the full reasoning: the completed periods NAME
     // themselves ("July 2026", "Q2 2026") because the date presets below this
-    // board already say "Last month" and "Last quarter" about ROLLING windows,
+    // board already say "Last 30 days" and "Last 90 days" about ROLLING windows,
     // and one phrase meaning two things on one page is the ambiguity the
     // entries rename removed. The current month is named for the same reason.
     // Today and This week stay relative: unambiguous, and a date over a single
@@ -6168,7 +6168,8 @@
         today: function () { var t = isoDay(siteNow()); return [t, t]; },
         d7:    function () { return [isoDay(daysAgo(6)), isoDay(siteNow())]; },
         d30:   function () { return [isoDay(daysAgo(29)), isoDay(siteNow())]; },
-        // "Last quarter" as the trailing 90 days, not the previous calendar
+        // "Last 90 days" (labelled so since todo#1881; it was "Last quarter",
+        // which read as Q3), the trailing 90 days, not the previous calendar
         // quarter. The Quarters dropdown already offers calendar quarters, and
         // two controls whose labels both say "quarter" and mean different
         // windows is how a reader stops trusting either.

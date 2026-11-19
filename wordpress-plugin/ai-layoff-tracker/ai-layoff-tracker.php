@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.344
+ * Version:           2.20.345
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.344');
+define('ALT_VERSION', '2.20.345');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -325,6 +325,12 @@ if (is_readable($alt_blog_claps)) {
 $alt_roo_feedback = ALT_PLUGIN_DIR . 'includes/roo-feedback.php';
 if (is_readable($alt_roo_feedback)) {
     require_once $alt_roo_feedback;
+}
+// Console hygiene (todo#1881 item 8): the dead Wordfence sync tag and the
+// missing interactivity import map. GUARDED like every new include.
+$alt_console_hygiene = ALT_PLUGIN_DIR . 'includes/console-hygiene.php';
+if (is_readable($alt_console_hygiene)) {
+    require_once $alt_console_hygiene;
 }
 // Reach (audit 2026-11-10): RSS feed discovery, GA4 funnel events, share
 // buttons. GUARDED like every new include; absent, the pages lose only these.
