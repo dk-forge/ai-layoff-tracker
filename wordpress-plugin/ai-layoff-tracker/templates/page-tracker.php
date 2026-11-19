@@ -1800,6 +1800,10 @@ $alt_hero_basis  = 'counted by filing date';
     </section>
     <?php endif; ?>
 
+    <?php // "Key numbers (updated <date>)" (todo#1881 item 10): the llms.txt
+          // sentences, from the press page's own cached bundle, visible and dated.
+          if (function_exists('alt_key_numbers_html') && function_exists('alt_key_numbers_bundle'))
+              echo alt_key_numbers_html(alt_key_numbers_bundle()); ?>
     <div class="alt-journalist">
         <div class="alt-journalist-text">
             <strong>Built for journalists &amp; researchers</strong>

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.349
+ * Version:           2.20.350
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.349');
+define('ALT_VERSION', '2.20.350');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -840,17 +840,58 @@ function alt_tracker_llms_txt_content($ps) {
     }
     $press = home_url('/ai-layoff-tracker/press/');
     $asof = (string) $sp['as_of'];
+    $out .= "\n## Quotable figures (as of $asof)\n";
+    foreach (alt_key_number_lines($ps) as $line) $out .= "- $line Source: $press\n";
+    return $out;
+}
+
+/**
+ * PURE. The tracker's quotable figure(s) as sentences, each opening with its
+ * "as of" date. ONE builder for llms.txt and the hub's "Key numbers" block
+ * (todo#1881 item 10), so the two cannot print different numbers. The figure
+ * is the press page's cached bundle; a cold cache gives no lines, never a
+ * different computation.
+ */
+function alt_key_number_lines($ps) {
+    $sp = (is_array($ps) && isset($ps['split']) && is_array($ps['split'])) ? $ps['split'] : null;
+    if (!$sp || empty($sp['as_of']) || (int) ($sp['to_date'] ?? 0) <= 0 || (int) ($sp['year'] ?? 0) <= 0) {
+        return array();
+    }
+    $asof = (string) $sp['as_of'];
     $year = (int) $sp['year'];
     // One figure, its basis named. The AI tiers are a calendar-year count on a
     // different definition from the tracker's AI box, and the home page
     // headlines a filing-date total: both need the press page's explanation,
     // so they are linked, not restated without it.
-    return $out . "\n## Quotable figures (as of $asof)\n"
-        . "- As of $asof, the AI Layoff Tracker by AskTheRecruiter.com documents "
+    return array("As of $asof, the AI Layoff Tracker by AskTheRecruiter.com documents "
         . number_format((int) $sp['to_date']) . " verified job cuts that took effect in $year so far, "
         . "counted by the date each cut takes effect (the tracker home page counts by filing date, "
-        . "so its headline differs). Source: $press\n";
+        . "so its headline differs).");
 }
+
+/** The press bundle llms.txt reads (alt_serve_llms_txt): live cache, else the last good copy. */
+function alt_key_numbers_bundle() {
+    $ps = get_transient(alt_figure_cache_key('press_statements'));
+    if (!is_array($ps)) $ps = get_option('alt_llms_press_figures');
+    return $ps;
+}
+
+/** The hub's dated "Key numbers" block (todo#1881 item 10). Empty when cold. */
+function alt_key_numbers_html($ps) {
+    $lines = alt_key_number_lines($ps);
+    if (!$lines) return '';
+    $asof = (string) $ps['split']['as_of'];
+    $ts = strtotime($asof);
+    $label = $ts ? date('F j, Y', $ts) : $asof;
+    $out = '<section class="alt-key-numbers" aria-labelledby="alt-key-numbers-h">'
+         . '<h2 id="alt-key-numbers-h">Key numbers (updated <time datetime="' . esc_attr($asof) . '">'
+         . esc_html($label) . '</time>)</h2><ul>';
+    foreach ($lines as $line) $out .= '<li>' . esc_html($line) . '</li>';
+    $out .= '</ul><p>Cite as: "According to the AI Layoff Tracker by AskTheRecruiter.com." '
+          . '<a href="' . esc_url(home_url('/ai-layoff-tracker/press/')) . '">Press kit and soundbites</a></p></section>';
+    return $out;
+}
+
 add_action('init', 'alt_serve_llms_txt', 0);
 
 /**
