@@ -750,7 +750,7 @@ $alt_hero_basis  = 'counted by filing date';
         <button type="button" class="alt-dp" data-dp="today">Today</button>
         <button type="button" class="alt-dp" data-dp="d7">Last 7 days</button>
         <button type="button" class="alt-dp" data-dp="d30">Last 30 days</button>
-        <button type="button" class="alt-dp" data-dp="d90">Last quarter</button>
+        <button type="button" class="alt-dp" data-dp="d90">Last 90 days</button>
         <button type="button" class="alt-dp" data-dp="ytd">Year to date</button>
         <button type="button" class="alt-dp" data-dp="all">All time</button>
         </div>

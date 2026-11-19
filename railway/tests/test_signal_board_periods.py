@@ -20,8 +20,8 @@ WHY THE LABELS ARE WHAT THIS FILE MOSTLY MEASURES.
 
 WHY THE LABELS SAY "JULY 2026" AND NOT "LAST MONTH".
 
-  The date presets below this board are ROLLING windows and already say "Last
-  30 days" and "Last quarter". A completed calendar quarter labelled "Last
+  The date presets below this board are ROLLING windows and say "Last 30
+  days" and "Last 90 days" ("Last quarter" until todo#1881). A completed calendar quarter labelled "Last
   quarter" would put two meanings behind one phrase on one page, which is the
   ambiguity the 2.20.22 entries rename had just removed. Naming the period is
   also what a journalist quotes. The current month is named for the same
@@ -414,7 +414,7 @@ class TheLabelsAreComputed(unittest.TestCase):
         page. A completed calendar period may not borrow the phrase."""
         for day, _ in CLOCKS.values():
             labels = [v.lower() for v in php_board(day)["labels"].values()]
-            for phrase in ("last month", "last quarter", "previous month",
+            for phrase in ("last month", "last quarter", "last 90 days", "previous month",
                            "previous quarter"):
                 self.assertNotIn(
                     phrase, labels,

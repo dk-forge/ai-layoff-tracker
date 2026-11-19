@@ -579,14 +579,34 @@
         if (signal) opts.signal = signal;
         // 503 + Retry-After is the server's cold-compute cap saying "not now"
         // (alt_cold_compute_guard). Up to three polite retries, inside the
-        // page's 20 s load deadline; any other status is final.
+        // page's 20 s load deadline; a JSON error from the API is final.
+        // Also retried, at most twice and with jitter: WordPress's "Error
+        // establishing a database connection" page (HTML 500). Measured
+        // 2026-11-19 after 2.20.344, it is what the remaining 500s under fast
+        // clicks are: the host's MySQL connection limit. Nothing else is: a
+        // plugin fatal (timeout, memory) is also an HTML 500, and a 502/504 is
+        // a slow compute; re-running either adds load at the worst moment.
+        // Resolves to the wait in ms, or 0 for "final".
+        var DB_ERR = /Error establishing a database connection|<title>Database Error/i;
+        var retryWait = function (r, left) {
+            if (r.status === 503 && r.headers.get('Retry-After')) {
+                return Promise.resolve(Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 2) * 1000);
+            }
+            var ct = r.headers.get('Content-Type') || '';
+            if (r.status !== 500 || ct.indexOf('text/html') !== 0 || left <= 1) return Promise.resolve(0);
+            return r.clone().text().then(function (t) {
+                return DB_ERR.test(t) ? 2000 + Math.floor(Math.random() * 1000) : 0;
+            }, function () { return 0; });
+        };
         var attempt = function (left) {
             return fetch(url, opts).then(function (r) {
-                if (r.status !== 503 || !r.headers.get('Retry-After') || left <= 0) return r;
-                var wait = Math.min(5, parseInt(r.headers.get('Retry-After'), 10) || 3) * 1000;
-                return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
-                    if (signal && signal.aborted) throw new Error('aborted');
-                    return attempt(left - 1);
+                if (left <= 0) return r;
+                return retryWait(r, left).then(function (wait) {
+                    if (!wait) return r;
+                    return new Promise(function (res) { setTimeout(res, wait); }).then(function () {
+                        if (signal && signal.aborted) throw new Error('aborted');
+                        return attempt(left - 1);
+                    });
                 });
             });
         };
@@ -5627,7 +5647,7 @@
     // stale on the first of a month. The twin is alt_signal_board_labels() in
     // db.php, which carries the full reasoning: the completed periods NAME
     // themselves ("July 2026", "Q2 2026") because the date presets below this
-    // board already say "Last month" and "Last quarter" about ROLLING windows,
+    // board already say "Last 30 days" and "Last 90 days" about ROLLING windows,
     // and one phrase meaning two things on one page is the ambiguity the
     // entries rename removed. The current month is named for the same reason.
     // Today and This week stay relative: unambiguous, and a date over a single
@@ -6168,7 +6188,8 @@
         today: function () { var t = isoDay(siteNow()); return [t, t]; },
         d7:    function () { return [isoDay(daysAgo(6)), isoDay(siteNow())]; },
         d30:   function () { return [isoDay(daysAgo(29)), isoDay(siteNow())]; },
-        // "Last quarter" as the trailing 90 days, not the previous calendar
+        // "Last 90 days" (labelled so since todo#1881; it was "Last quarter",
+        // which read as Q3), the trailing 90 days, not the previous calendar
         // quarter. The Quarters dropdown already offers calendar quarters, and
         // two controls whose labels both say "quarter" and mean different
         // windows is how a reader stops trusting either.

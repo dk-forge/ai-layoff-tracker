@@ -7781,8 +7781,9 @@ function alt_signal_board_periods($now = null) {
  *    midnight on New Year's Eve.
  *
  * 2. A LABEL NAMES ITS PERIOD RATHER THAN ITS DISTANCE. The date presets below
- *    this board are ROLLING windows and already say "Last 30 days" and "Last
- *    quarter". Calling a completed calendar quarter "Last quarter" would put
+ *    this board are ROLLING windows and say "Last 30 days" and "Last 90 days"
+ *    (that one read "Last quarter" until todo#1881, which itself read as Q3).
+ *    Calling a completed calendar quarter "Last quarter" would put
  *    two different meanings behind one phrase on one page, which is the exact
  *    ambiguity the 2.20.22 entries rename removed. So the completed periods
  *    are named: "July 2026", "Q2 2026". For the same reason the CURRENT month
