@@ -243,6 +243,13 @@ $alt_hero_basis  = 'counted by filing date';
                      Kept in step live by renderStats() (alt-hero-total), from the
                      same totals the Verified tile uses, so the two can never
                      disagree. */ ?>
+            <?php // Phones only (todo#1881 item 3): the sign-up line under the hero sits
+                  // ~1,400px down at 375px, so a compact copy rides next to the
+                  // headline figure; above it, because the figure block alone is ~250px
+                  // tall there. CSS hides it above 600px, where the full line is in view.
+            if (function_exists('alt_atr_cta_url')) : ?>
+            <p class="alt-hero-cta-m"><a href="<?php echo esc_url(alt_atr_cta_url('tracker_home_fold')); ?>" target="_blank" rel="noopener nofollow">Check my resume, free</a></p>
+            <?php endif; ?>
             <?php if ($alt_sv !== null) : ?>
             <p class="alt-hero-figure">
                 <span class="alt-hero-figure-value" id="alt-hero-total"><?php echo esc_html($alt_stat('total')); ?></span>
