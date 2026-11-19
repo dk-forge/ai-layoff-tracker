@@ -38,6 +38,21 @@ function alt_atr_cta_line_html($campaign, $company = '') {
         . 'Check my resume</a></aside>';
 }
 
+/**
+ * The same line for a country, state or industry page (todo#1881 item 1): the
+ * lead names the place or sector the reader came for, the destination and
+ * the promise stay the same, and the facet rides in utm_content.
+ */
+function alt_atr_cta_facet_html($dim, $display) {
+    $dim = in_array($dim, array('country', 'state', 'industry'), true) ? $dim : 'country';
+    $where = 'in ' . esc_html($display);
+    $url = add_query_arg('utm_content', sanitize_title((string) $display), alt_atr_cta_url('facet_' . $dim));
+    return '<aside class="alt-atr-cta" aria-label="Resume help">'
+        . '<b>Affected by a layoff ' . $where . '?</b> Check how your resume fits your next role. Free, no card. '
+        . '<a href="' . esc_url($url) . '" target="_blank" rel="noopener nofollow">'
+        . 'Check my resume</a></aside>';
+}
+
 function alt_atr_cta_is_tracker_page() {
     // The flagship [alt_tracker] page too (set by alt_shortcode_tracker).
     return !empty($GLOBALS['alt_tracker_rendered'])
