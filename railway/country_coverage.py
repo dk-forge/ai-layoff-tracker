@@ -1026,6 +1026,24 @@ ACKNOWLEDGED_BACKLOG = {
     "Russia": ("2026-11-13",
                "in the corpus, surfaced 2026-11-13; the Labour Code collective-"
                "redundancy notice rules have not been read, so no class is asserted"),
+    # Arrived in the corpus unnoticed; surfaced by data-integrity.yml 2026-11-19
+    # (run 44590262312, country_coverage UNKNOWN, exit 3). Acknowledged as dated
+    # outstanding work, NOT classified: no primary labour statute or aggregate
+    # source has been read for any of the four, and asserting a regime without
+    # reading one would be an invented fact. test_every_corpus_country_declared
+    # now catches the next arrival in CI instead of only the live check.
+    "Bahamas": ("2026-11-19",
+                "in the corpus, surfaced 2026-11-19; the Employment Act 2001 "
+                "redundancy provisions have not been read, so no class is asserted"),
+    "Bolivia": ("2026-11-19",
+                "in the corpus, surfaced 2026-11-19; the Ley General del Trabajo "
+                "has not been read, so no class is asserted"),
+    "Malawi": ("2026-11-19",
+               "in the corpus, surfaced 2026-11-19; the Employment Act 2000 has "
+               "not been read, so no class is asserted"),
+    "Samoa": ("2026-11-19",
+              "in the corpus, surfaced 2026-11-19; the Labour and Employment "
+              "Relations Act 2013 has not been read, so no class is asserted"),
 }
 
 # The date is the FIRST element so `min()` over the backlog gives the oldest
