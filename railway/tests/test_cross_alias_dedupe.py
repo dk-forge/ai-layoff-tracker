@@ -137,6 +137,32 @@ class CrossAliasDedupeTest(unittest.TestCase):
                                 already={"2": 99}), {})
 
 
+@unittest.skipUnless(PHP, "php not on PATH - UNKNOWN, not a pass")
+class AliasGroupTest(unittest.TestCase):
+    """Codex P2 on #707: grouping must be connected components, not greedy."""
+
+    def test_bridging_row_joins_all_three(self):
+        rows = [_row(1, "qantas airways", 850, "2026-11-10"),
+                _row(2, "qantas", 850, "2026-11-10"),
+                _row(3, "qantas airlines", 850, "2026-11-10")]
+        self.assertEqual(_marks(rows), {2: 1, 3: 1})
+
+    def test_four_row_chain_is_one_event(self):
+        rows = [_row(10, "air france klm", 5000, "2026-11-05"),
+                _row(11, "klm", 5000, "2026-11-05"),
+                _row(12, "klm royal dutch", 5000, "2026-11-05"),
+                _row(13, "royal dutch", 5000, "2026-11-05")]
+        self.assertEqual(_marks(rows), {11: 10, 12: 10, 13: 10})
+
+    def test_input_order_does_not_change_the_answer(self):
+        import itertools
+        rows = [_row(1, "qantas airways", 850, "2026-11-10"),
+                _row(2, "qantas", 850, "2026-11-10"),
+                _row(3, "qantas airlines", 850, "2026-11-10")]
+        for perm in itertools.permutations(rows):
+            self.assertEqual(_marks(list(perm)), {2: 1, 3: 1})
+
+
 class ParityTest(unittest.TestCase):
 
     def test_window_matches_the_live_invariant(self):

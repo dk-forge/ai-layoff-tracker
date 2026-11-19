@@ -5933,17 +5933,29 @@ function alt_cross_alias_news_marks($rows, $already = array()) {
             $d = strcmp((string) $a['layoff_date'], (string) $b['layoff_date']);
             return $d !== 0 ? $d : ((int) $a['id'] - (int) $b['id']);
         });
+        // CONNECTED COMPONENTS, not a greedy walk (Codex P2 on #707): a row
+        // that bridges two others ("qantas" between "qantas airways" and
+        // "qantas airlines") must pull all three into ONE event whatever the
+        // input order. Union-find over the alias-match graph, then one primary
+        // per component: the first in the sort order above.
         $n = count($grp);
+        $parent = range(0, $n - 1);
+        $find = function ($i) use (&$parent) {
+            while ($parent[$i] !== $i) { $parent[$i] = $parent[$parent[$i]]; $i = $parent[$i]; }
+            return $i;
+        };
         for ($i = 0; $i < $n; $i++) {
-            $p = $grp[$i];
-            if (isset($mark[(int) $p['id']])) continue;   // already a member: never a primary
             for ($j = $i + 1; $j < $n; $j++) {
-                $m = $grp[$j];
-                if (isset($mark[(int) $m['id']])) continue;
+                $p = $grp[$i]; $m = $grp[$j];
                 if (abs((strtotime($m['layoff_date']) - strtotime($p['layoff_date'])) / 86400) > ALT_CROSS_ALIAS_MAX_GAP_DAYS) continue;
                 if (!alt_cross_alias_same_employer($p['company_key'], $m['company_key'], $p['company'], $m['company'])) continue;
-                $mark[(int) $m['id']] = (int) $p['id'];
+                $ri = $find($i); $rj = $find($j);
+                if ($ri !== $rj) $parent[max($ri, $rj)] = min($ri, $rj);   // root = earliest in sort order
             }
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $r = $find($i);
+            if ($r !== $i) $mark[(int) $grp[$i]['id']] = (int) $grp[$r]['id'];
         }
     }
     return $mark;
