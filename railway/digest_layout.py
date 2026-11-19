@@ -1175,7 +1175,7 @@ def preheader_text(parts) -> str:
 def _cell(inner: str, *, padding: str, top_rule: bool = False) -> str:
     # A THICK DIVIDER between sections (owner, 2026-11-19, todo#2763): the
     # tracker editions read as one wall of paragraphs with a hairline.
-    border = (f"border-top:{email_theme.DIVIDER_PX}px solid {RULE};"
+    border = (f"border-top:{email_theme.DIVIDER_PX}px solid {email_theme.DIVIDER};"
               if top_rule else "")
     klass = "et-card et-rule" if top_rule else "et-card"
     return (f'<tr><td class="{klass}" style="padding:{padding};'
@@ -1406,8 +1406,8 @@ FOOTER_BLOCKS = (
     # CONDENSED AGAIN 2026-11-04 (owner): fewer words, one paragraph; the
     # unsubscribe link, the preferences link and the tracking disclosure stay.
     ("", ("You get this because you subscribed at asktherecruiter.com.",), ""),
-    ("unsub", ("Unsubscribe with one click.",),
-     "Unsubscribe with one click"),
+    # ONE unsubscribe link (owner, 2026-11-19, todo#2763): it lives in the
+    # tracking line below ("Unsubscribe stops both."), which is one click.
     # The reader's OWN signed preferences page (plugin
     # includes/subscriber-prefs.php), carried per recipient. Less mail applies
     # at once; anything that adds mail is confirmed by email.
@@ -1626,7 +1626,8 @@ def render_html(parts, *, subject: str, preheader: str, kicker: str,
         section_html = arrange_section(section_html, product_name(parts))
         section_html = digest_design.add_charts(section_html, accent)
         styled = restyle(section_html, accent)
-        if cta and section == "articles":
+        # One button per email, after the lead section (owner, 2026-11-19).
+        if cta and index == 0:
             styled = add_cta(styled, cta)
         cell = _cell(styled, padding=padding,
                      top_rule=bool(index))
@@ -1746,7 +1747,7 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
         if index:
             body.append(thin)
         body.append(_reflow(plain_dashes(part_text(part))))
-        if cta and str(part[0]) == "articles":
+        if cta and index == 0:
             body.append(f"{CTA_LABEL}:\n{cta}")
     # THE SAME SENTENCES AS THE HTML PART, FROM THE SAME PLACE. For a text
     # only client and for every screen reader fallback this IS the message, so
@@ -1773,4 +1774,6 @@ def render_text(parts, *, kicker: str, unsub_url: str, manage_url: str,
         footer.append("")
     footer.append(_reflow(" ".join(TRACKING_SENTENCES)))
     footer.append(f"How we use this: {PRIVACY_TRACKING_URL}")
+    footer.append("Unsubscribe:")
+    footer.append(unsub_url)
     return "\n".join(head + [rule, ""] + body + [""] + footer) + "\n"

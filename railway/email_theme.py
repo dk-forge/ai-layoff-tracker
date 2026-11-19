@@ -58,6 +58,7 @@ LOGO_URL = "https://asktherecruiter.com/apple-touch-icon.png"
 LOGO_PX = 40
 # The thick rule between sections, so a long edition reads as blocks.
 DIVIDER_PX = 4
+DIVIDER = ACCENT  # brand green, clearly visible
 BUTTON_TEXT = "#ffffff"
 
 # Class names the dark block targets. Inline styles carry the light values;
@@ -70,6 +71,8 @@ CLASSES = {
     "muted": "et-muted",
     "link": "et-link",
     "rule": "et-rule",
+    "button": "et-btn",
+    "button_cell": "et-btn-td",
 }
 
 LIGHT_PAIRS = ((INK, BACKGROUND), (MUTED, BACKGROUND), (ACCENT, BACKGROUND),
@@ -108,6 +111,11 @@ def dark_style_block() -> str:
         f".{c['muted']}{{color:{DARK_MUTED}!important;}}"
         f".{c['card']} a,.{c['link']}{{color:{DARK_ACCENT}!important;}}"
         f".{c['rule']}{{border-color:#1f2a44!important;}}"
+        # The button keeps its own AA pair (Codex P2, todo#2763): after the
+        # generic link rule, so the dark link colour never paints its label.
+        f".{c['card']} a.et-btn{{color:{DARK_BG}!important;"
+        f"background-color:{DARK_ACCENT}!important;}}"
+        f".et-btn-td{{background-color:{DARK_ACCENT}!important;}}"
         # Inline light tints that would otherwise stay light under dark ink.
         + "".join(f'.{c["card"]} [style*="background-color:{light}"],'
                   f'.{c["card"]} [bgcolor="{light}"]'
@@ -150,9 +158,9 @@ def button(label: str, url: str) -> str:
     """The one call-to-action button: a bulletproof table cell, inline styles."""
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
             f'style="margin:8px 0 18px;border-collapse:separate;"><tr>'
-            f'<td bgcolor="{ACCENT}" style="background-color:{ACCENT};'
+            f'<td class="et-btn-td" bgcolor="{ACCENT}" style="background-color:{ACCENT};'
             f'border-radius:{RADIUS_PX}px;">'
-            f'<a data-cta href="{escape(url)}" style="display:inline-block;'
+            f'<a class="et-btn" data-cta href="{escape(url)}" style="display:inline-block;'
             f'padding:12px 22px;font-family:{FONT};font-size:16px;font-weight:700;'
             f'line-height:1.2;color:{BUTTON_TEXT};text-decoration:none;'
             f'border-radius:{RADIUS_PX}px;">{escape(label)}</a></td></tr></table>')

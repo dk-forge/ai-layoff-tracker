@@ -8052,13 +8052,6 @@ function alt_digest_footer_blocks($unsub_url, $manage_url = '') {
                 'You get this because you subscribed at asktherecruiter.com.',
             ),
         ),
-        array(
-            'url' => $unsub_url,
-            'anchor' => 'Unsubscribe with one click',
-            'sentences' => array(
-                'Unsubscribe with one click.',
-            ),
-        ),
     );
     // OMITTED RATHER THAN RENDERED WITHOUT A LINK. A promise with nowhere to
     // go is worse than silence, and the relay drops it the same way.

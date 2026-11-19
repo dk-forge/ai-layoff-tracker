@@ -230,7 +230,8 @@ class ForwardingSurvival(unittest.TestCase):
         for tag in re.findall(r"<[a-z][^>]*\sclass=\"[^\"]*\"[^>]*>", html):
             names = re.search(r'class="([^"]*)"', tag).group(1).split()
             self.assertTrue(set(names) <= allowed, tag)
-            if not tag.startswith(("<body", "<table", "<td", "<p")):
+            # The CTA link carries et-btn for its dark-mode pair (todo#2763).
+            if not tag.startswith(("<body", "<table", "<td", "<p", '<a class="et-btn"')):
                 self.fail(f"unexpected classed element {tag}")
             self.assertIn("style=", tag, f"{tag} relies on its class alone")
 

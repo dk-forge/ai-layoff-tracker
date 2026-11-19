@@ -167,3 +167,35 @@ class Newsletter(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CoordinatorRound2(unittest.TestCase):
+    """Brand-coloured dividers, one unsubscribe link, a button in every email."""
+
+    def test_every_email_has_the_button_and_one_unsubscribe_link(self):
+        for sections in (("layoff",), ("talent",), ("articles",), ("layoff", "talent")):
+            m = message(sections, freq="daily")
+            self.assertEqual(m.html.count(">Check my match score</a>"), 1, sections)
+            self.assertEqual(len(re.findall(r">Unsubscribe[^<]*</a>", m.html)), 1, sections)
+
+    def test_divider_is_the_brand_colour(self):
+        html = message(("layoff", "talent"), freq="daily").html
+        self.assertIn(f"border-top:4px solid {email_theme.ACCENT}", html)
+
+
+class ButtonContrast(unittest.TestCase):
+    """Codex P2: the dark link colour overrode the button label (2.70:1)."""
+
+    def test_label_clears_aa_in_light_and_dark(self):
+        self.assertGreaterEqual(email_theme.contrast(email_theme.BUTTON_TEXT, email_theme.ACCENT), 4.5)
+        self.assertGreaterEqual(email_theme.contrast(email_theme.DARK_BG, email_theme.DARK_ACCENT), 4.5)
+
+    def test_dark_block_gives_the_button_its_own_pair(self):
+        block = email_theme.dark_style_block()
+        self.assertIn(f".et-card a.et-btn{{color:{email_theme.DARK_BG}!important;", block)
+        self.assertIn(f".et-btn-td{{background-color:{email_theme.DARK_ACCENT}!important;", block)
+        # The button rule comes after the generic link rule, so it wins.
+        self.assertGreater(block.index("a.et-btn"), block.index(".et-card a,"))
+        btn = email_theme.button("Go", "https://asktherecruiter.com/")
+        self.assertIn('class="et-btn"', btn)
+        self.assertIn('class="et-btn-td"', btn)

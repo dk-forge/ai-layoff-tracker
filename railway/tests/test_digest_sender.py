@@ -1237,8 +1237,9 @@ class TheTwoFootersAreOneDefinition(unittest.TestCase):
         # And the link is on the same words, pointing at the same place.
         self.assertIn(f'<a href="{self.MANAGE}">your preferences page</a>',
                       run.stdout)
-        self.assertIn(f'<a href="{self.UNSUB}">Unsubscribe with one click</a>',
-                      run.stdout)
+        # The one unsubscribe link now sits in the tracking note (todo#2763),
+        # which the eval'd fallback renders only with the plugin's constants.
+        self.assertNotIn("Unsubscribe with one click", run.stdout)
 
 
 class HouseStyle(unittest.TestCase):

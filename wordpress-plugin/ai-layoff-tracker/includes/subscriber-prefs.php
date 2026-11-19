@@ -519,6 +519,9 @@ function alt_digest_footer_text($unsub_url, $manage_url = '') {
         if ($block['url']) $t = rtrim($t, '.') . ":\n" . $block['url'];
         $out[] = $t;
     }
+    // The tracking note carries the one unsubscribe link (todo#2763).
+    $out[] = (defined('ALT_DIGEST_TRACKING_NOTE') ? ALT_DIGEST_TRACKING_NOTE . "\n" : '')
+           . "Unsubscribe:\n" . $unsub_url;
     return implode("\n\n", $out);
 }
 
