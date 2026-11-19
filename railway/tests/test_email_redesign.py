@@ -102,7 +102,7 @@ class TheDefaultMessageDrawsTableBars(unittest.TestCase):
     def test_no_png_and_no_figures_row_that_cannot_shrink(self):
         msg = digest_preview.sample_message()
         self.assertEqual(msg.images, ())
-        self.assertNotIn("<img", msg.html)
+        self.assertIsNone(re.search(r'<img(?![^>]*src="https://asktherecruiter\.com/[^"]*"[^>]*alt="[^"]+")', msg.html, re.I))  # todo#2763: only our own https images (logo, covers), each with alt.
 
 
 class TheMessage(unittest.TestCase):
@@ -131,7 +131,7 @@ class TheMessage(unittest.TestCase):
         self.assertIn(email_theme.dark_style_block(), html)
         self.assertIn("max-width:600px", html)
         self.assertIn("border-radius:8px", html)
-        self.assertIn(">AskTheRecruiter</p>", html)
+        self.assertIn(">Ask The Recruiter</p>", html)
         self.assertIn("font-variant:small-caps", html)
         self.assertIn("48,910</p>", html, "the headline number is text")
         # Own-site links carry the digest's UTM tags (test_digest_utm.py).

@@ -2,7 +2,7 @@
 
 WHAT WENT OUT ON 2026-08-18.
 
-    [AskTheRecruiter] Daily tracker digest
+    [Ask The Recruiter] Daily tracker digest
 
 No date in it at all, over a body that said August 17-18, 2026. A digest
 whose entire doctrine is that every figure names its own window shipped the
@@ -16,7 +16,7 @@ railway/digest_send.py relays through Brevo and composes its subject in
 digest_layout.subject_line(), which names the trackers and dates the window.
 alt_digest_send() in includes/subscribe.php is the in-WordPress wp_mail
 sender, which takes over whenever the relay has not claimed the tier (see
-alt_digest_external_active), and it composed "[AskTheRecruiter] Daily tracker
+alt_digest_external_active), and it composed "[Ask The Recruiter] Daily tracker
 digest" itself. Which subject a subscriber got depended on which process
 happened to be sending. That is not something a reader should be able to
 notice, and the dateless one is the one that reached the owner.
@@ -165,7 +165,7 @@ CASES = (
     ("monthly", "not-a-date", "not-a-date", ["AI Layoff Tracker"]),
 )
 
-FALLBACK = "[AskTheRecruiter] Daily tracker digest, August 18, 2026"
+FALLBACK = "[Ask The Recruiter] Daily tracker digest, August 18, 2026"
 
 
 @unittest.skipUnless(PHP, "php is not on PATH")
@@ -229,7 +229,7 @@ class TheSubjectCarriesTheDateOnEveryPath(unittest.TestCase):
     def test_the_fallback_is_dated_too(self):
         out = php_subject("daily", "2026-08-18", [], FALLBACK)
         self.assertEqual(out["fallback"],
-                         "[AskTheRecruiter] Daily tracker digest, August 18, 2026")
+                         "[Ask The Recruiter] Daily tracker digest, August 18, 2026")
         self.assertEqual(out["subject"], out["fallback"],
                          "no section could name itself, so the dated fallback "
                          "is what goes out")

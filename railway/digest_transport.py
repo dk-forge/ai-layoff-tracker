@@ -182,6 +182,7 @@ _REMOTE_TAGS = ("picture", "source", "video", "audio", "iframe",
 _IMG_TAG_RE = re.compile(r"<\s*img\b([^>]*)>", re.I)
 _IMG_SRC_RE = re.compile(r'\bsrc\s*=\s*"([^"]*)"', re.I)
 _IMG_ALT_RE = re.compile(r'\balt\s*=\s*"([^"]+)"', re.I)
+_OWN_IMG_RE = re.compile(r"https://(www\.)?asktherecruiter\.com/[^\s\"'<>]*$", re.I)
 _STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>(.*?)</style\s*>", re.I | re.S)
 # The ONE style block a message may carry: email_theme's dark-mode overrides.
 # Anything else in a <style> (an @import, a url(), a light-mode rule a forward
@@ -228,6 +229,13 @@ def assert_message_is_clean(message: Message) -> None:
     for found in _IMG_TAG_RE.finditer(html):
         attrs = found.group(1)
         src = _IMG_SRC_RE.search(attrs)
+        # OUR OWN IMAGES (owner, 2026-11-19, todo#2763): the logo and article
+        # covers, https on our own host, each with alt text. The provider's
+        # open pixel is already disclosed in the footer; a foreign host is not.
+        if src and _OWN_IMG_RE.match(src.group(1)):
+            if not _IMG_ALT_RE.search(attrs):
+                raise DigestPolicyError("an image from our site has no alt text")
+            continue
         if not src or not src.group(1).startswith("cid:") \
                 or src.group(1)[4:] not in cids:
             raise DigestPolicyError(
@@ -726,7 +734,7 @@ def resolve_transport(env=None, stream=None):
 # two senders. The provider supplies its own name on messages WordPress relays,
 # so if this is ever changed the Brevo dashboard's sender name has to change
 # with it - that half is not reachable from this repo.
-SENDER_NAME = "AskTheRecruiter.com"
+SENDER_NAME = "Ask The Recruiter"
 
 
 def sender_identity(env=None) -> tuple[str, str]:

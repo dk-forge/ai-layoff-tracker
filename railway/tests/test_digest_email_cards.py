@@ -75,7 +75,7 @@ class Shell(unittest.TestCase):
         widths = [int(w) for w in re.findall(r'width="(\d+)"', html)]
         self.assertEqual([w for w in widths if w > 360], [layout.WIDTH_PX])
         self.assertIn(f"max-width:{layout.WIDTH_PX}px", html)
-        self.assertNotIn("<img", html)
+        self.assertIsNone(re.search(r'<img(?![^>]*src="https://asktherecruiter\.com/[^"]*"[^>]*alt="[^"]+")', html, re.I))  # todo#2763: only our own https images (logo, covers), each with alt.
         self.assertIn('bgcolor="' + digest_design.RED, html)   # bars are table cells
         self.assertNotIn("data-alt=", html)
 

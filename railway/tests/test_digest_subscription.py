@@ -250,7 +250,8 @@ class StaticGuards(unittest.TestCase):
         self.assertRegex(self.src, r'value="weekly" checked')
 
     def test_no_tracking_pixels_in_any_composed_email(self):
-        self.assertNotIn("<img", self.src.lower())
+        # The only <img> is the article cover from our own site (todo#2763).
+        self.assertEqual(self.src.lower().count("<img"), 1)
 
     def test_list_unsubscribe_headers_are_attached(self):
         self.assertIn("List-Unsubscribe:", self.src)
@@ -389,7 +390,7 @@ class StatsRouteShape(unittest.TestCase):
         """Deliberately reads the COMMENTS: the requirement is that a future
         session finds the reasoning next to the code, not that a call exists."""
         src = open(SUBSCRIBE, encoding="utf-8").read()
-        self.assertNotIn("<img", src.lower())
+        self.assertEqual(src.lower().count("<img"), 1)  # the cover, todo#2763
         reason = src[src.index("WHY THERE IS NO OPEN-RATE PIXEL"):]
         reason = reason[:2000].lower()
         self.assertIn("per-person", reason)
@@ -510,7 +511,7 @@ class BehaviouralGuards(unittest.TestCase):
             "funnel, so its subject has exactly one definition."
             % (self.o["confirm_mail_subject"], want))
         self.assertTrue(
-            want.lower().startswith("asktherecruiter.com:"),
+            want.lower().startswith("ask the recruiter:"),
             "the confirmation subject is %r. The brand has to lead: a reader "
             "who just typed their address is scanning an inbox for that name, "
             "and a subject they do not recognise produces no complaint and no "
@@ -654,7 +655,7 @@ class TheChangeEmailNamesWhatStops(unittest.TestCase):
             "a change that takes a digest away arrives under the same subject "
             "as a first signup, so the inbox gives the reader no reason to "
             "open the one message that could stop the loss")
-        self.assertTrue(want.lower().startswith("asktherecruiter.com:"),
+        self.assertTrue(want.lower().startswith("ask the recruiter:"),
                         "the brand leads on every message this system sends")
 
     def test_a_change_that_only_adds_raises_no_alarm(self):
@@ -845,11 +846,10 @@ class TheArticlesList(unittest.TestCase):
         Nothing is invented in either branch: one is the editor's sentence,
         the other a verbatim trim of the author's.
         """
-        # Since 2026-11-03 only the FEATURED read carries a summary; the two
-        # secondary reads are titles. The fallback itself is still exercised
-        # by test_digest_career_insights.py.
+        # Since 2026-11-19 (todo#2763) every read carries its own standfirst
+        # as its "why", in place of a fixed house line.
         for part in (self.o["articles_html"], self.o["articles_text"]):
-            self.assertNotIn("An 8-K is the filing a company makes when something "
+            self.assertIn("An 8-K is the filing a company makes when something "
                              "material happens.", part)
 
     def test_only_the_first_sentence_is_taken(self):

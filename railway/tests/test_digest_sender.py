@@ -60,7 +60,7 @@ def _payload(**over):
         "send_id": 7,
         "from": "2026-08-07",
         "to": "2026-08-14",
-        "subject": "[AskTheRecruiter] Weekly tracker digest",
+        "subject": "[Ask The Recruiter] Weekly tracker digest",
         "sections": {
             "layoff": {
                 "html": "<h2>AI Layoff Tracker</h2><p>12 verified entries.</p>",
@@ -79,7 +79,7 @@ def _payload(**over):
 def _message(**over):
     fields = {
         "to": "reader@example.com",
-        "subject": "[AskTheRecruiter] Weekly tracker digest",
+        "subject": "[Ask The Recruiter] Weekly tracker digest",
         "html": f'<p>12 verified entries.</p><p><a href="{UNSUB}">Unsubscribe</a></p>',
         "text": f"12 verified entries.\nUnsubscribe with one click:\n{UNSUB}\n",
         "from_addr": "Trackers <digest@asktherecruiter.com>",
@@ -238,7 +238,7 @@ class ThePrivacyPromise(unittest.TestCase):
             "Trackers <digest@asktherecruiter.com>", "info@asktherecruiter.com")
         self.assertIsNotNone(message)
         dt.assert_message_is_clean(message)
-        self.assertNotIn("<img", message.html.lower())
+        self.assertIsNone(re.search(r'<img(?![^>]*src="https://asktherecruiter\.com/[^"]*"[^>]*alt="[^"]+")', message.html, re.I))  # todo#2763: only our own https images (logo, covers), each with alt.
         self.assertNotIn("url(", message.html.lower())
         # OUR message embeds nothing that fetches, and that is what the two
         # lines above check. What the FOOTER says about the relay is a separate
@@ -865,7 +865,10 @@ class ServerSideGuards(unittest.TestCase):
 
     def test_no_composed_html_anywhere_on_the_server_side_carries_an_image(self):
         self.assertNotIn("<img", self.api.lower())
-        self.assertNotIn("<img", self.sub.lower())
+        # One <img> in the plugin: the article cover, built only from a URL
+        # alt_digest_cover() checked is https on our own site (todo#2763).
+        self.assertEqual(self.sub.lower().count("<img"), 1)
+        self.assertIn("function alt_digest_cover_html", self.sub)
 
     @unittest.skipUnless(_php(), "php not installed")
     def test_the_new_php_parses(self):
