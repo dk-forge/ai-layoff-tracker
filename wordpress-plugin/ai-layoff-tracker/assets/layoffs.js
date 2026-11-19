@@ -5343,12 +5343,19 @@
     // (aiMapPoints), so the fallback can never show a different number.
     function renderAiMapFallback(box, note, msg) {
         if (note) { note.style.display = ''; note.textContent = msg; }
-        if (!box || !AIMAP.data) return;
+        if (!box) return;
+        // Never leave a previous view's map or table standing under a new
+        // filter: clear first, then fill only from the current data.
+        box.innerHTML = '';
+        if (!AIMAP.data) return;
         var scope = AIMAP.scope === 'us' ? 'us' : 'world';
         var pts = [];
         try { pts = aiMapPoints(scope, AIMAP.data) || []; } catch (e) { pts = []; }
         pts = pts.slice().sort(function (a, b) { return (b.jobs || 0) - (a.jobs || 0); }).slice(0, 20);
-        if (!pts.length) return;
+        if (!pts.length) {
+            box.innerHTML = '<p class="alt-muted alt-empty">No cuts with a known location in this view yet.</p>';
+            return;
+        }
         var rows = pts.map(function (p) {
             return '<tr><th scope="row">' + escapeHtml(p.label) + '</th><td>' + fmt(p.jobs || 0)
                 + '</td><td>' + fmt(p.ai || 0) + '</td></tr>';

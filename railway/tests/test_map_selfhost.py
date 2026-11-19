@@ -38,6 +38,12 @@ class SelfHosted(unittest.TestCase):
         self.assertIn('scope="col"', fb)
         self.assertGreaterEqual(JS.count("renderAiMapFallback(box, note,"), 2)  # lib timeout + data failure
 
+    def test_fallback_clears_stale_content_and_says_when_empty(self):
+        fb = JS[JS.index("function renderAiMapFallback"):]
+        fb = fb[:fb.index("\n    }\n")]
+        self.assertLess(fb.index("box.innerHTML = '';"), fb.index("if (!AIMAP.data) return;"))
+        self.assertIn("No cuts with a known location in this view yet.", fb)
+
     def test_embed_gets_the_vendor_config_too(self):
         embed = (PLUGIN / "templates" / "page-chart-embed.php").read_text()
         self.assertIn("'vendorUrl'   => esc_url_raw(ALT_PLUGIN_URL . 'assets/vendor/')", embed)
