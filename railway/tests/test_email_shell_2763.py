@@ -251,3 +251,14 @@ class CtaBox(unittest.TestCase):
         m = message(("layoff",), freq="daily")
         self.assertGreater(m.html.index("Check my match score"),
                            m.html.index("Open the AI Layoff Tracker"))
+
+
+class CtaBoxDarkMode(unittest.TestCase):
+    """Codex on #706: the tint stayed light under dark ink (1.05:1)."""
+
+    def test_dark_block_darkens_the_cta_tint(self):
+        block = email_theme.dark_style_block()
+        self.assertIn(f'[style*="background-color:{email_theme.PANEL_TINT}"]', block)
+        self.assertIn(f'[bgcolor="{email_theme.PANEL_TINT}"]', block)
+        dark = dict(email_theme.DARK_TINTS)[email_theme.PANEL_TINT]
+        self.assertGreaterEqual(email_theme.contrast(email_theme.DARK_INK, dark), 4.5)
