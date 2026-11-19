@@ -1,12 +1,6 @@
 {
-  "consecutive_fails": 2,
-  "open": {
-    "sandbox-uptime:down": {
-      "first": 1795114860,
-      "last": 1795114860,
-      "subject": "sandbox uptime check failing: https://sandbox.asktherecruiter.com/healthz/deep: check(s) not ok: checks.brevo"
-    }
-  },
-  "updated_at": "2026-11-19T19:01:00+00:00",
+  "consecutive_fails": 0,
+  "open": {},
+  "updated_at": "2026-11-19T19:15:56+00:00",
   "version": 1
 }
