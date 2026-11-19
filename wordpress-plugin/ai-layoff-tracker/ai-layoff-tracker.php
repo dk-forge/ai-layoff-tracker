@@ -326,12 +326,6 @@ $alt_roo_feedback = ALT_PLUGIN_DIR . 'includes/roo-feedback.php';
 if (is_readable($alt_roo_feedback)) {
     require_once $alt_roo_feedback;
 }
-// Console hygiene (todo#1881 item 8): the dead Wordfence sync tag and the
-// missing interactivity import map. GUARDED like every new include.
-$alt_console_hygiene = ALT_PLUGIN_DIR . 'includes/console-hygiene.php';
-if (is_readable($alt_console_hygiene)) {
-    require_once $alt_console_hygiene;
-}
 // Reach (audit 2026-11-10): RSS feed discovery, GA4 funnel events, share
 // buttons. GUARDED like every new include; absent, the pages lose only these.
 $alt_reach = ALT_PLUGIN_DIR . 'includes/reach.php';
@@ -1585,6 +1579,18 @@ function alt_render_page_header() {
         get_header();
         return;
     }
+    // RENDER THE TEMPLATE PARTS BEFORE wp_head(), as core's template-canvas
+    // does (todo#1881 item 8, review B3). A block that enqueues a script module
+    // while it renders (the header's navigation block, a lightbox, a search)
+    // must do so before the import map prints in wp_head; rendered after it,
+    // the module throws "Failed to resolve module specifier
+    // @wordpress/interactivity" on every virtual route.
+    ob_start();
+    block_template_part('header');
+    $alt_header_html = (string) ob_get_clean();
+    ob_start();
+    block_template_part('footer');
+    $GLOBALS['alt_prerendered_footer'] = (string) ob_get_clean();
     echo '<!DOCTYPE html>' . "\n";
     echo '<html ' . get_language_attributes() . ">\n<head>\n";
     echo '<meta charset="' . esc_attr(get_bloginfo('charset')) . '" />' . "\n";
@@ -1594,7 +1600,7 @@ function alt_render_page_header() {
     echo "</head>\n";
     echo '<body ' . alt_body_class_attr() . '>' . "\n";
     if (function_exists('wp_body_open')) wp_body_open();
-    block_template_part('header');
+    echo $alt_header_html;
 }
 
 function alt_render_page_footer() {
@@ -1603,7 +1609,12 @@ function alt_render_page_footer() {
         get_footer();
         return;
     }
-    block_template_part('footer');
+    if (isset($GLOBALS['alt_prerendered_footer'])) {
+        echo $GLOBALS['alt_prerendered_footer'];
+        unset($GLOBALS['alt_prerendered_footer']);
+    } else {
+        block_template_part('footer');
+    }
     wp_footer();
     echo "\n</body>\n</html>";
 }

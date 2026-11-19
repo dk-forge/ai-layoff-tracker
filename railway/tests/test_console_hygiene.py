@@ -1,26 +1,35 @@
-"""todo#1881 item 8: the console errors on every page and the 90-day label."""
+"""todo#1881 item 8: the interactivity import map on virtual routes, and the 90-day label."""
 import re
 import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parents[2] / "wordpress-plugin" / "ai-layoff-tracker"
-SRC = (PLUGIN / "includes" / "console-hygiene.php").read_text()
 MAIN = (PLUGIN / "ai-layoff-tracker.php").read_text()
 TPL = (PLUGIN / "templates" / "page-tracker.php").read_text()
 
 
-class ConsoleHygiene(unittest.TestCase):
-    def test_loaded_guarded(self):
-        self.assertIn("includes/console-hygiene.php'", MAIN)
-        self.assertIn("is_readable($alt_console_hygiene)", MAIN)
+def body(src, name):
+    m = re.search(r"function %s\([^)]*\)\s*\{" % re.escape(name), src)
+    i, depth = m.end(), 1
+    while depth:
+        depth += {"{": 1, "}": -1}.get(src[i], 0)
+        i += 1
+    return src[m.end():i]
 
-    def test_wordfence_sync_tag_is_unhooked_from_the_front_end(self):
-        self.assertIn("remove_action($hook, 'wordfence::addSyncAttackDataAjax')", SRC)
-        self.assertIn("'wp_head'", SRC)
 
-    def test_navigation_view_module_is_enqueued_before_the_import_map(self):
-        self.assertIn("wp_enqueue_script_module('@wordpress/block-library/navigation/view')", SRC)
-        self.assertRegex(SRC, r"add_action\('wp_enqueue_scripts', 'alt_enqueue_navigation_view_early', 1\)")
+class TemplatePartsRenderBeforeTheImportMap(unittest.TestCase):
+    def test_header_and_footer_render_before_wp_head(self):
+        h = body(MAIN, "alt_render_page_header")
+        wp_head = h.index("wp_head();")
+        self.assertLess(h.index("block_template_part('header')"), wp_head)
+        self.assertLess(h.index("block_template_part('footer')"), wp_head)
+        self.assertIn("echo $alt_header_html;", h[wp_head:])
+
+    def test_footer_prints_the_prerendered_part_once(self):
+        f = body(MAIN, "alt_render_page_footer")
+        self.assertIn("echo $GLOBALS['alt_prerendered_footer'];", f)
+        self.assertIn("unset($GLOBALS['alt_prerendered_footer'])", f)
+        self.assertLess(f.index("alt_prerendered_footer"), f.index("wp_footer();"))
 
 
 class NinetyDayLabel(unittest.TestCase):
