@@ -102,6 +102,11 @@
       "last": 1795196216,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
     },
+    "live-surface-check:live.data:feb152844d9e6171": {
+      "first": 1795206470,
+      "last": 1795206470,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: No headline moves without rows to explain it: United States jobs, all time: OPEN INCIDENT, opened 0d ago (2026-11-20T17:36:36Z): Worldw"
+    },
     "mailbox-janitor:main:09cd0cb19bd940f2": {
       "first": 1794991992,
       "last": 1794991992,
@@ -143,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-20T17:36:57+00:00",
+  "updated_at": "2026-11-20T20:27:50+00:00",
   "version": 1
 }
