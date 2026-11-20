@@ -10,7 +10,7 @@
     "pl_group_layoffs",
     "is_hopuppsagnir"
   ],
-  "measured_at": "2026-11-13T16:47:54Z",
+  "measured_at": "2026-11-20T16:36:24Z",
   "note": "Coverage against national collective-redundancy denominators the tracker does not construct. Written by national-denominators.yml. NEVER hand-edit a figure here — re-run the module. Every figure is a BAND (strict job location .. inclusive employer basis) and describes the NOTIFIED population only, never 'layoffs in the country'. These denominators are NOT comparable across countries and must never be summed — see combine().",
   "slices": {
     "ee_collective_redundancy_notices": {
@@ -21,32 +21,32 @@
         "'Teade 1' vs 'Teade 2' is undefined in the file's own legend; Teade 2 runs at 84-89% of Teade 1 every year, so they are two stages of one duty and are never summed. The wider one is used, which cannot flatter us"
       ],
       "confirmed_interval": [
-        0.2238460516338072,
-        0.2548343820820927
+        0.16696465805427052,
+        0.1962245086113955
       ],
       "country": "Estonia",
       "counts": "persons named in redundancy notices (notice type 'Teade 1')",
-      "coverage_lower": 0.2389958734525447,
-      "coverage_upper": 0.2389958734525447,
-      "denominator": 2908,
+      "coverage_lower": 0.1811349116873356,
+      "coverage_upper": 0.1811349116873356,
+      "denominator": 2661,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "of the 2,908 workers notified to Eesti Töötukassa in 2025-09..2026-08, we hold between 695 (23.9%) and 695 (23.9%) jobs",
+      "detail": "of the 2,661 workers notified to Eesti Töötukassa in 2025-10..2026-09, we hold between 482 (18.1%) and 482 (18.1%) jobs",
       "held_detail": {
         "entries_any": 4,
         "entries_strict": 4
       },
-      "held_jobs_any": 695,
-      "held_jobs_strict": 695,
+      "held_jobs_any": 482,
+      "held_jobs_strict": 482,
       "key": "ee_collective_redundancy_notices",
       "label": "Estonia koondamisteated — recipients of collective redundancy notices filed with Töötukassa",
       "licence": "CC BY-NC 3.0 — non-commercial. Used here to MEASURE, never republished to a reader-facing surface",
       "period": {
-        "from": "2025-09-01",
+        "from": "2025-10-01",
         "kind": "months_12",
-        "label": "2025-09..2026-08",
-        "to": "2026-08-31"
+        "label": "2025-10..2026-09",
+        "to": "2026-09-30"
       },
-      "period_age_days": 74,
+      "period_age_days": 51,
       "publisher_updated": "2026-11-06T10:39:59.570Z",
       "robots": "avaandmed.eesti.ee and andmed.eesti.ee both serve no robots.txt (404). tootukassa.ee allows the statistics path with Crawl-delay: 10, and is not fetched by this collector",
       "secondary": {
@@ -69,22 +69,22 @@
         "official statistics in development, and revisable"
       ],
       "confirmed_interval": [
-        0.17140804610465493,
-        0.17415326543103588
+        0.17193482233205018,
+        0.17468335822198158
       ],
       "country": "United Kingdom",
       "counts": "potential redundancies on HR1 forms, by month of RECEIPT",
-      "coverage_lower": 0.17277634229281835,
-      "coverage_upper": 0.2773803028587311,
+      "coverage_lower": 0.17330478376792496,
+      "coverage_upper": 0.2779087443338378,
       "denominator": 291423,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "of the 291,423 workers notified to Insolvency Service, published by ONS in 2025-08..2026-08, we hold between 50,351 (17.3%) and 80,835 (27.7%) jobs",
+      "detail": "of the 291,423 workers notified to Insolvency Service, published by ONS in 2025-08..2026-08, we hold between 50,505 (17.3%) and 80,989 (27.8%) jobs",
       "held_detail": {
-        "entries_any": 24,
-        "entries_strict": 22
+        "entries_any": 25,
+        "entries_strict": 23
       },
-      "held_jobs_any": 80835,
-      "held_jobs_strict": 50351,
+      "held_jobs_any": 80989,
+      "held_jobs_strict": 50505,
       "key": "gb_hr1_potential_redundancies",
       "label": "Great Britain HR1 potential redundancies (TULRCA 1992 s.193)",
       "licence": "Open Government Licence v3.0",
@@ -94,8 +94,8 @@
         "label": "2025-08..2026-08",
         "to": "2026-08-31"
       },
-      "period_age_days": 74,
-      "publisher_updated": "2026-10-19T23:00:00.000Z",
+      "period_age_days": 81,
+      "publisher_updated": "2026-11-17T00:00:00.000Z",
       "robots": "ons.gov.uk serves no robots.txt (404) — no directive to obey",
       "secondary": {
         "note": "summed over 12 months, so an employer filing in two months counts twice",
@@ -108,7 +108,7 @@
           "why": "Employment Rights Act 2025 s.195A regulations widen the collective consultation duty beyond a single establishment. Expect a definitional step-change in HR1 volumes — a series break, not an anomaly"
         }
       ],
-      "source_url": "https://www.ons.gov.uk/file?uri=/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/hr1potentialredundancies/october2026/hr1oct2026.xlsx",
+      "source_url": "https://www.ons.gov.uk/file?uri=/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/hr1potentialredundancies/november2026/hr1nov2026.xlsx",
       "state": "measured",
       "unit": "workers"
     },
@@ -142,9 +142,9 @@
       ],
       "country": "United Kingdom",
       "counts": "proposed redundancies, by financial year (April-March)",
-      "denominator": 2910,
+      "denominator": 2760,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "the denominator IS published and was read live (2,910 workers, 2024/25), and no matching numerator exists: the denominator covers Northern Ireland alone and the tracker's country vocabulary has no NI split — every NI row is stored as 'United Kingdom'. A UK numerator over an NI denominator is not a coverage figure (it measured 177% on the first run). The denominator is read and kept fresh so that this becomes measurable the day rows carry a UK region",
+      "detail": "the denominator IS published and was read live (2,760 workers, 2024/25), and no matching numerator exists: the denominator covers Northern Ireland alone and the tracker's country vocabulary has no NI split — every NI row is stored as 'United Kingdom'. A UK numerator over an NI denominator is not a coverage figure (it measured 177% on the first run). The denominator is read and kept fresh so that this becomes measurable the day rows carry a UK region",
       "key": "ni_proposed_redundancies",
       "label": "Northern Ireland proposed redundancies (Employment Rights (NI) Order 1996)",
       "licence": "accredited official statistics, Open Government Licence",
@@ -154,15 +154,15 @@
         "label": "2024/25",
         "to": "2025-03-31"
       },
-      "period_age_days": 592,
-      "publisher_updated": "2026-10",
+      "period_age_days": 599,
+      "publisher_updated": "2026-11",
       "robots": "www.nisra.gov.uk's robots.txt disallows '/*.xlsx', '/*.ods' and '/*.zip' for every agent (re-read 2026-09-04), so the redundancy workbook and the ODS bundle are refused to us and are NOT fetched; the refusal is recorded in country_coverage.REFUSAL_LEDGER, whose ruling names the HTML report as the alternative. The two www.nisra.gov.uk HTML pages read to find the latest report are 'Allow' under the same file. datavis.nisra.gov.uk serves no readable robots.txt: /robots.txt answers HTTP 200 with the host's HTML 'Unavailable' placeholder, which robots_gate reads as UNKNOWN",
       "secondary": {
         "label": "confirmed redundancies (GB has no counterpart)",
         "unit": "workers",
-        "value": 2350
+        "value": 2310
       },
-      "source_url": "https://datavis.nisra.gov.uk/economy-and-labour-market/labour-market-report-october-2026.html",
+      "source_url": "https://datavis.nisra.gov.uk/economy-and-labour-market/labour-market-report-november-2026.html",
       "state": "not_measurable",
       "unit": "workers"
     },
@@ -200,41 +200,15 @@
         "家數 counts 廠場 (establishments/plants), so one company notifying for four sites counts four times — the establishment figure is NOT an employer count and must not be compared with GB's employer column",
         "annual only, ROC years, roughly a six-month lag"
       ],
-      "confirmed_interval": [
-        2.710505431213761e-20,
-        0.0003267822186375836
-      ],
       "country": "Taiwan",
       "counts": "workers notified, annually, by ROC year",
-      "coverage_lower": 0.0,
-      "coverage_upper": 0.0,
-      "denominator": 11752,
       "denominator_basis": "national_notification_aggregate",
-      "detail": "of the 11,752 workers notified to 勞動部 (Ministry of Labor) in 2025, we hold between 0 (0.0%) and 0 (0.0%) jobs",
-      "held_detail": {
-        "entries_any": 0,
-        "entries_strict": 0
-      },
-      "held_jobs_any": 0,
-      "held_jobs_strict": 0,
+      "detail": "could not read the denominator (JSONDecodeError: Expecting value: line 1 column 1 (char 0)) — the publisher moved, changed layout or was unreachable. UNVERIFIED, not a coverage regression",
       "key": "tw_mass_dismissal_notifications",
       "label": "Taiwan 大量解僱通報 — plants and workers notified under the Act for Worker Protection of Mass Dismissal, art. 4",
       "licence": "政府資料開放授權條款 (Open Government Data License), free reuse",
-      "period": {
-        "from": "2025-01-01",
-        "kind": "year",
-        "label": "2025",
-        "to": "2025-12-31"
-      },
-      "period_age_days": 317,
-      "publisher_updated": "20260611T154255",
       "robots": "apiservice.mol.gov.tw returns an F5 'Request Rejected' page for /robots.txt itself, so no directive could be read. The data endpoints answer 200 to our own identifying agent string under an explicit open-data licence, and no block aimed at agents was found. Recorded as PERMITTED WITH THE ROBOTS FILE UNREADABLE — if that ever becomes a 403 to this agent it is a refusal and stays one. statfy.mol.gov.tw was unreachable and its robots.txt has never been read: treat as NOT permitted",
-      "secondary": {
-        "unit": "establishments",
-        "value": 337
-      },
-      "source_url": null,
-      "state": "measured",
+      "state": "unknown",
       "unit": "workers"
     }
   }
