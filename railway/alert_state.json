@@ -107,6 +107,11 @@
       "last": 1794905581,
       "subject": "CI RED: Mailbox janitor \u2014 The production mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
     },
+    "national-denominators-measurement:main:ee973e4020d0a49c": {
+      "first": 1795192606,
+      "last": 1795192606,
+      "subject": "CI RED: National denominators measurement \u2014 a declared country could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -133,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-20T10:17:34+00:00",
+  "updated_at": "2026-11-20T16:36:47+00:00",
   "version": 1
 }
