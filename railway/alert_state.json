@@ -117,11 +117,6 @@
       "last": 1795108449,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
-    "sandbox-main-green-check:main:848b64e654796072": {
-      "first": 1795083457,
-      "last": 1795083457,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: backend-architecture-gate.yml FAIL (newest completed run is failure on d85646c0)"
-    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -138,6 +133,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-19T21:29:00+00:00",
+  "updated_at": "2026-11-20T10:17:34+00:00",
   "version": 1
 }
