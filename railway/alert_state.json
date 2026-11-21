@@ -132,6 +132,11 @@
       "last": 1795108449,
       "subject": "CI RED: Per-country coverage register \u2014 the per-country register is UNVERIFIED (exit 3). UNKNOWN is not a pass - read the verdict above; it names the country."
     },
+    "review-held-rows-two-referees:main:3b0a4a7721dfc40b": {
+      "first": 1795245639,
+      "last": 1795245639,
+      "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
+    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -148,6 +153,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-20T20:27:50+00:00",
+  "updated_at": "2026-11-21T07:20:39+00:00",
   "version": 1
 }
