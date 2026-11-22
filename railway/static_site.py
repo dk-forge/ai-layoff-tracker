@@ -17,6 +17,7 @@ ORIGIN = "https://asktherecruiter.com"
 CTA = (ORIGIN + "/?start=1&utm_source=ai-layoff-tracker&utm_medium=referral"
        "&utm_campaign=static_tracker#start-intake")
 TRACKER_URL = ORIGIN + "/blog/ai-layoff-tracker/"
+FEED_URL = ORIGIN + "/blog/feed/layoffs"
 TRACKER_DATA_PATH = "blog/static-assets/tracker-data.json"
 ASSETS = Path(__file__).with_name("static_site_assets")
 FIELDS = ("company", "date", "country", "jobs", "source_url")
@@ -210,9 +211,12 @@ def tracker_panel() -> str:
     )
 
 
-def render(page: dict, *, tracker: bool = False) -> str:
+def render(page: dict, *, tracker: bool = False, feed: bool = False) -> str:
     esc = html.escape
     content = tracker_panel() if tracker else records_table(page.get("rows", []))
+    alternate = (
+        f'<link rel="alternate" type="application/rss+xml" href="{FEED_URL}">' if feed else ""
+    )
     nodes = []
     for node in page["schema"]:
         encoded = json.dumps(node, ensure_ascii=True).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
@@ -224,7 +228,7 @@ def render(page: dict, *, tracker: bool = False) -> str:
             f'<meta name="robots" content="{esc(page["robots"], quote=True)}">'
             f'<link rel="canonical" href="{esc(page["canonical"], quote=True)}">'
             '<link rel="stylesheet" href="/blog/static-assets/site.css">'
-            + "".join(nodes) + '</head><body><header><a href="/blog/ai-layoff-tracker/">AI Layoff Tracker</a>'
+            + alternate + "".join(nodes) + '</head><body><header><a href="/blog/ai-layoff-tracker/">AI Layoff Tracker</a>'
             f'<a class="match-cta" data-match-cta="true" href="{esc(CTA, quote=True)}">Check my match, free</a>'
             f'</header><main>{page["body"]}{content}</main>'
             '<script src="/blog/static-assets/site.js" defer></script></body></html>')
@@ -233,6 +237,14 @@ def render(page: dict, *, tracker: bool = False) -> str:
 def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int:
     data, files = load_snapshot(snapshot)
     validate_pages(data, files)
+    feed = FEED_URL in files
+    if feed:
+        root = ET.fromstring(files[FEED_URL])
+        self_links = root.findall("channel/{http://www.w3.org/2005/Atom}link")
+        if (root.tag != "rss" or root.get("version") != "2.0"
+                or not root.findtext("channel/title")
+                or [link.get("href") for link in self_links if link.get("rel") == "self"] != [FEED_URL]):
+            raise ValueError("RSS snapshot needs its recorded title and canonical self link")
     if tracker_data is not None:
         projection = json.loads(tracker_data.read_text(encoding="utf-8"))
         if (projection.get("schema") != 1 or not projection.get("exported_at")
@@ -255,10 +267,18 @@ def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int
             dest = stage / output_path(page["url"], page=True)
             dest.parent.mkdir(parents=True, exist_ok=True)
             tracker = tracker_data is not None and page["url"] == TRACKER_URL
-            dest.write_text(render(page, tracker=tracker), encoding="utf-8")
+            dest.write_text(
+                render(page, tracker=tracker, feed=feed and page["url"] == TRACKER_URL),
+                encoding="utf-8",
+            )
         shutil.copytree(ASSETS, stage / "blog/static-assets")
         if tracker_data is not None:
             shutil.copyfile(tracker_data, stage / TRACKER_DATA_PATH)
+        if feed:
+            (stage / "_headers").write_text(
+                "/blog/feed/layoffs\n  Content-Type: application/rss+xml; charset=utf-8\n",
+                encoding="utf-8",
+            )
         os.replace(stage, output)
     return len(data["pages"])
 

@@ -110,6 +110,21 @@ class StaticSite(unittest.TestCase):
         self.assertEqual((self.output / "blog/sitemap.xml").read_bytes(), self.files["sitemap.xml"])
         self.assertEqual((self.output / "robots.txt").read_bytes(), self.files["robots.txt"])
 
+    def test_preserves_recorded_feed_and_advertises_it_on_tracker(self):
+        url = "https://asktherecruiter.com/blog/feed/layoffs"
+        self.files["layoffs.xml"] = (
+            '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
+            f'<title>Recorded feed</title><atom:link href="{url}" rel="self" />'
+            '<item><title>Recorded item</title><guid>alt-12-stable</guid>'
+            '<link>https://example.org/report</link></item></channel></rss>'
+        ).encode()
+        self.manifest["files"].append(self.file("layoffs.xml", "/blog/feed/layoffs"))
+        self.build()
+        self.assertEqual((self.output / "blog/feed/layoffs").read_bytes(), self.files["layoffs.xml"])
+        self.assertIn("Content-Type: application/rss+xml", (self.output / "_headers").read_text())
+        tracker = (self.output / "blog/ai-layoff-tracker/index.html").read_text()
+        self.assertIn(f'rel="alternate" type="application/rss+xml" href="{url}"', tracker)
+
     def test_missing_sitemap_page_fails_before_dist_exists(self):
         self.manifest["pages"].pop()
         with self.assertRaisesRegex(ValueError, "sitemap URL has no page"):
