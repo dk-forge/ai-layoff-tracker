@@ -15,12 +15,23 @@ class Head(HTMLParser):
         super().__init__()
         self.tags = []
         self.text = []
+        self.titles = []
+        self.in_title = False
 
     def handle_starttag(self, tag, attrs):
         self.tags.append((tag, dict(attrs)))
+        if tag == "title":
+            self.in_title = True
+            self.titles.append("")
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self.in_title = False
 
     def handle_data(self, data):
         self.text.append(data)
+        if self.in_title:
+            self.titles[-1] += data
 
 
 class StaticSite(unittest.TestCase):
@@ -68,18 +79,33 @@ class StaticSite(unittest.TestCase):
         return static_site.build(path, self.output)
 
     def test_every_independent_sitemap_url_has_unchanged_head_and_tracked_cta(self):
-        self.build()
-        for index, url in enumerate(self.urls):
+        archive = "https://asktherecruiter.com/blog/ai-layoff-tracker/editions/daily/recorded/"
+        page = self.page(archive, 2)
+        page["robots"] = "noindex, follow"
+        self.manifest["pages"].append(page)
+        self.assertEqual(self.build(), 3)
+        baseline = static_site.sitemap_urls(
+            self.manifest["sitemaps"], {
+                item["url"]: self.files[item["source"]] for item in self.manifest["files"]
+            },
+        )
+        self.assertEqual(baseline, set(self.urls))
+        for index, url in enumerate([*self.urls, archive]):
             path = self.output / url.split("asktherecruiter.com/", 1)[1] / "index.html"
             parser = Head()
             parser.feed(path.read_text())
-            self.assertIn(f"Recorded title {index} & evidence", parser.text)
-            self.assertIn(("link", {"rel": "canonical", "href": url}), parser.tags)
+            self.assertEqual(parser.titles, [f"Recorded title {index} & evidence"])
+            canonicals = [attrs["href"] for tag, attrs in parser.tags
+                          if tag == "link" and attrs.get("rel") == "canonical"]
+            self.assertEqual(canonicals, [url])
             self.assertIn(("meta", {"name": "description", "content": f"Recorded description {index}"}), parser.tags)
             cta = [attrs for tag, attrs in parser.tags if tag == "a" and attrs.get("data-match-cta") == "true"]
             self.assertEqual(len(cta), 1)
-            self.assertIn("utm_source=ai-layoff-tracker", cta[0]["href"])
-            self.assertIn("start=1", cta[0]["href"])
+            self.assertEqual(
+                cta[0]["href"],
+                "https://asktherecruiter.com/?start=1&utm_source=ai-layoff-tracker"
+                "&utm_medium=referral&utm_campaign=static_tracker#start-intake",
+            )
             self.assertIn("Check my match, free", parser.text)
         self.assertEqual((self.output / "blog/sitemap.xml").read_bytes(), self.files["sitemap.xml"])
         self.assertEqual((self.output / "robots.txt").read_bytes(), self.files["robots.txt"])
@@ -101,7 +127,14 @@ class StaticSite(unittest.TestCase):
                 self.manifest = original
 
     def test_missing_child_sitemap_and_changed_asset_fail(self):
-        self.manifest["sitemaps"] = ["https://asktherecruiter.com/blog/absent.xml"]
+        self.files["index.xml"] = (
+            b'<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            b'<sitemap><loc>https://asktherecruiter.com/blog/absent.xml</loc></sitemap>'
+            b'</sitemapindex>'
+        )
+        index = self.file("index.xml", "/blog/index.xml")
+        self.manifest["files"].append(index)
+        self.manifest["sitemaps"] = [index["url"]]
         with self.assertRaisesRegex(ValueError, "missing sitemap"):
             self.build()
         self.manifest["sitemaps"] = [self.manifest["files"][0]["url"]]

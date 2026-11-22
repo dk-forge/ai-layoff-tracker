@@ -1,6 +1,6 @@
 # AI Layoff Tracker static migration
 
-Status: audit and offline build contract. Production URL and SEO parity are
+Status: offline build contract and public backup data projection. Production URL and SEO parity are
 blocked on a published-page snapshot. This is not a deploy or cutover approval.
 Scope: dk-forge/todo#2880, ALT first. Talent Intelligence Tracker is a later pilot.
 
@@ -57,6 +57,37 @@ files in separate GitHub releases, but those are not the normalized published
 reference API responses. Include the public reference projections and their
 revision dates in the new snapshot publisher. Do not substitute raw source
 files for the displayed, normalized reference series.
+
+## Build-only data publisher
+
+Run **Static site (build only)** with `backup_tag=backup-2026-11-22` to
+produce the `alt-static-data` artifact, or run this against the downloaded
+public release files:
+
+```sh
+python railway/static_data.py --backup backup-input --out static-data/tracker-data.json
+```
+
+The publisher reads only `manifest.json` and the layoffs, events and source
+reports assets. It checks compressed sizes, uncompressed SHA-256 checksums,
+row counts, column allowlists and the existing privacy scan. The output keeps
+the capture time, source checksums, selected public filter fields, canonical
+event membership, evidence URLs and superset membership. Consumers can use
+canonical membership plus evidence for sourced views and use
+`superset_of = 0` for aggregate views that exclude overlapping records.
+Table rows retain individual records, including subset members. The data is
+separate from the built HTML and carries the backup's freshness. A local run
+with the November 22 release projected 74,706 records.
+
+The live sitemap request from the cloud environment was denied by its proxy
+with HTTP 403 at CONNECT. The tests cover independent sitemap fixtures and
+check each generated HTML title, canonical and exact tracked CTA. A captured
+production sitemap and page export are still needed to run the production
+coverage gate. The remaining runtime work includes wiring the static data
+into search, filters, charts and aggregates, publishing normalized reference
+series after successful updates, and migrating feeds, exports, embeds,
+contact and newsletter handling. Editorial pages, redirect targets and legacy
+archive assets need to be captured before the build can verify their parity.
 
 ## Public URL inventory
 
