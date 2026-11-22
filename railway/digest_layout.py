@@ -183,6 +183,10 @@ TAG_STYLES = {
 # still line up, because the alignment is done by the table.
 # ---------------------------------------------------------------------------
 VARIANT_STYLES = {
+    ("a", "match-cta"): (f"display:inline-block;max-width:100%;box-sizing:border-box;min-height:44px;"
+                         f"background-color:{email_theme.ACCENT};color:{email_theme.BUTTON_TEXT};"
+                         f"font-family:{FONT};font-size:16px;font-weight:700;line-height:1.25;"
+                         f"text-decoration:none;padding:12px 22px;border-radius:{email_theme.RADIUS_PX}px;"),
     # ------------------------------------------------------------------
     # The edition furniture, added 2026-08-19 when the weekly digest was
     # rebuilt as an edition. The owner read a live send and said the whole
@@ -546,6 +550,8 @@ def restyle(fragment: str, accent: str = "") -> str:
                  or VARIANT_STYLES.get((tag, variant))
                  or overrides.get((tag, ""))
                  or TAG_STYLES.get(tag))
+        if tag == "a" and variant == "match-cta":
+            attrs = (attrs + ' class="et-btn"').strip()
         head = f"<{tag}" + (f" {attrs}" if attrs else "")
         return head + (f' style="{style}">' if style else ">")
 

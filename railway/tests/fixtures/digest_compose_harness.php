@@ -184,6 +184,10 @@ class WP_REST_Response_Stub {
 }
 
 $FIXTURE = json_decode(file_get_contents($argv[2]), true);
+if (array_key_exists('open_roles', $FIXTURE)) {
+    function tit_open_roles_data($now = null) { global $FIXTURE; return $FIXTURE['open_roles']; }
+}
+
 
 /*
   THE SIBLING TALENT PLUGIN'S INDEED BACKDROP, STUBBED FROM THE FIXTURE and only
