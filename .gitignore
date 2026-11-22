@@ -38,3 +38,4 @@ deferral_envelope.json
 # machine can connect to is free reconnaissance and belongs in nobody's clone.
 # Keep the file local; add servers with `claude mcp add` per checkout.
 .mcp.json
+/dist/

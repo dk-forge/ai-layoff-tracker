@@ -1,3 +1,18 @@
+## 2026-11-22 - Static migration audit and offline build contract, no plugin release
+
+Audited public route families, backup coverage, metadata and WordPress-only
+features for todo#2880. Added an offline snapshot compiler and build-only
+Actions job. Exact production parity remains blocked on the independently
+captured public sitemap/page export, a current curated snapshot publisher and
+the remaining interactive migrations. Test fixtures are never substituted for
+production data. No host request, deployment, email or DNS change was performed.
+
+**Class:** absent-read-as-ok
+**Guard:** railway/tests/test_static_site.py rejects missing sitemap pages,
+missing metadata, changed assets, active content and path escapes before dist
+exists. Synthetic 390px/1280px browser checks verify the tracked CTA and search;
+they do not measure the deployed site.
+
 ## 2026-11-22 - 2.20.358 Talent daily email groups confirmed employer aliases
 
 The daily composer merges the confirmed Mistral / Mistral AI alias and legal suffix variants only when signal type, headcount and location agree. Each source link survives. Job-board observations stay separate, including equal net increases with different board totals. Raw totals and provenance rules are unchanged. One headline, three metrics and a tracked match button lead the email; detailed counts sit under How we count. Missing or stale open-roles data is labelled not available. The email renderer gives this known button its own inline style and the existing dark-mode button class.
