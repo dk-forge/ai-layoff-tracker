@@ -2,7 +2,8 @@
 
 The daily composer merges the confirmed Mistral / Mistral AI alias and legal suffix variants only when signal type, headcount and location agree. Each source link survives. Raw totals and provenance rules are unchanged. One headline, three metrics and a tracked match button lead the email; detailed counts sit under How we count. Missing or stale open-roles data is labelled not available. The email renderer gives this known button its own inline style and the existing dark-mode button class.
 
-Guard: railway/tests/test_digest_talent_owner_2847.py, existing daily composer suites and the complete digest test family. Companion talent-intelligence-tracker change owns the resume wording in the open-roles section. Local checks render fixtures only and never send mail.
+**Class:** wrong-scope-or-key
+**Guard:** railway/tests/test_digest_talent_owner_2847.py, existing daily composer suites and the complete digest test family. Companion talent-intelligence-tracker change owns the resume wording in the open-roles section. Local checks render fixtures only and never send mail.
 
 ## 2026-11-15 - 2.20.330 Recall misses traced: an apostrophe split one employer, a Dutch verb form hid a 25,000-job cut
 
