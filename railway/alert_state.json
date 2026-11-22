@@ -122,11 +122,6 @@
       "last": 1795250467,
       "subject": "CI RED: Main green check \u2014 error: main is NOT verifiably green: tests.yml FAIL (newest completed run is failure on eed58623)"
     },
-    "national-denominators-measurement:main:ee973e4020d0a49c": {
-      "first": 1795192606,
-      "last": 1795192606,
-      "subject": "CI RED: National denominators measurement \u2014 a declared country could not be measured (exit 3). UNKNOWN is not a pass - read the slice detail above."
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -163,6 +158,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T08:41:24+00:00",
+  "updated_at": "2026-11-22T08:45:39+00:00",
   "version": 1
 }
