@@ -122,11 +122,6 @@
       "last": 1795245639,
       "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
     },
-    "self-heal:main:502427794a59ed01": {
-      "first": 1795336884,
-      "last": 1795336884,
-      "subject": "CI RED: Self-heal \u2014 Error: Unexpected HTTP response: 403"
-    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -143,6 +138,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T14:25:55+00:00",
+  "updated_at": "2026-11-22T14:26:22+00:00",
   "version": 1
 }
