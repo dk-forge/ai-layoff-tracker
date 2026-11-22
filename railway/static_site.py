@@ -17,6 +17,8 @@ ORIGIN = "https://asktherecruiter.com"
 CTA = (ORIGIN + "/?start=1&utm_source=ai-layoff-tracker&utm_medium=referral"
        "&utm_campaign=static_tracker#start-intake")
 TRACKER_URL = ORIGIN + "/blog/ai-layoff-tracker/"
+CONTACT_URL = ORIGIN + "/blog/contact/"
+NEWSLETTER_URL = ORIGIN + "/blog/layoff-tracker/"
 FEED_URL = ORIGIN + "/blog/feed/layoffs"
 TRACKER_DATA_PATH = "blog/static-assets/tracker-data.json"
 ASSETS = Path(__file__).with_name("static_site_assets")
@@ -211,12 +213,19 @@ def tracker_panel() -> str:
     )
 
 
-def render(page: dict, *, tracker: bool = False, feed: bool = False) -> str:
+def render(page: dict, *, tracker: bool = False, feed: bool = False,
+           wordpress_forms: bool = False) -> str:
     esc = html.escape
     content = tracker_panel() if tracker else records_table(page.get("rows", []))
     alternate = (
         f'<link rel="alternate" type="application/rss+xml" href="{FEED_URL}">' if feed else ""
     )
+    forms = (
+        '<nav aria-label="Tracker contact and newsletter">'
+        f'<p><a href="{CONTACT_URL}">Send a tip or correction</a></p>'
+        f'<p><a href="{NEWSLETTER_URL}#alt-digest">Sign up for the layoff newsletter</a></p>'
+        '</nav>'
+    ) if wordpress_forms else ""
     nodes = []
     for node in page["schema"]:
         encoded = json.dumps(node, ensure_ascii=True).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
@@ -230,13 +239,24 @@ def render(page: dict, *, tracker: bool = False, feed: bool = False) -> str:
             '<link rel="stylesheet" href="/blog/static-assets/site.css">'
             + alternate + "".join(nodes) + '</head><body><header><a href="/blog/ai-layoff-tracker/">AI Layoff Tracker</a>'
             f'<a class="match-cta" data-match-cta="true" href="{esc(CTA, quote=True)}">Check my match, free</a>'
-            f'</header><main>{page["body"]}{content}</main>'
+            f'</header><main>{page["body"]}{content}{forms}</main>'
             '<script src="/blog/static-assets/site.js" defer></script></body></html>')
 
 
 def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int:
     data, files = load_snapshot(snapshot)
     validate_pages(data, files)
+    wordpress_forms = data.get("wordpress_forms", False)
+    if not isinstance(wordpress_forms, bool):
+        raise ValueError("wordpress_forms must be true or false")
+    if wordpress_forms:
+        backend_pages = {output_path(url, page=True) for url in (CONTACT_URL, NEWSLETTER_URL)}
+        outputs = {output_path(page["url"], page=True) for page in data["pages"]}
+        for url in files:
+            outputs.add(output_path(url))
+            outputs.add(output_path(url) / "index.html")
+        if backend_pages & outputs:
+            raise ValueError("static output would shadow a backend form page")
     feed = FEED_URL in files
     if feed:
         root = ET.fromstring(files[FEED_URL])
@@ -268,7 +288,8 @@ def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int
             dest.parent.mkdir(parents=True, exist_ok=True)
             tracker = tracker_data is not None and page["url"] == TRACKER_URL
             dest.write_text(
-                render(page, tracker=tracker, feed=feed and page["url"] == TRACKER_URL),
+                render(page, tracker=tracker, feed=feed and page["url"] == TRACKER_URL,
+                       wordpress_forms=wordpress_forms and page["url"] == TRACKER_URL),
                 encoding="utf-8",
             )
         shutil.copytree(ASSETS, stage / "blog/static-assets")

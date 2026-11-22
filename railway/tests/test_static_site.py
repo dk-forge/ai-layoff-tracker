@@ -125,6 +125,21 @@ class StaticSite(unittest.TestCase):
         tracker = (self.output / "blog/ai-layoff-tracker/index.html").read_text()
         self.assertIn(f'rel="alternate" type="application/rss+xml" href="{url}"', tracker)
 
+    def test_pilot_links_to_working_backend_forms_outside_static_output(self):
+        self.manifest["wordpress_forms"] = True
+        self.build()
+        tracker = (self.output / "blog/ai-layoff-tracker/index.html").read_text()
+        self.assertIn('href="https://asktherecruiter.com/blog/contact/"', tracker)
+        self.assertIn('href="https://asktherecruiter.com/blog/layoff-tracker/#alt-digest"', tracker)
+        self.assertNotIn("<form", tracker)
+
+    def test_pilot_cannot_shadow_the_backend_forms(self):
+        self.manifest["wordpress_forms"] = True
+        self.manifest["pages"].append(self.page("https://asktherecruiter.com/blog/contact/", 2))
+        with self.assertRaisesRegex(ValueError, "backend form page"):
+            self.build()
+        self.assertFalse(self.output.exists())
+
     def test_missing_sitemap_page_fails_before_dist_exists(self):
         self.manifest["pages"].pop()
         with self.assertRaisesRegex(ValueError, "sitemap URL has no page"):
