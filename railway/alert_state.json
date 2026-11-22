@@ -162,6 +162,11 @@
       "last": 1795245639,
       "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
     },
+    "subscriber-watch:main:76147e63e99c3a52": {
+      "first": 1795390933,
+      "last": 1795390933,
+      "subject": "CI RED: Subscriber watch \u2014 Subscriber watch UNKNOWN: could not read the stats route (TimeoutError)."
+    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -178,6 +183,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T20:28:25+00:00",
+  "updated_at": "2026-11-22T23:42:14+00:00",
   "version": 1
 }
