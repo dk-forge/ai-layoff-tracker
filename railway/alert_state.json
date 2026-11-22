@@ -117,11 +117,6 @@
       "last": 1794905581,
       "subject": "CI RED: Mailbox janitor \u2014 The production mailbox holds NEW mail a human should read. The janitor worked and the credential is fine. See the job summary."
     },
-    "main-green-check:main:b20d48d5c896e994": {
-      "first": 1795250467,
-      "last": 1795250467,
-      "subject": "CI RED: Main green check \u2014 error: main is NOT verifiably green: tests.yml FAIL (newest completed run is failure on eed58623)"
-    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -153,6 +148,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T08:47:10+00:00",
+  "updated_at": "2026-11-22T08:52:51+00:00",
   "version": 1
 }
