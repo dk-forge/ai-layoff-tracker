@@ -107,6 +107,11 @@
       "last": 1795196216,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
     },
+    "live-surface-check:live.data:c013f474c38560e8": {
+      "first": 1795357663,
+      "last": 1795357663,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (The read operation timed out) \u2014 this head"
+    },
     "live-surface-check:live.data:feb152844d9e6171": {
       "first": 1795206470,
       "last": 1795206470,
@@ -138,6 +143,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T14:26:22+00:00",
+  "updated_at": "2026-11-22T14:27:43+00:00",
   "version": 1
 }
