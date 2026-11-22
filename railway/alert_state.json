@@ -92,6 +92,11 @@
       "last": 1788899985,
       "subject": "CI RED: Deploy WordPress plugin \u2014 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
+    "deploy-wordpress-plugin:main:171ab424bc329467": {
+      "first": 1795359902,
+      "last": 1795359902,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 The restore-merged-rows route is NOT registered on the live site after this deploy. FAIL: the tracker route index: HTTP 500 from https://asktherec"
+    },
     "depth-source-snapshot-test-only:main:c34a64053cf61a19": {
       "first": 1791216897,
       "last": 1791216897,
@@ -153,6 +158,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T15:01:44+00:00",
+  "updated_at": "2026-11-22T15:05:02+00:00",
   "version": 1
 }
