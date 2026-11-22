@@ -187,3 +187,44 @@ mail delivery or service variable is changed by this work. Preview deployment
 and cutover remain separate owner-controlled steps. Rollback is to keep the
 existing site and remove the future Pages route; retain WordPress for 30 days
 after the later approved cutover.
+
+## Static pilot checklist
+
+- [x] Main tracker reads the public backup projection when the build has
+  `--tracker-data static-data/tracker-data.json`. It supports company search,
+  inclusive layoff-date ranges, explicit AI attribution and multi-select
+  country, US state, industry and source type. The monthly jobs chart excludes
+  superset members. The table keeps them visible.
+- [x] CSV and JSON downloads use the full filtered set, including rows beyond
+  the visible page. They include attribution and the backup timestamp.
+  CSV guards cells against spreadsheet formula execution.
+- [x] A captured RSS 2.0 file at `/blog/feed/layoffs` is copied byte for byte,
+  served with an RSS content type and advertised on the tracker. The build
+  checks its canonical self link.
+- [x] An opt-in pilot can set `"wordpress_forms": true` in the snapshot
+  manifest. Contact and newsletter links use the existing WordPress forms.
+  Keep `/blog/contact/` and `/blog/layoff-tracker/` on that backend, with
+  its existing submission, confirmation and unsubscribe routes. The build
+  rejects a snapshot that would shadow either form page.
+- [x] A noindex widget and monthly chart share that projection at
+  `/blog/ai-layoff-tracker/embed/?view=widget` and `?view=chart`. They
+  accept company, country, industry, state, sources, from, to and ai filters.
+  The build splits the projection into assets under 8 MiB each. A local
+  build with the public backup produced seven chunks for 74,706 records.
+- [ ] Claude to capture the live sitemap, URL and SEO baseline, including the
+  published RSS document, redirect inventory and archive assets. Run the
+  production coverage gate with those inputs.
+- [ ] Preserve the legacy `/blog/?feed=layoffs` alias at routing time and
+  publish current RSS output after curated updates.
+- [ ] Complete dashboard parity for remaining filters, alternate date bases,
+  charts, reference series and the legacy CSV/JSON URL and schema contracts.
+  Verify startup and response times on a cold mobile connection.
+- [ ] Keep the legacy query-based widget and chart routes with their existing
+  backend during the pilot. Migrate their remaining chart types and filters,
+  and verify frame headers and old embed URLs before switching their routing.
+- [ ] Validate contact and newsletter submission and confirmation on the
+  retained backend. Decide how to preserve those flows before migrating
+  the two pages that host them.
+- [ ] Refresh the curated projection and normalized reference series after
+  successful data updates. A run against the weekly release is a point-in-time
+  snapshot.

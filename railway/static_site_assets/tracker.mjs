@@ -88,13 +88,53 @@ function renderRows(root, records) {
   }));
 }
 
+export function embedFilters(search) {
+  const params = new URLSearchParams(search);
+  const value = (key) => params.get(key) || "";
+  const list = (key) => value(key).split(",").map((item) => item.trim()).filter(Boolean);
+  return {
+    search: value("company"),
+    country: list("country"), industry: list("industry"), state: list("state"),
+    source_type: list("sources"), from: value("from"), to: value("to"), ai: value("ai") === "1",
+  };
+}
+
+function renderEmbed(section, data, records) {
+  const params = new URLSearchParams(window.location.search);
+  const filtered = filterRecords(records, embedFilters(params));
+  if (params.get("view") === "chart") {
+    section.querySelector("[data-embed-chart]").hidden = false;
+    renderChart(section.querySelector("[data-chart]"), filtered);
+  } else {
+    section.querySelector("[data-embed-widget]").hidden = false;
+    renderRows(section.querySelector("tbody"), filtered.slice(0, 10));
+  }
+  section.querySelector("[role=status]").textContent =
+    `${filtered.length.toLocaleString()} matching records. Backup captured ${data.exported_at.slice(0, 10)} UTC.`;
+}
+
 async function start(section) {
   const response = await fetch(section.dataset.tracker);
   if (!response.ok) throw new Error("Tracker data unavailable");
   const data = await response.json();
-  if (data.schema !== 1 || !Array.isArray(data.records)) throw new Error("Invalid tracker data");
-  const records = [...data.records].sort((a, b) =>
+  if (data.schema !== 1 || !Array.isArray(data.chunks) || !data.chunks.length) {
+    throw new Error("Invalid tracker data");
+  }
+  const base = new URL(section.dataset.tracker, document.baseURI);
+  const chunks = await Promise.all(data.chunks.map(async (name) => {
+    if (!/^tracker-records-[0-9]+\.json$/.test(name)) throw new Error("Invalid tracker chunk");
+    const chunk = await fetch(new URL(name, base));
+    if (!chunk.ok) throw new Error("Tracker chunk unavailable");
+    const rows = await chunk.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid tracker chunk");
+    return rows;
+  }));
+  const records = chunks.flat().sort((a, b) =>
     (b.layoff_date || "").localeCompare(a.layoff_date || ""));
+  if (section.hasAttribute("data-tracker-embed")) {
+    renderEmbed(section, data, records);
+    return;
+  }
   const form = section.querySelector("form");
   const status = section.querySelector("[role=status]");
   const filters = [...form.querySelectorAll("select")];

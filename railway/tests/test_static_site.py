@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
+from unittest.mock import patch
 
 import static_site
 
@@ -139,6 +140,33 @@ class StaticSite(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "backend form page"):
             self.build()
         self.assertFalse(self.output.exists())
+
+    def test_build_shares_projection_with_noindex_widget_and_chart_embed(self):
+        projection = self.root / "tracker-data.json"
+        projection.write_text(json.dumps({
+            "schema": 1, "exported_at": "2026-11-22T06:44:13Z",
+            "records": [{"company": "Acme", "job_count": "12"},
+                        {"company": "Other", "job_count": "7"}],
+        }))
+        manifest = self.snapshot / "manifest.json"
+        manifest.write_text(json.dumps(self.manifest))
+        with patch.object(static_site, "TRACKER_CHUNK_BYTES", 48):
+            static_site.build(manifest, self.output, projection)
+        tracker = self.output / "blog/ai-layoff-tracker"
+        embed = (tracker / "embed/index.html").read_text()
+        self.assertIn('content="noindex, follow"', embed)
+        self.assertIn('data-tracker-embed', embed)
+        self.assertIn('data-match-cta="true"', embed)
+        self.assertIn('href="/blog/ai-layoff-tracker/embed/?view=chart"', (tracker / "index.html").read_text())
+        index_path = self.output / static_site.TRACKER_DATA_PATH
+        index = json.loads(index_path.read_text())
+        self.assertEqual(len(index["chunks"]), 2)
+        records = []
+        for filename in index["chunks"]:
+            chunk = (index_path.parent / filename).read_bytes()
+            self.assertLessEqual(len(chunk), 48)
+            records.extend(json.loads(chunk))
+        self.assertEqual(records, json.loads(projection.read_text())["records"])
 
     def test_missing_sitemap_page_fails_before_dist_exists(self):
         self.manifest["pages"].pop()

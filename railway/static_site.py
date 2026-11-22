@@ -20,7 +20,9 @@ TRACKER_URL = ORIGIN + "/blog/ai-layoff-tracker/"
 CONTACT_URL = ORIGIN + "/blog/contact/"
 NEWSLETTER_URL = ORIGIN + "/blog/layoff-tracker/"
 FEED_URL = ORIGIN + "/blog/feed/layoffs"
+EMBED_URL = TRACKER_URL + "embed/"
 TRACKER_DATA_PATH = "blog/static-assets/tracker-data.json"
+TRACKER_CHUNK_BYTES = 8 * 1024 * 1024
 ASSETS = Path(__file__).with_name("static_site_assets")
 FIELDS = ("company", "date", "country", "jobs", "source_url")
 BODY_TAGS = set("h1 h2 h3 h4 h5 h6 p div section article aside header footer main nav span strong em b i small abbr u sup sub ol ul li dl dt dd table thead tbody tfoot tr th td caption colgroup col figure figcaption img details summary blockquote q cite pre code br hr time a".split())
@@ -189,6 +191,17 @@ def records_table(rows: list[dict]) -> str:
     return "".join(parts)
 
 
+def tracker_table() -> str:
+    return (
+        '<div class="table-wrap"><table><thead><tr><th scope="col">Company</th>'
+        '<th scope="col">Date</th><th scope="col">Country</th><th scope="col">Jobs</th>'
+        '<th scope="col">Source</th></tr></thead><tbody></tbody></table></div>'
+    )
+
+
+TRACKER_MODULE = '<script type="module" src="/blog/static-assets/tracker.mjs"></script>'
+
+
 def tracker_panel() -> str:
     selects = "".join(
         f'<label>{label} <select name="{key}" multiple size="4"></select></label>'
@@ -204,13 +217,31 @@ def tracker_panel() -> str:
         '<button type="button" data-export="csv">Download CSV</button>'
         '<button type="button" data-export="json">Download JSON</button></form>'
         '<p role="status">Loading tracker data.</p><h3>Jobs by month</h3><ul data-chart></ul>'
-        '<div class="table-wrap"><table><thead><tr><th scope="col">Company</th>'
-        '<th scope="col">Date</th><th scope="col">Country</th><th scope="col">Jobs</th>'
-        '<th scope="col">Source</th></tr></thead><tbody></tbody></table></div>'
+        f'{tracker_table()}'
         '<button type="button" data-more hidden>Show 50 more records</button>'
         '<noscript>Enable JavaScript to use tracker filters and charts.</noscript></section>'
-        '<script type="module" src="/blog/static-assets/tracker.mjs"></script>'
+        '<p><a href="/blog/ai-layoff-tracker/embed/?view=widget">Open the latest records widget</a></p>'
+        '<p><a href="/blog/ai-layoff-tracker/embed/?view=chart">Open the monthly chart embed</a></p>'
+        f'{TRACKER_MODULE}'
     )
+
+
+def embed_page() -> dict:
+    return {
+        "title": "AI Layoff Tracker embed",
+        "description": "Latest layoff records and monthly job counts.",
+        "canonical": EMBED_URL,
+        "robots": "noindex, follow",
+        "schema": [],
+        "body": (
+            f'<h1>AI Layoff Tracker embed</h1><section data-tracker="/{TRACKER_DATA_PATH}" data-tracker-embed>'
+            '<p role="status">Loading tracker data.</p>'
+            '<section data-embed-chart hidden><h2>Jobs by month</h2><ul data-chart></ul></section>'
+            f'<section data-embed-widget hidden><h2>Latest 10 matching records</h2>{tracker_table()}</section>'
+            '<noscript>Enable JavaScript to view the embed.</noscript></section>'
+            f'{TRACKER_MODULE}'
+        ),
+    }
 
 
 def render(page: dict, *, tracker: bool = False, feed: bool = False,
@@ -243,6 +274,35 @@ def render(page: dict, *, tracker: bool = False, feed: bool = False,
             '<script src="/blog/static-assets/site.js" defer></script></body></html>')
 
 
+def write_tracker_data(stage: Path, projection: dict) -> None:
+    """Keep each Pages asset well under the 25 MiB asset limit."""
+    directory = (stage / TRACKER_DATA_PATH).parent
+    chunks, rows = [], []
+    size = 2
+
+    def save():
+        name = f"tracker-records-{len(chunks) + 1}.json"
+        path = directory / name
+        with path.open("xb") as stream:
+            stream.write(b"[" + b",".join(rows) + b"]")
+        chunks.append(name)
+
+    for row in projection["records"]:
+        encoded = json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        if len(encoded) + 2 > TRACKER_CHUNK_BYTES:
+            raise ValueError("tracker record is too large for a Pages chunk")
+        if size + len(encoded) + bool(rows) > TRACKER_CHUNK_BYTES:
+            save()
+            rows.clear()
+            size = 2
+        size += len(encoded) + bool(rows)
+        rows.append(encoded)
+    save()
+    index = {key: value for key, value in projection.items() if key != "records"}
+    index["chunks"] = chunks
+    (stage / TRACKER_DATA_PATH).write_text(json.dumps(index), encoding="utf-8")
+
+
 def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int:
     data, files = load_snapshot(snapshot)
     validate_pages(data, files)
@@ -273,6 +333,12 @@ def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int
             raise ValueError("expected a populated static tracker data projection")
         if not any(page["url"] == TRACKER_URL for page in data["pages"]):
             raise ValueError("snapshot needs the main tracker page to use tracker data")
+        embed_path = output_path(EMBED_URL, page=True)
+        if (any(output_path(page["url"], page=True) == embed_path for page in data["pages"])
+                or any(output_path(url) in {embed_path, embed_path.parent} for url in files)):
+            raise ValueError("snapshot already occupies the generated embed path")
+        if any(output_path(url) == Path(TRACKER_DATA_PATH) for url in files):
+            raise ValueError("snapshot already occupies the tracker data path")
     if output.exists():
         raise ValueError("output already exists; choose a clean build directory")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -294,14 +360,17 @@ def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int
             )
         shutil.copytree(ASSETS, stage / "blog/static-assets")
         if tracker_data is not None:
-            shutil.copyfile(tracker_data, stage / TRACKER_DATA_PATH)
+            write_tracker_data(stage, projection)
+            embed = stage / embed_path
+            embed.parent.mkdir(parents=True, exist_ok=True)
+            embed.write_text(render(embed_page()), encoding="utf-8")
         if feed:
             (stage / "_headers").write_text(
                 "/blog/feed/layoffs\n  Content-Type: application/rss+xml; charset=utf-8\n",
                 encoding="utf-8",
             )
         os.replace(stage, output)
-    return len(data["pages"])
+    return len(data["pages"]) + int(tracker_data is not None)
 
 
 def main(argv=None):

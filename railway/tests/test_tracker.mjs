@@ -33,3 +33,11 @@ test("exports preserve the filtered set and escape spreadsheet formulas", async 
   assert.equal(json.total_records, 1);
   assert.equal(json.exported_at, "2026-11-22T06:44:13Z");
 });
+
+test("embeds accept supported chart filters from their URL", async () => {
+  const { embedFilters } = await import("../static_site_assets/tracker.mjs");
+  assert.deepEqual(embedFilters("?country=UK,US&industry=Tech&sources=warn&ai=1&from=2026-01-01"), {
+    search: "", country: ["UK", "US"], industry: ["Tech"], state: [], source_type: ["warn"],
+    from: "2026-01-01", to: "", ai: true,
+  });
+});
