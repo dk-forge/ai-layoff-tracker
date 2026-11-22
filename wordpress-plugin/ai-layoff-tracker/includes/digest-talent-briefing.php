@@ -303,7 +303,7 @@ function alt_talent_hiring_by_type($hire) {
             return alt_talent_headcount($c) - alt_talent_headcount($a)
                 ?: strcmp((string) ($c['materiality'] ?? ''), (string) ($a['materiality'] ?? ''));
         });
-        $out[$k] = alt_talent_merge_employer_lines($rows);
+        $out[$k] = $k === 'plan' ? alt_talent_merge_employer_lines($rows) : $rows;
     }
     return $out;
 }

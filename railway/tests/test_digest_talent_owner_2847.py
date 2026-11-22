@@ -126,3 +126,15 @@ class TalentOwner2847(unittest.TestCase):
                 self.assertEqual(data["color"], "rgb(255, 255, 255)" if scheme == "light" else "rgb(28, 28, 28)")
                 self.assertLessEqual(data["right"], width)
                 self.assertLessEqual(data["overflow"], width)
+
+    def test_equal_job_board_deltas_keep_each_scan_and_board_total(self):
+        rows = [row(1, 'Cloudflare', 'US', 12, board=True, source='Greenhouse job board',
+                    host='job-boards.greenhouse.io', headline='Cloudflare job board: 461 to 473'),
+                row(2, 'Cloudflare', 'US', 12, board=True, source='Greenhouse job board',
+                    host='job-boards.greenhouse.io', headline='Cloudflare job board: 473 to 485')]
+        out = compose(fixture(rows))
+        self.assertEqual(out['html'].count('data-alt="item-line"'), 2)
+        for total in (473, 485):
+            self.assertIn(f'+12 open roles since our last scan, {total} listed', out['text'])
+        for source in ('https://job-boards.greenhouse.io/1', 'https://job-boards.greenhouse.io/2'):
+            self.assertIn(source, out['html'])

@@ -1,6 +1,6 @@
 ## 2026-11-22 - 2.20.358 Talent daily email groups confirmed employer aliases
 
-The daily composer merges the confirmed Mistral / Mistral AI alias and legal suffix variants only when signal type, headcount and location agree. Each source link survives. Raw totals and provenance rules are unchanged. One headline, three metrics and a tracked match button lead the email; detailed counts sit under How we count. Missing or stale open-roles data is labelled not available. The email renderer gives this known button its own inline style and the existing dark-mode button class.
+The daily composer merges the confirmed Mistral / Mistral AI alias and legal suffix variants only when signal type, headcount and location agree. Each source link survives. Job-board observations stay separate, including equal net increases with different board totals. Raw totals and provenance rules are unchanged. One headline, three metrics and a tracked match button lead the email; detailed counts sit under How we count. Missing or stale open-roles data is labelled not available. The email renderer gives this known button its own inline style and the existing dark-mode button class.
 
 **Class:** wrong-scope-or-key
 **Guard:** railway/tests/test_digest_talent_owner_2847.py, existing daily composer suites and the complete digest test family. Companion talent-intelligence-tracker change owns the resume wording in the open-roles section. Local checks render fixtures only and never send mail.
